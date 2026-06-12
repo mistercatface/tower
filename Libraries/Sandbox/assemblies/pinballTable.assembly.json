@@ -16,26 +16,6 @@
     },
     "pads": [
         {
-            "id": "pull-main",
-            "preset": "pull",
-            "at": { "anchor": "playfield.center" },
-            "width": 80,
-            "height": 160,
-            "forceX": 0,
-            "forceY": 1000
-        },
-        {
-            "id": "pull-block",
-            "preset": "pull",
-            "at": { "u": 0.5, "v": 0.42 },
-            "width": 28,
-            "height": 10,
-            "forceX": 0,
-            "forceY": 0,
-            "wallMode": true,
-            "powered": false
-        },
-        {
             "id": "btn-kicker",
             "preset": "button",
             "at": { "u": 0.5, "v": 0.32 },
@@ -96,6 +76,26 @@
         }
     ],
     "worldProps": [
+        {
+            "id": "pull-main",
+            "prop": "gravity_pad",
+            "at": { "anchor": "playfield.center" },
+            "width": 80,
+            "height": 160,
+            "forceX": 0,
+            "forceY": 1000
+        },
+        {
+            "id": "pull-block",
+            "prop": "gravity_pad",
+            "at": { "u": 0.5, "v": 0.42 },
+            "width": 28,
+            "height": 10,
+            "forceX": 0,
+            "forceY": 0,
+            "wallMode": true,
+            "powered": false
+        },
         { "id": "paddleL", "prop": "flipper_left", "at": { "u": 0.35, "v": 0.85 } },
         { "id": "paddleR", "prop": "flipper_right", "at": { "u": 0.65, "v": 0.85 } },
         { "id": "ball", "prop": "pool_ball_1", "at": { "u": 0.5, "v": 0.15 } }

@@ -1,11 +1,10 @@
-import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes, readRectPadHalfExtents, syncPadQueryAabb } from "../Spatial/zones/floorShapes.js";
+import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes, syncPadQueryAabb } from "../Spatial/zones/floorShapes.js";
 import { addPadToState, clearPadsInState, removePadFromState } from "../../GameState/EntityRegistry.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { fillCircle, strokeCircle } from "../Canvas/CanvasPath.js";
-import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { PAD_PRESETS } from "./padPresets.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-import { runPadEffect, syncButtonFlipperLinks, syncPullPadWalls, syncSandboxPadPower, teardownPullPad, tickButtonSpawnerLinks } from "./padEffects.js";
+import { runPadEffect, syncButtonFlipperLinks, syncSandboxPadPower, tickButtonSpawnerLinks } from "./padEffects.js";
 import {
     DEFAULT_BUTTON_INPUT_MODE,
     DEFAULT_BUTTON_MASS_THRESHOLD,
@@ -96,17 +95,12 @@ export function releaseButtonPointerHold(state) {
  * @param {{
  *   id?: string,
  *   radius?: number,
- *   sinkDepth?: number,
- *   captureTolerance?: number,
  *   halfWidth?: number,
  *   halfHeight?: number,
- *   forceX?: number,
- *   forceY?: number,
  *   buttonLinks?: import("./sandboxPadLinks.js").ButtonLinkTarget[],
  *   inputMode?: import("./buttonPad.js").ButtonInputMode,
  *   massThreshold?: number,
  *   invert?: boolean,
- *   wallMode?: boolean,
  *   triggers?: object[],
  * }} [options]
  */
@@ -116,14 +110,7 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
     const id = options.id ?? `${preset}:${state.sandbox.pads.length + 1}`;
     /** @type {object} */
     let pad;
-    if (preset === "pull") {
-        const defHalfWidth = def.halfWidth;
-        const defHalfHeight = def.halfHeight;
-        const halfWidth = options.halfWidth ?? defHalfWidth;
-        const halfHeight = options.halfHeight ?? defHalfHeight;
-        pad = createRectFloorShape(x, y, halfWidth, halfHeight, { id });
-        syncPadQueryAabb(pad, halfWidth, halfHeight);
-    } else if (options.halfWidth != null && options.halfHeight != null) {
+    if (options.halfWidth != null && options.halfHeight != null) {
         pad = createRectFloorShape(x, y, options.halfWidth, options.halfHeight, { id });
         syncPadQueryAabb(pad, options.halfWidth, options.halfHeight);
     } else {
@@ -140,17 +127,7 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
         pad._toggleLatched = false;
         pad.buttonLinks = options.buttonLinks?.map((link) => ({ ...link })) ?? [];
     }
-    if (preset === "pull") {
-        pad.wallMode = options.wallMode === true;
-        pad.walls = [];
-        pad.wallsUp = false;
-        if (pad.wallMode) syncPullPadWalls(state, pad);
-    }
     pad.triggers = (options.triggers ?? def.triggers).map((trigger) => ({ ...trigger }));
-    if (preset === "pull") {
-        if (options.forceX != null) pad.triggers[0].forceX = options.forceX;
-        if (options.forceY != null) pad.triggers[0].forceY = options.forceY;
-    }
     return pad;
 }
 /**
@@ -167,9 +144,7 @@ export function spawnSandboxPad(state, preset, x, y, options = {}) {
 }
 /** @param {object} state @param {number} index */
 function removeSandboxPadAt(state, index) {
-    const pad = state.sandbox.pads[index];
-    if (pad.preset === "pull") teardownPullPad(state, pad);
-    removePadFromState(state, pad);
+    removePadFromState(state, state.sandbox.pads[index]);
 }
 /** @param {object} state @param {string} id */
 export function deleteSandboxPad(state, id) {
@@ -179,53 +154,13 @@ export function deleteSandboxPad(state, id) {
 }
 /** @param {object} state */
 export function clearSandboxPads(state) {
-    for (let i = state.sandbox.pads.length - 1; i >= 0; i--) {
-        const pad = state.sandbox.pads[i];
-        if (pad.preset === "pull") teardownPullPad(state, pad);
-    }
     clearPadsInState(state);
-}
-/** @param {object} pad @param {number} halfWidth @param {number} halfHeight */
-function ensurePullRectShape(pad, halfWidth, halfHeight) {
-    if (pad.shape.type === "Polygon") {
-        resizeRectPad(pad, halfWidth, halfHeight);
-        return;
-    }
-    pad.shape = new PolygonShape([
-        { x: -halfWidth, y: -halfHeight },
-        { x: halfWidth, y: -halfHeight },
-        { x: halfWidth, y: halfHeight },
-        { x: -halfWidth, y: halfHeight },
-    ]);
-    syncPadQueryAabb(pad, halfWidth, halfHeight);
-}
-/** @param {object} state @param {object} pad */
-function syncPadPosition(state, pad) {
-    if (pad.shape.type === "Circle") resizeCirclePad(pad, pad.shape.radius);
-    else if (pad.shape.type === "Polygon") {
-        const { halfWidth, halfHeight } = readRectPadHalfExtents(pad, PAD_PRESETS.pull);
-        syncPadQueryAabb(pad, halfWidth, halfHeight);
-    }
-    if (pad.preset === "pull" && pad.wallMode && pad.wallsUp) {
-        teardownPullPad(state, pad);
-        syncPullPadWalls(state, pad);
-    }
 }
 /** @param {object} pad */
 export function getSandboxPadEditorState(pad) {
     /** @type {Record<string, number | string | null | undefined>} */
     const snapshot = { id: pad.id, preset: pad.preset, label: PAD_PRESETS[pad.preset].listLabel, x: pad.x, y: pad.y };
     if (pad.shape.type === "Circle") snapshot.radius = pad.shape.radius;
-    if (pad.preset === "pull") {
-        const { halfWidth, halfHeight } = readRectPadHalfExtents(pad, PAD_PRESETS.pull);
-        snapshot.halfWidth = halfWidth;
-        snapshot.halfHeight = halfHeight;
-        const trigger = pad.triggers[0];
-        snapshot.forceX = trigger.forceX;
-        snapshot.forceY = trigger.forceY;
-        snapshot.wallMode = pad.wallMode;
-        snapshot.powered = pad.powered;
-    }
     if (pad.preset === "button") {
         snapshot.linkCount = pad.buttonLinks.length;
         snapshot.inputMode = pad.inputMode;
@@ -233,18 +168,6 @@ export function getSandboxPadEditorState(pad) {
         snapshot.invert = pad.invert;
     }
     return snapshot;
-}
-/** @param {object} pad @param {number} halfWidth @param {number} halfHeight */
-function resizeRectPad(pad, halfWidth, halfHeight) {
-    pad.shape.vertices = [
-        { x: -halfWidth, y: -halfHeight },
-        { x: halfWidth, y: -halfHeight },
-        { x: halfWidth, y: halfHeight },
-        { x: -halfWidth, y: halfHeight },
-    ];
-    pad.shape.normals = pad.shape._computeNormals();
-    pad.shape.boundingRadius = pad.shape._computeBoundingRadius();
-    syncPadQueryAabb(pad, halfWidth, halfHeight);
 }
 /** @param {object} pad @param {number} radius */
 function resizeCirclePad(pad, radius) {
@@ -256,16 +179,9 @@ function resizeCirclePad(pad, radius) {
  * @param {string} id
  * @param {{
  *   radius?: number,
- *   sinkDepth?: number,
- *   captureTolerance?: number,
- *   halfWidth?: number,
- *   halfHeight?: number,
- *   forceX?: number,
- *   forceY?: number,
  *   inputMode?: import("./buttonPad.js").ButtonInputMode,
  *   massThreshold?: number,
  *   invert?: boolean,
- *   wallMode?: boolean,
  *   x?: number,
  *   y?: number,
  * }} patch
@@ -276,25 +192,9 @@ export function patchSandboxPad(state, id, patch) {
     if (patch.x != null || patch.y != null) {
         if (patch.x != null) pad.x = patch.x;
         if (patch.y != null) pad.y = patch.y;
-        syncPadPosition(state, pad);
+        if (pad.shape.type === "Circle") resizeCirclePad(pad, pad.shape.radius);
     }
-    if (pad.preset === "pull") {
-        const current = readRectPadHalfExtents(pad, PAD_PRESETS.pull);
-        const halfWidth = patch.halfWidth ?? current.halfWidth;
-        const halfHeight = patch.halfHeight ?? current.halfHeight;
-        if (patch.halfWidth != null || patch.halfHeight != null || pad.shape.type !== "Polygon") ensurePullRectShape(pad, halfWidth, halfHeight);
-        const trigger = pad.triggers[0];
-        if (patch.forceX != null) trigger.forceX = patch.forceX;
-        if (patch.forceY != null) trigger.forceY = patch.forceY;
-        if (patch.wallMode != null && patch.wallMode !== pad.wallMode) {
-            if (pad.wallMode && pad.wallsUp) teardownPullPad(state, pad);
-            pad.wallMode = patch.wallMode;
-        }
-        if (pad.wallMode && pad.wallsUp && (patch.halfWidth != null || patch.halfHeight != null)) {
-            teardownPullPad(state, pad);
-            syncPullPadWalls(state, pad);
-        } else if (patch.wallMode === true && !pad.wallsUp) syncPullPadWalls(state, pad);
-    } else if (pad.preset === "button") {
+    if (pad.preset === "button") {
         if (patch.radius != null) resizeCirclePad(pad, patch.radius);
         if (patch.inputMode != null) {
             pad.inputMode = patch.inputMode;
@@ -318,12 +218,6 @@ export function listSandboxPads(state) {
             const entry = { id: pad.id, preset: pad.preset, label: `${PAD_PRESETS[pad.preset].listLabel} #${n}` };
             const snapshot = getSandboxPadEditorState(pad);
             if (snapshot.radius != null) entry.radius = snapshot.radius;
-            if (snapshot.halfWidth != null) {
-                entry.halfWidth = snapshot.halfWidth;
-                entry.halfHeight = snapshot.halfHeight;
-                entry.forceX = snapshot.forceX;
-                entry.forceY = snapshot.forceY;
-            }
             if (snapshot.linkCount != null) entry.linkCount = snapshot.linkCount;
             if (snapshot.inputMode != null) entry.inputMode = snapshot.inputMode;
             return entry;
@@ -352,13 +246,7 @@ function drawPadButton(ctx, x, y, pressed, radius) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} pad @param {import("../../Viewport/Viewport.js").Viewport} viewport @param {object} state */
 export function drawPad(ctx, pad, viewport, state) {
-    const style = PAD_PRESETS[pad.preset].draw;
-    if (style === "pull") {
-        const off = pad.powered ? 1 : 0.35;
-        drawFloorShape(ctx, pad, { fill: `rgba(255, 100, 100, ${0.22 * off})`, stroke: pad.wallMode && pad.wallsUp ? "rgba(180, 180, 200, 0.95)" : `rgba(255, 80, 80, ${0.9 * off})`, lineWidth: 2 });
-        return;
-    }
-    if (style === "button") {
+    if (pad.preset === "button") {
         drawPadButton(ctx, pad.x, pad.y, isButtonPadActive(state, pad), pad.shape.radius);
         return;
     }
@@ -383,23 +271,25 @@ function tickButtonPad(state, pad) {
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */
 export function tickSandboxPads(state, spatialFrame, dt) {
     const pads = state.sandbox.pads;
-    if (!pads.length) return;
     const dtSec = dt / 1000;
-    processFloorShapes(spatialFrame, pads, {
-        onEnter(pad, entity) {
-            if (!pad.powered) return;
-            runPadTriggers(state, pad, "enter", { entity });
-        },
-        onExit(pad, entityId) {
-            if (!pad.powered) return;
-            runPadTriggers(state, pad, "exit", { entityId });
-        },
-    });
-    for (let i = 0; i < pads.length; i++) {
-        const pad = pads[i];
-        if (pad.preset === "button") tickButtonPad(state, pad);
+    if (pads.length) {
+        processFloorShapes(spatialFrame, pads, {
+            onEnter(pad, entity) {
+                if (!pad.powered) return;
+                runPadTriggers(state, pad, "enter", { entity });
+            },
+            onExit(pad, entityId) {
+                if (!pad.powered) return;
+                runPadTriggers(state, pad, "exit", { entityId });
+            },
+        });
+        for (let i = 0; i < pads.length; i++) {
+            const pad = pads[i];
+            if (pad.preset === "button") tickButtonPad(state, pad);
+        }
     }
     syncSandboxPadPower(state);
+    if (!pads.length) return;
     for (let i = 0; i < pads.length; i++) {
         const pad = pads[i];
         if (pad.preset === "button" || !pad.powered) continue;

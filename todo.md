@@ -8,9 +8,9 @@ Same pattern as `void_pit`: `WorldProp` + `renderMode: "floor"` + quantized bake
 - [x] **Rect floor triggers** — `halfExtents` + `resizeFloorPropHalfExtents`; `syncFloorTriggerAabb` for rects.
 - [x] **Cached draw recipe** — `createGravityPadDraw()` (powered tint in cache key via `_off` suffix).
 - [x] **Spawn + inspector** — menu spawn; inspector width/height/force X/Y; assembly override fields on worldProps.
-- [ ] **`wallMode` on floor prop** — move pull-pad grid wall spawn/teardown off `padEffects` onto prop id.
-- [ ] **Button → powered links (gravity prep)** — extend `syncSandboxPadPower` for floor prop ids; pinball still uses pull pads until migrated.
-- [ ] **Remove `pull` pad preset** — migrate `pinballTable` pull pads → `gravity_pad` worldProps + button links; then delete pad pull path.
+- [x] **`wallMode` on floor prop** — `pullFixtureWalls.js` spawns grid walls on `prop.id`; inspector wall-mode checkbox; cache key `_walls` when `wallsUp`.
+- [x] **Button → powered links** — `syncSandboxPadPower` drives `prop:${id}` keys for gravity floor props; wire picker hit-tests pull props.
+- [x] **Remove `pull` pad preset** — pinball `pull-main` / `pull-block` → `gravity_pad` worldProps; pad pull path deleted.
 
 ## After gravity pad: buttons → props
 
@@ -23,7 +23,7 @@ Port pad-only names to prop-neutral APIs; callers pass any button-like entity (p
 - [ ] **`buttonLinks` on strategy** — `{ type: "worldProp", id } | { type: "floorProp", id }` (drop `type: "pad"` once gravity pad is a prop); runtime copy on spawn like `floorTriggers`.
 - [ ] **Rename / generalize modules** — `buttonPad.js` → input + active-state helpers that read `prop.inputMode`, `prop._occupants`, `prop._pointerHeld`, etc.; `sandboxPadLinks.js` → `buttonLinks.js` (add/remove/wire/draw wires by prop id).
 - [ ] **Unify effect runners** — `runButtonWorldPropLink`, `syncButtonFlipperLinks`, `tickButtonSpawnerLinks`, `syncSandboxPadPower` in `padEffects.js` → accept button source + link target by registry id (no `pad.preset === "button"` gate in hot path).
-- [ ] **Powered targets** — `syncSandboxPadPower` sets `powered` on any floor fixture with `poweredLinkId` or listed in a button’s links (gravity_pad, future conveyor); not pad-id-only.
+- [ ] **Powered targets** — extend to `poweredLinkId` on strategy (gravity_pad uses button links today).
 
 ### Variant A — floor button (`button_floor` asset)
 

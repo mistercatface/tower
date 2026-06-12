@@ -1,16 +1,12 @@
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { hitTestPad } from "./sandboxPads.js";
 import { isFlipperWorldProp } from "./behaviors/flipperBehavior.js";
+import { isPullPowerTarget } from "./pullFixtureWalls.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
 import { fillCircle, strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 /** @typedef {{ type: "worldProp", id: number }} ButtonLinkWorldPropTarget */
 /** @typedef {{ type: "pad", id: string }} ButtonLinkPadTarget */
 /** @typedef {ButtonLinkWorldPropTarget | ButtonLinkPadTarget} ButtonLinkTarget */
-/** @param {object} pad */
-export function isButtonLinkTargetPad(pad) {
-    return pad.preset === "pull";
-}
 /** @param {object} pad */
 export function getButtonPadLinks(pad) {
     return pad.buttonLinks;
@@ -65,9 +61,7 @@ export function clearButtonPadLinks(state, buttonPadId) {
  */
 export function findButtonLinkTarget(state, worldX, worldY, sourcePadId) {
     const prop = findWorldPropAtInView(state.entityRegistry, combatSpatial, worldX, worldY);
-    if (prop && (isFlipperWorldProp(prop) || isSpawnerWorldProp(prop))) return { type: "worldProp", id: prop.id };
-    const pad = hitTestPad(state, worldX, worldY);
-    if (pad && pad.id !== sourcePadId && isButtonLinkTargetPad(pad)) return { type: "pad", id: pad.id };
+    if (prop && (isFlipperWorldProp(prop) || isSpawnerWorldProp(prop) || isPullPowerTarget(prop))) return { type: "worldProp", id: prop.id };
     return null;
 }
 /** @param {object} state @param {ButtonLinkTarget} target */

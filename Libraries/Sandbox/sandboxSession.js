@@ -1,12 +1,12 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
-import { addWorldPropToState, removeWorldPropFromState, clearWorldPropsInState } from "../../GameState/EntityRegistry.js";
+import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
 import { getResolvedAssembly, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
 import { clearSandboxPads, deleteSandboxPad, getSandboxPadEditorState, isSandboxSpawnPadId, listSandboxPads, parseSandboxPadPreset, patchSandboxPad, spawnSandboxPad } from "./sandboxPads.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-import { PAD_PRESETS } from "./padPresets.js";
+import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 export { SANDBOX_SPAWN_PAD_PREFIX, isSandboxSpawnPadId, parseSandboxPadPreset, sandboxSpawnPadId } from "./sandboxPads.js";
 export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
 /** @param {string} assemblyId */
@@ -24,8 +24,6 @@ export function isSandboxSpawnPropId(spawnId) {
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
-    let spawnPullWidth = PAD_PRESETS.pull.halfWidth * 2;
-    let spawnPullHeight = PAD_PRESETS.pull.halfHeight * 2;
     /** @type {Set<number>} */
     let selectedPropIds = new Set();
     /** @type {number | null} */
@@ -66,6 +64,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         selectedPropId = id;
         sync();
     };
+    const removeProp = (prop) => removeSandboxWorldProp(state, prop);
     const pruneSelection = () => {
         if (selectedPropIds.size === 0) return;
         let changed = false;
@@ -99,11 +98,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         getSpawnFaction: () => spawnFaction,
         setSpawnFaction: (faction) => {
             spawnFaction = faction;
-        },
-        getSpawnPullSize: () => ({ width: spawnPullWidth, height: spawnPullHeight }),
-        setSpawnPullSize: (width, height) => {
-            spawnPullWidth = width;
-            spawnPullHeight = height;
         },
         getSelectedPropId: () => selectedPropId,
         getSelectedPropIds: () => {
@@ -158,13 +152,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const origin = { x: state.viewport.x, y: state.viewport.y };
             if (isSandboxSpawnPadId(spawnPropId)) {
                 const preset = parseSandboxPadPreset(spawnPropId);
-                /** @type {{ halfWidth?: number, halfHeight?: number }} */
-                const options = {};
-                if (preset === "pull") {
-                    options.halfWidth = spawnPullWidth / 2;
-                    options.halfHeight = spawnPullHeight / 2;
-                }
-                const pad = spawnSandboxPad(state, preset, origin.x, origin.y, options);
+                const pad = spawnSandboxPad(state, preset, origin.x, origin.y);
                 selectedPadId = pad.id;
                 selectedPropIds.clear();
                 selectedPropId = null;
@@ -203,7 +191,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         deleteProp(prop) {
             if (!prop) return;
             removePropFromSelection(prop.id);
-            removeWorldPropFromState(state, prop);
+            removeProp(prop);
             sync();
         },
         deletePropById(id) {
@@ -211,10 +199,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         deleteSelectedProps() {
             const ids = [...selectedPropIds];
-            for (let i = 0; i < ids.length; i++) {
-                const prop = registry().get(ids[i]);
-                if (prop) removeWorldPropFromState(state, prop);
-            }
+            for (let i = 0; i < ids.length; i++) removeProp(registry().get(ids[i]));
             selectedPropIds.clear();
             selectedPropId = null;
             sync();
@@ -233,7 +218,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             return placed;
         },
         clear() {
-            clearWorldPropsInState(state);
+            for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state.worldProps[i]);
             clearAssemblyInstances(state);
             clearSandboxPads(state);
             selectedPropIds.clear();
@@ -245,5 +230,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             uiSync = fn;
         },
         sync,
+        getState: () => state,
     };
 }

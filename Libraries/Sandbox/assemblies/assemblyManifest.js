@@ -42,14 +42,8 @@
 /**
  * @typedef {object} AssemblyPadManifest
  * @property {string} id
- * @property {string} preset — pull | button
+ * @property {string} preset — button
  * @property {AssemblyPlacementManifest} at
- * @property {number} [width] — pull rect width
- * @property {number} [height] — pull rect height
- * @property {number} [forceX] — pull override
- * @property {number} [forceY] — pull override
- * @property {boolean} [wallMode] — pull: solid walls when powered
- * @property {boolean} [powered] — pull: starts off when false
  * @property {string} [target] — button: single assembly prop or pad id
  * @property {string[]} [targets] — button: assembly prop or pad ids to wire
  * @property {"tap" | "hold" | "toggle" | "massTap" | "massHold" | "massToggle"} [inputMode]

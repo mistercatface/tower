@@ -294,11 +294,6 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         },
         getSpawnFaction: () => session.getSpawnFaction(),
         setSpawnFaction: (faction) => session.setSpawnFaction(faction),
-        getSpawnPullSize: () => session.getSpawnPullSize(),
-        setSpawnPullSize: (width, height) => {
-            session.setSpawnPullSize(width, height);
-            session.sync();
-        },
         getSelectedPropId: () => session.getSelectedPropId(),
         getSelectedPropIds: () => session.getSelectedPropIds(),
         getSelectedProp: () => session.getSelectedProp(),
@@ -384,6 +379,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         deletePropById: (id) => session.deletePropById(id),
         listPlacedProps: () => session.listPlacedProps(),
         sync: () => session.sync(),
+        getState: () => session.getState(),
         setUiSync: (fn) => session.setUiSync(fn),
         getSpawnBehaviorId: () => {
             clampSpawnBehavior();

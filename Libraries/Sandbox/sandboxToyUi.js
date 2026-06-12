@@ -7,7 +7,7 @@ import { PAD_PRESETS } from "./padPresets.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "./sandboxPropVisual.js";
-import { sandboxSpawnAssemblyId, sandboxSpawnPadId, isSandboxSpawnPadId, isSandboxSpawnPropId, parseSandboxPadPreset } from "./sandboxSession.js";
+import { sandboxSpawnAssemblyId, sandboxSpawnPadId, isSandboxSpawnPadId, isSandboxSpawnPropId } from "./sandboxSession.js";
 function readOpenSections(root) {
     const open = new Set();
     for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
@@ -121,20 +121,11 @@ function appendEntityList(parent, entries, emptyText) {
         }
     parent.appendChild(list);
 }
-function appendPullPadFields(parent, { width, height, forceX, forceY, showForce, onChange }) {
-    appendNumberField(parent, "Width", { value: width, step: 1, min: 1, onChange: (nextWidth) => onChange({ width: nextWidth, height, forceX, forceY }) });
-    appendNumberField(parent, "Height", { value: height, step: 1, min: 1, onChange: (nextHeight) => onChange({ width, height: nextHeight, forceX, forceY }) });
-    if (showForce) {
-        appendNumberField(parent, "Force X", { value: forceX, step: 50, onChange: (nextForceX) => onChange({ width, height, forceX: nextForceX, forceY }) });
-        appendNumberField(parent, "Force Y", { value: forceY, step: 50, onChange: (nextForceY) => onChange({ width, height, forceX, forceY: nextForceY }) });
-    }
-}
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }
 /** @param {{ id: string, preset: string, label: string, radius?: number, sinkDepth?: number, halfWidth?: number, halfHeight?: number, linkCount?: number }} entry */
 function formatPadListLabel(entry) {
-    if (entry.preset === "pull" && entry.halfWidth != null && entry.halfHeight != null) return `${entry.label} · ${Math.round(entry.halfWidth * 2)}×${Math.round(entry.halfHeight * 2)}`;
     if (entry.preset === "button" && entry.linkCount) return `${entry.label} · ${entry.linkCount} wire${entry.linkCount === 1 ? "" : "s"}`;
     if (entry.radius != null) return `${entry.label} · r${Math.round(entry.radius * 10) / 10}`;
     return entry.label;
@@ -149,10 +140,7 @@ function buildSpawnOptions(propIds, assemblyManifests) {
         const asset = getPropAsset(id);
         return { value: id, label: asset?.sandbox?.spawnLabel ?? id.replace(/_/g, " ") };
     });
-    for (const preset of Object.keys(PAD_PRESETS)) {
-        if (preset === "pull") continue;
-        options.push({ value: sandboxSpawnPadId(preset), label: PAD_PRESETS[preset].listLabel });
-    }
+    for (const preset of Object.keys(PAD_PRESETS)) options.push({ value: sandboxSpawnPadId(preset), label: PAD_PRESETS[preset].listLabel });
     const assemblies = [...assemblyManifests].sort((a, b) => a.label.localeCompare(b.label));
     for (const manifest of assemblies) options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
     return options;
@@ -183,24 +171,7 @@ function renderSelectedPadInspector(body, controller, onChange) {
             patch(fields);
         },
     });
-    if (pad.preset === "pull") {
-        appendPullPadFields(body, {
-            width: pad.halfWidth * 2,
-            height: pad.halfHeight * 2,
-            forceX: pad.forceX,
-            forceY: pad.forceY,
-            showForce: true,
-            onChange: ({ width, height, forceX, forceY }) => patch({ halfWidth: width / 2, halfHeight: height / 2, forceX, forceY }),
-        });
-        const wallRow = document.createElement("label");
-        wallRow.className = "param-field";
-        const wallCheck = document.createElement("input");
-        wallCheck.type = "checkbox";
-        wallCheck.checked = pad.wallMode;
-        wallCheck.addEventListener("change", () => patch({ wallMode: wallCheck.checked }));
-        wallRow.append("Wall mode ", wallCheck);
-        body.appendChild(wallRow);
-    } else if (pad.preset === "button") {
+    if (pad.preset === "button") {
         appendNumberField(body, "Radius", { value: pad.radius, step: 0.5, min: 0.5, onChange: (radius) => patch({ radius }) });
         appendSelectField(body, "Input", {
             value: pad.inputMode,
@@ -331,19 +302,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     onChange();
                 },
             });
-            if (isSandboxSpawnPadId(spawnId) && parseSandboxPadPreset(spawnId) === "pull") {
-                const pullSize = controller.getSpawnPullSize();
-                appendPullPadFields(addRow, {
-                    width: pullSize.width,
-                    height: pullSize.height,
-                    forceX: PAD_PRESETS.pull.triggers[0].forceX,
-                    forceY: PAD_PRESETS.pull.triggers[0].forceY,
-                    showForce: false,
-                    onChange: ({ width, height }) => {
-                        controller.setSpawnPullSize(width, height);
-                    },
-                });
-            }
             if (isSandboxSpawnPropId(spawnId))
                 appendFactionSelect(addRow, {
                     value: controller.getSpawnFaction(),
@@ -449,7 +407,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     onChange();
                 },
             });
-            appendSandboxWorldPropInspectorFields(body, selectedProp, { sync: () => controller.sync?.(), onChange });
+            appendSandboxWorldPropInspectorFields(body, selectedProp, { state: controller.getState(), sync: () => controller.sync?.(), onChange });
             if (behaviorIds.length > 0)
                 appendSelectField(body, "Mode", {
                     value: controller.getSelectedBehaviorId(),

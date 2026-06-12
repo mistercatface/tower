@@ -10,14 +10,7 @@ export function spawnAssemblyPads(state, layout, { groupId, resolvedId, groupFie
     for (let i = 0; i < layout.pads.length; i++) {
         const entry = layout.pads[i];
         const options = { id: `${groupId}:pad:${entry.id}` };
-        if (entry.preset === "pull") {
-            options.halfWidth = entry.halfWidth;
-            options.halfHeight = entry.halfHeight;
-            options.forceX = entry.forceX;
-            options.forceY = entry.forceY;
-            if (entry.wallMode === true) options.wallMode = true;
-            if (entry.powered === false) options.powered = false;
-        } else if (entry.preset === "button") {
+        if (entry.preset === "button") {
             options.radius = entry.radius;
             if (entry.inputMode != null) options.inputMode = entry.inputMode;
             if (entry.massThreshold != null) options.massThreshold = entry.massThreshold;

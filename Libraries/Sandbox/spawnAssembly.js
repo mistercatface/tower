@@ -9,7 +9,7 @@ import { spawnAssemblyPads } from "./assemblyPadSpawn.js";
 import { deleteSandboxPad } from "./sandboxPads.js";
 import { getWallCellBounds, unionGridCellRect } from "../Spatial/grid/wallGridBake.js";
 import { pointInAabb } from "../Math/Aabb2D.js";
-import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 /** @param {object} state @param {object} wall */
 function detachSandboxWall(state, wall) {
@@ -166,7 +166,7 @@ export function deleteAssemblyInstance(state, groupId, groupField) {
     const meta = getSandboxEntityMeta(state);
     for (let i = state.worldProps.length - 1; i >= 0; i--) {
         const prop = state.worldProps[i];
-        if (meta.getAssemblyRackId(prop.id) === rackId || entityBelongsToAssemblyGroup(state, prop, groupId, groupField)) removeWorldPropFromState(state, prop);
+        if (meta.getAssemblyRackId(prop.id) === rackId || entityBelongsToAssemblyGroup(state, prop, groupId, groupField)) removeSandboxWorldProp(state, prop);
     }
     const idx = state.sandbox.assemblyInstances.findIndex((entry) => entry.id === groupId);
     if (idx >= 0) state.sandbox.assemblyInstances.splice(idx, 1);

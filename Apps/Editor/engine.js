@@ -47,8 +47,8 @@ function runSimulationTick(state, dt) {
     Projectile.checkSpawnCollisions(state, spatialFrame, simulationEvents);
     Projectile.updateAll(state, simDt);
     CombatParticles.updateAll(state, simDt);
-    tickFloorProps(state, spatialFrame, simDt);
     tickSandboxPads(state, spatialFrame, simDt);
+    tickFloorProps(state, spatialFrame, simDt);
     runPushablePhysics(state, simDt, spatialFrame, simulationEvents);
     RagdollCorpse.updateAll(state, simDt, spatialFrame);
     dispatchSimulationEvents(simulationEvents, state);

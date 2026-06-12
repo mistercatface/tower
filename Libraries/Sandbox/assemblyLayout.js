@@ -13,14 +13,7 @@ function resolveAssemblyPads(pads, play) {
         const point = resolvePlacement(play, entry.at);
         /** @type {object} */
         const resolved = { id: entry.id, preset: entry.preset, x: point.x, y: point.y };
-        if (entry.preset === "pull") {
-            resolved.halfWidth = entry.width / 2;
-            resolved.halfHeight = entry.height / 2;
-            resolved.forceX = entry.forceX;
-            resolved.forceY = entry.forceY;
-            if (entry.wallMode === true) resolved.wallMode = true;
-            if (entry.powered === false) resolved.powered = false;
-        } else if (entry.preset === "button") {
+        if (entry.preset === "button") {
             if (entry.radiusU == null) throw new Error(`Button pad "${entry.id}" missing radiusU`);
             resolved.radius = entry.radiusU * playW;
             resolved.targets = entry.targets?.length ? entry.targets : entry.target ? [entry.target] : [];

@@ -1,17 +1,12 @@
-import { Segment } from "../../Entities/Wall.js";
 import { CAPTURED_SINK_DURATION_MS } from "../../Entities/worldPropVoidSinkState.js";
-import { createAabb } from "../Math/Aabb2D.js";
-import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
-import { padStampBoundsInto, readRectPadHalfExtents } from "../Spatial/zones/floorShapes.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
-import { addSandboxWalls, removeSandboxWalls } from "./spawnAssembly.js";
 import { buttonEffectiveActive, isSustainedFlipperButtonInputMode, isSustainedSpawnerButtonInputMode } from "./buttonPad.js";
 import { fireSpawner, isSpawnerWorldProp } from "./spawnerConfig.js";
+import { isPullPowerTarget, syncPullFixtureWalls, teardownPullFixtureWalls } from "./pullFixtureWalls.js";
 /** @typedef {import("./padPresets.js").PadTriggerDef} PadTriggerDef */
-const padStampScratch = createAabb();
 /**
  * @typedef {object} PadEffectContext
  * @property {object} [entity]
@@ -19,56 +14,14 @@ const padStampScratch = createAabb();
  * @property {number} [dtSec]
  * @property {{ x: number, y: number }} [world]
  */
-/** @param {object} state @param {object} pad */
-function buildPullPadWalls(state, pad) {
-    const { halfWidth, halfHeight } = readRectPadHalfExtents(pad);
-    const grid = state.obstacleGrid;
-    const cellSize = grid.cellSize;
-    const stamp = padStampBoundsInto(padStampScratch, pad, halfWidth, halfHeight);
-    const originX = grid.minX;
-    const originY = grid.minY;
-    const halfCell = cellSize * 0.5;
-    /** @type {import("../../Entities/Wall.js").Segment[]} */
-    const walls = [];
-    forEachObstacleGridCellInAabb(grid, stamp, (col, row) => {
-        const wall = new Segment(originX + col * cellSize + halfCell, originY + row * cellSize + halfCell, 0, cellSize, 0, 30, 30, false, cellSize);
-        wall.collisionOnly = true;
-        wall.sandboxPadId = pad.id;
-        walls.push(wall);
-    });
-    return walls;
-}
-/** @param {object} state */
-function rebuildPullPadNavigation(state) {
-    state.hierarchicalNavigator.rebuildRegions(state.viewport.x, state.viewport.y);
-    state.navigation.onObstaclesChanged(null);
-}
-/** @param {object} state @param {object} pad @param {boolean} wallsUp */
-function setPullPadWalls(state, pad, wallsUp) {
-    if (!pad.wallMode || pad.wallsUp === wallsUp) return;
-    if (wallsUp) {
-        pad.walls = buildPullPadWalls(state, pad);
-        addSandboxWalls(state, pad.walls, { notifyNavigation: false });
-    } else {
-        removeSandboxWalls(state, pad.walls, { notifyNavigation: false });
-        pad.walls = [];
-    }
-    rebuildPullPadNavigation(state);
-    pad.wallsUp = wallsUp;
-}
-/** @param {object} state @param {object} pad */
-export function syncPullPadWalls(state, pad) {
-    if (pad.preset !== "pull" || !pad.wallMode) return;
-    setPullPadWalls(state, pad, pad.powered);
-}
-/** @param {object} state @param {object} pad */
-export function teardownPullPad(state, pad) {
-    if (pad.wallsUp) setPullPadWalls(state, pad, false);
+/** @param {number} propId */
+function pullPowerKeyForProp(propId) {
+    return `prop:${propId}`;
 }
 /** @param {object} state */
 export function syncSandboxPadPower(state) {
     /** @type {Map<string, boolean>} */
-    const poweredByPadId = new Map();
+    const poweredByTargetId = new Map();
     const pads = state.sandbox.pads;
     for (let i = 0; i < pads.length; i++) {
         const pad = pads[i];
@@ -77,18 +30,19 @@ export function syncSandboxPadPower(state) {
         const links = getButtonPadLinks(pad);
         for (let j = 0; j < links.length; j++) {
             const link = links[j];
-            if (link.type !== "pad") continue;
-            poweredByPadId.set(link.id, (poweredByPadId.get(link.id) ?? false) || signal);
+            if (link.type !== "worldProp") continue;
+            const target = state.entityRegistry.getLive(link.id);
+            if (!isPullPowerTarget(target)) continue;
+            const key = pullPowerKeyForProp(link.id);
+            poweredByTargetId.set(key, (poweredByTargetId.get(key) ?? false) || signal);
         }
     }
-    for (let i = 0; i < pads.length; i++) {
-        const pad = pads[i];
-        if (pad.preset === "button") continue;
-        const powered = poweredByPadId.has(pad.id) ? poweredByPadId.get(pad.id) : true;
-        if (pad.powered === powered) continue;
-        pad.powered = powered;
-        syncPullPadWalls(state, pad);
-    }
+    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+        if (!isPullPowerTarget(prop)) return;
+        const powered = poweredByTargetId.has(pullPowerKeyForProp(prop.id)) ? poweredByTargetId.get(pullPowerKeyForProp(prop.id)) : true;
+        prop.powered = powered;
+        syncPullFixtureWalls(state, prop);
+    });
 }
 /** @param {object} prop @param {object} source */
 function beginSink(prop, source) {

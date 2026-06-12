@@ -1,4 +1,4 @@
-import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { removeSandboxWorldProp } from "../Sandbox/pullFixtureWalls.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
 import { advancePushableSleep, evaluatePushableSleepEligible } from "./pushableSleep.js";
@@ -29,7 +29,7 @@ export function runPushablePhysics(state, dt, spatialFrame, events) {
         for (let i = state.worldProps.length - 1; i >= 0; i--) {
             const p = state.worldProps[i];
             p.update(subDt, state, spatialFrame);
-            if (p.isDead) removeWorldPropFromState(state, p);
+            if (p.isDead) removeSandboxWorldProp(state, p);
         }
         spatialFrame.reindexPushables(pushables);
         CollisionSystem.run(state, spatialFrame, events);
