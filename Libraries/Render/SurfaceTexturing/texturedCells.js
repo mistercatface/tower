@@ -77,6 +77,6 @@ export function drawTexturedQuadCells(ctx, cells, img, options = {}) {
     const textureOpts = { underlay: options.underlay ?? null, bleedPx: options.bleedPx ?? options.screenBleed ?? 0 };
     for (let i = 0; i < cells.length; i++) {
         const cell = cells[i];
-        drawImageQuad(ctx, img, cell.sx0, cell.sy0, cell.sx1, cell.sy1, cell.d0, cell.d1, cell.d2, cell.d3, textureOpts);
+        drawImageQuad(ctx, { img, sx0: cell.sx0, sy0: cell.sy0, sx1: cell.sx1, sy1: cell.sy1, d0: cell.d0, d1: cell.d1, d2: cell.d2, d3: cell.d3 }, textureOpts);
     }
 }

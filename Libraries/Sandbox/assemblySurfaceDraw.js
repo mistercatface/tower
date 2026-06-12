@@ -4,6 +4,7 @@ import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.
 import { animationFrameIndex } from "../WorldSurface/ProfileBakeResolver.js";
 import { bakeSlotForSourceFrame } from "../WorldSurface/AnimationFrameBake.js";
 import { drawBakedTexture, drawProjectedHorizontalChunk } from "../WorldSurface/WorldSurfaceResolution.js";
+import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { traceArc, traceSegment } from "../Canvas/CanvasPath.js";
@@ -34,10 +35,9 @@ function resolveFlipbookFrameIndex(flipbook, gameTime) {
  * @param {number} frameIndex
  * @param {import("../../Render/WorldSurfaceBootstrap.js").WorldSurfaceSettings} settings
  * @param {number} zLevel
- * @param {number} viewerX
- * @param {number} viewerY
+ * @param {import("../Viewport/Viewport.js").Viewport} viewport
  */
-function drawAssemblyPatch(ctx, patch, frameIndex, settings, zLevel, viewerX, viewerY) {
+function drawAssemblyPatch(ctx, patch, frameIndex, settings, zLevel, viewport) {
     const canvas = patch.frames[Math.min(patch.frames.length - 1, Math.max(0, frameIndex))];
     if (!canvas) return;
     const { minX, minY, maxX, maxY } = patch.bounds;
@@ -47,7 +47,7 @@ function drawAssemblyPatch(ctx, patch, frameIndex, settings, zLevel, viewerX, vi
         drawBakedTexture(ctx, canvas, minX, minY, worldW, worldH, settings);
         return;
     }
-    const corners = projectWorldAabbCornersInto(sAssemblyPatchCorners, minX, minY, maxX, maxY, zLevel, viewerX, viewerY, settings.cameraHeight);
+    const corners = projectWorldAabbCornersInto(sAssemblyPatchCorners, minX, minY, maxX, maxY, zLevel, elevationCameraFromViewport(viewport, settings.cameraHeight));
     drawProjectedHorizontalChunk(ctx, canvas, corners, settings);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createAssemblySurfaceZone>} zone @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
@@ -56,11 +56,9 @@ export function drawAssemblySurfaceZone(ctx, zone, state, viewport) {
     if (!isAabbInView(zone, viewport)) return;
     const settings = getGameWorldSurfaceSettings();
     const frameIndex = resolveFlipbookFrameIndex(zone.flipbook, state.gameTime ?? 0);
-    const viewerX = viewport.x;
-    const viewerY = viewport.y;
-    drawAssemblyPatch(ctx, zone.flipbook.play, frameIndex, settings, 0, viewerX, viewerY);
+    drawAssemblyPatch(ctx, zone.flipbook.play, frameIndex, settings, 0, viewport);
     const railBands = zone.flipbook.railBands;
-    for (let i = 0; i < railBands.length; i++) drawAssemblyPatch(ctx, railBands[i], frameIndex, settings, 0, viewerX, viewerY);
+    for (let i = 0; i < railBands.length; i++) drawAssemblyPatch(ctx, railBands[i], frameIndex, settings, 0, viewport);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
 export function drawSandboxAssemblySurfaces(ctx, state, viewport) {

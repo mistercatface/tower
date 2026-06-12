@@ -17,10 +17,10 @@ export function setPerspectiveStrength(val) {
  * Radial extrusion factor for a world point at elevation height.
  *
  * @param {number} height
- * @param {number} cameraHeight
- * @param {number} [strength]
+ * @param {import("./ElevationCamera.js").ElevationCamera} camera
  */
-export function resolveElevationAlpha(height, cameraHeight, strength = 1) {
+export function resolveElevationAlpha(height, camera) {
+    const { cameraHeight, strength } = camera;
     if (height <= 0 || cameraHeight <= height) return 0;
     return (height / (cameraHeight - height)) * strength;
 }
@@ -28,39 +28,32 @@ export function resolveElevationAlpha(height, cameraHeight, strength = 1) {
  * @param {{ x: number, y: number }} out
  * @param {number} worldX
  * @param {number} worldY
- * @param {number} viewerX
- * @param {number} viewerY
  * @param {number} height
- * @param {number} cameraHeight
- * @param {number} [strength]
+ * @param {import("./ElevationCamera.js").ElevationCamera} camera
  * @returns {typeof out}
  */
-export function projectWorldPointInto(out, worldX, worldY, viewerX, viewerY, height, cameraHeight, strength = 1) {
-    const alpha = resolveElevationAlpha(height, cameraHeight, strength);
+export function projectWorldPointInto(out, worldX, worldY, height, camera) {
+    const alpha = resolveElevationAlpha(height, camera);
     if (alpha <= 0) {
         out.x = worldX;
         out.y = worldY;
     } else {
-        out.x = worldX + (worldX - viewerX) * alpha;
-        out.y = worldY + (worldY - viewerY) * alpha;
+        out.x = worldX + (worldX - camera.viewerX) * alpha;
+        out.y = worldY + (worldY - camera.viewerY) * alpha;
     }
     return out;
 }
 /**
  * Project a world point to its screen position at elevation height.
- * Shared by horizontal surfaces, wall roof caps, and iso props.
  *
  * @param {number} worldX
  * @param {number} worldY
- * @param {number} viewerX
- * @param {number} viewerY
  * @param {number} height
- * @param {number} cameraHeight
- * @param {number} [strength]
+ * @param {import("./ElevationCamera.js").ElevationCamera} camera
  * @returns {{ x: number, y: number }}
  */
-export function projectWorldPointAtHeight(worldX, worldY, viewerX, viewerY, height, cameraHeight, strength = 1) {
-    return projectWorldPointInto({ x: 0, y: 0 }, worldX, worldY, viewerX, viewerY, height, cameraHeight, strength);
+export function projectWorldPointAtHeight(worldX, worldY, height, camera) {
+    return projectWorldPointInto({ x: 0, y: 0 }, worldX, worldY, height, camera);
 }
 /**
  * Project the four corners of a world-axis-aligned rectangle at elevation height.
@@ -69,37 +62,35 @@ export function projectWorldPointAtHeight(worldX, worldY, viewerX, viewerY, heig
  * @param {number} originY
  * @param {number} sizePx
  * @param {number} height
- * @param {number} viewerX
- * @param {number} viewerY
- * @param {number} cameraHeight
- * @param {number} [strength]
+ * @param {import("./ElevationCamera.js").ElevationCamera} camera
  * @returns {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]}
  */
 /** @returns {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} Allocates — prefer `projectWorldAabbCornersInto`. */
-export function projectWorldRectCorners(originX, originY, sizePx, height, viewerX, viewerY, cameraHeight, strength = 1) {
+export function projectWorldRectCorners(originX, originY, sizePx, height, camera) {
     const out = [
         { x: 0, y: 0 },
         { x: 0, y: 0 },
         { x: 0, y: 0 },
         { x: 0, y: 0 },
     ];
-    projectWorldAabbCornersInto(out, originX, originY, originX + sizePx, originY + sizePx, height, viewerX, viewerY, cameraHeight, strength);
+    projectWorldAabbCornersInto(out, originX, originY, originX + sizePx, originY + sizePx, height, camera);
     return out;
 }
-/** @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} out4 @param {number} [strength] */
-export function projectWorldAabbCornersInto(out4, minX, minY, maxX, maxY, height, viewerX, viewerY, cameraHeight, strength = 1) {
-    projectWorldPointInto(out4[0], minX, minY, viewerX, viewerY, height, cameraHeight, strength);
-    projectWorldPointInto(out4[1], maxX, minY, viewerX, viewerY, height, cameraHeight, strength);
-    projectWorldPointInto(out4[2], maxX, maxY, viewerX, viewerY, height, cameraHeight, strength);
-    projectWorldPointInto(out4[3], minX, maxY, viewerX, viewerY, height, cameraHeight, strength);
+/** @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} out4 @param {import("./ElevationCamera.js").ElevationCamera} camera */
+export function projectWorldAabbCornersInto(out4, minX, minY, maxX, maxY, height, camera) {
+    projectWorldPointInto(out4[0], minX, minY, height, camera);
+    projectWorldPointInto(out4[1], maxX, minY, height, camera);
+    projectWorldPointInto(out4[2], maxX, maxY, height, camera);
+    projectWorldPointInto(out4[3], minX, maxY, height, camera);
     return out4;
 }
 export function projectVertical(objX, objY, viewerX, viewerY, height) {
+    const camera = { viewerX, viewerY, cameraHeight: CAMERA_HEIGHT, strength: PERSPECTIVE_STRENGTH };
     const dx = objX - viewerX;
     const dy = objY - viewerY;
     const dist = Math.hypot(dx, dy);
-    const alpha = resolveElevationAlpha(height, CAMERA_HEIGHT, PERSPECTIVE_STRENGTH);
-    const top = projectWorldPointAtHeight(objX, objY, viewerX, viewerY, height, CAMERA_HEIGHT, PERSPECTIVE_STRENGTH);
+    const alpha = resolveElevationAlpha(height, camera);
+    const top = projectWorldPointAtHeight(objX, objY, height, camera);
     const viewAngle = Math.atan2(dy, dx);
     return { cx: objX, cy: objY, dx, dy, dist, alpha, topX: top.x, topY: top.y, viewAngle, height };
 }

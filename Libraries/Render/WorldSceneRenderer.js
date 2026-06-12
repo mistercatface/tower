@@ -80,8 +80,6 @@ export class WorldSceneRenderer {
         const zoom = viewport.zoom ?? 1;
         /** @type {WallDrawContext} */
         const wallCtx = {
-            viewerX: px,
-            viewerY: py,
             viewport,
             worldSurfaces: input.worldSurfaces,
             proceduralSurfaceDraw: input.proceduralSurfaceDraw,

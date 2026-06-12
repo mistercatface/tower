@@ -1,4 +1,4 @@
-import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
+import { elevationCameraFromViewport } from "../../Spatial/iso/ElevationCamera.js";
 import { projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
 import { createAabb, expandPointsAabbInto } from "../../Math/Aabb2D.js";
 import { traceClosedPolygon } from "../../Canvas/CanvasPath.js";
@@ -76,11 +76,11 @@ export class RenderableRoofCap extends Renderable {
         this.corners = corners; // [{x,y}, {x,y}, {x,y}, {x,y}]
         expandPointsAabbInto(this.bounds, corners);
     }
-    draw(ctx, viewport, cameraHeight, viewerX, viewerY) {
-        const strength = resolveStructurePerspectiveStrength(viewport);
+    draw(ctx, viewport, cameraHeight) {
+        const camera = elevationCameraFromViewport(viewport, cameraHeight);
         for (let j = 0; j < 4; j++) {
             const corner = this.corners[j];
-            projectWorldPointInto(sRoofProjectedCorners[j], corner.x, corner.y, viewerX, viewerY, this.zLevel, cameraHeight, strength);
+            projectWorldPointInto(sRoofProjectedCorners[j], corner.x, corner.y, this.zLevel, camera);
         }
         ctx.beginPath();
         traceClosedPolygon(ctx, sRoofProjectedCorners);

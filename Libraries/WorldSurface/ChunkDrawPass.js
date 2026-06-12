@@ -1,7 +1,7 @@
 /**
  * Per-chunk horizontal surface draw context — built once per visible chunk in `drawGroundChunks`.
  */
-import { resolveStructurePerspectiveStrength } from "../../Core/GamePerspective.js";
+import { elevationCameraFromChunkPass } from "../Spatial/iso/ElevationCamera.js";
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
@@ -40,12 +40,11 @@ function chunkRect(pass, rect = null) {
  */
 export function projectHorizontalSurfaceCornersInto(out4, pass, rect = null) {
     const { originX, originY, sizePx, zLevel } = chunkRect(pass, rect);
-    const strength = resolveStructurePerspectiveStrength(pass.viewport);
-    return projectWorldAabbCornersInto(out4, originX, originY, originX + sizePx, originY + sizePx, zLevel, pass.viewerX, pass.viewerY, pass.cameraHeight, strength);
+    return projectWorldAabbCornersInto(out4, originX, originY, originX + sizePx, originY + sizePx, zLevel, elevationCameraFromChunkPass(pass));
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
 export function clipChunkToRoofFootprints(ctx, pass) {
-    const { renderScene, originX, originY, sizePx, zLevel, viewerX, viewerY, cameraHeight, viewport } = pass;
+    const { renderScene, originX, originY, sizePx, zLevel, cameraHeight, viewport } = pass;
     if (!renderScene) return false;
     const minCol = worldToChunkCol(originX, renderScene.gridMinX, renderScene.chunkSizePx);
     const maxCol = worldToChunkCol(originX + sizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
@@ -58,7 +57,7 @@ export function clipChunkToRoofFootprints(ctx, pass) {
             const roof = roofs[i];
             if (roof.simWall?.isDead) continue;
             if (Math.abs(roof.zLevel - zLevel) > 0.01) continue;
-            roof.draw(clipCtx, viewport, cameraHeight, viewerX, viewerY);
+            roof.draw(clipCtx, viewport, cameraHeight);
             clippedAny = true;
         }
         return clippedAny;
@@ -66,7 +65,7 @@ export function clipChunkToRoofFootprints(ctx, pass) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
 export function drawRoofSegmentDamageOverlays(ctx, pass) {
-    const { renderScene, originX, originY, sizePx, zLevel, viewerX, viewerY, cameraHeight, viewport } = pass;
+    const { renderScene, originX, originY, sizePx, zLevel, cameraHeight, viewport } = pass;
     if (!renderScene) return;
     const minCol = worldToChunkCol(originX, renderScene.gridMinX, renderScene.chunkSizePx);
     const maxCol = worldToChunkCol(originX + sizePx - 1, renderScene.gridMinX, renderScene.chunkSizePx);
@@ -80,7 +79,7 @@ export function drawRoofSegmentDamageOverlays(ctx, pass) {
         const damageAlpha = getDamageAlphaFromHealth(roof.simWall.health, roof.simWall.maxHealth);
         if (damageAlpha <= 0) continue;
         drawDamageOverlayInClip(ctx, damageAlpha, (clipCtx) => {
-            roof.draw(clipCtx, viewport, cameraHeight, viewerX, viewerY);
+            roof.draw(clipCtx, viewport, cameraHeight);
         });
     }
 }

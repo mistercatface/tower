@@ -16,11 +16,11 @@
 
 ### Projection
 
-- [ ] **`ElevationCamera`** — `(viewerX, viewerY, cameraHeight, strength/viewport)` repeated in `projectWorldPointInto`, `projectWorldAabbCornersInto`, `computeProjectedFace`.
+- [x] **`ElevationCamera`** — `{ viewerX, viewerY, cameraHeight, strength }`; `elevationCameraFromViewport` / `elevationCameraFromChunkPass`; projection APIs take `(height, camera)`.
 
 ### Other
 
-- [ ] **`drawImageQuad` src/dst struct** — 11-arg affine blit; high call volume in walls/roofs/textured cells.
+- [x] **`drawImageQuad` src/dst struct** — `ImageQuadBlit` `{ img, sx0..sy1, d0..d3 }`; textured cells pass `{ ...cell, img }`.
 - [ ] **`drawKinematicsFrameToCanvas` bundle** — sprite bake scratch + rig + viewContext.
 - [ ] **`NavigationContext`** — `planHpaSteering` / `replanPath` duplicate 11-arg nav infra list.
 - [ ] **`getStaticRoofDrawCanvas` / mask bake** — fold `buildStaticRoofMaskCanvas` coords into `ChunkDrawPass` (partially done via `getStaticRoofDrawCanvas(pass, …)`).

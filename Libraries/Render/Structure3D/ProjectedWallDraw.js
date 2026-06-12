@@ -6,7 +6,7 @@ import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 import { getTexelResolution } from "../../WorldSurface/WorldSurfaceResolution.js";
-import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
+import { elevationCameraFromViewport } from "../../Spatial/iso/ElevationCamera.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad } from "../../Canvas/CanvasPath.js";
@@ -20,7 +20,9 @@ const sCorner1 = { x: 0, y: 0 };
 const sCorner2 = { x: 0, y: 0 };
 const sCorner3 = { x: 0, y: 0 };
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
-export function computeProjectedFace(p1, p2, px, py, wallHeight, settings, out = sharedScratchFace, viewport = null) {
+export function computeProjectedFace(p1, p2, wallHeight, camera, out = sharedScratchFace) {
+    const px = camera.viewerX;
+    const py = camera.viewerY;
     let angle1 = Math.atan2(p1.y - py, p1.x - px);
     let angle2 = Math.atan2(p2.y - py, p2.x - px);
     const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
@@ -33,9 +35,8 @@ export function computeProjectedFace(p1, p2, px, py, wallHeight, settings, out =
     }
     const dist1 = Math.hypot(p1.x - px, p1.y - py);
     const dist2 = Math.hypot(p2.x - px, p2.y - py);
-    const { cameraHeight } = settings;
-    const clampedHeight = Math.min(wallHeight, cameraHeight - 1);
-    const alpha = resolveElevationAlpha(clampedHeight, cameraHeight, resolveStructurePerspectiveStrength(viewport));
+    const clampedHeight = Math.min(wallHeight, camera.cameraHeight - 1);
+    const alpha = resolveElevationAlpha(clampedHeight, camera);
     out.proj1X = p1.x + Math.cos(angle1) * dist1 * alpha;
     out.proj1Y = p1.y + Math.sin(angle1) * dist1 * alpha;
     out.proj2X = p2.x + Math.cos(angle2) * dist2 * alpha;
@@ -66,9 +67,9 @@ function resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj) {
     }
     return profileId;
 }
-/** @param {{ x: number, y: number }} p1 @param {{ x: number, y: number }} p2 @param {ReturnType<typeof computeProjectedFace>} face @param {WallDrawContext} wallCtx */
-function drawFaceTexture(ctx, p1, p2, face, wallCtx) {
-    const { worldSurfaces, proceduralSurfaceDraw, viewport, wallHeight, fillStyle, cacheObj, worldBounds, viewerX, viewerY } = wallCtx;
+/** @param {ReturnType<typeof computeProjectedFace>} face @param {WallDrawContext} wallCtx @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera */
+function drawFaceTexture(ctx, p1, p2, face, wallCtx, camera) {
+    const { worldSurfaces, proceduralSurfaceDraw, wallHeight, fillStyle, cacheObj, worldBounds } = wallCtx;
     const settings = worldSurfaces.settings;
     const cellSize = settings.cellSize;
     const wallCx = cacheObj?.cx ?? (p1.x + p2.x) * 0.5;
@@ -84,9 +85,8 @@ function drawFaceTexture(ctx, p1, p2, face, wallCtx) {
         return;
     }
     const bleedPx = settings.wallTextureBleedPx ?? 1;
-    const clampedHeight = Math.min(wallHeight, settings.cameraHeight - 1);
-    const perspectiveStrength = resolveStructurePerspectiveStrength(viewport);
-    const alphaMax = resolveElevationAlpha(clampedHeight, settings.cameraHeight, perspectiveStrength);
+    const clampedHeight = Math.min(wallHeight, camera.cameraHeight - 1);
+    const alphaMax = resolveElevationAlpha(clampedHeight, camera);
     if (alphaMax <= 0) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
@@ -94,9 +94,7 @@ function drawFaceTexture(ctx, p1, p2, face, wallCtx) {
     }
     ctx.save();
     const edgeLen = cacheObj?.edgeLen ?? Math.hypot(p2.x - p1.x, p2.y - p1.y);
-    const px = viewerX;
-    const py = viewerY;
-    const dist = Math.hypot(wallCx - px, wallCy - py);
+    const dist = Math.hypot(wallCx - camera.viewerX, wallCy - camera.viewerY);
     const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx));
     const visibleHeightCells = clampedHeight / cellSize;
     const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale)));
@@ -107,8 +105,8 @@ function drawFaceTexture(ctx, p1, p2, face, wallCtx) {
         let topZ = (row + 1) * (wallHeight / SUBDIV_Y);
         if (bottomZ >= settings.cameraHeight) break;
         if (topZ >= settings.cameraHeight) topZ = settings.cameraHeight - 1;
-        const alphaBottom = resolveElevationAlpha(bottomZ, settings.cameraHeight, perspectiveStrength);
-        const alphaTop = resolveElevationAlpha(topZ, settings.cameraHeight, perspectiveStrength);
+        const alphaBottom = resolveElevationAlpha(bottomZ, camera);
+        const alphaTop = resolveElevationAlpha(topZ, camera);
         const v0 = alphaBottom / alphaMax;
         const v1 = alphaTop / alphaMax;
         const sy0 = (row / SUBDIV_Y) * H_px;
@@ -123,7 +121,7 @@ function drawFaceTexture(ctx, p1, p2, face, wallCtx) {
             if (!pointsAabbOverlapAabb(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) continue;
             const sx0 = u0 * flatCanvas.width;
             const sx1 = u1 * flatCanvas.width;
-            drawImageQuad(ctx, flatCanvas, sx0, sy0, sx1, sy1, sCorner0, sCorner1, sCorner2, sCorner3, { bleedPx });
+            drawImageQuad(ctx, { img: flatCanvas, sx0, sy0, sx1, sy1, d0: sCorner0, d1: sCorner1, d2: sCorner2, d3: sCorner3 }, { bleedPx });
         }
     }
     ctx.restore();
@@ -137,11 +135,11 @@ function drawFaceTexture(ctx, p1, p2, face, wallCtx) {
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedWallFace(ctx, p1, p2, wallCtx) {
-    const { wallHeight, viewerX, viewerY, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha } = wallCtx;
-    const settings = worldSurfaces.settings;
-    const face = computeProjectedFace(p1, p2, viewerX, viewerY, wallHeight, settings, undefined, viewport);
+    const { wallHeight, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha } = wallCtx;
+    const camera = elevationCameraFromViewport(viewport, worldSurfaces.settings.cameraHeight);
+    const face = computeProjectedFace(p1, p2, wallHeight, camera);
     traceProjectedFace(ctx, p1, p2, face);
-    if (proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, face, wallCtx);
+    if (proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, face, wallCtx, camera);
     else {
         ctx.fillStyle = fillStyle;
         ctx.fill();

@@ -1,5 +1,7 @@
 import { traceClosedPolygonCount } from "../../Canvas/CanvasPath.js";
 import { CAMERA_HEIGHT, PERSPECTIVE_STRENGTH, projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
+/** @type {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} */
+const sPropCamera = { viewerX: 0, viewerY: 0, cameraHeight: CAMERA_HEIGHT, strength: PERSPECTIVE_STRENGTH };
 const sProjectedVerts = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },
@@ -25,7 +27,9 @@ export function projectPropVertexInto(out, prop, px, py, lx, ly, lz) {
         out.depth = lz;
         return out;
     }
-    projectWorldPointInto(out, wx, wy, px, py, lz, CAMERA_HEIGHT, PERSPECTIVE_STRENGTH);
+    sPropCamera.viewerX = px;
+    sPropCamera.viewerY = py;
+    projectWorldPointInto(out, wx, wy, lz, sPropCamera);
     out.depth = lz + Math.hypot(wx - px, wy - py) * 0.001;
     return out;
 }
