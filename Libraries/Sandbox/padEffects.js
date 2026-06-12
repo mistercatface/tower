@@ -1,8 +1,9 @@
 import { Segment } from "../../Entities/Wall.js";
 import { CAPTURED_SINK_DURATION_MS } from "../../Entities/pickupVoidSinkState.js";
 import { createAabb } from "../Math/Aabb2D.js";
+import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
-import { padStampBoundsInto } from "../Spatial/zones/floorShapes.js";
+import { padStampBoundsInto, readRectPadHalfExtents } from "../Spatial/zones/floorShapes.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { getButtonPadLinks } from "./sandboxPadLinks.js";
@@ -18,52 +19,27 @@ const padStampScratch = createAabb();
  * @property {number} [dtSec]
  * @property {{ x: number, y: number }} [world]
  */
-/** @param {object} pad */
-function readPullHalfExtents(pad) {
-    const verts = pad.shape.vertices;
-    return { halfWidth: Math.abs(verts[0].x), halfHeight: Math.abs(verts[0].y) };
-}
-/** @param {object} grid @param {object} pad @param {number} halfWidth @param {number} halfHeight */
-function collectPadWallCells(grid, pad, halfWidth, halfHeight) {
-    const cellSize = grid.cellSize;
-    const stamp = padStampBoundsInto(padStampScratch, pad, halfWidth, halfHeight);
-    const padMinX = stamp.minX;
-    const padMinY = stamp.minY;
-    const padMaxX = stamp.maxX;
-    const padMaxY = stamp.maxY;
-    const startCol = grid.worldToGrid(padMinX, padMinY).col;
-    const startRow = grid.worldToGrid(padMinX, padMinY).row;
-    const endCol = grid.worldToGrid(padMaxX - 1e-6, padMaxY - 1e-6).col;
-    const endRow = grid.worldToGrid(padMaxX - 1e-6, padMaxY - 1e-6).row;
-    /** @type {{ col: number, row: number }[]} */
-    const cells = [];
-    for (let row = startRow; row <= endRow; row++)
-        for (let col = startCol; col <= endCol; col++) {
-            if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
-            const cellMinX = grid.minX + col * cellSize;
-            const cellMinY = grid.minY + row * cellSize;
-            if (padMaxX <= cellMinX || padMinX >= cellMinX + cellSize || padMaxY <= cellMinY || padMinY >= cellMinY + cellSize) continue;
-            cells.push({ col, row });
-        }
-    return cells;
-}
 /** @param {object} state @param {object} pad */
 function buildPullPadWalls(state, pad) {
-    const { halfWidth, halfHeight } = readPullHalfExtents(pad);
+    const { halfWidth, halfHeight } = readRectPadHalfExtents(pad);
     const grid = state.obstacleGrid;
     const cellSize = grid.cellSize;
-    const cells = collectPadWallCells(grid, pad, halfWidth, halfHeight);
-    return cells.map(({ col, row }) => {
-        const wall = new Segment(grid.minX + col * cellSize + cellSize / 2, grid.minY + row * cellSize + cellSize / 2, 0, cellSize, 0, 30, 30, false, cellSize);
+    const stamp = padStampBoundsInto(padStampScratch, pad, halfWidth, halfHeight);
+    const originX = grid.minX;
+    const originY = grid.minY;
+    const halfCell = cellSize * 0.5;
+    /** @type {import("../../Entities/Wall.js").Segment[]} */
+    const walls = [];
+    forEachObstacleGridCellInAabb(grid, stamp, (col, row) => {
+        const wall = new Segment(originX + col * cellSize + halfCell, originY + row * cellSize + halfCell, 0, cellSize, 0, 30, 30, false, cellSize);
         wall.sandboxPadId = pad.id;
-        return wall;
+        walls.push(wall);
     });
+    return walls;
 }
 /** @param {object} state */
 function rebuildPullPadNavigation(state) {
-    const seedX = state.viewport?.x ?? 0;
-    const seedY = state.viewport?.y ?? 0;
-    state.hierarchicalNavigator.rebuildRegions(seedX, seedY);
+    state.hierarchicalNavigator.rebuildRegions(state.viewport.x, state.viewport.y);
     state.navigation.onObstaclesChanged(null);
 }
 /** @param {object} state @param {object} pad @param {boolean} wallsUp */

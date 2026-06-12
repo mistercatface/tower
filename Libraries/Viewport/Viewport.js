@@ -1,9 +1,9 @@
-import { aabbIntersectsScalars, centerHalfExtentsAabbInto, createAabb } from "../Math/Aabb2D.js";
+import { aabbIntersectsScalars, centerHalfExtentsAabbInto, circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { LIBRARY_MIN_WORLD_SPAN } from "../Spatial/iso/perspectiveDefaults.js";
 /** Default entity cull padding (px in world space). */
 export const VIEWPORT_VISIBILITY_PAD_DEFAULT = 20;
-/** Off-screen nav replan threshold padding. */
-export const VIEWPORT_VISIBILITY_PAD_NAV = 128;
+/** Loose visibility tier — cached for callers that need extra margin beyond clip. */
+export const VIEWPORT_VISIBILITY_PAD_WIDE = 128;
 /** 2D world camera: pan, zoom, and screen/world coordinate transforms. */
 export class Viewport {
     constructor(x, y, zoom = 1.0) {
@@ -23,7 +23,7 @@ export class Viewport {
         this.boundsQuery = createAabb();
         this.boundsDraw = createAabb();
         this.boundsVisibleDefault = createAabb();
-        this.boundsVisibleNav = createAabb();
+        this.boundsVisibleWide = createAabb();
         this.structurePerspectiveWorldSpan = LIBRARY_MIN_WORLD_SPAN;
         this.structurePerspectiveReferenceSpan = LIBRARY_MIN_WORLD_SPAN;
         /** @type {number | undefined} Lazily filled by resolveStructurePerspectiveStrength. */
@@ -60,7 +60,7 @@ export class Viewport {
         centerHalfExtentsAabbInto(this.boundsQuery, this._x, this._y, this.halfW, this.halfH, this.viewQueryPadPx);
         centerHalfExtentsAabbInto(this.boundsDraw, this._x, this._y, this.halfW, this.halfH, this.viewPaddingPx);
         centerHalfExtentsAabbInto(this.boundsVisibleDefault, this._x, this._y, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_DEFAULT);
-        centerHalfExtentsAabbInto(this.boundsVisibleNav, this._x, this._y, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_NAV);
+        centerHalfExtentsAabbInto(this.boundsVisibleWide, this._x, this._y, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_WIDE);
         this.structurePerspectiveWorldSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(this.halfW, this.halfH) * 2);
         this.structurePerspectiveReferenceSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, this.getVisualRadius() * 2);
         this.structurePerspectiveStrength = undefined;
@@ -92,19 +92,10 @@ export class Viewport {
     getVisualRadius() {
         return Math.max(1, Math.min(this.cx, this.cy) - 4);
     }
-    /** @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
-    _isVisibleInBounds(worldX, worldY, radius, bounds) {
-        return worldX >= bounds.minX - radius && worldX <= bounds.maxX + radius && worldY >= bounds.minY - radius && worldY <= bounds.maxY + radius;
-    }
     isVisible(worldX, worldY, radius = 0, padding = VIEWPORT_VISIBILITY_PAD_DEFAULT) {
-        if (padding === VIEWPORT_VISIBILITY_PAD_DEFAULT) return this._isVisibleInBounds(worldX, worldY, radius, this.boundsVisibleDefault);
-        if (padding === VIEWPORT_VISIBILITY_PAD_NAV) return this._isVisibleInBounds(worldX, worldY, radius, this.boundsVisibleNav);
-        const limit = radius + padding;
-        return worldX >= this.x - this.halfW - limit && worldX <= this.x + this.halfW + limit && worldY >= this.y - this.halfH - limit && worldY <= this.y + this.halfH + limit;
-    }
-    /** Nav replan visibility (128px pad beyond clip). */
-    isNavVisible(worldX, worldY, radius = 0) {
-        return this._isVisibleInBounds(worldX, worldY, radius, this.boundsVisibleNav);
+        if (padding === VIEWPORT_VISIBILITY_PAD_DEFAULT) return circleIntersectsAabb(worldX, worldY, radius, this.boundsVisibleDefault);
+        if (padding === VIEWPORT_VISIBILITY_PAD_WIDE) return circleIntersectsAabb(worldX, worldY, radius, this.boundsVisibleWide);
+        return circleIntersectsAabb(worldX, worldY, radius + padding, this.boundsClip);
     }
     intersectsWorldAabb(minX, maxX, minY, maxY, padding = 0) {
         if (padding === 0) return aabbIntersectsScalars(minX, minY, maxX, maxY, this.boundsClip);

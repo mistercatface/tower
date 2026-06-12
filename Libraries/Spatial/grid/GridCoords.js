@@ -1,3 +1,4 @@
+import { boundsToCellRect } from "../../DataStructures/CellKey.js";
 import { circleIntersectsAabb, createAabb, minCornerAabbInto } from "../../Math/Aabb2D.js";
 /** Grid anchored at a world-space min corner (ObstacleGrid). */
 export function worldToGridAtOrigin(x, y, minX, minY, cellSize) {
@@ -54,4 +55,18 @@ export function snapWorldToCellOrigin(worldX, worldY, minX, minY, cellSize) {
     const col = Math.floor((worldX - minX) / cellSize);
     const row = Math.floor((worldY - minY) / cellSize);
     return { col, row, x: minX + col * cellSize, y: minY + row * cellSize };
+}
+/**
+ * Visit each obstacle-grid cell overlapping a world AABB.
+ * @param {{ minX: number, minY: number, cols: number, rows: number, cellSize: number }} grid
+ * @param {import("../../Math/Aabb2D.js").Aabb2D} aabb
+ * @param {(col: number, row: number) => void} fn
+ */
+export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
+    const { minCol, maxCol, minRow, maxRow } = boundsToCellRect(aabb.minX - grid.minX, aabb.minY - grid.minY, aabb.maxX - grid.minX - 1e-6, aabb.maxY - grid.minY - 1e-6, grid.cellSize);
+    const colMin = Math.max(0, minCol);
+    const colMax = Math.min(grid.cols - 1, maxCol);
+    const rowMin = Math.max(0, minRow);
+    const rowMax = Math.min(grid.rows - 1, maxRow);
+    for (let row = rowMin; row <= rowMax; row++) for (let col = colMin; col <= colMax; col++) fn(col, row);
 }

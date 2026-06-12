@@ -66,6 +66,15 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
         floorShape._nextOccupants = prev;
     }
 }
+/** @param {{ shape: { type: string, vertices?: { x: number, y: number }[] } }} pad @param {{ halfWidth: number, halfHeight: number }} [defaults] */
+export function readRectPadHalfExtents(pad, defaults) {
+    if (pad.shape.type === "Polygon") {
+        const v = pad.shape.vertices[0];
+        return { halfWidth: Math.abs(v.x), halfHeight: Math.abs(v.y) };
+    }
+    if (defaults) return { halfWidth: defaults.halfWidth, halfHeight: defaults.halfHeight };
+    throw new Error("readRectPadHalfExtents requires defaults for non-polygon pads");
+}
 /** @param {object} pad @param {number} halfWidth @param {number} halfHeight @param {number} [queryPad] */
 export function syncPadQueryAabb(pad, halfWidth, halfHeight, queryPad = NEIGHBOR_QUERY_PAD) {
     if (!pad.aabb) pad.aabb = createAabb();

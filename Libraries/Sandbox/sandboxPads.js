@@ -1,4 +1,4 @@
-import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes, syncPadQueryAabb } from "../Spatial/zones/floorShapes.js";
+import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes, readRectPadHalfExtents, syncPadQueryAabb } from "../Spatial/zones/floorShapes.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { drawPitInterior } from "../Spatial/zones/pit.js";
 import { PAD_PRESETS } from "./padPresets.js";
@@ -199,17 +199,11 @@ function ensurePullRectShape(pad, halfWidth, halfHeight) {
     ]);
     syncPadQueryAabb(pad, halfWidth, halfHeight);
 }
-/** @param {object} pad */
-function readPullHalfExtents(pad) {
-    if (pad.shape.type === "Polygon") return { halfWidth: Math.abs(pad.shape.vertices[0].x), halfHeight: Math.abs(pad.shape.vertices[0].y) };
-    const def = PAD_PRESETS.pull;
-    return { halfWidth: def.halfWidth, halfHeight: def.halfHeight };
-}
 /** @param {object} state @param {object} pad */
 function syncPadPosition(state, pad) {
     if (pad.shape.type === "Circle") resizeCirclePad(pad, pad.shape.radius);
     else if (pad.shape.type === "Polygon") {
-        const { halfWidth, halfHeight } = readPullHalfExtents(pad);
+        const { halfWidth, halfHeight } = readRectPadHalfExtents(pad, PAD_PRESETS.pull);
         syncPadQueryAabb(pad, halfWidth, halfHeight);
     }
     if (pad.preset === "pull" && pad.wallMode && pad.wallsUp) {
@@ -227,7 +221,7 @@ export function getSandboxPadEditorState(pad) {
         snapshot.powered = pad.powered;
     }
     if (pad.preset === "pull") {
-        const { halfWidth, halfHeight } = readPullHalfExtents(pad);
+        const { halfWidth, halfHeight } = readRectPadHalfExtents(pad, PAD_PRESETS.pull);
         snapshot.halfWidth = halfWidth;
         snapshot.halfHeight = halfHeight;
         const trigger = pad.triggers[0];
@@ -292,7 +286,7 @@ export function patchSandboxPad(state, id, patch) {
         if (patch.radius != null) resizeCirclePad(pad, patch.radius);
         if (patch.sinkDepth != null) pad.sinkDepth = patch.sinkDepth;
     } else if (pad.preset === "pull") {
-        const current = readPullHalfExtents(pad);
+        const current = readRectPadHalfExtents(pad, PAD_PRESETS.pull);
         const halfWidth = patch.halfWidth ?? current.halfWidth;
         const halfHeight = patch.halfHeight ?? current.halfHeight;
         if (patch.halfWidth != null || patch.halfHeight != null || pad.shape.type !== "Polygon") ensurePullRectShape(pad, halfWidth, halfHeight);

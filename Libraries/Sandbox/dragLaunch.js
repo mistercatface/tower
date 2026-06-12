@@ -105,12 +105,12 @@ export function buildDragLaunchAimLineContext(pickup, host) {
     if (!state || !pickup) return null;
     const radius = pickup.radius;
     const circleTargets = [];
-    for (const p of state.pickups ?? []) {
+    for (const p of state.pickups) {
         if (p === pickup || p.isDead) continue;
         circleTargets.push({ x: p.x, y: p.y, radius: p.radius });
     }
     const grid = state.obstacleGrid;
-    const maxRayDist = grid?.minX != null ? Math.hypot(grid.maxX - grid.minX, grid.maxY - grid.minY) * 1.25 : 2400;
+    const maxRayDist = Math.hypot(grid.maxX - grid.minX, grid.maxY - grid.minY) * 1.25;
     return { pickup, radius, circleTargets, wallCtx: wallContextFromState(state), maxRayDist };
 }
 /**

@@ -71,7 +71,7 @@ export function buildCueStrikeAimLineContext(cueBall, state, { tableWidth, table
     return {
         pickup: cueBall,
         radius,
-        circleTargets: buildCueStrikeCircleTargets(cueBall, state.pickups ?? [], radius),
+        circleTargets: buildCueStrikeCircleTargets(cueBall, state.pickups, radius),
         wallCtx: wallContextFromState(state),
         maxRayDist: resolveCueStrikeMaxRayDist({ obstacleGrid: state.obstacleGrid, tableWidth, tableHeight }),
     };

@@ -1,4 +1,5 @@
 import { NavigationController } from "../../Libraries/Navigation/index.js";
+import { VIEWPORT_VISIBILITY_PAD_WIDE } from "../../Libraries/Viewport/Viewport.js";
 import { planHpaSteering } from "./HpaStrategy.js";
 /**
  * Game glue for navigation — wires HPA replan policy and entity post-steer hooks
@@ -21,7 +22,7 @@ export class NavigationService {
                     controller.settings,
                     controller.flowFieldGrid.navGraph,
                     controller.obstacleGeneration,
-                    state?.viewport ? { isVisible: (e) => state.viewport.isNavVisible(e.x, e.y, e.radius) } : {},
+                    state?.viewport ? { isVisible: (e) => state.viewport.isVisible(e.x, e.y, e.radius, VIEWPORT_VISIBILITY_PAD_WIDE) } : {},
                     state?.gameTime ?? Date.now(),
                 ),
             onSteerComplete: (entity, { navState, settings }) => {

@@ -39,7 +39,7 @@ export class WorldSceneRenderer {
         for (let i = 0; i < input.pickups.length; i++) {
             const p = input.pickups[i];
             if (p.isDead || p.strategy?.renderMode !== "debris") continue;
-            if (typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
+            if (!p.isVisible(viewport)) continue;
             this.props.drawProp(ctx, p, px, py, { zoom });
         }
         ctx.restore();
@@ -72,7 +72,7 @@ export class WorldSceneRenderer {
                 const p = input.pickups[i];
                 if (p.isDead) continue;
                 if (p.strategy?.renderMode !== "3d" && !p.usesKinematicsBody) continue;
-                if (typeof p.isVisible === "function" && !p.isVisible(viewport)) continue;
+                if (!p.isVisible(viewport)) continue;
                 p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
                 visibleObjects.push(p);
             }
@@ -82,7 +82,7 @@ export class WorldSceneRenderer {
         for (let i = 0; i < input.ragdollCorpses.length; i++) {
             const corpse = input.ragdollCorpses[i];
             if (corpse.isDead) continue;
-            if (typeof corpse.isVisible === "function" && !corpse.isVisible(viewport)) continue;
+            if (!corpse.isVisible(viewport)) continue;
             corpse._distSq = (corpse.x - px) ** 2 + (corpse.y - py) ** 2;
             visibleObjects.push(corpse);
         }

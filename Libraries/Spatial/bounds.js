@@ -5,6 +5,7 @@ export {
     cellBoundsAtOriginInto,
     cellBoundsToWorldBounds,
     cellBoundsToWorldBoundsInto,
+    forEachObstacleGridCellInAabb,
     getCellBoundsCentered,
     getCellBoundsCenteredInto,
     worldBoundsFromCellOrigin,
