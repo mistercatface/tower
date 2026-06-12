@@ -1,5 +1,6 @@
 import { steerLocomotionPickup, stopLocomotionPickup, usesLocomotionPickup } from "../Props/locomotionPickup.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 const ROLL_TO_CURSOR_DEFAULTS = { maxSpeed: 180, accel: 600, stopRadius: 6 };
 /** @param {object} pickup @param {object} [overrides] */
@@ -74,7 +75,7 @@ export function steerRollToward(pickup, dirX, dirY, dt, config) {
  * @param {{ lineColor: string, markerColor: string, lineWidth?: number, markerRadius?: number, dashed?: boolean }} style
  */
 export function drawRollTargetOverlay(ctx, fromX, fromY, toX, toY, style) {
-    const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
+    const lineScale = getCanvasLineScale(ctx);
     ctx.save();
     if (style.dashed) ctx.setLineDash([4 * lineScale, 4 * lineScale]);
     ctx.strokeStyle = style.lineColor;

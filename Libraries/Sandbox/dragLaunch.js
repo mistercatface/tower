@@ -1,4 +1,4 @@
-import { normalizeXY } from "../Math/Vec2.js";
+import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
@@ -228,7 +228,7 @@ export function drawDragLaunchPreview(ctx, aim, config, aimLineContext = null, r
     if (!preview) return;
     const ratio = config.maxPower > config.minPower ? Math.max(0, Math.min(1, (preview.power - config.minPower) / (config.maxPower - config.minPower))) : 0;
     const hue = 180 - ratio * 180;
-    const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
+    const lineScale = getCanvasLineScale(ctx);
     ctx.save();
     // Draw initial click reference point indicator
     const startX = aim?.startX ?? preview.anchorX;

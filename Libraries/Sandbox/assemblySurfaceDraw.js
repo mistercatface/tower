@@ -6,6 +6,7 @@ import { bakeSlotForSourceFrame } from "../WorldSurface/AnimationFrameBake.js";
 import { drawBakedTexture } from "../WorldSurface/WorldSurfaceResolution.js";
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
+import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { traceArc, traceSegment } from "../Canvas/CanvasPath.js";
 const sAssemblyPatchCorners = [
     { x: 0, y: 0 },
@@ -78,7 +79,7 @@ export function drawSandboxAssemblySurfaces(ctx, state, viewport) {
     ctx.restore();
 }
 function strokeGuidePath(ctx, railWidth) {
-    const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
+    const lineScale = getCanvasLineScale(ctx);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = "rgba(0, 0, 0, 0.42)";

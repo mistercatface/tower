@@ -1,5 +1,6 @@
 import { findPickupById } from "./findPickupAt.js";
 import { createCircleFloorShape, createRectFloorShape, drawFloorShape, isAabbInView, processFloorShapes, readRectPadHalfExtents, syncPadQueryAabb } from "../Spatial/zones/floorShapes.js";
+import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { fillCircle, strokeCircle } from "../Canvas/CanvasPath.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { drawPitInterior } from "../Spatial/zones/pit.js";
@@ -341,7 +342,7 @@ export function listSandboxPads(state) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {boolean} pressed @param {number} radius */
 function drawPadButton(ctx, x, y, pressed, radius) {
-    const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
+    const lineScale = getCanvasLineScale(ctx);
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(pressed ? 0.88 : 1, pressed ? 0.88 : 1);

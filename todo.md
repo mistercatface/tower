@@ -24,6 +24,7 @@ Living notes from the static-grid / render-path refactor. Not a release checklis
 - [x] **`createWallFaceAxes` returns `edgeLen`** — shared wall-edge direction in WorldSurface cluster.
 - [x] **`forEachArmedSandboxPickup`** — weapon bars + laser sights share armed-pickup gate.
 - [x] **`RenderableRoofCap` bounds** — uses `expandPointsAabbInto` like wall faces.
+- [x] **`getCanvasLineScale(ctx)`** — screen-constant stroke/dash/marker sizing in overlay draw paths.
 
 ---
 
@@ -49,7 +50,6 @@ Small repeated patterns worth extracting when touching nearby code:
 
 **Render / canvas (paused)**
 
-- [ ] **`getCanvasLineScale(ctx)`** — `1 / Math.max(0.001, ctx.getTransform().a)` in 6 overlay files
 - [ ] **`gatherTexturedQuadCells`** in-place sort — still allocates per sphere draw
 
 **Grid / surfaces**

@@ -1,4 +1,5 @@
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
+import { getCanvasLineScale } from "../common/viewportUtils.js";
 import { fillStrokeCircle, strokeCircle, strokeOpenPolyline, strokePolylineFrom, strokeSegment } from "../../Canvas/CanvasPath.js";
 /**
  * @typedef {Object} ActivePathOverlay
@@ -13,7 +14,7 @@ import { fillStrokeCircle, strokeCircle, strokeOpenPolyline, strokePolylineFrom,
  */
 function drawNormalPathOverlay(ctx, overlay) {
     const { mode, fromX, fromY, targetX, targetY, waypoints } = overlay;
-    const lineScale = 1 / Math.max(0.001, ctx.getTransform().a);
+    const lineScale = getCanvasLineScale(ctx);
     if (mode === "direct") {
         ctx.save();
         ctx.setLineDash([4 * lineScale, 4 * lineScale]);
