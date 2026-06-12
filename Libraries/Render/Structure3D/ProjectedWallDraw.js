@@ -11,6 +11,7 @@ import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js"
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad } from "../../Canvas/CanvasPath.js";
 import { drawDamageOverlayInClip } from "./wallDamageVisual.js";
+/** @typedef {import("./WallDrawContext.js").WallDrawContext} WallDrawContext */
 export { getWallHeight };
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 const WALL_ANGLE_SPREAD = 0.002;
@@ -65,15 +66,15 @@ function resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj) {
     }
     return profileId;
 }
-export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurfaceDraw, viewer, viewport, wallHeight, fillStyle, cacheObj = null, worldBounds = null) {
+/** @param {{ x: number, y: number }} p1 @param {{ x: number, y: number }} p2 @param {ReturnType<typeof computeProjectedFace>} face @param {WallDrawContext} wallCtx */
+function drawFaceTexture(ctx, p1, p2, face, wallCtx) {
+    const { worldSurfaces, proceduralSurfaceDraw, viewport, wallHeight, fillStyle, cacheObj, worldBounds, viewerX, viewerY } = wallCtx;
     const settings = worldSurfaces.settings;
     if (!settings) return;
     const cellSize = settings.cellSize;
     if (!worldSurfaces || !proceduralSurfaceDraw) return;
     const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
     const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
-    // In Retained Mode, cacheObj is often the simulation wall itself, which doesn't have cx/cy.
-    // We can compute it if missing.
     const finalWallCx = wallCx ?? (p1.x + p2.x) * 0.5;
     const finalWallCy = wallCy ?? (p1.y + p2.y) * 0.5;
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, finalWallCx, finalWallCy, cacheObj);
@@ -97,8 +98,8 @@ export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurf
     }
     ctx.save();
     const edgeLen = cacheObj && cacheObj.edgeLen !== undefined ? cacheObj.edgeLen : Math.hypot(p2.x - p1.x, p2.y - p1.y);
-    const px = viewer.x;
-    const py = viewer.y;
+    const px = viewerX;
+    const py = viewerY;
     const dist = Math.hypot(finalWallCx - px, finalWallCy - py);
     const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx));
     const visibleHeightCells = clampedHeight / cellSize;
@@ -137,27 +138,15 @@ export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurf
  * @param {CanvasRenderingContext2D} ctx
  * @param {{ x: number, y: number }} p1
  * @param {{ x: number, y: number }} p2
- * @param {{
- *   wallHeight: number,
- *   viewerX: number,
- *   viewerY: number,
- *   viewport?: import("../../Viewport/Viewport.js").Viewport | null,
- *   worldSurfaces?: { settings?: import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings } | null,
- *   proceduralSurfaceDraw?: ProceduralSurfaceDrawContext | null,
- *   fillStyle: string,
- *   damageAlpha?: number,
- *   cacheObj?: object | null,
- *   worldBounds?: import("../../Math/Aabb2D.js").Aabb2D | null,
- * }} options
+ * @param {WallDrawContext} wallCtx
  */
-export function drawProjectedWallFace(ctx, p1, p2, options) {
-    const { wallHeight, viewerX, viewerY, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha = 0, cacheObj = null, worldBounds = null } = options;
+export function drawProjectedWallFace(ctx, p1, p2, wallCtx) {
+    const { wallHeight, viewerX, viewerY, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha = 0 } = wallCtx;
     const settings = worldSurfaces?.settings;
     if (!settings) return;
     const face = computeProjectedFace(p1, p2, viewerX, viewerY, wallHeight, settings, undefined, viewport);
     traceProjectedFace(ctx, p1, p2, face);
-    if (worldSurfaces && proceduralSurfaceDraw)
-        drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurfaceDraw, { x: viewerX, y: viewerY }, viewport, wallHeight, fillStyle, cacheObj, worldBounds);
+    if (worldSurfaces && proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, face, wallCtx);
     else {
         ctx.fillStyle = fillStyle;
         ctx.fill();

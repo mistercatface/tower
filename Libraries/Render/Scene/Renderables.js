@@ -3,6 +3,7 @@ import { projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js"
 import { createAabb, expandPointsAabbInto } from "../../Math/Aabb2D.js";
 import { traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { drawProjectedWallFace } from "../Structure3D/ProjectedWallDraw.js";
+/** @typedef {import("../Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 const sRoofProjectedCorners = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },
@@ -56,19 +57,11 @@ export class RenderableWallFace extends Renderable {
         const viewY = this.cy - viewerY;
         return this.outX * viewX + this.outY * viewY < 0;
     }
-    draw(ctx, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha, viewerX, viewerY, worldBounds) {
-        drawProjectedWallFace(ctx, this.p1, this.p2, {
-            wallHeight: this.wallHeight,
-            viewerX,
-            viewerY,
-            viewport,
-            worldSurfaces,
-            proceduralSurfaceDraw,
-            fillStyle,
-            damageAlpha,
-            cacheObj: this.simWall,
-            worldBounds,
-        });
+    /** @param {CanvasRenderingContext2D} ctx @param {WallDrawContext} wallCtx */
+    draw(ctx, wallCtx) {
+        wallCtx.wallHeight = this.wallHeight;
+        wallCtx.cacheObj = this.simWall;
+        drawProjectedWallFace(ctx, this.p1, this.p2, wallCtx);
     }
 }
 /**

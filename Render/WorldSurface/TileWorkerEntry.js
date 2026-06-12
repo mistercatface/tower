@@ -16,7 +16,7 @@ const HANDLERS = {
         return bakeHorizontalPatchCanvases(payload);
     },
     bakeWallAtlas(payload) {
-        return bakeWallAtlasCanvases(payload.width, payload.height, payload.p1, payload.p2, payload.pixelsPerUnit, payload.seed, payload.profileId, payload);
+        return bakeWallAtlasCanvases(payload);
     },
     registerRuntimeProfile(payload) {
         getSurfaceProfileProvider().registerRuntime(payload.profileId, payload.profile);

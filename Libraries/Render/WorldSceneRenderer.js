@@ -3,6 +3,7 @@
 /** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 import { collectStaticGridWallDrawables, drawStaticGridWallFace } from "./Structure3D/StaticGridWallDraw.js";
+import { createWallDrawContextFromScene } from "./Structure3D/WallDrawContext.js";
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { renderActorKinematicsBody } from "./Characters/actorKinematicsRenderer.js";
@@ -71,10 +72,9 @@ export class WorldSceneRenderer {
         const visibleObjects = this.visibleDrawables;
         for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
     }
-    _drawStaticGridWallFace(ctx, face, input, viewport, px, py, worldBounds) {
-        const fillStyle = this.settings.floorShadow ?? "#12161c";
+    _drawStaticGridWallFace(ctx, face, wallCtx, input) {
         const damageAlpha = getStaticCellDamageAlphaAtGrid(input.obstacleGrid, input.gameState, face.gridCol, face.gridRow);
-        drawStaticGridWallFace(ctx, face, input, viewport, px, py, worldBounds, fillStyle, damageAlpha);
+        drawStaticGridWallFace(ctx, face, wallCtx, damageAlpha);
     }
     drawRagdollCorpsesOnly(ctx, input, viewport) {
         const px = viewport.x;
@@ -94,6 +94,7 @@ export class WorldSceneRenderer {
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
         const worldBounds = viewport.boundsDraw;
+        const wallCtx = createWallDrawContextFromScene(input, viewport, px, py, worldBounds, this.settings.floorShadow ?? "#12161c");
         ctx.save();
         clipToViewport(ctx, viewport);
         const visibleObjects = this.visibleDrawables;
@@ -105,7 +106,7 @@ export class WorldSceneRenderer {
             const obj = visibleObjects[i];
             if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
             else if (obj.strategy) this.props.drawProp(ctx, obj, px, py, { zoom });
-            else if (!skipWalls && obj.staticGrid) this._drawStaticGridWallFace(ctx, obj, input, viewport, px, py, worldBounds);
+            else if (!skipWalls && obj.staticGrid) this._drawStaticGridWallFace(ctx, obj, wallCtx, input);
         }
         ctx.restore();
     }

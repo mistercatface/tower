@@ -5,6 +5,9 @@ import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./Surf
 import { bakePixelsForWorldSpan, getTexelResolution } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 import { sourceFrameIndexForBakeSlot } from "./AnimationFrameBake.js";
+import { createBakeRequest } from "./BakeRequest.js";
+/** @typedef {import("./BakeRequest.js").BakeRequest} BakeRequest */
+export { createBakeRequest } from "./BakeRequest.js";
 class TileMemoryPool {
     constructor() {
         this.buffers = new Map();
@@ -32,6 +35,24 @@ function resolvePaintProfile(profileOrId) {
     if (profileOrId != null && typeof profileOrId === "object") return profileOrId;
     const provider = getSurfaceProfileProvider();
     return provider.getProfile(profileOrId ?? provider.defaultId);
+}
+function resolveBakeRequestProfile(req) {
+    return req.resolvePayload != null && req.baseProfile != null && req.profileKey != null
+        ? resolveBakeProfile(req.baseProfile, req.profileKey, req.resolvePayload)
+        : resolvePaintProfile(req.profileOrId);
+}
+/** @param {BakeRequest} req */
+export function paintBakeRequest(req) {
+    paintPixelArea(req.ctx, req.width, req.height, req.startWorldX, req.startWorldY, req.seed, req.paintOptions, resolveBakeRequestProfile(req));
+}
+/** @param {Omit<BakeRequest, "ctx">} req @returns {OffscreenCanvas} */
+export function bakeRequestToCanvas(req) {
+    const canvas = createOffscreenCanvas(req.width, req.height);
+    paintBakeRequest({ ...req, ctx: canvas.getContext("2d") });
+    return canvas;
+}
+function animatedBakeFields(profileId, baseProfile, payload, useResolver) {
+    return useResolver ? { resolvePayload: payload, baseProfile, profileKey: profileId } : {};
 }
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileOrId) {
     const profile = resolvePaintProfile(profileOrId);
@@ -91,20 +112,26 @@ function wallPaintOptions(pixelsPerUnit, optionsPayload) {
         cellSize: resolvePaintCellSize(optionsPayload),
     };
 }
-function bakeResolvedProfile(ctx, width, height, startWorldX, startWorldY, seed, options, baseProfile, profileKey, payload) {
-    const profile = resolveBakeProfile(baseProfile, profileKey, payload);
-    paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options, profile);
-}
-export function bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileOrId, payload = null, optionsPayload = null) {
-    const canvas = createOffscreenCanvas(width, height);
-    const ctx = canvas.getContext("2d");
-    const paintOpts = wallPaintOptions(pixelsPerUnit, { p1, p2, ...optionsPayload });
-    if (payload) {
-        const profileKey = typeof profileOrId === "string" ? profileOrId : getSurfaceProfileProvider().defaultId;
-        const baseProfile = resolvePaintProfile(profileOrId);
-        bakeResolvedProfile(ctx, width, height, 0, 0, seed, paintOpts, baseProfile, profileKey, payload);
-    } else paintPixelArea(ctx, width, height, 0, 0, seed, paintOpts, profileOrId);
-    return canvas;
+/** @param {object} payload */
+export function bakeWallAtlasCanvases(payload) {
+    const provider = getSurfaceProfileProvider();
+    const profileId = payload.profileId ?? provider.defaultId;
+    const baseProfile = provider.getProfile(profileId);
+    const useResolver = Boolean(baseProfile.animation);
+    if (useResolver) payload.frameIndex = 0;
+    const { width, height, pixelsPerUnit, seed } = payload;
+    return [
+        bakeRequestToCanvas({
+            width,
+            height,
+            startWorldX: 0,
+            startWorldY: 0,
+            seed,
+            paintOptions: wallPaintOptions(pixelsPerUnit, payload),
+            profileOrId: profileId,
+            ...animatedBakeFields(profileId, baseProfile, payload, useResolver),
+        }),
+    ];
 }
 function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, texelResolution) {
     const startCol = chunkCol * cellsPerChunk;
@@ -125,12 +152,18 @@ export function bakeGroundChunkCanvases(payload) {
     const pixelsPerUnit = texelResolution;
     const zLevel = payload.zLevel ?? 0;
     const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
-    const canvas = createOffscreenCanvas(bakeSize, bakeSize);
-    const ctx = canvas.getContext("2d");
-    if (chunkNeedsRuntimeResolve(baseProfile)) {
-        payload.frameIndex = 0;
-        bakeResolvedProfile(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, paintOptions, baseProfile, profileId, payload);
-    } else paintPixelArea(ctx, bakeSize, bakeSize, chunkWorldX, chunkWorldY, seed, paintOptions, profileId);
+    const useResolver = chunkNeedsRuntimeResolve(baseProfile);
+    if (useResolver) payload.frameIndex = 0;
+    const canvas = bakeRequestToCanvas({
+        width: bakeSize,
+        height: bakeSize,
+        startWorldX: chunkWorldX,
+        startWorldY: chunkWorldY,
+        seed,
+        paintOptions,
+        profileOrId: profileId,
+        ...animatedBakeFields(profileId, baseProfile, payload, useResolver),
+    });
     return [canvas];
 }
 /** Bake a world-aligned horizontal patch (assembly playfield / rail band). */
@@ -152,17 +185,18 @@ export function bakeHorizontalPatchCanvases(payload) {
     const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
     for (let i = 0; i < frameCount; i++) {
         payload.frameIndex = sourceFrameIndexForBakeSlot(frameStart + i, bakeTotal, sourceTotal);
-        const canvas = createOffscreenCanvas(widthPx, heightPx);
-        const ctx = canvas.getContext("2d");
-        if (useResolver) bakeResolvedProfile(ctx, widthPx, heightPx, originX, originY, seed, paintOptions, baseProfile, profileId, payload);
-        else paintPixelArea(ctx, widthPx, heightPx, originX, originY, seed, paintOptions, profileId);
-        canvases.push(canvas);
+        canvases.push(
+            bakeRequestToCanvas({
+                width: widthPx,
+                height: heightPx,
+                startWorldX: originX,
+                startWorldY: originY,
+                seed,
+                paintOptions,
+                profileOrId: profileId,
+                ...animatedBakeFields(profileId, baseProfile, payload, useResolver),
+            }),
+        );
     }
     return canvases;
-}
-export function bakeWallAtlasCanvases(width, height, p1, p2, pixelsPerUnit, seed, profileId, payload = {}) {
-    const provider = getSurfaceProfileProvider();
-    const baseProfile = provider.getProfile(profileId ?? provider.defaultId);
-    if (baseProfile.animation) payload.frameIndex = 0;
-    return [bakeWallAtlasCanvas(width, height, p1, p2, pixelsPerUnit, seed, profileId, baseProfile.animation ? payload : null, payload)];
 }

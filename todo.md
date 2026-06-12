@@ -8,11 +8,11 @@
 
 ### Render — walls
 
-- [ ] **`WallDrawContext`** — unify `drawFaceTexture` (12 args), `drawStaticGridWallFace` (9), `RenderableWallFace.draw`; extend existing `drawProjectedWallFace` options through the stack.
+- [x] **`WallDrawContext`** — unify `drawFaceTexture`, `drawStaticGridWallFace`, `RenderableWallFace.draw`; `createWallDrawContextFromScene` per pass in `WorldSceneRenderer`.
 
 ### Bake pipeline
 
-- [ ] **`BakeRequest`** — `paintPixelArea`, `bakeWallAtlasCanvas`, `bakeResolvedProfile` share `(ctx, w, h, worldX, worldY, seed, options, profile)`; worker + editor + assembly paths.
+- [x] **`BakeRequest`** — `createBakeRequest` + `paintBakeRequest` / `bakeRequestToCanvas` in `WorldSurfacePainter`; worker, editor preview, and chunk/patch/wall bakes.
 
 ### Projection
 

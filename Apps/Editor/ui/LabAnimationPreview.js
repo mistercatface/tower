@@ -1,5 +1,5 @@
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../../Libraries/Canvas/offscreenCanvas.js";
-import { paintPixelArea } from "../../../Libraries/WorldSurface/WorldSurfacePainter.js";
+import { createBakeRequest, paintBakeRequest } from "../../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { resolveBakeProfile, getAnimationDuration } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { minCornerAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
@@ -104,6 +104,6 @@ function paintPreviewPatch(ctx, bounds, worldRect, pixelsPerUnit, cellSize, prof
     const destH = Math.max(1, Math.round((worldRect.maxY - worldRect.minY) * pixelsPerUnit));
     ensurePatchSurface(destW, destH);
     const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
-    paintPixelArea(patchCtx, destW, destH, worldRect.minX, worldRect.minY, 42, paintOptions, profile);
+    paintBakeRequest(createBakeRequest({ ctx: patchCtx, width: destW, height: destH, startWorldX: worldRect.minX, startWorldY: worldRect.minY, seed: 42, paintOptions, profileOrId: profile }));
     ctx.drawImage(patchCanvas, destX, destY);
 }
