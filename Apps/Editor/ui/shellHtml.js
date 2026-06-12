@@ -87,7 +87,7 @@ export const TILELAB_UI_HTML = `
                 <div id="mapPanel" class="editor-panel-section" data-panel="map">
                     <div class="editor-panel-head">Map</div>
                     <div class="editor-scroll">
-                        <p class="editor-hint">Caverns generate around the current camera center.</p>
+                        <p class="editor-hint">Play area sets the obstacle grid; cavern bounds are in grid cells. Stamp multiple regions by moving bounds and generating again.</p>
                         <div id="mapSettingsPanel"></div>
                     </div>
                 </div>

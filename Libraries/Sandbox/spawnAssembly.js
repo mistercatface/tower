@@ -59,6 +59,10 @@ export function addSandboxWalls(state, walls, { compileRender = true, notifyNavi
     }
     if (compileRender) state.worldSurfaces.invalidateRoofs();
 }
+/** @param {object} state @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
+export function clearSandboxWallsInBounds(state, bounds) {
+    clearWallsInBounds(state, bounds);
+}
 /** @param {{ minX: number, minY: number, maxX: number, maxY: number }} bounds */
 function wallCenterInsideBounds(wall, bounds) {
     return wall.x >= bounds.minX && wall.x <= bounds.maxX && wall.y >= bounds.minY && wall.y <= bounds.maxY;

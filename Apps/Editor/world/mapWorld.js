@@ -1,61 +1,106 @@
 import { Segment } from "../../../Entities/Wall.js";
 import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
-import { SceneCompiler } from "../../../Libraries/Render/Scene/SceneCompiler.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
+import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
+import { addSandboxWalls, clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
 import { paintMapOverviewFrame } from "../ui/mapOverview.js";
-import { sandboxController } from "./tilelabSandbox.js";
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
-export const labCavernConfig = { playAreaCols: 256, playAreaRows: 256, fillChance: 0.45, iterations: 3 };
+export const labPlayConfig = { playAreaCols: 256, playAreaRows: 256 };
+export const labCavernConfig = { boundsCol: -128, boundsRow: -128, boundsCols: 256, boundsRows: 256, fillChance: 0.45, iterations: 3 };
 /** @param {number} cells */
 export function playAreaCellsToIndex(cells) {
     const index = PLAY_AREA_CELL_OPTIONS.indexOf(cells);
     return index >= 0 ? index : PLAY_AREA_CELL_OPTIONS.indexOf(256);
 }
-function generateCavernWalls(centerX, centerY, { playAreaCols, playAreaRows, fillChance, iterations }) {
+/** @param {{ playAreaCols: number, playAreaRows: number }} playConfig */
+export function playAreaWorldSize(playConfig) {
     const cellSize = gridSettings.cellSize;
-    const width = playAreaCols * cellSize;
-    const height = playAreaRows * cellSize;
-    const caMinX = centerX - width / 2;
-    const caMinY = centerY - height / 2;
-    const cols = playAreaCols;
-    const rows = playAreaRows;
-    let grid = fillRandomGrid(cols, rows, fillChance);
-    grid = runCellularAutomata(cols, rows, grid, { iterations, scratch: new Uint8Array(cols * rows) });
+    return { width: playConfig.playAreaCols * cellSize, height: playConfig.playAreaRows * cellSize };
+}
+/** @param {import("../state.js").TileLabGameState["viewport"]} viewport @param {{ playAreaCols: number, playAreaRows: number }} playConfig */
+export function getPlayAreaPreviewBounds(viewport, playConfig) {
+    const { width, height } = playAreaWorldSize(playConfig);
+    return { minX: viewport.x - width / 2, minY: viewport.y - height / 2, maxX: viewport.x + width / 2, maxY: viewport.y + height / 2 };
+}
+/** @param {typeof labCavernConfig} cavernConfig */
+export function getCavernBoundsPreview(cavernConfig) {
+    const cellSize = gridSettings.cellSize;
+    const minX = cavernConfig.boundsCol * cellSize;
+    const minY = cavernConfig.boundsRow * cellSize;
+    return { minX, minY, maxX: minX + cavernConfig.boundsCols * cellSize, maxY: minY + cavernConfig.boundsRows * cellSize };
+}
+/** @param {typeof labPlayConfig} playConfig @param {typeof labCavernConfig} cavernConfig */
+export function syncCavernBoundsSizeFromPlay(playConfig, cavernConfig) {
+    cavernConfig.boundsCols = playConfig.playAreaCols;
+    cavernConfig.boundsRows = playConfig.playAreaRows;
+}
+/** @param {import("../state.js").TileLabGameState["viewport"]} viewport @param {typeof labPlayConfig} playConfig @param {typeof labCavernConfig} cavernConfig */
+export function syncCavernBoundsFromPlay(viewport, playConfig, cavernConfig) {
+    syncCavernBoundsSizeFromPlay(playConfig, cavernConfig);
+    const cellSize = gridSettings.cellSize;
+    const minX = viewport.x - (cavernConfig.boundsCols * cellSize) / 2;
+    const minY = viewport.y - (cavernConfig.boundsRows * cellSize) / 2;
+    cavernConfig.boundsCol = Math.round(minX / cellSize);
+    cavernConfig.boundsRow = Math.round(minY / cellSize);
+}
+/** @param {{ minX: number, minY: number, maxX: number, maxY: number }} a @param {{ minX: number, minY: number, maxX: number, maxY: number }} b */
+function mergeWorldBounds(a, b) {
+    return { minX: Math.min(a.minX, b.minX), minY: Math.min(a.minY, b.minY), maxX: Math.max(a.maxX, b.maxX), maxY: Math.max(a.maxY, b.maxY) };
+}
+/** @param {import("../state.js").TileLabGameState} state */
+function ensureLabObstacleGridCoverage(state) {
+    const cellSize = gridSettings.cellSize;
+    let required = getPlayAreaPreviewBounds(state.viewport, labPlayConfig);
+    required = mergeWorldBounds(required, getCavernBoundsPreview(labCavernConfig));
+    if (state.walls.length) {
+        const wallBounds = computeBoundsFromWalls(state.walls, cellSize);
+        required = mergeWorldBounds(required, { minX: wallBounds.minX, minY: wallBounds.minY, maxX: wallBounds.maxX, maxY: wallBounds.maxY });
+    }
+    const pad = cellSize;
+    required = { minX: required.minX - pad, minY: required.minY - pad, maxX: required.maxX + pad, maxY: required.maxY + pad };
+    const grid = state.obstacleGrid;
+    if (grid.cols > 0 && grid.minX <= required.minX && grid.minY <= required.minY && grid.maxX >= required.maxX && grid.maxY >= required.maxY && grid.segmentGrid) return;
+    const width = required.maxX - required.minX;
+    const height = required.maxY - required.minY;
+    const centerX = (required.minX + required.maxX) / 2;
+    const centerY = (required.minY + required.maxY) / 2;
+    grid.rebuildFixed(centerX, centerY, width, height);
+    grid.segmentGrid = new Array(grid.cols * grid.rows);
+    for (const wall of state.walls) grid.addWall(wall);
+    state.hierarchicalNavigator.initialize(centerX, centerY);
+    state.worldSurfaces.renderScene.setGridOrigin(grid.minX, grid.minY);
+}
+/** @param {typeof labCavernConfig} config */
+function generateCavernWalls(config) {
+    const cellSize = gridSettings.cellSize;
+    const cols = Math.max(1, Math.round(config.boundsCols));
+    const rows = Math.max(1, Math.round(config.boundsRows));
+    const caMinX = config.boundsCol * cellSize;
+    const caMinY = config.boundsRow * cellSize;
+    let grid = fillRandomGrid(cols, rows, config.fillChance);
+    grid = runCellularAutomata(cols, rows, grid, { iterations: config.iterations, scratch: new Uint8Array(cols * rows) });
     const walls = [];
     for (let r = 0; r < rows; r++)
         for (let c = 0; c < cols; c++) {
             if (grid[r * cols + c] !== 1) continue;
             walls.push(new Segment(caMinX + c * cellSize + cellSize / 2, caMinY + r * cellSize + cellSize / 2, 0, cellSize, 0));
         }
-    return { walls, width, height };
+    return walls;
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function generateLabCaverns(state) {
-    const centerX = state.viewport.x;
-    const centerY = state.viewport.y;
-    const { playAreaCols, playAreaRows } = labCavernConfig;
-    let playWidth = playAreaCols * gridSettings.cellSize;
-    let playHeight = playAreaRows * gridSettings.cellSize;
+    const stampBounds = getCavernBoundsPreview(labCavernConfig);
+    let newWalls = [];
     withSeededRandom(state.mapSeed, () => {
-        const result = generateCavernWalls(centerX, centerY, labCavernConfig);
-        state.walls = result.walls;
-        playWidth = result.width;
-        playHeight = result.height;
-        state.wallSpatialIndex.clear();
-        for (const wall of state.walls) state.wallSpatialIndex.insert(wall);
+        newWalls = generateCavernWalls(labCavernConfig);
     });
-    state.obstacleGrid.rebuildFixed(centerX, centerY, playWidth, playHeight);
-    state.obstacleGrid.segmentGrid = new Array(state.obstacleGrid.cols * state.obstacleGrid.rows);
-    for (const wall of state.walls) state.obstacleGrid.addWall(wall);
-    state.hierarchicalNavigator.initialize(centerX, centerY);
-    state.worldSurfaces.worldSurfaceSeed = (Math.random() * 0x7fffffff) | 0;
-    state.worldSurfaces.clear();
-    SceneCompiler.compileWalls(state, state.worldSurfaces.renderScene, state.obstacleGrid.minX, state.obstacleGrid.minY);
+    ensureLabObstacleGridCoverage(state);
+    clearSandboxWallsInBounds(state, stampBounds);
+    addSandboxWalls(state, newWalls);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
     rebuildLabMapCaches(state);
     paintMapOverviewFrame(state);
-    sandboxController?.clearBodies();
 }
