@@ -3,13 +3,12 @@
  */
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
-import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { traceAabbRect, traceClosedPolygon, clipToPath } from "../Canvas/CanvasPath.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawDamageOverlayInClip, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
-import { resolveCellWallHeightPx, cellIsStaticWall } from "../World/wallGridCells.js";
-import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
+import { resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
+import { getStaticCellDamageAlphaAtIdx } from "../World/staticCellDamage.js";
 /**
  * @typedef {Object} ChunkDrawPass
  * @property {number} chunkCol
@@ -96,9 +95,9 @@ export function drawRoofSegmentDamageOverlays(ctx, pass) {
 export function drawStaticRoofDamageOverlays(ctx, pass, cornerScratch) {
     const { obstacleGrid, state, zLevel } = pass;
     const cellSize = obstacleGrid.cellSize;
-    forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row) => {
-        if (resolveCellWallHeightPx(obstacleGrid, col, row) !== zLevel) return;
-        const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
+    forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
+        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) !== zLevel) return;
+        const damageAlpha = getStaticCellDamageAlphaAtIdx(obstacleGrid, state, col, row, idx);
         if (damageAlpha <= 0) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
         const corners = projectHorizontalSurfaceCornersInto(cornerScratch, pass, { originX: bounds.minX, originY: bounds.minY, sizePx: cellSize });
@@ -111,9 +110,8 @@ export function clipChunkToBlockedCells(ctx, pass) {
     const segmentGrid = obstacleGrid.segmentGrid;
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
-        forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row) => {
-            if (!obstacleGrid.isBlocked(col, row)) return;
-            const idx = colRowToIndex(col, row, obstacleGrid.cols);
+        forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
+            if (obstacleGrid.grid[idx] === 0) return;
             if (segmentGrid?.[idx]?.length) return;
             traceAabbRect(clipCtx, obstacleGrid.getCellBounds(col, row));
             clippedAny = true;
@@ -140,9 +138,8 @@ export function clipChunkToWallFootprints(ctx, pass) {
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
 export function drawStaticWallFootprintDamageOverlays(ctx, pass) {
     const { obstacleGrid, state } = pass;
-    forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row) => {
-        if (!cellIsStaticWall(obstacleGrid, col, row)) return;
-        const damageAlpha = getStaticCellDamageAlphaAtGrid(obstacleGrid, state, col, row);
+    forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
+        const damageAlpha = getStaticCellDamageAlphaAtIdx(obstacleGrid, state, col, row, idx);
         if (damageAlpha <= 0) return;
         drawAabbDamageOverlay(ctx, obstacleGrid.getCellBounds(col, row), damageAlpha);
     });

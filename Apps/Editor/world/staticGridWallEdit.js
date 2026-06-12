@@ -3,6 +3,7 @@
  */
 import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
+import { packCellKey } from "../../../Libraries/DataStructures/CellKey.js";
 import { colRowToIndex } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
@@ -85,7 +86,7 @@ export function deleteStaticWallsInBounds(state, boundsConfig) {
         const idx = colRowToIndex(local.col, local.row, grid.cols);
         if (grid.segmentGrid?.[idx]?.length) return;
         grid.grid[idx] = 0;
-        state.staticCellHealth.delete(`${globalCol},${globalRow}`);
+        state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
         anyRemoved = true;
         if (local.col < startCol) startCol = local.col;
         if (local.col > endCol) endCol = local.col;

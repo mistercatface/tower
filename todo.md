@@ -56,16 +56,16 @@ Hot paths already use flat `idx` internally (`flowFieldBfs`, HPA `node.cells`, `
 
 ## Tier 1 — do next (~1–2 focused passes)
 
-- [ ] **`forEachObstacleGridCellInAabb` → `fn(col, row, idx)`** — same `rowOffset + col` pattern as `forEachDenseCellInRect` in `CellRect.js`; backward compatible third arg. File: `Libraries/Spatial/grid/GridCoords.js`.
-- [ ] **Idx-aware cell reads** (local helpers in `Libraries/World/wallGridCells.js`, not a new type system):
+- [x] **`forEachObstacleGridCellInAabb` → `fn(col, row, idx)`** — same `rowOffset + col` pattern as `forEachDenseCellInRect` in `CellRect.js`; backward compatible third arg. File: `Libraries/Spatial/grid/GridCoords.js`.
+- [x] **Idx-aware cell reads** (local helpers in `Libraries/World/wallGridCells.js`, not a new type system):
   - `gridValueAtIdx(grid, idx)` — `grid.grid[idx]`
   - `cellIsStaticWallAtIdx(grid, idx, col, row)` — when bounds / `segmentGrid` need col/row
   - `resolveCellWallHeightAtIdx(grid, idx)` — one index, one array read
-- [ ] **Fix double-index call sites** using the helpers above:
+- [x] **Fix double-index call sites** using the helpers above:
   - `clipChunkToBlockedCells` — `isBlocked` + `colRowToIndex` duplicate (`ChunkDrawPass.js`)
   - `resolveCellWallHeightPx` — calls `cellIsStaticWall` then indexes again (`wallGridCells.js`)
   - `drawStaticWallFootprintDamageOverlays` + `getStaticCellDamageAlphaAtGrid` — both call `cellIsStaticWall` (`ChunkDrawPass.js`, `staticCellDamage.js`)
-- [ ] **`staticCellHealth` → numeric `packCellKey(globalCol, globalRow)`** — drop `` `${globalCol},${globalRow}` `` string keys. Files: `staticCellDamage.js`, `Apps/Editor/world/mapWorld.js`, `Apps/Editor/world/staticGridWallEdit.js`.
+- [x] **`staticCellHealth` → numeric `packCellKey(globalCol, globalRow)`** — drop `` `${globalCol},${globalRow}` `` string keys. Files: `staticCellDamage.js`, `Apps/Editor/world/mapWorld.js`, `Apps/Editor/world/staticGridWallEdit.js`.
 
 ## Tier 2 — profiling gate
 

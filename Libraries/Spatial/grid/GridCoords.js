@@ -57,7 +57,7 @@ export function snapWorldToCellOrigin(worldX, worldY, minX, minY, cellSize) {
  * Visit each obstacle-grid cell overlapping a world AABB.
  * @param {{ minX: number, minY: number, cols: number, rows: number, cellSize: number }} grid
  * @param {import("../../Math/Aabb2D.js").Aabb2D} aabb
- * @param {(col: number, row: number) => void} fn
+ * @param {(col: number, row: number, idx: number) => void} fn
  */
 export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
     const { minCol, maxCol, minRow, maxRow } = boundsToCellRect(aabb.minX - grid.minX, aabb.minY - grid.minY, aabb.maxX - grid.minX - 1e-6, aabb.maxY - grid.minY - 1e-6, grid.cellSize);
@@ -65,7 +65,11 @@ export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
     const colMax = Math.min(grid.cols - 1, maxCol);
     const rowMin = Math.max(0, minRow);
     const rowMax = Math.min(grid.rows - 1, maxRow);
-    for (let row = rowMin; row <= rowMax; row++) for (let col = colMin; col <= colMax; col++) fn(col, row);
+    const cols = grid.cols;
+    for (let row = rowMin; row <= rowMax; row++) {
+        const rowOffset = row * cols;
+        for (let col = colMin; col <= colMax; col++) fn(col, row, rowOffset + col);
+    }
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out @param {number} originX @param {number} originY @param {number} sizePx @returns {import("../../Math/Aabb2D.js").Aabb2D} */
 export function chunkWorldAabbInto(out, originX, originY, sizePx) {

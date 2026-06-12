@@ -3,6 +3,7 @@ import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
 import { centeredAabb, centeredAabbInto, centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
+import { packCellKey } from "../../../Libraries/DataStructures/CellKey.js";
 import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { colRowToIndex } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
@@ -124,7 +125,7 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
         if (grid.segmentGrid?.[idx]?.length) return;
         grid.grid[idx] = 0;
         const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
-        state.staticCellHealth.delete(`${globalCol},${globalRow}`);
+        state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
         if (col < startCol) startCol = col;
         if (col > endCol) endCol = col;
         if (row < startRow) startRow = row;
