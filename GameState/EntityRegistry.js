@@ -1,11 +1,11 @@
 import { getSandboxEntityMeta } from "../Libraries/Sandbox/sandboxEntityMeta.js";
-import { circleIntersectsAabb, pointInAabb } from "../Libraries/Math/Aabb2D.js";
-/** @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} BoundsRect */
+import { centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/Aabb2D.js";
+/** @typedef {import("../Libraries/Math/Aabb2D.js").Aabb2D} Aabb2D */
+/** @typedef {import("../Libraries/Math/Aabb2D.js").AabbEntityHitTest} AabbEntityHitTest */
 /** @typedef {{ kind: string, ref: object }} EntityRegistryEntry */
-/** @typedef {'center' | 'circle'} AabbEntityHitTest */
 /**
  * @typedef {Object} QueryViewCriteria
- * @property {BoundsRect} bounds
+ * @property {Aabb2D} bounds
  * @property {string[]} [kinds]
  * @property {string} [filterId] — cache key segment for optional `match`
  * @property {(ref: object) => boolean} [match]
@@ -17,13 +17,8 @@ import { circleIntersectsAabb, pointInAabb } from "../Libraries/Math/Aabb2D.js";
  * @property {AabbEntityHitTest} [hitTest]
  */
 const EMPTY_KINDS = ["worldProp"];
-/** @param {object} ref @param {BoundsRect} bounds @param {AabbEntityHitTest} hitTest */
-function entityIntersectsAabb(ref, bounds, hitTest) {
-    if (hitTest === "center") return pointInAabb(ref.x, ref.y, bounds);
-    const radius = ref.getBoundingRadius?.() ?? ref.radius ?? 0;
-    return circleIntersectsAabb(ref.x, ref.y, radius, bounds);
-}
-/** @param {BoundsRect} bounds */
+const PICK_SEARCH_BOUNDS = createAabb();
+/** @param {Aabb2D} bounds */
 function boundsKey(bounds) {
     return `${bounds.minX}|${bounds.minY}|${bounds.maxX}|${bounds.maxY}`;
 }
@@ -38,7 +33,7 @@ function filterKey(criteria) {
  * Use for editor box-select and other pick semantics that must match a drawn rectangle.
  *
  * @param {EntityRegistry} registry
- * @param {BoundsRect} bounds
+ * @param {Aabb2D} bounds
  * @param {QueryInAabbStrictOptions} [options]
  * @returns {object[]}
  */
@@ -110,7 +105,7 @@ export class EntityRegistry {
         for (const entry of this._entries.values()) if (entry.kind === kind) fn(entry.ref);
     }
     /**
-     * @param {BoundsRect} bounds
+     * @param {Aabb2D} bounds
      * @param {QueryInAabbStrictOptions} [options]
      * @returns {object[]}
      */
@@ -151,7 +146,7 @@ export class EntityRegistry {
         return result;
     }
     /**
-     * @param {BoundsRect} bounds
+     * @param {Aabb2D} bounds
      * @param {string[]} kinds
      * @param {((ref: object) => boolean) | undefined} match
      * @param {AabbEntityHitTest} hitTest
@@ -189,7 +184,7 @@ export class EntityRegistry {
     }
     /**
      * @param {object[]} out
-     * @param {BoundsRect} bounds
+     * @param {Aabb2D} bounds
      * @param {Set<string>} kindSet
      * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore | null | undefined} spatialFrame
      */
@@ -206,7 +201,7 @@ export class EntityRegistry {
     }
     /**
      * @param {object[]} out
-     * @param {BoundsRect} bounds
+     * @param {Aabb2D} bounds
      * @param {Set<string>} kindSet
      * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
      */
@@ -292,7 +287,7 @@ function nearestWorldPropInList(worldProps, worldX, worldY, padding) {
  * @param {number} [padding]
  */
 export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
-    const searchPad = padding + 48;
-    const candidates = registry.queryView({ bounds: { minX: worldX - searchPad, minY: worldY - searchPad, maxX: worldX + searchPad, maxY: worldY + searchPad }, kinds: ["worldProp"] }, spatialFrame);
+    centerReachAabbInto(PICK_SEARCH_BOUNDS, worldX, worldY, padding + 48);
+    const candidates = registry.queryView({ bounds: PICK_SEARCH_BOUNDS, kinds: ["worldProp"] }, spatialFrame);
     return nearestWorldPropInList(candidates, worldX, worldY, padding);
 }

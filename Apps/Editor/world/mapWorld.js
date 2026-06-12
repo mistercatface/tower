@@ -2,7 +2,7 @@ import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
-import { centeredAabb, centeredAabbInto, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
+import { centeredAabb, centeredAabbInto, centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { colRowToIndex } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
@@ -22,6 +22,7 @@ import {
 import { getCellBoundsAabbInto } from "./cellBoundsConfig.js";
 export { getCavernBoundsAabb, centerCavernBoundsOnViewport, syncCavernSizeFromPlayArea };
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
+const CLEAR_CIRCLE_BOUNDS = createAabb();
 /** @param {number} cells */
 export function playAreaCellsToIndex(cells) {
     const index = PLAY_AREA_CELL_OPTIONS.indexOf(cells);
@@ -108,12 +109,12 @@ export function syncCavernBoundsFromPlay(viewport, playConfig, cavernConfig, { c
 function clearStaticOccupancyInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
     const grid = state.obstacleGrid;
     if (!grid?.cols || radiusWorld <= 0) return;
-    const aabb = { minX: centerWorldX - radiusWorld, minY: centerWorldY - radiusWorld, maxX: centerWorldX + radiusWorld, maxY: centerWorldY + radiusWorld };
+    centerReachAabbInto(CLEAR_CIRCLE_BOUNDS, centerWorldX, centerWorldY, radiusWorld);
     let startCol = Infinity;
     let endCol = -1;
     let startRow = Infinity;
     let endRow = -1;
-    forEachObstacleGridCellInAabb(grid, aabb, (col, row) => {
+    forEachObstacleGridCellInAabb(grid, CLEAR_CIRCLE_BOUNDS, (col, row) => {
         const bounds = grid.getCellBounds(col, row);
         const cx = (bounds.minX + bounds.maxX) * 0.5;
         const cy = (bounds.minY + bounds.maxY) * 0.5;

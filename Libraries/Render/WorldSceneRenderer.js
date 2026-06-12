@@ -4,7 +4,6 @@
 import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
-import { viewportVisibleBounds } from "../Render/common/viewportUtils.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
@@ -38,7 +37,7 @@ export class WorldSceneRenderer {
         ctx.save();
         clipToViewport(ctx, viewport);
         const props = input.entityRegistry.queryView(
-            { bounds: viewportVisibleBounds(viewport), kinds: ["worldProp"], filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" },
+            { bounds: viewport.boundsVisibleDefault, kinds: ["worldProp"], filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" },
             input.spatialFrame,
         );
         for (let i = 0; i < props.length; i++) this.props.drawProp(ctx, props[i], px, py, { zoom });
@@ -47,7 +46,7 @@ export class WorldSceneRenderer {
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this.visibleDrawables;
         const props = input.entityRegistry.queryView(
-            { bounds: viewportVisibleBounds(viewport), kinds: ["worldProp"], filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" || p.usesKinematicsBody },
+            { bounds: viewport.boundsVisibleDefault, kinds: ["worldProp"], filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" || p.usesKinematicsBody },
             input.spatialFrame,
         );
         for (let i = 0; i < props.length; i++) {

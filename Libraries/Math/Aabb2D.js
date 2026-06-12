@@ -1,4 +1,5 @@
 /** @typedef {{ minX: number; minY: number; maxX: number; maxY: number }} Aabb2D */
+/** @typedef {'center' | 'circle'} AabbEntityHitTest */
 /** @returns {Aabb2D} */
 export function createAabb() {
     return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
@@ -185,4 +186,10 @@ export function distanceToAabb(px, py, minX, minY, maxX, maxY) {
 }
 export function circleIntersectsAabb(x, y, radius, { minX, minY, maxX, maxY }) {
     return distanceSqToAabb(x, y, minX, minY, maxX, maxY) <= radius * radius;
+}
+/** @param {object} ref @param {Aabb2D} bounds @param {AabbEntityHitTest} hitTest */
+export function entityIntersectsAabb(ref, bounds, hitTest) {
+    if (hitTest === "center") return pointInAabb(ref.x, ref.y, bounds);
+    const radius = ref.getBoundingRadius?.() ?? ref.radius ?? 0;
+    return circleIntersectsAabb(ref.x, ref.y, radius, bounds);
 }

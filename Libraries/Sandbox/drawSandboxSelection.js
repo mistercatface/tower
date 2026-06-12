@@ -1,16 +1,11 @@
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { strokeCircle } from "../Canvas/CanvasPath.js";
-import { aabbFromTwoPoints } from "../Math/Aabb2D.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
 export function findSandboxPropsInWorldRect(state, registry, bounds) {
     const meta = getSandboxEntityMeta(state);
     return queryEntitiesInAabbStrict(registry, bounds, { kinds: ["worldProp"], hitTest: "center", match: (prop) => !meta.hasAssemblyMembership(prop.id) });
-}
-/** @param {number} x1 @param {number} y1 @param {number} x2 @param {number} y2 */
-export function sandboxMarqueeBounds(x1, y1, x2, y2) {
-    return aabbFromTwoPoints(x1, y1, x2, y2);
 }
 /** @param {object} prop */
 function selectionRingRadius(prop, lineScale) {

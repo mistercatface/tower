@@ -8,11 +8,6 @@ import { clipToAabb, traceAabbRect } from "../../Canvas/CanvasPath.js";
 export function getCanvasLineScale(ctx) {
     return 1 / Math.max(0.001, ctx.getTransform().a);
 }
-/** @param {import("../../Viewport/Viewport.js").Viewport} viewport @returns {import("../../Math/Aabb2D.js").Aabb2D} */
-export function viewportVisibleBounds(viewport) {
-    const b = viewport.boundsVisibleDefault;
-    return { minX: b.minX, minY: b.minY, maxX: b.maxX, maxY: b.maxY };
-}
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {import("../../Math/Aabb2D.js").Aabb2D} aabb

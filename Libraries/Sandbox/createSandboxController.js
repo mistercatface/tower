@@ -7,7 +7,8 @@ import { addButtonPadLink, clearButtonPadLinks, drawSandboxPadWires, findButtonL
 import { handlePadPointerDown, hitTestPad, isSandboxSpawnPadId, releaseButtonPointerHold } from "./sandboxPads.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
-import { drawSandboxMarquee, drawSandboxSelectionRings, findSandboxPropsInWorldRect, sandboxMarqueeBounds } from "./drawSandboxSelection.js";
+import { drawSandboxMarquee, drawSandboxSelectionRings, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
+import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { drawSandboxWeaponBars } from "./drawWorldPropWeaponBars.js";
 import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVisual.js";
@@ -28,6 +29,7 @@ import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
  * @property {(prop: object) => import("../../Render/map/drawActivePathOverlay.js").ActivePathOverlay | null} [getPathOverlay]
  * @property {() => void} [reset]
  */
+const MARQUEE_BOUNDS = createAabb();
 /**
  * @param {object} state
  * @param {{
@@ -196,7 +198,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
                 session.setSelectedPadId(null);
             } else {
                 const endWorld = clientToWorld(e.clientX, e.clientY);
-                const props = findSandboxPropsInWorldRect(state, state.entityRegistry, sandboxMarqueeBounds(drag.startWorld.x, drag.startWorld.y, endWorld.x, endWorld.y));
+                const props = findSandboxPropsInWorldRect(state, state.entityRegistry, aabbFromTwoPointsInto(MARQUEE_BOUNDS, drag.startWorld.x, drag.startWorld.y, endWorld.x, endWorld.y));
                 session.setSelectedPropIds(props.map((prop) => prop.id));
             }
             e.preventDefault();
@@ -225,7 +227,9 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             const prop = state.entityRegistry.getLive(selectedIds[i]);
             if (prop) selectedProps.push(prop);
         }
-        const marqueeRect = marqueeSelect ? sandboxMarqueeBounds(marqueeSelect.startWorld.x, marqueeSelect.startWorld.y, marqueeSelect.currentWorld.x, marqueeSelect.currentWorld.y) : null;
+        const marqueeRect = marqueeSelect
+            ? aabbFromTwoPointsInto(MARQUEE_BOUNDS, marqueeSelect.startWorld.x, marqueeSelect.startWorld.y, marqueeSelect.currentWorld.x, marqueeSelect.currentWorld.y)
+            : null;
         return { selectedProps, marqueeRect };
     };
     const controller = {
