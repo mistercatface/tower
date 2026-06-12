@@ -202,24 +202,6 @@ export function createConveyorDraw(options = {}) {
                 stroke: railStroke,
                 distSq: (outerProp.x - px) ** 2 + (outerProp.y - py) ** 2,
             });
-            // 3. Inner rail segment (smaller radius)
-            const R_inner = 0.75;
-            const lx_inner = pivotX + R_inner * Math.cos(A);
-            const ly_inner = pivotY + R_inner * Math.sin(A);
-            const rx_inner = lx_inner * cos - ly_inner * sin;
-            const ry_inner = lx_inner * sin + ly_inner * cos;
-            const innerProp = { x: prop.x + rx_inner, y: prop.y + ry_inner, facing: angle + segFacing };
-            const innerSegHalfLength = Math.max(0.4, ((R_inner * Math.abs(d_A)) / 2) * 1.15);
-            drawList.push({
-                type: "rail",
-                prop: innerProp,
-                halfSize: { x: innerSegHalfLength, y: 0.75 },
-                height: 3.5,
-                faceColors: railColors,
-                topColors: railTopColors,
-                stroke: railStroke,
-                distSq: (innerProp.x - px) ** 2 + (innerProp.y - py) ** 2,
-            });
         }
         // Depth sort: draw furthest boxes first
         drawList.sort((a, b) => b.distSq - a.distSq);
