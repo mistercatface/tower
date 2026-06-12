@@ -3,9 +3,8 @@ import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { animationFrameIndex } from "../WorldSurface/ProfileBakeResolver.js";
 import { bakeSlotForSourceFrame } from "../WorldSurface/AnimationFrameBake.js";
-import { drawBakedTexture } from "../WorldSurface/WorldSurfaceResolution.js";
+import { drawBakedTexture, drawProjectedHorizontalChunk } from "../WorldSurface/WorldSurfaceResolution.js";
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
-import { drawImageQuad } from "../Canvas/AffineTexture.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { traceArc, traceSegment } from "../Canvas/CanvasPath.js";
 const sAssemblyPatchCorners = [
@@ -48,12 +47,8 @@ function drawAssemblyPatch(ctx, patch, frameIndex, settings, zLevel, viewerX, vi
         drawBakedTexture(ctx, canvas, minX, minY, worldW, worldH, settings);
         return;
     }
-    ctx.save();
     const corners = projectWorldAabbCornersInto(sAssemblyPatchCorners, minX, minY, maxX, maxY, zLevel, viewerX, viewerY, settings.cameraHeight);
-    const bleedPx = settings.wallTextureBleedPx ?? 1;
-    ctx.imageSmoothingEnabled = false;
-    drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3], { bleedPx });
-    ctx.restore();
+    drawProjectedHorizontalChunk(ctx, canvas, corners, settings);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createAssemblySurfaceZone>} zone @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
 export function drawAssemblySurfaceZone(ctx, zone, state, viewport) {

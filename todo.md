@@ -25,6 +25,7 @@ Living notes from the static-grid / render-path refactor. Not a release checklis
 - [x] **`forEachArmedSandboxPickup`** — weapon bars + laser sights share armed-pickup gate.
 - [x] **`RenderableRoofCap` bounds** — uses `expandPointsAabbInto` like wall faces.
 - [x] **`getCanvasLineScale(ctx)`** — screen-constant stroke/dash/marker sizing in overlay draw paths.
+- [x] **`drawProjectedHorizontalChunk`** — perspective `drawImageQuad` blit for elevated horizontal chunks (`WorldSurfaceResolution.js`); roof chunks + assembly patches.
 
 ---
 
@@ -142,9 +143,7 @@ Not dead — assemblies and pull pads still spawn `Segment` for grid occupancy +
 
 Most warped textures already go through `drawImageQuad` (`AffineTexture.js`) or `drawBakedTexture` (`WorldSurfaceResolution.js`). These are the remaining gaps — ranked by impact.
 
-**1. `drawProjectedHorizontalChunk` (quality + dedup)**
-
-- [ ] **`drawProjectedHorizontalChunk(ctx, canvas, corners, settings)`** — Elevated roof chunks in `WorldSurfaceEngine.js` project four corners via `projectHorizontalSurfaceCornersInto`, then blit with a **single axis-aligned** `ctx.drawImage(dstX, dstY, dstW, dstH)` (duplicated for static-roof and entity-roof paths). That assumes the chunk is a screen-aligned rectangle and can **skew** at steep camera angles. Assembly elevated patches already use proper `drawImageQuad` in `assemblySurfaceDraw.js`. Helper should: flat z=0 → `drawBakedTexture`; elevated → `drawImageQuad` with projected corners + `wallTextureBleedPx`. Unifies corner→rect math and optionally fixes roof perspective.
+**1. ~~`drawProjectedHorizontalChunk`~~** — done; perspective `drawImageQuad` for elevated horizontal chunks.
 
 **2. Textured quad cell GC (perf — hot path)**
 

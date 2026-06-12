@@ -28,7 +28,7 @@ import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
 import { createWallFaceAxes, wallFaceAtlasUnrolledHeight } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { drawBakedTexture, getTexelResolution } from "./WorldSurfaceResolution.js";
+import { drawBakedTexture, drawProjectedHorizontalChunk, getTexelResolution } from "./WorldSurfaceResolution.js";
 import { bakeFrameRange } from "./AnimationFrameBake.js";
 const sRoofChunkCorners = [
     { x: 0, y: 0 },
@@ -287,12 +287,7 @@ export class WorldSurfaceEngine {
                             continue;
                         }
                         const corners = projectHorizontalSurfaceCornersInto(sRoofChunkCorners, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
-                        const dstX = corners[0].x;
-                        const dstY = corners[0].y;
-                        const dstW = corners[2].x - corners[0].x;
-                        const dstH = corners[2].y - corners[0].y;
-                        const bleedPx = this.settings.wallTextureBleedPx ?? 1;
-                        ctx.drawImage(drawCanvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
+                        drawProjectedHorizontalChunk(ctx, drawCanvas, corners, this.settings);
                         drawStaticRoofDamageOverlays(ctx, obstacleGrid, originX, originY, chunkSizePx, zLevel, staticOccupancyLayers, state, viewerX, viewerY, this.settings.cameraHeight, viewport);
                     } else {
                         const clipped = flatWallRails
@@ -309,12 +304,7 @@ export class WorldSurfaceEngine {
                             drawStaticWallFootprintDamageOverlays(ctx, obstacleGrid, originX, originY, chunkSizePx, state);
                         } else {
                             const corners = projectHorizontalSurfaceCornersInto(sRoofChunkCorners, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
-                            const dstX = corners[0].x;
-                            const dstY = corners[0].y;
-                            const dstW = corners[2].x - corners[0].x;
-                            const dstH = corners[2].y - corners[0].y;
-                            const bleedPx = this.settings.wallTextureBleedPx ?? 1;
-                            ctx.drawImage(canvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
+                            drawProjectedHorizontalChunk(ctx, canvas, corners, this.settings);
                             drawRoofSegmentDamageOverlays(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
                         }
                     }
