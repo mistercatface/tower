@@ -35,6 +35,56 @@ Unified world-space boxes around `Aabb2D`, registry query semantics, and typed-a
 - **Inclusive max** — world and grid boxes both use `<= max`; grid redo is rename + unify ops, not off-by-one change.
 - **Scalar seam OK at cell grid** — `forEachInBounds` unpacks to cols/rows once inside indexes; public APIs stay `Aabb2D` / `Box4`.
 
+# Grid cell indexing (dense / sparse)
+
+Three frames already coexist — keep them separate:
+
+| Frame | Key | Where |
+|-------|-----|--------|
+| Dense bounded | `col + row * cols` (`colRowToIndex`) | `WorldObstacleGrid.grid`, pathfinding, `EntityGrid` |
+| Sparse unbounded | `packCellKey(col, row)` (`KEY_STRIDE`) | `SharedEdgeSolver`, global cell identity |
+| World | `x, y` | physics, rendering, wall geometry |
+
+Hot paths already use flat `idx` internally (`flowFieldBfs`, HPA `node.cells`, `EntityGrid._getCellIndex`). The gap is **warm loops** that recompute the same index 2–3× per cell. **Do not** adopt Vec2 for grid cells — `col`/`row` scalars match existing convention; `Vec2` object helpers allocate and blur the world vs grid frame distinction.
+
+## Entity grid cell on bodies (audit)
+
+- **`_gridTileIdx`** — set on `EntityGrid.insert` from world `(x, y)`; used only for entity broadphase linked lists (`EntityGrid`, `EntityRegistry` fallback for bodies outside the grid). **Not** obstacle-grid col/row; recomputed every insert/reindex, not kept across frames as a nav hint.
+- **No cached obstacle-nav `(col, row)` or `idx` on `WorldProp` / mobile agents** — pathfinding calls `worldToGrid(x, y)` at query time (`HierarchicalNavigator`, `FlowFieldGrid`, `NavigationController.updateFlowField`).
+- **`gridCol` / `gridRow`** — only on ephemeral objects: static wall collision proxies (`WorldObstacleGrid._borrowStaticWallProxy`) and static wall draw face candidates (`StaticGridWallDraw`); set at collection time for damage lookup, not on sim entities.
+- **Storing nav cell on entities is Tier 3** — grid origin can shift (`expandToCoverAabb`); flow field is a sliding window with its own frame. Only worth caching if profiling shows `worldToGrid` hot and invalidation on grid expand/recenter is handled.
+
+## Tier 1 — do next (~1–2 focused passes)
+
+- [ ] **`forEachObstacleGridCellInAabb` → `fn(col, row, idx)`** — same `rowOffset + col` pattern as `forEachDenseCellInRect` in `CellRect.js`; backward compatible third arg. File: `Libraries/Spatial/grid/GridCoords.js`.
+- [ ] **Idx-aware cell reads** (local helpers in `Libraries/World/wallGridCells.js`, not a new type system):
+  - `gridValueAtIdx(grid, idx)` — `grid.grid[idx]`
+  - `cellIsStaticWallAtIdx(grid, idx, col, row)` — when bounds / `segmentGrid` need col/row
+  - `resolveCellWallHeightAtIdx(grid, idx)` — one index, one array read
+- [ ] **Fix double-index call sites** using the helpers above:
+  - `clipChunkToBlockedCells` — `isBlocked` + `colRowToIndex` duplicate (`ChunkDrawPass.js`)
+  - `resolveCellWallHeightPx` — calls `cellIsStaticWall` then indexes again (`wallGridCells.js`)
+  - `drawStaticWallFootprintDamageOverlays` + `getStaticCellDamageAlphaAtGrid` — both call `cellIsStaticWall` (`ChunkDrawPass.js`, `staticCellDamage.js`)
+- [ ] **`staticCellHealth` → numeric `packCellKey(globalCol, globalRow)`** — drop `` `${globalCol},${globalRow}` `` string keys. Files: `staticCellDamage.js`, `Apps/Editor/world/mapWorld.js`, `Apps/Editor/world/staticGridWallEdit.js`.
+
+## Tier 2 — profiling gate
+
+- [ ] **`collectStaticGridWallFaceCandidates`** — read `grid.grid[idx]` once per cell; pass height into neighbor edge checks instead of re-resolving per edge (`StaticGridWallDraw.js`).
+- [ ] **Full-grid scans as flat loops** — `stampStaticWalls`, `expandToCoverAabb` copy, `FlowFieldGrid.syncLocalObstacles`: `for (idx = 0; idx < size; idx++)` where body is mostly array access.
+- [ ] **Route hand-rolled nested rect loops through `forEachDenseCellInRect`** — e.g. `wallGridBake` clear/mark, `segmentGridWalk.collectSegmentsInCellRect`, HPA rect walks (`HierarchicalNavigator`).
+
+## Tier 3 — skip unless a specific bottleneck appears
+
+- Vec2 / `GridCell` object type for grid coordinates
+- idx-first public APIs on `WorldObstacleGrid`
+- Cached `worldToGrid` / nav cell fields on moving entities across frames
+- Merging `packCellKey` with `colRowToIndex` (different domains)
+
+## Design notes
+
+- **Rule of thumb** — `(col, row)` at API boundaries; `idx` once at the top of a rect loop or BFS; stay in `idx` until world geometry is needed (`getCellBounds`, projection).
+- **Box4 / `GridCellRect` redo** (above) is bounds algebra, not cell indexing — complementary, not a substitute for Tier 1.
+
 # Wall height / obstacle grid
 
 **Done** — one combined cell grid: `0` = open, `1 … maxWallHeightLevel` = stamp height level (`level * cellSize` px). Cap lives on `WorldSurfaceSettings.maxWallHeightLevel` (default in `worldSurfaceDefaults.js`).
@@ -89,5 +139,5 @@ Separate from grid storage — projection and defaults should not be re-fetched 
 ## Minor
 
 - [ ] **Read `getTexelResolution(settings)` once per draw pass** — `WorldSurfaceEngine` calls it repeatedly per chunk/wall path.
-- [ ] **Batch or cache `getStaticCellDamageAlphaAtGrid`** — per-wall call in draw loop; worth caching if many damaged cells are visible.
+- [ ] **Batch or cache `getStaticCellDamageAlphaAtGrid`** — per-wall call in draw loop; Tier 1 idx-aware reads reduce duplicate work first; full cache only if many damaged cells visible (see Grid cell indexing).
 - [ ] **WHAT IS THIS DOING HERE IT SMELLS:** `...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) })`.

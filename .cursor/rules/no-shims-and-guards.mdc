@@ -1,0 +1,51 @@
+---
+description: No defensive guards, micro-modules, or leftover passthrough/legacy code
+alwaysApply: true
+---
+
+# Ship clean — no guards, shims, or micro-files
+
+## Fail fast — no unnecessary guards
+
+Do not add defensive checks for invariants that callers already guarantee (required deps, constructor-injected services, module imports that must exist).
+
+- If a value is required for the code path to make sense, use it directly. A missing value is a bug — let it throw so it gets fixed upstream.
+- Do not add `if (!x) return`, optional chaining on required params, empty fallbacks, or silent no-ops to "be safe."
+- Guards are OK only for real external boundaries: user input, network, file I/O, optional feature flags documented as optional.
+
+```javascript
+// ❌ BAD — masks upstream bug
+function draw(pass) {
+  if (!pass?.obstacleGrid) return;
+  pass.obstacleGrid.grid[idx];
+}
+
+// ✅ GOOD — broken wiring fails immediately
+function draw(pass) {
+  pass.obstacleGrid.grid[idx];
+}
+```
+
+## No micro-modules
+
+Do not create new files for one to three tiny helpers that many files would import.
+
+- Add helpers next to their primary consumer, or into an existing module that already owns that domain (`GridUtils.js`, `wallGridCells.js`, `Aabb2D.js`, etc.).
+- Split into a new file only when the module is a coherent subsystem (many related exports, clear boundary) — not a single passthrough or 5-line wrapper.
+
+## No passthrough / fallback / legacy in finished work
+
+When implementing a change, remove the old path in the same pass. Do not leave:
+
+- Re-exports or wrappers that only forward to the new API
+- "Legacy" or "compat" branches "just in case"
+- Duplicate functions where one calls the other with no added logic
+- Commented-out old code or `TODO remove` cleanup deferred to a follow-up
+
+If migration is genuinely multi-step, say so explicitly and list what still removes — do not ship interim redundancy as the default state.
+
+## Review bar before finishing
+
+- Would removing a guard hide a real bug? If yes, fix the caller instead.
+- Would this new file be imported from 5+ places for <20 lines total? Inline or extend an existing module.
+- Is anything left that exists only because the old API used to? Delete it now.
