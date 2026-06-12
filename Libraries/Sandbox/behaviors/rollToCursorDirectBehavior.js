@@ -3,41 +3,63 @@ export const ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID = "rollToCursorDirect";
 /** @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createRollToCursorDirectBehavior() {
     let targetWorld = null;
-    let active = false;
+    let unitDragActive = false;
+    let groundMoveActive = false;
+    const clearTarget = () => {
+        targetWorld = null;
+        unitDragActive = false;
+        groundMoveActive = false;
+    };
     return {
         id: ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID,
         onPointerDown(prop, world) {
-            active = true;
+            unitDragActive = true;
+            groundMoveActive = false;
             targetWorld = { x: world.x, y: world.y };
             return true;
         },
         onPointerMove(prop, world) {
-            if (!active) return;
+            if (!unitDragActive) return;
             targetWorld = { x: world.x, y: world.y };
         },
-        onPointerUp(prop) {
-            active = false;
-            targetWorld = null;
+        onPointerUp() {
+            unitDragActive = false;
+            if (!groundMoveActive) targetWorld = null;
+        },
+        setGroundMoveTarget(_prop, world) {
+            unitDragActive = false;
+            groundMoveActive = true;
+            targetWorld = { x: world.x, y: world.y };
+        },
+        updateGroundMoveTarget(_prop, world) {
+            if (!groundMoveActive || !targetWorld) return;
+            targetWorld = { x: world.x, y: world.y };
         },
         tick(prop, dt) {
-            if (!active || !targetWorld) return;
+            if (!targetWorld || (!unitDragActive && !groundMoveActive)) return;
             const config = getRollToCursorConfig(prop);
             const dx = targetWorld.x - prop.x;
             const dy = targetWorld.y - prop.y;
             const dist = Math.hypot(dx, dy);
             if (dist < config.stopRadius) {
                 decelerateRoll(prop, dt, config);
+                if (groundMoveActive) {
+                    const speed = Math.hypot(prop.vx ?? 0, prop.vy ?? 0);
+                    if (speed < 0.5) {
+                        groundMoveActive = false;
+                        targetWorld = null;
+                    }
+                }
                 return;
             }
             steerRollToward(prop, dx / dist, dy / dist, dt, config);
         },
         getPathOverlay(prop) {
-            if (!active || !targetWorld) return null;
+            if (!targetWorld || (!unitDragActive && !groundMoveActive)) return null;
             return { mode: "direct", fromX: prop.x, fromY: prop.y, targetX: targetWorld.x, targetY: targetWorld.y };
         },
         reset() {
-            active = false;
-            targetWorld = null;
+            clearTarget();
         },
     };
 }

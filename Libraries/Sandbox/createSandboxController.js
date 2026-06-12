@@ -27,6 +27,8 @@ import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
  * @property {(ctx: CanvasRenderingContext2D, prop: object) => void} [drawOverlay]
  * @property {(ctx: CanvasRenderingContext2D) => void} [drawWorldOverlay]
  * @property {(prop: object) => import("../../Render/map/drawActivePathOverlay.js").ActivePathOverlay | null} [getPathOverlay]
+ * @property {(prop: object, world: { x: number, y: number }) => void} [setGroundMoveTarget]
+ * @property {(prop: object, world: { x: number, y: number }) => void} [updateGroundMoveTarget]
  * @property {() => void} [reset]
  */
 const MARQUEE_BOUNDS = createAabb();
@@ -56,6 +58,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     const MARQUEE_CLICK_THRESHOLD_PX = 4;
     /** @type {{ pointerId: number, startClientX: number, startClientY: number, startWorld: { x: number, y: number }, currentWorld: { x: number, y: number } } | null} */
     let marqueeSelect = null;
+    /** @type {{ pointerId: number, prop: object, behavior: SandboxBehavior } | null} */
+    let groundNav = null;
     const entityMeta = () => getSandboxEntityMeta(state);
     const spawnAsset = () => {
         const spawnId = session.getSpawnPropId();
@@ -101,6 +105,18 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     const resetBehaviors = () => {
         for (const behavior of behaviors) behavior.reset?.();
         interactionBehavior = null;
+        groundNav = null;
+    };
+    /** @returns {{ prop: object, behavior: SandboxBehavior } | null} */
+    const resolveGroundMove = () => {
+        const prop = session.getSelectedProp();
+        const behavior = resolveBehavior();
+        if (!prop || !behavior?.setGroundMoveTarget) return null;
+        return { prop, behavior };
+    };
+    /** @param {{ prop: object, behavior: SandboxBehavior }} move @param {{ x: number, y: number }} world */
+    const issueGroundMove = (move, world) => {
+        move.behavior.setGroundMoveTarget(move.prop, world);
     };
     /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
     const tryCanvasInput = (world, e) => {
@@ -114,10 +130,19 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         const registry = state.entityRegistry;
         if (e.button === 2) {
             const hit = findWorldPropAtInView(registry, combatSpatial, world.x, world.y);
-            if (!hit) return;
-            e.preventDefault();
-            e.stopPropagation();
-            session.deleteProp(hit);
+            if (hit) {
+                e.preventDefault();
+                e.stopPropagation();
+                session.deleteProp(hit);
+                return;
+            }
+            const groundMove = resolveGroundMove();
+            if (groundMove) {
+                issueGroundMove(groundMove, world);
+                e.preventDefault();
+                e.stopPropagation();
+                session.sync();
+            }
             return;
         }
         if (e.button !== 0) return;
@@ -161,6 +186,16 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             }
             return;
         }
+        const groundMove = resolveGroundMove();
+        if (groundMove) {
+            issueGroundMove(groundMove, world);
+            groundNav = { pointerId: e.pointerId, prop: groundMove.prop, behavior: groundMove.behavior };
+            canvas.setPointerCapture(e.pointerId);
+            e.preventDefault();
+            e.stopPropagation();
+            session.sync();
+            return;
+        }
         marqueeSelect = { pointerId: e.pointerId, startClientX: e.clientX, startClientY: e.clientY, startWorld: world, currentWorld: world };
         canvas.setPointerCapture(e.pointerId);
         e.preventDefault();
@@ -177,6 +212,12 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             requestRedraw();
             return;
         }
+        if (groundNav) {
+            const world = clientToWorld(e.clientX, e.clientY);
+            groundNav.behavior.updateGroundMoveTarget?.(groundNav.prop, world);
+            requestRedraw();
+            return;
+        }
         if (!interactionBehavior) return;
         const prop = session.getSelectedProp();
         if (!prop) return;
@@ -188,6 +229,17 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     const onPointerUp = (e) => {
         releaseButtonPointerHold(state);
         const canvas = getCanvas();
+        if (groundNav) {
+            const nav = groundNav;
+            groundNav = null;
+            releasePointerCapture(canvas, e);
+            const world = clientToWorld(e.clientX, e.clientY);
+            nav.behavior.updateGroundMoveTarget?.(nav.prop, world);
+            e.preventDefault();
+            e.stopPropagation();
+            session.sync();
+            return;
+        }
         if (marqueeSelect) {
             const drag = marqueeSelect;
             marqueeSelect = null;
@@ -362,6 +414,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             padWireMode = false;
             padWireCursor = null;
             marqueeSelect = null;
+            groundNav = null;
             resetBehaviors();
             session.setUiSync(null);
         },

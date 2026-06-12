@@ -26,6 +26,15 @@ export function createRollToCursorHpaBehavior(state) {
         onPointerUp() {
             dragging = false;
         },
+        setGroundMoveTarget(_prop, world) {
+            dragging = false;
+            targetWorld = { x: world.x, y: world.y };
+            hpaNav.reset();
+        },
+        updateGroundMoveTarget(_prop, world) {
+            if (!targetWorld) return;
+            targetWorld = { x: world.x, y: world.y };
+        },
         tick(prop, dt) {
             if (!targetWorld) return;
             const config = getRollToCursorConfig(prop, { stopRadius: 8 });
