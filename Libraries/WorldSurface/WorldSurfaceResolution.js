@@ -1,5 +1,4 @@
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
-
 /** @typedef {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} WorldSurfaceSettings */
 /** @param {WorldSurfaceSettings} settings */
 export function getTexelResolution(settings) {
