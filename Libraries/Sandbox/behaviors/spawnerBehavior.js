@@ -17,7 +17,7 @@ export function createSpawnerBehavior() {
             getConfig: (prop) => getSpawnerDragConfig(prop, getPropAsset(prop.type)),
             onAim: aimSpawnerFacing,
             onLaunch(prop, shot, host) {
-                fireSpawner(host.getWorldState(), prop, { nx: shot.nx, ny: shot.ny, power: shot.power });
+                fireSpawner(host.getSimState(), prop, { nx: shot.nx, ny: shot.ny, power: shot.power });
             },
         }),
         supports(_prop, asset) {

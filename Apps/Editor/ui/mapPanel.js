@@ -12,7 +12,7 @@ export function refreshMapPanelInputs() {
 }
 /** @param {string} label @param {"playAreaCols" | "playAreaRows"} key @param {import("../state.js").TileLabGameState} state @param {() => void} onPreviewChange @param {() => void} refreshBoundInputs */
 function addPlayAreaSlider(panel, label, key, state, onPreviewChange, refreshBoundInputs) {
-    const { labPlayConfig, labCavernConfig } = state;
+    const { playConfig, cavernConfig } = state.editor;
     const maxIndex = PLAY_AREA_CELL_OPTIONS.length - 1;
     panel.appendChild(
         new SliderControl(
@@ -20,10 +20,10 @@ function addPlayAreaSlider(panel, label, key, state, onPreviewChange, refreshBou
             0,
             maxIndex,
             1,
-            playAreaCellsToIndex(labPlayConfig[key]),
+            playAreaCellsToIndex(playConfig[key]),
             (index) => {
-                labPlayConfig[key] = PLAY_AREA_CELL_OPTIONS[index];
-                syncCavernBoundsFromPlay(state.viewport, labPlayConfig, labCavernConfig, { center: false, syncSizeFromPlay: true });
+                playConfig[key] = PLAY_AREA_CELL_OPTIONS[index];
+                syncCavernBoundsFromPlay(state.viewport, playConfig, cavernConfig, { center: false, syncSizeFromPlay: true });
                 refreshBoundInputs();
                 onPreviewChange();
             },
@@ -33,7 +33,7 @@ function addPlayAreaSlider(panel, label, key, state, onPreviewChange, refreshBou
 }
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onGenerated */
 export function buildMapPanel(state, onGenerated) {
-    const { labPlayConfig, labCavernConfig } = state;
+    const { playConfig, cavernConfig } = state.editor;
     const panel = document.getElementById("mapSettingsPanel");
     panel.innerHTML = "";
     const onPreviewChange = () => paintMapOverviewFrame(state);
@@ -70,7 +70,7 @@ export function buildMapPanel(state, onGenerated) {
         opt.textContent = mode === "rect" ? "Rectangle" : mode === "circle" ? "Circle" : "Donut";
         modeSelect.appendChild(opt);
     }
-    modeSelect.value = labCavernConfig.boundsMode;
+    modeSelect.value = cavernConfig.boundsMode;
     modeField.append(modeLabel, modeSelect);
     cavernSection.appendChild(modeField);
     const rectFields = document.createElement("div");
@@ -83,8 +83,8 @@ export function buildMapPanel(state, onGenerated) {
     syncBtn.className = "secondary";
     syncBtn.textContent = "Center bounds on camera";
     syncBtn.addEventListener("click", () => {
-        syncCavernBoundsFromPlay(state.viewport, labPlayConfig, labCavernConfig);
-        migrateCavernConfigForMode(labCavernConfig);
+        syncCavernBoundsFromPlay(state.viewport, playConfig, cavernConfig);
+        migrateCavernConfigForMode(cavernConfig);
         refreshBoundInputs();
         onPreviewChange();
     });
@@ -93,10 +93,10 @@ export function buildMapPanel(state, onGenerated) {
     addNumberField(
         rectFields,
         "Bounds col",
-        () => labCavernConfig.boundsCol,
+        () => cavernConfig.boundsCol,
         (v) => {
-            labCavernConfig.boundsCol = Math.round(v);
-            migrateCavernConfigForMode(labCavernConfig);
+            cavernConfig.boundsCol = Math.round(v);
+            migrateCavernConfigForMode(cavernConfig);
         },
         undefined,
         onPreviewChange,
@@ -105,10 +105,10 @@ export function buildMapPanel(state, onGenerated) {
     addNumberField(
         rectFields,
         "Bounds row",
-        () => labCavernConfig.boundsRow,
+        () => cavernConfig.boundsRow,
         (v) => {
-            labCavernConfig.boundsRow = Math.round(v);
-            migrateCavernConfigForMode(labCavernConfig);
+            cavernConfig.boundsRow = Math.round(v);
+            migrateCavernConfigForMode(cavernConfig);
         },
         undefined,
         onPreviewChange,
@@ -117,10 +117,10 @@ export function buildMapPanel(state, onGenerated) {
     addNumberField(
         rectFields,
         "Bounds cols",
-        () => labCavernConfig.boundsCols,
+        () => cavernConfig.boundsCols,
         (v) => {
-            labCavernConfig.boundsCols = Math.max(1, Math.round(v));
-            migrateCavernConfigForMode(labCavernConfig);
+            cavernConfig.boundsCols = Math.max(1, Math.round(v));
+            migrateCavernConfigForMode(cavernConfig);
         },
         { min: 1 },
         onPreviewChange,
@@ -129,10 +129,10 @@ export function buildMapPanel(state, onGenerated) {
     addNumberField(
         rectFields,
         "Bounds rows",
-        () => labCavernConfig.boundsRows,
+        () => cavernConfig.boundsRows,
         (v) => {
-            labCavernConfig.boundsRows = Math.max(1, Math.round(v));
-            migrateCavernConfigForMode(labCavernConfig);
+            cavernConfig.boundsRows = Math.max(1, Math.round(v));
+            migrateCavernConfigForMode(cavernConfig);
         },
         { min: 1 },
         onPreviewChange,
@@ -141,10 +141,10 @@ export function buildMapPanel(state, onGenerated) {
     addNumberField(
         circleFields,
         "Center col",
-        () => labCavernConfig.centerCol,
+        () => cavernConfig.centerCol,
         (v) => {
-            labCavernConfig.centerCol = Math.round(v);
-            migrateCavernConfigForMode(labCavernConfig);
+            cavernConfig.centerCol = Math.round(v);
+            migrateCavernConfigForMode(cavernConfig);
         },
         undefined,
         onPreviewChange,
@@ -153,10 +153,10 @@ export function buildMapPanel(state, onGenerated) {
     addNumberField(
         circleFields,
         "Center row",
-        () => labCavernConfig.centerRow,
+        () => cavernConfig.centerRow,
         (v) => {
-            labCavernConfig.centerRow = Math.round(v);
-            migrateCavernConfigForMode(labCavernConfig);
+            cavernConfig.centerRow = Math.round(v);
+            migrateCavernConfigForMode(cavernConfig);
         },
         undefined,
         onPreviewChange,
@@ -165,10 +165,10 @@ export function buildMapPanel(state, onGenerated) {
     addNumberField(
         circleFields,
         "Radius (cells)",
-        () => labCavernConfig.outerRadiusCells,
+        () => cavernConfig.outerRadiusCells,
         (v) => {
-            labCavernConfig.outerRadiusCells = Math.max(1, Math.round(v));
-            migrateCavernConfigForMode(labCavernConfig);
+            cavernConfig.outerRadiusCells = Math.max(1, Math.round(v));
+            migrateCavernConfigForMode(cavernConfig);
         },
         { min: 1 },
         onPreviewChange,
@@ -177,22 +177,22 @@ export function buildMapPanel(state, onGenerated) {
     addNumberField(
         donutFields,
         "Donut thickness (cells)",
-        () => labCavernConfig.donutThicknessCells,
+        () => cavernConfig.donutThicknessCells,
         (v) => {
-            labCavernConfig.donutThicknessCells = Math.max(1, Math.min(labCavernConfig.outerRadiusCells - 1, Math.round(v)));
+            cavernConfig.donutThicknessCells = Math.max(1, Math.min(cavernConfig.outerRadiusCells - 1, Math.round(v)));
         },
         { min: 1 },
         onPreviewChange,
         boundInputs,
     );
     const updateModeVisibility = () => {
-        rectFields.hidden = labCavernConfig.boundsMode !== "rect";
-        circleFields.hidden = labCavernConfig.boundsMode === "rect";
-        donutFields.hidden = labCavernConfig.boundsMode !== "donut";
+        rectFields.hidden = cavernConfig.boundsMode !== "rect";
+        circleFields.hidden = cavernConfig.boundsMode === "rect";
+        donutFields.hidden = cavernConfig.boundsMode !== "donut";
     };
     modeSelect.addEventListener("change", () => {
-        labCavernConfig.boundsMode = /** @type {"rect" | "circle" | "donut"} */ (modeSelect.value);
-        migrateCavernConfigForMode(labCavernConfig);
+        cavernConfig.boundsMode = /** @type {"rect" | "circle" | "donut"} */ (modeSelect.value);
+        migrateCavernConfigForMode(cavernConfig);
         refreshBoundInputs();
         updateModeVisibility();
         onPreviewChange();
@@ -206,9 +206,9 @@ export function buildMapPanel(state, onGenerated) {
                 min,
                 max,
                 step,
-                labCavernConfig[key],
+                cavernConfig[key],
                 (val) => {
-                    labCavernConfig[key] = val;
+                    cavernConfig[key] = val;
                 },
                 format,
             ).element,
@@ -221,9 +221,9 @@ export function buildMapPanel(state, onGenerated) {
     previewLabel.className = "check-inline editor-map-preview-toggle";
     const previewInput = document.createElement("input");
     previewInput.type = "checkbox";
-    previewInput.checked = state.labShowMapOverviewGenBounds;
+    previewInput.checked = state.editor.showMapOverviewGenBounds;
     previewInput.addEventListener("change", () => {
-        state.labShowMapOverviewGenBounds = previewInput.checked;
+        state.editor.showMapOverviewGenBounds = previewInput.checked;
         onPreviewChange();
     });
     previewLabel.append(previewInput, document.createTextNode(" Show bounds on map overview"));

@@ -7,7 +7,7 @@ import { appendSectionTitle, addNumberField } from "./mapPanelFields.js";
 import { SliderControl } from "./controls/SliderControl.js";
 /** @param {import("../state.js").TileLabGameState} state @param {HTMLElement} mount @param {() => void} onChanged */
 export function buildMapWallToolPanel(state, mount, onChanged) {
-    const config = state.labWallToolConfig;
+    const config = state.editor.wallToolConfig;
     mount.innerHTML = "";
     const onPreviewChange = () => onChanged();
     /** @type {{ input: HTMLInputElement, getValue: () => number }[]} */
@@ -24,9 +24,9 @@ export function buildMapWallToolPanel(state, mount, onChanged) {
     previewLabel.className = "check-inline editor-map-preview-toggle";
     const previewInput = document.createElement("input");
     previewInput.type = "checkbox";
-    previewInput.checked = state.labShowMapOverviewWallBounds;
+    previewInput.checked = state.editor.showMapOverviewWallBounds;
     previewInput.addEventListener("change", () => {
-        state.labShowMapOverviewWallBounds = previewInput.checked;
+        state.editor.showMapOverviewWallBounds = previewInput.checked;
         onPreviewChange();
     });
     previewLabel.append(previewInput, document.createTextNode(" Show on map overview"));

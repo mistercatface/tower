@@ -10,10 +10,10 @@ function resolveSightColor(hit, source) {
 }
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {import("./SandboxHostPort.js").SandboxHostPort & { getWorldState?: () => object }} host
+ * @param {import("./SandboxHostPort.js").SandboxHostPort} host
  */
 export function drawSandboxLaserSights(ctx, host) {
-    const worldState = host.getWorldState?.();
+    const worldState = host.getSimState?.();
     if (!worldState) return;
     const camera = host.getCameraOrigin?.() ?? { x: 0, y: 0 };
     forEachArmedSandboxWorldProp(host, (prop) => {

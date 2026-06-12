@@ -1,3 +1,4 @@
+import { getSandboxEntityMeta } from "../Libraries/Sandbox/sandboxEntityMeta.js";
 /** @typedef {{ minX: number, minY: number, maxX: number, maxY: number }} BoundsRect */
 /** @typedef {{ kind: string, ref: object }} EntityRegistryEntry */
 /**
@@ -161,26 +162,30 @@ export function removeWorldPropFromState(state, prop) {
     const index = state.worldProps.indexOf(prop);
     if (index >= 0) state.worldProps.splice(index, 1);
     state.entityRegistry.unregister(prop);
+    getSandboxEntityMeta(state)?.delete(prop.id);
 }
 /** @param {object} state @param {object} pad */
 export function addPadToState(state, pad) {
-    state.sandboxPads.push(pad);
+    state.sandbox.pads.push(pad);
     state.entityRegistry.register("pad", pad);
 }
 /** @param {object} state @param {object} pad */
 export function removePadFromState(state, pad) {
-    const index = state.sandboxPads.indexOf(pad);
-    if (index >= 0) state.sandboxPads.splice(index, 1);
+    const index = state.sandbox.pads.indexOf(pad);
+    if (index >= 0) state.sandbox.pads.splice(index, 1);
     state.entityRegistry.unregister(pad);
+    getSandboxEntityMeta(state)?.delete(pad.id);
 }
 /** @param {object} state */
 export function clearWorldPropsInState(state) {
+    const meta = getSandboxEntityMeta(state);
+    for (let i = 0; i < state.worldProps.length; i++) meta?.delete(state.worldProps[i].id);
     state.worldProps = [];
     state.entityRegistry.clear("worldProp");
 }
 /** @param {object} state */
 export function clearPadsInState(state) {
-    state.sandboxPads = [];
+    state.sandbox.pads = [];
     state.entityRegistry.clear("pad");
 }
 /** @param {object[]} worldProps @param {number} worldX @param {number} worldY @param {number} padding */

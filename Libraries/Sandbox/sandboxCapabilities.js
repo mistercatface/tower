@@ -2,6 +2,7 @@ import { ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirec
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { syncWorldPropWeaponState } from "../Combat/worldPropWeaponState.js";
+import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
@@ -34,7 +35,6 @@ export function forEachArmedSandboxWorldProp(host, fn) {
         fn(prop);
     });
 }
-/** Props listed in the sandbox "Add" dropdown (excludes shard debris spawned from breaks). */
 /** @param {object | null | undefined} asset */
 export function isSandboxSpawnable(asset) {
     const sandbox = asset?.sandbox;
@@ -44,15 +44,17 @@ export function isSandboxSpawnable(asset) {
 /**
  * @param {object | null | undefined} asset
  * @param {import("./createSandboxController.js").SandboxBehavior[]} registeredBehaviors
+ * @param {object} state
  * @param {object | null | undefined} [prop]
  * @returns {string[]}
  */
-export function resolveSandboxBehaviors(asset, registeredBehaviors, prop = null) {
+export function resolveSandboxBehaviors(asset, registeredBehaviors, state, prop = null) {
     const byId = new Map(registeredBehaviors.map((behavior) => [behavior.id, behavior]));
-    if (prop?.sandboxBehaviorOverrides) {
+    const behaviorOverrides = prop ? getSandboxEntityMeta(state).getBehaviorOverrides(prop.id) : null;
+    if (behaviorOverrides) {
         /** @type {string[]} */
         const stamped = [];
-        for (const key of Object.keys(prop.sandboxBehaviorOverrides)) {
+        for (const key of Object.keys(behaviorOverrides)) {
             if (key === "inputGates") continue;
             if (byId.has(key)) stamped.push(key);
         }

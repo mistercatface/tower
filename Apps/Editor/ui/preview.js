@@ -22,8 +22,8 @@ function buildLabRuntimeProfile() {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function applyLabWorldRenderMode(state) {
-    if (!state.labCanvas) return;
-    getLabRenderer(state.labCanvas, state.labCtx, state).applyWorldRenderMode(state.worldRenderMode);
+    if (!state.editor.canvas) return;
+    getLabRenderer(state.editor.canvas, state.editor.ctx, state).applyWorldRenderMode(state.worldRenderMode);
 }
 function getLabRenderer(canvas, ctx, state) {
     const settings = getGameWorldSurfaceSettings();
@@ -55,8 +55,8 @@ export function pushEditorProfile(state) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function drawLabFrame(state) {
-    const canvas = state.labCanvas;
-    const ctx = state.labCtx;
+    const canvas = state.editor.canvas;
+    const ctx = state.editor.ctx;
     const viewport = state.viewport;
     const showVignette = document.getElementById("showVignetteInput").checked;
     const showWalls = document.getElementById("showWallsInput").checked;

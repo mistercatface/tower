@@ -7,7 +7,7 @@ import { drawCellBoundsPreview } from "./cellBoundsOverview.js";
 let overviewCtx = null;
 /** Blit cached map and draw live viewport / generation bounds — not part of the bake. */
 export function paintMapOverviewFrame(state) {
-    if (!state.labShowMapOverview) return;
+    if (!state.editor.showMapOverview) return;
     const stage = document.getElementById("mapOverviewStage");
     const canvas = document.getElementById("mapOverviewCanvas");
     if (!stage || !canvas || stage.hidden) return;
@@ -23,14 +23,14 @@ export function paintMapOverviewFrame(state) {
     const displayW = canvas.width;
     const displayH = canvas.height;
     refreshLabMapBoundsPreview(state);
-    if (state.labShowMapOverviewViewport) drawWorldBoundsBox(ctx, state.viewport.boundsClip, cache, displayW, displayH, "#00e5ff");
-    if (state.labShowMapOverviewGenBounds) {
-        drawWorldBoundsBox(ctx, state.labMapBoundsPreview.playArea, cache, displayW, displayH, "#76ff03", 2, [6, 4]);
-        const cavernConfig = state.labCavernConfig;
-        if (cavernConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.labMapBoundsPreview.cavern, cache, displayW, displayH, "#ff9800", 2);
+    if (state.editor.showMapOverviewViewport) drawWorldBoundsBox(ctx, state.viewport.boundsClip, cache, displayW, displayH, "#00e5ff");
+    if (state.editor.showMapOverviewGenBounds) {
+        drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.playArea, cache, displayW, displayH, "#76ff03", 2, [6, 4]);
+        const cavernConfig = state.editor.cavernConfig;
+        if (cavernConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.cavern, cache, displayW, displayH, "#ff9800", 2);
         else drawCavernBoundsPreview(ctx, cavernConfig, cache, displayW, displayH);
     }
-    if (state.labShowMapOverviewWallBounds) drawCellBoundsPreview(ctx, state.labWallToolConfig, state.labMapBoundsPreview.wall, cache, displayW, displayH, "#f44336", 2);
+    if (state.editor.showMapOverviewWallBounds) drawCellBoundsPreview(ctx, state.editor.wallToolConfig, state.editor.mapBoundsPreview.wall, cache, displayW, displayH, "#f44336", 2);
 }
 /** Vertical space for main map max-size when overview is visible. */
 export function estimateMapOverviewHeight(fallbackSize = 160) {

@@ -1,5 +1,5 @@
 import { buildSandboxPad } from "./sandboxPads.js";
-import { stampAssemblyGroupMember } from "./assemblies/assemblyLink.js";
+import { stampAssemblyEntityMember } from "./assemblies/assemblyLink.js";
 import { addPadToState } from "../../GameState/EntityRegistry.js";
 /**
  * @param {object} state
@@ -38,7 +38,7 @@ export function spawnAssemblyPads(state, layout, { groupId, resolvedId, groupFie
             options.buttonLinks = buttonLinks;
         }
         const pad = buildSandboxPad(state, entry.preset, entry.x, entry.y, options);
-        stampAssemblyGroupMember(pad, groupId, resolvedId, groupField);
+        stampAssemblyEntityMember(state, pad, groupId, resolvedId, groupField);
         addPadToState(state, pad);
     }
 }

@@ -1,38 +1,12 @@
 import { getGameState } from "../../GameState/GameState.js";
 import { SharedGameState } from "../../GameState/SharedGameState.js";
-import { createAabb } from "../../Libraries/Math/Aabb2D.js";
+import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { WallCollisionResolver } from "../../Libraries/Motion/WallCollisionResolver.js";
+import { TileLabEditorState } from "./TileLabEditorState.js";
+export { createLabMapBoundsPreview } from "./TileLabEditorState.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
-function createLabMapBoundsPreview() {
-    return {
-        playArea: createAabb(),
-        cavern: createAabb(),
-        playViewportX: NaN,
-        playViewportY: NaN,
-        playCols: NaN,
-        playRows: NaN,
-        cavernMode: "",
-        cavernCol: NaN,
-        cavernRow: NaN,
-        cavernCols: NaN,
-        cavernRows: NaN,
-        centerCol: NaN,
-        centerRow: NaN,
-        outerRadiusCells: NaN,
-        donutThicknessCells: NaN,
-        wall: createAabb(),
-        wallMode: "",
-        wallCol: NaN,
-        wallRow: NaN,
-        wallCols: NaN,
-        wallRows: NaN,
-        wallCenterCol: NaN,
-        wallCenterRow: NaN,
-        wallOuterRadiusCells: NaN,
-    };
-}
 /** @param {object} entity @param {object} hit @param {object | null} state */
 function applyWallDamageHit(entity, hit, state) {
     if (!entity.canDamageWalls || !state) return;
@@ -50,39 +24,10 @@ export class TileLabGameState extends SharedGameState {
         const rand = Math.floor(1 + Math.random() * 1000000000);
         this.mapSeed = rand;
         this.floorSeed = rand;
-        this.labPlayConfig = { playAreaCols: 256, playAreaRows: 256 };
-        this.labCavernConfig = {
-            boundsMode: "rect",
-            boundsCol: -8,
-            boundsRow: -8,
-            boundsCols: 32,
-            boundsRows: 32,
-            centerCol: 8,
-            centerRow: 8,
-            outerRadiusCells: 16,
-            donutThicknessCells: 4,
-            fillChance: 0.45,
-            iterations: 3,
-            wallHeightLevel: 10,
-        };
-        this.labWallToolConfig = { boundsMode: "rect", boundsCol: 0, boundsRow: 0, boundsCols: 8, boundsRows: 8, centerCol: 4, centerRow: 4, outerRadiusCells: 4, wallHeightLevel: 1 };
-        this.labMapBoundsPreview = createLabMapBoundsPreview();
-        this.labShowSandboxPanel = true;
-        this.labShowProfilePanel = true;
-        this.labShowMapPanel = false;
-        this.labShowAnimationPreview = false;
-        this.labShowMapOverview = true;
-        this.labShowMapOverviewViewport = true;
-        this.labShowMapOverviewGenBounds = true;
-        this.labShowMapOverviewWallBounds = false;
         this.worldRenderMode = "radial";
         this.viewport = new Viewport(0, 0, 1);
-        this.labCanvas = null;
-        this.labCtx = null;
-        this.sandboxPads = [];
-        this.sandboxSurfaceProfileZones = [];
-        this.sandboxAssemblyGuides = [];
-        this.sandboxAssemblyInstances = [];
+        this.sandbox = new SandboxWorldState();
+        this.editor = new TileLabEditorState();
         this.wallResolver = new WallCollisionResolver({
             onWallDamage: (entity, hit) => {
                 if (!entity.canDamageWalls) return;

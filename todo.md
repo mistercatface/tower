@@ -1,3 +1,11 @@
+# WorldProp / state shape cleanup
+
+- [x] **Sandbox/editor fields off `WorldProp`** — `SandboxEntityMetaStore` on `state.sandbox.entityMeta`; behavior, camera, path visual, assembly membership keyed by entity id.
+- [ ] **Combat as one owned object** — group `weaponLoadout`, `weaponSlotState`, `turrets`, `turretController`, `isManualShootActive` under a single combat host (e.g. `prop.combat`) instead of loose fields + lazy controller attachment.
+- [ ] **Type-specific state structs** — flipper (`_flipper*`), stand tip (`rollAngle`, `isFallen`), rolling (`rollQuat`) should live in per-kind state bags, not coexist as optional fields on every prop.
+- [x] **Split sim state from tilelab editor state** — `state.sandbox` (pads, assemblies, meta) vs `state.editor` (canvas, map UI, panel toggles); sandbox host uses `getSimState()` / `getSandbox()`.
+- [ ] **Locomotion agent boundary** — replace `initMobileAgent` field graft (`mobile`, `separation`, `desiredX/Y` on the prop) with an explicit locomotion component or contract object so humanoid/roll-to-cursor props aren't hybrid duck-typed bodies.
+
 # Parameter soup / library-style refactors
 
 - [x] **`drawImageQuad` src/dst struct** — `ImageQuadBlit` `{ img, sx0..sy1, d0..d3 }`; textured cells pass `{ ...cell, img }`.

@@ -119,7 +119,7 @@ export function createEditorApp() {
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
         state.scheduler.update(dt);
-        tickSandboxCameraFollow(state.viewport, state.entityRegistry, dt);
+        tickSandboxCameraFollow(state.viewport, state, state.entityRegistry, dt);
         sandboxController?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
         drawLabFrame(state);
@@ -127,9 +127,9 @@ export function createEditorApp() {
     }
     events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);
     events.on(Events.UI_UPDATE, () => refreshEditorUi(state));
-    window.addEventListener("resize", () => state.viewport.setCanvasSize(state.labCanvas.width, state.labCanvas.height));
+    window.addEventListener("resize", () => state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height));
     mountEditorUi(state);
-    state.viewport.setCanvasSize(state.labCanvas.width, state.labCanvas.height);
+    state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);
     fitLabStageToView(state);
     requestAnimationFrame(loop);
 }

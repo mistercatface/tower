@@ -11,6 +11,7 @@
  * @property {(prop: object) => void} addProp
  * @property {(prop: object) => void} removeProp
  * @property {() => void} clearProps
- * @property {() => object} getWorldState
+ * @property {() => import("../../GameState/SharedGameState.js").SharedGameState} getSimState
+ * @property {() => import("../../GameState/SandboxWorldState.js").SandboxWorldState} getSandbox
  */
 export {};

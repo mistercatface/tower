@@ -69,7 +69,7 @@ export function teardownPullPad(state, pad) {
 export function syncSandboxPadPower(state) {
     /** @type {Map<string, boolean>} */
     const poweredByPadId = new Map();
-    const pads = state.sandboxPads;
+    const pads = state.sandbox.pads;
     for (let i = 0; i < pads.length; i++) {
         const pad = pads[i];
         if (pad.preset !== "button") continue;

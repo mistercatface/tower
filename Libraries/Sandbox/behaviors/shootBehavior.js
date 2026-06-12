@@ -27,7 +27,7 @@ export function createShootBehavior() {
             isShooting = false;
         },
         tick(prop, dt, host) {
-            const state = host.getWorldState?.();
+            const state = host.getSimState?.();
             if (!state) return;
             manualFireWorldProp(state, prop, aimX, aimY, dt, isShooting);
         },

@@ -62,7 +62,7 @@ export function drawAssemblySurfaceZone(ctx, zone, state, viewport) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
 export function drawSandboxAssemblySurfaces(ctx, state, viewport) {
-    const zones = state.sandboxSurfaceProfileZones;
+    const zones = state.sandbox.surfaceProfileZones;
     if (!zones?.length) return;
     ctx.save();
     for (let i = 0; i < zones.length; i++) {
@@ -106,7 +106,7 @@ function drawAssemblyGuideOverlay(ctx, guide) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} state */
 export function drawSandboxAssemblyGuides(ctx, state) {
-    const guides = state.sandboxAssemblyGuides;
+    const guides = state.sandbox.assemblyGuides;
     if (!guides?.length) return;
     ctx.save();
     for (let i = 0; i < guides.length; i++) {

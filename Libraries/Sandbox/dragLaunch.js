@@ -104,7 +104,7 @@ export function releaseDragLaunch(aim, config) {
  * @param {import("./SandboxHostPort.js").SandboxHostPort | null | undefined} host
  */
 export function buildDragLaunchAimLineContext(prop, host) {
-    const state = host?.getWorldState?.();
+    const state = host?.getSimState?.();
     if (!state || !prop) return null;
     const radius = prop.radius;
     const circleTargets = [];
@@ -150,7 +150,7 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
  *
  * @param {{
  *   id: string,
- *   getConfig: (prop: object) => DragLaunchConfig,
+ *   getConfig: (prop: object, host?: import("./SandboxHostPort.js").SandboxHostPort) => DragLaunchConfig,
  *   canStart?: (prop: object, world: { x: number, y: number }, host: import("./SandboxHostPort.js").SandboxHostPort) => boolean,
  *   onLaunch?: (prop: object, shot: { anchorX: number, anchorY: number, nx: number, ny: number, power: number }, host: import("./SandboxHostPort.js").SandboxHostPort) => void,
  *   onAim?: (prop: object, aim: DragLaunchAim) => void,
@@ -170,18 +170,18 @@ export function createDragLaunchInteraction(spec) {
             if (spec.canStart && !spec.canStart(prop, world, host)) return false;
             wakePushableBody(prop);
             aim = createDragLaunchAim(prop.x, prop.y, world.x, world.y);
-            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig(prop));
+            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig(prop, host));
             spec.onAim?.(prop, aim);
             return true;
         },
-        onPointerMove(prop, world) {
+        onPointerMove(prop, world, _e, host) {
             if (!aim?.active) return;
-            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig(prop));
+            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig(prop, host));
             spec.onAim?.(prop, aim);
         },
         onPointerUp(prop, _e, host) {
             if (!aim?.active) return;
-            const shot = releaseDragLaunch(aim, spec.getConfig(prop));
+            const shot = releaseDragLaunch(aim, spec.getConfig(prop, host));
             aim = null;
             if (!shot) return;
             if (spec.onLaunch) spec.onLaunch(prop, shot, host);
@@ -189,7 +189,7 @@ export function createDragLaunchInteraction(spec) {
         },
         drawOverlay(ctx, prop, host) {
             if (!aim?.active) return;
-            drawDragLaunchPreview(ctx, aim, spec.getConfig(prop), buildCtx(prop, host), resolveLine);
+            drawDragLaunchPreview(ctx, aim, spec.getConfig(prop, host), buildCtx(prop, host), resolveLine);
         },
         reset() {
             aim = null;

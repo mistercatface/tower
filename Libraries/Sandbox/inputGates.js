@@ -1,4 +1,5 @@
 import { resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
+import { resolveSandboxEntityLinkValue } from "./sandboxEntityMeta.js";
 import { isKinematicallyActive } from "../Spatial/collision/entityBroadphase.js";
 /**
  * @typedef {"self" | "groupWorldProps" | "groupPushables"} InputGateScope
@@ -35,17 +36,18 @@ function isExcludedFromGate(entity, excludeStates) {
 /**
  * @param {InputGateScope} scope
  * @param {object} prop
+ * @param {object} state
  * @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry
  * @param {string | undefined} linkField
  */
-export function resolveInputGateScope(scope, prop, registry, linkField) {
+export function resolveInputGateScope(scope, prop, state, registry, linkField) {
     if (scope === "self") return [prop];
-    const linkValue = linkField ? prop[linkField] : undefined;
+    const linkValue = linkField ? resolveSandboxEntityLinkValue(state, prop, linkField) : undefined;
     if (linkValue == null) return [];
     const members = [];
     registry.forEachOfKind("worldProp", (entity) => {
         if (entity.isDead) return;
-        if (entity[linkField] !== linkValue) return;
+        if (resolveSandboxEntityLinkValue(state, entity, linkField) !== linkValue) return;
         if (scope === "groupPushables" && !entity.strategy?.isPushable) return;
         members.push(entity);
     });
@@ -62,9 +64,9 @@ function scopePassesUntil(entities, until, excludeStates) {
     }
     return true;
 }
-/** @param {InputGateRule} rule @param {object} prop @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
-export function evaluateInputGateRule(rule, prop, registry) {
-    const entities = resolveInputGateScope(rule.scope, prop, registry, rule.link);
+/** @param {InputGateRule} rule @param {object} prop @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
+export function evaluateInputGateRule(rule, prop, state, registry) {
+    const entities = resolveInputGateScope(rule.scope, prop, state, registry, rule.link);
     if (entities.length === 0) return true;
     return scopePassesUntil(entities, rule.until, rule.excludeStates);
 }
@@ -75,12 +77,13 @@ export function evaluateInputGateRule(rule, prop, registry) {
  * @param {import("./SandboxHostPort.js").SandboxHostPort} host
  */
 export function evaluateInputGates(behaviorId, prop, asset, host) {
-    const rules = resolveWorldPropInputGateRules(prop, asset, behaviorId);
+    const simState = host.getSimState();
+    const rules = resolveWorldPropInputGateRules(simState, prop, asset, behaviorId);
     if (rules.length === 0) return { allowed: true };
-    const registry = host.getWorldState().entityRegistry;
+    const registry = simState.entityRegistry;
     for (let i = 0; i < rules.length; i++) {
         const rule = rules[i];
-        if (!evaluateInputGateRule(rule, prop, registry)) return { allowed: false, failedRule: rule };
+        if (!evaluateInputGateRule(rule, prop, simState, registry)) return { allowed: false, failedRule: rule };
     }
     return { allowed: true };
 }

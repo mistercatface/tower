@@ -5,6 +5,7 @@ import { fillCircle, strokeCircle } from "../Canvas/CanvasPath.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { drawPitInterior } from "../Spatial/zones/pit.js";
 import { PAD_PRESETS } from "./padPresets.js";
+import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { runPadEffect, syncButtonFlipperLinks, syncPullPadWalls, syncSandboxPadPower, teardownPullPad, tickButtonSpawnerLinks } from "./padEffects.js";
 import {
     DEFAULT_BUTTON_INPUT_MODE,
@@ -63,7 +64,7 @@ function pointInPad(pad, wx, wy, padding = POINTER_HIT_PADDING) {
 }
 /** @param {object} state @param {number} wx @param {number} wy */
 export function hitTestPad(state, wx, wy) {
-    const pads = state.sandboxPads;
+    const pads = state.sandbox.pads;
     for (let i = pads.length - 1; i >= 0; i--) if (pointInPad(pads[i], wx, wy)) return pads[i];
     return null;
 }
@@ -81,8 +82,8 @@ export function handlePadPointerDown(state, pad, world) {
 }
 /** @param {object} state */
 export function releaseButtonPointerHold(state) {
-    for (let i = 0; i < state.sandboxPads.length; i++) {
-        const pad = state.sandboxPads[i];
+    for (let i = 0; i < state.sandbox.pads.length; i++) {
+        const pad = state.sandbox.pads[i];
         if (pad.preset !== "button" || isMassButtonInputMode(pad.inputMode) || pad.inputMode === "toggle") continue;
         if (pad.inputMode === "tap" && pad.invert) runButtonPadEffects(state, pad);
         pad._pointerHeld = false;
@@ -113,7 +114,7 @@ export function releaseButtonPointerHold(state) {
 export function buildSandboxPad(state, preset, x, y, options = {}) {
     const def = PAD_PRESETS[preset];
     if (!def) throw new Error(`Unknown pad preset "${preset}"`);
-    const id = options.id ?? `${preset}:${state.sandboxPads.length + 1}`;
+    const id = options.id ?? `${preset}:${state.sandbox.pads.length + 1}`;
     /** @type {object} */
     let pad;
     if (preset === "pull") {
@@ -163,27 +164,27 @@ export function buildSandboxPad(state, preset, x, y, options = {}) {
  * @param {object} [options]
  */
 export function spawnSandboxPad(host, preset, x, y, options = {}) {
-    const state = host.getWorldState();
+    const state = host.getSimState();
     const pad = buildSandboxPad(state, preset, x, y, options);
     addPadToState(state, pad);
     return pad;
 }
 /** @param {object} state @param {number} index */
 function removeSandboxPadAt(state, index) {
-    const pad = state.sandboxPads[index];
+    const pad = state.sandbox.pads[index];
     if (pad.preset === "pull") teardownPullPad(state, pad);
     removePadFromState(state, pad);
 }
 /** @param {object} state @param {string} id */
 export function deleteSandboxPad(state, id) {
-    const pads = state.sandboxPads;
+    const pads = state.sandbox.pads;
     const index = pads.findIndex((pad) => pad.id === id);
     if (index >= 0) removeSandboxPadAt(state, index);
 }
 /** @param {object} state */
 export function clearSandboxPads(state) {
-    for (let i = state.sandboxPads.length - 1; i >= 0; i--) {
-        const pad = state.sandboxPads[i];
+    for (let i = state.sandbox.pads.length - 1; i >= 0; i--) {
+        const pad = state.sandbox.pads[i];
         if (pad.preset === "pull") teardownPullPad(state, pad);
     }
     clearPadsInState(state);
@@ -279,7 +280,7 @@ function resizeCirclePad(pad, radius) {
  */
 export function patchSandboxPad(state, id, patch) {
     const pad = state.entityRegistry.get(id);
-    if (!pad || pad.sandboxGroupId) return false;
+    if (!pad || getSandboxEntityMeta(state).getAssemblyGroupId(pad.id)) return false;
     if (patch.x != null || patch.y != null) {
         if (patch.x != null) pad.x = patch.x;
         if (patch.y != null) pad.y = patch.y;
@@ -320,8 +321,8 @@ export function patchSandboxPad(state, id, patch) {
 /** @param {object} state */
 export function listSandboxPads(state) {
     const counts = {};
-    return state.sandboxPads
-        .filter((pad) => !pad.sandboxGroupId)
+    return state.sandbox.pads
+        .filter((pad) => !getSandboxEntityMeta(state).getAssemblyGroupId(pad.id))
         .map((pad) => {
             counts[pad.preset] = (counts[pad.preset] ?? 0) + 1;
             const n = counts[pad.preset];
@@ -397,7 +398,7 @@ function tickButtonPad(state, pad) {
 }
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */
 export function tickSandboxPads(state, spatialFrame, dt) {
-    const pads = state.sandboxPads;
+    const pads = state.sandbox.pads;
     if (!pads.length) return;
     const dtSec = dt / 1000;
     processFloorShapes(spatialFrame, pads, {
@@ -425,7 +426,7 @@ export function tickSandboxPads(state, spatialFrame, dt) {
 export const sandboxPadEffectPass = {
     zIndex: 10.5,
     draw(state, viewport, ctx) {
-        const pads = state.sandboxPads;
+        const pads = state.sandbox.pads;
         if (!pads.length) return;
         ctx.save();
         for (let i = 0; i < pads.length; i++) {

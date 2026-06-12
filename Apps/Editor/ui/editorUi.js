@@ -32,9 +32,9 @@ function onMapCanvasResize(state, size) {
     drawLabFrame(state);
 }
 function resizeCanvases(state) {
-    if (animCanvasResize && state.labShowAnimationPreview) animCanvasResize.setSize(animCanvasResize.getSize());
+    if (animCanvasResize && state.editor.showAnimationPreview) animCanvasResize.setSize(animCanvasResize.getSize());
     if (mapCanvasResize) mapCanvasResize.setSize(mapCanvasResize.getSize());
-    else onMapCanvasResize(state, state.labCanvas.width);
+    else onMapCanvasResize(state, state.editor.canvas.width);
     paintMapOverviewFrame(state);
 }
 /** @param {import("../state.js").TileLabGameState} state */
@@ -49,8 +49,8 @@ export function mountEditorUi(state) {
     const mapStage = document.getElementById("mapStage");
     const canvas = document.getElementById("gameCanvas");
     if (canvas.parentElement !== mapStage) mapStage.appendChild(canvas);
-    state.labCanvas = canvas;
-    state.labCtx = canvas.getContext("2d");
+    state.editor.canvas = canvas;
+    state.editor.ctx = canvas.getContext("2d");
     initPresetSelect(listShippedSurfaceProfileIds());
     initProfileEditor({
         onChange: (options = {}) => {
@@ -83,9 +83,9 @@ export function mountEditorUi(state) {
     });
     syncWorldRenderModeUi(state);
     const overviewViewportInput = document.getElementById("showMapOverviewViewportInput");
-    overviewViewportInput.checked = state.labShowMapOverviewViewport;
+    overviewViewportInput.checked = state.editor.showMapOverviewViewport;
     overviewViewportInput.addEventListener("change", (e) => {
-        state.labShowMapOverviewViewport = /** @type {HTMLInputElement} */ (e.target).checked;
+        state.editor.showMapOverviewViewport = /** @type {HTMLInputElement} */ (e.target).checked;
     });
     fitLabStageToView(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
@@ -94,7 +94,7 @@ export function mountEditorUi(state) {
         initialSize: 200,
         minSize: 128,
         maxSize: () => {
-            if (!state.labShowAnimationPreview) return 128;
+            if (!state.editor.showAnimationPreview) return 128;
             const container = document.querySelector(".map-container");
             const rect = container.getBoundingClientRect();
             const column = document.querySelector(".map-viewport-column");
@@ -105,7 +105,7 @@ export function mountEditorUi(state) {
         },
     });
     initAnimationPreview(animCanvas, buildProfileFromEditor);
-    mapCanvasResize = applySquareCanvasResize(state.labCanvas, {
+    mapCanvasResize = applySquareCanvasResize(state.editor.canvas, {
         host: document.getElementById("mapStage"),
         initialSize: 320,
         minSize: 160,
@@ -115,8 +115,8 @@ export function mountEditorUi(state) {
             const column = document.querySelector(".map-viewport-column");
             const gap = parseFloat(getComputedStyle(column).gap) || 10;
             const controlsH = (document.getElementById("labZoomControl")?.offsetHeight ?? 0) + (document.getElementById("labSpeedControl")?.offsetHeight ?? 0) + gap * 2;
-            const animH = state.labShowAnimationPreview ? estimateAnimationPreviewHeight() + gap : 0;
-            const overviewH = state.labShowMapOverview ? estimateMapOverviewHeight() + gap : 0;
+            const animH = state.editor.showAnimationPreview ? estimateAnimationPreviewHeight() + gap : 0;
+            const overviewH = state.editor.showMapOverview ? estimateMapOverviewHeight() + gap : 0;
             return Math.max(160, Math.floor(Math.min(rect.width, rect.height - controlsH - animH - overviewH) - 8));
         },
         onResize: (size) => onMapCanvasResize(state, size),

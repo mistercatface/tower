@@ -20,9 +20,9 @@ import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flip
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} requestRedraw */
 function createSandboxHost(state, requestRedraw) {
     return {
-        getCanvas: () => state.labCanvas,
+        getCanvas: () => state.editor.canvas,
         clientToWorld(clientX, clientY) {
-            return canvasClientToWorld(state.labCanvas, state.viewport, clientX, clientY);
+            return canvasClientToWorld(state.editor.canvas, state.viewport, clientX, clientY);
         },
         getCameraOrigin: () => ({ x: state.viewport.x, y: state.viewport.y }),
         requestRedraw,
@@ -35,7 +35,8 @@ function createSandboxHost(state, requestRedraw) {
         addProp: (prop) => addWorldPropToState(state, prop),
         removeProp: (prop) => removeWorldPropFromState(state, prop),
         clearProps: () => clearWorldPropsInState(state),
-        getWorldState: () => state,
+        getSimState: () => state,
+        getSandbox: () => state.sandbox,
     };
 }
 /** @type {ReturnType<typeof createSandboxController> | null} */

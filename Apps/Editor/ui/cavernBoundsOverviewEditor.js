@@ -4,7 +4,7 @@ import { applyCellBoundsDrag, applyCellBoundsDragAtPointer, cellBoundsCursor, hi
 import { drawWorldBoundsBox, drawWorldCircle, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
 export { drawWorldBoundsBox, drawWorldCircle } from "./mapOverviewDraw.js";
 const EDGE_HIT_PX = 8;
-/** @param {CanvasRenderingContext2D} ctx @param {import("../state.js").TileLabGameState["labCavernConfig"]} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH */
+/** @param {CanvasRenderingContext2D} ctx @param {import("../TileLabEditorState.js").TileLabEditorState["cavernConfig"]} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH */
 export function drawCavernBoundsPreview(ctx, config, cache, displayW, displayH) {
     const cellSize = gridSettings.cellSize;
     const center = getCavernCenterWorld(config, cellSize);
@@ -26,11 +26,11 @@ export function drawCavernBoundsPreview(ctx, config, cache, displayW, displayH) 
  * @returns {CavernDragMode | null}
  */
 export function hitTestCavernBounds(sx, sy, state, cache, displayW, displayH) {
-    const config = state.labCavernConfig;
+    const config = state.editor.cavernConfig;
     const cellSize = gridSettings.cellSize;
     const world = screenToWorld(sx, sy, cache, displayW, displayH);
     if (config.boundsMode === "rect") {
-        const bounds = state.labMapBoundsPreview.cavern;
+        const bounds = state.editor.mapBoundsPreview.cavern;
         const tl = worldToScreen(bounds.minX, bounds.minY, cache, displayW, displayH);
         const br = worldToScreen(bounds.maxX, bounds.maxY, cache, displayW, displayH);
         const left = tl.x;
@@ -69,7 +69,7 @@ export function hitTestCavernBounds(sx, sy, state, cache, displayW, displayH) {
  * @param {CavernDragMode} mode
  * @param {number} dxWorld
  * @param {number} dyWorld
- * @param {import("../state.js").TileLabGameState["labCavernConfig"]} config
+ * @param {import("../TileLabEditorState.js").TileLabEditorState["cavernConfig"]} config
  */
 export function applyCavernBoundsDrag(mode, dxWorld, dyWorld, config) {
     const cellSize = gridSettings.cellSize;
@@ -133,7 +133,7 @@ export function applyCavernBoundsDrag(mode, dxWorld, dyWorld, config) {
  * @param {CavernDragMode} mode
  * @param {number} worldX
  * @param {number} worldY
- * @param {import("../state.js").TileLabGameState["labCavernConfig"]} config
+ * @param {import("../TileLabEditorState.js").TileLabEditorState["cavernConfig"]} config
  */
 export function applyCavernBoundsDragAtPointer(mode, worldX, worldY, config) {
     const cellSize = gridSettings.cellSize;
@@ -177,21 +177,21 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
         if (dragMode && dragTarget) {
             const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
             if (dragTarget === "cavern")
-                if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.labCavernConfig);
-                else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.labCavernConfig);
-            else if (dragMode === "resize-outer") applyCellBoundsDragAtPointer(dragMode, world.x, world.y, state.labWallToolConfig);
-            else applyCellBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.labWallToolConfig);
+                if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.cavernConfig);
+                else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.cavernConfig);
+            else if (dragMode === "resize-outer") applyCellBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.wallToolConfig);
+            else applyCellBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.wallToolConfig);
             lastWorldX = world.x;
             lastWorldY = world.y;
             onChange();
             return;
         }
         let cursor = "default";
-        if (state.labShowMapOverviewWallBounds) {
-            const wallHit = hitTestCellBounds(sx, sy, state.labWallToolConfig, state.labMapBoundsPreview.wall, frame.cache, frame.displayW, frame.displayH);
+        if (state.editor.showMapOverviewWallBounds) {
+            const wallHit = hitTestCellBounds(sx, sy, state.editor.wallToolConfig, state.editor.mapBoundsPreview.wall, frame.cache, frame.displayW, frame.displayH);
             if (wallHit) cursor = cellBoundsCursor(wallHit);
         }
-        if (cursor === "default" && state.labShowMapOverviewGenBounds) {
+        if (cursor === "default" && state.editor.showMapOverviewGenBounds) {
             const cavernHit = hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
             if (cavernHit) cursor = cavernBoundsCursor(cavernHit);
         }
@@ -203,8 +203,8 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
         const rect = canvas.getBoundingClientRect();
         const sx = ((e.clientX - rect.left) / rect.width) * frame.displayW;
         const sy = ((e.clientY - rect.top) / rect.height) * frame.displayH;
-        if (state.labShowMapOverviewWallBounds) {
-            const wallHit = hitTestCellBounds(sx, sy, state.labWallToolConfig, state.labMapBoundsPreview.wall, frame.cache, frame.displayW, frame.displayH);
+        if (state.editor.showMapOverviewWallBounds) {
+            const wallHit = hitTestCellBounds(sx, sy, state.editor.wallToolConfig, state.editor.mapBoundsPreview.wall, frame.cache, frame.displayW, frame.displayH);
             if (wallHit) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -217,7 +217,7 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
                 return;
             }
         }
-        if (!state.labShowMapOverviewGenBounds) return;
+        if (!state.editor.showMapOverviewGenBounds) return;
         const hit = hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
         if (!hit) return;
         e.preventDefault();

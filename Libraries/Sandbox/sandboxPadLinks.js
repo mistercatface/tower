@@ -96,7 +96,7 @@ export function listButtonPadLinkEndpoints(state, buttonPad) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} state @param {{ wireFromPadId?: string | null, wireCursor?: { x: number, y: number } | null }} [options] */
 export function drawSandboxPadWires(ctx, state, { wireFromPadId = null, wireCursor = null } = {}) {
-    const pads = state.sandboxPads;
+    const pads = state.sandbox.pads;
     ctx.save();
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);

@@ -1,6 +1,6 @@
 import { buildAssemblyLayout, buildAssemblyClearBounds, buildAssemblyWallSegments } from "./assemblyLayout.js";
 import { getResolvedAssembly } from "./assemblies/assemblyRegistry.js";
-import { stampAssemblyGroupMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
+import { stampAssemblySceneMember, entityBelongsToAssemblyGroup } from "./assemblies/assemblyLink.js";
 import { createAssemblyGuideOverlay, createAssemblySurfaceZone } from "./assemblySurfaceDraw.js";
 import { eagerBakeAssemblySurfaceFlipbook, releaseAssemblySurfaceFlipbook } from "./assemblySurfaceBake.js";
 import { requestUiUpdate } from "../../Core/EventSystem.js";
@@ -10,6 +10,7 @@ import { deleteSandboxPad } from "./sandboxPads.js";
 import { getWallCellBounds, unionGridCellRect } from "../Spatial/grid/wallGridBake.js";
 import { pointInAabb } from "../Math/Aabb2D.js";
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 /** @param {object} state @param {object} wall */
 function detachSandboxWall(state, wall) {
     const idx = state.walls.indexOf(wall);
@@ -68,8 +69,8 @@ function registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, grou
         bounds: layout.bounds,
         railHeight: resolved.arena.walls.height,
     });
-    stampAssemblyGroupMember(zone, groupId, resolved.id, groupField);
-    state.sandboxSurfaceProfileZones.push(zone);
+    stampAssemblySceneMember(zone, groupId, resolved.id, groupField);
+    state.sandbox.surfaceProfileZones.push(zone);
     const bakeGeneration = ++zone.bakeGeneration;
     void eagerBakeAssemblySurfaceFlipbook(
         { play: layout.play, bounds: layout.bounds, railHeight: resolved.arena.walls.height },
@@ -90,8 +91,8 @@ function registerAssemblyPlayfieldSurface(state, layout, resolved, groupId, grou
 function registerAssemblyGuideOverlay(state, layout, groupId, assemblyId, groupField) {
     if (!layout.wallSegments.length && !layout.arcWallSegments.length) return null;
     const guide = createAssemblyGuideOverlay({ id: `${groupId}:guides`, wallSegments: layout.wallSegments, arcWallSegments: layout.arcWallSegments, railWidth: 3.2 });
-    stampAssemblyGroupMember(guide, groupId, assemblyId, groupField);
-    state.sandboxAssemblyGuides.push(guide);
+    stampAssemblySceneMember(guide, groupId, assemblyId, groupField);
+    state.sandbox.assemblyGuides.push(guide);
     return guide;
 }
 /**
@@ -102,7 +103,7 @@ function registerAssemblyGuideOverlay(state, layout, groupId, assemblyId, groupF
  * @param {{ faction?: string }} [options]
  */
 export function spawnResolvedAssembly(host, centerX, centerY, resolved, { faction } = {}) {
-    const state = host.getWorldState();
+    const state = host.getSimState();
     const layout = buildAssemblyLayout(centerX, centerY, resolved);
     clearSandboxWallsInBounds(state, buildAssemblyClearBounds(layout, resolved));
     const groupId = `${resolved.id}:${Date.now()}`;
@@ -114,7 +115,7 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     const arenaWidth = resolved.arena.width;
     const arenaHeight = resolved.arena.height;
     const walls = buildAssemblyWallSegments(layout, resolved, { collisionOnly: true });
-    for (let i = 0; i < walls.length; i++) stampAssemblyGroupMember(walls[i], groupId, resolved.id, groupField);
+    for (let i = 0; i < walls.length; i++) stampAssemblySceneMember(walls[i], groupId, resolved.id, groupField);
     addSandboxWalls(state, walls);
     let defaultPropId = null;
     /** @type {Map<string, number>} */
@@ -126,7 +127,7 @@ export function spawnResolvedAssembly(host, centerX, centerY, resolved, { factio
     }
     if (resolved.pads.length) spawnAssemblyPads(state, layout, { groupId, resolvedId: resolved.id, groupField, propIdByManifestId });
     const instance = { id: groupId, assemblyId: resolved.id, defaultPropId, arenaWidth, arenaHeight };
-    state.sandboxAssemblyInstances.push(instance);
+    state.sandbox.assemblyInstances.push(instance);
     return { id: groupId, assemblyId: resolved.id, defaultPropId, centerX, centerY };
 }
 /**
@@ -142,35 +143,37 @@ export function spawnAssembly(host, centerX, centerY, assemblyId, options = {}) 
 }
 /** @param {object} state @param {string} groupId @param {string} groupField */
 export function deleteAssemblyInstance(state, groupId, groupField) {
-    for (let z = state.sandboxSurfaceProfileZones.length - 1; z >= 0; z--) {
-        const zone = state.sandboxSurfaceProfileZones[z];
-        if (!entityBelongsToAssemblyGroup(zone, groupId, groupField)) continue;
+    for (let z = state.sandbox.surfaceProfileZones.length - 1; z >= 0; z--) {
+        const zone = state.sandbox.surfaceProfileZones[z];
+        if (!entityBelongsToAssemblyGroup(state, zone, groupId, groupField)) continue;
         zone.bakeGeneration++;
         releaseAssemblySurfaceFlipbook(zone.flipbook);
         zone.flipbook = null;
-        state.sandboxSurfaceProfileZones.splice(z, 1);
+        state.sandbox.surfaceProfileZones.splice(z, 1);
     }
-    for (let z = state.sandboxAssemblyGuides.length - 1; z >= 0; z--) if (entityBelongsToAssemblyGroup(state.sandboxAssemblyGuides[z], groupId, groupField)) state.sandboxAssemblyGuides.splice(z, 1);
+    for (let z = state.sandbox.assemblyGuides.length - 1; z >= 0; z--)
+        if (entityBelongsToAssemblyGroup(state, state.sandbox.assemblyGuides[z], groupId, groupField)) state.sandbox.assemblyGuides.splice(z, 1);
     const wallsToRemove = [];
     for (let i = state.walls.length - 1; i >= 0; i--) {
         const wall = state.walls[i];
-        if (entityBelongsToAssemblyGroup(wall, groupId, groupField)) wallsToRemove.push(wall);
+        if (entityBelongsToAssemblyGroup(state, wall, groupId, groupField)) wallsToRemove.push(wall);
     }
     removeSandboxWalls(state, wallsToRemove);
-    for (let z = state.sandboxPads.length - 1; z >= 0; z--) {
-        const pad = state.sandboxPads[z];
-        if (entityBelongsToAssemblyGroup(pad, groupId, groupField)) deleteSandboxPad(state, pad.id);
+    for (let z = state.sandbox.pads.length - 1; z >= 0; z--) {
+        const pad = state.sandbox.pads[z];
+        if (entityBelongsToAssemblyGroup(state, pad, groupId, groupField)) deleteSandboxPad(state, pad.id);
     }
     const rackId = `${groupId}:rack`;
+    const meta = getSandboxEntityMeta(state);
     for (let i = state.worldProps.length - 1; i >= 0; i--) {
         const prop = state.worldProps[i];
-        if (prop.assemblyRackId === rackId || entityBelongsToAssemblyGroup(prop, groupId, groupField)) removeWorldPropFromState(state, prop);
+        if (meta.getAssemblyRackId(prop.id) === rackId || entityBelongsToAssemblyGroup(state, prop, groupId, groupField)) removeWorldPropFromState(state, prop);
     }
-    const idx = state.sandboxAssemblyInstances.findIndex((entry) => entry.id === groupId);
-    if (idx >= 0) state.sandboxAssemblyInstances.splice(idx, 1);
+    const idx = state.sandbox.assemblyInstances.findIndex((entry) => entry.id === groupId);
+    if (idx >= 0) state.sandbox.assemblyInstances.splice(idx, 1);
 }
 /** @param {object} state */
 export function clearAssemblyInstances(state) {
-    const snapshot = state.sandboxAssemblyInstances.map((entry) => ({ id: entry.id, groupField: getResolvedAssembly(entry.assemblyId).groupField }));
+    const snapshot = state.sandbox.assemblyInstances.map((entry) => ({ id: entry.id, groupField: getResolvedAssembly(entry.assemblyId).groupField }));
     for (let i = 0; i < snapshot.length; i++) deleteAssemblyInstance(state, snapshot[i].id, snapshot[i].groupField);
 }
