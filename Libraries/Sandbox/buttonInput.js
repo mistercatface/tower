@@ -33,9 +33,13 @@ export function buttonOccupantMass(state, button) {
     return total;
 }
 /** @param {object} state @param {object} button */
+export function isMassOverThreshold(state, button) {
+    return buttonOccupantMass(state, button) > button.massThreshold;
+}
+/** @param {object} state @param {object} button */
 export function isButtonActive(state, button) {
     if (isToggleInputMode(button.inputMode)) return Boolean(button._toggleLatched);
-    if (isMassButtonInputMode(button.inputMode)) return buttonOccupantMass(state, button) > button.massThreshold;
+    if (isMassButtonInputMode(button.inputMode)) return isMassOverThreshold(state, button);
     return Boolean(button._pointerHeld);
 }
 /** @param {object} state @param {object} button */

@@ -1,6 +1,5 @@
 import { wakePushableBody } from "../Motion/pushableSleep.js";
-import { CircleShape } from "../Spatial/collision/Shapes.js";
-import { resizeFloorPropHalfExtents, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
+import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { syncPullFixtureWalls, teardownPullFixtureWalls } from "./pullFixtureWalls.js";
 import { isButtonEntity, isMassButtonInputMode } from "./buttonInput.js";
 function appendNumberField(parent, labelText, { value, step = 1, min, onChange }) {
@@ -45,7 +44,7 @@ function applyWorldPropPosition(prop, { x, y }) {
 function applyVoidPitPatch(prop, patch) {
     if (patch.radius != null) {
         prop.radius = patch.radius;
-        prop.shape = new CircleShape(patch.radius);
+        syncFloorPropCollisionShape(prop);
     }
     if (patch.sinkDepth != null) prop.sinkDepth = patch.sinkDepth;
     if (patch.captureTolerance != null) prop.captureTolerance = patch.captureTolerance;
@@ -84,7 +83,7 @@ function applyGravityPadPatch(state, prop, patch) {
 function applyButtonFloorPatch(prop, patch) {
     if (patch.radius != null) {
         prop.radius = patch.radius;
-        prop.shape = new CircleShape(patch.radius);
+        syncFloorPropCollisionShape(prop);
         syncFloorTriggerAabb(prop);
     }
     if (patch.inputMode != null) {

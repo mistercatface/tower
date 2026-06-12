@@ -1,23 +1,17 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
-import { CircleShape } from "../Spatial/collision/Shapes.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
-import { resizeFloorPropHalfExtents, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
+import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { resolvePlacement } from "./assemblies/assemblyPlacement.js";
 import { stampAssemblyEntityMember } from "./assemblies/assemblyLink.js";
 import { applyFlipperAssemblyScale } from "./behaviors/flipperBehavior.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 /** @param {object} prop @param {import("./assemblies/assemblyManifest.js").AssemblyWorldPropManifest} entry @param {ReturnType<typeof import("./assemblyLayout.js").buildAssemblyLayout>["play"]} play */
 function applyAssemblyWorldPropOverrides(prop, entry, play) {
-    if (entry.radiusU != null) {
-        const radius = entry.radiusU * (play.maxX - play.minX);
-        prop.radius = radius;
-        prop.shape = new CircleShape(radius);
-    } else if (entry.radius != null) {
-        prop.radius = entry.radius;
-        prop.shape = new CircleShape(entry.radius);
-    }
+    if (entry.radiusU != null) prop.radius = entry.radiusU * (play.maxX - play.minX);
+    else if (entry.radius != null) prop.radius = entry.radius;
+    if (entry.radiusU != null || entry.radius != null) syncFloorPropCollisionShape(prop);
     if (entry.depth != null) prop.sinkDepth = entry.depth;
     if (entry.captureTolerance != null) prop.captureTolerance = entry.captureTolerance;
     if (entry.width != null || entry.height != null) {

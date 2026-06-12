@@ -1,5 +1,5 @@
 import { processFloorShapes } from "../Spatial/zones/floorShapes.js";
-import { buttonEffectiveActive, isButtonActive, isButtonEntity, isMassButtonInputMode, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";
+import { buttonEffectiveActive, isButtonActive, isButtonEntity, isMassButtonInputMode, isMassOverThreshold, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";
 import { runButtonTapLinks, syncButtonFlipperLinks, syncSandboxButtonPower, tickButtonSpawnerLinks } from "./padEffects.js";
 const POINTER_HIT_PADDING = 4;
 /** @param {object} state @param {number} wx @param {number} wy @param {number} [padding] */
@@ -35,7 +35,7 @@ export function releaseButtonPointerHold(state) {
 /** @param {object} state @param {object} button */
 function tickFloorButton(state, button) {
     if (button.inputMode === "massToggle") {
-        const massActive = isButtonActive(state, button);
+        const massActive = isMassOverThreshold(state, button);
         const wasMassActive = button._massWasActive ?? false;
         if (massActive && !wasMassActive) button._toggleLatched = !button._toggleLatched;
         button._massWasActive = massActive;

@@ -53,11 +53,12 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
         const candidates = spatialFrame.collectEntitiesInBounds(floorShape.aabb);
         const next = floorShape._nextOccupants;
         next.clear();
+        const zoneShape = floorShape.getShape ? floorShape.getShape() : floorShape.shape;
         for (let i = 0; i < candidates.length; i++) {
             const entity = candidates[i];
             if (!entity || entity.isDead) continue;
             const shape = entity.getShape();
-            if (SatCollision.checkCollision(entity, shape, floorShape, floorShape.shape) == null) continue;
+            if (SatCollision.checkCollision(entity, shape, floorShape, zoneShape) == null) continue;
             next.add(entity.id);
             if (!floorShape._occupants.has(entity.id)) onEnter(floorShape, entity);
         }
@@ -66,6 +67,21 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
         floorShape._occupants = next;
         floorShape._nextOccupants = prev;
     }
+}
+/** @param {object} prop */
+export function syncFloorPropCollisionShape(prop) {
+    if (prop.halfExtents) {
+        const hx = prop.halfExtents.x;
+        const hy = prop.halfExtents.y;
+        prop.shape = new PolygonShape([
+            { x: -hx, y: -hy },
+            { x: hx, y: -hy },
+            { x: hx, y: hy },
+            { x: -hx, y: hy },
+        ]);
+        return;
+    }
+    prop.shape = new CircleShape(prop.radius);
 }
 /** @param {object} prop */
 export function syncFloorTriggerAabb(prop) {
@@ -86,6 +102,7 @@ export function initFloorTriggerProp(prop) {
     }
     prop.powered = prop.strategy.powered !== false;
     prop.aabb = createAabb();
+    syncFloorPropCollisionShape(prop);
     syncFloorTriggerAabb(prop);
 }
 /** @param {object} prop */
@@ -98,6 +115,7 @@ export function initFloorButtonProp(prop) {
     prop.invert = prop.strategy.invert === true;
     prop._toggleLatched = false;
     prop.aabb = createAabb();
+    syncFloorPropCollisionShape(prop);
     syncFloorTriggerAabb(prop);
 }
 /** @param {object} prop @param {number} halfWidth @param {number} halfHeight */
