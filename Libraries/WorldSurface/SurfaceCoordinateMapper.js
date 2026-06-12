@@ -53,7 +53,6 @@ export function fillWallFaceRows(samples, width, height, mapCtx) {
         }
     }
 }
-
 export function writeWallFacePixel(samples, idx, x, y, mapCtx) {
     const invPpwu = mapCtx.invPpwu;
     const v = (mapCtx.height - 1 - y) * invPpwu;
@@ -80,7 +79,7 @@ export function writeWallCellPixel(samples, idx, x, y, mapCtx) {
     samples.evalX[idx] = mapCtx.startWorldX + x * invPpwu;
     samples.evalY[idx] = mapCtx.startWorldY + (mapCtx.cellSize - y * invPpwu) + mapCtx.zOffset;
     samples.wallU[idx] = x / mapCtx.spanU;
-    samples.wallV[idx] = mapCtx.height > 1 ? (mapCtx.height - 1 - y) / (mapCtx.height - 1) : 0;
+    samples.wallV[idx] = (mapCtx.height - 1 - y) * mapCtx.invWallCellVSpan;
 }
 export function writeRoofPixel(samples, idx, x, y, mapCtx) {
     const invPpwu = mapCtx.invPpwu;

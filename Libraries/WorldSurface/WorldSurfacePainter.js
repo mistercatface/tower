@@ -94,15 +94,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
         bake = { useWallBase: true };
     } else if (options.isWall) {
         writePixel = writeWallCellPixel;
-        mapCtx = {
-            invPpwu,
-            startWorldX,
-            startWorldY,
-            cellSize,
-            zOffset: options.zOffset ?? 0,
-            height,
-            spanU: width > 1 ? width - 1 : 1,
-        };
+        mapCtx = { invPpwu, startWorldX, startWorldY, cellSize, zOffset: options.zOffset ?? 0, height, spanU: width > 1 ? width - 1 : 1, invWallCellVSpan: height > 1 ? 1 / (height - 1) : 0 };
         bake = { useWallBase: true, wallCell: true };
     }
     const imgData = ctx.createImageData(width, height);
