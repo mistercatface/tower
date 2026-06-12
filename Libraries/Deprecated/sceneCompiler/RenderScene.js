@@ -49,9 +49,6 @@ export class RenderScene {
     removeBySourceId(sourceId) {
         for (const chunk of this.chunks.values()) for (let i = chunk.renderables.length - 1; i >= 0; i--) if (chunk.renderables[i].sourceId === sourceId) chunk.renderables.splice(i, 1);
     }
-    /**
-     * Adds a renderable to all chunks its bounding box overlaps.
-     */
     insert(renderable) {
         const bounds = renderable.bounds;
         const minCol = worldToChunkCol(bounds.minX, this.gridMinX, this.chunkSizePx);
@@ -60,10 +57,6 @@ export class RenderScene {
         const maxRow = worldToChunkRow(bounds.maxY, this.gridMinY, this.chunkSizePx);
         for (let r = minRow; r <= maxRow; r++) for (let c = minCol; c <= maxCol; c++) this.getChunk(c, r).add(renderable);
     }
-    /**
-     * Collects all renderables of a specific pass in the given chunk range.
-     * Reuses passDedup and, when outArray is omitted, passCollectBuffer.
-     */
     collectPass(pass, minCol, minRow, maxCol, maxRow, outArray) {
         const out = outArray ?? this.passCollectBuffer;
         out.length = 0;
@@ -83,9 +76,6 @@ export class RenderScene {
             }
         return out;
     }
-    /**
-     * Draws a specific pass (e.g., 'roofs', 'walls') for the given chunk range.
-     */
     drawPass(ctx, viewport, pass, minCol, minRow, maxCol, maxRow) {
         for (let r = minRow; r <= maxRow; r++)
             for (let c = minCol; c <= maxCol; c++) {

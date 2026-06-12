@@ -1,40 +1,23 @@
 import { projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
 import { createAabb, expandPointsAabbInto } from "../../Math/Aabb2D.js";
 import { traceClosedPolygon } from "../../Canvas/CanvasPath.js";
-import { drawProjectedWallFace } from "../Structure3D/ProjectedWallDraw.js";
-/** @typedef {import("../Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
+import { drawProjectedWallFace } from "../../Render/Structure3D/ProjectedWallDraw.js";
+/** @typedef {import("../../Render/Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 const sRoofProjectedCorners = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },
     { x: 0, y: 0 },
     { x: 0, y: 0 },
 ];
-/**
- * Base class for all pre-calculated static geometry.
- */
 export class Renderable {
     constructor(pass) {
-        this.pass = pass; // e.g., 'walls', 'roofs', 'ground'
+        this.pass = pass;
         this.bounds = createAabb();
-        this.sourceId = null; // Link back to simulation entity if needed for destruction
+        this.sourceId = null;
     }
-    draw(ctx, viewport) {
-        // Override in subclasses
-    }
+    draw(ctx, viewport) {}
 }
-/**
- * A retained wall face: stores static edge geometry and culling metadata.
- * Isometric projection is recomputed each frame from the viewer position.
- */
 export class RenderableWallFace extends Renderable {
-    /**
-     * @param {string|object} sourceId
-     * @param {{ x: number, y: number }} p1
-     * @param {{ x: number, y: number }} p2
-     * @param {number} wallHeight
-     * @param {number} edgeIndex
-     * @param {{ cx: number, cy: number, outX: number, outY: number }} edgeMeta
-     */
     constructor(sourceId, p1, p2, wallHeight, edgeIndex, edgeMeta) {
         super("walls");
         this.sourceId = sourceId;
@@ -64,16 +47,12 @@ export class RenderableWallFace extends Renderable {
         drawProjectedWallFace(ctx, this.p1, this.p2, wallCtx);
     }
 }
-/**
- * A pre-calculated roof footprint used for clipping and damage overlays.
- */
 export class RenderableRoofCap extends Renderable {
     constructor(sourceId, zLevel, corners) {
         super("roofs");
         this.sourceId = sourceId;
         this.zLevel = zLevel;
-        // The 4 corners of the roof footprint in world space
-        this.corners = corners; // [{x,y}, {x,y}, {x,y}, {x,y}]
+        this.corners = corners;
         expandPointsAabbInto(this.bounds, corners);
     }
     /** @param {CanvasRenderingContext2D} ctx @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera */

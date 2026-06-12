@@ -3,9 +3,6 @@ function pinchDistance(touches) {
     const dy = touches[0].clientY - touches[1].clientY;
     return Math.hypot(dx, dy);
 }
-/**
- * Two-finger pinch → zoom ratio against touchstart baseline.
- */
 export class PinchZoomGesture {
     /**
      * @param {Element} element

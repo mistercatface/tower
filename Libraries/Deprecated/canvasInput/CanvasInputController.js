@@ -1,7 +1,7 @@
 import { DoubleTapDetector } from "./DoubleTapDetector.js";
 import { PinchZoomGesture } from "./PinchZoomGesture.js";
 import { bindWheelZoom } from "./WheelZoomHandler.js";
-import { bindCanvasPointerDown, bindCanvasPointerMove, bindCanvasPointerUp } from "./canvasPointer.js";
+import { bindCanvasPointerDown, bindCanvasPointerMove, bindCanvasPointerUp } from "../../Input/canvasPointer.js";
 import { bindKeyDown } from "./keyboardBindings.js";
 /** @typedef {import("./keyboardBindings.js").KeyBinding} KeyBinding */
 /**
@@ -18,10 +18,7 @@ import { bindKeyDown } from "./keyboardBindings.js";
  * @property {KeyBinding[]} [keyBindings]
  * @property {Window | Document | HTMLElement} [keyboardTarget]
  */
-/**
- * Owns canvas pointer, wheel, pinch, and optional keyboard bindings.
- * Game code passes callbacks only — no raw addEventListener in glue.
- */
+/** Owns canvas pointer, wheel, pinch, and optional keyboard bindings. */
 export class CanvasInputController {
     /**
      * @param {HTMLCanvasElement} canvas

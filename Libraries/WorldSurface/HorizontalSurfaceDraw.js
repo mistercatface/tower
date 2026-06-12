@@ -4,10 +4,8 @@
  */
 export {
     projectHorizontalSurfaceCornersInto,
-    clipChunkToRoofFootprints,
     clipChunkToBlockedCells,
     clipChunkToWallFootprints,
-    drawRoofSegmentDamageOverlays,
     drawStaticRoofDamageOverlays,
     drawStaticWallFootprintDamageOverlays,
     drawWallFootprintDamageOverlays,

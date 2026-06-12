@@ -10,10 +10,8 @@ import { groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCacheP
 import { chunkHasWallSegments, chunkHasBlockedCells, buildStaticRoofMaskCanvas, applyStaticRoofMaskToCanvas } from "./HorizontalSurfaceDraw.js";
 import {
     projectHorizontalSurfaceCornersInto,
-    clipChunkToRoofFootprints,
     clipChunkToWallFootprints,
     clipChunkToBlockedCells,
-    drawRoofSegmentDamageOverlays,
     drawWallFootprintDamageOverlays,
     drawStaticRoofDamageOverlays,
     drawStaticWallFootprintDamageOverlays,
@@ -225,10 +223,8 @@ export class WorldSurfaceEngine {
      *   playBounds?: import("../Math/Aabb2D.js").Aabb2D | null,
      *   beforeDraw?: (ctx: CanvasRenderingContext2D, bounds: import("../Math/Aabb2D.js").Aabb2D) => void,
      *   requireWallSegments?: boolean,
-     *   skipRoofFootprintClip?: boolean,
      *   flatWallRails?: boolean,
      *   staticRoofDraw?: boolean,
-     *   renderScene?: import("../Render/Scene/RenderScene.js").RenderScene,
      * }} options
      */
     drawGroundChunks(ctx, options) {
@@ -241,7 +237,6 @@ export class WorldSurfaceEngine {
             playBounds = null,
             beforeDraw,
             requireWallSegments = true,
-            skipRoofFootprintClip = false,
             flatWallRails = false,
             staticRoofDraw = false,
         } = options;
@@ -290,7 +285,6 @@ export class WorldSurfaceEngine {
                     obstacleGrid,
                     settings: this.settings,
                     state,
-                    renderScene: options.renderScene ?? null,
                     wallSpatialIndex: flatWallRails ? wallSpatialIndex : null,
                     chunkAabb: chunkWorldAabbInto(createAabb(), originX, originY, chunkSizePx),
                     camera: passCamera,
@@ -306,34 +300,19 @@ export class WorldSurfaceEngine {
                         const corners = projectHorizontalSurfaceCornersInto(sRoofChunkCorners, pass);
                         drawProjectedHorizontalChunk(ctx, drawCanvas, corners, this.settings);
                         drawStaticRoofDamageOverlays(ctx, pass, sRoofChunkCorners);
-                    } else {
-                        const clipped = flatWallRails ? clipChunkToWallFootprints(ctx, pass) || clipChunkToBlockedCells(ctx, pass) : !skipRoofFootprintClip && clipChunkToRoofFootprints(ctx, pass);
+                    } else if (flatWallRails) {
+                        const clipped = clipChunkToWallFootprints(ctx, pass) || clipChunkToBlockedCells(ctx, pass);
                         if (!clipped) {
                             ctx.restore();
                             continue;
                         }
-                        if (flatWallRails) {
-                            drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
-                            drawWallFootprintDamageOverlays(ctx, pass);
-                            drawStaticWallFootprintDamageOverlays(ctx, pass);
-                        } else {
-                            const corners = projectHorizontalSurfaceCornersInto(sRoofChunkCorners, pass);
-                            drawProjectedHorizontalChunk(ctx, canvas, corners, this.settings);
-                            drawRoofSegmentDamageOverlays(ctx, pass);
-                        }
+                        drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
+                        drawWallFootprintDamageOverlays(ctx, pass);
+                        drawStaticWallFootprintDamageOverlays(ctx, pass);
                     }
                     ctx.restore();
                 } else drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
             }
         ctx.restore();
-    }
-    drawRoofLayers(ctx, baseOptions) {
-        const levels = baseOptions.roofZLevels ?? this.settings.roofZLevels ?? [];
-        for (let i = 0; i < levels.length; i++) {
-            const z = levels[i];
-            if (z <= 0) continue;
-            const roofSpatialIndex = baseOptions.roofSpatialIndices?.get(z) ?? baseOptions.wallSpatialIndex;
-            this.drawGroundChunks(ctx, { ...baseOptions, wallSpatialIndex: roofSpatialIndex, zLevel: z, beforeDraw: undefined });
-        }
     }
 }

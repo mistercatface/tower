@@ -41,3 +41,24 @@
 ## Smell
 
 - [ ] **`createDefaultRenderPorts({ weaponVisuals: … })` in `engine.js`** — belongs elsewhere?
+
+## Move to `Libraries/Deprecated/` (archive, disconnect from active arch)
+
+Already archived:
+
+- `sharedEdges/` (+ `Render/Deprecated/SharedEdgeWorkerEntry.js`)
+- `sceneCompiler/` — `SceneCompiler`, `RenderScene`, `Renderables`, sim-roof chunk clip + `drawRoofLayers`
+- `canvasInput/` — unified `CanvasInputController` cluster (`canvasPointer.js` stays live in `Input/`)
+
+Removed (too trivial to archive): `spawnStartProps.js`.
+
+### Never-wired subsystems
+
+- [ ] **`Libraries/Radio/`** — `createRadioSystem` never called; strip vestigial hooks after move (`SharedGameState.radioSeenThisRun`, `EventNames` radio UI events).
+- [ ] **`Libraries/Inspect/`** — 3D inspect viewer; zero external imports.
+- [ ] **`Libraries/Triggers/PersistentTriggers.js`** (+ `Triggers/index.js` if empty).
+- [ ] **`Libraries/Persistence/createDebouncedStorage.js`** (+ `Persistence/index.js` if empty).
+
+### Still registered but legacy
+
+- [ ] **`panelGrid` motif** — remove from `MotifRegistry` or archive under `Deprecated/` if keeping for reference (`"Panel grid (legacy)"` label).

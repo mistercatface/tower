@@ -5,9 +5,7 @@
 import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
-import { getChunkSizePx } from "../../Libraries/Spatial/grid/ChunkGrid.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
-import { RenderScene } from "../../Libraries/Render/Scene/RenderScene.js";
 import { collectStaticRoofHeightsFromGrid } from "../../Libraries/World/wallGridCells.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
@@ -15,20 +13,14 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel) });
         this.worldSurfaceSeed = 0;
         this.surfaceProfileOverride = null;
-        this.renderScene = new RenderScene(getChunkSizePx(settings.cellSize, settings.cellsPerChunk));
     }
-    /** Invalidate baked ground/wall textures only — keeps compiled static geometry. */
     clearBakeCache() {
         super.clear();
-        this.invalidateRoofs();
     }
-    /** Full reset — compiled render scene too. Only call from world gen / map regen. */
     clear() {
         this.clearBakeCache();
         this.surfaceProfileOverride = null;
-        this.renderScene.clear();
     }
-    invalidateRoofs() {}
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
         const roofZ = collectStaticRoofHeightsFromGrid(state.obstacleGrid);
         super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, roofZ);
@@ -61,7 +53,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
                 playBounds: playBoundsFromObstacleGrid(state.obstacleGrid),
                 requireWallSegments: false,
                 staticRoofDraw: true,
-                renderScene: this.renderScene,
             });
         }
     }

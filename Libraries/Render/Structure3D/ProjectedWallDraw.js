@@ -1,6 +1,6 @@
 /**
  * Projects wall faces in isometric space and samples baked atlases from WorldSurfaceEngine.
- * Roof caps are chunk-cached horizontal surfaces (WorldSurfaceEngine.drawRoofLayers).
+ * Static stamp roofs use chunk-cached horizontal surfaces via WorldSurfaceSystem.drawRoofs.
  */
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
