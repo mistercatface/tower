@@ -4,8 +4,8 @@
  */
 import { transformPoint, transformNormal, projectPoint, averageDepth } from "../camera/InspectCamera.js";
 import { faceVisible } from "../geometry/MeshBuilder.js";
-import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 import { labelBandYRange } from "../../Math/Interpolate.js";
+import { gatherTexturedQuadCells, drawTexturedQuadCells } from "../../Render/SurfaceTexturing/texturedCells.js";
 /** @typedef {"+x" | "-x" | "+z" | "-z"} BoxSideFace */
 /** Outward normals for vertical side faces. */
 const FACE_NORMALS = { "+x": { x: 1, y: 0, z: 0 }, "-x": { x: -1, y: 0, z: 0 }, "+z": { x: 0, y: 0, z: 1 }, "-z": { x: 0, y: 0, z: -1 } };
@@ -47,6 +47,8 @@ const FACE_BUILDERS = {
         ];
     },
 };
+const sBoxLabelFaces = [];
+const sBoxLabelRaw = [{ u0: 0, u1: 1, v0: 0, v1: 1, depth: 0, d0: { x: 0, y: 0 }, d1: { x: 0, y: 0 }, d2: { x: 0, y: 0 }, d3: { x: 0, y: 0 } }];
 /** Flip U when the projected bottom edge runs right-to-left on screen. */
 function alignHorizontalUV(d0, d1, d2, d3) {
     if (d0.x > d1.x) return [d1, d0, d3, d2];
@@ -55,7 +57,8 @@ function alignHorizontalUV(d0, d1, d2, d3) {
 /** Narrow the face width so band height × texture aspect fits without vertical stretch. */
 function clampFaceWidthToTextureAspect(model, face, targetHalfWidth) {
     const axis = face === "+x" || face === "-x" ? "z" : "x";
-    for (const p of model) {
+    for (let i = 0; i < model.length; i++) {
+        const p = model[i];
         const w = p[axis];
         if (Math.abs(w) > targetHalfWidth) p[axis] = Math.sign(w || 1) * targetHalfWidth;
     }
@@ -90,7 +93,7 @@ export function drawInspectBoxLabels(
     const hx = halfExtents.x;
     const hy = halfExtents.y;
     const hz = halfExtents.z;
-    const quads = [];
+    sBoxLabelFaces.length = 0;
     for (const face of faces) {
         const faceImg = resolveImg?.(face) ?? img;
         if (!faceImg) continue;
@@ -114,13 +117,23 @@ export function drawInspectBoxLabels(
         const screen = view.map((p) => projectPoint(p, camera));
         if (screen.some((p) => !p)) continue;
         const [d0, d1, d2, d3] = alignHorizontalUV(screen[0], screen[1], screen[2], screen[3]);
-        quads.push({ depth: averageDepth(view[0], view[1], view[2]), img: faceImg, sx0, sx1, syTop, syBot, d0, d1, d2, d3 });
+        sBoxLabelFaces.push({ depth: averageDepth(view[0], view[1], view[2]), faceImg, u0, u1, v0, v1, d0, d1, d2, d3 });
     }
-    if (quads.length === 0) return;
-    quads.sort((a, b) => b.depth - a.depth);
-    const textureOpts = { underlay, bleedPx: screenBleed };
-    const prevSmooth = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = true;
-    for (const quad of quads) drawImageQuad(ctx, quad.img, quad.sx0, quad.syBot, quad.sx1, quad.syTop, quad.d0, quad.d1, quad.d2, quad.d3, textureOpts);
-    ctx.imageSmoothingEnabled = prevSmooth;
+    if (sBoxLabelFaces.length === 0) return;
+    sBoxLabelFaces.sort((a, b) => b.depth - a.depth);
+    const raw = sBoxLabelRaw[0];
+    for (let i = 0; i < sBoxLabelFaces.length; i++) {
+        const face = sBoxLabelFaces[i];
+        raw.u0 = face.u0;
+        raw.u1 = face.u1;
+        raw.v0 = face.v1;
+        raw.v1 = face.v0;
+        raw.depth = face.depth;
+        raw.d0 = face.d0;
+        raw.d1 = face.d1;
+        raw.d2 = face.d2;
+        raw.d3 = face.d3;
+        const cells = gatherTexturedQuadCells(sBoxLabelRaw, face.faceImg, 0);
+        drawTexturedQuadCells(ctx, cells, face.faceImg, { bleedPx: screenBleed, underlay });
+    }
 }

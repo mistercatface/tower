@@ -20,7 +20,7 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
          */
         set(key, sourceCanvas, meta = {}) {
             const copy = new OffscreenCanvas(sourceCanvas.width, sourceCanvas.height);
-            const ctx = copy.getContext("2d", { alpha: true });
+            const ctx = copy.getContext("2d");
             ctx.drawImage(sourceCanvas, 0, 0);
             for (const [field, value] of Object.entries(meta)) copy[field] = value;
             cache.set(key, copy);

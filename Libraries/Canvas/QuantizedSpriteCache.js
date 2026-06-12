@@ -64,13 +64,9 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
     const scale = modifier?.scale ?? 1;
     ctx.save();
     prepModifiedBlit(ctx, modifier);
-    const smoothDownscale = bakeScale > 1;
-    const prevSmooth = ctx.imageSmoothingEnabled;
-    if (smoothDownscale) ctx.imageSmoothingEnabled = true;
     ctx.translate(drawX, drawY);
     if (scale !== 1) ctx.scale(scale, scale);
     ctx.drawImage(sprite, -anchorX, -anchorY, drawW, drawH);
-    if (smoothDownscale) ctx.imageSmoothingEnabled = prevSmooth;
     ctx.restore();
 }
 /**
@@ -179,15 +175,13 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const anchorX = PROP_STAGE_PADDING + stageR * 1.3;
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;
         const canvas = new OffscreenCanvas(stageSpan, stageSpan);
-        const ctx = canvas.getContext("2d", { alpha: true });
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
         const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX, anchorY });
         stageProp.radius = resolveBodyRadius(prop);
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
-        const prevSmooth = ctx.imageSmoothingEnabled;
-        if (bakeScale > 1) ctx.imageSmoothingEnabled = true;
         draw(ctx, stageProp, anchorX - qDx, anchorY - qDy);
-        if (bakeScale > 1) ctx.imageSmoothingEnabled = prevSmooth;
         ctx.restore();
         return { canvas, meta: { anchorX, anchorY, bakeScale } };
     });

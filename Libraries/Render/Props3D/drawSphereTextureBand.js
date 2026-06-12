@@ -15,7 +15,6 @@ import { drawSphereTexturePatch } from "../SurfaceTexturing/drawSphereTexturePat
  *   vMin?: number,
  *   vMax?: number,
  *   uvBleed?: number,
- *   imageSmoothing?: boolean | null,
  * }} [options]
  */
 export function drawSphereTextureBand(ctx, prop, px, py, img, options = {}) {
@@ -32,6 +31,5 @@ export function drawSphereTextureBand(ctx, prop, px, py, img, options = {}) {
         phiSegments: options.latBands ?? 8,
         thetaSegments: options.lonBands ?? 16,
         uvBleed: options.uvBleed,
-        imageSmoothing: options.imageSmoothing,
     });
 }

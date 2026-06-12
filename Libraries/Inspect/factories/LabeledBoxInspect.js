@@ -23,7 +23,7 @@ export function createLabeledBoxInspect(boxConfig, buildMesh, resolveFaceLabelSr
         },
         draw(ctx, cx, cy, scale, yaw, pitch, subject) {
             const mesh = buildMesh();
-            renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, { imageSmoothing: false, flatShading: true });
+            renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, { flatShading: true });
             drawInspectBoxLabels(ctx, cx, cy, scale, yaw, pitch, {
                 resolveImg: (face) => {
                     const src = resolveFaceLabelSrc?.(subject, face);

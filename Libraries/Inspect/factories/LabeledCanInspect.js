@@ -27,7 +27,7 @@ export function createLabeledCanInspect(canConfig, buildMesh) {
             const surface = { halfHeight, bodyRadius, rings: getSodaCanRings(halfHeight, bodyRadius) };
             const { radialSegments, verticalSegments, y0, y1, angleCenter, angleSpan } = label;
             drawInspectCylindricalBody(ctx, cx, cy, scale, yaw, pitch, { ...surface, color: colors.bodyInspect, radialSegments: radialSegments * 2, verticalSegments: verticalSegments * 2 });
-            renderInspectMesh(ctx, buildMesh(), cx, cy, scale, yaw, pitch, { imageSmoothing: false, flatShading: true });
+            renderInspectMesh(ctx, buildMesh(), cx, cy, scale, yaw, pitch, { flatShading: true });
             drawInspectCylindricalLabel(ctx, cx, cy, scale, yaw, pitch, {
                 ...surface,
                 img: getTexture(labelSrc),

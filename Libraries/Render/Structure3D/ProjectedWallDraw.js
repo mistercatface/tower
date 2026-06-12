@@ -5,7 +5,7 @@
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
-import { getTexelResolution, shouldSmoothTextureDownsample } from "../../WorldSurface/WorldSurfaceResolution.js";
+import { getTexelResolution } from "../../WorldSurface/WorldSurfaceResolution.js";
 import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
 import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
@@ -96,7 +96,6 @@ export function drawFaceTexture(ctx, p1, p2, face, worldSurfaces, proceduralSurf
         return;
     }
     ctx.save();
-    ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample(settings);
     const edgeLen = cacheObj && cacheObj.edgeLen !== undefined ? cacheObj.edgeLen : Math.hypot(p2.x - p1.x, p2.y - p1.y);
     const px = viewer.x;
     const py = viewer.y;

@@ -29,8 +29,6 @@ function computeSolidShade(normal, lightDir) {
 export function renderMesh(ctx, mesh, camera, opts = {}) {
     const lightDir = normalize(opts.lightDir ?? { x: -0.35, y: 0.45, z: -0.85 });
     const flatShading = opts.flatShading ?? false;
-    const prevSmooth = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = opts.imageSmoothing ?? false;
     const queue = [];
     for (const tri of mesh.triangles) {
         const a = transformPoint(tri.a, camera.yaw, camera.pitch);
@@ -51,7 +49,6 @@ export function renderMesh(ctx, mesh, camera, opts = {}) {
         const shade = flatShading ? 1 : computeSolidShade(tri.normal, lightDir);
         drawSolidTriangle(ctx, tri.sa, tri.sb, tri.sc, shadeColor(mat.color, shade), mat.stroke, mat.lineWidth ?? 0);
     }
-    ctx.imageSmoothingEnabled = prevSmooth;
 }
 export function renderInspectMesh(ctx, mesh, cx, cy, scale, yaw, pitch, opts = {}) {
     const camera = { cx, cy, referenceDepth: opts.referenceDepth ?? 420, screenScale: opts.screenScale ?? scale * 88, yaw, pitch };

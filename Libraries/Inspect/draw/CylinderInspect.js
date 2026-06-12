@@ -11,13 +11,10 @@ const DEFAULT_BLEED = { uvBleed: 2, screenBleed: 2.5 };
 function inspectCamera(cx, cy, scale, { referenceDepth = 420, screenScale = scale * 88 } = {}) {
     return createInspectCamera(cx, cy, scale, 0, 0, { referenceDepth, screenScale });
 }
-function sortAndDrawCells(ctx, cells, drawCell, { imageSmoothing = null } = {}) {
+function sortAndDrawCells(ctx, cells, drawCell) {
     if (!cells.length) return;
     cells.sort((a, b) => b.depth - a.depth);
-    const prevSmooth = ctx.imageSmoothingEnabled;
-    if (imageSmoothing != null) ctx.imageSmoothingEnabled = imageSmoothing;
-    for (const cell of cells) drawCell(ctx, cell);
-    if (imageSmoothing != null) ctx.imageSmoothingEnabled = prevSmooth;
+    for (let i = 0; i < cells.length; i++) drawCell(ctx, cells[i]);
 }
 function drawBackingHull(ctx, points, color) {
     if (points.length < 3) return;
@@ -116,5 +113,5 @@ export function drawInspectCylindricalLabel(
     const { cells, hull } = gatherTexturedQuadCells(rawCells, img, uvBleed, { collectHull: true });
     if (!cells.length) return;
     drawBackingHull(ctx, hull, underlay);
-    drawTexturedQuadCells(ctx, cells, img, { screenBleed, imageSmoothing: true });
+    drawTexturedQuadCells(ctx, cells, img, { bleedPx: screenBleed });
 }

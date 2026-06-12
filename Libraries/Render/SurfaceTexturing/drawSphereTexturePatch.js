@@ -68,7 +68,6 @@ function projectSphereCellInto(out, cell, prop, px, py) {
  *   radiusInflate?: number,
  *   uvBleed?: number,
  *   screenBleed?: number,
- *   imageSmoothing?: boolean | null,
  * }} [options]
  */
 export function drawSphereTexturePatch(ctx, prop, px, py, img, options = {}) {
@@ -111,5 +110,5 @@ export function drawSphereTexturePatch(ctx, prop, px, py, img, options = {}) {
     }
     sProjectedSphereCells.length = projectedCount;
     const cells = gatherTexturedQuadCells(sProjectedSphereCells, img, options.uvBleed ?? 1);
-    drawTexturedQuadCells(ctx, cells, img, { screenBleed: options.screenBleed ?? 0, imageSmoothing: options.imageSmoothing ?? true });
+    drawTexturedQuadCells(ctx, cells, img, { bleedPx: options.screenBleed ?? 0 });
 }

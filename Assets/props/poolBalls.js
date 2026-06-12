@@ -101,7 +101,6 @@ export function createPoolBallDraw(visuals) {
             radiusInflate: 1,
             uvBleed: 1,
             screenBleed: 0,
-            imageSmoothing: visuals.labelImageSmoothing,
         });
     };
 }
@@ -136,7 +135,6 @@ const POOL_BALL_VISUALS = {
     labelCapAngle: 0.78,
     labelGridSegments: 12,
     labelSubSegments: 1,
-    labelImageSmoothing: true,
     showLabels: false,
 };
 /** @param {number} number */

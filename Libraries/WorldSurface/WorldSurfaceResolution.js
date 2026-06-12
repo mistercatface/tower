@@ -8,17 +8,10 @@ export function getTexelResolution(settings) {
 export function bakePixelsForWorldSpan(worldSpan, settings) {
     return Math.max(1, Math.round(worldSpan * getTexelResolution(settings)));
 }
-/** @param {WorldSurfaceSettings} settings */
-export function shouldSmoothTextureDownsample(settings) {
-    return getTexelResolution(settings) > 1;
-}
 /** @param {WorldSurfaceSettings} [settings] */
-export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorldH, settings) {
+export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorldH, _settings) {
     if (!canvas || canvas.isPlaceholder) return;
-    const prevSmoothing = ctx.imageSmoothingEnabled;
-    if (settings) ctx.imageSmoothingEnabled = shouldSmoothTextureDownsample(settings);
     ctx.drawImage(canvas, destX, destY, destWorldW, destWorldH);
-    ctx.imageSmoothingEnabled = prevSmoothing;
 }
 /**
  * Blit a baked chunk onto projected horizontal corners via `drawImageQuad` (perspective-correct).
@@ -31,8 +24,5 @@ export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorl
 export function drawProjectedHorizontalChunk(ctx, canvas, corners, settings) {
     if (!canvas || canvas.isPlaceholder) return;
     const bleedPx = settings?.wallTextureBleedPx ?? 1;
-    const prevSmoothing = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = false;
     drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3], { bleedPx });
-    ctx.imageSmoothingEnabled = prevSmoothing;
 }
