@@ -32,29 +32,17 @@
 - [ ] **Drop redundant `gridCellToGlobalColRow` in `resolveStaticWallHeightAtCell`** — index static layers directly from local `(col, row)` when possible.
 - [ ] **Batch or cache `getStaticCellDamageAlphaAtGrid`** — per-wall call in draw loop; worth caching if many damaged cells are visible.
 
-# EntityRegistry — instance masterlist + bounds query cache
+# EntityRegistry — follow-up
 
-**Goal:** one authoritative instance index over existing storage (`pickups`, `sandboxPads`, …). Arrays stay source of truth; registry holds `Map<id, { kind, ref }>`, central lookup, and the first real consumer — **cached bounds queries** — so sim/render stop linear-scanning full lists.
+Core done: masterlist on `SharedGameState`, lifecycle hooks, `queryView` bounds cache, renderer cull, combat frame, aim previews, camera follow, sim pad id lookups.
 
-**Not in scope:** UI/selection (sandbox editor hit-test, multi-select, link validation on delete). `EntityGrid` / `SpatialFrameCore` stay for physics broadphase; `PropCatalog` / `WallSpatialIndex` unchanged.
-
-## Step 1 — Instance masterlist
-
-- [x] **`EntityRegistry`** on game state — `get(id)`, `getRef(id)`, `membershipGen` (bump on register/unregister and tag/kind edits).
-- [x] **Lifecycle hooks** — register on spawn/add; unregister on remove, death cull, assembly purge (`tilelabSandbox`, `spawnerConfig`, `spawnAssembly`, `pushablePhysicsPass`, …).
-- [x] **Sim id lookups** — pads, pad effects, button links use registry instead of `findPickupById` / `findLivePickup` scans.
-- [ ] **Pads** — same register/unregister pattern once pickups are solid.
-
-## Step 2 — Bounds query cache (first registry consumer)
-
-Generic **bounds + optional filters** — viewport is just a caller passing the visible rect. Demand-built, tick-scoped cache on top of current-tick `EntityGrid`.
-
-- [x] **`queryView(criteria) → refs[]`** — `{ bounds, kinds?, tags? }`; build on miss, return cached array ref on hit.
-- [x] **Validity key** — `(spatialGen, membershipGen, boundsKey, filterKey)`. `spatialGen` = `SpatialFrameCore.frameId` (positions change every tick). `membershipGen` = entity set/tags changed. Live sim: spatial entries expire each tick; coalesce duplicate asks within the same tick. Paused/static: cache can persist while gens don't advance.
-- [x] **Derived narrow** — e.g. `kind: ball` + same bounds/gens filters a warm superset (`all pickups in bounds`) in memory instead of re-querying spatial.
-
-## Step 3 — Wire sim + render (non-UI)
-
-- [x] **Renderer** — cull/draw via `queryView({ bounds: viewportRect, … })` instead of full `state.pickups` iteration.
-- [x] **Sim scans** — `populateCombatFrame`, `pushablePhysicsPass`, `dragLaunch`, cue-strike targets: registry `get(id)` or `queryView` where arrays are scanned today.
-- [x] **Camera follow** — `tickSandboxCameraFollow` resolves target by id via registry.
+- [ ] **`addPickupToState` / `removePickupFromState`** — single helper (host or state module) so `push` + `registerPickup` / `splice` + `unregister` aren't duplicated across sandbox host, spawner, start props, shards, assembly delete, physics death.
+- [ ] **Pads in registry** — register/unregister on `spawnSandboxPad` / `assemblyPadSpawn` / `deleteSandboxPad`; `get(id)` for pad lookups (string ids, separate kind).
+- [ ] **Combat + sim `forEachOfKind("pickup")`** — replace full `state.pickups` scans in `pickupAutoCombat`, `laserCast`, `explosionPhases`, `sandboxTargeting.getAllCombatants`, `standTipMotion`.
+- [ ] **Physics death via remove helper** — `pushablePhysicsPass` calls centralized remove instead of inline splice + manual unregister.
+- [ ] **`findPickupAt.js` → registry wrappers** — reimplement `findPickupById` / `findLivePickup` as `registry.get` / `getLive`; drop array-scan bodies once call sites updated.
+- [ ] **UI selection via registry** — `sandboxSession` / controller: `registry.get(selectedPickupId)` instead of `getPickups().find(…)`.
+- [ ] **UI hit-test via `queryView`** — `createSandboxController` pointer pick: small bounds around click + `queryView` (or nearest-in-result) instead of `findPickupAt(full array)`.
+- [ ] **`sandboxPadLinks` → registry** — link editor resolve endpoints with `get` / `getLive` (still UI-adjacent but mechanical).
+- [ ] **Drop renderer fallback** — remove full-`input.pickups` path from `WorldSceneRenderer`; stop syncing `input.pickups` in `Render.js` once draw input is registry-only.
+- [ ] **Hardening / later** — `notifyTagsChanged()` if tag-based `queryView` filters ever change without re-register; call `syncPickups()` after state hydrate/load; optional spatial bounds queries for combat effects if prop counts grow.

@@ -7,27 +7,22 @@
  * @property {string} [filterId] — cache key segment for optional `match`
  * @property {(ref: object) => boolean} [match]
  */
-
 const EMPTY_KINDS = ["pickup"];
-
 /** @param {BoundsRect} bounds */
 function boundsKey(bounds) {
     return `${bounds.minX}|${bounds.minY}|${bounds.maxX}|${bounds.maxY}`;
 }
-
 /** @param {QueryViewCriteria} criteria */
 function filterKey(criteria) {
     const kinds = criteria.kinds ?? EMPTY_KINDS;
     const filterId = criteria.filterId ?? "";
     return `${kinds.join(",")}|${filterId}`;
 }
-
 /** @param {import("../Libraries/Viewport/Viewport.js").Viewport} viewport */
 export function viewportVisibleBounds(viewport) {
     const b = viewport.boundsVisibleDefault;
     return { minX: b.minX, minY: b.minY, maxX: b.maxX, maxY: b.maxY };
 }
-
 /**
  * Instance masterlist over live entity refs. Arrays remain source of truth;
  * registry indexes id → { kind, ref } and serves cached bounds queries.
@@ -40,19 +35,16 @@ export class EntityRegistry {
         /** @type {Map<string, { result: object[], spatialGen: number, membershipGen: number }>} */
         this._queryCache = new Map();
     }
-
     /** @param {string} kind @param {object} ref */
     register(kind, ref) {
         if (!ref || ref.id == null) return;
         this._entries.set(ref.id, { kind, ref });
         this._bumpMembership();
     }
-
     /** @param {object} ref */
     registerPickup(ref) {
         this.register("pickup", ref);
     }
-
     /** @param {object | number} refOrId */
     unregister(refOrId) {
         const id = typeof refOrId === "number" ? refOrId : refOrId?.id;
@@ -63,7 +55,6 @@ export class EntityRegistry {
         this._entries.delete(id);
         this._bumpMembership();
     }
-
     /** @param {string} [kind] */
     clear(kind) {
         if (!kind) {
@@ -80,7 +71,6 @@ export class EntityRegistry {
         }
         if (removed) this._bumpMembership();
     }
-
     /** @param {object[]} pickups */
     syncPickups(pickups) {
         this.clear("pickup");
@@ -90,25 +80,19 @@ export class EntityRegistry {
         }
         this._bumpMembership();
     }
-
     /** @param {number} id @returns {object | null} */
     get(id) {
         return this._entries.get(id)?.ref ?? null;
     }
-
     /** @param {number} id @returns {object | null} */
     getLive(id) {
         const ref = this.get(id);
         return ref && !ref.isDead ? ref : null;
     }
-
     /** @param {string} kind @param {(ref: object) => void} fn */
     forEachOfKind(kind, fn) {
-        for (const entry of this._entries.values()) {
-            if (entry.kind === kind) fn(entry.ref);
-        }
+        for (const entry of this._entries.values()) if (entry.kind === kind) fn(entry.ref);
     }
-
     /**
      * Demand-built bounds query, tick-scoped via spatialGen.
      *
@@ -125,7 +109,6 @@ export class EntityRegistry {
         const cacheKey = `${spatialGen}|${this.membershipGen}|${bKey}|${fKey}`;
         const cached = this._queryCache.get(cacheKey);
         if (cached && cached.spatialGen === spatialGen && cached.membershipGen === this.membershipGen) return cached.result;
-
         let result;
         if (criteria.match && criteria.filterId) {
             const baseKey = `${spatialGen}|${this.membershipGen}|${bKey}|${filterKey({ bounds: criteria.bounds, kinds })}`;
@@ -140,15 +123,10 @@ export class EntityRegistry {
                 return result;
             }
         }
-
-        result = spatialFrame
-            ? this._querySpatial(criteria.bounds, kindSet, criteria.match, spatialFrame)
-            : this._queryFallback(criteria.bounds, kindSet, criteria.match);
-
+        result = spatialFrame ? this._querySpatial(criteria.bounds, kindSet, criteria.match, spatialFrame) : this._queryFallback(criteria.bounds, kindSet, criteria.match);
         this._queryCache.set(cacheKey, { result, spatialGen, membershipGen: this.membershipGen });
         return result;
     }
-
     /** @param {BoundsRect} bounds @param {Set<string>} kindSet @param {((ref: object) => boolean) | undefined} match @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame */
     _querySpatial(bounds, kindSet, match, spatialFrame) {
         const entities = spatialFrame.collectEntitiesInBounds(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
@@ -164,7 +142,6 @@ export class EntityRegistry {
         }
         return result;
     }
-
     /** @param {BoundsRect} bounds @param {Set<string>} kindSet @param {((ref: object) => boolean) | undefined} match */
     _queryFallback(bounds, kindSet, match) {
         const result = [];
@@ -179,7 +156,6 @@ export class EntityRegistry {
         }
         return result;
     }
-
     _bumpMembership() {
         this.membershipGen = (this.membershipGen + 1) | 0;
         this._queryCache.clear();
