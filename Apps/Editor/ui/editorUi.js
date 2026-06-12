@@ -115,6 +115,7 @@ export function mountEditorUi(state) {
         },
         onResize: (size) => onMapCanvasResize(state, size),
     });
+    state.labCtx = canvas.getContext("2d");
     initResizer("resizer", () => resizeCanvases(state));
     drawLabFrame(state);
 }

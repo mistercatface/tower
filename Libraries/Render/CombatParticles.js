@@ -191,7 +191,6 @@ export class CombatParticles {
     static renderAll(ctx, state, viewport) {
         if (!state.combatParticles.length) return;
         ctx.save();
-        ctx.imageSmoothingEnabled = false;
         for (const p of state.combatParticles) {
             if (!p.isVisible(viewport)) continue;
             ctx.save();

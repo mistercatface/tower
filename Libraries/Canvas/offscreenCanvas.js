@@ -1,6 +1,6 @@
 /**
  * Offscreen bake surfaces. Policy: `imageSmoothingEnabled` false at birth (and after resize).
- * Returns the canvas only — no wrapper object. Callers that need 2d: `canvas.getContext("2d")` once and cache.
+ * Returns the canvas only — no wrapper object. Callers cache `getContext("2d")` locally if they need it.
  */
 /** @param {number} width @param {number} height @returns {OffscreenCanvas} */
 export function createOffscreenCanvas(width, height) {
@@ -9,7 +9,6 @@ export function createOffscreenCanvas(width, height) {
     return canvas;
 }
 /**
- * Resize a reused offscreen buffer. Dimension change resets context state, so smoothing is re-applied.
  * @param {OffscreenCanvas} canvas
  * @param {number} width
  * @param {number} height

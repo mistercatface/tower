@@ -34,6 +34,7 @@ export function applySquareCanvasResize(canvas, options) {
         if (syncCanvasPixels) {
             canvas.width = size;
             canvas.height = size;
+            canvas.getContext("2d").imageSmoothingEnabled = false;
         }
     };
     const applySize = (size) => {

@@ -36,9 +36,10 @@ export function estimateAnimationPreviewHeight(fallbackSize = 200) {
     const hostH = host?.offsetHeight ?? fallbackSize;
     return hostH + headerH + 6;
 }
+/** @type {CanvasRenderingContext2D | null} */
+let previewCtx = null;
 export function initAnimationPreview(canvas, getProfileConfig) {
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
+    previewCtx = canvas.getContext("2d");
     let currentProfileStr = null;
     function tick(timestamp) {
         rafId = requestAnimationFrame(tick);
@@ -53,7 +54,7 @@ export function initAnimationPreview(canvas, getProfileConfig) {
         }
         if (!isAnimationEnabled) {
             if (forceDraw || lastDrawTime === 0) {
-                drawFrame(ctx, canvas, profile, 0);
+                drawFrame(previewCtx, canvas, profile, 0);
                 lastDrawTime = timestamp;
             }
             return;
@@ -62,7 +63,7 @@ export function initAnimationPreview(canvas, getProfileConfig) {
         if (forceDraw || delta > 32 || lastDrawTime === 0) {
             const duration = getAnimationDuration(profile.animation);
             if (!forceDraw || delta <= 32) lastGameTime = (lastGameTime + delta) % duration;
-            drawFrame(ctx, canvas, profile, lastGameTime);
+            drawFrame(previewCtx, canvas, profile, lastGameTime);
             lastDrawTime = timestamp;
         }
     }

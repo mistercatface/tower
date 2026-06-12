@@ -38,7 +38,6 @@ export function createSceneRenderer(config) {
             this.queue.length = 0;
             this.poolIndex = 0;
             this.project = createProjector(viewContext, rotation, config, rig);
-            ctx.imageSmoothingEnabled = false;
         },
         addSphere(pos, radius, palette) {
             const p = this.project(pos);

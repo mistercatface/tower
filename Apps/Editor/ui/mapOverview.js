@@ -27,20 +27,22 @@ function drawWorldBoundsBox(ctx, bounds, cache, displayW, displayH, strokeStyle,
     ctx.strokeRect(x, y, w, h);
     ctx.restore();
 }
+/** @type {CanvasRenderingContext2D | null} */
+let overviewCtx = null;
 /** Blit cached map and draw live viewport / generation bounds — not part of the bake. */
 export function paintMapOverviewFrame(state) {
     if (!state.labShowMapOverview) return;
     const stage = document.getElementById("mapOverviewStage");
     const canvas = document.getElementById("mapOverviewCanvas");
     if (!stage || !canvas || stage.hidden) return;
+    if (!overviewCtx) overviewCtx = canvas.getContext("2d");
+    const ctx = overviewCtx;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     let cache = state.mapOverviewCache;
     if (!cache && state.obstacleGrid?.cols) {
         rebuildLabMapCaches(state);
         cache = state.mapOverviewCache;
     }
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!cache) return;
     ctx.drawImage(cache.canvas, 0, 0, canvas.width, canvas.height);
     const displayW = canvas.width;
@@ -65,5 +67,6 @@ export function estimateMapOverviewHeight(fallbackSize = 160) {
 export function mountMapOverview(state) {
     const canvas = document.getElementById("mapOverviewCanvas");
     applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize: 160, minSize: 96, maxSize: 512, onResize: () => paintMapOverviewFrame(state) });
+    overviewCtx = canvas.getContext("2d");
     paintMapOverviewFrame(state);
 }

@@ -261,7 +261,6 @@ export class WorldSurfaceEngine {
         const maxChunkRow = worldToChunkRow(bounds.maxY - 1, obstacleGrid.minY, chunkSizePx);
         ctx.save();
         if (playBounds) clipToAabb(ctx, bounds);
-        ctx.imageSmoothingEnabled = false;
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
                 const originX = obstacleGrid.minX + chunkCol * chunkSizePx;
