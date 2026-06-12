@@ -29,10 +29,6 @@ import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
  * @property {import("../Render/Scene/RenderScene.js").RenderScene | null} renderScene
  * @property {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null} wallSpatialIndex
  */
-/** @param {Omit<ChunkDrawPass, "wallSpatialIndex"> & { wallSpatialIndex?: ChunkDrawPass["wallSpatialIndex"] }} spec @returns {ChunkDrawPass} */
-export function createChunkDrawPass(spec) {
-    return { wallSpatialIndex: null, staticOccupancyLayers: null, renderScene: null, state: null, viewport: null, obstacleGrid: null, ...spec };
-}
 /** @param {ChunkDrawPass} pass @param {{ originX?: number, originY?: number, sizePx?: number, zLevel?: number } | null} [rect] */
 function chunkRect(pass, rect = null) {
     return { originX: rect?.originX ?? pass.originX, originY: rect?.originY ?? pass.originY, sizePx: rect?.sizePx ?? pass.sizePx, zLevel: rect?.zLevel ?? pass.zLevel };

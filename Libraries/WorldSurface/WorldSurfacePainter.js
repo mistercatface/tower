@@ -5,9 +5,21 @@ import { buildMapContext, createWallFaceAxes, writePixelToSamples } from "./Surf
 import { bakePixelsForWorldSpan, getTexelResolution } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 import { sourceFrameIndexForBakeSlot } from "./AnimationFrameBake.js";
-import { createBakeRequest } from "./BakeRequest.js";
-/** @typedef {import("./BakeRequest.js").BakeRequest} BakeRequest */
-export { createBakeRequest } from "./BakeRequest.js";
+
+/**
+ * @typedef {Object} BakeRequest
+ * @property {CanvasRenderingContext2D} ctx
+ * @property {number} width
+ * @property {number} height
+ * @property {number} startWorldX
+ * @property {number} startWorldY
+ * @property {number} seed
+ * @property {object} paintOptions
+ * @property {string | object} profileOrId
+ * @property {object} [resolvePayload]
+ * @property {string} [profileKey]
+ * @property {object} [baseProfile]
+ */
 class TileMemoryPool {
     constructor() {
         this.buffers = new Map();
@@ -37,9 +49,7 @@ function resolvePaintProfile(profileOrId) {
     return provider.getProfile(profileOrId ?? provider.defaultId);
 }
 function resolveBakeRequestProfile(req) {
-    return req.resolvePayload != null && req.baseProfile != null && req.profileKey != null
-        ? resolveBakeProfile(req.baseProfile, req.profileKey, req.resolvePayload)
-        : resolvePaintProfile(req.profileOrId);
+    return req.resolvePayload ? resolveBakeProfile(req.baseProfile, req.profileKey, req.resolvePayload) : resolvePaintProfile(req.profileOrId);
 }
 /** @param {BakeRequest} req */
 export function paintBakeRequest(req) {
@@ -51,9 +61,7 @@ export function bakeRequestToCanvas(req) {
     paintBakeRequest({ ...req, ctx: canvas.getContext("2d") });
     return canvas;
 }
-function animatedBakeFields(profileId, baseProfile, payload, useResolver) {
-    return useResolver ? { resolvePayload: payload, baseProfile, profileKey: profileId } : {};
-}
+
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileOrId) {
     const profile = resolvePaintProfile(profileOrId);
     const isWall = options.isWall === true || options.roofSurface === true;
@@ -129,7 +137,7 @@ export function bakeWallAtlasCanvases(payload) {
             seed,
             paintOptions: wallPaintOptions(pixelsPerUnit, payload),
             profileOrId: profileId,
-            ...animatedBakeFields(profileId, baseProfile, payload, useResolver),
+            ...(useResolver ? { resolvePayload: payload, baseProfile, profileKey: profileId } : {}),
         }),
     ];
 }
@@ -137,9 +145,6 @@ function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSiz
     const startCol = chunkCol * cellsPerChunk;
     const startRow = chunkRow * cellsPerChunk;
     return { x: minX + startCol * cellSize, y: minY + startRow * cellSize, bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk, { texelResolution }) };
-}
-function chunkNeedsRuntimeResolve(profile) {
-    return Boolean(profile.animation);
 }
 /** Bake a static ground-chunk canvas (frame 0 when the profile has a timeline). */
 export function bakeGroundChunkCanvases(payload) {
@@ -152,7 +157,7 @@ export function bakeGroundChunkCanvases(payload) {
     const pixelsPerUnit = texelResolution;
     const zLevel = payload.zLevel ?? 0;
     const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
-    const useResolver = chunkNeedsRuntimeResolve(baseProfile);
+    const useResolver = Boolean(baseProfile.animation);
     if (useResolver) payload.frameIndex = 0;
     const canvas = bakeRequestToCanvas({
         width: bakeSize,
@@ -162,7 +167,7 @@ export function bakeGroundChunkCanvases(payload) {
         seed,
         paintOptions,
         profileOrId: profileId,
-        ...animatedBakeFields(profileId, baseProfile, payload, useResolver),
+        ...(useResolver ? { resolvePayload: payload, baseProfile, profileKey: profileId } : {}),
     });
     return [canvas];
 }
@@ -176,7 +181,7 @@ export function bakeHorizontalPatchCanvases(payload) {
     if (cellSize == null || texelResolution == null) throw new Error("bakeHorizontalPatchCanvases payload requires cellSize, texelResolution");
     const widthPx = bakePixelsForWorldSpan(worldWidth, { texelResolution });
     const heightPx = bakePixelsForWorldSpan(worldHeight, { texelResolution });
-    const useResolver = chunkNeedsRuntimeResolve(baseProfile);
+    const useResolver = Boolean(baseProfile.animation);
     const pixelsPerUnit = texelResolution;
     const zLevel = payload.zLevel ?? 0;
     const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
@@ -194,7 +199,7 @@ export function bakeHorizontalPatchCanvases(payload) {
                 seed,
                 paintOptions,
                 profileOrId: profileId,
-                ...animatedBakeFields(profileId, baseProfile, payload, useResolver),
+                ...(useResolver ? { resolvePayload: payload, baseProfile, profileKey: profileId } : {}),
             }),
         );
     }

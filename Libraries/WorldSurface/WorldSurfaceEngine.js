@@ -10,7 +10,6 @@ import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
 import { chunkHasWallSegments, chunkHasBlockedCells, buildStaticRoofMaskCanvas, applyStaticRoofMaskToCanvas } from "./HorizontalSurfaceDraw.js";
 import {
-    createChunkDrawPass,
     projectHorizontalSurfaceCornersInto,
     clipChunkToRoofFootprints,
     clipChunkToWallFootprints,
@@ -266,7 +265,8 @@ export class WorldSurfaceEngine {
                 const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel);
                 const canvas = canvases[0];
                 if (canvas.isPlaceholder) continue;
-                const pass = createChunkDrawPass({
+                /** @type {import("./ChunkDrawPass.js").ChunkDrawPass} */
+                const pass = {
                     chunkCol,
                     chunkRow,
                     originX,
@@ -282,7 +282,7 @@ export class WorldSurfaceEngine {
                     state,
                     renderScene: options.renderScene ?? null,
                     wallSpatialIndex: flatWallRails ? wallSpatialIndex : null,
-                });
+                };
                 if (zLevel > 0) {
                     ctx.save();
                     if (staticRoofDraw) {

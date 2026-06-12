@@ -70,14 +70,10 @@ function resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj) {
 function drawFaceTexture(ctx, p1, p2, face, wallCtx) {
     const { worldSurfaces, proceduralSurfaceDraw, viewport, wallHeight, fillStyle, cacheObj, worldBounds, viewerX, viewerY } = wallCtx;
     const settings = worldSurfaces.settings;
-    if (!settings) return;
     const cellSize = settings.cellSize;
-    if (!worldSurfaces || !proceduralSurfaceDraw) return;
-    const wallCx = cacheObj && cacheObj.cx !== undefined ? cacheObj.cx : (p1.x + p2.x) * 0.5;
-    const wallCy = cacheObj && cacheObj.cy !== undefined ? cacheObj.cy : (p1.y + p2.y) * 0.5;
-    const finalWallCx = wallCx ?? (p1.x + p2.x) * 0.5;
-    const finalWallCy = wallCy ?? (p1.y + p2.y) * 0.5;
-    const profileId = resolveWallProfileId(proceduralSurfaceDraw, finalWallCx, finalWallCy, cacheObj);
+    const wallCx = cacheObj?.cx ?? (p1.x + p2.x) * 0.5;
+    const wallCy = cacheObj?.cy ?? (p1.y + p2.y) * 0.5;
+    const profileId = resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj);
     const ppwu = getTexelResolution(settings);
     const atlas = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight, cacheObj });
     if (!atlas) return;
@@ -97,10 +93,10 @@ function drawFaceTexture(ctx, p1, p2, face, wallCtx) {
         return;
     }
     ctx.save();
-    const edgeLen = cacheObj && cacheObj.edgeLen !== undefined ? cacheObj.edgeLen : Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const edgeLen = cacheObj?.edgeLen ?? Math.hypot(p2.x - p1.x, p2.y - p1.y);
     const px = viewerX;
     const py = viewerY;
-    const dist = Math.hypot(finalWallCx - px, finalWallCy - py);
+    const dist = Math.hypot(wallCx - px, wallCy - py);
     const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx));
     const visibleHeightCells = clampedHeight / cellSize;
     const SUBDIV_X = Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale)));
@@ -141,12 +137,11 @@ function drawFaceTexture(ctx, p1, p2, face, wallCtx) {
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedWallFace(ctx, p1, p2, wallCtx) {
-    const { wallHeight, viewerX, viewerY, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha = 0 } = wallCtx;
-    const settings = worldSurfaces?.settings;
-    if (!settings) return;
+    const { wallHeight, viewerX, viewerY, viewport, worldSurfaces, proceduralSurfaceDraw, fillStyle, damageAlpha } = wallCtx;
+    const settings = worldSurfaces.settings;
     const face = computeProjectedFace(p1, p2, viewerX, viewerY, wallHeight, settings, undefined, viewport);
     traceProjectedFace(ctx, p1, p2, face);
-    if (worldSurfaces && proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, face, wallCtx);
+    if (proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, face, wallCtx);
     else {
         ctx.fillStyle = fillStyle;
         ctx.fill();

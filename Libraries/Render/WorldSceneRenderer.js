@@ -2,8 +2,9 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 /** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 import { getStaticCellDamageAlphaAtGrid } from "../World/staticCellDamage.js";
-import { collectStaticGridWallDrawables, drawStaticGridWallFace } from "./Structure3D/StaticGridWallDraw.js";
-import { createWallDrawContextFromScene } from "./Structure3D/WallDrawContext.js";
+import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
+import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
+/** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { renderActorKinematicsBody } from "./Characters/actorKinematicsRenderer.js";
@@ -72,29 +73,24 @@ export class WorldSceneRenderer {
         const visibleObjects = this.visibleDrawables;
         for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
     }
-    _drawStaticGridWallFace(ctx, face, wallCtx, input) {
-        const damageAlpha = getStaticCellDamageAlphaAtGrid(input.obstacleGrid, input.gameState, face.gridCol, face.gridRow);
-        drawStaticGridWallFace(ctx, face, wallCtx, damageAlpha);
-    }
-    drawRagdollCorpsesOnly(ctx, input, viewport) {
-        const px = viewport.x;
-        const py = viewport.y;
-        ctx.save();
-        clipToViewport(ctx, viewport);
-        const visibleCorpses = this.visibleDrawables;
-        visibleCorpses.length = 0;
-        this._appendVisibleRagdolls(input, viewport, px, py, visibleCorpses);
-        visibleCorpses.sort((a, b) => b._distSq - a._distSq);
-        for (let i = 0; i < visibleCorpses.length; i++) visibleCorpses[i].render(ctx);
-        ctx.restore();
-    }
     draw3DBuildings(ctx, input, viewport, _walls, options = {}) {
         const skipWalls = options.skipWalls === true;
         const px = viewport.x;
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
-        const worldBounds = viewport.boundsDraw;
-        const wallCtx = createWallDrawContextFromScene(input, viewport, px, py, worldBounds, this.settings.floorShadow ?? "#12161c");
+        /** @type {WallDrawContext} */
+        const wallCtx = {
+            viewerX: px,
+            viewerY: py,
+            viewport,
+            worldSurfaces: input.worldSurfaces,
+            proceduralSurfaceDraw: input.proceduralSurfaceDraw,
+            fillStyle: this.settings.floorShadow ?? "#12161c",
+            wallHeight: 0,
+            damageAlpha: 0,
+            cacheObj: null,
+            worldBounds: viewport.boundsDraw,
+        };
         ctx.save();
         clipToViewport(ctx, viewport);
         const visibleObjects = this.visibleDrawables;
@@ -106,8 +102,25 @@ export class WorldSceneRenderer {
             const obj = visibleObjects[i];
             if (obj.usesKinematicsBody) renderActorKinematicsBody(ctx, obj, viewport);
             else if (obj.strategy) this.props.drawProp(ctx, obj, px, py, { zoom });
-            else if (!skipWalls && obj.staticGrid) this._drawStaticGridWallFace(ctx, obj, wallCtx, input);
+            else if (!skipWalls && obj.staticGrid) {
+                wallCtx.wallHeight = obj.wallHeight;
+                wallCtx.cacheObj = obj;
+                wallCtx.damageAlpha = getStaticCellDamageAlphaAtGrid(input.obstacleGrid, input.gameState, obj.gridCol, obj.gridRow);
+                drawProjectedWallFace(ctx, obj.p1, obj.p2, wallCtx);
+            }
         }
+        ctx.restore();
+    }
+    drawRagdollCorpsesOnly(ctx, input, viewport) {
+        const px = viewport.x;
+        const py = viewport.y;
+        ctx.save();
+        clipToViewport(ctx, viewport);
+        const visibleCorpses = this.visibleDrawables;
+        visibleCorpses.length = 0;
+        this._appendVisibleRagdolls(input, viewport, px, py, visibleCorpses);
+        visibleCorpses.sort((a, b) => b._distSq - a._distSq);
+        for (let i = 0; i < visibleCorpses.length; i++) visibleCorpses[i].render(ctx);
         ctx.restore();
     }
 }

@@ -4,8 +4,6 @@
 import { forEachObstacleGridCellInAabb } from "../../Spatial/grid/GridCoords.js";
 import { getWallHeight } from "../../WorldSurface/WorldSurfaceSettings.js";
 import { cellIsStaticBlocked, resolveStaticWallHeightAtCell } from "../../World/staticOccupancyLayers.js";
-import { drawProjectedWallFace } from "./ProjectedWallDraw.js";
-/** @typedef {import("./WallDrawContext.js").WallDrawContext} WallDrawContext */
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge */
@@ -96,16 +94,4 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, layers, s
         }
     });
     return out;
-}
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {ReturnType<typeof collectStaticGridWallDrawables>[number]} face
- * @param {WallDrawContext} wallCtx
- * @param {number} [damageAlpha]
- */
-export function drawStaticGridWallFace(ctx, face, wallCtx, damageAlpha = 0) {
-    wallCtx.wallHeight = face.wallHeight;
-    wallCtx.cacheObj = face;
-    wallCtx.damageAlpha = damageAlpha;
-    drawProjectedWallFace(ctx, face.p1, face.p2, wallCtx);
 }

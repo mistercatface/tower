@@ -3,7 +3,6 @@
  * Elevated-chunk draw helpers live in ChunkDrawPass.js.
  */
 export {
-    createChunkDrawPass,
     projectHorizontalSurfaceCornersInto,
     clipChunkToRoofFootprints,
     clipChunkToBlockedCells,

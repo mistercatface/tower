@@ -2,17 +2,17 @@
 
 ## In progress
 
-- [x] **`ChunkDrawPass`** — elevated-chunk draw cluster; `createChunkDrawPass` built once per visible chunk in `drawGroundChunks`. `getStaticRoofDrawCanvas` takes pass. `buildStaticRoofMaskCanvas` still uses raw coords (optional follow-up).
+- [x] **`ChunkDrawPass`** — per-chunk draw struct + helpers; built inline in `drawGroundChunks`.
 
 ## Backlog
 
 ### Render — walls
 
-- [x] **`WallDrawContext`** — unify `drawFaceTexture`, `drawStaticGridWallFace`, `RenderableWallFace.draw`; `createWallDrawContextFromScene` per pass in `WorldSceneRenderer`.
+- [x] **`WallDrawContext`** — typedef + inline `wallCtx` object in `WorldSceneRenderer`; `drawProjectedWallFace` is the single draw entry.
 
 ### Bake pipeline
 
-- [x] **`BakeRequest`** — `createBakeRequest` + `paintBakeRequest` / `bakeRequestToCanvas` in `WorldSurfacePainter`; worker, editor preview, and chunk/patch/wall bakes.
+- [x] **`BakeRequest`** — typedef + `paintBakeRequest` / `bakeRequestToCanvas` in `WorldSurfacePainter`; editor preview calls `paintPixelArea` directly with a resolved profile.
 
 ### Projection
 
