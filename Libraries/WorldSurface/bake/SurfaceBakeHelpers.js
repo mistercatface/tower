@@ -29,6 +29,12 @@ export function horizontalZCacheTag(zLevel = 0) {
 export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit, zLevel = 0) {
     return `chunk:${profileRevision}:${pixelsPerWorldUnit}:${profileId}:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
 }
+export function staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel) {
+    return `staticRoofMask:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
+}
+export function staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit, zLevel) {
+    return `staticRoofDraw:${groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, pixelsPerWorldUnit, zLevel)}`;
+}
 /** @param {WorldSurfaceSettings} settings @returns {number[]} */
 export function getHorizontalSurfaceZLevels(settings) {
     const roof = settings.roofZLevels ?? [];

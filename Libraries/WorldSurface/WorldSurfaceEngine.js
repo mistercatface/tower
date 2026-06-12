@@ -6,14 +6,15 @@ import { getWallHeight } from "./WorldSurfaceSettings.js";
 import { createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
 import { getChunkSizePx, gridBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
-import { groundChunkCachePrefix } from "./bake/SurfaceBakeHelpers.js";
+import { groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
 import {
     chunkHasWallSegments,
     chunkHasBlockedCells,
     clipChunkToRoofFootprints,
     clipChunkToWallFootprints,
     clipChunkToBlockedCells,
-    clipChunkToStaticRoofFootprints,
+    buildStaticRoofMaskCanvas,
+    applyStaticRoofMaskToCanvas,
     drawRoofSegmentDamageOverlays,
     drawWallFootprintDamageOverlays,
     projectHorizontalSurfaceCorners,
@@ -62,7 +63,12 @@ export class WorldSurfaceEngine {
                 const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
                 const ppwu = getTexelResolution(this.settings);
                 const rev = getSurfaceProfileRevision(profileId);
-                for (const zLevel of zLevels) this.surfaceCache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel));
+                for (const zLevel of zLevels) {
+                    this.surfaceCache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel));
+                    if (zLevel <= 0) continue;
+                    this.surfaceCache.delete(staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel));
+                    this.surfaceCache.delete(staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel));
+                }
             }
     }
     ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null, profileId = null) {
@@ -130,6 +136,40 @@ export class WorldSurfaceEngine {
         return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(bakePayload));
     }
     /**
+     * Roof chunk with static occupancy baked into alpha — one drawImage per visible chunk at draw time.
+     *
+     * @param {number} chunkCol
+     * @param {number} chunkRow
+     * @param {number} zLevel
+     * @param {object} state
+     * @param {CanvasImageSource} roofCanvas
+     * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
+     * @param {import("../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} staticOccupancyLayers
+     * @param {number} chunkOriginX
+     * @param {number} chunkOriginY
+     * @param {number} chunkSizePx
+     * @param {object} payload
+     */
+    getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, state, roofCanvas, obstacleGrid, staticOccupancyLayers, chunkOriginX, chunkOriginY, chunkSizePx, payload) {
+        if (roofCanvas.isPlaceholder) return roofCanvas;
+        const ppwu = getTexelResolution(this.settings);
+        const rev = getSurfaceProfileRevision(payload.profileId);
+        const drawKey = staticRoofDrawCachePrefix(chunkCol, chunkRow, payload.profileId, rev, ppwu, zLevel);
+        let cached = this.surfaceCache.get(drawKey);
+        if (cached?.[0] && !cached[0].isPlaceholder) return cached[0];
+        const maskKey = staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel);
+        let maskEntry = this.surfaceCache.get(maskKey);
+        if (!maskEntry) {
+            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, staticOccupancyLayers, ppwu);
+            if (!maskCanvas) return null;
+            maskEntry = [maskCanvas];
+            this.surfaceCache.set(maskKey, maskEntry);
+        }
+        const masked = applyStaticRoofMaskToCanvas(roofCanvas, maskEntry[0]);
+        this.surfaceCache.set(drawKey, [masked]);
+        return masked;
+    }
+    /**
      * @param {{ x: number, y: number }} p1
      * @param {{ x: number, y: number }} p2
      * @param {{
@@ -165,7 +205,7 @@ export class WorldSurfaceEngine {
      *   requireWallSegments?: boolean,
      *   skipRoofFootprintClip?: boolean,
      *   flatWallRails?: boolean,
-     *   staticRoofClip?: boolean,
+     *   staticRoofDraw?: boolean,
      *   staticOccupancyLayers?: import("../World/staticOccupancyLayers.js").StaticOccupancyLayer[],
      *   renderScene?: import("../Render/Scene/RenderScene.js").RenderScene,
      * }} options
@@ -182,7 +222,7 @@ export class WorldSurfaceEngine {
             requireWallSegments = true,
             skipRoofFootprintClip = false,
             flatWallRails = false,
-            staticRoofClip = false,
+            staticRoofDraw = false,
             staticOccupancyLayers = null,
         } = options;
         const viewerX = viewport.x;
@@ -217,7 +257,7 @@ export class WorldSurfaceEngine {
                     requireWallSegments &&
                     !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx) &&
                     !chunkHasBlockedCells(obstacleGrid, originX, originY, chunkSizePx) &&
-                    !(staticRoofClip && chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel, staticOccupancyLayers))
+                    !(staticRoofDraw && chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel, staticOccupancyLayers))
                 )
                     continue;
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
@@ -226,28 +266,41 @@ export class WorldSurfaceEngine {
                 if (canvas.isPlaceholder) continue;
                 if (zLevel > 0) {
                     ctx.save();
-                    const clipped = flatWallRails
-                        ? clipChunkToWallFootprints(ctx, originX, originY, chunkSizePx, wallSpatialIndex) || clipChunkToBlockedCells(ctx, obstacleGrid, originX, originY, chunkSizePx)
-                        : staticRoofClip
-                          ? clipChunkToStaticRoofFootprints(ctx, obstacleGrid, originX, originY, chunkSizePx, zLevel, staticOccupancyLayers, viewerX, viewerY, this.settings.cameraHeight, viewport)
-                          : !skipRoofFootprintClip &&
-                            clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
-                    if (!clipped) {
-                        ctx.restore();
-                        continue;
-                    }
-                    if (flatWallRails) {
-                        drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
-                        drawWallFootprintDamageOverlays(ctx, originX, originY, chunkSizePx, wallSpatialIndex);
-                    } else {
+                    if (staticRoofDraw) {
+                        const drawCanvas = this.getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, state, canvas, obstacleGrid, staticOccupancyLayers, originX, originY, chunkSizePx, payload);
+                        if (!drawCanvas || drawCanvas.isPlaceholder) {
+                            ctx.restore();
+                            continue;
+                        }
                         const corners = projectHorizontalSurfaceCorners(originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
                         const dstX = corners[0].x;
                         const dstY = corners[0].y;
                         const dstW = corners[2].x - corners[0].x;
                         const dstH = corners[2].y - corners[0].y;
                         const bleedPx = this.settings.wallTextureBleedPx ?? 1;
-                        ctx.drawImage(canvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
-                        drawRoofSegmentDamageOverlays(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
+                        ctx.drawImage(drawCanvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
+                    } else {
+                        const clipped = flatWallRails
+                            ? clipChunkToWallFootprints(ctx, originX, originY, chunkSizePx, wallSpatialIndex) || clipChunkToBlockedCells(ctx, obstacleGrid, originX, originY, chunkSizePx)
+                            : !skipRoofFootprintClip &&
+                                clipChunkToRoofFootprints(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
+                        if (!clipped) {
+                            ctx.restore();
+                            continue;
+                        }
+                        if (flatWallRails) {
+                            drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
+                            drawWallFootprintDamageOverlays(ctx, originX, originY, chunkSizePx, wallSpatialIndex);
+                        } else {
+                            const corners = projectHorizontalSurfaceCorners(originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, viewport);
+                            const dstX = corners[0].x;
+                            const dstY = corners[0].y;
+                            const dstW = corners[2].x - corners[0].x;
+                            const dstH = corners[2].y - corners[0].y;
+                            const bleedPx = this.settings.wallTextureBleedPx ?? 1;
+                            ctx.drawImage(canvas, dstX - bleedPx, dstY - bleedPx, dstW + bleedPx * 2, dstH + bleedPx * 2);
+                            drawRoofSegmentDamageOverlays(ctx, originX, originY, chunkSizePx, zLevel, viewerX, viewerY, this.settings.cameraHeight, options.renderScene, viewport);
+                        }
                     }
                     ctx.restore();
                 } else drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);

@@ -38,7 +38,9 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         this.roofSpatialIndices = null;
     }
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, this.roofZLevels);
+        const staticHeights = collectStaticRoofHeights(state.staticOccupancyLayers);
+        const roofZ = [...new Set([...(this.roofZLevels ?? []), ...staticHeights])];
+        super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, roofZ);
     }
     /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
     drawGround(ctx, state, viewport) {
@@ -93,7 +95,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
                 zLevel,
                 playBounds: playBoundsFromObstacleGrid(state.obstacleGrid),
                 requireWallSegments: false,
-                staticRoofClip: true,
+                staticRoofDraw: true,
                 staticOccupancyLayers: state.staticOccupancyLayers,
                 renderScene: this.renderScene,
             });

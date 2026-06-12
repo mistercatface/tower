@@ -8,7 +8,8 @@ import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { getWallDamageAlpha, wallDamageOverlayStyle } from "../Render/Structure3D/wallDamageVisual.js";
-import { cellIsStaticBlocked, resolveStaticWallHeightAtCell } from "../World/staticOccupancyLayers.js";
+import { resolveStaticWallHeightAtCell } from "../World/staticOccupancyLayers.js";
+import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 /** @returns {{ x: number, y: number }} */
 export function projectHorizontalSurfaceOrigin(worldX, worldY, zLevel, viewerX, viewerY, cameraHeight, viewport = null) {
     const strength = resolveStructurePerspectiveStrength(viewport);
@@ -76,38 +77,45 @@ export function clipChunkToBlockedCells(ctx, obstacleGrid, chunkOriginX, chunkOr
     return true;
 }
 /**
- * Clip draw to projected static-stamp roof caps at zLevel (same elevation as entity roofs).
+ * World-aligned alpha mask for static stamp roofs in one chunk (baked once per invalidation).
  *
- * @param {CanvasRenderingContext2D} ctx
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @param {number} chunkOriginX
  * @param {number} chunkOriginY
  * @param {number} chunkSizePx
  * @param {number} zLevel
  * @param {import("../World/staticOccupancyLayers.js").StaticOccupancyLayer[] | null | undefined} staticOccupancyLayers
- * @param {number} viewerX
- * @param {number} viewerY
- * @param {number} cameraHeight
- * @param {import("../Viewport/Viewport.js").Viewport | null | undefined} [viewport]
+ * @param {number} texelResolution
+ * @returns {OffscreenCanvas | null}
  */
-export function clipChunkToStaticRoofFootprints(ctx, obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, staticOccupancyLayers, viewerX, viewerY, cameraHeight, viewport = null) {
-    if (!obstacleGrid?.cols || !staticOccupancyLayers?.length) return false;
-    const cellSize = obstacleGrid.cellSize;
-    ctx.beginPath();
-    let clippedAny = false;
+export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, staticOccupancyLayers, texelResolution) {
+    if (!obstacleGrid?.cols || !staticOccupancyLayers?.length) return null;
+    const bakeSize = bakePixelsForWorldSpan(chunkSizePx, { texelResolution });
+    const cellBakeSize = bakePixelsForWorldSpan(obstacleGrid.cellSize, { texelResolution });
+    const canvas = new OffscreenCanvas(bakeSize, bakeSize);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    let any = false;
     forEachObstacleGridCellInAabb(obstacleGrid, { minX: chunkOriginX, minY: chunkOriginY, maxX: chunkOriginX + chunkSizePx, maxY: chunkOriginY + chunkSizePx }, (col, row) => {
         if (resolveStaticWallHeightAtCell(obstacleGrid, col, row, staticOccupancyLayers) !== zLevel) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
-        const corners = projectHorizontalSurfaceCorners(bounds.minX, bounds.minY, cellSize, zLevel, viewerX, viewerY, cameraHeight, viewport);
-        for (let j = 0; j < 4; j++)
-            if (j === 0) ctx.moveTo(corners[j].x, corners[j].y);
-            else ctx.lineTo(corners[j].x, corners[j].y);
-        ctx.closePath();
-        clippedAny = true;
+        const x = Math.round((bounds.minX - chunkOriginX) * texelResolution);
+        const y = Math.round((bounds.minY - chunkOriginY) * texelResolution);
+        ctx.fillRect(x, y, cellBakeSize, cellBakeSize);
+        any = true;
     });
-    if (!clippedAny) return false;
-    ctx.clip();
-    return true;
+    return any ? canvas : null;
+}
+/** @param {CanvasImageSource} roofCanvas @param {CanvasImageSource} maskCanvas */
+export function applyStaticRoofMaskToCanvas(roofCanvas, maskCanvas) {
+    const w = roofCanvas.width;
+    const h = roofCanvas.height;
+    const out = new OffscreenCanvas(w, h);
+    const ctx = out.getContext("2d");
+    ctx.drawImage(roofCanvas, 0, 0);
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.drawImage(maskCanvas, 0, 0, w, h);
+    return out;
 }
 /**
  * Clip draw to retained roof-cap footprints at the given elevation.
