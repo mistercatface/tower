@@ -174,11 +174,12 @@ export class WorldProp extends Entity {
     }
     update(dt, state, spatialFrame, resolveWalls = false) {
         this.ageMs += dt;
-        if (this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this))) return;
-        if (updateLocomotionWorldProp(this, dt, spatialFrame)) {
-            // separation + integrateSteering (Libraries/Motion)
-        } else if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
-        else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
+        const asleep = this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this));
+        if (!asleep)
+            if (updateLocomotionWorldProp(this, dt, spatialFrame)) {
+                // separation + integrateSteering (Libraries/Motion)
+            } else if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
+            else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (this.usesKinematicsBody) {
             if (!usesLocomotionWorldProp(this)) {
                 const speed = Math.hypot(this.vx, this.vy);
@@ -200,8 +201,8 @@ export class WorldProp extends Entity {
                     for (const turret of this.turrets) turret.angle = facing;
                 }
         }
-        if (resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
-        if (this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
+        if (!asleep && resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
+        if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
     }
     spawnShards(gameState) {
         if (!gameState || !gameState.worldProps) return;

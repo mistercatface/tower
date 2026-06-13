@@ -54,8 +54,11 @@ export function traceQuad(ctx, p0, p1, p2, p3) {
 /** @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} y0 @param {{ x: number, y: number }[] | null | undefined} points @param {number} endX @param {number} endY */
 export function tracePolylineFrom(ctx, x0, y0, points, endX, endY) {
     ctx.moveTo(x0, y0);
-    if (points?.length) for (let i = 0; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-    else ctx.lineTo(endX, endY);
+    if (points?.length) {
+        for (let i = 0; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+        const last = points[points.length - 1];
+        if (Math.hypot(last.x - endX, last.y - endY) > 0.5) ctx.lineTo(endX, endY);
+    } else ctx.lineTo(endX, endY);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {import("../Math/Aabb2D.js").Aabb2D} box */
 export function traceAabbRect(ctx, { minX, minY, maxX, maxY }) {

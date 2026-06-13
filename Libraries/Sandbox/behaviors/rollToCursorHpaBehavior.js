@@ -1,4 +1,5 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
+import { buildPathOverlayFromProgress } from "../../Pathfinding/pathFollow.js";
 import { getRollToCursorConfig, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
@@ -87,13 +88,14 @@ export function createRollToCursorHpaBehavior(state) {
         },
         getPathOverlay(prop) {
             if (!targetWorld) return null;
+            const trace = buildPathOverlayFromProgress(prop.x, prop.y, prop.radius ?? 6, hpaNav.navState.path, hpaNav.navState.pathProgressIdx, targetWorld.x, targetWorld.y);
             return {
                 mode: "hpa",
-                fromX: prop.x,
-                fromY: prop.y,
+                fromX: trace.fromX,
+                fromY: trace.fromY,
                 targetX: targetWorld.x,
                 targetY: targetWorld.y,
-                waypoints: hpaNav.navState.path ?? undefined,
+                waypoints: trace.waypoints,
                 abstractPath: hpaNav.navState.abstractPath ?? undefined,
                 pathPlanner: hpaNav.navState.pathPlanner ?? undefined,
             };
