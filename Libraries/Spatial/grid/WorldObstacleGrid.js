@@ -1,6 +1,7 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex } from "./GridUtils.js";
 import { damageStaticGridCell } from "../../World/staticCellDamage.js";
+import { gridWallEdgeRailShouldEmit, gridWallEdgeRailToCollisionSegment, gridWallFaceToCollisionSegment } from "../../World/wallGridCells.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
@@ -59,39 +60,24 @@ export class WorldObstacleGrid {
         proxy.size = size;
         proxy.width = size;
         proxy.height = size;
+        proxy.shape = undefined;
         proxy.gridCol = col;
         proxy.gridRow = row;
         return proxy;
     }
-    _borrowStaticEdgeProxy(x, y, width, height, col, row, side) {
+    _borrowStaticGridFaceSegment(faceOrSegment) {
+        const built = faceOrSegment.width != null ? faceOrSegment : gridWallFaceToCollisionSegment(faceOrSegment);
         let proxy = this._staticWallProxies[this._staticWallProxyCount];
         if (!proxy) {
-            proxy = {
-                x: 0,
-                y: 0,
-                angle: 0,
-                size: 0,
-                padding: 0,
-                isDead: false,
-                isStaticGridProxy: true,
-                gridCol: 0,
-                gridRow: 0,
-                handleHit(damage, state) {
-                    // TODO: edge damage?
-                },
-            };
+            proxy = { ...built, handleHit: built.handleHit };
             this._staticWallProxies[this._staticWallProxyCount] = proxy;
+        } else {
+            Object.assign(proxy, built);
+            proxy.handleHit = built.handleHit;
+            proxy.shape = undefined;
         }
         this._staticWallProxyCount++;
         proxy._obstacleGrid = this;
-        proxy.x = x;
-        proxy.y = y;
-        proxy.size = Math.max(width, height);
-        proxy.width = width;
-        proxy.height = height;
-        proxy.gridCol = col;
-        proxy.gridRow = row;
-        proxy.gridSide = side;
         return proxy;
     }
     /** @param {object} entity @param {object[]} out */
@@ -109,35 +95,11 @@ export class WorldObstacleGrid {
                 const { x, y } = this.gridToWorld(col, row);
                 out.push(this._borrowStaticWallProxy(x, y, col, row));
             }
-            if (this.edgeGrid)
-                for (let side = 0; side < 4; side++)
-                    if (this.edgeGrid[idx * 4 + side] !== 0) {
-                        const isPrimary = side === 0 || side === 3 || (side === 1 && col === this.cols - 1) || (side === 2 && row === this.rows - 1);
-                        if (isPrimary) {
-                            const { x, y } = this.gridToWorld(col, row);
-                            let ex = x,
-                                ey = y;
-                            let width = this.cellSize,
-                                height = this.cellSize;
-                            const thickness = this.edgeThicknessGrid[idx * 4 + side];
-                            const halfCell = this.cellSize / 2;
-                            const halfT = thickness / 2;
-                            if (side === 0) {
-                                ey = y - halfCell + halfT;
-                                height = thickness;
-                            } else if (side === 1) {
-                                ex = x + halfCell - halfT;
-                                width = thickness;
-                            } else if (side === 2) {
-                                ey = y + halfCell - halfT;
-                                height = thickness;
-                            } else {
-                                ex = x - halfCell + halfT;
-                                width = thickness;
-                            }
-                            out.push(this._borrowStaticEdgeProxy(ex, ey, width, height, col, row, side));
-                        }
-                    }
+            for (let side = 0; side < 4; side++) {
+                if (!gridWallEdgeRailShouldEmit(this, col, row, side)) continue;
+                const segment = gridWallEdgeRailToCollisionSegment(this, col, row, side);
+                if (segment) out.push(this._borrowStaticGridFaceSegment(segment));
+            }
         });
         return out;
     }

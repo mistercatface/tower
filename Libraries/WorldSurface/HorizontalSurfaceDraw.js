@@ -11,7 +11,7 @@ export {
     drawWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
+import { gridWallEdgeRailFootprintAabb, gridWallEdgeRailShouldEmit, resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 /**
@@ -35,12 +35,7 @@ export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOrigin
 export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
     let found = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
-        if (obstacleGrid.grid[idx] !== 0) {
-            found = true;
-            return;
-        }
-        if (obstacleGrid.edgeGrid)
-            if (obstacleGrid.edgeGrid[idx * 4] !== 0 || obstacleGrid.edgeGrid[idx * 4 + 1] !== 0 || obstacleGrid.edgeGrid[idx * 4 + 2] !== 0 || obstacleGrid.edgeGrid[idx * 4 + 3] !== 0) found = true;
+        if (obstacleGrid.grid[idx] !== 0) found = true;
     });
     return found;
 }
@@ -63,40 +58,24 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
     ctx.fillStyle = "#ffffff";
     let any = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
-        const fillHeight = resolveCellWallHeightAtIdx(obstacleGrid, idx);
-        const bounds = obstacleGrid.getCellBounds(col, row);
-        if (fillHeight === zLevel) {
+        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) {
+            const bounds = obstacleGrid.getCellBounds(col, row);
             const x = Math.round((bounds.minX - chunkOriginX) * texelResolution);
             const y = Math.round((bounds.minY - chunkOriginY) * texelResolution);
             ctx.fillRect(x, y, cellBakeSize, cellBakeSize);
             any = true;
         }
-        if (obstacleGrid.edgeGrid)
-            for (let side = 0; side < 4; side++) {
-                if (side === 1 || side === 2) continue;
-                if (obstacleGrid.edgeGrid[idx * 4 + side] * obstacleGrid.cellSize !== zLevel) continue;
-                const thickness = obstacleGrid.edgeThicknessGrid[idx * 4 + side];
-                const drawThickness = Math.max(1, thickness || 2);
-                const halfT = drawThickness / 2;
-                let rx, ry, rw, rh;
-                if (side === 0) {
-                    rx = bounds.minX;
-                    ry = bounds.minY - halfT;
-                    rw = obstacleGrid.cellSize;
-                    rh = drawThickness;
-                } else {
-                    rx = bounds.minX - halfT;
-                    ry = bounds.minY;
-                    rw = drawThickness;
-                    rh = obstacleGrid.cellSize;
-                }
-                const px = Math.round((rx - chunkOriginX) * texelResolution);
-                const py = Math.round((ry - chunkOriginY) * texelResolution);
-                const pw = Math.max(1, Math.round(rw * texelResolution));
-                const ph = Math.max(1, Math.round(rh * texelResolution));
-                ctx.fillRect(px, py, pw, ph);
-                any = true;
-            }
+        for (let edge = 0; edge < 4; edge++) {
+            if (!gridWallEdgeRailShouldEmit(obstacleGrid, col, row, edge)) continue;
+            if (obstacleGrid.edgeGrid[idx * 4 + edge] * obstacleGrid.cellSize !== zLevel) continue;
+            const fp = gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, edge);
+            const x = Math.round((fp.minX - chunkOriginX) * texelResolution);
+            const y = Math.round((fp.minY - chunkOriginY) * texelResolution);
+            const w = Math.max(1, Math.round((fp.maxX - fp.minX) * texelResolution));
+            const h = Math.max(1, Math.round((fp.maxY - fp.minY) * texelResolution));
+            ctx.fillRect(x, y, w, h);
+            any = true;
+        }
     });
     return any ? canvas : null;
 }

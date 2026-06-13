@@ -3,6 +3,304 @@
  */
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
+import { damageStaticGridCell } from "./staticCellDamage.js";
+const sP1 = { x: 0, y: 0 };
+const sP2 = { x: 0, y: 0 };
+/** @param {number} col @param {number} row @param {number} edge 0=N,1=E,2=S,3=W */
+export function gridWallEdgeNeighbor(col, row, edge) {
+    let nc = col;
+    let nr = row;
+    if (edge === 0) nr = row - 1;
+    else if (edge === 1) nc = col + 1;
+    else if (edge === 2) nr = row + 1;
+    else nc = col - 1;
+    return { nc, nr };
+}
+/** @param {number | null} neighborCap @param {number} faceHeight */
+export function gridWallFaceVisible(neighborCap, faceHeight) {
+    if (neighborCap == null) return true;
+    return faceHeight > neighborCap;
+}
+/** @param {number | null} neighborCap @param {number} faceHeight */
+export function gridWallFaceBaseZ(neighborCap, faceHeight) {
+    if (neighborCap == null || faceHeight <= neighborCap) return 0;
+    return neighborCap;
+}
+/** Inward normal (into the cell interior) for each edge. */
+export function gridWallEdgeInwardNormal(edge) {
+    if (edge === 0) return { x: 0, y: 1 };
+    if (edge === 1) return { x: -1, y: 0 };
+    if (edge === 2) return { x: 0, y: -1 };
+    return { x: 1, y: 0 };
+}
+/**
+ * World-space endpoints for one cell edge. `inset` moves the segment inward (into the cell).
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {number} col
+ * @param {number} row
+ * @param {number} edge
+ * @param {{ x: number, y: number }} p1
+ * @param {{ x: number, y: number }} p2
+ * @param {number} [inset]
+ */
+export function gridWallEdgeEndpoints(grid, col, row, edge, p1, p2, inset = 0) {
+    const bounds = grid.getCellBounds(col, row);
+    const minX = bounds.minX;
+    const minY = bounds.minY;
+    const maxX = bounds.maxX;
+    const maxY = bounds.maxY;
+    if (edge === 0) {
+        p1.x = minX;
+        p1.y = minY + inset;
+        p2.x = maxX;
+        p2.y = minY + inset;
+    } else if (edge === 1) {
+        p1.x = maxX - inset;
+        p1.y = minY;
+        p2.x = maxX - inset;
+        p2.y = maxY;
+    } else if (edge === 2) {
+        p1.x = maxX;
+        p1.y = maxY - inset;
+        p2.x = minX;
+        p2.y = maxY - inset;
+    } else {
+        p1.x = minX + inset;
+        p1.y = maxY;
+        p2.x = minX + inset;
+        p2.y = minY;
+    }
+}
+/**
+ * One physical edge rail per shared boundary — avoid double draw/collision/roof.
+ * Interior edges emit from south/east owners so the face normal points into the stamped cell.
+ */
+export function gridWallEdgeRailShouldEmit(grid, col, row, edge) {
+    const idx = col + row * grid.cols;
+    if (grid.edgeGrid[idx * 4 + edge] === 0) return false;
+    if (edge === 2 || edge === 1) return true;
+    if (edge === 0) return row === 0;
+    return col === 0;
+}
+/** Axis-aligned roof-cap footprint for one edge rail (centered on the shared cell boundary). */
+export function gridWallEdgeRailFootprintAabb(grid, col, row, edge) {
+    const idx = col + row * grid.cols;
+    const halfT = Math.max(1, grid.edgeThicknessGrid[idx * 4 + edge]) / 2;
+    const b = grid.getCellBounds(col, row);
+    if (edge === 0) return { minX: b.minX, minY: b.minY - halfT, maxX: b.maxX, maxY: b.minY + halfT };
+    if (edge === 1) return { minX: b.maxX - halfT, minY: b.minY, maxX: b.maxX + halfT, maxY: b.maxY };
+    if (edge === 2) return { minX: b.minX, minY: b.maxY - halfT, maxX: b.maxX, maxY: b.maxY + halfT };
+    return { minX: b.minX - halfT, minY: b.minY, maxX: b.minX + halfT, maxY: b.maxY };
+}
+/** @param {0 | 1} railSide 0 = owning-cell side, 1 = neighbor side */
+export function gridWallEdgeRailFaceEndpoints(grid, col, row, edge, railSide, p1, p2) {
+    const idx = col + row * grid.cols;
+    const halfT = Math.max(1, grid.edgeThicknessGrid[idx * 4 + edge]) / 2;
+    const b = grid.getCellBounds(col, row);
+    if (edge === 0) {
+        const y = railSide === 0 ? b.minY + halfT : b.minY - halfT;
+        p1.x = b.minX;
+        p1.y = y;
+        p2.x = b.maxX;
+        p2.y = y;
+    } else if (edge === 2) {
+        const y = railSide === 0 ? b.maxY - halfT : b.maxY + halfT;
+        p1.x = b.maxX;
+        p1.y = y;
+        p2.x = b.minX;
+        p2.y = y;
+    } else if (edge === 1) {
+        const x = railSide === 0 ? b.maxX - halfT : b.maxX + halfT;
+        p1.x = x;
+        p1.y = b.minY;
+        p2.x = x;
+        p2.y = b.maxY;
+    } else {
+        const x = railSide === 0 ? b.minX + halfT : b.minX - halfT;
+        p1.x = x;
+        p1.y = b.maxY;
+        p2.x = x;
+        p2.y = b.minY;
+    }
+}
+/**
+ * One vertical face of a thin edge rail (two parallel faces span the thickness).
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {number} col
+ * @param {number} row
+ * @param {number} edge
+ * @param {0 | 1} railSide
+ * @returns {object | null}
+ */
+export function resolveGridWallEdgeRailFace(grid, col, row, edge, railSide) {
+    if (!gridWallEdgeRailShouldEmit(grid, col, row, edge)) return null;
+    const cols = grid.cols;
+    const idx = col + row * cols;
+    const edgeHeight = grid.edgeGrid[idx * 4 + edge] * grid.cellSize;
+    if (edgeHeight <= 0) return null;
+    const { nc, nr } = gridWallEdgeNeighbor(col, row, edge);
+    let neighborFillHeight = 0;
+    if (nc >= 0 && nc < cols && nr >= 0 && nr < grid.rows) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nc + nr * cols);
+    const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
+    if (!gridWallFaceVisible(neighborCap, edgeHeight)) return null;
+    const thickness = grid.edgeThicknessGrid[idx * 4 + edge];
+    gridWallEdgeRailFaceEndpoints(grid, col, row, edge, railSide, sP1, sP2);
+    const inward = gridWallEdgeInwardNormal(edge);
+    const outward = railSide === 0 ? inward : { x: -inward.x, y: -inward.y };
+    const ecx = (sP1.x + sP2.x) * 0.5;
+    const ecy = (sP1.y + sP2.y) * 0.5;
+    const wallBaseZ = gridWallFaceBaseZ(neighborCap, edgeHeight);
+    return {
+        staticGrid: true,
+        gridCol: col,
+        gridRow: row,
+        gridIdx: idx,
+        gridSide: edge,
+        railSide,
+        p1: { x: sP1.x, y: sP1.y },
+        p2: { x: sP2.x, y: sP2.y },
+        wallBaseZ,
+        wallHeight: edgeHeight - wallBaseZ,
+        wallCapHeight: edgeHeight,
+        cx: ecx,
+        cy: ecy,
+        outX: outward.x,
+        outY: outward.y,
+        isEdgeRail: true,
+        edgeThickness: thickness,
+        inwardX: inward.x,
+        inwardY: inward.y,
+    };
+}
+/**
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {number} col
+ * @param {number} row
+ * @param {number} edge
+ * @returns {object | null}
+ */
+export function resolveGridWallFace(grid, col, row, edge) {
+    const cols = grid.cols;
+    const idx = col + row * cols;
+    const fillHeight = resolveCellWallHeightAtIdx(grid, idx);
+    const edgeLevel = grid.edgeGrid[idx * 4 + edge];
+    if (edgeLevel > 0) return null;
+    if (fillHeight === 0) return null;
+    const faceHeight = fillHeight;
+    const { nc, nr } = gridWallEdgeNeighbor(col, row, edge);
+    let neighborFillHeight = 0;
+    if (nc >= 0 && nc < cols && nr >= 0 && nr < grid.rows) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nc + nr * cols);
+    const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
+    if (!gridWallFaceVisible(neighborCap, faceHeight)) return null;
+    gridWallEdgeEndpoints(grid, col, row, edge, sP1, sP2, 0);
+    const cellBounds = grid.getCellBounds(col, row);
+    const cx = (cellBounds.minX + cellBounds.maxX) / 2;
+    const cy = (cellBounds.minY + cellBounds.maxY) / 2;
+    const ecx = (sP1.x + sP2.x) / 2;
+    const ecy = (sP1.y + sP2.y) / 2;
+    const wallBaseZ = gridWallFaceBaseZ(neighborCap, faceHeight);
+    return {
+        staticGrid: true,
+        gridCol: col,
+        gridRow: row,
+        gridIdx: idx,
+        gridSide: edge,
+        p1: { x: sP1.x, y: sP1.y },
+        p2: { x: sP2.x, y: sP2.y },
+        wallBaseZ,
+        wallHeight: faceHeight - wallBaseZ,
+        wallCapHeight: faceHeight,
+        cx: ecx,
+        cy: ecy,
+        outX: ecx - cx,
+        outY: ecy - cy,
+        isEdgeRail: false,
+        edgeThickness: 0,
+        inwardX: gridWallEdgeInwardNormal(edge).x,
+        inwardY: gridWallEdgeInwardNormal(edge).y,
+    };
+}
+/**
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {import("../Math/Aabb2D.js").Aabb2D} bounds
+ * @param {object[]} out
+ */
+export function collectGridWallFacesInAabb(grid, bounds, out) {
+    out.length = 0;
+    forEachObstacleGridCellInAabb(grid, bounds, (col, row, idx) => {
+        const fillHeight = resolveCellWallHeightAtIdx(grid, idx);
+        if (fillHeight === 0 && grid.edgeGrid[idx * 4] === 0 && grid.edgeGrid[idx * 4 + 1] === 0 && grid.edgeGrid[idx * 4 + 2] === 0 && grid.edgeGrid[idx * 4 + 3] === 0) return;
+        for (let edge = 0; edge < 4; edge++) {
+            if (grid.edgeGrid[idx * 4 + edge] > 0 && gridWallEdgeRailShouldEmit(grid, col, row, edge)) {
+                for (let railSide = 0; railSide < 2; railSide++) {
+                    const railFace = resolveGridWallEdgeRailFace(grid, col, row, edge, railSide);
+                    if (railFace) out.push(railFace);
+                }
+                continue;
+            }
+            const face = resolveGridWallFace(grid, col, row, edge);
+            if (face) out.push(face);
+        }
+    });
+}
+/** Collision segment for one edge rail — centered on the shared cell boundary. */
+export function gridWallEdgeRailToCollisionSegment(grid, col, row, edge) {
+    if (!gridWallEdgeRailShouldEmit(grid, col, row, edge)) return null;
+    const idx = col + row * grid.cols;
+    gridWallEdgeEndpoints(grid, col, row, edge, sP1, sP2, 0);
+    const dx = sP2.x - sP1.x;
+    const dy = sP2.y - sP1.y;
+    const len = Math.hypot(dx, dy);
+    const thickness = Math.max(1, grid.edgeThicknessGrid[idx * 4 + edge]);
+    return {
+        x: (sP1.x + sP2.x) * 0.5,
+        y: (sP1.y + sP2.y) * 0.5,
+        angle: Math.atan2(dy, dx),
+        width: len,
+        height: thickness,
+        size: Math.max(len, thickness),
+        padding: 0,
+        isDead: false,
+        isStaticGridFace: true,
+        isEdgeRail: true,
+        gridCol: col,
+        gridRow: row,
+        gridSide: edge,
+        shape: undefined,
+        handleHit() {},
+    };
+}
+/** Collision segment built from the same face geometry draw uses. @param {ReturnType<typeof resolveGridWallFace>} face */
+export function gridWallFaceToCollisionSegment(face) {
+    const dx = face.p2.x - face.p1.x;
+    const dy = face.p2.y - face.p1.y;
+    const len = Math.hypot(dx, dy);
+    const alongAngle = Math.atan2(dy, dx);
+    const thickness = Math.max(1, face.edgeThickness || 1);
+    const halfT = thickness / 2;
+    const mx = (face.p1.x + face.p2.x) * 0.5;
+    const my = (face.p1.y + face.p2.y) * 0.5;
+    return {
+        x: mx + face.inwardX * halfT,
+        y: my + face.inwardY * halfT,
+        angle: alongAngle,
+        width: len,
+        height: thickness,
+        size: Math.max(len, thickness),
+        padding: 0,
+        isDead: false,
+        isStaticGridFace: true,
+        isEdgeRail: face.isEdgeRail,
+        gridCol: face.gridCol,
+        gridRow: face.gridRow,
+        gridSide: face.gridSide,
+        shape: undefined,
+        handleHit(damage, state) {
+            if (this.isEdgeRail) return;
+            damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
+        },
+    };
+}
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} idx */
 export function gridValueAtIdx(grid, idx) {
     return grid.grid[idx];
@@ -57,20 +355,23 @@ export function collectStaticRoofHeightsFromGrid(grid) {
     const seen = new Set();
     const out = [];
     const size = grid.cols * grid.rows;
+    const cols = grid.cols;
     for (let idx = 0; idx < size; idx++) {
         const px = resolveCellWallHeightAtIdx(grid, idx);
         if (px > 0 && !seen.has(px)) {
             seen.add(px);
             out.push(px);
         }
-        if (grid.edgeGrid)
-            for (let side = 0; side < 4; side++) {
-                const edgePx = grid.edgeGrid[idx * 4 + side] * grid.cellSize;
-                if (edgePx > 0 && !seen.has(edgePx)) {
-                    seen.add(edgePx);
-                    out.push(edgePx);
-                }
+        const row = (idx / cols) | 0;
+        const col = idx - row * cols;
+        for (let edge = 0; edge < 4; edge++) {
+            if (!gridWallEdgeRailShouldEmit(grid, col, row, edge)) continue;
+            const edgePx = grid.edgeGrid[idx * 4 + edge] * grid.cellSize;
+            if (edgePx > 0 && !seen.has(edgePx)) {
+                seen.add(edgePx);
+                out.push(edgePx);
             }
+        }
     }
     out.sort((a, b) => a - b);
     return out;
@@ -85,16 +386,11 @@ export function collectStaticRoofHeightsFromGrid(grid) {
 export function chunkHasStaticRoofAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
     let found = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
-        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) {
-            found = true;
-            return;
+        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) found = true;
+        for (let edge = 0; edge < 4 && !found; edge++) {
+            if (!gridWallEdgeRailShouldEmit(obstacleGrid, col, row, edge)) continue;
+            if (obstacleGrid.edgeGrid[idx * 4 + edge] * obstacleGrid.cellSize === zLevel) found = true;
         }
-        if (obstacleGrid.edgeGrid)
-            for (let side = 0; side < 4; side++)
-                if (obstacleGrid.edgeGrid[idx * 4 + side] * obstacleGrid.cellSize === zLevel) {
-                    found = true;
-                    return;
-                }
     });
     return found;
 }
