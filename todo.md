@@ -1,33 +1,16 @@
 # todo
 
-## current: ui refactor
+## Current priorities
 
-- [x] **Phase 1 — shared UI in Libraries** — `Libraries/UI/paramFields.js`, `Component`, `SelectControl`, `SliderControl`; fix Libraries→Apps imports.
+### UI / architecture
+
 - [ ] **Phase 2 — TileLab naming cleanup** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS/comments.
-- [ ] **Phase 3 — dependency direction** — Phase 2 naming cleanup.
+- [ ] **Phase 3 — dependency direction** — finish after Phase 2 naming.
 
-### Inverted / injected dependencies
-
-- [x] **`Libraries/Combat` → `Apps/Editor/engine.js`** — targeting + interaction pairs cut; combat/Core import Libraries directly.
-- [x] **`Render` / kinematics → `Apps/Editor/engine.js`** — `getWorldPropRecipes`, `createDefaultKinematicsPorts`, editor `sceneHooks` passed from `preview.js`.
-- [x] **`speedControl` → `Apps/Editor/engine.js`** — playback handlers injected at `mountLabViewport`.
-- [x] **`engine.js` → `sandboxController` export** — `state.sandbox.controller`; render hooks read controller from `getGameState()`.
-- [x] **`worldPropStates` global registry** — modes frozen on `WorldProp` (`WORLD_PROP_MODES`); no engine/sandbox `Object.assign`.
-- [x] **`mountSandboxToyUi` → `Apps/Editor/ui/`** — editor sandbox panel UI; no longer exported from `Libraries/Sandbox`.
-- [x] **`installEngineGlobals` / `editorEngineProfile`** — `installEditorDefaults(state)` in `Core/engineGlobals.js`; editor constants in one place.
-- [x] **Drop `export const engine` junk drawer** — boot uses `installEditorDefaults(state)` only; no render/targeting/interaction on app object.
-- [x] **`Index.html` generic shell** — radio overlay mounted from `installRadioOverlay` at app boot; thin `#gameWrapper` chassis only.
-
-### Phase 3 — still open (priority)
-
-1. **Phase 2 naming** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS.
-
-## floor occupancy belts
+### Floor occupancy belts
 
 Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not WorldProps). Draw via `conveyorDraw.js`; force via `applyPushableAccelerationAlongAngle` before pushable physics.
 
-- [x] **Elbow belts** — `floor_belt_elbow_left` / `floor_belt_elbow_right` spawn stamps grid cells.
-- [x] **Railed belts** — `floor_belt_rails` (+ elbow rails); amber rail draw; `beltRail` edges block lateral escape.
 - [ ] **Polyline placement** — drag on grid; cardinal steps; chain stamp into `floorStore`.
 - [ ] **Belt facing** — spawn-with-facing, rotate selected cell(s), inspector force default.
 - [ ] **Corner autotile** — 4-bit junction detection on straight belt chains (optional polish).
@@ -132,8 +115,6 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 
 - [ ] Per-asset vector colors; skip kinematics in vector-only mode.
 
-### Smell
-
 ### Archive / never-wired
 
 - [ ] **`Libraries/Radio/`**, **`Libraries/Inspect/`**, **`PersistentTriggers`**, **`createDebouncedStorage`**
@@ -143,3 +124,38 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 
 - [ ] **Interaction layers** — `drawLayer` + `collisionLayers` bitmask.
 - [ ] **Grid wall extras** — corner posts, doors, one-way edges, autotile trim.
+
+---
+
+## Every-frame pipeline debt
+
+Work that still runs globally (or scans the full prop list) when `EntityRegistry.queryView`, `SpatialFrame`, pushable sleep, or viewport visibility could scope it. Scaling is mostly getting these into the right pipelines.
+
+**Pattern to prefer:** sim-wide only for things that must stay correct off-screen (physics, nav, persistence); presentation and expensive queries via `queryView` / `boundsVisibleWide` / active sets.
+
+- [x] **Kinematics rig anim** — moved to `tickVisibleKinematicsAnim` + `queryView` (visible kinematics props only).
+- [ ] **`runPushablePhysics`** — `state.worldProps` × motion substeps every frame; no active/sleeping/wide-bounds partition yet.
+- [ ] **`WorldProp.update` kinematics facing / turret sync** — still runs for every kinematics prop in the physics loop (including off-screen).
+- [ ] **`forEachOfKind("worldProp")` full scans** — used in combat, sandbox floor/button/effect passes, targeting, explosions, laser cast, drag launch, flippers, stand tips, auto-combat, etc.; most could be `queryView` or spatial-neighbor scoped.
+- [ ] **`drawFloorProps`** — `forEachOfKind` + manual AABB test instead of `queryView` (3D/kinematics draw already uses `queryView`).
+- [ ] **`drawSandboxLaserSights`** — all armed props, not viewport-filtered.
+- [ ] **Dual iteration** — many systems walk `state.worldProps` directly *and* registry; consolidate on registry + spatial queries.
+- [ ] **Navigation HPA clearance replans** — partially viewport-gated (`NavigationService`); extend the same visibility/active policy to sandbox HPA if paths get heavy.
+- [ ] **Behavior / overlay ticks** — sandbox controller ticks selected prop only (fine); audit other per-frame editor overlays for global work.
+
+---
+
+## Milestone log
+
+Major feature completions only (newest first). Not bugfixes or polish unless they shipped a user-visible capability.
+
+| When | Milestone |
+|------|-----------|
+| 2026-06 | **Viewport-scoped kinematics anim** — idle/walk rig ticks only for visible props via `queryView`; physics stays global. |
+| 2026-06 | **Sandbox Props \| Walls editor** — grid stamp/pick/edit for voxelBlock + railWall; session + pointer routing. |
+| 2026-06 | **Sandbox HPA move-to-cursor** — cell-center targets, path overlay trim, locomotion arrival release. |
+| 2026-05 | **Four-way cell edge grid** — `CellEdgeStore` + mirrored railWall on `edgeStore`; thickness, caps, nav/collision integration. |
+| 2026-05 | **Floor occupancy belts** — `floorStore` cell belts (straight, elbow, railed); force before pushable physics; belt rail edges. |
+| 2026-05 | **Entity registry + `queryView`** — cached bounds queries over spatial broadphase; adopted for 3D/kinematics draw culling. |
+| 2026-05 | **Editor dependency injection** — combat/render/playback/sandbox UI decoupled from `engine.js` junk drawer; `installEditorDefaults`, controller on state. |
+| 2026-05 | **Shared UI in Libraries** — param fields, slider/select controls; Phase 1 UI refactor. |

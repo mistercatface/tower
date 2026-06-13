@@ -5,6 +5,7 @@
 import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
+import { gridRailWallCapUvCorners } from "../../World/wallGridCells.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { drawDamageOverlayInClip, drawPolygonDamageOverlay } from "./wallDamageVisual.js";
@@ -263,13 +264,8 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
         return;
     }
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
-    const worldCorners = [
-        { x: box.outerP1x, y: box.outerP1y },
-        { x: box.outerP2x, y: box.outerP2y },
-        { x: box.innerP2x, y: box.innerP2y },
-        { x: box.innerP1x, y: box.innerP1y },
-    ];
-    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, box.wallBaseZ, gameState, profileId, wallCtx.texelResolution);
+    const uvCorners = gridRailWallCapUvCorners(gameState.obstacleGrid, box);
+    const sample = worldSurfaces.getHorizontalCapDrawSample(uvCorners, box.wallCapHeight, gameState, profileId, wallCtx.texelResolution);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         if (damageAlpha > 0) drawPolygonDamageOverlay(ctx, sCapCorners, damageAlpha);

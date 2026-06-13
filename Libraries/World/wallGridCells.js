@@ -167,6 +167,44 @@ export function gridWallEdgeRailFootprintAabb(grid, col, row, edge) {
     if (edge === 2) return { minX: b.minX, minY: b.maxY - halfT, maxX: b.maxX, maxY: b.maxY + halfT };
     return { minX: b.minX - halfT, minY: b.minY, maxX: b.minX + halfT, maxY: b.maxY };
 }
+/**
+ * World corners for railWall cap texture UVs — full cell span on the thin axis so thickness
+ * (world px) is not mistaken for bake resolution. Order matches drawProjectedRailWallCap:
+ * outerP1, outerP2, innerP2, innerP1.
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {{ gridCol: number, gridRow: number, gridSide: number }} box
+ * @returns {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]}
+ */
+export function gridRailWallCapUvCorners(grid, box) {
+    const b = grid.getCellBounds(box.gridCol, box.gridRow);
+    if (box.gridSide === 0)
+        return [
+            { x: b.minX, y: b.minY },
+            { x: b.maxX, y: b.minY },
+            { x: b.maxX, y: b.maxY },
+            { x: b.minX, y: b.maxY },
+        ];
+    if (box.gridSide === 1)
+        return [
+            { x: b.maxX, y: b.minY },
+            { x: b.maxX, y: b.maxY },
+            { x: b.minX, y: b.maxY },
+            { x: b.minX, y: b.minY },
+        ];
+    if (box.gridSide === 2)
+        return [
+            { x: b.maxX, y: b.maxY },
+            { x: b.minX, y: b.maxY },
+            { x: b.minX, y: b.minY },
+            { x: b.maxX, y: b.minY },
+        ];
+    return [
+        { x: b.minX, y: b.maxY },
+        { x: b.minX, y: b.minY },
+        { x: b.maxX, y: b.minY },
+        { x: b.maxX, y: b.maxY },
+    ];
+}
 /** Long-side endpoints for one face of the rail box. @param {0 | 1} railSide 0 = owning-cell side, 1 = neighbor side */
 function gridWallEdgeRailSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
     const halfT = gridRailWallFootprintHalfThickness(grid, col, row, edge);
