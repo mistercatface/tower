@@ -1,5 +1,5 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
-import { getRollToCursorConfig, steerRollToward } from "../rollToCursorMotion.js";
+import { getRollToCursorConfig, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
 function snapMoveTargetToCellCenter(grid, world) {
@@ -23,6 +23,10 @@ export function createRollToCursorHpaBehavior(state) {
         targetCellRow = null;
         dragging = false;
         hpaNav.reset();
+    };
+    const releaseMoveTarget = (prop) => {
+        clearTarget();
+        releaseRollMoveTarget(prop);
     };
     /** @param {{ x: number, y: number }} world @param {boolean} [forceReset] */
     const applyMoveTarget = (world, forceReset = false) => {
@@ -62,7 +66,7 @@ export function createRollToCursorHpaBehavior(state) {
             const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);
             const isFinalLeg = !hpaNav.navState.path || hpaNav.navState.pathProgressIdx >= hpaNav.navState.path.length - 1;
             if (isFinalLeg && distToTarget <= config.stopRadius) {
-                clearTarget();
+                releaseMoveTarget(prop);
                 return;
             }
             hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
@@ -72,11 +76,11 @@ export function createRollToCursorHpaBehavior(state) {
                 pathOffPathDistance: 80,
             });
             if (!steering) {
-                clearTarget();
+                releaseMoveTarget(prop);
                 return;
             }
             if (steering.desiredX === 0 && steering.desiredY === 0) {
-                if (distToTarget <= config.stopRadius) clearTarget();
+                if (distToTarget <= config.stopRadius) releaseMoveTarget(prop);
                 return;
             }
             steerRollToward(prop, steering.desiredX, steering.desiredY, dt, config);

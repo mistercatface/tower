@@ -3,6 +3,10 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 const ROLL_TO_CURSOR_DEFAULTS = { maxSpeed: 180, accel: 600, stopRadius: 6 };
+/** End cursor move intent — locomotion props keep walking until desired steering is cleared. */
+export function releaseRollMoveTarget(prop) {
+    stopLocomotionWorldProp(prop);
+}
 /** @param {object} prop @param {object} [overrides] */
 export function getRollToCursorConfig(prop, overrides = {}) {
     return { ...ROLL_TO_CURSOR_DEFAULTS, ...prop.strategy?.rollToCursor, ...overrides };
