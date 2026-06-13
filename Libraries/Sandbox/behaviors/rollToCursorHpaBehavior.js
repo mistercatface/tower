@@ -1,40 +1,59 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { getRollToCursorConfig, steerRollToward, decelerateRoll } from "../rollToCursorMotion.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
+function snapMoveTargetToCellCenter(grid, world) {
+    const { col, row } = grid.worldToGrid(world.x, world.y);
+    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return { world, col: null, row: null };
+    return { world: grid.gridToWorld(col, row), col, row };
+}
 export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
 /** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createRollToCursorHpaBehavior(state) {
     let targetWorld = null;
+    /** @type {number | null} */
+    let targetCellCol = null;
+    /** @type {number | null} */
+    let targetCellRow = null;
     let dragging = false;
     const hpaNav = createRollToCursorHpaNav();
     const clearTarget = () => {
         targetWorld = null;
+        targetCellCol = null;
+        targetCellRow = null;
         dragging = false;
         hpaNav.reset();
+    };
+    /** @param {{ x: number, y: number }} world @param {boolean} [forceReset] */
+    const applyMoveTarget = (world, forceReset = false) => {
+        const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
+        const cellChanged = snapped.col !== targetCellCol || snapped.row !== targetCellRow;
+        targetWorld = snapped.world;
+        targetCellCol = snapped.col;
+        targetCellRow = snapped.row;
+        if (forceReset || cellChanged) hpaNav.reset();
     };
     return {
         id: ROLL_TO_CURSOR_HPA_BEHAVIOR_ID,
         onPointerDown(prop, world) {
             dragging = true;
-            targetWorld = { x: world.x, y: world.y };
-            hpaNav.reset();
+            applyMoveTarget(world, true);
             return true;
         },
         onPointerMove(prop, world) {
             if (!dragging || !targetWorld) return;
-            targetWorld = { x: world.x, y: world.y };
+            applyMoveTarget(world);
         },
         onPointerUp() {
             dragging = false;
         },
         setGroundMoveTarget(_prop, world) {
             dragging = false;
-            targetWorld = { x: world.x, y: world.y };
-            hpaNav.reset();
+            applyMoveTarget(world, true);
         },
         updateGroundMoveTarget(_prop, world) {
             if (!targetWorld) return;
-            targetWorld = { x: world.x, y: world.y };
+            applyMoveTarget(world);
         },
         tick(prop, dt) {
             if (!targetWorld) return;
