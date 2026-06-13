@@ -1,9 +1,12 @@
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
+import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { refreshLabMapBoundsPreview } from "../world/mapWorld.js";
 import { drawCavernBoundsPreview, drawWorldBoundsBox, mountOverviewBoundsEditors } from "./cavernBoundsOverviewEditor.js";
 import { drawCellBoundsPreview } from "./cellBoundsOverview.js";
 /** @typedef {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} MapOverviewCache */
+/** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
+let overviewCanvasResize = null;
 let overviewCtx = null;
 /** Blit cached map and draw live viewport / generation bounds — not part of the bake. */
 export function paintMapOverviewFrame(state) {
@@ -38,19 +41,22 @@ export function paintMapOverviewFrame(state) {
     if (state.editor.showMapOverviewWallBounds) drawCellBoundsPreview(ctx, state.editor.wallToolConfig, state.editor.mapBoundsPreview.wall, cache, displayW, displayH, "#f44336", 2);
 }
 /** Vertical space for main map max-size when overview is visible. */
-export function estimateMapOverviewHeight(fallbackSize = 160) {
+export function estimateMapOverviewHeight() {
     const stage = document.getElementById("mapOverviewStage");
     if (!stage || stage.hidden) return 0;
-    const host = document.getElementById("mapOverviewHost");
     const headerH = stage.querySelector(".map-overview-header")?.offsetHeight ?? 18;
-    const hostH = host?.offsetHeight ?? fallbackSize;
+    const hostH = overviewCanvasResize.getSize();
     return hostH + headerH + 6;
 }
 /** @param {import("../state.js").TileLabGameState} state @param {(() => void) | null} [onBoundsChange] */
 export function mountMapOverview(state, onBoundsChange = null) {
+    const { initialSize, minSize, maxSize } = EDITOR_CANVAS_DEFAULTS.overview;
     const canvas = document.getElementById("mapOverviewCanvas");
     overviewCtx = canvas.getContext("2d");
-    applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize: 160, minSize: 96, maxSize: 512, onResize: () => paintMapOverviewFrame(state) });
+    overviewCanvasResize = applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize, minSize, maxSize, onResize: () => paintMapOverviewFrame(state) });
     if (onBoundsChange) mountOverviewBoundsEditors(canvas, state, onBoundsChange);
     paintMapOverviewFrame(state);
+}
+export function syncMapOverviewCanvasSize() {
+    overviewCanvasResize.setSize(overviewCanvasResize.getSize());
 }

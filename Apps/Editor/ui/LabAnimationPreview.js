@@ -1,9 +1,13 @@
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../../Libraries/Canvas/offscreenCanvas.js";
+import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { paintPixelArea } from "../../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { resolveBakeProfile, getAnimationDuration } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { minCornerAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { getAssemblyRailBandBounds } from "../../../Libraries/Sandbox/assemblyLayout.js";
+import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
+/** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
+let animationCanvasResize = null;
 /** Square assembly with a wide rail band so wall motifs are easy to read. */
 const PREVIEW_ASSEMBLY = { size: 96, wallWidth: 16, railHeight: 4 };
 const previewLayout = {
@@ -29,13 +33,21 @@ function ensurePatchSurface(destW, destH) {
     if (patchCanvas.width !== prevW || patchCanvas.height !== prevH) patchCtx = patchCanvas.getContext("2d");
 }
 /** Vertical space taken by the animation preview (for map canvas max-size). */
-export function estimateAnimationPreviewHeight(fallbackSize = 200) {
+export function estimateAnimationPreviewHeight() {
     const stage = document.getElementById("animationStage");
     if (!stage || stage.hidden) return 0;
-    const host = document.getElementById("animationPreviewHost");
     const headerH = stage.querySelector(".animation-stage-header")?.offsetHeight ?? 18;
-    const hostH = host?.offsetHeight ?? fallbackSize;
+    const hostH = animationCanvasResize.getSize();
     return hostH + headerH + 6;
+}
+/** @param {HTMLCanvasElement} canvas @param {{ host: HTMLElement, maxSize: () => number }} options */
+export function mountAnimationPreviewCanvas(canvas, { host, maxSize }) {
+    const { initialSize, minSize } = EDITOR_CANVAS_DEFAULTS.animationPreview;
+    animationCanvasResize = applySquareCanvasResize(canvas, { host, initialSize, minSize, maxSize });
+}
+/** @param {import("../state.js").TileLabGameState} state */
+export function syncAnimationPreviewCanvasSize(state) {
+    if (state.editor.showAnimationPreview) animationCanvasResize.setSize(animationCanvasResize.getSize());
 }
 export function initAnimationPreview(canvas, getProfileConfig) {
     previewCtx = canvas.getContext("2d");
