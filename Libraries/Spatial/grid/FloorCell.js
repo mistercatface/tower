@@ -1,33 +1,20 @@
 import { CARDINAL_FACING_STEPS, quantizeCardinalAngle } from "../../Math/Angle.js";
-
 /** Floor occupancy kinds — walkable cell overlays (belts, pads); not voxelBlock or edgeStore. */
-export const FLOOR_CELL_KIND = {
-    None: 0,
-    Belt: 1,
-    BeltElbowLeft: 2,
-    BeltElbowRight: 3,
-    BeltRails: 4,
-    BeltElbowLeftRails: 5,
-    BeltElbowRightRails: 6,
-};
-
+export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3, BeltRails: 4, BeltElbowLeftRails: 5, BeltElbowRightRails: 6 };
 /** @param {number} kind */
 export function isFloorBeltKind(kind) {
     return kind >= FLOOR_CELL_KIND.Belt && kind <= FLOOR_CELL_KIND.BeltElbowRightRails;
 }
-
 /** @param {number} kind */
 export function isFloorBeltRailsKind(kind) {
     return kind === FLOOR_CELL_KIND.BeltRails || kind === FLOOR_CELL_KIND.BeltElbowLeftRails || kind === FLOOR_CELL_KIND.BeltElbowRightRails;
 }
-
 /** @param {number} kind @returns {"left" | "right" | null} */
 export function floorBeltElbowTurn(kind) {
     if (kind === FLOOR_CELL_KIND.BeltElbowLeft || kind === FLOOR_CELL_KIND.BeltElbowLeftRails) return "left";
     if (kind === FLOOR_CELL_KIND.BeltElbowRight || kind === FLOOR_CELL_KIND.BeltElbowRightRails) return "right";
     return null;
 }
-
 /**
  * Entry/exit cell edges (0=N,1=E,2=S,3=W) from belt geometry + cardinal facing.
  * Straight: flow along facing. Elbows: W→N (left) / W→S (right) at facing 0, rotated by facing index.
@@ -43,7 +30,6 @@ export function floorBeltEntryExitSides(kind, facingIndex) {
     if (turn === "left") return { entrySide: (2 + f) % CARDINAL_FACING_STEPS, exitSide: (1 + f) % CARDINAL_FACING_STEPS };
     return { entrySide: (0 + f) % CARDINAL_FACING_STEPS, exitSide: (1 + f) % CARDINAL_FACING_STEPS };
 }
-
 /** Lateral rail edges — the two sides that are neither entry nor exit. */
 export function floorBeltRailEdgeSides(kind, facingIndex) {
     const { entrySide, exitSide } = floorBeltEntryExitSides(kind, facingIndex);
@@ -52,18 +38,15 @@ export function floorBeltRailEdgeSides(kind, facingIndex) {
     for (let side = 0; side < 4; side++) if (side !== entrySide && side !== exitSide) sides.push(side);
     return sides;
 }
-
 /** @param {number} cardinalIndex 0…3 */
 export function floorBeltFacingFromIndex(cardinalIndex) {
     return (cardinalIndex % CARDINAL_FACING_STEPS) * ((Math.PI * 2) / CARDINAL_FACING_STEPS);
 }
-
 /** @param {number} facingRadians */
 export function floorBeltFacingToIndex(facingRadians) {
     const q = quantizeCardinalAngle(facingRadians);
     return Math.round(q / ((Math.PI * 2) / CARDINAL_FACING_STEPS)) % CARDINAL_FACING_STEPS;
 }
-
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} entrySide */
 export function floorBeltEntryEdgeWorldPoint(grid, col, row, entrySide) {
     const { x, y } = grid.gridToWorld(col, row);
@@ -73,7 +56,6 @@ export function floorBeltEntryEdgeWorldPoint(grid, col, row, entrySide) {
     if (entrySide === 2) return { x, y: y + inset };
     return { x: x - inset, y };
 }
-
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} entrySide */
 export function floorBeltEntryNeighborCell(col, row, entrySide) {
     if (entrySide === 0) return { col, row: row - 1 };
@@ -81,7 +63,6 @@ export function floorBeltEntryNeighborCell(col, row, entrySide) {
     if (entrySide === 2) return { col, row: row + 1 };
     return { col: col - 1, row };
 }
-
 /**
  * Steer target when a click lands on a belt — approach from entry, not downstream through rails.
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
