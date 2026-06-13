@@ -91,7 +91,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     } else if (options.roofSurface) {
         writePixel = writeRoofPixel;
         mapCtx = { invPpwu, startWorldX, startWorldY, spanU: width > 1 ? width - 1 : 1 };
-        bake = { useWallBase: true };
+        bake = { useWallBase: true, wallCell: true };
     } else if (options.isWall) {
         writePixel = writeWallCellPixel;
         mapCtx = { invPpwu, startWorldX, startWorldY, cellSize, zOffset: options.zOffset ?? 0, height, spanU: width > 1 ? width - 1 : 1, invWallCellVSpan: height > 1 ? 1 / (height - 1) : 0 };

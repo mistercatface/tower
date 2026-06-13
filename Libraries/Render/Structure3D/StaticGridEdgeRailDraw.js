@@ -92,13 +92,19 @@ export function drawProjectedGridEdgeRail(ctx, box, wallCtx) {
     if (len > 0) {
         const tx = dx / len;
         const ty = dy / len;
-        const oldProcedural = wallCtx.proceduralSurfaceDraw;
-        wallCtx.proceduralSurfaceDraw = null;
+        const oldCacheObj = wallCtx.cacheObj;
         // End face at P1 (outerP1 -> innerP1) has outward normal (-tx, -ty)
-        if (sideFaceVisible(box.outerP1, box.innerP1, -tx, -ty, viewerX, viewerY)) drawProjectedWallFaceElevated(ctx, box.outerP1, box.innerP1, wallCtx);
+        if (sideFaceVisible(box.outerP1, box.innerP1, -tx, -ty, viewerX, viewerY)) {
+            // Null cacheObj prevents using long side atlas cache, forcing correct end face texture generation
+            wallCtx.cacheObj = null;
+            drawProjectedWallFaceElevated(ctx, box.outerP1, box.innerP1, wallCtx);
+        }
         // End face at P2 (innerP2 -> outerP2) has outward normal (tx, ty)
-        if (sideFaceVisible(box.innerP2, box.outerP2, tx, ty, viewerX, viewerY)) drawProjectedWallFaceElevated(ctx, box.innerP2, box.outerP2, wallCtx);
-        wallCtx.proceduralSurfaceDraw = oldProcedural;
+        if (sideFaceVisible(box.innerP2, box.outerP2, tx, ty, viewerX, viewerY)) {
+            wallCtx.cacheObj = null;
+            drawProjectedWallFaceElevated(ctx, box.innerP2, box.outerP2, wallCtx);
+        }
+        wallCtx.cacheObj = oldCacheObj;
     }
     const capZ = box.wallBaseZ + box.wallHeight;
     projectWorldAabbCornersInto(sTopCorners, box.minX, box.minY, box.maxX, box.maxY, capZ, camera);
@@ -106,4 +112,8 @@ export function drawProjectedGridEdgeRail(ctx, box, wallCtx) {
     traceClosedPolygon(ctx, sTopCorners);
     ctx.fillStyle = wallCtx.fillStyle;
     ctx.fill();
+}
+export function invalidateStaticGridEdgeRailDrawCache() {
+    sBoxCache.wallGridRevision = -1;
+    sBoxCache.boxes.length = 0;
 }

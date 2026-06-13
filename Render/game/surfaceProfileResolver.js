@@ -10,6 +10,7 @@ export function resolveSurfaceProfileAtCoords(state, x, y) {
 }
 /** @param {GameState} state @param {number} x @param {number} y @param {number} zLevel */
 function resolveWallSegmentSurfaceProfileAt(state, x, y, zLevel) {
+    if (state.worldSurfaces.surfaceProfileOverride) return state.worldSurfaces.surfaceProfileOverride;
     const index = state.wallSpatialIndex;
     if (!index) return null;
     const pad = (state.obstacleGrid?.cellSize ?? 4) * 4;
