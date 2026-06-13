@@ -1,6 +1,5 @@
 /**
- * Game-facing world-surface system: wraps WorldSurfaceEngine with simulation
- * shadow underpaint and GameState profile / invalidation hooks.
+ * Game-facing world-surface system: wraps WorldSurfaceEngine with GameState profile / invalidation hooks.
  */
 import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
@@ -25,19 +24,9 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         const roofZ = state.obstacleGrid.collectStaticStructureZLevels();
         super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, roofZ);
     }
-    /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
+    /** Draw procedural ground: baked chunk textures (simulation/inspector scenes only). */
     drawGround(ctx, state, viewport) {
-        this.drawGroundChunks(ctx, {
-            obstacleGrid: state.obstacleGrid,
-            viewport,
-            state,
-            zLevel: 0,
-            playBounds: playBoundsFromObstacleGrid(state.obstacleGrid),
-            beforeDraw: (drawCtx, bounds) => {
-                drawCtx.fillStyle = this.settings.floorShadow;
-                drawCtx.fillRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
-            },
-        });
+        this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, viewport, state, zLevel: 0, playBounds: playBoundsFromObstacleGrid(state.obstacleGrid) });
     }
     /** Chunk-cached roof layers for stamped static walls. */
     drawRoofs(ctx, state, viewport) {
