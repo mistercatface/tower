@@ -3,7 +3,7 @@
  */
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { isRailWallEdge, railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdge.js";
+import { isBeltRailEdge, isRailWallEdge, railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdge.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
@@ -84,6 +84,19 @@ export function gridWallEdgeRailShouldEmit(grid, col, row, edge) {
     if (!gridRailWallEdge(grid, col, row, edge)) return false;
     if (edge === 2 || edge === 1) return true;
     if (edge === 0) return row === 0;
+    return col === 0;
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function gridBeltRailEdge(grid, col, row, side) {
+    const edge = grid.edgeStore.get(col, row, side, grid.cols);
+    if (!isBeltRailEdge(edge)) return null;
+    return edge;
+}
+/** Collision emit ownership — same single-owner rule as visible rail walls. */
+export function gridBeltRailEdgeShouldEmit(grid, col, row, side) {
+    if (!gridBeltRailEdge(grid, col, row, side)) return false;
+    if (side === 2 || side === 1) return true;
+    if (side === 0) return row === 0;
     return col === 0;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */

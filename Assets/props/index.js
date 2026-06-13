@@ -15,6 +15,9 @@ import void_pit from "./void_pit/void_pit.asset.js";
 import floor_belt from "./floor_belt/floor_belt.asset.js";
 import floor_belt_elbow_left from "./floor_belt/floor_belt_elbow_left.asset.js";
 import floor_belt_elbow_right from "./floor_belt/floor_belt_elbow_right.asset.js";
+import floor_belt_rails from "./floor_belt/floor_belt_rails.asset.js";
+import floor_belt_elbow_left_rails from "./floor_belt/floor_belt_elbow_left_rails.asset.js";
+import floor_belt_elbow_right_rails from "./floor_belt/floor_belt_elbow_right_rails.asset.js";
 import poolBalls from "./poolBalls.js";
 const catalog = {
     beach_ball,
@@ -34,6 +37,9 @@ const catalog = {
     floor_belt,
     floor_belt_elbow_left,
     floor_belt_elbow_right,
+    floor_belt_rails,
+    floor_belt_elbow_left_rails,
+    floor_belt_elbow_right_rails,
     ...poolBalls,
 };
 export default catalog;

@@ -12,19 +12,10 @@ export function getConveyorSpriteCacheKey(prop) {
 }
 /** @returns {import("./Props3D/PropRenderer.js").PropDrawRecipe} */
 export function createConveyorDraw(options = {}) {
-    const { turnDirection = null } = options; // null (straight), "left", or "right"
-    // Industrial metal palette for the conveyor side rails
-    const railColors = {
-        shadow: "#263238", // shadow
-        mid: "#455A64", // cool gray/steel mid
-        highlight: "#78909C", // steel highlight
-    };
-    const railStroke = "#1a2226"; // dark outline
-    const railTopColors = {
-        light: "#CFD8DC", // silver top highlight
-        mid: "#90A4AE", // steel top
-        dark: "#546E7A", // darker steel top
-    };
+    const { turnDirection = null, railColors: railColorsOverride, railTopColors: railTopColorsOverride, railStroke: railStrokeOverride } = options;
+    const railColors = railColorsOverride ?? { shadow: "#263238", mid: "#455A64", highlight: "#78909C" };
+    const railStroke = railStrokeOverride ?? "#1a2226";
+    const railTopColors = railTopColorsOverride ?? { light: "#CFD8DC", mid: "#90A4AE", dark: "#546E7A" };
     // Dark rubber colors for the moving belt bed
     const beltColors = {
         shadow: "#141414", // dark shadow

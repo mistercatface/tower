@@ -1,16 +1,26 @@
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
-import { floorBeltFacingFromIndex, floorBeltElbowTurn } from "../Spatial/grid/FloorCell.js";
+import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { createConveyorDraw } from "../Render/conveyorDraw.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { applyPushableAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
+const RAILED_BELT_RAIL_COLORS = { shadow: "#92400E", mid: "#D97706", highlight: "#FBBF24" };
+const RAILED_BELT_RAIL_TOP_COLORS = { light: "#FDE68A", mid: "#F59E0B", dark: "#B45309" };
+const RAILED_BELT_RAIL_STROKE = "#78350F";
+const railDrawOpts = { railColors: RAILED_BELT_RAIL_COLORS, railTopColors: RAILED_BELT_RAIL_TOP_COLORS, railStroke: RAILED_BELT_RAIL_STROKE };
 const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
+const beltRailsDrawByTurn = {
+    straight: createConveyorDraw(railDrawOpts),
+    left: createConveyorDraw({ turnDirection: "left", ...railDrawOpts }),
+    right: createConveyorDraw({ turnDirection: "right", ...railDrawOpts }),
+};
 const beltDrawScratch = { x: 0, y: 0, facing: 0, halfExtents: { x: 0, y: 0 }, ageMs: 0 };
 /** @param {number} kind */
 function beltDrawForKind(kind) {
     const turn = floorBeltElbowTurn(kind);
-    if (turn === "left") return beltDrawByTurn.left;
-    if (turn === "right") return beltDrawByTurn.right;
-    return beltDrawByTurn.straight;
+    const table = isFloorBeltRailsKind(kind) ? beltRailsDrawByTurn : beltDrawByTurn;
+    if (turn === "left") return table.left;
+    if (turn === "right") return table.right;
+    return table.straight;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} minCol @param {number} maxCol @param {number} minRow @param {number} maxRow @param {number} facingRadians */
 export function stampFloorBeltsInBounds(grid, minCol, maxCol, minRow, maxRow, facingRadians) {

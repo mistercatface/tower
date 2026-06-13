@@ -52,6 +52,9 @@ export function resolveFloorBeltKindFromSpawnAsset(asset) {
     const kind = asset?.sandbox?.floorBeltKind;
     if (kind === "elbowLeft") return FLOOR_CELL_KIND.BeltElbowLeft;
     if (kind === "elbowRight") return FLOOR_CELL_KIND.BeltElbowRight;
+    if (kind === "straightRails") return FLOOR_CELL_KIND.BeltRails;
+    if (kind === "elbowLeftRails") return FLOOR_CELL_KIND.BeltElbowLeftRails;
+    if (kind === "elbowRightRails") return FLOOR_CELL_KIND.BeltElbowRightRails;
     return FLOOR_CELL_KIND.Belt;
 }
 /**

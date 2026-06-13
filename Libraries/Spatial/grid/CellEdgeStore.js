@@ -1,7 +1,7 @@
 import { colRowToIndex } from "./GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { gridWallEdgeNeighbor, gridWallEdgeMirrorSide, gridNeighborFillLevel } from "../../World/wallGridCells.js";
-import { createRailWallEdge, EDGE_KIND, isRailWallEdge, railWallHeightPx } from "./CellEdge.js";
+import { createRailWallEdge, EDGE_KIND, isBeltRailEdge, isRailWallEdge, railWallHeightPx } from "./CellEdge.js";
 const EMPTY = -1;
 export class CellEdgeStore {
     constructor() {
@@ -61,8 +61,13 @@ export class CellEdgeStore {
             const ref = this.free.pop();
             const pooled = this.pool[ref];
             pooled.kind = edge.kind;
-            pooled.heightDelta = edge.heightDelta;
-            pooled.thicknessLevel = edge.thicknessLevel;
+            if (isRailWallEdge(edge)) {
+                pooled.heightDelta = edge.heightDelta;
+                pooled.thicknessLevel = edge.thicknessLevel;
+            } else {
+                delete pooled.heightDelta;
+                delete pooled.thicknessLevel;
+            }
             return ref;
         }
         const ref = this.pool.length;

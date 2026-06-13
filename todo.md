@@ -4,7 +4,8 @@
 
 Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not WorldProps). Draw via `conveyorDraw.js`; force via `applyPushableAccelerationAlongAngle` before pushable physics.
 
-- [x] **Elbow belts** — `floor_belt_elbow_left` / `floor_belt_elbow_right` spawn stamps grid cells (`BeltElbowLeft` / `BeltElbowRight`).
+- [x] **Elbow belts** — `floor_belt_elbow_left` / `floor_belt_elbow_right` spawn stamps grid cells.
+- [x] **Railed belts** — `floor_belt_rails` (+ elbow rails); amber rail draw; `beltRail` edges block lateral escape.
 - [ ] **Polyline placement** — drag on grid; cardinal steps; chain stamp into `floorStore`.
 - [ ] **Belt facing** — spawn-with-facing, rotate selected cell(s), inspector force default.
 - [ ] **Corner autotile** — 4-bit junction detection on straight belt chains (optional polish).
