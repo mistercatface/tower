@@ -1,42 +1,24 @@
 # todo
 
-## Current — conveyor belts
+## Current — NONE
+
+## Backlog
+
+### conveyor belts
 
 Floor props fixed to the obstacle grid, one cell per segment. Low box sprite (crate-like, short height) with a direction arrow on the top face. Push occupants in the arrow direction while they overlap the cell — same occupancy + force pattern as `gravity_pad`, but **one cell wide**, **cardinal facing only**, and **chain-placed** so segments snap together when you paint them.
 
 **Corners:** no separate elbow prop or L-shaped physics. A 90° turn is just two (or more) grid cells with different facings; force is always “along this cell’s arrow.” Elbow look is **draw-only** (corner sprite / join art) — optional polish, not a blocker.
 
-### Prerequisites
-
-- [x] **Grid-anchored sandbox placement** — `anchorFloorPropToObstacleGrid`, spawn + inspector snap via `state.obstacleGrid` + `snapWorldToObstacleCellCenter` (`GridCoords.js`).
-- [x] **One prop = one grid cell** — footprint = `cellSize × cellSize`; `gridCol` / `gridRow` on prop; conflict check via `findGridAnchoredFloorPropAtCell`.
-- [x] **Cardinal facing only** — `quantizeSteps: { facing: 4 }`, `cardinalFacing` strategy flag, `rotateCardinalFloorProp` / inspector 90° rotate.
-- [x] **Directional pull from facing** — `pullAlongFacing` floor effect in `floorEffects.js` using `cardinalUnitVectorFromAngle`.
-- [x] **Per-cell occupancy** — one cell rect per segment via `processFloorShapes` + `syncFloorPropCollisionShape`.
-
-### Phase 1 — belt segment (`conveyor`)
-
-- [x] **Asset** — `conveyor` floor trigger prop; `gridAnchored`, `cardinalFacing`, cell halfExtents.
-- [x] **Draw** — `createConveyorDraw()`; cache key includes cardinal facing (4 variants via `quantizeSteps`).
-- [x] **Physics** — `floorTriggers: [{ when: "occupied", effect: "pullAlongFacing", force: … }]`.
-- [x] **Spawn** — sandbox menu entry; single-click places one snapped cell with current facing.
-
-### Phase 2 — chain placement (paint mode)
-
 - [ ] **Conveyor placement tool** — with belt selected, pointer drag on grid paints a polyline of cells (like static wall stamp, but props not walls).
 - [ ] **Facing along the path** — each new cell gets facing from drag direction (cardinal step); 90° bends are just the next cell’s facing — same prop type throughout.
 - [ ] **Conflict rules** — reject overlap with existing belt cell; optional replace-on-paint. Breaking a chain deletes or orphans segments consistently.
 - [ ] **Chained spawn UX** — each new cell attaches to the previous; ESC / tool change ends chain; backspace removes last segment optional.
-
-### Phase 3 — polish
-
-- [ ] **Inspector** — force slider; rotate 90°; read-only grid coords. *(partial — done for `conveyor`; generalize if more grid props appear)*
+- [ ] **Inspector** — force slider; rotate 90°; read-only grid coords. _(partial — done for `conveyor`; generalize if more grid props appear)_
 - [ ] **Corner draw variants (optional)** — mitered/corner top-face art when a cell has a perpendicular belt neighbor; cosmetic only, no new collision or effect.
 - [ ] **Smoke test** — L-shaped path of cells + ball dropped on entry.
 
 ---
-
-## Backlog
 
 ### Floor props
 

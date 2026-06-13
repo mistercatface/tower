@@ -62,7 +62,9 @@ export function syncGridCellEdgeBarriers(state, prop) {
 }
 
 // ✅ GOOD — one implementation; fresh session loads it
-export function resolveEntityCellEdgeBarriers(state, entity) { /* ... */ }
+export function resolveEntityCellEdgeBarriers(state, entity) {
+    /* ... */
+}
 ```
 
 ## Extend shared libraries — do not reinvent
