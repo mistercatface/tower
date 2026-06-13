@@ -420,6 +420,29 @@ export function collectStaticRoofHeightsFromGrid(grid) {
     out.sort((a, b) => a - b);
     return out;
 }
+/** voxelBlock fill heights + railWall edge heights (px) for roof / flat surface passes. */
+export function collectStaticStructureZLevelsFromGrid(grid) {
+    const seen = new Set();
+    const out = [];
+    const size = grid.cols * grid.rows;
+    for (let idx = 0; idx < size; idx++) {
+        const px = resolveCellWallHeightAtIdx(grid, idx);
+        if (px > 0 && !seen.has(px)) {
+            seen.add(px);
+            out.push(px);
+        }
+        const edgeBase = idx * 4;
+        for (let side = 0; side < 4; side++) {
+            const edgePx = grid.edgeGrid[edgeBase + side] * grid.cellSize;
+            if (edgePx > 0 && !seen.has(edgePx)) {
+                seen.add(edgePx);
+                out.push(edgePx);
+            }
+        }
+    }
+    out.sort((a, b) => a - b);
+    return out;
+}
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @param {number} chunkOriginX

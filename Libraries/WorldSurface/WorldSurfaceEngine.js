@@ -12,9 +12,11 @@ import {
     projectHorizontalSurfaceCornersInto,
     clipChunkToWallFootprints,
     clipChunkToBlockedCells,
+    clipChunkToStaticEdgeRails,
     drawWallFootprintDamageOverlays,
     drawStaticRoofDamageOverlays,
     drawStaticWallFootprintDamageOverlays,
+    drawStaticEdgeRailFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, resolveWallCapHeightPx } from "../World/wallGridCells.js";
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
@@ -342,7 +344,7 @@ export class WorldSurfaceEngine {
                         drawProjectedHorizontalChunk(ctx, drawCanvas, corners, this.settings);
                         drawStaticRoofDamageOverlays(ctx, pass, sRoofChunkCorners);
                     } else if (flatWallRails) {
-                        const clipped = clipChunkToWallFootprints(ctx, pass) || clipChunkToBlockedCells(ctx, pass);
+                        const clipped = clipChunkToWallFootprints(ctx, pass) || clipChunkToBlockedCells(ctx, pass) || clipChunkToStaticEdgeRails(ctx, pass);
                         if (!clipped) {
                             ctx.restore();
                             continue;
@@ -350,6 +352,7 @@ export class WorldSurfaceEngine {
                         drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
                         drawWallFootprintDamageOverlays(ctx, pass);
                         drawStaticWallFootprintDamageOverlays(ctx, pass);
+                        drawStaticEdgeRailFootprintDamageOverlays(ctx, pass);
                     }
                     ctx.restore();
                 } else drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);

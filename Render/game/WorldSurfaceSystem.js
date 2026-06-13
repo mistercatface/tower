@@ -6,7 +6,7 @@ import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.j
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
-import { collectStaticRoofHeightsFromGrid } from "../../Libraries/World/wallGridCells.js";
+import { collectStaticRoofHeightsFromGrid, collectStaticStructureZLevelsFromGrid } from "../../Libraries/World/wallGridCells.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
     constructor(settings = getGameWorldSurfaceSettings()) {
@@ -22,7 +22,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         this.surfaceProfileOverride = null;
     }
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        const roofZ = collectStaticRoofHeightsFromGrid(state.obstacleGrid);
+        const roofZ = collectStaticStructureZLevelsFromGrid(state.obstacleGrid);
         super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, roofZ);
     }
     /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
@@ -56,17 +56,13 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             });
         }
     }
-    /** Flat world-aligned wall rails — same chunk bake path as floor, clipped to segment footprints. */
+    /** Flat world-aligned wall rails — segment footprints + static voxelBlock cells + railWall edges. */
     drawFlatWallRails(ctx, state, viewport) {
-        const wallHeight = this.settings.wallHeight;
-        this.drawGroundChunks(ctx, {
-            obstacleGrid: state.obstacleGrid,
-            wallSpatialIndex: state.wallSpatialIndex,
-            viewport,
-            state,
-            zLevel: wallHeight,
-            playBounds: playBoundsFromObstacleGrid(state.obstacleGrid),
-            flatWallRails: true,
-        });
+        const zLevels = collectStaticStructureZLevelsFromGrid(state.obstacleGrid);
+        const fallbackZ = this.settings.wallHeight;
+        const levels = zLevels.length ? zLevels : [fallbackZ];
+        const playBounds = playBoundsFromObstacleGrid(state.obstacleGrid);
+        for (let i = 0; i < levels.length; i++)
+            this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, wallSpatialIndex: state.wallSpatialIndex, viewport, state, zLevel: levels[i], playBounds, flatWallRails: true });
     }
 }

@@ -3,7 +3,7 @@ import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
 import { centeredAabb, centeredAabbInto, centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
-import { packCellKey } from "../../../Libraries/DataStructures/CellKey.js";
+import { packCellKey, packEdgeCellKey } from "../../../Libraries/DataStructures/CellKey.js";
 import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
@@ -152,7 +152,9 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
         }
         for (let side = 0; side < 4; side++)
             if (grid.edgeGrid[idx * 4 + side] !== 0) {
+                const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
                 grid.writeCellEdge(col, row, side, 0, 0);
+                state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
                 cellChanged = true;
             }
         if (!cellChanged) return;
@@ -278,7 +280,12 @@ export function generateLabRailCaverns(state) {
                 const { globalCol, globalRow } = gridCellToGlobalColRow(grid, c, r);
                 state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
             }
-            for (let side = 0; side < 4; side++) grid.writeCellEdge(c, r, side, 0, 0);
+            for (let side = 0; side < 4; side++) {
+                if (grid.edgeGrid[idx * 4 + side] === 0) continue;
+                const { globalCol, globalRow } = gridCellToGlobalColRow(grid, c, r);
+                grid.writeCellEdge(c, r, side, 0, 0);
+                state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
+            }
         }
     // 4. Stamp Horizontal Edges
     for (let lr = 0; lr < hRows; lr++)

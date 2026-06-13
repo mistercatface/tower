@@ -6,8 +6,10 @@ export {
     projectHorizontalSurfaceCornersInto,
     clipChunkToBlockedCells,
     clipChunkToWallFootprints,
+    clipChunkToStaticEdgeRails,
     drawStaticRoofDamageOverlays,
     drawStaticWallFootprintDamageOverlays,
+    drawStaticEdgeRailFootprintDamageOverlays,
     drawWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";

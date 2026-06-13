@@ -7,7 +7,7 @@ import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js"
 import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
-import { drawDamageOverlayInClip } from "./wallDamageVisual.js";
+import { drawDamageOverlayInClip, drawPolygonDamageOverlay } from "./wallDamageVisual.js";
 /** @typedef {import("./WallDrawContext.js").WallDrawContext} WallDrawContext */
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 /** @typedef {{ proj1X: number, proj1Y: number, proj2X: number, proj2Y: number }} ProjectedWallBand */
@@ -255,10 +255,11 @@ function assignCapSampleSrc(sample) {
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedRailWallCap(ctx, box, wallCtx) {
-    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState } = wallCtx;
+    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState, damageAlpha } = wallCtx;
     projectRailWallTopCornersInto(sCapCorners, box, camera);
     if (!proceduralSurfaceDraw || !gameState) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        if (damageAlpha > 0) drawPolygonDamageOverlay(ctx, sCapCorners, damageAlpha);
         return;
     }
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
@@ -271,10 +272,12 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
     const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, box.wallBaseZ, gameState, profileId, wallCtx.texelResolution);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        if (damageAlpha > 0) drawPolygonDamageOverlay(ctx, sCapCorners, damageAlpha);
         return;
     }
     assignCapSampleSrc(sample);
     blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, worldSurfaces.settings.wallTextureBleedPx ?? 1);
+    if (damageAlpha > 0) drawPolygonDamageOverlay(ctx, sCapCorners, damageAlpha);
 }
 /**
  * Horizontal cap from world AABB corners (voxelBlock caps, generic quads).

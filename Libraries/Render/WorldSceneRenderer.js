@@ -1,7 +1,7 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 /** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
-import { getStaticCellDamageAlphaAtIdx } from "../World/staticCellDamage.js";
+import { getStaticCellDamageAlphaAtIdx, getStaticEdgeDamageAlphaAt } from "../World/staticCellDamage.js";
 import { collectStaticGridEdgeRailDrawables, drawProjectedGridEdgeRail } from "./Structure3D/StaticGridEdgeRailDraw.js";
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
@@ -137,7 +137,7 @@ export class WorldSceneRenderer {
                 wallCtx.wallBaseZ = obj.wallBaseZ;
                 wallCtx.wallCapHeight = obj.wallCapHeight;
                 wallCtx.cacheObj = obj;
-                wallCtx.damageAlpha = 0;
+                wallCtx.damageAlpha = getStaticEdgeDamageAlphaAt(input.obstacleGrid, input.gameState, obj.gridCol, obj.gridRow, obj.gridSide);
                 drawProjectedGridEdgeRail(ctx, obj, wallCtx);
             } else if (!skipWalls && obj.staticGrid) {
                 wallCtx.wallHeight = obj.wallHeight;

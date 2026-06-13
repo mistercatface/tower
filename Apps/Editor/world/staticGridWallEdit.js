@@ -3,7 +3,7 @@
  */
 import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
-import { packCellKey } from "../../../Libraries/DataStructures/CellKey.js";
+import { packCellKey, packEdgeCellKey } from "../../../Libraries/DataStructures/CellKey.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import { cellIsStaticWall, cellIsStaticWallAtIdx } from "../../../Libraries/World/wallGridCells.js";
@@ -116,6 +116,7 @@ export function deleteStaticWallsInBounds(state, boundsConfig) {
         for (let side = 0; side < 4; side++) {
             if (grid.edgeGrid[local.idx * 4 + side] === 0) continue;
             grid.writeCellEdge(local.col, local.row, side, 0, 0);
+            state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
             cellChanged = true;
         }
         if (!cellChanged) return;

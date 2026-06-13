@@ -5,8 +5,13 @@
  * Wall bake / obstacle patches use startCol/endCol/startRow/endRow for the same indices.
  */
 export const KEY_STRIDE = 65536;
+const EDGE_KEY_STRIDE = KEY_STRIDE * KEY_STRIDE;
 export function packCellKey(col, row) {
     return col + row * KEY_STRIDE;
+}
+/** Sparse health for railWall edges — side encoded above cell row/col key space. */
+export function packEdgeCellKey(col, row, side) {
+    return packCellKey(col, row) + (side + 1) * EDGE_KEY_STRIDE;
 }
 export function unpackCellKey(key) {
     return { col: key % KEY_STRIDE, row: (key / KEY_STRIDE) | 0 };

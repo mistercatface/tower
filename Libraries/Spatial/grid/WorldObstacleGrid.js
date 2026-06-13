@@ -1,5 +1,6 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex } from "./GridUtils.js";
+import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCellDamage.js";
 import { gridWallEdgeRailShouldEmit } from "../../World/wallGridCells.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
@@ -31,8 +32,8 @@ export class WorldObstacleGrid {
     }
     /** @param {number} damage @param {object} state */
     _staticGridProxyHandleHit(damage, state) {
-        if (this.isEdgeRail) return;
-        damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
+        if (this.isEdgeRail) damageStaticGridEdge(state, this._obstacleGrid, this.gridCol, this.gridRow, this.gridSide, damage);
+        else damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
     }
     bumpWallGridRevision() {
         this.wallGridRevision = (this.wallGridRevision + 1) | 0;
