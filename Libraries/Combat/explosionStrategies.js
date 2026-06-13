@@ -1,7 +1,7 @@
 import { repelActorFromExplosion } from "./explosionKnockback.js";
-import { engine } from "../../Apps/Editor/engine.js";
+import { sandboxTargeting } from "./sandboxTargeting.js";
 function repelEntities(state, exp, _dt, spatialFrame) {
-    const actors = engine.targeting.getBroadphaseActors(state);
+    const actors = sandboxTargeting.getBroadphaseActors(state);
     for (const actor of actors) repelActorFromExplosion(actor, exp, spatialFrame, state);
 }
 export const ExplosionStrategies = {

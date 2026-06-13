@@ -13,7 +13,6 @@ import { adjustSelectedSpeed, bindPlayback } from "../../Libraries/Playback/play
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { CombatParticles } from "../../Libraries/Render/CombatParticles.js";
 import { sandboxInteractionPairs } from "../../Libraries/Combat/sandboxInteraction.js";
-import { sandboxTargeting } from "../../Libraries/Combat/sandboxTargeting.js";
 import { updateSandboxAutoCombat } from "../../Libraries/Combat/worldPropAutoCombat.js";
 import { Projectile } from "../../Entities/Projectile.js";
 import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
@@ -59,7 +58,6 @@ function runSimulationTick(state, dt) {
 export const engine = {
     id: "editor",
     interactionPairs: sandboxInteractionPairs,
-    targeting: sandboxTargeting,
     render: {
         ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
         drawGroundOverlays: (state, viewport, ctx) => {

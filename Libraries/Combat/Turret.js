@@ -2,7 +2,7 @@ import { normalizeAngle } from "../Math/Angle.js";
 import { defaultGunId, getGunDefinition } from "./gunDefaults.js";
 import { applyKnockback } from "../Motion/index.js";
 import { getGunProjectileConfig } from "./gunCombat.js";
-import { engine } from "../../Apps/Editor/engine.js";
+import { sandboxTargeting } from "./sandboxTargeting.js";
 import { CombatParticles } from "../Render/CombatParticles.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "../Render/Characters/actorKinematicsRenderer.js";
@@ -28,7 +28,7 @@ export class Turret {
     computeMuzzleDistance(source, projectileRadius, target = null) {
         const defaultDist = source.radius + 12;
         const minDist = source.radius + projectileRadius + 0.5;
-        if (!target || !engine.targeting.areHostile(source, target)) return defaultDist;
+        if (!target || !sandboxTargeting.areHostile(source, target)) return defaultDist;
         const dx = target.x - source.x;
         const dy = target.y - source.y;
         const dist = Math.hypot(dx, dy);
@@ -59,7 +59,7 @@ export class Turret {
         const target = this.lastTarget ?? this.target;
         const { x: tx, y: ty } = this.getMuzzlePosition(source, radius, target);
         const angleOffsets = resolveFireAngleOffsets(loadout);
-        const faction = engine.targeting.inferFaction(source);
+        const faction = sandboxTargeting.inferFaction(source);
         spawnProjectilesFromGun(state, source, { tx, ty, baseAngle: this.angle, gun, radiusMultiplier, angleOffsets, faction, penetration: source.weapon?.penetration ?? 0 });
         CombatParticles.spawnMuzzleFlash(state, tx, ty, this.angle, { isPellet: loadout.pelletCount != null });
     }
