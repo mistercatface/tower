@@ -11,7 +11,7 @@ Pinball / pool **table assemblies** removed. Pool play is two spawn props: **8-b
 - [x] **`spawnGroupId`** on meta + `inputGates` link (replaces assembly group)
 - [x] **`cueStrikeBehavior`** — obstacle-grid aim bounds only
 - [x] Scene list / box select — all props first-class (no assembly membership filter)
-- [x] **`sandboxWalls.js`** — segment wall helpers kept for fixture walls / map tools
+- [x] **`Libraries/WorldSurface/animatedSurface*`** — worker flipbook bake + sim draw (replaces assembly surface path; zones on `sandbox.animatedSurfaceZones`)
 
 **Then:** proceed with **Sandbox scene JSON export/import**.
 

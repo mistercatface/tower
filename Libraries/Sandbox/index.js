@@ -49,6 +49,18 @@ export { resolveWorldPropSandboxBehavior, resolveWorldPropInputGateRules } from 
 export { spawnPoolRack } from "./spawnPoolRack.js";
 export { addSandboxWalls, removeSandboxWalls, clearSandboxWallsInBounds } from "./sandboxWalls.js";
 export {
+    bakeAnimatedSurfaceFlipbook,
+    releaseAnimatedSurfaceFlipbook,
+    railBandBoundsAroundPlayfield,
+    createAnimatedSurfaceZone,
+    disposeAnimatedSurfaceZone,
+    drawAnimatedSurfaceZone,
+    drawAnimatedSurfaceZones,
+    pushAnimatedSurfaceZone,
+    removeAnimatedSurfaceZoneById,
+    clearAnimatedSurfaceZones,
+} from "../WorldSurface/animatedSurfaceZone.js";
+export {
     DRAG_LAUNCH_DEFAULTS,
     applyDragLaunchVelocity,
     createDragLaunchAim,

@@ -1,6 +1,6 @@
 /**
  * Profile timeline → bake frame index helpers.
- * World render bakes frame 0 only; assembly surfaces bake full flipbooks at spawn.
+ * World render bakes frame 0 only; animated surface zones bake full flipbooks — see animatedSurfaceFlipbook.js.
  */
 /** Explicit frame ranges for worker bake requests. */
 export const bakeFrameRange = {

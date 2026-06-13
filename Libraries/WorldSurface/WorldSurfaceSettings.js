@@ -15,7 +15,7 @@
  * @property {number} wallTextureBleedPx
  * @property {number} wallSubdivNearPx
  * @property {number} wallSubdivFarPx
- * @property {number|null} [animationBakeMaxFrames] — assembly surface flipbook cap
+ * @property {number|null} [animationBakeMaxFrames] — animated surface flipbook cap
  * @property {number[]} roofZLevels — derived: [wallHeight]
  * @property {number} cellSize
  * @property {number} cameraHeight

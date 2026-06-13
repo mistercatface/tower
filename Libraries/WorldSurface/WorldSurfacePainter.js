@@ -189,7 +189,7 @@ export function bakeGroundChunkCanvases(payload) {
     });
     return [canvas];
 }
-/** Bake a world-aligned horizontal patch (assembly playfield / rail band). */
+/** Bake a world-aligned horizontal patch (animated surface playfield / rail band). */
 export function bakeHorizontalPatchCanvases(payload) {
     const provider = getSurfaceProfileProvider();
     const profileId = payload.profileId ?? provider.defaultId;
