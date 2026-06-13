@@ -48,12 +48,6 @@
 
 ## Backlog
 
-### CellEdgeStore (medium wins)
-
-- [ ] **`forEachEmittingRailWallAtZLevel`** — shared AABB walker for clip/damage/chunk queries.
-- [ ] **`gridRailWallFootprintHalfThickness`** — dedupe thickness half in footprint + side endpoints.
-- [ ] **`resolveGridWallEdgeRailNeighborContext`** — neighbor fill level/px/cap for box resolve.
-
 ### Conveyor belts (Phase 2+)
 
 - [ ] **Conveyor placement tool** — drag polyline on grid.

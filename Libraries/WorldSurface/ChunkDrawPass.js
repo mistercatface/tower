@@ -6,7 +6,7 @@ import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js"
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { traceAabbRect, traceClosedPolygon, clipToPath } from "../Canvas/CanvasPath.js";
 import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
-import { gridWallEdgeRailFootprintAabb, gridRailWallAtZLevel, resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
+import { gridWallEdgeRailFootprintAabb, forEachEmittingRailWallAtZLevel, resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
 import { getStaticCellDamageAlphaAtIdx, getStaticEdgeDamageAlphaAt } from "../World/staticCellDamage.js";
 /**
  * @typedef {Object} ChunkDrawPass
@@ -107,11 +107,10 @@ export function clipChunkToFlatWallFootprints(ctx, pass) {
                 traceAabbRect(clipCtx, obstacleGrid.getCellBounds(col, row));
                 clippedAny = true;
             }
-            for (let side = 0; side < 4; side++) {
-                if (!gridRailWallAtZLevel(obstacleGrid, col, row, side, zLevel)) continue;
-                traceAabbRect(clipCtx, gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, side));
-                clippedAny = true;
-            }
+        });
+        forEachEmittingRailWallAtZLevel(obstacleGrid, pass.chunkAabb, zLevel, (col, row, side) => {
+            traceAabbRect(clipCtx, gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, side));
+            clippedAny = true;
         });
         return clippedAny;
     });
@@ -121,12 +120,9 @@ export function clipChunkToStaticEdgeRails(ctx, pass) {
     const { obstacleGrid, zLevel } = pass;
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
-        forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
-            for (let side = 0; side < 4; side++) {
-                if (!gridRailWallAtZLevel(obstacleGrid, col, row, side, zLevel)) continue;
-                traceAabbRect(clipCtx, gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, side));
-                clippedAny = true;
-            }
+        forEachEmittingRailWallAtZLevel(obstacleGrid, pass.chunkAabb, zLevel, (col, row, side) => {
+            traceAabbRect(clipCtx, gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, side));
+            clippedAny = true;
         });
         return clippedAny;
     });
@@ -144,13 +140,10 @@ export function drawStaticWallFootprintDamageOverlays(ctx, pass) {
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
 export function drawStaticEdgeRailFootprintDamageOverlays(ctx, pass) {
     const { obstacleGrid, state, zLevel } = pass;
-    forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
-        for (let side = 0; side < 4; side++) {
-            if (!gridRailWallAtZLevel(obstacleGrid, col, row, side, zLevel)) continue;
-            const damageAlpha = getStaticEdgeDamageAlphaAt(obstacleGrid, state, col, row, side);
-            if (damageAlpha <= 0) continue;
-            drawAabbDamageOverlay(ctx, gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, side), damageAlpha);
-        }
+    forEachEmittingRailWallAtZLevel(obstacleGrid, pass.chunkAabb, zLevel, (col, row, side) => {
+        const damageAlpha = getStaticEdgeDamageAlphaAt(obstacleGrid, state, col, row, side);
+        if (damageAlpha <= 0) return;
+        drawAabbDamageOverlay(ctx, gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, side), damageAlpha);
     });
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */

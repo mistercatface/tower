@@ -108,10 +108,46 @@ export function gridRailWallTopZAt(grid, col, row, side) {
 export function gridRailWallAtZLevel(grid, col, row, side, zLevel) {
     return gridWallEdgeRailShouldEmit(grid, col, row, side) && gridRailWallTopZAt(grid, col, row, side) === zLevel;
 }
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function gridRailWallFootprintHalfThickness(grid, col, row, side) {
+    const railEdge = gridRailWallEdge(grid, col, row, side);
+    if (!railEdge) return 0;
+    return railWallThicknessPx(railEdge) / 2;
+}
+/**
+ * Neighbor voxelBlock fill + railWall cap height for one edge.
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {number} col
+ * @param {number} row
+ * @param {number} side
+ */
+export function resolveGridWallEdgeRailNeighborContext(grid, col, row, side) {
+    const neighborFillLevel = gridNeighborFillLevel(grid, col, row, side);
+    const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
+    let neighborFillHeightPx = 0;
+    if (nc >= 0 && nc < grid.cols && nr >= 0 && nr < grid.rows) neighborFillHeightPx = resolveCellWallHeightAtIdx(grid, nc + nr * grid.cols);
+    const neighborCap = neighborFillHeightPx > 0 ? neighborFillHeightPx : null;
+    const railEdge = gridRailWallEdge(grid, col, row, side);
+    const capHeightPx = railEdge ? railWallHeightPx(railEdge, grid.cellSize, neighborFillLevel) : 0;
+    return { neighborFillLevel, neighborFillHeightPx, neighborCap, capHeightPx };
+}
+/**
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {import("../Math/Aabb2D.js").Aabb2D} aabb
+ * @param {number} zLevel
+ * @param {(col: number, row: number, side: number, idx: number) => void} fn
+ */
+export function forEachEmittingRailWallAtZLevel(grid, aabb, zLevel, fn) {
+    forEachObstacleGridCellInAabb(grid, aabb, (col, row, idx) => {
+        for (let side = 0; side < 4; side++) {
+            if (!gridRailWallAtZLevel(grid, col, row, side, zLevel)) continue;
+            fn(col, row, side, idx);
+        }
+    });
+}
 /** Axis-aligned footprint for one edge rail (centered on the shared cell boundary). */
 export function gridWallEdgeRailFootprintAabb(grid, col, row, edge) {
-    const railEdge = gridRailWallEdge(grid, col, row, edge);
-    const halfT = railEdge ? railWallThicknessPx(railEdge) / 2 : 0;
+    const halfT = gridRailWallFootprintHalfThickness(grid, col, row, edge);
     const b = grid.getCellBounds(col, row);
     if (edge === 0) return { minX: b.minX, minY: b.minY - halfT, maxX: b.maxX, maxY: b.minY + halfT };
     if (edge === 1) return { minX: b.maxX - halfT, minY: b.minY, maxX: b.maxX + halfT, maxY: b.maxY };
@@ -120,8 +156,7 @@ export function gridWallEdgeRailFootprintAabb(grid, col, row, edge) {
 }
 /** Long-side endpoints for one face of the rail box. @param {0 | 1} railSide 0 = owning-cell side, 1 = neighbor side */
 function gridWallEdgeRailSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
-    const railEdge = gridRailWallEdge(grid, col, row, edge);
-    const halfT = railEdge ? railWallThicknessPx(railEdge) / 2 : 0;
+    const halfT = gridRailWallFootprintHalfThickness(grid, col, row, edge);
     const b = grid.getCellBounds(col, row);
     if (edge === 0) {
         const y = railSide === 0 ? b.minY + halfT : b.minY - halfT;
@@ -163,13 +198,8 @@ export function resolveGridWallEdgeRailBox(grid, col, row, edge) {
     const idx = col + row * cols;
     const railEdge = gridRailWallEdge(grid, col, row, edge);
     if (!railEdge) return null;
-    const neighborFillLevel = gridNeighborFillLevel(grid, col, row, edge);
-    const edgeHeight = railWallHeightPx(railEdge, grid.cellSize, neighborFillLevel);
+    const { neighborCap, capHeightPx: edgeHeight } = resolveGridWallEdgeRailNeighborContext(grid, col, row, edge);
     if (edgeHeight <= 0) return null;
-    const { nc, nr } = gridWallEdgeNeighbor(col, row, edge);
-    let neighborFillHeight = 0;
-    if (nc >= 0 && nc < cols && nr >= 0 && nr < grid.rows) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nc + nr * cols);
-    const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
     if (!gridWallFaceVisible(neighborCap, edgeHeight)) return null;
     const fp = gridWallEdgeRailFootprintAabb(grid, col, row, edge);
     const inward = gridWallEdgeInwardNormal(edge);
@@ -498,11 +528,8 @@ export function chunkHasStaticStructureAtLevel(obstacleGrid, chunkOriginX, chunk
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {number} chunkOriginX @param {number} chunkOriginY @param {number} chunkSizePx @param {number} zLevel */
 export function chunkHasStaticEdgeRailsAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
     let found = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
-        for (let side = 0; side < 4; side++) {
-            if (!gridRailWallAtZLevel(obstacleGrid, col, row, side, zLevel)) continue;
-            found = true;
-        }
+    forEachEmittingRailWallAtZLevel(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), zLevel, () => {
+        found = true;
     });
     return found;
 }
