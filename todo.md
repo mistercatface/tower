@@ -11,7 +11,7 @@
 - [ ] **`Libraries/Combat` → `Apps/Editor/engine.js`** — combat imports editor `engine` singleton; move config to Libraries or inject callbacks.
 - [ ] **`engine.js` → `sandboxController` export** — render passes reach into `tilelabSandbox` module global instead of state or a registered port.
 - [ ] **`tilelabSandbox.js` `worldPropStates` patch** — voidSink merge/delete on mount; replace with explicit registration.
-- [ ] **`Index.html` generic shell** — unused pool/radio chrome and dead `uiPort` comments; editor-only bootstrap.
+- [ ] **`Index.html` generic shell** — unused radio chrome and dead bootstrap comments; editor-only mount.
 
 ## floor occupancy belts
 
