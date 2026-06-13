@@ -36,9 +36,7 @@ function ensurePatchSurface(destW, destH) {
 export function estimateAnimationPreviewHeight() {
     const stage = document.getElementById("animationStage");
     if (!stage || stage.hidden) return 0;
-    const headerH = stage.querySelector(".animation-stage-header")?.offsetHeight ?? 18;
-    const hostH = animationCanvasResize.getSize();
-    return hostH + headerH + 6;
+    return animationCanvasResize.getSize();
 }
 /** @param {HTMLCanvasElement} canvas @param {{ host: HTMLElement, maxSize: () => number }} options */
 export function mountAnimationPreviewCanvas(canvas, { host, maxSize }) {

@@ -127,16 +127,6 @@ details.editor-block-motifs {
     display: none;
 }
 
-.animation-stage-header {
-    font-size: 11px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    letter-spacing: 0.05em;
-    align-self: stretch;
-    text-align: center;
-}
-
 #animationPreviewHost {
     flex: none;
     overflow: hidden;
@@ -166,16 +156,6 @@ details.editor-block-motifs {
 
 .map-overview-stage:not(.is-visible) {
     display: none;
-}
-
-.map-overview-header {
-    font-size: 11px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    letter-spacing: 0.05em;
-    align-self: stretch;
-    text-align: center;
 }
 
 #mapOverviewHost {

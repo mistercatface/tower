@@ -44,9 +44,7 @@ export function paintMapOverviewFrame(state) {
 export function estimateMapOverviewHeight() {
     const stage = document.getElementById("mapOverviewStage");
     if (!stage || stage.hidden) return 0;
-    const headerH = stage.querySelector(".map-overview-header")?.offsetHeight ?? 18;
-    const hostH = overviewCanvasResize.getSize();
-    return hostH + headerH + 6;
+    return overviewCanvasResize.getSize();
 }
 /** @param {import("../state.js").TileLabGameState} state @param {(() => void) | null} [onBoundsChange] */
 export function mountMapOverview(state, onBoundsChange = null) {
