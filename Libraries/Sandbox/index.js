@@ -34,13 +34,20 @@ export {
 } from "./sandboxPropVisual.js";
 export { isSandboxCameraTarget, setSandboxCameraTarget, findSandboxCameraTargetWorldProp, tickSandboxCameraFollow } from "./sandboxCameraTarget.js";
 export { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
-export { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, resolveSandboxBehaviors, forEachArmedSandboxWorldProp, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";
+export {
+    getSandboxBehaviorLabel,
+    isSandboxEquippable,
+    isSandboxSpawnable,
+    isSingleWorldPropSpawnAsset,
+    isPoolRackSpawnAsset,
+    resolveSandboxBehaviors,
+    forEachArmedSandboxWorldProp,
+    SANDBOX_BEHAVIOR_LABELS,
+} from "./sandboxCapabilities.js";
 export { evaluateInputGates, evaluateInputGateRule, isEntityAtRest, isEntityAsleep, resolveInputGateScope } from "./inputGates.js";
 export { resolveWorldPropSandboxBehavior, resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
-export { getAssemblyManifest, getResolvedAssembly, listAssemblyManifests, registerAssemblyManifest, resolveAssemblyManifest } from "./assemblies/assemblyRegistry.js";
-export { loadAssemblyManifests } from "./assemblies/loadAssemblyManifests.js";
-export { resolvePlacement, resolveAnchoredPlacement, resolvePlayfieldPlacement } from "./assemblies/assemblyPlacement.js";
-export { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
+export { spawnPoolRack } from "./spawnPoolRack.js";
+export { addSandboxWalls, removeSandboxWalls, clearSandboxWallsInBounds } from "./sandboxWalls.js";
 export {
     DRAG_LAUNCH_DEFAULTS,
     applyDragLaunchVelocity,

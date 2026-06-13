@@ -4,18 +4,10 @@ import { getPropAsset } from "../../Props/PropCatalog.js";
 import { createDragLaunchInteraction, DRAG_LAUNCH_DEFAULTS } from "../dragLaunch.js";
 import { evaluateInputGates } from "../inputGates.js";
 import { resolveWorldPropSandboxBehavior } from "../sandboxBehaviorConfig.js";
-import { getSandboxEntityMeta } from "../sandboxEntityMeta.js";
 export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
 /** @param {object} state @param {object} prop @param {object} asset */
 function getCueStrikeConfig(state, prop, asset) {
     return { ...DRAG_LAUNCH_DEFAULTS, ...resolveWorldPropSandboxBehavior(state, prop, asset, "cueStrike") };
-}
-/** @param {object} prop @param {object} state */
-function cueStrikeTableBounds(prop, state) {
-    const groupId = getSandboxEntityMeta(state).getAssemblyGroupId(prop.id);
-    const instance = state.sandbox.assemblyInstances.find((entry) => entry.id === groupId);
-    if (!instance) throw new Error(`Cue strike prop has no assembly instance (${groupId})`);
-    return { tableWidth: instance.arenaWidth, tableHeight: instance.arenaHeight };
 }
 /** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createCueStrikeBehavior(state) {
@@ -29,7 +21,7 @@ export function createCueStrikeBehavior(state) {
             applyCueStrikeCollision(prop, shot);
         },
         buildAimLineContext(prop) {
-            return buildCueStrikeAimLineContext(prop, state, cueStrikeTableBounds(prop, state));
+            return buildCueStrikeAimLineContext(prop, state);
         },
         resolveAimLine: getCueStrikeAimLine,
     });

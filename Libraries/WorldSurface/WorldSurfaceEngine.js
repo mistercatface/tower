@@ -1,6 +1,5 @@
 /**
  * Procedural world-surface bake cache: static ground chunks + wall atlases (frame 0 only).
- * Animated surfaces are baked at assembly spawn — see Libraries/Sandbox/assemblySurfaceBake.js.
  */
 import { createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
 import { clipToAabb } from "../Canvas/CanvasPath.js";

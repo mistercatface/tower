@@ -21,21 +21,6 @@ function resolveFlipperDims(cfg, playW) {
     const width = u("widthU", 4);
     return { length, width, height: u("heightU", 5), pivotRadius: u("pivotU", 2.5) };
 }
-/**
- * @param {object} prop
- * @param {ReturnType<typeof import("../assemblyLayout.js").buildAssemblyLayout>} layout
- * @param {object} asset
- */
-export function applyFlipperAssemblyScale(prop, layout, asset) {
-    const cfg = flipperConfig(asset);
-    const playW = layout.play.maxX - layout.play.minX;
-    prop._flipperPlayfieldWidth = playW;
-    const { length, width } = resolveFlipperDims(cfg, playW);
-    prop.halfExtents = { x: length / 2, y: width / 2 };
-    prop.radius = Math.max(prop.halfExtents.x, prop.halfExtents.y);
-    prop.strategy.propPixelSize = Math.max(length, width * 2);
-    prop._flipperShapeKey = null;
-}
 /** @param {object} prop @param {object} asset */
 export function getFlipperSpec(prop, asset) {
     const cfg = flipperConfig(asset);

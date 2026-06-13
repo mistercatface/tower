@@ -6,7 +6,6 @@ import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/Surfa
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
-import { drawSandboxAssemblyGuides, drawSandboxAssemblySurfaces } from "../../../Libraries/Sandbox/assemblySurfaceDraw.js";
 import { floorPropEffectPass } from "../../../Libraries/Sandbox/floorProps.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
@@ -15,10 +14,6 @@ import { paintMapOverviewFrame } from "./mapOverview.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 /** @type {import("../../../Render/Render.js").SimulationSceneHooks} */
 const editorSceneHooks = {
-    drawGroundOverlays(state, viewport, ctx) {
-        drawSandboxAssemblySurfaces(ctx, state, viewport);
-        drawSandboxAssemblyGuides(ctx, state);
-    },
     drawPostSimulation(state, viewport, ctx) {
         CombatParticles.renderAll(ctx, state, viewport);
     },

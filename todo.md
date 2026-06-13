@@ -2,36 +2,18 @@
 
 ## Current priorities
 
-### Remove assembly cartridge system (gate before sandbox save)
+### Remove assembly cartridge system (gate before sandbox save) — done 2026-06
 
-Pinball / pool **table assemblies** (`*.assembly.json`, spawn pipeline, felt bake, segment walls, void pockets) are deprecated. Replace with two spawn-only props: **8-ball triangle** and **9-ball triangle** (rack + cue ball south). Keep **`inputGates` + `cueStrike`** (cue waits until grouped balls at rest).
+Pinball / pool **table assemblies** removed. Pool play is two spawn props: **8-ball triangle** and **9-ball triangle** (`spawnPoolRack.js`). Cue **`inputGates` + `cueStrike`** unchanged (waits for grouped balls at rest via `spawnGroupId`).
 
-**Delete when replacement ships (same pass — no legacy path):**
+- [x] Delete assembly stack (`assemblies/`, `spawnAssembly.js`, surface bake/draw/layout, manifests)
+- [x] **`spawnPoolRack`** + **`pool_rack_8ball` / `pool_rack_9ball`** spawn props
+- [x] **`spawnGroupId`** on meta + `inputGates` link (replaces assembly group)
+- [x] **`cueStrikeBehavior`** — obstacle-grid aim bounds only
+- [x] Scene list / box select — all props first-class (no assembly membership filter)
+- [x] **`sandboxWalls.js`** — segment wall helpers kept for fixture walls / map tools
 
-- [ ] **`Libraries/Sandbox/assemblies/`** — `poolTable*.assembly.json`, `pinballTable.assembly.json`, registry, load, manifest types, `assemblyLink`, `assemblyPlacement`
-- [ ] **`spawnAssembly.js`**, **`assemblyLayout.js`**, **`assemblyWorldPropSpawn.js`**, **`assemblySurfaceDraw.js`**, **`assemblySurfaceBake.js`**
-- [ ] **`main.js`** — `loadAssemblyManifests()` boot step (props load directly)
-- [ ] **`SandboxWorldState`** — `assemblyInstances`, `assemblyGuides`; stop pushing assembly entries into `surfaceProfileZones`
-- [ ] **`sandboxSession` / controller / `sandboxToyUi`** — `SANDBOX_SPAWN_ASSEMBLY_PREFIX`, spawn/list/delete assembly APIs; assembly rows in Scene panel + spawn dropdown
-- [ ] **`preview.js`** — `drawSandboxAssemblySurfaces`, `drawSandboxAssemblyGuides`
-- [ ] **`Sandbox/index.js`** — assembly exports
-
-**Keep (move off assembly, do not delete):**
-
-- [ ] **`inputGates.js`** — `allAtRest` / `groupWorldProps` rules
-- [ ] **`cueStrikeBehavior.js`**, **`CueStick/`**, pool ball assets in **`Assets/props/poolBalls.js`**
-
-**Build replacement:**
-
-- [ ] **`spawnPoolRack(state, worldX, worldY, variant)`** — colocate in `Libraries/Sandbox/` (e.g. `spawnPoolRack.js`); static `{ prop, dx, dy }[]` layouts extracted from current 8-ball / 9-ball JSON (96×176 playfield → world offsets); click = rack anchor (triangle apex / foot spot); cue ball south (~same Δv as old `v: 0.75` vs apex)
-- [ ] **Spawn props** — `pool_rack_8ball`, `pool_rack_9ball` in props panel (`sandbox.spawnable: true`, `sandbox.spawnRack: "8ball" | "9ball"`); hook `sandboxSession.spawnAt` like floor belts
-- [ ] **Group link without assembly** — stamp shared `spawnGroupId` on meta for every ball in one rack spawn; cue gets `behaviorOverrides`: `cueStrike` tuning + `inputGates.cueStrike` (`self` atRest + `groupWorldProps` / `spawnGroupId` / `allAtRest`, exclude `voidSink`)
-- [ ] **`resolveSandboxEntityLinkValue`** — read `spawnGroupId` from meta (replace `sandboxGroupId` → assembly group id)
-- [ ] **`cueStrikeBehavior`** — drop `assemblyInstances` / `arenaWidth` lookup; aim ray uses `resolveCueStrikeMaxRayDist({ obstacleGrid })` only (already supported)
-- [ ] **Selection / scene list** — remove `hasAssemblyMembership` gating (`listPlacedProps`, box select); optional: delete whole rack by shared `spawnGroupId`
-- [ ] **Smoke test** — spawn 9-ball rack on open floor; drag cue only when rack balls stopped; no felt, walls, void pits, or assembly Scene row
-
-**Then:** proceed with **Sandbox scene JSON export/import** (assemblies explicitly out of v1 schema).
+**Then:** proceed with **Sandbox scene JSON export/import**.
 
 ### UI / architecture
 
@@ -240,6 +222,7 @@ Major feature completions only (newest first). Not bugfixes or polish unless the
 
 | When | Milestone |
 |------|-----------|
+| 2026-06 | **Pool rack spawn props** — removed assembly cartridge system; `pool_rack_8ball` / `pool_rack_9ball` + `spawnPoolRack`; cue `inputGates` via `spawnGroupId`. |
 | 2026-06 | **Viewport-scoped kinematics anim** — idle/walk rig ticks only for visible props via `queryView`; physics stays global. |
 | 2026-06 | **Sandbox Props \| Walls editor** — grid stamp/pick/edit for voxelBlock + railWall; session + pointer routing. |
 | 2026-06 | **Sandbox HPA move-to-cursor** — cell-center targets, path overlay trim, locomotion arrival release. |

@@ -4,16 +4,26 @@ import { paintPixelArea } from "../../../Libraries/WorldSurface/WorldSurfacePain
 import { resolveBakeProfile, getAnimationDuration } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { minCornerAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { getAssemblyRailBandBounds } from "../../../Libraries/Sandbox/assemblyLayout.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let animationCanvasResize = null;
-/** Square assembly with a wide rail band so wall motifs are easy to read. */
+/** Square preview with a wide rail band so wall motifs are easy to read. */
 const PREVIEW_ASSEMBLY = { size: 96, wallWidth: 16, railHeight: 4 };
 const previewLayout = {
     bounds: minCornerAabb(0, 0, PREVIEW_ASSEMBLY.size, PREVIEW_ASSEMBLY.size),
     play: minCornerAabb(PREVIEW_ASSEMBLY.wallWidth, PREVIEW_ASSEMBLY.wallWidth, PREVIEW_ASSEMBLY.size - PREVIEW_ASSEMBLY.wallWidth * 2, PREVIEW_ASSEMBLY.size - PREVIEW_ASSEMBLY.wallWidth * 2),
 };
+/** @param {{ bounds: import("../../../Libraries/Math/Aabb2D.js").Aabb2D, play: import("../../../Libraries/Math/Aabb2D.js").Aabb2D }} layout */
+function getPreviewRailBandBounds(layout) {
+    const { bounds, play } = layout;
+    /** @type {import("../../../Libraries/Math/Aabb2D.js").Aabb2D[]} */
+    const bands = [];
+    if (play.minY > bounds.minY) bands.push(minCornerAabb(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, play.minY - bounds.minY));
+    if (play.maxY < bounds.maxY) bands.push(minCornerAabb(bounds.minX, play.maxY, bounds.maxX - bounds.minX, bounds.maxY - play.maxY));
+    if (play.minX > bounds.minX) bands.push(minCornerAabb(bounds.minX, play.minY, play.minX - bounds.minX, play.maxY - play.minY));
+    if (play.maxX < bounds.maxX) bands.push(minCornerAabb(play.maxX, play.minY, bounds.maxX - play.maxX, play.maxY - play.minY));
+    return bands;
+}
 let rafId = null;
 let lastGameTime = 0;
 let lastDrawTime = 0;
@@ -94,7 +104,7 @@ function drawFrame(ctx, canvas, baseProfile, gameTime) {
     const pixelsPerUnit = canvas.width / PREVIEW_ASSEMBLY.size;
     ctx.fillStyle = "#080a0e";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const railBands = getAssemblyRailBandBounds({ bounds, play });
+    const railBands = getPreviewRailBandBounds(previewLayout);
     paintPreviewPatch(ctx, bounds, play, pixelsPerUnit, cellSize, resolvedProfile, 0);
     for (let i = 0; i < railBands.length; i++) paintPreviewPatch(ctx, bounds, railBands[i], pixelsPerUnit, cellSize, resolvedProfile, PREVIEW_ASSEMBLY.railHeight);
 }

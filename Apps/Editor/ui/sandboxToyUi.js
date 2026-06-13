@@ -1,13 +1,19 @@
 import { getPropAsset, getWorldPropDefinitions, formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../../../Libraries/Combat/sandboxTargeting.js";
-import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, listFloorBeltKindOptions } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
+import {
+    getSandboxBehaviorLabel,
+    isSandboxEquippable,
+    isSandboxSpawnable,
+    isGridFloorBeltSpawnAsset,
+    isSingleWorldPropSpawnAsset,
+    listFloorBeltKindOptions,
+} from "../../../Libraries/Sandbox/sandboxCapabilities.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../../Libraries/Sandbox/spawnerConfig.js";
 import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector } from "../../../Libraries/Sandbox/sandboxWorldPropInspector.js";
 import { isButtonEntity } from "../../../Libraries/Sandbox/buttonInput.js";
 import { renderSandboxEquipPanel } from "../../../Libraries/Sandbox/sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
-import { sandboxSpawnAssemblyId, isSandboxSpawnPropId } from "../../../Libraries/Sandbox/sandboxSession.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
 import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
@@ -38,16 +44,9 @@ function appendSection(parent, id, title, defaultOpen, build) {
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }
-/**
- * @param {string[]} propIds
- * @param {{ id: string, label: string }[]} assemblyManifests
- */
-function buildSpawnOptions(propIds, assemblyManifests) {
-    /** @type {{ value: string, label: string }[]} */
-    const options = propIds.map((id) => ({ value: id, label: formatSandboxSpawnLabel(id) }));
-    const assemblies = [...assemblyManifests].sort((a, b) => a.label.localeCompare(b.label));
-    for (const manifest of assemblies) options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
-    return options;
+/** @param {string[]} propIds */
+function buildSpawnOptions(propIds) {
+    return propIds.map((id) => ({ value: id, label: formatSandboxSpawnLabel(id) }));
 }
 function appendPanelTabs(container, controller, onChange) {
     const row = document.createElement("div");
@@ -266,8 +265,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
             isFirstRender = false;
             return;
         }
-        const assemblyManifests = controller.listAssemblyManifests();
-        const spawnOptions = buildSpawnOptions(propIds, assemblyManifests);
+        const spawnOptions = buildSpawnOptions(propIds);
         if (spawnOptions.length === 0) {
             appendEditorHint(container, "No sandbox spawn options loaded");
             return;
@@ -324,7 +322,8 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     onChange();
                 },
             });
-            if (isSandboxSpawnPropId(spawnId))
+            const spawnAsset = getPropAsset(spawnId);
+            if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset))
                 appendFactionSelect(addRow, {
                     value: controller.getSpawnFaction(),
                     onChange: (faction) => {
@@ -333,7 +332,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     },
                 });
             const spawnBehaviorIds = controller.listSpawnBehaviors();
-            if (isSandboxSpawnPropId(spawnId) && spawnBehaviorIds.length > 0)
+            if (isSingleWorldPropSpawnAsset(spawnAsset) && spawnBehaviorIds.length > 0)
                 appendSelectField(addRow, "Mode", {
                     value: controller.getSpawnBehaviorId(),
                     options: spawnBehaviorIds.map((behaviorId) => ({ value: behaviorId, label: getSandboxBehaviorLabel(behaviorId) })),
@@ -352,7 +351,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
         });
         const placed = controller.listPlacedProps();
         const floorBelts = controller.listPlacedFloorBelts();
-        const assemblies = controller.listAssemblies();
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
             appendEditorSubhead(body, "Props");
             appendInstanceList(
@@ -379,21 +377,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 })),
                 "No conveyor belts placed yet.",
             );
-            if (assemblies.length > 0) {
-                appendEditorSubhead(body, "Assemblies");
-                appendInstanceList(
-                    body,
-                    assemblies.map((entry) => ({
-                        label: entry.label,
-                        selected: entry.defaultPropId === selectedId,
-                        onSelect: () => {
-                            if (entry.defaultPropId != null) controller.setSelectedPropId(entry.defaultPropId);
-                        },
-                        onDelete: () => controller.deleteAssemblyById(entry.id),
-                    })),
-                    "",
-                );
-            }
         });
         appendSection(container, "selected", "Selected", sectionOpen("selected", true), (body) => {
             if (selectionCount > 1) {

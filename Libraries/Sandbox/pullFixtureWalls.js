@@ -3,7 +3,7 @@ import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { createAabb, centerHalfExtentsAabbInto } from "../Math/Aabb2D.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { readFloorPropHalfExtents } from "../Spatial/zones/floorShapes.js";
-import { addSandboxWalls, removeSandboxWalls } from "./spawnAssembly.js";
+import { addSandboxWalls, removeSandboxWalls } from "./sandboxWalls.js";
 const fixtureStampScratch = createAabb();
 /** @param {object} entity */
 export function isPullPowerTarget(entity) {

@@ -1,15 +1,13 @@
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { strokeCircle } from "../Canvas/CanvasPath.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
-import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { createAabb, aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
 import { strokeSelectedRailWallEdge } from "./gridWallEdit.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
 export function findSandboxPropsInWorldRect(state, registry, bounds) {
-    const meta = getSandboxEntityMeta(state);
-    return queryEntitiesInAabbStrict(registry, bounds, { kinds: ["worldProp"], hitTest: "center", match: (prop) => !meta.hasAssemblyMembership(prop.id) });
+    return queryEntitiesInAabbStrict(registry, bounds, { kinds: ["worldProp"], hitTest: "center" });
 }
 /** @param {object} prop */
 function selectionRingRadius(prop, lineScale) {

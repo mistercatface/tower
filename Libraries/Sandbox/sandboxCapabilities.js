@@ -47,6 +47,14 @@ export function isSandboxSpawnable(asset) {
 export function isGridFloorBeltSpawnAsset(asset) {
     return asset?.sandbox?.gridFloorBelt === true;
 }
+/** Spawn stamps a pool ball rack — not a single WorldProp. */
+export function isPoolRackSpawnAsset(asset) {
+    return asset?.sandbox?.spawnRack === "8ball" || asset?.sandbox?.spawnRack === "9ball";
+}
+/** @param {object | null | undefined} asset */
+export function isSingleWorldPropSpawnAsset(asset) {
+    return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset) && !isPoolRackSpawnAsset(asset);
+}
 /** @param {object | null | undefined} asset */
 export function resolveFloorBeltKindFromSpawnAsset(asset) {
     const kind = asset?.sandbox?.floorBeltKind;

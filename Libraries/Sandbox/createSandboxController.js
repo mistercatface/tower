@@ -2,7 +2,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
-import { createSandboxSession, SANDBOX_SPAWN_ASSEMBLY_PREFIX } from "./sandboxSession.js";
+import { createSandboxSession } from "./sandboxSession.js";
 import { addButtonLink, clearButtonLinks, drawButtonWires, findButtonLinkTarget, listButtonLinkEndpoints, removeButtonLink } from "./buttonLinks.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold } from "./floorButtons.js";
@@ -63,11 +63,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     /** @type {{ pointerId: number, prop: object, behavior: SandboxBehavior } | null} */
     let groundNav = null;
     const entityMeta = () => getSandboxEntityMeta(state);
-    const spawnAsset = () => {
-        const spawnId = session.getSpawnPropId();
-        if (spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return null;
-        return getPropAsset(spawnId);
-    };
+    const spawnAsset = () => getPropAsset(session.getSpawnPropId());
     /** @param {string} id @param {string[]} allowed */
     const clampBehaviorId = (id, allowed) => {
         if (allowed.length === 0) return id;
@@ -397,14 +393,6 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             session.spawnAtCameraOrigin();
             stampPropBehavior(session.getSelectedProp());
         },
-        spawnAssemblyAtCameraOrigin: (assemblyId) => {
-            const instance = session.spawnAssemblyAtCameraOrigin(assemblyId);
-            stampPropBehavior(session.getSelectedProp());
-            return instance;
-        },
-        listAssemblyManifests: () => session.listAssemblyManifests(),
-        deleteAssemblyById: (id) => session.deleteAssemblyById(id),
-        listAssemblies: () => session.listAssemblies(),
         deletePropById: (id) => session.deletePropById(id),
         listPlacedProps: () => session.listPlacedProps(),
         listPlacedFloorBelts: () => session.listPlacedFloorBelts(),

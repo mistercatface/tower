@@ -6,9 +6,7 @@
  * @property {Record<string, object>} [behaviorOverrides]
  * @property {SandboxPathVisual} [pathVisual]
  * @property {SandboxPropVisual} [propVisual]
- * @property {string} [assemblyGroupId]
- * @property {string} [assemblyRackId]
- * @property {string} [assemblyId]
+ * @property {string} [spawnGroupId]
  */
 export class SandboxEntityMetaStore {
     constructor() {
@@ -85,35 +83,19 @@ export class SandboxEntityMetaStore {
         return this.get(entityId)?.propVisual;
     }
     /** @param {number} entityId */
-    getAssemblyGroupId(entityId) {
-        return this.get(entityId)?.assemblyGroupId;
+    getSpawnGroupId(entityId) {
+        return this.get(entityId)?.spawnGroupId;
     }
-    /** @param {number} entityId @param {string} groupId @param {string} assemblyId */
-    setAssemblyGroup(entityId, groupId, assemblyId) {
-        const meta = this.ensure(entityId);
-        meta.assemblyGroupId = groupId;
-        meta.assemblyId = assemblyId;
-    }
-    /** @param {number} entityId */
-    getAssemblyRackId(entityId) {
-        return this.get(entityId)?.assemblyRackId;
-    }
-    /** @param {number} entityId @param {string} rackId */
-    setAssemblyRackId(entityId, rackId) {
-        this.ensure(entityId).assemblyRackId = rackId;
-    }
-    /** @param {number} entityId */
-    hasAssemblyMembership(entityId) {
-        const meta = this.get(entityId);
-        return Boolean(meta?.assemblyGroupId || meta?.assemblyRackId);
+    /** @param {number} entityId @param {string} spawnGroupId */
+    setSpawnGroupId(entityId, spawnGroupId) {
+        this.ensure(entityId).spawnGroupId = spawnGroupId;
     }
 }
 /** @param {object} state @param {object} entity @param {string} linkField */
 export function resolveSandboxEntityLinkValue(state, entity, linkField) {
     const meta = state.sandbox?.entityMeta;
     if (!meta || entity?.id == null) return entity?.[linkField];
-    if (linkField === "sandboxGroupId") return meta.getAssemblyGroupId(entity.id);
-    if (linkField === "assemblyRackId") return meta.getAssemblyRackId(entity.id);
+    if (linkField === "spawnGroupId") return meta.getSpawnGroupId(entity.id);
     return entity[linkField];
 }
 /** @param {object} state */

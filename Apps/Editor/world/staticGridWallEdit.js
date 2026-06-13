@@ -4,7 +4,7 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { packCellKey, packEdgeCellKey } from "../../../Libraries/DataStructures/CellKey.js";
-import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
+import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/sandboxWalls.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import { cellIsStaticWall, cellIsStaticWallAtIdx } from "../../../Libraries/World/wallGridCells.js";
 import { forEachGlobalCellInBounds, getCellBoundsAabb } from "./cellBoundsConfig.js";

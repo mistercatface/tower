@@ -2,14 +2,13 @@ import { WorldProp } from "../../Entities/WorldProp.js";
 import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
-import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
-import { getResolvedAssembly, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
-import { isGridFloorBeltSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, isPoolRackSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
 import { canStampFloorBeltAt } from "./floorOccupancy.js";
+import { spawnPoolRack } from "./spawnPoolRack.js";
 import {
     clearRailWallAt,
     clearVoxelWallAt,
@@ -26,19 +25,7 @@ import {
     stampRailWallAt,
     stampVoxelWallAt,
 } from "./gridWallEdit.js";
-export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
-/** @param {string} assemblyId */
-export function sandboxSpawnAssemblyId(assemblyId) {
-    return `${SANDBOX_SPAWN_ASSEMBLY_PREFIX}${assemblyId}`;
-}
-/** @param {string} spawnId */
-export function isSandboxSpawnPropId(spawnId) {
-    return !spawnId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX);
-}
-/**
- * @param {object} state
- * @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options
- */
+/** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
@@ -143,8 +130,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         if (selectedPropId === propId) syncPrimaryFromSet();
     };
     const spawnAt = (worldX, worldY) => {
-        if (!isSandboxSpawnPropId(spawnPropId) || !getPropAsset(spawnPropId)) return null;
         const asset = getPropAsset(spawnPropId);
+        if (!asset) return null;
         if (isGridFloorBeltSpawnAsset(asset)) {
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(worldX, worldY);
@@ -153,6 +140,11 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (!grid.writeFloorCell(col, row, kind, 0)) return null;
             setSelectedFloorCell(col, row);
             return null;
+        }
+        if (isPoolRackSpawnAsset(asset)) {
+            const cue = spawnPoolRack(state, worldX, worldY, asset.sandbox.spawnRack, spawnFaction);
+            if (cue) setSinglePropSelection(cue.id);
+            return cue;
         }
         const prop = new WorldProp(worldX, worldY, spawnPropId, 0);
         prop.faction = spawnFaction;
@@ -183,7 +175,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             selectedPropIds = new Set();
             for (let i = 0; i < ids.length; i++) {
                 const id = ids[i];
-                if (registry().getLive(id) && !meta().hasAssemblyMembership(id)) selectedPropIds.add(id);
+                if (registry().getLive(id)) selectedPropIds.add(id);
             }
             syncPrimaryFromSet();
             sync();
@@ -414,28 +406,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         spawnAt,
         spawnAtCameraOrigin() {
             const origin = { x: state.viewport.x, y: state.viewport.y };
-            if (spawnPropId.startsWith(SANDBOX_SPAWN_ASSEMBLY_PREFIX)) return this.spawnAssemblyAt(origin.x, origin.y, spawnPropId.slice(SANDBOX_SPAWN_ASSEMBLY_PREFIX.length));
             return spawnAt(origin.x, origin.y);
-        },
-        spawnAssemblyAt(centerX, centerY, assemblyId) {
-            const instance = spawnAssembly(state, centerX, centerY, assemblyId, { faction: spawnFaction });
-            setSinglePropSelection(instance.defaultPropId);
-            return instance;
-        },
-        spawnAssemblyAtCameraOrigin(assemblyId) {
-            const origin = { x: state.viewport.x, y: state.viewport.y };
-            return this.spawnAssemblyAt(origin.x, origin.y, assemblyId);
-        },
-        listAssemblyManifests: () => listAssemblyManifests(),
-        deleteAssemblyById(assemblyId) {
-            const instance = state.sandbox.assemblyInstances.find((entry) => entry.id === assemblyId);
-            if (!instance) return;
-            deleteAssemblyInstance(state, assemblyId, getResolvedAssembly(instance.assemblyId).groupField);
-            pruneSelection();
-            sync();
-        },
-        listAssemblies() {
-            return state.sandbox.assemblyInstances.map((entry) => ({ id: entry.id, label: getResolvedAssembly(entry.assemblyId).label, defaultPropId: entry.defaultPropId }));
         },
         deleteProp(prop) {
             if (!prop) return;
@@ -458,7 +429,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             /** @type {{ id: number, type: string, faction: string, label: string }[]} */
             const placed = [];
             registry().forEachOfKind("worldProp", (prop) => {
-                if (prop.isDead || getSandboxEntityMeta(state).hasAssemblyMembership(prop.id)) return;
+                if (prop.isDead) return;
                 const typeLabel = formatPropTypeLabel(prop.type);
                 const index = (counts.get(prop.type) ?? 0) + 1;
                 counts.set(prop.type, index);
@@ -487,7 +458,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         clear() {
             for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state.worldProps[i]);
             state.obstacleGrid.clearAllFloorCells();
-            clearAssemblyInstances(state);
             selectedPropIds.clear();
             selectedPropId = null;
             dropFloorSelection();

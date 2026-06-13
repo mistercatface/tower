@@ -6,7 +6,7 @@ import { centeredAabb, centeredAabbInto, centerReachAabbInto, createAabb, padAab
 import { packCellKey, packEdgeCellKey } from "../../../Libraries/DataStructures/CellKey.js";
 import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
-import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/spawnAssembly.js";
+import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/sandboxWalls.js";
 import { cellIsStaticWallAtIdx, gridCellToGlobalColRow } from "../../../Libraries/World/wallGridCells.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {

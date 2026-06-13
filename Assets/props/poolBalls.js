@@ -154,4 +154,6 @@ poolBalls.pool_cue_ball = (() => {
     return { id: "pool_cue_ball", sandbox: { spawnable: false }, physics: POOL_BALL_PHYSICS, visuals, draw: createPoolBallDraw(visuals) };
 })();
 for (let n = 1; n <= 15; n++) poolBalls[`pool_ball_${n}`] = numberedPoolBall(n);
+poolBalls.pool_rack_8ball = { id: "pool_rack_8ball", sandbox: { spawnable: true, spawnLabel: "8-ball triangle", spawnRack: "8ball" }, physics: { renderMode: "none" } };
+poolBalls.pool_rack_9ball = { id: "pool_rack_9ball", sandbox: { spawnable: true, spawnLabel: "9-ball triangle", spawnRack: "9ball" }, physics: { renderMode: "none" } };
 export default poolBalls;
