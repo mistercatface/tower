@@ -1,7 +1,5 @@
 import { canvasClientToWorld } from "../../../Libraries/Input/canvasPointer.js";
 import { TILELAB_SANDBOX_SPAWN_PROP } from "../state.js";
-import { worldPropStates } from "../../../Entities/WorldPropStates.js";
-import { voidSinkWorldPropStates } from "../../../Entities/worldPropVoidSinkState.js";
 import {
     createCueStrikeBehavior,
     createDragLaunchBehavior,
@@ -23,7 +21,6 @@ let unmountToyUi = null;
  */
 export function mountTilelabSandbox(state, requestRedraw) {
     destroyTilelabSandbox(state);
-    Object.assign(worldPropStates, voidSinkWorldPropStates);
     const canvas = () => state.editor.canvas;
     state.sandbox.controller = createSandboxController(state, {
         requestRedraw,
@@ -54,5 +51,4 @@ export function destroyTilelabSandbox(state) {
     unmountToyUi = null;
     state.sandbox.controller?.destroy();
     state.sandbox.controller = null;
-    delete worldPropStates.voidSink;
 }

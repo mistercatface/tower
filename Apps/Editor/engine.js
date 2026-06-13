@@ -1,6 +1,4 @@
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { worldPropStates } from "../../Entities/WorldPropStates.js";
-import { combatWorldPropStates } from "../../Entities/worldPropCombatStates.js";
 import { installGameState } from "../../GameState/GameState.js";
 import { events, requestUiUpdate, Events } from "../../Core/EventSystem.js";
 import { PauseManager } from "../../Libraries/Pause/index.js";
@@ -59,8 +57,6 @@ export function createEditorApp() {
     state.floatingTexts = [];
     state.entityLayers.push({ key: "projectiles", zIndex: 20 }, { key: "floatingTexts", zIndex: 100 });
     installGameState(state);
-    for (const key of Object.keys(worldPropStates)) if (key !== "normal") delete worldPropStates[key];
-    Object.assign(worldPropStates, combatWorldPropStates);
     document.title = "Editor";
     document.body.classList.add("shell-tilelab");
     if (!document.getElementById("tilelab-css")) {

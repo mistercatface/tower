@@ -13,4 +13,3 @@ export class WorldPropDeadState {
         if (canSplittableWorldPropSplit(prop) && typeof prop.spawnShards === "function") prop.spawnShards(gameState);
     }
 }
-export const combatWorldPropStates = { dead: new WorldPropDeadState() };

@@ -78,4 +78,3 @@ export class WorldPropVoidSinkState {
         prop.vy *= damping;
     }
 }
-export const voidSinkWorldPropStates = { voidSink: new WorldPropVoidSinkState() };

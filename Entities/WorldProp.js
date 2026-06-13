@@ -8,7 +8,8 @@ import { initStandTipState, isStandTipActive } from "../Libraries/Props/standTip
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
-import { worldPropStates } from "./WorldPropStates.js";
+import { WorldPropDeadState } from "./worldPropCombatStates.js";
+import { WorldPropVoidSinkState } from "./worldPropVoidSinkState.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { syncLongAxisCollisionShape } from "../Libraries/Props/longAxisCollision.js";
 import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js";
@@ -22,6 +23,13 @@ import { ensureLocomotionWorldProp, updateLocomotionWorldProp, usesLocomotionWor
 import { resolveKinematicsCamera } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { initFloorButtonProp, initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
+class WorldPropNormalState {
+    getRender3DKey(prop) {
+        return prop.strategy.render3DKey;
+    }
+}
+/** Modes owned by WorldProp — not registered or mutated from app boot. */
+const WORLD_PROP_MODES = Object.freeze({ normal: new WorldPropNormalState(), dead: new WorldPropDeadState(), voidSink: new WorldPropVoidSinkState() });
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
     if (!def) return withPropStrategyDefaults({});
@@ -114,7 +122,7 @@ export class WorldProp extends Entity {
     }
     changeState(stateName, stateDataInit = null) {
         if (this.strategy?.isPushable) wakePushableBody(this);
-        transitionEntity(this, worldPropStates, stateName, stateDataInit);
+        transitionEntity(this, WORLD_PROP_MODES, stateName, stateDataInit);
     }
     getShape() {
         if (this.strategy.syncCollisionShape) return this.strategy.syncCollisionShape(this);
