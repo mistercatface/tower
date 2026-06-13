@@ -15,7 +15,6 @@ export { isSpawnerProp, isSpawnerWorldProp, listSpawnerSpawnPropIds, resolveSpaw
 export { createRollToCursorDirectBehavior, ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 export { createRollToCursorHpaBehavior, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 export { createShootBehavior, SHOOT_BEHAVIOR_ID } from "./behaviors/shootBehavior.js";
-export { mountSandboxToyUi } from "./sandboxToyUi.js";
 export {
     resolveSandboxPathVisual,
     setSandboxPathVisual,

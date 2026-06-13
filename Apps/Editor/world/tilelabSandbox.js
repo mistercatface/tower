@@ -11,9 +11,9 @@ import {
     createShootBehavior,
     createSandboxController,
     DRAG_LAUNCH_BEHAVIOR_ID,
-    mountSandboxToyUi,
 } from "../../../Libraries/Sandbox/index.js";
 import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
+import { mountSandboxToyUi } from "../ui/sandboxToyUi.js";
 let unmountToyUi = null;
 /**
  * @param {import("../state.js").TileLabGameState} state

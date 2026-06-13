@@ -1,14 +1,14 @@
-import { getPropAsset, getWorldPropDefinitions, formatSandboxSpawnLabel } from "../Props/PropCatalog.js";
-import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
-import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, listFloorBeltKindOptions } from "./sandboxCapabilities.js";
-import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "./spawnerConfig.js";
-import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector } from "./sandboxWorldPropInspector.js";
-import { isButtonEntity } from "./buttonInput.js";
-import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
-import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
-import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "./sandboxPropVisual.js";
-import { sandboxSpawnAssemblyId, isSandboxSpawnPropId } from "./sandboxSession.js";
-import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../UI/paramFields.js";
+import { getPropAsset, getWorldPropDefinitions, formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
+import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../../../Libraries/Combat/sandboxTargeting.js";
+import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, listFloorBeltKindOptions } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
+import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../../Libraries/Sandbox/spawnerConfig.js";
+import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector } from "../../../Libraries/Sandbox/sandboxWorldPropInspector.js";
+import { isButtonEntity } from "../../../Libraries/Sandbox/buttonInput.js";
+import { renderSandboxEquipPanel } from "../../../Libraries/Sandbox/sandboxEquipPanel.js";
+import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPathVisual.js";
+import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
+import { sandboxSpawnAssemblyId, isSandboxSpawnPropId } from "../../../Libraries/Sandbox/sandboxSession.js";
+import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 function readOpenSections(root) {
     const open = new Set();
     for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
@@ -45,7 +45,7 @@ function buildSpawnOptions(propIds, assemblyManifests) {
 }
 /**
  * @param {HTMLElement} container
- * @param {ReturnType<import("./createSandboxController.js").createSandboxController>} controller
+ * @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller
  * @param {() => void} onChange
  */
 export function mountSandboxToyUi(container, controller, onChange) {

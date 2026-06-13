@@ -4,7 +4,7 @@
 
 - [x] **Phase 1 — shared UI in Libraries** — `Libraries/UI/paramFields.js`, `Component`, `SelectControl`, `SliderControl`; fix Libraries→Apps imports.
 - [ ] **Phase 2 — TileLab naming cleanup** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS/comments.
-- [ ] **Phase 3 — dependency direction** — remaining items below; move `mountSandboxToyUi` under `Apps/Editor/ui/`.
+- [ ] **Phase 3 — dependency direction** — `installEngineGlobals` duplicate read paths (see below).
 
 ### Inverted / injected dependencies
 
@@ -13,6 +13,7 @@
 - [x] **`speedControl` → `Apps/Editor/engine.js`** — playback handlers injected at `mountLabViewport`.
 - [x] **`engine.js` → `sandboxController` export** — `state.sandbox.controller`; render hooks read controller from `getGameState()`.
 - [x] **`worldPropStates` global registry** — modes frozen on `WorldProp` (`WORLD_PROP_MODES`); no engine/sandbox `Object.assign`.
+- [x] **`mountSandboxToyUi` → `Apps/Editor/ui/`** — editor sandbox panel UI; no longer exported from `Libraries/Sandbox`.
 - [ ] **`installEngineGlobals` duplicate read paths** — scalars on boot profile vs module globals (`getGameWorldSurfaceSettings`, `activeProceduralDesign`); collapse to one source.
 - [x] **Drop `export const engine` junk drawer** — boot profile is `editorEngineProfile` (world surface + procedural id only); no render/targeting/interaction on app object.
 - [x] **`Index.html` generic shell** — radio overlay mounted from `installRadioOverlay` at app boot; thin `#gameWrapper` chassis only.
@@ -20,8 +21,7 @@
 ### Phase 3 — still open (priority)
 
 1. **`installEngineGlobals` vs boot profile** — single read path for pixelsPerCell, collision, procedural defaults.
-2. **`mountSandboxToyUi` → `Apps/Editor/ui/`** — Libraries sandbox UI mounted from editor shell.
-3. **Phase 2 naming** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS.
+2. **Phase 2 naming** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS.
 
 ## floor occupancy belts
 
