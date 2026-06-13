@@ -3,6 +3,7 @@ import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { isForcefieldEdge, isRailWallEdge, railWallCapLevel } from "../Spatial/grid/CellEdge.js";
+import { clearBoundaryPrimary, setBoundary } from "../Spatial/grid/boundaryOccupancy.js";
 import { gridNeighborFillLevel } from "../World/wallGridCells.js";
 import { cellIsStaticWallAtIdx, gridCellToGlobalColRow, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
@@ -89,7 +90,7 @@ export function clearAllStampedGridWalls(state, { notify = true } = {}) {
             if (!gridHasRailWall(grid, col, row, side) && !gridHasForcefield(grid, col, row, side)) continue;
             const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
             state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
-            grid.edgeStore.clearMirrored(col, row, side, grid.cols, grid.rows);
+            clearBoundaryPrimary(grid, col, row, side);
         }
     }
     clearAllForcefieldPower(state);
@@ -139,7 +140,7 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
         const { col: globalCol, row: globalRow, side, heightLevel, thicknessLevel } = railWalls[i];
         const { col, row } = toLocal(globalCol, globalRow);
         if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
-        grid.writeCellEdge(col, row, side, clampStampWallHeightLevel(heightLevel, settings), thicknessLevel);
+        setBoundary(grid, col, row, side, { kind: "railWall", capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
         mark(col, row);
     }
     if (minCol === Infinity) return null;
@@ -178,9 +179,9 @@ export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) 
         if (gridHasRailWall(grid, col, row, side)) {
             const { globalCol: gc, globalRow: gr } = gridCellToGlobalColRow(grid, col, row);
             state.staticCellHealth.delete(packEdgeCellKey(gc, gr, side));
-            grid.clearCellEdge(col, row, side);
+            clearBoundaryPrimary(grid, col, row, side);
         }
-        grid.writeForcefieldEdge(col, row, side);
+        if (!setBoundary(grid, col, row, side, { kind: "passage" })) continue;
         if (defaultPowered) setForcefieldPoweredAtGlobal(state, globalCol, globalRow, side, true);
         mark(col, row);
     }
@@ -235,7 +236,7 @@ export function stampRailWallAt(state, col, row, side, heightLevel, thicknessLev
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
     if (gridHasForcefield(grid, col, row, side)) clearForcefieldAt(state, col, row, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
-    grid.writeCellEdge(col, row, side, level, thicknessLevel);
+    setBoundary(grid, col, row, side, { kind: "railWall", capHeightLevel: level, thicknessLevel });
     notifyGridWallChange(state, cellBounds(col, row));
     return true;
 }
@@ -245,7 +246,7 @@ export function clearRailWallAt(state, col, row, side) {
     if (!gridHasRailWall(grid, col, row, side)) return false;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
     state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
-    grid.clearCellEdge(col, row, side);
+    clearBoundaryPrimary(grid, col, row, side);
     notifyGridWallChange(state, cellBounds(col, row));
     return true;
 }
@@ -258,7 +259,7 @@ export function stampForcefieldAt(state, col, row, side) {
     const grid = state.obstacleGrid;
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
     if (gridHasRailWall(grid, col, row, side)) clearRailWallAt(state, col, row, side);
-    grid.stampForcefieldEdge(col, row, side);
+    if (!setBoundary(grid, col, row, side, { kind: "passage" })) return false;
     notifyGridWallChange(state, cellBounds(col, row));
     return true;
 }
@@ -267,7 +268,7 @@ export function clearForcefieldAt(state, col, row, side) {
     const grid = state.obstacleGrid;
     if (!gridHasForcefield(grid, col, row, side)) return false;
     clearForcefieldPowerAt(state, col, row, side);
-    grid.clearForcefieldEdge(col, row, side);
+    clearBoundaryPrimary(grid, col, row, side);
     notifyGridWallChange(state, cellBounds(col, row));
     return true;
 }

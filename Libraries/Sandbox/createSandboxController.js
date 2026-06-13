@@ -49,7 +49,6 @@ const MARQUEE_BOUNDS = createAabb();
  * }} options
  */
 export function createSandboxController(state, { requestRedraw, getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId }) {
-    bindForcefieldStepBlocking(state);
     const session = createSandboxSession(state, { requestRedraw, defaultSpawnPropId });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
@@ -234,6 +233,11 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         const { col, row } = grid.worldToGrid(world.x, world.y);
         if (grid.hasFloorBelt(col, row)) {
             session.setSelectedFloorCell(col, row);
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (session.pickForcefieldAtWorld(world.x, world.y)) {
             e.preventDefault();
             e.stopPropagation();
             return;
@@ -470,6 +474,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         listSelectedBehaviors: () => listSelectedBehaviors(),
         register() {
             controller.destroy();
+            bindForcefieldStepBlocking(state);
             unbindPointers = bindCanvasPointers(getCanvas(), { pointerdown: onPointerDown, pointermove: onPointerMove, pointerup: onPointerUp, pointercancel: onPointerUp });
         },
         destroy() {

@@ -1,13 +1,13 @@
 # todo
 
-**Current focus:** **Step 1 — Writes (boundary occupancy API)**
+**Current focus:** **Step 3 — Observation (`GridZoneMembership`)** — Step 1 writes + Step 2 blocking reads largely shipped (passage profiles / oneWay / tripwire still open).
 
 **3-step plan (overall goal):**
 
 | Step | Layer | Ship when |
 |------|--------|-----------|
-| **1 — Writes** | `setBoundary` / `floorStore` + `reconcileBeltBoundaries` | Single writer; exclusivity; migrate editor + JSON apply; belt laterals derived |
-| **2 — Blocking reads** | `boundaryBlocksStep` / `boundaryBlocksStepFrom` + belt entry rules + powered collision | Nav, pushables, and directional passage modes answer one query family |
+| **1 — Writes** | `setBoundary` / `floorStore` + `reconcileBeltBoundaries` | [x] `boundaryOccupancy.js`; editor + snapshot through writers; belt laterals derived |
+| **2 — Blocking reads** | `boundaryBlocksStep` / `boundaryBlocksStepFrom` + belt entry rules + powered collision | [x] unified nav query + powered passage collision proxies; [ ] passage profiles (`oneWay` / `tripwire`) |
 | **3 — Observation** | **`GridZoneMembership`** → belts, tripwire lasers, edge trains | Enter / on / exit events; consumers wired after core diff tick |
 
 ```mermaid
@@ -30,7 +30,7 @@ flowchart LR
 
 ---
 
-## Step 1 — Writes (boundary occupancy API) — **current**
+## Step 1 — Writes (boundary occupancy API) — **shipped**
 
 **Problem:** Edge roles are split across direct `edgeStore` writes, `forcefieldPowered` Map, belt-derived rails, and separate nav vs collision paths. Forcefields v1 blocks **pathfinding only** — pushables pass through powered lasers because `appendStaticWallProxiesNear` never emits passage edges (only voxel fill + rail + beltRail).
 
@@ -59,28 +59,27 @@ flowchart LR
 
 **Out of scope for edge-map lasers:** entities physically **breaking** or **interrupting** a beam (volume/ray occlusion, movable emitters). Cardinal edge stamps only — no “body blocks the line” sim.
 
-**Step 1 done when:** all edge stamps go through `setBoundary`; belt placement calls `reconcileBeltBoundaries`; rail/passage/lateral exclusivity enforced in one place; scene JSON apply uses writers only.
+**Step 1 done when:** all edge stamps go through `setBoundary`; belt placement calls `reconcileBeltBoundaries`; rail/passage/lateral exclusivity enforced in one place; scene JSON apply uses writers only. **Status: [x]**
 
 ---
 
-## Step 2 — Blocking reads (after Step 1)
+## Step 2 — Blocking reads — **mostly shipped**
 
 Unify **“can cross?”** for nav and physics — still no enter/on/exit events (that is Step 3).
 
 **Work:**
 
-1. **`boundaryBlocksStep(fromCol, fromRow, toCol, toRow)`** — replace `edgeBlocksStep` + `isForcefieldStepBlocked` callback; include rail, derived `beltRail`, powered **`solid`** passage; fold existing `_beltBlocksEntryFrom` into same directional API surface.
-2. **Passage profile on boundary** — `mode` (`solid` / `oneWay` / `tripwire`), `allowedSide`; inspector + JSON field on stamped passage.
-3. **Powered passage collision** — static edge proxy when blocking (fixes props through lasers).
-4. **Runtime on boundary** — `powered` on boundary record (same key as today); buttons/inspector through API.
-5. **HPA + `canStep`** — call directional query only; delete split forcefield callback path.
-6. **`resolveBoundaryDrawExtent`** (optional) — laser bar height from neighbor structure.
+1. [x] **`boundaryBlocksStep(fromCol, fromRow, toCol, toRow)`** — `boundaryOccupancy.js`; `canStep` uses `boundaryBlocksStepFrom`; belt entry folded in.
+2. [ ] **Passage profile on boundary** — `mode` (`solid` / `oneWay` / `tripwire`), `allowedSide`; inspector + JSON field on stamped passage.
+3. [x] **Powered passage collision** — `gridPassageEdgeShouldEmit` + static edge proxy when powered in `appendStaticWallProxiesNear`.
+4. [ ] **Runtime on boundary** — fold `forcefieldPowered` into boundary record (same key); buttons/inspector through API.
+5. [x] **HPA + `canStep`** — directional query only (forcefield callback retained for powered lookup until 4).
 
 **Step 2 acceptance:**
 
-- [ ] HPA / `canStep`: powered **solid** blocks; unpowered open; **oneWay** directional; **tripwire** never blocks.
-- [ ] Belt entry rules unchanged (cell walkable).
-- [ ] **Pushables:** powered blocking passage = no pass-through.
+- [x] HPA / `canStep`: powered passage blocks when on (solid default); unpowered open.
+- [x] Belt entry rules unchanged (cell walkable).
+- [x] **Pushables:** powered passage blocks movement on that edge (no pass-through).
 
 **Step 2 done when:** one query module answers nav + physics; no ad hoc forcefield callback; passage modes behave as specified.
 
@@ -320,8 +319,8 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not WorldProps). **Cell st
 
 - [x] **`gridCellEdge` / `getCellEdge` / `hasCellEdge`** — any kind from store *(forcefields v1)*.
 - [x] **`edgeBlocksStep`** — rail / belt rail / forcefield *(to be replaced by `boundaryBlocksStep`)*.
-- [ ] **`setBoundary` / `getBoundary` / `reconcileBeltBoundaries`** — exclusive primary + derived writes *(current focus)*.
-- [ ] **`boundaryBlocksStep` + powered passage collision emit** — nav + physics unified *(current focus)*.
+- [x] **`setBoundary` / `getBoundary` / `reconcileBeltBoundaries`** — `Libraries/Spatial/grid/boundaryOccupancy.js`; editor + grid delegates.
+- [x] **`boundaryBlocksStep` + `boundaryBlocksStepFrom` + powered passage collision emit** — nav + physics unified.
 - [ ] **`boundaryBlocksStepFrom`** — directional crossing; passage profiles (`solid` / `oneWay` / `tripwire`) *(after boundary writer + collision)*.
 - [ ] **Passage profile on boundary** — mode + allowedSide on placement blob; inspector + JSON *(see Passage profiles section)*.
 - [ ] **`GridZoneMembership`** — shared enter / on / exit for **cell** + **edge** grid zones *(see dedicated section)*; passage + belts + future edge trains.

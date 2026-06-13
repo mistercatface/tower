@@ -1,9 +1,10 @@
 /**
  * Static wall height levels stored on obstacleGrid.grid (0 = open, 1 … maxWallHeightLevel).
  */
+import { packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdge.js";
+import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, createRailWallEdge, railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdge.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
@@ -80,11 +81,34 @@ export function gridWallEdgeEndpoints(grid, col, row, edge, p1, p2, inset = 0) {
  * One physical edge rail per shared boundary — avoid double draw/collision/roof.
  * Interior edges emit from south/east owners so the face normal points into the stamped cell.
  */
+function gridEdgeRailEmitOwner(grid, col, row, side) {
+    if (side === 2 || side === 1) return true;
+    if (side === 0) return row === 0;
+    return col === 0;
+}
 export function gridWallEdgeRailShouldEmit(grid, col, row, edge) {
     if (!gridRailWallEdge(grid, col, row, edge)) return false;
-    if (edge === 2 || edge === 1) return true;
-    if (edge === 0) return row === 0;
-    return col === 0;
+    return gridEdgeRailEmitOwner(grid, col, row, edge);
+}
+/**
+ * Powered passage uses the same edge-rail collision emit rule as railWall.
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {number} col
+ * @param {number} row
+ * @param {number} side
+ * @param {((col: number, row: number, side: number) => boolean) | null | undefined} isPassageBlocking
+ */
+export function gridPoweredPassageEdgeShouldEmit(grid, col, row, side, isPassageBlocking) {
+    if (!gridForcefieldEdge(grid, col, row, side)) return false;
+    if (isPassageBlocking?.(col, row, side) !== true) return false;
+    return gridEdgeRailEmitOwner(grid, col, row, side);
+}
+/** Edge-rail collision thickness — stored railWall or default rail profile when powered passage blocks. */
+export function gridEdgeRailCollisionThicknessPx(grid, col, row, side, isPassageBlocking, defaultPassageThicknessLevel = 2) {
+    const railEdge = gridRailWallEdge(grid, col, row, side);
+    if (railEdge) return railWallThicknessPx(railEdge);
+    if (gridPoweredPassageEdgeShouldEmit(grid, col, row, side, isPassageBlocking)) return railWallThicknessPx(createRailWallEdge(0, defaultPassageThicknessLevel));
+    return 1;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridBeltRailEdge(grid, col, row, side) {
@@ -95,9 +119,7 @@ export function gridBeltRailEdge(grid, col, row, side) {
 /** Collision emit ownership — same single-owner rule as visible rail walls. */
 export function gridBeltRailEdgeShouldEmit(grid, col, row, side) {
     if (!gridBeltRailEdge(grid, col, row, side)) return false;
-    if (side === 2 || side === 1) return true;
-    if (side === 0) return row === 0;
-    return col === 0;
+    return gridEdgeRailEmitOwner(grid, col, row, side);
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridCellEdge(grid, col, row, side) {
@@ -515,6 +537,16 @@ export function cellIsStaticWall(grid, col, row) {
 export function gridCellToGlobalColRow(grid, col, row) {
     const cellSize = grid.cellSize;
     return { globalCol: Math.floor((grid.minX + col * cellSize) / cellSize), globalRow: Math.floor((grid.minY + row * cellSize) / cellSize) };
+}
+/** One stable key per shared boundary — mirrored cell sides resolve to the same id. */
+export function canonicalEdgeCellKey(grid, col, row, side) {
+    const a = gridCellToGlobalColRow(grid, col, row);
+    const keyA = packEdgeCellKey(a.globalCol, a.globalRow, side);
+    const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
+    if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return keyA;
+    const b = gridCellToGlobalColRow(grid, nc, nr);
+    const keyB = packEdgeCellKey(b.globalCol, b.globalRow, gridWallEdgeMirrorSide(side));
+    return keyA <= keyB ? keyA : keyB;
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid

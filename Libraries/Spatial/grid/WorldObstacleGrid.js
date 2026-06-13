@@ -1,11 +1,17 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex } from "./GridUtils.js";
 import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCellDamage.js";
-import { gridWallEdgeRailShouldEmit, gridBeltRailEdgeShouldEmit, gridRailWallEdge, gridNeighborFillLevel, scanStaticStructureZLevelsFromGrid } from "../../World/wallGridCells.js";
-import { CellEdgeStore, railWallEdgeFromStamp } from "./CellEdgeStore.js";
+import {
+    gridWallEdgeRailShouldEmit,
+    gridBeltRailEdgeShouldEmit,
+    gridPoweredPassageEdgeShouldEmit,
+    gridEdgeRailCollisionThicknessPx,
+    scanStaticStructureZLevelsFromGrid,
+} from "../../World/wallGridCells.js";
+import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
-import { floorBeltFacingToIndex, floorBeltRailEdgeSides, floorBeltEntryExitSides, floorBeltEntryNeighborCell, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
-import { createBeltRailEdge, createForcefieldEdge, edgeBlocksCrossing, isBeltRailEdge, isForcefieldEdge, railWallThicknessPx } from "./CellEdge.js";
+import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
+import { boundaryBlocksStep, boundaryBlocksStepFrom, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
@@ -98,7 +104,7 @@ export class WorldObstacleGrid {
     }
     /** @param {object} entity @param {object[]} out */
     appendStaticWallProxiesNear(entity, out) {
-        // Edge-rail collision: inline boundary segment + rail thickness (verified working).
+        // Edge-rail collision: railWall, powered passage (same segment + thickness path), or beltRail.
         // Draw uses resolveGridWallEdgeRailBox; do not swap proxy math without ball regression tests.
         this._staticWallProxyCount = 0;
         const radius = entity.radius ?? 0;
@@ -116,9 +122,9 @@ export class WorldObstacleGrid {
             for (let side = 0; side < 4; side++) {
                 const beltRail = gridBeltRailEdgeShouldEmit(this, col, row, side);
                 const railWall = gridWallEdgeRailShouldEmit(this, col, row, side);
-                if (!beltRail && !railWall) continue;
-                const edge = gridRailWallEdge(this, col, row, side);
-                const thickness = beltRail ? 1 : railWallThicknessPx(edge);
+                const poweredPassage = gridPoweredPassageEdgeShouldEmit(this, col, row, side, this.isForcefieldStepBlocked);
+                if (!beltRail && !railWall && !poweredPassage) continue;
+                const thickness = beltRail ? 1 : gridEdgeRailCollisionThicknessPx(this, col, row, side, this.isForcefieldStepBlocked);
                 const bounds = this.getCellBounds(col, row);
                 const minX = bounds.minX;
                 const minY = bounds.minY;
@@ -352,17 +358,13 @@ export class WorldObstacleGrid {
      * @param {number} thicknessLevel
      */
     writeCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
-        // Does not bump wallGridRevision — batch callers bump once after all edge writes.
-        if (capHeightLevel === 0) this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
-        else this.edgeStore.writeMirrored(col, row, side, this.cols, this.rows, railWallEdgeFromStamp(capHeightLevel, thicknessLevel, gridNeighborFillLevel(this, col, row, side)));
+        setBoundary(this, col, row, side, { kind: "railWall", capHeightLevel, thicknessLevel });
     }
     stampCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
-        this.writeCellEdge(col, row, side, capHeightLevel, thicknessLevel);
-        this.bumpWallGridRevision();
+        setBoundary(this, col, row, side, { kind: "railWall", capHeightLevel, thicknessLevel }, { bumpRevision: true });
     }
     clearCellEdge(col, row, side) {
-        this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
-        this.bumpWallGridRevision();
+        clearBoundaryPrimary(this, col, row, side, { bumpRevision: true });
     }
     /** Clear all edge slots on one cell (does not bump revision). */
     clearCellEdges(col, row) {
@@ -378,45 +380,27 @@ export class WorldObstacleGrid {
     }
     /** @param {number} col @param {number} row @param {number} side */
     edgeBlocksStep(col, row, side) {
-        const edge = this.edgeStore.get(col, row, side, this.cols);
-        if (edgeBlocksCrossing(edge)) return true;
-        return isForcefieldEdge(edge) && this.isForcefieldStepBlocked?.(col, row, side) === true;
-    }
-    /** @param {number} col @param {number} row @param {number} side */
-    writeBeltRailEdge(col, row, side) {
-        this.edgeStore.writeMirrored(col, row, side, this.cols, this.rows, createBeltRailEdge());
-    }
-    /** @param {number} col @param {number} row @param {number} side */
-    clearBeltRailEdge(col, row, side) {
-        const edge = this.edgeStore.get(col, row, side, this.cols);
-        if (!isBeltRailEdge(edge)) return;
-        this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
+        return boundaryBlocksStep(this, col, row, side, this.isForcefieldStepBlocked);
     }
     /** @param {number} col @param {number} row @param {number} side */
     writeForcefieldEdge(col, row, side) {
-        this.edgeStore.writeMirrored(col, row, side, this.cols, this.rows, createForcefieldEdge());
+        setBoundary(this, col, row, side, { kind: "passage" });
     }
     /** @param {number} col @param {number} row @param {number} side */
     stampForcefieldEdge(col, row, side) {
-        this.writeForcefieldEdge(col, row, side);
-        this.bumpWallGridRevision();
+        setBoundary(this, col, row, side, { kind: "passage" }, { bumpRevision: true });
     }
     /** @param {number} col @param {number} row @param {number} side */
     clearForcefieldEdge(col, row, side) {
-        const edge = this.edgeStore.get(col, row, side, this.cols);
-        if (!isForcefieldEdge(edge)) return;
-        this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
-        this.bumpWallGridRevision();
+        clearBoundaryPrimary(this, col, row, side, { bumpRevision: true });
     }
     /** @param {number} col @param {number} row @param {number} kind @param {number} facingIndex */
     syncFloorBeltRailEdges(col, row, kind, facingIndex) {
-        const sides = floorBeltRailEdgeSides(kind, facingIndex);
-        for (let i = 0; i < sides.length; i++) this.writeBeltRailEdge(col, row, sides[i]);
+        reconcileBeltBoundaries(this, col, row, kind, facingIndex);
     }
     /** @param {number} col @param {number} row @param {number} kind @param {number} facingIndex */
     clearFloorBeltRailEdges(col, row, kind, facingIndex) {
-        const sides = floorBeltRailEdgeSides(kind, facingIndex);
-        for (let i = 0; i < sides.length; i++) this.clearBeltRailEdge(col, row, sides[i]);
+        clearBeltBoundariesForCell(this, col, row, kind, facingIndex);
     }
     /** @param {number} col @param {number} row @param {number} kind @param {number} facingRadians */
     writeFloorCell(col, row, kind, facingRadians) {
@@ -503,55 +487,8 @@ export class WorldObstacleGrid {
         const { col, row } = this.worldToGrid(x, y);
         return this.isBlocked(col, row);
     }
-    /** @param {number} toCol @param {number} toRow @param {number} fromCol @param {number} fromRow */
-    _beltCrossedSideFrom(fromCol, fromRow, toCol, toRow) {
-        const dc = fromCol - toCol;
-        const dr = fromRow - toRow;
-        if (dc === -1) return 3;
-        if (dc === 1) return 1;
-        if (dr === -1) return 0;
-        if (dr === 1) return 2;
-        return -1;
-    }
-    /** @param {number} toCol @param {number} toRow @param {number} fromCol @param {number} fromRow */
-    _beltBlocksEntryFrom(fromCol, fromRow, toCol, toRow) {
-        const idx = colRowToIndex(toCol, toRow, this.cols);
-        if (!this.floorStore.isBeltKindAtIdx(idx)) return false;
-        const kind = this.floorStore.kind[idx];
-        const { exitSide } = floorBeltEntryExitSides(kind, this.floorStore.facing[idx]);
-        const dc = fromCol - toCol;
-        const dr = fromRow - toRow;
-        if (dc === 0 && dr === 0) return false;
-        const crossed = this._beltCrossedSideFrom(fromCol, fromRow, toCol, toRow);
-        if (crossed >= 0) return crossed === exitSide;
-        const sideX = dc > 0 ? 1 : 3;
-        const sideY = dr > 0 ? 2 : 0;
-        return sideX === exitSide || sideY === exitSide;
-    }
     canStep(currCol, currRow, nextCol, nextRow) {
-        if (this.isBlocked(nextCol, nextRow)) return false;
-        if (this._beltBlocksEntryFrom(currCol, currRow, nextCol, nextRow)) return false;
-        const dc = nextCol - currCol;
-        const dr = nextRow - currRow;
-        // Cardinal step
-        if (dc !== 0 && dr === 0) {
-            const side = dc > 0 ? 1 : 3;
-            if (this.edgeBlocksStep(currCol, currRow, side)) return false;
-        } else if (dc === 0 && dr !== 0) {
-            const side = dr > 0 ? 2 : 0;
-            if (this.edgeBlocksStep(currCol, currRow, side)) return false;
-        } else if (dc !== 0 && dr !== 0) {
-            if (this.isBlocked(currCol + dc, currRow) || this.isBlocked(currCol, currRow + dr)) return false;
-            const sideX = dc > 0 ? 1 : 3;
-            const sideY = dr > 0 ? 2 : 0;
-            if (this.edgeBlocksStep(currCol, currRow, sideX)) return false;
-            if (this.edgeBlocksStep(currCol, currRow, sideY)) return false;
-            const oppSideX = dc > 0 ? 3 : 1;
-            const oppSideY = dr > 0 ? 0 : 2;
-            if (this.edgeBlocksStep(nextCol, nextRow, oppSideX)) return false;
-            if (this.edgeBlocksStep(nextCol, nextRow, oppSideY)) return false;
-        }
-        return true;
+        return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow, this.isForcefieldStepBlocked);
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

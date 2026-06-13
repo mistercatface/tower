@@ -5,6 +5,7 @@ import { massFromBody } from "../../Motion/bodyMass.js";
 import { applyActorPushTipImpulse } from "../../Props/actorPushTip.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
 import { shouldResolveActorPushable } from "./entityBroadphase.js";
+import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { resolveCirclePair } from "./circlePair.js";
 import { circlesOverlap, findFirstCircleSegmentHit } from "./overlap.js";
 import { resolveSatPair } from "./satPair.js";
@@ -33,6 +34,18 @@ function applyPushableCollisionDamage(body, dmg, state) {
     if (dmg <= 0 || !body.takeDamage) return;
     if (body.strategy?.splittable && !canSplittableWorldPropSplit(body)) return;
     body.takeDamage(dmg, state);
+}
+/** @param {object} prop @param {object[]} wallCandidates */
+function pushableOverlapsWallSegment(prop, wallCandidates) {
+    const shape = prop.getShape();
+    if (shape.type !== "Circle") return false;
+    const radiusSq = prop.radius * prop.radius;
+    for (let i = 0; i < wallCandidates.length; i++) {
+        const seg = wallCandidates[i];
+        if (seg.isDead) continue;
+        if (distanceSqToSegment(seg, prop.x, prop.y) <= radiusSq) return true;
+    }
+    return false;
 }
 function resolvePushablePair(p1, p2, state) {
     const shapeA = p1.getShape();
@@ -135,7 +148,9 @@ export function runCollisionPipeline(
                 spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2, state));
                 for (let i = 0; i < pushables.length; i++) {
                     const prop = pushables[i];
-                    if (prop.isDead || !prop.needsWallCollision()) continue;
+                    if (prop.isDead || !prop.strategy?.isPushable) continue;
+                    const wallCandidates = spatialFrame.getWallCandidates(prop);
+                    if (!prop.needsWallCollision() && !pushableOverlapsWallSegment(prop, wallCandidates)) continue;
                     resolveWalls(prop, spatialFrame);
                 }
             }

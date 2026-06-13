@@ -1,13 +1,11 @@
-import { packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { isForcefieldEdge } from "../Spatial/grid/CellEdge.js";
-import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey, gridCellToGlobalColRow, gridWallEdgeNeighbor } from "../World/wallGridCells.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { gridHasForcefield } from "./gridWallEdit.js";
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function forcefieldEdgeKey(grid, col, row, side) {
-    const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
-    return packEdgeCellKey(globalCol, globalRow, side);
+    return canonicalEdgeCellKey(grid, col, row, side);
 }
 /** @param {object} state */
 export function bindForcefieldStepBlocking(state) {
@@ -23,17 +21,33 @@ export function isForcefieldPowered(state, grid, col, row, side) {
 }
 /** @param {object} state @param {number} globalCol @param {number} globalRow @param {number} side */
 export function isForcefieldPoweredAtGlobal(state, globalCol, globalRow, side) {
-    return state.sandbox.forcefieldPowered.get(packEdgeCellKey(globalCol, globalRow, side)) === true;
+    const grid = state.obstacleGrid;
+    const half = grid.cellSize * 0.5;
+    const { col, row } = grid.worldToGrid(globalCol * grid.cellSize + half, globalRow * grid.cellSize + half);
+    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    return isForcefieldPowered(state, grid, col, row, side);
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {{ notify?: boolean }} [options] */
-function notifyForcefieldPowerChange(state, col, row, { notify = true } = {}) {
+function notifyForcefieldPowerChange(state, col, row, side, { notify = true } = {}) {
     if (!notify) return;
-    state.navigation.onObstaclesChanged({ startCol: col, endCol: col, startRow: row, endRow: row });
+    const grid = state.obstacleGrid;
+    let startCol = col;
+    let endCol = col;
+    let startRow = row;
+    let endRow = row;
+    const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
+    if (nc >= 0 && nc < grid.cols && nr >= 0 && nr < grid.rows) {
+        startCol = Math.min(startCol, nc);
+        endCol = Math.max(endCol, nc);
+        startRow = Math.min(startRow, nr);
+        endRow = Math.max(endRow, nr);
+    }
+    state.navigation.onObstaclesChanged({ startCol, endCol, startRow, endRow });
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {{ notify?: boolean }} [options] */
 export function clearForcefieldPowerAt(state, col, row, side, { notify = false } = {}) {
     state.sandbox.forcefieldPowered.delete(forcefieldEdgeKey(state.obstacleGrid, col, row, side));
-    notifyForcefieldPowerChange(state, col, row, { notify });
+    notifyForcefieldPowerChange(state, col, row, side, { notify });
 }
 /**
  * @param {object} state
@@ -50,7 +64,7 @@ export function setForcefieldPowered(state, col, row, side, powered, { notify = 
     const key = forcefieldEdgeKey(grid, col, row, side);
     if (powered) state.sandbox.forcefieldPowered.set(key, true);
     else state.sandbox.forcefieldPowered.delete(key);
-    notifyForcefieldPowerChange(state, col, row, { notify });
+    notifyForcefieldPowerChange(state, col, row, side, { notify });
     return true;
 }
 /** @param {object} state @param {number} globalCol @param {number} globalRow @param {number} side @param {boolean} powered */
@@ -69,6 +83,7 @@ export function clearAllForcefieldPower(state) {
 export function syncForcefieldButtonPower(state) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
+    const half = grid.cellSize * 0.5;
     /** @type {Map<number, boolean>} */
     const linkedPower = new Map();
     forEachButtonEntity(state, (button) => {
@@ -77,7 +92,8 @@ export function syncForcefieldButtonPower(state) {
         for (let i = 0; i < links.length; i++) {
             const link = links[i];
             if (link.type !== "gridEdge") continue;
-            const key = packEdgeCellKey(link.globalCol, link.globalRow, link.side);
+            const { col, row } = grid.worldToGrid(link.globalCol * grid.cellSize + half, link.globalRow * grid.cellSize + half);
+            const key = canonicalEdgeCellKey(grid, col, row, link.side);
             linkedPower.set(key, (linkedPower.get(key) ?? false) || signal);
         }
     });
@@ -92,8 +108,7 @@ export function syncForcefieldButtonPower(state) {
         const row = (idx / grid.cols) | 0;
         for (let side = 0; side < 4; side++) {
             if (!gridHasForcefield(grid, col, row, side)) continue;
-            const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
-            const key = packEdgeCellKey(globalCol, globalRow, side);
+            const key = canonicalEdgeCellKey(grid, col, row, side);
             if (!linkedPower.has(key)) continue;
             const powered = linkedPower.get(key) === true;
             const wasPowered = state.sandbox.forcefieldPowered.get(key) === true;
@@ -104,6 +119,13 @@ export function syncForcefieldButtonPower(state) {
             if (col > maxCol) maxCol = col;
             if (row < minRow) minRow = row;
             if (row > maxRow) maxRow = row;
+            const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
+            if (nc >= 0 && nc < grid.cols && nr >= 0 && nr < grid.rows) {
+                if (nc < minCol) minCol = nc;
+                if (nc > maxCol) maxCol = nc;
+                if (nr < minRow) minRow = nr;
+                if (nr > maxRow) maxRow = nr;
+            }
         }
     }
     if (minCol === Infinity) return;

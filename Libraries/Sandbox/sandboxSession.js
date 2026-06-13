@@ -449,6 +449,14 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             setSelectedVoxelCell(col, row);
             return true;
         },
+        /** Pick a stamped forcefield edge from the map (Props tab or any panel). */
+        pickForcefieldAtWorld(worldX, worldY) {
+            const grid = state.obstacleGrid;
+            const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
+            if (!hit || !gridHasForcefield(grid, hit.col, hit.row, hit.side)) return false;
+            setSelectedRailEdge(hit.col, hit.row, hit.side);
+            return true;
+        },
         getSelectedProp: () => {
             pruneSelection();
             return selectedPropId == null ? null : registry().getLive(selectedPropId);

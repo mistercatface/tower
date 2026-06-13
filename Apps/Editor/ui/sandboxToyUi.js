@@ -275,7 +275,7 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
             return;
         }
         if (selectedForcefieldInfo) {
-            appendEditorHint(body, `Forcefield · ${selectedForcefieldInfo.sideLabel}. Blocks pathfinding while powered. Wire floor buttons from Props tab.`);
+            appendEditorHint(body, `Forcefield · ${selectedForcefieldInfo.sideLabel}. Blocks movement and paths while powered. Wire floor buttons from Props tab.`);
             const poweredField = document.createElement("label");
             poweredField.className = "param-field check-inline";
             const poweredCheckbox = document.createElement("input");
@@ -285,7 +285,7 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
                 controller.setSelectedForcefieldPowered(poweredCheckbox.checked);
                 onChange();
             });
-            poweredField.append(poweredCheckbox, document.createTextNode(" Powered (blocks paths)"));
+            poweredField.append(poweredCheckbox, document.createTextNode(" Powered (blocks movement + paths)"));
             body.appendChild(poweredField);
             const deleteRow = document.createElement("div");
             deleteRow.className = "sandbox-add-row";
@@ -340,8 +340,10 @@ export function mountSandboxToyUi(container, controller, onChange) {
         const selectedProp = controller.getSelectedProp();
         const selectedFloorCell = controller.getSelectedFloorCell();
         const selectedFloorBelt = controller.getSelectedFloorBeltInfo();
+        const selectedForcefieldInfo = controller.getSelectedForcefieldInfo();
         const selectionCount = selectedPropIds.size;
         const hasFloorSelection = selectedFloorCell != null;
+        const hasForcefieldSelection = selectedForcefieldInfo != null && selectionCount === 0 && !hasFloorSelection;
         const toolsRow = document.createElement("div");
         toolsRow.className = "sandbox-add-row";
         const ringsField = document.createElement("label");
@@ -358,10 +360,12 @@ export function mountSandboxToyUi(container, controller, onChange) {
         const deleteSelectedBtn = document.createElement("button");
         deleteSelectedBtn.type = "button";
         deleteSelectedBtn.className = "secondary";
-        deleteSelectedBtn.disabled = selectionCount === 0 && !hasFloorSelection;
-        deleteSelectedBtn.textContent = selectionCount > 1 ? `Delete selected (${selectionCount})` : hasFloorSelection && selectionCount === 0 ? "Delete belt" : "Delete selected";
+        deleteSelectedBtn.disabled = selectionCount === 0 && !hasFloorSelection && !hasForcefieldSelection;
+        deleteSelectedBtn.textContent =
+            selectionCount > 1 ? `Delete selected (${selectionCount})` : hasForcefieldSelection ? "Delete forcefield" : hasFloorSelection && selectionCount === 0 ? "Delete belt" : "Delete selected";
         deleteSelectedBtn.addEventListener("click", () => {
-            if (hasFloorSelection && selectionCount === 0) controller.deleteSelectedFloorCell();
+            if (hasForcefieldSelection) controller.deleteSelectedWall();
+            else if (hasFloorSelection && selectionCount === 0) controller.deleteSelectedFloorCell();
             else controller.deleteSelectedProps();
             onChange();
         });
@@ -412,6 +416,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
         });
         const placed = controller.listPlacedProps();
         const floorBelts = controller.listPlacedFloorBelts();
+        const forcefields = controller.listPlacedForcefields();
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
             appendEditorSubhead(body, "Props");
             appendInstanceList(
@@ -437,6 +442,21 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     },
                 })),
                 "No conveyor belts placed yet.",
+            );
+            appendEditorSubhead(body, "Forcefields");
+            appendInstanceList(
+                body,
+                forcefields.map((entry) => ({
+                    label: entry.label,
+                    selected: selectedForcefieldInfo?.col === entry.col && selectedForcefieldInfo.row === entry.row && selectedForcefieldInfo.side === entry.side,
+                    onSelect: () => controller.setSelectedRailEdge(entry.col, entry.row, entry.side),
+                    onDelete: () => {
+                        controller.setSelectedRailEdge(entry.col, entry.row, entry.side);
+                        controller.deleteSelectedWall();
+                        onChange();
+                    },
+                })),
+                "No forcefields placed yet.",
             );
         });
         appendSection(container, "scene-json", "Scene JSON", sectionOpen("scene-json"), (body) => {
@@ -498,6 +518,33 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 return;
             }
             if (!selectedProp) {
+                if (selectedForcefieldInfo) {
+                    appendEditorHint(body, `${selectedForcefieldInfo.sideLabel} forcefield. Toggle powered to block props and pathfinding. Click a laser edge on the map to re-select.`);
+                    const poweredField = document.createElement("label");
+                    poweredField.className = "param-field check-inline";
+                    const poweredCheckbox = document.createElement("input");
+                    poweredCheckbox.type = "checkbox";
+                    poweredCheckbox.checked = controller.isSelectedForcefieldPowered();
+                    poweredCheckbox.addEventListener("change", () => {
+                        controller.setSelectedForcefieldPowered(poweredCheckbox.checked);
+                        onChange();
+                    });
+                    poweredField.append(poweredCheckbox, document.createTextNode(" Powered (blocks movement + paths)"));
+                    body.appendChild(poweredField);
+                    const deleteRow = document.createElement("div");
+                    deleteRow.className = "sandbox-add-row";
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.type = "button";
+                    deleteBtn.className = "secondary";
+                    deleteBtn.textContent = "Delete forcefield";
+                    deleteBtn.addEventListener("click", () => {
+                        controller.deleteSelectedWall();
+                        onChange();
+                    });
+                    deleteRow.appendChild(deleteBtn);
+                    body.appendChild(deleteRow);
+                    return;
+                }
                 if (selectedFloorBelt) {
                     appendEditorHint(
                         body,
@@ -563,7 +610,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     body.appendChild(deleteRow);
                     return;
                 }
-                appendEditorHint(body, "Select a prop or conveyor belt from Scene.");
+                appendEditorHint(body, "Select a prop, conveyor belt, or forcefield from Scene (or click a laser edge on the map).");
                 return;
             }
             const behaviorIds = controller.listSelectedBehaviors();
