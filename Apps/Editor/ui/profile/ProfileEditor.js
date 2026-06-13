@@ -1,7 +1,7 @@
 import { getSurfaceProceduralProfile } from "../../../../Config/procedural/profiles.js";
-import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
-import { SelectControl } from "../../../Libraries/UI/controls/SelectControl.js";
-import { appendEditorSubhead } from "../../../Libraries/UI/paramFields.js";
+import { SliderControl } from "../../../../Libraries/UI/controls/SliderControl.js";
+import { SelectControl } from "../../../../Libraries/UI/controls/SelectControl.js";
+import { appendEditorSubhead } from "../../../../Libraries/UI/paramFields.js";
 import { mirrorEasingForReversedStage } from "../../../../Libraries/Math/Easing.js";
 import { BLEND_OPTIONS, EASING_OPTIONS, LAYER_OPTIONS, MOTIF_TYPES, PALETTE_FIELDS, WARP_FIELDS, getAnimatableMotifFields, isContextMotif } from "./profileSchema.js";
 export const RUNTIME_LAB_PROFILE_ID = "__labA__";
