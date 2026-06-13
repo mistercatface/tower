@@ -16,4 +16,5 @@
  * @property {import("../../Math/Aabb2D.js").Aabb2D} worldBounds
  * @property {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
  * @property {object} gameState — live game state for horizontal cap chunk sampling
+ * @property {string} [atlasFaceId] — per-face wall atlas slot on cacheObj (`inner`, `outer`, `end0`, `end1`)
  */

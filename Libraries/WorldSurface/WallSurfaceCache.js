@@ -35,31 +35,20 @@ export function buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId,
  * @param {WallAtlasBakeContext} proceduralSurfaceDraw
  * @param {string} profileId
  * @param {number} ppwu
- * @param {{ _wkInfo?: object, _wkProfileId?: string, _wkPpwu?: number, _wkRev?: number, _wkSeed?: number, _wkWallHeight?: number, _wallAtlasStash?: object } | null} cacheObj
+ * @param {{ _wkByFace?: Record<string, { info: object, profileId: string, ppwu: number, rev: number, seed: number, wallHeight: number }> } | null} cacheObj
  * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
  * @param {number} atlasHeight
+ * @param {string} [faceId]
  */
-export function getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, settings, atlasHeight) {
+export function getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, settings, atlasHeight, faceId = "side") {
     const seed = proceduralSurfaceDraw.surfaceSeed;
     const rev = getSurfaceProfileRevision(profileId);
-    if (
-        cacheObj &&
-        cacheObj._wkInfo &&
-        cacheObj._wkProfileId === profileId &&
-        cacheObj._wkPpwu === ppwu &&
-        cacheObj._wkRev === rev &&
-        cacheObj._wkSeed === seed &&
-        cacheObj._wkWallHeight === atlasHeight
-    )
-        return cacheObj._wkInfo;
+    const memo = cacheObj?._wkByFace?.[faceId];
+    if (memo && memo.profileId === profileId && memo.ppwu === ppwu && memo.rev === rev && memo.seed === seed && memo.wallHeight === atlasHeight) return memo.info;
     const info = buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId, ppwu, atlasHeight, settings);
     if (cacheObj) {
-        cacheObj._wkInfo = info;
-        cacheObj._wkProfileId = profileId;
-        cacheObj._wkPpwu = ppwu;
-        cacheObj._wkRev = rev;
-        cacheObj._wkSeed = seed;
-        cacheObj._wkWallHeight = atlasHeight;
+        if (!cacheObj._wkByFace) cacheObj._wkByFace = {};
+        cacheObj._wkByFace[faceId] = { info, profileId, ppwu, rev, seed, wallHeight: atlasHeight };
     }
     return info;
 }

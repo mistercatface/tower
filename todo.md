@@ -37,8 +37,8 @@ Single vertical formula: **`projectWorldPointInto`** + **`projectWallFaceBandInt
 
 - [x] **Delete `computeProjectedFace`** — legacy angle-spread path removed; no dual vertical projection.
 - [x] **Unify wall face draw** — voxelBlock + railWall sides/ends use `drawProjectedWallFace` only.
-- [x] **Procedural railWall cap** — `drawProjectedRailWallCap`: box top ring at `wallCapHeight` (matches side tops) + per-corner chunk UV.
-- [ ] **Cap alignment regression** — pan radial camera around cavern rails; caps meet side tops at all angles. Remaining seams on long runs = collinear merge (separate task).
+- [x] **Cap workaround** — solid fill cap; procedural cap deferred.
+- [ ] **Cap alignment regression** — deferred.
 - [x] **Unify back-face cull** — `isOutwardFaceTowardViewer` in `IsometricProjection.js`; voxelBlock collect + railWall draw share it.
 - [x] **`WallDrawContext.gameState`** — cap chunk sample uses same bake hook as roofs.
 
@@ -55,21 +55,25 @@ Priority order. **Do not add new micro-files** unless a module is a real subsyst
 
 ### P0 — Library alignment (dual paths / dead code)
 
+- [x] P0 items from prior pass (collision comment, dead helpers, legacy face fields, revision note).
+
 ### P1 — Pipeline reuse + projection consolidation
 
 - [x] **Extract shared viewport geom cache** — `wallGridDrawCacheHit` / `storeWallGridDrawCache` in `StaticGridWallDraw.js`; edge rail draw imports them.
-- [ ] **End-face atlas strategy** — `drawProjectedGridEdgeRail` sets `wallCtx.cacheObj = null` per end face to bust long-side atlas reuse. Correct visually, costly on straight runs. Fix: end-cap atlas key in `WallSurfaceCache` / `_wallAtlasStash` keyed by `(box id, endIndex, profileRev)` or bake end UV from box footprint without nulling cache.
-- [ ] **Collinear merge (draw only first)** — merge boxes for render; **do not merge collision proxies** until draw merge is proven and collision task explicitly opened with ball tests.
+- [x] **End-face atlas strategy** — per-face `atlasFaceId` + `_wallAtlasStashes` / `_wkByFace` on box; no `cacheObj = null` bust.
+- [x] **Collinear merge (draw only)** — `mergeCollinearRailWallBoxes` in collect; collision proxies unchanged.
 
 ### P1 — Rail top cap (follow-up)
 
-- [ ] **Verify live profile edit** — Change active profile with rails on screen: sides **and** cap update without grid re-stamp (cap now uses chunk bake + profile rev; confirm in editor).
+- [x] **Cap workaround** — solid fill via `drawProjectedRailWallCap` (procedural chunk cap deferred; alignment issue open).
+- [ ] **Cap alignment regression** — pan radial camera; caps meet side tops (deferred).
+- [ ] **Verify live profile edit** — sides update on profile change; cap is solid until procedural cap returns.
 
 ### P2 — Efficiency
 
-- [ ] **Cull edge rails at collect time** — Fill culls in `collectStaticGridWallDrawables`; rails cull in draw only → extra sort entries. Mirror `sideFaceVisible` at collect (or cheap AABB vs viewer hemisphere).
-- [ ] **Reduce per-box allocations** — `resolveGridWallEdgeRailBox` allocates four `{x,y}` objects per emitted rail on cache miss; reuse scratch or store flat numbers on box struct.
-- [ ] **Atlas / subdiv cache on drawable** — `computeWallFaceSubdiv` recomputed per draw; backlog item still applies.
+- [x] **Cull edge rails at collect time** — `railWallBoxTowardViewer` in collect; draw uses same cull helper logic.
+- [x] **Reduce per-box allocations** — flat `innerP1x`…`outerP2y` on box struct; module scratch for draw edges.
+- [x] **Atlas / subdiv cache on drawable** — `_faceSubdiv` + `_faceSubdivKey` on box; invalidated on collinear merge.
 - [ ] **Face-level AABB cull** — render perf backlog.
 
 ### P2 — Render mode + editor parity
@@ -79,8 +83,8 @@ Priority order. **Do not add new micro-files** unless a module is a real subsyst
 
 ### P2 — Cursor rules / hygiene
 
-- [ ] **Remove `canStep` edgeGrid guard** if `edgeGrid` is always allocated after grid init (fail-fast rule — let missing grid throw upstream).
-- [ ] **Consolidate proxy factory (draw/hit only)** — duplicate `handleHit` / `isEdgeRail` shapes in `appendStaticWallProxiesNear`; refactor shape only, **no segment field changes**.
+- [x] **Remove `canStep` edgeGrid guard** — fail-fast; grid always allocates `edgeGrid` after init.
+- [x] **Consolidate proxy factory (draw/hit only)** — shared `_staticGridProxyHandleHit` on `WorldObstacleGrid`; segment fields unchanged.
 - [ ] **Acceptance gate before more features** — run checklist below after draw/cap cleanup (collision already signed off).
 
 ### P3 — New shared code (only if consolidation warrants it)

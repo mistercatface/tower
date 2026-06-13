@@ -1,6 +1,5 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex } from "./GridUtils.js";
-import { damageStaticGridCell } from "../../World/staticCellDamage.js";
 import { gridWallEdgeRailShouldEmit } from "../../World/wallGridCells.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
@@ -30,6 +29,11 @@ export class WorldObstacleGrid {
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
     }
+    /** @param {number} damage @param {object} state */
+    _staticGridProxyHandleHit(damage, state) {
+        if (this.isEdgeRail) return;
+        damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
+    }
     bumpWallGridRevision() {
         this.wallGridRevision = (this.wallGridRevision + 1) | 0;
     }
@@ -49,10 +53,7 @@ export class WorldObstacleGrid {
                 isEdgeRail: false,
                 gridCol: 0,
                 gridRow: 0,
-                handleHit(damage, state) {
-                    if (this.isEdgeRail) return;
-                    damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
-                },
+                handleHit: this._staticGridProxyHandleHit,
             };
             this._staticWallProxies[this._staticWallProxyCount] = proxy;
         }
@@ -140,10 +141,7 @@ export class WorldObstacleGrid {
                         gridRow: row,
                         gridSide: side,
                         shape: undefined,
-                        handleHit(damage, state) {
-                            if (this.isEdgeRail) return;
-                            damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
-                        },
+                        handleHit: this._staticGridProxyHandleHit,
                     };
                     this._staticWallProxies[this._staticWallProxyCount] = proxy;
                 } else {
@@ -382,7 +380,6 @@ export class WorldObstacleGrid {
     }
     canStep(currCol, currRow, nextCol, nextRow) {
         if (this.isBlocked(nextCol, nextRow)) return false;
-        if (!this.edgeGrid) return true;
         const dc = nextCol - currCol;
         const dr = nextRow - currRow;
         // Cardinal step

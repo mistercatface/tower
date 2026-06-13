@@ -7,6 +7,33 @@ import { drawProjectedWallFace, drawProjectedRailWallCap } from "./ProjectedWall
 import { storeWallGridDrawCache, wallGridDrawCacheHit } from "./StaticGridWallDraw.js";
 /** @type {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, boxes: object[] }} */
 const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: [] };
+const sRailP1 = { x: 0, y: 0 };
+const sRailP2 = { x: 0, y: 0 };
+/** @param {{ x: number, y: number }} p1 @param {{ x: number, y: number }} p2 @param {number} x1 @param {number} y1 @param {number} x2 @param {number} y2 */
+function bindRailEdge(p1, p2, x1, y1, x2, y2) {
+    p1.x = x1;
+    p1.y = y1;
+    p2.x = x2;
+    p2.y = y2;
+}
+/** @param {object} box @param {number} viewerX @param {number} viewerY */
+function railWallBoxTowardViewer(box, viewerX, viewerY) {
+    const innerMidX = (box.innerP1x + box.innerP2x) * 0.5;
+    const innerMidY = (box.innerP1y + box.innerP2y) * 0.5;
+    const outerMidX = (box.outerP1x + box.outerP2x) * 0.5;
+    const outerMidY = (box.outerP1y + box.outerP2y) * 0.5;
+    if (isOutwardFaceTowardViewer(innerMidX, innerMidY, box.inwardX, box.inwardY, viewerX, viewerY)) return true;
+    if (isOutwardFaceTowardViewer(outerMidX, outerMidY, -box.inwardX, -box.inwardY, viewerX, viewerY)) return true;
+    const dx = box.innerP2x - box.innerP1x;
+    const dy = box.innerP2y - box.innerP1y;
+    const len = Math.hypot(dx, dy);
+    if (len <= 0) return false;
+    const tx = dx / len;
+    const ty = dy / len;
+    if (isOutwardFaceTowardViewer((box.outerP1x + box.innerP1x) * 0.5, (box.outerP1y + box.innerP1y) * 0.5, -tx, -ty, viewerX, viewerY)) return true;
+    if (isOutwardFaceTowardViewer((box.innerP2x + box.outerP2x) * 0.5, (box.innerP2y + box.outerP2y) * 0.5, tx, ty, viewerX, viewerY)) return true;
+    return false;
+}
 /**
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @param {import("../../Viewport/Viewport.js").Viewport} viewport
@@ -25,6 +52,7 @@ export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, viewe
     const boxes = sBoxCache.boxes;
     for (let i = 0; i < boxes.length; i++) {
         const box = boxes[i];
+        if (!railWallBoxTowardViewer(box, viewerX, viewerY)) continue;
         const viewX = box.cx - viewerX;
         const viewY = box.cy - viewerY;
         box._distSq = viewX * viewX + viewY * viewY;
@@ -45,27 +73,34 @@ export function drawProjectedGridEdgeRail(ctx, box, wallCtx) {
     wallCtx.wallBaseZ = box.wallBaseZ;
     wallCtx.wallCapHeight = box.wallCapHeight;
     wallCtx.cacheObj = box;
-    if (isOutwardFaceTowardViewer((box.innerP1.x + box.innerP2.x) * 0.5, (box.innerP1.y + box.innerP2.y) * 0.5, box.inwardX, box.inwardY, viewerX, viewerY))
-        drawProjectedWallFace(ctx, box.innerP1, box.innerP2, wallCtx);
-    if (isOutwardFaceTowardViewer((box.outerP1.x + box.outerP2.x) * 0.5, (box.outerP1.y + box.outerP2.y) * 0.5, -box.inwardX, -box.inwardY, viewerX, viewerY))
-        drawProjectedWallFace(ctx, box.outerP1, box.outerP2, wallCtx);
-    const dx = box.innerP2.x - box.innerP1.x;
-    const dy = box.innerP2.y - box.innerP1.y;
+    bindRailEdge(sRailP1, sRailP2, box.innerP1x, box.innerP1y, box.innerP2x, box.innerP2y);
+    if (isOutwardFaceTowardViewer((box.innerP1x + box.innerP2x) * 0.5, (box.innerP1y + box.innerP2y) * 0.5, box.inwardX, box.inwardY, viewerX, viewerY)) {
+        wallCtx.atlasFaceId = "inner";
+        drawProjectedWallFace(ctx, sRailP1, sRailP2, wallCtx);
+    }
+    bindRailEdge(sRailP1, sRailP2, box.outerP1x, box.outerP1y, box.outerP2x, box.outerP2y);
+    if (isOutwardFaceTowardViewer((box.outerP1x + box.outerP2x) * 0.5, (box.outerP1y + box.outerP2y) * 0.5, -box.inwardX, -box.inwardY, viewerX, viewerY)) {
+        wallCtx.atlasFaceId = "outer";
+        drawProjectedWallFace(ctx, sRailP1, sRailP2, wallCtx);
+    }
+    const dx = box.innerP2x - box.innerP1x;
+    const dy = box.innerP2y - box.innerP1y;
     const len = Math.hypot(dx, dy);
     if (len > 0) {
         const tx = dx / len;
         const ty = dy / len;
-        const oldCacheObj = wallCtx.cacheObj;
-        if (isOutwardFaceTowardViewer((box.outerP1.x + box.innerP1.x) * 0.5, (box.outerP1.y + box.innerP1.y) * 0.5, -tx, -ty, viewerX, viewerY)) {
-            wallCtx.cacheObj = null;
-            drawProjectedWallFace(ctx, box.outerP1, box.innerP1, wallCtx);
+        bindRailEdge(sRailP1, sRailP2, box.outerP1x, box.outerP1y, box.innerP1x, box.innerP1y);
+        if (isOutwardFaceTowardViewer((box.outerP1x + box.innerP1x) * 0.5, (box.outerP1y + box.innerP1y) * 0.5, -tx, -ty, viewerX, viewerY)) {
+            wallCtx.atlasFaceId = "end0";
+            drawProjectedWallFace(ctx, sRailP1, sRailP2, wallCtx);
         }
-        if (isOutwardFaceTowardViewer((box.innerP2.x + box.outerP2.x) * 0.5, (box.innerP2.y + box.outerP2.y) * 0.5, tx, ty, viewerX, viewerY)) {
-            wallCtx.cacheObj = null;
-            drawProjectedWallFace(ctx, box.innerP2, box.outerP2, wallCtx);
+        bindRailEdge(sRailP1, sRailP2, box.innerP2x, box.innerP2y, box.outerP2x, box.outerP2y);
+        if (isOutwardFaceTowardViewer((box.innerP2x + box.outerP2x) * 0.5, (box.innerP2y + box.outerP2y) * 0.5, tx, ty, viewerX, viewerY)) {
+            wallCtx.atlasFaceId = "end1";
+            drawProjectedWallFace(ctx, sRailP1, sRailP2, wallCtx);
         }
-        wallCtx.cacheObj = oldCacheObj;
     }
+    wallCtx.atlasFaceId = undefined;
     drawProjectedRailWallCap(ctx, box, wallCtx);
 }
 export function invalidateStaticGridEdgeRailDrawCache() {

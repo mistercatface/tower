@@ -95,12 +95,12 @@ function resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj) {
  * @property {boolean} solidFill
  */
 function resolveWallFaceAtlas(p1, p2, wallCtx) {
-    const { worldSurfaces, proceduralSurfaceDraw, wallHeight, wallBaseZ, wallCapHeight, cacheObj } = wallCtx;
+    const { worldSurfaces, proceduralSurfaceDraw, wallHeight, wallBaseZ, wallCapHeight, cacheObj, atlasFaceId } = wallCtx;
     const settings = worldSurfaces.settings;
     const wallCx = (p1.x + p2.x) * 0.5;
     const wallCy = (p1.y + p2.y) * 0.5;
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj);
-    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight: wallCapHeight, cacheObj });
+    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight: wallCapHeight, cacheObj, atlasFaceId: atlasFaceId ?? "side" });
     if (!baked) return { atlas: null, solidFill: false };
     const canvas = baked.canvases[0];
     if (!canvas || canvas.isPlaceholder) return { atlas: null, solidFill: true };
@@ -174,6 +174,18 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wor
     }
     ctx.restore();
 }
+function resolveWallFaceSubdiv(wallCtx, atlas, camera) {
+    const cacheObj = wallCtx.cacheObj;
+    const faceId = wallCtx.atlasFaceId ?? "side";
+    const subdivKey = `${faceId}|${atlas.edgeLen}|${camera.viewerX}|${camera.viewerY}|${atlas.wallBaseZ}|${atlas.bandHeight}`;
+    if (cacheObj && cacheObj._faceSubdivKey === subdivKey) return cacheObj._faceSubdiv;
+    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, camera);
+    if (cacheObj) {
+        cacheObj._faceSubdivKey = subdivKey;
+        cacheObj._faceSubdiv = subdiv;
+    }
+    return subdiv;
+}
 function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera) {
     const { atlas, solidFill } = resolveWallFaceAtlas(p1, p2, wallCtx);
     if (!atlas) {
@@ -183,7 +195,7 @@ function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera) {
         }
         return;
     }
-    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, camera);
+    const subdiv = resolveWallFaceSubdiv(wallCtx, atlas, camera);
     if (!subdiv) {
         ctx.fillStyle = wallCtx.fillStyle;
         ctx.fill();
@@ -199,15 +211,15 @@ const sCapSrc3 = { x: 0, y: 0 };
  * Top ring of a railWall box at wallCapHeight — same corners the long/end faces meet.
  * Order: outerP1 → outerP2 → innerP2 → innerP1.
  * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} out4
- * @param {{ outerP1: { x: number, y: number }, outerP2: { x: number, y: number }, innerP1: { x: number, y: number }, innerP2: { x: number, y: number }, wallCapHeight: number }} box
+ * @param {{ outerP1x: number, outerP1y: number, outerP2x: number, outerP2y: number, innerP1x: number, innerP1y: number, innerP2x: number, innerP2y: number, wallCapHeight: number }} box
  * @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
  */
 export function projectRailWallTopCornersInto(out4, box, camera) {
     const z = box.wallCapHeight;
-    projectWorldPointInto(out4[0], box.outerP1.x, box.outerP1.y, z, camera);
-    projectWorldPointInto(out4[1], box.outerP2.x, box.outerP2.y, z, camera);
-    projectWorldPointInto(out4[2], box.innerP2.x, box.innerP2.y, z, camera);
-    projectWorldPointInto(out4[3], box.innerP1.x, box.innerP1.y, z, camera);
+    projectWorldPointInto(out4[0], box.outerP1x, box.outerP1y, z, camera);
+    projectWorldPointInto(out4[1], box.outerP2x, box.outerP2y, z, camera);
+    projectWorldPointInto(out4[2], box.innerP2x, box.innerP2y, z, camera);
+    projectWorldPointInto(out4[3], box.innerP1x, box.innerP1y, z, camera);
     return out4;
 }
 function fillProjectedCapPolygon(ctx, corners, fillStyle) {
@@ -231,27 +243,14 @@ function assignCapSampleSrc(sample) {
     sCapSrc3.y = sample.src[3].y;
 }
 /**
- * railWall top cap — box top ring matches long/end face tops; per-corner chunk UV.
+ * railWall top cap — solid fill (procedural cap deferred; geometry uses box top ring).
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} box
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedRailWallCap(ctx, box, wallCtx) {
-    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState } = wallCtx;
-    projectRailWallTopCornersInto(sCapCorners, box, camera);
-    if (!proceduralSurfaceDraw || !gameState) {
-        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
-        return;
-    }
-    const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
-    const worldCorners = [box.outerP1, box.outerP2, box.innerP2, box.innerP1];
-    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, box.wallCapHeight, gameState, profileId);
-    if (!sample) {
-        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
-        return;
-    }
-    assignCapSampleSrc(sample);
-    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, worldSurfaces.settings.wallTextureBleedPx ?? 1);
+    projectRailWallTopCornersInto(sCapCorners, box, wallCtx.camera);
+    fillProjectedCapPolygon(ctx, sCapCorners, wallCtx.fillStyle);
 }
 /**
  * Horizontal cap from world AABB corners (voxelBlock caps, generic quads).
@@ -267,7 +266,7 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
     const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState } = wallCtx;
     projectRailWallTopCornersInto(
         sCapCorners,
-        { outerP1: { x: minX, y: minY }, outerP2: { x: maxX, y: minY }, innerP2: { x: maxX, y: maxY }, innerP1: { x: minX, y: maxY }, wallCapHeight: z },
+        { outerP1x: minX, outerP1y: minY, outerP2x: maxX, outerP2y: minY, innerP2x: maxX, innerP2y: maxY, innerP1x: minX, innerP1y: maxY, wallCapHeight: z },
         camera,
     );
     if (!proceduralSurfaceDraw || !gameState) {

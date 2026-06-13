@@ -181,26 +181,29 @@ export class WorldSurfaceEngine {
      *   proceduralSurfaceDraw: import("../../Libraries/Render/WorldSceneTypes.js").ProceduralSurfaceDrawContext,
      *   wallHeight?: number | null,
      *   cacheObj?: object | null,
+     *   atlasFaceId?: string,
      * }} options
      */
     getOrEnsureWallAtlas(p1, p2, options) {
-        const { profileId, proceduralSurfaceDraw, wallHeight = null, cacheObj = null } = options;
+        const { profileId, proceduralSurfaceDraw, wallHeight = null, cacheObj = null, atlasFaceId = "side" } = options;
         const ppwu = getTexelResolution(this.settings);
         const seed = proceduralSurfaceDraw.surfaceSeed;
         const rev = getSurfaceProfileRevision(profileId);
         const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);
-        const stash = cacheObj?._wallAtlasStash;
-        if (
-            stash &&
-            stash.profileId === profileId &&
-            stash.ppwu === ppwu &&
-            stash.rev === rev &&
-            stash.seed === seed &&
-            stash.wallHeightKey === wallHeightKey &&
-            this.surfaceCache.get(stash.key) === stash.canvases
-        )
-            return stash;
-        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, this.settings, wallHeightKey);
+        if (cacheObj) {
+            const stash = cacheObj._wallAtlasStashes?.[atlasFaceId];
+            if (
+                stash &&
+                stash.profileId === profileId &&
+                stash.ppwu === ppwu &&
+                stash.rev === rev &&
+                stash.seed === seed &&
+                stash.wallHeightKey === wallHeightKey &&
+                this.surfaceCache.get(stash.key) === stash.canvases
+            )
+                return stash;
+        }
+        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, this.settings, wallHeightKey, atlasFaceId);
         let canvases = this.surfaceCache.get(key);
         if (!canvases) {
             const columns = wallFaceColumns(wrappedP1, wrappedP2, this.settings.cellSize);
@@ -209,7 +212,10 @@ export class WorldSurfaceEngine {
             if (!canvases || canvases.length === 0) return null;
         }
         const resolved = { key, wrappedP1, wrappedP2, canvases, profileId, ppwu, rev, seed, wallHeightKey };
-        if (cacheObj) cacheObj._wallAtlasStash = resolved;
+        if (cacheObj) {
+            if (!cacheObj._wallAtlasStashes) cacheObj._wallAtlasStashes = {};
+            cacheObj._wallAtlasStashes[atlasFaceId] = resolved;
+        }
         return resolved;
     }
     /**

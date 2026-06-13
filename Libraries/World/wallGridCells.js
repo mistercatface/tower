@@ -91,7 +91,6 @@ export function gridWallEdgeRailFootprintAabb(grid, col, row, edge) {
     if (edge === 2) return { minX: b.minX, minY: b.maxY - halfT, maxX: b.maxX, maxY: b.maxY + halfT };
     return { minX: b.minX - halfT, minY: b.minY, maxX: b.minX + halfT, maxY: b.maxY };
 }
-
 /** Long-side endpoints for one face of the rail box. @param {0 | 1} railSide 0 = owning-cell side, 1 = neighbor side */
 function gridWallEdgeRailSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
     const idx = col + row * grid.cols;
@@ -123,7 +122,6 @@ function gridWallEdgeRailSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
         p2.y = b.minY;
     }
 }
-
 /**
  * Thin wall box on one grid edge — draw, collision, and cap share this struct.
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -146,8 +144,10 @@ export function resolveGridWallEdgeRailBox(grid, col, row, edge) {
     const fp = gridWallEdgeRailFootprintAabb(grid, col, row, edge);
     const inward = gridWallEdgeInwardNormal(edge);
     gridWallEdgeRailSideEndpoints(grid, col, row, edge, 0, sP1, sP2);
-    const innerP1 = { x: sP1.x, y: sP1.y };
-    const innerP2 = { x: sP2.x, y: sP2.y };
+    const innerP1x = sP1.x;
+    const innerP1y = sP1.y;
+    const innerP2x = sP2.x;
+    const innerP2y = sP2.y;
     gridWallEdgeRailSideEndpoints(grid, col, row, edge, 1, sP1, sP2);
     const wallBaseZ = gridWallFaceBaseZ(neighborCap, edgeHeight);
     return {
@@ -160,10 +160,14 @@ export function resolveGridWallEdgeRailBox(grid, col, row, edge) {
         minY: fp.minY,
         maxX: fp.maxX,
         maxY: fp.maxY,
-        innerP1,
-        innerP2,
-        outerP1: { x: sP1.x, y: sP1.y },
-        outerP2: { x: sP2.x, y: sP2.y },
+        innerP1x,
+        innerP1y,
+        innerP2x,
+        innerP2y,
+        outerP1x: sP1.x,
+        outerP1y: sP1.y,
+        outerP2x: sP2.x,
+        outerP2y: sP2.y,
         inwardX: inward.x,
         inwardY: inward.y,
         wallBaseZ,
@@ -173,6 +177,102 @@ export function resolveGridWallEdgeRailBox(grid, col, row, edge) {
         cx: (fp.minX + fp.maxX) * 0.5,
         cy: (fp.minY + fp.maxY) * 0.5,
     };
+}
+/** @param {object} box */
+function clearRailWallBoxDrawMemos(box) {
+    delete box._wallAtlasStashes;
+    delete box._wkByFace;
+    delete box._cachedProfileId;
+    delete box._faceSubdiv;
+    delete box._faceSubdivKey;
+}
+/** @param {object} cur @param {object} next */
+function extendCollinearRailWallBox(cur, next) {
+    cur.minX = Math.min(cur.minX, next.minX);
+    cur.minY = Math.min(cur.minY, next.minY);
+    cur.maxX = Math.max(cur.maxX, next.maxX);
+    cur.maxY = Math.max(cur.maxY, next.maxY);
+    const edge = cur.gridSide;
+    if (edge === 0) {
+        cur.innerP1x = cur.minX;
+        cur.innerP1y = cur.maxY;
+        cur.innerP2x = cur.maxX;
+        cur.innerP2y = cur.maxY;
+        cur.outerP1x = cur.minX;
+        cur.outerP1y = cur.minY;
+        cur.outerP2x = cur.maxX;
+        cur.outerP2y = cur.minY;
+    } else if (edge === 2) {
+        cur.innerP1x = cur.maxX;
+        cur.innerP1y = cur.minY;
+        cur.innerP2x = cur.minX;
+        cur.innerP2y = cur.minY;
+        cur.outerP1x = cur.maxX;
+        cur.outerP1y = cur.maxY;
+        cur.outerP2x = cur.minX;
+        cur.outerP2y = cur.maxY;
+    } else if (edge === 1) {
+        cur.innerP1x = cur.minX;
+        cur.innerP1y = cur.minY;
+        cur.innerP2x = cur.minX;
+        cur.innerP2y = cur.maxY;
+        cur.outerP1x = cur.maxX;
+        cur.outerP1y = cur.minY;
+        cur.outerP2x = cur.maxX;
+        cur.outerP2y = cur.maxY;
+    } else {
+        cur.innerP1x = cur.maxX;
+        cur.innerP1y = cur.maxY;
+        cur.innerP2x = cur.maxX;
+        cur.innerP2y = cur.minY;
+        cur.outerP1x = cur.minX;
+        cur.outerP1y = cur.maxY;
+        cur.outerP2x = cur.minX;
+        cur.outerP2y = cur.minY;
+    }
+    cur.cx = (cur.minX + cur.maxX) * 0.5;
+    cur.cy = (cur.minY + cur.maxY) * 0.5;
+    clearRailWallBoxDrawMemos(cur);
+}
+/** @param {object} a @param {object} b */
+function collinearRailWallBoxesAdjacent(a, b) {
+    if (a.gridSide !== b.gridSide) return false;
+    if (a.wallCapHeight !== b.wallCapHeight || a.wallBaseZ !== b.wallBaseZ || a.edgeThickness !== b.edgeThickness) return false;
+    if (a.inwardX !== b.inwardX || a.inwardY !== b.inwardY) return false;
+    if (a.gridSide === 0 || a.gridSide === 2) {
+        if (a.gridRow !== b.gridRow) return false;
+        return b.gridCol === a.gridCol + 1;
+    }
+    if (a.gridCol !== b.gridCol) return false;
+    return b.gridRow === a.gridRow + 1;
+}
+/** Draw-only merge of consecutive railWall boxes on the same edge line. */
+export function mergeCollinearRailWallBoxes(boxes) {
+    if (boxes.length <= 1) return boxes;
+    boxes.sort((a, b) => {
+        if (a.gridSide !== b.gridSide) return a.gridSide - b.gridSide;
+        if (a.wallCapHeight !== b.wallCapHeight) return a.wallCapHeight - b.wallCapHeight;
+        if (a.wallBaseZ !== b.wallBaseZ) return a.wallBaseZ - b.wallBaseZ;
+        if (a.edgeThickness !== b.edgeThickness) return a.edgeThickness - b.edgeThickness;
+        if (a.gridSide === 0 || a.gridSide === 2) {
+            if (a.gridRow !== b.gridRow) return a.gridRow - b.gridRow;
+            return a.gridCol - b.gridCol;
+        }
+        if (a.gridCol !== b.gridCol) return a.gridCol - b.gridCol;
+        return a.gridRow - b.gridRow;
+    });
+    const merged = [];
+    let cur = boxes[0];
+    merged.push(cur);
+    for (let i = 1; i < boxes.length; i++) {
+        const next = boxes[i];
+        if (collinearRailWallBoxesAdjacent(cur, next)) extendCollinearRailWallBox(cur, next);
+        else {
+            cur = next;
+            merged.push(cur);
+        }
+    }
+    return merged;
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -234,7 +334,6 @@ export function collectGridWallFacesInAabb(grid, bounds, out) {
         }
     });
 }
-
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {import("../Math/Aabb2D.js").Aabb2D} bounds
@@ -249,8 +348,10 @@ export function collectGridEdgeRailBoxesInAabb(grid, bounds, out) {
             if (box) out.push(box);
         }
     });
+    const merged = mergeCollinearRailWallBoxes(out);
+    out.length = 0;
+    for (let i = 0; i < merged.length; i++) out.push(merged[i]);
 }
-
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} idx */
 export function gridValueAtIdx(grid, idx) {
     return grid.grid[idx];
