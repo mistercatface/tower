@@ -64,7 +64,7 @@ function notifyGridWallChange(state, bounds) {
     rebuildLabMapCaches(state);
 }
 /** Clear all voxel fills and railWall edges on the obstacle grid (single invalidation). */
-export function clearAllStampedGridWalls(state) {
+export function clearAllStampedGridWalls(state, { notify = true } = {}) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
     const size = grid.cols * grid.rows;
@@ -86,7 +86,61 @@ export function clearAllStampedGridWalls(state) {
             grid.edgeStore.clearMirrored(col, row, side, grid.cols, grid.rows);
         }
     }
-    notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
+    if (notify) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
+}
+/**
+ * Stamp many voxel/rail walls from global grid cells — one cache/nav invalidation at the end.
+ * Call after `expandGridForSnapshot` so the grid already covers all cells.
+ *
+ * @param {object} state
+ * @param {{ col: number, row: number, heightLevel: number }[]} voxels — global col/row
+ * @param {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number }[]} railWalls
+ * @param {number} cellSize
+ * @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null}
+ */
+export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSize) {
+    const grid = state.obstacleGrid;
+    const settings = state.worldSurfaces.settings;
+    const half = cellSize * 0.5;
+    let minCol = Infinity;
+    let maxCol = -Infinity;
+    let minRow = Infinity;
+    let maxRow = -Infinity;
+    /** @param {number} col @param {number} row */
+    const mark = (col, row) => {
+        if (col < minCol) minCol = col;
+        if (col > maxCol) maxCol = col;
+        if (row < minRow) minRow = row;
+        if (row > maxRow) maxRow = row;
+    };
+    /** @param {number} globalCol @param {number} globalRow */
+    const toLocal = (globalCol, globalRow) => {
+        const x = globalCol * cellSize + half;
+        const y = globalRow * cellSize + half;
+        return grid.worldToGrid(x, y);
+    };
+    for (let i = 0; i < voxels.length; i++) {
+        const { col: globalCol, row: globalRow, heightLevel } = voxels[i];
+        const { col, row } = toLocal(globalCol, globalRow);
+        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        const idx = colRowToIndex(col, row, grid.cols);
+        if (grid.segmentGrid?.[idx]?.length) continue;
+        grid.grid[idx] = clampStampWallHeightLevel(heightLevel, settings);
+        mark(col, row);
+    }
+    for (let i = 0; i < railWalls.length; i++) {
+        const { col: globalCol, row: globalRow, side, heightLevel, thicknessLevel } = railWalls[i];
+        const { col, row } = toLocal(globalCol, globalRow);
+        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        grid.writeCellEdge(col, row, side, clampStampWallHeightLevel(heightLevel, settings), thicknessLevel);
+        mark(col, row);
+    }
+    if (minCol === Infinity) return null;
+    return { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow };
+}
+/** @param {object} state @param {{ startCol: number, endCol: number, startRow: number, endRow: number }} bounds */
+export function notifyStampedGridWallChange(state, bounds) {
+    notifyGridWallChange(state, bounds);
 }
 /** @param {number} col @param {number} row */
 function cellBounds(col, row) {

@@ -5,22 +5,11 @@ import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandbo
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { gridCellToGlobalColRow, gridWallEdgeMirrorSide, gridWallEdgeNeighbor } from "../World/wallGridCells.js";
 import { isGridFloorBeltSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
-import { clearAllStampedGridWalls, ensureObstacleGridAtWorld, listPlacedRailWalls, listPlacedVoxelWalls, stampRailWallAt, stampVoxelWallAt } from "./gridWallEdit.js";
+import { applyStampedGridWallsFromGlobal, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, notifyStampedGridWallChange } from "./gridWallEdit.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { spawnPoolRack } from "./spawnPoolRack.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 export const SANDBOX_SCENE_SCHEMA_VERSION = 1;
-/** @param {number} globalCol @param {number} globalRow @param {number} cellSize */
-function worldCenterFromGlobalCell(globalCol, globalRow, cellSize) {
-    const half = cellSize * 0.5;
-    return { x: globalCol * cellSize + half, y: globalRow * cellSize + half };
-}
-/** @param {object} state @param {number} globalCol @param {number} globalRow @param {number} cellSize */
-function localCellFromGlobal(state, globalCol, globalRow, cellSize) {
-    const { x, y } = worldCenterFromGlobalCell(globalCol, globalRow, cellSize);
-    ensureObstacleGridAtWorld(state, x, y);
-    return state.obstacleGrid.worldToGrid(x, y);
-}
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 function shouldEmitRailWall(grid, col, row, side) {
     const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
@@ -96,23 +85,39 @@ export function parseSandboxSceneSnapshot(raw) {
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
 function expandGridForSnapshot(state, doc) {
     const cellSize = doc.cellSize ?? state.obstacleGrid.cellSize;
-    const points = [];
+    const half = cellSize * 0.5;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    /** @param {number} x @param {number} y */
+    const includeWorldPoint = (x, y) => {
+        const cellMinX = x - half;
+        const cellMinY = y - half;
+        const cellMaxX = x + half;
+        const cellMaxY = y + half;
+        if (cellMinX < minX) minX = cellMinX;
+        if (cellMinY < minY) minY = cellMinY;
+        if (cellMaxX > maxX) maxX = cellMaxX;
+        if (cellMaxY > maxY) maxY = cellMaxY;
+    };
     for (let i = 0; i < doc.voxels.length; i++) {
         const { col, row } = doc.voxels[i];
-        points.push(worldCenterFromGlobalCell(col, row, cellSize));
+        includeWorldPoint(col * cellSize + half, row * cellSize + half);
     }
     for (let i = 0; i < doc.railWalls.length; i++) {
         const { col, row } = doc.railWalls[i];
-        points.push(worldCenterFromGlobalCell(col, row, cellSize));
+        includeWorldPoint(col * cellSize + half, row * cellSize + half);
     }
-    for (let i = 0; i < doc.props.length; i++) points.push({ x: doc.props[i].x, y: doc.props[i].y });
-    for (let i = 0; i < points.length; i++) ensureObstacleGridAtWorld(state, points[i].x, points[i].y);
+    for (let i = 0; i < doc.props.length; i++) includeWorldPoint(doc.props[i].x, doc.props[i].y);
+    if (!Number.isFinite(minX)) return;
+    state.obstacleGrid.expandToCoverAabb({ minX, minY, maxX, maxY });
 }
 /** @param {object} state */
 function clearSandboxSceneContent(state) {
     for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i]);
     state.obstacleGrid.clearAllFloorCells();
-    clearAllStampedGridWalls(state);
+    clearAllStampedGridWalls(state, { notify: false });
     getSandboxEntityMeta(state).clear();
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string }} entry */
@@ -140,15 +145,9 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     if (cellSize !== state.obstacleGrid.cellSize) throw new Error(`Scene cellSize ${cellSize} does not match grid ${state.obstacleGrid.cellSize}`);
     clearSandboxSceneContent(state);
     expandGridForSnapshot(state, doc);
-    for (let i = 0; i < doc.voxels.length; i++) {
-        const { col, row, heightLevel } = doc.voxels[i];
-        const local = localCellFromGlobal(state, col, row, cellSize);
-        stampVoxelWallAt(state, local.col, local.row, heightLevel);
-    }
-    for (let i = 0; i < doc.railWalls.length; i++) {
-        const { col, row, side, heightLevel, thicknessLevel } = doc.railWalls[i];
-        const local = localCellFromGlobal(state, col, row, cellSize);
-        stampRailWallAt(state, local.col, local.row, side, heightLevel, thicknessLevel);
-    }
+    const stampBounds = applyStampedGridWallsFromGlobal(state, doc.voxels, doc.railWalls, cellSize);
+    const grid = state.obstacleGrid;
+    if (stampBounds) notifyStampedGridWallChange(state, stampBounds);
+    else if (grid.cols) notifyStampedGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
     for (let i = 0; i < doc.props.length; i++) spawnSnapshotProp(state, doc.props[i]);
 }

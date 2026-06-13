@@ -4,17 +4,17 @@
 
 ### Sandbox scene JSON export/import — MVP done
 
-Copy/paste in Sandbox panel **Scene JSON** section (Props tab). Replace mode only.
+Copy/paste in Sandbox panel **Scene JSON** section (Props tab). **Replace mode only** — sufficient for layout sharing; merge/autosave not planned near-term.
 
 - [x] **`collectSandboxSceneSnapshot`** — props (world x/y/facing/faction), voxels, railWalls (deduped), origin + cols/rows; pool racks collapse to `pool_rack_*` anchor
 - [x] **`applySandboxSceneSnapshot`** — replace: clear props/floors/walls, expand grid, re-stamp walls, spawn props / pool racks
 - [x] **UI — Scene JSON** — Export, Copy, Load (replace) + validation errors
 
-**Follow-on:**
-- [ ] **Merge mode** — append without full clear
-- [ ] **Floor belts** — `floorBelts` array in schema
-- [ ] **Prop extras** — faction (exported), behavior overrides, button links
-- [ ] **Optional autosave** — `createDebouncedStorage` on dirty hooks
+**When needed (not next):**
+- [ ] **Floor belts in schema** — `floorBelts` array on export/import
+- [ ] **Prop extras** — behavior overrides, button links (faction already exported)
+
+**Deferred (no near-term plan):** merge mode, debounced autosave (`createDebouncedStorage`).
 
 ### Animated floor tiles (grid layer)
 
@@ -45,7 +45,7 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 - [ ] **Belt facing** — spawn-with-facing, rotate selected cell(s), inspector force default.
 - [ ] **Corner autotile** — 4-bit junction detection on straight belt chains (optional polish).
 - [ ] **Smoke test** — L-shaped path; ball rides through straight + elbow cells.
-- [ ] **Persist belts** — save/load / map bake if belts should survive refresh outside sandbox → see **Sandbox scene JSON export/import**.
+- [ ] **Persist belts** — extend **Scene JSON** with `floorBelts` when belt export/import is implemented.
 
 **Deferred:** `EDGE_KIND.Conveyor` on `edgeStore` (boundary strips, directional crossing).
 
