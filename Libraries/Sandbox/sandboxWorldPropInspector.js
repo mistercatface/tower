@@ -2,31 +2,7 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { syncPullFixtureWalls, teardownPullFixtureWalls } from "./pullFixtureWalls.js";
 import { isButtonEntity, isMassButtonInputMode } from "./buttonInput.js";
-function appendNumberField(parent, labelText, { value, step = 1, min, onChange }) {
-    const field = document.createElement("div");
-    field.className = "param-field";
-    const label = document.createElement("span");
-    label.textContent = labelText;
-    const input = document.createElement("input");
-    input.type = "number";
-    input.step = String(step);
-    if (min != null) input.min = String(min);
-    input.value = String(value);
-    const valueSpan = document.createElement("span");
-    valueSpan.className = "param-value";
-    valueSpan.textContent = String(value);
-    input.addEventListener("change", () => {
-        const next = Number(input.value);
-        if (!Number.isFinite(next)) {
-            input.value = String(value);
-            return;
-        }
-        onChange(next);
-        valueSpan.textContent = String(next);
-    });
-    field.append(label, input, valueSpan);
-    parent.appendChild(field);
-}
+import { appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../../Apps/Editor/ui/paramFields.js";
 /** @param {object} prop @param {number} degrees */
 function applyWorldPropFacing(prop, degrees) {
     prop.facing = (degrees * Math.PI) / 180;
@@ -95,23 +71,6 @@ function applyButtonFloorPatch(prop, patch) {
     if (patch.massThreshold != null) prop.massThreshold = patch.massThreshold;
     if (patch.invert != null) prop.invert = patch.invert;
 }
-function appendSelectField(parent, labelText, { value, options, onChange }) {
-    const field = document.createElement("div");
-    field.className = "param-field";
-    const label = document.createElement("span");
-    label.textContent = labelText;
-    const select = document.createElement("select");
-    for (const option of options) {
-        const el = document.createElement("option");
-        el.value = option.value;
-        el.textContent = option.label;
-        select.appendChild(el);
-    }
-    select.value = value;
-    select.addEventListener("change", () => onChange(select.value));
-    field.append(label, select);
-    parent.appendChild(field);
-}
 /**
  * @param {HTMLElement} body
  * @param {{
@@ -126,34 +85,18 @@ function appendSelectField(parent, labelText, { value, options, onChange }) {
  */
 export function appendButtonWireInspector(body, wire, onChange) {
     const links = wire.listLinks();
-    const linkHint = document.createElement("p");
-    linkHint.className = "editor-hint";
-    linkHint.textContent = links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, or gravity pads.";
-    body.appendChild(linkHint);
-    if (links.length) {
-        const list = document.createElement("div");
-        list.className = "toy-instance-list";
-        for (const entry of links) {
-            const row = document.createElement("div");
-            row.className = "toy-instance-row";
-            const label = document.createElement("span");
-            label.className = "toy-select-btn";
-            label.textContent = entry.label;
-            row.appendChild(label);
-            const deleteBtn = document.createElement("button");
-            deleteBtn.type = "button";
-            deleteBtn.className = "toy-delete-btn secondary";
-            deleteBtn.textContent = "Delete";
-            deleteBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                wire.removeLink(entry.target);
-                onChange();
-            });
-            row.appendChild(deleteBtn);
-            list.appendChild(row);
-        }
-        body.appendChild(list);
-    }
+    appendEditorHint(body, links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, or gravity pads.");
+    if (links.length)
+        appendInstanceList(
+            body,
+            links.map((entry) => ({
+                label: entry.label,
+                onDelete: () => {
+                    wire.removeLink(entry.target);
+                    onChange();
+                },
+            })),
+        );
     const wireRow = document.createElement("div");
     wireRow.className = "sandbox-add-row";
     const wireActive = wire.isWireActive();
@@ -179,14 +122,6 @@ export function appendButtonWireInspector(body, wire, onChange) {
         wireRow.appendChild(clearBtn);
     }
     body.appendChild(wireRow);
-}
-/**
- * @param {HTMLElement} body
- * @param {{ x: number, y: number, step?: number, onPatch: (patch: { x?: number, y?: number }) => void }} opts
- */
-export function appendTranslateFields(body, { x, y, step = 1, onPatch }) {
-    appendNumberField(body, "X", { value: x, step, onChange: (next) => onPatch({ x: next }) });
-    appendNumberField(body, "Y", { value: y, step, onChange: (next) => onPatch({ y: next }) });
 }
 /**
  * @param {HTMLElement} body

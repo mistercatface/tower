@@ -5,6 +5,7 @@ import { isFlipperWorldProp } from "./behaviors/flipperBehavior.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { isPullPowerTarget } from "./pullFixtureWalls.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
+import { formatPropTypeLabel } from "../Props/PropCatalog.js";
 /** @typedef {{ type: "worldProp", id: number }} ButtonLinkTarget */
 /** @param {object} button */
 export function getButtonLinks(button) {
@@ -60,7 +61,7 @@ export function findButtonLinkTarget(state, worldX, worldY, sourceButtonId) {
 export function resolveButtonLinkEndpoint(state, target) {
     const prop = state.entityRegistry.getLive(target.id);
     if (!prop) return null;
-    const typeLabel = (prop.type ?? "prop").replace(/_/g, " ");
+    const typeLabel = formatPropTypeLabel(prop.type);
     const role = isSpawnerWorldProp(prop) ? "spawner" : isFlipperWorldProp(prop) ? "flipper" : typeLabel;
     return { target, label: `${role} · #${prop.id}`, x: prop.x, y: prop.y };
 }

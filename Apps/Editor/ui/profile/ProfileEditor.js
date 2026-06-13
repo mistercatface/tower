@@ -1,6 +1,7 @@
 import { getSurfaceProceduralProfile } from "../../../../Config/procedural/profiles.js";
 import { SliderControl } from "../controls/SliderControl.js";
 import { SelectControl } from "../controls/SelectControl.js";
+import { appendEditorSubhead } from "../paramFields.js";
 import { mirrorEasingForReversedStage } from "../../../../Libraries/Math/Easing.js";
 import { BLEND_OPTIONS, EASING_OPTIONS, LAYER_OPTIONS, MOTIF_TYPES, PALETTE_FIELDS, WARP_FIELDS, getAnimatableMotifFields, isContextMotif } from "./profileSchema.js";
 export const RUNTIME_LAB_PROFILE_ID = "__labA__";
@@ -370,16 +371,10 @@ function renderGlobalParams(container) {
     if (!editorState) return;
     const warpRoot = { warp: editorState.warp };
     const paletteRoot = { palette: editorState.palette };
-    const h = document.createElement("h4");
-    h.className = "editor-subhead";
-    h.textContent = "Warp";
-    container.appendChild(h);
+    appendEditorSubhead(container, "Warp", { tag: "h4" });
     renderScalarFields(container, warpRoot, WARP_FIELDS);
     editorState.warp = warpRoot.warp;
-    const h2 = document.createElement("h4");
-    h2.className = "editor-subhead";
-    h2.textContent = "Palette";
-    container.appendChild(h2);
+    appendEditorSubhead(container, "Palette", { tag: "h4" });
     renderScalarFields(container, paletteRoot, PALETTE_FIELDS);
     editorState.palette = paletteRoot.palette;
 }

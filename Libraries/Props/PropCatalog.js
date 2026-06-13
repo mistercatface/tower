@@ -22,3 +22,12 @@ export function getWorldPropRecipes() {
 export function getPropAsset(id) {
     return assetsById[id] ?? null;
 }
+/** @param {string | null | undefined} typeId */
+export function formatPropTypeLabel(typeId) {
+    return (typeId ?? "prop").replace(/_/g, " ");
+}
+/** @param {string} propId */
+export function formatSandboxSpawnLabel(propId) {
+    const asset = getPropAsset(propId);
+    return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
+}

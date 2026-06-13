@@ -1,6 +1,8 @@
 # todo
 
-## Current — floor occupancy belts
+## current: ui refactor
+
+## floor occupancy belts
 
 Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not WorldProps). Draw via `conveyorDraw.js`; force via `applyPushableAccelerationAlongAngle` before pushable physics.
 

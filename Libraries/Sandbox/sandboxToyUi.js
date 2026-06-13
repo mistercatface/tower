@@ -1,13 +1,14 @@
-import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
+import { getPropAsset, getWorldPropDefinitions, formatSandboxSpawnLabel } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, listFloorBeltKindOptions } from "./sandboxCapabilities.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "./spawnerConfig.js";
-import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector, appendTranslateFields } from "./sandboxWorldPropInspector.js";
+import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector } from "./sandboxWorldPropInspector.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "./sandboxPropVisual.js";
 import { sandboxSpawnAssemblyId, isSandboxSpawnPropId } from "./sandboxSession.js";
+import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../../Apps/Editor/ui/paramFields.js";
 function readOpenSections(root) {
     const open = new Set();
     for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
@@ -28,99 +29,6 @@ function appendSection(parent, id, title, defaultOpen, build) {
     parent.appendChild(details);
     return details;
 }
-function appendSubhead(parent, text) {
-    const head = document.createElement("div");
-    head.className = "editor-subhead";
-    head.textContent = text;
-    parent.appendChild(head);
-}
-function appendSelectField(parent, labelText, { value, options, onChange }) {
-    const field = document.createElement("div");
-    field.className = "param-field";
-    const label = document.createElement("span");
-    label.textContent = labelText;
-    const select = document.createElement("select");
-    for (const option of options) {
-        const el = document.createElement("option");
-        el.value = option.value;
-        el.textContent = option.label;
-        select.appendChild(el);
-    }
-    select.value = value;
-    select.addEventListener("change", () => onChange(select.value));
-    field.append(label, select);
-    parent.appendChild(field);
-    return select;
-}
-/** @param {HTMLElement} parent @param {string} labelText @param {{ value: number, step?: number, min?: number, onChange: (value: number) => void }} opts */
-function appendNumberField(parent, labelText, { value, step = 1, min, onChange }) {
-    const field = document.createElement("div");
-    field.className = "param-field";
-    const label = document.createElement("span");
-    label.textContent = labelText;
-    const input = document.createElement("input");
-    input.type = "number";
-    input.step = String(step);
-    if (min != null) input.min = String(min);
-    input.value = String(value);
-    const valueSpan = document.createElement("span");
-    valueSpan.className = "param-value";
-    valueSpan.textContent = String(value);
-    input.addEventListener("change", () => {
-        const next = Number(input.value);
-        if (!Number.isFinite(next)) {
-            input.value = String(value);
-            return;
-        }
-        onChange(next);
-        valueSpan.textContent = String(next);
-    });
-    field.append(label, input, valueSpan);
-    parent.appendChild(field);
-}
-/**
- * @param {HTMLElement} parent
- * @param {Array<{ label: string, selected?: boolean, onSelect?: () => void, onDelete: () => void }>} entries
- * @param {string} emptyText
- */
-function appendEntityList(parent, entries, emptyText) {
-    const list = document.createElement("div");
-    list.className = "toy-instance-list";
-    if (entries.length === 0) {
-        const empty = document.createElement("p");
-        empty.className = "editor-hint";
-        empty.textContent = emptyText;
-        list.appendChild(empty);
-    } else
-        for (const entry of entries) {
-            const row = document.createElement("div");
-            row.className = `toy-instance-row${entry.selected ? " selected" : ""}`;
-            if (entry.onSelect) {
-                const selectBtn = document.createElement("button");
-                selectBtn.type = "button";
-                selectBtn.className = "toy-select-btn";
-                selectBtn.textContent = entry.label;
-                selectBtn.addEventListener("click", entry.onSelect);
-                row.appendChild(selectBtn);
-            } else {
-                const label = document.createElement("span");
-                label.className = "toy-select-btn";
-                label.textContent = entry.label;
-                row.appendChild(label);
-            }
-            const deleteBtn = document.createElement("button");
-            deleteBtn.type = "button";
-            deleteBtn.className = "toy-delete-btn secondary";
-            deleteBtn.textContent = "Delete";
-            deleteBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                entry.onDelete();
-            });
-            row.appendChild(deleteBtn);
-            list.appendChild(row);
-        }
-    parent.appendChild(list);
-}
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }
@@ -130,10 +38,7 @@ function appendFactionSelect(parent, { value, onChange }) {
  */
 function buildSpawnOptions(propIds, assemblyManifests) {
     /** @type {{ value: string, label: string }[]} */
-    const options = propIds.map((id) => {
-        const asset = getPropAsset(id);
-        return { value: id, label: asset?.sandbox?.spawnLabel ?? id.replace(/_/g, " ") };
-    });
+    const options = propIds.map((id) => ({ value: id, label: formatSandboxSpawnLabel(id) }));
     const assemblies = [...assemblyManifests].sort((a, b) => a.label.localeCompare(b.label));
     for (const manifest of assemblies) options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
     return options;
@@ -154,7 +59,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
         const assemblyManifests = controller.listAssemblyManifests();
         const spawnOptions = buildSpawnOptions(propIds, assemblyManifests);
         if (spawnOptions.length === 0) {
-            container.innerHTML = `<p class="editor-hint">No sandbox spawn options loaded</p>`;
+            appendEditorHint(container, "No sandbox spawn options loaded");
             return;
         }
         const sectionOpen = (id, fallback = true) => {
@@ -239,8 +144,8 @@ export function mountSandboxToyUi(container, controller, onChange) {
         const floorBelts = controller.listPlacedFloorBelts();
         const assemblies = controller.listAssemblies();
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
-            appendSubhead(body, "Props");
-            appendEntityList(
+            appendEditorSubhead(body, "Props");
+            appendInstanceList(
                 body,
                 placed.map((entry) => ({
                     label: `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`,
@@ -250,8 +155,8 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 })),
                 "No props placed yet.",
             );
-            appendSubhead(body, "Conveyor belts");
-            appendEntityList(
+            appendEditorSubhead(body, "Conveyor belts");
+            appendInstanceList(
                 body,
                 floorBelts.map((entry) => ({
                     label: entry.label,
@@ -265,8 +170,8 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 "No conveyor belts placed yet.",
             );
             if (assemblies.length > 0) {
-                appendSubhead(body, "Assemblies");
-                appendEntityList(
+                appendEditorSubhead(body, "Assemblies");
+                appendInstanceList(
                     body,
                     assemblies.map((entry) => ({
                         label: entry.label,
@@ -282,10 +187,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
         });
         appendSection(container, "selected", "Selected", sectionOpen("selected", true), (body) => {
             if (selectionCount > 1) {
-                const multiHint = document.createElement("p");
-                multiHint.className = "editor-hint";
-                multiHint.textContent = `${selectionCount} props selected. Drag on empty space to box-select, or click one prop to select only that.`;
-                body.appendChild(multiHint);
+                appendEditorHint(body, `${selectionCount} props selected. Drag on empty space to box-select, or click one prop to select only that.`);
                 const deleteRow = document.createElement("div");
                 deleteRow.className = "sandbox-add-row";
                 const deleteBtn = document.createElement("button");
@@ -302,10 +204,10 @@ export function mountSandboxToyUi(container, controller, onChange) {
             }
             if (!selectedProp) {
                 if (selectedFloorBelt) {
-                    const beltHint = document.createElement("p");
-                    beltHint.className = "editor-hint";
-                    beltHint.textContent = `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, col/row, or rotation below. Move is blocked when the target has a wall or belt.`;
-                    body.appendChild(beltHint);
+                    appendEditorHint(
+                        body,
+                        `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, col/row, or rotation below. Move is blocked when the target has a wall or belt.`,
+                    );
                     appendSelectField(body, "Type", {
                         value: String(selectedFloorBelt.kind),
                         options: listFloorBeltKindOptions().map((option) => ({ value: String(option.kind), label: option.label })),
@@ -314,20 +216,22 @@ export function mountSandboxToyUi(container, controller, onChange) {
                             onChange();
                         },
                     });
-                    appendNumberField(body, "Col", {
-                        value: selectedFloorBelt.col,
-                        step: 1,
-                        onChange: (col) => {
-                            controller.moveSelectedFloorBeltTo(col, selectedFloorBelt.row);
-                            onChange();
+                    appendAxisNumberFields(body, {
+                        Col: {
+                            value: selectedFloorBelt.col,
+                            step: 1,
+                            onChange: (col) => {
+                                controller.moveSelectedFloorBeltTo(col, selectedFloorBelt.row);
+                                onChange();
+                            },
                         },
-                    });
-                    appendNumberField(body, "Row", {
-                        value: selectedFloorBelt.row,
-                        step: 1,
-                        onChange: (row) => {
-                            controller.moveSelectedFloorBeltTo(selectedFloorBelt.col, row);
-                            onChange();
+                        Row: {
+                            value: selectedFloorBelt.row,
+                            step: 1,
+                            onChange: (row) => {
+                                controller.moveSelectedFloorBeltTo(selectedFloorBelt.col, row);
+                                onChange();
+                            },
                         },
                     });
                     const rotateRow = document.createElement("div");
@@ -364,10 +268,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     body.appendChild(deleteRow);
                     return;
                 }
-                const empty = document.createElement("p");
-                empty.className = "editor-hint";
-                empty.textContent = "Select a prop or conveyor belt from Scene.";
-                body.appendChild(empty);
+                appendEditorHint(body, "Select a prop or conveyor belt from Scene.");
                 return;
             }
             const behaviorIds = controller.listSelectedBehaviors();
@@ -408,7 +309,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 if (spawnPropIds.length)
                     appendSelectField(body, "Spawn prop", {
                         value: resolveSpawnerPropId(selectedProp, selectedAsset),
-                        options: spawnPropIds.map((id) => ({ value: id, label: id.replace(/_/g, " ") })),
+                        options: spawnPropIds.map((id) => ({ value: id, label: formatSandboxSpawnLabel(id) })),
                         onChange: (value) => {
                             selectedProp.sandboxSpawnerPropId = value;
                             controller.sync?.();

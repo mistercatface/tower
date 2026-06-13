@@ -1,5 +1,5 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from "./spawnAssembly.js";
@@ -275,7 +275,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const placed = [];
             registry().forEachOfKind("worldProp", (prop) => {
                 if (prop.isDead || getSandboxEntityMeta(state).hasAssemblyMembership(prop.id)) return;
-                const typeLabel = (prop.type ?? "prop").replace(/_/g, " ");
+                const typeLabel = formatPropTypeLabel(prop.type);
                 const index = (counts.get(prop.type) ?? 0) + 1;
                 counts.set(prop.type, index);
                 placed.push({ id: prop.id, type: prop.type, faction: resolveSandboxFaction(prop), label: `${typeLabel} #${index}` });

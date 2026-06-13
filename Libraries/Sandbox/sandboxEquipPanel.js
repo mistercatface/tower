@@ -4,6 +4,7 @@ import { applyWorldPropWeaponLoadout } from "../Combat/worldPropWeaponLoadout.js
 import { gunSupportsAttachment, isWorldPropAttachmentEnabled, resolveWorldPropSlotGun, setWorldPropAttachmentEnabled } from "../Combat/worldPropWeaponState.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout, toggleGunInLoadout, unequipSlot } from "../Combat/equipmentLoadout.js";
 import { isSandboxEquippable } from "./sandboxCapabilities.js";
+import { appendEditorSubhead } from "../../Apps/Editor/ui/paramFields.js";
 /**
  * @param {HTMLElement} container
  * @param {object | null} prop
@@ -12,10 +13,7 @@ import { isSandboxEquippable } from "./sandboxCapabilities.js";
 export function renderSandboxEquipPanel(container, prop, onChange) {
     container.innerHTML = "";
     if (!prop || !isSandboxEquippable(getPropAsset(prop.type))) return;
-    const head = document.createElement("div");
-    head.className = "editor-subhead";
-    head.textContent = "Equipment";
-    container.appendChild(head);
+    appendEditorSubhead(container, "Equipment");
     const slotWrap = document.createElement("div");
     slotWrap.className = "sandbox-equip-slots";
     const slotCount = getEquipmentSlotCount(prop.weaponLoadout ?? []);
@@ -61,11 +59,7 @@ export function renderSandboxEquipPanel(container, prop, onChange) {
         slotWrap.appendChild(slot);
     }
     container.appendChild(slotWrap);
-    const armoryHead = document.createElement("div");
-    armoryHead.className = "editor-subhead";
-    armoryHead.style.marginTop = "8px";
-    armoryHead.textContent = "Armory";
-    container.appendChild(armoryHead);
+    appendEditorSubhead(container, "Armory", { style: { marginTop: "8px" } });
     const armory = document.createElement("div");
     armory.className = "sandbox-equip-armory";
     for (const gunId of playerEquipmentCatalog) {
