@@ -457,3 +457,15 @@ export function chunkHasStaticRoofAtLevel(obstacleGrid, chunkOriginX, chunkOrigi
     });
     return found;
 }
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {number} chunkOriginX @param {number} chunkOriginY @param {number} chunkSizePx @param {number} zLevel */
+export function chunkHasStaticEdgeRailsAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
+    let found = false;
+    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
+        for (let side = 0; side < 4; side++) {
+            if (!gridWallEdgeRailShouldEmit(obstacleGrid, col, row, side)) continue;
+            if (obstacleGrid.edgeGrid[idx * 4 + side] * obstacleGrid.cellSize !== zLevel) continue;
+            found = true;
+        }
+    });
+    return found;
+}

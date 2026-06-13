@@ -7,6 +7,7 @@ export {
     clipChunkToBlockedCells,
     clipChunkToWallFootprints,
     clipChunkToStaticEdgeRails,
+    clipChunkToFlatWallFootprints,
     drawStaticRoofDamageOverlays,
     drawStaticWallFootprintDamageOverlays,
     drawStaticEdgeRailFootprintDamageOverlays,

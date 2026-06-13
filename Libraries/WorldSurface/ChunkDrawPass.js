@@ -87,6 +87,36 @@ export function clipChunkToWallFootprints(ctx, pass) {
     });
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
+export function clipChunkToFlatWallFootprints(ctx, pass) {
+    const { obstacleGrid, wallSpatialIndex, zLevel } = pass;
+    const segmentGrid = obstacleGrid.segmentGrid;
+    return clipToPath(ctx, (clipCtx) => {
+        let clippedAny = false;
+        if (wallSpatialIndex) {
+            const segments = wallSpatialIndex.collectInBounds(pass.chunkAabb);
+            for (let i = 0; i < segments.length; i++) {
+                const wall = segments[i];
+                if (wall.isDead || wall.collisionOnly) continue;
+                traceClosedPolygon(clipCtx, getSegmentFootprintCorners(wall));
+                clippedAny = true;
+            }
+        }
+        forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
+            if (obstacleGrid.grid[idx] !== 0 && !segmentGrid?.[idx]?.length) {
+                traceAabbRect(clipCtx, obstacleGrid.getCellBounds(col, row));
+                clippedAny = true;
+            }
+            for (let side = 0; side < 4; side++) {
+                if (!gridWallEdgeRailShouldEmit(obstacleGrid, col, row, side)) continue;
+                if (obstacleGrid.edgeGrid[idx * 4 + side] * obstacleGrid.cellSize !== zLevel) continue;
+                traceAabbRect(clipCtx, gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, side));
+                clippedAny = true;
+            }
+        });
+        return clippedAny;
+    });
+}
+/** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
 export function clipChunkToStaticEdgeRails(ctx, pass) {
     const { obstacleGrid, zLevel } = pass;
     return clipToPath(ctx, (clipCtx) => {

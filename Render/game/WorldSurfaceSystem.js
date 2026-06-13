@@ -63,6 +63,15 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         const levels = zLevels.length ? zLevels : [fallbackZ];
         const playBounds = playBoundsFromObstacleGrid(state.obstacleGrid);
         for (let i = 0; i < levels.length; i++)
-            this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, wallSpatialIndex: state.wallSpatialIndex, viewport, state, zLevel: levels[i], playBounds, flatWallRails: true });
+            this.drawGroundChunks(ctx, {
+                obstacleGrid: state.obstacleGrid,
+                wallSpatialIndex: state.wallSpatialIndex,
+                viewport,
+                state,
+                zLevel: levels[i],
+                playBounds,
+                requireWallSegments: false,
+                flatWallRails: true,
+            });
     }
 }

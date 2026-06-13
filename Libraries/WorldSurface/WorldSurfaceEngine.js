@@ -13,12 +13,13 @@ import {
     clipChunkToWallFootprints,
     clipChunkToBlockedCells,
     clipChunkToStaticEdgeRails,
+    clipChunkToFlatWallFootprints,
     drawWallFootprintDamageOverlays,
     drawStaticRoofDamageOverlays,
     drawStaticWallFootprintDamageOverlays,
     drawStaticEdgeRailFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
-import { chunkHasStaticRoofAtLevel, resolveWallCapHeightPx } from "../World/wallGridCells.js";
+import { chunkHasStaticRoofAtLevel, chunkHasStaticEdgeRailsAtLevel, resolveWallCapHeightPx } from "../World/wallGridCells.js";
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
@@ -308,7 +309,8 @@ export class WorldSurfaceEngine {
                     requireWallSegments &&
                     !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx) &&
                     !chunkHasBlockedCells(obstacleGrid, originX, originY, chunkSizePx) &&
-                    !(staticRoofDraw && chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel))
+                    !(staticRoofDraw && chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel)) &&
+                    !(flatWallRails && chunkHasStaticEdgeRailsAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel))
                 )
                     continue;
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
@@ -344,8 +346,7 @@ export class WorldSurfaceEngine {
                         drawProjectedHorizontalChunk(ctx, drawCanvas, corners, this.settings);
                         drawStaticRoofDamageOverlays(ctx, pass, sRoofChunkCorners);
                     } else if (flatWallRails) {
-                        const clipped = clipChunkToWallFootprints(ctx, pass) || clipChunkToBlockedCells(ctx, pass) || clipChunkToStaticEdgeRails(ctx, pass);
-                        if (!clipped) {
+                        if (!clipChunkToFlatWallFootprints(ctx, pass)) {
                             ctx.restore();
                             continue;
                         }
