@@ -2,64 +2,58 @@
 
 ## Current — unified grid walls (`WorldObstacleGrid` fill + edge)
 
-One lattice for grid-snapped wall geometry. **One canonical face struct → draw, collision, nav.** No prop sync, no second collision pass, no separate proxy math.
+One lattice for grid-snapped wall geometry.
 
 - **`fill[idx]`** — `grid[]`: 0 = open, 1+ = static cell height (voxel block).
-- **`edge[idx]`** — N/E/S/W height on cell boundary; open interior + edge = rail.
+- **`edge[idx]`** — N/E/S/W height on cell boundary; open interior + edge = thin rail box.
 
-### Phase 1 — Canonical geometry (single source of truth)
+**Fill voxels** — existing face-line path (`computeProjectedFace` + chunk roof). Unchanged.
 
-- [x] **`edge[]` on `WorldObstacleGrid`** — parallel to `grid[]`; migrate on expand; bump `wallGridRevision`.
-- [x] **`writeCellEdge` / `stampCellEdge` / clear** — height level + thickness; neighbor sync.
-- [x] **`resolveGridWallFace` + `gridWallEdgeEndpoints`** in `wallGridCells.js` — one struct for draw + collision.
-- [x] **`collectGridWallFacesInAabb`** — fill faces + edge rails (deduped per physical edge).
-- [x] **`gridWallFaceToCollisionSegment`** — collision built from same face as draw.
+**Edge rails** — axis-aligned box (`GridEdgeRailBox`); draw via `projectWorldPointInto` (same projection as roofs/props). **Rejected:** face-line + `computeProjectedFace`, coplanar dual faces, chunk roof strip mask.
 
-### Phase 2 — Draw + surfaces
+### Phase 1 — Data + collision (done)
 
-- [x] **Face collector** uses `collectGridWallFacesInAabb` only (no duplicate math in `StaticGridWallDraw`).
-- [x] **Edge rails: no chunk roof bake** — cap comes from wall face band only (fill voxels keep chunk roofs).
-- [x] **Fill roofs unchanged** — full cell mask at cap Z.
+- [x] **`edge[]` / `edgeThicknessGrid`** on `WorldObstacleGrid`; neighbor sync; `wallGridRevision`.
+- [x] **`writeCellEdge` / stamp / clear** in editor.
+- [x] **`gridWallEdgeRailShouldEmit`** — one physical rail per shared boundary.
+- [x] **`gridWallEdgeRailToCollisionSegment`** — boundary-centered segment, full thickness.
+- [x] **Nav `canStep`** on edge crossing.
+
+### Phase 2 — Edge rail box draw (in progress)
+
+- [x] **`resolveGridWallEdgeRailBox` + `collectGridEdgeRailBoxesInAabb`** — footprint + inner/outer face lines + cap height.
+- [x] **`drawProjectedGridEdgeRail`** — `projectWorldPointInto` for 2 side quads + top cap (no `computeProjectedFace`).
+- [x] **`drawProjectedWallFaceElevated`** — fill faces can migrate later; rails use this for textured sides.
+- [x] **Wire `WorldSceneRenderer`** — `staticGridEdgeRail` → box draw; fill stays on `drawProjectedWallFace`.
+- [x] **Remove edge rails from chunk roof path** — no strip in `buildStaticRoofMaskCanvas` / `collectStaticRoofHeightsFromGrid`.
+- [ ] **Debug wireframe toggle** (optional) — projected box corners before closing acceptance.
 - [ ] **Optional:** collinear merge for long straight rails (perf).
 
-### Phase 3 — Collision
+### Phase 3 — Fill voxel draw (unchanged)
 
-- [x] **Edge rails:** `resolveGridWallFace` → `gridWallFaceToCollisionSegment` (same geometry as draw).
-- [x] **Fill voxels:** cell-center proxy unchanged (works today).
-- [x] **Same `resolveWalls` path** — no parallel pass, no teleport nudging.
-- [ ] **Fill voxels:** optional upgrade to face segments later (not blocking).
+- [x] **`collectGridWallFacesInAabb`** — fill cells only.
+- [x] **Chunk roof** — full cell mask at cap Z via `drawRoofs`.
 
-### Phase 4 — Nav
+### Phase 4 — Editor
 
-- [x] **Cell blocked** — `fill > 0`.
-- [x] **Edge crossing** — `canStep` on shared edge height.
-- [x] **HPA / flow field** — consume `canStep`.
+- [x] Stamp mode: Solid fill vs Edge line (side + thickness).
+- [x] Delete clears fill + edges.
+- [ ] **Run acceptance matrix** (below) before calling edge rails done.
 
-### Phase 5 — Editor (gated on acceptance)
+### Acceptance (hard gate)
 
-- [x] **Stamp mode:** Solid fill vs Edge line (side + thickness) on wall tool panel.
-- [x] **Delete** clears fill + edges in bounds.
-- [ ] **Run acceptance matrix** before calling edge rails done (see below).
-
-### Performance
-
-- [x] Geom cache invalidates on `wallGridRevision` (fill + edge).
-- [ ] Face-level AABB cull (backlog — render perf section).
-
-### Acceptance (must pass before closing this task)
-
-- [ ] Fill voxel: unchanged — height, roof, damage, nav block, collision from all angles.
-- [ ] Edge rail on open floor: one wall face, **no full-cell roof**, interior walkable.
-- [ ] Ball bounces off **visible face line**, not cell center.
-- [ ] Thickness 2 vs 4: visual inset + contact both change together.
-- [ ] 8×1 edge line: continuous wall, no gaps, no double caps.
-- [ ] No manual `entity.x/y +=`; no parallel collision pass.
+- [ ] Fill voxel unchanged from all angles.
+- [ ] Edge rail: **two visible side faces** when orbiting; **top cap aligned** with sides (same projection).
+- [ ] Interior walkable; ball hits boundary segment.
+- [ ] Thickness 2 vs 4 changes visible width + collision together.
+- [ ] 8×1 line continuous, no gaps.
+- [ ] No parallel collision pass / teleport nudging.
 
 ### Migration / scope
 
-- [ ] **Grid-snapped content** — fill + edge only; no Segment entities for map rails.
-- [ ] **`segmentGrid`** — secondary layer for arbitrary-angle walls until baked.
-- [ ] **Conveyors** — floor props only; no edge data on belt assets.
+- [ ] Grid-snapped content — fill + edge only for map rails.
+- [ ] **`segmentGrid`** — arbitrary-angle walls until baked.
+- [ ] Conveyors — floor props only.
 
 ---
 
@@ -104,7 +98,7 @@ One lattice for grid-snapped wall geometry. **One canonical face struct → draw
 
 - [ ] **`drawKinematicsFrameToCanvas` bundle**
 - [ ] **`NavigationContext`**
-- [ ] **`getStaticRoofDrawCanvas` / mask bake**
+- [ ] **Migrate fill voxels to `drawProjectedWallFaceElevated`** (unify projection with rails/roofs)
 
 ### Render / bake perf
 

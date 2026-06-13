@@ -11,7 +11,7 @@ export {
     drawWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { gridWallEdgeRailFootprintAabb, gridWallEdgeRailShouldEmit, resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
+import { resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 /**
@@ -58,24 +58,12 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
     ctx.fillStyle = "#ffffff";
     let any = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
-        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) {
-            const bounds = obstacleGrid.getCellBounds(col, row);
-            const x = Math.round((bounds.minX - chunkOriginX) * texelResolution);
-            const y = Math.round((bounds.minY - chunkOriginY) * texelResolution);
-            ctx.fillRect(x, y, cellBakeSize, cellBakeSize);
-            any = true;
-        }
-        for (let edge = 0; edge < 4; edge++) {
-            if (!gridWallEdgeRailShouldEmit(obstacleGrid, col, row, edge)) continue;
-            if (obstacleGrid.edgeGrid[idx * 4 + edge] * obstacleGrid.cellSize !== zLevel) continue;
-            const fp = gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, edge);
-            const x = Math.round((fp.minX - chunkOriginX) * texelResolution);
-            const y = Math.round((fp.minY - chunkOriginY) * texelResolution);
-            const w = Math.max(1, Math.round((fp.maxX - fp.minX) * texelResolution));
-            const h = Math.max(1, Math.round((fp.maxY - fp.minY) * texelResolution));
-            ctx.fillRect(x, y, w, h);
-            any = true;
-        }
+        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) !== zLevel) return;
+        const bounds = obstacleGrid.getCellBounds(col, row);
+        const x = Math.round((bounds.minX - chunkOriginX) * texelResolution);
+        const y = Math.round((bounds.minY - chunkOriginY) * texelResolution);
+        ctx.fillRect(x, y, cellBakeSize, cellBakeSize);
+        any = true;
     });
     return any ? canvas : null;
 }

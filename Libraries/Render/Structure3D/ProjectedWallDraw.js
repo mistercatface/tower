@@ -5,7 +5,7 @@
 import { drawImageQuad } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 import { getTexelResolution } from "../../WorldSurface/WorldSurfaceResolution.js";
-import { resolveElevationAlpha } from "../../Spatial/iso/IsometricProjection.js";
+import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad } from "../../Canvas/CanvasPath.js";
 import { drawDamageOverlayInClip } from "./wallDamageVisual.js";
@@ -196,6 +196,47 @@ function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera) {
     }
     blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wallCtx.worldBounds);
 }
+/**
+ * Project one horizontal edge of a wall band at a fixed world Z (same math as roofs/props).
+ * @param {{ x: number, y: number }} p1
+ * @param {{ x: number, y: number }} p2
+ * @param {number} z
+ * @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
+ * @param {ReturnType<typeof computeProjectedFace>} out
+ */
+export function projectWallFaceBandInto(p1, p2, z, camera, out) {
+    const t1 = { x: 0, y: 0 };
+    const t2 = { x: 0, y: 0 };
+    projectWorldPointInto(t1, p1.x, p1.y, z, camera);
+    projectWorldPointInto(t2, p2.x, p2.y, z, camera);
+    out.proj1X = t1.x;
+    out.proj1Y = t1.y;
+    out.proj2X = t2.x;
+    out.proj2Y = t2.y;
+    return out;
+}
+
+/**
+ * Wall face draw using `projectWorldPointInto` (rails, future fill migration).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{ x: number, y: number }} p1
+ * @param {{ x: number, y: number }} p2
+ * @param {WallDrawContext} wallCtx
+ */
+export function drawProjectedWallFaceElevated(ctx, p1, p2, wallCtx) {
+    const { wallHeight, wallBaseZ, proceduralSurfaceDraw, fillStyle, damageAlpha, camera } = wallCtx;
+    const topZ = wallBaseZ + wallHeight;
+    const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, camera, sFaceBottom);
+    const faceTop = projectWallFaceBandInto(p1, p2, topZ, camera, sharedScratchFace);
+    traceProjectedFaceBand(ctx, faceBottom, faceTop);
+    if (proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera);
+    else {
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+    }
+    if (damageAlpha > 0) drawDamageOverlayInClip(ctx, damageAlpha, (clipCtx) => appendProjectedFaceBand(clipCtx, faceBottom, faceTop));
+}
+
 /**
  * Shared wall-face draw: project → trace → texture or solid fill → optional damage overlay.
  *

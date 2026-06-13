@@ -2,6 +2,7 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 /** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 import { getStaticCellDamageAlphaAtIdx } from "../World/staticCellDamage.js";
+import { collectStaticGridEdgeRailDrawables, drawProjectedGridEdgeRail } from "./Structure3D/StaticGridEdgeRailDraw.js";
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
@@ -20,6 +21,7 @@ export class WorldSceneRenderer {
         this.props = new PropRenderer(propRecipes);
         this.visibleDrawables = [];
         this.staticGridDrawables = [];
+        this.staticGridEdgeRailDrawables = [];
     }
     /** @param {Record<string, PropDrawRecipe>} propRecipes */
     setPropRecipes(propRecipes) {
@@ -93,8 +95,10 @@ export class WorldSceneRenderer {
     }
     _appendVisibleStaticGridWalls(input, viewport, px, py) {
         collectStaticGridWallDrawables(input.obstacleGrid, viewport, px, py, this.staticGridDrawables);
+        collectStaticGridEdgeRailDrawables(input.obstacleGrid, viewport, px, py, this.staticGridEdgeRailDrawables);
         const visibleObjects = this.visibleDrawables;
         for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
+        for (let i = 0; i < this.staticGridEdgeRailDrawables.length; i++) visibleObjects.push(this.staticGridEdgeRailDrawables[i]);
     }
     draw3DBuildings(ctx, input, viewport, _walls, options = {}) {
         const skipWalls = options.skipWalls === true;
@@ -124,7 +128,14 @@ export class WorldSceneRenderer {
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
             if (obj.strategy || obj.usesKinematicsBody) drawWorldProp(ctx, obj, viewport, drawContext);
-            else if (!skipWalls && obj.staticGrid) {
+            else if (!skipWalls && obj.staticGridEdgeRail) {
+                wallCtx.wallHeight = obj.wallHeight;
+                wallCtx.wallBaseZ = obj.wallBaseZ;
+                wallCtx.wallCapHeight = obj.wallCapHeight;
+                wallCtx.cacheObj = obj;
+                wallCtx.damageAlpha = 0;
+                drawProjectedGridEdgeRail(ctx, obj, wallCtx);
+            } else if (!skipWalls && obj.staticGrid) {
                 wallCtx.wallHeight = obj.wallHeight;
                 wallCtx.wallBaseZ = obj.wallBaseZ;
                 wallCtx.wallCapHeight = obj.wallCapHeight;
