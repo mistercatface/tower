@@ -1,91 +1,127 @@
 # todo
 
-## Current — NONE
+## Current — unified grid walls (`WorldObstacleGrid` fill + edge)
 
-## Backlog
+Extend the existing obstacle grid so **one lattice** owns all grid-snapped wall geometry:
 
-### conveyor belts
+- **`fill[idx]`** — interior voxel height (today’s `grid[]`: 0 = open, 1+ = static cell height).
+- **`edge[idx]`** — per-side wall height on N/E/S/W (0 = none). Open cell interior + wall on one edge = rail.
 
-Floor props fixed to the obstacle grid, one cell per segment. Low box sprite (crate-like, short height) with a direction arrow on the top face. Push occupants in the arrow direction while they overlap the cell — same occupancy + force pattern as `gravity_pad`, but **one cell wide**, **cardinal facing only**, and **chain-placed** so segments snap together when you paint them.
+Same revision/stamp lifecycle as static walls. Same draw stack (`drawProjectedWallFace`, procedural band, cap/roof). **Not** prop-driven edge resolver, **not** Segment sync for grid-snapped content.
 
-**Corners:** no separate elbow prop or L-shaped physics. A 90° turn is just two (or more) grid cells with different facings; force is always “along this cell’s arrow.” Elbow look is **draw-only** (corner sprite / join art) — optional polish, not a blocker.
+### Model
 
-- [ ] **Conveyor placement tool** — with belt selected, pointer drag on grid paints a polyline of cells (like static wall stamp, but props not walls).
-- [ ] **Facing along the path** — each new cell gets facing from drag direction (cardinal step); 90° bends are just the next cell’s facing — same prop type throughout.
-- [ ] **Conflict rules** — reject overlap with existing belt cell; optional replace-on-paint. Breaking a chain deletes or orphans segments consistently.
-- [ ] **Chained spawn UX** — each new cell attaches to the previous; ESC / tool change ends chain; backspace removes last segment optional.
-- [ ] **Inspector** — force slider; rotate 90°; read-only grid coords. _(partial — done for `conveyor`; generalize if more grid props appear)_
-- [ ] **Corner draw variants (optional)** — mitered/corner top-face art when a cell has a perpendicular belt neighbor; cosmetic only, no new collision or effect.
-- [ ] **Smoke test** — L-shaped path of cells + ball dropped on entry.
+- [ ] **`edge[]` on `WorldObstacleGrid`** — parallel to `grid[]`; migrate on expand/rebuild; bump `wallGridRevision`.
+- [ ] **`stampCellFill` / `stampCellEdge` / clear** — mirror `stampStaticWalls`; height level per stamp (same level scale as fill voxels).
+- [ ] **Optional `edgeThickness`** — per-edge or per-stamp thickness (world px); used by draw + collision (see below).
+- [ ] **Shared edge geometry** — extract `cellEdgeEndpoints(col, row, edge)` from static wall draw; one source for draw, debug, collision.
+
+### Draw + surfaces (reuse static wall pipeline)
+
+- [ ] **Unified face collector** — fill-derived faces (today) + explicit edge faces (new) → same drawable `{ p1, p2, wallHeight, wallCapHeight, … }`.
+- [ ] **`drawProjectedWallFace`** — no second renderer; optional face kind `fill | edge` for roof/cap rules.
+- [ ] **Roof masks** — fill → full cell rect at cap Z; edge-only → thin strip along edge at cap Z.
+- [ ] **Thickness in draw** — visual depth/inset from `edgeThickness` (cosmetic extrusion depth, not a second occupancy grid).
+
+### Collision (face-based, not cell-center proxy)
+
+- [ ] **Face query** — nearby cells → enumerate active faces (fill + edge); thin contact on `p1–p2`.
+- [ ] **Thickness in physics** — collision plane/segment offset **inward** by half thickness from grid line; span still `cellSize` along edge (or shortened for corners). Exact for the chosen primitive — plane/box matches stored thickness.
+- [ ] **Wire into `resolveWalls`** — same impulse path as segments; remove reliance on fat cell-center proxy for edge-only walls.
+
+### Nav + pathfinding
+
+- [ ] **Cell blocked** — `fill > 0` (unchanged).
+- [ ] **Edge crossing** — cardinal step A→B blocked if shared edge has height on either side.
+- [ ] **HPA / flow field** — consume edge crossing; still one `WorldObstacleGrid` revision.
+
+### Editor
+
+- [ ] **Edge/rail stamp tool** — pick cell + side (or drag polyline of edges); writes `edge[]`.
+- [ ] **Fill stamp tool** — existing static wall stamp → writes `fill[]` (rename/clarify only if needed).
+- [ ] **Thickness control** — tool or inspector param on stamp (e.g. 1–4 px); stored on edge stamp.
+
+### Migration / scope
+
+- [ ] **Grid-snapped new content** — fill + edge only; no new Segment entities for map rails/voxels.
+- [ ] **`segmentGrid`** — keep for arbitrary-angle Segment walls until baked; document as secondary layer.
+- [ ] **Conveyors** — stay floor props (`pullAlongFacing`); do **not** hang edge data off belt assets.
+
+### Acceptance
+
+- [ ] Fill voxel: behaves like today’s static wall (height, roof, damage, nav block).
+- [ ] Edge rail: open cell, one procedural face, thin cap, ball bounces off edge not cell center.
+- [ ] Thickness 2 vs 4 px: visible difference + collision inset matches.
+- [ ] No manual `entity.x/y +=` edge resolver; no parallel collision pass.
 
 ---
 
+## Backlog
+
+### Conveyor belts (Phase 2+)
+
+- [ ] **Conveyor placement tool** — drag polyline on grid (props, not wall stamps).
+- [ ] **Facing along path** — cardinal step from drag direction.
+- [ ] **Conflict rules** — reject overlap with existing belt cell.
+- [ ] **Chained spawn UX** — attach cells; ESC ends chain.
+- [ ] **Corner draw variants (optional)** — miter art when perpendicular belt neighbors.
+- [ ] **Smoke test** — L-shaped path + ball on entry.
+
 ### Floor props
 
-- [ ] **`button_bumper` 3D** — impact-activated button; same `buttonLinks`; not `spatialRole: "trigger"`.
-- [ ] **`poweredLinkId` on strategy** — optional: gravity pad declares its button source on the pad row (today: button `targets` only; pinball works without this).
-- [ ] **Moving pit / conveyor kinematics** — floor prop that moves per tick (related long-term; belts are fixed cells for now).
-- [ ] **Floor prop resize from UI** — arbitrary rect beyond spawn params.
+- [ ] **`button_bumper` 3D**
+- [ ] **`poweredLinkId` on strategy**
+- [ ] **Moving pit / conveyor kinematics**
+- [ ] **Floor prop resize from UI**
 
 ### Bounds / Box4 (deferred)
 
-- [ ] **`Box4f` / `Box4i` math layer** — shared min/max interval ops for world + grid boxes.
-- [ ] **Redo `GridCellRect` as min/max** — unify with `Aabb2D` algebra.
-- [ ] **Frame converters** — `gridBoxToWorldAabbInto`, `worldAabbToGridBoxInto`.
-- [ ] **Migrate `Aabb2D` object API** — optional thin view over `Box4f`.
-- [ ] **`boundsToCellRect(aabb)`** — accept `Aabb2D` at grid floor.
+- [ ] **`Box4f` / `Box4i` math layer**
+- [ ] **Redo `GridCellRect` as min/max**
+- [ ] **Frame converters**
+- [ ] **Migrate `Aabb2D` object API**
+- [ ] **`boundsToCellRect(aabb)`**
 
 ### Entity registry
 
-- [ ] **Hardening: sync pickups on state load** — registry membership + spatial tags when restoring sim state.
-- [ ] **Reduce dual array/registry scans** — `pushablePhysicsPass`, assembly cleanup via `forEachOfKind` where order allows.
+- [ ] **Hardening: sync pickups on state load**
+- [ ] **Reduce dual array/registry scans**
 
 ### WorldProp / state shape
 
-- [ ] **Combat as one owned object** — `weaponLoadout`, turrets, etc. under `prop.combat`.
-- [ ] **Type-specific state structs** — flipper, stand tip, rolling state in per-kind bags.
-- [ ] **Locomotion agent boundary** — explicit locomotion component instead of field graft on every prop.
+- [ ] **Combat as one owned object**
+- [ ] **Type-specific state structs**
+- [ ] **Locomotion agent boundary**
 
 ### Refactors
 
-- [ ] **`drawKinematicsFrameToCanvas` bundle** — sprite bake scratch + rig + viewContext.
-- [ ] **`NavigationContext`** — dedupe 11-arg nav infra in `planHpaSteering` / `replanPath`.
-- [ ] **`getStaticRoofDrawCanvas` / mask bake** — fold mask coords into `ChunkDrawPass`.
+- [ ] **`drawKinematicsFrameToCanvas` bundle**
+- [ ] **`NavigationContext`**
+- [ ] **`getStaticRoofDrawCanvas` / mask bake**
 
 ### Render / bake perf
 
-- [ ] **Cache `computeWallFaceSubdiv` on drawable** — keyed by quantized viewer position.
-- [ ] **`blitWallFaceSubdiv` row/col band tables** — precompute subdiv bands once.
-- [ ] **Face-level AABB cull before per-quad cull**.
-- [ ] **`composeSurfaceImage` per-motif full-pixel passes** — offline motif bake or tile-based processing for heavy profiles.
-- [ ] **Read `getTexelResolution(settings)` once per draw pass** in `WorldSurfaceEngine`.
-- [ ] **Batch or cache `getStaticCellDamageAlphaAtGrid`** when many damaged cells visible.
+- [ ] **Cache `computeWallFaceSubdiv` on drawable**
+- [ ] **`blitWallFaceSubdiv` row/col band tables**
+- [ ] **Face-level AABB cull**
+- [ ] **`composeSurfaceImage` per-motif passes**
+- [ ] **Read `getTexelResolution` once per draw pass**
+- [ ] **Batch static cell damage alpha**
 
 ### Vector overlay (later)
 
-- [ ] Per-asset vector colors; skip kinematics tick in vector-only mode; projectile vector shapes.
+- [ ] Per-asset vector colors; skip kinematics in vector-only mode.
 
 ### Smell
 
-- [ ] **`createDefaultRenderPorts({ weaponVisuals: … })` in `engine.js`** — belongs elsewhere?
+- [ ] **`createDefaultRenderPorts` in `engine.js`**
 
-### Archive under `Libraries/Deprecated/` (gitignored)
+### Archive / never-wired
 
-Already archived: `sharedEdges/`, `sceneCompiler/`, `canvasInput/`.
-
-Removed (too trivial to archive): `spawnStartProps.js`.
-
-#### Never-wired subsystems
-
-- [ ] **`Libraries/Radio/`** — `createRadioSystem` never called; strip vestigial hooks after move.
-- [ ] **`Libraries/Inspect/`** — 3D inspect viewer; zero external imports.
-- [ ] **`Libraries/Triggers/PersistentTriggers.js`** (+ `Triggers/index.js` if empty).
-- [ ] **`Libraries/Persistence/createDebouncedStorage.js`** (+ `Persistence/index.js` if empty).
-
-#### Still registered but legacy
-
-- [ ] **`panelGrid` motif** — remove from `MotifRegistry` or archive under `Deprecated/`.
+- [ ] **`Libraries/Radio/`**, **`Libraries/Inspect/`**, **`PersistentTriggers`**, **`createDebouncedStorage`**
+- [ ] **`panelGrid` motif**
 
 ### Longer term
 
-- [ ] **Interaction layers** — `drawLayer` + bitmask `collisionLayers` instead of scattered flags (`renderMode`, `spatialRole`, separate floor tick passes).
+- [ ] **Interaction layers** — `drawLayer` + `collisionLayers` bitmask.
+- [ ] **Grid wall extras** (see design notes): corner posts, half-height edges, doors, one-way edges, per-edge damage, autotile trim from edge adjacency.
