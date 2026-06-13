@@ -22,7 +22,7 @@ export class NavigationService {
                     controller.settings,
                     controller.flowFieldGrid.navGraph,
                     controller.obstacleGeneration,
-                    state?.viewport ? { isVisible: (e) => state.viewport.isVisible(e.x, e.y, e.radius, VIEWPORT_VISIBILITY_PAD_WIDE) } : {},
+                    (e) => state.viewport.isVisible(e.x, e.y, e.radius, VIEWPORT_VISIBILITY_PAD_WIDE),
                     state?.gameTime ?? Date.now(),
                 ),
             onSteerComplete: (entity, { navState, settings }) => {
