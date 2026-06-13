@@ -16,6 +16,16 @@ export function createLabMapBoundsPreview() {
         centerRow: NaN,
         outerRadiusCells: NaN,
         donutThicknessCells: NaN,
+        rail: createAabb(),
+        railMode: "",
+        railCol: NaN,
+        railRow: NaN,
+        railCols: NaN,
+        railRows: NaN,
+        railCenterCol: NaN,
+        railCenterRow: NaN,
+        railOuterRadiusCells: NaN,
+        railDonutThicknessCells: NaN,
         wall: createAabb(),
         wallMode: "",
         wallCol: NaN,
@@ -48,6 +58,21 @@ export class TileLabEditorState {
             iterations: 3,
             wallHeightLevel: 9,
         };
+        this.railConfig = {
+            boundsMode: "rect",
+            boundsCol: -8,
+            boundsRow: -8,
+            boundsCols: 32,
+            boundsRows: 32,
+            centerCol: 8,
+            centerRow: 8,
+            outerRadiusCells: 16,
+            donutThicknessCells: 4,
+            fillChance: 0.45,
+            iterations: 3,
+            wallHeightLevel: 9,
+            edgeThickness: 2,
+        };
         this.wallToolConfig = {
             boundsMode: "rect",
             boundsCol: 0,
@@ -69,6 +94,7 @@ export class TileLabEditorState {
         this.showMapOverview = true;
         this.showMapOverviewViewport = true;
         this.showMapOverviewGenBounds = true;
+        this.showMapOverviewRailBounds = true;
         this.showMapOverviewWallBounds = false;
         this.forceVectorPropsAll = false;
     }

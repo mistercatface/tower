@@ -30,6 +30,11 @@ export function paintMapOverviewFrame(state) {
         if (cavernConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.cavern, cache, displayW, displayH, "#ff9800", 2);
         else drawCavernBoundsPreview(ctx, cavernConfig, cache, displayW, displayH);
     }
+    if (state.editor.showMapOverviewRailBounds) {
+        const railConfig = state.editor.railConfig;
+        if (railConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.rail, cache, displayW, displayH, "#e040fb", 2);
+        else drawCavernBoundsPreview(ctx, railConfig, cache, displayW, displayH, "#e040fb");
+    }
     if (state.editor.showMapOverviewWallBounds) drawCellBoundsPreview(ctx, state.editor.wallToolConfig, state.editor.mapBoundsPreview.wall, cache, displayW, displayH, "#f44336", 2);
 }
 /** Vertical space for main map max-size when overview is visible. */

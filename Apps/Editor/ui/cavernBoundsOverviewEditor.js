@@ -4,15 +4,15 @@ import { applyCellBoundsDrag, applyCellBoundsDragAtPointer, cellBoundsCursor, hi
 import { drawWorldBoundsBox, drawWorldCircle, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
 export { drawWorldBoundsBox, drawWorldCircle } from "./mapOverviewDraw.js";
 const EDGE_HIT_PX = 8;
-/** @param {CanvasRenderingContext2D} ctx @param {import("../TileLabEditorState.js").TileLabEditorState["cavernConfig"]} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH */
-export function drawCavernBoundsPreview(ctx, config, cache, displayW, displayH) {
+/** @param {CanvasRenderingContext2D} ctx @param {import("../TileLabEditorState.js").TileLabEditorState["cavernConfig"]} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @param {string} [color] */
+export function drawCavernBoundsPreview(ctx, config, cache, displayW, displayH, color = "#ff9800") {
     const cellSize = gridSettings.cellSize;
     const center = getCavernCenterWorld(config, cellSize);
     const outerR = config.outerRadiusCells * cellSize;
-    drawWorldCircle(ctx, center.x, center.y, outerR, cache, displayW, displayH, "#ff9800", 2);
+    drawWorldCircle(ctx, center.x, center.y, outerR, cache, displayW, displayH, color, 2);
     if (config.boundsMode === "donut") {
         const innerR = getCavernInnerRadiusCells(config) * cellSize;
-        drawWorldCircle(ctx, center.x, center.y, innerR, cache, displayW, displayH, "#ff9800", 2, [4, 4]);
+        drawWorldCircle(ctx, center.x, center.y, innerR, cache, displayW, displayH, color, 2, [4, 4]);
     }
 }
 /** @typedef {"move" | "resize-outer" | "resize-inner" | "resize-e" | "resize-w" | "resize-n" | "resize-s" | "resize-se" | "resize-sw" | "resize-ne" | "resize-nw"} CavernDragMode */
@@ -31,6 +31,55 @@ export function hitTestCavernBounds(sx, sy, state, cache, displayW, displayH) {
     const world = screenToWorld(sx, sy, cache, displayW, displayH);
     if (config.boundsMode === "rect") {
         const bounds = state.editor.mapBoundsPreview.cavern;
+        const tl = worldToScreen(bounds.minX, bounds.minY, cache, displayW, displayH);
+        const br = worldToScreen(bounds.maxX, bounds.maxY, cache, displayW, displayH);
+        const left = tl.x;
+        const top = tl.y;
+        const right = br.x;
+        const bottom = br.y;
+        const nearLeft = Math.abs(sx - left) <= EDGE_HIT_PX;
+        const nearRight = Math.abs(sx - right) <= EDGE_HIT_PX;
+        const nearTop = Math.abs(sy - top) <= EDGE_HIT_PX;
+        const nearBottom = Math.abs(sy - bottom) <= EDGE_HIT_PX;
+        const insideX = sx >= left && sx <= right;
+        const insideY = sy >= top && sy <= bottom;
+        if (!insideX || !insideY) return null;
+        if (nearRight && nearBottom) return "resize-se";
+        if (nearLeft && nearBottom) return "resize-sw";
+        if (nearRight && nearTop) return "resize-ne";
+        if (nearLeft && nearTop) return "resize-nw";
+        if (nearRight) return "resize-e";
+        if (nearLeft) return "resize-w";
+        if (nearBottom) return "resize-s";
+        if (nearTop) return "resize-n";
+        return "move";
+    }
+    const center = getCavernCenterWorld(config, cellSize);
+    const centerS = worldToScreen(center.x, center.y, cache, displayW, displayH);
+    const distPx = Math.hypot(sx - centerS.x, sy - centerS.y);
+    const mapW = cache.maxX - cache.minX;
+    const outerPx = ((config.outerRadiusCells * cellSize) / mapW) * displayW;
+    const innerPx = ((getCavernInnerRadiusCells(config) * cellSize) / mapW) * displayW;
+    if (Math.abs(distPx - outerPx) <= EDGE_HIT_PX) return "resize-outer";
+    if (config.boundsMode === "donut" && Math.abs(distPx - innerPx) <= EDGE_HIT_PX) return "resize-inner";
+    if (distPx < outerPx - EDGE_HIT_PX && (config.boundsMode !== "donut" || distPx > innerPx + EDGE_HIT_PX)) return "move";
+    return null;
+}
+/**
+ * @param {number} sx
+ * @param {number} sy
+ * @param {import("../state.js").TileLabGameState} state
+ * @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache
+ * @param {number} displayW
+ * @param {number} displayH
+ * @returns {CavernDragMode | null}
+ */
+export function hitTestRailBounds(sx, sy, state, cache, displayW, displayH) {
+    const config = state.editor.railConfig;
+    const cellSize = gridSettings.cellSize;
+    const world = screenToWorld(sx, sy, cache, displayW, displayH);
+    if (config.boundsMode === "rect") {
+        const bounds = state.editor.mapBoundsPreview.rail;
         const tl = worldToScreen(bounds.minX, bounds.minY, cache, displayW, displayH);
         const br = worldToScreen(bounds.maxX, bounds.maxY, cache, displayW, displayH);
         const left = tl.x;
@@ -157,7 +206,7 @@ export function cavernBoundsCursor(mode) {
 }
 /** @param {HTMLCanvasElement} canvas @param {import("../state.js").TileLabGameState} state @param {() => void} onChange */
 export function mountOverviewBoundsEditors(canvas, state, onChange) {
-    /** @type {"cavern" | "wall" | null} */
+    /** @type {"cavern" | "rail" | "wall" | null} */
     let dragTarget = null;
     /** @type {CavernDragMode | import("./cellBoundsOverview.js").CellBoundsDragMode | null} */
     let dragMode = null;
@@ -179,6 +228,9 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
             if (dragTarget === "cavern")
                 if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.cavernConfig);
                 else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.cavernConfig);
+            else if (dragTarget === "rail")
+                if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.railConfig);
+                else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.railConfig);
             else if (dragMode === "resize-outer") applyCellBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.wallToolConfig);
             else applyCellBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.wallToolConfig);
             lastWorldX = world.x;
@@ -190,6 +242,10 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
         if (state.editor.showMapOverviewWallBounds) {
             const wallHit = hitTestCellBounds(sx, sy, state.editor.wallToolConfig, state.editor.mapBoundsPreview.wall, frame.cache, frame.displayW, frame.displayH);
             if (wallHit) cursor = cellBoundsCursor(wallHit);
+        }
+        if (cursor === "default" && state.editor.showMapOverviewRailBounds) {
+            const railHit = hitTestRailBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
+            if (railHit) cursor = cavernBoundsCursor(railHit);
         }
         if (cursor === "default" && state.editor.showMapOverviewGenBounds) {
             const cavernHit = hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
@@ -210,6 +266,20 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
                 e.stopPropagation();
                 dragTarget = "wall";
                 dragMode = wallHit;
+                const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
+                lastWorldX = world.x;
+                lastWorldY = world.y;
+                canvas.setPointerCapture(e.pointerId);
+                return;
+            }
+        }
+        if (state.editor.showMapOverviewRailBounds) {
+            const railHit = hitTestRailBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
+            if (railHit) {
+                e.preventDefault();
+                e.stopPropagation();
+                dragTarget = "rail";
+                dragMode = railHit;
                 const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
                 lastWorldX = world.x;
                 lastWorldY = world.y;
