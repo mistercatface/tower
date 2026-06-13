@@ -8,7 +8,6 @@ import {
     syncFloorTriggerAabb,
 } from "../Spatial/zones/floorShapes.js";
 import { syncPullFixtureWalls, teardownPullFixtureWalls } from "./pullFixtureWalls.js";
-import { readCellEdgeBarrierMask } from "../Spatial/grid/gridCellEdges.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { isButtonEntity, isMassButtonInputMode } from "./buttonInput.js";
 function appendNumberField(parent, labelText, { value, step = 1, min, onChange }) {
@@ -246,24 +245,6 @@ export function appendSandboxWorldPropInspectorFields(body, prop, { state, sync,
             body.appendChild(rotateRow);
         }
         if (beltTrigger) appendNumberField(body, "Force", { value: beltTrigger.force, step: 50, min: 0, onChange: (force) => patch(() => applyGridAnchoredFloorPropPatch(state, prop, { force })) });
-        if (readCellEdgeBarrierMask(prop)) {
-            const debugRow = document.createElement("label");
-            debugRow.className = "param-field check-inline";
-            const debugCheckbox = document.createElement("input");
-            debugCheckbox.type = "checkbox";
-            debugCheckbox.checked = getSandboxEntityMeta(state).getShowCellEdgeBarriers(prop.id);
-            debugCheckbox.addEventListener("change", () => {
-                getSandboxEntityMeta(state).setShowCellEdgeBarriers(prop.id, debugCheckbox.checked);
-                sync?.();
-                onChange();
-            });
-            debugRow.append(debugCheckbox, document.createTextNode(" Show edge barriers"));
-            body.appendChild(debugRow);
-            const debugHint = document.createElement("p");
-            debugHint.className = "editor-hint";
-            debugHint.textContent = "Yellow = blocked cell edge (where collision should sit). Open sides draw nothing.";
-            body.appendChild(debugHint);
-        }
         return;
     }
     appendTranslateFields(body, { x: prop.x, y: prop.y, onPatch: (pos) => patch(() => applyWorldPropPosition(prop, pos)) });

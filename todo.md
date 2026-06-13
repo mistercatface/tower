@@ -21,16 +21,6 @@ Floor props fixed to the obstacle grid, one cell per segment. Low box sprite (cr
 - [x] **Physics** — `floorTriggers: [{ when: "occupied", effect: "pullAlongFacing", force: … }]`.
 - [x] **Spawn** — sandbox menu entry; single-click places one snapped cell with current facing.
 
-### Phase 1.5 — cell edge barriers (physical rails)
-
-Grid-snapped props declare **which cell perimeter edges are solid** via a 4-bit local mask (`cellEdgeBarrier` on strategy). Collision is **exact grid cell edge planes** in the physics pass — not `Segment` walls, nothing to sync on spawn/rotate.
-
-- [x] **`gridCellEdges.js`** — `CELL_EDGE_*` mask, `getGridCellBoundsForProp`, hard edge-plane resolve.
-- [x] **`gridCellEdgeBarriers.js`** — `resolveEntityCellEdgeBarriers` in collision pipeline only.
-- [x] **Straight conveyor** — `cellEdgeBarrier: CELL_EDGE_LATERAL` on `conveyor.asset.js`; ball enters from rear, bounces off side rails.
-- [x] **Elbow conveyors** — named asymmetric masks per asset (`conveyor_elbow_left` / `_right`); local mask rotates with `facing`, no per-frame vector lists.
-- [ ] **Smoke test** — roll ball into straight segment from entrance vs sideways; rotate belt and confirm barriers follow; elbow wedge-in blocked on outer arc.
-
 ### Phase 2 — chain placement (paint mode)
 
 - [ ] **Conveyor placement tool** — with belt selected, pointer drag on grid paints a polyline of cells (like static wall stamp, but props not walls).

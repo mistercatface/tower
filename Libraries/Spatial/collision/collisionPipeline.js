@@ -4,7 +4,6 @@ import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.j
 import { massFromBody } from "../../Motion/bodyMass.js";
 import { applyActorPushTipImpulse } from "../../Props/actorPushTip.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
-import { resolveEntityCellEdgeBarriers } from "../../Sandbox/gridCellEdgeBarriers.js";
 import { shouldResolveActorPushable } from "./entityBroadphase.js";
 import { resolveCirclePair } from "./circlePair.js";
 import { circlesOverlap, findFirstCircleSegmentHit } from "./overlap.js";
@@ -23,8 +22,6 @@ function resolveActorPushable(actor, prop, resolveWalls, spatialFrame, state) {
     wakePushableBody(prop);
     resolveWalls(actor, spatialFrame);
     resolveWalls(prop, spatialFrame);
-    resolveEntityCellEdgeBarriers(state, actor);
-    resolveEntityCellEdgeBarriers(state, prop);
 }
 function pushablePairRestitution(p1, p2) {
     const r1 = p1.strategy?.pairRestitution;
@@ -140,7 +137,6 @@ export function runCollisionPipeline(
                     const prop = pushables[i];
                     if (prop.isDead || !prop.needsWallCollision()) continue;
                     resolveWalls(prop, spatialFrame);
-                    resolveEntityCellEdgeBarriers(state, prop);
                 }
             }
         }
