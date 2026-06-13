@@ -24,6 +24,7 @@ import { TileLabGameState } from "./state.js";
 import { floorPropEffectPass, tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
 import { tickFloorOccupancy } from "../../Libraries/Sandbox/floorOccupancy.js";
 import { sandboxController } from "./world/tilelabSandbox.js";
+import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
@@ -112,6 +113,12 @@ export function createEditorApp() {
     installEngineGlobals(engine, state);
     bindPlayback(engine.playback);
     const pauseManager = new PauseManager(state);
+    installRadioOverlay(document.getElementById("gameWrapper"), {
+        eventBus: events,
+        requestPause: (reason) => pauseManager.pause(reason),
+        requestResume: (reason) => pauseManager.resume(reason),
+        content: { conversations: {}, speakers: {}, mainCharacterId: "player" },
+    });
     engine.playbackHandlers = {
         togglePause() {
             pauseManager.toggleUser();

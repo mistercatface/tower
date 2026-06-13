@@ -18,7 +18,7 @@ export function createRadioDialogView({ mainCharacterId, elementIds = {}, getSpe
     /** Last non-main speaker — stays on the right through main character's reply. */
     let lastRemoteSpeaker = null;
     function getEl(id) {
-        return rootElement.getElementById ? rootElement.getElementById(id) : rootElement.querySelector(`#${id}`);
+        return rootElement.querySelector(`#${id}`);
     }
     function bindElements() {
         elements.overlay = getEl(ids.overlay);

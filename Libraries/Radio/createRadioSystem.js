@@ -10,9 +10,9 @@ export function createRadioSystem({ conversations, speakers, mainCharacterId }) 
     const registry = createRadioRegistry({ conversations, speakers });
     /** @type {ReturnType<typeof createRadioController> | null} */
     let controller = null;
-    function wire(eventBus, { requestPause, requestResume }) {
+    function wire(eventBus, { requestPause, requestResume, rootElement = document }) {
         const PAUSE_REASON = "radio";
-        const view = createRadioDialogView({ mainCharacterId, getSpeaker: (id) => registry.getSpeaker(id) });
+        const view = createRadioDialogView({ mainCharacterId, getSpeaker: (id) => registry.getSpeaker(id), rootElement });
         controller = createRadioController({
             registry,
             requestPause: () => requestPause(PAUSE_REASON),

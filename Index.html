@@ -13,21 +13,7 @@
     <body>
         <div id="gameWrapper">
             <canvas id="gameCanvas"></canvas>
-
-            <!-- Per-game chrome injected by uiPort.mount() -->
             <div id="ui-root"></div>
-
-            <!-- Engine overlays (shared by all games) -->
-            <div id="radioDialog" class="radio-dialog" style="display: none">
-                <button type="button" class="radio-dialog-screen" id="radioDialogAdvanceBtn">
-                    <div id="radioPortraitRow" class="radio-dialog-portraits"></div>
-                    <div class="radio-dialog-text-panel">
-                        <div id="radioSpeakerName" class="radio-dialog-speaker"></div>
-                        <div id="radioLineText" class="radio-dialog-line"></div>
-                    </div>
-                    <div class="radio-dialog-hint">Tap to continue</div>
-                </button>
-            </div>
         </div>
         <script type="module" src="main.js"></script>
     </body>
