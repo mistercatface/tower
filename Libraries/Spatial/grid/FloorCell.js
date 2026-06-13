@@ -40,8 +40,8 @@ export function floorBeltEntryExitSides(kind, facingIndex) {
         const entrySide = (f + 3) % CARDINAL_FACING_STEPS;
         return { entrySide, exitSide };
     }
-    if (turn === "left") return { entrySide: (3 + f) % CARDINAL_FACING_STEPS, exitSide: (0 + f) % CARDINAL_FACING_STEPS };
-    return { entrySide: (3 + f) % CARDINAL_FACING_STEPS, exitSide: (2 + f) % CARDINAL_FACING_STEPS };
+    if (turn === "left") return { entrySide: (2 + f) % CARDINAL_FACING_STEPS, exitSide: (1 + f) % CARDINAL_FACING_STEPS };
+    return { entrySide: (0 + f) % CARDINAL_FACING_STEPS, exitSide: (1 + f) % CARDINAL_FACING_STEPS };
 }
 
 /** Lateral rail edges — the two sides that are neither entry nor exit. */
