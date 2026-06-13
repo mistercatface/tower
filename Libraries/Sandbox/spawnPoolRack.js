@@ -3,7 +3,6 @@ import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-/** Playfield size from legacy pool table layout (96×176 arena, 8px wall inset). */
 const PLAYFIELD_W = 80;
 const PLAYFIELD_H = 160;
 const APEX_U = 0.5;

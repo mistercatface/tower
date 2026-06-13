@@ -5,7 +5,7 @@ import { getSurfaceProfileProvider } from "../Libraries/Procedural/SurfaceProfil
  * @property {string} [startSurfaceProfileId]
  * @property {string} [defaultSurfaceProfileId]
  * @property {Record<string, string>} [surfaceProfileByStrategy]
- * @property {number|null} [animationBakeMaxFrames] — cap assembly surface flipbook length
+ * @property {number|null} [animationBakeMaxFrames] — cap animated surface flipbook length
  */
 /** @type {ProceduralDesignConfig | null} */
 let activeProceduralDesign = null;

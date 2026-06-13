@@ -14,20 +14,20 @@ export function isFlipperWorldProp(prop) {
 function flipperConfig(asset) {
     return asset?.flipper ?? {};
 }
-/** @param {object} cfg @param {number | null} playW */
-function resolveFlipperDims(cfg, playW) {
-    const u = (key, fallback) => (playW != null ? playW * (cfg[key] ?? FLIPPER_LAYOUT[key] ?? fallback) : fallback);
-    const length = u("lengthU", 16);
-    const width = u("widthU", 4);
-    return { length, width, height: u("heightU", 5), pivotRadius: u("pivotU", 2.5) };
+/** @param {object} cfg */
+function resolveFlipperDims(cfg) {
+    return {
+        length: cfg.length ?? FLIPPER_LAYOUT.length,
+        width: cfg.width ?? FLIPPER_LAYOUT.width,
+        height: cfg.height ?? FLIPPER_LAYOUT.height,
+        pivotRadius: cfg.pivotRadius ?? FLIPPER_LAYOUT.pivotRadius,
+    };
 }
 /** @param {object} prop @param {object} asset */
 export function getFlipperSpec(prop, asset) {
     const cfg = flipperConfig(asset);
-    const playW = prop._flipperPlayfieldWidth ?? null;
-    const dims = resolveFlipperDims(cfg, playW);
+    const dims = resolveFlipperDims(cfg);
     return {
-        playfieldWidth: playW,
         side: cfg.side ?? "left",
         extendDir: cfg.extendDir ?? 1,
         length: dims.length,
@@ -62,8 +62,7 @@ export function getFlipperSpriteCacheKey(prop) {
     const spec = getFlipperSpec(prop, asset);
     const angle = prop._flipperAngle ?? cfg.restAngle ?? 0.45;
     const active = prop._flipperTarget === "active" || prop._flipperButtonPressed ? 1 : 0;
-    const pw = spec.playfieldWidth != null ? Math.round(spec.playfieldWidth) : 0;
-    return `${cfg.side ?? "left"}_pw${pw}_L${Math.round(spec.length)}_a${quantizeAngleIndex(angle, FLIPPER_ANGLE_STEPS)}_${active}`;
+    return `${cfg.side ?? "left"}_L${Math.round(spec.length)}_a${quantizeAngleIndex(angle, FLIPPER_ANGLE_STEPS)}_${active}`;
 }
 /** @param {object} prop */
 export function syncFlipperCollisionShape(prop) {

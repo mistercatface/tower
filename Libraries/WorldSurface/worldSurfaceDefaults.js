@@ -1,6 +1,6 @@
 import { gridSettings } from "../../Config/balance/grid.js";
 /** @typedef {typeof LIBRARY_WORLD_SURFACE_DEFAULTS} LibraryWorldSurfaceDefaults */
-/** Library baseline — games override via `gameDefinition.worldSurface` (+ proceduralDesign for assembly bake caps). */
+/** Library baseline — games override via `gameDefinition.worldSurface` (+ proceduralDesign for animation bake caps). */
 export const LIBRARY_WORLD_SURFACE_DEFAULTS = {
     cellsPerChunk: gridSettings.minCellsPerChunk,
     chunkWorldSize: 64 * gridSettings.cellSize,

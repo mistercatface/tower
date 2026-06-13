@@ -2,18 +2,63 @@
 
 ## Current priorities
 
-### Remove assembly cartridge system (gate before sandbox save) — done 2026-06
+### Sandbox scene JSON export/import
 
-Pinball / pool **table assemblies** removed. Pool play is two spawn props: **8-ball triangle** and **9-ball triangle** (`spawnPoolRack.js`). Cue **`inputGates` + `cueStrike`** unchanged (waits for grouped balls at rest via `spawnGroupId`).
+**Gate cleared** (assembly cartridge system removed). ~**70% read path**, ~**0% write path**.
 
-- [x] Delete assembly stack (`assemblies/`, `spawnAssembly.js`, surface bake/draw/layout, manifests)
-- [x] **`spawnPoolRack`** + **`pool_rack_8ball` / `pool_rack_9ball`** spawn props
-- [x] **`spawnGroupId`** on meta + `inputGates` link (replaces assembly group)
-- [x] **`cueStrikeBehavior`** — obstacle-grid aim bounds only
-- [x] Scene list / box select — all props first-class (no assembly membership filter)
-- [x] **`Libraries/WorldSurface/animatedSurface*`** — worker flipbook bake + sim draw (replaces assembly surface path; zones on `sandbox.animatedSurfaceZones`)
+**Already have (export side):**
+- `listPlacedVoxelWalls` / `listPlacedRailWalls` / `listPlacedFloorBelts` — grid cell data from `sandboxSession`
+- `stampVoxelWallAt`, `stampRailWallAt`, `writeFloorCell`, `spawnAt` — symmetric apply paths
+- `createDebouncedStorage` — generic JSON flush/read (unused; wire after paste-load works)
+- Profile editor pattern — textarea + copy (`ProfileEditor.js` export area)
 
-**Then:** proceed with **Sandbox scene JSON export/import**.
+**Gaps:**
+- [ ] **`collectSandboxSceneSnapshot(state)`** — single `{ schemaVersion, cellSize, origin: { minX, minY }, props, voxels, railWalls, floorBelts }`; props need **world `x/y/facing/faction`** (today `listPlacedProps` is UI-only: id/type/label, no position)
+- [ ] **Rail wall dedupe on export** — `listPlacedRailWalls` scans every cell×side; mirrored edges appear twice; emit once per boundary (`packEdgeCellKey` / canonical owner side)
+- [ ] **Coordinate frame** — include `obstacleGrid.minX/minY` (grid expands dynamically); props as world coords; walls/belts as **global** col/row (`gridCellToGlobalColRow`) so paste survives origin shift
+- [ ] **`applySandboxSceneSnapshot(state, doc, { mode: 'replace' | 'merge' })`** — clear sandbox props/walls/belts (reuse `session.clear()` + voxel/rail clear helpers), expand grid to bounds, re-stamp in stable order (voxels before rail caps), `notifyGridWallChange` / nav invalidate once at end
+- [ ] **Prop extras (v1.1)** — faction, `SandboxEntityMeta` behavior overrides; skip runtime state (velocity, health, dead, sleeping)
+- [ ] **Button links (v1.2)** — export stable refs (prop index or `type@ordinal`), remap `buttonLinks` after spawn (runtime entity ids are not portable)
+- [ ] **UI — Sandbox panel** — Export (textarea + Copy), Import (textarea + Load / Replace confirm); validate JSON + schema version with readable errors
+- [ ] **Optional autosave** — `createDebouncedStorage` on sandbox session dirty hooks (after MVP paste-load)
+
+**Explicit v2 / out of MVP:**
+- `state.walls` segment grid / arbitrary-angle walls
+- Cavern/play-area editor config (generation bounds, not stamped content)
+- Arbitrary `animatedSurfaceZones` (custom AABB rects — library exists, no editor yet)
+
+**Suggested schema sketch (v1):**
+
+```json
+{
+  "schemaVersion": 1,
+  "cellSize": 16,
+  "origin": { "minX": 0, "minY": 0 },
+  "props": [{ "type": "crate", "x": 128, "y": 256, "facing": 0, "faction": "neutral" }],
+  "voxels": [{ "col": 8, "row": 16, "heightLevel": 4 }],
+  "railWalls": [{ "col": 8, "row": 16, "side": 1, "heightLevel": 4, "thicknessLevel": 2 }],
+  "floorBelts": [{ "col": 10, "row": 16, "kind": 1, "facingIndex": 0 }],
+  "animatedFloor": [{ "col": 12, "row": 16, "profileId": "poolTableFelt" }]
+}
+```
+
+Use global `col`/`row` for grid-stamped layers; world `x`/`y` for free-placed props.
+
+### Animated floor tiles (grid layer)
+
+Fourth sandbox stamp layer alongside props / walls / belts: **one shared flipbook per profile**, **blit per cell** (true tiling). Uses `animatedSurfaceFlipbook.js` bake cache — not per-cell bakes, not arbitrary AABB zones.
+
+**Prerequisite:** `animatedSurface*` library + draw hook on `sandbox.animatedSurfaceZones` (done). Zones stay for custom rects; **tiled floor** is the grid-native path.
+
+- [ ] **`animatedFloorStore`** on `obstacleGrid` (or extend `floorStore`) — per-cell profile id / index; remap on grid resize like belts
+- [ ] **Shared flipbook cache** — `Map<profileId, flipbook>` on state; bake once at tile size = `cellSize`; invalidate on profile revision change
+- [ ] **Draw pass** — viewport-walk stamped cells; `drawBakedTexture` per cell with shared `gameTime` frame index (synced animation)
+- [ ] **Editor — Floors tab** — modes: Belts (existing) | Animated surface; spawn assets e.g. `floor_animated_poolFelt` (`profileId`, `surfaceAnimation`)
+- [ ] **Stamp / pick / delete** — mirror belt cell UX; scene list “Animated floor”
+- [ ] **Seamless tile profile** — author or variant `poolTableFelt` at 1-cell period (circuit motif may seam at cell bounds until then)
+- [ ] **Persist** — include in **Sandbox scene JSON export/import** (`animatedFloor: [{ col, row, profileId }]`)
+
+**v1 scope:** flat `zLevel 0` cells only — no rail bands per cell.
 
 ### UI / architecture
 
@@ -99,48 +144,6 @@ Cardinal `edgeStore` (4 sides × mirrored boundary) stays the default. Add corne
 
 **Not in scope unless proven necessary:** 8 stored directions per cell (duplicates cardinal mirroring); diagonal adjacency as a third parallel graph alongside sides.
 
-### Sandbox scene JSON export/import
-
-**Distance:** ~**70% of the read path exists**, ~**0% of the write path**. Enumeration + stamp APIs are in place; no snapshot schema, apply/load, or UI yet. A minimal **copy/paste MVP** (props + voxel walls + rail walls + floor belts) is roughly **one focused pass** (~half day). Full sandbox fidelity (behaviors, button wiring, assemblies) is a second pass.
-
-**Already have (export side):**
-- `listPlacedVoxelWalls` / `listPlacedRailWalls` / `listPlacedFloorBelts` — grid cell data from `sandboxSession`
-- `stampVoxelWallAt`, `stampRailWallAt`, `writeFloorCell`, `spawnAt` — symmetric apply paths
-- `createDebouncedStorage` — generic JSON flush/read (unused; wire after paste-load works)
-- Profile editor pattern — textarea + copy (`ProfileEditor.js` export area)
-
-**Gaps:**
-- [ ] **`collectSandboxSceneSnapshot(state)`** — single `{ schemaVersion, cellSize, origin: { minX, minY }, props, voxels, railWalls, floorBelts }`; props need **world `x/y/facing/faction`** (today `listPlacedProps` is UI-only: id/type/label, no position)
-- [ ] **Rail wall dedupe on export** — `listPlacedRailWalls` scans every cell×side; mirrored edges appear twice; emit once per boundary (`packEdgeCellKey` / canonical owner side)
-- [ ] **Coordinate frame** — include `obstacleGrid.minX/minY` (grid expands dynamically); props as world coords; walls/belts as **global** col/row (`gridCellToGlobalColRow`) so paste survives origin shift
-- [ ] **`applySandboxSceneSnapshot(state, doc, { mode: 'replace' | 'merge' })`** — clear sandbox props/walls/belts (reuse `session.clear()` + voxel/rail clear helpers), expand grid to bounds, re-stamp in stable order (voxels before rail caps), `notifyGridWallChange` / nav invalidate once at end
-- [ ] **Prop extras (v1.1)** — faction, `SandboxEntityMeta` behavior overrides; skip runtime state (velocity, health, dead, sleeping)
-- [ ] **Button links (v1.2)** — export stable refs (prop index or `type@ordinal`), remap `buttonLinks` after spawn (runtime entity ids are not portable)
-- [ ] **UI — Sandbox panel** — Export (textarea + Copy), Import (textarea + Load / Replace confirm); validate JSON + schema version with readable errors
-- [ ] **Optional autosave** — `createDebouncedStorage` on sandbox session dirty hooks (after MVP paste-load)
-
-**Explicit v2 / out of MVP:**
-- Assembly instances — removed; pool racks are spawn props, not saved assemblies
-- `state.walls` segment grid / arbitrary-angle walls
-- Cavern/play-area editor config (generation bounds, not stamped content)
-- `surfaceProfileZones`, assembly guides
-
-**Suggested schema sketch (v1):**
-
-```json
-{
-  "schemaVersion": 1,
-  "cellSize": 16,
-  "origin": { "minX": 0, "minY": 0 },
-  "props": [{ "type": "crate", "x": 128, "y": 256, "facing": 0, "faction": "neutral" }],
-  "voxels": [{ "col": 8, "row": 16, "heightLevel": 4 }],
-  "railWalls": [{ "col": 8, "row": 16, "side": 1, "heightLevel": 4, "thicknessLevel": 2 }],
-  "floorBelts": [{ "col": 10, "row": 16, "kind": 1, "facingIndex": 0 }]
-}
-```
-
-Use global `col`/`row` for grid-stamped layers; world `x`/`y` for free-placed props.
-
 ### Floor props
 
 - [ ] **`button_bumper` 3D**
@@ -222,6 +225,7 @@ Major feature completions only (newest first). Not bugfixes or polish unless the
 
 | When | Milestone |
 |------|-----------|
+| 2026-06 | **Animated surface flipbook library** — `animatedSurfaceFlipbook/Draw/Zone.js`; worker bake + sim draw; `sandbox.animatedSurfaceZones` (no editor consumer yet). |
 | 2026-06 | **Pool rack spawn props** — removed assembly cartridge system; `pool_rack_8ball` / `pool_rack_9ball` + `spawnPoolRack`; cue `inputGates` via `spawnGroupId`. |
 | 2026-06 | **Viewport-scoped kinematics anim** — idle/walk rig ticks only for visible props via `queryView`; physics stays global. |
 | 2026-06 | **Sandbox Props \| Walls editor** — grid stamp/pick/edit for voxelBlock + railWall; session + pointer routing. |

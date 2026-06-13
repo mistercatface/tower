@@ -8,10 +8,10 @@ import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let animationCanvasResize = null;
 /** Square preview with a wide rail band so wall motifs are easy to read. */
-const PREVIEW_ASSEMBLY = { size: 96, wallWidth: 16, railHeight: 4 };
+const PREVIEW_RAIL_BAND = { size: 96, wallWidth: 16, railHeight: 4 };
 const previewLayout = {
-    bounds: minCornerAabb(0, 0, PREVIEW_ASSEMBLY.size, PREVIEW_ASSEMBLY.size),
-    play: minCornerAabb(PREVIEW_ASSEMBLY.wallWidth, PREVIEW_ASSEMBLY.wallWidth, PREVIEW_ASSEMBLY.size - PREVIEW_ASSEMBLY.wallWidth * 2, PREVIEW_ASSEMBLY.size - PREVIEW_ASSEMBLY.wallWidth * 2),
+    bounds: minCornerAabb(0, 0, PREVIEW_RAIL_BAND.size, PREVIEW_RAIL_BAND.size),
+    play: minCornerAabb(PREVIEW_RAIL_BAND.wallWidth, PREVIEW_RAIL_BAND.wallWidth, PREVIEW_RAIL_BAND.size - PREVIEW_RAIL_BAND.wallWidth * 2, PREVIEW_RAIL_BAND.size - PREVIEW_RAIL_BAND.wallWidth * 2),
 };
 /** @param {{ bounds: import("../../../Libraries/Math/Aabb2D.js").Aabb2D, play: import("../../../Libraries/Math/Aabb2D.js").Aabb2D }} layout */
 function getPreviewRailBandBounds(layout) {
@@ -101,12 +101,12 @@ function drawFrame(ctx, canvas, baseProfile, gameTime) {
     const resolvedProfile = resolveBakeProfile(baseProfile, "__labAnimPreview__", { gameTime });
     const { cellSize } = getGameWorldSurfaceSettings();
     const { bounds, play } = previewLayout;
-    const pixelsPerUnit = canvas.width / PREVIEW_ASSEMBLY.size;
+    const pixelsPerUnit = canvas.width / PREVIEW_RAIL_BAND.size;
     ctx.fillStyle = "#080a0e";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     const railBands = getPreviewRailBandBounds(previewLayout);
     paintPreviewPatch(ctx, bounds, play, pixelsPerUnit, cellSize, resolvedProfile, 0);
-    for (let i = 0; i < railBands.length; i++) paintPreviewPatch(ctx, bounds, railBands[i], pixelsPerUnit, cellSize, resolvedProfile, PREVIEW_ASSEMBLY.railHeight);
+    for (let i = 0; i < railBands.length; i++) paintPreviewPatch(ctx, bounds, railBands[i], pixelsPerUnit, cellSize, resolvedProfile, PREVIEW_RAIL_BAND.railHeight);
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

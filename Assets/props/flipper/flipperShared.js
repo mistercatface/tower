@@ -1,5 +1,5 @@
-/** Fractions of playfield width — used when a flipper has `_flipperPlayfieldWidth` set at spawn. */
-export const FLIPPER_LAYOUT = { lengthU: 0.2, widthU: 0.05, heightU: 0.0625, pivotU: 0.03125 };
+/** Default flipper body dimensions in world units (overridable per asset via `flipper.length`, etc.). */
+export const FLIPPER_LAYOUT = { length: 16, width: 4, height: 5, pivotRadius: 2.5 };
 export const FLIPPER_COLORS = {
     side: { shadow: "#455A64", mid: "#607D8B", highlight: "#90A4AE" },
     top: { light: "#78909C", mid: "#607D8B", dark: "#455A64" },
