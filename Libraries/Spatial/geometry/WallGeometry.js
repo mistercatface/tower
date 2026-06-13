@@ -150,14 +150,15 @@ function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
 /** Minimum distance between a path segment and a wall's collision box. */
 export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
     if (wall.isDead) return Infinity;
-    const half = wall.size / 2;
+    const halfX = wall.width !== undefined ? wall.width / 2 : wall.size / 2;
+    const halfY = wall.height !== undefined ? wall.height / 2 : wall.size / 2;
     const cos = Math.cos(-wall.angle);
     const sin = Math.sin(-wall.angle);
     const axL = (ax - wall.x) * cos - (ay - wall.y) * sin;
     const ayL = (ax - wall.x) * sin + (ay - wall.y) * cos;
     const bxL = (bx - wall.x) * cos - (by - wall.y) * sin;
     const byL = (bx - wall.x) * sin + (by - wall.y) * cos;
-    return minDistanceSegmentToAabb(axL, ayL, bxL, byL, -half, -half, half, half);
+    return minDistanceSegmentToAabb(axL, ayL, bxL, byL, -halfX, -halfY, halfX, halfY);
 }
 /** Closest point on path segment AB to wall box — used for push direction. */
 export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
@@ -197,9 +198,9 @@ export function circleIntersectsSegment(circle, segment) {
 }
 export function pointToSegmentPaddingDistanceSq(segment, x, y) {
     if (segment.isDead) return Infinity;
-    const { localX, localY, half } = toSegmentLocal(segment, x, y);
-    const distX = Math.max(0, Math.abs(localX) - half);
-    const distY = Math.max(0, Math.abs(localY) - half);
+    const { localX, localY, halfX, halfY } = toSegmentLocal(segment, x, y);
+    const distX = Math.max(0, Math.abs(localX) - halfX);
+    const distY = Math.max(0, Math.abs(localY) - halfY);
     return distX * distX + distY * distY;
 }
 /**
@@ -207,24 +208,25 @@ export function pointToSegmentPaddingDistanceSq(segment, x, y) {
  *
  * @param {number} localX
  * @param {number} localY
- * @param {number} half
+ * @param {number} halfX
+ * @param {number} halfY
  */
-function closestPointOnLocalBoxSurface(localX, localY, half) {
-    const insideX = localX > -half && localX < half;
-    const insideY = localY > -half && localY < half;
-    if (!insideX || !insideY) return { x: Math.max(-half, Math.min(localX, half)), y: Math.max(-half, Math.min(localY, half)) };
-    const distToLeft = localX + half;
-    const distToRight = half - localX;
-    const distToTop = localY + half;
-    const distToBottom = half - localY;
+function closestPointOnLocalBoxSurface(localX, localY, halfX, halfY) {
+    const insideX = localX > -halfX && localX < halfX;
+    const insideY = localY > -halfY && localY < halfY;
+    if (!insideX || !insideY) return { x: Math.max(-halfX, Math.min(localX, halfX)), y: Math.max(-halfY, Math.min(localY, halfY)) };
+    const distToLeft = localX + halfX;
+    const distToRight = halfX - localX;
+    const distToTop = localY + halfY;
+    const distToBottom = halfY - localY;
     const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
     const eps = 1e-6;
     let sx = localX;
     let sy = localY;
-    if (Math.abs(minDist - distToLeft) <= eps) sx = -half;
-    if (Math.abs(minDist - distToRight) <= eps) sx = half;
-    if (Math.abs(minDist - distToTop) <= eps) sy = -half;
-    if (Math.abs(minDist - distToBottom) <= eps) sy = half;
+    if (Math.abs(minDist - distToLeft) <= eps) sx = -halfX;
+    if (Math.abs(minDist - distToRight) <= eps) sx = halfX;
+    if (Math.abs(minDist - distToTop) <= eps) sy = -halfY;
+    if (Math.abs(minDist - distToBottom) <= eps) sy = halfY;
     return { x: sx, y: sy };
 }
 /**
@@ -232,16 +234,17 @@ function closestPointOnLocalBoxSurface(localX, localY, half) {
  *
  * @param {number} sx
  * @param {number} sy
- * @param {number} half
+ * @param {number} halfX
+ * @param {number} halfY
  */
-function pushNormalAtLocalBoxSurface(sx, sy, half) {
+function pushNormalAtLocalBoxSurface(sx, sy, halfX, halfY) {
     const eps = 1e-4;
     let nx = 0;
     let ny = 0;
-    if (Math.abs(sx + half) < eps) nx -= 1;
-    if (Math.abs(sx - half) < eps) nx += 1;
-    if (Math.abs(sy + half) < eps) ny -= 1;
-    if (Math.abs(sy - half) < eps) ny += 1;
+    if (Math.abs(sx + halfX) < eps) nx -= 1;
+    if (Math.abs(sx - halfX) < eps) nx += 1;
+    if (Math.abs(sy + halfY) < eps) ny -= 1;
+    if (Math.abs(sy - halfY) < eps) ny += 1;
     const len = Math.hypot(nx, ny);
     if (len < 1e-8) return { x: 0, y: 1 };
     return { x: nx / len, y: ny / len };
@@ -251,16 +254,17 @@ function pushNormalAtLocalBoxSurface(sx, sy, half) {
  *
  * @param {number} localX
  * @param {number} localY
- * @param {number} half
+ * @param {number} halfX
+ * @param {number} halfY
  * @param {number} approachX — segment-local
  * @param {number} approachY
  */
-function pushNormalFromInsideApproach(localX, localY, half, approachX, approachY) {
+function pushNormalFromInsideApproach(localX, localY, halfX, halfY, approachX, approachY) {
     const faces = [
-        { nx: -1, ny: 0, dist: localX + half },
-        { nx: 1, ny: 0, dist: half - localX },
-        { nx: 0, ny: -1, dist: localY + half },
-        { nx: 0, ny: 1, dist: half - localY },
+        { nx: -1, ny: 0, dist: localX + halfX },
+        { nx: 1, ny: 0, dist: halfX - localX },
+        { nx: 0, ny: -1, dist: localY + halfY },
+        { nx: 0, ny: 1, dist: halfY - localY },
     ];
     let best = null;
     for (let i = 0; i < faces.length; i++) {
@@ -270,14 +274,14 @@ function pushNormalFromInsideApproach(localX, localY, half, approachX, approachY
         if (!best || toward < best.toward - 1e-6 || (Math.abs(toward - best.toward) <= 1e-6 && face.dist < best.dist)) best = { ...face, toward };
     }
     if (best) return { nx: best.nx, ny: best.ny, dist: best.dist };
-    const surface = closestPointOnLocalBoxSurface(localX, localY, half);
-    const fn = pushNormalAtLocalBoxSurface(surface.x, surface.y, half);
-    return { nx: fn.x, ny: fn.y, dist: Math.min(localX + half, half - localX, localY + half, half - localY) };
+    const surface = closestPointOnLocalBoxSurface(localX, localY, halfX, halfY);
+    const fn = pushNormalAtLocalBoxSurface(surface.x, surface.y, halfX, halfY);
+    return { nx: fn.x, ny: fn.y, dist: Math.min(localX + halfX, halfX - localX, localY + halfY, halfY - localY) };
 }
 /** @param {object} segment @param {number} worldX @param {number} worldY */
 export function isStrictlyInsideSegmentBox(segment, worldX, worldY) {
-    const { localX, localY, half } = toSegmentLocal(segment, worldX, worldY);
-    return localX > -half && localX < half && localY > -half && localY < half;
+    const { localX, localY, halfX, halfY } = toSegmentLocal(segment, worldX, worldY);
+    return localX > -halfX && localX < halfX && localY > -halfY && localY < halfY;
 }
 /** @param {object} segment @param {number} worldVx @param {number} worldVy */
 function approachToSegmentLocal(segment, worldVx, worldVy) {
