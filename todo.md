@@ -12,10 +12,45 @@ Copy/paste in Sandbox panel **Scene JSON** section (Props tab). **Replace mode o
 
 **When needed (not next):**
 - [ ] **Prop extras** — behavior overrides, button links (faction already exported)
+- [ ] **Decouple spawn groups** — editor action on a grouped spawn (e.g. pool rack): clear `spawnGroupId` / export meta so balls become individual props; scene JSON then round-trips **current** per-ball `x`/`y` instead of collapsing to `pool_rack_*` + re-rack on load. Cue `inputGates` tied to `spawnGroupId` would need a separate policy (drop, rewrite, or per-ball rules).
 
 **Deferred (no near-term plan):** merge mode, debounced autosave.
 
-### Animated floor tiles (grid layer)
+**Long-term (beyond layout JSON):**
+- [ ] **Sandbox runtime snapshot** — full prop state: position, facing, linear/angular velocity, sleep/rest, active behaviors, weapon/combat fields — not just placement layout.
+- [ ] **Replay / playback** — deterministic or best-effort playback from runtime snapshots + input/event log; builds on runtime snapshot, not schema v2 layout export.
+
+### Forcefields — edge graph v1 (current focus)
+
+Second `edgeStore` kind (after `railWall` / `beltRail`): stamped on cardinal cell edges like rail walls, **blocks pathfinding only while on** (v1 nav-only — no pushable collision block unless added later). Runtime on/off lives outside the placement blob (Map keyed by global edge id); buttons drive state via existing input modes (tap / hold / toggle / mass* / invert), same OR-aggregate pattern as pull-fixture `syncSandboxButtonPower`.
+
+**Prerequisite (do with v1, not a separate milestone):**
+- [ ] **Edge API slice** — `gridCellEdge` / kind-aware `edgeBlocksCrossing` (+ powered lookup hook); stop scattering raw `edgeStore.get` + kind checks before a third kind lands.
+
+**Core:**
+- [ ] **`EDGE_KIND.Forcefield`** — `CellEdge.js` factory + `isForcefieldEdge`; mirrored stamp/clear on `edgeStore` (reuse rail wall editor hit-test path).
+- [ ] **Powered runtime map** — `state.sandbox.forcefieldPower` (or similar): `packEdgeCellKey(globalCol, globalRow, side) → boolean`; default off at stamp; remap key on grid expand like walls.
+- [ ] **`edgeBlocksCrossing`** — block step when forcefield edge exists **and** powered; `WorldObstacleGrid.canStep` / HPA unchanged otherwise.
+- [ ] **Nav invalidation** — `onObstaclesChanged` when powered state flips (batch if multiple buttons link one edge).
+
+**Editor:**
+- [ ] **Walls tab — Forcefield mode** — stamp / pick / delete on edge (alongside voxelBlock + railWall); inspector or default “starts powered”.
+- [ ] **Draw pass** — viewport edge overlay: bright barrier when on, dim when off (structure or sandbox overlay — pick one pass, don’t duplicate rail wall mesh).
+
+**Buttons:**
+- [ ] **Link target `{ type: "gridEdge", globalCol, globalRow, side }`** — wire-mode hit-test on stamped forcefield; list/remove in inspector.
+- [ ] **`syncForcefieldButtonPower`** — each frame OR `buttonEffectiveActive` from all buttons linked to each edge key (mirror `syncSandboxButtonPower` for pull fixtures).
+
+**Persist:**
+- [ ] **Scene JSON schema v3** — `forcefields: [{ col, row, side, defaultPowered? }]`; bump `SANDBOX_SCENE_SCHEMA_VERSION`; batch apply on import like `railWalls`.
+
+**Acceptance:**
+- [ ] HPA / move-to-cursor cannot cross an **on** forcefield; can cross when off.
+- [ ] Toggle + massToggle + invert behave like floor buttons on linked targets.
+- [ ] Export → import preserves placement + default powered; button links still editor-only until prop-extras JSON ships.
+
+**Deferred after v1:** forcefield blocks physics/collision; one-way directional edges; `EDGE_KIND.Conveyor`; doors as a separate kind if ever needed.
+
 
 Fourth sandbox stamp layer alongside props / walls / belts: **one shared flipbook per profile**, **blit per cell** (true tiling). Uses `animatedSurfaceFlipbook.js` bake cache — not per-cell bakes, not arbitrary AABB zones.
 
@@ -91,19 +126,22 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 
 ## Backlog
 
-### Edge API (before second edge kind)
+### Edge API (in progress — forcefields v1)
 
-- [ ] **`gridCellEdge(grid, col, row, side)`** — any kind from store; replace scattered `edgeStore.get` + kind checks.
-- [ ] **`WorldObstacleGrid.getCellEdge` / `hasCellEdge`** — thin wrappers so editor/gameplay rarely touch `edgeStore` directly.
+Ship the slice below **with** forcefields; full backlog remains for conveyors / one-way / corners.
+
+- [ ] **`gridCellEdge(grid, col, row, side)`** — any kind from store; replace scattered `edgeStore.get` + kind checks *(forcefields v1)*.
+- [ ] **`WorldObstacleGrid.getCellEdge` / `hasCellEdge`** — thin wrappers so editor/gameplay rarely touch `edgeStore` directly *(forcefields v1)*.
+- [ ] **Kind-aware `edgeBlocksCrossing`** — rail / belt rail / forcefield (powered lookup for forcefield) *(forcefields v1)*.
 - [ ] **`forEachCellEdgeInAabb`** — kind-agnostic AABB walker (surface `edgeStore.forEachInAabb` via `wallGridCells`).
-- [ ] **`edgeBlocksStepFrom(fromCol, fromRow, toCol, toRow)`** — directional crossing for one-way doors / edge conveyors.
-- [ ] **Kind-aware `collectStructureZLevels`** — merge per-kind top-Z collectors when a second kind contributes surface passes.
+- [ ] **`edgeBlocksStepFrom(fromCol, fromRow, toCol, toRow)`** — directional crossing for one-way edges / conveyors.
+- [ ] **Kind-aware `collectStructureZLevels`** — merge per-kind top-Z collectors when a kind contributes surface passes.
 
 ### Diagonal / corner cell edges (deferred)
 
 Cardinal `edgeStore` (4 sides × mirrored boundary) stays the default. Add corner/diagonal topology only when a feature cannot be expressed as two cardinal edges or a derived corner query.
 
-**Prerequisite:** ship directional cardinal crossing (`edgeBlocksStepFrom`) + at least one second edge kind (e.g. `EDGE_KIND.Conveyor`) so corner ownership rules are clear before expanding storage.
+**Prerequisite:** ship **`EDGE_KIND.Forcefield`** (powered edge blocking) + directional cardinal crossing (`edgeBlocksStepFrom`) before expanding storage for corners.
 
 - [ ] **Spike — corner ownership model** — pick one: `(cols+1)×(rows+1)` corner store (4 cells share a slot) vs derived corner index from 4 adjacent cardinal edges; document mirror/write rules (corners have no single “owner” cell).
 - [ ] **Corner index API** — `gridCellCorner(col, row, corner)` where corner ∈ {NE, SE, SW, NW} or vertex at `(col, row)` grid intersection; neighbor lookup for the up-to-four cells meeting at a point.
