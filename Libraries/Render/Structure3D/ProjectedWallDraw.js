@@ -249,14 +249,32 @@ function assignCapSampleSrc(sample) {
     sCapSrc3.y = sample.src[3].y;
 }
 /**
- * railWall top cap — solid fill (procedural cap deferred; geometry uses box top ring).
+ * railWall top cap — projects box top ring and samples/draws procedural texture cap.
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} box
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedRailWallCap(ctx, box, wallCtx) {
-    projectRailWallTopCornersInto(sCapCorners, box, wallCtx.camera);
-    fillProjectedCapPolygon(ctx, sCapCorners, wallCtx.fillStyle);
+    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState } = wallCtx;
+    projectRailWallTopCornersInto(sCapCorners, box, camera);
+    if (!proceduralSurfaceDraw || !gameState) {
+        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        return;
+    }
+    const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
+    const worldCorners = [
+        { x: box.outerP1x, y: box.outerP1y },
+        { x: box.outerP2x, y: box.outerP2y },
+        { x: box.innerP2x, y: box.innerP2y },
+        { x: box.innerP1x, y: box.innerP1y },
+    ];
+    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, box.wallCapHeight, gameState, profileId, wallCtx.texelResolution);
+    if (!sample) {
+        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        return;
+    }
+    assignCapSampleSrc(sample);
+    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, worldSurfaces.settings.wallTextureBleedPx ?? 1);
 }
 /**
  * Horizontal cap from world AABB corners (voxelBlock caps, generic quads).

@@ -3,6 +3,7 @@
  */
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
+import { gridSettings } from "../../Config/balance/grid.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 /** @param {number} col @param {number} row @param {number} edge 0=N,1=E,2=S,3=W */
@@ -239,11 +240,14 @@ function collinearRailWallBoxesAdjacent(a, b) {
     if (a.gridSide !== b.gridSide) return false;
     if (a.wallCapHeight !== b.wallCapHeight || a.wallBaseZ !== b.wallBaseZ || a.edgeThickness !== b.edgeThickness) return false;
     if (a.inwardX !== b.inwardX || a.inwardY !== b.inwardY) return false;
+    const cellsPerChunk = gridSettings.minCellsPerChunk;
     if (a.gridSide === 0 || a.gridSide === 2) {
         if (a.gridRow !== b.gridRow) return false;
+        if (Math.floor(a.gridCol / cellsPerChunk) !== Math.floor(b.gridCol / cellsPerChunk)) return false;
         return b.gridCol === a.gridCol + 1;
     }
     if (a.gridCol !== b.gridCol) return false;
+    if (Math.floor(a.gridRow / cellsPerChunk) !== Math.floor(b.gridRow / cellsPerChunk)) return false;
     return b.gridRow === a.gridRow + 1;
 }
 /** Draw-only merge of consecutive railWall boxes on the same edge line. */
