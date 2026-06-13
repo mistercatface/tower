@@ -10,6 +10,22 @@ import { stepCardinalFacing } from "../Math/Angle.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { isGridFloorBeltSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
 import { canStampFloorBeltAt } from "./floorOccupancy.js";
+import {
+    clearRailWallAt,
+    clearVoxelWallAt,
+    ensureObstacleGridAtWorld,
+    getRailWallInfo,
+    getVoxelWallInfo,
+    gridHasRailWall,
+    gridHasVoxelWall,
+    hitTestRailWallEdgeAtWorld,
+    listPlacedRailWalls,
+    listPlacedVoxelWalls,
+    setRailWallAt,
+    setVoxelWallHeightAt,
+    stampRailWallAt,
+    stampVoxelWallAt,
+} from "./gridWallEdit.js";
 export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
 /** @param {string} assemblyId */
 export function sandboxSpawnAssemblyId(assemblyId) {
@@ -32,6 +48,16 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let selectedPropId = null;
     /** @type {{ col: number, row: number } | null} */
     let selectedFloorCell = null;
+    /** @type {'props' | 'walls'} */
+    let editorPanelTab = "props";
+    /** @type {'voxel' | 'rail'} */
+    let wallStampMode = "voxel";
+    let wallHeightLevel = 4;
+    let railThicknessLevel = 2;
+    /** @type {{ col: number, row: number } | null} */
+    let selectedVoxelCell = null;
+    /** @type {{ col: number, row: number, side: number } | null} */
+    let selectedRailEdge = null;
     /** @type {(() => void) | null} */
     let uiSync = null;
     const sync = () => {
@@ -58,6 +84,26 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         if (selectedFloorCell == null) return;
         selectedFloorCell = null;
     };
+    const dropWallSelection = () => {
+        selectedVoxelCell = null;
+        selectedRailEdge = null;
+    };
+    const setSelectedVoxelCell = (col, row) => {
+        dropFloorSelection();
+        selectedPropIds.clear();
+        selectedPropId = null;
+        selectedRailEdge = null;
+        selectedVoxelCell = { col, row };
+        sync();
+    };
+    const setSelectedRailEdge = (col, row, side) => {
+        dropFloorSelection();
+        selectedPropIds.clear();
+        selectedPropId = null;
+        selectedVoxelCell = null;
+        selectedRailEdge = { col, row, side };
+        sync();
+    };
     const setSinglePropSelection = (id) => {
         if (id == null) {
             selectedPropIds.clear();
@@ -66,6 +112,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             return;
         }
         dropFloorSelection();
+        dropWallSelection();
         selectedPropIds = new Set([id]);
         selectedPropId = id;
         sync();
@@ -73,6 +120,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     const setSelectedFloorCell = (col, row) => {
         selectedPropIds.clear();
         selectedPropId = null;
+        dropWallSelection();
         selectedFloorCell = { col, row };
         sync();
     };
@@ -131,6 +179,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         setSelectedPropIds: (ids) => {
             dropFloorSelection();
+            dropWallSelection();
             selectedPropIds = new Set();
             for (let i = 0; i < ids.length; i++) {
                 const id = ids[i];
@@ -222,6 +271,141 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const facingIndex = grid.floorStore.facing[idx];
             return { col, row, kind, facingIndex, kindLabel: formatFloorBeltKindLabel(kind), facingLabel: formatFloorBeltFacingLabel(facingIndex) };
         },
+        getEditorPanelTab: () => editorPanelTab,
+        setEditorPanelTab(tab) {
+            if (editorPanelTab === tab) return;
+            editorPanelTab = tab;
+            if (tab === "walls") {
+                selectedPropIds.clear();
+                selectedPropId = null;
+                dropFloorSelection();
+            } else dropWallSelection();
+            sync();
+        },
+        getWallStampMode: () => wallStampMode,
+        setWallStampMode(mode) {
+            wallStampMode = mode;
+            sync();
+        },
+        getWallHeightLevel: () => wallHeightLevel,
+        setWallHeightLevel(level) {
+            wallHeightLevel = level;
+            sync();
+        },
+        getRailThicknessLevel: () => railThicknessLevel,
+        setRailThicknessLevel(level) {
+            railThicknessLevel = level;
+            sync();
+        },
+        getSelectedVoxelCell: () => selectedVoxelCell,
+        getSelectedRailEdge: () => selectedRailEdge,
+        setSelectedVoxelCell,
+        setSelectedRailEdge,
+        clearWallSelection: () => {
+            dropWallSelection();
+            sync();
+        },
+        listPlacedVoxelWalls: () => listPlacedVoxelWalls(state.obstacleGrid),
+        listPlacedRailWalls: () => listPlacedRailWalls(state.obstacleGrid),
+        getSelectedVoxelWallInfo: () => (selectedVoxelCell ? getVoxelWallInfo(state.obstacleGrid, selectedVoxelCell.col, selectedVoxelCell.row) : null),
+        getSelectedRailWallInfo: () => (selectedRailEdge ? getRailWallInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side) : null),
+        stampWallAtWorld(worldX, worldY) {
+            const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
+            if (wallStampMode === "rail") {
+                const hit = hitTestRailWallEdgeAtWorld(state.obstacleGrid, worldX, worldY);
+                if (!hit) return false;
+                if (gridHasRailWall(state.obstacleGrid, hit.col, hit.row, hit.side)) {
+                    setSelectedRailEdge(hit.col, hit.row, hit.side);
+                    return true;
+                }
+                if (!stampRailWallAt(state, hit.col, hit.row, hit.side, wallHeightLevel, railThicknessLevel)) return false;
+                setSelectedRailEdge(hit.col, hit.row, hit.side);
+                return true;
+            }
+            if (gridHasVoxelWall(state.obstacleGrid, col, row)) {
+                setSelectedVoxelCell(col, row);
+                return true;
+            }
+            if (!stampVoxelWallAt(state, col, row, wallHeightLevel)) return false;
+            setSelectedVoxelCell(col, row);
+            return true;
+        },
+        stampWallAtCameraOrigin() {
+            const origin = { x: state.viewport.x, y: state.viewport.y };
+            return this.stampWallAtWorld(origin.x, origin.y);
+        },
+        setSelectedVoxelWallHeight(heightLevel) {
+            if (!selectedVoxelCell) return false;
+            const { col, row } = selectedVoxelCell;
+            if (!setVoxelWallHeightAt(state, col, row, heightLevel)) return false;
+            sync();
+            return true;
+        },
+        setSelectedRailWallProps(heightLevel, thicknessLevel) {
+            if (!selectedRailEdge) return false;
+            const { col, row, side } = selectedRailEdge;
+            if (!setRailWallAt(state, col, row, side, heightLevel, thicknessLevel)) return false;
+            sync();
+            return true;
+        },
+        setSelectedRailWallSide(newSide) {
+            if (!selectedRailEdge) return false;
+            const grid = state.obstacleGrid;
+            const { col, row, side } = selectedRailEdge;
+            const info = getRailWallInfo(grid, col, row, side);
+            if (!info || info.side === newSide) return true;
+            if (gridHasRailWall(grid, col, row, newSide)) return false;
+            if (!clearRailWallAt(state, col, row, side)) return false;
+            if (!stampRailWallAt(state, col, row, newSide, info.heightLevel, info.thicknessLevel)) return false;
+            setSelectedRailEdge(col, row, newSide);
+            return true;
+        },
+        deleteSelectedWall() {
+            if (selectedVoxelCell) {
+                const { col, row } = selectedVoxelCell;
+                if (!clearVoxelWallAt(state, col, row)) return false;
+                dropWallSelection();
+                sync();
+                return true;
+            }
+            if (selectedRailEdge) {
+                const { col, row, side } = selectedRailEdge;
+                if (!clearRailWallAt(state, col, row, side)) return false;
+                dropWallSelection();
+                sync();
+                return true;
+            }
+            return false;
+        },
+        deleteWallAtWorld(worldX, worldY) {
+            const grid = state.obstacleGrid;
+            if (wallStampMode === "rail") {
+                const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
+                if (!hit || !gridHasRailWall(grid, hit.col, hit.row, hit.side)) return false;
+                if (!clearRailWallAt(state, hit.col, hit.row, hit.side)) return false;
+                if (selectedRailEdge?.col === hit.col && selectedRailEdge.row === hit.row && selectedRailEdge.side === hit.side) dropWallSelection();
+                sync();
+                return true;
+            }
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            if (!clearVoxelWallAt(state, col, row)) return false;
+            if (selectedVoxelCell?.col === col && selectedVoxelCell.row === row) dropWallSelection();
+            sync();
+            return true;
+        },
+        pickWallAtWorld(worldX, worldY) {
+            const grid = state.obstacleGrid;
+            if (wallStampMode === "rail") {
+                const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
+                if (!hit || !gridHasRailWall(grid, hit.col, hit.row, hit.side)) return false;
+                setSelectedRailEdge(hit.col, hit.row, hit.side);
+                return true;
+            }
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            if (!gridHasVoxelWall(grid, col, row)) return false;
+            setSelectedVoxelCell(col, row);
+            return true;
+        },
         getSelectedProp: () => {
             pruneSelection();
             return selectedPropId == null ? null : registry().getLive(selectedPropId);
@@ -307,6 +491,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             selectedPropIds.clear();
             selectedPropId = null;
             dropFloorSelection();
+            dropWallSelection();
             sync();
         },
         setUiSync(fn) {

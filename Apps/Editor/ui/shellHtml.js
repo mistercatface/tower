@@ -28,7 +28,7 @@ export const TILELAB_UI_HTML = `
                 <div class="editor-panel-toggles" role="group" aria-label="Sidebar panels">
                     <label class="editor-panel-toggle">
                         <input type="checkbox" id="showSandboxPanelInput" checked>
-                        <span>Sandbox</span>
+                        <span>Props</span>
                     </label>
                     <label class="editor-panel-toggle">
                         <input type="checkbox" id="showProfilePanelInput" checked>
@@ -42,7 +42,7 @@ export const TILELAB_UI_HTML = `
             </div>
             <div class="editor-panels-stack">
                 <div id="sandboxPanel" class="editor-panel-section is-visible" data-panel="sandbox">
-                    <div class="editor-panel-head">Sandbox</div>
+                    <div class="editor-panel-head">Props</div>
                     <div class="editor-panel-body sandbox-panel-body editor-scroll">
                         <div id="sandboxToyPanel"></div>
                     </div>

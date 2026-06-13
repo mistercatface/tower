@@ -8,7 +8,13 @@ import { renderSandboxEquipPanel } from "../../../Libraries/Sandbox/sandboxEquip
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { sandboxSpawnAssemblyId, isSandboxSpawnPropId } from "../../../Libraries/Sandbox/sandboxSession.js";
+import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
 import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
+import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
+const WALL_STAMP_OPTIONS = [
+    { value: "voxel", label: "Voxel block" },
+    { value: "rail", label: "Rail wall" },
+];
 function readOpenSections(root) {
     const open = new Set();
     for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
@@ -43,6 +49,201 @@ function buildSpawnOptions(propIds, assemblyManifests) {
     for (const manifest of assemblies) options.push({ value: sandboxSpawnAssemblyId(manifest.id), label: manifest.label });
     return options;
 }
+function appendPanelTabs(container, controller, onChange) {
+    const row = document.createElement("div");
+    row.className = "sandbox-panel-tabs";
+    row.setAttribute("role", "tablist");
+    for (const [tab, label] of [
+        ["props", "Props"],
+        ["walls", "Walls"],
+    ]) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "sandbox-panel-tab";
+        btn.textContent = label;
+        btn.setAttribute("role", "tab");
+        if (controller.getEditorPanelTab() === tab) btn.classList.add("is-active");
+        btn.addEventListener("click", () => {
+            controller.setEditorPanelTab(tab);
+            onChange();
+        });
+        row.appendChild(btn);
+    }
+    container.appendChild(row);
+}
+/** @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller */
+function maxWallHeightLevel(controller) {
+    return controller.getState().worldSurfaces.settings.maxWallHeightLevel;
+}
+/**
+ * @param {HTMLElement} container
+ * @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller
+ * @param {() => void} onChange
+ * @param {(id: string, fallback?: boolean) => boolean} sectionOpen
+ */
+function renderWallsPanel(container, controller, onChange, sectionOpen) {
+    const selectedVoxel = controller.getSelectedVoxelCell();
+    const selectedRail = controller.getSelectedRailEdge();
+    const selectedVoxelInfo = controller.getSelectedVoxelWallInfo();
+    const selectedRailInfo = controller.getSelectedRailWallInfo();
+    const hasWallSelection = selectedVoxel != null || selectedRail != null;
+    const toolsRow = document.createElement("div");
+    toolsRow.className = "sandbox-add-row";
+    const ringsField = document.createElement("label");
+    ringsField.className = "param-field check-inline";
+    const ringsCheckbox = document.createElement("input");
+    ringsCheckbox.type = "checkbox";
+    ringsCheckbox.checked = controller.getShowSelectionRings();
+    ringsCheckbox.addEventListener("change", () => {
+        controller.setShowSelectionRings(ringsCheckbox.checked);
+        onChange();
+    });
+    ringsField.append(ringsCheckbox, document.createTextNode(" Selection rings"));
+    toolsRow.appendChild(ringsField);
+    const deleteSelectedBtn = document.createElement("button");
+    deleteSelectedBtn.type = "button";
+    deleteSelectedBtn.className = "secondary";
+    deleteSelectedBtn.disabled = !hasWallSelection;
+    deleteSelectedBtn.textContent = "Delete selected";
+    deleteSelectedBtn.addEventListener("click", () => {
+        controller.deleteSelectedWall();
+        onChange();
+    });
+    toolsRow.appendChild(deleteSelectedBtn);
+    container.appendChild(toolsRow);
+    appendSection(container, "wall-spawn", "Place", sectionOpen("wall-spawn"), (body) => {
+        appendEditorHint(body, "Click the map to place or select walls. Right-click to delete under the cursor.");
+        const addRow = document.createElement("div");
+        addRow.className = "sandbox-add-row";
+        appendSelectField(addRow, "Type", {
+            value: controller.getWallStampMode(),
+            options: WALL_STAMP_OPTIONS,
+            onChange: (value) => {
+                controller.setWallStampMode(value);
+                onChange();
+            },
+        });
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "secondary";
+        addBtn.textContent = "Add at camera";
+        addBtn.addEventListener("click", () => controller.stampWallAtCameraOrigin());
+        addRow.appendChild(addBtn);
+        body.appendChild(addRow);
+        const maxHeight = maxWallHeightLevel(controller);
+        body.appendChild(
+            new SliderControl("Height", 1, maxHeight, 1, controller.getWallHeightLevel(), (val) => {
+                controller.setWallHeightLevel(val);
+                if (selectedVoxelInfo) controller.setSelectedVoxelWallHeight(val);
+                else if (selectedRailInfo) controller.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
+                onChange();
+            }).element,
+        );
+        if (controller.getWallStampMode() === "rail")
+            body.appendChild(
+                new SliderControl("Thickness", 1, 8, 1, controller.getRailThicknessLevel(), (val) => {
+                    controller.setRailThicknessLevel(val);
+                    if (selectedRailInfo) controller.setSelectedRailWallProps(selectedRailInfo.heightLevel, val);
+                    onChange();
+                }).element,
+            );
+    });
+    const voxelWalls = controller.listPlacedVoxelWalls();
+    const railWalls = controller.listPlacedRailWalls();
+    appendSection(container, "wall-scene", "Scene", sectionOpen("wall-scene"), (body) => {
+        appendEditorSubhead(body, "Voxel blocks");
+        appendInstanceList(
+            body,
+            voxelWalls.map((entry) => ({
+                label: entry.label,
+                selected: selectedVoxel?.col === entry.col && selectedVoxel.row === entry.row,
+                onSelect: () => controller.setSelectedVoxelCell(entry.col, entry.row),
+                onDelete: () => {
+                    controller.setSelectedVoxelCell(entry.col, entry.row);
+                    controller.deleteSelectedWall();
+                    onChange();
+                },
+            })),
+            "No voxel walls placed yet.",
+        );
+        appendEditorSubhead(body, "Rail walls");
+        appendInstanceList(
+            body,
+            railWalls.map((entry) => ({
+                label: entry.label,
+                selected: selectedRail?.col === entry.col && selectedRail.row === entry.row && selectedRail.side === entry.side,
+                onSelect: () => controller.setSelectedRailEdge(entry.col, entry.row, entry.side),
+                onDelete: () => {
+                    controller.setSelectedRailEdge(entry.col, entry.row, entry.side);
+                    controller.deleteSelectedWall();
+                    onChange();
+                },
+            })),
+            "No rail walls placed yet.",
+        );
+    });
+    appendSection(container, "wall-selected", "Selected", sectionOpen("wall-selected", true), (body) => {
+        if (selectedVoxelInfo) {
+            appendEditorHint(body, `Voxel block · height ${selectedVoxelInfo.heightLevel}. Change height below or delete.`);
+            body.appendChild(
+                new SliderControl("Height", 1, maxWallHeightLevel(controller), 1, selectedVoxelInfo.heightLevel, (val) => {
+                    controller.setSelectedVoxelWallHeight(val);
+                    onChange();
+                }).element,
+            );
+            const deleteRow = document.createElement("div");
+            deleteRow.className = "sandbox-add-row";
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "secondary";
+            deleteBtn.textContent = "Delete voxel";
+            deleteBtn.addEventListener("click", () => {
+                controller.deleteSelectedWall();
+                onChange();
+            });
+            deleteRow.appendChild(deleteBtn);
+            body.appendChild(deleteRow);
+            return;
+        }
+        if (selectedRailInfo) {
+            appendEditorHint(body, `Rail wall · ${selectedRailInfo.sideLabel} · height ${selectedRailInfo.heightLevel}.`);
+            appendSelectField(body, "Side", {
+                value: String(selectedRailInfo.side),
+                options: [0, 1, 2, 3].map((side) => ({ value: String(side), label: formatGridWallEdgeSideLabel(side) })),
+                onChange: (value) => {
+                    controller.setSelectedRailWallSide(Number(value));
+                    onChange();
+                },
+            });
+            body.appendChild(
+                new SliderControl("Height", 1, maxWallHeightLevel(controller), 1, selectedRailInfo.heightLevel, (val) => {
+                    controller.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
+                    onChange();
+                }).element,
+            );
+            body.appendChild(
+                new SliderControl("Thickness", 1, 8, 1, selectedRailInfo.thicknessLevel, (val) => {
+                    controller.setSelectedRailWallProps(selectedRailInfo.heightLevel, val);
+                    onChange();
+                }).element,
+            );
+            const deleteRow = document.createElement("div");
+            deleteRow.className = "sandbox-add-row";
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "secondary";
+            deleteBtn.textContent = "Delete rail";
+            deleteBtn.addEventListener("click", () => {
+                controller.deleteSelectedWall();
+                onChange();
+            });
+            deleteRow.appendChild(deleteBtn);
+            body.appendChild(deleteRow);
+            return;
+        }
+        appendEditorHint(body, "Select a voxel block or rail wall from Scene, or click the map to place one.");
+    });
+}
 /**
  * @param {HTMLElement} container
  * @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller
@@ -56,6 +257,15 @@ export function mountSandboxToyUi(container, controller, onChange) {
     const render = () => {
         const openSections = readOpenSections(container);
         container.innerHTML = "";
+        appendPanelTabs(container, controller, onChange);
+        if (controller.getEditorPanelTab() === "walls") {
+            renderWallsPanel(container, controller, onChange, (id, fallback = true) => {
+                if (openSections.size > 0) return openSections.has(id);
+                return isFirstRender ? fallback : openSections.has(id);
+            });
+            isFirstRender = false;
+            return;
+        }
         const assemblyManifests = controller.listAssemblyManifests();
         const spawnOptions = buildSpawnOptions(propIds, assemblyManifests);
         if (spawnOptions.length === 0) {

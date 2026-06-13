@@ -3,7 +3,9 @@ import { strokeCircle } from "../Canvas/CanvasPath.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { createAabb, aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
+import { strokeSelectedRailWallEdge } from "./gridWallEdit.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
+const WALL_CELL_SELECTION_BOUNDS = createAabb();
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
 export function findSandboxPropsInWorldRect(state, registry, bounds) {
     const meta = getSandboxEntityMeta(state);
@@ -16,9 +18,16 @@ function selectionRingRadius(prop, lineScale) {
 }
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {{ selectedProps: object[], showRings: boolean, selectedFloorCell?: { col: number, row: number } | null, grid?: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null }} options
+ * @param {{
+ *   selectedProps: object[],
+ *   showRings: boolean,
+ *   selectedFloorCell?: { col: number, row: number } | null,
+ *   selectedVoxelCell?: { col: number, row: number } | null,
+ *   selectedRailEdge?: { col: number, row: number, side: number } | null,
+ *   grid?: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null,
+ * }} options
  */
-export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selectedFloorCell = null, grid = null }) {
+export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selectedFloorCell = null, selectedVoxelCell = null, selectedRailEdge = null, grid = null }) {
     if (!showRings) return;
     const lineScale = getCanvasLineScale(ctx);
     ctx.save();
@@ -37,6 +46,20 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
             lineWidth: lineScale,
             dash: [4, 3],
         });
+    }
+    if (selectedVoxelCell && grid) {
+        const { x, y } = grid.gridToWorld(selectedVoxelCell.col, selectedVoxelCell.row);
+        const half = grid.cellSize * 0.5;
+        drawAabbHighlight(ctx, aabbFromTwoPointsInto(WALL_CELL_SELECTION_BOUNDS, x - half, y - half, x + half, y + half), {
+            fill: "rgba(255, 152, 0, 0.12)",
+            stroke: "rgba(255, 152, 0, 0.85)",
+            lineWidth: lineScale,
+            dash: [4, 3],
+        });
+    }
+    if (selectedRailEdge && grid) {
+        ctx.strokeStyle = "rgba(255, 152, 0, 0.9)";
+        strokeSelectedRailWallEdge(ctx, grid, selectedRailEdge, lineScale);
     }
     ctx.restore();
 }

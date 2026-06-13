@@ -125,10 +125,33 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         for (let i = 0; i < behaviors.length; i++) if (behaviors[i].tryCanvasInput?.(world, e)) return true;
         return false;
     };
+    /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
+    const handleWallPointerDown = (world, e) => {
+        if (e.button === 2) {
+            session.deleteWallAtWorld(world.x, world.y);
+            e.preventDefault();
+            e.stopPropagation();
+            return true;
+        }
+        if (e.button !== 0) return false;
+        if (session.pickWallAtWorld(world.x, world.y)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return true;
+        }
+        session.stampWallAtWorld(world.x, world.y);
+        e.preventDefault();
+        e.stopPropagation();
+        return true;
+    };
     /** @param {PointerEvent} e */
     const onPointerDown = (e) => {
         const canvas = getCanvas();
         const world = clientToWorld(e.clientX, e.clientY);
+        if (session.getEditorPanelTab() === "walls") {
+            handleWallPointerDown(world, e);
+            return;
+        }
         const registry = state.entityRegistry;
         if (e.button === 2) {
             const hit = findWorldPropAtInView(registry, combatSpatial, world.x, world.y);
@@ -393,6 +416,28 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         setSelectedFloorBeltKind: (kind) => session.setSelectedFloorBeltKind(kind),
         deleteSelectedFloorCell: () => session.deleteSelectedFloorCell(),
         getSelectedFloorBeltInfo: () => session.getSelectedFloorBeltInfo(),
+        getEditorPanelTab: () => session.getEditorPanelTab(),
+        setEditorPanelTab: (tab) => session.setEditorPanelTab(tab),
+        getWallStampMode: () => session.getWallStampMode(),
+        setWallStampMode: (mode) => session.setWallStampMode(mode),
+        getWallHeightLevel: () => session.getWallHeightLevel(),
+        setWallHeightLevel: (level) => session.setWallHeightLevel(level),
+        getRailThicknessLevel: () => session.getRailThicknessLevel(),
+        setRailThicknessLevel: (level) => session.setRailThicknessLevel(level),
+        getSelectedVoxelCell: () => session.getSelectedVoxelCell(),
+        getSelectedRailEdge: () => session.getSelectedRailEdge(),
+        setSelectedVoxelCell: (col, row) => session.setSelectedVoxelCell(col, row),
+        setSelectedRailEdge: (col, row, side) => session.setSelectedRailEdge(col, row, side),
+        clearWallSelection: () => session.clearWallSelection(),
+        listPlacedVoxelWalls: () => session.listPlacedVoxelWalls(),
+        listPlacedRailWalls: () => session.listPlacedRailWalls(),
+        getSelectedVoxelWallInfo: () => session.getSelectedVoxelWallInfo(),
+        getSelectedRailWallInfo: () => session.getSelectedRailWallInfo(),
+        stampWallAtCameraOrigin: () => session.stampWallAtCameraOrigin(),
+        setSelectedVoxelWallHeight: (heightLevel) => session.setSelectedVoxelWallHeight(heightLevel),
+        setSelectedRailWallProps: (heightLevel, thicknessLevel) => session.setSelectedRailWallProps(heightLevel, thicknessLevel),
+        setSelectedRailWallSide: (side) => session.setSelectedRailWallSide(side),
+        deleteSelectedWall: () => session.deleteSelectedWall(),
         sync: () => session.sync(),
         getState: () => session.getState(),
         setUiSync: (fn) => session.setUiSync(fn),
@@ -464,7 +509,14 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         },
         drawSelectionRings(ctx) {
             const { selectedProps } = selectionDrawState();
-            drawSandboxSelectionRings(ctx, { selectedProps, showRings: showSelectionRings, selectedFloorCell: session.getSelectedFloorCell(), grid: state.obstacleGrid });
+            drawSandboxSelectionRings(ctx, {
+                selectedProps,
+                showRings: showSelectionRings,
+                selectedFloorCell: session.getSelectedFloorCell(),
+                selectedVoxelCell: session.getSelectedVoxelCell(),
+                selectedRailEdge: session.getSelectedRailEdge(),
+                grid: state.obstacleGrid,
+            });
         },
         drawMarqueeOverlay(ctx) {
             const { marqueeRect } = selectionDrawState();
