@@ -45,9 +45,12 @@ export class WorldObstacleGrid {
                 padding: 0,
                 isDead: false,
                 isStaticGridProxy: true,
+                isStaticGridFace: false,
+                isEdgeRail: false,
                 gridCol: 0,
                 gridRow: 0,
                 handleHit(damage, state) {
+                    if (this.isEdgeRail) return;
                     damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
                 },
             };
@@ -57,27 +60,17 @@ export class WorldObstacleGrid {
         proxy._obstacleGrid = this;
         proxy.x = x;
         proxy.y = y;
+        proxy.angle = 0;
         proxy.size = size;
         proxy.width = size;
         proxy.height = size;
         proxy.shape = undefined;
         proxy.gridCol = col;
         proxy.gridRow = row;
-        return proxy;
-    }
-    _borrowStaticGridFaceSegment(faceOrSegment) {
-        const built = faceOrSegment.width != null ? faceOrSegment : gridWallFaceToCollisionSegment(faceOrSegment);
-        let proxy = this._staticWallProxies[this._staticWallProxyCount];
-        if (!proxy) {
-            proxy = { ...built, handleHit: built.handleHit };
-            this._staticWallProxies[this._staticWallProxyCount] = proxy;
-        } else {
-            Object.assign(proxy, built);
-            proxy.handleHit = built.handleHit;
-            proxy.shape = undefined;
-        }
-        this._staticWallProxyCount++;
-        proxy._obstacleGrid = this;
+        proxy.isStaticGridProxy = true;
+        proxy.isStaticGridFace = false;
+        proxy.isEdgeRail = false;
+        if ("gridSide" in proxy) delete proxy.gridSide;
         return proxy;
     }
     /** @param {object} entity @param {object[]} out */
@@ -97,8 +90,86 @@ export class WorldObstacleGrid {
             }
             for (let side = 0; side < 4; side++) {
                 if (!gridWallEdgeRailShouldEmit(this, col, row, side)) continue;
-                const segment = gridWallEdgeRailToCollisionSegment(this, col, row, side);
-                if (segment) out.push(this._borrowStaticGridFaceSegment(segment));
+                const thickness = Math.max(1, this.edgeThicknessGrid[idx * 4 + side]);
+                const bounds = this.getCellBounds(col, row);
+                const minX = bounds.minX;
+                const minY = bounds.minY;
+                const maxX = bounds.maxX;
+                const maxY = bounds.maxY;
+                let p1x, p1y, p2x, p2y;
+                if (side === 0) {
+                    p1x = minX;
+                    p1y = minY;
+                    p2x = maxX;
+                    p2y = minY;
+                } else if (side === 1) {
+                    p1x = maxX;
+                    p1y = minY;
+                    p2x = maxX;
+                    p2y = maxY;
+                } else if (side === 2) {
+                    p1x = maxX;
+                    p1y = maxY;
+                    p2x = minX;
+                    p2y = maxY;
+                } else {
+                    p1x = minX;
+                    p1y = maxY;
+                    p2x = minX;
+                    p2y = minY;
+                }
+                const dx = p2x - p1x;
+                const dy = p2y - p1y;
+                const len = Math.hypot(dx, dy);
+                let proxy = this._staticWallProxies[this._staticWallProxyCount];
+                if (!proxy) {
+                    proxy = {
+                        x: 0,
+                        y: 0,
+                        angle: 0,
+                        width: 0,
+                        height: 0,
+                        size: 0,
+                        padding: 0,
+                        isDead: false,
+                        isStaticGridFace: true,
+                        isEdgeRail: true,
+                        gridCol: col,
+                        gridRow: row,
+                        gridSide: side,
+                        shape: undefined,
+                        handleHit(damage, state) {
+                            if (this.isEdgeRail) return;
+                            damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
+                        },
+                    };
+                    this._staticWallProxies[this._staticWallProxyCount] = proxy;
+                } else {
+                    proxy.x = 0;
+                    proxy.y = 0;
+                    proxy.angle = 0;
+                    proxy.width = 0;
+                    proxy.height = 0;
+                    proxy.size = 0;
+                    proxy.padding = 0;
+                    proxy.isDead = false;
+                    proxy.isStaticGridFace = true;
+                    proxy.isStaticGridProxy = false;
+                    proxy.isEdgeRail = true;
+                    proxy.gridCol = col;
+                    proxy.gridRow = row;
+                    proxy.gridSide = side;
+                    proxy.shape = undefined;
+                }
+                this._staticWallProxyCount++;
+                proxy._obstacleGrid = this;
+                proxy.x = (p1x + p2x) * 0.5;
+                proxy.y = (p1y + p2y) * 0.5;
+                proxy.angle = Math.atan2(dy, dx);
+                proxy.width = len;
+                proxy.height = thickness;
+                proxy.size = Math.max(len, thickness);
+                out.push(proxy);
             }
         });
         return out;
