@@ -141,6 +141,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(world.x, world.y);
             if (grid.clearFloorCell(col, row)) {
+                const selectedFloor = session.getSelectedFloorCell();
+                if (selectedFloor?.col === col && selectedFloor.row === row) session.clearFloorSelection();
                 e.preventDefault();
                 e.stopPropagation();
                 session.sync();
@@ -205,6 +207,14 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             session.sync();
             return;
         }
+        const grid = state.obstacleGrid;
+        const { col, row } = grid.worldToGrid(world.x, world.y);
+        if (grid.hasFloorBelt(col, row)) {
+            session.setSelectedFloorCell(col, row);
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
         marqueeSelect = { pointerId: e.pointerId, startClientX: e.clientX, startClientY: e.clientY, startWorld: world, currentWorld: world };
         canvas.setPointerCapture(e.pointerId);
         e.preventDefault();
@@ -254,8 +264,10 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             marqueeSelect = null;
             releasePointerCapture(canvas, e);
             const dragPx = Math.hypot(e.clientX - drag.startClientX, e.clientY - drag.startClientY);
-            if (dragPx < MARQUEE_CLICK_THRESHOLD_PX) session.clearPropSelection();
-            else {
+            if (dragPx < MARQUEE_CLICK_THRESHOLD_PX) {
+                session.clearPropSelection();
+                session.clearFloorSelection();
+            } else {
                 const endWorld = clientToWorld(e.clientX, e.clientY);
                 const props = findSandboxPropsInWorldRect(state, state.entityRegistry, aabbFromTwoPointsInto(MARQUEE_BOUNDS, drag.startWorld.x, drag.startWorld.y, endWorld.x, endWorld.y));
                 session.setSelectedPropIds(props.map((prop) => prop.id));
@@ -372,6 +384,15 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         listAssemblies: () => session.listAssemblies(),
         deletePropById: (id) => session.deletePropById(id),
         listPlacedProps: () => session.listPlacedProps(),
+        listPlacedFloorBelts: () => session.listPlacedFloorBelts(),
+        getSelectedFloorCell: () => session.getSelectedFloorCell(),
+        setSelectedFloorCell: (col, row) => session.setSelectedFloorCell(col, row),
+        clearFloorSelection: () => session.clearFloorSelection(),
+        rotateSelectedFloorBelt: (steps) => session.rotateSelectedFloorBelt(steps),
+        moveSelectedFloorBeltTo: (col, row) => session.moveSelectedFloorBeltTo(col, row),
+        setSelectedFloorBeltKind: (kind) => session.setSelectedFloorBeltKind(kind),
+        deleteSelectedFloorCell: () => session.deleteSelectedFloorCell(),
+        getSelectedFloorBeltInfo: () => session.getSelectedFloorBeltInfo(),
         sync: () => session.sync(),
         getState: () => session.getState(),
         setUiSync: (fn) => session.setUiSync(fn),
@@ -443,7 +464,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         },
         drawSelectionRings(ctx) {
             const { selectedProps } = selectionDrawState();
-            drawSandboxSelectionRings(ctx, { selectedProps, showRings: showSelectionRings });
+            drawSandboxSelectionRings(ctx, { selectedProps, showRings: showSelectionRings, selectedFloorCell: session.getSelectedFloorCell(), grid: state.obstacleGrid });
         },
         drawMarqueeOverlay(ctx) {
             const { marqueeRect } = selectionDrawState();

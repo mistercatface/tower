@@ -38,6 +38,23 @@ export function floorBeltRailEdgeSides(kind, facingIndex) {
     for (let side = 0; side < 4; side++) if (side !== entrySide && side !== exitSide) sides.push(side);
     return sides;
 }
+const FLOOR_BELT_KIND_LABELS = {
+    [FLOOR_CELL_KIND.Belt]: "Conveyor",
+    [FLOOR_CELL_KIND.BeltElbowLeft]: "Conveyor Elbow L",
+    [FLOOR_CELL_KIND.BeltElbowRight]: "Conveyor Elbow R",
+    [FLOOR_CELL_KIND.BeltRails]: "Conveyor (rails)",
+    [FLOOR_CELL_KIND.BeltElbowLeftRails]: "Conveyor Elbow L (rails)",
+    [FLOOR_CELL_KIND.BeltElbowRightRails]: "Conveyor Elbow R (rails)",
+};
+const FLOOR_BELT_FACING_LABELS = ["E", "S", "W", "N"];
+/** @param {number} kind */
+export function formatFloorBeltKindLabel(kind) {
+    return FLOOR_BELT_KIND_LABELS[kind] ?? "Belt";
+}
+/** @param {number} facingIndex 0…3 */
+export function formatFloorBeltFacingLabel(facingIndex) {
+    return FLOOR_BELT_FACING_LABELS[facingIndex % CARDINAL_FACING_STEPS];
+}
 /** @param {number} cardinalIndex 0…3 */
 export function floorBeltFacingFromIndex(cardinalIndex) {
     return (cardinalIndex % CARDINAL_FACING_STEPS) * ((Math.PI * 2) / CARDINAL_FACING_STEPS);

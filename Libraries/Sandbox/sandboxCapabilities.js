@@ -1,7 +1,7 @@
 import { ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { FLOOR_CELL_KIND } from "../Spatial/grid/FloorCell.js";
+import { FLOOR_CELL_KIND, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { syncWorldPropWeaponState } from "../Combat/worldPropWeaponState.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 export const SANDBOX_BEHAVIOR_LABELS = {
@@ -56,6 +56,18 @@ export function resolveFloorBeltKindFromSpawnAsset(asset) {
     if (kind === "elbowLeftRails") return FLOOR_CELL_KIND.BeltElbowLeftRails;
     if (kind === "elbowRightRails") return FLOOR_CELL_KIND.BeltElbowRightRails;
     return FLOOR_CELL_KIND.Belt;
+}
+const FLOOR_BELT_KINDS = [
+    FLOOR_CELL_KIND.Belt,
+    FLOOR_CELL_KIND.BeltRails,
+    FLOOR_CELL_KIND.BeltElbowLeft,
+    FLOOR_CELL_KIND.BeltElbowRight,
+    FLOOR_CELL_KIND.BeltElbowLeftRails,
+    FLOOR_CELL_KIND.BeltElbowRightRails,
+];
+/** @returns {{ kind: number, label: string }[]} */
+export function listFloorBeltKindOptions() {
+    return FLOOR_BELT_KINDS.map((kind) => ({ kind, label: formatFloorBeltKindLabel(kind) }));
 }
 /**
  * @param {object | null | undefined} asset

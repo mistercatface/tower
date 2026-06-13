@@ -1,6 +1,6 @@
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
-import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable } from "./sandboxCapabilities.js";
+import { getSandboxBehaviorLabel, isSandboxEquippable, isSandboxSpawnable, listFloorBeltKindOptions } from "./sandboxCapabilities.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "./spawnerConfig.js";
 import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector, appendTranslateFields } from "./sandboxWorldPropInspector.js";
 import { isButtonEntity } from "./buttonInput.js";
@@ -164,7 +164,10 @@ export function mountSandboxToyUi(container, controller, onChange) {
         const selectedId = controller.getSelectedPropId();
         const selectedPropIds = new Set(controller.getSelectedPropIds());
         const selectedProp = controller.getSelectedProp();
+        const selectedFloorCell = controller.getSelectedFloorCell();
+        const selectedFloorBelt = controller.getSelectedFloorBeltInfo();
         const selectionCount = selectedPropIds.size;
+        const hasFloorSelection = selectedFloorCell != null;
         const toolsRow = document.createElement("div");
         toolsRow.className = "sandbox-add-row";
         const ringsField = document.createElement("label");
@@ -181,10 +184,11 @@ export function mountSandboxToyUi(container, controller, onChange) {
         const deleteSelectedBtn = document.createElement("button");
         deleteSelectedBtn.type = "button";
         deleteSelectedBtn.className = "secondary";
-        deleteSelectedBtn.disabled = selectionCount === 0;
-        deleteSelectedBtn.textContent = selectionCount > 1 ? `Delete selected (${selectionCount})` : "Delete selected";
+        deleteSelectedBtn.disabled = selectionCount === 0 && !hasFloorSelection;
+        deleteSelectedBtn.textContent = selectionCount > 1 ? `Delete selected (${selectionCount})` : hasFloorSelection && selectionCount === 0 ? "Delete belt" : "Delete selected";
         deleteSelectedBtn.addEventListener("click", () => {
-            controller.deleteSelectedProps();
+            if (hasFloorSelection && selectionCount === 0) controller.deleteSelectedFloorCell();
+            else controller.deleteSelectedProps();
             onChange();
         });
         toolsRow.appendChild(deleteSelectedBtn);
@@ -232,6 +236,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
             body.appendChild(addRow);
         });
         const placed = controller.listPlacedProps();
+        const floorBelts = controller.listPlacedFloorBelts();
         const assemblies = controller.listAssemblies();
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
             appendSubhead(body, "Props");
@@ -244,6 +249,20 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     onDelete: () => controller.deletePropById(entry.id),
                 })),
                 "No props placed yet.",
+            );
+            appendSubhead(body, "Conveyor belts");
+            appendEntityList(
+                body,
+                floorBelts.map((entry) => ({
+                    label: entry.label,
+                    selected: selectedFloorCell?.col === entry.col && selectedFloorCell.row === entry.row,
+                    onSelect: () => controller.setSelectedFloorCell(entry.col, entry.row),
+                    onDelete: () => {
+                        controller.setSelectedFloorCell(entry.col, entry.row);
+                        controller.deleteSelectedFloorCell();
+                    },
+                })),
+                "No conveyor belts placed yet.",
             );
             if (assemblies.length > 0) {
                 appendSubhead(body, "Assemblies");
@@ -282,9 +301,72 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 return;
             }
             if (!selectedProp) {
+                if (selectedFloorBelt) {
+                    const beltHint = document.createElement("p");
+                    beltHint.className = "editor-hint";
+                    beltHint.textContent = `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, col/row, or rotation below. Move is blocked when the target has a wall or belt.`;
+                    body.appendChild(beltHint);
+                    appendSelectField(body, "Type", {
+                        value: String(selectedFloorBelt.kind),
+                        options: listFloorBeltKindOptions().map((option) => ({ value: String(option.kind), label: option.label })),
+                        onChange: (value) => {
+                            controller.setSelectedFloorBeltKind(Number(value));
+                            onChange();
+                        },
+                    });
+                    appendNumberField(body, "Col", {
+                        value: selectedFloorBelt.col,
+                        step: 1,
+                        onChange: (col) => {
+                            controller.moveSelectedFloorBeltTo(col, selectedFloorBelt.row);
+                            onChange();
+                        },
+                    });
+                    appendNumberField(body, "Row", {
+                        value: selectedFloorBelt.row,
+                        step: 1,
+                        onChange: (row) => {
+                            controller.moveSelectedFloorBeltTo(selectedFloorBelt.col, row);
+                            onChange();
+                        },
+                    });
+                    const rotateRow = document.createElement("div");
+                    rotateRow.className = "sandbox-add-row";
+                    const rotateLeftBtn = document.createElement("button");
+                    rotateLeftBtn.type = "button";
+                    rotateLeftBtn.className = "secondary";
+                    rotateLeftBtn.textContent = "Rotate left";
+                    rotateLeftBtn.addEventListener("click", () => {
+                        controller.rotateSelectedFloorBelt(-1);
+                        onChange();
+                    });
+                    const rotateRightBtn = document.createElement("button");
+                    rotateRightBtn.type = "button";
+                    rotateRightBtn.className = "secondary";
+                    rotateRightBtn.textContent = "Rotate right";
+                    rotateRightBtn.addEventListener("click", () => {
+                        controller.rotateSelectedFloorBelt(1);
+                        onChange();
+                    });
+                    rotateRow.append(rotateLeftBtn, rotateRightBtn);
+                    body.appendChild(rotateRow);
+                    const deleteRow = document.createElement("div");
+                    deleteRow.className = "sandbox-add-row";
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.type = "button";
+                    deleteBtn.className = "secondary";
+                    deleteBtn.textContent = "Delete belt";
+                    deleteBtn.addEventListener("click", () => {
+                        controller.deleteSelectedFloorCell();
+                        onChange();
+                    });
+                    deleteRow.appendChild(deleteBtn);
+                    body.appendChild(deleteRow);
+                    return;
+                }
                 const empty = document.createElement("p");
                 empty.className = "editor-hint";
-                empty.textContent = "Select a prop from Scene.";
+                empty.textContent = "Select a prop or conveyor belt from Scene.";
                 body.appendChild(empty);
                 return;
             }

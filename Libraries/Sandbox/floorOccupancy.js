@@ -3,6 +3,16 @@ import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltRailsKind } fr
 import { createConveyorDraw } from "../Render/conveyorDraw.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { applyPushableAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
+import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
+/** @param {object} state @param {number} col @param {number} row */
+export function canStampFloorBeltAt(state, col, row) {
+    const grid = state.obstacleGrid;
+    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (grid.isBlocked(col, row)) return false;
+    if (grid.hasFloorOccupancy(col, row)) return false;
+    if (findGridAnchoredFloorPropAtCell(state.entityRegistry, col, row)) return false;
+    return true;
+}
 const RAILED_BELT_RAIL_COLORS = { shadow: "#92400E", mid: "#D97706", highlight: "#FBBF24" };
 const RAILED_BELT_RAIL_TOP_COLORS = { light: "#FDE68A", mid: "#F59E0B", dark: "#B45309" };
 const RAILED_BELT_RAIL_STROKE = "#78350F";

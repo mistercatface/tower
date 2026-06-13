@@ -2,6 +2,8 @@ import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewport
 import { strokeCircle } from "../Canvas/CanvasPath.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { createAabb, aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
+const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
 export function findSandboxPropsInWorldRect(state, registry, bounds) {
     const meta = getSandboxEntityMeta(state);
@@ -14,10 +16,10 @@ function selectionRingRadius(prop, lineScale) {
 }
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {{ selectedProps: object[], showRings: boolean }} options
+ * @param {{ selectedProps: object[], showRings: boolean, selectedFloorCell?: { col: number, row: number } | null, grid?: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null }} options
  */
-export function drawSandboxSelectionRings(ctx, { selectedProps, showRings }) {
-    if (!showRings || selectedProps.length === 0) return;
+export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selectedFloorCell = null, grid = null }) {
+    if (!showRings) return;
     const lineScale = getCanvasLineScale(ctx);
     ctx.save();
     ctx.strokeStyle = "rgba(120, 200, 255, 0.65)";
@@ -25,6 +27,16 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings }) {
     for (let i = 0; i < selectedProps.length; i++) {
         const prop = selectedProps[i];
         strokeCircle(ctx, prop.x, prop.y, selectionRingRadius(prop, lineScale));
+    }
+    if (selectedFloorCell && grid) {
+        const { x, y } = grid.gridToWorld(selectedFloorCell.col, selectedFloorCell.row);
+        const half = grid.cellSize * 0.5;
+        drawAabbHighlight(ctx, aabbFromTwoPointsInto(FLOOR_BELT_SELECTION_BOUNDS, x - half, y - half, x + half, y + half), {
+            fill: "rgba(120, 200, 255, 0.1)",
+            stroke: "rgba(120, 200, 255, 0.75)",
+            lineWidth: lineScale,
+            dash: [4, 3],
+        });
     }
     ctx.restore();
 }

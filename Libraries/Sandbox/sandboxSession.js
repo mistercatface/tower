@@ -6,8 +6,10 @@ import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from ".
 import { getResolvedAssembly, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
+import { stepCardinalFacing } from "../Math/Angle.js";
+import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { isGridFloorBeltSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
-import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
+import { canStampFloorBeltAt } from "./floorOccupancy.js";
 export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
 /** @param {string} assemblyId */
 export function sandboxSpawnAssemblyId(assemblyId) {
@@ -28,6 +30,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let selectedPropIds = new Set();
     /** @type {number | null} */
     let selectedPropId = null;
+    /** @type {{ col: number, row: number } | null} */
+    let selectedFloorCell = null;
     /** @type {(() => void) | null} */
     let uiSync = null;
     const sync = () => {
@@ -50,6 +54,10 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         selectedPropIds.clear();
         selectedPropId = null;
     };
+    const dropFloorSelection = () => {
+        if (selectedFloorCell == null) return;
+        selectedFloorCell = null;
+    };
     const setSinglePropSelection = (id) => {
         if (id == null) {
             selectedPropIds.clear();
@@ -57,8 +65,15 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             sync();
             return;
         }
+        dropFloorSelection();
         selectedPropIds = new Set([id]);
         selectedPropId = id;
+        sync();
+    };
+    const setSelectedFloorCell = (col, row) => {
+        selectedPropIds.clear();
+        selectedPropId = null;
+        selectedFloorCell = { col, row };
         sync();
     };
     const removeProp = (prop) => removeSandboxWorldProp(state, prop);
@@ -85,10 +100,10 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         if (isGridFloorBeltSpawnAsset(asset)) {
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(worldX, worldY);
-            if (findGridAnchoredFloorPropAtCell(state.entityRegistry, col, row) || grid.hasFloorOccupancy(col, row)) return null;
+            if (!canStampFloorBeltAt(state, col, row)) return null;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
             if (!grid.writeFloorCell(col, row, kind, 0)) return null;
-            sync();
+            setSelectedFloorCell(col, row);
             return null;
         }
         const prop = new WorldProp(worldX, worldY, spawnPropId, 0);
@@ -115,6 +130,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             setSinglePropSelection(id);
         },
         setSelectedPropIds: (ids) => {
+            dropFloorSelection();
             selectedPropIds = new Set();
             for (let i = 0; i < ids.length; i++) {
                 const id = ids[i];
@@ -125,6 +141,86 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         clearPropSelection: () => {
             setSinglePropSelection(null);
+        },
+        getSelectedFloorCell: () => selectedFloorCell,
+        setSelectedFloorCell,
+        clearFloorSelection: () => {
+            dropFloorSelection();
+            sync();
+        },
+        rotateSelectedFloorBelt(steps = 1) {
+            if (!selectedFloorCell) return false;
+            const grid = state.obstacleGrid;
+            const { col, row } = selectedFloorCell;
+            const idx = col + row * grid.cols;
+            if (!grid.floorStore.isBeltKindAtIdx(idx)) {
+                dropFloorSelection();
+                sync();
+                return false;
+            }
+            const kind = grid.floorStore.kind[idx];
+            const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
+            grid.writeFloorCell(col, row, kind, stepCardinalFacing(facingRadians, steps));
+            sync();
+            return true;
+        },
+        moveSelectedFloorBeltTo(targetCol, targetRow) {
+            if (!selectedFloorCell) return false;
+            const grid = state.obstacleGrid;
+            const { col, row } = selectedFloorCell;
+            if (col === targetCol && row === targetRow) return true;
+            const idx = col + row * grid.cols;
+            if (!grid.floorStore.isBeltKindAtIdx(idx)) {
+                dropFloorSelection();
+                sync();
+                return false;
+            }
+            if (!canStampFloorBeltAt(state, targetCol, targetRow)) return false;
+            const kind = grid.floorStore.kind[idx];
+            const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
+            grid.clearFloorCell(col, row);
+            if (!grid.writeFloorCell(targetCol, targetRow, kind, facingRadians)) {
+                grid.writeFloorCell(col, row, kind, facingRadians);
+                return false;
+            }
+            setSelectedFloorCell(targetCol, targetRow);
+            return true;
+        },
+        setSelectedFloorBeltKind(kind) {
+            if (!selectedFloorCell) return false;
+            const grid = state.obstacleGrid;
+            const { col, row } = selectedFloorCell;
+            const idx = col + row * grid.cols;
+            if (!grid.floorStore.isBeltKindAtIdx(idx)) {
+                dropFloorSelection();
+                sync();
+                return false;
+            }
+            if (grid.floorStore.kind[idx] === kind) return true;
+            const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
+            grid.writeFloorCell(col, row, kind, facingRadians);
+            sync();
+            return true;
+        },
+        deleteSelectedFloorCell() {
+            if (!selectedFloorCell) return false;
+            const grid = state.obstacleGrid;
+            const { col, row } = selectedFloorCell;
+            if (!grid.clearFloorCell(col, row)) return false;
+            dropFloorSelection();
+            sync();
+            return true;
+        },
+        getSelectedFloorBeltInfo() {
+            if (!selectedFloorCell) return null;
+            const grid = state.obstacleGrid;
+            const { col, row } = selectedFloorCell;
+            if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return null;
+            const idx = col + row * grid.cols;
+            if (!grid.floorStore.isBeltKindAtIdx(idx)) return null;
+            const kind = grid.floorStore.kind[idx];
+            const facingIndex = grid.floorStore.facing[idx];
+            return { col, row, kind, facingIndex, kindLabel: formatFloorBeltKindLabel(kind), facingLabel: formatFloorBeltFacingLabel(facingIndex) };
         },
         getSelectedProp: () => {
             pruneSelection();
@@ -186,12 +282,31 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             });
             return placed;
         },
+        listPlacedFloorBelts() {
+            const grid = state.obstacleGrid;
+            const counts = new Map();
+            /** @type {{ col: number, row: number, kind: number, facingIndex: number, label: string }[]} */
+            const placed = [];
+            const size = grid.cols * grid.rows;
+            for (let idx = 0; idx < size; idx++) {
+                if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
+                const kind = grid.floorStore.kind[idx];
+                const col = idx % grid.cols;
+                const row = (idx / grid.cols) | 0;
+                const index = (counts.get(kind) ?? 0) + 1;
+                counts.set(kind, index);
+                const facingLabel = formatFloorBeltFacingLabel(grid.floorStore.facing[idx]);
+                placed.push({ col, row, kind, facingIndex: grid.floorStore.facing[idx], label: `${formatFloorBeltKindLabel(kind)} #${index} · ${facingLabel}` });
+            }
+            return placed;
+        },
         clear() {
             for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state.worldProps[i]);
             state.obstacleGrid.clearAllFloorCells();
             clearAssemblyInstances(state);
             selectedPropIds.clear();
             selectedPropId = null;
+            dropFloorSelection();
             sync();
         },
         setUiSync(fn) {
