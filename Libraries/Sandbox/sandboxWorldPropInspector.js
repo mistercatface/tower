@@ -2,7 +2,7 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { syncPullFixtureWalls, teardownPullFixtureWalls } from "./pullFixtureWalls.js";
 import { isButtonEntity, isMassButtonInputMode } from "./buttonInput.js";
-import { appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../../Apps/Editor/ui/paramFields.js";
+import { appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../UI/paramFields.js";
 /** @param {object} prop @param {number} degrees */
 function applyWorldPropFacing(prop, degrees) {
     prop.facing = (degrees * Math.PI) / 180;

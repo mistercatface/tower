@@ -4,7 +4,7 @@ import { applyWorldPropWeaponLoadout } from "../Combat/worldPropWeaponLoadout.js
 import { gunSupportsAttachment, isWorldPropAttachmentEnabled, resolveWorldPropSlotGun, setWorldPropAttachmentEnabled } from "../Combat/worldPropWeaponState.js";
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout, toggleGunInLoadout, unequipSlot } from "../Combat/equipmentLoadout.js";
 import { isSandboxEquippable } from "./sandboxCapabilities.js";
-import { appendEditorSubhead } from "../../Apps/Editor/ui/paramFields.js";
+import { appendEditorSubhead } from "../UI/paramFields.js";
 /**
  * @param {HTMLElement} container
  * @param {object | null} prop

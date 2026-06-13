@@ -2,7 +2,7 @@ import { generateLabCaverns, generateLabRailCaverns, PLAY_AREA_CELL_OPTIONS, pla
 import { buildMapWallToolPanel } from "./mapWallTool.js";
 import { migrateCavernConfigForMode } from "../world/cavernBounds.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
-import { SliderControl } from "./controls/SliderControl.js";
+import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { appendSectionTitle, addNumberField } from "./mapPanelFields.js";
 /** @type {(() => void) | null} */
 let mapPanelRefreshInputs = null;

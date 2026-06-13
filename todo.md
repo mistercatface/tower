@@ -2,6 +2,17 @@
 
 ## current: ui refactor
 
+- [x] **Phase 1 — shared UI in Libraries** — `Libraries/UI/paramFields.js`, `Component`, `SelectControl`, `SliderControl`; fix Libraries→Apps imports.
+- [ ] **Phase 2 — TileLab naming cleanup** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS/comments.
+- [ ] **Phase 3 — dependency direction** — break inverted deps below; move `mountSandboxToyUi` under `Apps/Editor/ui/`.
+
+### Inverted / injected dependencies
+
+- [ ] **`Libraries/Combat` → `Apps/Editor/engine.js`** — combat imports editor `engine` singleton; move config to Libraries or inject callbacks.
+- [ ] **`engine.js` → `sandboxController` export** — render passes reach into `tilelabSandbox` module global instead of state or a registered port.
+- [ ] **`tilelabSandbox.js` `worldPropStates` patch** — voidSink merge/delete on mount; replace with explicit registration.
+- [ ] **`Index.html` generic shell** — unused pool/radio chrome and dead `uiPort` comments; editor-only bootstrap.
+
 ## floor occupancy belts
 
 Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not WorldProps). Draw via `conveyorDraw.js`; force via `applyPushableAccelerationAlongAngle` before pushable physics.

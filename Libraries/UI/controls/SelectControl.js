@@ -8,7 +8,6 @@ export class SelectControl extends Component {
         this.select = document.createElement("select");
         for (const opt of options) {
             const o = document.createElement("option");
-            // If option is a string, use it for both. If it's an object, expect value and label.
             if (typeof opt === "string") {
                 o.value = opt;
                 o.textContent = opt;

@@ -3,7 +3,7 @@ import { centerCellBoundsOnViewport } from "../world/cellBoundsConfig.js";
 import { deleteStaticWallsInBounds, stampStaticWallsInBounds, stampWallEdgesInBounds } from "../world/staticGridWallEdit.js";
 import { buildRectCircleBoundsFields } from "./cellBoundsFields.js";
 import { appendSectionTitle, addNumberField } from "./mapPanelFields.js";
-import { SliderControl } from "./controls/SliderControl.js";
+import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 const EDGE_SIDE_OPTIONS = [
     { value: 0, label: "North (+Y)" },
     { value: 1, label: "East (+X)" },
