@@ -268,7 +268,7 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
         { x: box.innerP2x, y: box.innerP2y },
         { x: box.innerP1x, y: box.innerP1y },
     ];
-    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, box.wallCapHeight, gameState, profileId, wallCtx.texelResolution);
+    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, box.wallBaseZ, gameState, profileId, wallCtx.texelResolution);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         return;

@@ -37,7 +37,7 @@ Single vertical formula: **`projectWorldPointInto`** + **`projectWallFaceBandInt
 
 - [x] **Delete `computeProjectedFace`** — legacy angle-spread path removed; no dual vertical projection.
 - [x] **Unify wall face draw** — voxelBlock + railWall sides/ends use `drawProjectedWallFace` only.
-- [x] **Cap workaround** — solid fill cap; procedural cap deferred.
+- [x] **Procedural cap rendering** — restored and fixed; samples from `box.wallBaseZ` to align textures perfectly with the roof.
 - [ ] **Cap alignment regression** — deferred.
 - [x] **Unify back-face cull** — `isOutwardFaceTowardViewer` in `IsometricProjection.js`; voxelBlock collect + railWall draw share it.
 - [x] **`WallDrawContext.gameState`** — cap chunk sample uses same bake hook as roofs.
@@ -65,7 +65,7 @@ Priority order. **Do not add new micro-files** unless a module is a real subsyst
 
 ### P1 — Rail top cap (follow-up)
 
-- [x] **Cap workaround** — solid fill via `drawProjectedRailWallCap` (procedural chunk cap deferred; alignment issue open).
+- [x] **Procedural cap rendering** — restored and fixed via `drawProjectedRailWallCap` (samples from `box.wallBaseZ` to align textures perfectly with the roof).
 - [ ] **Cap alignment regression** — pan radial camera; caps meet side tops (deferred).
 - [ ] **Verify live profile edit** — sides update on profile change; cap is solid until procedural cap returns.
 
