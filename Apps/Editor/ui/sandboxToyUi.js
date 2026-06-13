@@ -379,7 +379,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
             );
         });
         appendSection(container, "scene-json", "Scene JSON", sectionOpen("scene-json"), (body) => {
-            appendEditorHint(body, "Copy/paste sandbox layout: props (world x/y), voxel walls, rail walls. Replace clears the current sandbox first.");
+            appendEditorHint(body, "Copy/paste sandbox layout: props (world x/y), voxel walls, rail walls, floor belts. Replace clears the current sandbox first.");
             const textarea = document.createElement("textarea");
             textarea.className = "editor-export-area";
             textarea.rows = 10;

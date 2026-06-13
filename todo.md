@@ -2,19 +2,18 @@
 
 ## Current priorities
 
-### Sandbox scene JSON export/import — MVP done
+### Sandbox scene JSON export/import — schema v2
 
-Copy/paste in Sandbox panel **Scene JSON** section (Props tab). **Replace mode only** — sufficient for layout sharing; merge/autosave not planned near-term.
+Copy/paste in Sandbox panel **Scene JSON** section (Props tab). **Replace mode only** — sufficient for layout sharing; merge/autosave not planned near-term. **No legacy schema migration** — bump `SANDBOX_SCENE_SCHEMA_VERSION` when the format changes (v1 JSON is invalid after floor belts shipped).
 
-- [x] **`collectSandboxSceneSnapshot`** — props (world x/y/facing/faction), voxels, railWalls (deduped), origin + cols/rows; pool racks collapse to `pool_rack_*` anchor
-- [x] **`applySandboxSceneSnapshot`** — replace: clear props/floors/walls, expand grid, re-stamp walls, spawn props / pool racks
+- [x] **`collectSandboxSceneSnapshot`** — props, voxels, railWalls, **floorBelts** (`floorStore` kind + facingIndex), origin + cols/rows; pool racks collapse to `pool_rack_*` anchor
+- [x] **`applySandboxSceneSnapshot`** — replace: clear props/floors/walls, expand grid, batch re-stamp walls + belts, spawn props / pool racks
 - [x] **UI — Scene JSON** — Export, Copy, Load (replace) + validation errors
 
 **When needed (not next):**
-- [ ] **Floor belts in schema** — `floorBelts` array on export/import
 - [ ] **Prop extras** — behavior overrides, button links (faction already exported)
 
-**Deferred (no near-term plan):** merge mode, debounced autosave (`createDebouncedStorage`).
+**Deferred (no near-term plan):** merge mode, debounced autosave.
 
 ### Animated floor tiles (grid layer)
 
@@ -45,7 +44,7 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 - [ ] **Belt facing** — spawn-with-facing, rotate selected cell(s), inspector force default.
 - [ ] **Corner autotile** — 4-bit junction detection on straight belt chains (optional polish).
 - [ ] **Smoke test** — L-shaped path; ball rides through straight + elbow cells.
-- [ ] **Persist belts** — extend **Scene JSON** with `floorBelts` when belt export/import is implemented.
+- [x] **Persist belts** — `floorBelts` in Scene JSON schema v2 (`floorStore`; railed belt edges restored via `syncFloorBeltRailEdges`).
 
 **Deferred:** `EDGE_KIND.Conveyor` on `edgeStore` (boundary strips, directional crossing).
 
@@ -197,6 +196,7 @@ Major feature completions only (newest first). Not bugfixes or polish unless the
 
 | When | Milestone |
 |------|-----------|
+| 2026-06 | **Sandbox scene JSON schema v2** — `floorBelts` on `floorStore`; batch import; props + walls + belts copy/paste. |
 | 2026-06 | **Sandbox scene JSON MVP** — `collectSandboxSceneSnapshot` / `applySandboxSceneSnapshot`; Props panel Scene JSON copy/paste (walls + props, replace mode). |
 | 2026-06 | **Animated surface flipbook library** — `animatedSurfaceFlipbook/Draw/Zone.js`; worker bake + sim draw; `sandbox.animatedSurfaceZones` (no editor consumer yet). |
 | 2026-06 | **Pool rack spawn props** — removed assembly cartridge system; `pool_rack_8ball` / `pool_rack_9ball` + `spawnPoolRack`; cue `inputGates` via `spawnGroupId`. |
