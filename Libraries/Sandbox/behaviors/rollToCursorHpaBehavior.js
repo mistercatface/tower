@@ -1,5 +1,5 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
-import { getRollToCursorConfig, steerRollToward, decelerateRoll } from "../rollToCursorMotion.js";
+import { getRollToCursorConfig, steerRollToward } from "../rollToCursorMotion.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
 function snapMoveTargetToCellCenter(grid, world) {
@@ -62,9 +62,7 @@ export function createRollToCursorHpaBehavior(state) {
             const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);
             const isFinalLeg = !hpaNav.navState.path || hpaNav.navState.pathProgressIdx >= hpaNav.navState.path.length - 1;
             if (isFinalLeg && distToTarget <= config.stopRadius) {
-                decelerateRoll(prop, dt, config);
-                const speed = Math.hypot(prop.vx ?? 0, prop.vy ?? 0);
-                if (speed < 0.5) clearTarget();
+                clearTarget();
                 return;
             }
             hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
@@ -73,8 +71,12 @@ export function createRollToCursorHpaBehavior(state) {
                 arrivalDistance: config.stopRadius,
                 pathOffPathDistance: 80,
             });
-            if (!steering || (steering.desiredX === 0 && steering.desiredY === 0)) {
-                decelerateRoll(prop, dt, config);
+            if (!steering) {
+                clearTarget();
+                return;
+            }
+            if (steering.desiredX === 0 && steering.desiredY === 0) {
+                if (distToTarget <= config.stopRadius) clearTarget();
                 return;
             }
             steerRollToward(prop, steering.desiredX, steering.desiredY, dt, config);

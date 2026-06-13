@@ -42,14 +42,12 @@ export function createRollToCursorDirectBehavior() {
             const dy = targetWorld.y - prop.y;
             const dist = Math.hypot(dx, dy);
             if (dist < config.stopRadius) {
-                decelerateRoll(prop, dt, config);
                 if (groundMoveActive) {
-                    const speed = Math.hypot(prop.vx ?? 0, prop.vy ?? 0);
-                    if (speed < 0.5) {
-                        groundMoveActive = false;
-                        targetWorld = null;
-                    }
+                    groundMoveActive = false;
+                    targetWorld = null;
+                    return;
                 }
+                decelerateRoll(prop, dt, config);
                 return;
             }
             steerRollToward(prop, dx / dist, dy / dist, dt, config);
