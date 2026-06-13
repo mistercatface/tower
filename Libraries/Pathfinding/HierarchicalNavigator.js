@@ -367,17 +367,27 @@ export class HierarchicalNavigator {
         const searchRadius = Math.ceil(Math.sqrt(this.maxCellsPerChunk)) * 2;
         if (targetNode) {
             candidates.add(targetNode);
-            for (const edge of targetNode.edges) {
-                const neighbor = this.nodesMap[edge.targetId];
-                if (neighbor) candidates.add(neighbor);
+            if (isStart) {
+                for (const edge of targetNode.edges) {
+                    const neighbor = this.nodesMap[edge.targetId];
+                    if (neighbor) candidates.add(neighbor);
+                }
+            } else {
+                for (const node of Object.values(this.nodesMap)) {
+                    if (node.id === "start" || node.id === "target") continue;
+                    if (node.edges.some((e) => e.targetId === targetNode.id)) {
+                        candidates.add(node);
+                    }
+                }
             }
-        } else
+        } else {
             for (const id in this.nodesMap) {
                 if (id === "start" || id === "target") continue;
                 const node = this.nodesMap[id];
                 const d = Math.hypot(gridCol - node.col, gridRow - node.row);
                 if (d <= searchRadius) candidates.add(node);
             }
+        }
         for (const candidate of candidates) {
             const path = isStart ? this.runLocalAStar(tempNode.col, tempNode.row, candidate.col, candidate.row, 96) : this.runLocalAStar(candidate.col, candidate.row, tempNode.col, tempNode.row, 96);
             if (path)

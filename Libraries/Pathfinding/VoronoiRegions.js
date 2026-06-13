@@ -74,7 +74,7 @@ function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, nodeCells
         }
     }
 }
-function mergeSmallRegions(nodesMap, cellToNode, cols, rows, minCellsPerChunk) {
+function mergeSmallRegions(nodesMap, cellToNode, cols, rows, minCellsPerChunk, navGraph = null) {
     let merged;
     do {
         merged = false;
@@ -91,7 +91,11 @@ function mergeSmallRegions(nodesMap, cellToNode, cols, rows, minCellsPerChunk) {
                 forEachCardinalNeighbor(col, row, cols, rows, (nc, nr, nIdx) => {
                     if (neighborNode) return;
                     const nNode = cellToNode[nIdx];
-                    if (nNode && nNode.id !== id) neighborNode = nNode;
+                    if (nNode && nNode.id !== id) {
+                        if (!navGraph || (navGraph.canStep(col, row, nc, nr) && navGraph.canStep(nc, nr, col, row))) {
+                            neighborNode = nNode;
+                        }
+                    }
                 });
                 if (neighborNode) break;
             }
@@ -153,7 +157,7 @@ export function generateVoronoiRegions({ grid, distToWall, cols, rows, minX, min
         nodesMap[id] = node;
         floodFillRegion(startIdx, node, grid, cols, rows, assignment, node.cells, maxCellsPerChunk, navGraph);
     }
-    if (minCellsPerChunk > 0) mergeSmallRegions(nodesMap, assignment, cols, rows, minCellsPerChunk);
+    if (minCellsPerChunk > 0) mergeSmallRegions(nodesMap, assignment, cols, rows, minCellsPerChunk, navGraph);
     repositionRegionCentroids(nodesMap, grid, cols, rows, minX, minY, cellSize, assignment);
     return { nodesMap, cellToNode: assignment, nodeIdCounter };
 }
