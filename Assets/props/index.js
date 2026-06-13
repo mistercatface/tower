@@ -13,6 +13,8 @@ import button_floor from "./button_floor/button_floor.asset.js";
 import gravity_pad from "./gravity_pad/gravity_pad.asset.js";
 import void_pit from "./void_pit/void_pit.asset.js";
 import floor_belt from "./floor_belt/floor_belt.asset.js";
+import floor_belt_elbow_left from "./floor_belt/floor_belt_elbow_left.asset.js";
+import floor_belt_elbow_right from "./floor_belt/floor_belt_elbow_right.asset.js";
 import poolBalls from "./poolBalls.js";
 const catalog = {
     beach_ball,
@@ -30,6 +32,8 @@ const catalog = {
     gravity_pad,
     button_floor,
     floor_belt,
+    floor_belt_elbow_left,
+    floor_belt_elbow_right,
     ...poolBalls,
 };
 export default catalog;

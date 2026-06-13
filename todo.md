@@ -4,10 +4,11 @@
 
 Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not WorldProps). Draw via `conveyorDraw.js`; force via `applyPushableAccelerationAlongAngle` before pushable physics.
 
+- [x] **Elbow belts** — `floor_belt_elbow_left` / `floor_belt_elbow_right` spawn stamps grid cells (`BeltElbowLeft` / `BeltElbowRight`).
 - [ ] **Polyline placement** — drag on grid; cardinal steps; chain stamp into `floorStore`.
 - [ ] **Belt facing** — spawn-with-facing, rotate selected cell(s), inspector force default.
-- [ ] **Corners** — elbow cells on occupancy grid (4-bit junction autotile) using `createConveyorDraw({ turnDirection })`.
-- [ ] **Smoke test** — L-shaped path; ball rides belt facing through turn (after corners ship).
+- [ ] **Corner autotile** — 4-bit junction detection on straight belt chains (optional polish).
+- [ ] **Smoke test** — L-shaped path; ball rides through straight + elbow cells.
 - [ ] **Persist belts** — save/load / map bake if belts should survive refresh outside sandbox.
 
 **Deferred:** `EDGE_KIND.Conveyor` on `edgeStore` (boundary strips, directional crossing).

@@ -6,7 +6,8 @@ import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from ".
 import { getResolvedAssembly, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
-import { isGridFloorBeltSpawnAsset } from "./sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
+import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
 /** @param {string} assemblyId */
 export function sandboxSpawnAssemblyId(assemblyId) {
@@ -84,8 +85,9 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         if (isGridFloorBeltSpawnAsset(asset)) {
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(worldX, worldY);
-            if (grid.hasFloorBelt(col, row)) return null;
-            if (!grid.writeFloorBelt(col, row, 0)) return null;
+            if (findGridAnchoredFloorPropAtCell(state.entityRegistry, col, row) || grid.hasFloorOccupancy(col, row)) return null;
+            const kind = resolveFloorBeltKindFromSpawnAsset(asset);
+            if (!grid.writeFloorCell(col, row, kind, 0)) return null;
             sync();
             return null;
         }

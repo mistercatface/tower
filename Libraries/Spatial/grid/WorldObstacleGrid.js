@@ -4,7 +4,7 @@ import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCe
 import { gridWallEdgeRailShouldEmit, gridRailWallEdge, gridNeighborFillLevel, scanStaticStructureZLevelsFromGrid } from "../../World/wallGridCells.js";
 import { CellEdgeStore, railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
-import { floorBeltFacingToIndex } from "./FloorCell.js";
+import { floorBeltFacingToIndex, FLOOR_CELL_KIND } from "./FloorCell.js";
 import { edgeBlocksCrossing, railWallThicknessPx } from "./CellEdge.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
@@ -367,18 +367,26 @@ export class WorldObstacleGrid {
     edgeBlocksStep(col, row, side) {
         return edgeBlocksCrossing(this.edgeStore.get(col, row, side, this.cols));
     }
-    /** @param {number} col @param {number} row @param {number} facingRadians */
-    writeFloorBelt(col, row, facingRadians) {
+    /** @param {number} col @param {number} row @param {number} kind @param {number} facingRadians */
+    writeFloorCell(col, row, kind, facingRadians) {
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
         if (this.isBlocked(col, row)) return false;
         const idx = colRowToIndex(col, row, this.cols);
-        this.floorStore.setBeltAtIdx(idx, floorBeltFacingToIndex(facingRadians));
+        this.floorStore.setAtIdx(idx, kind, floorBeltFacingToIndex(facingRadians));
         return true;
+    }
+    /** @param {number} col @param {number} row @param {number} facingRadians */
+    writeFloorBelt(col, row, facingRadians) {
+        return this.writeFloorCell(col, row, FLOOR_CELL_KIND.Belt, facingRadians);
+    }
+    /** @param {number} col @param {number} row */
+    hasFloorOccupancy(col, row) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+        return this.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, this.cols));
     }
     /** @param {number} col @param {number} row */
     hasFloorBelt(col, row) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
-        return this.floorStore.isBeltAtIdx(colRowToIndex(col, row, this.cols));
+        return this.hasFloorOccupancy(col, row);
     }
     /** @param {number} col @param {number} row */
     clearFloorCell(col, row) {

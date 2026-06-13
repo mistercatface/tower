@@ -1,6 +1,7 @@
 import { ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
+import { FLOOR_CELL_KIND } from "../Spatial/grid/FloorCell.js";
 import { syncWorldPropWeaponState } from "../Combat/worldPropWeaponState.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 export const SANDBOX_BEHAVIOR_LABELS = {
@@ -45,6 +46,13 @@ export function isSandboxSpawnable(asset) {
 /** Spawn stamps `floorStore` cells — not a WorldProp. */
 export function isGridFloorBeltSpawnAsset(asset) {
     return asset?.sandbox?.gridFloorBelt === true;
+}
+/** @param {object | null | undefined} asset */
+export function resolveFloorBeltKindFromSpawnAsset(asset) {
+    const kind = asset?.sandbox?.floorBeltKind;
+    if (kind === "elbowLeft") return FLOOR_CELL_KIND.BeltElbowLeft;
+    if (kind === "elbowRight") return FLOOR_CELL_KIND.BeltElbowRight;
+    return FLOOR_CELL_KIND.Belt;
 }
 /**
  * @param {object | null | undefined} asset

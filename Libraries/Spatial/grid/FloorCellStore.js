@@ -1,4 +1,4 @@
-import { FLOOR_CELL_KIND } from "./FloorCell.js";
+import { FLOOR_CELL_KIND, isFloorBeltKind } from "./FloorCell.js";
 export class FloorCellStore {
     constructor() {
         /** @type {Uint8Array} */
@@ -44,13 +44,17 @@ export class FloorCellStore {
         return this.kind[idx] !== FLOOR_CELL_KIND.None;
     }
     /** @param {number} idx */
-    isBeltAtIdx(idx) {
-        return this.kind[idx] === FLOOR_CELL_KIND.Belt;
+    isBeltKindAtIdx(idx) {
+        return isFloorBeltKind(this.kind[idx]);
+    }
+    /** @param {number} idx @param {number} kind @param {number} facingIndex */
+    setAtIdx(idx, kind, facingIndex) {
+        this.kind[idx] = kind;
+        this.facing[idx] = facingIndex;
     }
     /** @param {number} idx @param {number} facingIndex */
     setBeltAtIdx(idx, facingIndex) {
-        this.kind[idx] = FLOOR_CELL_KIND.Belt;
-        this.facing[idx] = facingIndex;
+        this.setAtIdx(idx, FLOOR_CELL_KIND.Belt, facingIndex);
     }
     /** @param {number} idx */
     clearAtIdx(idx) {
