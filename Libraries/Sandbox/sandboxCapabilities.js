@@ -42,6 +42,10 @@ export function isSandboxSpawnable(asset) {
     if (sandbox == null || typeof sandbox !== "object") return false;
     return sandbox.spawnable !== false;
 }
+/** Spawn stamps `floorStore` cells — not a WorldProp. */
+export function isGridFloorBeltSpawnAsset(asset) {
+    return asset?.sandbox?.gridFloorBelt === true;
+}
 /**
  * @param {object | null | undefined} asset
  * @param {import("./createSandboxController.js").SandboxBehavior[]} registeredBehaviors

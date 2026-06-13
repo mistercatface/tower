@@ -1,8 +1,16 @@
 # todo
 
-## Current — unified grid walls
+## Current — floor occupancy belts
 
-**Terms:** **`voxelBlock`** (`grid[]`) vs **`railWall`** (`edgeStore`: `{ kind, heightDelta, thicknessLevel }`).
+Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not WorldProps). Draw via `conveyorDraw.js`; force via `applyPushableAccelerationAlongAngle` before pushable physics.
+
+- [ ] **Polyline placement** — drag on grid; cardinal steps; chain stamp into `floorStore`.
+- [ ] **Belt facing** — spawn-with-facing, rotate selected cell(s), inspector force default.
+- [ ] **Corners** — elbow cells on occupancy grid (4-bit junction autotile) using `createConveyorDraw({ turnDirection })`.
+- [ ] **Smoke test** — L-shaped path; ball rides belt facing through turn (after corners ship).
+- [ ] **Persist belts** — save/load / map bake if belts should survive refresh outside sandbox.
+
+**Deferred:** `EDGE_KIND.Conveyor` on `edgeStore` (boundary strips, directional crossing).
 
 ---
 
@@ -42,26 +50,24 @@
 
 - [ ] Grid-snapped content — audit remaining Segment stamp paths.
 - [ ] **`segmentGrid`** — arbitrary-angle walls until baked.
-- [ ] Conveyors — wire `EDGE_KIND.Conveyor` when belt tool ships.
 
 ---
 
 ## Backlog
 
-### Conveyor belts (Phase 2+)
+### Edge API (before second edge kind)
 
-- [ ] **Conveyor placement tool** — drag polyline on grid.
-- [ ] **Facing along path** — cardinal step from drag direction.
-- [ ] **Conflict rules** — reject belt cell overlap.
-- [ ] **Chained spawn UX** — attach cells; ESC ends chain.
-- [ ] **Corner draw variants (optional)** — miter art.
-- [ ] **Smoke test** — L-shaped path + ball on entry.
+- [ ] **`gridCellEdge(grid, col, row, side)`** — any kind from store; replace scattered `edgeStore.get` + kind checks.
+- [ ] **`WorldObstacleGrid.getCellEdge` / `hasCellEdge`** — thin wrappers so editor/gameplay rarely touch `edgeStore` directly.
+- [ ] **`forEachCellEdgeInAabb`** — kind-agnostic AABB walker (surface `edgeStore.forEachInAabb` via `wallGridCells`).
+- [ ] **`edgeBlocksStepFrom(fromCol, fromRow, toCol, toRow)`** — directional crossing for one-way doors / edge conveyors.
+- [ ] **Kind-aware `collectStructureZLevels`** — merge per-kind top-Z collectors when a second kind contributes surface passes.
 
 ### Floor props
 
 - [ ] **`button_bumper` 3D**
 - [ ] **`poweredLinkId` on strategy**
-- [ ] **Moving pit / conveyor kinematics**
+- [ ] **Moving pit kinematics**
 - [ ] **Floor prop resize from UI**
 
 ### Bounds / Box4 (deferred)

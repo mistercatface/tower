@@ -6,7 +6,7 @@ import { spawnAssembly, deleteAssemblyInstance, clearAssemblyInstances } from ".
 import { getResolvedAssembly, listAssemblyManifests } from "./assemblies/assemblyRegistry.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
-import { anchorFloorPropToObstacleGrid, findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
+import { isGridFloorBeltSpawnAsset } from "./sandboxCapabilities.js";
 export const SANDBOX_SPAWN_ASSEMBLY_PREFIX = "assembly:";
 /** @param {string} assemblyId */
 export function sandboxSpawnAssemblyId(assemblyId) {
@@ -81,14 +81,16 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     const spawnAt = (worldX, worldY) => {
         if (!isSandboxSpawnPropId(spawnPropId) || !getPropAsset(spawnPropId)) return null;
         const asset = getPropAsset(spawnPropId);
-        const prop = new WorldProp(worldX, worldY, spawnPropId, 0);
-        prop.faction = spawnFaction;
-        if (asset.physics?.gridAnchored) {
+        if (isGridFloorBeltSpawnAsset(asset)) {
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(worldX, worldY);
-            if (findGridAnchoredFloorPropAtCell(state.entityRegistry, col, row)) return null;
-            anchorFloorPropToObstacleGrid(prop, grid, worldX, worldY);
+            if (grid.hasFloorBelt(col, row)) return null;
+            if (!grid.writeFloorBelt(col, row, 0)) return null;
+            sync();
+            return null;
         }
+        const prop = new WorldProp(worldX, worldY, spawnPropId, 0);
+        prop.faction = spawnFaction;
         addWorldPropToState(state, prop);
         setSinglePropSelection(prop.id);
         return prop;
@@ -184,6 +186,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         clear() {
             for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state.worldProps[i]);
+            state.obstacleGrid.clearAllFloorCells();
             clearAssemblyInstances(state);
             selectedPropIds.clear();
             selectedPropId = null;

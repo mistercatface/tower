@@ -1,8 +1,7 @@
 import { CAPTURED_SINK_DURATION_MS } from "../../Entities/worldPropVoidSinkState.js";
 import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
 import { floorCircleRadius } from "../Spatial/zones/floorShapes.js";
-import { cardinalUnitVectorFromAngle } from "../Math/Angle.js";
-import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { applyPushableAcceleration } from "../Motion/applyAcceleration.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive, isSustainedFlipperButtonInputMode, isSustainedSpawnerButtonInputMode } from "./buttonInput.js";
@@ -127,30 +126,10 @@ const FLOOR_EFFECTS = {
     },
     pull: {
         run(state, floorProp, trigger, ctx) {
-            const { forceX, forceY } = trigger;
             const dtSec = ctx.dtSec;
             for (const entityId of floorProp._occupants) {
                 const prop = state.entityRegistry.get(entityId);
-                if (!prop || prop.isDead || prop.strategy.gravityImmune) continue;
-                wakePushableBody(prop);
-                if (prop.isSleeping) continue;
-                prop.vx += forceX * dtSec;
-                prop.vy += forceY * dtSec;
-            }
-        },
-    },
-    pullAlongFacing: {
-        run(state, floorProp, trigger, ctx) {
-            const force = trigger.force;
-            const { x: forceX, y: forceY } = cardinalUnitVectorFromAngle(floorProp.facing);
-            const dtSec = ctx.dtSec;
-            for (const entityId of floorProp._occupants) {
-                const prop = state.entityRegistry.get(entityId);
-                if (!prop || prop.isDead || prop.strategy.gravityImmune) continue;
-                wakePushableBody(prop);
-                if (prop.isSleeping) continue;
-                prop.vx += forceX * force * dtSec;
-                prop.vy += forceY * force * dtSec;
+                applyPushableAcceleration(prop, trigger.forceX, trigger.forceY, dtSec);
             }
         },
     },

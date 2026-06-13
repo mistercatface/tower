@@ -138,6 +138,14 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
                 session.deleteProp(hit);
                 return;
             }
+            const grid = state.obstacleGrid;
+            const { col, row } = grid.worldToGrid(world.x, world.y);
+            if (grid.clearFloorCell(col, row)) {
+                e.preventDefault();
+                e.stopPropagation();
+                session.sync();
+                return;
+            }
             const groundMove = resolveGroundMove();
             if (groundMove) {
                 issueGroundMove(groundMove, world);

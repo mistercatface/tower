@@ -3,6 +3,8 @@ import { colRowToIndex } from "./GridUtils.js";
 import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCellDamage.js";
 import { gridWallEdgeRailShouldEmit, gridRailWallEdge, gridNeighborFillLevel, scanStaticStructureZLevelsFromGrid } from "../../World/wallGridCells.js";
 import { CellEdgeStore, railWallEdgeFromStamp } from "./CellEdgeStore.js";
+import { FloorCellStore } from "./FloorCellStore.js";
+import { floorBeltFacingToIndex } from "./FloorCell.js";
 import { edgeBlocksCrossing, railWallThicknessPx } from "./CellEdge.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
@@ -24,6 +26,7 @@ export class WorldObstacleGrid {
         this.rows = 0;
         this.grid = new Uint8Array(0);
         this.edgeStore = new CellEdgeStore();
+        this.floorStore = new FloorCellStore();
         this.segmentGrid = [];
         this.wallGridRevision = 0;
         this._structureZLevelsRevision = -1;
@@ -202,6 +205,7 @@ export class WorldObstacleGrid {
         const size = this.cols * this.rows;
         this.grid = new Uint8Array(size);
         this.edgeStore.reset(size);
+        this.floorStore.reset(size);
         this.invalidateStructureZLevelsCache();
         this.segmentGrid = new Array(size);
         for (const wall of walls) this.addWall(wall);
@@ -217,6 +221,7 @@ export class WorldObstacleGrid {
         const size = this.cols * this.rows;
         this.grid = new Uint8Array(size);
         this.edgeStore.reset(size);
+        this.floorStore.reset(size);
         this.invalidateStructureZLevelsCache();
         this.segmentGrid = null;
     }
@@ -252,10 +257,12 @@ export class WorldObstacleGrid {
         this.rows = Math.ceil((newMaxY - newMinY) / this.cellSize);
         const newGrid = new Uint8Array(this.cols * this.rows);
         const oldSlots = this.edgeStore.slots;
+        const oldFloorKind = this.floorStore.kind;
+        const oldFloorFacing = this.floorStore.facing;
         const oldSize = oldCols * oldRows;
         for (let idx = 0; idx < oldSize; idx++) {
             const level = oldGrid[idx];
-            if (level === 0 && !this.edgeStore.hasAnyAtIdx(idx)) continue;
+            if (level === 0 && !this.edgeStore.hasAnyAtIdx(idx) && !this.floorStore.hasAnyAtIdx(idx)) continue;
             const col = idx % oldCols;
             const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
@@ -265,6 +272,7 @@ export class WorldObstacleGrid {
             newGrid[newIdx] = level;
         }
         this.edgeStore.remapSlots(oldSlots, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
+        this.floorStore.remap(oldFloorKind, oldFloorFacing, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
         this.grid = newGrid;
         this.invalidateStructureZLevelsCache();
         return true;
@@ -358,6 +366,30 @@ export class WorldObstacleGrid {
     /** @param {number} col @param {number} row @param {number} side */
     edgeBlocksStep(col, row, side) {
         return edgeBlocksCrossing(this.edgeStore.get(col, row, side, this.cols));
+    }
+    /** @param {number} col @param {number} row @param {number} facingRadians */
+    writeFloorBelt(col, row, facingRadians) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+        if (this.isBlocked(col, row)) return false;
+        const idx = colRowToIndex(col, row, this.cols);
+        this.floorStore.setBeltAtIdx(idx, floorBeltFacingToIndex(facingRadians));
+        return true;
+    }
+    /** @param {number} col @param {number} row */
+    hasFloorBelt(col, row) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+        return this.floorStore.isBeltAtIdx(colRowToIndex(col, row, this.cols));
+    }
+    /** @param {number} col @param {number} row */
+    clearFloorCell(col, row) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+        const idx = colRowToIndex(col, row, this.cols);
+        if (!this.floorStore.hasAnyAtIdx(idx)) return false;
+        this.floorStore.clearAtIdx(idx);
+        return true;
+    }
+    clearAllFloorCells() {
+        this.floorStore.reset(this.cols * this.rows);
     }
     worldToGrid(x, y) {
         return worldToGridAtOrigin(x, y, this.minX, this.minY, this.cellSize);

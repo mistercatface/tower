@@ -2,8 +2,7 @@ import { CircleShape, PolygonShape } from "../collision/Shapes.js";
 import { SatCollision } from "../collision/SatCollision.js";
 import { aabbOverlap, centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
-import { quantizeCardinalAngle, stepCardinalFacing } from "../../Math/Angle.js";
-import { snapWorldToObstacleCellCenter } from "../grid/GridCoords.js";
+import { quantizeCardinalAngle } from "../../Math/Angle.js";
 import { DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD } from "../../Sandbox/buttonInput.js";
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 /**
@@ -112,35 +111,6 @@ export function resizeFloorPropHalfExtents(prop, halfWidth, halfHeight) {
     prop.radius = Math.max(halfWidth, halfHeight);
     syncFloorPropCollisionShape(prop);
     syncFloorTriggerAabb(prop);
-}
-/** @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid */
-export function obstacleGridCellHalfExtents(obstacleGrid) {
-    const half = obstacleGrid.cellSize * 0.5;
-    return { halfWidth: half, halfHeight: half };
-}
-/** @param {object} prop @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {number} worldX @param {number} worldY */
-export function anchorFloorPropToObstacleGrid(prop, obstacleGrid, worldX, worldY) {
-    const { col, row, x, y } = snapWorldToObstacleCellCenter(obstacleGrid, worldX, worldY);
-    prop.gridCol = col;
-    prop.gridRow = row;
-    prop.x = x;
-    prop.y = y;
-    const { halfWidth, halfHeight } = obstacleGridCellHalfExtents(obstacleGrid);
-    resizeFloorPropHalfExtents(prop, halfWidth, halfHeight);
-}
-/** @param {object} prop @param {number} [steps] */
-export function rotateCardinalFloorProp(prop, steps = 1) {
-    prop.facing = stepCardinalFacing(prop.facing ?? 0, steps);
-}
-/** @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {number} col @param {number} row @param {number} [exceptPropId] */
-export function findGridAnchoredFloorPropAtCell(registry, col, row, exceptPropId = -1) {
-    /** @type {object | null} */
-    let hit = null;
-    registry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || !prop.strategy?.gridAnchored || prop.id === exceptPropId) return;
-        if (prop.gridCol === col && prop.gridRow === row) hit = prop;
-    });
-    return hit;
 }
 /** @param {{ aabb: Aabb2D }} entity @param {import("../../Viewport/Viewport.js").Viewport} viewport */
 export function isAabbInView(entity, viewport) {

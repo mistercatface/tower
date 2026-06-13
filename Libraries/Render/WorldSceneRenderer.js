@@ -10,6 +10,7 @@ import { aabbOverlap } from "../Math/Aabb2D.js";
 import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { drawWorldProp } from "./drawWorldProp.js";
+import { drawFloorOccupancyBelts } from "../Sandbox/floorOccupancy.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { getTexelResolution } from "../WorldSurface/WorldSurfaceResolution.js";
 export class WorldSceneRenderer {
@@ -60,6 +61,7 @@ export class WorldSceneRenderer {
         const drawContext = { gameState: input.gameState, propRenderer: this.props, px, py, zoom };
         ctx.save();
         clipToViewport(ctx, viewport);
+        drawFloorOccupancyBelts(ctx, input.gameState, viewport, { px, py });
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
         input.entityRegistry.forEachOfKind("worldProp", (prop) => {
