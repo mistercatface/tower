@@ -18,6 +18,7 @@ import {
     getCavernInnerRadiusCells,
     getCavernStampExtent,
     syncCavernSizeFromPlayArea,
+    isCavernGlobalCellInBounds,
 } from "./cavernBounds.js";
 import { getCellBoundsAabb, getCellBoundsAabbInto } from "./cellBoundsConfig.js";
 export { getCavernBoundsAabb, centerCavernBoundsOnViewport, syncCavernSizeFromPlayArea };
@@ -219,27 +220,56 @@ export function generateLabCaverns(state) {
     state.worldSurfaces.clearBakeCache();
     rebuildLabMapCaches(state);
 }
-/** @param {import("../state.js").TileLabGameState} state */
 export function generateLabRailCaverns(state) {
     const { railConfig } = state.editor;
     const cellSize = gridSettings.cellSize;
     const stampBounds = getCellBoundsAabb(railConfig, cellSize);
-    /** @type {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
-    let stamp = null;
-    withSeededRandom(state.mapSeed, () => {
-        stamp = generateCavernOccupancy(railConfig);
-    });
     ensureLabObstacleGridCoverage(state, stampBounds);
     clearSandboxWallsInBounds(state, stampBounds);
     const level = clampStampWallHeightLevel(railConfig.wallHeightLevel, state.worldSurfaces.settings);
     const thickness = railConfig.edgeThickness ?? 2;
     const grid = state.obstacleGrid;
-    const { originCol, originRow, cols, rows, cells } = stamp;
+    const { originCol, originRow, cols, rows } = getCavernStampExtent(railConfig);
+    // 1. Generate Horizontal Edges CA
+    const hCols = cols;
+    const hRows = rows + 1;
+    let hCells = null;
+    withSeededRandom(state.mapSeed, () => {
+        hCells = fillRandomGrid(hCols, hRows, railConfig.fillChance);
+        hCells = runCellularAutomata(hCols, hRows, hCells, { iterations: railConfig.iterations, scratch: new Uint8Array(hCols * hRows) });
+    });
+    // Mask Horizontal Edges based on cavern shape bounds
+    for (let lr = 0; lr < hRows; lr++)
+        for (let lc = 0; lc < hCols; lc++) {
+            const gc = originCol + lc;
+            const gr = originRow + lr;
+            const in1 = isCavernGlobalCellInBounds(railConfig, gc, gr - 1);
+            const in2 = isCavernGlobalCellInBounds(railConfig, gc, gr);
+            if (!in1 && !in2) hCells[lr * hCols + lc] = 0;
+        }
+    // 2. Generate Vertical Edges CA (slightly offset the seed so H and V structures are unique)
+    const vCols = cols + 1;
+    const vRows = rows;
+    let vCells = null;
+    withSeededRandom(state.mapSeed + 1, () => {
+        vCells = fillRandomGrid(vCols, vRows, railConfig.fillChance);
+        vCells = runCellularAutomata(vCols, vRows, vCells, { iterations: railConfig.iterations, scratch: new Uint8Array(vCols * vRows) });
+    });
+    // Mask Vertical Edges based on cavern shape bounds
+    for (let lr = 0; lr < vRows; lr++)
+        for (let lc = 0; lc < vCols; lc++) {
+            const gc = originCol + lc;
+            const gr = originRow + lr;
+            const in1 = isCavernGlobalCellInBounds(railConfig, gc - 1, gr);
+            const in2 = isCavernGlobalCellInBounds(railConfig, gc, gr);
+            if (!in1 && !in2) vCells[lr * vCols + lc] = 0;
+        }
     const { col: baseCol, row: baseRow } = grid.worldToGrid(originCol * cellSize, originRow * cellSize);
     const startCol = Math.max(0, baseCol);
     const endCol = Math.min(grid.cols - 1, baseCol + cols - 1);
     const startRow = Math.max(0, baseRow);
     const endRow = Math.min(grid.rows - 1, baseRow + rows - 1);
+    // 3. Clear existing walls & edges in target bounds
     for (let r = startRow; r <= endRow; r++)
         for (let c = startCol; c <= endCol; c++) {
             const idx = c + r * grid.cols;
@@ -250,30 +280,24 @@ export function generateLabRailCaverns(state) {
             }
             for (let side = 0; side < 4; side++) grid.writeCellEdge(c, r, side, 0, 0);
         }
-    const stampSize = rows * cols;
-    for (let i = 0; i < stampSize; i++) {
-        if (cells[i] !== 1) continue;
-        const lr = (i / cols) | 0;
-        const lc = i % cols;
-        const col = baseCol + lc;
-        const row = baseRow + lr;
-        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
-        for (let side = 0; side < 4; side++) {
-            let nc = lc;
-            let nr = lr;
-            if (side === 0) nr = lr - 1;
-            else if (side === 1) nc = lc + 1;
-            else if (side === 2) nr = lr + 1;
-            else if (side === 3) nc = lc - 1;
-            let neighborVal = 0;
-            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-                neighborVal = cells[nr * cols + nc];
-            }
-            if (neighborVal === 0) {
-                grid.writeCellEdge(col, row, side, level, thickness);
-            }
+    // 4. Stamp Horizontal Edges
+    for (let lr = 0; lr < hRows; lr++)
+        for (let lc = 0; lc < hCols; lc++) {
+            if (hCells[lr * hCols + lc] !== 1) continue;
+            const col = baseCol + lc;
+            const row = baseRow + lr;
+            if (row >= 0 && row < grid.rows && col >= 0 && col < grid.cols) grid.writeCellEdge(col, row, 0, level, thickness);
+            else if (row - 1 >= 0 && row - 1 < grid.rows && col >= 0 && col < grid.cols) grid.writeCellEdge(col, row - 1, 2, level, thickness);
         }
-    }
+    // 5. Stamp Vertical Edges
+    for (let lr = 0; lr < vRows; lr++)
+        for (let lc = 0; lc < vCols; lc++) {
+            if (vCells[lr * vCols + lc] !== 1) continue;
+            const col = baseCol + lc;
+            const row = baseRow + lr;
+            if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) grid.writeCellEdge(col, row, 3, level, thickness);
+            else if (col - 1 >= 0 && col - 1 < grid.cols && row >= 0 && row < grid.rows) grid.writeCellEdge(col - 1, row, 1, level, thickness);
+        }
     grid.bumpWallGridRevision();
     const damageBounds = { startCol, endCol, startRow, endRow };
     if (railConfig.boundsMode === "donut") {
