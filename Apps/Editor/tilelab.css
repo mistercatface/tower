@@ -99,7 +99,8 @@ details.editor-block-motifs {
     border-color: var(--accent);
 }
 
-#profileExport {
+#profileExport,
+.editor-export-area {
     width: 100%;
     height: 72px;
     background: var(--bg);

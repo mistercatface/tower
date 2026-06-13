@@ -63,6 +63,31 @@ function notifyGridWallChange(state, bounds) {
     state.navigation.onObstaclesChanged(bounds);
     rebuildLabMapCaches(state);
 }
+/** Clear all voxel fills and railWall edges on the obstacle grid (single invalidation). */
+export function clearAllStampedGridWalls(state) {
+    const grid = state.obstacleGrid;
+    if (!grid.cols) return;
+    const size = grid.cols * grid.rows;
+    for (let idx = 0; idx < size; idx++) {
+        if (!cellIsStaticWallAtIdx(grid, idx)) continue;
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
+        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
+        grid.grid[idx] = 0;
+    }
+    for (let idx = 0; idx < size; idx++) {
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
+        for (let side = 0; side < 4; side++) {
+            if (!gridHasRailWall(grid, col, row, side)) continue;
+            const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+            state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
+            grid.edgeStore.clearMirrored(col, row, side, grid.cols, grid.rows);
+        }
+    }
+    notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
+}
 /** @param {number} col @param {number} row */
 function cellBounds(col, row) {
     return { startCol: col, endCol: col, startRow: row, endRow: row };

@@ -378,6 +378,47 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 "No conveyor belts placed yet.",
             );
         });
+        appendSection(container, "scene-json", "Scene JSON", sectionOpen("scene-json"), (body) => {
+            appendEditorHint(body, "Copy/paste sandbox layout: props (world x/y), voxel walls, rail walls. Replace clears the current sandbox first.");
+            const textarea = document.createElement("textarea");
+            textarea.className = "editor-export-area";
+            textarea.rows = 10;
+            textarea.spellcheck = false;
+            body.appendChild(textarea);
+            const row = document.createElement("div");
+            row.className = "sandbox-add-row";
+            const exportBtn = document.createElement("button");
+            exportBtn.type = "button";
+            exportBtn.className = "secondary";
+            exportBtn.textContent = "Export";
+            exportBtn.addEventListener("click", () => {
+                textarea.value = controller.exportSceneSnapshot();
+            });
+            const copyBtn = document.createElement("button");
+            copyBtn.type = "button";
+            copyBtn.className = "secondary";
+            copyBtn.textContent = "Copy";
+            copyBtn.addEventListener("click", async () => {
+                if (!textarea.value) textarea.value = controller.exportSceneSnapshot();
+                await navigator.clipboard.writeText(textarea.value);
+            });
+            const loadBtn = document.createElement("button");
+            loadBtn.type = "button";
+            loadBtn.className = "secondary";
+            loadBtn.textContent = "Load (replace)";
+            loadBtn.addEventListener("click", () => {
+                if (!textarea.value.trim()) return;
+                if (!window.confirm("Replace the current sandbox with this JSON?")) return;
+                try {
+                    controller.importSceneSnapshot(textarea.value);
+                    onChange();
+                } catch (err) {
+                    window.alert(err instanceof Error ? err.message : String(err));
+                }
+            });
+            row.append(exportBtn, copyBtn, loadBtn);
+            body.appendChild(row);
+        });
         appendSection(container, "selected", "Selected", sectionOpen("selected", true), (body) => {
             if (selectionCount > 1) {
                 appendEditorHint(body, `${selectionCount} props selected. Drag on empty space to box-select, or click one prop to select only that.`);

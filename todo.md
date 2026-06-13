@@ -2,47 +2,19 @@
 
 ## Current priorities
 
-### Sandbox scene JSON export/import
+### Sandbox scene JSON export/import — MVP done
 
-**Gate cleared** (assembly cartridge system removed). ~**70% read path**, ~**0% write path**.
+Copy/paste in Sandbox panel **Scene JSON** section (Props tab). Replace mode only.
 
-**Already have (export side):**
-- `listPlacedVoxelWalls` / `listPlacedRailWalls` / `listPlacedFloorBelts` — grid cell data from `sandboxSession`
-- `stampVoxelWallAt`, `stampRailWallAt`, `writeFloorCell`, `spawnAt` — symmetric apply paths
-- `createDebouncedStorage` — generic JSON flush/read (unused; wire after paste-load works)
-- Profile editor pattern — textarea + copy (`ProfileEditor.js` export area)
+- [x] **`collectSandboxSceneSnapshot`** — props (world x/y/facing/faction), voxels, railWalls (deduped), origin + cols/rows; pool racks collapse to `pool_rack_*` anchor
+- [x] **`applySandboxSceneSnapshot`** — replace: clear props/floors/walls, expand grid, re-stamp walls, spawn props / pool racks
+- [x] **UI — Scene JSON** — Export, Copy, Load (replace) + validation errors
 
-**Gaps:**
-- [ ] **`collectSandboxSceneSnapshot(state)`** — single `{ schemaVersion, cellSize, origin: { minX, minY }, props, voxels, railWalls, floorBelts }`; props need **world `x/y/facing/faction`** (today `listPlacedProps` is UI-only: id/type/label, no position)
-- [ ] **Rail wall dedupe on export** — `listPlacedRailWalls` scans every cell×side; mirrored edges appear twice; emit once per boundary (`packEdgeCellKey` / canonical owner side)
-- [ ] **Coordinate frame** — include `obstacleGrid.minX/minY` (grid expands dynamically); props as world coords; walls/belts as **global** col/row (`gridCellToGlobalColRow`) so paste survives origin shift
-- [ ] **`applySandboxSceneSnapshot(state, doc, { mode: 'replace' | 'merge' })`** — clear sandbox props/walls/belts (reuse `session.clear()` + voxel/rail clear helpers), expand grid to bounds, re-stamp in stable order (voxels before rail caps), `notifyGridWallChange` / nav invalidate once at end
-- [ ] **Prop extras (v1.1)** — faction, `SandboxEntityMeta` behavior overrides; skip runtime state (velocity, health, dead, sleeping)
-- [ ] **Button links (v1.2)** — export stable refs (prop index or `type@ordinal`), remap `buttonLinks` after spawn (runtime entity ids are not portable)
-- [ ] **UI — Sandbox panel** — Export (textarea + Copy), Import (textarea + Load / Replace confirm); validate JSON + schema version with readable errors
-- [ ] **Optional autosave** — `createDebouncedStorage` on sandbox session dirty hooks (after MVP paste-load)
-
-**Explicit v2 / out of MVP:**
-- `state.walls` segment grid / arbitrary-angle walls
-- Cavern/play-area editor config (generation bounds, not stamped content)
-- Arbitrary `animatedSurfaceZones` (custom AABB rects — library exists, no editor yet)
-
-**Suggested schema sketch (v1):**
-
-```json
-{
-  "schemaVersion": 1,
-  "cellSize": 16,
-  "origin": { "minX": 0, "minY": 0 },
-  "props": [{ "type": "crate", "x": 128, "y": 256, "facing": 0, "faction": "neutral" }],
-  "voxels": [{ "col": 8, "row": 16, "heightLevel": 4 }],
-  "railWalls": [{ "col": 8, "row": 16, "side": 1, "heightLevel": 4, "thicknessLevel": 2 }],
-  "floorBelts": [{ "col": 10, "row": 16, "kind": 1, "facingIndex": 0 }],
-  "animatedFloor": [{ "col": 12, "row": 16, "profileId": "poolTableFelt" }]
-}
-```
-
-Use global `col`/`row` for grid-stamped layers; world `x`/`y` for free-placed props.
+**Follow-on:**
+- [ ] **Merge mode** — append without full clear
+- [ ] **Floor belts** — `floorBelts` array in schema
+- [ ] **Prop extras** — faction (exported), behavior overrides, button links
+- [ ] **Optional autosave** — `createDebouncedStorage` on dirty hooks
 
 ### Animated floor tiles (grid layer)
 
@@ -225,6 +197,7 @@ Major feature completions only (newest first). Not bugfixes or polish unless the
 
 | When | Milestone |
 |------|-----------|
+| 2026-06 | **Sandbox scene JSON MVP** — `collectSandboxSceneSnapshot` / `applySandboxSceneSnapshot`; Props panel Scene JSON copy/paste (walls + props, replace mode). |
 | 2026-06 | **Animated surface flipbook library** — `animatedSurfaceFlipbook/Draw/Zone.js`; worker bake + sim draw; `sandbox.animatedSurfaceZones` (no editor consumer yet). |
 | 2026-06 | **Pool rack spawn props** — removed assembly cartridge system; `pool_rack_8ball` / `pool_rack_9ball` + `spawnPoolRack`; cue `inputGates` via `spawnGroupId`. |
 | 2026-06 | **Viewport-scoped kinematics anim** — idle/walk rig ticks only for visible props via `queryView`; physics stays global. |
