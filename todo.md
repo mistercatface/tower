@@ -4,64 +4,37 @@
 
 One lattice for grid-snapped wall geometry.
 
-- **`fill[idx]`** — `grid[]`: 0 = open, 1+ = static cell height (voxel block).
-- **`edge[idx]` + `edgeThicknessGrid`** — N/E/S/W rail on cell boundary; interior stays walkable.
+**Canonical terms (locked):** **`voxelBlock`** vs **`railWall`**. Use these in chat, docs, and **new** code/comments. Never say “grid wall”, “fill”, or “edge rail” when you mean one of the two — always pick the term. **Not expected to change** unless a third static-grid geometry kind is added.
+
+**Storage field names** (`grid[]`, `edgeGrid`, `edgeThicknessGrid`) stay as-is — implementation detail, not part of the vocabulary.
+
+**Code rename** (symbols/files still say `GridWall`, `EdgeRail`, `staticGrid`, etc.) — deferred to **later refactor phase**; see Backlog → Refactors. No dual aliases when that lands.
+
+|               | **voxelBlock**    | **railWall**                                   |
+| ------------- | ----------------- | ---------------------------------------------- |
+| **Occupancy** | Whole cell solid  | Thin strip on cell boundary; interior walkable |
+| **Storage**   | `grid[idx]`       | `edgeGrid[idx*4+side]` + `edgeThicknessGrid`   |
+| **Geometry**  | vertical face     | thin box                                       |
+| **Collision** | cell-center proxy | boundary segment (inline; frozen)              |
+
+- **`grid[idx]`** — voxelBlock height (0 = open, 1+ = static cell height).
+- **`edgeGrid` + `edgeThicknessGrid`** — railWall on N/E/S/W boundary.
 
 ### Two render pipelines (intentional split)
 
-| | Fill voxels | Edge rails |
-|---|---|---|
-| **Geometry hub** | `resolveGridWallFace` | `resolveGridWallEdgeRailBox` |
-| **Vertical projection** | `computeProjectedFace` → `drawProjectedWallFace` | `projectWorldPointInto` → `drawProjectedWallFaceElevated` |
-| **Top surface** | Chunk roof (`drawRoofs` + cell mask) | In-pass cap quad (`drawProjectedGridEdgeRail`) |
-| **Rejected** | — | Face-line + `computeProjectedFace`, chunk roof strip mask, coplanar “back face” |
+|                         | voxelBlock                                          | railWall                                                                        |
+| ----------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------- |
+| **Geometry hub**        | `resolveGridWallFace` → `resolveGridVoxelBlockFace` | `resolveGridWallEdgeRailBox` → `resolveGridRailWallBox`                         |
+| **Vertical projection** | `computeProjectedFace` → `drawProjectedWallFace`    | `projectWorldPointInto` → `drawProjectedWallFaceElevated`                       |
+| **Top surface**         | Chunk roof (`drawRoofs` + cell mask)                | In-pass cap quad (`drawProjectedGridRailWall`)                                  |
+| **Rejected**            | —                                                   | Face-line + `computeProjectedFace`, chunk roof strip mask, coplanar “back face” |
 
 ---
 
-## Done (working baseline)
+### Damage (missing for railWall)
 
-### Data + nav
-
-- [x] **`edgeGrid` / `edgeThicknessGrid`** on `WorldObstacleGrid`; neighbor sync in `writeCellEdge`.
-- [x] **`wallGridRevision`** on fill stamp, edge stamp/delete, cavern rail gen.
-- [x] **`canStep`** — fill occupancy + shared edge height for pathfinding.
-- [x] **`gridWallEdgeRailShouldEmit`** — one physical rail per shared boundary (S/E owners; N/W at map edge only).
-
-### Geometry (`Libraries/World/wallGridCells.js`)
-
-- [x] **`resolveGridWallEdgeRailBox`** — footprint AABB, inner/outer side lines, cap Z, thickness.
-- [x] **`collectGridEdgeRailBoxesInAabb`** — separate from fill face collector.
-- [x] **`collectGridWallFacesInAabb`** — fill cells only (`resolveGridWallFace` skips `edgeLevel > 0`).
-- [x] Fill roofs unchanged — `buildStaticRoofMaskCanvas` / `collectStaticRoofHeightsFromGrid` are fill-only (no edge strip).
-
-### Draw
-
-- [x] **`StaticGridEdgeRailDraw.drawProjectedGridEdgeRail`** — inner/outer long faces + **end faces** (thickness visible) + top cap quad.
-- [x] **`ProjectedWallDraw.drawProjectedWallFaceElevated`** / **`projectWallFaceBandInto`** — elevated projection shared with roofs/props.
-- [x] **`WorldSceneRenderer`** branches `staticGridEdgeRail` vs `staticGrid`.
-- [x] Draw cache invalidation wired — `wallSurfaceInvalidation.invalidateWallAtlasKeyMemos` clears wall + edge rail geom caches.
-
-### Editor
-
-- [x] Wall tool: solid fill vs edge line, side, thickness, stamp/delete.
-- [x] `stampWallEdgesInBounds` / `deleteStaticWallsInBounds`; invalidates surfaces + nav + map caches.
-- [x] Cavern rail gen (`generateLabRailCaverns`) writes `edgeGrid`.
-
-### Collision + nav (frozen — do not break)
-
-- [x] **`appendStaticWallProxiesNear`** inline segment build for edge rails — boundary line + `edgeThicknessGrid` as segment `height`; **verified working; treat as source of truth**.
-- [x] Fill voxels — cell-center proxy unchanged.
-- [x] **`canStep`** — edge crossing blocks nav correctly.
-
-**Constraint for all cleanup:** draw/roof/refactor work must **not** change collision proxy placement, segment `width`/`height`/`angle`, or `canStep` semantics unless a deliberate collision task is opened with before/after ball tests. Prefer leaving inline collision as-is over “wiring” to unused helpers.
-
-`gridWallEdgeRailToCollisionSegment` in `wallGridCells.js` is **documentary / future-only** — do not swap it in unless proven byte-for-byte equivalent to the inline path (same center, angle, thickness).
-
-### Acceptance (user-verified working)
-
-- [x] Edge rail reads as a thin 3D box (long sides + ends + cap) in radial mode after end-face pass.
-- [x] Ball bounces off visible rail face / boundary — **collision matches draw; do not regress**.
-- [ ] Formal regression checklist below still needs a signed pass (fill unchanged, thickness visual, 8×1 continuity).
+- [ ] **railWall damage** — voxelBlock uses `damageStaticGridCell` (cell health in `state.staticCellHealth`, clears `grid[idx]`). railWall proxies currently no-op in `handleHit` (`if (this.isEdgeRail) return`). Need per-edge health keyed by `(col, row, side)` or equivalent, decrement on hit, clear `edgeGrid` + neighbor sync on break, bump revision, invalidate draw/nav/surfaces. Visual: damage alpha on rail side atlases + cap (reuse or extend `getStaticCellDamageAlpha*` pattern).
+- [ ] **voxelBlock damage unchanged** — existing cell path stays as-is; regression when railWall damage lands.
 
 ---
 
@@ -71,17 +44,10 @@ Priority order. **Do not add new micro-files** unless a module is a real subsyst
 
 ### P0 — Library alignment (dual paths / dead code)
 
-**Collision is out of scope** unless explicitly tasked with ball-on-rail regression tests (see frozen section above).
-
-- [ ] **Document collision ownership** — Comment at `appendStaticWallProxiesNear` that inline rail segment math is intentional and tested; either delete unused `gridWallEdgeRailToCollisionSegment` / `gridWallFaceToCollisionSegment` **or** mark `@deprecated unused — inline path is canonical` (no wiring swap without equivalence proof).
-- [ ] **Remove unused imports** — `WorldObstacleGrid.js` imports collision helpers that aren’t called (safe cleanup only).
-- [ ] **Drop legacy face fields on fill** — `resolveGridWallFace` still returns `isEdgeRail: false`, `edgeThickness: 0` from unified-face era; edge never flows here.
-- [ ] **`writeCellEdge` vs revision** — `writeCellEdge` does not bump `wallGridRevision`; all callers must remember to bump. Consider `stampCellEdge` as the only public mutator or bump inside `writeCellEdge` (pick one; no dual “maybe synced” paths).
-
 ### P1 — Pipeline reuse + projection consolidation
 
 - [ ] **Unify elevated wall draw** — Fill still on `drawProjectedWallFace` (`computeProjectedFace`); rails on `drawProjectedWallFaceElevated`. Backlog: migrate fill to elevated path so walls/roofs/rails share one projection model (`todo.md` refactors section).
-- [ ] **Extract shared viewport geom cache** — `geomCacheHit` / `storeGeomCache` in `StaticGridWallDraw.js` and `boxCacheHit` / `storeBoxCache` in `StaticGridEdgeRailDraw.js` are copy-paste. Colocate one helper in `StaticGridWallDraw.js` (or inline next to collectors); both importers use it.
+- [x] **Extract shared viewport geom cache** — `wallGridDrawCacheHit` / `storeWallGridDrawCache` in `StaticGridWallDraw.js`; edge rail draw imports them.
 - [ ] **End-face atlas strategy** — `drawProjectedGridEdgeRail` sets `wallCtx.cacheObj = null` per end face to bust long-side atlas reuse. Correct visually, costly on straight runs. Fix: end-cap atlas key in `WallSurfaceCache` / `_wallAtlasStash` keyed by `(box id, endIndex, profileRev)` or bake end UV from box footprint without nulling cache.
 - [ ] **Collinear merge (draw only first)** — merge boxes for render; **do not merge collision proxies** until draw merge is proven and collision task explicitly opened with ball tests.
 
@@ -110,19 +76,18 @@ Priority order. **Do not add new micro-files** unless a module is a real subsyst
 
 - [ ] **Remove `canStep` edgeGrid guard** if `edgeGrid` is always allocated after grid init (fail-fast rule — let missing grid throw upstream).
 - [ ] **Consolidate proxy factory (draw/hit only)** — duplicate `handleHit` / `isEdgeRail` shapes in `appendStaticWallProxiesNear`; refactor shape only, **no segment field changes**.
-- [ ] **Delete `stampCellFill` alias** if nothing calls it (passthrough to `stampStaticWalls`).
 - [ ] **Acceptance gate before more features** — run checklist below after draw/cap cleanup (collision already signed off).
 
 ### P3 — New shared code (only if consolidation warrants it)
 
 Not micro-files — extend these if elevated projection spreads:
 
-| Extend | Purpose |
-|---|---|
-| `ProjectedWallDraw.js` | `drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallCtx)` for rail caps + future fill cap migration |
-| `wallGridCells.js` | Box struct, merge, collision segment builders |
-| `wallSurfaceInvalidation.js` | Single entry: geom caches + atlas memos + (future) cap bake prefixes |
-| `IsometricProjection.js` | Already owns `projectWorldPointInto`; no fork |
+| Extend                       | Purpose                                                                                                         |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `ProjectedWallDraw.js`       | `drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallCtx)` for rail caps + future fill cap migration |
+| `wallGridCells.js`           | Box struct, merge, collision segment builders                                                                   |
+| `wallSurfaceInvalidation.js` | Single entry: geom caches + atlas memos + (future) cap bake prefixes                                            |
+| `IsometricProjection.js`     | Already owns `projectWorldPointInto`; no fork                                                                   |
 
 **Do not** add a separate `GridEdgeRailProjection.js` for &lt;20 lines; keep draw entry in `StaticGridEdgeRailDraw.js`, math in `wallGridCells.js`.
 
@@ -131,9 +96,9 @@ Not micro-files — extend these if elevated projection spreads:
 ## Acceptance (hard gate — formal pass still open)
 
 - [ ] Fill voxel unchanged from all angles (height, chunk roof, damage, nav, collision).
-- [x] Edge rail: ball hits boundary segment (not cell center) — **regression-sensitive; retest if collision touched**.
 - [ ] Edge rail: long sides + end faces show thickness; top cap meets side tops in projection.
 - [ ] Interior walkable.
+- [ ] **railWall damage** — ball/projectile reduces rail health; rail breaks without clearing walkable cell interior (after damage task above).
 - [ ] Thickness 2 vs 4: visible width changes (collision already tracks thickness — retest if collision touched).
 - [ ] 8×1 line: continuous after collinear merge (or document seam acceptable until merge lands).
 - [ ] Profile edit: side **and** cap motifs update (after procedural cap task).
@@ -188,6 +153,10 @@ Not micro-files — extend these if elevated projection spreads:
 
 ### Refactors
 
+- [ ] **`voxelBlock` / `railWall` code rename (later phase)** — Convention locked; legacy symbols remain until a dedicated sweep. One PR, no alias passthroughs; storage fields unchanged. Mapping:
+    - voxelBlock: `resolveGridWallFace` → `resolveGridVoxelBlockFace`, `collectGridWallFacesInAabb` → `collectGridVoxelBlockFacesInAabb`, `StaticGridWallDraw` → `StaticGridVoxelBlockDraw`, `staticGrid` → `staticGridVoxelBlock`, etc.
+    - railWall: `resolveGridWallEdgeRailBox` → `resolveGridRailWallBox`, `StaticGridEdgeRailDraw` → `StaticGridRailWallDraw`, `staticGridEdgeRail` → `staticGridRailWall`, `isEdgeRail` → `isRailWall`, etc.
+- [ ] **Naming clarity (same phase, optional)** — Editor tool labels (“voxel block” / “rail wall”), grep cleanup in comments/todo, proxy factory field names — anything that makes the convention obvious without changing behavior. Collision segment math frozen; ball retest only if proxy fields rename.
 - [ ] **`drawKinematicsFrameToCanvas` bundle**
 - [ ] **`NavigationContext`**
 - [ ] **Migrate fill voxels to `drawProjectedWallFaceElevated`** (unify projection with rails/roofs)
@@ -218,4 +187,4 @@ Not micro-files — extend these if elevated projection spreads:
 ### Longer term
 
 - [ ] **Interaction layers** — `drawLayer` + `collisionLayers` bitmask.
-- [ ] **Grid wall extras**: corner posts, half-height edges, doors, one-way edges, per-edge damage, autotile trim.
+- [ ] **Grid wall extras**: corner posts, half-height edges, doors, one-way edges, railWall damage, autotile trim — **new kinds use new names**; do not overload voxelBlock/railWall unless they truly fit the same occupancy model.

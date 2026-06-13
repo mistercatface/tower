@@ -3,7 +3,6 @@
  */
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { damageStaticGridCell } from "./staticCellDamage.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 /** @param {number} col @param {number} row @param {number} edge 0=N,1=E,2=S,3=W */
@@ -217,10 +216,6 @@ export function resolveGridWallFace(grid, col, row, edge) {
         cy: ecy,
         outX: ecx - cx,
         outY: ecy - cy,
-        isEdgeRail: false,
-        edgeThickness: 0,
-        inwardX: gridWallEdgeInwardNormal(edge).x,
-        inwardY: gridWallEdgeInwardNormal(edge).y,
     };
 }
 /**
@@ -255,64 +250,7 @@ export function collectGridEdgeRailBoxesInAabb(grid, bounds, out) {
         }
     });
 }
-/** Collision segment for one edge rail — centered on the shared cell boundary. */
-export function gridWallEdgeRailToCollisionSegment(grid, col, row, edge) {
-    if (!gridWallEdgeRailShouldEmit(grid, col, row, edge)) return null;
-    const idx = col + row * grid.cols;
-    gridWallEdgeEndpoints(grid, col, row, edge, sP1, sP2, 0);
-    const dx = sP2.x - sP1.x;
-    const dy = sP2.y - sP1.y;
-    const len = Math.hypot(dx, dy);
-    const thickness = Math.max(1, grid.edgeThicknessGrid[idx * 4 + edge]);
-    return {
-        x: (sP1.x + sP2.x) * 0.5,
-        y: (sP1.y + sP2.y) * 0.5,
-        angle: Math.atan2(dy, dx),
-        width: len,
-        height: thickness,
-        size: Math.max(len, thickness),
-        padding: 0,
-        isDead: false,
-        isStaticGridFace: true,
-        isEdgeRail: true,
-        gridCol: col,
-        gridRow: row,
-        gridSide: edge,
-        shape: undefined,
-        handleHit() {},
-    };
-}
-/** Collision segment built from the same face geometry draw uses. @param {ReturnType<typeof resolveGridWallFace>} face */
-export function gridWallFaceToCollisionSegment(face) {
-    const dx = face.p2.x - face.p1.x;
-    const dy = face.p2.y - face.p1.y;
-    const len = Math.hypot(dx, dy);
-    const alongAngle = Math.atan2(dy, dx);
-    const thickness = Math.max(1, face.edgeThickness || 1);
-    const halfT = thickness / 2;
-    const mx = (face.p1.x + face.p2.x) * 0.5;
-    const my = (face.p1.y + face.p2.y) * 0.5;
-    return {
-        x: mx + face.inwardX * halfT,
-        y: my + face.inwardY * halfT,
-        angle: alongAngle,
-        width: len,
-        height: thickness,
-        size: Math.max(len, thickness),
-        padding: 0,
-        isDead: false,
-        isStaticGridFace: true,
-        isEdgeRail: face.isEdgeRail,
-        gridCol: face.gridCol,
-        gridRow: face.gridRow,
-        gridSide: face.gridSide,
-        shape: undefined,
-        handleHit(damage, state) {
-            if (this.isEdgeRail) return;
-            damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
-        },
-    };
-}
+
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} idx */
 export function gridValueAtIdx(grid, idx) {
     return grid.grid[idx];

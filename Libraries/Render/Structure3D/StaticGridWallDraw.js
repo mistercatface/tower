@@ -4,8 +4,8 @@
 import { collectGridWallFacesInAabb } from "../../World/wallGridCells.js";
 /** @type {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, faces: object[] }} */
 const sGeomCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: [] };
-/** @param {typeof sGeomCache} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
-function geomCacheHit(cache, grid, wallGridRevision, bounds) {
+/** @param {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number }} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
+export function wallGridDrawCacheHit(cache, grid, wallGridRevision, bounds) {
     return (
         cache.grid === grid &&
         cache.wallGridRevision === wallGridRevision &&
@@ -17,8 +17,8 @@ function geomCacheHit(cache, grid, wallGridRevision, bounds) {
         cache.boundsMaxY === bounds.maxY
     );
 }
-/** @param {typeof sGeomCache} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
-function storeGeomCache(cache, grid, wallGridRevision, bounds) {
+/** @param {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number }} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
+export function storeWallGridDrawCache(cache, grid, wallGridRevision, bounds) {
     cache.grid = grid;
     cache.wallGridRevision = wallGridRevision;
     cache.gridCols = grid.cols;
@@ -39,9 +39,9 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, viewerX, 
     out.length = 0;
     const bounds = viewport.boundsQuery;
     const wallGridRevision = obstacleGrid.wallGridRevision;
-    if (!geomCacheHit(sGeomCache, obstacleGrid, wallGridRevision, bounds)) {
+    if (!wallGridDrawCacheHit(sGeomCache, obstacleGrid, wallGridRevision, bounds)) {
         collectGridWallFacesInAabb(obstacleGrid, bounds, sGeomCache.faces);
-        storeGeomCache(sGeomCache, obstacleGrid, wallGridRevision, bounds);
+        storeWallGridDrawCache(sGeomCache, obstacleGrid, wallGridRevision, bounds);
     }
     const faces = sGeomCache.faces;
     for (let i = 0; i < faces.length; i++) {

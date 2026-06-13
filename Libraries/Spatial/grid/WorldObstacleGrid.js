@@ -1,7 +1,7 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex } from "./GridUtils.js";
 import { damageStaticGridCell } from "../../World/staticCellDamage.js";
-import { gridWallEdgeRailShouldEmit, gridWallEdgeRailToCollisionSegment, gridWallFaceToCollisionSegment } from "../../World/wallGridCells.js";
+import { gridWallEdgeRailShouldEmit } from "../../World/wallGridCells.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
@@ -75,6 +75,8 @@ export class WorldObstacleGrid {
     }
     /** @param {object} entity @param {object[]} out */
     appendStaticWallProxiesNear(entity, out) {
+        // Edge-rail collision: inline boundary segment + edgeThicknessGrid height (verified working).
+        // Draw uses resolveGridWallEdgeRailBox; do not swap proxy math without ball regression tests.
         this._staticWallProxyCount = 0;
         const radius = entity.radius ?? 0;
         const { col: ec, row: er } = this.worldToGrid(entity.x, entity.y);
@@ -321,10 +323,6 @@ export class WorldObstacleGrid {
         }
         return gridBounds;
     }
-    /** Alias for stampStaticWalls for clarity when working alongside stampCellEdge. */
-    stampCellFill(originCol, originRow, cols, rows, cells, wallSpatialIndex = null, options) {
-        return this.stampStaticWalls(originCol, originRow, cols, rows, cells, wallSpatialIndex, options);
-    }
     /**
      * @param {number} col
      * @param {number} row
@@ -333,6 +331,7 @@ export class WorldObstacleGrid {
      * @param {number} thickness
      */
     writeCellEdge(col, row, side, heightLevel, thickness = 0) {
+        // Does not bump wallGridRevision — batch callers bump once after all edge writes.
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return;
         const idx = col + row * this.cols;
         this.edgeGrid[idx * 4 + side] = heightLevel;
