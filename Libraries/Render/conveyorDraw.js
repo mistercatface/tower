@@ -152,46 +152,167 @@ export function createConveyorDraw(options = {}) {
         const beltHalfW = hy - 1.5; // 6.5
         // Build list of subdivided boxes to draw in depth-sorted painter's order
         const drawList = [];
-        const numSegments = 6;
-        const d_A = (endAngle - startAngle) / numSegments;
-        const segHalfLength = 1.25; // slightly elongated to cover joints
-        for (let i = 0; i < numSegments; i++) {
-            const A = startAngle + (i + 0.5) * d_A;
-            const segFacing = A + (dir * Math.PI) / 2;
-            // 1. Belt bed segment
-            const R_belt = 8;
-            const lx_belt = pivotX + R_belt * Math.cos(A);
-            const ly_belt = pivotY + R_belt * Math.sin(A);
-            const rx_belt = lx_belt * cos - ly_belt * sin;
-            const ry_belt = lx_belt * sin + ly_belt * cos;
-            const beltProp = { x: prop.x + rx_belt, y: prop.y + ry_belt, facing: angle + segFacing };
+        if (isLeft) {
+            // Belt bed segment 1 (vertical-ish relative to facing)
+            const lx_b1 = 0;
+            const ly_b1 = 0.75;
+            const rx_b1 = lx_b1 * cos - ly_b1 * sin;
+            const ry_b1 = lx_b1 * sin + ly_b1 * cos;
+            const prop_b1 = { x: prop.x + rx_b1, y: prop.y + ry_b1, facing: angle + Math.PI / 2 };
             drawList.push({
                 type: "belt",
-                prop: beltProp,
-                halfSize: { x: segHalfLength, y: beltHalfW },
+                prop: prop_b1,
+                halfSize: { x: 7.25, y: 6.5 },
                 height: 2,
                 faceColors: beltColors,
                 topColors: beltTopColors,
                 stroke: beltStroke,
-                distSq: (beltProp.x - px) ** 2 + (beltProp.y - py) ** 2,
+                distSq: (prop_b1.x - px) ** 2 + (prop_b1.y - py) ** 2,
             });
-            // 2. Outer rail segment (larger radius)
-            const R_outer = 15.25;
-            const lx_outer = pivotX + R_outer * Math.cos(A);
-            const ly_outer = pivotY + R_outer * Math.sin(A);
-            const rx_outer = lx_outer * cos - ly_outer * sin;
-            const ry_outer = lx_outer * sin + ly_outer * cos;
-            const outerProp = { x: prop.x + rx_outer, y: prop.y + ry_outer, facing: angle + segFacing };
-            const outerSegHalfLength = ((R_outer * Math.abs(d_A)) / 2) * 1.15;
+            // Belt bed segment 2 (horizontal-ish relative to facing)
+            const lx_b2 = 0.75;
+            const ly_b2 = 0;
+            const rx_b2 = lx_b2 * cos - ly_b2 * sin;
+            const ry_b2 = lx_b2 * sin + ly_b2 * cos;
+            const prop_b2 = { x: prop.x + rx_b2, y: prop.y + ry_b2, facing: angle };
+            drawList.push({
+                type: "belt",
+                prop: prop_b2,
+                halfSize: { x: 7.25, y: 6.5 },
+                height: 2,
+                faceColors: beltColors,
+                topColors: beltTopColors,
+                stroke: beltStroke,
+                distSq: (prop_b2.x - px) ** 2 + (prop_b2.y - py) ** 2,
+            });
+            // Outer rail 1 (along West edge)
+            const lx_r1 = -7.25;
+            const ly_r1 = 0;
+            const rx_r1 = lx_r1 * cos - ly_r1 * sin;
+            const ry_r1 = lx_r1 * sin + ly_r1 * cos;
+            const prop_r1 = { x: prop.x + rx_r1, y: prop.y + ry_r1, facing: angle + Math.PI / 2 };
             drawList.push({
                 type: "rail",
-                prop: outerProp,
-                halfSize: { x: outerSegHalfLength, y: 0.75 },
+                prop: prop_r1,
+                halfSize: { x: 8, y: 0.75 },
                 height: 3.5,
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
-                distSq: (outerProp.x - px) ** 2 + (outerProp.y - py) ** 2,
+                distSq: (prop_r1.x - px) ** 2 + (prop_r1.y - py) ** 2,
+            });
+            // Outer rail 2 (along North edge)
+            const lx_r2 = 0;
+            const ly_r2 = -7.25;
+            const rx_r2 = lx_r2 * cos - ly_r2 * sin;
+            const ry_r2 = lx_r2 * sin + ly_r2 * cos;
+            const prop_r2 = { x: prop.x + rx_r2, y: prop.y + ry_r2, facing: angle };
+            drawList.push({
+                type: "rail",
+                prop: prop_r2,
+                halfSize: { x: 8, y: 0.75 },
+                height: 3.5,
+                faceColors: railColors,
+                topColors: railTopColors,
+                stroke: railStroke,
+                distSq: (prop_r2.x - px) ** 2 + (prop_r2.y - py) ** 2,
+            });
+            // Inner rail (bottom-right corner)
+            const lx_ri = 7.25;
+            const ly_ri = 7.25;
+            const rx_ri = lx_ri * cos - ly_ri * sin;
+            const ry_ri = lx_ri * sin + ly_ri * cos;
+            const prop_ri = { x: prop.x + rx_ri, y: prop.y + ry_ri, facing: angle };
+            drawList.push({
+                type: "rail",
+                prop: prop_ri,
+                halfSize: { x: 0.75, y: 0.75 },
+                height: 3.5,
+                faceColors: railColors,
+                topColors: railTopColors,
+                stroke: railStroke,
+                distSq: (prop_ri.x - px) ** 2 + (prop_ri.y - py) ** 2,
+            });
+        } else {
+            // Belt bed segment 1 (vertical-ish relative to facing)
+            const lx_b1 = 0;
+            const ly_b1 = -0.75;
+            const rx_b1 = lx_b1 * cos - ly_b1 * sin;
+            const ry_b1 = lx_b1 * sin + ly_b1 * cos;
+            const prop_b1 = { x: prop.x + rx_b1, y: prop.y + ry_b1, facing: angle + Math.PI / 2 };
+            drawList.push({
+                type: "belt",
+                prop: prop_b1,
+                halfSize: { x: 7.25, y: 6.5 },
+                height: 2,
+                faceColors: beltColors,
+                topColors: beltTopColors,
+                stroke: beltStroke,
+                distSq: (prop_b1.x - px) ** 2 + (prop_b1.y - py) ** 2,
+            });
+            // Belt bed segment 2 (horizontal-ish)
+            const lx_b2 = 0.75;
+            const ly_b2 = 0;
+            const rx_b2 = lx_b2 * cos - ly_b2 * sin;
+            const ry_b2 = lx_b2 * sin + ly_b2 * cos;
+            const prop_b2 = { x: prop.x + rx_b2, y: prop.y + ry_b2, facing: angle };
+            drawList.push({
+                type: "belt",
+                prop: prop_b2,
+                halfSize: { x: 7.25, y: 6.5 },
+                height: 2,
+                faceColors: beltColors,
+                topColors: beltTopColors,
+                stroke: beltStroke,
+                distSq: (prop_b2.x - px) ** 2 + (prop_b2.y - py) ** 2,
+            });
+            // Outer rail 1 (along West edge)
+            const lx_r1 = -7.25;
+            const ly_r1 = 0;
+            const rx_r1 = lx_r1 * cos - ly_r1 * sin;
+            const ry_r1 = lx_r1 * sin + ly_r1 * cos;
+            const prop_r1 = { x: prop.x + rx_r1, y: prop.y + ry_r1, facing: angle + Math.PI / 2 };
+            drawList.push({
+                type: "rail",
+                prop: prop_r1,
+                halfSize: { x: 8, y: 0.75 },
+                height: 3.5,
+                faceColors: railColors,
+                topColors: railTopColors,
+                stroke: railStroke,
+                distSq: (prop_r1.x - px) ** 2 + (prop_r1.y - py) ** 2,
+            });
+            // Outer rail 2 (along South edge)
+            const lx_r2 = 0;
+            const ly_r2 = 7.25;
+            const rx_r2 = lx_r2 * cos - ly_r2 * sin;
+            const ry_r2 = lx_r2 * sin + ly_r2 * cos;
+            const prop_r2 = { x: prop.x + rx_r2, y: prop.y + ry_r2, facing: angle };
+            drawList.push({
+                type: "rail",
+                prop: prop_r2,
+                halfSize: { x: 8, y: 0.75 },
+                height: 3.5,
+                faceColors: railColors,
+                topColors: railTopColors,
+                stroke: railStroke,
+                distSq: (prop_r2.x - px) ** 2 + (prop_r2.y - py) ** 2,
+            });
+            // Inner rail (top-right corner)
+            const lx_ri = 7.25;
+            const ly_ri = -7.25;
+            const rx_ri = lx_ri * cos - ly_ri * sin;
+            const ry_ri = lx_ri * sin + ly_ri * cos;
+            const prop_ri = { x: prop.x + rx_ri, y: prop.y + ry_ri, facing: angle };
+            drawList.push({
+                type: "rail",
+                prop: prop_ri,
+                halfSize: { x: 0.75, y: 0.75 },
+                height: 3.5,
+                faceColors: railColors,
+                topColors: railTopColors,
+                stroke: railStroke,
+                distSq: (prop_ri.x - px) ** 2 + (prop_ri.y - py) ** 2,
             });
         }
         // Depth sort: draw furthest boxes first
@@ -214,19 +335,35 @@ export function createConveyorDraw(options = {}) {
         // 4. Clip and draw moving treads & chevrons on curved belt surface
         ctx.save();
         ctx.beginPath();
-        const numClipSteps = 12;
-        // Inner arc limit
-        for (let i = 0; i <= numClipSteps; i++) {
-            const A = startAngle + (i / numClipSteps) * (endAngle - startAngle);
-            const p = projectLocal(pivotX + (8 - beltHalfW) * Math.cos(A), pivotY + (8 - beltHalfW) * Math.sin(A), 2);
-            if (i === 0) ctx.moveTo(p.x, p.y);
-            else ctx.lineTo(p.x, p.y);
-        }
-        // Outer arc limit (backwards)
-        for (let i = numClipSteps; i >= 0; i--) {
-            const A = startAngle + (i / numClipSteps) * (endAngle - startAngle);
-            const p = projectLocal(pivotX + (8 + beltHalfW) * Math.cos(A), pivotY + (8 + beltHalfW) * Math.sin(A), 2);
-            ctx.lineTo(p.x, p.y);
+        const steps = 8;
+        if (isLeft) {
+            const pStart = projectLocal(-6.5, 8, 2);
+            ctx.moveTo(pStart.x, pStart.y);
+            const pCorner = projectLocal(-6.5, -6.5, 2);
+            ctx.lineTo(pCorner.x, pCorner.y);
+            const pExitOuter = projectLocal(8, -6.5, 2);
+            ctx.lineTo(pExitOuter.x, pExitOuter.y);
+            const pExitInner = projectLocal(8, 6.5, 2);
+            ctx.lineTo(pExitInner.x, pExitInner.y);
+            for (let i = 0; i <= steps; i++) {
+                const A = 1.5 * Math.PI - (i / steps) * (0.5 * Math.PI);
+                const p = projectLocal(8 + 1.5 * Math.cos(A), 8 + 1.5 * Math.sin(A), 2);
+                ctx.lineTo(p.x, p.y);
+            }
+        } else {
+            const pStart = projectLocal(-6.5, -8, 2);
+            ctx.moveTo(pStart.x, pStart.y);
+            const pCorner = projectLocal(-6.5, 6.5, 2);
+            ctx.lineTo(pCorner.x, pCorner.y);
+            const pExitOuter = projectLocal(8, 6.5, 2);
+            ctx.lineTo(pExitOuter.x, pExitOuter.y);
+            const pExitInner = projectLocal(8, -6.5, 2);
+            ctx.lineTo(pExitInner.x, pExitInner.y);
+            for (let i = 0; i <= steps; i++) {
+                const A = 0.5 * Math.PI + (i / steps) * (0.5 * Math.PI);
+                const p = projectLocal(8 + 1.5 * Math.cos(A), -8 + 1.5 * Math.sin(A), 2);
+                ctx.lineTo(p.x, p.y);
+            }
         }
         ctx.closePath();
         ctx.clip();
@@ -244,8 +381,8 @@ export function createConveyorDraw(options = {}) {
             const s = ((timeSec * speed) % 4) + i * 4;
             if (s < 0 || s > totalArcLength) continue;
             const A = startAngle + dir * (s / 8);
-            const pStart = projectLocal(pivotX + (8 - beltHalfW) * Math.cos(A), pivotY + (8 - beltHalfW) * Math.sin(A), 2);
-            const pEnd = projectLocal(pivotX + (8 + beltHalfW) * Math.cos(A), pivotY + (8 + beltHalfW) * Math.sin(A), 2);
+            const pStart = projectLocal(pivotX + 1.5 * Math.cos(A), pivotY + 1.5 * Math.sin(A), 2);
+            const pEnd = projectLocal(pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A), 2);
             ctx.beginPath();
             ctx.moveTo(pStart.x, pStart.y);
             ctx.lineTo(pEnd.x, pEnd.y);
