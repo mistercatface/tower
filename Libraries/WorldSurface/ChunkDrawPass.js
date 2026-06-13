@@ -6,7 +6,7 @@ import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js"
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { traceAabbRect, traceClosedPolygon, clipToPath } from "../Canvas/CanvasPath.js";
 import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
-import { gridWallEdgeRailFootprintAabb, gridWallEdgeRailShouldEmit, gridRailWallTopZAt, resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
+import { gridWallEdgeRailFootprintAabb, gridRailWallAtZLevel, resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
 import { getStaticCellDamageAlphaAtIdx, getStaticEdgeDamageAlphaAt } from "../World/staticCellDamage.js";
 /**
  * @typedef {Object} ChunkDrawPass
@@ -108,8 +108,7 @@ export function clipChunkToFlatWallFootprints(ctx, pass) {
                 clippedAny = true;
             }
             for (let side = 0; side < 4; side++) {
-                if (!gridWallEdgeRailShouldEmit(obstacleGrid, col, row, side)) continue;
-                if (gridRailWallTopZAt(obstacleGrid, col, row, side) !== zLevel) continue;
+                if (!gridRailWallAtZLevel(obstacleGrid, col, row, side, zLevel)) continue;
                 traceAabbRect(clipCtx, gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, side));
                 clippedAny = true;
             }
@@ -124,8 +123,7 @@ export function clipChunkToStaticEdgeRails(ctx, pass) {
         let clippedAny = false;
         forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
             for (let side = 0; side < 4; side++) {
-                if (!gridWallEdgeRailShouldEmit(obstacleGrid, col, row, side)) continue;
-                if (gridRailWallTopZAt(obstacleGrid, col, row, side) !== zLevel) continue;
+                if (!gridRailWallAtZLevel(obstacleGrid, col, row, side, zLevel)) continue;
                 traceAabbRect(clipCtx, gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, side));
                 clippedAny = true;
             }
@@ -148,8 +146,7 @@ export function drawStaticEdgeRailFootprintDamageOverlays(ctx, pass) {
     const { obstacleGrid, state, zLevel } = pass;
     forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
         for (let side = 0; side < 4; side++) {
-            if (!gridWallEdgeRailShouldEmit(obstacleGrid, col, row, side)) continue;
-            if (gridRailWallTopZAt(obstacleGrid, col, row, side) !== zLevel) continue;
+            if (!gridRailWallAtZLevel(obstacleGrid, col, row, side, zLevel)) continue;
             const damageAlpha = getStaticEdgeDamageAlphaAt(obstacleGrid, state, col, row, side);
             if (damageAlpha <= 0) continue;
             drawAabbDamageOverlay(ctx, gridWallEdgeRailFootprintAabb(obstacleGrid, col, row, side), damageAlpha);

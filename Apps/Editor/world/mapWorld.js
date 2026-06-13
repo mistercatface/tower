@@ -150,13 +150,15 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
             state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
             cellChanged = true;
         }
-        for (let side = 0; side < 4; side++)
-            if (grid.edgeStore.has(col, row, side, grid.cols)) {
-                const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
-                grid.edgeStore.clearMirrored(col, row, side, grid.cols, grid.rows);
-                state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
-                cellChanged = true;
-            }
+        for (let side = 0; side < 4; side++) {
+            if (!grid.edgeStore.has(col, row, side, grid.cols)) continue;
+            const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+            state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
+        }
+        if (grid.edgeStore.hasAnyAtIdx(idx)) {
+            grid.clearCellEdges(col, row);
+            cellChanged = true;
+        }
         if (!cellChanged) return;
         if (col < startCol) startCol = col;
         if (col > endCol) endCol = col;
@@ -283,9 +285,9 @@ export function generateLabRailCaverns(state) {
             for (let side = 0; side < 4; side++) {
                 if (!grid.edgeStore.has(c, r, side, grid.cols)) continue;
                 const { globalCol, globalRow } = gridCellToGlobalColRow(grid, c, r);
-                grid.edgeStore.clearMirrored(c, r, side, grid.cols, grid.rows);
                 state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
             }
+            if (grid.edgeStore.hasAnyAtIdx(idx)) grid.clearCellEdges(c, r);
         }
     // 4. Stamp Horizontal Edges
     for (let lr = 0; lr < hRows; lr++)

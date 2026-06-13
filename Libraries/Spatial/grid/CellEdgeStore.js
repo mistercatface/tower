@@ -1,6 +1,6 @@
 import { colRowToIndex } from "./GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
-import { gridWallEdgeNeighbor } from "../../World/wallGridCells.js";
+import { gridWallEdgeNeighbor, gridWallEdgeMirrorSide, gridNeighborFillLevel } from "../../World/wallGridCells.js";
 import { createRailWallEdge, EDGE_KIND, isRailWallEdge, railWallHeightPx } from "./CellEdge.js";
 const EMPTY = -1;
 export class CellEdgeStore {
@@ -95,11 +95,7 @@ export class CellEdgeStore {
         const ref = this._alloc(edge);
         this._setSlot(col, row, side, cols, ref);
         const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-        let nSide = 0;
-        if (side === 0) nSide = 2;
-        else if (side === 1) nSide = 3;
-        else if (side === 2) nSide = 0;
-        else nSide = 1;
+        const nSide = gridWallEdgeMirrorSide(side);
         if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) this._setSlot(nc, nr, nSide, cols, ref);
     }
     /**
@@ -116,11 +112,7 @@ export class CellEdgeStore {
         if (ref === EMPTY) return;
         this.slots[slot] = EMPTY;
         const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-        let nSide = 0;
-        if (side === 0) nSide = 2;
-        else if (side === 1) nSide = 3;
-        else if (side === 2) nSide = 0;
-        else nSide = 1;
+        const nSide = gridWallEdgeMirrorSide(side);
         if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) this.slots[colRowToIndex(nc, nr, cols) * 4 + nSide] = EMPTY;
         this._free(ref);
     }
@@ -146,10 +138,7 @@ export class CellEdgeStore {
                 if (!isRailWallEdge(edge)) continue;
                 const col = idx % cols;
                 const row = (idx / cols) | 0;
-                const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-                let neighborFillLevel = 0;
-                if (nc >= 0 && nc < cols && nr >= 0 && nr < grid.rows) neighborFillLevel = grid.grid[nc + nr * cols];
-                seen.add(railWallHeightPx(edge, grid.cellSize, neighborFillLevel));
+                seen.add(railWallHeightPx(edge, grid.cellSize, gridNeighborFillLevel(grid, col, row, side)));
             }
         const out = [...seen];
         out.sort((a, b) => a - b);

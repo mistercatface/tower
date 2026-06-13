@@ -17,6 +17,10 @@ export function gridWallEdgeNeighbor(col, row, edge) {
     else nc = col - 1;
     return { nc, nr };
 }
+/** Opposite side across a shared cell boundary (N↔S, E↔W). */
+export function gridWallEdgeMirrorSide(side) {
+    return (side + 2) % 4;
+}
 /** @param {number | null} neighborCap @param {number} faceHeight */
 export function gridWallFaceVisible(neighborCap, faceHeight) {
     if (neighborCap == null) return true;
@@ -77,10 +81,16 @@ export function gridWallEdgeEndpoints(grid, col, row, edge, p1, p2, inset = 0) {
  * Interior edges emit from south/east owners so the face normal points into the stamped cell.
  */
 export function gridWallEdgeRailShouldEmit(grid, col, row, edge) {
-    if (!isRailWallEdge(grid.edgeStore.get(col, row, edge, grid.cols))) return false;
+    if (!gridRailWallEdge(grid, col, row, edge)) return false;
     if (edge === 2 || edge === 1) return true;
     if (edge === 0) return row === 0;
     return col === 0;
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function gridRailWallEdge(grid, col, row, side) {
+    const edge = grid.edgeStore.get(col, row, side, grid.cols);
+    if (!isRailWallEdge(edge)) return null;
+    return edge;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridNeighborFillLevel(grid, col, row, side) {
@@ -90,14 +100,18 @@ export function gridNeighborFillLevel(grid, col, row, side) {
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridRailWallTopZAt(grid, col, row, side) {
-    const edge = grid.edgeStore.get(col, row, side, grid.cols);
-    if (!isRailWallEdge(edge)) return 0;
+    const edge = gridRailWallEdge(grid, col, row, side);
+    if (!edge) return 0;
     return railWallHeightPx(edge, grid.cellSize, gridNeighborFillLevel(grid, col, row, side));
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {number} zLevel */
+export function gridRailWallAtZLevel(grid, col, row, side, zLevel) {
+    return gridWallEdgeRailShouldEmit(grid, col, row, side) && gridRailWallTopZAt(grid, col, row, side) === zLevel;
 }
 /** Axis-aligned footprint for one edge rail (centered on the shared cell boundary). */
 export function gridWallEdgeRailFootprintAabb(grid, col, row, edge) {
-    const railEdge = grid.edgeStore.get(col, row, edge, grid.cols);
-    const halfT = isRailWallEdge(railEdge) ? railWallThicknessPx(railEdge) / 2 : 0;
+    const railEdge = gridRailWallEdge(grid, col, row, edge);
+    const halfT = railEdge ? railWallThicknessPx(railEdge) / 2 : 0;
     const b = grid.getCellBounds(col, row);
     if (edge === 0) return { minX: b.minX, minY: b.minY - halfT, maxX: b.maxX, maxY: b.minY + halfT };
     if (edge === 1) return { minX: b.maxX - halfT, minY: b.minY, maxX: b.maxX + halfT, maxY: b.maxY };
@@ -106,8 +120,8 @@ export function gridWallEdgeRailFootprintAabb(grid, col, row, edge) {
 }
 /** Long-side endpoints for one face of the rail box. @param {0 | 1} railSide 0 = owning-cell side, 1 = neighbor side */
 function gridWallEdgeRailSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
-    const railEdge = grid.edgeStore.get(col, row, edge, grid.cols);
-    const halfT = isRailWallEdge(railEdge) ? railWallThicknessPx(railEdge) / 2 : 0;
+    const railEdge = gridRailWallEdge(grid, col, row, edge);
+    const halfT = railEdge ? railWallThicknessPx(railEdge) / 2 : 0;
     const b = grid.getCellBounds(col, row);
     if (edge === 0) {
         const y = railSide === 0 ? b.minY + halfT : b.minY - halfT;
@@ -147,13 +161,12 @@ export function resolveGridWallEdgeRailBox(grid, col, row, edge) {
     if (!gridWallEdgeRailShouldEmit(grid, col, row, edge)) return null;
     const cols = grid.cols;
     const idx = col + row * cols;
-    const railEdge = grid.edgeStore.get(col, row, edge, cols);
-    if (!isRailWallEdge(railEdge)) return null;
-    const { nc, nr } = gridWallEdgeNeighbor(col, row, edge);
-    let neighborFillLevel = 0;
-    if (nc >= 0 && nc < cols && nr >= 0 && nr < grid.rows) neighborFillLevel = grid.grid[nc + nr * cols];
+    const railEdge = gridRailWallEdge(grid, col, row, edge);
+    if (!railEdge) return null;
+    const neighborFillLevel = gridNeighborFillLevel(grid, col, row, edge);
     const edgeHeight = railWallHeightPx(railEdge, grid.cellSize, neighborFillLevel);
     if (edgeHeight <= 0) return null;
+    const { nc, nr } = gridWallEdgeNeighbor(col, row, edge);
     let neighborFillHeight = 0;
     if (nc >= 0 && nc < cols && nr >= 0 && nr < grid.rows) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nc + nr * cols);
     const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
@@ -305,9 +318,8 @@ export function resolveGridWallFace(grid, col, row, edge) {
     const cols = grid.cols;
     const idx = col + row * cols;
     const fillHeight = resolveCellWallHeightAtIdx(grid, idx);
-    const storedEdge = grid.edgeStore.get(col, row, edge, cols);
-    const neighborFillLevel = gridNeighborFillLevel(grid, col, row, edge);
-    const edgeLevel = isRailWallEdge(storedEdge) ? railWallCapLevel(storedEdge, neighborFillLevel) : 0;
+    const storedEdge = gridRailWallEdge(grid, col, row, edge);
+    const edgeLevel = storedEdge ? railWallCapLevel(storedEdge, gridNeighborFillLevel(grid, col, row, edge)) : 0;
     if (edgeLevel > 0) return null;
     if (fillHeight === 0) return null;
     const faceHeight = fillHeight;
@@ -488,8 +500,7 @@ export function chunkHasStaticEdgeRailsAtLevel(obstacleGrid, chunkOriginX, chunk
     let found = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
         for (let side = 0; side < 4; side++) {
-            if (!gridWallEdgeRailShouldEmit(obstacleGrid, col, row, side)) continue;
-            if (gridRailWallTopZAt(obstacleGrid, col, row, side) !== zLevel) continue;
+            if (!gridRailWallAtZLevel(obstacleGrid, col, row, side, zLevel)) continue;
             found = true;
         }
     });

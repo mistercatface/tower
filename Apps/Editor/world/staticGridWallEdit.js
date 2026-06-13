@@ -115,8 +115,10 @@ export function deleteStaticWallsInBounds(state, boundsConfig) {
         }
         for (let side = 0; side < 4; side++) {
             if (!grid.edgeStore.has(local.col, local.row, side, grid.cols)) continue;
-            grid.edgeStore.clearMirrored(local.col, local.row, side, grid.cols, grid.rows);
             state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
+        }
+        if (grid.edgeStore.hasAnyAtIdx(local.idx)) {
+            grid.clearCellEdges(local.col, local.row);
             cellChanged = true;
         }
         if (!cellChanged) return;

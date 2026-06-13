@@ -1,9 +1,9 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex } from "./GridUtils.js";
 import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCellDamage.js";
-import { gridWallEdgeRailShouldEmit, gridWallEdgeNeighbor, scanStaticStructureZLevelsFromGrid } from "../../World/wallGridCells.js";
+import { gridWallEdgeRailShouldEmit, gridRailWallEdge, gridNeighborFillLevel, scanStaticStructureZLevelsFromGrid } from "../../World/wallGridCells.js";
 import { CellEdgeStore, railWallEdgeFromStamp } from "./CellEdgeStore.js";
-import { edgeBlocksCrossing, isRailWallEdge, railWallThicknessPx } from "./CellEdge.js";
+import { edgeBlocksCrossing, railWallThicknessPx } from "./CellEdge.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
@@ -109,8 +109,7 @@ export class WorldObstacleGrid {
             }
             for (let side = 0; side < 4; side++) {
                 if (!gridWallEdgeRailShouldEmit(this, col, row, side)) continue;
-                const edge = this.edgeStore.get(col, row, side, this.cols);
-                if (!isRailWallEdge(edge)) continue;
+                const edge = gridRailWallEdge(this, col, row, side);
                 const thickness = railWallThicknessPx(edge);
                 const bounds = this.getCellBounds(col, row);
                 const minX = bounds.minX;
@@ -342,12 +341,7 @@ export class WorldObstacleGrid {
     writeCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
         // Does not bump wallGridRevision — batch callers bump once after all edge writes.
         if (capHeightLevel === 0) this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
-        else {
-            const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-            let neighborFillLevel = 0;
-            if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) neighborFillLevel = this.grid[nc + nr * this.cols];
-            this.edgeStore.writeMirrored(col, row, side, this.cols, this.rows, railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel));
-        }
+        else this.edgeStore.writeMirrored(col, row, side, this.cols, this.rows, railWallEdgeFromStamp(capHeightLevel, thicknessLevel, gridNeighborFillLevel(this, col, row, side)));
     }
     stampCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
         this.writeCellEdge(col, row, side, capHeightLevel, thicknessLevel);
@@ -356,6 +350,10 @@ export class WorldObstacleGrid {
     clearCellEdge(col, row, side) {
         this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
         this.bumpWallGridRevision();
+    }
+    /** Clear all edge slots on one cell (does not bump revision). */
+    clearCellEdges(col, row) {
+        for (let side = 0; side < 4; side++) this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
     }
     /** @param {number} col @param {number} row @param {number} side */
     edgeBlocksStep(col, row, side) {
