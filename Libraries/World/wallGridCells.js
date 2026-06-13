@@ -59,9 +59,18 @@ export function collectStaticRoofHeightsFromGrid(grid) {
     const size = grid.cols * grid.rows;
     for (let idx = 0; idx < size; idx++) {
         const px = resolveCellWallHeightAtIdx(grid, idx);
-        if (px <= 0 || seen.has(px)) continue;
-        seen.add(px);
-        out.push(px);
+        if (px > 0 && !seen.has(px)) {
+            seen.add(px);
+            out.push(px);
+        }
+        if (grid.edgeGrid)
+            for (let side = 0; side < 4; side++) {
+                const edgePx = grid.edgeGrid[idx * 4 + side] * grid.cellSize;
+                if (edgePx > 0 && !seen.has(edgePx)) {
+                    seen.add(edgePx);
+                    out.push(edgePx);
+                }
+            }
     }
     out.sort((a, b) => a - b);
     return out;
@@ -76,7 +85,16 @@ export function collectStaticRoofHeightsFromGrid(grid) {
 export function chunkHasStaticRoofAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
     let found = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
-        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) found = true;
+        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) {
+            found = true;
+            return;
+        }
+        if (obstacleGrid.edgeGrid)
+            for (let side = 0; side < 4; side++)
+                if (obstacleGrid.edgeGrid[idx * 4 + side] * obstacleGrid.cellSize === zLevel) {
+                    found = true;
+                    return;
+                }
     });
     return found;
 }

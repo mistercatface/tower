@@ -20,6 +20,8 @@ export class WorldObstacleGrid {
         this.cols = 0;
         this.rows = 0;
         this.grid = new Uint8Array(0);
+        this.edgeGrid = new Uint8Array(0);
+        this.edgeThicknessGrid = new Uint8Array(0);
         this.segmentGrid = [];
         this.wallGridRevision = 0;
         this.cellBoundsScratch = createAabb();
@@ -55,8 +57,41 @@ export class WorldObstacleGrid {
         proxy.x = x;
         proxy.y = y;
         proxy.size = size;
+        proxy.width = size;
+        proxy.height = size;
         proxy.gridCol = col;
         proxy.gridRow = row;
+        return proxy;
+    }
+    _borrowStaticEdgeProxy(x, y, width, height, col, row, side) {
+        let proxy = this._staticWallProxies[this._staticWallProxyCount];
+        if (!proxy) {
+            proxy = {
+                x: 0,
+                y: 0,
+                angle: 0,
+                size: 0,
+                padding: 0,
+                isDead: false,
+                isStaticGridProxy: true,
+                gridCol: 0,
+                gridRow: 0,
+                handleHit(damage, state) {
+                    // TODO: edge damage?
+                },
+            };
+            this._staticWallProxies[this._staticWallProxyCount] = proxy;
+        }
+        this._staticWallProxyCount++;
+        proxy._obstacleGrid = this;
+        proxy.x = x;
+        proxy.y = y;
+        proxy.size = Math.max(width, height);
+        proxy.width = width;
+        proxy.height = height;
+        proxy.gridCol = col;
+        proxy.gridRow = row;
+        proxy.gridSide = side;
         return proxy;
     }
     /** @param {object} entity @param {object[]} out */
@@ -70,10 +105,39 @@ export class WorldObstacleGrid {
         const minRow = Math.max(0, er - pad);
         const maxRow = Math.min(this.rows - 1, er + pad);
         forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (col, row, idx) => {
-            if (this.grid[idx] === 0) return;
-            if (this.segmentGrid?.[idx]?.length) return;
-            const { x, y } = this.gridToWorld(col, row);
-            out.push(this._borrowStaticWallProxy(x, y, col, row));
+            if (this.grid[idx] !== 0 && !this.segmentGrid?.[idx]?.length) {
+                const { x, y } = this.gridToWorld(col, row);
+                out.push(this._borrowStaticWallProxy(x, y, col, row));
+            }
+            if (this.edgeGrid)
+                for (let side = 0; side < 4; side++)
+                    if (this.edgeGrid[idx * 4 + side] !== 0) {
+                        const isPrimary = side === 0 || side === 3 || (side === 1 && col === this.cols - 1) || (side === 2 && row === this.rows - 1);
+                        if (isPrimary) {
+                            const { x, y } = this.gridToWorld(col, row);
+                            let ex = x,
+                                ey = y;
+                            let width = this.cellSize,
+                                height = this.cellSize;
+                            const thickness = this.edgeThicknessGrid[idx * 4 + side];
+                            const halfCell = this.cellSize / 2;
+                            const halfT = thickness / 2;
+                            if (side === 0) {
+                                ey = y - halfCell + halfT;
+                                height = thickness;
+                            } else if (side === 1) {
+                                ex = x + halfCell - halfT;
+                                width = thickness;
+                            } else if (side === 2) {
+                                ey = y + halfCell - halfT;
+                                height = thickness;
+                            } else {
+                                ex = x - halfCell + halfT;
+                                width = thickness;
+                            }
+                            out.push(this._borrowStaticEdgeProxy(ex, ey, width, height, col, row, side));
+                        }
+                    }
         });
         return out;
     }
@@ -87,6 +151,8 @@ export class WorldObstacleGrid {
         this.rows = Math.ceil((this.maxY - this.minY) / this.cellSize);
         const size = this.cols * this.rows;
         this.grid = new Uint8Array(size);
+        this.edgeGrid = new Uint8Array(size * 4);
+        this.edgeThicknessGrid = new Uint8Array(size * 4);
         this.segmentGrid = new Array(size);
         for (const wall of walls) this.addWall(wall);
     }
@@ -100,6 +166,8 @@ export class WorldObstacleGrid {
         this.rows = Math.ceil(height / this.cellSize);
         const size = this.cols * this.rows;
         this.grid = new Uint8Array(size);
+        this.edgeGrid = new Uint8Array(size * 4);
+        this.edgeThicknessGrid = new Uint8Array(size * 4);
         this.segmentGrid = null;
     }
     /**
@@ -133,18 +201,29 @@ export class WorldObstacleGrid {
         this.cols = Math.ceil((newMaxX - newMinX) / this.cellSize);
         this.rows = Math.ceil((newMaxY - newMinY) / this.cellSize);
         const newGrid = new Uint8Array(this.cols * this.rows);
+        const newEdgeGrid = new Uint8Array(this.cols * this.rows * 4);
+        const newEdgeThicknessGrid = new Uint8Array(this.cols * this.rows * 4);
         const oldSize = oldCols * oldRows;
         for (let idx = 0; idx < oldSize; idx++) {
             const level = oldGrid[idx];
-            if (level === 0) continue;
+            if (level === 0 && this.edgeGrid[idx * 4] === 0 && this.edgeGrid[idx * 4 + 1] === 0 && this.edgeGrid[idx * 4 + 2] === 0 && this.edgeGrid[idx * 4 + 3] === 0) continue;
             const col = idx % oldCols;
             const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
             const nr = row + rowOffset;
             if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue;
-            newGrid[nc + nr * this.cols] = level;
+            const newIdx = nc + nr * this.cols;
+            newGrid[newIdx] = level;
+            const oldEdgeBase = idx * 4;
+            const newEdgeBase = newIdx * 4;
+            for (let side = 0; side < 4; side++) {
+                newEdgeGrid[newEdgeBase + side] = this.edgeGrid[oldEdgeBase + side];
+                newEdgeThicknessGrid[newEdgeBase + side] = this.edgeThicknessGrid[oldEdgeBase + side];
+            }
         }
         this.grid = newGrid;
+        this.edgeGrid = newEdgeGrid;
+        this.edgeThicknessGrid = newEdgeThicknessGrid;
         return true;
     }
     markWall(wall) {
@@ -209,6 +288,52 @@ export class WorldObstacleGrid {
         }
         return gridBounds;
     }
+    /** Alias for stampStaticWalls for clarity when working alongside stampCellEdge. */
+    stampCellFill(originCol, originRow, cols, rows, cells, wallSpatialIndex = null, options) {
+        return this.stampStaticWalls(originCol, originRow, cols, rows, cells, wallSpatialIndex, options);
+    }
+    /**
+     * @param {number} col
+     * @param {number} row
+     * @param {number} side 0=N, 1=E, 2=S, 3=W
+     * @param {number} heightLevel
+     * @param {number} thickness
+     */
+    writeCellEdge(col, row, side, heightLevel, thickness = 0) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return;
+        const idx = col + row * this.cols;
+        this.edgeGrid[idx * 4 + side] = heightLevel;
+        this.edgeThicknessGrid[idx * 4 + side] = thickness;
+        let nc = col;
+        let nr = row;
+        let nSide = 0;
+        if (side === 0) {
+            nr = row - 1;
+            nSide = 2;
+        } else if (side === 1) {
+            nc = col + 1;
+            nSide = 3;
+        } else if (side === 2) {
+            nr = row + 1;
+            nSide = 0;
+        } else {
+            nc = col - 1;
+            nSide = 1;
+        }
+        if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
+            const nIdx = nc + nr * this.cols;
+            this.edgeGrid[nIdx * 4 + nSide] = heightLevel;
+            this.edgeThicknessGrid[nIdx * 4 + nSide] = thickness;
+        }
+    }
+    stampCellEdge(col, row, side, heightLevel, thickness = 0) {
+        this.writeCellEdge(col, row, side, heightLevel, thickness);
+        this.bumpWallGridRevision();
+    }
+    clearCellEdge(col, row, side) {
+        this.writeCellEdge(col, row, side, 0, 0);
+        this.bumpWallGridRevision();
+    }
     worldToGrid(x, y) {
         return worldToGridAtOrigin(x, y, this.minX, this.minY, this.cellSize);
     }
@@ -222,6 +347,36 @@ export class WorldObstacleGrid {
     isBlockedWorld(x, y) {
         const { col, row } = this.worldToGrid(x, y);
         return this.isBlocked(col, row);
+    }
+    canStep(currCol, currRow, nextCol, nextRow) {
+        if (this.isBlocked(nextCol, nextRow)) return false;
+        if (!this.edgeGrid) return true;
+        const dc = nextCol - currCol;
+        const dr = nextRow - currRow;
+        // Cardinal step
+        if (dc !== 0 && dr === 0) {
+            const side = dc > 0 ? 1 : 3; // East or West
+            if (this.edgeGrid[(currCol + currRow * this.cols) * 4 + side] !== 0) return false;
+        } else if (dc === 0 && dr !== 0) {
+            const side = dr > 0 ? 2 : 0; // South or North
+            if (this.edgeGrid[(currCol + currRow * this.cols) * 4 + side] !== 0) return false;
+        } else if (dc !== 0 && dr !== 0) {
+            // Diagonal step
+            // Blocked if either cardinal neighbor is blocked by fill
+            if (this.isBlocked(currCol + dc, currRow) || this.isBlocked(currCol, currRow + dr)) return false;
+            // Blocked if edges along the cardinal paths are blocked
+            const sideX = dc > 0 ? 1 : 3;
+            const sideY = dr > 0 ? 2 : 0;
+            // Edges leaving currCell
+            if (this.edgeGrid[(currCol + currRow * this.cols) * 4 + sideX] !== 0) return false;
+            if (this.edgeGrid[(currCol + currRow * this.cols) * 4 + sideY] !== 0) return false;
+            // Edges entering nextCell
+            const oppSideX = dc > 0 ? 3 : 1;
+            const oppSideY = dr > 0 ? 0 : 2;
+            if (this.edgeGrid[(nextCol + nextRow * this.cols) * 4 + oppSideX] !== 0) return false;
+            if (this.edgeGrid[(nextCol + nextRow * this.cols) * 4 + oppSideY] !== 0) return false;
+        }
+        return true;
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

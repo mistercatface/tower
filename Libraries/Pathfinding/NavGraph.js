@@ -12,6 +12,7 @@
  * @property {(x: number, y: number) => { col: number, row: number }} worldToGrid
  * @property {(col: number, row: number) => { x: number, y: number }} gridToWorld
  * @property {(col: number, row: number) => boolean} isBlocked
+ * @property {(currCol: number, currRow: number, nextCol: number, nextRow: number) => boolean} canStep
  */
 /**
  * Segment lookup for path clearance. WorldObstacleGrid also satisfies this.

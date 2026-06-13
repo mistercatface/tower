@@ -27,17 +27,6 @@ export class FlowFieldGrid {
         this.grid = new Uint8Array(this.sabObstacle);
         this.sabNeighbors = new SharedArrayBuffer(size * 8 * 4);
         this.neighborGrid = new Int32Array(this.sabNeighbors).fill(-1);
-        for (let row = 0; row < this.rows; row++)
-            for (let col = 0; col < this.cols; col++) {
-                const base = (row * this.cols + col) * 8;
-                let i = 0;
-                for (const { dc, dr } of OCTILE_OFFSETS) {
-                    const nc = col + dc;
-                    const nr = row + dr;
-                    if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) this.neighborGrid[base + i] = nr * this.cols + nc;
-                    i++;
-                }
-            }
         this.sabFlowPool = new SharedArrayBuffer(size * MAX_CACHE);
         this.cacheLookup = new Int32Array(size).fill(-1);
         this.cacheCounter = 0;
@@ -71,8 +60,26 @@ export class FlowFieldGrid {
             const col = idx % this.cols;
             const row = (idx / this.cols) | 0;
             const worldCell = this.navGraph.worldToGrid(col * cellSize + wxBase, row * cellSize + wyBase);
-            if (worldCell.col >= 0 && worldCell.col < navCols && worldCell.row >= 0 && worldCell.row < navRows) this.grid[idx] = navGrid[worldCell.row * navCols + worldCell.col];
-            else this.grid[idx] = 1;
+            if (worldCell.col >= 0 && worldCell.col < navCols && worldCell.row >= 0 && worldCell.row < navRows) {
+                this.grid[idx] = navGrid[worldCell.row * navCols + worldCell.col];
+                // Update neighbor grid based on edge walls
+                const base = idx * 8;
+                let i = 0;
+                for (const { dc, dr } of OCTILE_OFFSETS) {
+                    const nc = col + dc;
+                    const nr = row + dr;
+                    if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
+                        const nextWorldCell = this.navGraph.worldToGrid(nc * cellSize + wxBase, nr * cellSize + wyBase);
+                        if (this.navGraph.canStep(worldCell.col, worldCell.row, nextWorldCell.col, nextWorldCell.row)) this.neighborGrid[base + i] = nr * this.cols + nc;
+                        else this.neighborGrid[base + i] = -1;
+                    } else this.neighborGrid[base + i] = -1;
+                    i++;
+                }
+            } else {
+                this.grid[idx] = 1;
+                const base = idx * 8;
+                for (let i = 0; i < 8; i++) this.neighborGrid[base + i] = -1;
+            }
         }
         this.cacheLookup.fill(-1);
         this.cacheCounter = 0;

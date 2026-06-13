@@ -1,7 +1,7 @@
 import { MinHeap, IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { OCTILE_OFFSETS, octileDistance } from "../Spatial/grid/GridUtils.js";
 const STALE_F_EPSILON = 1e-4;
-export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, grid, cols, rows, maxPathLen, gScore, cameFrom, visited, runId) {
+export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, gScore, cameFrom, visited, runId) {
     const startIdx = startRow * cols + startCol;
     const targetIdx = targetRow * cols + targetCol;
     if (startIdx === targetIdx) return [{ col: startCol, row: startRow }];
@@ -32,9 +32,8 @@ export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, grid
             const nc = currCol + offset.dc;
             const nr = currRow + offset.dr;
             if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                if (!navGraph.canStep(currCol, currRow, nc, nr)) continue;
                 const nIdx = nr * cols + nc;
-                if (grid[nIdx]) continue;
-                if (offset.dc !== 0 && offset.dr !== 0) if (grid[nr * cols + currCol] || grid[currRow * cols + nc]) continue;
                 const tentativeG = currentG + offset.cost;
                 if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
                     visited[nIdx] = runId;

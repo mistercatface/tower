@@ -22,21 +22,23 @@ export function toSegmentLocal(segment, x, y) {
         segment._cos = Math.cos(-segment.angle);
         segment._sin = Math.sin(-segment.angle);
     }
-    return { localX: dx * segment._cos - dy * segment._sin, localY: dx * segment._sin + dy * segment._cos, half: segment.size / 2 };
+    const halfX = segment.width !== undefined ? segment.width / 2 : segment.size / 2;
+    const halfY = segment.height !== undefined ? segment.height / 2 : segment.size / 2;
+    return { localX: dx * segment._cos - dy * segment._sin, localY: dx * segment._sin + dy * segment._cos, halfX, halfY };
 }
 export function closestPointOnSegment(wall, x, y) {
-    let { localX, localY, half } = toSegmentLocal(wall, x, y);
-    localX = Math.max(-half, Math.min(half, localX));
-    localY = Math.max(-half, Math.min(half, localY));
+    let { localX, localY, halfX, halfY } = toSegmentLocal(wall, x, y);
+    localX = Math.max(-halfX, Math.min(halfX, localX));
+    localY = Math.max(-halfY, Math.min(halfY, localY));
     const worldCos = wall._cos;
     const worldSin = -wall._sin;
     return { x: wall.x + localX * worldCos - localY * worldSin, y: wall.y + localX * worldSin + localY * worldCos };
 }
 export function distanceSqToSegment(segment, x, y) {
     if (segment.isDead) return Infinity;
-    const { localX, localY, half } = toSegmentLocal(segment, x, y);
-    const closestX = Math.max(-half, Math.min(localX, half));
-    const closestY = Math.max(-half, Math.min(localY, half));
+    const { localX, localY, halfX, halfY } = toSegmentLocal(segment, x, y);
+    const closestX = Math.max(-halfX, Math.min(localX, halfX));
+    const closestY = Math.max(-halfY, Math.min(localY, halfY));
     const distDX = localX - closestX;
     const distDY = localY - closestY;
     return distDX * distDX + distDY * distDY;
@@ -290,11 +292,11 @@ function approachToSegmentLocal(segment, worldVx, worldVy) {
  */
 export function getCircleSegmentPenetration(circle, segment, { approachX = 0, approachY = 0 } = {}) {
     if (segment.isDead) return null;
-    const { localX, localY, half } = toSegmentLocal(segment, circle.x, circle.y);
+    const { localX, localY, halfX, halfY } = toSegmentLocal(segment, circle.x, circle.y);
     const localApproach = approachToSegmentLocal(segment, approachX, approachY);
     const hasApproach = Math.hypot(localApproach.x, localApproach.y) > 1e-6;
-    const strictlyInside = localX > -half && localX < half && localY > -half && localY < half;
-    const surface = closestPointOnLocalBoxSurface(localX, localY, half);
+    const strictlyInside = localX > -halfX && localX < halfX && localY > -halfY && localY < halfY;
+    const surface = closestPointOnLocalBoxSurface(localX, localY, halfX, halfY);
     const toCenterX = localX - surface.x;
     const toCenterY = localY - surface.y;
     const distanceSq = toCenterX * toCenterX + toCenterY * toCenterY;
@@ -304,12 +306,12 @@ export function getCircleSegmentPenetration(circle, segment, { approachX = 0, ap
     let localNormY;
     let overlap;
     if (strictlyInside && hasApproach) {
-        const face = pushNormalFromInsideApproach(localX, localY, half, localApproach.x, localApproach.y);
+        const face = pushNormalFromInsideApproach(localX, localY, halfX, halfY, localApproach.x, localApproach.y);
         localNormX = face.nx;
         localNormY = face.ny;
         overlap = circle.radius - face.dist;
     } else if (distanceSq <= 1e-10) {
-        const fn = pushNormalAtLocalBoxSurface(surface.x, surface.y, half);
+        const fn = pushNormalAtLocalBoxSurface(surface.x, surface.y, halfX, halfY);
         localNormX = fn.x;
         localNormY = fn.y;
         overlap = circle.radius;

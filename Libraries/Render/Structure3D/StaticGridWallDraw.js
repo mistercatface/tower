@@ -57,7 +57,7 @@ function staticCellEdgeWallBaseZ(neighborCap, faceHeight) {
     return neighborCap;
 }
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} edge @param {typeof sP1} p1 @param {typeof sP2} p2 */
-function staticCellEdgeEndpoints(grid, col, row, edge, p1, p2) {
+function staticCellEdgeEndpoints(grid, col, row, edge, p1, p2, inset = 0) {
     const bounds = grid.getCellBounds(col, row);
     const minX = bounds.minX;
     const minY = bounds.minY;
@@ -65,23 +65,23 @@ function staticCellEdgeEndpoints(grid, col, row, edge, p1, p2) {
     const maxY = bounds.maxY;
     if (edge === 0) {
         p1.x = minX;
-        p1.y = minY;
+        p1.y = minY + inset;
         p2.x = maxX;
-        p2.y = minY;
+        p2.y = minY + inset;
     } else if (edge === 1) {
-        p1.x = maxX;
+        p1.x = maxX - inset;
         p1.y = minY;
-        p2.x = maxX;
+        p2.x = maxX - inset;
         p2.y = maxY;
     } else if (edge === 2) {
         p1.x = maxX;
-        p1.y = maxY;
+        p1.y = maxY - inset;
         p2.x = minX;
-        p2.y = maxY;
+        p2.y = maxY - inset;
     } else {
-        p1.x = minX;
+        p1.x = minX + inset;
         p1.y = maxY;
-        p2.x = minX;
+        p2.x = minX + inset;
         p2.y = minY;
     }
 }
@@ -94,17 +94,33 @@ function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, out) {
     out.length = 0;
     const cols = obstacleGrid.cols;
     forEachObstacleGridCellInAabb(obstacleGrid, bounds, (col, row, idx) => {
-        if (!cellIsStaticWallAtIdx(obstacleGrid, idx)) return;
-        const faceHeight = resolveCellWallHeightAtIdx(obstacleGrid, idx);
+        const fillHeight = resolveCellWallHeightAtIdx(obstacleGrid, idx);
+        // Quick skip if cell is completely empty (no fill, no edges)
+        if (
+            fillHeight === 0 &&
+            obstacleGrid.edgeGrid[idx * 4] === 0 &&
+            obstacleGrid.edgeGrid[idx * 4 + 1] === 0 &&
+            obstacleGrid.edgeGrid[idx * 4 + 2] === 0 &&
+            obstacleGrid.edgeGrid[idx * 4 + 3] === 0
+        )
+            return;
         const cellBounds = obstacleGrid.getCellBounds(col, row);
         const cx = (cellBounds.minX + cellBounds.maxX) / 2;
         const cy = (cellBounds.minY + cellBounds.maxY) / 2;
         for (let edge = 0; edge < 4; edge++) {
+            const edgeLevel = obstacleGrid.edgeGrid[idx * 4 + edge];
+            const edgeHeight = edgeLevel * obstacleGrid.cellSize;
+            const isEdgeRail = edgeHeight > 0;
+            const faceHeight = isEdgeRail ? edgeHeight : fillHeight;
+            if (faceHeight === 0) continue;
             const { nc, nr } = staticCellNeighbor(col, row, edge);
-            let neighborCap = null;
-            if (nc >= 0 && nc < cols && nr >= 0 && nr < obstacleGrid.rows) neighborCap = capHeightPxAtIdx(obstacleGrid, nc + nr * cols);
+            let neighborFillHeight = 0;
+            if (nc >= 0 && nc < cols && nr >= 0 && nr < obstacleGrid.rows) neighborFillHeight = resolveCellWallHeightAtIdx(obstacleGrid, nc + nr * cols);
+            const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
             if (!staticCellEdgeShouldShowFace(neighborCap, faceHeight)) continue;
-            staticCellEdgeEndpoints(obstacleGrid, col, row, edge, sP1, sP2);
+            const thickness = isEdgeRail ? obstacleGrid.edgeThicknessGrid[idx * 4 + edge] : 0;
+            const inset = thickness / 2;
+            staticCellEdgeEndpoints(obstacleGrid, col, row, edge, sP1, sP2, inset);
             const ecx = (sP1.x + sP2.x) / 2;
             const ecy = (sP1.y + sP2.y) / 2;
             const wallBaseZ = staticCellEdgeWallBaseZ(neighborCap, faceHeight);
@@ -122,6 +138,8 @@ function collectStaticGridWallFaceCandidates(obstacleGrid, bounds, out) {
                 cy: ecy,
                 outX: ecx - cx,
                 outY: ecy - cy,
+                isEdgeRail,
+                edgeThickness: thickness,
             });
         }
     });

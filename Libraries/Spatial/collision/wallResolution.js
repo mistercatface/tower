@@ -16,12 +16,13 @@ import { applyPositionCorrection, computeCircleWallContact, computePolygonWallCo
  */
 export function ensureWallSegmentPolygonShape(segment) {
     if (!segment.shape) {
-        const half = segment.size / 2;
+        const halfX = segment.width !== undefined ? segment.width / 2 : segment.size / 2;
+        const halfY = segment.height !== undefined ? segment.height / 2 : segment.size / 2;
         segment.shape = new PolygonShape([
-            { x: -half, y: -half },
-            { x: half, y: -half },
-            { x: half, y: half },
-            { x: -half, y: half },
+            { x: -halfX, y: -halfY },
+            { x: halfX, y: -halfY },
+            { x: halfX, y: halfY },
+            { x: -halfX, y: halfY },
         ]);
     }
     return segment.shape;

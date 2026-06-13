@@ -70,6 +70,31 @@ export function stampStaticWallsInBounds(state, boundsConfig, heightLevel) {
     notifyWallRegionChange(state, { startCol, endCol, startRow, endRow }, anyNew);
     return true;
 }
+/** @param {import("../state.js").TileLabGameState} state @param {import("./cellBoundsConfig.js").CellBoundsConfig} boundsConfig @param {number} side @param {number} heightLevel @param {number} thickness */
+export function stampWallEdgesInBounds(state, boundsConfig, side, heightLevel, thickness) {
+    prepareWallRegion(state, boundsConfig);
+    const grid = state.obstacleGrid;
+    const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
+    let startCol = Infinity;
+    let endCol = -1;
+    let startRow = Infinity;
+    let endRow = -1;
+    let any = false;
+    forEachGlobalCellInBounds(boundsConfig, (globalCol, globalRow) => {
+        const local = globalCellToLocal(grid, globalCol, globalRow);
+        if (!local) return;
+        grid.writeCellEdge(local.col, local.row, side, level, thickness);
+        any = true;
+        if (local.col < startCol) startCol = local.col;
+        if (local.col > endCol) endCol = local.col;
+        if (local.row < startRow) startRow = local.row;
+        if (local.row > endRow) endRow = local.row;
+    });
+    if (!any) return false;
+    grid.bumpWallGridRevision();
+    notifyWallRegionChange(state, { startCol, endCol, startRow, endRow }, true);
+    return true;
+}
 /** @param {import("../state.js").TileLabGameState} state @param {import("./cellBoundsConfig.js").CellBoundsConfig} boundsConfig */
 export function deleteStaticWallsInBounds(state, boundsConfig) {
     ensureLabObstacleGridCoverage(state, getCellBoundsAabb(boundsConfig, gridSettings.cellSize));
@@ -81,10 +106,19 @@ export function deleteStaticWallsInBounds(state, boundsConfig) {
     let anyRemoved = false;
     forEachGlobalCellInBounds(boundsConfig, (globalCol, globalRow) => {
         const local = globalCellToLocal(grid, globalCol, globalRow);
-        if (!local || !cellIsStaticWallAtIdx(grid, local.idx)) return;
-        if (grid.segmentGrid?.[local.idx]?.length) return;
-        grid.grid[local.idx] = 0;
-        state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
+        if (!local) return;
+        let cellChanged = false;
+        if (cellIsStaticWallAtIdx(grid, local.idx) && !grid.segmentGrid?.[local.idx]?.length) {
+            grid.grid[local.idx] = 0;
+            state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
+            cellChanged = true;
+        }
+        for (let side = 0; side < 4; side++) {
+            if (grid.edgeGrid[local.idx * 4 + side] === 0) continue;
+            grid.writeCellEdge(local.col, local.row, side, 0, 0);
+            cellChanged = true;
+        }
+        if (!cellChanged) return;
         anyRemoved = true;
         if (local.col < startCol) startCol = local.col;
         if (local.col > endCol) endCol = local.col;

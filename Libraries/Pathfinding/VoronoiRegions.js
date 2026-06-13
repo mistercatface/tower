@@ -46,7 +46,7 @@ export function computeDistanceTransform(grid, cols, rows, distToWall = null) {
     for (let i = 0; i < size; i++) if (distances[i] === Infinity) distances[i] = 1000;
     return distances;
 }
-function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, nodeCells, maxCellsPerChunk) {
+function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, nodeCells, maxCellsPerChunk, navGraph) {
     let cellCount = 0;
     const queue = [startIdx];
     cellToNode[startIdx] = node;
@@ -61,6 +61,7 @@ function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, nodeCells
             const nc = c + dc;
             const nr = r + dr;
             if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                if (navGraph && !navGraph.canStep(c, r, nc, nr)) continue;
                 const nIdx = nr * cols + nc;
                 if (grid[nIdx] === 0 && cellToNode[nIdx] === null) {
                     cellToNode[nIdx] = node;
@@ -134,7 +135,7 @@ function repositionRegionCentroids(nodesMap, grid, cols, rows, minX, minY, cellS
         node.y = minY + node.row * cellSize + cellSize / 2;
     }
 }
-export function generateVoronoiRegions({ grid, distToWall, cols, rows, minX, minY, cellSize, maxCellsPerChunk, minCellsPerChunk, cellToNode = null }) {
+export function generateVoronoiRegions({ grid, distToWall, cols, rows, minX, minY, cellSize, maxCellsPerChunk, minCellsPerChunk, cellToNode = null, navGraph = null }) {
     const size = cols * rows;
     const assignment = cellToNode ?? new Array(size).fill(null);
     assignment.fill(null);
@@ -150,13 +151,13 @@ export function generateVoronoiRegions({ grid, distToWall, cols, rows, minX, min
         const id = `node_${++nodeIdCounter}`;
         const node = new RegionNode(id, startCol, startRow, startCol, startRow, minX, minY, cellSize);
         nodesMap[id] = node;
-        floodFillRegion(startIdx, node, grid, cols, rows, assignment, node.cells, maxCellsPerChunk);
+        floodFillRegion(startIdx, node, grid, cols, rows, assignment, node.cells, maxCellsPerChunk, navGraph);
     }
     if (minCellsPerChunk > 0) mergeSmallRegions(nodesMap, assignment, cols, rows, minCellsPerChunk);
     repositionRegionCentroids(nodesMap, grid, cols, rows, minX, minY, cellSize, assignment);
     return { nodesMap, cellToNode: assignment, nodeIdCounter };
 }
-export function findRegionAdjacenciesInBox(cellToNode, cols, rows, startCol, endCol, startRow, endRow) {
+export function findRegionAdjacenciesInBox(cellToNode, cols, rows, startCol, endCol, startRow, endRow, navGraph = null) {
     const adjacencies = new Set();
     for (let r = startRow; r <= endRow; r++)
         for (let c = startCol; c <= endCol; c++) {
@@ -165,11 +166,11 @@ export function findRegionAdjacenciesInBox(cellToNode, cols, rows, startCol, end
             if (!nodeA) continue;
             if (c + 1 <= endCol) {
                 const nodeB = cellToNode[idx + 1];
-                if (nodeB && nodeA.id !== nodeB.id) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c + 1, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
             if (r + 1 <= endRow) {
                 const nodeB = cellToNode[idx + cols];
-                if (nodeB && nodeA.id !== nodeB.id) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c, r + 1))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
         }
     return adjacencies;
@@ -196,7 +197,7 @@ export function repositionNodeCentroid(node, cellToNode, grid, cols, rows, minX,
     node.x = minX + node.col * cellSize + cellSize / 2;
     node.y = minY + node.row * cellSize + cellSize / 2;
 }
-export function findRegionAdjacencies(cellToNode, grid, cols, rows) {
+export function findRegionAdjacencies(cellToNode, grid, cols, rows, navGraph = null) {
     const adjacencies = new Set();
     for (let r = 0; r < rows; r++)
         for (let c = 0; c < cols; c++) {
@@ -205,11 +206,11 @@ export function findRegionAdjacencies(cellToNode, grid, cols, rows) {
             if (!nodeA) continue;
             if (c + 1 < cols) {
                 const nodeB = cellToNode[idx + 1];
-                if (nodeB && nodeA.id !== nodeB.id) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c + 1, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
             if (r + 1 < rows) {
                 const nodeB = cellToNode[idx + cols];
-                if (nodeB && nodeA.id !== nodeB.id) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c, r + 1))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
         }
     return adjacencies;

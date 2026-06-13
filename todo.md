@@ -11,35 +11,42 @@ Same revision/stamp lifecycle as static walls. Same draw stack (`drawProjectedWa
 
 ### Model
 
-- [ ] **`edge[]` on `WorldObstacleGrid`** — parallel to `grid[]`; migrate on expand/rebuild; bump `wallGridRevision`.
-- [ ] **`stampCellFill` / `stampCellEdge` / clear** — mirror `stampStaticWalls`; height level per stamp (same level scale as fill voxels).
-- [ ] **Optional `edgeThickness`** — per-edge or per-stamp thickness (world px); used by draw + collision (see below).
+- [x] **`edge[]` on `WorldObstacleGrid`** — parallel to `grid[]`; migrate on expand/rebuild; bump `wallGridRevision`.
+- [x] **`stampCellFill` / `stampCellEdge` / clear** — mirror `stampStaticWalls`; height level per stamp (same level scale as fill voxels).
+- [x] **Optional `edgeThickness`** — per-edge or per-stamp thickness (world px); used by draw + collision (see below).
 - [ ] **Shared edge geometry** — extract `cellEdgeEndpoints(col, row, edge)` from static wall draw; one source for draw, debug, collision.
 
 ### Draw + surfaces (reuse static wall pipeline)
 
-- [ ] **Unified face collector** — fill-derived faces (today) + explicit edge faces (new) → same drawable `{ p1, p2, wallHeight, wallCapHeight, … }`.
-- [ ] **`drawProjectedWallFace`** — no second renderer; optional face kind `fill | edge` for roof/cap rules.
-- [ ] **Roof masks** — fill → full cell rect at cap Z; edge-only → thin strip along edge at cap Z.
-- [ ] **Thickness in draw** — visual depth/inset from `edgeThickness` (cosmetic extrusion depth, not a second occupancy grid).
+- [x] **Unified face collector** — fill-derived faces (today) + explicit edge faces (new) → same drawable `{ p1, p2, wallHeight, wallCapHeight, … }`.
+- [x] **`drawProjectedWallFace`** — no second renderer; optional face kind `fill | edge` for roof/cap rules.
+- [x] **Roof masks** — fill → full cell rect at cap Z; edge-only → thin strip along edge at cap Z.
+- [x] **Thickness in draw** — visual depth/inset from `edgeThickness` (cosmetic extrusion depth, not a second occupancy grid).
 
 ### Collision (face-based, not cell-center proxy)
 
-- [ ] **Face query** — nearby cells → enumerate active faces (fill + edge); thin contact on `p1–p2`.
-- [ ] **Thickness in physics** — collision plane/segment offset **inward** by half thickness from grid line; span still `cellSize` along edge (or shortened for corners). Exact for the chosen primitive — plane/box matches stored thickness.
-- [ ] **Wire into `resolveWalls`** — same impulse path as segments; remove reliance on fat cell-center proxy for edge-only walls.
+- [x] **Face query** — nearby cells → enumerate active faces (fill + edge); thin contact on `p1–p2`.
+- [x] **Thickness in physics** — collision plane/segment offset **inward** by half thickness from grid line; span still `cellSize` along edge (or shortened for corners). Exact for the chosen primitive — plane/box matches stored thickness.
+- [x] **Wire into `resolveWalls`** — same impulse path as segments; remove reliance on fat cell-center proxy for edge-only walls.
 
 ### Nav + pathfinding
 
-- [ ] **Cell blocked** — `fill > 0` (unchanged).
-- [ ] **Edge crossing** — cardinal step A→B blocked if shared edge has height on either side.
-- [ ] **HPA / flow field** — consume edge crossing; still one `WorldObstacleGrid` revision.
+- [x] **Cell blocked** — `fill > 0` (unchanged).
+- [x] **Edge crossing** — cardinal step A→B blocked if shared edge has height on either side.
+- [x] **HPA / flow field** — consume edge crossing; still one `WorldObstacleGrid` revision.
+
+### Performance & Scaling
+
+- [x] **Extend geom cache** — `wallGridRevision` invalidation covers `edge[]` edits; unified face collector runs once per viewport invalidation.
+- [x] **Edge-aware roof masks** — `chunkHasEdgeRoofsAtLevel` to skip empty chunks; thin strip masks in existing bake path.
+- [x] **Collision proxy pooling** — bitmask/skip empty edges; pool face proxies (keyed to `col, row, edge`) instead of cell centers.
+- [ ] **Optional draw merge** — collinear merge for straight rail runs (one long `p1–p2` segment).
 
 ### Editor
 
-- [ ] **Edge/rail stamp tool** — pick cell + side (or drag polyline of edges); writes `edge[]`.
-- [ ] **Fill stamp tool** — existing static wall stamp → writes `fill[]` (rename/clarify only if needed).
-- [ ] **Thickness control** — tool or inspector param on stamp (e.g. 1–4 px); stored on edge stamp.
+- [x] **Edge/rail stamp tool** — pick cell + side (or drag polyline of edges); writes `edge[]`.
+- [x] **Fill stamp tool** — existing static wall stamp → writes `fill[]` (rename/clarify only if needed).
+- [x] **Thickness control** — tool or inspector param on stamp (e.g. 1–4 px); stored on edge stamp.
 
 ### Migration / scope
 

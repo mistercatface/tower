@@ -113,6 +113,7 @@ export class HierarchicalNavigator {
             maxCellsPerChunk: this.maxCellsPerChunk,
             minCellsPerChunk: this.minCellsPerChunk,
             cellToNode: this.cellToNode,
+            navGraph: this.navGraph,
         });
         this.nodesMap = result.nodesMap;
         this.cellToNode = result.cellToNode;
@@ -120,7 +121,7 @@ export class HierarchicalNavigator {
     }
     connectAllNodes() {
         for (const node of Object.values(this.nodesMap)) node.edges = [];
-        const adjacencies = findRegionAdjacencies(this.cellToNode, this.grid, this.cols, this.rows);
+        const adjacencies = findRegionAdjacencies(this.cellToNode, this.grid, this.cols, this.rows, this.navGraph);
         this._connectAdjacencies(adjacencies);
     }
     _connectAdjacencies(adjacencies) {
@@ -355,7 +356,7 @@ export class HierarchicalNavigator {
     }
     runLocalAStar(startCol, startRow, targetCol, targetRow, maxPathLen = 80) {
         this.aStarRunId++;
-        return runLocalAStarFlat(startCol, startRow, targetCol, targetRow, this.grid, this.cols, this.rows, maxPathLen, this.aStarGScore, this.aStarCameFrom, this.aStarVisited, this.aStarRunId);
+        return runLocalAStarFlat(startCol, startRow, targetCol, targetRow, this.navGraph, this.cols, this.rows, maxPathLen, this.aStarGScore, this.aStarCameFrom, this.aStarVisited, this.aStarRunId);
     }
     _connectTempNode(tempNode, gridCol, gridRow, targetNode, isStart, modifiedCandidates = null) {
         const candidates = new Set();

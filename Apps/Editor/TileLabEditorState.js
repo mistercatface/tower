@@ -48,7 +48,20 @@ export class TileLabEditorState {
             iterations: 3,
             wallHeightLevel: 9,
         };
-        this.wallToolConfig = { boundsMode: "rect", boundsCol: 0, boundsRow: 0, boundsCols: 8, boundsRows: 8, centerCol: 4, centerRow: 4, outerRadiusCells: 4, wallHeightLevel: 1 };
+        this.wallToolConfig = {
+            boundsMode: "rect",
+            boundsCol: 0,
+            boundsRow: 0,
+            boundsCols: 8,
+            boundsRows: 1,
+            centerCol: 4,
+            centerRow: 4,
+            outerRadiusCells: 4,
+            wallHeightLevel: 1,
+            wallStampMode: "edgeLine",
+            edgeLineSide: 2,
+            edgeThickness: 2,
+        };
         this.showSandboxPanel = true;
         this.showProfilePanel = true;
         this.showMapPanel = false;
