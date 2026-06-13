@@ -213,6 +213,37 @@ export class WorldSurfaceEngine {
         return resolved;
     }
     /**
+     * Per-corner chunk UV for a horizontal cap quad (world corners in draw order).
+     * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} worldCorners
+     * @param {number} zLevel
+     * @param {object} state
+     * @param {string} profileId
+     * @returns {{ canvas: CanvasImageSource & { width: number, height: number }, src: [{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }] } | null}
+     */
+    getHorizontalCapDrawSample(worldCorners, zLevel, state, profileId) {
+        const obstacleGrid = state.obstacleGrid;
+        const cellsPerChunk = this.settings.cellsPerChunk;
+        const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
+        let minX = worldCorners[0].x;
+        let minY = worldCorners[0].y;
+        for (let i = 1; i < worldCorners.length; i++) {
+            if (worldCorners[i].x < minX) minX = worldCorners[i].x;
+            if (worldCorners[i].y < minY) minY = worldCorners[i].y;
+        }
+        const chunkCol = worldToChunkCol(minX, obstacleGrid.minX, chunkSizePx);
+        const chunkRow = worldToChunkRow(minY, obstacleGrid.minY, chunkSizePx);
+        const originX = obstacleGrid.minX + chunkCol * chunkSizePx;
+        const originY = obstacleGrid.minY + chunkRow * chunkSizePx;
+        const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
+        payload.profileId = profileId;
+        const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel);
+        const canvas = canvases[0];
+        if (!canvas || canvas.isPlaceholder) return null;
+        const ppwu = getTexelResolution(this.settings);
+        const src = worldCorners.map((c) => ({ x: (c.x - originX) * ppwu, y: (c.y - originY) * ppwu }));
+        return { canvas, src };
+    }
+    /**
      * @param {CanvasRenderingContext2D} ctx
      * @param {{
      *   obstacleGrid: { cols: number, cellSize: number, minX: number, minY: number },

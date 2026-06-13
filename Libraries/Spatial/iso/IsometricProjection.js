@@ -146,12 +146,13 @@ export function extrudeBox(projection, halfSize, angle = 0) {
         }),
     };
 }
+export function isOutwardFaceTowardViewer(midX, midY, outwardX, outwardY, viewerX, viewerY) {
+    const viewX = midX - viewerX;
+    const viewY = midY - viewerY;
+    return outwardX * viewX + outwardY * viewY < 0;
+}
 export function isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewerX, viewerY) {
-    const outX = edgeMidX - originX;
-    const outY = edgeMidY - originY;
-    const viewX = edgeMidX - viewerX;
-    const viewY = edgeMidY - viewerY;
-    return outX * viewX + outY * viewY < 0;
+    return isOutwardFaceTowardViewer(edgeMidX, edgeMidY, edgeMidX - originX, edgeMidY - originY, viewerX, viewerY);
 }
 export function getSideHighlightT(viewAngle, lightAngle = (-3 * Math.PI) / 4) {
     const lx = Math.cos(lightAngle);

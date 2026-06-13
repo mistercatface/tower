@@ -111,6 +111,7 @@ export class WorldSceneRenderer {
             viewport,
             worldSurfaces: input.worldSurfaces,
             proceduralSurfaceDraw: input.proceduralSurfaceDraw,
+            gameState: input.gameState,
             fillStyle: this.settings.floorShadow ?? "#12161c",
             wallHeight: 0,
             damageAlpha: 0,

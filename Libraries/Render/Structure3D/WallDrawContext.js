@@ -15,4 +15,5 @@
  * @property {object | null} cacheObj
  * @property {import("../../Math/Aabb2D.js").Aabb2D} worldBounds
  * @property {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
+ * @property {object} gameState — live game state for horizontal cap chunk sampling
  */

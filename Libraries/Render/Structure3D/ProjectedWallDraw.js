@@ -1,61 +1,56 @@
 /**
  * Projects wall faces in isometric space and samples baked atlases from WorldSurfaceEngine.
- * Static stamp roofs use chunk-cached horizontal surfaces via WorldSurfaceSystem.drawRoofs.
+ * Vertical bands: projectWorldPointInto. Horizontal caps: box top ring + per-corner chunk UV.
  */
-import { drawImageQuad } from "../../Canvas/AffineTexture.js";
+import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 import { getTexelResolution } from "../../WorldSurface/WorldSurfaceResolution.js";
 import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
-import { traceQuad } from "../../Canvas/CanvasPath.js";
+import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { drawDamageOverlayInClip } from "./wallDamageVisual.js";
 /** @typedef {import("./WallDrawContext.js").WallDrawContext} WallDrawContext */
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
-const WALL_ANGLE_SPREAD = 0.002;
+/** @typedef {{ proj1X: number, proj1Y: number, proj2X: number, proj2Y: number }} ProjectedWallBand */
+export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
+const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
+const sBandPoint0 = { x: 0, y: 0 };
+const sBandPoint1 = { x: 0, y: 0 };
 const sCorner0 = { x: 0, y: 0 };
 const sCorner1 = { x: 0, y: 0 };
 const sCorner2 = { x: 0, y: 0 };
 const sCorner3 = { x: 0, y: 0 };
-export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
-const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
-export function computeProjectedFace(p1, p2, wallHeight, camera, out = sharedScratchFace) {
-    const px = camera.viewerX;
-    const py = camera.viewerY;
-    let angle1 = Math.atan2(p1.y - py, p1.x - px);
-    let angle2 = Math.atan2(p2.y - py, p2.x - px);
-    const cross = (p1.x - px) * (p2.y - py) - (p1.y - py) * (p2.x - px);
-    if (cross > 0) {
-        angle1 -= WALL_ANGLE_SPREAD;
-        angle2 += WALL_ANGLE_SPREAD;
-    } else {
-        angle1 += WALL_ANGLE_SPREAD;
-        angle2 -= WALL_ANGLE_SPREAD;
-    }
-    const dist1 = Math.hypot(p1.x - px, p1.y - py);
-    const dist2 = Math.hypot(p2.x - px, p2.y - py);
-    const clampedHeight = Math.min(wallHeight, camera.cameraHeight - 1);
-    const alpha = resolveElevationAlpha(clampedHeight, camera);
-    out.proj1X = p1.x + Math.cos(angle1) * dist1 * alpha;
-    out.proj1Y = p1.y + Math.sin(angle1) * dist1 * alpha;
-    out.proj2X = p2.x + Math.cos(angle2) * dist2 * alpha;
-    out.proj2Y = p2.y + Math.sin(angle2) * dist2 * alpha;
-    return out;
-}
-/** @param {ReturnType<typeof computeProjectedFace>} faceBottom @param {ReturnType<typeof computeProjectedFace>} faceTop */
+const sCapCorners = [
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+];
+/** @param {ProjectedWallBand} faceBottom @param {ProjectedWallBand} faceTop */
 export function appendProjectedFaceBand(ctx, faceBottom, faceTop) {
     traceQuad(ctx, { x: faceBottom.proj1X, y: faceBottom.proj1Y }, { x: faceTop.proj1X, y: faceTop.proj1Y }, { x: faceTop.proj2X, y: faceTop.proj2Y }, { x: faceBottom.proj2X, y: faceBottom.proj2Y });
 }
-export function appendProjectedFace(ctx, p1, p2, face) {
-    traceQuad(ctx, p1, { x: face.proj1X, y: face.proj1Y }, { x: face.proj2X, y: face.proj2Y }, p2);
-}
-/** @param {ReturnType<typeof computeProjectedFace>} faceBottom @param {ReturnType<typeof computeProjectedFace>} faceTop */
+/** @param {ProjectedWallBand} faceBottom @param {ProjectedWallBand} faceTop */
 export function traceProjectedFaceBand(ctx, faceBottom, faceTop) {
     ctx.beginPath();
     appendProjectedFaceBand(ctx, faceBottom, faceTop);
 }
-export function traceProjectedFace(ctx, p1, p2, face) {
-    ctx.beginPath();
-    appendProjectedFace(ctx, p1, p2, face);
+/**
+ * Project one horizontal edge of a wall band at fixed world Z.
+ * @param {{ x: number, y: number }} p1
+ * @param {{ x: number, y: number }} p2
+ * @param {number} z
+ * @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
+ * @param {ProjectedWallBand} out
+ */
+export function projectWallFaceBandInto(p1, p2, z, camera, out) {
+    projectWorldPointInto(sBandPoint0, p1.x, p1.y, z, camera);
+    projectWorldPointInto(sBandPoint1, p2.x, p2.y, z, camera);
+    out.proj1X = sBandPoint0.x;
+    out.proj1Y = sBandPoint0.y;
+    out.proj2X = sBandPoint1.x;
+    out.proj2Y = sBandPoint1.y;
+    return out;
 }
 function computeFaceCornerElevated(out, u, v, faceBottom, faceTop) {
     const bot1X = faceBottom.proj1X;
@@ -196,50 +191,108 @@ function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera) {
     }
     blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wallCtx.worldBounds);
 }
+const sCapSrc0 = { x: 0, y: 0 };
+const sCapSrc1 = { x: 0, y: 0 };
+const sCapSrc2 = { x: 0, y: 0 };
+const sCapSrc3 = { x: 0, y: 0 };
 /**
- * Project one horizontal edge of a wall band at a fixed world Z (same math as roofs/props).
- * @param {{ x: number, y: number }} p1
- * @param {{ x: number, y: number }} p2
- * @param {number} z
+ * Top ring of a railWall box at wallCapHeight — same corners the long/end faces meet.
+ * Order: outerP1 → outerP2 → innerP2 → innerP1.
+ * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} out4
+ * @param {{ outerP1: { x: number, y: number }, outerP2: { x: number, y: number }, innerP1: { x: number, y: number }, innerP2: { x: number, y: number }, wallCapHeight: number }} box
  * @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
- * @param {ReturnType<typeof computeProjectedFace>} out
  */
-export function projectWallFaceBandInto(p1, p2, z, camera, out) {
-    const t1 = { x: 0, y: 0 };
-    const t2 = { x: 0, y: 0 };
-    projectWorldPointInto(t1, p1.x, p1.y, z, camera);
-    projectWorldPointInto(t2, p2.x, p2.y, z, camera);
-    out.proj1X = t1.x;
-    out.proj1Y = t1.y;
-    out.proj2X = t2.x;
-    out.proj2Y = t2.y;
-    return out;
+export function projectRailWallTopCornersInto(out4, box, camera) {
+    const z = box.wallCapHeight;
+    projectWorldPointInto(out4[0], box.outerP1.x, box.outerP1.y, z, camera);
+    projectWorldPointInto(out4[1], box.outerP2.x, box.outerP2.y, z, camera);
+    projectWorldPointInto(out4[2], box.innerP2.x, box.innerP2.y, z, camera);
+    projectWorldPointInto(out4[3], box.innerP1.x, box.innerP1.y, z, camera);
+    return out4;
 }
-
+function fillProjectedCapPolygon(ctx, corners, fillStyle) {
+    ctx.beginPath();
+    traceClosedPolygon(ctx, corners);
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+}
+function blitHorizontalCapSample(ctx, dest4, src4, canvas, bleedPx) {
+    drawImageTriangle(ctx, canvas, src4[0], src4[1], src4[3], dest4[0], dest4[1], dest4[3], { bleedPx });
+    drawImageTriangle(ctx, canvas, src4[1], src4[2], src4[3], dest4[1], dest4[2], dest4[3], { bleedPx });
+}
+function assignCapSampleSrc(sample) {
+    sCapSrc0.x = sample.src[0].x;
+    sCapSrc0.y = sample.src[0].y;
+    sCapSrc1.x = sample.src[1].x;
+    sCapSrc1.y = sample.src[1].y;
+    sCapSrc2.x = sample.src[2].x;
+    sCapSrc2.y = sample.src[2].y;
+    sCapSrc3.x = sample.src[3].x;
+    sCapSrc3.y = sample.src[3].y;
+}
 /**
- * Wall face draw using `projectWorldPointInto` (rails, future fill migration).
+ * railWall top cap — box top ring matches long/end face tops; per-corner chunk UV.
  * @param {CanvasRenderingContext2D} ctx
- * @param {{ x: number, y: number }} p1
- * @param {{ x: number, y: number }} p2
+ * @param {object} box
  * @param {WallDrawContext} wallCtx
  */
-export function drawProjectedWallFaceElevated(ctx, p1, p2, wallCtx) {
-    const { wallHeight, wallBaseZ, proceduralSurfaceDraw, fillStyle, damageAlpha, camera } = wallCtx;
-    const topZ = wallBaseZ + wallHeight;
-    const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, camera, sFaceBottom);
-    const faceTop = projectWallFaceBandInto(p1, p2, topZ, camera, sharedScratchFace);
-    traceProjectedFaceBand(ctx, faceBottom, faceTop);
-    if (proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera);
-    else {
-        ctx.fillStyle = fillStyle;
-        ctx.fill();
+export function drawProjectedRailWallCap(ctx, box, wallCtx) {
+    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState } = wallCtx;
+    projectRailWallTopCornersInto(sCapCorners, box, camera);
+    if (!proceduralSurfaceDraw || !gameState) {
+        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        return;
     }
-    if (damageAlpha > 0) drawDamageOverlayInClip(ctx, damageAlpha, (clipCtx) => appendProjectedFaceBand(clipCtx, faceBottom, faceTop));
+    const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
+    const worldCorners = [box.outerP1, box.outerP2, box.innerP2, box.innerP1];
+    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, box.wallCapHeight, gameState, profileId);
+    if (!sample) {
+        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        return;
+    }
+    assignCapSampleSrc(sample);
+    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, worldSurfaces.settings.wallTextureBleedPx ?? 1);
 }
-
 /**
- * Shared wall-face draw: project → trace → texture or solid fill → optional damage overlay.
- *
+ * Horizontal cap from world AABB corners (voxelBlock caps, generic quads).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} minX
+ * @param {number} minY
+ * @param {number} maxX
+ * @param {number} maxY
+ * @param {number} z
+ * @param {WallDrawContext} wallCtx
+ */
+export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallCtx) {
+    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState } = wallCtx;
+    projectRailWallTopCornersInto(
+        sCapCorners,
+        { outerP1: { x: minX, y: minY }, outerP2: { x: maxX, y: minY }, innerP2: { x: maxX, y: maxY }, innerP1: { x: minX, y: maxY }, wallCapHeight: z },
+        camera,
+    );
+    if (!proceduralSurfaceDraw || !gameState) {
+        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        return;
+    }
+    const cx = (minX + maxX) * 0.5;
+    const cy = (minY + maxY) * 0.5;
+    const profileId = resolveWallProfileId(proceduralSurfaceDraw, cx, cy, wallCtx.cacheObj);
+    const worldCorners = [
+        { x: minX, y: minY },
+        { x: maxX, y: minY },
+        { x: maxX, y: maxY },
+        { x: minX, y: maxY },
+    ];
+    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, z, gameState, profileId);
+    if (!sample) {
+        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        return;
+    }
+    assignCapSampleSrc(sample);
+    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, worldSurfaces.settings.wallTextureBleedPx ?? 1);
+}
+/**
+ * Wall face draw: projectWorldPointInto band → trace → texture or solid fill → optional damage overlay.
  * @param {CanvasRenderingContext2D} ctx
  * @param {{ x: number, y: number }} p1
  * @param {{ x: number, y: number }} p2
@@ -248,8 +301,8 @@ export function drawProjectedWallFaceElevated(ctx, p1, p2, wallCtx) {
 export function drawProjectedWallFace(ctx, p1, p2, wallCtx) {
     const { wallHeight, wallBaseZ, proceduralSurfaceDraw, fillStyle, damageAlpha, camera } = wallCtx;
     const topZ = wallBaseZ + wallHeight;
-    const faceBottom = computeProjectedFace(p1, p2, wallBaseZ, camera, sFaceBottom);
-    const faceTop = computeProjectedFace(p1, p2, topZ, camera, sharedScratchFace);
+    const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, camera, sFaceBottom);
+    const faceTop = projectWallFaceBandInto(p1, p2, topZ, camera, sharedScratchFace);
     traceProjectedFaceBand(ctx, faceBottom, faceTop);
     if (proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera);
     else {

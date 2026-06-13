@@ -25,11 +25,22 @@ One lattice for grid-snapped wall geometry.
 |                         | voxelBlock                                          | railWall                                                                        |
 | ----------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------- |
 | **Geometry hub**        | `resolveGridWallFace` → `resolveGridVoxelBlockFace` | `resolveGridWallEdgeRailBox` → `resolveGridRailWallBox`                         |
-| **Vertical projection** | `computeProjectedFace` → `drawProjectedWallFace`    | `projectWorldPointInto` → `drawProjectedWallFaceElevated`                       |
-| **Top surface**         | Chunk roof (`drawRoofs` + cell mask)                | In-pass cap quad (`drawProjectedGridRailWall`)                                  |
+| **Vertical projection** | `projectWorldPointInto` → `drawProjectedWallFace`   | same                                                                            |
+| **Top surface**         | Chunk roof (`drawRoofs` + cell mask)                | `drawProjectedHorizontalCap` (chunk sample at footprint)                        |
 | **Rejected**            | —                                                   | Face-line + `computeProjectedFace`, chunk roof strip mask, coplanar “back face” |
 
 ---
+
+## 3D projection consolidation (locked model)
+
+Single vertical formula: **`projectWorldPointInto`** + **`projectWallFaceBandInto`** → **`drawProjectedWallFace`**. Horizontal tops: **`projectWorldAabbCornersInto`** + chunk UV sample → **`drawProjectedHorizontalCap`**. Back-face cull: **`isOutwardFaceTowardViewer`**.
+
+- [x] **Delete `computeProjectedFace`** — legacy angle-spread path removed; no dual vertical projection.
+- [x] **Unify wall face draw** — voxelBlock + railWall sides/ends use `drawProjectedWallFace` only.
+- [x] **Procedural railWall cap** — `drawProjectedRailWallCap`: box top ring at `wallCapHeight` (matches side tops) + per-corner chunk UV.
+- [ ] **Cap alignment regression** — pan radial camera around cavern rails; caps meet side tops at all angles. Remaining seams on long runs = collinear merge (separate task).
+- [x] **Unify back-face cull** — `isOutwardFaceTowardViewer` in `IsometricProjection.js`; voxelBlock collect + railWall draw share it.
+- [x] **`WallDrawContext.gameState`** — cap chunk sample uses same bake hook as roofs.
 
 ### Damage (missing for railWall)
 
@@ -46,19 +57,13 @@ Priority order. **Do not add new micro-files** unless a module is a real subsyst
 
 ### P1 — Pipeline reuse + projection consolidation
 
-- [ ] **Unify elevated wall draw** — Fill still on `drawProjectedWallFace` (`computeProjectedFace`); rails on `drawProjectedWallFaceElevated`. Backlog: migrate fill to elevated path so walls/roofs/rails share one projection model (`todo.md` refactors section).
 - [x] **Extract shared viewport geom cache** — `wallGridDrawCacheHit` / `storeWallGridDrawCache` in `StaticGridWallDraw.js`; edge rail draw imports them.
 - [ ] **End-face atlas strategy** — `drawProjectedGridEdgeRail` sets `wallCtx.cacheObj = null` per end face to bust long-side atlas reuse. Correct visually, costly on straight runs. Fix: end-cap atlas key in `WallSurfaceCache` / `_wallAtlasStash` keyed by `(box id, endIndex, profileRev)` or bake end UV from box footprint without nulling cache.
 - [ ] **Collinear merge (draw only first)** — merge boxes for render; **do not merge collision proxies** until draw merge is proven and collision task explicitly opened with ball tests.
 
-### P1 — Rail top cap: procedural surface + profile invalidation (mid priority)
+### P1 — Rail top cap (follow-up)
 
-**Current gap:** Side faces use `getOrEnsureWallAtlas` + profile revision in cache key. Top cap uses solid `wallCtx.fillStyle` (`#12161c`) — **no procedural pattern**, no profile coherence with sides.
-
-- [ ] **Procedural rail cap** — Draw cap via horizontal surface sample at rail footprint + `capZ`, same projection as sides (`projectWorldAabbCornersInto` + `drawProjectedHorizontalChunk` or thin wrapper in `ProjectedWallDraw.js` / `ChunkDrawPass.js`). Scope to footprint AABB, not full cell chunk mask.
-- [ ] **Profile change invalidation** — When editor profile changes (`preview.js` → `invalidateWallAtlasKeyMemos`), side atlases refresh; cap does not (not in atlas path). Cap cache key must include `profileId`, `getSurfaceProfileRevision`, footprint, `wallCapHeight`, `edgeThickness`.
-- [ ] **Do not re-add edge rails to chunk roof mask** — fill roofs stay full-cell; rail caps stay per-box elevated quads with their own bake/cache prefix.
-- [ ] **Verify live profile edit** — Change `poolTableFelt` (or active profile) with rails on screen: sides **and** cap update without grid re-stamp.
+- [ ] **Verify live profile edit** — Change active profile with rails on screen: sides **and** cap update without grid re-stamp (cap now uses chunk bake + profile rev; confirm in editor).
 
 ### P2 — Efficiency
 
@@ -84,7 +89,7 @@ Not micro-files — extend these if elevated projection spreads:
 
 | Extend                       | Purpose                                                                                                         |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `ProjectedWallDraw.js`       | `drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallCtx)` for rail caps + future fill cap migration |
+| `ProjectedWallDraw.js`       | `drawProjectedHorizontalCap` — railWall caps + future voxelBlock caps; `drawProjectedWallFace` — all vertical bands |
 | `wallGridCells.js`           | Box struct, merge, collision segment builders                                                                   |
 | `wallSurfaceInvalidation.js` | Single entry: geom caches + atlas memos + (future) cap bake prefixes                                            |
 | `IsometricProjection.js`     | Already owns `projectWorldPointInto`; no fork                                                                   |
@@ -96,7 +101,7 @@ Not micro-files — extend these if elevated projection spreads:
 ## Acceptance (hard gate — formal pass still open)
 
 - [ ] Fill voxel unchanged from all angles (height, chunk roof, damage, nav, collision).
-- [ ] Edge rail: long sides + end faces show thickness; top cap meets side tops in projection.
+- [ ] Edge rail: long sides + end faces show thickness; top cap meets side tops in projection (single projection model; verify visually).
 - [ ] Interior walkable.
 - [ ] **railWall damage** — ball/projectile reduces rail health; rail breaks without clearing walkable cell interior (after damage task above).
 - [ ] Thickness 2 vs 4: visible width changes (collision already tracks thickness — retest if collision touched).
@@ -159,8 +164,7 @@ Not micro-files — extend these if elevated projection spreads:
 - [ ] **Naming clarity (same phase, optional)** — Editor tool labels (“voxel block” / “rail wall”), grep cleanup in comments/todo, proxy factory field names — anything that makes the convention obvious without changing behavior. Collision segment math frozen; ball retest only if proxy fields rename.
 - [ ] **`drawKinematicsFrameToCanvas` bundle**
 - [ ] **`NavigationContext`**
-- [ ] **Migrate fill voxels to `drawProjectedWallFaceElevated`** (unify projection with rails/roofs)
-- [ ] **`getStaticRoofDrawCanvas` / mask bake** — revisit after rail cap bake path exists
+- [ ] **`getStaticRoofDrawCanvas` / mask bake** — optional revisit if voxelBlock caps ever use per-footprint horizontal draw
 
 ### Render / bake perf
 
