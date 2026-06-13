@@ -2,6 +2,37 @@
 
 ## Current priorities
 
+### Remove assembly cartridge system (gate before sandbox save)
+
+Pinball / pool **table assemblies** (`*.assembly.json`, spawn pipeline, felt bake, segment walls, void pockets) are deprecated. Replace with two spawn-only props: **8-ball triangle** and **9-ball triangle** (rack + cue ball south). Keep **`inputGates` + `cueStrike`** (cue waits until grouped balls at rest).
+
+**Delete when replacement ships (same pass — no legacy path):**
+
+- [ ] **`Libraries/Sandbox/assemblies/`** — `poolTable*.assembly.json`, `pinballTable.assembly.json`, registry, load, manifest types, `assemblyLink`, `assemblyPlacement`
+- [ ] **`spawnAssembly.js`**, **`assemblyLayout.js`**, **`assemblyWorldPropSpawn.js`**, **`assemblySurfaceDraw.js`**, **`assemblySurfaceBake.js`**
+- [ ] **`main.js`** — `loadAssemblyManifests()` boot step (props load directly)
+- [ ] **`SandboxWorldState`** — `assemblyInstances`, `assemblyGuides`; stop pushing assembly entries into `surfaceProfileZones`
+- [ ] **`sandboxSession` / controller / `sandboxToyUi`** — `SANDBOX_SPAWN_ASSEMBLY_PREFIX`, spawn/list/delete assembly APIs; assembly rows in Scene panel + spawn dropdown
+- [ ] **`preview.js`** — `drawSandboxAssemblySurfaces`, `drawSandboxAssemblyGuides`
+- [ ] **`Sandbox/index.js`** — assembly exports
+
+**Keep (move off assembly, do not delete):**
+
+- [ ] **`inputGates.js`** — `allAtRest` / `groupWorldProps` rules
+- [ ] **`cueStrikeBehavior.js`**, **`CueStick/`**, pool ball assets in **`Assets/props/poolBalls.js`**
+
+**Build replacement:**
+
+- [ ] **`spawnPoolRack(state, worldX, worldY, variant)`** — colocate in `Libraries/Sandbox/` (e.g. `spawnPoolRack.js`); static `{ prop, dx, dy }[]` layouts extracted from current 8-ball / 9-ball JSON (96×176 playfield → world offsets); click = rack anchor (triangle apex / foot spot); cue ball south (~same Δv as old `v: 0.75` vs apex)
+- [ ] **Spawn props** — `pool_rack_8ball`, `pool_rack_9ball` in props panel (`sandbox.spawnable: true`, `sandbox.spawnRack: "8ball" | "9ball"`); hook `sandboxSession.spawnAt` like floor belts
+- [ ] **Group link without assembly** — stamp shared `spawnGroupId` on meta for every ball in one rack spawn; cue gets `behaviorOverrides`: `cueStrike` tuning + `inputGates.cueStrike` (`self` atRest + `groupWorldProps` / `spawnGroupId` / `allAtRest`, exclude `voidSink`)
+- [ ] **`resolveSandboxEntityLinkValue`** — read `spawnGroupId` from meta (replace `sandboxGroupId` → assembly group id)
+- [ ] **`cueStrikeBehavior`** — drop `assemblyInstances` / `arenaWidth` lookup; aim ray uses `resolveCueStrikeMaxRayDist({ obstacleGrid })` only (already supported)
+- [ ] **Selection / scene list** — remove `hasAssemblyMembership` gating (`listPlacedProps`, box select); optional: delete whole rack by shared `spawnGroupId`
+- [ ] **Smoke test** — spawn 9-ball rack on open floor; drag cue only when rack balls stopped; no felt, walls, void pits, or assembly Scene row
+
+**Then:** proceed with **Sandbox scene JSON export/import** (assemblies explicitly out of v1 schema).
+
 ### UI / architecture
 
 - [ ] **Phase 2 — TileLab naming cleanup** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS/comments.
@@ -15,7 +46,7 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 - [ ] **Belt facing** — spawn-with-facing, rotate selected cell(s), inspector force default.
 - [ ] **Corner autotile** — 4-bit junction detection on straight belt chains (optional polish).
 - [ ] **Smoke test** — L-shaped path; ball rides through straight + elbow cells.
-- [ ] **Persist belts** — save/load / map bake if belts should survive refresh outside sandbox.
+- [ ] **Persist belts** — save/load / map bake if belts should survive refresh outside sandbox → see **Sandbox scene JSON export/import**.
 
 **Deferred:** `EDGE_KIND.Conveyor` on `edgeStore` (boundary strips, directional crossing).
 
@@ -70,6 +101,64 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 - [ ] **`edgeBlocksStepFrom(fromCol, fromRow, toCol, toRow)`** — directional crossing for one-way doors / edge conveyors.
 - [ ] **Kind-aware `collectStructureZLevels`** — merge per-kind top-Z collectors when a second kind contributes surface passes.
 
+### Diagonal / corner cell edges (deferred)
+
+Cardinal `edgeStore` (4 sides × mirrored boundary) stays the default. Add corner/diagonal topology only when a feature cannot be expressed as two cardinal edges or a derived corner query.
+
+**Prerequisite:** ship directional cardinal crossing (`edgeBlocksStepFrom`) + at least one second edge kind (e.g. `EDGE_KIND.Conveyor`) so corner ownership rules are clear before expanding storage.
+
+- [ ] **Spike — corner ownership model** — pick one: `(cols+1)×(rows+1)` corner store (4 cells share a slot) vs derived corner index from 4 adjacent cardinal edges; document mirror/write rules (corners have no single “owner” cell).
+- [ ] **Corner index API** — `gridCellCorner(col, row, corner)` where corner ∈ {NE, SE, SW, NW} or vertex at `(col, row)` grid intersection; neighbor lookup for the up-to-four cells meeting at a point.
+- [ ] **Derived corner queries first** — helpers like `cornerBlocksDiagonalStep(fromCol, fromRow, toCol, toRow)` composed from existing cardinal `edgeBlocksStep` + fill occupancy before any new store (validate against current `canStep` corner-cutting).
+- [ ] **Corner-mounted kinds (when store wins)** — corner posts, wire/pipe junctions, diagonal rail anchors; single stamp at a 4-cell intersection instead of duplicating on two sides.
+- [ ] **True diagonal segments** — 45° boundary rails/pipes across a cell interior (not representable as one N/E/S/W edge); separate from “diagonal step” pathfinding (already two cardinal edges).
+- [ ] **Editor + persist** — stamp/pick corner slots; save/load / map bake parity with `edgeStore` remap on grid resize.
+- [ ] **Consumers audit** — list what actually needs corners vs cardinal-only: pathfinding (likely derived), collision emit, structure Z-levels, render overlay.
+
+**Not in scope unless proven necessary:** 8 stored directions per cell (duplicates cardinal mirroring); diagonal adjacency as a third parallel graph alongside sides.
+
+### Sandbox scene JSON export/import
+
+**Distance:** ~**70% of the read path exists**, ~**0% of the write path**. Enumeration + stamp APIs are in place; no snapshot schema, apply/load, or UI yet. A minimal **copy/paste MVP** (props + voxel walls + rail walls + floor belts) is roughly **one focused pass** (~half day). Full sandbox fidelity (behaviors, button wiring, assemblies) is a second pass.
+
+**Already have (export side):**
+- `listPlacedVoxelWalls` / `listPlacedRailWalls` / `listPlacedFloorBelts` — grid cell data from `sandboxSession`
+- `stampVoxelWallAt`, `stampRailWallAt`, `writeFloorCell`, `spawnAt` — symmetric apply paths
+- `createDebouncedStorage` — generic JSON flush/read (unused; wire after paste-load works)
+- Profile editor pattern — textarea + copy (`ProfileEditor.js` export area)
+
+**Gaps:**
+- [ ] **`collectSandboxSceneSnapshot(state)`** — single `{ schemaVersion, cellSize, origin: { minX, minY }, props, voxels, railWalls, floorBelts }`; props need **world `x/y/facing/faction`** (today `listPlacedProps` is UI-only: id/type/label, no position)
+- [ ] **Rail wall dedupe on export** — `listPlacedRailWalls` scans every cell×side; mirrored edges appear twice; emit once per boundary (`packEdgeCellKey` / canonical owner side)
+- [ ] **Coordinate frame** — include `obstacleGrid.minX/minY` (grid expands dynamically); props as world coords; walls/belts as **global** col/row (`gridCellToGlobalColRow`) so paste survives origin shift
+- [ ] **`applySandboxSceneSnapshot(state, doc, { mode: 'replace' | 'merge' })`** — clear sandbox props/walls/belts (reuse `session.clear()` + voxel/rail clear helpers), expand grid to bounds, re-stamp in stable order (voxels before rail caps), `notifyGridWallChange` / nav invalidate once at end
+- [ ] **Prop extras (v1.1)** — faction, `SandboxEntityMeta` behavior overrides; skip runtime state (velocity, health, dead, sleeping)
+- [ ] **Button links (v1.2)** — export stable refs (prop index or `type@ordinal`), remap `buttonLinks` after spawn (runtime entity ids are not portable)
+- [ ] **UI — Sandbox panel** — Export (textarea + Copy), Import (textarea + Load / Replace confirm); validate JSON + schema version with readable errors
+- [ ] **Optional autosave** — `createDebouncedStorage` on sandbox session dirty hooks (after MVP paste-load)
+
+**Explicit v2 / out of MVP:**
+- Assembly instances — removed; pool racks are spawn props, not saved assemblies
+- `state.walls` segment grid / arbitrary-angle walls
+- Cavern/play-area editor config (generation bounds, not stamped content)
+- `surfaceProfileZones`, assembly guides
+
+**Suggested schema sketch (v1):**
+
+```json
+{
+  "schemaVersion": 1,
+  "cellSize": 16,
+  "origin": { "minX": 0, "minY": 0 },
+  "props": [{ "type": "crate", "x": 128, "y": 256, "facing": 0, "faction": "neutral" }],
+  "voxels": [{ "col": 8, "row": 16, "heightLevel": 4 }],
+  "railWalls": [{ "col": 8, "row": 16, "side": 1, "heightLevel": 4, "thicknessLevel": 2 }],
+  "floorBelts": [{ "col": 10, "row": 16, "kind": 1, "facingIndex": 0 }]
+}
+```
+
+Use global `col`/`row` for grid-stamped layers; world `x`/`y` for free-placed props.
+
 ### Floor props
 
 - [ ] **`button_bumper` 3D**
@@ -123,7 +212,7 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 ### Longer term
 
 - [ ] **Interaction layers** — `drawLayer` + `collisionLayers` bitmask.
-- [ ] **Grid wall extras** — corner posts, doors, one-way edges, autotile trim.
+- [ ] **Grid wall extras** — doors, one-way edges, autotile trim; corner posts → see **Diagonal / corner cell edges**.
 
 ---
 
