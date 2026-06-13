@@ -8,21 +8,27 @@ import { isGridFloorBeltSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from ".
 import { canStampFloorBeltAt } from "./floorOccupancy.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import {
+    clearForcefieldAt,
     clearRailWallAt,
     clearVoxelWallAt,
     ensureObstacleGridAtWorld,
+    getForcefieldInfo,
     getRailWallInfo,
     getVoxelWallInfo,
+    gridHasForcefield,
     gridHasRailWall,
     gridHasVoxelWall,
     hitTestRailWallEdgeAtWorld,
+    listPlacedForcefields,
     listPlacedRailWalls,
     listPlacedVoxelWalls,
     setRailWallAt,
     setVoxelWallHeightAt,
+    stampForcefieldAt,
     stampRailWallAt,
     stampVoxelWallAt,
 } from "./gridWallEdit.js";
+import { isForcefieldPowered, setForcefieldPowered } from "./forcefieldPower.js";
 /** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
@@ -35,10 +41,11 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let selectedFloorCell = null;
     /** @type {'props' | 'walls'} */
     let editorPanelTab = "props";
-    /** @type {'voxel' | 'rail'} */
+    /** @type {'voxel' | 'rail' | 'forcefield'} */
     let wallStampMode = "voxel";
     let wallHeightLevel = 4;
     let railThicknessLevel = 2;
+    let forcefieldStartsPowered = false;
     /** @type {{ col: number, row: number } | null} */
     let selectedVoxelCell = null;
     /** @type {{ col: number, row: number, side: number } | null} */
@@ -280,6 +287,11 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             railThicknessLevel = level;
             sync();
         },
+        getForcefieldStartsPowered: () => forcefieldStartsPowered,
+        setForcefieldStartsPowered(powered) {
+            forcefieldStartsPowered = powered;
+            sync();
+        },
         getSelectedVoxelCell: () => selectedVoxelCell,
         getSelectedRailEdge: () => selectedRailEdge,
         setSelectedVoxelCell,
@@ -290,10 +302,43 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         listPlacedVoxelWalls: () => listPlacedVoxelWalls(state.obstacleGrid),
         listPlacedRailWalls: () => listPlacedRailWalls(state.obstacleGrid),
+        listPlacedForcefields: () => listPlacedForcefields(state.obstacleGrid),
         getSelectedVoxelWallInfo: () => (selectedVoxelCell ? getVoxelWallInfo(state.obstacleGrid, selectedVoxelCell.col, selectedVoxelCell.row) : null),
-        getSelectedRailWallInfo: () => (selectedRailEdge ? getRailWallInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side) : null),
+        getSelectedRailWallInfo: () =>
+            selectedRailEdge && gridHasRailWall(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
+                ? getRailWallInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
+                : null,
+        getSelectedForcefieldInfo: () =>
+            selectedRailEdge && gridHasForcefield(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
+                ? getForcefieldInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
+                : null,
+        isSelectedForcefieldPowered: () => {
+            if (!selectedRailEdge) return false;
+            return isForcefieldPowered(state, state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side);
+        },
+        setSelectedForcefieldPowered(powered) {
+            if (!selectedRailEdge) return false;
+            const { col, row, side } = selectedRailEdge;
+            if (!setForcefieldPowered(state, col, row, side, powered)) return false;
+            sync();
+            return true;
+        },
         stampWallAtWorld(worldX, worldY) {
+            const grid = state.obstacleGrid;
             const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
+            if (wallStampMode === "forcefield") {
+                const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
+                if (!hit) return false;
+                if (gridHasForcefield(grid, hit.col, hit.row, hit.side)) {
+                    setSelectedRailEdge(hit.col, hit.row, hit.side);
+                    return true;
+                }
+                if (!stampForcefieldAt(state, hit.col, hit.row, hit.side)) return false;
+                if (forcefieldStartsPowered) setForcefieldPowered(state, hit.col, hit.row, hit.side, true);
+                setSelectedRailEdge(hit.col, hit.row, hit.side);
+                sync();
+                return true;
+            }
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(state.obstacleGrid, worldX, worldY);
                 if (!hit) return false;
@@ -353,7 +398,10 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             }
             if (selectedRailEdge) {
                 const { col, row, side } = selectedRailEdge;
-                if (!clearRailWallAt(state, col, row, side)) return false;
+                const grid = state.obstacleGrid;
+                if (gridHasForcefield(grid, col, row, side)) {
+                    if (!clearForcefieldAt(state, col, row, side)) return false;
+                } else if (!clearRailWallAt(state, col, row, side)) return false;
                 dropWallSelection();
                 sync();
                 return true;
@@ -362,10 +410,16 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         deleteWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
-            if (wallStampMode === "rail") {
+            if (wallStampMode === "rail" || wallStampMode === "forcefield") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-                if (!hit || !gridHasRailWall(grid, hit.col, hit.row, hit.side)) return false;
-                if (!clearRailWallAt(state, hit.col, hit.row, hit.side)) return false;
+                if (!hit) return false;
+                if (wallStampMode === "forcefield") {
+                    if (!gridHasForcefield(grid, hit.col, hit.row, hit.side)) return false;
+                    if (!clearForcefieldAt(state, hit.col, hit.row, hit.side)) return false;
+                } else {
+                    if (!gridHasRailWall(grid, hit.col, hit.row, hit.side)) return false;
+                    if (!clearRailWallAt(state, hit.col, hit.row, hit.side)) return false;
+                }
                 if (selectedRailEdge?.col === hit.col && selectedRailEdge.row === hit.row && selectedRailEdge.side === hit.side) dropWallSelection();
                 sync();
                 return true;
@@ -378,6 +432,12 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         pickWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
+            if (wallStampMode === "forcefield") {
+                const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
+                if (!hit || !gridHasForcefield(grid, hit.col, hit.row, hit.side)) return false;
+                setSelectedRailEdge(hit.col, hit.row, hit.side);
+                return true;
+            }
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit || !gridHasRailWall(grid, hit.col, hit.row, hit.side)) return false;

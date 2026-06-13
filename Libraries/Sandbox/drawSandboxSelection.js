@@ -2,7 +2,7 @@ import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewport
 import { strokeCircle } from "../Canvas/CanvasPath.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { createAabb, aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
-import { strokeSelectedRailWallEdge } from "./gridWallEdit.js";
+import { gridHasForcefield, strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
@@ -55,10 +55,14 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
             dash: [4, 3],
         });
     }
-    if (selectedRailEdge && grid) {
-        ctx.strokeStyle = "rgba(255, 152, 0, 0.9)";
-        strokeSelectedRailWallEdge(ctx, grid, selectedRailEdge, lineScale);
-    }
+    if (selectedRailEdge && grid)
+        if (gridHasForcefield(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
+            ctx.strokeStyle = "rgba(192, 132, 252, 0.95)";
+            strokeSelectedForcefieldEdge(ctx, grid, selectedRailEdge, lineScale);
+        } else {
+            ctx.strokeStyle = "rgba(255, 152, 0, 0.9)";
+            strokeSelectedRailWallEdge(ctx, grid, selectedRailEdge, lineScale);
+        }
     ctx.restore();
 }
 /**

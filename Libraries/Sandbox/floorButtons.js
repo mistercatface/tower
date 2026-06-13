@@ -1,6 +1,7 @@
 import { processFloorShapes } from "../Spatial/zones/floorShapes.js";
 import { buttonEffectiveActive, isButtonActive, isButtonEntity, isMassButtonInputMode, isMassOverThreshold, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";
 import { runButtonTapLinks, syncButtonFlipperLinks, syncSandboxButtonPower, tickButtonSpawnerLinks } from "./floorEffects.js";
+import { syncForcefieldButtonPower } from "./forcefieldPower.js";
 const POINTER_HIT_PADDING = 4;
 /** @param {object} state @param {number} wx @param {number} wy @param {number} [padding] */
 export function hitTestFloorButton(state, wx, wy, padding = POINTER_HIT_PADDING) {
@@ -65,9 +66,11 @@ export function tickFloorButtons(state, spatialFrame) {
     });
     if (!buttons.length) {
         syncSandboxButtonPower(state);
+        syncForcefieldButtonPower(state);
         return;
     }
     if (massButtons.length) processFloorShapes(spatialFrame, massButtons, { onEnter() {}, onExit() {} });
     for (let i = 0; i < buttons.length; i++) tickFloorButton(state, buttons[i]);
     syncSandboxButtonPower(state);
+    syncForcefieldButtonPower(state);
 }

@@ -3,13 +3,22 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { gridCellToGlobalColRow, gridWallEdgeMirrorSide, gridWallEdgeNeighbor } from "../World/wallGridCells.js";
 import { isGridFloorBeltSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, listPlacedFloorBeltsForSnapshot } from "./floorOccupancy.js";
-import { applyStampedGridWallsFromGlobal, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, notifyStampedGridWallChange } from "./gridWallEdit.js";
+import {
+    applyStampedForcefieldsFromGlobal,
+    applyStampedGridWallsFromGlobal,
+    clearAllStampedGridWalls,
+    listPlacedForcefields,
+    listPlacedRailWalls,
+    listPlacedVoxelWalls,
+    notifyStampedGridWallChange,
+} from "./gridWallEdit.js";
+import { isForcefieldPowered } from "./forcefieldPower.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
 /**
- * Sandbox scene snapshot — copy/paste JSON for props, stamped grid walls, and floor belts.
+ * Sandbox scene snapshot — copy/paste JSON for props, stamped grid walls, floor belts, and forcefields.
  *
  * `schemaVersion` is the live format only. No migration layer, no backwards-compatible
  * loaders, and no compat shims for older JSON yet. When the format changes, bump the
@@ -17,7 +26,7 @@ import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
  * boundary until we deliberately add that.
  */
 /** Current snapshot format; bump when fields change (no vN→vN+1 migration code until then). */
-export const SANDBOX_SCENE_SCHEMA_VERSION = 2;
+export const SANDBOX_SCENE_SCHEMA_VERSION = 3;
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 function shouldEmitRailWall(grid, col, row, side) {
     const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
@@ -50,6 +59,16 @@ export function collectSandboxSceneSnapshot(state) {
         const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
         railWalls.push({ col: globalCol, row: globalRow, side, heightLevel, thicknessLevel });
     }
+    const forcefields = [];
+    const listedForcefields = listPlacedForcefields(grid);
+    for (let i = 0; i < listedForcefields.length; i++) {
+        const { col, row, side } = listedForcefields[i];
+        if (!shouldEmitRailWall(grid, col, row, side)) continue;
+        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        const entry = { col: globalCol, row: globalRow, side };
+        if (isForcefieldPowered(state, grid, col, row, side)) entry.defaultPowered = true;
+        forcefields.push(entry);
+    }
     return {
         schemaVersion: SANDBOX_SCENE_SCHEMA_VERSION,
         cellSize: grid.cellSize,
@@ -58,6 +77,7 @@ export function collectSandboxSceneSnapshot(state) {
         rows: grid.rows,
         voxels,
         railWalls,
+        forcefields,
         floorBelts: listPlacedFloorBeltsForSnapshot(grid),
         props: collectPlacedSandboxPropEntries(state),
     };
@@ -70,6 +90,7 @@ export function parseSandboxSceneSnapshot(raw) {
     if (doc.schemaVersion !== SANDBOX_SCENE_SCHEMA_VERSION) throw new Error(`Unsupported schema version: ${doc.schemaVersion}`);
     if (!Array.isArray(doc.voxels)) throw new Error("Scene JSON missing voxels array");
     if (!Array.isArray(doc.railWalls)) throw new Error("Scene JSON missing railWalls array");
+    if (!Array.isArray(doc.forcefields)) throw new Error("Scene JSON missing forcefields array");
     if (!Array.isArray(doc.floorBelts)) throw new Error("Scene JSON missing floorBelts array");
     if (!Array.isArray(doc.props)) throw new Error("Scene JSON missing props array");
     return doc;
@@ -99,6 +120,10 @@ function expandGridForSnapshot(state, doc) {
     }
     for (let i = 0; i < doc.railWalls.length; i++) {
         const { col, row } = doc.railWalls[i];
+        includeWorldPoint(col * cellSize + half, row * cellSize + half);
+    }
+    for (let i = 0; i < doc.forcefields.length; i++) {
+        const { col, row } = doc.forcefields[i];
         includeWorldPoint(col * cellSize + half, row * cellSize + half);
     }
     for (let i = 0; i < doc.floorBelts.length; i++) {
@@ -135,8 +160,9 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     clearSandboxSceneContent(state);
     expandGridForSnapshot(state, doc);
     const wallBounds = applyStampedGridWallsFromGlobal(state, doc.voxels, doc.railWalls, cellSize);
+    const forcefieldBounds = applyStampedForcefieldsFromGlobal(state, doc.forcefields, cellSize);
     const beltBounds = applyFloorBeltsFromGlobal(state, doc.floorBelts, cellSize);
-    const stampBounds = unionStampBounds(wallBounds, beltBounds);
+    const stampBounds = unionStampBounds(unionStampBounds(wallBounds, forcefieldBounds), beltBounds);
     const grid = state.obstacleGrid;
     if (stampBounds) notifyStampedGridWallChange(state, stampBounds);
     else if (grid.cols) notifyStampedGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });

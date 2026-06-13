@@ -20,6 +20,7 @@ import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 const WALL_STAMP_OPTIONS = [
     { value: "voxel", label: "Voxel block" },
     { value: "rail", label: "Rail wall" },
+    { value: "forcefield", label: "Forcefield" },
 ];
 function readOpenSections(root) {
     const open = new Set();
@@ -85,7 +86,9 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
     const selectedRail = controller.getSelectedRailEdge();
     const selectedVoxelInfo = controller.getSelectedVoxelWallInfo();
     const selectedRailInfo = controller.getSelectedRailWallInfo();
-    const hasWallSelection = selectedVoxel != null || selectedRail != null;
+    const selectedForcefieldInfo = controller.getSelectedForcefieldInfo();
+    const hasWallSelection = selectedVoxel != null || selectedRailInfo != null || selectedForcefieldInfo != null;
+    const wallStampMode = controller.getWallStampMode();
     const toolsRow = document.createElement("div");
     toolsRow.className = "sandbox-add-row";
     const ringsField = document.createElement("label");
@@ -129,16 +132,18 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
         addBtn.addEventListener("click", () => controller.stampWallAtCameraOrigin());
         addRow.appendChild(addBtn);
         body.appendChild(addRow);
-        const maxHeight = maxWallHeightLevel(controller);
-        body.appendChild(
-            new SliderControl("Height", 1, maxHeight, 1, controller.getWallHeightLevel(), (val) => {
-                controller.setWallHeightLevel(val);
-                if (selectedVoxelInfo) controller.setSelectedVoxelWallHeight(val);
-                else if (selectedRailInfo) controller.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
-                onChange();
-            }).element,
-        );
-        if (controller.getWallStampMode() === "rail")
+        if (wallStampMode !== "forcefield") {
+            const maxHeight = maxWallHeightLevel(controller);
+            body.appendChild(
+                new SliderControl("Height", 1, maxHeight, 1, controller.getWallHeightLevel(), (val) => {
+                    controller.setWallHeightLevel(val);
+                    if (selectedVoxelInfo) controller.setSelectedVoxelWallHeight(val);
+                    else if (selectedRailInfo) controller.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
+                    onChange();
+                }).element,
+            );
+        }
+        if (wallStampMode === "rail")
             body.appendChild(
                 new SliderControl("Thickness", 1, 8, 1, controller.getRailThicknessLevel(), (val) => {
                     controller.setRailThicknessLevel(val);
@@ -146,9 +151,23 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
                     onChange();
                 }).element,
             );
+        if (wallStampMode === "forcefield") {
+            const poweredField = document.createElement("label");
+            poweredField.className = "param-field check-inline";
+            const poweredCheckbox = document.createElement("input");
+            poweredCheckbox.type = "checkbox";
+            poweredCheckbox.checked = controller.getForcefieldStartsPowered();
+            poweredCheckbox.addEventListener("change", () => {
+                controller.setForcefieldStartsPowered(poweredCheckbox.checked);
+                onChange();
+            });
+            poweredField.append(poweredCheckbox, document.createTextNode(" Starts powered"));
+            body.appendChild(poweredField);
+        }
     });
     const voxelWalls = controller.listPlacedVoxelWalls();
     const railWalls = controller.listPlacedRailWalls();
+    const forcefields = controller.listPlacedForcefields();
     appendSection(container, "wall-scene", "Scene", sectionOpen("wall-scene"), (body) => {
         appendEditorSubhead(body, "Voxel blocks");
         appendInstanceList(
@@ -179,6 +198,21 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
                 },
             })),
             "No rail walls placed yet.",
+        );
+        appendEditorSubhead(body, "Forcefields");
+        appendInstanceList(
+            body,
+            forcefields.map((entry) => ({
+                label: entry.label,
+                selected: selectedForcefieldInfo?.col === entry.col && selectedForcefieldInfo.row === entry.row && selectedForcefieldInfo.side === entry.side,
+                onSelect: () => controller.setSelectedRailEdge(entry.col, entry.row, entry.side),
+                onDelete: () => {
+                    controller.setSelectedRailEdge(entry.col, entry.row, entry.side);
+                    controller.deleteSelectedWall();
+                    onChange();
+                },
+            })),
+            "No forcefields placed yet.",
         );
     });
     appendSection(container, "wall-selected", "Selected", sectionOpen("wall-selected", true), (body) => {
@@ -240,7 +274,34 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
             body.appendChild(deleteRow);
             return;
         }
-        appendEditorHint(body, "Select a voxel block or rail wall from Scene, or click the map to place one.");
+        if (selectedForcefieldInfo) {
+            appendEditorHint(body, `Forcefield · ${selectedForcefieldInfo.sideLabel}. Blocks pathfinding while powered. Wire floor buttons from Props tab.`);
+            const poweredField = document.createElement("label");
+            poweredField.className = "param-field check-inline";
+            const poweredCheckbox = document.createElement("input");
+            poweredCheckbox.type = "checkbox";
+            poweredCheckbox.checked = controller.isSelectedForcefieldPowered();
+            poweredCheckbox.addEventListener("change", () => {
+                controller.setSelectedForcefieldPowered(poweredCheckbox.checked);
+                onChange();
+            });
+            poweredField.append(poweredCheckbox, document.createTextNode(" Powered (blocks paths)"));
+            body.appendChild(poweredField);
+            const deleteRow = document.createElement("div");
+            deleteRow.className = "sandbox-add-row";
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "secondary";
+            deleteBtn.textContent = "Delete forcefield";
+            deleteBtn.addEventListener("click", () => {
+                controller.deleteSelectedWall();
+                onChange();
+            });
+            deleteRow.appendChild(deleteBtn);
+            body.appendChild(deleteRow);
+            return;
+        }
+        appendEditorHint(body, "Select a voxel block, rail wall, or forcefield from Scene, or click the map to place one.");
     });
 }
 /**

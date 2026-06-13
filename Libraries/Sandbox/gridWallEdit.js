@@ -6,7 +6,7 @@ import { isForcefieldEdge, isRailWallEdge, railWallCapLevel } from "../Spatial/g
 import { gridNeighborFillLevel } from "../World/wallGridCells.js";
 import { cellIsStaticWallAtIdx, gridCellToGlobalColRow, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
-import { clearAllForcefieldPower, clearForcefieldPowerAt } from "./forcefieldPower.js";
+import { clearAllForcefieldPower, clearForcefieldPowerAt, setForcefieldPoweredAtGlobal } from "./forcefieldPower.js";
 const ENSURE_AABB = createAabb();
 const EDGE_P1 = { x: 0, y: 0 };
 const EDGE_P2 = { x: 0, y: 0 };
@@ -140,6 +140,48 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
         const { col, row } = toLocal(globalCol, globalRow);
         if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
         grid.writeCellEdge(col, row, side, clampStampWallHeightLevel(heightLevel, settings), thicknessLevel);
+        mark(col, row);
+    }
+    if (minCol === Infinity) return null;
+    return { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow };
+}
+/**
+ * @param {object} state
+ * @param {{ col: number, row: number, side: number, defaultPowered?: boolean }[]} forcefields
+ * @param {number} cellSize
+ * @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null}
+ */
+export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) {
+    const grid = state.obstacleGrid;
+    const half = cellSize * 0.5;
+    let minCol = Infinity;
+    let maxCol = -Infinity;
+    let minRow = Infinity;
+    let maxRow = -Infinity;
+    /** @param {number} col @param {number} row */
+    const mark = (col, row) => {
+        if (col < minCol) minCol = col;
+        if (col > maxCol) maxCol = col;
+        if (row < minRow) minRow = row;
+        if (row > maxRow) maxRow = row;
+    };
+    /** @param {number} globalCol @param {number} globalRow */
+    const toLocal = (globalCol, globalRow) => {
+        const x = globalCol * cellSize + half;
+        const y = globalRow * cellSize + half;
+        return grid.worldToGrid(x, y);
+    };
+    for (let i = 0; i < forcefields.length; i++) {
+        const { col: globalCol, row: globalRow, side, defaultPowered } = forcefields[i];
+        const { col, row } = toLocal(globalCol, globalRow);
+        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        if (gridHasRailWall(grid, col, row, side)) {
+            const { globalCol: gc, globalRow: gr } = gridCellToGlobalColRow(grid, col, row);
+            state.staticCellHealth.delete(packEdgeCellKey(gc, gr, side));
+            grid.clearCellEdge(col, row, side);
+        }
+        grid.writeForcefieldEdge(col, row, side);
+        if (defaultPowered) setForcefieldPoweredAtGlobal(state, globalCol, globalRow, side, true);
         mark(col, row);
     }
     if (minCol === Infinity) return null;
@@ -315,4 +357,20 @@ export function strokeSelectedRailWallEdge(ctx, grid, edge, lineScale) {
     ctx.moveTo(EDGE_P1.x, EDGE_P1.y);
     ctx.lineTo(EDGE_P2.x, EDGE_P2.y);
     ctx.stroke();
+}
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {{ col: number, row: number, side: number }} edge
+ * @param {number} lineScale
+ */
+export function strokeSelectedForcefieldEdge(ctx, grid, edge, lineScale) {
+    gridWallEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
+    ctx.lineWidth = 4 * lineScale;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(EDGE_P1.x, EDGE_P1.y);
+    ctx.lineTo(EDGE_P2.x, EDGE_P2.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
 }

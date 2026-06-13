@@ -1,3 +1,4 @@
+import { drawForcefieldEdges } from "./drawForcefields.js";
 import { bindForcefieldStepBlocking, unbindForcefieldStepBlocking } from "./forcefieldPower.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
@@ -422,8 +423,14 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         clearWallSelection: () => session.clearWallSelection(),
         listPlacedVoxelWalls: () => session.listPlacedVoxelWalls(),
         listPlacedRailWalls: () => session.listPlacedRailWalls(),
+        listPlacedForcefields: () => session.listPlacedForcefields(),
         getSelectedVoxelWallInfo: () => session.getSelectedVoxelWallInfo(),
         getSelectedRailWallInfo: () => session.getSelectedRailWallInfo(),
+        getSelectedForcefieldInfo: () => session.getSelectedForcefieldInfo(),
+        isSelectedForcefieldPowered: () => session.isSelectedForcefieldPowered(),
+        setSelectedForcefieldPowered: (powered) => session.setSelectedForcefieldPowered(powered),
+        getForcefieldStartsPowered: () => session.getForcefieldStartsPowered(),
+        setForcefieldStartsPowered: (powered) => session.setForcefieldStartsPowered(powered),
         stampWallAtCameraOrigin: () => session.stampWallAtCameraOrigin(),
         setSelectedVoxelWallHeight: (heightLevel) => session.setSelectedVoxelWallHeight(heightLevel),
         setSelectedRailWallProps: (heightLevel, thicknessLevel) => session.setSelectedRailWallProps(heightLevel, thicknessLevel),
@@ -505,6 +512,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             behavior?.drawOverlay?.(ctx, prop);
         },
         drawBehaviorOverlays(ctx) {
+            drawForcefieldEdges(ctx, state, state.viewport);
             drawButtonWires(ctx, state, { wireFromPropId: buttonWireMode ? session.getSelectedPropId() : null, wireCursor: buttonWireMode ? buttonWireCursor : null });
             for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx);
         },

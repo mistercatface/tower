@@ -85,7 +85,7 @@ function applyButtonFloorPatch(prop, patch) {
  */
 export function appendButtonWireInspector(body, wire, onChange) {
     const links = wire.listLinks();
-    appendEditorHint(body, links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, or gravity pads.");
+    appendEditorHint(body, links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, gravity pads, or forcefields.");
     if (links.length)
         appendInstanceList(
             body,

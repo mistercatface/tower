@@ -2,12 +2,12 @@
 
 ## Current priorities
 
-### Sandbox scene JSON export/import — schema v2
+### Sandbox scene JSON export/import — schema v3
 
-Copy/paste in Sandbox panel **Scene JSON** section (Props tab). **Replace mode only** — sufficient for layout sharing; merge/autosave not planned near-term. **No legacy schema migration** — bump `SANDBOX_SCENE_SCHEMA_VERSION` when the format changes (v1 JSON is invalid after floor belts shipped).
+Copy/paste in Sandbox panel **Scene JSON** section (Props tab). **Replace mode only** — sufficient for layout sharing; merge/autosave not planned near-term. **No legacy schema migration** — bump `SANDBOX_SCENE_SCHEMA_VERSION` when the format changes (v1/v2 JSON is invalid after forcefields shipped).
 
-- [x] **`collectSandboxSceneSnapshot`** — props, voxels, railWalls, **floorBelts** (`floorStore` kind + facingIndex), origin + cols/rows; pool racks collapse to `pool_rack_*` anchor
-- [x] **`applySandboxSceneSnapshot`** — replace: clear props/floors/walls, expand grid, batch re-stamp walls + belts, spawn props / pool racks
+- [x] **`collectSandboxSceneSnapshot`** — props, voxels, railWalls, **forcefields**, **floorBelts**, origin + cols/rows; pool racks collapse to `pool_rack_*` anchor
+- [x] **`applySandboxSceneSnapshot`** — replace: clear props/floors/walls/forcefields, expand grid, batch re-stamp walls + forcefields + belts, spawn props / pool racks
 - [x] **UI — Scene JSON** — Export, Copy, Load (replace) + validation errors
 
 **When needed (not next):**
@@ -35,15 +35,15 @@ Second `edgeStore` kind (after `railWall` / `beltRail`): stamped on cardinal cel
 - [x] **Grid edit API** — `stampForcefieldAt` / `clearForcefieldAt` / `listPlacedForcefields`; mutual exclusion with rail on same edge.
 
 **Editor:**
-- [ ] **Walls tab — Forcefield mode** — stamp / pick / delete on edge (alongside voxelBlock + railWall); inspector or default “starts powered”.
-- [ ] **Draw pass** — viewport edge overlay: bright barrier when on, dim when off (structure or sandbox overlay — pick one pass, don’t duplicate rail wall mesh).
+- [x] **Walls tab — Forcefield mode** — stamp / pick / delete on edge; “Starts powered” default + inspector powered toggle.
+- [x] **Draw pass** — viewport edge overlay (cyan bright when on, dim when off); selection ring for picked forcefield.
 
 **Buttons:**
-- [ ] **Link target `{ type: "gridEdge", globalCol, globalRow, side }`** — wire-mode hit-test on stamped forcefield; list/remove in inspector.
-- [ ] **`syncForcefieldButtonPower`** — each frame OR `buttonEffectiveActive` from all buttons linked to each edge key (mirror `syncSandboxButtonPower` for pull fixtures).
+- [x] **Link target `{ type: "gridEdge", globalCol, globalRow, side }`** — wire-mode hit-test on stamped forcefield; list/remove in inspector.
+- [x] **`syncForcefieldButtonPower`** — each frame OR `buttonEffectiveActive` from all buttons linked to each edge key.
 
 **Persist:**
-- [ ] **Scene JSON schema v3** — `forcefields: [{ col, row, side, defaultPowered? }]`; bump `SANDBOX_SCENE_SCHEMA_VERSION`; batch apply on import like `railWalls`.
+- [x] **Scene JSON schema v3** — `forcefields: [{ col, row, side, defaultPowered? }]`; batch apply on import like `railWalls`.
 
 **Acceptance:**
 - [ ] HPA / move-to-cursor cannot cross an **on** forcefield; can cross when off.
@@ -236,6 +236,7 @@ Major feature completions only (newest first). Not bugfixes or polish unless the
 
 | When | Milestone |
 |------|-----------|
+| 2026-06 | **Forcefields edge graph v1** — `EDGE_KIND.Forcefield`, button-linked powered nav gates, Walls tab + draw overlay, scene JSON schema v3. |
 | 2026-06 | **Sandbox scene JSON schema v2** — `floorBelts` on `floorStore`; batch import; props + walls + belts copy/paste. |
 | 2026-06 | **Sandbox scene JSON MVP** — `collectSandboxSceneSnapshot` / `applySandboxSceneSnapshot`; Props panel Scene JSON copy/paste (walls + props, replace mode). |
 | 2026-06 | **Animated surface flipbook library** — `animatedSurfaceFlipbook/Draw/Zone.js`; worker bake + sim draw; `sandbox.animatedSurfaceZones` (no editor consumer yet). |
