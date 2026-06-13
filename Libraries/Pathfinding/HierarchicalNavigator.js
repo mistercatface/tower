@@ -132,11 +132,13 @@ export class HierarchicalNavigator {
     }
     _connectRegionPair(nodeA, nodeB) {
         if (!nodeA || !nodeB || nodeA.id === nodeB.id) return;
-        if (nodeA.edges.some((e) => e.targetId === nodeB.id)) return;
-        const path = this.runLocalAStar(nodeA.col, nodeA.row, nodeB.col, nodeB.row, this.maxCellsPerChunk * 2);
-        if (path) {
-            nodeA.edges.push({ targetId: nodeB.id, cost: path.length, path });
-            nodeB.edges.push({ targetId: nodeA.id, cost: path.length, path: [...path].reverse() });
+        if (!nodeA.edges.some((e) => e.targetId === nodeB.id)) {
+            const pathAB = this.runLocalAStar(nodeA.col, nodeA.row, nodeB.col, nodeB.row, this.maxCellsPerChunk * 2);
+            if (pathAB) nodeA.edges.push({ targetId: nodeB.id, cost: pathAB.length, path: pathAB });
+        }
+        if (!nodeB.edges.some((e) => e.targetId === nodeA.id)) {
+            const pathBA = this.runLocalAStar(nodeB.col, nodeB.row, nodeA.col, nodeA.row, this.maxCellsPerChunk * 2);
+            if (pathBA) nodeB.edges.push({ targetId: nodeA.id, cost: pathBA.length, path: pathBA });
         }
     }
     _expandDamageBounds(bounds, padding = this.damagePadding) {
@@ -210,6 +212,7 @@ export class HierarchicalNavigator {
                 const row = (currIdx / this.cols) | 0;
                 forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
                     if (this.grid[nIdx] !== 0 || !unassigned.has(nIdx)) return;
+                    if (this.navGraph && (!this.navGraph.canStep(col, row, nc, nr) || !this.navGraph.canStep(nc, nr, col, row))) return;
                     unassigned.delete(nIdx);
                     this.cellToNode[nIdx] = node;
                     node.cells.push(nIdx);
@@ -304,6 +307,7 @@ export class HierarchicalNavigator {
                 const { col: c, row: r } = indexToColRow(currIdx, this.cols);
                 forEachCardinalNeighbor(c, r, this.cols, this.rows, (nc, nr, nIdx) => {
                     if (this.grid[nIdx] !== 0) return;
+                    if (this.navGraph && (!this.navGraph.canStep(c, r, nc, nr) || !this.navGraph.canStep(nc, nr, c, r))) return;
                     const neighborNode = this.cellToNode[nIdx];
                     if (neighborNode) {
                         neighborRegions.set(neighborNode.id, neighborNode);

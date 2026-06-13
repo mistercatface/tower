@@ -61,7 +61,7 @@ function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, nodeCells
             const nc = c + dc;
             const nr = r + dr;
             if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-                if (navGraph && !navGraph.canStep(c, r, nc, nr)) continue;
+                if (navGraph && (!navGraph.canStep(c, r, nc, nr) || !navGraph.canStep(nc, nr, c, r))) continue;
                 const nIdx = nr * cols + nc;
                 if (grid[nIdx] === 0 && cellToNode[nIdx] === null) {
                     cellToNode[nIdx] = node;
@@ -166,11 +166,11 @@ export function findRegionAdjacenciesInBox(cellToNode, cols, rows, startCol, end
             if (!nodeA) continue;
             if (c + 1 <= endCol) {
                 const nodeB = cellToNode[idx + 1];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c + 1, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c + 1, r) || navGraph.canStep(c + 1, r, c, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
             if (r + 1 <= endRow) {
                 const nodeB = cellToNode[idx + cols];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c, r + 1))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c, r + 1) || navGraph.canStep(c, r + 1, c, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
         }
     return adjacencies;
@@ -206,11 +206,11 @@ export function findRegionAdjacencies(cellToNode, grid, cols, rows, navGraph = n
             if (!nodeA) continue;
             if (c + 1 < cols) {
                 const nodeB = cellToNode[idx + 1];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c + 1, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c + 1, r) || navGraph.canStep(c + 1, r, c, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
             if (r + 1 < rows) {
                 const nodeB = cellToNode[idx + cols];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c, r + 1))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c, r + 1) || navGraph.canStep(c, r + 1, c, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
         }
     return adjacencies;

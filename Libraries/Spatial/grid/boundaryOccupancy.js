@@ -201,10 +201,8 @@ export function boundaryBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow) {
         const sideY = dr > 0 ? 2 : 0;
         if (boundaryBlocksStep(grid, fromCol, fromRow, sideX)) return true;
         if (boundaryBlocksStep(grid, fromCol, fromRow, sideY)) return true;
-        const oppSideX = dc > 0 ? 3 : 1;
-        const oppSideY = dr > 0 ? 0 : 2;
-        if (boundaryBlocksStep(grid, toCol, toRow, oppSideX)) return true;
-        if (boundaryBlocksStep(grid, toCol, toRow, oppSideY)) return true;
+        if (boundaryBlocksStep(grid, fromCol, fromRow + dr, sideX)) return true;
+        if (boundaryBlocksStep(grid, fromCol + dc, fromRow, sideY)) return true;
     }
     return false;
 }
