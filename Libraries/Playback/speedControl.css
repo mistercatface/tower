@@ -31,13 +31,6 @@
     line-height: 1.1;
 }
 
-/* Games that still pass chrome `control-btn-large` on pause — keep row height uniform. */
-.speed-control > .speed-control-pause.control-btn-large {
-    min-width: 4.75rem;
-    padding: 4px 10px;
-    line-height: 1.1;
-}
-
 .speed-control-speed-label {
     font-size: 0.65rem;
     font-weight: normal;
