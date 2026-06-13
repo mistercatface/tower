@@ -258,7 +258,21 @@ export function generateLabRailCaverns(state) {
         const col = baseCol + lc;
         const row = baseRow + lr;
         if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
-        for (let side = 0; side < 4; side++) grid.writeCellEdge(col, row, side, level, thickness);
+        for (let side = 0; side < 4; side++) {
+            let nc = lc;
+            let nr = lr;
+            if (side === 0) nr = lr - 1;
+            else if (side === 1) nc = lc + 1;
+            else if (side === 2) nr = lr + 1;
+            else if (side === 3) nc = lc - 1;
+            let neighborVal = 0;
+            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                neighborVal = cells[nr * cols + nc];
+            }
+            if (neighborVal === 0) {
+                grid.writeCellEdge(col, row, side, level, thickness);
+            }
+        }
     }
     grid.bumpWallGridRevision();
     const damageBounds = { startCol, endCol, startRow, endRow };
