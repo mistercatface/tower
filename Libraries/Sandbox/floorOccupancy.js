@@ -4,6 +4,7 @@ import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorB
 import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
 import { createConveyorDraw } from "../Render/conveyorDraw.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
+import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { applyPushableAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 /** @param {object} state @param {number} col @param {number} row */
@@ -139,5 +140,6 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
     }
     if (edgeChanged) grid.bumpWallGridRevision();
     if (minCol === Infinity) return null;
+    markGridZoneSubscriptionsDirty(state);
     return { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow };
 }

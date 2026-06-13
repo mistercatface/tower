@@ -1,6 +1,7 @@
 import { packCellKey, packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
+import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { formatPassageModeLabel, isForcefieldEdge, isRailWallEdge, parsePassageMode, PASSAGE_MODE, railWallCapLevel } from "../Spatial/grid/CellEdge.js";
 import { clearBoundaryPrimary, setBoundary, setPassageProfile } from "../Spatial/grid/boundaryOccupancy.js";
@@ -68,6 +69,7 @@ function notifyGridWallChange(state, bounds) {
     state.worldSurfaces.invalidateGridBounds(bounds, state);
     state.navigation.onObstaclesChanged(bounds);
     rebuildLabMapCaches(state);
+    markGridZoneSubscriptionsDirty(state);
 }
 /** Clear all voxel fills and railWall edges on the obstacle grid (single invalidation). */
 export function clearAllStampedGridWalls(state, { notify = true } = {}) {

@@ -7,5 +7,12 @@ export class SandboxWorldState {
         this.animatedSurfaceZones = [];
         /** @type {ReturnType<typeof import("../Libraries/Sandbox/createSandboxController.js").createSandboxController> | null} */
         this.controller = null;
+        /** @type {import("../Libraries/Sandbox/gridZoneTick.js").GridZoneSubscriptions | null} */
+        this.gridZoneSubscriptions = null;
+        this.gridZoneSubscriptionsDirty = true;
+        /** @type {Set<number>} canonical edge keys with a prop on the beam while powered */
+        this.tripwireTriggeredKeys = new Set();
+        /** @type {object[]} recent belt cell zone events for future train-style consumers */
+        this.beltZoneEvents = [];
     }
 }

@@ -1,7 +1,7 @@
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { isForcefieldEdge, PASSAGE_MODE, resolvePassageEdge } from "../Spatial/grid/CellEdge.js";
-import { gridWallEdgeEndpoints } from "../World/wallGridCells.js";
+import { gridWallEdgeEndpoints, canonicalEdgeCellKey } from "../World/wallGridCells.js";
 const EDGE_P1 = { x: 0, y: 0 };
 const EDGE_P2 = { x: 0, y: 0 };
 /** @param {number} allowedSide */
@@ -45,6 +45,7 @@ export function drawForcefieldEdges(ctx, state, viewport) {
     const minRow = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).row);
     const maxRow = Math.min(grid.rows - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).row);
     const lineScale = getCanvasLineScale(ctx);
+    const tripwireTriggered = state.sandbox.tripwireTriggeredKeys;
     ctx.save();
     ctx.lineCap = "round";
     forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row) => {
@@ -56,9 +57,20 @@ export function drawForcefieldEdges(ctx, state, viewport) {
             const midX = (EDGE_P1.x + EDGE_P2.x) * 0.5;
             const midY = (EDGE_P1.y + EDGE_P2.y) * 0.5;
             if (mode === PASSAGE_MODE.Tripwire) {
-                ctx.strokeStyle = powered ? "rgba(251, 146, 60, 0.98)" : "rgba(161, 161, 170, 0.55)";
-                ctx.lineWidth = (powered ? 3.5 : 2) * lineScale;
-                ctx.setLineDash(powered ? [8 * lineScale, 5 * lineScale] : [3 * lineScale, 6 * lineScale]);
+                const tripped = powered && tripwireTriggered.has(canonicalEdgeCellKey(grid, col, row, side));
+                if (!powered) {
+                    ctx.strokeStyle = "rgba(161, 161, 170, 0.55)";
+                    ctx.lineWidth = 2 * lineScale;
+                    ctx.setLineDash([3 * lineScale, 6 * lineScale]);
+                } else if (tripped) {
+                    ctx.strokeStyle = "rgba(239, 68, 68, 0.98)";
+                    ctx.lineWidth = 4 * lineScale;
+                    ctx.setLineDash([]);
+                } else {
+                    ctx.strokeStyle = "rgba(251, 146, 60, 0.98)";
+                    ctx.lineWidth = 3.5 * lineScale;
+                    ctx.setLineDash([8 * lineScale, 5 * lineScale]);
+                }
             } else if (mode === PASSAGE_MODE.OneWay) {
                 ctx.setLineDash([]);
                 ctx.strokeStyle = powered ? "rgba(192, 132, 252, 0.98)" : "rgba(192, 132, 252, 0.32)";

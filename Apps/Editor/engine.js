@@ -14,6 +14,7 @@ import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/
 import { TileLabGameState } from "./state.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
 import { tickFloorOccupancy } from "../../Libraries/Sandbox/floorOccupancy.js";
+import { tickGridZones } from "../../Libraries/Sandbox/gridZoneTick.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
@@ -40,6 +41,7 @@ function runSimulationTick(state, dt) {
     tickFloorProps(state, spatialFrame, simDt);
     tickFloorOccupancy(state, spatialFrame, simDt);
     runPushablePhysics(state, simDt, spatialFrame, simulationEvents);
+    tickGridZones(state, spatialFrame);
     tickVisibleKinematicsAnim(state, simDt, spatialFrame);
     RagdollCorpse.updateAll(state, simDt, spatialFrame);
     dispatchSimulationEvents(simulationEvents, state);

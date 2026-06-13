@@ -6,6 +6,7 @@ import { stepCardinalFacing } from "../Math/Angle.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { isGridFloorBeltSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
 import { canStampFloorBeltAt } from "./floorOccupancy.js";
+import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import {
     clearForcefieldAt,
@@ -146,6 +147,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (!canStampFloorBeltAt(state, col, row)) return null;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
             if (!grid.writeFloorCell(col, row, kind, 0)) return null;
+            markGridZoneSubscriptionsDirty(state);
             setSelectedFloorCell(col, row);
             return null;
         }
@@ -203,6 +205,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const kind = grid.floorStore.kind[idx];
             const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
             grid.writeFloorCell(col, row, kind, stepCardinalFacing(facingRadians, steps));
+            markGridZoneSubscriptionsDirty(state);
             sync();
             return true;
         },
@@ -226,6 +229,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 return false;
             }
             setSelectedFloorCell(targetCol, targetRow);
+            markGridZoneSubscriptionsDirty(state);
             return true;
         },
         setSelectedFloorBeltKind(kind) {
@@ -241,6 +245,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (grid.floorStore.kind[idx] === kind) return true;
             const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
             grid.writeFloorCell(col, row, kind, facingRadians);
+            markGridZoneSubscriptionsDirty(state);
             sync();
             return true;
         },
@@ -249,6 +254,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const grid = state.obstacleGrid;
             const { col, row } = selectedFloorCell;
             if (!grid.clearFloorCell(col, row)) return false;
+            markGridZoneSubscriptionsDirty(state);
             dropFloorSelection();
             sync();
             return true;
