@@ -1,8 +1,7 @@
-import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { installGameState } from "../../GameState/GameState.js";
 import { events, requestUiUpdate, Events } from "../../Core/EventSystem.js";
 import { PauseManager } from "../../Libraries/Pause/index.js";
-import { installEngineGlobals } from "../../Core/engineGlobals.js";
+import { installEditorDefaults } from "../../Core/engineGlobals.js";
 import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { CombatParticles } from "../../Libraries/Render/CombatParticles.js";
@@ -19,9 +18,6 @@ import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTa
 import { fitLabStageToView } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
 import { drawLabFrame } from "./ui/preview.js";
-const EDITOR_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
-/** @type {import("../../Core/GameDefinitionTypes.js").EngineProfile} */
-const editorEngineProfile = { id: "editor", worldSurface: { pixelsPerCell: 6 }, proceduralDesign: { surfaceProfileId: EDITOR_SURFACE_PROFILE_ID } };
 /** @type {object[]} */
 const simulationEvents = [];
 /** @param {object[]} events @param {import("./state.js").TileLabGameState} state */
@@ -66,7 +62,7 @@ export function createEditorApp() {
         link.href = new URL("./tilelab.css", import.meta.url).href;
         document.head.appendChild(link);
     }
-    installEngineGlobals(editorEngineProfile, state);
+    installEditorDefaults(state);
     const pauseManager = new PauseManager(state);
     installRadioOverlay(document.getElementById("gameWrapper"), {
         eventBus: events,

@@ -1,3 +1,4 @@
+import { SURFACE_PROFILE_ID } from "../Config/procedural/profileIds.js";
 import { clearInteractionPairFilterCache } from "./interactionPairFilters.js";
 import { applyGamePerspective } from "./GamePerspective.js";
 import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
@@ -7,14 +8,12 @@ import { applyGamePropQuantizeSettings } from "./GamePropQuantizeSettings.js";
 import { installGameSurfaceProfileProvider } from "../Config/procedural/bootstrap.js";
 import { getGameWorldSurfaceSettings, installGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
+const EDITOR_PIXELS_PER_CELL = 6;
+const EDITOR_DEFAULT_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
 let workersConfigured = false;
-/**
- * Configure shared engine module globals from the editor profile (once per boot).
- *
- * @param {import("./GameDefinitionTypes.js").EngineProfile} profile
- * @param {object} state
- */
-export function installEngineGlobals(profile, state) {
+/** Editor boot — one place for app constants; writes shared module globals once. */
+export function installEditorDefaults(state) {
+    const profile = { id: "editor", worldSurface: { pixelsPerCell: EDITOR_PIXELS_PER_CELL }, proceduralDesign: { surfaceProfileId: EDITOR_DEFAULT_SURFACE_PROFILE_ID } };
     clearInteractionPairFilterCache();
     installGameSurfaceProfileProvider(profile);
     if (!workersConfigured) {
@@ -25,8 +24,8 @@ export function installEngineGlobals(profile, state) {
     const perspective = applyGamePerspective(profile);
     installGameWorldSurfaceSettings({
         cameraHeight: perspective.cameraHeight,
-        pixelsPerCell: profile.worldSurface?.pixelsPerCell,
-        wallHeight: profile.worldSurface?.wallHeight,
+        pixelsPerCell: EDITOR_PIXELS_PER_CELL,
+        wallHeight: profile.worldSurface.wallHeight,
         ...resolveProceduralBakeSettings(profile),
     });
     applyGameCollisionSettings(profile);

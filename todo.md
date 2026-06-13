@@ -4,7 +4,7 @@
 
 - [x] **Phase 1 — shared UI in Libraries** — `Libraries/UI/paramFields.js`, `Component`, `SelectControl`, `SliderControl`; fix Libraries→Apps imports.
 - [ ] **Phase 2 — TileLab naming cleanup** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS/comments.
-- [ ] **Phase 3 — dependency direction** — `installEngineGlobals` duplicate read paths (see below).
+- [ ] **Phase 3 — dependency direction** — Phase 2 naming cleanup.
 
 ### Inverted / injected dependencies
 
@@ -14,14 +14,13 @@
 - [x] **`engine.js` → `sandboxController` export** — `state.sandbox.controller`; render hooks read controller from `getGameState()`.
 - [x] **`worldPropStates` global registry** — modes frozen on `WorldProp` (`WORLD_PROP_MODES`); no engine/sandbox `Object.assign`.
 - [x] **`mountSandboxToyUi` → `Apps/Editor/ui/`** — editor sandbox panel UI; no longer exported from `Libraries/Sandbox`.
-- [ ] **`installEngineGlobals` duplicate read paths** — scalars on boot profile vs module globals (`getGameWorldSurfaceSettings`, `activeProceduralDesign`); collapse to one source.
-- [x] **Drop `export const engine` junk drawer** — boot profile is `editorEngineProfile` (world surface + procedural id only); no render/targeting/interaction on app object.
+- [x] **`installEngineGlobals` / `editorEngineProfile`** — `installEditorDefaults(state)` in `Core/engineGlobals.js`; editor constants in one place.
+- [x] **Drop `export const engine` junk drawer** — boot uses `installEditorDefaults(state)` only; no render/targeting/interaction on app object.
 - [x] **`Index.html` generic shell** — radio overlay mounted from `installRadioOverlay` at app boot; thin `#gameWrapper` chassis only.
 
 ### Phase 3 — still open (priority)
 
-1. **`installEngineGlobals` vs boot profile** — single read path for pixelsPerCell, collision, procedural defaults.
-2. **Phase 2 naming** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS.
+1. **Phase 2 naming** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS.
 
 ## floor occupancy belts
 
@@ -134,8 +133,6 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 - [ ] Per-asset vector colors; skip kinematics in vector-only mode.
 
 ### Smell
-
-- [ ] **Delete unused `createDefaultRenderPorts`** — only `createDefaultKinematicsPorts` + `getWorldPropRecipes` remain in use; drop wrapper if nothing imports it.
 
 ### Archive / never-wired
 

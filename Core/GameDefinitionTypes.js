@@ -1,6 +1,6 @@
 /**
  * JSDoc types for the editor engine profile (render/sim/world-gen hooks).
- * Shared engine code reads boot profile fields via `installEngineGlobals` / module getters.
+ * Module globals for collision, perspective, procedural design, and world surface are set at editor boot via `installEditorDefaults`.
  */
 /**
  * @typedef {import("../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig
