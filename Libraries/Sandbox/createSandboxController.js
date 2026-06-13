@@ -1,3 +1,4 @@
+import { bindForcefieldStepBlocking, unbindForcefieldStepBlocking } from "./forcefieldPower.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
@@ -47,6 +48,7 @@ const MARQUEE_BOUNDS = createAabb();
  * }} options
  */
 export function createSandboxController(state, { requestRedraw, getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId }) {
+    bindForcefieldStepBlocking(state);
     const session = createSandboxSession(state, { requestRedraw, defaultSpawnPropId });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
@@ -466,6 +468,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         destroy() {
             unbindPointers?.();
             unbindPointers = null;
+            unbindForcefieldStepBlocking(state);
             buttonWireMode = false;
             buttonWireCursor = null;
             marqueeSelect = null;

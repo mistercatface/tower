@@ -5,7 +5,7 @@ import { gridWallEdgeRailShouldEmit, gridBeltRailEdgeShouldEmit, gridRailWallEdg
 import { CellEdgeStore, railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { floorBeltFacingToIndex, floorBeltRailEdgeSides, floorBeltEntryExitSides, floorBeltEntryNeighborCell, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
-import { createBeltRailEdge, edgeBlocksCrossing, isBeltRailEdge, railWallThicknessPx } from "./CellEdge.js";
+import { createBeltRailEdge, createForcefieldEdge, edgeBlocksCrossing, isBeltRailEdge, isForcefieldEdge, railWallThicknessPx } from "./CellEdge.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
@@ -36,6 +36,9 @@ export class WorldObstacleGrid {
         this.patchBoundsScratch = createAabb();
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
+        /** Sandbox forcefields: when set, powered forcefield edges block `canStep`. */
+        /** @type {((col: number, row: number, side: number) => boolean) | null} */
+        this.isForcefieldStepBlocked = null;
     }
     /** @param {number} damage @param {object} state */
     _staticGridProxyHandleHit(damage, state) {
@@ -366,8 +369,18 @@ export class WorldObstacleGrid {
         for (let side = 0; side < 4; side++) this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
     }
     /** @param {number} col @param {number} row @param {number} side */
+    getCellEdge(col, row, side) {
+        return this.edgeStore.get(col, row, side, this.cols);
+    }
+    /** @param {number} col @param {number} row @param {number} side */
+    hasCellEdge(col, row, side) {
+        return this.edgeStore.has(col, row, side, this.cols);
+    }
+    /** @param {number} col @param {number} row @param {number} side */
     edgeBlocksStep(col, row, side) {
-        return edgeBlocksCrossing(this.edgeStore.get(col, row, side, this.cols));
+        const edge = this.edgeStore.get(col, row, side, this.cols);
+        if (edgeBlocksCrossing(edge)) return true;
+        return isForcefieldEdge(edge) && this.isForcefieldStepBlocked?.(col, row, side) === true;
     }
     /** @param {number} col @param {number} row @param {number} side */
     writeBeltRailEdge(col, row, side) {
@@ -378,6 +391,22 @@ export class WorldObstacleGrid {
         const edge = this.edgeStore.get(col, row, side, this.cols);
         if (!isBeltRailEdge(edge)) return;
         this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
+    }
+    /** @param {number} col @param {number} row @param {number} side */
+    writeForcefieldEdge(col, row, side) {
+        this.edgeStore.writeMirrored(col, row, side, this.cols, this.rows, createForcefieldEdge());
+    }
+    /** @param {number} col @param {number} row @param {number} side */
+    stampForcefieldEdge(col, row, side) {
+        this.writeForcefieldEdge(col, row, side);
+        this.bumpWallGridRevision();
+    }
+    /** @param {number} col @param {number} row @param {number} side */
+    clearForcefieldEdge(col, row, side) {
+        const edge = this.edgeStore.get(col, row, side, this.cols);
+        if (!isForcefieldEdge(edge)) return;
+        this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
+        this.bumpWallGridRevision();
     }
     /** @param {number} col @param {number} row @param {number} kind @param {number} facingIndex */
     syncFloorBeltRailEdges(col, row, kind, facingIndex) {

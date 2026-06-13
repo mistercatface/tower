@@ -25,13 +25,14 @@ Copy/paste in Sandbox panel **Scene JSON** section (Props tab). **Replace mode o
 Second `edgeStore` kind (after `railWall` / `beltRail`): stamped on cardinal cell edges like rail walls, **blocks pathfinding only while on** (v1 nav-only — no pushable collision block unless added later). Runtime on/off lives outside the placement blob (Map keyed by global edge id); buttons drive state via existing input modes (tap / hold / toggle / mass* / invert), same OR-aggregate pattern as pull-fixture `syncSandboxButtonPower`.
 
 **Prerequisite (do with v1, not a separate milestone):**
-- [ ] **Edge API slice** — `gridCellEdge` / kind-aware `edgeBlocksCrossing` (+ powered lookup hook); stop scattering raw `edgeStore.get` + kind checks before a third kind lands.
+- [x] **Edge API slice** — `gridCellEdge` / `getCellEdge` + kind-aware `edgeBlocksStep` with powered lookup hook.
 
 **Core:**
-- [ ] **`EDGE_KIND.Forcefield`** — `CellEdge.js` factory + `isForcefieldEdge`; mirrored stamp/clear on `edgeStore` (reuse rail wall editor hit-test path).
-- [ ] **Powered runtime map** — `state.sandbox.forcefieldPower` (or similar): `packEdgeCellKey(globalCol, globalRow, side) → boolean`; default off at stamp; remap key on grid expand like walls.
-- [ ] **`edgeBlocksCrossing`** — block step when forcefield edge exists **and** powered; `WorldObstacleGrid.canStep` / HPA unchanged otherwise.
-- [ ] **Nav invalidation** — `onObstaclesChanged` when powered state flips (batch if multiple buttons link one edge).
+- [x] **`EDGE_KIND.Forcefield`** — `CellEdge.js` factory + `isForcefieldEdge`; mirrored stamp/clear on `edgeStore`.
+- [x] **Powered runtime map** — `state.sandbox.forcefieldPowered`: `packEdgeCellKey(globalCol, globalRow, side) → boolean`; default off at stamp.
+- [x] **`edgeBlocksStep`** — block step when forcefield edge exists **and** powered; `canStep` / HPA unchanged otherwise.
+- [x] **Nav invalidation** — `onObstaclesChanged` when powered state flips or edge cleared.
+- [x] **Grid edit API** — `stampForcefieldAt` / `clearForcefieldAt` / `listPlacedForcefields`; mutual exclusion with rail on same edge.
 
 **Editor:**
 - [ ] **Walls tab — Forcefield mode** — stamp / pick / delete on edge (alongside voxelBlock + railWall); inspector or default “starts powered”.
@@ -51,6 +52,7 @@ Second `edgeStore` kind (after `railWall` / `beltRail`): stamped on cardinal cel
 
 **Deferred after v1:** forcefield blocks physics/collision; one-way directional edges; `EDGE_KIND.Conveyor`; doors as a separate kind if ever needed.
 
+### Animated floor tiles (grid layer)
 
 Fourth sandbox stamp layer alongside props / walls / belts: **one shared flipbook per profile**, **blit per cell** (true tiling). Uses `animatedSurfaceFlipbook.js` bake cache — not per-cell bakes, not arbitrary AABB zones.
 
@@ -130,9 +132,9 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 
 Ship the slice below **with** forcefields; full backlog remains for conveyors / one-way / corners.
 
-- [ ] **`gridCellEdge(grid, col, row, side)`** — any kind from store; replace scattered `edgeStore.get` + kind checks *(forcefields v1)*.
-- [ ] **`WorldObstacleGrid.getCellEdge` / `hasCellEdge`** — thin wrappers so editor/gameplay rarely touch `edgeStore` directly *(forcefields v1)*.
-- [ ] **Kind-aware `edgeBlocksCrossing`** — rail / belt rail / forcefield (powered lookup for forcefield) *(forcefields v1)*.
+- [x] **`gridCellEdge(grid, col, row, side)`** — any kind from store; replace scattered `edgeStore.get` + kind checks *(forcefields v1)*.
+- [x] **`WorldObstacleGrid.getCellEdge` / `hasCellEdge`** — thin wrappers so editor/gameplay rarely touch `edgeStore` directly *(forcefields v1)*.
+- [x] **Kind-aware `edgeBlocksStep`** — rail / belt rail / forcefield (powered lookup for forcefield) *(forcefields v1)*.
 - [ ] **`forEachCellEdgeInAabb`** — kind-agnostic AABB walker (surface `edgeStore.forEachInAabb` via `wallGridCells`).
 - [ ] **`edgeBlocksStepFrom(fromCol, fromRow, toCol, toRow)`** — directional crossing for one-way edges / conveyors.
 - [ ] **Kind-aware `collectStructureZLevels`** — merge per-kind top-Z collectors when a kind contributes surface passes.
