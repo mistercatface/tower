@@ -7,12 +7,12 @@ import {
     applyStampedForcefieldsFromGlobal,
     applyStampedGridWallsFromGlobal,
     clearAllStampedGridWalls,
+    getForcefieldInfo,
     listPlacedForcefields,
     listPlacedRailWalls,
     listPlacedVoxelWalls,
     notifyStampedGridWallChange,
 } from "./gridWallEdit.js";
-import { isForcefieldPowered } from "./forcefieldPower.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
@@ -26,7 +26,7 @@ import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
  * boundary until we deliberately add that.
  */
 /** Current snapshot format; bump when fields change (no vN→vN+1 migration code until then). */
-export const SANDBOX_SCENE_SCHEMA_VERSION = 3;
+export const SANDBOX_SCENE_SCHEMA_VERSION = 4;
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 function shouldEmitRailWall(grid, col, row, side) {
     const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
@@ -65,8 +65,11 @@ export function collectSandboxSceneSnapshot(state) {
         const { col, row, side } = listedForcefields[i];
         if (!shouldEmitRailWall(grid, col, row, side)) continue;
         const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
-        const entry = { col: globalCol, row: globalRow, side };
-        if (isForcefieldPowered(state, grid, col, row, side)) entry.defaultPowered = true;
+        const info = getForcefieldInfo(grid, col, row, side);
+        if (!info) continue;
+        const entry = { col: globalCol, row: globalRow, side, mode: info.mode };
+        if (info.mode === "oneWay") entry.allowedSide = info.allowedSide;
+        if (info.powered) entry.defaultPowered = true;
         forcefields.push(entry);
     }
     return {

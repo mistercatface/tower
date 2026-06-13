@@ -7,8 +7,5 @@ export class SandboxWorldState {
         this.animatedSurfaceZones = [];
         /** @type {ReturnType<typeof import("../Libraries/Sandbox/createSandboxController.js").createSandboxController> | null} */
         this.controller = null;
-        /** Global edge keys (`packEdgeCellKey`) → powered while forcefield edge is stamped. Absent = off. */
-        /** @type {Map<number, boolean>} */
-        this.forcefieldPowered = new Map();
     }
 }

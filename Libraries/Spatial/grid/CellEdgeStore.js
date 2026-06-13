@@ -1,7 +1,7 @@
 import { colRowToIndex } from "./GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { gridWallEdgeNeighbor, gridWallEdgeMirrorSide, gridNeighborFillLevel } from "../../World/wallGridCells.js";
-import { createRailWallEdge, EDGE_KIND, isBeltRailEdge, isRailWallEdge, railWallHeightPx } from "./CellEdge.js";
+import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isRailWallEdge, railWallHeightPx } from "./CellEdge.js";
 const EMPTY = -1;
 export class CellEdgeStore {
     constructor() {
@@ -64,9 +64,21 @@ export class CellEdgeStore {
             if (isRailWallEdge(edge)) {
                 pooled.heightDelta = edge.heightDelta;
                 pooled.thicknessLevel = edge.thicknessLevel;
+                delete pooled.mode;
+                delete pooled.allowedSide;
+                delete pooled.powered;
+            } else if (isForcefieldEdge(edge)) {
+                pooled.mode = edge.mode;
+                pooled.allowedSide = edge.allowedSide;
+                pooled.powered = edge.powered;
+                delete pooled.heightDelta;
+                delete pooled.thicknessLevel;
             } else {
                 delete pooled.heightDelta;
                 delete pooled.thicknessLevel;
+                delete pooled.mode;
+                delete pooled.allowedSide;
+                delete pooled.powered;
             }
             return ref;
         }

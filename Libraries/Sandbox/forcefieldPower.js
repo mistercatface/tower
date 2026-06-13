@@ -1,23 +1,12 @@
 import { isForcefieldEdge } from "../Spatial/grid/CellEdge.js";
-import { canonicalEdgeCellKey, gridCellToGlobalColRow, gridWallEdgeNeighbor } from "../World/wallGridCells.js";
+import { isPassagePowered, setPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
+import { canonicalEdgeCellKey, gridWallEdgeNeighbor } from "../World/wallGridCells.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { gridHasForcefield } from "./gridWallEdit.js";
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
-export function forcefieldEdgeKey(grid, col, row, side) {
-    return canonicalEdgeCellKey(grid, col, row, side);
-}
-/** @param {object} state */
-export function bindForcefieldStepBlocking(state) {
-    state.obstacleGrid.isForcefieldStepBlocked = (col, row, side) => isForcefieldPowered(state, state.obstacleGrid, col, row, side);
-}
-/** @param {object} state */
-export function unbindForcefieldStepBlocking(state) {
-    state.obstacleGrid.isForcefieldStepBlocked = null;
-}
-/** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function isForcefieldPowered(state, grid, col, row, side) {
-    return state.sandbox.forcefieldPowered.get(forcefieldEdgeKey(grid, col, row, side)) === true;
+    return isPassagePowered(grid, col, row, side);
 }
 /** @param {object} state @param {number} globalCol @param {number} globalRow @param {number} side */
 export function isForcefieldPoweredAtGlobal(state, globalCol, globalRow, side) {
@@ -25,29 +14,23 @@ export function isForcefieldPoweredAtGlobal(state, globalCol, globalRow, side) {
     const half = grid.cellSize * 0.5;
     const { col, row } = grid.worldToGrid(globalCol * grid.cellSize + half, globalRow * grid.cellSize + half);
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
-    return isForcefieldPowered(state, grid, col, row, side);
+    return isPassagePowered(grid, col, row, side);
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {{ notify?: boolean }} [options] */
-function notifyForcefieldPowerChange(state, col, row, side, { notify = true } = {}) {
+function notifyPassageChange(state, col, row, side, { notify = true } = {}) {
     if (!notify) return;
-    const grid = state.obstacleGrid;
     let startCol = col;
     let endCol = col;
     let startRow = row;
     let endRow = row;
     const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-    if (nc >= 0 && nc < grid.cols && nr >= 0 && nr < grid.rows) {
+    if (nc >= 0 && nc < state.obstacleGrid.cols && nr >= 0 && nr < state.obstacleGrid.rows) {
         startCol = Math.min(startCol, nc);
         endCol = Math.max(endCol, nc);
         startRow = Math.min(startRow, nr);
         endRow = Math.max(endRow, nr);
     }
     state.navigation.onObstaclesChanged({ startCol, endCol, startRow, endRow });
-}
-/** @param {object} state @param {number} col @param {number} row @param {number} side @param {{ notify?: boolean }} [options] */
-export function clearForcefieldPowerAt(state, col, row, side, { notify = false } = {}) {
-    state.sandbox.forcefieldPowered.delete(forcefieldEdgeKey(state.obstacleGrid, col, row, side));
-    notifyForcefieldPowerChange(state, col, row, side, { notify });
 }
 /**
  * @param {object} state
@@ -61,10 +44,8 @@ export function setForcefieldPowered(state, col, row, side, powered, { notify = 
     const grid = state.obstacleGrid;
     const edge = grid.getCellEdge(col, row, side);
     if (!isForcefieldEdge(edge)) return false;
-    const key = forcefieldEdgeKey(grid, col, row, side);
-    if (powered) state.sandbox.forcefieldPowered.set(key, true);
-    else state.sandbox.forcefieldPowered.delete(key);
-    notifyForcefieldPowerChange(state, col, row, side, { notify });
+    setPassagePowered(grid, col, row, side, powered);
+    notifyPassageChange(state, col, row, side, { notify });
     return true;
 }
 /** @param {object} state @param {number} globalCol @param {number} globalRow @param {number} side @param {boolean} powered */
@@ -74,10 +55,6 @@ export function setForcefieldPoweredAtGlobal(state, globalCol, globalRow, side, 
     const { col, row } = grid.worldToGrid(globalCol * grid.cellSize + half, globalRow * grid.cellSize + half);
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
     return setForcefieldPowered(state, col, row, side, powered, { notify: false });
-}
-/** @param {object} state */
-export function clearAllForcefieldPower(state) {
-    state.sandbox.forcefieldPowered.clear();
 }
 /** @param {object} state */
 export function syncForcefieldButtonPower(state) {
@@ -111,10 +88,8 @@ export function syncForcefieldButtonPower(state) {
             const key = canonicalEdgeCellKey(grid, col, row, side);
             if (!linkedPower.has(key)) continue;
             const powered = linkedPower.get(key) === true;
-            const wasPowered = state.sandbox.forcefieldPowered.get(key) === true;
-            if (powered === wasPowered) continue;
-            if (powered) state.sandbox.forcefieldPowered.set(key, true);
-            else state.sandbox.forcefieldPowered.delete(key);
+            if (isPassagePowered(grid, col, row, side) === powered) continue;
+            setPassagePowered(grid, col, row, side, powered);
             if (col < minCol) minCol = col;
             if (col > maxCol) maxCol = col;
             if (row < minRow) minRow = row;

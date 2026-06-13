@@ -22,12 +22,14 @@ import {
     listPlacedForcefields,
     listPlacedRailWalls,
     listPlacedVoxelWalls,
+    setForcefieldProfileAt,
     setRailWallAt,
     setVoxelWallHeightAt,
     stampForcefieldAt,
     stampRailWallAt,
     stampVoxelWallAt,
 } from "./gridWallEdit.js";
+import { PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import { isForcefieldPowered, setForcefieldPowered } from "./forcefieldPower.js";
 /** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
@@ -46,6 +48,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let wallHeightLevel = 4;
     let railThicknessLevel = 2;
     let forcefieldStartsPowered = false;
+    let forcefieldStampMode = PASSAGE_MODE.Solid;
     /** @type {{ col: number, row: number } | null} */
     let selectedVoxelCell = null;
     /** @type {{ col: number, row: number, side: number } | null} */
@@ -292,6 +295,11 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             forcefieldStartsPowered = powered;
             sync();
         },
+        getForcefieldStampMode: () => forcefieldStampMode,
+        setForcefieldStampMode(mode) {
+            forcefieldStampMode = mode;
+            sync();
+        },
         getSelectedVoxelCell: () => selectedVoxelCell,
         getSelectedRailEdge: () => selectedRailEdge,
         setSelectedVoxelCell,
@@ -323,6 +331,25 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             sync();
             return true;
         },
+        setSelectedForcefieldMode(mode) {
+            if (!selectedRailEdge) return false;
+            const { col, row, side } = selectedRailEdge;
+            const info = getForcefieldInfo(state.obstacleGrid, col, row, side);
+            if (!info) return false;
+            const allowedSide = mode === PASSAGE_MODE.OneWay ? (info.mode === PASSAGE_MODE.OneWay ? (info.allowedSide ?? side) : side) : side;
+            if (!setForcefieldProfileAt(state, col, row, side, mode, allowedSide)) return false;
+            sync();
+            return true;
+        },
+        setSelectedForcefieldAllowedSide(allowedSide) {
+            if (!selectedRailEdge) return false;
+            const { col, row, side } = selectedRailEdge;
+            const info = getForcefieldInfo(state.obstacleGrid, col, row, side);
+            if (!info || info.mode !== PASSAGE_MODE.OneWay) return false;
+            if (!setForcefieldProfileAt(state, col, row, side, PASSAGE_MODE.OneWay, allowedSide)) return false;
+            sync();
+            return true;
+        },
         stampWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
             const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
@@ -333,8 +360,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                     setSelectedRailEdge(hit.col, hit.row, hit.side);
                     return true;
                 }
-                if (!stampForcefieldAt(state, hit.col, hit.row, hit.side)) return false;
-                if (forcefieldStartsPowered) setForcefieldPowered(state, hit.col, hit.row, hit.side, true);
+                if (!stampForcefieldAt(state, hit.col, hit.row, hit.side, { mode: forcefieldStampMode, allowedSide: hit.side, powered: forcefieldStartsPowered })) return false;
                 setSelectedRailEdge(hit.col, hit.row, hit.side);
                 sync();
                 return true;

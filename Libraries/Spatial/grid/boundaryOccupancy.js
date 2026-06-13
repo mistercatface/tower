@@ -1,10 +1,10 @@
-import { createBeltRailEdge, createForcefieldEdge, edgeBlocksCrossing, isBeltRailEdge, isForcefieldEdge, isRailWallEdge } from "./CellEdge.js";
+import { createBeltRailEdge, createForcefieldEdge, edgeBlocksCrossing, isBeltRailEdge, isForcefieldEdge, isRailWallEdge, parsePassageMode, passageEdgeBlocksStep } from "./CellEdge.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
 import { colRowToIndex } from "./GridUtils.js";
 import { gridNeighborFillLevel } from "../../World/wallGridCells.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
-/** @typedef {{ kind: "passage" }} PassageBoundarySpec */
+/** @typedef {{ kind: "passage", mode?: string, allowedSide?: number, powered?: boolean }} PassageBoundarySpec */
 /** @typedef {RailWallBoundarySpec | PassageBoundarySpec} BoundaryPrimarySpec */
 /**
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -15,9 +15,27 @@ import { gridNeighborFillLevel } from "../../World/wallGridCells.js";
 export function getBoundary(grid, col, row, side) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (isRailWallEdge(edge)) return { primary: "railWall", edge, beltRail: false };
-    if (isForcefieldEdge(edge)) return { primary: "passage", edge, beltRail: false };
+    if (isForcefieldEdge(edge)) return { primary: "passage", edge, beltRail: false, mode: parsePassageMode(edge.mode), allowedSide: edge.allowedSide, powered: edge.powered === true };
     if (isBeltRailEdge(edge)) return { primary: null, edge: null, beltRail: true };
     return { primary: null, edge: null, beltRail: false };
+}
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function isPassagePowered(grid, col, row, side) {
+    const edge = grid.edgeStore.get(col, row, side, grid.cols);
+    return isForcefieldEdge(edge) && edge.powered === true;
+}
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {boolean} powered */
+export function setPassagePowered(grid, col, row, side, powered) {
+    const edge = grid.edgeStore.get(col, row, side, grid.cols);
+    if (!isForcefieldEdge(edge)) return false;
+    edge.powered = powered === true;
+    return true;
+}
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {string} mode @param {number} [allowedSide] */
+export function setPassageProfile(grid, col, row, side, mode, allowedSide) {
+    const edge = grid.edgeStore.get(col, row, side, grid.cols);
+    if (!isForcefieldEdge(edge)) return false;
+    return setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: edge.powered === true }, { bumpRevision: true });
 }
 /**
  * Sole writer for primary boundary roles (railWall, passage). Derived beltRail uses reconcileBeltBoundaries.
@@ -46,7 +64,7 @@ export function setBoundary(grid, col, row, side, spec, { bumpRevision = false }
         const edge = grid.edgeStore.get(col, row, side, grid.cols);
         if (isRailWallEdge(edge)) return false;
         if (isBeltRailEdge(edge)) return false;
-        grid.edgeStore.writeMirrored(col, row, side, grid.cols, grid.rows, createForcefieldEdge());
+        grid.edgeStore.writeMirrored(col, row, side, grid.cols, grid.rows, createForcefieldEdge({ mode: spec.mode, allowedSide: spec.allowedSide ?? side, powered: spec.powered }));
         if (bumpRevision) grid.bumpWallGridRevision();
         return true;
     }
@@ -124,12 +142,11 @@ export function clearBeltBoundariesForCell(grid, col, row, kind, facingIndex) {
  * @param {number} col
  * @param {number} row
  * @param {number} side
- * @param {((col: number, row: number, side: number) => boolean) | null | undefined} isPassageBlocking
  */
-export function boundaryBlocksStep(grid, col, row, side, isPassageBlocking) {
+export function boundaryBlocksStep(grid, col, row, side) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (edgeBlocksCrossing(edge)) return true;
-    return isForcefieldEdge(edge) && isPassageBlocking?.(col, row, side) === true;
+    return passageEdgeBlocksStep(edge, side, side);
 }
 /** @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow */
 function beltCrossedSideFrom(fromCol, fromRow, toCol, toRow) {
@@ -164,31 +181,30 @@ function beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow) {
  * @param {number} fromRow
  * @param {number} toCol
  * @param {number} toRow
- * @param {((col: number, row: number, side: number) => boolean) | null | undefined} isPassageBlocking
  */
-export function boundaryBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow, isPassageBlocking) {
+export function boundaryBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow) {
     if (grid.isBlocked(toCol, toRow)) return true;
     if (beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow)) return true;
     const dc = toCol - fromCol;
     const dr = toRow - fromRow;
     if (dc !== 0 && dr === 0) {
         const side = dc > 0 ? 1 : 3;
-        return boundaryBlocksStep(grid, fromCol, fromRow, side, isPassageBlocking);
+        return boundaryBlocksStep(grid, fromCol, fromRow, side);
     }
     if (dc === 0 && dr !== 0) {
         const side = dr > 0 ? 2 : 0;
-        return boundaryBlocksStep(grid, fromCol, fromRow, side, isPassageBlocking);
+        return boundaryBlocksStep(grid, fromCol, fromRow, side);
     }
     if (dc !== 0 && dr !== 0) {
         if (grid.isBlocked(fromCol + dc, fromRow) || grid.isBlocked(fromCol, fromRow + dr)) return true;
         const sideX = dc > 0 ? 1 : 3;
         const sideY = dr > 0 ? 2 : 0;
-        if (boundaryBlocksStep(grid, fromCol, fromRow, sideX, isPassageBlocking)) return true;
-        if (boundaryBlocksStep(grid, fromCol, fromRow, sideY, isPassageBlocking)) return true;
+        if (boundaryBlocksStep(grid, fromCol, fromRow, sideX)) return true;
+        if (boundaryBlocksStep(grid, fromCol, fromRow, sideY)) return true;
         const oppSideX = dc > 0 ? 3 : 1;
         const oppSideY = dr > 0 ? 0 : 2;
-        if (boundaryBlocksStep(grid, toCol, toRow, oppSideX, isPassageBlocking)) return true;
-        if (boundaryBlocksStep(grid, toCol, toRow, oppSideY, isPassageBlocking)) return true;
+        if (boundaryBlocksStep(grid, toCol, toRow, oppSideX)) return true;
+        if (boundaryBlocksStep(grid, toCol, toRow, oppSideY)) return true;
     }
     return false;
 }

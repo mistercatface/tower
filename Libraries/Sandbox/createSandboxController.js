@@ -1,5 +1,4 @@
 import { drawForcefieldEdges } from "./drawForcefields.js";
-import { bindForcefieldStepBlocking, unbindForcefieldStepBlocking } from "./forcefieldPower.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
@@ -435,6 +434,10 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         setSelectedForcefieldPowered: (powered) => session.setSelectedForcefieldPowered(powered),
         getForcefieldStartsPowered: () => session.getForcefieldStartsPowered(),
         setForcefieldStartsPowered: (powered) => session.setForcefieldStartsPowered(powered),
+        getForcefieldStampMode: () => session.getForcefieldStampMode(),
+        setForcefieldStampMode: (mode) => session.setForcefieldStampMode(mode),
+        setSelectedForcefieldMode: (mode) => session.setSelectedForcefieldMode(mode),
+        setSelectedForcefieldAllowedSide: (side) => session.setSelectedForcefieldAllowedSide(side),
         stampWallAtCameraOrigin: () => session.stampWallAtCameraOrigin(),
         setSelectedVoxelWallHeight: (heightLevel) => session.setSelectedVoxelWallHeight(heightLevel),
         setSelectedRailWallProps: (heightLevel, thicknessLevel) => session.setSelectedRailWallProps(heightLevel, thicknessLevel),
@@ -474,13 +477,11 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         listSelectedBehaviors: () => listSelectedBehaviors(),
         register() {
             controller.destroy();
-            bindForcefieldStepBlocking(state);
             unbindPointers = bindCanvasPointers(getCanvas(), { pointerdown: onPointerDown, pointermove: onPointerMove, pointerup: onPointerUp, pointercancel: onPointerUp });
         },
         destroy() {
             unbindPointers?.();
             unbindPointers = null;
-            unbindForcefieldStepBlocking(state);
             buttonWireMode = false;
             buttonWireCursor = null;
             marqueeSelect = null;

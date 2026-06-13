@@ -4,7 +4,7 @@
 import { packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, createRailWallEdge, railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdge.js";
+import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, createRailWallEdge, railWallCapLevel, railWallHeightPx, railWallThicknessPx, passageEdgeEmitsCollision } from "../Spatial/grid/CellEdge.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
@@ -96,18 +96,17 @@ export function gridWallEdgeRailShouldEmit(grid, col, row, edge) {
  * @param {number} col
  * @param {number} row
  * @param {number} side
- * @param {((col: number, row: number, side: number) => boolean) | null | undefined} isPassageBlocking
  */
-export function gridPoweredPassageEdgeShouldEmit(grid, col, row, side, isPassageBlocking) {
-    if (!gridForcefieldEdge(grid, col, row, side)) return false;
-    if (isPassageBlocking?.(col, row, side) !== true) return false;
+export function gridPoweredPassageEdgeShouldEmit(grid, col, row, side) {
+    const edge = gridForcefieldEdge(grid, col, row, side);
+    if (!edge || !passageEdgeEmitsCollision(edge)) return false;
     return gridEdgeRailEmitOwner(grid, col, row, side);
 }
 /** Edge-rail collision thickness — stored railWall or default rail profile when powered passage blocks. */
-export function gridEdgeRailCollisionThicknessPx(grid, col, row, side, isPassageBlocking, defaultPassageThicknessLevel = 2) {
+export function gridEdgeRailCollisionThicknessPx(grid, col, row, side, defaultPassageThicknessLevel = 2) {
     const railEdge = gridRailWallEdge(grid, col, row, side);
     if (railEdge) return railWallThicknessPx(railEdge);
-    if (gridPoweredPassageEdgeShouldEmit(grid, col, row, side, isPassageBlocking)) return railWallThicknessPx(createRailWallEdge(0, defaultPassageThicknessLevel));
+    if (gridPoweredPassageEdgeShouldEmit(grid, col, row, side)) return railWallThicknessPx(createRailWallEdge(0, defaultPassageThicknessLevel));
     return 1;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */

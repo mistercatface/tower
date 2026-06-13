@@ -22,6 +22,52 @@ const WALL_STAMP_OPTIONS = [
     { value: "rail", label: "Rail wall" },
     { value: "forcefield", label: "Forcefield" },
 ];
+const PASSAGE_MODE_OPTIONS = [
+    { value: "solid", label: "Solid — wall when powered" },
+    { value: "oneWay", label: "One-way — block against allowed side" },
+    { value: "tripwire", label: "Tripwire — sensor, never blocks" },
+];
+const EDGE_SIDE_OPTIONS = [
+    { value: "0", label: formatGridWallEdgeSideLabel(0) },
+    { value: "1", label: formatGridWallEdgeSideLabel(1) },
+    { value: "2", label: formatGridWallEdgeSideLabel(2) },
+    { value: "3", label: formatGridWallEdgeSideLabel(3) },
+];
+/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ mode: string, allowedSide?: number, powered?: boolean } | null} selected @param {{ stampDefaults?: boolean, onChange: () => void }} opts */
+function appendPassageEditorFields(body, controller, selected, { stampDefaults = false, onChange }) {
+    const mode = stampDefaults ? controller.getForcefieldStampMode() : selected.mode;
+    appendSelectField(body, "Mode", {
+        value: mode,
+        options: PASSAGE_MODE_OPTIONS,
+        onChange: (value) => {
+            if (stampDefaults) controller.setForcefieldStampMode(value);
+            else controller.setSelectedForcefieldMode(value);
+            onChange();
+        },
+    });
+    if (mode === "oneWay" && !stampDefaults && selected)
+        appendSelectField(body, "Allowed side", {
+            value: String(selected.allowedSide ?? selected.side),
+            options: EDGE_SIDE_OPTIONS,
+            onChange: (value) => {
+                controller.setSelectedForcefieldAllowedSide(Number(value));
+                onChange();
+            },
+        });
+    const poweredField = document.createElement("label");
+    poweredField.className = "param-field check-inline";
+    const poweredCheckbox = document.createElement("input");
+    poweredCheckbox.type = "checkbox";
+    poweredCheckbox.checked = stampDefaults ? controller.getForcefieldStartsPowered() : controller.isSelectedForcefieldPowered();
+    poweredCheckbox.addEventListener("change", () => {
+        if (stampDefaults) controller.setForcefieldStartsPowered(poweredCheckbox.checked);
+        else controller.setSelectedForcefieldPowered(poweredCheckbox.checked);
+        onChange();
+    });
+    const poweredLabel = mode === "tripwire" ? " Powered (armed)" : mode === "oneWay" ? " Powered (blocks wrong-way crossing)" : " Powered (blocks movement + paths)";
+    poweredField.append(poweredCheckbox, document.createTextNode(poweredLabel));
+    body.appendChild(poweredField);
+}
 function readOpenSections(root) {
     const open = new Set();
     for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
@@ -151,19 +197,7 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
                     onChange();
                 }).element,
             );
-        if (wallStampMode === "forcefield") {
-            const poweredField = document.createElement("label");
-            poweredField.className = "param-field check-inline";
-            const poweredCheckbox = document.createElement("input");
-            poweredCheckbox.type = "checkbox";
-            poweredCheckbox.checked = controller.getForcefieldStartsPowered();
-            poweredCheckbox.addEventListener("change", () => {
-                controller.setForcefieldStartsPowered(poweredCheckbox.checked);
-                onChange();
-            });
-            poweredField.append(poweredCheckbox, document.createTextNode(" Starts powered"));
-            body.appendChild(poweredField);
-        }
+        if (wallStampMode === "forcefield") appendPassageEditorFields(body, controller, null, { stampDefaults: true, onChange });
     });
     const voxelWalls = controller.listPlacedVoxelWalls();
     const railWalls = controller.listPlacedRailWalls();
@@ -275,18 +309,8 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
             return;
         }
         if (selectedForcefieldInfo) {
-            appendEditorHint(body, `Forcefield · ${selectedForcefieldInfo.sideLabel}. Blocks movement and paths while powered. Wire floor buttons from Props tab.`);
-            const poweredField = document.createElement("label");
-            poweredField.className = "param-field check-inline";
-            const poweredCheckbox = document.createElement("input");
-            poweredCheckbox.type = "checkbox";
-            poweredCheckbox.checked = controller.isSelectedForcefieldPowered();
-            poweredCheckbox.addEventListener("change", () => {
-                controller.setSelectedForcefieldPowered(poweredCheckbox.checked);
-                onChange();
-            });
-            poweredField.append(poweredCheckbox, document.createTextNode(" Powered (blocks movement + paths)"));
-            body.appendChild(poweredField);
+            appendEditorHint(body, `${selectedForcefieldInfo.modeLabel} forcefield · ${selectedForcefieldInfo.sideLabel}. Wire floor buttons from Props tab.`);
+            appendPassageEditorFields(body, controller, selectedForcefieldInfo, { onChange });
             const deleteRow = document.createElement("div");
             deleteRow.className = "sandbox-add-row";
             const deleteBtn = document.createElement("button");
@@ -519,18 +543,8 @@ export function mountSandboxToyUi(container, controller, onChange) {
             }
             if (!selectedProp) {
                 if (selectedForcefieldInfo) {
-                    appendEditorHint(body, `${selectedForcefieldInfo.sideLabel} forcefield. Toggle powered to block props and pathfinding. Click a laser edge on the map to re-select.`);
-                    const poweredField = document.createElement("label");
-                    poweredField.className = "param-field check-inline";
-                    const poweredCheckbox = document.createElement("input");
-                    poweredCheckbox.type = "checkbox";
-                    poweredCheckbox.checked = controller.isSelectedForcefieldPowered();
-                    poweredCheckbox.addEventListener("change", () => {
-                        controller.setSelectedForcefieldPowered(poweredCheckbox.checked);
-                        onChange();
-                    });
-                    poweredField.append(poweredCheckbox, document.createTextNode(" Powered (blocks movement + paths)"));
-                    body.appendChild(poweredField);
+                    appendEditorHint(body, `${selectedForcefieldInfo.modeLabel} · ${selectedForcefieldInfo.sideLabel}. Click a laser edge on the map to re-select.`);
+                    appendPassageEditorFields(body, controller, selectedForcefieldInfo, { onChange });
                     const deleteRow = document.createElement("div");
                     deleteRow.className = "sandbox-add-row";
                     const deleteBtn = document.createElement("button");

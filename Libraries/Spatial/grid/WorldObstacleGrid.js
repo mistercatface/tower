@@ -6,6 +6,7 @@ import {
     gridBeltRailEdgeShouldEmit,
     gridPoweredPassageEdgeShouldEmit,
     gridEdgeRailCollisionThicknessPx,
+    gridForcefieldEdge,
     scanStaticStructureZLevelsFromGrid,
 } from "../../World/wallGridCells.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
@@ -42,9 +43,6 @@ export class WorldObstacleGrid {
         this.patchBoundsScratch = createAabb();
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
-        /** Sandbox forcefields: when set, powered forcefield edges block `canStep`. */
-        /** @type {((col: number, row: number, side: number) => boolean) | null} */
-        this.isForcefieldStepBlocked = null;
     }
     /** @param {number} damage @param {object} state */
     _staticGridProxyHandleHit(damage, state) {
@@ -122,9 +120,9 @@ export class WorldObstacleGrid {
             for (let side = 0; side < 4; side++) {
                 const beltRail = gridBeltRailEdgeShouldEmit(this, col, row, side);
                 const railWall = gridWallEdgeRailShouldEmit(this, col, row, side);
-                const poweredPassage = gridPoweredPassageEdgeShouldEmit(this, col, row, side, this.isForcefieldStepBlocked);
+                const poweredPassage = gridPoweredPassageEdgeShouldEmit(this, col, row, side);
                 if (!beltRail && !railWall && !poweredPassage) continue;
-                const thickness = beltRail ? 1 : gridEdgeRailCollisionThicknessPx(this, col, row, side, this.isForcefieldStepBlocked);
+                const thickness = beltRail ? 1 : gridEdgeRailCollisionThicknessPx(this, col, row, side);
                 const bounds = this.getCellBounds(col, row);
                 const minX = bounds.minX;
                 const minY = bounds.minY;
@@ -200,6 +198,8 @@ export class WorldObstacleGrid {
                 proxy.width = len;
                 proxy.height = thickness;
                 proxy.size = Math.max(len, thickness);
+                if (poweredPassage) proxy.passageEdge = gridForcefieldEdge(this, col, row, side);
+                else if ("passageEdge" in proxy) delete proxy.passageEdge;
                 out.push(proxy);
             }
         });
@@ -380,7 +380,7 @@ export class WorldObstacleGrid {
     }
     /** @param {number} col @param {number} row @param {number} side */
     edgeBlocksStep(col, row, side) {
-        return boundaryBlocksStep(this, col, row, side, this.isForcefieldStepBlocked);
+        return boundaryBlocksStep(this, col, row, side);
     }
     /** @param {number} col @param {number} row @param {number} side */
     writeForcefieldEdge(col, row, side) {
@@ -488,7 +488,7 @@ export class WorldObstacleGrid {
         return this.isBlocked(col, row);
     }
     canStep(currCol, currRow, nextCol, nextRow) {
-        return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow, this.isForcefieldStepBlocked);
+        return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow);
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);
