@@ -4,7 +4,6 @@
  */
 import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
-import { getTexelResolution } from "../../WorldSurface/WorldSurfaceResolution.js";
 import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
@@ -100,7 +99,14 @@ function resolveWallFaceAtlas(p1, p2, wallCtx) {
     const wallCx = (p1.x + p2.x) * 0.5;
     const wallCy = (p1.y + p2.y) * 0.5;
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj);
-    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight: wallCapHeight, cacheObj, atlasFaceId: atlasFaceId ?? "side" });
+    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, {
+        profileId,
+        proceduralSurfaceDraw,
+        wallHeight: wallCapHeight,
+        cacheObj,
+        atlasFaceId: atlasFaceId ?? "side",
+        ppwu: wallCtx.texelResolution,
+    });
     if (!baked) return { atlas: null, solidFill: false };
     const canvas = baked.canvases[0];
     if (!canvas || canvas.isPlaceholder) return { atlas: null, solidFill: true };
@@ -127,7 +133,7 @@ function resolveWallFaceAtlas(p1, p2, wallCtx) {
  * @property {number} alphaBase
  * @property {number} alphaBandMax
  */
-function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, camera) {
+function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, camera, texelResolution) {
     const cellSize = settings.cellSize;
     const topZ = Math.min(wallBaseZ + bandHeight, camera.cameraHeight - 1);
     const alphaBandMax = resolveElevationAlpha(topZ, camera);
@@ -139,7 +145,7 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
     return {
         subdivX: Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale))),
         subdivY: Math.max(1, Math.ceil(visibleHeightCells * subdivScale)),
-        capPx: capHeight * getTexelResolution(settings),
+        capPx: capHeight * texelResolution,
         alphaBase,
         alphaBandMax,
     };
@@ -179,7 +185,7 @@ function resolveWallFaceSubdiv(wallCtx, atlas, camera) {
     const faceId = wallCtx.atlasFaceId ?? "side";
     const subdivKey = `${faceId}|${atlas.edgeLen}|${camera.viewerX}|${camera.viewerY}|${atlas.wallBaseZ}|${atlas.bandHeight}`;
     if (cacheObj && cacheObj._faceSubdivKey === subdivKey) return cacheObj._faceSubdiv;
-    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, camera);
+    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, camera, wallCtx.texelResolution);
     if (cacheObj) {
         cacheObj._faceSubdivKey = subdivKey;
         cacheObj._faceSubdiv = subdiv;
@@ -282,7 +288,7 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
         { x: maxX, y: maxY },
         { x: minX, y: maxY },
     ];
-    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, z, gameState, profileId);
+    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, z, gameState, profileId, wallCtx.texelResolution);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         return;

@@ -16,5 +16,6 @@
  * @property {import("../../Math/Aabb2D.js").Aabb2D} worldBounds
  * @property {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
  * @property {object} gameState — live game state for horizontal cap chunk sampling
+ * @property {number} texelResolution — pixels per world unit; read once per `draw3DBuildings` pass
  * @property {string} [atlasFaceId] — per-face wall atlas slot on cacheObj (`inner`, `outer`, `end0`, `end1`)
  */

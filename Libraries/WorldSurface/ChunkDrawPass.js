@@ -19,6 +19,7 @@ import { getStaticCellDamageAlphaAtIdx } from "../World/staticCellDamage.js";
  * @property {import("../Viewport/Viewport.js").Viewport | null} viewport
  * @property {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null} obstacleGrid
  * @property {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} settings
+ * @property {number} texelResolution — pixels per world unit; read once per `drawGroundChunks` pass
  * @property {object | null} state
  * @property {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null} wallSpatialIndex
  * @property {import("../Math/Aabb2D.js").Aabb2D} chunkAabb

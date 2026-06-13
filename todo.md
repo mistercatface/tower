@@ -176,7 +176,7 @@ Not micro-files — extend these if elevated projection spreads:
 - [ ] **`blitWallFaceSubdiv` row/col band tables**
 - [ ] **Face-level AABB cull**
 - [ ] **`composeSurfaceImage` per-motif passes**
-- [ ] **Read `getTexelResolution` once per draw pass**
+- [x] **Read `getTexelResolution` once per draw pass** — `drawGroundChunks` + `draw3DBuildings` stash on pass context; threaded through atlas/chunk/cap/subdiv.
 - [ ] **Batch static cell damage alpha**
 
 ### Vector overlay (later)

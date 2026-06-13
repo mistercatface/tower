@@ -66,12 +66,12 @@ export class WorldSurfaceEngine {
         const maxY = obstacleGrid.minY + (bounds.endRow + 1) * cellSize;
         const range = worldBoundsToChunkRange(minX, minY, maxX, maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
         const zLevels = [0, ...(roofZLevels ?? this.settings.roofZLevels ?? []).filter((z) => z > 0)];
+        const ppwu = getTexelResolution(this.settings);
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
                 const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
                 const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
                 const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
-                const ppwu = getTexelResolution(this.settings);
                 const rev = getSurfaceProfileRevision(profileId);
                 for (const zLevel of zLevels) {
                     this.surfaceCache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, ppwu, zLevel));
@@ -81,13 +81,13 @@ export class WorldSurfaceEngine {
                 }
             }
     }
-    ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null, profileId = null) {
+    ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null, profileId = null, ppwu = null) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
         const edgeLen = createWallFaceAxes(p1, p2).edgeLen;
         if (edgeLen < 0.001 || columns.length === 0) return null;
         const cellSize = proceduralSurfaceDraw.obstacleCellSize ?? this.settings.cellSize;
-        const pixelsPerUnit = getTexelResolution(this.settings);
+        const pixelsPerUnit = ppwu ?? getTexelResolution(this.settings);
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * pixelsPerUnit));
         const hVal = resolveWallCapHeightPx(wallHeight, this.settings);
         const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * pixelsPerUnit));
@@ -135,10 +135,11 @@ export class WorldSurfaceEngine {
         });
         return placeholder;
     }
-    getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0) {
+    getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0, ppwu = null) {
         if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         const resolvedZ = payload.zLevel ?? zLevel;
-        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), getTexelResolution(this.settings), resolvedZ);
+        const texelResolution = ppwu ?? getTexelResolution(this.settings);
+        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), texelResolution, resolvedZ);
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
         const bakePayload = { ...payload, ...bakeFrameRange.first() };
@@ -151,14 +152,13 @@ export class WorldSurfaceEngine {
      */
     getStaticRoofDrawCanvas(pass, roofCanvas, payload) {
         if (roofCanvas.isPlaceholder) return roofCanvas;
-        const { chunkCol, chunkRow, zLevel, obstacleGrid, originX, originY, sizePx } = pass;
-        const ppwu = getTexelResolution(this.settings);
+        const { chunkCol, chunkRow, zLevel, obstacleGrid, originX, originY, sizePx, texelResolution } = pass;
         const rev = getSurfaceProfileRevision(payload.profileId);
-        const drawKey = staticRoofDrawCachePrefix(chunkCol, chunkRow, payload.profileId, rev, ppwu, zLevel);
+        const drawKey = staticRoofDrawCachePrefix(chunkCol, chunkRow, payload.profileId, rev, texelResolution, zLevel);
         const maskKey = staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel);
         let maskEntry = this.surfaceCache.get(maskKey);
         if (!maskEntry) {
-            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, originX, originY, sizePx, zLevel, ppwu);
+            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, originX, originY, sizePx, zLevel, texelResolution);
             if (!maskCanvas) {
                 this.surfaceCache.delete(drawKey);
                 return null;
@@ -182,11 +182,12 @@ export class WorldSurfaceEngine {
      *   wallHeight?: number | null,
      *   cacheObj?: object | null,
      *   atlasFaceId?: string,
+     *   ppwu?: number,
      * }} options
      */
     getOrEnsureWallAtlas(p1, p2, options) {
-        const { profileId, proceduralSurfaceDraw, wallHeight = null, cacheObj = null, atlasFaceId = "side" } = options;
-        const ppwu = getTexelResolution(this.settings);
+        const { profileId, proceduralSurfaceDraw, wallHeight = null, cacheObj = null, atlasFaceId = "side", ppwu = null } = options;
+        const texelResolution = ppwu ?? getTexelResolution(this.settings);
         const seed = proceduralSurfaceDraw.surfaceSeed;
         const rev = getSurfaceProfileRevision(profileId);
         const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);
@@ -195,7 +196,7 @@ export class WorldSurfaceEngine {
             if (
                 stash &&
                 stash.profileId === profileId &&
-                stash.ppwu === ppwu &&
+                stash.ppwu === texelResolution &&
                 stash.rev === rev &&
                 stash.seed === seed &&
                 stash.wallHeightKey === wallHeightKey &&
@@ -203,15 +204,15 @@ export class WorldSurfaceEngine {
             )
                 return stash;
         }
-        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, ppwu, cacheObj, this.settings, wallHeightKey, atlasFaceId);
+        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, texelResolution, cacheObj, this.settings, wallHeightKey, atlasFaceId);
         let canvases = this.surfaceCache.get(key);
         if (!canvases) {
             const columns = wallFaceColumns(wrappedP1, wrappedP2, this.settings.cellSize);
             if (columns.length === 0) return null;
-            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, proceduralSurfaceDraw, wallHeight, profileId);
+            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, proceduralSurfaceDraw, wallHeight, profileId, texelResolution);
             if (!canvases || canvases.length === 0) return null;
         }
-        const resolved = { key, wrappedP1, wrappedP2, canvases, profileId, ppwu, rev, seed, wallHeightKey };
+        const resolved = { key, wrappedP1, wrappedP2, canvases, profileId, ppwu: texelResolution, rev, seed, wallHeightKey };
         if (cacheObj) {
             if (!cacheObj._wallAtlasStashes) cacheObj._wallAtlasStashes = {};
             cacheObj._wallAtlasStashes[atlasFaceId] = resolved;
@@ -224,9 +225,11 @@ export class WorldSurfaceEngine {
      * @param {number} zLevel
      * @param {object} state
      * @param {string} profileId
+     * @param {number} [ppwu]
      * @returns {{ canvas: CanvasImageSource & { width: number, height: number }, src: [{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }] } | null}
      */
-    getHorizontalCapDrawSample(worldCorners, zLevel, state, profileId) {
+    getHorizontalCapDrawSample(worldCorners, zLevel, state, profileId, ppwu = null) {
+        const texelResolution = ppwu ?? getTexelResolution(this.settings);
         const obstacleGrid = state.obstacleGrid;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
@@ -242,11 +245,10 @@ export class WorldSurfaceEngine {
         const originY = obstacleGrid.minY + chunkRow * chunkSizePx;
         const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         payload.profileId = profileId;
-        const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel);
+        const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel, texelResolution);
         const canvas = canvases[0];
         if (!canvas || canvas.isPlaceholder) return null;
-        const ppwu = getTexelResolution(this.settings);
-        const src = worldCorners.map((c) => ({ x: (c.x - originX) * ppwu, y: (c.y - originY) * ppwu }));
+        const src = worldCorners.map((c) => ({ x: (c.x - originX) * texelResolution, y: (c.y - originY) * texelResolution }));
         return { canvas, src };
     }
     /**
@@ -292,6 +294,7 @@ export class WorldSurfaceEngine {
         const minChunkRow = worldToChunkRow(bounds.minY, obstacleGrid.minY, chunkSizePx);
         const maxChunkRow = worldToChunkRow(bounds.maxY - 1, obstacleGrid.minY, chunkSizePx);
         const passCamera = elevationCameraFromViewport(viewport, this.settings.cameraHeight);
+        const texelResolution = getTexelResolution(this.settings);
         ctx.save();
         if (playBounds) clipToAabb(ctx, bounds);
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
@@ -307,7 +310,7 @@ export class WorldSurfaceEngine {
                 )
                     continue;
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
-                const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel);
+                const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel, texelResolution);
                 const canvas = canvases[0];
                 if (canvas.isPlaceholder) continue;
                 /** @type {import("./ChunkDrawPass.js").ChunkDrawPass} */
@@ -321,6 +324,7 @@ export class WorldSurfaceEngine {
                     viewport,
                     obstacleGrid,
                     settings: this.settings,
+                    texelResolution,
                     state,
                     wallSpatialIndex: flatWallRails ? wallSpatialIndex : null,
                     chunkAabb: chunkWorldAabbInto(createAabb(), originX, originY, chunkSizePx),
