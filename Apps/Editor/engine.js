@@ -9,6 +9,7 @@ import { updateSandboxAutoCombat } from "../../Libraries/Combat/worldPropAutoCom
 import { Projectile } from "../../Entities/Projectile.js";
 import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
 import { runPushablePhysics } from "../../Libraries/Motion/pushablePhysicsPass.js";
+import { tickVisibleKinematicsAnim } from "../../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
@@ -39,6 +40,7 @@ function runSimulationTick(state, dt) {
     tickFloorProps(state, spatialFrame, simDt);
     tickFloorOccupancy(state, spatialFrame, simDt);
     runPushablePhysics(state, simDt, spatialFrame, simulationEvents);
+    tickVisibleKinematicsAnim(state, simDt, spatialFrame);
     RagdollCorpse.updateAll(state, simDt, spatialFrame);
     dispatchSimulationEvents(simulationEvents, state);
     FloatingText.updateAll(state, simDt);

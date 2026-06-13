@@ -3,6 +3,7 @@ export { createCharacterFrameDrawer } from "./drawFrame.js";
 export { createCharacterResolver, generateCharacter } from "./appearance.js";
 export {
     advanceActorKinematics,
+    tickVisibleKinematicsAnim,
     clearActorKinematics,
     captureActorRigForRagdoll,
     renderActorKinematicsBody,

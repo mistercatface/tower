@@ -35,6 +35,15 @@ export function getKinematicsRenderer(radius) {
 export function advanceActorKinematics(actor, dt, camera, radius = actor.radius) {
     getKinematicsRenderer(radius).advance(actor, dt, camera);
 }
+/** @param {object} state @param {number} dt @param {object} spatialFrame */
+export function tickVisibleKinematicsAnim(state, dt, spatialFrame) {
+    const viewport = state.viewport;
+    const props = state.entityRegistry.queryView(
+        { bounds: viewport.boundsVisibleDefault, kinds: ["worldProp"], filterId: "kinematicsAnim", match: (p) => p.usesKinematicsBody && !p.isDead },
+        spatialFrame,
+    );
+    for (let i = 0; i < props.length; i++) advanceActorKinematics(props[i], dt, viewport);
+}
 export function clearActorKinematics(actor, radius = actor.radius) {
     getKinematicsRenderer(radius).bundle.clearActorState(actor.id);
 }

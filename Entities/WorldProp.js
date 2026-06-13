@@ -1,5 +1,4 @@
 import { Entity } from "./Entity.js";
-import { advanceActorKinematics } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
@@ -20,7 +19,6 @@ import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { SPLITTABLE_MIN_PIECE_SIZE } from "../Libraries/Props/splittable.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 import { ensureLocomotionWorldProp, updateLocomotionWorldProp, usesLocomotionWorldProp } from "../Libraries/Props/locomotionWorldProp.js";
-import { resolveKinematicsCamera } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { initFloorButtonProp, initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
 class WorldPropNormalState {
@@ -190,8 +188,6 @@ export class WorldProp extends Entity {
                     this.facing += angleDiff * Math.min(1, turnSpeed * (dt / 1000));
                 }
             }
-            this._kinematicsCamera = resolveKinematicsCamera(this, state);
-            advanceActorKinematics(this, dt, this._kinematicsCamera);
             if (this.turrets?.length)
                 if (this.weaponLoadout?.length > 0) {
                     const aimAngle = this.turrets[0]?.angle;
