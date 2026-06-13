@@ -4,7 +4,7 @@ import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCe
 import { gridWallEdgeRailShouldEmit, gridBeltRailEdgeShouldEmit, gridRailWallEdge, gridNeighborFillLevel, scanStaticStructureZLevelsFromGrid } from "../../World/wallGridCells.js";
 import { CellEdgeStore, railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
-import { floorBeltFacingToIndex, floorBeltRailEdgeSidesForFacingIndex, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
+import { floorBeltFacingToIndex, floorBeltRailEdgeSides, floorBeltEntryExitSides, floorBeltEntryNeighborCell, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
 import { createBeltRailEdge, edgeBlocksCrossing, isBeltRailEdge, railWallThicknessPx } from "./CellEdge.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
@@ -379,14 +379,14 @@ export class WorldObstacleGrid {
         if (!isBeltRailEdge(edge)) return;
         this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
     }
-    /** @param {number} col @param {number} row @param {number} facingIndex */
-    syncFloorBeltRailEdges(col, row, facingIndex) {
-        const sides = floorBeltRailEdgeSidesForFacingIndex(facingIndex);
+    /** @param {number} col @param {number} row @param {number} kind @param {number} facingIndex */
+    syncFloorBeltRailEdges(col, row, kind, facingIndex) {
+        const sides = floorBeltRailEdgeSides(kind, facingIndex);
         for (let i = 0; i < sides.length; i++) this.writeBeltRailEdge(col, row, sides[i]);
     }
-    /** @param {number} col @param {number} row @param {number} facingIndex */
-    clearFloorBeltRailEdges(col, row, facingIndex) {
-        const sides = floorBeltRailEdgeSidesForFacingIndex(facingIndex);
+    /** @param {number} col @param {number} row @param {number} kind @param {number} facingIndex */
+    clearFloorBeltRailEdges(col, row, kind, facingIndex) {
+        const sides = floorBeltRailEdgeSides(kind, facingIndex);
         for (let i = 0; i < sides.length; i++) this.clearBeltRailEdge(col, row, sides[i]);
     }
     /** @param {number} col @param {number} row @param {number} kind @param {number} facingRadians */
@@ -396,12 +396,12 @@ export class WorldObstacleGrid {
         const idx = colRowToIndex(col, row, this.cols);
         const prevKind = this.floorStore.kind[idx];
         const prevFacing = this.floorStore.facing[idx];
-        if (isFloorBeltRailsKind(prevKind)) this.clearFloorBeltRailEdges(col, row, prevFacing);
+        if (isFloorBeltRailsKind(prevKind)) this.clearFloorBeltRailEdges(col, row, prevKind, prevFacing);
         const facingIndex = floorBeltFacingToIndex(facingRadians);
         this.floorStore.setAtIdx(idx, kind, facingIndex);
         let edgeChanged = false;
         if (isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) edgeChanged = true;
-        if (isFloorBeltRailsKind(kind)) this.syncFloorBeltRailEdges(col, row, facingIndex);
+        if (isFloorBeltRailsKind(kind)) this.syncFloorBeltRailEdges(col, row, kind, facingIndex);
         if (edgeChanged) this.bumpWallGridRevision();
         return true;
     }
@@ -426,7 +426,7 @@ export class WorldObstacleGrid {
         const kind = this.floorStore.kind[idx];
         const facingIndex = this.floorStore.facing[idx];
         if (isFloorBeltRailsKind(kind)) {
-            this.clearFloorBeltRailEdges(col, row, facingIndex);
+            this.clearFloorBeltRailEdges(col, row, kind, facingIndex);
             this.bumpWallGridRevision();
         }
         this.floorStore.clearAtIdx(idx);
@@ -439,10 +439,26 @@ export class WorldObstacleGrid {
             if (!isFloorBeltRailsKind(kind)) continue;
             const col = idx % this.cols;
             const row = (idx / this.cols) | 0;
-            this.clearFloorBeltRailEdges(col, row, this.floorStore.facing[idx]);
+            this.clearFloorBeltRailEdges(col, row, kind, this.floorStore.facing[idx]);
         }
         this.floorStore.reset(size);
         this.bumpWallGridRevision();
+    }
+    /**
+     * When path goal is on a belt cell, plan to the upstream neighbor so HPA approaches from entry.
+     * @param {number} fromCol @param {number} fromRow @param {number} targetCol @param {number} targetRow
+     */
+    snapPathTargetCell(fromCol, fromRow, targetCol, targetRow) {
+        const idx = colRowToIndex(targetCol, targetRow, this.cols);
+        if (!this.floorStore.isBeltKindAtIdx(idx)) return { col: targetCol, row: targetRow };
+        const kind = this.floorStore.kind[idx];
+        const facingIndex = this.floorStore.facing[idx];
+        const { entrySide } = floorBeltEntryExitSides(kind, facingIndex);
+        const neighbor = floorBeltEntryNeighborCell(targetCol, targetRow, entrySide);
+        if (neighbor.col < 0 || neighbor.col >= this.cols || neighbor.row < 0 || neighbor.row >= this.rows) return { col: targetCol, row: targetRow };
+        if (this.isBlocked(neighbor.col, neighbor.row)) return { col: targetCol, row: targetRow };
+        if (fromCol === neighbor.col && fromRow === neighbor.row) return { col: targetCol, row: targetRow };
+        return neighbor;
     }
     worldToGrid(x, y) {
         return worldToGridAtOrigin(x, y, this.minX, this.minY, this.cellSize);
@@ -458,8 +474,34 @@ export class WorldObstacleGrid {
         const { col, row } = this.worldToGrid(x, y);
         return this.isBlocked(col, row);
     }
+    /** @param {number} toCol @param {number} toRow @param {number} fromCol @param {number} fromRow */
+    _beltCrossedSideFrom(fromCol, fromRow, toCol, toRow) {
+        const dc = fromCol - toCol;
+        const dr = fromRow - toRow;
+        if (dc === -1) return 3;
+        if (dc === 1) return 1;
+        if (dr === -1) return 0;
+        if (dr === 1) return 2;
+        return -1;
+    }
+    /** @param {number} toCol @param {number} toRow @param {number} fromCol @param {number} fromRow */
+    _beltBlocksEntryFrom(fromCol, fromRow, toCol, toRow) {
+        const idx = colRowToIndex(toCol, toRow, this.cols);
+        if (!this.floorStore.isBeltKindAtIdx(idx)) return false;
+        const kind = this.floorStore.kind[idx];
+        const { exitSide } = floorBeltEntryExitSides(kind, this.floorStore.facing[idx]);
+        const dc = fromCol - toCol;
+        const dr = fromRow - toRow;
+        if (dc === 0 && dr === 0) return false;
+        const crossed = this._beltCrossedSideFrom(fromCol, fromRow, toCol, toRow);
+        if (crossed >= 0) return crossed === exitSide;
+        const sideX = dc > 0 ? 1 : 3;
+        const sideY = dr > 0 ? 2 : 0;
+        return sideX === exitSide || sideY === exitSide;
+    }
     canStep(currCol, currRow, nextCol, nextRow) {
         if (this.isBlocked(nextCol, nextRow)) return false;
+        if (this._beltBlocksEntryFrom(currCol, currRow, nextCol, nextRow)) return false;
         const dc = nextCol - currCol;
         const dr = nextRow - currRow;
         // Cardinal step

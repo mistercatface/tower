@@ -397,6 +397,11 @@ export class HierarchicalNavigator {
         const targetOpen = this.findNearestOpenCell(targetCol, targetRow);
         targetCol = targetOpen.col;
         targetRow = targetOpen.row;
+        if (this.navGraph.snapPathTargetCell) {
+            const snapped = this.navGraph.snapPathTargetCell(startCol, startRow, targetCol, targetRow);
+            targetCol = snapped.col;
+            targetRow = snapped.row;
+        }
         const startIdx = colRowToIndex(startCol, startRow, this.cols);
         const targetIdx = colRowToIndex(targetCol, targetRow, this.cols);
         const startNode = this.cellToNode[startIdx];
