@@ -1,14 +1,12 @@
-import { WorldProp } from "../../Entities/WorldProp.js";
 import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
-import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
-import { isGridFloorBeltSpawnAsset, isPoolRackSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
 import { canStampFloorBeltAt } from "./floorOccupancy.js";
-import { spawnPoolRack } from "./spawnPoolRack.js";
+import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import {
     clearRailWallAt,
     clearVoxelWallAt,
@@ -141,16 +139,9 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             setSelectedFloorCell(col, row);
             return null;
         }
-        if (isPoolRackSpawnAsset(asset)) {
-            const cue = spawnPoolRack(state, worldX, worldY, asset.sandbox.spawnRack, spawnFaction);
-            if (cue) setSinglePropSelection(cue.id);
-            return cue;
-        }
-        const prop = new WorldProp(worldX, worldY, spawnPropId, 0);
-        prop.faction = spawnFaction;
-        addWorldPropToState(state, prop);
-        setSinglePropSelection(prop.id);
-        return prop;
+        const spawned = spawnPlacedSandboxProp(state, worldX, worldY, spawnPropId, spawnFaction);
+        if (spawned) setSinglePropSelection(spawned.id);
+        return spawned;
     };
     return {
         getSpawnPropId: () => spawnPropId,

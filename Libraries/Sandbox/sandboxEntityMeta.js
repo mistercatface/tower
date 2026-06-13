@@ -7,6 +7,8 @@
  * @property {SandboxPathVisual} [pathVisual]
  * @property {SandboxPropVisual} [propVisual]
  * @property {string} [spawnGroupId]
+ * @property {string} [spawnGroupExportType]
+ * @property {boolean} [spawnGroupAnchor]
  */
 export class SandboxEntityMetaStore {
     constructor() {
@@ -89,6 +91,22 @@ export class SandboxEntityMetaStore {
     /** @param {number} entityId @param {string} spawnGroupId */
     setSpawnGroupId(entityId, spawnGroupId) {
         this.ensure(entityId).spawnGroupId = spawnGroupId;
+    }
+    /** @param {number} entityId */
+    getSpawnGroupExportType(entityId) {
+        return this.get(entityId)?.spawnGroupExportType;
+    }
+    /** @param {number} entityId @param {string} exportType */
+    setSpawnGroupExportType(entityId, exportType) {
+        this.ensure(entityId).spawnGroupExportType = exportType;
+    }
+    /** @param {number} entityId */
+    isSpawnGroupAnchor(entityId) {
+        return this.get(entityId)?.spawnGroupAnchor === true;
+    }
+    /** @param {number} entityId @param {boolean} [anchor] */
+    setSpawnGroupAnchor(entityId, anchor = true) {
+        this.ensure(entityId).spawnGroupAnchor = anchor;
     }
 }
 /** @param {object} state @param {object} entity @param {string} linkField */

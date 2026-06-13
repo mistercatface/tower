@@ -1,16 +1,13 @@
-import { WorldProp } from "../../Entities/WorldProp.js";
-import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { packEdgeCellKey } from "../DataStructures/CellKey.js";
-import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { gridCellToGlobalColRow, gridWallEdgeMirrorSide, gridWallEdgeNeighbor } from "../World/wallGridCells.js";
-import { isGridFloorBeltSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset } from "./sandboxCapabilities.js";
+import { applyFloorBeltsFromGlobal, listPlacedFloorBeltsForSnapshot } from "./floorOccupancy.js";
 import { applyStampedGridWallsFromGlobal, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, notifyStampedGridWallChange } from "./gridWallEdit.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-import { spawnPoolRack } from "./spawnPoolRack.js";
+import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
+import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
 /**
  * Sandbox scene snapshot — copy/paste JSON for props, stamped grid walls, and floor belts.
  *
@@ -32,89 +29,11 @@ function shouldEmitRailWall(grid, col, row, side) {
     const keyB = packEdgeCellKey(b.globalCol, b.globalRow, nSide);
     return keyA <= keyB;
 }
-/** @param {object} state */
-function collectSnapshotProps(state) {
-    const meta = getSandboxEntityMeta(state);
-    /** @type {Map<string, object[]>} */
-    const poolGroups = new Map();
-    /** @type {{ type: string, x: number, y: number, facing: number, faction: string }[]} */
-    const props = [];
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead) return;
-        const groupId = meta.getSpawnGroupId(prop.id);
-        if (groupId?.startsWith("poolRack:")) {
-            const group = poolGroups.get(groupId) ?? [];
-            group.push(prop);
-            poolGroups.set(groupId, group);
-            return;
-        }
-        props.push({ type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: resolveSandboxFaction(prop) });
-    });
-    for (const group of poolGroups.values()) {
-        const apex = group.find((prop) => prop.type === "pool_ball_1") ?? group[0];
-        const rackType = group.length >= 14 ? "pool_rack_8ball" : "pool_rack_9ball";
-        props.push({ type: rackType, x: apex.x, y: apex.y, facing: apex.facing, faction: resolveSandboxFaction(apex) });
-    }
-    return props;
-}
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-function collectSnapshotFloorBelts(grid) {
-    /** @type {{ col: number, row: number, kind: number, facingIndex: number }[]} */
-    const belts = [];
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
-        belts.push({ col: globalCol, row: globalRow, kind: grid.floorStore.kind[idx], facingIndex: grid.floorStore.facing[idx] });
-    }
-    return belts;
-}
 /** @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} a @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} b */
 function unionStampBounds(a, b) {
     if (!a) return b;
     if (!b) return a;
     return { startCol: Math.min(a.startCol, b.startCol), endCol: Math.max(a.endCol, b.endCol), startRow: Math.min(a.startRow, b.startRow), endRow: Math.max(a.endRow, b.endRow) };
-}
-/** @param {object} state @param {{ col: number, row: number, kind: number, facingIndex: number }[]} floorBelts @param {number} cellSize */
-function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
-    const grid = state.obstacleGrid;
-    const half = cellSize * 0.5;
-    let edgeChanged = false;
-    let minCol = Infinity;
-    let maxCol = -Infinity;
-    let minRow = Infinity;
-    let maxRow = -Infinity;
-    /** @param {number} col @param {number} row */
-    const mark = (col, row) => {
-        if (col < minCol) minCol = col;
-        if (col > maxCol) maxCol = col;
-        if (row < minRow) minRow = row;
-        if (row > maxRow) maxRow = row;
-    };
-    for (let i = 0; i < floorBelts.length; i++) {
-        const { col: globalCol, row: globalRow, kind, facingIndex } = floorBelts[i];
-        if (!isFloorBeltKind(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
-        const { col, row } = grid.worldToGrid(globalCol * cellSize + half, globalRow * cellSize + half);
-        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
-        if (grid.isBlocked(col, row)) continue;
-        const idx = colRowToIndex(col, row, grid.cols);
-        const prevKind = grid.floorStore.kind[idx];
-        const prevFacing = grid.floorStore.facing[idx];
-        if (isFloorBeltRailsKind(prevKind)) {
-            grid.clearFloorBeltRailEdges(col, row, prevKind, prevFacing);
-            edgeChanged = true;
-        }
-        const facing = ((facingIndex % 4) + 4) % 4;
-        grid.floorStore.setAtIdx(idx, kind, facing);
-        if (isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) edgeChanged = true;
-        if (isFloorBeltRailsKind(kind)) grid.syncFloorBeltRailEdges(col, row, kind, facing);
-        mark(col, row);
-    }
-    if (edgeChanged) grid.bumpWallGridRevision();
-    if (minCol === Infinity) return null;
-    return { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow };
 }
 /** @param {object} state */
 export function collectSandboxSceneSnapshot(state) {
@@ -139,8 +58,8 @@ export function collectSandboxSceneSnapshot(state) {
         rows: grid.rows,
         voxels,
         railWalls,
-        floorBelts: collectSnapshotFloorBelts(grid),
-        props: collectSnapshotProps(state),
+        floorBelts: listPlacedFloorBeltsForSnapshot(grid),
+        props: collectPlacedSandboxPropEntries(state),
     };
 }
 /** @param {unknown} raw */
@@ -202,14 +121,7 @@ function spawnSnapshotProp(state, entry) {
     const asset = getPropAsset(entry.type);
     if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
     if (isGridFloorBeltSpawnAsset(asset)) return;
-    const faction = entry.faction ?? SANDBOX_DEFAULT_FACTION;
-    if (isPoolRackSpawnAsset(asset)) {
-        spawnPoolRack(state, entry.x, entry.y, asset.sandbox.spawnRack, faction);
-        return;
-    }
-    const prop = new WorldProp(entry.x, entry.y, entry.type, entry.facing ?? 0);
-    prop.faction = faction;
-    addWorldPropToState(state, prop);
+    spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0);
 }
 /**
  * @param {object} state

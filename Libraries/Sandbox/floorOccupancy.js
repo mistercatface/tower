@@ -1,5 +1,7 @@
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
-import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
+import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
+import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
 import { createConveyorDraw } from "../Render/conveyorDraw.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { applyPushableAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
@@ -85,4 +87,57 @@ export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {
         beltDrawScratch.facing = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
         beltDrawForKind(kind)(ctx, beltDrawScratch, px, py);
     });
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+export function listPlacedFloorBeltsForSnapshot(grid) {
+    /** @type {{ col: number, row: number, kind: number, facingIndex: number }[]} */
+    const belts = [];
+    const size = grid.cols * grid.rows;
+    for (let idx = 0; idx < size; idx++) {
+        if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
+        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        belts.push({ col: globalCol, row: globalRow, kind: grid.floorStore.kind[idx], facingIndex: grid.floorStore.facing[idx] });
+    }
+    return belts;
+}
+/** @param {object} state @param {{ col: number, row: number, kind: number, facingIndex: number }[]} floorBelts @param {number} cellSize */
+export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
+    const grid = state.obstacleGrid;
+    const half = cellSize * 0.5;
+    let edgeChanged = false;
+    let minCol = Infinity;
+    let maxCol = -Infinity;
+    let minRow = Infinity;
+    let maxRow = -Infinity;
+    /** @param {number} col @param {number} row */
+    const mark = (col, row) => {
+        if (col < minCol) minCol = col;
+        if (col > maxCol) maxCol = col;
+        if (row < minRow) minRow = row;
+        if (row > maxRow) maxRow = row;
+    };
+    for (let i = 0; i < floorBelts.length; i++) {
+        const { col: globalCol, row: globalRow, kind, facingIndex } = floorBelts[i];
+        if (!isFloorBeltKind(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
+        const { col, row } = grid.worldToGrid(globalCol * cellSize + half, globalRow * cellSize + half);
+        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        if (grid.isBlocked(col, row)) continue;
+        const idx = colRowToIndex(col, row, grid.cols);
+        const prevKind = grid.floorStore.kind[idx];
+        const prevFacing = grid.floorStore.facing[idx];
+        if (isFloorBeltRailsKind(prevKind)) {
+            grid.clearFloorBeltRailEdges(col, row, prevKind, prevFacing);
+            edgeChanged = true;
+        }
+        const facing = ((facingIndex % 4) + 4) % 4;
+        grid.floorStore.setAtIdx(idx, kind, facing);
+        if (isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) edgeChanged = true;
+        if (isFloorBeltRailsKind(kind)) grid.syncFloorBeltRailEdges(col, row, kind, facing);
+        mark(col, row);
+    }
+    if (edgeChanged) grid.bumpWallGridRevision();
+    if (minCol === Infinity) return null;
+    return { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow };
 }

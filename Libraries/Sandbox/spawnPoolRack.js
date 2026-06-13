@@ -1,5 +1,6 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
+import { resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
@@ -60,9 +61,25 @@ function rackOffset(u, v) {
  * @param {"8ball" | "9ball"} variant
  * @param {string} faction
  */
+/** @param {"8ball" | "9ball"} variant */
+function poolRackExportType(variant) {
+    return variant === "9ball" ? "pool_rack_9ball" : "pool_rack_8ball";
+}
+/**
+ * @param {object[]} members
+ * @param {import("./sandboxEntityMeta.js").SandboxEntityMetaStore} meta
+ * @returns {{ type: string, x: number, y: number, facing: number, faction: string } | null}
+ */
+export function tryExportPoolRackSpawnGroup(members, meta) {
+    const exportType = meta.getSpawnGroupExportType(members[0].id);
+    if (!exportType) return null;
+    const anchor = members.find((prop) => meta.isSpawnGroupAnchor(prop.id)) ?? members[0];
+    return { type: exportType, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: resolveSandboxFaction(anchor) };
+}
 export function spawnPoolRack(state, anchorX, anchorY, variant, faction) {
     const layout = variant === "9ball" ? RACK_9BALL : RACK_8BALL;
     const spawnGroupId = `poolRack:${Date.now()}`;
+    const exportType = poolRackExportType(variant);
     const meta = getSandboxEntityMeta(state);
     let cueProp = null;
     for (let i = 0; i < layout.length; i++) {
@@ -71,6 +88,8 @@ export function spawnPoolRack(state, anchorX, anchorY, variant, faction) {
         const prop = new WorldProp(anchorX + dx, anchorY + dy, entry.prop, 0);
         prop.faction = faction;
         meta.setSpawnGroupId(prop.id, spawnGroupId);
+        meta.setSpawnGroupExportType(prop.id, exportType);
+        if (entry.prop === "pool_ball_1") meta.setSpawnGroupAnchor(prop.id);
         if (entry.prop === "pool_cue_ball") {
             meta.setBehaviorOverrides(prop.id, CUE_BEHAVIOR_OVERRIDES);
             meta.setActiveBehaviorId(prop.id, CUE_STRIKE_BEHAVIOR_ID);
