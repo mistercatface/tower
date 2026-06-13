@@ -1,4 +1,3 @@
-import { engine } from "../../Apps/Editor/engine.js";
 import { clampSelectedSpeed, getSpeedControlView, resolveStep } from "./playbackController.js";
 /**
  * @typedef {object} SpeedControlClassNames
@@ -16,10 +15,16 @@ import { clampSelectedSpeed, getSpeedControlView, resolveStep } from "./playback
  * @property {string} [up]
  */
 /**
+ * @typedef {object} PlaybackHandlers
+ * @property {() => void} togglePause
+ * @property {(delta: number) => void} adjustSpeed
+ */
+/**
  * @typedef {object} ApplySpeedControlOptions
  * @property {boolean} [inject]
  * @property {SpeedControlClassNames} [classNames]
  * @property {SpeedControlIds} [ids]
+ * @property {PlaybackHandlers} [playbackHandlers]
  */
 /**
  * @typedef {object} SpeedControlHandle
@@ -64,15 +69,15 @@ function querySpeedControlElements(scope) {
 export function applySpeedControl(host, options = {}) {
     const noop = { root: null, refresh: () => {} };
     if (!host) return noop;
-    const { inject = false, classNames, ids } = options;
+    const { inject = false, classNames, ids, playbackHandlers } = options;
     if (inject || !host.querySelector("[data-speed-pause]")) host.innerHTML = buildSpeedControlMarkup({ classNames, ids });
     const elements = querySpeedControlElements(host);
     const root = elements.root instanceof HTMLElement ? elements.root : null;
-    if (!wiredHosts.has(host)) {
+    if (!wiredHosts.has(host) && playbackHandlers) {
         wiredHosts.add(host);
-        elements.speedDownBtn?.addEventListener("click", () => engine.playbackHandlers.adjustSpeed(-resolveStep()));
-        elements.speedUpBtn?.addEventListener("click", () => engine.playbackHandlers.adjustSpeed(resolveStep()));
-        elements.pauseBtn?.addEventListener("click", () => engine.playbackHandlers.togglePause());
+        elements.speedDownBtn?.addEventListener("click", () => playbackHandlers.adjustSpeed(-resolveStep()));
+        elements.speedUpBtn?.addEventListener("click", () => playbackHandlers.adjustSpeed(resolveStep()));
+        elements.pauseBtn?.addEventListener("click", () => playbackHandlers.togglePause());
     }
     return {
         root,

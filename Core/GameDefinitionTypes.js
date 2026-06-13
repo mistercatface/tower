@@ -1,6 +1,6 @@
 /**
  * JSDoc types for the editor engine profile (render/sim/world-gen hooks).
- * Shared engine code reads the installed profile via `Apps/Editor/engine.js`.
+ * Shared engine code reads boot profile fields via `installEngineGlobals` / module getters.
  */
 /**
  * @typedef {import("../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig

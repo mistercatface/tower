@@ -4,14 +4,25 @@
 
 - [x] **Phase 1 — shared UI in Libraries** — `Libraries/UI/paramFields.js`, `Component`, `SelectControl`, `SliderControl`; fix Libraries→Apps imports.
 - [ ] **Phase 2 — TileLab naming cleanup** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS/comments.
-- [ ] **Phase 3 — dependency direction** — break inverted deps below; move `mountSandboxToyUi` under `Apps/Editor/ui/`.
+- [ ] **Phase 3 — dependency direction** — remaining items below; move `mountSandboxToyUi` under `Apps/Editor/ui/`.
 
 ### Inverted / injected dependencies
 
-- [ ] **`Libraries/Combat` → `Apps/Editor/engine.js`** — combat imports editor `engine` singleton; move config to Libraries or inject callbacks.
-- [ ] **`engine.js` → `sandboxController` export** — render passes reach into `tilelabSandbox` module global instead of state or a registered port.
-- [ ] **`tilelabSandbox.js` `worldPropStates` patch** — voidSink merge/delete on mount; replace with explicit registration.
+- [x] **`Libraries/Combat` → `Apps/Editor/engine.js`** — targeting + interaction pairs cut; combat/Core import Libraries directly.
+- [x] **`Render` / kinematics → `Apps/Editor/engine.js`** — `getWorldPropRecipes`, `createDefaultKinematicsPorts`, editor `sceneHooks` passed from `preview.js`.
+- [x] **`speedControl` → `Apps/Editor/engine.js`** — playback handlers injected at `mountLabViewport`.
+- [x] **`engine.js` → `sandboxController` export** — `state.sandbox.controller`; render hooks read controller from `getGameState()`.
+- [ ] **`tilelabSandbox.js` `worldPropStates` patch** — voidSink merge/delete on mount; register at boot instead.
+- [ ] **`installEngineGlobals` duplicate read paths** — scalars on boot profile vs module globals (`getGameWorldSurfaceSettings`, `activeProceduralDesign`); collapse to one source.
+- [x] **Drop `export const engine` junk drawer** — boot profile is `editorEngineProfile` (world surface + procedural id only); no render/targeting/interaction on app object.
 - [x] **`Index.html` generic shell** — radio overlay mounted from `installRadioOverlay` at app boot; thin `#gameWrapper` chassis only.
+
+### Phase 3 — still open (priority)
+
+1. **`worldPropStates.voidSink`** — stop mount-time `Object.assign` / `delete`; include in combat boot states.
+2. **`installEngineGlobals` vs boot profile** — single read path for pixelsPerCell, collision, procedural defaults.
+3. **`mountSandboxToyUi` → `Apps/Editor/ui/`** — Libraries sandbox UI mounted from editor shell.
+4. **Phase 2 naming** — `EditorGameState`, `editor-shell.css`, drop `TILELAB_` prefixes, dead shell CSS.
 
 ## floor occupancy belts
 
@@ -125,7 +136,7 @@ Grid-stamped cell belts on `obstacleGrid.floorStore` (not `edgeStore`, not World
 
 ### Smell
 
-- [ ] **`createDefaultRenderPorts` in `engine.js`**
+- [ ] **Delete unused `createDefaultRenderPorts`** — only `createDefaultKinematicsPorts` + `getWorldPropRecipes` remain in use; drop wrapper if nothing imports it.
 
 ### Archive / never-wired
 

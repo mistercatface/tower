@@ -2,12 +2,15 @@ import { LIBRARY_KINEMATICS_PIXEL_SIZE as kinematicsPixelSize } from "../../../L
 import { blitCenteredSprite } from "../../Canvas/QuantizedSpriteCache.js";
 import { resolveSpriteDrawModifier } from "../spriteDrawModifier.js";
 import { CAMERA_HEIGHT } from "../../Spatial/iso/IsometricProjection.js";
+import { GUN_ID_TO_VISUAL } from "../../../Assets/guns/visualMap.js";
+import { createDefaultKinematicsPorts } from "../../Kinematics/kinematicsPorts.js";
 import { createKinematicsBundle } from "../../Kinematics/createKinematicsBundle.js";
-import { engine } from "../../../Apps/Editor/engine.js";
+import { createWeaponVisuals } from "./weapons/createWeaponVisuals.js";
 export class ActorKinematicsRenderer {
     constructor(radius) {
         const displayDiameter = radius * 4;
-        this.bundle = createKinematicsBundle({ pixelSize: kinematicsPixelSize, cameraHeight: CAMERA_HEIGHT, maxTiltDist: radius * 15, displayDiameter, ports: engine.render.kinematicsPorts });
+        const kinematicsPorts = createDefaultKinematicsPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) });
+        this.bundle = createKinematicsBundle({ pixelSize: kinematicsPixelSize, cameraHeight: CAMERA_HEIGHT, maxTiltDist: radius * 15, displayDiameter, ports: kinematicsPorts });
         this.displayDiameter = displayDiameter;
     }
     advance(actor, dt, camera) {

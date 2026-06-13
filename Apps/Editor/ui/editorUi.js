@@ -37,8 +37,8 @@ function resizeCanvases(state) {
     else onMapCanvasResize(state, state.editor.canvas.width);
     paintMapOverviewFrame(state);
 }
-/** @param {import("../state.js").TileLabGameState} state */
-export function mountEditorUi(state) {
+/** @param {import("../state.js").TileLabGameState} state @param {{ playbackHandlers: import("../../../Libraries/Playback/speedControl.js").PlaybackHandlers }} options */
+export function mountEditorUi(state, { playbackHandlers }) {
     const requestRedraw = () => {
         drawLabFrame(state);
         repaintUntilBakesDone(state);
@@ -60,7 +60,7 @@ export function mountEditorUi(state) {
         },
     });
     pushEditorProfile(state);
-    mountLabViewport(state, requestRedraw);
+    mountLabViewport(state, requestRedraw, playbackHandlers);
     bindViewModeControls(state, requestRedraw, () => resizeCanvases(state));
     mountMapOverview(state, () => {
         paintMapOverviewFrame(state);

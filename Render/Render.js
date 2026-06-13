@@ -1,4 +1,4 @@
-import { engine } from "../Apps/Editor/engine.js";
+import { getWorldPropRecipes } from "../Libraries/Props/PropCatalog.js";
 import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
@@ -7,13 +7,26 @@ import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldS
 import { createStructureDrawPass } from "./StructureDrawPass.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "./WorldRenderMode.js";
 import { combatSpatial } from "../Systems/World/CombatSpatialFrame.js";
+/**
+ * @typedef {object} SimulationSceneHooks
+ * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D) => void} [drawGroundOverlays]
+ * @property {import("../Core/GameDefinitionTypes.js").SimulationEffectPass[]} [simulationEffectPasses]
+ * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer: Renderer) => void} [drawPostSimulation]
+ */
+/**
+ * @typedef {object} RendererOptions
+ * @property {{ actorCache?: SpriteCache, turretCache?: SpriteCache }} [caches]
+ * @property {SimulationSceneHooks} [sceneHooks]
+ */
 export class Renderer {
-    /** @param {{ actorCache?: SpriteCache, turretCache?: SpriteCache } | undefined} caches */
-    constructor(canvas, ctx, caches) {
+    /** @param {RendererOptions | { actorCache?: SpriteCache, turretCache?: SpriteCache } | undefined} options */
+    constructor(canvas, ctx, options) {
+        const normalized = options?.sceneHooks || options?.caches ? /** @type {RendererOptions} */ (options) : { caches: options };
         this.canvas = canvas;
         this.ctx = ctx;
-        this.caches = caches;
-        this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), engine.render.world3dPropRecipes);
+        this.caches = normalized.caches;
+        this.sceneHooks = normalized.sceneHooks ?? {};
+        this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getWorldPropRecipes());
         this.worldSceneDrawInput = {
             ragdollCorpses: [],
             worldSurfaces: null,
@@ -58,7 +71,7 @@ export class Renderer {
     /** Ground tiles and debris props — zIndex -5. */
     drawWorldSceneBackdrop(state, viewport) {
         state.worldSurfaces.drawGround(this.ctx, state, viewport);
-        engine.render.drawGroundOverlays(state, viewport, this.ctx);
+        this.sceneHooks.drawGroundOverlays?.(state, viewport, this.ctx);
         this.render3D.drawDebrisProps(this.ctx, this.worldSceneDrawInput, viewport);
     }
     /** Ragdoll corpses between entities and structure — zIndex 55. */
@@ -89,7 +102,7 @@ export class Renderer {
     buildSimulationPipeline(state, viewport) {
         const entityPasses = (state.entityLayers ?? []).map((layer) => ({ zIndex: layer.zIndex, fn: (state, viewport) => this.renderEntityCollection(state[layer.key], state, viewport) }));
         const enabledEffects = this.effectPasses;
-        const portPasses = engine.render.simulationEffectPasses.map((pass) => ({ zIndex: pass.zIndex, fn: (state, viewport) => pass.draw(state, viewport, this.ctx, this) }));
+        const portPasses = (this.sceneHooks.simulationEffectPasses ?? []).map((pass) => ({ zIndex: pass.zIndex, fn: (state, viewport) => pass.draw(state, viewport, this.ctx, this) }));
         const pipeline = [...enabledEffects, ...portPasses, ...entityPasses];
         pipeline.sort((a, b) => a.zIndex - b.zIndex);
         this.simulationPipeline = pipeline.map((p) => p.fn);
@@ -106,7 +119,7 @@ export class Renderer {
         }
         for (let i = 0; i < this.simulationPipeline.length; i++) this.simulationPipeline[i](state, viewport);
         this.ctx.restore();
-        engine.render.drawPostSimulation(state, viewport, this.ctx, this);
+        this.sceneHooks.drawPostSimulation?.(state, viewport, this.ctx, this);
     }
     renderEntityCollection(collection, state, viewport) {
         if (!collection) return;

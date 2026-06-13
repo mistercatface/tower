@@ -6,5 +6,7 @@ export class SandboxWorldState {
         this.assemblyGuides = [];
         this.surfaceProfileZones = [];
         this.entityMeta = new SandboxEntityMetaStore();
+        /** @type {ReturnType<typeof import("../Libraries/Sandbox/createSandboxController.js").createSandboxController> | null} */
+        this.controller = null;
     }
 }

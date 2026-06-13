@@ -16,18 +16,16 @@ import {
     mountSandboxToyUi,
 } from "../../../Libraries/Sandbox/index.js";
 import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
-/** @type {ReturnType<typeof createSandboxController> | null} */
-export let sandboxController = null;
 let unmountToyUi = null;
 /**
  * @param {import("../state.js").TileLabGameState} state
  * @param {() => void} requestRedraw
  */
 export function mountTilelabSandbox(state, requestRedraw) {
-    destroyTilelabSandbox();
+    destroyTilelabSandbox(state);
     Object.assign(worldPropStates, voidSinkWorldPropStates);
     const canvas = () => state.editor.canvas;
-    sandboxController = createSandboxController(state, {
+    state.sandbox.controller = createSandboxController(state, {
         requestRedraw,
         getCanvas: canvas,
         clientToWorld(clientX, clientY) {
@@ -47,13 +45,14 @@ export function mountTilelabSandbox(state, requestRedraw) {
         ],
         defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
     });
-    sandboxController.register();
-    unmountToyUi = mountSandboxToyUi(document.getElementById("sandboxToyPanel"), sandboxController, requestRedraw);
+    state.sandbox.controller.register();
+    unmountToyUi = mountSandboxToyUi(document.getElementById("sandboxToyPanel"), state.sandbox.controller, requestRedraw);
 }
-export function destroyTilelabSandbox() {
+/** @param {import("../state.js").TileLabGameState} state */
+export function destroyTilelabSandbox(state) {
     unmountToyUi?.();
     unmountToyUi = null;
-    sandboxController?.destroy();
-    sandboxController = null;
+    state.sandbox.controller?.destroy();
+    state.sandbox.controller = null;
     delete worldPropStates.voidSink;
 }

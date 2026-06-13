@@ -18,8 +18,8 @@ export function fitLabStageToView(state) {
     state.viewport.zoom = clampLabZoom(zoom);
     zoomControl?.setZoom(state.viewport.zoom);
 }
-/** @param {import("../state.js").TileLabGameState} state @param {() => void} onViewChange */
-export function mountLabViewport(state, onViewChange) {
+/** @param {import("../state.js").TileLabGameState} state @param {{ playbackHandlers: import("../../../Libraries/Playback/speedControl.js").PlaybackHandlers }} options */
+export function mountLabViewport(state, onViewChange, playbackHandlers) {
     zoomControl = applyZoomControl(document.getElementById("labZoomControl"), {
         inject: true,
         prefix: "Cam",
@@ -30,7 +30,7 @@ export function mountLabViewport(state, onViewChange) {
             onViewChange();
         },
     });
-    speedControl = applySpeedControl(document.getElementById("labSpeedControl"), { inject: true });
+    speedControl = applySpeedControl(document.getElementById("labSpeedControl"), { inject: true, playbackHandlers });
     speedControl.refresh(state);
     setupLabViewportNavigation("gameCanvas", {
         getCamera: () => state.viewport,

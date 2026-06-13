@@ -1,34 +1,29 @@
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { GUN_ID_TO_VISUAL } from "../../Assets/guns/visualMap.js";
-import { createDefaultRenderPorts } from "../../Libraries/Render/defaultRenderPorts.js";
-import { createWeaponVisuals } from "../../Libraries/Render/Characters/weapons/createWeaponVisuals.js";
-import { getGameState } from "../../GameState/GameState.js";
 import { worldPropStates } from "../../Entities/WorldPropStates.js";
 import { combatWorldPropStates } from "../../Entities/worldPropCombatStates.js";
 import { installGameState } from "../../GameState/GameState.js";
 import { events, requestUiUpdate, Events } from "../../Core/EventSystem.js";
 import { PauseManager } from "../../Libraries/Pause/index.js";
 import { installEngineGlobals } from "../../Core/engineGlobals.js";
-import { adjustSelectedSpeed, bindPlayback } from "../../Libraries/Playback/playbackController.js";
+import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { CombatParticles } from "../../Libraries/Render/CombatParticles.js";
-import { sandboxInteractionPairs } from "../../Libraries/Combat/sandboxInteraction.js";
 import { updateSandboxAutoCombat } from "../../Libraries/Combat/worldPropAutoCombat.js";
 import { Projectile } from "../../Entities/Projectile.js";
 import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
 import { runPushablePhysics } from "../../Libraries/Motion/pushablePhysicsPass.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
-import { drawSandboxAssemblyGuides, drawSandboxAssemblySurfaces } from "../../Libraries/Sandbox/assemblySurfaceDraw.js";
 import { TileLabGameState } from "./state.js";
-import { floorPropEffectPass, tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
+import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
 import { tickFloorOccupancy } from "../../Libraries/Sandbox/floorOccupancy.js";
-import { sandboxController } from "./world/tilelabSandbox.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
 import { drawLabFrame } from "./ui/preview.js";
 const EDITOR_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
+/** @type {import("../../Core/GameDefinitionTypes.js").EngineProfile} */
+const editorEngineProfile = { id: "editor", worldSurface: { pixelsPerCell: 6 }, proceduralDesign: { surfaceProfileId: EDITOR_SURFACE_PROFILE_ID } };
 /** @type {object[]} */
 const simulationEvents = [];
 /** @param {object[]} events @param {import("./state.js").TileLabGameState} state */
@@ -54,39 +49,6 @@ function runSimulationTick(state, dt) {
     dispatchSimulationEvents(simulationEvents, state);
     FloatingText.updateAll(state, simDt);
 }
-/** @typedef {{ togglePause: () => void, adjustSpeed: (delta: number) => void }} PlaybackHandlers */
-export const engine = {
-    id: "editor",
-    interactionPairs: sandboxInteractionPairs,
-    render: {
-        ...createDefaultRenderPorts({ weaponVisuals: createWeaponVisuals(GUN_ID_TO_VISUAL) }),
-        drawGroundOverlays: (state, viewport, ctx) => {
-            drawSandboxAssemblySurfaces(ctx, state, viewport);
-            drawSandboxAssemblyGuides(ctx, state);
-        },
-        drawPostSimulation: (state, viewport, ctx) => CombatParticles.renderAll(ctx, state, viewport),
-        simulationEffectPasses: [
-            floorPropEffectPass,
-            {
-                zIndex: 65,
-                draw(_state, _viewport, ctx) {
-                    sandboxController?.drawSelectionRings(ctx);
-                },
-            },
-            {
-                zIndex: 72,
-                draw(state, _viewport, ctx) {
-                    sandboxController?.drawBehaviorOverlays(ctx);
-                    sandboxController?.drawMarqueeOverlay(ctx);
-                    sandboxController?.drawPathOverlay(ctx);
-                    sandboxController?.drawLaunchPreview(ctx);
-                },
-            },
-        ],
-    },
-    worldSurface: { pixelsPerCell: 6 },
-    proceduralDesign: { surfaceProfileId: EDITOR_SURFACE_PROFILE_ID },
-};
 export function createEditorApp() {
     const state = new TileLabGameState();
     state.ragdollCorpses = [];
@@ -108,8 +70,7 @@ export function createEditorApp() {
         link.href = new URL("./tilelab.css", import.meta.url).href;
         document.head.appendChild(link);
     }
-    installEngineGlobals(engine, state);
-    bindPlayback(engine.playback);
+    installEngineGlobals(editorEngineProfile, state);
     const pauseManager = new PauseManager(state);
     installRadioOverlay(document.getElementById("gameWrapper"), {
         eventBus: events,
@@ -117,7 +78,7 @@ export function createEditorApp() {
         requestResume: (reason) => pauseManager.resume(reason),
         content: { conversations: {}, speakers: {}, mainCharacterId: "player" },
     });
-    engine.playbackHandlers = {
+    const playbackHandlers = {
         togglePause() {
             pauseManager.toggleUser();
             requestUiUpdate();
@@ -134,7 +95,7 @@ export function createEditorApp() {
         dt = Math.min(dt, 50);
         state.scheduler.update(dt);
         tickSandboxCameraFollow(state.viewport, state, state.entityRegistry, dt);
-        sandboxController?.tick(dt);
+        state.sandbox.controller?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
         drawLabFrame(state);
         requestAnimationFrame(loop);
@@ -142,7 +103,7 @@ export function createEditorApp() {
     events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);
     events.on(Events.UI_UPDATE, () => refreshEditorUi(state));
     window.addEventListener("resize", () => state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height));
-    mountEditorUi(state);
+    mountEditorUi(state, { playbackHandlers });
     state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);
     fitLabStageToView(state);
     requestAnimationFrame(loop);
