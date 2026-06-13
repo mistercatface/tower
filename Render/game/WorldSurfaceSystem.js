@@ -6,7 +6,7 @@ import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.j
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
-import { collectStaticRoofHeightsFromGrid, collectStaticStructureZLevelsFromGrid } from "../../Libraries/World/wallGridCells.js";
+import { collectStaticRoofHeightsFromGrid } from "../../Libraries/World/wallGridCells.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
     constructor(settings = getGameWorldSurfaceSettings()) {
@@ -22,7 +22,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         this.surfaceProfileOverride = null;
     }
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        const roofZ = collectStaticStructureZLevelsFromGrid(state.obstacleGrid);
+        const roofZ = state.obstacleGrid.collectStaticStructureZLevels();
         super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, roofZ);
     }
     /** Draw procedural ground: shadow underpaint + baked chunk textures (simulation/inspector scenes only). */
@@ -58,7 +58,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     }
     /** Flat world-aligned wall rails — segment footprints + static voxelBlock cells + railWall edges. */
     drawFlatWallRails(ctx, state, viewport) {
-        const zLevels = collectStaticStructureZLevelsFromGrid(state.obstacleGrid);
+        const zLevels = state.obstacleGrid.collectStaticStructureZLevels();
         const fallbackZ = this.settings.wallHeight;
         const levels = zLevels.length ? zLevels : [fallbackZ];
         const playBounds = playBoundsFromObstacleGrid(state.obstacleGrid);

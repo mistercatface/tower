@@ -6,19 +6,19 @@ One lattice for grid-snapped wall geometry.
 
 **Canonical terms (locked):** **`voxelBlock`** vs **`railWall`**. Use these in chat, docs, and **new** code/comments. Never say “grid wall”, “fill”, or “edge rail” when you mean one of the two — always pick the term. **Not expected to change** unless a third static-grid geometry kind is added.
 
-**Storage field names** (`grid[]`, `edgeGrid`, `edgeThicknessGrid`) stay as-is — implementation detail, not part of the vocabulary.
+**Storage:** `grid[]` (voxelBlock) + `edgeStore` (railWall: `{ kind, heightDelta, thicknessLevel }`). Stamp API still accepts absolute cap level; stored as delta above neighbor fill.
 
 **Code rename** (symbols/files still say `GridWall`, `EdgeRail`, `staticGrid`, etc.) — deferred to **later refactor phase**; see Backlog → Refactors. No dual aliases when that lands.
 
 |               | **voxelBlock**    | **railWall**                                   |
 | ------------- | ----------------- | ---------------------------------------------- |
 | **Occupancy** | Whole cell solid  | Thin strip on cell boundary; interior walkable |
-| **Storage**   | `grid[idx]`       | `edgeGrid[idx*4+side]` + `edgeThicknessGrid`   |
+| **Storage**   | `grid[idx]`       | `edgeStore` slots + pooled edge objects        |
 | **Geometry**  | vertical face     | thin box                                       |
 | **Collision** | cell-center proxy | boundary segment (inline; frozen)              |
 
 - **`grid[idx]`** — voxelBlock height (0 = open, 1+ = static cell height).
-- **`edgeGrid` + `edgeThicknessGrid`** — railWall on N/E/S/W boundary.
+- **`edgeStore`** — railWall on N/E/S/W boundary (`kind: 'railWall'`, cap = neighbor fill + `heightDelta`).
 
 ### Wired (both kinds share the same pipeline hooks)
 
@@ -26,11 +26,12 @@ One lattice for grid-snapped wall geometry.
 | ---- | ---------- | -------- |
 | **Stamp / delete** | `stampStaticWallsInBounds`, cavern fill | `stampWallEdgesInBounds`, cavern edge grids; `deleteStaticWallsInBounds` clears both |
 | **Nav** | `isBlocked` | `canStep` blocks cardinal/diagonal crossing stamped edges |
-| **Collision** | cell-center proxy | boundary segment proxy (`isEdgeRail`); hit is no-op until damage lands |
+| **Collision** | cell-center proxy | boundary segment proxy (`isEdgeRail`); `damageStaticGridEdge` on hit |
 | **3D draw** | `collectStaticGridWallDrawables` → `drawProjectedWallFace` | `collectStaticGridEdgeRailDrawables` → sides/ends + `drawProjectedRailWallCap` |
 | **Top surface** | chunk roof (`drawRoofs` + cell mask at `grid[]` heights) | procedural cap (chunk sample at `wallBaseZ`, projected at cap height) |
 | **Invalidate** | `bumpWallGridRevision`, `invalidateGridBounds`, draw geom caches | same revision + invalidation path |
 | **Projection** | `projectWorldPointInto` + `drawProjectedWallFace` | same vertical path; cap uses per-corner chunk UV |
+| **Flat 2D** | chunk clip + footprint damage | `clipChunkToFlatWallFootprints`, `drawStaticEdgeRailFootprintDamageOverlays` |
 
 ### Two render pipelines (intentional split)
 
@@ -47,8 +48,8 @@ One lattice for grid-snapped wall geometry.
 
 ### P0 — Gameplay parity
 
-- [ ] **railWall damage** — voxelBlock uses `damageStaticGridCell` (`staticCellHealth`, clears `grid[idx]`). railWall proxies no-op in `handleHit` (`if (this.isEdgeRail) return`). Need per-edge health keyed by `(col, row, side)`, decrement on hit, clear `edgeGrid` + neighbor sync on break, bump revision, invalidate draw/nav/surfaces. Visual: damage alpha on rail side atlases + cap (extend or mirror `getStaticCellDamageAlpha*`).
-- [ ] **voxelBlock damage regression** — existing cell path unchanged when railWall damage lands.
+- [x] **railWall damage** — `damageStaticGridEdge`, `getStaticEdgeDamageAlphaAt`, cap/side overlays, editor/map delete clears edge health keys.
+- [ ] **voxelBlock damage regression** — re-verify cell path unchanged after edgeStore migration.
 
 ### P1 — Ship gate
 
@@ -58,9 +59,8 @@ One lattice for grid-snapped wall geometry.
 ### P2 — Editor / tooling parity
 
 - [ ] **Editor labels** — map wall tool still says “Solid fill” / “Edge line”; align UI copy with voxelBlock / railWall (optional naming-clarity pass with code rename).
-- [ ] **Height edit for railWall** — `setStaticWallHeightInBounds` only touches `grid[]`; no UI to raise/lower stamped edges without re-stamp. Wire height slider for edge mode or extend setter to `edgeGrid`.
+- [ ] **Height edit for railWall** — `setStaticWallHeightInBounds` only touches `grid[]`; no UI to raise/lower stamped edges without re-stamp. Wire height slider for edge mode or extend setter to `edgeStore`.
 - [ ] **Map overview** — `bakeObstacleOverviewCache` uses `grid[]` only; stamped railWalls invisible. Encode edges (e.g. tint or overlay) if overview should match play view.
-- [ ] **Flat 2D mode** — `createFlat2dStructurePass` skips all static grid walls (`skipWalls: true`); only segment `drawFlatWallRails`. Document radial-only for static grid **or** add flat footprint pass for voxelBlock + railWall.
 
 ### P3 — Polish / perf
 
@@ -75,7 +75,7 @@ One lattice for grid-snapped wall geometry.
 - [ ] railWall: long sides + end faces show thickness; top cap meets side tops in projection.
 - [ ] Interior walkable through cells with railWalls only (`canStep` + collision spot-check).
 - [ ] **railWall damage** — ball/projectile breaks rail without clearing walkable cell interior.
-- [ ] Thickness 2 vs 4: visible width changes (collision already tracks thickness — retest if collision touched).
+- [ ] Thickness 2 vs 4: visible width changes (collision already tracks thickness — retest after edgeStore).
 - [ ] 8×1 line: continuous after collinear merge (chunk-boundary merge blocked).
 - [ ] Profile edit: side and cap motifs update.
 - [ ] No parallel collision pass / teleport nudging.
@@ -86,11 +86,16 @@ One lattice for grid-snapped wall geometry.
 
 - [ ] Grid-snapped map content — fill + edge only for rails (no Segment entities for stamped lines). Editor + cavern gen wired; audit remaining Segment stamp paths.
 - [ ] **`segmentGrid`** — arbitrary-angle walls until baked (third kind; not voxelBlock/railWall).
-- [ ] Conveyors — floor props only; no edge data on belt assets.
+- [ ] Conveyors — floor props only; add `EDGE_KIND.Conveyor` edge kind when belt edges land.
 
 ---
 
 ## Backlog
+
+### CellEdgeStore (follow-ups)
+
+- [ ] **Conveyor edge kind** — `EDGE_KIND.Conveyor` stub exists; wire one-way crossing + draw when conveyor tool ships.
+- [ ] **Rail height edit in editor** — raise/lower stamped edges via `heightDelta` without re-stamp.
 
 ### Conveyor belts (Phase 2+)
 
@@ -129,7 +134,7 @@ One lattice for grid-snapped wall geometry.
 
 ### Refactors
 
-- [ ] **`voxelBlock` / `railWall` code rename (later phase)** — Convention locked; legacy symbols remain until a dedicated sweep. One PR, no alias passthroughs; storage fields unchanged. Mapping:
+- [ ] **`voxelBlock` / `railWall` code rename (later phase)** — Convention locked; legacy symbols remain until a dedicated sweep. One PR, no alias passthroughs. Mapping:
     - voxelBlock: `resolveGridWallFace` → `resolveGridVoxelBlockFace`, `collectGridWallFacesInAabb` → `collectGridVoxelBlockFacesInAabb`, `StaticGridWallDraw` → `StaticGridVoxelBlockDraw`, `staticGrid` → `staticGridVoxelBlock`, etc.
     - railWall: `resolveGridWallEdgeRailBox` → `resolveGridRailWallBox`, `StaticGridEdgeRailDraw` → `StaticGridRailWallDraw`, `staticGridEdgeRail` → `staticGridRailWall`, `isEdgeRail` → `isRailWall`, etc.
 - [ ] **Naming clarity (same phase, optional)** — Editor tool labels, grep cleanup in comments/todo, proxy factory field names. Collision segment math frozen; ball retest only if proxy fields rename.

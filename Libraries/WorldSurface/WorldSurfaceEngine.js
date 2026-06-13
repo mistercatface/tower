@@ -19,7 +19,7 @@ import {
     drawStaticWallFootprintDamageOverlays,
     drawStaticEdgeRailFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
-import { chunkHasStaticRoofAtLevel, chunkHasStaticEdgeRailsAtLevel, resolveWallCapHeightPx } from "../World/wallGridCells.js";
+import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridCells.js";
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
@@ -310,7 +310,14 @@ export class WorldSurfaceEngine {
                     !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx) &&
                     !chunkHasBlockedCells(obstacleGrid, originX, originY, chunkSizePx) &&
                     !(staticRoofDraw && chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel)) &&
-                    !(flatWallRails && chunkHasStaticEdgeRailsAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel))
+                    !(flatWallRails && chunkHasStaticStructureAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel))
+                )
+                    continue;
+                if (
+                    zLevel > 0 &&
+                    flatWallRails &&
+                    !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx) &&
+                    !chunkHasStaticStructureAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel)
                 )
                     continue;
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);

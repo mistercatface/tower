@@ -70,8 +70,8 @@ export function stampStaticWallsInBounds(state, boundsConfig, heightLevel) {
     notifyWallRegionChange(state, { startCol, endCol, startRow, endRow }, anyNew);
     return true;
 }
-/** @param {import("../state.js").TileLabGameState} state @param {import("./cellBoundsConfig.js").CellBoundsConfig} boundsConfig @param {number} side @param {number} heightLevel @param {number} thickness */
-export function stampWallEdgesInBounds(state, boundsConfig, side, heightLevel, thickness) {
+/** @param {import("../state.js").TileLabGameState} state @param {import("./cellBoundsConfig.js").CellBoundsConfig} boundsConfig @param {number} side @param {number} heightLevel @param {number} thicknessLevel */
+export function stampWallEdgesInBounds(state, boundsConfig, side, heightLevel, thicknessLevel) {
     prepareWallRegion(state, boundsConfig);
     const grid = state.obstacleGrid;
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
@@ -83,7 +83,7 @@ export function stampWallEdgesInBounds(state, boundsConfig, side, heightLevel, t
     forEachGlobalCellInBounds(boundsConfig, (globalCol, globalRow) => {
         const local = globalCellToLocal(grid, globalCol, globalRow);
         if (!local) return;
-        grid.writeCellEdge(local.col, local.row, side, level, thickness);
+        grid.writeCellEdge(local.col, local.row, side, level, thicknessLevel);
         any = true;
         if (local.col < startCol) startCol = local.col;
         if (local.col > endCol) endCol = local.col;
@@ -114,8 +114,8 @@ export function deleteStaticWallsInBounds(state, boundsConfig) {
             cellChanged = true;
         }
         for (let side = 0; side < 4; side++) {
-            if (grid.edgeGrid[local.idx * 4 + side] === 0) continue;
-            grid.writeCellEdge(local.col, local.row, side, 0, 0);
+            if (!grid.edgeStore.has(local.col, local.row, side, grid.cols)) continue;
+            grid.edgeStore.clearMirrored(local.col, local.row, side, grid.cols, grid.rows);
             state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
             cellChanged = true;
         }

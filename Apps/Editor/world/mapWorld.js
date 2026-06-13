@@ -151,9 +151,9 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
             cellChanged = true;
         }
         for (let side = 0; side < 4; side++)
-            if (grid.edgeGrid[idx * 4 + side] !== 0) {
+            if (grid.edgeStore.has(col, row, side, grid.cols)) {
                 const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
-                grid.writeCellEdge(col, row, side, 0, 0);
+                grid.edgeStore.clearMirrored(col, row, side, grid.cols, grid.rows);
                 state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
                 cellChanged = true;
             }
@@ -281,9 +281,9 @@ export function generateLabRailCaverns(state) {
                 state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
             }
             for (let side = 0; side < 4; side++) {
-                if (grid.edgeGrid[idx * 4 + side] === 0) continue;
+                if (!grid.edgeStore.has(c, r, side, grid.cols)) continue;
                 const { globalCol, globalRow } = gridCellToGlobalColRow(grid, c, r);
-                grid.writeCellEdge(c, r, side, 0, 0);
+                grid.edgeStore.clearMirrored(c, r, side, grid.cols, grid.rows);
                 state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
             }
         }

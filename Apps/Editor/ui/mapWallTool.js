@@ -95,7 +95,7 @@ export function buildMapWallToolPanel(state, mount, onChanged) {
     const thicknessRow = document.createElement("div");
     thicknessRow.hidden = (config.wallStampMode ?? "fill") !== "edgeLine";
     thicknessRow.appendChild(
-        new SliderControl("Edge thickness (px)", 1, 8, 1, config.edgeThickness ?? 2, (val) => {
+        new SliderControl("Edge thickness", 1, 8, 1, config.edgeThickness ?? 2, (val) => {
             config.edgeThickness = val;
         }).element,
     );

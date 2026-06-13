@@ -3,6 +3,7 @@
  */
 import { packCellKey, packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { isRailWallEdge } from "../Spatial/grid/CellEdge.js";
 import { getDamageAlphaFromHealth } from "../Render/Structure3D/wallDamageVisual.js";
 import { cellIsStaticWallAtIdx, gridCellToGlobalColRow } from "./wallGridCells.js";
 export const STATIC_CELL_MAX_HEALTH = 30;
@@ -40,8 +41,7 @@ export function getStaticCellDamageAlphaAtIdx(grid, state, col, row, idx) {
  */
 export function getStaticEdgeDamageAlphaAt(grid, state, col, row, side) {
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return 0;
-    const idx = colRowToIndex(col, row, grid.cols);
-    if (grid.edgeGrid[idx * 4 + side] === 0) return 0;
+    if (!isRailWallEdge(grid.edgeStore.get(col, row, side, grid.cols))) return 0;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
     const { health, maxHealth } = readStaticEdgeHealth(state, globalCol, globalRow, side);
     return getDamageAlphaFromHealth(health, maxHealth);
@@ -93,8 +93,7 @@ export function damageStaticGridCell(state, grid, col, row, damage) {
  */
 export function damageStaticGridEdge(state, grid, col, row, side, damage) {
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return;
-    const idx = colRowToIndex(col, row, grid.cols);
-    if (grid.edgeGrid[idx * 4 + side] === 0) return;
+    if (!isRailWallEdge(grid.edgeStore.get(col, row, side, grid.cols))) return;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
     const key = packEdgeCellKey(globalCol, globalRow, side);
     let entry = state.staticCellHealth.get(key);
