@@ -144,8 +144,8 @@ export function runCollisionPipeline(
     if (hasPushables)
         for (let i = 0; i < pushables.length; i++) {
             const prop = pushables[i];
-            prop._frameDispX = prop.x - (prop._portalContactPrevX ?? prop.x);
-            prop._frameDispY = prop.y - (prop._portalContactPrevY ?? prop.y);
+            prop._frameDispX = prop.x - (prop._wallDispPrevX ?? prop.x);
+            prop._frameDispY = prop.y - (prop._wallDispPrevY ?? prop.y);
         }
     if (hasPushables || hasCombatants)
         for (let iter = 0; iter < pushableIterations; iter++) {
@@ -164,8 +164,8 @@ export function runCollisionPipeline(
     if (hasPushables)
         for (let i = 0; i < pushables.length; i++) {
             const prop = pushables[i];
-            prop._portalContactPrevX = prop.x;
-            prop._portalContactPrevY = prop.y;
+            prop._wallDispPrevX = prop.x;
+            prop._wallDispPrevY = prop.y;
         }
     if (hasCombatants && spatialFrame.forEachCombatantPair)
         spatialFrame.forEachCombatantPair((a, b) => {

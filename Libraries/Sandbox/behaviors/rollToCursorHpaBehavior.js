@@ -1,28 +1,10 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { buildPathOverlayFromProgress } from "../../Pathfinding/pathFollow.js";
+import { clearCrossingGrantOnEntity, refreshNavCrossingGrant, syncCrossingGrantToEntity } from "../../Pathfinding/crossingGrant.js";
 import { getRollToCursorConfig, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
-/** @param {object} prop */
-function clearPortalHopTicket(prop) {
-    delete prop._portalHopTicket;
-    delete prop._portalNavActive;
-}
-/** @param {object} prop @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../../Pathfinding/navSession.js").NavSessionState & { portalHopWaypointIdx?: number | null }} navState */
-function syncPortalHopTicket(prop, grid, navState) {
-    delete prop._portalHopTicket;
-    delete prop._portalNavActive;
-    const path = navState.path;
-    if (!path?.length) return;
-    prop._portalNavActive = true;
-    const hopIdx = navState.portalHopWaypointIdx;
-    if (hopIdx == null) return;
-    const wp = path[hopIdx];
-    const { col: mouthCol, row: mouthRow } = grid.worldToGrid(wp.x, wp.y);
-    if (navState.pathProgressIdx !== hopIdx) return;
-    prop._portalHopTicket = { mouthCol, mouthRow };
-}
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
+/** @param {{ x: number, y: number }} world @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 function snapMoveTargetToCellCenter(grid, world) {
     const { col, row } = grid.worldToGrid(world.x, world.y);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
@@ -47,7 +29,7 @@ export function createRollToCursorHpaBehavior(state) {
     };
     const releaseMoveTarget = (prop) => {
         clearTarget();
-        clearPortalHopTicket(prop);
+        clearCrossingGrantOnEntity(prop);
         releaseRollMoveTarget(prop);
     };
     /** @param {{ x: number, y: number }} world @param {boolean} [forceReset] */
@@ -85,8 +67,8 @@ export function createRollToCursorHpaBehavior(state) {
             if (!targetWorld) return;
             const config = getRollToCursorConfig(prop, { stopRadius: 8 });
             const steerTarget = resolveFloorBeltSteerTarget(state.obstacleGrid, targetWorld.x, targetWorld.y, prop.x, prop.y);
-            if (prop._portalNavDirty) {
-                prop._portalNavDirty = false;
+            if (prop._navPathStale) {
+                prop._navPathStale = false;
                 hpaNav.reset();
                 hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
             } else hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
@@ -103,7 +85,8 @@ export function createRollToCursorHpaBehavior(state) {
                 { pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5), arrivalDistance: config.stopRadius, pathOffPathDistance: 80 },
                 state.obstacleGrid,
             );
-            syncPortalHopTicket(prop, state.obstacleGrid, hpaNav.navState);
+            refreshNavCrossingGrant(hpaNav.navState, state.obstacleGrid);
+            syncCrossingGrantToEntity(prop, hpaNav.navState);
             if (!steering) return;
             if (steering.desiredX === 0 && steering.desiredY === 0) {
                 if (distToTarget <= config.stopRadius) releaseMoveTarget(prop);
@@ -113,7 +96,7 @@ export function createRollToCursorHpaBehavior(state) {
         },
         getPathOverlay(prop) {
             if (!targetWorld) return null;
-            const hopIdx = hpaNav.navState.portalHopWaypointIdx;
+            const hopIdx = hpaNav.navState.boundaryHopIdx;
             let progressIdx = hpaNav.navState.pathProgressIdx;
             if (hopIdx != null && progressIdx > hopIdx) progressIdx = hopIdx;
             const trace = buildPathOverlayFromProgress(prop.x, prop.y, hpaNav.navState.path, progressIdx, state.obstacleGrid);

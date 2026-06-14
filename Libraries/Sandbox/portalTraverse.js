@@ -5,16 +5,17 @@ import {
     portalBodyInMouthZone,
     portalCrossingVectorForEdge,
     portalEdgeBlocksCollision,
-    portalIntakeAllowsCrossing,
     portalMouthAndBackCells,
     portalTraverseExitCell,
     portalTraverseExitVector,
 } from "../Spatial/grid/portalAccess.js";
+import { crossingGrantAllows, clearCrossingGrantOnEntity } from "../Pathfinding/crossingGrant.js";
 import { registerPassageWallContactHandler } from "../Spatial/grid/passageWallContact.js";
 import { invalidateWallResolveCache } from "../Motion/WallCollisionResolver.js";
 import { quantizeCardinalAngle } from "../Math/Angle.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { evaluatePortalStepEntry } from "./portalLinks.js";
+import { registerPortalPassageStepHandler } from "./portalStep.js";
 const PORTAL_TRAVERSE_COOLDOWN_MS = 50;
 const PORTAL_REJECT_COOLDOWN_MS = 16;
 const PORTAL_EXIT_PAD_CELL_FRAC = 0.15;
@@ -25,7 +26,7 @@ function rejectPortalIntake(entity, cross, grid, gameTime) {
     const dist = bodyRadius + grid.cellSize * PORTAL_REJECT_NUDGE_CELL_FRAC;
     entity.x -= cross.x * dist;
     entity.y -= cross.y * dist;
-    entity._portalTraverseUntil = gameTime + PORTAL_REJECT_COOLDOWN_MS;
+    entity._boundaryTraverseUntil = gameTime + PORTAL_REJECT_COOLDOWN_MS;
     invalidateWallResolveCache(entity);
     wakePushableBody(entity);
 }
@@ -66,10 +67,9 @@ export function applyPortalTraverse(state, entity, entry) {
     const exitGrid = grid.worldToGrid(entity.x, entity.y);
     entity._gridZonePrevCellIdx = colRowToIndex(exitGrid.col, exitGrid.row, grid.cols);
     applyPortalExitMotion(entity, exitOut);
-    delete entity._portalHopTicket;
-    delete entity._portalNavActive;
-    entity._portalTraverseUntil = state.gameTime + PORTAL_TRAVERSE_COOLDOWN_MS;
-    entity._portalNavDirty = true;
+    clearCrossingGrantOnEntity(entity);
+    entity._boundaryTraverseUntil = state.gameTime + PORTAL_TRAVERSE_COOLDOWN_MS;
+    entity._navPathStale = true;
     invalidateWallResolveCache(entity);
     wakePushableBody(entity);
     return true;
@@ -85,7 +85,7 @@ export function applyPortalTraverse(state, entity, entry) {
 export function tryPortalIntake(state, entity, segment) {
     if (entity.isDead) return false;
     const now = state.gameTime;
-    if (entity._portalTraverseUntil != null && now < entity._portalTraverseUntil) return false;
+    if (entity._boundaryTraverseUntil != null && now < entity._boundaryTraverseUntil) return false;
     if (segment.isDead || !isPortalEdge(segment.passageEdge)) return false;
     const grid = state.obstacleGrid;
     const edge = segment.passageEdge;
@@ -94,7 +94,7 @@ export function tryPortalIntake(state, entity, segment) {
     if (!portalBodyInMouthZone(grid, edge, gridCol, gridRow, gridSide, entity.x, entity.y, bodyRadius)) return false;
     const cross = portalCrossingVectorForEdge(edge, gridCol, gridRow, gridSide);
     const { mouth, back } = portalMouthAndBackCells(gridCol, gridRow, gridSide, edge);
-    if (!portalIntakeAllowsCrossing(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) return false;
+    if (!crossingGrantAllows(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) return false;
     if (!portalBodyCrossedEntryPlane(entity.x, entity.y, mouth, back, cross, grid, bodyRadius)) return false;
     const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
     if (!entry) return false;
@@ -107,6 +107,7 @@ let passageHandlersRegistered = false;
 export function registerSandboxPassageHandlers() {
     if (passageHandlersRegistered) return;
     passageHandlersRegistered = true;
+    registerPortalPassageStepHandler();
     registerPassageWallContactHandler(PASSAGE_MODE.Portal, (ctx) => {
         if (ctx.state && tryPortalIntake(ctx.state, ctx.entity, ctx.segment)) return "consumed";
         if (!portalEdgeBlocksCollision(ctx.edge, ctx.ownerCol, ctx.ownerRow, ctx.ownerSide, ctx.entity, ctx.bodyRadius, ctx.vx, ctx.vy, ctx.dispX, ctx.dispY, ctx.grid)) return "skip";

@@ -1,3 +1,4 @@
+import { crossingGrantAllows } from "../../Pathfinding/crossingGrant.js";
 import { gridWallEdgeMirrorSide, gridWallEdgeNeighbor } from "../../World/wallGridCells.js";
 import { PORTAL_ACCESS_MODE } from "./CellEdge.js";
 /** Default allowedSide for access one — owner cell (mirror of stamped edge side). */
@@ -23,10 +24,6 @@ export function formatPortalAccessSideLabel(ownerSide, allowedSide) {
     if (allowedSide === 2) return "South neighbor";
     return "West neighbor";
 }
-/** Non-directional step query. Caller must pass a portal edge. Portals never allow normal adjacency walks. */
-export function portalBlocksStepWithoutDirection(edge, ownerSide) {
-    return true;
-}
 /** @param {object} edge @param {number} ownerSide */
 export function portalMouthAllowedSide(edge, ownerSide) {
     if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return portalAccessDefaultAllowedSide(ownerSide);
@@ -44,15 +41,6 @@ export function portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge) {
     const back = mouth.col === ownerCol && mouth.row === ownerRow ? { col: nc, row: nr } : { col: ownerCol, row: ownerRow };
     return { mouth, back };
 }
-/**
- * Portal step blocking — mouth cell only when powered; solid both sides when unpowered.
- * @returns {boolean} true when the step is blocked
- */
-export function portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide) {
-    if (edge.powered !== true) return true;
-    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
-    return fromCol !== allowed.col || fromRow !== allowed.row;
-}
 /** Whether a portal edge emits physics collision rails. Caller must pass a portal edge. */
 export function portalEdgeEmitsCollision(edge) {
     return true;
@@ -66,22 +54,6 @@ export function portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, allow
 /** Crossing direction for a portal segment emit owner. */
 export function portalCrossingVectorForEdge(edge, ownerCol, ownerRow, ownerSide) {
     return portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
-}
-const PORTAL_CROSSING_INTENT_EPS = 0.05;
-/** @param {{ x: number, y: number }} cross @param {number} vx @param {number} vy @param {number} dispX @param {number} dispY */
-export function portalHasCrossingIntent(cross, vx, vy, dispX, dispY) {
-    if (vx * cross.x + vy * cross.y > PORTAL_CROSSING_INTENT_EPS) return true;
-    return dispX * cross.x + dispY * cross.y > PORTAL_CROSSING_INTENT_EPS;
-}
-/**
- * Hop ticket / nav contract + crossing intent. Shared by intake and collision skip — skip only when a legal crossing is in progress.
- */
-export function portalIntakeAllowsCrossing(entity, mouthCol, mouthRow, cross, vx, vy, dispX, dispY) {
-    const crossing = portalHasCrossingIntent(cross, vx, vy, dispX, dispY);
-    const ticket = entity._portalHopTicket;
-    if (ticket) return ticket.mouthCol === mouthCol && ticket.mouthRow === mouthRow && crossing;
-    if (entity._portalNavActive) return false;
-    return crossing;
 }
 /**
  * Body center has crossed the portal mid-plane toward the back cell (traverse only — stricter than mouth zone).
@@ -131,7 +103,7 @@ export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, e
     if (!portalBodyInMouthZone(grid, edge, ownerCol, ownerRow, ownerSide, entity.x, entity.y, bodyRadius)) return true;
     const cross = portalCrossingVectorForEdge(edge, ownerCol, ownerRow, ownerSide);
     const { mouth } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
-    return !portalIntakeAllowsCrossing(entity, mouth.col, mouth.row, cross, vx, vy, dispX, dispY);
+    return !crossingGrantAllows(entity, mouth.col, mouth.row, cross, vx, vy, dispX, dispY);
 }
 /** World cell at the mouth of the partner portal. */
 export function portalTraverseExitCell(grid, partnerCol, partnerRow, partnerSide) {

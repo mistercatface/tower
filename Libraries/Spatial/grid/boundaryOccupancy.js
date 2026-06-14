@@ -10,10 +10,10 @@ import {
     parsePassageMode,
     parsePortalAccessBlock,
     parsePortalAccessMode,
-    passageEdgeBlocksStep,
     PORTAL_ACCESS_MODE,
 } from "./CellEdge.js";
-import { portalAccessDefaultAllowedSide, portalBlocksStepFrom, portalBlocksStepWithoutDirection } from "./portalAccess.js";
+import { portalAccessDefaultAllowedSide } from "./portalAccess.js";
+import { resolvePassageStepFrom, resolvePassageStepUndirected } from "./passageStep.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
@@ -256,8 +256,7 @@ export function clearBeltBoundariesForCell(grid, col, row, kind, facingIndex) {
 export function boundaryBlocksStep(grid, col, row, side) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (edgeBlocksCrossing(edge)) return true;
-    if (isPortalEdge(edge)) return portalBlocksStepWithoutDirection(edge, side);
-    return passageEdgeBlocksStep(edge, side, side);
+    return resolvePassageStepUndirected({ grid, edge, ownerCol: col, ownerRow: row, ownerSide: side, crossedSide: side, fromCol: col, fromRow: row, toCol: col, toRow: row, directional: false });
 }
 /** @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow */
 function beltCrossedSideFrom(fromCol, fromRow, toCol, toRow) {
@@ -287,7 +286,7 @@ function beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow) {
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow @param {number} ownerCol @param {number} ownerRow @param {number} ownerSide */
 function boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide) {
     const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
-    if (isPortalEdge(edge) && portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide)) return true;
+    if (resolvePassageStepFrom({ grid, edge, ownerCol, ownerRow, ownerSide, crossedSide: ownerSide, fromCol, fromRow, toCol, toRow, directional: true })) return true;
     return boundaryBlocksStep(grid, ownerCol, ownerRow, ownerSide);
 }
 /**

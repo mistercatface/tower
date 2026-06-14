@@ -1,5 +1,6 @@
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
-import { portalBlocksStepFrom, resolveCardinalStepCrossing } from "../Spatial/grid/portalAccess.js";
+import { resolveCardinalStepCrossing } from "../Spatial/grid/portalAccess.js";
+import { portalPassageBlocksStepFrom } from "./portalStep.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
 import { canLinkPortalsOnNetwork } from "./passagePowerNetwork.js";
@@ -169,7 +170,7 @@ export function evaluatePortalStepEntry(state, grid, fromCol, fromRow, toCol, to
     const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
     if (!isPortalEdge(edge)) return null;
     if (edge.powered !== true) return null;
-    if (portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide)) return null;
+    if (portalPassageBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide)) return null;
     const partner = resolvePortalPartner(grid, ownerCol, ownerRow, ownerSide);
     if (!partner) return null;
     if (!canLinkPortalsOnNetwork(state, grid, ownerCol, ownerRow, ownerSide, partner.col, partner.row, partner.side)) return null;
