@@ -104,10 +104,7 @@ export function createRollToCursorHpaBehavior(state) {
                 state.obstacleGrid,
             );
             syncPortalHopTicket(prop, state.obstacleGrid, hpaNav.navState);
-            if (!steering) {
-                releaseMoveTarget(prop);
-                return;
-            }
+            if (!steering) return;
             if (steering.desiredX === 0 && steering.desiredY === 0) {
                 if (distToTarget <= config.stopRadius) releaseMoveTarget(prop);
                 return;
@@ -119,7 +116,7 @@ export function createRollToCursorHpaBehavior(state) {
             const hopIdx = hpaNav.navState.portalHopWaypointIdx;
             let progressIdx = hpaNav.navState.pathProgressIdx;
             if (hopIdx != null && progressIdx > hopIdx) progressIdx = hopIdx;
-            const trace = buildPathOverlayFromProgress(prop.x, prop.y, prop.radius ?? 6, hpaNav.navState.path, progressIdx, targetWorld.x, targetWorld.y);
+            const trace = buildPathOverlayFromProgress(prop.x, prop.y, hpaNav.navState.path, progressIdx, state.obstacleGrid);
             return {
                 mode: "hpa",
                 pathNodes: trace.pathNodes,

@@ -188,17 +188,24 @@ export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug", grid
     const { mode, targetX, targetY, pathNodes, abstractPath, pathPlanner } = overlay;
     if (mode === "hpa") {
         if (abstractPath) drawAbstractPath(ctx, abstractPath, zoom, pathPlanner ?? "hpa");
-        if (pathNodes?.length) {
+        if (pathNodes?.length >= 2) {
             ctx.strokeStyle = "#00e5ff";
             ctx.lineWidth = 4 / zoom;
             const lineScale = 1 / zoom;
             drawPathPolyline(ctx, pathNodes, lineScale, grid, "#00e5ff");
+        }
+        if (pathNodes?.length)
             for (const wp of pathNodes) {
                 ctx.fillStyle = "#00e5ff";
                 ctx.strokeStyle = "#fff";
                 ctx.lineWidth = 1.5 / zoom;
                 fillStrokeCircle(ctx, wp.x, wp.y, 6 / zoom);
             }
+        if (targetX != null && targetY != null) {
+            ctx.fillStyle = "rgba(156, 39, 176, 0.85)";
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2 / zoom;
+            fillStrokeCircle(ctx, targetX, targetY, 5 / zoom);
         }
         return;
     }

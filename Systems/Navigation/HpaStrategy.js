@@ -1,6 +1,6 @@
 import { agentPose } from "../../Libraries/Agent/index.js";
 import { computeHpaSteering } from "../../Libraries/Pathfinding/hpaSteering.js";
-import { trimPathAhead } from "../../Libraries/Pathfinding/pathFollow.js";
+import { findPathProgressIdx } from "../../Libraries/Pathfinding/pathFollow.js";
 import { prepareNavigationPath, orthogonalizePath } from "../../Libraries/Pathfinding/PathClearance.js";
 function shouldApplyClearance(navState, targetX, targetY, obstaclesChanged) {
     if (obstaclesChanged) return true;
@@ -10,7 +10,7 @@ function shouldApplyClearance(navState, targetX, targetY, obstaclesChanged) {
 }
 function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, hooks, nowMs) {
     const rawPath = hierarchicalNavigator.findPath(entity.x, entity.y, targetX, targetY);
-    let path = rawPath ? trimPathAhead(entity.x, entity.y, rawPath, { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy) }) : null;
+    let path = rawPath ?? null;
     if (path && obstacleGrid && applyClearance) {
         const isVisible = hooks.isVisible(entity);
         if (!isVisible) {
@@ -22,9 +22,8 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
             path = prepareNavigationPath(path, obstacleGrid, clearance, { x: targetX, y: targetY });
         }
     }
-    if (path) path = trimPathAhead(entity.x, entity.y, path, { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy) });
     navState.path = path;
-    navState.pathProgressIdx = 0;
+    navState.pathProgressIdx = path ? findPathProgressIdx(entity.x, entity.y, path, { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy) }) : 0;
     navState.lastUpdate = nowMs;
     navState.lastTargetX = targetX;
     navState.lastTargetY = targetY;
@@ -76,6 +75,6 @@ export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator,
         replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, hooks, now);
         steering = computeHpaSteering(pose, navState.path, targetX, targetY, settings, navState);
     }
-    const hasPath = navState.path && navState.path.length >= 2;
+    const hasPath = navState.path && navState.path.length >= 1;
     return { steering, mode: hasPath ? "hpa" : "direct", replanReason, pathLen: hasPath ? navState.path.length : 0 };
 }

@@ -3,45 +3,52 @@
 /** @typedef {import("./navSession.js").NavSessionState} NavSessionState */
 const PATH_WAYPOINT_ARRIVAL_PX = 24;
 /**
- * Drop cell-center waypoints already at or behind the entity. Never prepends entity
- * position — that created a non-grid first segment from ball to a skipped node.
+ * Pick the first path index the entity hasn't reached yet. Does not mutate the path.
  *
  * @param {number} x
  * @param {number} y
  * @param {{ x: number, y: number }[]} path
  * @param {{ worldToGrid?: (wx: number, wy: number) => { col: number, row: number } }} [options]
  */
+export function findPathProgressIdx(x, y, path, options = {}) {
+    if (!path?.length) return 0;
+    let idx = 0;
+    const { worldToGrid } = options;
+    if (worldToGrid) {
+        const here = worldToGrid(x, y);
+        for (let i = 0; i < path.length; i++) {
+            const cell = worldToGrid(path[i].x, path[i].y);
+            if (cell.col === here.col && cell.row === here.row) idx = i + 1;
+        }
+    }
+    if (idx >= path.length) idx = path.length - 1;
+    while (idx < path.length - 1 && Math.hypot(path[idx].x - x, path[idx].y - y) <= PATH_WAYPOINT_ARRIVAL_PX) idx++;
+    return idx;
+}
+/** @deprecated Use findPathProgressIdx — kept so callers can migrate without silent breakage. */
 export function trimPathAhead(x, y, path, options = {}) {
     if (!path?.length) return path;
-    let startIdx = 0;
-    const { worldToGrid } = options;
-    while (startIdx < path.length - 1) {
-        const wp = path[startIdx];
-        if (Math.hypot(wp.x - x, wp.y - y) <= PATH_WAYPOINT_ARRIVAL_PX) {
-            startIdx++;
-            continue;
-        }
-        if (worldToGrid) {
-            const here = worldToGrid(x, y);
-            const cell = worldToGrid(wp.x, wp.y);
-            if (cell.col === here.col && cell.row === here.row) {
-                startIdx++;
-                continue;
-            }
-        }
-        break;
-    }
-    return path.slice(startIdx);
+    return path.slice(findPathProgressIdx(x, y, path, options));
 }
-/** @param {number} x @param {number} y @param {number} radius @param {{ x: number, y: number }[] | null | undefined} path @param {number} progressIdx @param {number} targetX @param {number} targetY */
-export function buildPathOverlayFromProgress(x, y, radius, path, progressIdx, targetX, targetY) {
-    const pad = (radius ?? 6) + 4;
-    if (!path?.length) return { pathNodes: [{ x: targetX, y: targetY }] };
-    let idx = Math.max(0, Math.min(progressIdx ?? 0, path.length - 1));
-    while (idx < path.length - 1 && Math.hypot(path[idx].x - x, path[idx].y - y) <= pad) idx++;
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} ax @param {number} ay @param {number} bx @param {number} by */
+function cellsAreGridNeighbors(grid, ax, ay, bx, by) {
+    const a = grid.worldToGrid(ax, ay);
+    const b = grid.worldToGrid(bx, by);
+    return Math.abs(a.col - b.col) <= 1 && Math.abs(a.row - b.row) <= 1;
+}
+/**
+ * @param {number} x
+ * @param {number} y
+ * @param {{ x: number, y: number }[] | null | undefined} path
+ * @param {number} progressIdx
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null | undefined} grid
+ */
+export function buildPathOverlayFromProgress(x, y, path, progressIdx, grid = null) {
+    if (!path?.length) return { pathNodes: [] };
+    const idx = Math.max(0, Math.min(progressIdx ?? 0, path.length - 1));
     const pathNodes = path.slice(idx);
-    const last = pathNodes[pathNodes.length - 1];
-    if (!last || Math.hypot(last.x - targetX, last.y - targetY) > 1) pathNodes.push({ x: targetX, y: targetY });
+    const first = pathNodes[0];
+    if (grid && first && Math.hypot(first.x - x, first.y - y) > 1 && cellsAreGridNeighbors(grid, x, y, first.x, first.y)) pathNodes.unshift({ x, y });
     return { pathNodes };
 }
 /**
@@ -56,10 +63,8 @@ export function buildPathOverlayFromProgress(x, y, radius, path, progressIdx, ta
 export function computePathSteering(pose, path, targetX, targetY, settings = {}, navState = null) {
     const x = pose.x;
     const y = pose.y;
-    // BOIDS uses 0.6 cells squared = 0.77 cells. In pixels (32px/cell), that's ~24px.
     const waypointArrival = settings.pathWaypointArrival ?? 24;
     const arrivalDistance = settings.arrivalDistance ?? 2;
-    // BOIDS drops the path if distance > 4.0 grid units (64 pixels)
     const offPathDistance = settings.pathOffPathDistance ?? 64;
     let step = navState?.pathProgressIdx ?? 0;
     if (step >= path.length) step = path.length - 1;
@@ -67,7 +72,6 @@ export function computePathSteering(pose, path, targetX, targetY, settings = {},
     let dx = steerTarget.x - x;
     let dy = steerTarget.y - y;
     let dist = Math.hypot(dx, dy);
-    // Advance to next waypoint if close enough
     while (dist < waypointArrival && step < path.length - 1) {
         step++;
         if (navState) navState.pathProgressIdx = step;

@@ -1,6 +1,6 @@
 import { agentPose } from "../Agent/index.js";
 import { createNavState } from "../Pathfinding/navSession.js";
-import { computePathSteering, trimPathAhead } from "../Pathfinding/pathFollow.js";
+import { computePathSteering, findPathProgressIdx } from "../Pathfinding/pathFollow.js";
 import { expandPortalHopsInCellPath, portalHopWaypointIndex } from "./portalNavIndex.js";
 /** @typedef {import("../Pathfinding/navSession.js").NavSessionState} NavSessionState */
 const REPLAN_TARGET_MOVE_PX = 64;
@@ -39,13 +39,14 @@ export function createRollToCursorHpaNav() {
             return;
         }
         const grid = state.obstacleGrid;
+        const gridOpts = { worldToGrid: (wx, wy) => grid.worldToGrid(wx, wy) };
         const expandedCells = expandPortalHopsInCellPath(result.cellPath, grid);
         const rawPath = expandedCells.map((cell) => grid.gridToWorld(cell.col, cell.row));
-        navState.path = trimPathAhead(prop.x, prop.y, rawPath, { worldToGrid: (wx, wy) => grid.worldToGrid(wx, wy) });
+        navState.path = rawPath;
+        navState.pathProgressIdx = findPathProgressIdx(prop.x, prop.y, rawPath, gridOpts);
         navState.portalHopWaypointIdx = portalHopWaypointIndex(result.cellPath, navState.path, grid);
         navState.abstractPath = navState.path ? (result.abstractNodes ?? null) : null;
         navState.pathPlanner = navState.path ? (result.pathPlanner ?? null) : null;
-        navState.pathProgressIdx = 0;
         navState.lastTargetX = targetX;
         navState.lastTargetY = targetY;
         navState.lastUpdate = replanClockMs;
@@ -61,7 +62,7 @@ export function createRollToCursorHpaNav() {
     };
     const getSteering = (prop, targetX, targetY, settings, grid) => {
         const path = navState.path;
-        if (!path || path.length < 2) return null;
+        if (!path?.length) return null;
         const hopIdx = navState.portalHopWaypointIdx;
         clampHopProgress(hopIdx);
         if (hopIdx != null && navState.pathProgressIdx === hopIdx && hopIdx < path.length - 1) {
