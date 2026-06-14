@@ -19,10 +19,7 @@ function syncPortalHopTicket(prop, grid, navState) {
     if (hopIdx == null) return;
     const wp = path[hopIdx];
     const { col: mouthCol, row: mouthRow } = grid.worldToGrid(wp.x, wp.y);
-    const onHopWaypoint = navState.pathProgressIdx === hopIdx;
-    const propCell = grid.worldToGrid(prop.x, prop.y);
-    const inHopMouthCell = propCell.col === mouthCol && propCell.row === mouthRow;
-    if (!onHopWaypoint && !inHopMouthCell) return;
+    if (navState.pathProgressIdx !== hopIdx) return;
     prop._portalHopTicket = { mouthCol, mouthRow };
 }
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
@@ -86,25 +83,27 @@ export function createRollToCursorHpaBehavior(state) {
         },
         tick(prop, dt) {
             if (!targetWorld) return;
+            const config = getRollToCursorConfig(prop, { stopRadius: 8 });
+            const steerTarget = resolveFloorBeltSteerTarget(state.obstacleGrid, targetWorld.x, targetWorld.y, prop.x, prop.y);
             if (prop._portalNavDirty) {
                 prop._portalNavDirty = false;
                 hpaNav.reset();
-            }
-            const config = getRollToCursorConfig(prop, { stopRadius: 8 });
-            const steerTarget = resolveFloorBeltSteerTarget(state.obstacleGrid, targetWorld.x, targetWorld.y, prop.x, prop.y);
+                hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
+            } else hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
             const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);
             const isFinalLeg = !hpaNav.navState.path || hpaNav.navState.pathProgressIdx >= hpaNav.navState.path.length - 1;
             if (isFinalLeg && distToTarget <= config.stopRadius) {
                 releaseMoveTarget(prop);
                 return;
             }
-            hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
+            const steering = hpaNav.getSteering(
+                prop,
+                steerTarget.x,
+                steerTarget.y,
+                { pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5), arrivalDistance: config.stopRadius, pathOffPathDistance: 80 },
+                state.obstacleGrid,
+            );
             syncPortalHopTicket(prop, state.obstacleGrid, hpaNav.navState);
-            const steering = hpaNav.getSteering(prop, steerTarget.x, steerTarget.y, {
-                pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5),
-                arrivalDistance: config.stopRadius,
-                pathOffPathDistance: 80,
-            });
             if (!steering) {
                 releaseMoveTarget(prop);
                 return;
@@ -117,7 +116,10 @@ export function createRollToCursorHpaBehavior(state) {
         },
         getPathOverlay(prop) {
             if (!targetWorld) return null;
-            const trace = buildPathOverlayFromProgress(prop.x, prop.y, prop.radius ?? 6, hpaNav.navState.path, hpaNav.navState.pathProgressIdx, targetWorld.x, targetWorld.y);
+            const hopIdx = hpaNav.navState.portalHopWaypointIdx;
+            let progressIdx = hpaNav.navState.pathProgressIdx;
+            if (hopIdx != null && progressIdx > hopIdx) progressIdx = hopIdx;
+            const trace = buildPathOverlayFromProgress(prop.x, prop.y, prop.radius ?? 6, hpaNav.navState.path, progressIdx, targetWorld.x, targetWorld.y);
             return {
                 mode: "hpa",
                 fromX: trace.fromX,

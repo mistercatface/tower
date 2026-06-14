@@ -81,10 +81,23 @@ export function portalHasCrossingIntent(cross, vx, vy, dispX, dispY) {
  * @param {{ x: number, y: number }} cross
  */
 export function portalMouthAllowsCrossing(entity, mouthCol, mouthRow, cross, vx, vy, dispX, dispY) {
+    const crossing = portalHasCrossingIntent(cross, vx, vy, dispX, dispY);
     const ticket = entity._portalHopTicket;
-    if (ticket) return ticket.mouthCol === mouthCol && ticket.mouthRow === mouthRow;
+    if (ticket) return ticket.mouthCol === mouthCol && ticket.mouthRow === mouthRow && crossing;
     if (entity._portalNavActive) return false;
-    return portalHasCrossingIntent(cross, vx, vy, dispX, dispY);
+    return crossing;
+}
+/**
+ * Body center has crossed the portal mid-plane toward the back cell (traverse only — stricter than mouth zone).
+ * @param {number} [bodyRadius]
+ */
+export function portalBodyCrossedEntryPlane(bodyX, bodyY, mouth, back, cross, grid, bodyRadius = 0) {
+    const mouthWorld = grid.gridToWorld(mouth.col, mouth.row);
+    const backWorld = grid.gridToWorld(back.col, back.row);
+    const midX = (mouthWorld.x + backWorld.x) * 0.5;
+    const midY = (mouthWorld.y + backWorld.y) * 0.5;
+    const mouthSide = -((bodyX - midX) * cross.x + (bodyY - midY) * cross.y);
+    return mouthSide > -bodyRadius * 0.35;
 }
 /**
  * Mouth-side half-plane test: back cell is never the mouth; center-in-mouth or straddling the plane from the mouth side counts.

@@ -2,6 +2,7 @@ import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { distanceSqToSegment } from "../Spatial/geometry/WallGeometry.js";
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import {
+    portalBodyCrossedEntryPlane,
     portalBodyInMouthZone,
     portalCrossingVectorForEdge,
     portalMouthAllowsCrossing,
@@ -88,6 +89,7 @@ export function tickPortalContacts(state, spatialFrame) {
             const cross = portalCrossingVectorForEdge(edge, gridCol, gridRow, gridSide);
             const { mouth, back } = portalMouthAndBackCells(gridCol, gridRow, gridSide, edge);
             if (!portalMouthAllowsCrossing(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) continue;
+            if (!portalBodyCrossedEntryPlane(entity.x, entity.y, mouth, back, cross, grid, bodyRadius)) continue;
             const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
             if (!entry) continue;
             if (applyPortalTraverse(state, entity, entry)) {
