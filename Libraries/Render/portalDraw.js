@@ -168,6 +168,25 @@ function drawPortalStatusDisc3D(ctx, prop, px, py, faceIndex, halfSize, height, 
     const hy = halfSize.y;
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
+    // Backface culling: only draw the status disc if its face is pointing towards the camera/viewer.
+    let worldNx = 0,
+        worldNy = 0;
+    if (faceIndex === 0) {
+        worldNx = sin;
+        worldNy = -cos;
+    } else if (faceIndex === 1) {
+        worldNx = cos;
+        worldNy = sin;
+    } else if (faceIndex === 2) {
+        worldNx = -sin;
+        worldNy = cos;
+    } else {
+        worldNx = -cos;
+        worldNy = -sin;
+    }
+    const toViewerX = px - prop.x;
+    const toViewerY = py - prop.y;
+    if (worldNx * toViewerX + worldNy * toViewerY <= 0) return;
     const radius = selected ? PORTAL_DISC_RADIUS * 1.15 : PORTAL_DISC_RADIUS;
     const vCenter = height * 0.5;
     /** @param {number} u @param {number} lz */
