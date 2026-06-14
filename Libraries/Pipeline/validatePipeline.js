@@ -57,7 +57,29 @@ export function collectStepValidationErrors(config, registry, options = {}) {
     }
     for (const slot of def.slots ?? []) {
         const child = config[slot.name];
-        if (child == null) continue;
+        if (child == null) {
+            if (slot.required) errors.push({ path: joinPath(pathPrefix, slot.name), message: `${slot.name} is required` });
+            continue;
+        }
+        if (slot.array) {
+            if (!Array.isArray(child)) {
+                errors.push({ path: joinPath(pathPrefix, slot.name), message: `${slot.name} must be an array` });
+                continue;
+            }
+            for (let i = 0; i < child.length; i++) {
+                const item = child[i];
+                if (item == null || typeof item !== "object" || Array.isArray(item)) {
+                    errors.push({ path: joinPath(pathPrefix, `${slot.name}[${i}]`), message: "must be a step object" });
+                    continue;
+                }
+                const itemConfig = /** @type {Record<string, unknown>} */ (item);
+                const childId = stepId(itemConfig);
+                if (slot.allowedSteps?.length && childId && !slot.allowedSteps.includes(childId))
+                    errors.push({ path: joinPath(pathPrefix, `${slot.name}[${i}]`), message: `step "${childId}" is not allowed in ${slot.name}` });
+                errors.push(...collectStepValidationErrors(itemConfig, registry, { pathPrefix: joinPath(pathPrefix, `${slot.name}[${i}]`) }));
+            }
+            continue;
+        }
         if (typeof child !== "object" || Array.isArray(child)) {
             errors.push({ path: joinPath(pathPrefix, slot.name), message: `${slot.name} must be a step object` });
             continue;

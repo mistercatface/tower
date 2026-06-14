@@ -1,4 +1,5 @@
 import { getSurfaceProceduralProfile } from "../../../../Config/procedural/profiles.js";
+import { exportPipelineJsModule } from "../../../../Libraries/Pipeline/exportPipeline.js";
 import { deepClone, getByPath, movePipelineRow, pipelineRowId, remapIndexAfterSwap } from "../../../../Libraries/Pipeline/index.js";
 import { SelectControl } from "../../../../Libraries/UI/controls/SelectControl.js";
 import { renderPipelineListUi } from "../../../../Libraries/UI/pipelineListUi.js";
@@ -136,9 +137,7 @@ export function buildProfileFromEditor(state = editorState) {
     return profile;
 }
 export function exportProfileSnippet(state = editorState, varName = "myProfile") {
-    const profile = buildProfileFromEditor(state);
-    const json = JSON.stringify(profile, null, 4);
-    return `export default ${json};`;
+    return exportPipelineJsModule(buildProfileFromEditor(state), varName);
 }
 function notifyChange(options = {}) {
     onChangeCallback?.(options);

@@ -52,6 +52,7 @@ export {
     DEFAULT_NODE_GRAPH_GEN_CONFIG,
     DEFAULT_ROOM_GRAPH_GRID,
     buildSandboxRoomGraphSceneDoc,
+    tryBuildSandboxRoomGraphSceneDoc,
     buildSandboxGraphSceneDoc,
     spawnSandboxGraphScene,
     DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS,
@@ -106,6 +107,7 @@ export {
     describeLayoutValidationFailure,
     runRoomGraphMotifs,
 } from "./sandboxRoomGraphGen.js";
+export { ROOM_GRAPH_STEP_REGISTRY, validateRoomGraphMotifs } from "./roomGraphStepRegistry.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
 export { evaluatePortalStepEntry } from "./portalLinks.js";
 export { tryPortalIntake, applyPortalTraverse } from "./portalTraverse.js";

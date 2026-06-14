@@ -3,3 +3,4 @@ export { resolveFieldKind, validateFieldValue, clampFieldValue } from "./fieldSc
 export { stepId, createStepRegistry, registerMotifTypes } from "./stepRegistry.js";
 export { collectStepValidationErrors, validateStepConfig, validatePipelineRows } from "./validatePipeline.js";
 export { pipelineRowId, createPipelineRow, findPipelineRowIndex, movePipelineRow, removePipelineRowAt, remapIndexAfterSwap, remapIndexAfterRemove, remapIndexList } from "./pipelineList.js";
+export { exportPipelineJson, exportPipelineJsModule } from "./exportPipeline.js";

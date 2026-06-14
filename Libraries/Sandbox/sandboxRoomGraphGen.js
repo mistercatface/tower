@@ -1,5 +1,6 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
 import { applySandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
+import { validateRoomGraphMotifs } from "./roomGraphStepRegistry.js";
 /** Edit this array to change generation — each step runs in order. */
 export const DEFAULT_SANDBOX_GRAPH_MOTIFS = [
     {
@@ -49,7 +50,9 @@ export function buildSandboxGraphSceneDoc(options = {}) {
 }
 /** Replace the current sandbox with a freshly generated room graph. */
 export function spawnSandboxGraphScene(state, options = {}) {
-    applySandboxSceneSnapshot(state, buildSandboxGraphSceneDoc(options));
+    const result = tryBuildSandboxRoomGraphSceneDoc(options);
+    if (!result.ok) throw new Error(result.reason);
+    applySandboxSceneSnapshot(state, result.doc);
 }
 const SANDBOX_SCENE_SCHEMA_VERSION = 7;
 /** @typedef {{ c: number, r: number }} Cell */
@@ -289,10 +292,7 @@ export function estimateTreeSpreadGridSize(config, treeEdges, nodeCount) {
     const lateral = Math.ceil(maxFanout / 2) * maxHop;
     const half = radial + lateral + config.gridEdgeMargin;
     const size = Math.min(NODE_GRAPH_GRID_MAX, Math.max(NODE_GRAPH_GRID_MIN, half * 2));
-    return {
-        gridCols: Math.max(config.gridCols ?? 0, size),
-        gridRows: Math.max(config.gridRows ?? 0, size),
-    };
+    return { gridCols: Math.max(config.gridCols ?? 0, size), gridRows: Math.max(config.gridRows ?? 0, size) };
 }
 /** Random tree on node ids 0..n-1 (node 0 root). Used when nodeCount > 1 and treeEdges is empty. */
 /** @param {number} nodeCount @param {() => number} rng @param {number} treeParentCandidateCount */
@@ -838,8 +838,7 @@ function collectCorridorPathPointCells(p, prev, next, corridorWidth, interiorOnl
     /** @type {Cell[]} */
     const cells = [];
     if (alongH && alongV) {
-        for (let oi = 0; oi < offsets.length; oi++)
-            for (let oj = 0; oj < offsets.length; oj++) cells.push({ c: p.c + offsets[oi], r: p.r + offsets[oj] });
+        for (let oi = 0; oi < offsets.length; oi++) for (let oj = 0; oj < offsets.length; oj++) cells.push({ c: p.c + offsets[oi], r: p.r + offsets[oj] });
         return cells;
     }
     if (alongH) {
@@ -1414,4 +1413,21 @@ export function buildSandboxRoomGraphSceneDoc(options = {}) {
         corridorEdgeIndices: ctx.corridorEdgeIndices,
         motifs,
     });
+}
+/**
+ * @param {Record<string, unknown>} [options]
+ * @returns {{ ok: true, doc: ReturnType<typeof roomGraphLayoutToSceneDoc> } | { ok: false, reason: string }}
+ */
+export function tryBuildSandboxRoomGraphSceneDoc(options = {}) {
+    const motifs = options.motifs ?? DEFAULT_SANDBOX_GRAPH_MOTIFS;
+    const validation = validateRoomGraphMotifs(motifs);
+    if (!validation.ok) {
+        const reason = validation.errors.map((err) => (err.path ? `${err.path}: ${err.message}` : err.message)).join("; ");
+        return { ok: false, reason };
+    }
+    try {
+        return { ok: true, doc: buildSandboxRoomGraphSceneDoc(options) };
+    } catch (err) {
+        return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+    }
 }
