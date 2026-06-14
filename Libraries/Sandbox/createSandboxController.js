@@ -446,7 +446,6 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         setSelectedForcefieldMode: (mode) => session.setSelectedForcefieldMode(mode),
         setSelectedForcefieldAllowedSide: (side) => session.setSelectedForcefieldAllowedSide(side),
         setSelectedPortalMouthSide: (side) => session.setSelectedPortalMouthSide(side),
-        setSelectedPortalAccessBlock: (block) => session.setSelectedPortalAccessBlock(block),
         linkSelectedPortalTo: (col, row, side) => session.linkSelectedPortalTo(col, row, side),
         unlinkSelectedPortal: () => session.unlinkSelectedPortal(),
         setSelectedPortalConnection: (connection) => session.setSelectedPortalConnection(connection),

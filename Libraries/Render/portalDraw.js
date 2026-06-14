@@ -4,7 +4,7 @@ import { PORTAL_LINK_MODE, resolvePortalLinkRoute } from "../Sandbox/portalLinks
 import { getCanvasLineScale } from "./common/viewportUtils.js";
 import { drawBox } from "./Props3D/SolidDraw.js";
 import { projectPropVertexInto } from "./Props3D/propMesh.js";
-/** @typedef {"off" | "unlinked" | "shared" | "oneWay"} PortalDrawLinkRole */
+/** @typedef {"off" | "unlinked" | "shared" | "oneWayDepart" | "oneWayReceive"} PortalDrawLinkRole */
 const PORTAL_STRIP_HEIGHT = 10;
 const PORTAL_STRIP_THIN = 2.5;
 const PORTAL_DISC_RADIUS = 2.8;
@@ -28,7 +28,8 @@ export function resolvePortalDrawRole(grid, col, row, side, edge) {
     const route = resolvePortalLinkRoute(grid, col, row, side);
     if (!route) return { powered: true, linkRole: "unlinked" };
     if (route.linkMode === PORTAL_LINK_MODE.Shared) return { powered: true, linkRole: "shared" };
-    return { powered: true, linkRole: "oneWay" };
+    const isSource = route.source.col === col && route.source.row === row && route.source.side === side;
+    return { powered: true, linkRole: isSource ? "oneWayDepart" : "oneWayReceive" };
 }
 /** @param {number} side @param {number} cellHalf */
 function portalStripLayout(side, cellHalf) {
@@ -56,8 +57,9 @@ function solidWallColors() {
 function statusCircleStyle(powered, linkRole) {
     if (!powered) return { fill: "rgba(100, 116, 139, 0.55)", stroke: "rgba(148, 163, 184, 0.45)" };
     if (linkRole === "unlinked") return { fill: "rgba(167, 139, 250, 0.95)", stroke: "rgba(255, 255, 255, 0.85)" };
-    if (linkRole === "shared") return { fill: "rgba(34, 197, 94, 0.95)", stroke: "rgba(255, 255, 255, 0.9)" };
-    return { fill: "rgba(234, 179, 8, 0.98)", stroke: "rgba(255, 255, 255, 0.9)" };
+    if (linkRole === "shared" || linkRole === "oneWayReceive") return { fill: "rgba(34, 197, 94, 0.95)", stroke: "rgba(255, 255, 255, 0.9)" };
+    if (linkRole === "oneWayDepart") return { fill: "rgba(251, 146, 60, 0.98)", stroke: "rgba(255, 255, 255, 0.9)" };
+    return { fill: "rgba(100, 116, 139, 0.55)", stroke: "rgba(148, 163, 184, 0.45)" };
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

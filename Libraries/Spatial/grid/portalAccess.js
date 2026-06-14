@@ -1,16 +1,8 @@
 import { gridWallEdgeMirrorSide, gridWallEdgeNeighbor } from "../../World/wallGridCells.js";
-import { parsePortalAccessBlock, PORTAL_ACCESS_BLOCK, PORTAL_ACCESS_MODE } from "./CellEdge.js";
+import { PORTAL_ACCESS_MODE } from "./CellEdge.js";
 /** Default allowedSide for access one — owner cell (mirror of stamped edge side). */
 export function portalAccessDefaultAllowedSide(ownerSide) {
     return gridWallEdgeMirrorSide(ownerSide);
-}
-export function portalAccessBlockIncludesStep(edge) {
-    const block = parsePortalAccessBlock(edge.accessBlock);
-    return block === PORTAL_ACCESS_BLOCK.All || block === PORTAL_ACCESS_BLOCK.Step;
-}
-export function portalAccessBlockIncludesPhysics(edge) {
-    const block = parsePortalAccessBlock(edge.accessBlock);
-    return block === PORTAL_ACCESS_BLOCK.All || block === PORTAL_ACCESS_BLOCK.Physics;
 }
 /**
  * Cell that may initiate a portal step when access is one.
@@ -22,12 +14,6 @@ export function portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, allowed
     if (allowedSide === 1) return { col: ownerCol + 1, row: ownerRow };
     if (allowedSide === 2) return { col: ownerCol, row: ownerRow + 1 };
     return { col: ownerCol - 1, row: ownerRow };
-}
-/** @param {string} accessBlock */
-export function formatPortalAccessBlockLabel(accessBlock) {
-    if (accessBlock === PORTAL_ACCESS_BLOCK.Step) return "Step only";
-    if (accessBlock === PORTAL_ACCESS_BLOCK.Physics) return "Physics only";
-    return "Step + physics";
 }
 /** @param {number} ownerSide @param {number} allowedSide */
 export function formatPortalAccessSideLabel(ownerSide, allowedSide) {
@@ -69,8 +55,7 @@ export function portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, owner
 }
 /** Whether a portal edge emits physics collision rails. Caller must pass a portal edge. */
 export function portalEdgeEmitsCollision(edge) {
-    if (edge.powered !== true) return true;
-    return portalAccessBlockIncludesPhysics(edge);
+    return true;
 }
 /** World-unit vector for crossing from the allowed initiator cell through the portal edge. */
 export function portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, allowedSide) {

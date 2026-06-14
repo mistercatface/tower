@@ -19,7 +19,7 @@ import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
-import { PORTAL_ACCESS_BLOCK, PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
+import { PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
 /**
  * Sandbox scene snapshot — copy/paste JSON for props, stamped grid walls, floor belts, and forcefields.
@@ -73,7 +73,6 @@ export function collectSandboxSceneSnapshot(state) {
         const info = getPortalInfo(grid, col, row, side);
         if (!info) continue;
         const entry = { col: globalCol, row: globalRow, side, accessMode: PORTAL_ACCESS_MODE.One, allowedSide: info.mouthAllowedSide };
-        if (info.accessBlock !== PORTAL_ACCESS_BLOCK.All) entry.accessBlock = info.accessBlock;
         if (info.partnerKey) entry.partnerKey = info.partnerKey;
         if (info.linkMode === "oneWay") {
             entry.linkMode = "oneWay";

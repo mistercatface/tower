@@ -18,7 +18,7 @@ import {
     PORTAL_ACCESS_MODE,
     railWallCapLevel,
 } from "../Spatial/grid/CellEdge.js";
-import { portalAccessDefaultAllowedSide, formatPortalAccessSideLabel, formatPortalAccessBlockLabel, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
+import { portalAccessDefaultAllowedSide, formatPortalAccessSideLabel, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { clearBoundaryPrimary, setBoundary, setPassageProfile, setPortalProfile } from "../Spatial/grid/boundaryOccupancy.js";
 import {
     canonicalEdgeCellKey,
@@ -519,9 +519,8 @@ export function listPlacedPortals(grid) {
             index++;
             const sideLabel = formatGridWallEdgeSideLabel(side);
             const accessTag = ` · mouth ${formatPortalAccessSideLabel(side, info.mouthAllowedSide).toLowerCase()}`;
-            const blockTag = info.accessBlock !== PORTAL_ACCESS_BLOCK.All ? ` · ${formatPortalAccessBlockLabel(info.accessBlock)}` : "";
             const linkTag = info.linked ? ` · ${formatPortalConnectionLabel(info.linkMode, info.connection === "fromSelf")}` : " · unlinked";
-            placed.push({ col, row, side, label: `Portal #${index} · ${sideLabel}${accessTag}${blockTag}${linkTag}` });
+            placed.push({ col, row, side, label: `Portal #${index} · ${sideLabel}${accessTag}${linkTag}` });
         }
     }
     return placed;

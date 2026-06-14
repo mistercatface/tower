@@ -411,16 +411,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const { col, row, side } = selectedRailEdge;
             const info = getPortalInfo(state.obstacleGrid, col, row, side);
             if (!info) return false;
-            if (!setPortalProfileAt(state, col, row, side, PORTAL_ACCESS_MODE.One, allowedSide, info.accessBlock)) return false;
-            sync();
-            return true;
-        },
-        setSelectedPortalAccessBlock(accessBlock) {
-            if (!selectedRailEdge) return false;
-            const { col, row, side } = selectedRailEdge;
-            const info = getPortalInfo(state.obstacleGrid, col, row, side);
-            if (!info) return false;
-            if (!setPortalProfileAt(state, col, row, side, PORTAL_ACCESS_MODE.One, info.mouthAllowedSide, accessBlock)) return false;
+            if (!setPortalProfileAt(state, col, row, side, PORTAL_ACCESS_MODE.One, allowedSide)) return false;
             sync();
             return true;
         },
