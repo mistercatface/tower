@@ -18,7 +18,7 @@
 - [ ] Belt polyline stamp, corner autotile, smoke test
 - [ ] Scene JSON **prop extras** (button links in export)
 - [ ] Animated floor tiles on grid (`animatedFloorStore`)
-      **Other:** diagonal/corner edges; beam break by prop volume; scene JSON merge/autosave; runtime snapshot + replay; TileLab naming cleanup; `segmentGrid` audit; interaction layers bitmask.
+      **Other:** diagonal/corner edges (actually very important); beam break by prop volume; scene JSON merge/autosave; runtime snapshot + replay; TileLab naming cleanup; `segmentGrid` audit; interaction layers bitmask.
       **Floor props:** button bumper 3D, moving pit kinematics, floor prop resize.
       **Perf debt:** scope `runPushablePhysics` / `forEachOfKind("worldProp")` scans; viewport-filter laser sights; face-level AABB cull.
       **Archive:** `Libraries/Radio/`, `Libraries/Inspect/`, `PersistentTriggers`, `panelGrid` motif.

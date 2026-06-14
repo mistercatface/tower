@@ -2,7 +2,6 @@ import { isEdgeZoneKey } from "../../DataStructures/CellKey.js";
 import { colRowToIndex, indexToColRow } from "../grid/GridUtils.js";
 import { isPassagePowered } from "../grid/boundaryOccupancy.js";
 import { canonicalEdgeCellKey } from "../../World/wallGridCells.js";
-
 /** @typedef {{ col: number, row: number, side: number, mode: string }} GridEdgeSubscription */
 /** @typedef {{ cells: Set<number>, edges: Map<number, GridEdgeSubscription> }} GridZoneSubscriptions */
 /**
@@ -21,7 +20,6 @@ import { canonicalEdgeCellKey } from "../../World/wallGridCells.js";
  * @property {(event: GridZoneEvent) => void} onOn
  * @property {(event: GridZoneEvent) => void} onExit
  */
-
 /** @param {Set<number>} prev @param {Set<number>} next */
 export function diffGridZoneKeys(prev, next) {
     /** @type {number[]} */
@@ -32,7 +30,6 @@ export function diffGridZoneKeys(prev, next) {
     for (const key of prev) if (!next.has(key)) exited.push(key);
     return { entered, exited };
 }
-
 /** @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} x @param {number} y @param {number} col @param {number} row @param {number} side @param {number} band */
 export function entityInGridEdgeBand(grid, x, y, col, row, side, band) {
     const bounds = grid.getCellBounds(col, row);
@@ -41,14 +38,12 @@ export function entityInGridEdgeBand(grid, x, y, col, row, side, band) {
     if (side === 2) return Math.abs(y - bounds.maxY) <= band;
     return Math.abs(x - bounds.minX) <= band;
 }
-
 /** @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} key @param {Map<number, GridEdgeSubscription>} subscribedEdges */
 function addPoweredSubscribedEdgeKey(grid, key, subscribedEdges, out) {
     if (!subscribedEdges.has(key)) return;
     const meta = subscribedEdges.get(key);
     if (isPassagePowered(grid, meta.col, meta.row, meta.side)) out.add(key);
 }
-
 /** @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} prevCol @param {number} prevRow @param {number} col @param {number} row @param {Map<number, GridEdgeSubscription>} subscribedEdges @param {Set<number>} out */
 export function appendCrossedEdgeZoneKeys(grid, prevCol, prevRow, col, row, subscribedEdges, out) {
     if (prevCol === col && prevRow === row) return;
@@ -61,7 +56,6 @@ export function appendCrossedEdgeZoneKeys(grid, prevCol, prevRow, col, row, subs
         addPoweredSubscribedEdgeKey(grid, canonicalEdgeCellKey(grid, prevCol, prevRow, side), subscribedEdges, out);
     }
 }
-
 /**
  * @param {object} entity
  * @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -85,8 +79,8 @@ export function resolveEntityGridZoneKeys(entity, grid, subscriptions, out) {
         const prevRow = (prevCellIdx / grid.cols) | 0;
         appendCrossedEdgeZoneKeys(grid, prevCol, prevRow, col, row, subscriptions.edges, out);
     }
-    if (subscriptions.edges.size && col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) {
-        for (let dc = -1; dc <= 1; dc++) {
+    if (subscriptions.edges.size && col >= 0 && col < grid.cols && row >= 0 && row < grid.rows)
+        for (let dc = -1; dc <= 1; dc++)
             for (let dr = -1; dr <= 1; dr++) {
                 const nc = col + dc;
                 const nr = row + dr;
@@ -98,12 +92,9 @@ export function resolveEntityGridZoneKeys(entity, grid, subscriptions, out) {
                     if (entityInGridEdgeBand(grid, x, y, nc, nr, side, band)) out.add(key);
                 }
             }
-        }
-    }
     if (cellIdx >= 0) entity._gridZonePrevCellIdx = cellIdx;
     else entity._gridZonePrevCellIdx = -1;
 }
-
 /**
  * @param {import("../world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
  * @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -132,7 +123,7 @@ export function tickGridZoneMembership(spatialFrame, grid, subscriptions, handle
                 handlers.onEnter({ kind: "cell", key, entity, col, row });
             }
         }
-        for (const key of next) {
+        for (const key of next)
             if (isEdgeZoneKey(key)) {
                 const meta = subscriptions.edges.get(key);
                 handlers.onOn({ kind: "edge", key, entity, col: meta.col, row: meta.row, side: meta.side, edgeMeta: meta });
@@ -140,7 +131,6 @@ export function tickGridZoneMembership(spatialFrame, grid, subscriptions, handle
                 const { col, row } = indexToColRow(key, grid.cols);
                 handlers.onOn({ kind: "cell", key, entity, col, row });
             }
-        }
         for (let j = 0; j < exited.length; j++) {
             const key = exited[j];
             if (isEdgeZoneKey(key)) {
