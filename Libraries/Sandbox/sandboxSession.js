@@ -57,8 +57,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let selectedPropId = null;
     /** @type {{ col: number, row: number } | null} */
     let selectedFloorCell = null;
-    /** @type {'props' | 'walls'} */
-    let editorPanelTab = "props";
+    /** @type {string} prop:id or wall:voxel|rail|forcefield|portal */
+    let placePaletteKey = `prop:${defaultSpawnPropId}`;
     /** @type {'voxel' | 'rail' | 'forcefield' | 'portal'} */
     let wallStampMode = "voxel";
     let wallHeightLevel = 4;
@@ -181,6 +181,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         getSpawnPropId: () => spawnPropId,
         setSpawnPropId: (id) => {
             spawnPropId = id;
+            if (!placePaletteKey.startsWith("wall:")) placePaletteKey = `prop:${id}`;
         },
         getSpawnFaction: () => spawnFaction,
         setSpawnFaction: (faction) => {
@@ -315,15 +316,20 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             sync();
             return true;
         },
-        getEditorPanelTab: () => editorPanelTab,
-        setEditorPanelTab(tab) {
-            if (editorPanelTab === tab) return;
-            editorPanelTab = tab;
-            if (tab === "walls") {
+        getPlacePaletteKey: () => placePaletteKey,
+        isWallPlaceMode: () => placePaletteKey.startsWith("wall:"),
+        setPlacePaletteKey(key) {
+            if (placePaletteKey === key) return;
+            placePaletteKey = key;
+            if (key.startsWith("wall:")) {
+                wallStampMode = /** @type {'voxel' | 'rail' | 'forcefield' | 'portal'} */ (key.slice(5));
                 selectedPropIds.clear();
                 selectedPropId = null;
                 dropFloorSelection();
-            } else dropWallSelection();
+            } else if (key.startsWith("prop:")) {
+                spawnPropId = key.slice(5);
+                dropWallSelection();
+            }
             sync();
         },
         getWallStampMode: () => wallStampMode,

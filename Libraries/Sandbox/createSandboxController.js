@@ -148,7 +148,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     const onPointerDown = (e) => {
         const canvas = getCanvas();
         const world = clientToWorld(e.clientX, e.clientY);
-        if (session.getEditorPanelTab() === "walls") {
+        if (session.isWallPlaceMode()) {
             handleWallPointerDown(world, e);
             return;
         }
@@ -417,8 +417,9 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         getSelectedFloorBeltInfo: () => session.getSelectedFloorBeltInfo(),
         getSelectedPassagePowerSourceInfo: () => session.getSelectedPassagePowerSourceInfo(),
         setSelectedPassagePowerSourceDefaultPowered: (powered) => session.setSelectedPassagePowerSourceDefaultPowered(powered),
-        getEditorPanelTab: () => session.getEditorPanelTab(),
-        setEditorPanelTab: (tab) => session.setEditorPanelTab(tab),
+        getPlacePaletteKey: () => session.getPlacePaletteKey(),
+        setPlacePaletteKey: (key) => session.setPlacePaletteKey(key),
+        isWallPlaceMode: () => session.isWallPlaceMode(),
         getWallStampMode: () => session.getWallStampMode(),
         setWallStampMode: (mode) => session.setWallStampMode(mode),
         getWallHeightLevel: () => session.getWallHeightLevel(),
