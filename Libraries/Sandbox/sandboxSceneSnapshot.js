@@ -1,6 +1,5 @@
-import { packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { gridCellToGlobalColRow, gridWallEdgeMirrorSide, gridWallEdgeNeighbor } from "../World/wallGridCells.js";
+import { gridCellToGlobalColRow, isCanonicalEdgeRepresentative } from "../World/wallGridCells.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
 import {
@@ -28,17 +27,6 @@ import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
  */
 /** Current snapshot format; bump when fields change (no vN→vN+1 migration code until then). */
 export const SANDBOX_SCENE_SCHEMA_VERSION = 5;
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
-function shouldEmitRailWall(grid, col, row, side) {
-    const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-    const nSide = gridWallEdgeMirrorSide(side);
-    const a = gridCellToGlobalColRow(grid, col, row);
-    const keyA = packEdgeCellKey(a.globalCol, a.globalRow, side);
-    if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return true;
-    const b = gridCellToGlobalColRow(grid, nc, nr);
-    const keyB = packEdgeCellKey(b.globalCol, b.globalRow, nSide);
-    return keyA <= keyB;
-}
 /** @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} a @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} b */
 function unionStampBounds(a, b) {
     if (!a) return b;
@@ -56,7 +44,7 @@ export function collectSandboxSceneSnapshot(state) {
     const listed = listPlacedRailWalls(grid);
     for (let i = 0; i < listed.length; i++) {
         const { col, row, side, heightLevel, thicknessLevel } = listed[i];
-        if (!shouldEmitRailWall(grid, col, row, side)) continue;
+        if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
         const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
         railWalls.push({ col: globalCol, row: globalRow, side, heightLevel, thicknessLevel });
     }
@@ -64,7 +52,7 @@ export function collectSandboxSceneSnapshot(state) {
     const listedForcefields = listPlacedForcefields(grid);
     for (let i = 0; i < listedForcefields.length; i++) {
         const { col, row, side } = listedForcefields[i];
-        if (!shouldEmitRailWall(grid, col, row, side)) continue;
+        if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
         const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
         const info = getForcefieldInfo(grid, col, row, side);
         if (!info) continue;

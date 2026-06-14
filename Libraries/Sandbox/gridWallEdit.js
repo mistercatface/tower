@@ -6,8 +6,7 @@ import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { formatPassageModeLabel, isForcefieldEdge, isRailWallEdge, parsePassageMode, PASSAGE_MODE, railWallCapLevel } from "../Spatial/grid/CellEdge.js";
 import { clearBoundaryPrimary, setBoundary, setPassageProfile } from "../Spatial/grid/boundaryOccupancy.js";
-import { gridNeighborFillLevel } from "../World/wallGridCells.js";
-import { cellIsStaticWallAtIdx, gridCellToGlobalColRow, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
+import { cellIsStaticWallAtIdx, gridCellToGlobalColRow, gridForcefieldEdge, gridNeighborFillLevel, gridRailWallEdge, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
 const ENSURE_AABB = createAabb();
 const EDGE_P1 = { x: 0, y: 0 };
@@ -25,12 +24,12 @@ export function gridHasVoxelWall(grid, col, row) {
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridHasRailWall(grid, col, row, side) {
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
-    return isRailWallEdge(grid.edgeStore.get(col, row, side, grid.cols));
+    return gridRailWallEdge(grid, col, row, side) !== null;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridHasForcefield(grid, col, row, side) {
     if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
-    return isForcefieldEdge(grid.edgeStore.get(col, row, side, grid.cols));
+    return gridForcefieldEdge(grid, col, row, side) !== null;
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid

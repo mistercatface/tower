@@ -547,6 +547,11 @@ export function canonicalEdgeCellKey(grid, col, row, side) {
     const keyB = packEdgeCellKey(b.globalCol, b.globalRow, gridWallEdgeMirrorSide(side));
     return keyA <= keyB ? keyA : keyB;
 }
+/** True when iterating (col, row, side) is the canonical representative — use when exporting or listing mirrored edges once. */
+export function isCanonicalEdgeRepresentative(grid, col, row, side) {
+    const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+    return packEdgeCellKey(globalCol, globalRow, side) === canonicalEdgeCellKey(grid, col, row, side);
+}
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {number} col

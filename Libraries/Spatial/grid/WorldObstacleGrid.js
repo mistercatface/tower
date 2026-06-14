@@ -382,18 +382,6 @@ export class WorldObstacleGrid {
     edgeBlocksStep(col, row, side) {
         return boundaryBlocksStep(this, col, row, side);
     }
-    /** @param {number} col @param {number} row @param {number} side */
-    writeForcefieldEdge(col, row, side) {
-        setBoundary(this, col, row, side, { kind: "passage" });
-    }
-    /** @param {number} col @param {number} row @param {number} side */
-    stampForcefieldEdge(col, row, side) {
-        setBoundary(this, col, row, side, { kind: "passage" }, { bumpRevision: true });
-    }
-    /** @param {number} col @param {number} row @param {number} side */
-    clearForcefieldEdge(col, row, side) {
-        clearBoundaryPrimary(this, col, row, side, { bumpRevision: true });
-    }
     /** @param {number} col @param {number} row @param {number} kind @param {number} facingIndex */
     syncFloorBeltRailEdges(col, row, kind, facingIndex) {
         reconcileBeltBoundaries(this, col, row, kind, facingIndex);
