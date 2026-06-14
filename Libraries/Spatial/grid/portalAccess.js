@@ -39,9 +39,9 @@ export function formatPortalAccessSideLabel(ownerSide, allowedSide) {
 }
 /** Non-directional step query (conservative when access is one). Caller must pass a portal edge. */
 export function portalBlocksStepWithoutDirection(edge, ownerSide) {
-    if (edge.powered !== true) return true;
-    if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return false;
-    return portalAccessBlockIncludesStep(edge);
+    // A portal edge always blocks normal steps because crossing it either teleports the entity
+    // or blocks it (if unpowered, unlinked, or wrong-side). Normal walk to the opposite cell is never possible.
+    return true;
 }
 /**
  * Portal step blocking for access sides. Part 3 calls this before traverse.
