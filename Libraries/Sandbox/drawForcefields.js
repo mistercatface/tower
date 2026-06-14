@@ -1,6 +1,7 @@
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
-import { isForcefieldEdge, isPortalEdge, PASSAGE_MODE, resolvePassageEdge } from "../Spatial/grid/CellEdge.js";
+import { isForcefieldEdge, isPortalEdge, PASSAGE_MODE, PORTAL_ACCESS_MODE, parsePortalAccessMode, resolvePassageEdge } from "../Spatial/grid/CellEdge.js";
+import { portalAccessArrowVector, portalAccessDefaultAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { gridWallEdgeEndpoints, canonicalEdgeCellKey, isCanonicalEdgeRepresentative } from "../World/wallGridCells.js";
 import { PORTAL_LINK_MODE, resolvePortalLinkRoute } from "./portalLinks.js";
 const EDGE_P1 = { x: 0, y: 0 };
@@ -163,6 +164,11 @@ export function drawForcefieldEdges(ctx, state, viewport) {
                 const mid = portalEdgeMidpoint(grid, col, row, side);
                 drawPortalMidpointGlyph(ctx, mid.x, mid.y, lineScale, powered, role);
                 if (route) drawPortalConnection(ctx, grid, route.source, route.dest, route.linkMode, lineScale);
+                if (parsePortalAccessMode(edge.accessMode) === PORTAL_ACCESS_MODE.One) {
+                    const allowedSide = edge.allowedSide ?? portalAccessDefaultAllowedSide(side);
+                    const { x: ax, y: ay } = portalAccessArrowVector(side, allowedSide);
+                    drawPassageArrow(ctx, mid.x, mid.y, ax, ay, 6 * lineScale, powered ? "rgba(255, 255, 255, 0.95)" : "rgba(255, 255, 255, 0.45)");
+                }
                 continue;
             }
             const { mode, allowedSide, powered } = resolvePassageEdge(edge, side);

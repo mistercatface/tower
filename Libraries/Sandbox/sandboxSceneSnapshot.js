@@ -19,6 +19,7 @@ import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
+import { PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
 /**
  * Sandbox scene snapshot — copy/paste JSON for props, stamped grid walls, floor belts, and forcefields.
@@ -29,7 +30,7 @@ import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
  * boundary until we deliberately add that.
  */
 /** Current snapshot format; bump when fields change (no vN→vN+1 migration code until then). */
-export const SANDBOX_SCENE_SCHEMA_VERSION = 6;
+export const SANDBOX_SCENE_SCHEMA_VERSION = 7;
 /** @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} a @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} b */
 function unionStampBounds(a, b) {
     if (!a) return b;
@@ -71,8 +72,8 @@ export function collectSandboxSceneSnapshot(state) {
         const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
         const info = getPortalInfo(grid, col, row, side);
         if (!info) continue;
-        const entry = { col: globalCol, row: globalRow, side, entranceMode: info.entranceMode };
-        if (info.entranceMode === "oneWay") entry.allowedSide = info.allowedSide;
+        const entry = { col: globalCol, row: globalRow, side, accessMode: info.accessMode };
+        if (info.accessMode === PORTAL_ACCESS_MODE.One) entry.allowedSide = info.allowedSide;
         if (info.partnerKey) entry.partnerKey = info.partnerKey;
         if (info.linkMode === "oneWay") {
             entry.linkMode = "oneWay";

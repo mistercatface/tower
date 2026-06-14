@@ -1,5 +1,7 @@
 import { gridSettings } from "../../Config/balance/grid.js";
 import { packEdgeCellKey } from "../DataStructures/CellKey.js";
+import { PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
+import { portalAccessDefaultAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { gridWallEdgeMirrorSide } from "../World/wallGridCells.js";
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "./sandboxSceneSnapshot.js";
 /** Canonical packed edge key in global cell coordinates (grid origin at 0,0). */
@@ -33,12 +35,12 @@ function southLaserRun(globalCol, globalRowStart, globalRowEnd) {
     return out;
 }
 /**
- * Preconfigured sandbox demo: passage power, lasers, and portal link profiles.
+ * Preconfigured sandbox demo: passage power, lasers, portal links, and access profiles.
  *
  * Layout (global cell coords):
- * - Row 10: power source → laser run → shared linked portal pair (powered)
- * - Row 12: same network via vertical laser → one-way linked portal pair
- * - Col 22: isolated off-network portal + unpowered tripwire laser
+ * - Row 10: power source → laser run → shared linked portal pair (powered, both-side access)
+ * - Row 12: same network → one-way linked portal pair (both-side access)
+ * - Col 22: isolated off-network portal (one-side access, owner cell only)
  */
 export function buildSandboxStartSceneDoc() {
     const cellSize = gridSettings.cellSize;
@@ -46,6 +48,7 @@ export function buildSandboxStartSceneDoc() {
     const rowShared = 10;
     const rowOneWay = 12;
     const offCol = 22;
+    const offSide = 1;
     const sharedPortalAKey = globalCanonicalEdgeKey(14, rowShared, 1);
     const sharedPortalBKey = globalCanonicalEdgeKey(16, rowShared, 3);
     const oneWayPortalCKey = globalCanonicalEdgeKey(14, rowOneWay, 1);
@@ -59,11 +62,11 @@ export function buildSandboxStartSceneDoc() {
         { col: offCol, row: rowOneWay, side: 1, mode: "tripwire" },
     ];
     const portals = [
-        { col: 14, row: rowShared, side: 1, entranceMode: "solid", partnerKey: sharedPortalBKey },
-        { col: 16, row: rowShared, side: 3, entranceMode: "solid", partnerKey: sharedPortalAKey },
-        { col: 14, row: rowOneWay, side: 1, entranceMode: "solid", partnerKey: oneWayPortalDKey, linkMode: "oneWay", linkSourceKey: oneWayPortalCKey },
-        { col: 16, row: rowOneWay, side: 3, entranceMode: "solid", partnerKey: oneWayPortalCKey, linkMode: "oneWay", linkSourceKey: oneWayPortalCKey },
-        { col: offCol, row: rowShared, side: 1, entranceMode: "oneWay", allowedSide: 1 },
+        { col: 14, row: rowShared, side: 1, accessMode: PORTAL_ACCESS_MODE.Both, partnerKey: sharedPortalBKey },
+        { col: 16, row: rowShared, side: 3, accessMode: PORTAL_ACCESS_MODE.Both, partnerKey: sharedPortalAKey },
+        { col: 14, row: rowOneWay, side: 1, accessMode: PORTAL_ACCESS_MODE.Both, partnerKey: oneWayPortalDKey, linkMode: "oneWay", linkSourceKey: oneWayPortalCKey },
+        { col: 16, row: rowOneWay, side: 3, accessMode: PORTAL_ACCESS_MODE.Both, partnerKey: oneWayPortalCKey, linkMode: "oneWay", linkSourceKey: oneWayPortalCKey },
+        { col: offCol, row: rowShared, side: offSide, accessMode: PORTAL_ACCESS_MODE.One, allowedSide: portalAccessDefaultAllowedSide(offSide) },
     ];
     const half = cellSize * 0.5;
     const propCol = 12;

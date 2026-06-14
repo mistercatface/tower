@@ -7,17 +7,19 @@ import {
     isForcefieldEdge,
     isPortalEdge,
     isRailWallEdge,
-    parseEntranceMode,
     parsePassageMode,
+    parsePortalAccessMode,
     passageEdgeBlocksStep,
+    PORTAL_ACCESS_MODE,
 } from "./CellEdge.js";
+import { portalAccessDefaultAllowedSide, portalBlocksStepFrom } from "./portalAccess.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { gridNeighborFillLevel } from "../../World/wallGridCells.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {{ kind: "passage", mode?: string, allowedSide?: number, powered?: boolean }} PassageBoundarySpec */
-/** @typedef {{ kind: "portal", entranceMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} PortalBoundarySpec */
+/** @typedef {{ kind: "portal", accessMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} PortalBoundarySpec */
 /** @typedef {RailWallBoundarySpec | PassageBoundarySpec | PortalBoundarySpec} BoundaryPrimarySpec */
 /**
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -33,7 +35,7 @@ export function getBoundary(grid, col, row, side) {
             primary: "portal",
             edge,
             beltRail: false,
-            entranceMode: parseEntranceMode(edge.entranceMode),
+            accessMode: parsePortalAccessMode(edge.accessMode),
             allowedSide: edge.allowedSide,
             partnerKey: edge.partnerKey ?? 0,
             linkMode: edge.linkMode ?? "shared",
@@ -62,10 +64,12 @@ export function setPassageProfile(grid, col, row, side, mode, allowedSide) {
     if (!isForcefieldEdge(edge) || isPortalEdge(edge)) return false;
     return setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: edge.powered === true }, { bumpRevision: true });
 }
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {string} entranceMode @param {number} [allowedSide] */
-export function setPortalProfile(grid, col, row, side, entranceMode, allowedSide) {
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {string} accessMode @param {number} [allowedSide] */
+export function setPortalProfile(grid, col, row, side, accessMode, allowedSide) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isPortalEdge(edge)) return false;
+    const ownerSide = side;
+    const resolvedAllowedSide = parsePortalAccessMode(accessMode) === PORTAL_ACCESS_MODE.One ? (allowedSide ?? portalAccessDefaultAllowedSide(ownerSide)) : ownerSide;
     return setBoundary(
         grid,
         col,
@@ -73,8 +77,8 @@ export function setPortalProfile(grid, col, row, side, entranceMode, allowedSide
         side,
         {
             kind: "portal",
-            entranceMode: parseEntranceMode(entranceMode),
-            allowedSide: allowedSide ?? side,
+            accessMode: parsePortalAccessMode(accessMode),
+            allowedSide: resolvedAllowedSide,
             partnerKey: edge.partnerKey ?? 0,
             linkMode: edge.linkMode ?? "shared",
             linkSourceKey: edge.linkSourceKey ?? 0,
@@ -125,7 +129,7 @@ export function setBoundary(grid, col, row, side, spec, { bumpRevision = false }
             grid.cols,
             grid.rows,
             createPortalEdge({
-                entranceMode: spec.entranceMode,
+                accessMode: spec.accessMode,
                 allowedSide: spec.allowedSide ?? side,
                 partnerKey: spec.partnerKey ?? 0,
                 linkMode: spec.linkMode,
@@ -276,6 +280,17 @@ function beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow) {
     const sideY = dr > 0 ? 2 : 0;
     return sideX === exitSide || sideY === exitSide;
 }
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow @param {number} ownerCol @param {number} ownerRow @param {number} ownerSide */
+function portalBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide) {
+    const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
+    if (!isPortalEdge(edge)) return false;
+    return portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide);
+}
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow @param {number} ownerCol @param {number} ownerRow @param {number} ownerSide */
+function boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide) {
+    if (portalBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide)) return true;
+    return boundaryBlocksStep(grid, ownerCol, ownerRow, ownerSide);
+}
 /**
  * Directional step blocking: belt entry rules + boundary edges (rail, beltRail, powered passage).
  *
@@ -292,20 +307,20 @@ export function boundaryBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow) {
     const dr = toRow - fromRow;
     if (dc !== 0 && dr === 0) {
         const side = dc > 0 ? 1 : 3;
-        return boundaryBlocksStep(grid, fromCol, fromRow, side);
+        return boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
     }
     if (dc === 0 && dr !== 0) {
         const side = dr > 0 ? 2 : 0;
-        return boundaryBlocksStep(grid, fromCol, fromRow, side);
+        return boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
     }
     if (dc !== 0 && dr !== 0) {
         if (grid.isBlocked(fromCol + dc, fromRow) || grid.isBlocked(fromCol, fromRow + dr)) return true;
         const sideX = dc > 0 ? 1 : 3;
         const sideY = dr > 0 ? 2 : 0;
-        if (boundaryBlocksStep(grid, fromCol, fromRow, sideX)) return true;
-        if (boundaryBlocksStep(grid, fromCol, fromRow, sideY)) return true;
-        if (boundaryBlocksStep(grid, fromCol, fromRow + dr, sideX)) return true;
-        if (boundaryBlocksStep(grid, fromCol + dc, fromRow, sideY)) return true;
+        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, sideX)) return true;
+        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, sideY)) return true;
+        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow + dr, sideX)) return true;
+        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol + dc, fromRow, sideY)) return true;
     }
     return false;
 }

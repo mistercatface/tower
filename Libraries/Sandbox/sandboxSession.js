@@ -41,7 +41,8 @@ import {
     stampVoxelWallAt,
     unlinkPortalAt,
 } from "./gridWallEdit.js";
-import { PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
+import { PASSAGE_MODE, PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
+import { portalAccessDefaultAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
 import { PORTAL_LINK_MODE } from "./portalLinks.js";
@@ -62,7 +63,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let wallHeightLevel = 4;
     let railThicknessLevel = 2;
     let forcefieldStampMode = PASSAGE_MODE.Solid;
-    let portalStampEntranceMode = PASSAGE_MODE.Solid;
+    let portalStampAccessMode = PORTAL_ACCESS_MODE.Both;
     /** @type {{ col: number, row: number } | null} */
     let selectedVoxelCell = null;
     /** @type {{ col: number, row: number, side: number } | null} */
@@ -344,9 +345,9 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             forcefieldStampMode = mode;
             sync();
         },
-        getPortalStampEntranceMode: () => portalStampEntranceMode,
-        setPortalStampEntranceMode(mode) {
-            portalStampEntranceMode = mode;
+        getPortalStampAccessMode: () => portalStampAccessMode,
+        setPortalStampAccessMode(mode) {
+            portalStampAccessMode = mode;
             sync();
         },
         getSelectedVoxelCell: () => selectedVoxelCell,
@@ -398,22 +399,27 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             sync();
             return true;
         },
-        setSelectedPortalEntranceMode(entranceMode) {
+        setSelectedPortalAccessMode(accessMode) {
             if (!selectedRailEdge) return false;
             const { col, row, side } = selectedRailEdge;
             const info = getPortalInfo(state.obstacleGrid, col, row, side);
             if (!info) return false;
-            const allowedSide = entranceMode === PASSAGE_MODE.OneWay ? (info.entranceMode === PASSAGE_MODE.OneWay ? (info.allowedSide ?? side) : side) : side;
-            if (!setPortalProfileAt(state, col, row, side, entranceMode, allowedSide)) return false;
+            const allowedSide =
+                accessMode === PORTAL_ACCESS_MODE.One
+                    ? info.accessMode === PORTAL_ACCESS_MODE.One
+                        ? (info.allowedSide ?? portalAccessDefaultAllowedSide(side))
+                        : portalAccessDefaultAllowedSide(side)
+                    : portalAccessDefaultAllowedSide(side);
+            if (!setPortalProfileAt(state, col, row, side, accessMode, allowedSide)) return false;
             sync();
             return true;
         },
-        setSelectedPortalAllowedSide(allowedSide) {
+        setSelectedPortalAccessSide(allowedSide) {
             if (!selectedRailEdge) return false;
             const { col, row, side } = selectedRailEdge;
             const info = getPortalInfo(state.obstacleGrid, col, row, side);
-            if (!info || info.entranceMode !== PASSAGE_MODE.OneWay) return false;
-            if (!setPortalProfileAt(state, col, row, side, PASSAGE_MODE.OneWay, allowedSide)) return false;
+            if (!info || info.accessMode !== PORTAL_ACCESS_MODE.One) return false;
+            if (!setPortalProfileAt(state, col, row, side, PORTAL_ACCESS_MODE.One, allowedSide)) return false;
             sync();
             return true;
         },
@@ -459,7 +465,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                     setSelectedRailEdge(hit.col, hit.row, hit.side);
                     return true;
                 }
-                if (!stampPortalAt(state, hit.col, hit.row, hit.side, { entranceMode: portalStampEntranceMode, allowedSide: hit.side })) return false;
+                if (!stampPortalAt(state, hit.col, hit.row, hit.side, { accessMode: portalStampAccessMode, allowedSide: portalAccessDefaultAllowedSide(hit.side) })) return false;
                 setSelectedRailEdge(hit.col, hit.row, hit.side);
                 sync();
                 return true;

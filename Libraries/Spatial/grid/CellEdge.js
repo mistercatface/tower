@@ -1,18 +1,19 @@
 /** @typedef {{ kind: 'railWall', heightDelta: number, thicknessLevel: number }} RailWallEdge */
 /** @typedef {{ kind: 'conveyor' }} ConveyorEdge */
 /** @typedef {{ kind: 'beltRail' }} BeltRailEdge */
-/** @typedef {{ kind: 'forcefield', mode: string, allowedSide: number, powered: boolean, entranceMode?: string, partnerKey?: number, linkMode?: string, linkSourceKey?: number }} ForcefieldEdge */
+/** @typedef {{ kind: 'forcefield', mode: string, allowedSide: number, powered: boolean, accessMode?: string, partnerKey?: number, linkMode?: string, linkSourceKey?: number }} ForcefieldEdge */
 export const EDGE_KIND = { RailWall: "railWall", Conveyor: "conveyor", BeltRail: "beltRail", Forcefield: "forcefield" };
 export const PASSAGE_MODE = { Solid: "solid", OneWay: "oneWay", Tripwire: "tripwire", Portal: "portal" };
+export const PORTAL_ACCESS_MODE = { Both: "both", One: "one" };
 /** @param {unknown} raw */
 export function parsePassageMode(raw) {
     if (raw === PASSAGE_MODE.OneWay || raw === PASSAGE_MODE.Tripwire) return raw;
     return PASSAGE_MODE.Solid;
 }
-/** Portal entrance profile — solid blocks all entry; oneWay blocks against allowedSide only. */
-export function parseEntranceMode(raw) {
-    if (raw === PASSAGE_MODE.OneWay) return PASSAGE_MODE.OneWay;
-    return PASSAGE_MODE.Solid;
+/** @param {unknown} raw */
+export function parsePortalAccessMode(raw) {
+    if (raw === PORTAL_ACCESS_MODE.One) return PORTAL_ACCESS_MODE.One;
+    return PORTAL_ACCESS_MODE.Both;
 }
 /** @param {string} mode */
 export function formatPassageModeLabel(mode) {
@@ -20,11 +21,6 @@ export function formatPassageModeLabel(mode) {
     if (mode === PASSAGE_MODE.Tripwire) return "Tripwire";
     if (mode === PASSAGE_MODE.Portal) return "Portal";
     return "Solid";
-}
-/** @param {string} mode */
-export function formatEntranceModeLabel(mode) {
-    if (mode === PASSAGE_MODE.OneWay) return "One-way entrance";
-    return "Solid entrance";
 }
 /** @param {number} heightDelta levels above neighbor fill @param {number} thicknessLevel */
 export function createRailWallEdge(heightDelta, thicknessLevel) {
@@ -37,9 +33,9 @@ export function createBeltRailEdge() {
 export function createForcefieldEdge({ mode = PASSAGE_MODE.Solid, allowedSide = 1, powered = false } = {}) {
     return { kind: EDGE_KIND.Forcefield, mode: parsePassageMode(mode), allowedSide, powered: powered === true };
 }
-/** @param {{ entranceMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} [opts] */
-export function createPortalEdge({ entranceMode = PASSAGE_MODE.Solid, allowedSide = 1, partnerKey = 0, linkMode = "shared", linkSourceKey = 0, powered = false } = {}) {
-    return { kind: EDGE_KIND.Forcefield, mode: PASSAGE_MODE.Portal, entranceMode: parseEntranceMode(entranceMode), allowedSide, partnerKey, linkMode, linkSourceKey, powered: powered === true };
+/** @param {{ accessMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} [opts] */
+export function createPortalEdge({ accessMode = PORTAL_ACCESS_MODE.Both, allowedSide = 1, partnerKey = 0, linkMode = "shared", linkSourceKey = 0, powered = false } = {}) {
+    return { kind: EDGE_KIND.Forcefield, mode: PASSAGE_MODE.Portal, accessMode: parsePortalAccessMode(accessMode), allowedSide, partnerKey, linkMode, linkSourceKey, powered: powered === true };
 }
 /** @param {object | null | undefined} edge */
 export function isRailWallEdge(edge) {
@@ -77,7 +73,11 @@ export function resolvePassageEdge(edge, ownerSide) {
 }
 /** @param {object | null | undefined} edge @param {number} crossedSide side being crossed on the owner cell @param {number} ownerSide side the passage was stamped on */
 export function passageEdgeBlocksStep(edge, crossedSide, ownerSide) {
-    if (isPortalEdge(edge)) return false;
+    if (isPortalEdge(edge)) {
+        if (edge.powered !== true) return true;
+        if (parsePortalAccessMode(edge.accessMode) === PORTAL_ACCESS_MODE.One) return true;
+        return false;
+    }
     if (!isForcefieldEdge(edge) || edge.powered !== true) return false;
     const { mode, allowedSide } = resolvePassageEdge(edge, ownerSide);
     if (mode === PASSAGE_MODE.Tripwire) return false;

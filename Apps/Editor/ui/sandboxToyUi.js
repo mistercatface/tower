@@ -16,6 +16,8 @@ import { renderSandboxEquipPanel } from "../../../Libraries/Sandbox/sandboxEquip
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
+import { portalAccessSideOptions } from "../../../Libraries/Spatial/grid/portalAccess.js";
+import { PORTAL_ACCESS_MODE } from "../../../Libraries/Spatial/grid/CellEdge.js";
 import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 const WALL_STAMP_OPTIONS = [
@@ -29,9 +31,9 @@ const PASSAGE_MODE_OPTIONS = [
     { value: "oneWay", label: "One-way — block against allowed side" },
     { value: "tripwire", label: "Tripwire — sensor, never blocks" },
 ];
-const PORTAL_ENTRANCE_MODE_OPTIONS = [
-    { value: "solid", label: "Solid — block all entry" },
-    { value: "oneWay", label: "One-way — block against allowed side" },
+const PORTAL_ACCESS_MODE_OPTIONS = [
+    { value: "both", label: "Both sides — either cell can enter" },
+    { value: "one", label: "One side only" },
 ];
 const PORTAL_CONNECTION_OPTIONS = [
     { value: "shared", label: "Shared — both ways (⇄)" },
@@ -66,24 +68,24 @@ function appendPassageEditorFields(body, controller, selected, { stampDefaults =
             },
         });
 }
-/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ entranceMode: string, allowedSide?: number, side?: number, linked?: boolean, partner?: { col: number, row: number, side: number } | null } | null} selected @param {{ stampDefaults?: boolean, linkTargets?: { col: number, row: number, side: number, label: string }[], onChange: () => void }} opts */
+/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ accessMode: string, allowedSide?: number, side?: number, linked?: boolean, partner?: { col: number, row: number, side: number } | null } | null} selected @param {{ stampDefaults?: boolean, linkTargets?: { col: number, row: number, side: number, label: string }[], onChange: () => void }} opts */
 function appendPortalEditorFields(body, controller, selected, { stampDefaults = false, linkTargets = [], onChange }) {
-    const entranceMode = stampDefaults ? controller.getPortalStampEntranceMode() : selected.entranceMode;
-    appendSelectField(body, "Entrance", {
-        value: entranceMode,
-        options: PORTAL_ENTRANCE_MODE_OPTIONS,
+    const accessMode = stampDefaults ? controller.getPortalStampAccessMode() : selected.accessMode;
+    appendSelectField(body, "Access", {
+        value: accessMode,
+        options: PORTAL_ACCESS_MODE_OPTIONS,
         onChange: (value) => {
-            if (stampDefaults) controller.setPortalStampEntranceMode(value);
-            else controller.setSelectedPortalEntranceMode(value);
+            if (stampDefaults) controller.setPortalStampAccessMode(value);
+            else controller.setSelectedPortalAccessMode(value);
             onChange();
         },
     });
-    if (entranceMode === "oneWay" && !stampDefaults && selected)
-        appendSelectField(body, "Allowed side", {
+    if (accessMode === PORTAL_ACCESS_MODE.One && !stampDefaults && selected)
+        appendSelectField(body, "Allowed cell", {
             value: String(selected.allowedSide ?? selected.side),
-            options: EDGE_SIDE_OPTIONS,
+            options: portalAccessSideOptions(selected.side ?? 0),
             onChange: (value) => {
-                controller.setSelectedPortalAllowedSide(Number(value));
+                controller.setSelectedPortalAccessSide(Number(value));
                 onChange();
             },
         });
