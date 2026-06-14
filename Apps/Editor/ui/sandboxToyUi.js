@@ -397,10 +397,10 @@ function renderSceneJsonPanel(container, controller, onChange) {
     startDemoBtn.type = "button";
     startDemoBtn.className = "secondary";
     startDemoBtn.textContent = "Load start demo";
-    const mazeDemoBtn = document.createElement("button");
-    mazeDemoBtn.type = "button";
-    mazeDemoBtn.className = "secondary";
-    mazeDemoBtn.textContent = "Generate belt network";
+    const graphBtn = document.createElement("button");
+    graphBtn.type = "button";
+    graphBtn.className = "secondary";
+    graphBtn.textContent = "Generate random graph";
     const textarea = document.createElement("textarea");
     textarea.className = "editor-export-area";
     textarea.rows = 10;
@@ -411,14 +411,14 @@ function renderSceneJsonPanel(container, controller, onChange) {
         textarea.value = controller.exportSceneSnapshot();
         onChange();
     });
-    mazeDemoBtn.addEventListener("click", () => {
-        if (!window.confirm("Replace the sandbox with a new generated belt network?")) return;
-        controller.loadMazeScene();
+    graphBtn.addEventListener("click", () => {
+        if (!window.confirm("Replace the sandbox with a random room graph?")) return;
+        controller.loadRandomGraphScene();
         textarea.value = controller.exportSceneSnapshot();
         onChange();
     });
     container.appendChild(startDemoBtn);
-    container.appendChild(mazeDemoBtn);
+    container.appendChild(graphBtn);
     container.appendChild(textarea);
     const row = document.createElement("div");
     row.className = "sandbox-add-row";
