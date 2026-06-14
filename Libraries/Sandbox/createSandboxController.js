@@ -13,6 +13,7 @@ import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSce
 import { spawnSandboxStartScene } from "./sandboxStartScene.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawSandboxMarquee, drawSandboxPropTileCells, drawSandboxSelectionRings, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
+import { drawSandboxPlacePreview, resolveSandboxPlacePreview } from "./drawSandboxPlacePreview.js";
 import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { drawSandboxWeaponBars } from "./drawWorldPropWeaponBars.js";
@@ -69,6 +70,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     let marqueeSelect = null;
     /** @type {{ pointerId: number, prop: object, behavior: SandboxBehavior } | null} */
     let groundNav = null;
+    /** @type {{ x: number, y: number } | null} */
+    let placePreviewWorld = null;
     const entityMeta = () => getSandboxEntityMeta(state);
     const spawnAsset = () => getPropAsset(session.getSpawnPropId());
     /** @param {string} id @param {string[]} allowed */
@@ -294,6 +297,10 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             buttonWireCursor = clientToWorld(e.clientX, e.clientY);
             requestRedraw();
         }
+        if (!interactionBehavior && !marqueeSelect && !groundNav && !buttonWireMode && !session.isMapGenPlaceMode()) {
+            placePreviewWorld = clientToWorld(e.clientX, e.clientY);
+            requestRedraw();
+        }
         if (marqueeSelect) {
             marqueeSelect.currentWorld = clientToWorld(e.clientX, e.clientY);
             requestRedraw();
@@ -311,6 +318,12 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         const world = clientToWorld(e.clientX, e.clientY);
         e.stopPropagation();
         interactionBehavior.onPointerMove(prop, world, e);
+    };
+    /** @param {PointerEvent} e */
+    const onPointerLeave = () => {
+        if (!placePreviewWorld) return;
+        placePreviewWorld = null;
+        requestRedraw();
     };
     /** @param {PointerEvent} e */
     const onPointerUp = (e) => {
@@ -554,7 +567,13 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         listSelectedBehaviors: () => listSelectedBehaviors(),
         register() {
             controller.destroy();
-            unbindPointers = bindCanvasPointers(getCanvas(), { pointerdown: onPointerDown, pointermove: onPointerMove, pointerup: onPointerUp, pointercancel: onPointerUp });
+            unbindPointers = bindCanvasPointers(getCanvas(), {
+                pointerdown: onPointerDown,
+                pointermove: onPointerMove,
+                pointerup: onPointerUp,
+                pointercancel: onPointerUp,
+                pointerleave: onPointerLeave,
+            });
         },
         destroy() {
             unbindPointers?.();
@@ -563,6 +582,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             buttonWireCursor = null;
             marqueeSelect = null;
             groundNav = null;
+            placePreviewWorld = null;
             resetBehaviors();
             session.setUiSync(null);
         },
@@ -617,6 +637,11 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         drawMarqueeOverlay(ctx) {
             const { marqueeRect } = selectionDrawState();
             drawSandboxMarquee(ctx, { marqueeRect });
+        },
+        drawPlacePreview(ctx) {
+            if (!placePreviewWorld || interactionBehavior || marqueeSelect || groundNav || buttonWireMode || session.isMapGenPlaceMode()) return;
+            const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
+            drawSandboxPlacePreview(ctx, preview, state.obstacleGrid);
         },
         drawOverlay(ctx) {
             drawSandboxWeaponBars(ctx, state);

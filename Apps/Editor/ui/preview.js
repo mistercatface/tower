@@ -26,6 +26,7 @@ const editorSceneHooks = {
             zIndex: 65,
             draw(_state, _viewport, ctx) {
                 const controller = getGameState().sandbox.controller;
+                controller?.drawPlacePreview(ctx);
                 controller?.drawSelectionRings(ctx);
                 controller?.drawPropTileCells(ctx);
             },
