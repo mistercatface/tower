@@ -52,6 +52,10 @@ export {
     DEFAULT_NODE_GRAPH_GEN_CONFIG,
     DEFAULT_ROOM_GRAPH_GRID,
     buildSandboxRoomGraphSceneDoc,
+    buildSandboxGraphSceneDoc,
+    spawnSandboxGraphScene,
+    DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS,
+    resolveSandboxGraphSceneOptions,
     buildBranchingNodeTree,
     buildBranchingRoomTree,
     buildDirectedGraphEdges,
@@ -63,6 +67,7 @@ export {
     propsForRoomCenters,
     punchHoleInClosedRoom,
     punchHolesForDirectedEdges,
+    punchHoleTowardNeighbor,
     punchOneHolePerRoom,
     railWallsForClosedRect,
     railWallsForClosedRoom,
@@ -71,6 +76,8 @@ export {
     resolveNodeGraphGenConfig,
     roomGraphLayoutToSceneDoc,
     roomWallEdgeKey,
+    roomWallGapKeysWorld,
+    omitRailWallsAtGapKeys,
     tryBuildCorridorRails,
     tryBuildNodeGraph,
     tryBuildRoomGraphLayout,
@@ -79,7 +86,6 @@ export {
     wireDirectedEdgeToRoomHoles,
     buildCorridorPathBetweenHoles,
 } from "./sandboxRoomGraphGen.js";
-export { buildSandboxGraphSceneDoc, spawnSandboxGraphScene } from "./sandboxGraphScene.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
 export { evaluatePortalStepEntry } from "./portalLinks.js";
 export { tryPortalIntake, applyPortalTraverse } from "./portalTraverse.js";

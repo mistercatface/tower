@@ -1,4 +1,26 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
+import { applySandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
+
+/** Edit generator behavior here — callers only override per-run values like `seed`. */
+export const DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS = {
+    singleCorridor: true,
+};
+
+/** @param {Record<string, unknown>} [overrides] */
+export function resolveSandboxGraphSceneOptions(overrides = {}) {
+    return { ...DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS, ...overrides };
+}
+
+/** Procedural room graph — new layout each call unless you pass a seed. */
+export function buildSandboxGraphSceneDoc(options = {}) {
+    return buildSandboxRoomGraphSceneDoc(resolveSandboxGraphSceneOptions(options));
+}
+
+/** Replace the current sandbox with a freshly generated room graph. */
+export function spawnSandboxGraphScene(state, options = {}) {
+    applySandboxSceneSnapshot(state, buildSandboxGraphSceneDoc(options));
+}
+
 const SANDBOX_SCENE_SCHEMA_VERSION = 7;
 /** @typedef {{ c: number, r: number }} Cell */
 /** @typedef {{ id: number, c0: number, r0: number, c1: number, r1: number, centerC: number, centerR: number, width: number, height: number }} GraphNode */
@@ -260,6 +282,49 @@ export function railWallsForClosedRooms(closedRooms, originCol, originRow) {
     for (let i = 0; i < closedRooms.length; i++) walls.push(...railWallsForClosedRoom(closedRooms[i], originCol, originRow));
     return walls;
 }
+/** Punch one random 1-wide hole on the wall face that points at `targetNode`. */
+/** @param {ClosedRoom} closedRoom @param {GraphNode} targetNode @param {() => number} rng */
+export function punchHoleTowardNeighbor(closedRoom, targetNode, rng) {
+    const side = socketSideToward(closedRoom.node, targetNode);
+    const open = listClosedRoomWallEdgeSlots(closedRoom.node).filter(
+        (slot) => slot.side === side && !closedRoom.gaps.has(roomWallEdgeKey(slot.c, slot.r, slot.side)),
+    );
+    const hole = open[(rng() * open.length) | 0];
+    closedRoom.gaps.add(roomWallEdgeKey(hole.c, hole.r, hole.side));
+    closedRoom.holes.push(hole);
+    return hole;
+}
+
+/** @param {ClosedRoom} closedRoom */
+function snapshotClosedRoom(closedRoom) {
+    return { gaps: new Set(closedRoom.gaps), holes: closedRoom.holes.slice() };
+}
+
+/** @param {ClosedRoom} closedRoom @param {{ gaps: Set<string>, holes: RoomWallHole[] }} snap */
+function restoreClosedRoom(closedRoom, snap) {
+    closedRoom.gaps = new Set(snap.gaps);
+    closedRoom.holes = snap.holes.slice();
+}
+
+/** @param {ClosedRoom[]} closedRooms @param {number} originCol @param {number} originRow */
+export function roomWallGapKeysWorld(closedRooms, originCol, originRow) {
+    /** @type {Set<string>} */
+    const keys = new Set();
+    for (let i = 0; i < closedRooms.length; i++) {
+        const holes = closedRooms[i].holes;
+        for (let j = 0; j < holes.length; j++) {
+            const hole = holes[j];
+            keys.add(`${hole.c + originCol},${hole.r + originRow},${hole.side}`);
+        }
+    }
+    return keys;
+}
+
+/** @param {RailWall[]} railWalls @param {Set<string>} gapKeysWorld */
+export function omitRailWallsAtGapKeys(railWalls, gapKeysWorld) {
+    return railWalls.filter((w) => !gapKeysWorld.has(`${w.col},${w.row},${w.side}`));
+}
+
 /** Punch one random 1-wide hole in a closed room. Call again for a second hole. Mutates `closedRoom`. */
 /** @param {ClosedRoom} closedRoom @param {() => number} rng */
 export function punchHoleInClosedRoom(closedRoom, rng) {
@@ -492,7 +557,7 @@ export function tryBuildCorridorRails(layout, rng, originCol, originRow, options
     }
     return { paths, mask, railWalls: railWallsFromFloorMask(mask, gridCols, gridRows, originCol, originRow) };
 }
-/** Route one 1-wide corridor between two rooms that already have one hole each. Tries tree edges until one routes. */
+/** Route one 1-wide corridor; punches facing holes on the two endpoint rooms only. */
 /** @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng @param {number} originCol @param {number} originRow @param {{ halfWidth?: number, egressCells?: number }} [options] */
 export function tryBuildSingleCorridorRails(layout, closedRooms, rng, originCol, originRow, options = {}) {
     const halfWidth = options.halfWidth ?? DEFAULT_CORRIDOR_HALF_WIDTH;
@@ -509,13 +574,29 @@ export function tryBuildSingleCorridorRails(layout, closedRooms, rng, originCol,
     for (let k = 0; k < order.length; k++) {
         const edgeIndex = order[k];
         const edge = graphEdges[edgeIndex];
-        if (!closedRooms[edge.a].holes[0] || !closedRooms[edge.b].holes[0]) continue;
-        wireDirectedEdgeToRoomHoles(edge, closedRooms);
+        const roomA = closedRooms[edge.a];
+        const roomB = closedRooms[edge.b];
+        const snapA = snapshotClosedRoom(roomA);
+        const snapB = snapshotClosedRoom(roomB);
+        edge.parentHole = punchHoleTowardNeighbor(roomA, rooms[edge.b], rng);
+        edge.childHole = punchHoleTowardNeighbor(roomB, rooms[edge.a], rng);
+        edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
+        edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
         const path = buildCorridorPathBetweenHoles(edge.parentHole, edge.childHole, rooms, rng, egressCells);
-        if (!path) continue;
+        if (!path) {
+            restoreClosedRoom(roomA, snapA);
+            restoreClosedRoom(roomB, snapB);
+            edge.parentHole = undefined;
+            edge.childHole = undefined;
+            edge.corridorFrom = undefined;
+            edge.corridorTo = undefined;
+            continue;
+        }
         const mask = new Uint8Array(gridCols * gridRows);
         stampCorridorTube(mask, gridCols, gridRows, path, halfWidth);
-        return { edgeIndex, edge, path, paths: [path], mask, railWalls: railWallsFromFloorMask(mask, gridCols, gridRows, originCol, originRow) };
+        const gapKeysWorld = roomWallGapKeysWorld(closedRooms, originCol, originRow);
+        const railWalls = omitRailWallsAtGapKeys(railWallsFromFloorMask(mask, gridCols, gridRows, originCol, originRow), gapKeysWorld);
+        return { edgeIndex, edge, path, paths: [path], mask, railWalls };
     }
     return null;
 }
@@ -582,10 +663,6 @@ export function roomGraphLayoutToSceneDoc(layout, options) {
     const corridorPaths = [];
     let singleCorridorEdge = null;
     if (options.singleCorridor === true) {
-        if (closedRooms.some((room) => room.holes.length === 0)) {
-            const holeRng = options.holeRng ?? createSeededRng(layout.seed + 31337);
-            punchOneHolePerRoom(closedRooms, holeRng);
-        }
         const rng = options.corridorRng ?? createSeededRng(layout.seed + 99991);
         const corridor = tryBuildSingleCorridorRails(layout, closedRooms, rng, originCol, originRow);
         if (!corridor) {
@@ -625,7 +702,7 @@ export function roomGraphLayoutToSceneDoc(layout, options) {
         meta: {
             generator: "roomGraph",
             seed: layout.seed,
-            punchOneHolePerRoom: options.punchOneHolePerRoom === true || options.singleCorridor === true,
+            punchOneHolePerRoom: options.punchOneHolePerRoom === true,
             punchHoles: options.punchHoles === true,
             singleCorridor: options.singleCorridor === true,
             singleCorridorEdge,
@@ -638,12 +715,16 @@ export function roomGraphLayoutToSceneDoc(layout, options) {
 }
 /** @param {Partial<NodeGraphGenConfig> & { seed?: number, roomCount?: number, minRooms?: number, punchHoles?: boolean, punchOneHolePerRoom?: boolean, includeCorridors?: boolean, singleCorridor?: boolean, requireCorridors?: boolean }} [options] */
 export function buildSandboxRoomGraphSceneDoc(options = {}) {
-    const layout = tryBuildRoomGraphLayout({ ...options, punchOneHolePerRoom: options.punchOneHolePerRoom === true || options.singleCorridor === true, punchHoles: options.punchHoles === true });
+    const layout = tryBuildRoomGraphLayout({
+        ...options,
+        punchOneHolePerRoom: options.punchOneHolePerRoom === true,
+        punchHoles: options.punchHoles === true,
+    });
     const { originCol, originRow } = roomGraphOrigin(layout.gridCols, layout.gridRows);
     return roomGraphLayoutToSceneDoc(layout, {
         originCol,
         originRow,
-        punchOneHolePerRoom: options.punchOneHolePerRoom === true || options.singleCorridor === true,
+        punchOneHolePerRoom: options.punchOneHolePerRoom === true,
         punchHoles: options.punchHoles === true,
         singleCorridor: options.singleCorridor === true,
         includeCorridors: options.includeCorridors === true,
