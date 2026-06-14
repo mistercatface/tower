@@ -487,51 +487,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
         const portalLinkTargets = selectedPortalInfo ? controller.listPortalLinkTargets() : [];
         const wallStampMode = controller.getWallStampMode();
         const selectionCount = selectedPropIds.size;
-        const hasFloorSelection = selectedFloorCell != null;
-        const hasWallSelection = selectedVoxel != null || selectedRailInfo != null || selectedForcefieldInfo != null || selectedPortalInfo != null;
-        const hasForcefieldSelection = selectedForcefieldInfo != null && selectionCount === 0 && !hasFloorSelection && !controller.isWallPlaceMode();
-        const toolsRow = document.createElement("div");
-        toolsRow.className = "sandbox-add-row";
-        const ringsField = document.createElement("label");
-        ringsField.className = "param-field check-inline";
-        const ringsCheckbox = document.createElement("input");
-        ringsCheckbox.type = "checkbox";
-        ringsCheckbox.checked = controller.getShowSelectionRings();
-        ringsCheckbox.addEventListener("change", () => {
-            controller.setShowSelectionRings(ringsCheckbox.checked);
-            onChange();
-        });
-        ringsField.append(ringsCheckbox, document.createTextNode(" Selection rings"));
-        toolsRow.appendChild(ringsField);
-        const deleteSelectedBtn = document.createElement("button");
-        deleteSelectedBtn.type = "button";
-        deleteSelectedBtn.className = "secondary";
-        deleteSelectedBtn.disabled = selectionCount === 0 && !hasFloorSelection && !hasWallSelection;
-        deleteSelectedBtn.textContent =
-            selectionCount > 1
-                ? `Delete selected (${selectionCount})`
-                : selectedPortalInfo && selectionCount === 0 && !hasFloorSelection
-                  ? "Delete portal"
-                  : selectedVoxelInfo && selectionCount === 0
-                    ? "Delete voxel"
-                    : selectedRailInfo && selectionCount === 0 && !selectedForcefieldInfo && !selectedPortalInfo
-                      ? "Delete rail"
-                      : hasForcefieldSelection
-                        ? "Delete forcefield"
-                        : selectedPowerSource && selectionCount === 0
-                          ? "Delete power source"
-                          : hasFloorSelection && selectionCount === 0
-                            ? "Delete belt"
-                            : "Delete selected";
-        deleteSelectedBtn.addEventListener("click", () => {
-            if (hasWallSelection && selectionCount === 0 && !hasFloorSelection) controller.deleteSelectedWall();
-            else if (hasForcefieldSelection) controller.deleteSelectedWall();
-            else if (hasFloorSelection && selectionCount === 0) controller.deleteSelectedFloorCell();
-            else controller.deleteSelectedProps();
-            onChange();
-        });
-        toolsRow.appendChild(deleteSelectedBtn);
-        container.appendChild(toolsRow);
         appendSection(container, "spawn", "Spawn", sectionOpen("spawn"), (body) => {
             appendSpawnPaletteGrid(body, paletteItems, paletteKey, (key) => {
                 controller.setPlacePaletteKey(key);

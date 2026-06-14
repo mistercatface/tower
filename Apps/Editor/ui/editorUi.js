@@ -98,6 +98,12 @@ export function mountEditorUi(state, { playbackHandlers }) {
     overviewViewportInput.addEventListener("change", (e) => {
         state.editor.showMapOverviewViewport = /** @type {HTMLInputElement} */ (e.target).checked;
     });
+    const selectionRingsInput = document.getElementById("showSelectionRingsInput");
+    selectionRingsInput.checked = state.sandbox.controller.getShowSelectionRings();
+    selectionRingsInput.addEventListener("change", (e) => {
+        state.sandbox.controller.setShowSelectionRings(/** @type {HTMLInputElement} */ (e.target).checked);
+        requestRedraw();
+    });
     fitLabStageToView(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
     const { animationPreview, main } = EDITOR_CANVAS_DEFAULTS;
