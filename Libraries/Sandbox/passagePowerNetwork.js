@@ -1,4 +1,4 @@
-import { isForcefieldEdge } from "../Spatial/grid/CellEdge.js";
+import { isPassageLaserEdge } from "../Spatial/grid/CellEdge.js";
 import { isPassagePowered, setPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey, gridWallEdgeNeighbor } from "../World/wallGridCells.js";
@@ -69,7 +69,7 @@ function buildPassagePowerGraph(grid) {
         const row = (idx / grid.cols) | 0;
         for (let side = 0; side < 4; side++) {
             const edge = grid.edgeStore.get(col, row, side, grid.cols);
-            if (!isForcefieldEdge(edge)) continue;
+            if (!isPassageLaserEdge(edge)) continue;
             const key = canonicalEdgeCellKey(grid, col, row, side);
             if (edgeByKey.has(key)) continue;
             const ref = { col, row, side, key };
@@ -212,7 +212,7 @@ export function syncPassagePowerNetwork(state) {
         const row = (idx / grid.cols) | 0;
         for (let side = 0; side < 4; side++) {
             const edge = grid.edgeStore.get(col, row, side, grid.cols);
-            if (!isForcefieldEdge(edge)) continue;
+            if (!isPassageLaserEdge(edge)) continue;
             const key = canonicalEdgeCellKey(grid, col, row, side);
             const ref = graph.edgeByKey.get(key);
             if (!ref || ref.col !== col || ref.row !== row || ref.side !== side) continue;

@@ -4,7 +4,17 @@
 import { packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, createRailWallEdge, railWallCapLevel, railWallHeightPx, railWallThicknessPx, passageEdgeEmitsCollision } from "../Spatial/grid/CellEdge.js";
+import {
+    isBeltRailEdge,
+    isForcefieldEdge,
+    isPortalEdge,
+    isRailWallEdge,
+    createRailWallEdge,
+    railWallCapLevel,
+    railWallHeightPx,
+    railWallThicknessPx,
+    passageEdgeEmitsCollision,
+} from "../Spatial/grid/CellEdge.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
@@ -133,7 +143,13 @@ export function gridCellEdge(grid, col, row, side) {
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridForcefieldEdge(grid, col, row, side) {
     const edge = gridCellEdge(grid, col, row, side);
-    if (!isForcefieldEdge(edge)) return null;
+    if (!isForcefieldEdge(edge) || isPortalEdge(edge)) return null;
+    return edge;
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function gridPortalEdge(grid, col, row, side) {
+    const edge = gridCellEdge(grid, col, row, side);
+    if (!isPortalEdge(edge)) return null;
     return edge;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */

@@ -5,9 +5,12 @@ import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlac
 import {
     applyStampedForcefieldsFromGlobal,
     applyStampedGridWallsFromGlobal,
+    applyStampedPortalsFromGlobal,
     clearAllStampedGridWalls,
     getForcefieldInfo,
+    getPortalInfo,
     listPlacedForcefields,
+    listPlacedPortals,
     listPlacedRailWalls,
     listPlacedVoxelWalls,
     notifyStampedGridWallChange,
@@ -26,7 +29,7 @@ import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
  * boundary until we deliberately add that.
  */
 /** Current snapshot format; bump when fields change (no vN→vN+1 migration code until then). */
-export const SANDBOX_SCENE_SCHEMA_VERSION = 5;
+export const SANDBOX_SCENE_SCHEMA_VERSION = 6;
 /** @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} a @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} b */
 function unionStampBounds(a, b) {
     if (!a) return b;
@@ -60,6 +63,23 @@ export function collectSandboxSceneSnapshot(state) {
         if (info.mode === "oneWay") entry.allowedSide = info.allowedSide;
         forcefields.push(entry);
     }
+    const portals = [];
+    const listedPortals = listPlacedPortals(grid);
+    for (let i = 0; i < listedPortals.length; i++) {
+        const { col, row, side } = listedPortals[i];
+        if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
+        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        const info = getPortalInfo(grid, col, row, side);
+        if (!info) continue;
+        const entry = { col: globalCol, row: globalRow, side, entranceMode: info.entranceMode };
+        if (info.entranceMode === "oneWay") entry.allowedSide = info.allowedSide;
+        if (info.partnerKey) entry.partnerKey = info.partnerKey;
+        if (info.linkMode === "oneWay") {
+            entry.linkMode = "oneWay";
+            entry.linkSourceKey = info.linkSourceKey;
+        }
+        portals.push(entry);
+    }
     return {
         schemaVersion: SANDBOX_SCENE_SCHEMA_VERSION,
         cellSize: grid.cellSize,
@@ -69,6 +89,7 @@ export function collectSandboxSceneSnapshot(state) {
         voxels,
         railWalls,
         forcefields,
+        portals,
         floorBelts: listPlacedFloorBeltsForSnapshot(grid),
         powerSources: listPlacedPassagePowerSourcesForSnapshot(grid),
         props: collectPlacedSandboxPropEntries(state),
@@ -83,6 +104,7 @@ export function parseSandboxSceneSnapshot(raw) {
     if (!Array.isArray(doc.voxels)) throw new Error("Scene JSON missing voxels array");
     if (!Array.isArray(doc.railWalls)) throw new Error("Scene JSON missing railWalls array");
     if (!Array.isArray(doc.forcefields)) throw new Error("Scene JSON missing forcefields array");
+    if (!Array.isArray(doc.portals)) throw new Error("Scene JSON missing portals array");
     if (!Array.isArray(doc.floorBelts)) throw new Error("Scene JSON missing floorBelts array");
     if (!Array.isArray(doc.powerSources)) throw new Error("Scene JSON missing powerSources array");
     if (!Array.isArray(doc.props)) throw new Error("Scene JSON missing props array");
@@ -117,6 +139,10 @@ function expandGridForSnapshot(state, doc) {
     }
     for (let i = 0; i < doc.forcefields.length; i++) {
         const { col, row } = doc.forcefields[i];
+        includeWorldPoint(col * cellSize + half, row * cellSize + half);
+    }
+    for (let i = 0; i < doc.portals.length; i++) {
+        const { col, row } = doc.portals[i];
         includeWorldPoint(col * cellSize + half, row * cellSize + half);
     }
     for (let i = 0; i < doc.floorBelts.length; i++) {
@@ -159,9 +185,10 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     expandGridForSnapshot(state, doc);
     const wallBounds = applyStampedGridWallsFromGlobal(state, doc.voxels, doc.railWalls, cellSize);
     const forcefieldBounds = applyStampedForcefieldsFromGlobal(state, doc.forcefields, cellSize);
+    const portalBounds = applyStampedPortalsFromGlobal(state, doc.portals, cellSize);
     const beltBounds = applyFloorBeltsFromGlobal(state, doc.floorBelts, cellSize);
     const powerSourceBounds = applyPassagePowerSourcesFromGlobal(state, doc.powerSources, cellSize);
-    const stampBounds = unionStampBounds(unionStampBounds(unionStampBounds(wallBounds, forcefieldBounds), beltBounds), powerSourceBounds);
+    const stampBounds = unionStampBounds(unionStampBounds(unionStampBounds(unionStampBounds(wallBounds, forcefieldBounds), portalBounds), beltBounds), powerSourceBounds);
     const grid = state.obstacleGrid;
     if (stampBounds) notifyStampedGridWallChange(state, stampBounds);
     else if (grid.cols) notifyStampedGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });

@@ -22,11 +22,21 @@ const WALL_STAMP_OPTIONS = [
     { value: "voxel", label: "Voxel block" },
     { value: "rail", label: "Rail wall" },
     { value: "forcefield", label: "Forcefield" },
+    { value: "portal", label: "Portal" },
 ];
 const PASSAGE_MODE_OPTIONS = [
     { value: "solid", label: "Solid — wall when powered" },
     { value: "oneWay", label: "One-way — block against allowed side" },
     { value: "tripwire", label: "Tripwire — sensor, never blocks" },
+];
+const PORTAL_ENTRANCE_MODE_OPTIONS = [
+    { value: "solid", label: "Solid — block all entry" },
+    { value: "oneWay", label: "One-way — block against allowed side" },
+];
+const PORTAL_CONNECTION_OPTIONS = [
+    { value: "shared", label: "Shared — both ways (⇄)" },
+    { value: "fromSelf", label: "One-way — this portal → partner (→)" },
+    { value: "fromPartner", label: "One-way — partner → this portal (←)" },
 ];
 const EDGE_SIDE_OPTIONS = [
     { value: "0", label: formatGridWallEdgeSideLabel(0) },
@@ -55,6 +65,66 @@ function appendPassageEditorFields(body, controller, selected, { stampDefaults =
                 onChange();
             },
         });
+}
+/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ entranceMode: string, allowedSide?: number, side?: number, linked?: boolean, partner?: { col: number, row: number, side: number } | null } | null} selected @param {{ stampDefaults?: boolean, linkTargets?: { col: number, row: number, side: number, label: string }[], onChange: () => void }} opts */
+function appendPortalEditorFields(body, controller, selected, { stampDefaults = false, linkTargets = [], onChange }) {
+    const entranceMode = stampDefaults ? controller.getPortalStampEntranceMode() : selected.entranceMode;
+    appendSelectField(body, "Entrance", {
+        value: entranceMode,
+        options: PORTAL_ENTRANCE_MODE_OPTIONS,
+        onChange: (value) => {
+            if (stampDefaults) controller.setPortalStampEntranceMode(value);
+            else controller.setSelectedPortalEntranceMode(value);
+            onChange();
+        },
+    });
+    if (entranceMode === "oneWay" && !stampDefaults && selected)
+        appendSelectField(body, "Allowed side", {
+            value: String(selected.allowedSide ?? selected.side),
+            options: EDGE_SIDE_OPTIONS,
+            onChange: (value) => {
+                controller.setSelectedPortalAllowedSide(Number(value));
+                onChange();
+            },
+        });
+    if (!stampDefaults && selected) {
+        if (selected.linked) {
+            appendSelectField(body, "Connection", {
+                value: selected.connection ?? "shared",
+                options: PORTAL_CONNECTION_OPTIONS,
+                onChange: (value) => {
+                    controller.setSelectedPortalConnection(value);
+                    onChange();
+                },
+            });
+            appendEditorHint(body, `${selected.connectionLabel}. Purple ⇄ = shared link. Orange → = exit direction.`);
+        } else appendEditorHint(body, "Not linked — pick a partner below.");
+        if (linkTargets.length > 0)
+            appendSelectField(body, "Link partner", {
+                value: selected.linked && selected.partner ? `${selected.partner.col},${selected.partner.row},${selected.partner.side}` : "",
+                options: [{ value: "", label: "Choose portal…" }, ...linkTargets.map((t) => ({ value: `${t.col},${t.row},${t.side}`, label: t.label }))],
+                onChange: (value) => {
+                    if (!value) return;
+                    const [col, row, side] = value.split(",").map(Number);
+                    controller.linkSelectedPortalTo(col, row, side);
+                    onChange();
+                },
+            });
+        if (selected.linked) {
+            const unlinkRow = document.createElement("div");
+            unlinkRow.className = "sandbox-add-row";
+            const unlinkBtn = document.createElement("button");
+            unlinkBtn.type = "button";
+            unlinkBtn.className = "secondary";
+            unlinkBtn.textContent = "Unlink partner";
+            unlinkBtn.addEventListener("click", () => {
+                controller.unlinkSelectedPortal();
+                onChange();
+            });
+            unlinkRow.appendChild(unlinkBtn);
+            body.appendChild(unlinkRow);
+        }
+    }
 }
 function readOpenSections(root) {
     const open = new Set();
@@ -121,7 +191,8 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
     const selectedVoxelInfo = controller.getSelectedVoxelWallInfo();
     const selectedRailInfo = controller.getSelectedRailWallInfo();
     const selectedForcefieldInfo = controller.getSelectedForcefieldInfo();
-    const hasWallSelection = selectedVoxel != null || selectedRailInfo != null || selectedForcefieldInfo != null;
+    const selectedPortalInfo = controller.getSelectedPortalInfo();
+    const hasWallSelection = selectedVoxel != null || selectedRailInfo != null || selectedForcefieldInfo != null || selectedPortalInfo != null;
     const wallStampMode = controller.getWallStampMode();
     const toolsRow = document.createElement("div");
     toolsRow.className = "sandbox-add-row";
@@ -166,7 +237,7 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
         addBtn.addEventListener("click", () => controller.stampWallAtCameraOrigin());
         addRow.appendChild(addBtn);
         body.appendChild(addRow);
-        if (wallStampMode !== "forcefield") {
+        if (wallStampMode !== "forcefield" && wallStampMode !== "portal") {
             const maxHeight = maxWallHeightLevel(controller);
             body.appendChild(
                 new SliderControl("Height", 1, maxHeight, 1, controller.getWallHeightLevel(), (val) => {
@@ -186,10 +257,12 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
                 }).element,
             );
         if (wallStampMode === "forcefield") appendPassageEditorFields(body, controller, null, { stampDefaults: true, onChange });
+        if (wallStampMode === "portal") appendPortalEditorFields(body, controller, null, { stampDefaults: true, onChange });
     });
     const voxelWalls = controller.listPlacedVoxelWalls();
     const railWalls = controller.listPlacedRailWalls();
     const forcefields = controller.listPlacedForcefields();
+    const portals = controller.listPlacedPortals();
     appendSection(container, "wall-scene", "Scene", sectionOpen("wall-scene"), (body) => {
         appendEditorSubhead(body, "Voxel blocks");
         appendInstanceList(
@@ -236,7 +309,23 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
             })),
             "No forcefields placed yet.",
         );
+        appendEditorSubhead(body, "Portals");
+        appendInstanceList(
+            body,
+            portals.map((entry) => ({
+                label: entry.label,
+                selected: selectedPortalInfo?.col === entry.col && selectedPortalInfo.row === entry.row && selectedPortalInfo.side === entry.side,
+                onSelect: () => controller.setSelectedRailEdge(entry.col, entry.row, entry.side),
+                onDelete: () => {
+                    controller.setSelectedRailEdge(entry.col, entry.row, entry.side);
+                    controller.deleteSelectedWall();
+                    onChange();
+                },
+            })),
+            "No portals placed yet.",
+        );
     });
+    const portalLinkTargets = selectedPortalInfo ? controller.listPortalLinkTargets() : [];
     appendSection(container, "wall-selected", "Selected", sectionOpen("wall-selected", true), (body) => {
         if (selectedVoxelInfo) {
             appendEditorHint(body, `Voxel block · height ${selectedVoxelInfo.heightLevel}. Change height below or delete.`);
@@ -313,7 +402,24 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
             body.appendChild(deleteRow);
             return;
         }
-        appendEditorHint(body, "Select a voxel block, rail wall, or forcefield from Scene, or click the map to place one.");
+        if (selectedPortalInfo) {
+            appendEditorHint(body, `Portal · ${selectedPortalInfo.sideLabel}. Link a partner, then set Shared vs One-way connection. Entrance mode is separate (blocks stepping onto the edge).`);
+            appendPortalEditorFields(body, controller, selectedPortalInfo, { linkTargets: portalLinkTargets, onChange });
+            const deleteRow = document.createElement("div");
+            deleteRow.className = "sandbox-add-row";
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "secondary";
+            deleteBtn.textContent = "Delete portal";
+            deleteBtn.addEventListener("click", () => {
+                controller.deleteSelectedWall();
+                onChange();
+            });
+            deleteRow.appendChild(deleteBtn);
+            body.appendChild(deleteRow);
+            return;
+        }
+        appendEditorHint(body, "Select a voxel block, rail wall, forcefield, or portal from Scene, or click the map to place one.");
     });
 }
 /**

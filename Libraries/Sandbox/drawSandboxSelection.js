@@ -2,7 +2,9 @@ import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewport
 import { strokeCircle } from "../Canvas/CanvasPath.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { createAabb, aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
-import { gridHasForcefield, strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
+import { gridHasForcefield, gridHasPortal, strokeSelectedForcefieldEdge, strokeSelectedPortalEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
+import { resolvePortalLinkRoute } from "./portalLinks.js";
+import { drawPortalConnection } from "./drawForcefields.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
@@ -56,7 +58,17 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
         });
     }
     if (selectedRailEdge && grid)
-        if (gridHasForcefield(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
+        if (gridHasPortal(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
+            const { col, row, side } = selectedRailEdge;
+            ctx.strokeStyle = "rgba(16, 185, 129, 0.98)";
+            strokeSelectedPortalEdge(ctx, grid, selectedRailEdge, lineScale);
+            const route = resolvePortalLinkRoute(grid, col, row, side);
+            if (route) {
+                drawPortalConnection(ctx, grid, route.source, route.dest, route.linkMode, lineScale);
+                ctx.strokeStyle = "rgba(244, 114, 182, 0.85)";
+                strokeSelectedPortalEdge(ctx, grid, route.dest, lineScale);
+            }
+        } else if (gridHasForcefield(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
             ctx.strokeStyle = "rgba(192, 132, 252, 0.95)";
             strokeSelectedForcefieldEdge(ctx, grid, selectedRailEdge, lineScale);
         } else {

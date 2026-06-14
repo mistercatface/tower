@@ -11,28 +11,40 @@ import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import {
     clearForcefieldAt,
+    clearPortalAt,
     clearRailWallAt,
     clearVoxelWallAt,
     ensureObstacleGridAtWorld,
     getForcefieldInfo,
+    getPortalInfo,
     getRailWallInfo,
     getVoxelWallInfo,
     gridHasForcefield,
+    gridHasPortal,
     gridHasRailWall,
     gridHasVoxelWall,
     hitTestRailWallEdgeAtWorld,
+    linkPortalsAt,
     listPlacedForcefields,
+    listPlacedPortals,
     listPlacedRailWalls,
     listPlacedVoxelWalls,
+    listPortalLinkTargets,
     setForcefieldProfileAt,
+    setPortalProfileAt,
+    setPortalLinkProfileAt,
     setRailWallAt,
     setVoxelWallHeightAt,
     stampForcefieldAt,
+    stampPortalAt,
     stampRailWallAt,
     stampVoxelWallAt,
+    unlinkPortalAt,
 } from "./gridWallEdit.js";
 import { PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
+import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
+import { PORTAL_LINK_MODE } from "./portalLinks.js";
 /** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
@@ -45,11 +57,12 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let selectedFloorCell = null;
     /** @type {'props' | 'walls'} */
     let editorPanelTab = "props";
-    /** @type {'voxel' | 'rail' | 'forcefield'} */
+    /** @type {'voxel' | 'rail' | 'forcefield' | 'portal'} */
     let wallStampMode = "voxel";
     let wallHeightLevel = 4;
     let railThicknessLevel = 2;
     let forcefieldStampMode = PASSAGE_MODE.Solid;
+    let portalStampEntranceMode = PASSAGE_MODE.Solid;
     /** @type {{ col: number, row: number } | null} */
     let selectedVoxelCell = null;
     /** @type {{ col: number, row: number, side: number } | null} */
@@ -331,6 +344,11 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             forcefieldStampMode = mode;
             sync();
         },
+        getPortalStampEntranceMode: () => portalStampEntranceMode,
+        setPortalStampEntranceMode(mode) {
+            portalStampEntranceMode = mode;
+            sync();
+        },
         getSelectedVoxelCell: () => selectedVoxelCell,
         getSelectedRailEdge: () => selectedRailEdge,
         setSelectedVoxelCell,
@@ -342,6 +360,12 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         listPlacedVoxelWalls: () => listPlacedVoxelWalls(state.obstacleGrid),
         listPlacedRailWalls: () => listPlacedRailWalls(state.obstacleGrid),
         listPlacedForcefields: () => listPlacedForcefields(state.obstacleGrid),
+        listPlacedPortals: () => listPlacedPortals(state.obstacleGrid),
+        listPortalLinkTargets: () => {
+            if (!selectedRailEdge || !gridHasPortal(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) return [];
+            const { col, row, side } = selectedRailEdge;
+            return listPortalLinkTargets(state.obstacleGrid, col, row, side);
+        },
         getSelectedVoxelWallInfo: () => (selectedVoxelCell ? getVoxelWallInfo(state.obstacleGrid, selectedVoxelCell.col, selectedVoxelCell.row) : null),
         getSelectedRailWallInfo: () =>
             selectedRailEdge && gridHasRailWall(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
@@ -350,6 +374,10 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         getSelectedForcefieldInfo: () =>
             selectedRailEdge && gridHasForcefield(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
                 ? getForcefieldInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
+                : null,
+        getSelectedPortalInfo: () =>
+            selectedRailEdge && gridHasPortal(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
+                ? getPortalInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
                 : null,
         setSelectedForcefieldMode(mode) {
             if (!selectedRailEdge) return false;
@@ -370,9 +398,72 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             sync();
             return true;
         },
+        setSelectedPortalEntranceMode(entranceMode) {
+            if (!selectedRailEdge) return false;
+            const { col, row, side } = selectedRailEdge;
+            const info = getPortalInfo(state.obstacleGrid, col, row, side);
+            if (!info) return false;
+            const allowedSide = entranceMode === PASSAGE_MODE.OneWay ? (info.entranceMode === PASSAGE_MODE.OneWay ? (info.allowedSide ?? side) : side) : side;
+            if (!setPortalProfileAt(state, col, row, side, entranceMode, allowedSide)) return false;
+            sync();
+            return true;
+        },
+        setSelectedPortalAllowedSide(allowedSide) {
+            if (!selectedRailEdge) return false;
+            const { col, row, side } = selectedRailEdge;
+            const info = getPortalInfo(state.obstacleGrid, col, row, side);
+            if (!info || info.entranceMode !== PASSAGE_MODE.OneWay) return false;
+            if (!setPortalProfileAt(state, col, row, side, PASSAGE_MODE.OneWay, allowedSide)) return false;
+            sync();
+            return true;
+        },
+        linkSelectedPortalTo(col, row, side) {
+            if (!selectedRailEdge) return false;
+            const { col: colA, row: rowA, side: sideA } = selectedRailEdge;
+            if (!linkPortalsAt(state, colA, rowA, sideA, col, row, side)) return false;
+            sync();
+            return true;
+        },
+        unlinkSelectedPortal() {
+            if (!selectedRailEdge) return false;
+            const { col, row, side } = selectedRailEdge;
+            if (!unlinkPortalAt(state, col, row, side)) return false;
+            sync();
+            return true;
+        },
+        setSelectedPortalConnection(connection) {
+            if (!selectedRailEdge) return false;
+            const grid = state.obstacleGrid;
+            const { col, row, side } = selectedRailEdge;
+            const info = getPortalInfo(grid, col, row, side);
+            if (!info?.linked) return false;
+            if (connection === "shared") {
+                if (!setPortalLinkProfileAt(state, col, row, side, PORTAL_LINK_MODE.Shared, 0)) return false;
+            } else if (connection === "fromSelf") {
+                if (!setPortalLinkProfileAt(state, col, row, side, PORTAL_LINK_MODE.OneWay, canonicalEdgeCellKey(grid, col, row, side))) return false;
+            } else if (connection === "fromPartner") {
+                const partner = info.partner;
+                if (!partner) return false;
+                if (!setPortalLinkProfileAt(state, col, row, side, PORTAL_LINK_MODE.OneWay, canonicalEdgeCellKey(grid, partner.col, partner.row, partner.side))) return false;
+            } else return false;
+            sync();
+            return true;
+        },
         stampWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
             const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
+            if (wallStampMode === "portal") {
+                const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
+                if (!hit) return false;
+                if (gridHasPortal(grid, hit.col, hit.row, hit.side)) {
+                    setSelectedRailEdge(hit.col, hit.row, hit.side);
+                    return true;
+                }
+                if (!stampPortalAt(state, hit.col, hit.row, hit.side, { entranceMode: portalStampEntranceMode, allowedSide: hit.side })) return false;
+                setSelectedRailEdge(hit.col, hit.row, hit.side);
+                sync();
+                return true;
+            }
             if (wallStampMode === "forcefield") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
@@ -447,6 +538,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 const grid = state.obstacleGrid;
                 if (gridHasForcefield(grid, col, row, side)) {
                     if (!clearForcefieldAt(state, col, row, side)) return false;
+                } else if (gridHasPortal(grid, col, row, side)) {
+                    if (!clearPortalAt(state, col, row, side)) return false;
                 } else if (!clearRailWallAt(state, col, row, side)) return false;
                 dropWallSelection();
                 sync();
@@ -456,10 +549,13 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         deleteWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
-            if (wallStampMode === "rail" || wallStampMode === "forcefield") {
+            if (wallStampMode === "rail" || wallStampMode === "forcefield" || wallStampMode === "portal") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
-                if (wallStampMode === "forcefield") {
+                if (wallStampMode === "portal") {
+                    if (!gridHasPortal(grid, hit.col, hit.row, hit.side)) return false;
+                    if (!clearPortalAt(state, hit.col, hit.row, hit.side)) return false;
+                } else if (wallStampMode === "forcefield") {
                     if (!gridHasForcefield(grid, hit.col, hit.row, hit.side)) return false;
                     if (!clearForcefieldAt(state, hit.col, hit.row, hit.side)) return false;
                 } else {
@@ -478,6 +574,12 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         pickWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
+            if (wallStampMode === "portal") {
+                const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
+                if (!hit || !gridHasPortal(grid, hit.col, hit.row, hit.side)) return false;
+                setSelectedRailEdge(hit.col, hit.row, hit.side);
+                return true;
+            }
             if (wallStampMode === "forcefield") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit || !gridHasForcefield(grid, hit.col, hit.row, hit.side)) return false;

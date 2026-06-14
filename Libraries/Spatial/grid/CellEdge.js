@@ -1,19 +1,30 @@
 /** @typedef {{ kind: 'railWall', heightDelta: number, thicknessLevel: number }} RailWallEdge */
 /** @typedef {{ kind: 'conveyor' }} ConveyorEdge */
 /** @typedef {{ kind: 'beltRail' }} BeltRailEdge */
-/** @typedef {{ kind: 'forcefield', mode: string, allowedSide: number, powered: boolean }} ForcefieldEdge */
+/** @typedef {{ kind: 'forcefield', mode: string, allowedSide: number, powered: boolean, entranceMode?: string, partnerKey?: number, linkMode?: string, linkSourceKey?: number }} ForcefieldEdge */
 export const EDGE_KIND = { RailWall: "railWall", Conveyor: "conveyor", BeltRail: "beltRail", Forcefield: "forcefield" };
-export const PASSAGE_MODE = { Solid: "solid", OneWay: "oneWay", Tripwire: "tripwire" };
+export const PASSAGE_MODE = { Solid: "solid", OneWay: "oneWay", Tripwire: "tripwire", Portal: "portal" };
 /** @param {unknown} raw */
 export function parsePassageMode(raw) {
     if (raw === PASSAGE_MODE.OneWay || raw === PASSAGE_MODE.Tripwire) return raw;
+    return PASSAGE_MODE.Solid;
+}
+/** Portal entrance profile — solid blocks all entry; oneWay blocks against allowedSide only. */
+export function parseEntranceMode(raw) {
+    if (raw === PASSAGE_MODE.OneWay) return PASSAGE_MODE.OneWay;
     return PASSAGE_MODE.Solid;
 }
 /** @param {string} mode */
 export function formatPassageModeLabel(mode) {
     if (mode === PASSAGE_MODE.OneWay) return "One-way";
     if (mode === PASSAGE_MODE.Tripwire) return "Tripwire";
+    if (mode === PASSAGE_MODE.Portal) return "Portal";
     return "Solid";
+}
+/** @param {string} mode */
+export function formatEntranceModeLabel(mode) {
+    if (mode === PASSAGE_MODE.OneWay) return "One-way entrance";
+    return "Solid entrance";
 }
 /** @param {number} heightDelta levels above neighbor fill @param {number} thicknessLevel */
 export function createRailWallEdge(heightDelta, thicknessLevel) {
@@ -25,6 +36,10 @@ export function createBeltRailEdge() {
 /** @param {{ mode?: string, allowedSide?: number, powered?: boolean }} [opts] */
 export function createForcefieldEdge({ mode = PASSAGE_MODE.Solid, allowedSide = 1, powered = false } = {}) {
     return { kind: EDGE_KIND.Forcefield, mode: parsePassageMode(mode), allowedSide, powered: powered === true };
+}
+/** @param {{ entranceMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} [opts] */
+export function createPortalEdge({ entranceMode = PASSAGE_MODE.Solid, allowedSide = 1, partnerKey = 0, linkMode = "shared", linkSourceKey = 0, powered = false } = {}) {
+    return { kind: EDGE_KIND.Forcefield, mode: PASSAGE_MODE.Portal, entranceMode: parseEntranceMode(entranceMode), allowedSide, partnerKey, linkMode, linkSourceKey, powered: powered === true };
 }
 /** @param {object | null | undefined} edge */
 export function isRailWallEdge(edge) {
@@ -38,6 +53,14 @@ export function isBeltRailEdge(edge) {
 export function isForcefieldEdge(edge) {
     return edge?.kind === EDGE_KIND.Forcefield;
 }
+/** @param {object | null | undefined} edge */
+export function isPortalEdge(edge) {
+    return isForcefieldEdge(edge) && edge.mode === PASSAGE_MODE.Portal;
+}
+/** Powered laser/tripwire passage — not a portal pair. */
+export function isPassageLaserEdge(edge) {
+    return isForcefieldEdge(edge) && edge.mode !== PASSAGE_MODE.Portal;
+}
 /** Static edge kinds that always block crossing (not forcefields — those depend on passage profile + powered). */
 export function edgeBlocksCrossing(edge) {
     return isRailWallEdge(edge) || isBeltRailEdge(edge);
@@ -50,6 +73,7 @@ export function resolvePassageEdge(edge, ownerSide) {
 }
 /** @param {object | null | undefined} edge @param {number} crossedSide side being crossed on the owner cell @param {number} ownerSide side the passage was stamped on */
 export function passageEdgeBlocksStep(edge, crossedSide, ownerSide) {
+    if (isPortalEdge(edge)) return false;
     if (!isForcefieldEdge(edge) || edge.powered !== true) return false;
     const { mode, allowedSide } = resolvePassageEdge(edge, ownerSide);
     if (mode === PASSAGE_MODE.Tripwire) return false;
@@ -58,6 +82,7 @@ export function passageEdgeBlocksStep(edge, crossedSide, ownerSide) {
 }
 /** Powered solid/oneWay emit edge-rail collision; tripwire never does. */
 export function passageEdgeEmitsCollision(edge) {
+    if (isPortalEdge(edge)) return false;
     if (!isForcefieldEdge(edge) || edge.powered !== true) return false;
     return parsePassageMode(edge.mode) !== PASSAGE_MODE.Tripwire;
 }

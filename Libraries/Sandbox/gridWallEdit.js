@@ -4,9 +4,41 @@ import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { formatPassageModeLabel, isForcefieldEdge, isRailWallEdge, parsePassageMode, PASSAGE_MODE, railWallCapLevel } from "../Spatial/grid/CellEdge.js";
-import { clearBoundaryPrimary, setBoundary, setPassageProfile } from "../Spatial/grid/boundaryOccupancy.js";
-import { cellIsStaticWall, cellIsStaticWallAtIdx, gridCellToGlobalColRow, gridForcefieldEdge, gridNeighborFillLevel, gridRailWallEdge, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
+import {
+    formatEntranceModeLabel,
+    formatPassageModeLabel,
+    isPassageLaserEdge,
+    isPortalEdge,
+    isRailWallEdge,
+    parseEntranceMode,
+    parsePassageMode,
+    PASSAGE_MODE,
+    railWallCapLevel,
+} from "../Spatial/grid/CellEdge.js";
+import { clearBoundaryPrimary, setBoundary, setPassageProfile, setPortalProfile } from "../Spatial/grid/boundaryOccupancy.js";
+import {
+    canonicalEdgeCellKey,
+    cellIsStaticWall,
+    cellIsStaticWallAtIdx,
+    gridCellToGlobalColRow,
+    gridForcefieldEdge,
+    gridNeighborFillLevel,
+    gridPortalEdge,
+    gridRailWallEdge,
+    gridWallEdgeEndpoints,
+    isCanonicalEdgeRepresentative,
+} from "../World/wallGridCells.js";
+import {
+    findPortalEdgeByKey,
+    formatPortalConnectionLabel,
+    linkPortalEdges,
+    parsePortalLinkMode,
+    PORTAL_LINK_MODE,
+    resolvePortalLinkRoute,
+    resolvePortalPartner,
+    setPortalLinkProfile,
+    unlinkPortalEdge,
+} from "./portalLinks.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
 const ENSURE_AABB = createAabb();
 const EDGE_P1 = { x: 0, y: 0 };
@@ -27,6 +59,10 @@ export function gridHasRailWall(grid, col, row, side) {
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridHasForcefield(grid, col, row, side) {
     return gridForcefieldEdge(grid, col, row, side) !== null;
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function gridHasPortal(grid, col, row, side) {
+    return gridPortalEdge(grid, col, row, side) !== null;
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -85,7 +121,7 @@ export function clearAllStampedGridWalls(state, { notify = true } = {}) {
         const col = idx % grid.cols;
         const row = (idx / grid.cols) | 0;
         for (let side = 0; side < 4; side++) {
-            if (!gridHasRailWall(grid, col, row, side) && !gridHasForcefield(grid, col, row, side)) continue;
+            if (!gridHasRailWall(grid, col, row, side) && !gridHasForcefield(grid, col, row, side) && !gridHasPortal(grid, col, row, side)) continue;
             const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
             state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
             clearBoundaryPrimary(grid, col, row, side);
@@ -178,8 +214,81 @@ export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) 
             state.staticCellHealth.delete(packEdgeCellKey(gc, gr, side));
             clearBoundaryPrimary(grid, col, row, side);
         }
+        if (gridHasPortal(grid, col, row, side)) {
+            unlinkPortalEdge(grid, col, row, side);
+            clearBoundaryPrimary(grid, col, row, side);
+        }
         if (!setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: false })) continue;
         mark(col, row);
+    }
+    if (minCol === Infinity) return null;
+    return { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow };
+}
+/**
+ * @param {object} state
+ * @param {{ col: number, row: number, side: number, entranceMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number }[]} portals
+ * @param {number} cellSize
+ * @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null}
+ */
+export function applyStampedPortalsFromGlobal(state, portals, cellSize) {
+    const grid = state.obstacleGrid;
+    const half = cellSize * 0.5;
+    let minCol = Infinity;
+    let maxCol = -Infinity;
+    let minRow = Infinity;
+    let maxRow = -Infinity;
+    /** @param {number} col @param {number} row */
+    const mark = (col, row) => {
+        if (col < minCol) minCol = col;
+        if (col > maxCol) maxCol = col;
+        if (row < minRow) minRow = row;
+        if (row > maxRow) maxRow = row;
+    };
+    /** @param {number} globalCol @param {number} globalRow */
+    const toLocal = (globalCol, globalRow) => {
+        const x = globalCol * cellSize + half;
+        const y = globalRow * cellSize + half;
+        return grid.worldToGrid(x, y);
+    };
+    /** @type {{ col: number, row: number, side: number, partnerKey: number }[]} */
+    const pendingLinks = [];
+    for (let i = 0; i < portals.length; i++) {
+        const { col: globalCol, row: globalRow, side, entranceMode, allowedSide, partnerKey, linkMode, linkSourceKey } = portals[i];
+        const { col, row } = toLocal(globalCol, globalRow);
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
+        if (gridHasRailWall(grid, col, row, side)) {
+            const { globalCol: gc, globalRow: gr } = gridCellToGlobalColRow(grid, col, row);
+            state.staticCellHealth.delete(packEdgeCellKey(gc, gr, side));
+            clearBoundaryPrimary(grid, col, row, side);
+        }
+        if (gridHasForcefield(grid, col, row, side)) clearBoundaryPrimary(grid, col, row, side);
+        if (
+            !setBoundary(grid, col, row, side, {
+                kind: "portal",
+                entranceMode: parseEntranceMode(entranceMode),
+                allowedSide: allowedSide ?? side,
+                partnerKey: 0,
+                linkMode: parsePortalLinkMode(linkMode),
+                linkSourceKey: linkSourceKey ?? 0,
+                powered: false,
+            })
+        )
+            continue;
+        mark(col, row);
+        if (partnerKey) pendingLinks.push({ col, row, side, partnerKey });
+    }
+    for (let i = 0; i < pendingLinks.length; i++) {
+        const { col, row, side, partnerKey } = pendingLinks[i];
+        const partner = findPortalEdgeByKey(grid, partnerKey);
+        if (!partner) continue;
+        linkPortalEdges(grid, col, row, side, partner.col, partner.row, partner.side);
+    }
+    for (let i = 0; i < portals.length; i++) {
+        if (parsePortalLinkMode(portals[i].linkMode) !== PORTAL_LINK_MODE.OneWay) continue;
+        const { col: globalCol, row: globalRow, side, linkSourceKey } = portals[i];
+        const { col, row } = toLocal(globalCol, globalRow);
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
+        setPortalLinkProfile(grid, col, row, side, PORTAL_LINK_MODE.OneWay, linkSourceKey ?? 0);
     }
     if (minCol === Infinity) return null;
     return { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow };
@@ -231,6 +340,7 @@ export function stampRailWallAt(state, col, row, side, heightLevel, thicknessLev
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (gridHasForcefield(grid, col, row, side)) clearForcefieldAt(state, col, row, side);
+    if (gridHasPortal(grid, col, row, side)) clearPortalAt(state, col, row, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     setBoundary(grid, col, row, side, { kind: "railWall", capHeightLevel: level, thicknessLevel });
     notifyGridWallChange(state, cellBounds(col, row));
@@ -255,6 +365,7 @@ export function stampForcefieldAt(state, col, row, side, { mode = PASSAGE_MODE.S
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (gridHasRailWall(grid, col, row, side)) clearRailWallAt(state, col, row, side);
+    if (gridHasPortal(grid, col, row, side)) clearPortalAt(state, col, row, side);
     if (!setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide, powered: false })) return false;
     notifyGridWallChange(state, cellBounds(col, row));
     markGridZoneSubscriptionsDirty(state);
@@ -281,9 +392,118 @@ export function clearForcefieldAt(state, col, row, side) {
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function getForcefieldInfo(grid, col, row, side) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
-    if (!isForcefieldEdge(edge)) return null;
+    if (!isPassageLaserEdge(edge)) return null;
     const mode = parsePassageMode(edge.mode);
     return { col, row, side, mode, allowedSide: edge.allowedSide ?? side, powered: edge.powered === true, sideLabel: formatGridWallEdgeSideLabel(side), modeLabel: formatPassageModeLabel(mode) };
+}
+/** @param {object} state @param {number} col @param {number} row @param {number} side @param {{ entranceMode?: string, allowedSide?: number }} [profile] */
+export function stampPortalAt(state, col, row, side, { entranceMode = PASSAGE_MODE.Solid, allowedSide = side } = {}) {
+    const grid = state.obstacleGrid;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
+    if (gridHasRailWall(grid, col, row, side)) clearRailWallAt(state, col, row, side);
+    if (gridHasForcefield(grid, col, row, side)) clearForcefieldAt(state, col, row, side);
+    if (!setBoundary(grid, col, row, side, { kind: "portal", entranceMode: parseEntranceMode(entranceMode), allowedSide, partnerKey: 0, powered: false })) return false;
+    notifyGridWallChange(state, cellBounds(col, row));
+    return true;
+}
+/** @param {object} state @param {number} col @param {number} row @param {number} side @param {string} entranceMode @param {number} allowedSide */
+export function setPortalProfileAt(state, col, row, side, entranceMode, allowedSide) {
+    const grid = state.obstacleGrid;
+    if (!setPortalProfile(grid, col, row, side, entranceMode, allowedSide)) return false;
+    notifyGridWallChange(state, cellBounds(col, row));
+    return true;
+}
+/** @param {object} state @param {number} col @param {number} row @param {number} side */
+export function clearPortalAt(state, col, row, side) {
+    const grid = state.obstacleGrid;
+    if (!gridHasPortal(grid, col, row, side)) return false;
+    unlinkPortalEdge(grid, col, row, side);
+    clearBoundaryPrimary(grid, col, row, side);
+    notifyGridWallChange(state, cellBounds(col, row));
+    return true;
+}
+/** @param {object} state @param {number} colA @param {number} rowA @param {number} sideA @param {number} colB @param {number} rowB @param {number} sideB */
+export function linkPortalsAt(state, colA, rowA, sideA, colB, rowB, sideB) {
+    const grid = state.obstacleGrid;
+    if (!linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
+    setPortalLinkProfile(grid, colA, rowA, sideA, PORTAL_LINK_MODE.Shared, 0);
+    notifyGridWallChange(state, cellBounds(colA, rowA));
+    notifyGridWallChange(state, cellBounds(colB, rowB));
+    return true;
+}
+/** @param {object} state @param {number} col @param {number} row @param {number} side */
+export function unlinkPortalAt(state, col, row, side) {
+    const grid = state.obstacleGrid;
+    if (!unlinkPortalEdge(grid, col, row, side)) return false;
+    notifyGridWallChange(state, cellBounds(col, row));
+    return true;
+}
+/** @param {object} state @param {number} col @param {number} row @param {number} side @param {string} linkMode @param {number} [linkSourceKey] */
+export function setPortalLinkProfileAt(state, col, row, side, linkMode, linkSourceKey = 0) {
+    const grid = state.obstacleGrid;
+    if (!setPortalLinkProfile(grid, col, row, side, linkMode, linkSourceKey)) return false;
+    notifyGridWallChange(state, cellBounds(col, row));
+    const partner = resolvePortalPartner(grid, col, row, side);
+    if (partner) notifyGridWallChange(state, cellBounds(partner.col, partner.row));
+    return true;
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function getPortalInfo(grid, col, row, side) {
+    const edge = grid.edgeStore.get(col, row, side, grid.cols);
+    if (!isPortalEdge(edge)) return null;
+    const entranceMode = parseEntranceMode(edge.entranceMode);
+    const partnerKey = edge.partnerKey ?? 0;
+    const partner = partnerKey ? resolvePortalPartner(grid, col, row, side) : null;
+    const linkMode = parsePortalLinkMode(edge.linkMode);
+    const route = partner ? resolvePortalLinkRoute(grid, col, row, side) : null;
+    const fromSelf = route?.fromSelf ?? true;
+    let connection = "shared";
+    if (linkMode === PORTAL_LINK_MODE.OneWay) connection = fromSelf ? "fromSelf" : "fromPartner";
+    return {
+        col,
+        row,
+        side,
+        entranceMode,
+        allowedSide: edge.allowedSide ?? side,
+        partnerKey,
+        partner,
+        linked: partner != null,
+        linkMode,
+        linkSourceKey: edge.linkSourceKey ?? 0,
+        connection,
+        connectionLabel: partner ? formatPortalConnectionLabel(linkMode, fromSelf) : "Unlinked",
+        sideLabel: formatGridWallEdgeSideLabel(side),
+        entranceModeLabel: formatEntranceModeLabel(entranceMode),
+    };
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} colA @param {number} rowA @param {number} sideA @param {number} colB @param {number} rowB @param {number} sideB */
+export function isSamePortalEdge(grid, colA, rowA, sideA, colB, rowB, sideB) {
+    return canonicalEdgeCellKey(grid, colA, rowA, sideA) === canonicalEdgeCellKey(grid, colB, rowB, sideB);
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+export function listPlacedPortals(grid) {
+    /** @type {{ col: number, row: number, side: number, label: string }[]} */
+    const placed = [];
+    let index = 0;
+    const size = grid.cols * grid.rows;
+    for (let idx = 0; idx < size; idx++) {
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
+        for (let side = 0; side < 4; side++) {
+            if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
+            const info = getPortalInfo(grid, col, row, side);
+            if (!info) continue;
+            index++;
+            const linkTag = info.linked ? ` · ${info.connectionLabel}` : " · unlinked";
+            const modeTag = info.entranceMode === PASSAGE_MODE.Solid ? "" : ` · ${info.entranceModeLabel}`;
+            placed.push({ col, row, side, label: `Portal #${index} · ${info.sideLabel}${modeTag}${linkTag}` });
+        }
+    }
+    return placed;
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} selectedCol @param {number} selectedRow @param {number} selectedSide */
+export function listPortalLinkTargets(grid, selectedCol, selectedRow, selectedSide) {
+    return listPlacedPortals(grid).filter((entry) => !isSamePortalEdge(grid, entry.col, entry.row, entry.side, selectedCol, selectedRow, selectedSide));
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function listPlacedForcefields(grid) {
@@ -379,6 +599,16 @@ export function strokeSelectedForcefieldEdge(ctx, grid, edge, lineScale) {
     gridWallEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
     ctx.lineWidth = 4 * lineScale;
     ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(EDGE_P1.x, EDGE_P1.y);
+    ctx.lineTo(EDGE_P2.x, EDGE_P2.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+export function strokeSelectedPortalEdge(ctx, grid, edge, lineScale) {
+    gridWallEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
+    ctx.lineWidth = 4 * lineScale;
+    ctx.setLineDash([4, 3, 10, 3]);
     ctx.beginPath();
     ctx.moveTo(EDGE_P1.x, EDGE_P1.y);
     ctx.lineTo(EDGE_P2.x, EDGE_P2.y);
