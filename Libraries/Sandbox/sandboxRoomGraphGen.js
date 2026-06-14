@@ -1,7 +1,14 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
 import { applySandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 /** Ordered procgen steps — only `op` values handled in `runRoomGraphMotifs` are valid. */
-export const DEFAULT_SANDBOX_GRAPH_MOTIFS = [{ op: "buildNodeGraph" }, { op: "buildClosedRooms" }, { op: "buildCorridors", corridorEdgeCount: 2, canIntersect: false }];
+export const DEFAULT_SANDBOX_GRAPH_MOTIFS = [
+    {
+        op: "retryUntil",
+        maxAttempts: 60,
+        body: [{ op: "buildNodeGraph" }, { op: "buildClosedRooms" }, { op: "forEachEdge", shuffle: true, limit: 2, canIntersect: false, run: { op: "buildCorridorForEdge" } }],
+        until: { op: "validateLayout", corridorsAtLeast: 2, corridorsIntersect: false },
+    },
+];
 /** Per-run overrides (e.g. `seed`) merge onto this; edit motifs to change the pipeline. */
 export const DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS = { motifs: DEFAULT_SANDBOX_GRAPH_MOTIFS };
 /** @param {Record<string, unknown>} [overrides] */
@@ -48,10 +55,19 @@ const SANDBOX_SCENE_SCHEMA_VERSION = 7;
 /** @typedef {{ op: "punchHoleInClosedRoom" }} PunchHoleInClosedRoomRoomMotif */
 /** @typedef {PunchHoleInClosedRoomRoomMotif} RoomGraphRoomMotif */
 /** @typedef {{ op: "forEachRoom", run: RoomGraphRoomMotif }} ForEachRoomMotif */
+/** @typedef {{ op: "punchHolesTowardNeighbors" }} PunchHolesTowardNeighborsEdgeMotif */
+/** @typedef {{ op: "buildCorridorForEdge", canIntersect?: boolean, skipPunchIfHolesPresent?: boolean }} BuildCorridorForEdgeEdgeMotif */
+/** @typedef {PunchHolesTowardNeighborsEdgeMotif | BuildCorridorForEdgeEdgeMotif} RoomGraphEdgeMotif */
+/** @typedef {{ op: "forEachEdge", run: RoomGraphEdgeMotif, shuffle?: boolean, limit?: number, canIntersect?: boolean, requireAll?: boolean }} ForEachEdgeMotif */
+/** @typedef {{ op: "punchHolePerIncidentEdge" }} PunchHolePerIncidentEdgeNodeMotif */
+/** @typedef {PunchHolePerIncidentEdgeNodeMotif} RoomGraphNodeMotif */
+/** @typedef {{ op: "forEachNode", run: RoomGraphNodeMotif }} ForEachNodeMotif */
+/** @typedef {{ op: "validateLayout", minNodes?: number, corridorsAtLeast?: number, corridorsIntersect?: boolean }} ValidateLayoutMotif */
+/** @typedef {{ op: "retryUntil", maxAttempts?: number, body: RoomGraphMotif[], until: ValidateLayoutMotif }} RetryUntilMotif */
 /** @typedef {{ op: "punchOneHolePerRoom" }} PunchOneHolePerRoomMotif */
 /** @typedef {{ op: "buildCorridors", corridorEdgeCount?: number, canIntersect?: boolean, requireAll?: boolean }} BuildCorridorsMotif */
 /** @typedef {{ op: "buildAllCorridors", canIntersect?: boolean, requireAll?: boolean }} BuildAllCorridorsMotif */
-/** @typedef {BuildNodeGraphMotif | BuildClosedRoomsMotif | ForEachRoomMotif | PunchOneHolePerRoomMotif | BuildCorridorsMotif | BuildAllCorridorsMotif} RoomGraphMotif */
+/** @typedef {BuildNodeGraphMotif | BuildClosedRoomsMotif | ForEachRoomMotif | ForEachEdgeMotif | ForEachNodeMotif | ValidateLayoutMotif | RetryUntilMotif | PunchOneHolePerRoomMotif | BuildCorridorsMotif | BuildAllCorridorsMotif} RoomGraphMotif */
 /** @typedef {{ options: Record<string, unknown>, layout: RoomGraphLayout, closedRooms: ClosedRoom[], corridorRails: RailWall[], corridorPaths: Cell[][], corridorEdgeIndices: number[], originCol: number, originRow: number, corridorRng: () => number, holeRng: () => number }} RoomGraphBuildCtx */
 /** All tunable procgen parameters live here; pass overrides into `resolveNodeGraphGenConfig`. */
 export const DEFAULT_NODE_GRAPH_GEN_CONFIG = {
@@ -582,28 +598,58 @@ export function tryBuildCorridorRails(layout, rng, originCol, originRow, options
     return { paths, mask, railWalls: railWallsFromFloorMask(mask, gridCols, gridRows, originCol, originRow) };
 }
 /** Route one tree edge: punch facing holes on both rooms, return corridor rails or null (restores on failure). */
-/** @param {number} edgeIndex @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng @param {number} originCol @param {number} originRow @param {{ halfWidth?: number, egressCells?: number, canIntersect?: boolean, existingPaths?: Cell[][] }} [options] */
+/** @param {number} edgeIndex @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng */
+export function punchHolesOnDirectedEdge(layout, closedRooms, edgeIndex, rng) {
+    const edge = layout.graphEdges[edgeIndex];
+    const { rooms } = layout;
+    edge.parentHole = punchHoleTowardNeighbor(closedRooms[edge.a], rooms[edge.b], rng);
+    edge.childHole = punchHoleTowardNeighbor(closedRooms[edge.b], rooms[edge.a], rng);
+    edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
+    edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
+}
+/** One hole per tree edge touching this node, facing the other endpoint. */
+/** @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {number} nodeId @param {() => number} rng */
+export function punchHolesForNodeIncidentEdges(layout, closedRooms, nodeId, rng) {
+    const { graphEdges, rooms } = layout;
+    for (let i = 0; i < graphEdges.length; i++) {
+        const edge = graphEdges[i];
+        if (edge.a === nodeId) {
+            edge.parentHole = punchHoleTowardNeighbor(closedRooms[nodeId], rooms[edge.b], rng);
+            edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
+        }
+        if (edge.b === nodeId) {
+            edge.childHole = punchHoleTowardNeighbor(closedRooms[nodeId], rooms[edge.a], rng);
+            edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
+        }
+    }
+}
+/** @param {number} edgeIndex @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng @param {number} originCol @param {number} originRow @param {{ halfWidth?: number, egressCells?: number, canIntersect?: boolean, existingPaths?: Cell[][], skipPunchIfHolesPresent?: boolean }} [options] */
 export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, originCol, originRow, options = {}) {
     const halfWidth = options.halfWidth ?? DEFAULT_CORRIDOR_HALF_WIDTH;
     const egressCells = options.egressCells ?? DEFAULT_CORRIDOR_EGRESS_CELLS;
     const canIntersect = options.canIntersect !== false;
     const existingPaths = options.existingPaths ?? [];
+    const skipPunch = options.skipPunchIfHolesPresent === true;
     const { rooms, graphEdges, gridCols, gridRows } = layout;
     const edge = graphEdges[edgeIndex];
     const roomA = closedRooms[edge.a];
     const roomB = closedRooms[edge.b];
     const snapA = snapshotClosedRoom(roomA);
     const snapB = snapshotClosedRoom(roomB);
-    edge.parentHole = punchHoleTowardNeighbor(roomA, rooms[edge.b], rng);
-    edge.childHole = punchHoleTowardNeighbor(roomB, rooms[edge.a], rng);
-    edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
-    edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
+    const punchedHere = !(skipPunch && edge.parentHole && edge.childHole);
+    if (punchedHere) punchHolesOnDirectedEdge(layout, closedRooms, edgeIndex, rng);
+    else {
+        edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
+        edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
+    }
     const path = buildCorridorPathBetweenHoles(edge.parentHole, edge.childHole, rooms, rng, egressCells);
     if (!path || (!canIntersect && corridorPathIntersectsAny(path, existingPaths))) {
-        restoreClosedRoom(roomA, snapA);
-        restoreClosedRoom(roomB, snapB);
-        edge.parentHole = undefined;
-        edge.childHole = undefined;
+        if (punchedHere) {
+            restoreClosedRoom(roomA, snapA);
+            restoreClosedRoom(roomB, snapB);
+            edge.parentHole = undefined;
+            edge.childHole = undefined;
+        }
         edge.corridorFrom = undefined;
         edge.corridorTo = undefined;
         return null;
@@ -694,6 +740,101 @@ function runRoomGraphRoomMotif(roomMotif, ctx, closedRoom) {
 function forEachRoomRunRoomMotif(closedRooms, roomMotif, ctx) {
     for (let i = 0; i < closedRooms.length; i++) runRoomGraphRoomMotif(roomMotif, ctx, closedRooms[i]);
 }
+/** @param {number} count @param {() => number} rng */
+function shuffledIndices(count, rng) {
+    /** @type {number[]} */
+    const order = [];
+    for (let i = 0; i < count; i++) order.push(i);
+    for (let i = order.length - 1; i > 0; i--) {
+        const j = (rng() * (i + 1)) | 0;
+        const t = order[i];
+        order[i] = order[j];
+        order[j] = t;
+    }
+    return order;
+}
+/** @param {RoomGraphEdgeMotif} edgeMotif @param {RoomGraphBuildCtx} ctx @param {number} edgeIndex @param {{ canIntersect?: boolean }} forEachOpts @returns {boolean} */
+function runRoomGraphEdgeMotif(edgeMotif, ctx, edgeIndex, forEachOpts) {
+    if (edgeMotif.op === "punchHolesTowardNeighbors") {
+        punchHolesOnDirectedEdge(ctx.layout, ctx.closedRooms, edgeIndex, ctx.holeRng);
+        return true;
+    }
+    if (edgeMotif.op === "buildCorridorForEdge") {
+        const canIntersect = edgeMotif.canIntersect ?? forEachOpts.canIntersect ?? true;
+        const result = tryBuildCorridorForEdge(edgeIndex, ctx.layout, ctx.closedRooms, ctx.corridorRng, ctx.originCol, ctx.originRow, {
+            canIntersect,
+            existingPaths: ctx.corridorPaths,
+            skipPunchIfHolesPresent: edgeMotif.skipPunchIfHolesPresent === true,
+        });
+        if (!result) return false;
+        ctx.corridorEdgeIndices.push(result.edgeIndex);
+        ctx.corridorPaths.push(result.path);
+        ctx.corridorRails.push(...result.railWalls);
+        return true;
+    }
+    throw new Error(`Unknown room graph edge motif op: ${edgeMotif.op}`);
+}
+/** @param {ForEachEdgeMotif} motif @param {RoomGraphBuildCtx} ctx */
+function runForEachEdgeMotif(motif, ctx) {
+    const { graphEdges } = ctx.layout;
+    const order = motif.shuffle === false ? graphEdges.map((_, i) => i) : shuffledIndices(graphEdges.length, ctx.corridorRng);
+    const limit = motif.limit ?? graphEdges.length;
+    let okCount = 0;
+    for (let k = 0; k < order.length && okCount < limit; k++) if (runRoomGraphEdgeMotif(motif.run, ctx, order[k], { canIntersect: motif.canIntersect })) okCount++;
+    if (motif.requireAll && okCount < limit) throw new Error(`forEachEdge: completed ${okCount}/${limit}`);
+}
+/** @param {RoomGraphNodeMotif} nodeMotif @param {RoomGraphBuildCtx} ctx @param {number} nodeId */
+function runRoomGraphNodeMotif(nodeMotif, ctx, nodeId) {
+    if (nodeMotif.op === "punchHolePerIncidentEdge") {
+        punchHolesForNodeIncidentEdges(ctx.layout, ctx.closedRooms, nodeId, ctx.holeRng);
+        return;
+    }
+    throw new Error(`Unknown room graph node motif op: ${nodeMotif.op}`);
+}
+/** @param {ForEachNodeMotif} motif @param {RoomGraphBuildCtx} ctx */
+function runForEachNodeMotif(motif, ctx) {
+    for (let i = 0; i < ctx.layout.rooms.length; i++) runRoomGraphNodeMotif(motif.run, ctx, i);
+}
+/** @param {ValidateLayoutMotif} motif @param {RoomGraphBuildCtx} ctx */
+export function validateLayoutPasses(motif, ctx) {
+    const config = resolveNodeGraphGenConfig(ctx.options);
+    const minNodes = motif.minNodes ?? config.minNodes;
+    if (ctx.layout.rooms.length < minNodes) return false;
+    if (motif.corridorsAtLeast != null && ctx.corridorPaths.length < motif.corridorsAtLeast) return false;
+    if (motif.corridorsIntersect === false)
+        for (let i = 0; i < ctx.corridorPaths.length; i++)
+            for (let j = i + 1; j < ctx.corridorPaths.length; j++) if (corridorPathIntersectsAny(ctx.corridorPaths[i], [ctx.corridorPaths[j]])) return false;
+    return true;
+}
+/** @param {Record<string, unknown>} options @returns {RoomGraphBuildCtx} */
+function createEmptyRoomGraphBuildCtx(options) {
+    return {
+        options,
+        layout: /** @type {RoomGraphLayout} */ (/** @type {unknown} */ (null)),
+        closedRooms: /** @type {ClosedRoom[]} */ (/** @type {unknown} */ (null)),
+        corridorRails: [],
+        corridorPaths: [],
+        corridorEdgeIndices: [],
+        originCol: 0,
+        originRow: 0,
+        corridorRng: createSeededRng(0),
+        holeRng: createSeededRng(0),
+    };
+}
+/** @param {RetryUntilMotif} motif @param {Record<string, unknown>} options */
+function runRetryUntilMotif(motif, options) {
+    const base = resolveNodeGraphGenConfig(options);
+    const maxAttempts = motif.maxAttempts ?? base.layoutMaxAttempts;
+    for (let attempt = 0; attempt < maxAttempts; attempt++)
+        try {
+            const ctx = createEmptyRoomGraphBuildCtx({ ...options, seed: base.seed + attempt });
+            for (let i = 0; i < motif.body.length; i++) runRoomGraphMotif(motif.body[i], ctx);
+            if (validateLayoutPasses(motif.until, ctx)) return ctx;
+        } catch {
+            continue;
+        }
+    throw new Error(`retryUntil: validateLayout not satisfied after ${maxAttempts} attempts`);
+}
 /** @param {RoomGraphMotif} motif @param {RoomGraphBuildCtx} ctx */
 function runRoomGraphMotif(motif, ctx) {
     if (motif.op === "buildNodeGraph") {
@@ -714,6 +855,18 @@ function runRoomGraphMotif(motif, ctx) {
     }
     if (motif.op === "forEachRoom") {
         forEachRoomRunRoomMotif(ctx.closedRooms, motif.run, ctx);
+        return;
+    }
+    if (motif.op === "forEachEdge") {
+        runForEachEdgeMotif(motif, ctx);
+        return;
+    }
+    if (motif.op === "forEachNode") {
+        runForEachNodeMotif(motif, ctx);
+        return;
+    }
+    if (motif.op === "validateLayout") {
+        if (!validateLayoutPasses(motif, ctx)) throw new Error("validateLayout failed");
         return;
     }
     if (motif.op === "punchOneHolePerRoom") {
@@ -757,20 +910,13 @@ function runRoomGraphMotif(motif, ctx) {
 /** @param {RoomGraphMotif[]} motifs @param {Record<string, unknown>} [options] */
 export function runRoomGraphMotifs(motifs, options = {}) {
     if (!Array.isArray(motifs) || motifs.length === 0) throw new Error("motifs must be a non-empty array");
-    /** @type {RoomGraphBuildCtx} */
-    const ctx = {
-        options,
-        layout: /** @type {RoomGraphLayout} */ (/** @type {unknown} */ (null)),
-        closedRooms: /** @type {ClosedRoom[]} */ (/** @type {unknown} */ (null)),
-        corridorRails: [],
-        corridorPaths: [],
-        corridorEdgeIndices: [],
-        originCol: 0,
-        originRow: 0,
-        corridorRng: createSeededRng(0),
-        holeRng: createSeededRng(0),
-    };
-    for (let i = 0; i < motifs.length; i++) runRoomGraphMotif(motifs[i], ctx);
+    if (motifs.length === 1 && motifs[0].op === "retryUntil") return runRetryUntilMotif(motifs[0], options);
+    const ctx = createEmptyRoomGraphBuildCtx(options);
+    for (let i = 0; i < motifs.length; i++) {
+        const motif = motifs[i];
+        if (motif.op === "retryUntil") throw new Error("retryUntil must be the sole top-level motif");
+        runRoomGraphMotif(motif, ctx);
+    }
     return ctx;
 }
 /** @param {RoomGraphLayout} layout @param {{ originCol: number, originRow: number, cellSize?: number, corridorRails?: RailWall[], corridorPaths?: Cell[][], corridorEdgeIndices?: number[], motifs?: RoomGraphMotif[] }} options */

@@ -88,7 +88,10 @@ export {
     tryLayoutRoomGraph,
     wireDirectedEdgeToRoomHoles,
     buildCorridorPathBetweenHoles,
+    punchHolesOnDirectedEdge,
+    punchHolesForNodeIncidentEdges,
     corridorPathIntersectsAny,
+    validateLayoutPasses,
     runRoomGraphMotifs,
 } from "./sandboxRoomGraphGen.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
