@@ -76,16 +76,11 @@ export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, b
     const cross = portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, edge.allowedSide);
     return vx * cross.x + vy * cross.y <= 0.5;
 }
-/** World cell beyond partner portal, preserving entry step direction. */
-export function portalTraverseExitCell(partnerCol, partnerRow, partnerSide, fromCol, fromRow, toCol, toRow) {
-    const dc = toCol - fromCol;
-    const dr = toRow - fromRow;
-    const { nc, nr } = gridWallEdgeNeighbor(partnerCol, partnerRow, partnerSide);
-    if (dc > 0) return { col: Math.max(partnerCol, nc), row: partnerRow };
-    if (dc < 0) return { col: Math.min(partnerCol, nc), row: partnerRow };
-    if (dr > 0) return { col: partnerCol, row: Math.max(partnerRow, nr) };
-    if (dr < 0) return { col: partnerCol, row: Math.min(partnerRow, nr) };
-    return { col: partnerCol, row: partnerRow };
+/** World cell at the mouth of the partner portal. */
+export function portalTraverseExitCell(grid, partnerCol, partnerRow, partnerSide) {
+    const edge = grid.edgeStore.get(partnerCol, partnerRow, partnerSide, grid.cols);
+    const { mouth } = portalMouthAndBackCells(partnerCol, partnerRow, partnerSide, edge);
+    return mouth;
 }
 /** @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow */
 export function resolveCardinalStepCrossing(fromCol, fromRow, toCol, toRow) {

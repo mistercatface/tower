@@ -1,9 +1,7 @@
 import { CARDINAL_OFFSETS, cellInRect, colRowToIndex, makeAdjacencyKey } from "../Spatial/grid/GridUtils.js";
 import { portalTraverseExitCell } from "../Spatial/grid/portalAccess.js";
 import { evaluatePortalStepEntry } from "./portalLinks.js";
-
 /** @typedef {{ mouthCol: number, mouthRow: number, exitCol: number, exitRow: number, cost: number }} PortalNavHop */
-
 /**
  * @param {object} state
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -25,7 +23,7 @@ export function buildPortalNavHops(state, grid) {
             if (!cellInRect(toCol, toRow, grid.cols, grid.rows)) continue;
             const entry = evaluatePortalStepEntry(state, grid, fromCol, fromRow, toCol, toRow);
             if (!entry) continue;
-            const exit = portalTraverseExitCell(entry.partner.col, entry.partner.row, entry.partner.side, fromCol, fromRow, toCol, toRow);
+            const exit = portalTraverseExitCell(grid, entry.partner.col, entry.partner.row, entry.partner.side);
             if (!cellInRect(exit.col, exit.row, grid.cols, grid.rows) || grid.grid[colRowToIndex(exit.col, exit.row, grid.cols)] !== 0) continue;
             let list = hopsByFromIdx.get(idx);
             if (!list) {
@@ -38,14 +36,12 @@ export function buildPortalNavHops(state, grid) {
     }
     return hopsByFromIdx;
 }
-
 /** @param {object} state */
 export function syncPortalNavIndex(state) {
     const grid = state.obstacleGrid;
     grid.portalNavHops = buildPortalNavHops(state, grid);
     state.hierarchicalNavigator?.connectPortalRegionPairs?.();
 }
-
 /**
  * @param {Array<object | null>} cellToNode
  * @param {number} cols
@@ -70,7 +66,6 @@ export function appendPortalRegionAdjacencies(cellToNode, cols, rows, navGraph, 
         }
     }
 }
-
 /**
  * @param {import("../Pathfinding/NavGraph.js").NavGraph & { getPortalHops?: (col: number, row: number) => PortalNavHop[] | null }} navGraph
  * @param {number} col
@@ -86,7 +81,6 @@ export function forEachPortalNavHop(navGraph, col, row, fn) {
         fn(hop.exitCol, hop.exitRow, hop.cost);
     }
 }
-
 /**
  * A* portal hops jump entry → exit in one graph step. Movement must step onto the mouth cell first
  * so physics traverse fires; insert mouth waypoints and omit the graph exit (replan after traverse).

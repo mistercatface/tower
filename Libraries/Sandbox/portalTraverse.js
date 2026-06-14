@@ -18,7 +18,7 @@ const PORTAL_TRAVERSE_COOLDOWN_MS = 50;
 export function applyPortalTraverse(state, entity, entry, fromCol, fromRow, toCol, toRow) {
     const grid = state.obstacleGrid;
     const { partner } = entry;
-    const exit = portalTraverseExitCell(partner.col, partner.row, partner.side, fromCol, fromRow, toCol, toRow);
+    const exit = portalTraverseExitCell(grid, partner.col, partner.row, partner.side);
     if (!cellInRect(exit.col, exit.row, grid.cols, grid.rows) || grid.isBlocked(exit.col, exit.row)) return false;
     const { x, y } = grid.gridToWorld(exit.col, exit.row);
     entity.x = x;
