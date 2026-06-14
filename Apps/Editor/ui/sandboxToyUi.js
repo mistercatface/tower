@@ -16,8 +16,8 @@ import { renderSandboxEquipPanel } from "../../../Libraries/Sandbox/sandboxEquip
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
-import { portalAccessSideOptions } from "../../../Libraries/Spatial/grid/portalAccess.js";
-import { PORTAL_ACCESS_MODE } from "../../../Libraries/Spatial/grid/CellEdge.js";
+import { portalAccessSideOptions, PORTAL_ACCESS_BLOCK_OPTIONS } from "../../../Libraries/Spatial/grid/portalAccess.js";
+import { PORTAL_ACCESS_BLOCK, PORTAL_ACCESS_MODE } from "../../../Libraries/Spatial/grid/CellEdge.js";
 import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 const WALL_STAMP_OPTIONS = [
@@ -68,7 +68,7 @@ function appendPassageEditorFields(body, controller, selected, { stampDefaults =
             },
         });
 }
-/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ accessMode: string, allowedSide?: number, side?: number, linked?: boolean, partner?: { col: number, row: number, side: number } | null } | null} selected @param {{ stampDefaults?: boolean, linkTargets?: { col: number, row: number, side: number, label: string }[], onChange: () => void }} opts */
+/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ accessMode: string, accessBlock?: string, allowedSide?: number, side?: number, linked?: boolean, partner?: { col: number, row: number, side: number } | null } | null} selected @param {{ stampDefaults?: boolean, linkTargets?: { col: number, row: number, side: number, label: string }[], onChange: () => void }} opts */
 function appendPortalEditorFields(body, controller, selected, { stampDefaults = false, linkTargets = [], onChange }) {
     const accessMode = stampDefaults ? controller.getPortalStampAccessMode() : selected.accessMode;
     appendSelectField(body, "Access", {
@@ -80,7 +80,7 @@ function appendPortalEditorFields(body, controller, selected, { stampDefaults = 
             onChange();
         },
     });
-    if (accessMode === PORTAL_ACCESS_MODE.One && !stampDefaults && selected)
+    if (accessMode === PORTAL_ACCESS_MODE.One && !stampDefaults && selected) {
         appendSelectField(body, "Allowed cell", {
             value: String(selected.allowedSide ?? selected.side),
             options: portalAccessSideOptions(selected.side ?? 0),
@@ -89,6 +89,15 @@ function appendPortalEditorFields(body, controller, selected, { stampDefaults = 
                 onChange();
             },
         });
+        appendSelectField(body, "Block enforcement", {
+            value: selected.accessBlock ?? PORTAL_ACCESS_BLOCK.All,
+            options: PORTAL_ACCESS_BLOCK_OPTIONS,
+            onChange: (value) => {
+                controller.setSelectedPortalAccessBlock(value);
+                onChange();
+            },
+        });
+    }
     if (!stampDefaults && selected) {
         if (!selected.onNetwork) appendEditorHint(body, "Off network — extend a powered laser chain from a power source to this edge.");
         else if (!selected.linked)

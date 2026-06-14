@@ -1,10 +1,12 @@
 /** @typedef {{ kind: 'railWall', heightDelta: number, thicknessLevel: number }} RailWallEdge */
 /** @typedef {{ kind: 'conveyor' }} ConveyorEdge */
 /** @typedef {{ kind: 'beltRail' }} BeltRailEdge */
-/** @typedef {{ kind: 'forcefield', mode: string, allowedSide: number, powered: boolean, accessMode?: string, partnerKey?: number, linkMode?: string, linkSourceKey?: number }} ForcefieldEdge */
+/** @typedef {{ kind: 'forcefield', mode: string, allowedSide: number, powered: boolean, accessMode?: string, accessBlock?: string, partnerKey?: number, linkMode?: string, linkSourceKey?: number }} ForcefieldEdge */
 export const EDGE_KIND = { RailWall: "railWall", Conveyor: "conveyor", BeltRail: "beltRail", Forcefield: "forcefield" };
 export const PASSAGE_MODE = { Solid: "solid", OneWay: "oneWay", Tripwire: "tripwire", Portal: "portal" };
 export const PORTAL_ACCESS_MODE = { Both: "both", One: "one" };
+/** Which systems enforce access-one blocking — default both step grid and physics. */
+export const PORTAL_ACCESS_BLOCK = { All: "all", Step: "step", Physics: "physics" };
 /** @param {unknown} raw */
 export function parsePassageMode(raw) {
     if (raw === PASSAGE_MODE.OneWay || raw === PASSAGE_MODE.Tripwire) return raw;
@@ -33,9 +35,33 @@ export function createBeltRailEdge() {
 export function createForcefieldEdge({ mode = PASSAGE_MODE.Solid, allowedSide = 1, powered = false } = {}) {
     return { kind: EDGE_KIND.Forcefield, mode: parsePassageMode(mode), allowedSide, powered: powered === true };
 }
-/** @param {{ accessMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} [opts] */
-export function createPortalEdge({ accessMode = PORTAL_ACCESS_MODE.Both, allowedSide = 1, partnerKey = 0, linkMode = "shared", linkSourceKey = 0, powered = false } = {}) {
-    return { kind: EDGE_KIND.Forcefield, mode: PASSAGE_MODE.Portal, accessMode: parsePortalAccessMode(accessMode), allowedSide, partnerKey, linkMode, linkSourceKey, powered: powered === true };
+/** @param {unknown} raw */
+export function parsePortalAccessBlock(raw) {
+    if (raw === PORTAL_ACCESS_BLOCK.Step) return PORTAL_ACCESS_BLOCK.Step;
+    if (raw === PORTAL_ACCESS_BLOCK.Physics) return PORTAL_ACCESS_BLOCK.Physics;
+    return PORTAL_ACCESS_BLOCK.All;
+}
+/** @param {{ accessMode?: string, allowedSide?: number, accessBlock?: string, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} [opts] */
+export function createPortalEdge({
+    accessMode = PORTAL_ACCESS_MODE.Both,
+    allowedSide = 1,
+    accessBlock = PORTAL_ACCESS_BLOCK.All,
+    partnerKey = 0,
+    linkMode = "shared",
+    linkSourceKey = 0,
+    powered = false,
+} = {}) {
+    return {
+        kind: EDGE_KIND.Forcefield,
+        mode: PASSAGE_MODE.Portal,
+        accessMode: parsePortalAccessMode(accessMode),
+        allowedSide,
+        accessBlock: parsePortalAccessBlock(accessBlock),
+        partnerKey,
+        linkMode,
+        linkSourceKey,
+        powered: powered === true,
+    };
 }
 /** @param {object | null | undefined} edge */
 export function isRailWallEdge(edge) {
@@ -73,11 +99,7 @@ export function resolvePassageEdge(edge, ownerSide) {
 }
 /** @param {object | null | undefined} edge @param {number} crossedSide side being crossed on the owner cell @param {number} ownerSide side the passage was stamped on */
 export function passageEdgeBlocksStep(edge, crossedSide, ownerSide) {
-    if (isPortalEdge(edge)) {
-        if (edge.powered !== true) return true;
-        if (parsePortalAccessMode(edge.accessMode) === PORTAL_ACCESS_MODE.One) return true;
-        return false;
-    }
+    if (isPortalEdge(edge)) return false;
     if (!isForcefieldEdge(edge) || edge.powered !== true) return false;
     const { mode, allowedSide } = resolvePassageEdge(edge, ownerSide);
     if (mode === PASSAGE_MODE.Tripwire) return false;

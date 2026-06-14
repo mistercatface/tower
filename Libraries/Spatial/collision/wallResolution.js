@@ -1,6 +1,7 @@
 import { getCircleSegmentPenetration } from "../geometry/WallGeometry.js";
 import { applyStaticSurfaceImpulse } from "../../Motion/staticSurfaceImpulse.js";
-import { passageEdgeBlocksCollision } from "../../Spatial/grid/CellEdge.js";
+import { isPortalEdge, passageEdgeBlocksCollision } from "../../Spatial/grid/CellEdge.js";
+import { portalEdgeBlocksCollision } from "../../Spatial/grid/portalAccess.js";
 import { SatCollision } from "./SatCollision.js";
 import { PolygonShape } from "./Shapes.js";
 import { applyPositionCorrection, computeCircleWallContact, computePolygonWallContact } from "./penetration.js";
@@ -44,7 +45,10 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
         let best = null;
         for (const seg of segments) {
             if (seg.isDead) continue;
-            if (seg.passageEdge && !passageEdgeBlocksCollision(seg.passageEdge, seg.gridSide, body.vx ?? 0, body.vy ?? 0)) continue;
+            if (seg.passageEdge)
+                if (isPortalEdge(seg.passageEdge)) {
+                    if (!portalEdgeBlocksCollision(seg.passageEdge, seg.gridCol, seg.gridRow, seg.gridSide, body.x, body.y, body.vx ?? 0, body.vy ?? 0, seg._obstacleGrid)) continue;
+                } else if (!passageEdgeBlocksCollision(seg.passageEdge, seg.gridSide, body.vx ?? 0, body.vy ?? 0)) continue;
             const maxDist = radius + seg.size * 0.75;
             if (Math.abs(body.x - seg.x) > maxDist || Math.abs(body.y - seg.y) > maxDist) continue;
             let normalX;

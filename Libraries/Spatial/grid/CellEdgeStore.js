@@ -1,7 +1,7 @@
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { gridWallEdgeNeighbor, gridWallEdgeMirrorSide, gridNeighborFillLevel } from "../../World/wallGridCells.js";
-import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isPortalEdge, isRailWallEdge, railWallHeightPx, PASSAGE_MODE, PORTAL_ACCESS_MODE } from "./CellEdge.js";
+import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isPortalEdge, isRailWallEdge, railWallHeightPx, PASSAGE_MODE, PORTAL_ACCESS_MODE, PORTAL_ACCESS_BLOCK } from "./CellEdge.js";
 const EMPTY = -1;
 export class CellEdgeStore {
     constructor() {
@@ -75,11 +75,13 @@ export class CellEdgeStore {
                 delete pooled.thicknessLevel;
                 if (isPortalEdge(edge)) {
                     pooled.accessMode = edge.accessMode ?? PORTAL_ACCESS_MODE.Both;
+                    pooled.accessBlock = edge.accessBlock ?? PORTAL_ACCESS_BLOCK.All;
                     pooled.partnerKey = edge.partnerKey ?? 0;
                     pooled.linkMode = edge.linkMode ?? "shared";
                     pooled.linkSourceKey = edge.linkSourceKey ?? 0;
                 } else {
                     delete pooled.accessMode;
+                    delete pooled.accessBlock;
                     delete pooled.partnerKey;
                     delete pooled.linkMode;
                     delete pooled.linkSourceKey;
@@ -91,6 +93,7 @@ export class CellEdgeStore {
                 delete pooled.allowedSide;
                 delete pooled.powered;
                 delete pooled.accessMode;
+                delete pooled.accessBlock;
                 delete pooled.partnerKey;
                 delete pooled.linkMode;
                 delete pooled.linkSourceKey;

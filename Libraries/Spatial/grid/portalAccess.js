@@ -1,17 +1,20 @@
 import { gridWallEdgeMirrorSide } from "../../World/wallGridCells.js";
-import { isPortalEdge, PORTAL_ACCESS_MODE, parsePortalAccessMode } from "./CellEdge.js";
+import { isPortalEdge, parsePortalAccessBlock, parsePortalAccessMode, PORTAL_ACCESS_BLOCK, PORTAL_ACCESS_MODE } from "./CellEdge.js";
 /** Default allowedSide for access one — owner cell (mirror of stamped edge side). */
 export function portalAccessDefaultAllowedSide(ownerSide) {
     return gridWallEdgeMirrorSide(ownerSide);
 }
+export function portalAccessBlockIncludesStep(edge) {
+    const block = parsePortalAccessBlock(edge.accessBlock);
+    return block === PORTAL_ACCESS_BLOCK.All || block === PORTAL_ACCESS_BLOCK.Step;
+}
+export function portalAccessBlockIncludesPhysics(edge) {
+    const block = parsePortalAccessBlock(edge.accessBlock);
+    return block === PORTAL_ACCESS_BLOCK.All || block === PORTAL_ACCESS_BLOCK.Physics;
+}
 /**
  * Cell that may initiate a portal step when access is one.
  * allowedSide === mirror(ownerSide) → owner cell; otherwise neighbor in direction allowedSide.
- *
- * @param {number} ownerCol
- * @param {number} ownerRow
- * @param {number} ownerSide
- * @param {number} allowedSide
  */
 export function portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, allowedSide) {
     if (allowedSide === portalAccessDefaultAllowedSide(ownerSide)) return { col: ownerCol, row: ownerRow };
@@ -25,6 +28,12 @@ export function formatPortalAccessModeLabel(accessMode) {
     if (accessMode === PORTAL_ACCESS_MODE.One) return "One side only";
     return "Both sides";
 }
+/** @param {string} accessBlock */
+export function formatPortalAccessBlockLabel(accessBlock) {
+    if (accessBlock === PORTAL_ACCESS_BLOCK.Step) return "Step only";
+    if (accessBlock === PORTAL_ACCESS_BLOCK.Physics) return "Physics only";
+    return "Step + physics";
+}
 /** @param {number} ownerSide @param {number} allowedSide */
 export function formatPortalAccessSideLabel(ownerSide, allowedSide) {
     if (allowedSide === portalAccessDefaultAllowedSide(ownerSide)) return "Owner cell";
@@ -33,25 +42,51 @@ export function formatPortalAccessSideLabel(ownerSide, allowedSide) {
     if (allowedSide === 2) return "South neighbor";
     return "West neighbor";
 }
+/** Non-directional step query (conservative when access is one). */
+export function portalBlocksStepWithoutDirection(edge, ownerSide) {
+    if (!isPortalEdge(edge)) return false;
+    if (edge.powered !== true) return true;
+    if (parsePortalAccessMode(edge.accessMode) === PORTAL_ACCESS_MODE.Both) return false;
+    return portalAccessBlockIncludesStep(edge);
+}
 /**
- * Portal step blocking for access sides (Part 2b). Part 3 calls this before traverse.
- *
- * @param {number} fromCol
- * @param {number} fromRow
- * @param {number} toCol
- * @param {number} toRow
- * @param {object} edge
- * @param {number} ownerCol
- * @param {number} ownerRow
- * @param {number} ownerSide
+ * Portal step blocking for access sides. Part 3 calls this before traverse.
  * @returns {boolean} true when the step is blocked
  */
 export function portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide) {
     if (!isPortalEdge(edge)) return false;
     if (edge.powered !== true) return true;
     if (parsePortalAccessMode(edge.accessMode) === PORTAL_ACCESS_MODE.Both) return false;
+    if (!portalAccessBlockIncludesStep(edge)) return false;
     const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, edge.allowedSide ?? portalAccessDefaultAllowedSide(ownerSide));
     return fromCol !== allowed.col || fromRow !== allowed.row;
+}
+/** Whether a portal edge emits physics collision rails. */
+export function portalEdgeEmitsCollision(edge) {
+    if (!isPortalEdge(edge)) return false;
+    if (edge.powered !== true) return true;
+    if (parsePortalAccessMode(edge.accessMode) === PORTAL_ACCESS_MODE.Both) return false;
+    return portalAccessBlockIncludesPhysics(edge);
+}
+/** World-unit vector for crossing from the allowed initiator cell through the portal edge. */
+export function portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, allowedSide) {
+    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, allowedSide);
+    if (allowed.col === ownerCol && allowed.row === ownerRow) return portalSideOutwardVector(ownerSide);
+    return portalSideOutwardVector(portalAccessDefaultAllowedSide(ownerSide));
+}
+/**
+ * Directional physics blocking for portal edge rails.
+ * @returns {boolean} true when collision should apply
+ */
+export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, bodyX, bodyY, vx, vy, grid) {
+    if (!portalEdgeEmitsCollision(edge)) return false;
+    if (edge.powered !== true) return true;
+    const allowedSide = edge.allowedSide ?? portalAccessDefaultAllowedSide(ownerSide);
+    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, allowedSide);
+    const { col: bodyCol, row: bodyRow } = grid.worldToGrid(bodyX, bodyY);
+    if (bodyCol !== allowed.col || bodyRow !== allowed.row) return true;
+    const cross = portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, allowedSide);
+    return vx * cross.x + vy * cross.y <= 0.5;
 }
 /** @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow */
 export function resolveCardinalStepCrossing(fromCol, fromRow, toCol, toRow) {
@@ -82,3 +117,8 @@ export function portalAccessSideOptions(ownerSide) {
         { value: String(ownerSide), label: neighborLabel },
     ];
 }
+export const PORTAL_ACCESS_BLOCK_OPTIONS = [
+    { value: PORTAL_ACCESS_BLOCK.All, label: "Step + physics" },
+    { value: PORTAL_ACCESS_BLOCK.Step, label: "Step only" },
+    { value: PORTAL_ACCESS_BLOCK.Physics, label: "Physics only" },
+];
