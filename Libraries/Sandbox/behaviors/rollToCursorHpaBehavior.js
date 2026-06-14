@@ -122,11 +122,9 @@ export function createRollToCursorHpaBehavior(state) {
             const trace = buildPathOverlayFromProgress(prop.x, prop.y, prop.radius ?? 6, hpaNav.navState.path, progressIdx, targetWorld.x, targetWorld.y);
             return {
                 mode: "hpa",
-                fromX: trace.fromX,
-                fromY: trace.fromY,
+                pathNodes: trace.pathNodes,
                 targetX: targetWorld.x,
                 targetY: targetWorld.y,
-                waypoints: trace.waypoints,
                 abstractPath: hpaNav.navState.abstractPath ?? undefined,
                 pathPlanner: hpaNav.navState.pathPlanner ?? undefined,
             };

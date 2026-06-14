@@ -10,7 +10,7 @@ function shouldApplyClearance(navState, targetX, targetY, obstaclesChanged) {
 }
 function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, hooks, nowMs) {
     const rawPath = hierarchicalNavigator.findPath(entity.x, entity.y, targetX, targetY);
-    let path = rawPath ? trimPathAhead(entity.x, entity.y, rawPath) : null;
+    let path = rawPath ? trimPathAhead(entity.x, entity.y, rawPath, { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy) }) : null;
     if (path && obstacleGrid && applyClearance) {
         const isVisible = hooks.isVisible(entity);
         if (!isVisible) {
@@ -22,7 +22,7 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
             path = prepareNavigationPath(path, obstacleGrid, clearance, { x: targetX, y: targetY });
         }
     }
-    if (path) path = trimPathAhead(entity.x, entity.y, path);
+    if (path) path = trimPathAhead(entity.x, entity.y, path, { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy) });
     navState.path = path;
     navState.pathProgressIdx = 0;
     navState.lastUpdate = nowMs;

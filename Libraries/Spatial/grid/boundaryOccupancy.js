@@ -320,6 +320,9 @@ export function boundaryBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow) {
         if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, sideY)) return true;
         if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow + dr, sideX)) return true;
         if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol + dc, fromRow, sideY)) return true;
+        // Shoulder cells share the corner vertex — both axes must be clear (L-shaped forcefields).
+        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol + dc, fromRow, sideX)) return true;
+        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow + dr, sideY)) return true;
     }
     return false;
 }

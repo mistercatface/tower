@@ -1,6 +1,6 @@
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
 import { getCanvasLineScale } from "../common/viewportUtils.js";
-import { fillStrokeCircle, strokeCircle, strokeOpenPolyline, strokePolylineFrom, strokeSegment } from "../../Canvas/CanvasPath.js";
+import { fillStrokeCircle, strokeCircle, strokeOpenPolyline } from "../../Canvas/CanvasPath.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { isPortalEdge } from "../../Spatial/grid/CellEdge.js";
 import { resolvePortalPartner } from "../../Sandbox/portalLinks.js";
@@ -9,11 +9,9 @@ import { gridWallEdgeEndpoints } from "../../World/wallGridCells.js";
 /**
  * @typedef {Object} ActivePathOverlay
  * @property {"direct" | "hpa"} mode
- * @property {number} fromX
- * @property {number} fromY
- * @property {number} targetX
- * @property {number} targetY
- * @property {Array<{ x: number, y: number }>} [waypoints]
+ * @property {number} [targetX]
+ * @property {number} [targetY]
+ * @property {Array<{ x: number, y: number }>} [pathNodes]
  * @property {Array<{ x: number, y: number, id?: string }>} [abstractPath]
  * @property {"local" | "hpa"} [pathPlanner]
  */
@@ -96,52 +94,50 @@ function strokeSubPath(ctx, points) {
     for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
     ctx.stroke();
 }
-function drawPathPolyline(ctx, fromX, fromY, waypoints, targetX, targetY, lineScale, grid, color) {
-    const allPoints = [{ x: fromX, y: fromY }, ...(waypoints ?? [])];
-    const last = allPoints[allPoints.length - 1];
-    if (!last || Math.hypot(last.x - targetX, last.y - targetY) > 0.5) allPoints.push({ x: targetX, y: targetY });
-    if (allPoints.length < 2) return;
-    let currentSubPath = [allPoints[0]];
-    for (let i = 0; i < allPoints.length - 1; i++) {
-        const p1 = allPoints[i];
-        const p2 = allPoints[i + 1];
+function drawPathPolyline(ctx, pathNodes, lineScale, grid, color) {
+    if (pathNodes.length < 2) return;
+    let currentSubPath = [pathNodes[0]];
+    for (let i = 0; i < pathNodes.length - 1; i++) {
+        const p1 = pathNodes[i];
+        const p2 = pathNodes[i + 1];
         const hop = resolvePortalHopGeometries(grid, p1, p2);
         if (hop) {
-            // Complete current sub-path at entryMid
             currentSubPath.push(hop.entryMid);
             strokeSubPath(ctx, currentSubPath);
-            // Draw arrowheads
             drawPathArrowhead(ctx, hop.entryMid.x, hop.entryMid.y, hop.entryCross.x, hop.entryCross.y, color, lineScale);
             drawPathArrowhead(ctx, hop.exitMid.x, hop.exitMid.y, hop.exitVector.x, hop.exitVector.y, color, lineScale);
-            // Start a new sub-path at exitMid
             currentSubPath = [hop.exitMid, p2];
         } else currentSubPath.push(p2);
     }
     strokeSubPath(ctx, currentSubPath);
 }
 function drawNormalPathOverlay(ctx, overlay, grid) {
-    const { mode, fromX, fromY, targetX, targetY, waypoints } = overlay;
+    const { mode, targetX, targetY, pathNodes } = overlay;
     const lineScale = getCanvasLineScale(ctx);
     if (mode === "direct") {
+        if (!pathNodes || pathNodes.length < 2) return;
         ctx.save();
         ctx.setLineDash([4 * lineScale, 4 * lineScale]);
         ctx.strokeStyle = "rgba(0, 188, 212, 0.55)";
         ctx.lineWidth = 1.5 * lineScale;
-        strokeSegment(ctx, fromX, fromY, targetX, targetY);
+        strokeOpenPolyline(ctx, pathNodes);
         ctx.setLineDash([]);
         ctx.strokeStyle = "rgba(0, 188, 212, 0.85)";
         ctx.lineWidth = 2 * lineScale;
-        strokeCircle(ctx, targetX, targetY, 4 * lineScale);
+        const end = pathNodes[pathNodes.length - 1];
+        strokeCircle(ctx, end.x, end.y, 4 * lineScale);
         ctx.restore();
         return;
     }
     ctx.save();
     ctx.strokeStyle = "rgba(156, 39, 176, 0.65)";
     ctx.lineWidth = 2.5 * lineScale;
-    drawPathPolyline(ctx, fromX, fromY, waypoints, targetX, targetY, lineScale, grid, "rgba(156, 39, 176, 0.9)");
-    ctx.strokeStyle = "rgba(156, 39, 176, 0.9)";
-    ctx.lineWidth = 2 * lineScale;
-    strokeCircle(ctx, targetX, targetY, 5 * lineScale);
+    if (pathNodes?.length) drawPathPolyline(ctx, pathNodes, lineScale, grid, "rgba(156, 39, 176, 0.9)");
+    if (targetX != null && targetY != null) {
+        ctx.strokeStyle = "rgba(156, 39, 176, 0.9)";
+        ctx.lineWidth = 2 * lineScale;
+        strokeCircle(ctx, targetX, targetY, 5 * lineScale);
+    }
     ctx.restore();
 }
 function drawPathMarker(ctx, x, y, radius, fillStyle, label, zoom) {
@@ -189,15 +185,15 @@ export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug", grid
         drawNormalPathOverlay(ctx, overlay, grid);
         return;
     }
-    const { mode, fromX, fromY, targetX, targetY, waypoints, abstractPath, pathPlanner } = overlay;
+    const { mode, targetX, targetY, pathNodes, abstractPath, pathPlanner } = overlay;
     if (mode === "hpa") {
         if (abstractPath) drawAbstractPath(ctx, abstractPath, zoom, pathPlanner ?? "hpa");
-        if (waypoints?.length) {
+        if (pathNodes?.length) {
             ctx.strokeStyle = "#00e5ff";
             ctx.lineWidth = 4 / zoom;
             const lineScale = 1 / zoom;
-            drawPathPolyline(ctx, fromX, fromY, waypoints, targetX, targetY, lineScale, grid, "#00e5ff");
-            for (const wp of waypoints) {
+            drawPathPolyline(ctx, pathNodes, lineScale, grid, "#00e5ff");
+            for (const wp of pathNodes) {
                 ctx.fillStyle = "#00e5ff";
                 ctx.strokeStyle = "#fff";
                 ctx.lineWidth = 1.5 / zoom;
@@ -206,10 +202,12 @@ export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug", grid
         }
         return;
     }
+    if (!pathNodes || pathNodes.length < 2) return;
     ctx.strokeStyle = "rgba(0, 188, 212, 0.65)";
     ctx.lineWidth = 3 / zoom;
     ctx.setLineDash([8 / zoom, 6 / zoom]);
-    strokeSegment(ctx, fromX, fromY, targetX, targetY);
+    strokeOpenPolyline(ctx, pathNodes);
     ctx.setLineDash([]);
-    drawPathMarker(ctx, targetX, targetY, 10 / zoom, "rgba(0, 188, 212, 0.85)", null, zoom);
+    const end = pathNodes[pathNodes.length - 1];
+    drawPathMarker(ctx, end.x, end.y, 10 / zoom, "rgba(0, 188, 212, 0.85)", null, zoom);
 }

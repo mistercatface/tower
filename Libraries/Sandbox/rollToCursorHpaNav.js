@@ -41,7 +41,7 @@ export function createRollToCursorHpaNav() {
         const grid = state.obstacleGrid;
         const expandedCells = expandPortalHopsInCellPath(result.cellPath, grid);
         const rawPath = expandedCells.map((cell) => grid.gridToWorld(cell.col, cell.row));
-        navState.path = trimPathAhead(prop.x, prop.y, rawPath);
+        navState.path = trimPathAhead(prop.x, prop.y, rawPath, { worldToGrid: (wx, wy) => grid.worldToGrid(wx, wy) });
         navState.portalHopWaypointIdx = portalHopWaypointIndex(result.cellPath, navState.path, grid);
         navState.abstractPath = navState.path ? (result.abstractNodes ?? null) : null;
         navState.pathPlanner = navState.path ? (result.pathPlanner ?? null) : null;

@@ -60,8 +60,9 @@ export function expandPortalHopsInCellPath(cells, navGraph) {
             const hops = navGraph.getPortalHops(prev.col, prev.row);
             const hop = hops?.find((entry) => entry.exitCol === curr.col && entry.exitRow === curr.row);
             if (hop) {
-                out.push({ col: hop.mouthCol, row: hop.mouthRow });
-                continue;
+                const last = out[out.length - 1];
+                if (last.col !== hop.mouthCol || last.row !== hop.mouthRow) out.push({ col: hop.mouthCol, row: hop.mouthRow });
+                return out;
             }
         }
         out.push({ col: curr.col, row: curr.row });

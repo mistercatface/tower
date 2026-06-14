@@ -55,7 +55,13 @@ export function createRollToCursorDirectBehavior() {
         },
         getPathOverlay(prop) {
             if (!targetWorld || (!unitDragActive && !groundMoveActive)) return null;
-            return { mode: "direct", fromX: prop.x, fromY: prop.y, targetX: targetWorld.x, targetY: targetWorld.y };
+            return {
+                mode: "direct",
+                pathNodes: [
+                    { x: prop.x, y: prop.y },
+                    { x: targetWorld.x, y: targetWorld.y },
+                ],
+            };
         },
         reset() {
             clearTarget();
