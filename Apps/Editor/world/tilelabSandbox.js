@@ -13,8 +13,9 @@ import {
     DRAG_LAUNCH_BEHAVIOR_ID,
 } from "../../../Libraries/Sandbox/index.js";
 import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
-import { mountSandboxToyUi } from "../ui/sandboxToyUi.js";
+import { mountSandboxToyUi, mountSceneJsonUi } from "../ui/sandboxToyUi.js";
 let unmountToyUi = null;
+let unmountSceneJsonUi = null;
 /**
  * @param {import("../state.js").TileLabGameState} state
  * @param {() => void} requestRedraw
@@ -44,11 +45,14 @@ export function mountTilelabSandbox(state, requestRedraw) {
     });
     state.sandbox.controller.register();
     unmountToyUi = mountSandboxToyUi(document.getElementById("sandboxToyPanel"), state.sandbox.controller, requestRedraw);
+    unmountSceneJsonUi = mountSceneJsonUi(document.getElementById("sceneJsonPanel"), state.sandbox.controller, requestRedraw);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function destroyTilelabSandbox(state) {
     unmountToyUi?.();
     unmountToyUi = null;
+    unmountSceneJsonUi?.();
+    unmountSceneJsonUi = null;
     state.sandbox.controller?.destroy();
     state.sandbox.controller = null;
 }

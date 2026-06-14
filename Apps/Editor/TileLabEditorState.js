@@ -87,9 +87,7 @@ export class TileLabEditorState {
             edgeLineSide: 2,
             edgeThickness: 2,
         };
-        this.showSandboxPanel = true;
-        this.showProfilePanel = false;
-        this.showMapPanel = false;
+        this.sidebarPanel = "sandbox";
         this.showAnimationPreview = false;
         this.showMapOverview = true;
         this.showMapOverviewViewport = true;

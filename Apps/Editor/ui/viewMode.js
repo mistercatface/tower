@@ -19,37 +19,28 @@ function setMapOverviewVisible(visible) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function applyLabViewChrome(state) {
-    setEditorPanelVisible("sandboxPanel", state.editor.showSandboxPanel);
-    setEditorPanelVisible("surfaceEditorPanel", state.editor.showProfilePanel);
-    setEditorPanelVisible("mapPanel", state.editor.showMapPanel);
+    const panel = state.editor.sidebarPanel;
+    setEditorPanelVisible("sandboxPanel", panel === "sandbox");
+    setEditorPanelVisible("surfaceEditorPanel", panel === "profile");
+    setEditorPanelVisible("mapPanel", panel === "map");
+    setEditorPanelVisible("jsonPanel", panel === "json");
     setAnimationPreviewVisible(state.editor.showAnimationPreview);
     setMapOverviewVisible(state.editor.showMapOverview);
     const editor = document.querySelector(".col-editor");
-    const active = [];
-    if (state.editor.showSandboxPanel) active.push("sandbox");
-    if (state.editor.showProfilePanel) active.push("profile");
-    if (state.editor.showMapPanel) active.push("map");
-    editor.dataset.activePanels = active.join(" ");
-    document.getElementById("showSandboxPanelInput").checked = state.editor.showSandboxPanel;
-    document.getElementById("showProfilePanelInput").checked = state.editor.showProfilePanel;
-    document.getElementById("showMapPanelInput").checked = state.editor.showMapPanel;
+    editor.dataset.activePanels = panel;
+    const activeInput = document.querySelector(`input[name="editorSidebarPanel"][value="${panel}"]`);
+    if (activeInput) /** @type {HTMLInputElement} */ (activeInput).checked = true;
     document.getElementById("showAnimationPreviewInput").checked = state.editor.showAnimationPreview;
     document.getElementById("showMapOverviewInput").checked = state.editor.showMapOverview;
 }
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onChange @param {(() => void) | null} [onLayoutChange] */
 export function bindViewModeControls(state, onChange, onLayoutChange = null) {
-    document.getElementById("showSandboxPanelInput").addEventListener("change", (e) => {
-        state.editor.showSandboxPanel = /** @type {HTMLInputElement} */ (e.target).checked;
-        applyLabViewChrome(state);
-    });
-    document.getElementById("showProfilePanelInput").addEventListener("change", (e) => {
-        state.editor.showProfilePanel = /** @type {HTMLInputElement} */ (e.target).checked;
-        applyLabViewChrome(state);
-    });
-    document.getElementById("showMapPanelInput").addEventListener("change", (e) => {
-        state.editor.showMapPanel = /** @type {HTMLInputElement} */ (e.target).checked;
-        applyLabViewChrome(state);
-    });
+    for (const input of document.querySelectorAll('input[name="editorSidebarPanel"]'))
+        input.addEventListener("change", (e) => {
+            if (!(/** @type {HTMLInputElement} */ (e.target).checked)) return;
+            state.editor.sidebarPanel = /** @type {HTMLInputElement} */ (e.target).value;
+            applyLabViewChrome(state);
+        });
     document.getElementById("showAnimationPreviewInput").addEventListener("change", (e) => {
         state.editor.showAnimationPreview = /** @type {HTMLInputElement} */ (e.target).checked;
         applyLabViewChrome(state);

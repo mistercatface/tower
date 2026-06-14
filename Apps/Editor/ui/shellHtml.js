@@ -25,18 +25,22 @@ export const TILELAB_UI_HTML = `
         <aside class="col col-editor">
             <div class="editor-sidebar-head">
                 <span class="editor-sidebar-title">Panels</span>
-                <div class="editor-panel-toggles" role="group" aria-label="Sidebar panels">
+                <div class="editor-panel-toggles" role="radiogroup" aria-label="Sidebar panels">
                     <label class="editor-panel-toggle">
-                        <input type="checkbox" id="showSandboxPanelInput" checked>
+                        <input type="radio" name="editorSidebarPanel" id="showSandboxPanelInput" value="sandbox" checked>
                         <span>Props</span>
                     </label>
                     <label class="editor-panel-toggle">
-                        <input type="checkbox" id="showProfilePanelInput">
+                        <input type="radio" name="editorSidebarPanel" id="showProfilePanelInput" value="profile">
                         <span>Profile</span>
                     </label>
                     <label class="editor-panel-toggle">
-                        <input type="checkbox" id="showMapPanelInput">
+                        <input type="radio" name="editorSidebarPanel" id="showMapPanelInput" value="map">
                         <span>Map</span>
+                    </label>
+                    <label class="editor-panel-toggle">
+                        <input type="radio" name="editorSidebarPanel" id="showJsonPanelInput" value="json">
+                        <span>JSON</span>
                     </label>
                 </div>
             </div>
@@ -91,6 +95,12 @@ export const TILELAB_UI_HTML = `
                         <p class="editor-hint">Play area sets the obstacle grid; cavern bounds are in grid cells. Stamp multiple regions by moving bounds and generating again.</p>
                         <div id="mapSettingsPanel"></div>
                         <div id="mapWallToolPanel" class="editor-block editor-block-separated"></div>
+                    </div>
+                </div>
+                <div id="jsonPanel" class="editor-panel-section" data-panel="json">
+                    <div class="editor-panel-head">Scene JSON</div>
+                    <div class="editor-scroll sandbox-panel-body">
+                        <div id="sceneJsonPanel"></div>
                     </div>
                 </div>
             </div>

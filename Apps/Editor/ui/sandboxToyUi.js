@@ -222,7 +222,6 @@ function appendPanelTabs(container, controller, onChange) {
     for (const [tab, label] of [
         ["props", "Props"],
         ["walls", "Walls"],
-        ["scene-json", "Scene JSON"],
     ]) {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -504,11 +503,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 if (openSections.size > 0) return openSections.has(id);
                 return isFirstRender ? fallback : openSections.has(id);
             });
-            isFirstRender = false;
-            return;
-        }
-        if (controller.getEditorPanelTab() === "scene-json") {
-            renderSceneJsonPanel(container, controller, onChange);
             isFirstRender = false;
             return;
         }
@@ -890,6 +884,17 @@ export function mountSandboxToyUi(container, controller, onChange) {
     render();
     return () => {
         controller.setUiSync(null);
+        container.innerHTML = "";
+    };
+}
+/**
+ * @param {HTMLElement} container
+ * @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller
+ * @param {() => void} onChange
+ */
+export function mountSceneJsonUi(container, controller, onChange) {
+    renderSceneJsonPanel(container, controller, onChange);
+    return () => {
         container.innerHTML = "";
     };
 }
