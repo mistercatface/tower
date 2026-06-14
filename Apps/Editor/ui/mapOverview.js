@@ -13,14 +13,9 @@ export function paintMapOverviewFrame(state) {
     const stage = document.getElementById("mapOverviewStage");
     const canvas = document.getElementById("mapOverviewCanvas");
     if (!stage || !canvas || stage.hidden) return;
-    let cache = state.mapOverviewCache;
-    if (!cache && state.obstacleGrid?.cols) {
-        rebuildLabMapCaches(state);
-        cache = state.mapOverviewCache;
-    }
+    const cache = state.mapOverviewCache;
     const ctx = overviewCtx;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!cache) return;
     ctx.drawImage(cache.canvas, 0, 0, canvas.width, canvas.height);
     const displayW = canvas.width;
     const displayH = canvas.height;
@@ -49,6 +44,7 @@ export function mountMapOverview(state, onBoundsChange = null) {
     const { initialSize, minSize, maxSize } = EDITOR_CANVAS_DEFAULTS.overview;
     const canvas = document.getElementById("mapOverviewCanvas");
     overviewCtx = canvas.getContext("2d");
+    rebuildLabMapCaches(state);
     overviewCanvasResize = applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize, minSize, maxSize, onResize: () => paintMapOverviewFrame(state) });
     if (onBoundsChange) mountOverviewBoundsEditors(canvas, state, onBoundsChange);
     paintMapOverviewFrame(state);

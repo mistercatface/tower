@@ -47,7 +47,6 @@ let labRenderer = null;
 let labRendererSettings = null;
 let lastProfileBakeKey = "";
 let bakeRepaintRaf = null;
-let labMapCacheObstacleGeneration = -1;
 function buildLabRuntimeProfile() {
     const profile = buildProfileFromEditor();
     if (profile?.animation) delete profile.animation;
@@ -97,10 +96,7 @@ export function drawLabFrame(state) {
     const prevProfileOverride = state.worldSurfaces.surfaceProfileOverride;
     state.worldSurfaces.surfaceProfileOverride = RUNTIME_LAB_PROFILE_ID;
     maybeClearProfileBakeCaches(state, RUNTIME_LAB_PROFILE_ID);
-    if (state.navigation.obstacleGeneration !== labMapCacheObstacleGeneration) {
-        rebuildLabMapCaches(state);
-        labMapCacheObstacleGeneration = state.navigation.obstacleGeneration;
-    }
+    rebuildLabMapCaches(state);
     getLabRenderer(canvas, ctx, state).renderSimulationScene(state, viewport);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
