@@ -12,6 +12,17 @@ function validateTreeEdges(treeEdges) {
     }
     return null;
 }
+/** @param {unknown} treeEdges @param {unknown} nodeCount */
+function validateTreeEdgesForNodeCount(treeEdges, nodeCount) {
+    const formatError = validateTreeEdges(treeEdges);
+    if (formatError) return formatError;
+    if (treeEdges == null || !Array.isArray(treeEdges) || treeEdges.length === 0) return null;
+    const count = Number(nodeCount);
+    if (!Number.isInteger(count) || count < 1) return null;
+    const need = count - 1;
+    if (treeEdges.length !== need) return `treeEdges has ${treeEdges.length} edges; room count ${count} needs ${need} (or remove treeEdges for a random tree)`;
+    return null;
+}
 const corridorCountField = { path: "corridorCount", label: "Corridor count", min: 1, max: 8, step: 1 };
 const corridorWidthField = { path: "corridorWidth", label: "Corridor width", min: 1, max: 4, step: 1 };
 /** @type {ReturnType<typeof createStepRegistry>} */
@@ -39,7 +50,7 @@ ROOM_GRAPH_STEP_REGISTRY.register({
             ],
         },
     ],
-    validate: (config) => validateTreeEdges(config.treeEdges),
+    validate: (config) => validateTreeEdgesForNodeCount(config.treeEdges, config.nodeCount),
 });
 ROOM_GRAPH_STEP_REGISTRY.register({ id: "buildClosedRooms", label: "Build closed rooms", defaults: { op: "buildClosedRooms" } });
 ROOM_GRAPH_STEP_REGISTRY.register({

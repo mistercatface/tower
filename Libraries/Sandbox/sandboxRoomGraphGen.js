@@ -319,7 +319,7 @@ export function buildRandomTreeEdges(nodeCount, rng, treeParentCandidateCount = 
 /** @param {NodeGraphGenConfig} config @param {() => number} rng */
 function resolveTreeEdgesForConfig(config, rng) {
     if (config.nodeCount <= 1) return [];
-    if (Array.isArray(config.treeEdges) && config.treeEdges.length > 0) return parseTreeEdgesSpec(config.treeEdges, config.nodeCount);
+    if (Array.isArray(config.treeEdges) && config.treeEdges.length > 0) if (config.treeEdges.length === config.nodeCount - 1) return parseTreeEdgesSpec(config.treeEdges, config.nodeCount);
     return buildRandomTreeEdges(config.nodeCount, rng, config.treeParentCandidateCount);
 }
 /** @param {NodeGraphGenConfig} config @param {{ a: number, b: number }[]} treeEdges */
@@ -461,7 +461,14 @@ export function buildDirectedGraphEdges(nodes, treeEdges) {
     }
     return directedEdges;
 }
-/** Step A+B — node placement + branching directed graph. No geometry beyond node bounds. */
+/** @param {Record<string, unknown>} config */
+export function dropStaleBuildNodeGraphTreeEdges(config) {
+    if (config.op !== "buildNodeGraph") return;
+    if (!Array.isArray(config.treeEdges) || config.treeEdges.length === 0) return;
+    const nodeCount = Number(config.nodeCount);
+    if (!Number.isInteger(nodeCount) || nodeCount < 1) return;
+    if (config.treeEdges.length !== nodeCount - 1) delete config.treeEdges;
+}
 /** @param {() => number} rng @param {NodeGraphGenConfig} config */
 export function buildNodeGraph(rng, config) {
     /** @type {{ a: number, b: number }[]} */
@@ -475,6 +482,7 @@ export function buildNodeGraph(rng, config) {
         layoutConfig = configWithTreeSpreadGrid(config, treeEdges);
         nodes = placeGraphNodesTreeSpread(rng, layoutConfig, treeEdges);
     } else if (Array.isArray(config.treeEdges) && config.treeEdges.length > 0) {
+        if (config.treeEdges.length !== config.nodeCount - 1) throw new Error(`treeEdges: expected ${config.nodeCount - 1} edges for ${config.nodeCount} nodes, got ${config.treeEdges.length}`);
         treeEdges = parseTreeEdgesSpec(config.treeEdges, config.nodeCount);
         nodes = placeGraphNodes(rng, config);
         if (nodes.length < config.nodeCount) throw new Error(`placement: placed ${nodes.length}/${config.nodeCount} nodes`);
@@ -1272,6 +1280,7 @@ function runRoomGraphMotif(motif, ctx) {
     if (motif.op === "buildNodeGraph") {
         const { op, ...graphParams } = motif;
         ctx.options = { ...ctx.options, ...graphParams };
+        dropStaleBuildNodeGraphTreeEdges(ctx.options);
         const nodeGraph = tryBuildNodeGraph(ctx.options);
         ctx.layout = layoutFromNodeGraph(nodeGraph, []);
         ctx.closedRooms = ctx.layout.closedRooms;

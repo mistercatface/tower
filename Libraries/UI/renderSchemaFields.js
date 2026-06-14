@@ -1,4 +1,5 @@
 import { getByPath, setByPath } from "../Pipeline/objectPath.js";
+import { clampFieldValue } from "../Pipeline/fieldSchema.js";
 import { SliderControl } from "./controls/SliderControl.js";
 import { SelectControl } from "./controls/SelectControl.js";
 /**
@@ -22,7 +23,7 @@ export function renderSchemaFields(container, target, fields, onChange) {
         const value = getByPath(target, field.path);
         const num = Number(value ?? 0);
         const slider = new SliderControl(field.label, field.min, field.max, field.step, num, (newVal) => {
-            setByPath(target, field.path, newVal);
+            setByPath(target, field.path, clampFieldValue(newVal, field));
             onChange?.();
         });
         container.appendChild(slider.element);

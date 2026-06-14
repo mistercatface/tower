@@ -113,7 +113,12 @@ export const TILELAB_UI_HTML = `
                         </details>
                         <details class="editor-block" open>
                             <summary>Pipeline body</summary>
-                            <div id="genBodyPanel"></div>
+                            <div id="genBodyTools" class="editor-tools"></div>
+                            <div id="genStepList" class="motif-list-host"></div>
+                        </details>
+                        <details class="editor-block" open>
+                            <summary>Selected step</summary>
+                            <div id="genStepParamsPanel"></div>
                         </details>
                         <div id="genStatusPanel" class="editor-block"></div>
                     </div>

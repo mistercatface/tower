@@ -72,6 +72,8 @@ Do Phase 1 first — it’s mostly wiring and immediately improves UX (errors, d
 
 ## BACKLOG
 
+**UI REFACTOR** - separate css from js to start.
+
 ## Milestone log
 
 Newest first. User-visible capabilities only.
