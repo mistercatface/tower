@@ -1,8 +1,8 @@
-import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
-import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { drawPortalEdgeStrip } from "../Render/portalDraw.js";
+import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { isForcefieldEdge, isPortalEdge, PASSAGE_MODE, resolvePassageEdge } from "../Spatial/grid/CellEdge.js";
-import { gridWallEdgeEndpoints, canonicalEdgeCellKey, isCanonicalEdgeRepresentative } from "../World/wallGridCells.js";
+import { gridSideOutwardVector } from "../Spatial/grid/GridUtils.js";
+import { forEachGridEdge, gridWallEdgeEndpoints, canonicalEdgeCellKey } from "../World/wallGridCells.js";
 import { projectPropVertex } from "../Render/Props3D/propMesh.js";
 const EDGE_P1 = { x: 0, y: 0 };
 const EDGE_P2 = { x: 0, y: 0 };
@@ -28,25 +28,6 @@ function drawDirectionalArrow(ctx, x, y, ax, ay, size, fillStyle) {
     ctx.closePath();
     ctx.fill();
 }
-/** @param {number} allowedSide */
-function passageOutwardVector(allowedSide) {
-    if (allowedSide === 0) return { x: 0, y: -1 };
-    if (allowedSide === 1) return { x: 1, y: 0 };
-    if (allowedSide === 2) return { x: 0, y: 1 };
-    return { x: -1, y: 0 };
-}
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} midX
- * @param {number} midY
- * @param {number} ax
- * @param {number} ay
- * @param {number} size
- * @param {string} fillStyle
- */
-function drawPassageArrow(ctx, midX, midY, ax, ay, size, fillStyle) {
-    drawDirectionalArrow(ctx, midX, midY, ax, ay, size, fillStyle);
-}
 function drawCool3DForcefield(ctx, px, py, p1, p2, mode, powered, tripped, lineScale, allowedSide, midX, midY) {
     const p1Base = projectPropVertex(dummyProp, px, py, p1.x, p1.y, 0);
     const p1Top = projectPropVertex(dummyProp, px, py, p1.x, p1.y, FORCEFIELD_HEIGHT);
@@ -67,7 +48,7 @@ function drawCool3DForcefield(ctx, px, py, p1, p2, mode, powered, tripped, lineS
                 strokeColor = "#fb923c";
             }
         else if (mode === PASSAGE_MODE.OneWay) {
-            const { x: ax, y: ay } = passageOutwardVector(allowedSide);
+            const { x: ax, y: ay } = gridSideOutwardVector(allowedSide);
             const toViewerX = px - midX;
             const toViewerY = py - midY;
             const sideDot = toViewerX * ax + toViewerY * ay;
@@ -152,9 +133,9 @@ function drawCool3DForcefield(ctx, px, py, p1, p2, mode, powered, tripped, lineS
     ctx.fill();
     // 3. Draw directional arrow for One-Way mode on the center of the vertical energy field
     if (mode === PASSAGE_MODE.OneWay) {
-        const { x: ax, y: ay } = passageOutwardVector(allowedSide);
+        const { x: ax, y: ay } = gridSideOutwardVector(allowedSide);
         const arrowCenter = projectPropVertex(dummyProp, px, py, midX, midY, 5.0);
-        drawPassageArrow(ctx, arrowCenter.x, arrowCenter.y, ax, ay, 6 * lineScale, powered ? "rgba(255, 255, 255, 0.95)" : "rgba(255, 255, 255, 0.45)");
+        drawDirectionalArrow(ctx, arrowCenter.x, arrowCenter.y, ax, ay, 6 * lineScale, powered ? "rgba(255, 255, 255, 0.95)" : "rgba(255, 255, 255, 0.45)");
     }
     ctx.restore();
 }
@@ -178,26 +159,18 @@ export function drawForcefieldEdges(ctx, state, viewport) {
     ctx.save();
     ctx.lineCap = "round";
     const drawables = [];
-    forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row) => {
-        for (let side = 0; side < 4; side++) {
-            const edge = grid.getCellEdge(col, row, side);
-            if (!isForcefieldEdge(edge)) continue;
-            if (isPortalEdge(edge)) {
-                if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
-                gridWallEdgeEndpoints(grid, col, row, side, EDGE_P1, EDGE_P2, 0);
-                const midX = (EDGE_P1.x + EDGE_P2.x) * 0.5;
-                const midY = (EDGE_P1.y + EDGE_P2.y) * 0.5;
-                const distSq = (midX - px) ** 2 + (midY - py) ** 2;
-                drawables.push({ type: "portal", col, row, side, edge, distSq });
-            } else {
-                gridWallEdgeEndpoints(grid, col, row, side, EDGE_P1, EDGE_P2, 0);
-                const midX = (EDGE_P1.x + EDGE_P2.x) * 0.5;
-                const midY = (EDGE_P1.y + EDGE_P2.y) * 0.5;
-                const distSq = (midX - px) ** 2 + (midY - py) ** 2;
-                drawables.push({ type: "forcefield", col, row, side, edge, p1: { x: EDGE_P1.x, y: EDGE_P1.y }, p2: { x: EDGE_P2.x, y: EDGE_P2.y }, midX, midY, distSq });
-            }
-        }
-    });
+    forEachGridEdge(
+        grid,
+        (col, row, side, edge) => {
+            gridWallEdgeEndpoints(grid, col, row, side, EDGE_P1, EDGE_P2, 0);
+            const midX = (EDGE_P1.x + EDGE_P2.x) * 0.5;
+            const midY = (EDGE_P1.y + EDGE_P2.y) * 0.5;
+            const distSq = (midX - px) ** 2 + (midY - py) ** 2;
+            if (isPortalEdge(edge)) drawables.push({ type: "portal", col, row, side, edge, distSq });
+            else drawables.push({ type: "forcefield", col, row, side, edge, p1: { x: EDGE_P1.x, y: EDGE_P1.y }, p2: { x: EDGE_P2.x, y: EDGE_P2.y }, midX, midY, distSq });
+        },
+        { minCol, maxCol, minRow, maxRow, canonicalOnly: true, filter: isForcefieldEdge },
+    );
     drawables.sort((a, b) => b.distSq - a.distSq);
     for (let i = 0; i < drawables.length; i++) {
         const item = drawables[i];

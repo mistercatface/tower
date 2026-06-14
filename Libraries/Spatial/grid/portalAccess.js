@@ -1,4 +1,5 @@
 import { crossingGrantAllows } from "../../Pathfinding/crossingGrant.js";
+import { formatGridSideNeighborLabel, gridSideNeighborCell, gridSideOutwardVector } from "./GridUtils.js";
 import { gridWallEdgeMirrorSide, gridWallEdgeNeighbor } from "../../World/wallGridCells.js";
 import { PORTAL_ACCESS_MODE } from "./CellEdge.js";
 /** Default allowedSide for access one — owner cell (mirror of stamped edge side). */
@@ -11,18 +12,12 @@ export function portalAccessDefaultAllowedSide(ownerSide) {
  */
 export function portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, allowedSide) {
     if (allowedSide === portalAccessDefaultAllowedSide(ownerSide)) return { col: ownerCol, row: ownerRow };
-    if (allowedSide === 0) return { col: ownerCol, row: ownerRow - 1 };
-    if (allowedSide === 1) return { col: ownerCol + 1, row: ownerRow };
-    if (allowedSide === 2) return { col: ownerCol, row: ownerRow + 1 };
-    return { col: ownerCol - 1, row: ownerRow };
+    return gridSideNeighborCell(ownerCol, ownerRow, allowedSide);
 }
 /** @param {number} ownerSide @param {number} allowedSide */
 export function formatPortalAccessSideLabel(ownerSide, allowedSide) {
     if (allowedSide === portalAccessDefaultAllowedSide(ownerSide)) return "Owner cell";
-    if (allowedSide === 0) return "North neighbor";
-    if (allowedSide === 1) return "East neighbor";
-    if (allowedSide === 2) return "South neighbor";
-    return "West neighbor";
+    return formatGridSideNeighborLabel(allowedSide);
 }
 /** @param {object} edge @param {number} ownerSide */
 export function portalMouthAllowedSide(edge, ownerSide) {
@@ -48,8 +43,8 @@ export function portalEdgeEmitsCollision(edge) {
 /** World-unit vector for crossing from the allowed initiator cell through the portal edge. */
 export function portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, allowedSide) {
     const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, allowedSide);
-    if (allowed.col === ownerCol && allowed.row === ownerRow) return portalSideOutwardVector(ownerSide);
-    return portalSideOutwardVector(portalAccessDefaultAllowedSide(ownerSide));
+    if (allowed.col === ownerCol && allowed.row === ownerRow) return gridSideOutwardVector(ownerSide);
+    return gridSideOutwardVector(portalAccessDefaultAllowedSide(ownerSide));
 }
 /** Crossing direction for a portal segment emit owner. */
 export function portalCrossingVectorForEdge(edge, ownerCol, ownerRow, ownerSide) {
@@ -132,13 +127,6 @@ export function resolveCardinalStepCrossing(fromCol, fromRow, toCol, toRow) {
 }
 /** Arrow from edge midpoint toward the allowed initiator cell (access one). */
 export function portalAccessArrowVector(ownerSide, allowedSide) {
-    if (allowedSide === portalAccessDefaultAllowedSide(ownerSide)) return portalSideOutwardVector(portalAccessDefaultAllowedSide(ownerSide));
-    return portalSideOutwardVector(allowedSide);
-}
-/** @param {number} side */
-function portalSideOutwardVector(side) {
-    if (side === 0) return { x: 0, y: -1 };
-    if (side === 1) return { x: 1, y: 0 };
-    if (side === 2) return { x: 0, y: 1 };
-    return { x: -1, y: 0 };
+    if (allowedSide === portalAccessDefaultAllowedSide(ownerSide)) return gridSideOutwardVector(portalAccessDefaultAllowedSide(ownerSide));
+    return gridSideOutwardVector(allowedSide);
 }

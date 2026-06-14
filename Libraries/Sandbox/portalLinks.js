@@ -2,7 +2,7 @@ import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import { resolveCardinalStepCrossing } from "../Spatial/grid/portalAccess.js";
 import { portalPassageBlocksStepFrom } from "./portalStep.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey, forEachGridEdge } from "../World/wallGridCells.js";
 import { canLinkPortalsOnNetwork } from "./passagePowerNetwork.js";
 export const PORTAL_LINK_MODE = { Shared: "shared", OneWay: "oneWay" };
 /** @param {unknown} raw */
@@ -22,18 +22,18 @@ export function formatPortalConnectionLabel(linkMode, fromSelf) {
  */
 export function findPortalEdgeByKey(grid, key) {
     if (!key || !grid.cols) return null;
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        for (let side = 0; side < 4; side++) {
-            const edge = grid.edgeStore.get(col, row, side, grid.cols);
-            if (!isPortalEdge(edge)) continue;
-            if (canonicalEdgeCellKey(grid, col, row, side) !== key) continue;
-            return { col, row, side, edge };
-        }
-    }
-    return null;
+    let found = null;
+    forEachGridEdge(
+        grid,
+        (col, row, side, edge) => {
+            if (!isPortalEdge(edge)) return;
+            if (canonicalEdgeCellKey(grid, col, row, side) !== key) return;
+            found = { col, row, side, edge };
+            return false;
+        },
+        { filter: isPortalEdge },
+    );
+    return found;
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid

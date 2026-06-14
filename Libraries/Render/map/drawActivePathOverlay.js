@@ -2,10 +2,7 @@
 import { getCanvasLineScale } from "../common/viewportUtils.js";
 import { fillStrokeCircle, strokeCircle, strokeOpenPolyline } from "../../Canvas/CanvasPath.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
-import { isPortalEdge } from "../../Spatial/grid/CellEdge.js";
-import { resolvePortalPartner } from "../../Sandbox/portalLinks.js";
-import { portalMouthAndBackCells, portalTraverseExitCell, portalTraverseExitVector, portalCrossingVectorForEdge, resolveCardinalStepCrossing } from "../../Spatial/grid/portalAccess.js";
-import { gridWallEdgeEndpoints } from "../../World/wallGridCells.js";
+import { boundaryHopDrawGeometryBetweenWorldPoints } from "../../Sandbox/boundaryNavIndex.js";
 /**
  * @typedef {Object} ActivePathOverlay
  * @property {"direct" | "hpa"} mode
@@ -17,58 +14,8 @@ import { gridWallEdgeEndpoints } from "../../World/wallGridCells.js";
  */
 const P1 = { x: 0, y: 0 };
 const P2 = { x: 0, y: 0 };
-function resolvePortalHopGeometries(grid, p1, p2) {
-    if (!grid) return null;
-    const c1 = grid.worldToGrid(p1.x, p1.y);
-    const c2 = grid.worldToGrid(p2.x, p2.y);
-    if (!cellInRect(c1.col, c1.row, grid.cols, grid.rows) || !cellInRect(c2.col, c2.row, grid.cols, grid.rows)) return null;
-    // Check grid distance to see if it's a jump
-    const gridDist = Math.max(Math.abs(c1.col - c2.col), Math.abs(c1.row - c2.row));
-    if (gridDist <= 1.5) return null;
-    // Find a portal hop from c1.col, c1.row that ends near c2.col, c2.row
-    const hops = grid.getBoundaryHops(c1.col, c1.row);
-    if (!hops) return null;
-    for (const hop of hops) {
-        const distToExit = Math.max(Math.abs(hop.exitCol - c2.col), Math.abs(hop.exitRow - c2.row));
-        if (distToExit <= 1) {
-            // Find the cardinal neighbor toCol, toRow that leads to this exit
-            const CARDINAL_OFFSETS = [
-                { dc: 0, dr: -1 }, // N
-                { dc: 1, dr: 0 }, // E
-                { dc: 0, dr: 1 }, // S
-                { dc: -1, dr: 0 }, // W
-            ];
-            for (const offset of CARDINAL_OFFSETS) {
-                const toCol = hop.mouthCol + offset.dc;
-                const toRow = hop.mouthRow + offset.dr;
-                if (!cellInRect(toCol, toRow, grid.cols, grid.rows)) continue;
-                const crossing = resolveCardinalStepCrossing(hop.mouthCol, hop.mouthRow, toCol, toRow);
-                if (!crossing) continue;
-                const edge = grid.edgeStore.get(crossing.ownerCol, crossing.ownerRow, crossing.ownerSide, grid.cols);
-                if (edge && isPortalEdge(edge)) {
-                    const partner = resolvePortalPartner(grid, crossing.ownerCol, crossing.ownerRow, crossing.ownerSide);
-                    if (partner) {
-                        const exit = portalTraverseExitCell(grid, partner.col, partner.row, partner.side);
-                        if (exit.col === hop.exitCol && exit.row === hop.exitRow) {
-                            // Found the portal hop edges!
-                            // Entrance Portal midpoint:
-                            gridWallEdgeEndpoints(grid, crossing.ownerCol, crossing.ownerRow, crossing.ownerSide, P1, P2, 0);
-                            const entryMidX = (P1.x + P2.x) * 0.5;
-                            const entryMidY = (P1.y + P2.y) * 0.5;
-                            const entryCross = portalCrossingVectorForEdge(edge, crossing.ownerCol, crossing.ownerRow, crossing.ownerSide);
-                            // Exit Portal midpoint:
-                            gridWallEdgeEndpoints(grid, partner.col, partner.row, partner.side, P1, P2, 0);
-                            const exitMidX = (P1.x + P2.x) * 0.5;
-                            const exitMidY = (P1.y + P2.y) * 0.5;
-                            const exitVector = portalTraverseExitVector(grid, partner.col, partner.row, partner.side);
-                            return { entryMid: { x: entryMidX, y: entryMidY }, entryCross, exitMid: { x: exitMidX, y: exitMidY }, exitVector };
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return null;
+function resolveBoundaryHopGeometries(grid, p1, p2) {
+    return boundaryHopDrawGeometryBetweenWorldPoints(grid, p1, p2);
 }
 function drawPathArrowhead(ctx, x, y, vx, vy, color, lineScale) {
     const headSize = 9 * lineScale;
@@ -100,7 +47,7 @@ function drawPathPolyline(ctx, pathNodes, lineScale, grid, color) {
     for (let i = 0; i < pathNodes.length - 1; i++) {
         const p1 = pathNodes[i];
         const p2 = pathNodes[i + 1];
-        const hop = resolvePortalHopGeometries(grid, p1, p2);
+        const hop = resolveBoundaryHopGeometries(grid, p1, p2);
         if (hop) {
             currentSubPath.push(hop.entryMid);
             strokeSubPath(ctx, currentSubPath);

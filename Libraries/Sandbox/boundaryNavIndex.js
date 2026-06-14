@@ -1,7 +1,24 @@
 import { CARDINAL_OFFSETS, cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { portalTraverseExitCell } from "../Spatial/grid/portalAccess.js";
+import { portalCrossingVectorForEdge, portalTraverseExitCell, portalTraverseExitVector } from "../Spatial/grid/portalAccess.js";
+import { gridWallEdgeEndpoints } from "../World/wallGridCells.js";
 import { evaluatePortalStepEntry } from "./portalLinks.js";
-/** @typedef {{ mouthCol: number, mouthRow: number, exitCol: number, exitRow: number, cost: number }} BoundaryNavHop */
+/**
+ * @typedef {{
+ *   mouthCol: number,
+ *   mouthRow: number,
+ *   exitCol: number,
+ *   exitRow: number,
+ *   cost: number,
+ *   ownerCol: number,
+ *   ownerRow: number,
+ *   ownerSide: number,
+ *   partnerCol: number,
+ *   partnerRow: number,
+ *   partnerSide: number,
+ * }} BoundaryNavHop
+ */
+const DRAW_P1 = { x: 0, y: 0 };
+const DRAW_P2 = { x: 0, y: 0 };
 /**
  * @param {object} state
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -31,7 +48,19 @@ export function buildBoundaryNavHops(state, grid) {
                 hopsByFromIdx.set(idx, list);
             }
             if (list.some((hop) => hop.exitCol === exit.col && hop.exitRow === exit.row)) continue;
-            list.push({ mouthCol: fromCol, mouthRow: fromRow, exitCol: exit.col, exitRow: exit.row, cost: 1 });
+            list.push({
+                mouthCol: fromCol,
+                mouthRow: fromRow,
+                exitCol: exit.col,
+                exitRow: exit.row,
+                cost: 1,
+                ownerCol: entry.source.col,
+                ownerRow: entry.source.row,
+                ownerSide: entry.source.side,
+                partnerCol: entry.partner.col,
+                partnerRow: entry.partner.row,
+                partnerSide: entry.partner.side,
+            });
         }
     }
     return hopsByFromIdx;
@@ -53,6 +82,39 @@ function boundaryHopOnCellStep(prev, curr, navGraph) {
     if (!navGraph.canBoundaryHop(prev.col, prev.row, curr.col, curr.row)) return null;
     const hops = navGraph.getBoundaryHops(prev.col, prev.row);
     return hops?.find((entry) => entry.exitCol === curr.col && entry.exitRow === curr.row) ?? null;
+}
+/**
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {BoundaryNavHop} hop
+ */
+export function boundaryHopDrawGeometry(grid, hop) {
+    gridWallEdgeEndpoints(grid, hop.ownerCol, hop.ownerRow, hop.ownerSide, DRAW_P1, DRAW_P2, 0);
+    const entryMid = { x: (DRAW_P1.x + DRAW_P2.x) * 0.5, y: (DRAW_P1.y + DRAW_P2.y) * 0.5 };
+    const edge = grid.edgeStore.get(hop.ownerCol, hop.ownerRow, hop.ownerSide, grid.cols);
+    const entryCross = portalCrossingVectorForEdge(edge, hop.ownerCol, hop.ownerRow, hop.ownerSide);
+    gridWallEdgeEndpoints(grid, hop.partnerCol, hop.partnerRow, hop.partnerSide, DRAW_P1, DRAW_P2, 0);
+    const exitMid = { x: (DRAW_P1.x + DRAW_P2.x) * 0.5, y: (DRAW_P1.y + DRAW_P2.y) * 0.5 };
+    const exitVector = portalTraverseExitVector(grid, hop.partnerCol, hop.partnerRow, hop.partnerSide);
+    return { entryMid, entryCross, exitMid, exitVector };
+}
+/**
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {{ x: number, y: number }} fromWorld
+ * @param {{ x: number, y: number }} toWorld
+ */
+export function boundaryHopDrawGeometryBetweenWorldPoints(grid, fromWorld, toWorld) {
+    const c1 = grid.worldToGrid(fromWorld.x, fromWorld.y);
+    const c2 = grid.worldToGrid(toWorld.x, toWorld.y);
+    if (!cellInRect(c1.col, c1.row, grid.cols, grid.rows) || !cellInRect(c2.col, c2.row, grid.cols, grid.rows)) return null;
+    if (Math.max(Math.abs(c1.col - c2.col), Math.abs(c1.row - c2.row)) <= 1) return null;
+    const hops = grid.getBoundaryHops(c1.col, c1.row);
+    if (!hops) return null;
+    for (let i = 0; i < hops.length; i++) {
+        const hop = hops[i];
+        const distToExit = Math.max(Math.abs(hop.exitCol - c2.col), Math.abs(hop.exitRow - c2.row));
+        if (distToExit <= 1) return boundaryHopDrawGeometry(grid, hop);
+    }
+    return null;
 }
 /**
  * Boundary hops jump entry → exit in one graph step. Movement must step onto the mouth cell first

@@ -1,7 +1,7 @@
 import { isPassagePowerConductorEdge, isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import { isPassagePowered, setPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { canonicalEdgeCellKey, gridWallEdgeNeighbor, isCanonicalEdgeRepresentative } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey, gridWallEdgeNeighbor, forEachGridEdge } from "../World/wallGridCells.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
@@ -65,15 +65,11 @@ function buildPassagePowerGraph(grid) {
     const vertexEdges = new Map();
     /** @type {Map<number, PassageEdgeRef>} */
     const edgeByKey = new Map();
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        for (let side = 0; side < 4; side++) {
-            const edge = grid.edgeStore.get(col, row, side, grid.cols);
-            if (!isPassagePowerConductorEdge(edge)) continue;
+    forEachGridEdge(
+        grid,
+        (col, row, side) => {
             const key = canonicalEdgeCellKey(grid, col, row, side);
-            if (edgeByKey.has(key)) continue;
+            if (edgeByKey.has(key)) return;
             const ref = { col, row, side, key };
             edgeByKey.set(key, ref);
             const [vx0, vy0, vx1, vy1] = passageEdgeVertexCoords(col, row, side);
@@ -91,8 +87,9 @@ function buildPassagePowerGraph(grid) {
                 vertexEdges.set(v1, list);
             }
             list.push(ref);
-        }
-    }
+        },
+        { filter: isPassagePowerConductorEdge },
+    );
     return { vertexEdges, edgeByKey };
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} state */
@@ -210,26 +207,22 @@ function computePoweredEdgeNetworkIds(graph, poweredEdgeKeys, cols) {
  */
 function splitInvalidPortalLinks(grid, poweredEdgeKeys, networkIdByKey) {
     let changed = false;
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        for (let side = 0; side < 4; side++) {
-            if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
-            const edge = grid.edgeStore.get(col, row, side, grid.cols);
-            if (!isPortalEdge(edge)) continue;
+    forEachGridEdge(
+        grid,
+        (col, row, side) => {
             const partner = resolvePortalPartner(grid, col, row, side);
-            if (!partner) continue;
+            if (!partner) return;
             const keyA = canonicalEdgeCellKey(grid, col, row, side);
             const keyB = canonicalEdgeCellKey(grid, partner.col, partner.row, partner.side);
             const poweredA = poweredEdgeKeys.has(keyA);
             const poweredB = poweredEdgeKeys.has(keyB);
             const netA = networkIdByKey.get(keyA);
             const netB = networkIdByKey.get(keyB);
-            if (poweredA && poweredB && netA != null && netA === netB) continue;
+            if (poweredA && poweredB && netA != null && netA === netB) return;
             if (unlinkPortalEdge(grid, col, row, side)) changed = true;
-        }
-    }
+        },
+        { canonicalOnly: true, filter: isPortalEdge },
+    );
     return changed;
 }
 /** @param {object} state @param {number} col @param {number} row */

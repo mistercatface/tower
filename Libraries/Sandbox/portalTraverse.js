@@ -75,6 +75,29 @@ export function applyPortalTraverse(state, entity, entry) {
     return true;
 }
 /**
+ * @param {object} state
+ * @param {object} entity
+ * @param {object} segment
+ */
+function assemblePortalIntakeContext(state, entity, segment) {
+    if (entity.isDead) return null;
+    const now = state.gameTime;
+    if (entity._boundaryTraverseUntil != null && now < entity._boundaryTraverseUntil) return null;
+    if (segment.isDead || !isPortalEdge(segment.passageEdge)) return null;
+    const grid = state.obstacleGrid;
+    const edge = segment.passageEdge;
+    const { gridCol, gridRow, gridSide } = segment;
+    const bodyRadius = entity.getShape().getBoundingRadius();
+    if (!portalBodyInMouthZone(grid, edge, gridCol, gridRow, gridSide, entity.x, entity.y, bodyRadius)) return null;
+    const cross = portalCrossingVectorForEdge(edge, gridCol, gridRow, gridSide);
+    const { mouth, back } = portalMouthAndBackCells(gridCol, gridRow, gridSide, edge);
+    if (!crossingGrantAllows(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) return null;
+    if (!portalBodyCrossedEntryPlane(entity.x, entity.y, mouth, back, cross, grid, bodyRadius)) return null;
+    const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
+    if (!entry) return null;
+    return { grid, cross, entry, gameTime: now };
+}
+/**
  * Portal intake at wall contact — mouth-side gates + immediate traverse.
  *
  * @param {object} state
@@ -83,23 +106,10 @@ export function applyPortalTraverse(state, entity, entry) {
  * @returns {boolean} true when the entity teleported this call
  */
 export function tryPortalIntake(state, entity, segment) {
-    if (entity.isDead) return false;
-    const now = state.gameTime;
-    if (entity._boundaryTraverseUntil != null && now < entity._boundaryTraverseUntil) return false;
-    if (segment.isDead || !isPortalEdge(segment.passageEdge)) return false;
-    const grid = state.obstacleGrid;
-    const edge = segment.passageEdge;
-    const { gridCol, gridRow, gridSide } = segment;
-    const bodyRadius = entity.getShape().getBoundingRadius();
-    if (!portalBodyInMouthZone(grid, edge, gridCol, gridRow, gridSide, entity.x, entity.y, bodyRadius)) return false;
-    const cross = portalCrossingVectorForEdge(edge, gridCol, gridRow, gridSide);
-    const { mouth, back } = portalMouthAndBackCells(gridCol, gridRow, gridSide, edge);
-    if (!crossingGrantAllows(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) return false;
-    if (!portalBodyCrossedEntryPlane(entity.x, entity.y, mouth, back, cross, grid, bodyRadius)) return false;
-    const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
-    if (!entry) return false;
-    if (applyPortalTraverse(state, entity, entry)) return true;
-    rejectPortalIntake(entity, cross, grid, now);
+    const ctx = assemblePortalIntakeContext(state, entity, segment);
+    if (!ctx) return false;
+    if (applyPortalTraverse(state, entity, ctx.entry)) return true;
+    rejectPortalIntake(entity, ctx.cross, ctx.grid, ctx.gameTime);
     return false;
 }
 let passageHandlersRegistered = false;

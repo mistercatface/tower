@@ -14,6 +14,23 @@ export const CARDINAL_OFFSETS = [
     { dc: 0, dr: 1 },
     { dc: -1, dr: 0 },
 ];
+const GRID_SIDE_NEIGHBOR_LABELS = ["North neighbor", "East neighbor", "South neighbor", "West neighbor"];
+/** Outward unit vector for grid side 0=N, 1=E, 2=S, 3=W. */
+export function gridSideOutwardVector(side) {
+    if (side === 0) return { x: 0, y: -1 };
+    if (side === 1) return { x: 1, y: 0 };
+    if (side === 2) return { x: 0, y: 1 };
+    return { x: -1, y: 0 };
+}
+/** Neighbor cell reached by stepping outward across side. */
+export function gridSideNeighborCell(col, row, side) {
+    const { dc, dr } = CARDINAL_OFFSETS[side];
+    return { col: col + dc, row: row + dr };
+}
+/** @param {number} side */
+export function formatGridSideNeighborLabel(side) {
+    return GRID_SIDE_NEIGHBOR_LABELS[side] ?? `Side ${side} neighbor`;
+}
 export const OCTILE_OFFSETS = [
     { dc: 0, dr: -1, cost: 1 },
     { dc: 1, dr: 0, cost: 1 },

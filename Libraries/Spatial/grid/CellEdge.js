@@ -1,3 +1,4 @@
+import { gridSideOutwardVector } from "./GridUtils.js";
 /** @typedef {{ kind: 'railWall', heightDelta: number, thicknessLevel: number }} RailWallEdge */
 /** @typedef {{ kind: 'conveyor' }} ConveyorEdge */
 /** @typedef {{ kind: 'beltRail' }} BeltRailEdge */
@@ -34,24 +35,8 @@ export function createForcefieldEdge({ mode = PASSAGE_MODE.Solid, allowedSide = 
     return { kind: EDGE_KIND.Forcefield, mode: parsePassageMode(mode), allowedSide, powered: powered === true };
 }
 /** @param {{ accessMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} [opts] */
-export function createPortalEdge({
-    accessMode = PORTAL_ACCESS_MODE.Both,
-    allowedSide = 1,
-    partnerKey = 0,
-    linkMode = "shared",
-    linkSourceKey = 0,
-    powered = false,
-} = {}) {
-    return {
-        kind: EDGE_KIND.Forcefield,
-        mode: PASSAGE_MODE.Portal,
-        accessMode: parsePortalAccessMode(accessMode),
-        allowedSide,
-        partnerKey,
-        linkMode,
-        linkSourceKey,
-        powered: powered === true,
-    };
+export function createPortalEdge({ accessMode = PORTAL_ACCESS_MODE.Both, allowedSide = 1, partnerKey = 0, linkMode = "shared", linkSourceKey = 0, powered = false } = {}) {
+    return { kind: EDGE_KIND.Forcefield, mode: PASSAGE_MODE.Portal, accessMode: parsePortalAccessMode(accessMode), allowedSide, partnerKey, linkMode, linkSourceKey, powered: powered === true };
 }
 /** @param {object | null | undefined} edge */
 export function isRailWallEdge(edge) {
@@ -72,6 +57,10 @@ export function isPortalEdge(edge) {
 /** Powered laser/tripwire passage — not a portal pair. */
 export function isPassageLaserEdge(edge) {
     return isForcefieldEdge(edge) && edge.mode !== PASSAGE_MODE.Portal;
+}
+/** Tripwire-only passage edge (subset of laser passages). */
+export function isPassageTripwireEdge(edge) {
+    return isPassageLaserEdge(edge) && parsePassageMode(edge.mode) === PASSAGE_MODE.Tripwire;
 }
 /** Laser or portal — both conduct passage power along the shared vertex graph. */
 export function isPassagePowerConductorEdge(edge) {
@@ -108,21 +97,7 @@ export function passageEdgeBlocksCollision(edge, gridSide, vx, vy) {
     const mode = parsePassageMode(edge.mode);
     if (mode !== PASSAGE_MODE.OneWay) return true;
     const { allowedSide } = resolvePassageEdge(edge, gridSide);
-    let outwardX;
-    let outwardY;
-    if (allowedSide === 0) {
-        outwardX = 0;
-        outwardY = -1;
-    } else if (allowedSide === 1) {
-        outwardX = 1;
-        outwardY = 0;
-    } else if (allowedSide === 2) {
-        outwardX = 0;
-        outwardY = 1;
-    } else {
-        outwardX = -1;
-        outwardY = 0;
-    }
+    const { x: outwardX, y: outwardY } = gridSideOutwardVector(allowedSide);
     return vx * outwardX + vy * outwardY <= 0.5;
 }
 /** @param {RailWallEdge} edge @param {number} neighborFillLevel */

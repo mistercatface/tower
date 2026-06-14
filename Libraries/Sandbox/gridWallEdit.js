@@ -1,9 +1,7 @@
 import { packCellKey, packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
-import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
-import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
-import { syncPassagePowerNetwork, canLinkPortalsOnNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
-import { syncBoundaryNavIndex } from "./boundaryNavIndex.js";
+import { canLinkPortalsOnNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
+import { clearPrimaryBoundaryAt, commitBoundaryEdit, commitBoundaryEditRegions, notifyGridWallChange } from "./boundaryEdit.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import {
     formatPassageModeLabel,
@@ -17,18 +15,18 @@ import {
     railWallCapLevel,
 } from "../Spatial/grid/CellEdge.js";
 import { portalAccessDefaultAllowedSide, formatPortalAccessSideLabel, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
-import { clearBoundaryPrimary, setBoundary, setPassageProfile, setPortalProfile } from "../Spatial/grid/boundaryOccupancy.js";
+import { clearBoundaryPrimary, setBoundary, setPassageProfile, setPortalProfile, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
 import {
     canonicalEdgeCellKey,
     cellIsStaticWall,
     cellIsStaticWallAtIdx,
+    forEachGridEdge,
     gridCellToGlobalColRow,
     gridForcefieldEdge,
     gridNeighborFillLevel,
     gridPortalEdge,
     gridRailWallEdge,
     gridWallEdgeEndpoints,
-    isCanonicalEdgeRepresentative,
 } from "../World/wallGridCells.js";
 import {
     findPortalEdgeByKey,
@@ -98,15 +96,14 @@ export function ensureObstacleGridAtWorld(state, worldX, worldY) {
     grid.expandToCoverAabb(ENSURE_AABB);
     return grid.worldToGrid(worldX, worldY);
 }
-/** @param {object} state @param {{ startCol: number, endCol: number, startRow: number, endRow: number }} bounds */
-function notifyGridWallChange(state, bounds) {
-    state.obstacleGrid.bumpWallGridRevision();
-    state.worldSurfaces.invalidateGridBounds(bounds, state);
-    state.navigation.onObstaclesChanged(bounds);
-    rebuildLabMapCaches(state);
-    markGridZoneSubscriptionsDirty(state);
+/** @param {number} col @param {number} row */
+function cellBounds(col, row) {
+    return { startCol: col, endCol: col, startRow: row, endRow: row };
 }
-/** Clear all voxel fills and railWall edges on the obstacle grid (single invalidation). */
+/** Replace any primary boundary on a slot before stamping a new one. */
+function replacePrimaryBoundaryAt(state, col, row, side) {
+    clearPrimaryBoundaryAt(state, col, row, side);
+}
 export function clearAllStampedGridWalls(state, { notify = true } = {}) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
@@ -211,15 +208,7 @@ export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) 
         const { col: globalCol, row: globalRow, side, mode, allowedSide } = forcefields[i];
         const { col, row } = toLocal(globalCol, globalRow);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        if (gridHasRailWall(grid, col, row, side)) {
-            const { globalCol: gc, globalRow: gr } = gridCellToGlobalColRow(grid, col, row);
-            state.staticCellHealth.delete(packEdgeCellKey(gc, gr, side));
-            clearBoundaryPrimary(grid, col, row, side);
-        }
-        if (gridHasPortal(grid, col, row, side)) {
-            unlinkPortalEdge(grid, col, row, side);
-            clearBoundaryPrimary(grid, col, row, side);
-        }
+        clearPrimaryBoundaryAt(state, col, row, side);
         if (!setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: false })) continue;
         mark(col, row);
     }
@@ -258,12 +247,7 @@ export function applyStampedPortalsFromGlobal(state, portals, cellSize) {
         const { col: globalCol, row: globalRow, side, accessMode, allowedSide, partnerKey, linkMode, linkSourceKey } = portals[i];
         const { col, row } = toLocal(globalCol, globalRow);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        if (gridHasRailWall(grid, col, row, side)) {
-            const { globalCol: gc, globalRow: gr } = gridCellToGlobalColRow(grid, col, row);
-            state.staticCellHealth.delete(packEdgeCellKey(gc, gr, side));
-            clearBoundaryPrimary(grid, col, row, side);
-        }
-        if (gridHasForcefield(grid, col, row, side)) clearBoundaryPrimary(grid, col, row, side);
+        clearPrimaryBoundaryAt(state, col, row, side);
         const parsedAccess = PORTAL_ACCESS_MODE.One;
         if (
             !setBoundary(grid, col, row, side, {
@@ -299,10 +283,6 @@ export function applyStampedPortalsFromGlobal(state, portals, cellSize) {
 /** @param {object} state @param {{ startCol: number, endCol: number, startRow: number, endRow: number }} bounds */
 export function notifyStampedGridWallChange(state, bounds) {
     notifyGridWallChange(state, bounds);
-}
-/** @param {number} col @param {number} row */
-function cellBounds(col, row) {
-    return { startCol: col, endCol: col, startRow: row, endRow: row };
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} heightLevel */
 export function stampVoxelWallAt(state, col, row, heightLevel) {
@@ -342,21 +322,16 @@ export function setVoxelWallHeightAt(state, col, row, heightLevel) {
 export function stampRailWallAt(state, col, row, side, heightLevel, thicknessLevel) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    if (gridHasForcefield(grid, col, row, side)) clearForcefieldAt(state, col, row, side);
-    if (gridHasPortal(grid, col, row, side)) clearPortalAt(state, col, row, side);
+    replacePrimaryBoundaryAt(state, col, row, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     setBoundary(grid, col, row, side, { kind: "railWall", capHeightLevel: level, thicknessLevel });
-    notifyGridWallChange(state, cellBounds(col, row));
+    commitBoundaryEdit(state, cellBounds(col, row));
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side */
 export function clearRailWallAt(state, col, row, side) {
-    const grid = state.obstacleGrid;
-    if (!gridHasRailWall(grid, col, row, side)) return false;
-    const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
-    state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
-    clearBoundaryPrimary(grid, col, row, side);
-    notifyGridWallChange(state, cellBounds(col, row));
+    if (clearPrimaryBoundaryAt(state, col, row, side) !== "railWall") return false;
+    commitBoundaryEdit(state, cellBounds(col, row));
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {number} heightLevel @param {number} thicknessLevel */
@@ -367,12 +342,9 @@ export function setRailWallAt(state, col, row, side, heightLevel, thicknessLevel
 export function stampForcefieldAt(state, col, row, side, { mode = PASSAGE_MODE.Solid, allowedSide = side } = {}) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    if (gridHasRailWall(grid, col, row, side)) clearRailWallAt(state, col, row, side);
-    if (gridHasPortal(grid, col, row, side)) clearPortalAt(state, col, row, side);
+    replacePrimaryBoundaryAt(state, col, row, side);
     if (!setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide, powered: false })) return false;
-    notifyGridWallChange(state, cellBounds(col, row));
-    markGridZoneSubscriptionsDirty(state);
-    syncPassagePowerNetwork(state);
+    commitBoundaryEdit(state, cellBounds(col, row), { power: true });
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {string} mode @param {number} allowedSide */
@@ -384,57 +356,46 @@ export function setForcefieldProfileAt(state, col, row, side, mode, allowedSide)
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side */
 export function clearForcefieldAt(state, col, row, side) {
-    const grid = state.obstacleGrid;
-    if (!gridHasForcefield(grid, col, row, side)) return false;
-    clearBoundaryPrimary(grid, col, row, side);
-    notifyGridWallChange(state, cellBounds(col, row));
-    markGridZoneSubscriptionsDirty(state);
-    syncPassagePowerNetwork(state);
+    if (clearPrimaryBoundaryAt(state, col, row, side) !== "passage") return false;
+    commitBoundaryEdit(state, cellBounds(col, row), { power: true });
     return true;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function getForcefieldInfo(grid, col, row, side) {
-    const edge = grid.edgeStore.get(col, row, side, grid.cols);
-    if (!isPassageLaserEdge(edge)) return null;
-    const mode = parsePassageMode(edge.mode);
-    return { col, row, side, mode, allowedSide: edge.allowedSide ?? side, powered: edge.powered === true, sideLabel: formatGridWallEdgeSideLabel(side), modeLabel: formatPassageModeLabel(mode) };
+    const boundary = getBoundary(grid, col, row, side);
+    if (boundary.primary !== "passage") return null;
+    const mode = parsePassageMode(boundary.mode);
+    return {
+        col,
+        row,
+        side,
+        mode,
+        allowedSide: boundary.allowedSide ?? side,
+        powered: boundary.powered === true,
+        sideLabel: formatGridWallEdgeSideLabel(side),
+        modeLabel: formatPassageModeLabel(mode),
+    };
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {{ accessMode?: string, allowedSide?: number }} [profile] */
 export function stampPortalAt(state, col, row, side, { accessMode = PORTAL_ACCESS_MODE.One, allowedSide = portalAccessDefaultAllowedSide(side) } = {}) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    if (gridHasRailWall(grid, col, row, side)) clearRailWallAt(state, col, row, side);
-    if (gridHasForcefield(grid, col, row, side)) clearForcefieldAt(state, col, row, side);
-    if (
-        !setBoundary(grid, col, row, side, {
-            kind: "portal",
-            accessMode: parsePortalAccessMode(accessMode),
-            allowedSide,
-            partnerKey: 0,
-            powered: false,
-        })
-    )
-        return false;
-    notifyGridWallChange(state, cellBounds(col, row));
-    syncPassagePowerNetwork(state);
+    replacePrimaryBoundaryAt(state, col, row, side);
+    if (!setBoundary(grid, col, row, side, { kind: "portal", accessMode: parsePortalAccessMode(accessMode), allowedSide, partnerKey: 0, powered: false })) return false;
+    commitBoundaryEdit(state, cellBounds(col, row), { power: true });
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {string} accessMode @param {number} allowedSide */
 export function setPortalProfileAt(state, col, row, side, accessMode, allowedSide) {
     const grid = state.obstacleGrid;
     if (!setPortalProfile(grid, col, row, side, accessMode, allowedSide)) return false;
-    notifyGridWallChange(state, cellBounds(col, row));
-    syncBoundaryNavIndex(state);
+    commitBoundaryEdit(state, cellBounds(col, row), { nav: true });
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side */
 export function clearPortalAt(state, col, row, side) {
-    const grid = state.obstacleGrid;
-    if (!gridHasPortal(grid, col, row, side)) return false;
-    unlinkPortalEdge(grid, col, row, side);
-    clearBoundaryPrimary(grid, col, row, side);
-    notifyGridWallChange(state, cellBounds(col, row));
-    syncPassagePowerNetwork(state);
+    if (clearPrimaryBoundaryAt(state, col, row, side) !== "portal") return false;
+    commitBoundaryEdit(state, cellBounds(col, row), { power: true });
     return true;
 }
 /** @param {object} state @param {number} colA @param {number} rowA @param {number} sideA @param {number} colB @param {number} rowB @param {number} sideB */
@@ -443,35 +404,34 @@ export function linkPortalsAt(state, colA, rowA, sideA, colB, rowB, sideB) {
     if (!canLinkPortalsOnNetwork(state, grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
     if (!linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
     setPortalLinkProfile(grid, colA, rowA, sideA, PORTAL_LINK_MODE.Shared, 0);
-    notifyGridWallChange(state, cellBounds(colA, rowA));
-    notifyGridWallChange(state, cellBounds(colB, rowB));
-    syncBoundaryNavIndex(state);
+    commitBoundaryEditRegions(state, [cellBounds(colA, rowA), cellBounds(colB, rowB)], { nav: true });
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side */
 export function unlinkPortalAt(state, col, row, side) {
     const grid = state.obstacleGrid;
     if (!unlinkPortalEdge(grid, col, row, side)) return false;
-    notifyGridWallChange(state, cellBounds(col, row));
-    syncBoundaryNavIndex(state);
+    commitBoundaryEdit(state, cellBounds(col, row), { nav: true });
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {string} linkMode @param {number} [linkSourceKey] */
 export function setPortalLinkProfileAt(state, col, row, side, linkMode, linkSourceKey = 0) {
     const grid = state.obstacleGrid;
     if (!setPortalLinkProfile(grid, col, row, side, linkMode, linkSourceKey)) return false;
-    notifyGridWallChange(state, cellBounds(col, row));
+    /** @type {{ startCol: number, endCol: number, startRow: number, endRow: number }[]} */
+    const regions = [cellBounds(col, row)];
     const partner = resolvePortalPartner(grid, col, row, side);
-    if (partner) notifyGridWallChange(state, cellBounds(partner.col, partner.row));
-    syncBoundaryNavIndex(state);
+    if (partner) regions.push(cellBounds(partner.col, partner.row));
+    commitBoundaryEditRegions(state, regions, { nav: true });
     return true;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function getPortalInfo(grid, col, row, side) {
-    const edge = grid.edgeStore.get(col, row, side, grid.cols);
-    if (!isPortalEdge(edge)) return null;
-    const accessMode = parsePortalAccessMode(edge.accessMode);
-    const partnerKey = edge.partnerKey ?? 0;
+    const boundary = getBoundary(grid, col, row, side);
+    if (boundary.primary !== "portal") return null;
+    const edge = boundary.edge;
+    const accessMode = boundary.accessMode;
+    const partnerKey = boundary.partnerKey;
     const partner = partnerKey ? resolvePortalPartner(grid, col, row, side) : null;
     const linkMode = parsePortalLinkMode(edge.linkMode);
     const route = partner ? resolvePortalLinkRoute(grid, col, row, side) : null;
@@ -482,7 +442,7 @@ export function getPortalInfo(grid, col, row, side) {
         row,
         side,
         accessMode,
-        allowedSide: edge.allowedSide,
+        allowedSide: boundary.allowedSide,
         mouthAllowedSide: portalMouthAllowedSide(edge, side),
         partnerKey,
         partner,
@@ -490,7 +450,7 @@ export function getPortalInfo(grid, col, row, side) {
         linkMode,
         linkSourceKey: edge.linkSourceKey ?? 0,
         connection,
-        powered: edge.powered === true,
+        powered: boundary.powered,
     };
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} colA @param {number} rowA @param {number} sideA @param {number} colB @param {number} rowB @param {number} sideB */
@@ -502,21 +462,19 @@ export function listPlacedPortals(grid) {
     /** @type {{ col: number, row: number, side: number, label: string }[]} */
     const placed = [];
     let index = 0;
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        for (let side = 0; side < 4; side++) {
-            if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
+    forEachGridEdge(
+        grid,
+        (col, row, side) => {
             const info = getPortalInfo(grid, col, row, side);
-            if (!info) continue;
+            if (!info) return;
             index++;
             const sideLabel = formatGridWallEdgeSideLabel(side);
             const accessTag = ` · mouth ${formatPortalAccessSideLabel(side, info.mouthAllowedSide).toLowerCase()}`;
             const linkTag = info.linked ? ` · ${formatPortalConnectionLabel(info.linkMode, info.connection === "fromSelf")}` : " · unlinked";
             placed.push({ col, row, side, label: `Portal #${index} · ${sideLabel}${accessTag}${linkTag}` });
-        }
-    }
+        },
+        { canonicalOnly: true, filter: isPortalEdge },
+    );
     return placed;
 }
 /** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} selectedCol @param {number} selectedRow @param {number} selectedSide */
@@ -533,18 +491,17 @@ export function listPlacedForcefields(grid) {
     /** @type {{ col: number, row: number, side: number, label: string }[]} */
     const placed = [];
     let index = 0;
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        for (let side = 0; side < 4; side++) {
+    forEachGridEdge(
+        grid,
+        (col, row, side) => {
             const info = getForcefieldInfo(grid, col, row, side);
-            if (!info) continue;
+            if (!info) return;
             index++;
             const modeTag = info.mode === PASSAGE_MODE.Solid ? "" : ` · ${info.modeLabel}`;
             placed.push({ col, row, side, label: `Forcefield #${index} · ${info.sideLabel}${modeTag}` });
-        }
-    }
+        },
+        { filter: isPassageLaserEdge },
+    );
     return placed;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
@@ -569,20 +526,17 @@ export function listPlacedRailWalls(grid) {
     /** @type {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number, label: string }[]} */
     const placed = [];
     const counts = new Map();
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        for (let side = 0; side < 4; side++) {
-            const edge = grid.edgeStore.get(col, row, side, grid.cols);
-            if (!isRailWallEdge(edge)) continue;
+    forEachGridEdge(
+        grid,
+        (col, row, side, edge) => {
             const capLevel = railWallCapLevel(edge, gridNeighborFillLevel(grid, col, row, side));
             const key = `${side}:${capLevel}:${edge.thicknessLevel}`;
             const index = (counts.get(key) ?? 0) + 1;
             counts.set(key, index);
             placed.push({ col, row, side, heightLevel: capLevel, thicknessLevel: edge.thicknessLevel, label: `Rail #${index} · ${formatGridWallEdgeSideLabel(side)} · height ${capLevel}` });
-        }
-    }
+        },
+        { filter: isRailWallEdge },
+    );
     return placed;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */

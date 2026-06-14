@@ -156,6 +156,29 @@ export function gridPortalEdge(grid, col, row, side) {
     if (!isPortalEdge(edge)) return null;
     return edge;
 }
+/**
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {(col: number, row: number, side: number, edge: object, cellIdx: number) => void | false} fn — return false to stop
+ * @param {{ canonicalOnly?: boolean, minCol?: number, maxCol?: number, minRow?: number, maxRow?: number, filter?: (edge: object) => boolean }} [opts]
+ */
+export function forEachGridEdge(grid, fn, { canonicalOnly = false, minCol, maxCol, minRow, maxRow, filter } = {}) {
+    if (!grid.cols) return;
+    const startCol = minCol ?? 0;
+    const endCol = maxCol ?? grid.cols - 1;
+    const startRow = minRow ?? 0;
+    const endRow = maxRow ?? grid.rows - 1;
+    for (let row = startRow; row <= endRow; row++)
+        for (let col = startCol; col <= endCol; col++) {
+            const cellIdx = colRowToIndex(col, row, grid.cols);
+            for (let side = 0; side < 4; side++) {
+                if (canonicalOnly && !isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
+                const edge = grid.edgeStore.get(col, row, side, grid.cols);
+                if (!edge) continue;
+                if (filter && !filter(edge)) continue;
+                if (fn(col, row, side, edge, cellIdx) === false) return;
+            }
+        }
+}
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridRailWallEdge(grid, col, row, side) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;

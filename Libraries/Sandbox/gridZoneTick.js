@@ -1,7 +1,7 @@
-import { isForcefieldEdge, isPortalEdge, parsePassageMode, PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
+import { isPassageTripwireEdge, PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import { tickGridZoneMembership } from "../Spatial/zones/gridZoneMembership.js";
 import { isPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
-import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey, forEachGridEdge } from "../World/wallGridCells.js";
 /** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneSubscriptions} GridZoneSubscriptions */
 /** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneEvent} GridZoneEvent */
 /** @param {object} state */
@@ -17,18 +17,15 @@ export function buildGridZoneSubscriptions(grid) {
     if (!grid.cols) return { cells, edges };
     const size = grid.cols * grid.rows;
     for (let idx = 0; idx < size; idx++) if (grid.floorStore.isBeltKindAtIdx(idx)) cells.add(idx);
-    for (let idx = 0; idx < size; idx++) {
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        for (let side = 0; side < 4; side++) {
-            const edge = grid.getCellEdge(col, row, side);
-            if (!isForcefieldEdge(edge) || isPortalEdge(edge)) continue;
-            if (parsePassageMode(edge.mode) !== PASSAGE_MODE.Tripwire) continue;
+    forEachGridEdge(
+        grid,
+        (col, row, side) => {
             const key = canonicalEdgeCellKey(grid, col, row, side);
-            if (edges.has(key)) continue;
+            if (edges.has(key)) return;
             edges.set(key, { col, row, side, mode: PASSAGE_MODE.Tripwire });
-        }
-    }
+        },
+        { filter: isPassageTripwireEdge },
+    );
     return { cells, edges };
 }
 /** @param {object} state */
