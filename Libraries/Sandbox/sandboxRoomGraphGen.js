@@ -1,26 +1,27 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
 import { applySandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 /** Ordered procgen steps — only `op` values handled in `runRoomGraphMotifs` are valid. */
-/** Start 0 → two branches → each branch splits to two rooms (7 nodes, 6 edges). */
-export const START_TWO_BY_TWO_TREE_EDGES = [
-    [0, 1],
-    [0, 2],
-    [1, 3],
-    [1, 4],
-    [2, 5],
-    [2, 6],
-];
-/** Stack these in order — each step reads/writes shared build ctx. */
-export const SANDBOX_GRAPH_PIPELINE_MOTIFS = [
-    { op: "buildNodeGraph" },
-    { op: "buildClosedRooms" },
-    { op: "forEachNode", run: { op: "punchHolePerIncidentEdge" } },
-    { op: "forEachEdge", requireAll: true, canIntersect: false, run: { op: "buildCorridorForEdge", skipPunchIfHolesPresent: true } },
-    { op: "validateLayout", allTreeEdgesRouted: true, corridorsIntersect: false },
-];
-/** Random layout retries until every tree edge has a non-intersecting corridor route. */
 export const DEFAULT_SANDBOX_GRAPH_MOTIFS = [
-    { op: "retryUntil", maxAttempts: 60, body: SANDBOX_GRAPH_PIPELINE_MOTIFS, until: { op: "validateLayout", allTreeEdgesRouted: true, corridorsIntersect: false } },
+    {
+        op: "retryUntil",
+        maxAttempts: 60,
+        body: [
+            { op: "buildNodeGraph" },
+            { op: "buildClosedRooms" },
+            { op: "forEachNode", run: { op: "punchHolePerIncidentEdge" } },
+            { op: "forEachEdge", requireAll: true, canIntersect: false, run: { op: "buildCorridorForEdge", skipPunchIfHolesPresent: true } },
+            { op: "validateLayout", allTreeEdgesRouted: true, corridorsIntersect: false },
+            {
+                op: "spawnPropsInNode",
+                nodeId: 0,
+                props: [
+                    { type: "blue_ball", dc: -1, dr: 0 },
+                    { type: "blue_ball", dc: 1, dr: 0 },
+                ],
+            },
+        ],
+        until: { op: "validateLayout", allTreeEdgesRouted: true, corridorsIntersect: false },
+    },
 ];
 /** Per-run overrides (e.g. `seed`) merge onto this; edit motifs to change the pipeline. */
 export const DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS = { motifs: DEFAULT_SANDBOX_GRAPH_MOTIFS };
@@ -68,8 +69,10 @@ const SANDBOX_SCENE_SCHEMA_VERSION = 7;
 /** @typedef {{ seed: number, gridCols: number, gridRows: number, rooms: GraphNode[], treeEdges: { a: number, b: number }[], graphEdges: DirectedEdge[], nodeGraph: NodeGraph, closedRooms: ClosedRoom[] }} RoomGraphLayout */
 /** @typedef {{ op: "buildNodeGraph", nodeCount?: number, treeEdges?: [number, number][], placement?: "random" | "treeSpread", treeSpreadCorridorPad?: number, gridCols?: number, gridRows?: number, roomMinWidth?: number, roomMaxWidth?: number, roomMinHeight?: number, roomMaxHeight?: number, nodeSpacingPad?: number }} BuildNodeGraphMotif */
 /** @typedef {{ op: "buildClosedRooms" }} BuildClosedRoomsMotif */
-/** @typedef {{ op: "punchHoleInClosedRoom" }} PunchHoleInClosedRoomRoomMotif */
-/** @typedef {PunchHoleInClosedRoomRoomMotif} RoomGraphRoomMotif */
+/** @typedef {{ type: string, dc?: number, dr?: number, facing?: number, faction?: string }} RoomPropSpec */
+/** @typedef {{ type: string, x: number, y: number, facing: number, faction: string }} SandboxSceneProp */
+/** @typedef {{ op: "spawnProps", props: RoomPropSpec[] }} SpawnPropsRoomMotif */
+/** @typedef {PunchHoleInClosedRoomRoomMotif | SpawnPropsRoomMotif} RoomGraphRoomMotif */
 /** @typedef {{ op: "forEachRoom", run: RoomGraphRoomMotif }} ForEachRoomMotif */
 /** @typedef {{ op: "punchHolesTowardNeighbors" }} PunchHolesTowardNeighborsEdgeMotif */
 /** @typedef {{ op: "buildCorridorForEdge", canIntersect?: boolean, skipPunchIfHolesPresent?: boolean }} BuildCorridorForEdgeEdgeMotif */
@@ -83,8 +86,10 @@ const SANDBOX_SCENE_SCHEMA_VERSION = 7;
 /** @typedef {{ op: "punchOneHolePerRoom" }} PunchOneHolePerRoomMotif */
 /** @typedef {{ op: "buildCorridors", corridorEdgeCount?: number, canIntersect?: boolean, requireAll?: boolean }} BuildCorridorsMotif */
 /** @typedef {{ op: "buildAllCorridors", canIntersect?: boolean, requireAll?: boolean }} BuildAllCorridorsMotif */
-/** @typedef {BuildNodeGraphMotif | BuildClosedRoomsMotif | ForEachRoomMotif | ForEachEdgeMotif | ForEachNodeMotif | ValidateLayoutMotif | RetryUntilMotif | PunchOneHolePerRoomMotif | BuildCorridorsMotif | BuildAllCorridorsMotif} RoomGraphMotif */
-/** @typedef {{ options: Record<string, unknown>, layout: RoomGraphLayout, closedRooms: ClosedRoom[], corridorRails: RailWall[], corridorPaths: Cell[][], corridorEdgeIndices: number[], originCol: number, originRow: number, corridorRng: () => number, holeRng: () => number }} RoomGraphBuildCtx */
+/** @typedef {{ op: "spawnPropsInNode", nodeId: number, props: RoomPropSpec[] }} SpawnPropsInNodeMotif */
+/** @typedef {{ op: "spawnPropsPerRoom" }} SpawnPropsPerRoomMotif */
+/** @typedef {BuildNodeGraphMotif | BuildClosedRoomsMotif | ForEachRoomMotif | ForEachEdgeMotif | ForEachNodeMotif | ValidateLayoutMotif | RetryUntilMotif | PunchOneHolePerRoomMotif | BuildCorridorsMotif | BuildAllCorridorsMotif | SpawnPropsInNodeMotif | SpawnPropsPerRoomMotif} RoomGraphMotif */
+/** @typedef {{ options: Record<string, unknown>, layout: RoomGraphLayout, closedRooms: ClosedRoom[], corridorRails: RailWall[], corridorPaths: Cell[][], corridorEdgeIndices: number[], props: SandboxSceneProp[], originCol: number, originRow: number, cellSize: number, corridorRng: () => number, holeRng: () => number }} RoomGraphBuildCtx */
 /** All tunable procgen parameters live here; pass overrides into `resolveNodeGraphGenConfig`. */
 export const DEFAULT_NODE_GRAPH_GEN_CONFIG = {
     gridCols: 88,
@@ -110,6 +115,7 @@ export const DEFAULT_ROOM_GRAPH_GRID = {
 };
 export const DEFAULT_CORRIDOR_HALF_WIDTH = 0;
 export const DEFAULT_CORRIDOR_EGRESS_CELLS = 2;
+export const DEFAULT_SANDBOX_GRAPH_CELL_SIZE = 16;
 const ROOM_PROP_TYPES = ["blue_ball", "beach_ball", "barrel"];
 /** @param {Partial<NodeGraphGenConfig> & { seed?: number, roomCount?: number, minRooms?: number }} [overrides] */
 export function resolveNodeGraphGenConfig(overrides = {}) {
@@ -312,9 +318,8 @@ export function placeGraphNodesTreeSpread(rng, config, treeEdges) {
     }
     for (let i = 0; i < nodeCount; i++) {
         const node = nodes[i];
-        if (node.c0 < gridEdgeMargin || node.r0 < gridEdgeMargin || node.c1 >= gridCols - gridEdgeMargin || node.r1 >= gridRows - gridEdgeMargin) {
+        if (node.c0 < gridEdgeMargin || node.r0 < gridEdgeMargin || node.c1 >= gridCols - gridEdgeMargin || node.r1 >= gridRows - gridEdgeMargin)
             throw new Error(`treeSpread: node ${i} out of grid bounds`);
-        }
         for (let j = 0; j < i; j++) if (graphNodesOverlap(nodes[j], node, nodeSpacingPad)) throw new Error(`treeSpread: node ${i} overlaps node ${j}`);
     }
     return /** @type {GraphNode[]} */ (nodes);
@@ -890,27 +895,44 @@ export function mergeRailWalls(lists) {
     }
     return out;
 }
-/** @param {RoomGraphLayout} layout @param {number} originCol @param {number} originRow @param {number} [cellSize] */
-export function propsForRoomCenters(layout, originCol, originRow, cellSize = 16) {
+/** @param {GraphNode} room @param {RoomPropSpec} spec @param {number} originCol @param {number} originRow @param {number} cellSize */
+export function roomPropSpecToSceneProp(room, spec, originCol, originRow, cellSize) {
     const half = cellSize * 0.5;
-    /** @type {{ type: string, x: number, y: number, facing: number, faction: string }[]} */
+    const dc = spec.dc ?? 0;
+    const dr = spec.dr ?? 0;
+    return { type: spec.type, x: (room.centerC + dc + originCol) * cellSize + half, y: (room.centerR + dr + originRow) * cellSize + half, facing: spec.facing ?? 0, faction: spec.faction ?? "alpha" };
+}
+/** @param {GraphNode} room @param {RoomPropSpec[]} specs @param {number} originCol @param {number} originRow @param {number} cellSize */
+export function roomPropSpecsToSceneProps(room, specs, originCol, originRow, cellSize) {
+    /** @type {SandboxSceneProp[]} */
     const props = [];
-    for (let i = 0; i < layout.rooms.length; i++) {
-        const room = layout.rooms[i];
-        props.push({
-            type: ROOM_PROP_TYPES[i % ROOM_PROP_TYPES.length],
-            x: (room.centerC + originCol) * cellSize + half,
-            y: (room.centerR + originRow) * cellSize + half,
-            facing: 0,
-            faction: "alpha",
-        });
-    }
+    for (let i = 0; i < specs.length; i++) props.push(roomPropSpecToSceneProp(room, specs[i], originCol, originRow, cellSize));
     return props;
+}
+/** @param {RoomGraphLayout} layout @param {number} originCol @param {number} originRow @param {number} [cellSize] */
+export function propsForRoomCenters(layout, originCol, originRow, cellSize = DEFAULT_SANDBOX_GRAPH_CELL_SIZE) {
+    /** @type {SandboxSceneProp[]} */
+    const props = [];
+    for (let i = 0; i < layout.rooms.length; i++) props.push(roomPropSpecToSceneProp(layout.rooms[i], { type: ROOM_PROP_TYPES[i % ROOM_PROP_TYPES.length] }, originCol, originRow, cellSize));
+    return props;
+}
+/** @param {RoomGraphBuildCtx} ctx @param {GraphNode} room @param {RoomPropSpec[]} specs */
+function pushRoomProps(ctx, room, specs) {
+    ctx.props.push(...roomPropSpecsToSceneProps(room, specs, ctx.originCol, ctx.originRow, ctx.cellSize));
+}
+/** @param {SpawnPropsInNodeMotif} motif @param {RoomGraphBuildCtx} ctx */
+function runSpawnPropsInNodeMotif(motif, ctx) {
+    const room = ctx.layout.rooms[motif.nodeId];
+    pushRoomProps(ctx, room, motif.props);
 }
 /** @param {RoomGraphRoomMotif} roomMotif @param {RoomGraphBuildCtx} ctx @param {ClosedRoom} closedRoom */
 function runRoomGraphRoomMotif(roomMotif, ctx, closedRoom) {
     if (roomMotif.op === "punchHoleInClosedRoom") {
         punchHoleInClosedRoom(closedRoom, ctx.holeRng);
+        return;
+    }
+    if (roomMotif.op === "spawnProps") {
+        pushRoomProps(ctx, closedRoom.node, roomMotif.props);
         return;
     }
     throw new Error(`Unknown room graph room motif op: ${roomMotif.op}`);
@@ -1028,8 +1050,10 @@ function createEmptyRoomGraphBuildCtx(options) {
         corridorRails: [],
         corridorPaths: [],
         corridorEdgeIndices: [],
+        props: [],
         originCol: 0,
         originRow: 0,
+        cellSize: DEFAULT_SANDBOX_GRAPH_CELL_SIZE,
         corridorRng: createSeededRng(0),
         holeRng: createSeededRng(0),
     };
@@ -1121,6 +1145,14 @@ function runRoomGraphMotif(motif, ctx) {
         ctx.corridorRails.push(...corridor.railWalls);
         return;
     }
+    if (motif.op === "spawnPropsInNode") {
+        runSpawnPropsInNodeMotif(motif, ctx);
+        return;
+    }
+    if (motif.op === "spawnPropsPerRoom") {
+        ctx.props.push(...propsForRoomCenters(ctx.layout, ctx.originCol, ctx.originRow, ctx.cellSize));
+        return;
+    }
     throw new Error(`Unknown room graph motif op: ${motif.op}`);
 }
 /** Run an ordered motif list; throws on unknown ops or unmet requireAll. */
@@ -1136,9 +1168,9 @@ export function runRoomGraphMotifs(motifs, options = {}) {
     }
     return ctx;
 }
-/** @param {RoomGraphLayout} layout @param {{ originCol: number, originRow: number, cellSize?: number, corridorRails?: RailWall[], corridorPaths?: Cell[][], corridorEdgeIndices?: number[], motifs?: RoomGraphMotif[] }} options */
+/** @param {RoomGraphLayout} layout @param {{ originCol: number, originRow: number, cellSize?: number, props?: SandboxSceneProp[], corridorRails?: RailWall[], corridorPaths?: Cell[][], corridorEdgeIndices?: number[], motifs?: RoomGraphMotif[] }} options */
 export function roomGraphLayoutToSceneDoc(layout, options) {
-    const cellSize = options.cellSize ?? 16;
+    const cellSize = options.cellSize ?? DEFAULT_SANDBOX_GRAPH_CELL_SIZE;
     const { originCol, originRow } = options;
     const closedRooms = layout.closedRooms ?? buildRoomsFromNodeGraph(layout.nodeGraph);
     const corridorRails = options.corridorRails ?? [];
@@ -1146,6 +1178,7 @@ export function roomGraphLayoutToSceneDoc(layout, options) {
     const corridorEdgeIndices = options.corridorEdgeIndices ?? [];
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
     const gapKeysWorld = roomWallGapKeysWorld(closedRooms, originCol, originRow);
+    const props = options.props ?? [];
     return {
         schemaVersion: SANDBOX_SCENE_SCHEMA_VERSION,
         cellSize,
@@ -1158,7 +1191,7 @@ export function roomGraphLayoutToSceneDoc(layout, options) {
         portals: [],
         floorBelts: [],
         powerSources: [],
-        props: propsForRoomCenters(layout, originCol, originRow, cellSize),
+        props,
         meta: {
             generator: "roomGraph",
             seed: layout.seed,
@@ -1177,6 +1210,7 @@ export function buildSandboxRoomGraphSceneDoc(options = {}) {
     return roomGraphLayoutToSceneDoc(ctx.layout, {
         originCol: ctx.originCol,
         originRow: ctx.originRow,
+        props: ctx.props,
         corridorRails: ctx.corridorRails,
         corridorPaths: ctx.corridorPaths,
         corridorEdgeIndices: ctx.corridorEdgeIndices,
