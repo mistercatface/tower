@@ -162,6 +162,59 @@ function appendFactionSelect(parent, { value, onChange }) {
 function buildSpawnOptions(propIds) {
     return propIds.map((id) => ({ value: id, label: formatSandboxSpawnLabel(id) }));
 }
+/** @param {HTMLElement} container @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {() => void} onChange */
+function renderSceneJsonPanel(container, controller, onChange) {
+    appendEditorHint(container, "Copy/paste sandbox layout: props, walls, belts, power sources, forcefields, portals. Replace clears the current sandbox first.");
+    const startDemoBtn = document.createElement("button");
+    startDemoBtn.type = "button";
+    startDemoBtn.className = "secondary";
+    startDemoBtn.textContent = "Load start demo";
+    const textarea = document.createElement("textarea");
+    textarea.className = "editor-export-area";
+    textarea.rows = 10;
+    textarea.spellcheck = false;
+    startDemoBtn.addEventListener("click", () => {
+        if (!window.confirm("Replace the current sandbox with the portal/power start demo?")) return;
+        controller.loadStartScene();
+        textarea.value = controller.exportSceneSnapshot();
+        onChange();
+    });
+    container.appendChild(startDemoBtn);
+    container.appendChild(textarea);
+    const row = document.createElement("div");
+    row.className = "sandbox-add-row";
+    const exportBtn = document.createElement("button");
+    exportBtn.type = "button";
+    exportBtn.className = "secondary";
+    exportBtn.textContent = "Export";
+    exportBtn.addEventListener("click", () => {
+        textarea.value = controller.exportSceneSnapshot();
+    });
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "secondary";
+    copyBtn.textContent = "Copy";
+    copyBtn.addEventListener("click", async () => {
+        if (!textarea.value) textarea.value = controller.exportSceneSnapshot();
+        await navigator.clipboard.writeText(textarea.value);
+    });
+    const loadBtn = document.createElement("button");
+    loadBtn.type = "button";
+    loadBtn.className = "secondary";
+    loadBtn.textContent = "Load (replace)";
+    loadBtn.addEventListener("click", () => {
+        if (!textarea.value.trim()) return;
+        if (!window.confirm("Replace the current sandbox with this JSON?")) return;
+        try {
+            controller.importSceneSnapshot(textarea.value);
+            onChange();
+        } catch (err) {
+            window.alert(err instanceof Error ? err.message : String(err));
+        }
+    });
+    row.append(exportBtn, copyBtn, loadBtn);
+    container.appendChild(row);
+}
 function appendPanelTabs(container, controller, onChange) {
     const row = document.createElement("div");
     row.className = "sandbox-panel-tabs";
@@ -169,6 +222,7 @@ function appendPanelTabs(container, controller, onChange) {
     for (const [tab, label] of [
         ["props", "Props"],
         ["walls", "Walls"],
+        ["scene-json", "Scene JSON"],
     ]) {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -453,6 +507,11 @@ export function mountSandboxToyUi(container, controller, onChange) {
             isFirstRender = false;
             return;
         }
+        if (controller.getEditorPanelTab() === "scene-json") {
+            renderSceneJsonPanel(container, controller, onChange);
+            isFirstRender = false;
+            return;
+        }
         const spawnOptions = buildSpawnOptions(propIds);
         if (spawnOptions.length === 0) {
             appendEditorHint(container, "No sandbox spawn options loaded");
@@ -611,58 +670,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 })),
                 "No forcefields placed yet.",
             );
-        });
-        appendSection(container, "scene-json", "Scene JSON", sectionOpen("scene-json"), (body) => {
-            appendEditorHint(body, "Copy/paste sandbox layout: props, walls, belts, power sources, forcefields, portals. Replace clears the current sandbox first.");
-            const startDemoBtn = document.createElement("button");
-            startDemoBtn.type = "button";
-            startDemoBtn.className = "secondary";
-            startDemoBtn.textContent = "Load start demo";
-            startDemoBtn.addEventListener("click", () => {
-                if (!window.confirm("Replace the current sandbox with the portal/power start demo?")) return;
-                controller.loadStartScene();
-                textarea.value = controller.exportSceneSnapshot();
-                onChange();
-            });
-            body.appendChild(startDemoBtn);
-            const textarea = document.createElement("textarea");
-            textarea.className = "editor-export-area";
-            textarea.rows = 10;
-            textarea.spellcheck = false;
-            body.appendChild(textarea);
-            const row = document.createElement("div");
-            row.className = "sandbox-add-row";
-            const exportBtn = document.createElement("button");
-            exportBtn.type = "button";
-            exportBtn.className = "secondary";
-            exportBtn.textContent = "Export";
-            exportBtn.addEventListener("click", () => {
-                textarea.value = controller.exportSceneSnapshot();
-            });
-            const copyBtn = document.createElement("button");
-            copyBtn.type = "button";
-            copyBtn.className = "secondary";
-            copyBtn.textContent = "Copy";
-            copyBtn.addEventListener("click", async () => {
-                if (!textarea.value) textarea.value = controller.exportSceneSnapshot();
-                await navigator.clipboard.writeText(textarea.value);
-            });
-            const loadBtn = document.createElement("button");
-            loadBtn.type = "button";
-            loadBtn.className = "secondary";
-            loadBtn.textContent = "Load (replace)";
-            loadBtn.addEventListener("click", () => {
-                if (!textarea.value.trim()) return;
-                if (!window.confirm("Replace the current sandbox with this JSON?")) return;
-                try {
-                    controller.importSceneSnapshot(textarea.value);
-                    onChange();
-                } catch (err) {
-                    window.alert(err instanceof Error ? err.message : String(err));
-                }
-            });
-            row.append(exportBtn, copyBtn, loadBtn);
-            body.appendChild(row);
         });
         appendSection(container, "selected", "Selected", sectionOpen("selected", true), (body) => {
             if (selectionCount > 1) {

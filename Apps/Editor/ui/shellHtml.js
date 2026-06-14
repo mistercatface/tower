@@ -31,7 +31,7 @@ export const TILELAB_UI_HTML = `
                         <span>Props</span>
                     </label>
                     <label class="editor-panel-toggle">
-                        <input type="checkbox" id="showProfilePanelInput" checked>
+                        <input type="checkbox" id="showProfilePanelInput">
                         <span>Profile</span>
                     </label>
                     <label class="editor-panel-toggle">
@@ -47,7 +47,7 @@ export const TILELAB_UI_HTML = `
                         <div id="sandboxToyPanel"></div>
                     </div>
                 </div>
-                <div id="surfaceEditorPanel" class="editor-panel-section is-visible" data-panel="profile">
+                <div id="surfaceEditorPanel" class="editor-panel-section" data-panel="profile">
                     <div class="editor-panel-head">Profile editor</div>
                     <div class="editor-tools">
                         <div class="editor-tools-row">

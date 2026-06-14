@@ -57,7 +57,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let selectedPropId = null;
     /** @type {{ col: number, row: number } | null} */
     let selectedFloorCell = null;
-    /** @type {'props' | 'walls'} */
+    /** @type {'props' | 'walls' | 'scene-json'} */
     let editorPanelTab = "props";
     /** @type {'voxel' | 'rail' | 'forcefield' | 'portal'} */
     let wallStampMode = "voxel";

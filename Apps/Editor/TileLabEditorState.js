@@ -88,7 +88,7 @@ export class TileLabEditorState {
             edgeThickness: 2,
         };
         this.showSandboxPanel = true;
-        this.showProfilePanel = true;
+        this.showProfilePanel = false;
         this.showMapPanel = false;
         this.showAnimationPreview = false;
         this.showMapOverview = true;
