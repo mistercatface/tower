@@ -588,6 +588,28 @@ details.editor-block > *:not(summary) {
     object-fit: contain;
 }
 
+.gen-body-summary {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    font-size: 11px;
+    color: var(--text);
+}
+
+#genStatusPanel {
+    margin-top: 8px;
+    font-size: 11px;
+    white-space: pre-wrap;
+    color: var(--muted);
+}
+
+#genStatusPanel[data-status="ok"] {
+    color: #7dcea0;
+}
+
+#genStatusPanel[data-status="error"] {
+    color: #e07070;
+}
+
 @media (max-width: 1100px) {
     :root {
         --editor-w: 40vw;

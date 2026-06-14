@@ -1,18 +1,74 @@
 ## CURRENT TASK: BELT MAZES
 
-## SIDE TASK: PIPELINE REFACTOR
+## SIDE TASK: GEN
 
-PR 1 — Pipeline core (pure library, no UI)
-Add Libraries/Pipeline/ with the shared data layer: objectPath.js (deepClone, getByPath, setByPath), fieldSchema.js (FieldDef shape, numeric clamping), stepRegistry.js (registerStep, getStep, listSteps, stepId normalizing op vs type), and validatePipeline.js (unknown step, missing fields, out-of-range numbers → { ok, errors[] }). No editor changes yet — this PR is import-only proof that Profile, Sandbox, and future Map can share one validation path without touching DOM.
+Phase 1 — Gen tab shell + safe generate (~1 PR)
+Goal: Move graph generation out of JSON, use tryBuild, show errors instead of throwing.
 
-PR 2 — Schema field renderer + ProfileEditor wiring
-Extract renderScalarFields from ProfileEditor.js into Libraries/UI/renderSchemaFields.js, backed by the PR 1 path utils. ProfileEditor deletes its local deepClone / path helpers / renderScalarFields and imports from Pipeline + UI instead. Behavior and layout stay the same; this PR is a straight refactor that proves the field schema works against real MOTIF_TYPES metadata before any list or Gen work lands.
+Step What
+1
+shellHtml.js — Add Gen radio (value="gen"), new #genPanel section with hosts: #genTools, #genMotifList (empty for now), #genParams, #genStatus, #genExport.
+2
+viewMode.js — setEditorPanelVisible("genPanel", panel === "gen").
+3
+TileLabEditorState.js — sidebarPanel already a string; "gen" is fine, no schema change needed.
+4
+New Apps/Editor/ui/gen/GenEditor.js — Module-level editor state: { seed, motifs: deepClone(DEFAULT_SANDBOX_GRAPH_MOTIFS) }. Render: seed slider, Generate button, status line. On generate: validateRoomGraphMotifs(motifs) → if bad, list errors in #genStatus; else tryBuildSandboxRoomGraphSceneDoc({ seed, motifs }) → on success call controller apply + requestRedraw, on failure show reason.
+5
+createSandboxController.js — Add tryLoadGraphScene(options) returning { ok, reason? } (wraps tryBuild + applySandboxSceneSnapshot + session reset — same cleanup as loadRandomGraphScene today). Keep loadRandomGraphScene as thin { seed: Date.now() } caller or delete once Gen owns it.
+6
+editorUi.js — initGenEditor({ controller, onChange }) after sandbox mount (needs controller ref).
+7
+sandboxToyUi.js — Remove Generate random graph from renderSceneJsonPanel; JSON tab stays copy/paste only.
+Phase 1 deliberately does not edit motifs in UI yet — it uses the cloned default pipeline. That proves the tab, validation, and non-throwing path.
 
-PR 3 — Generic pipeline list UI
-Add Libraries/Pipeline/pipelineList.js (add/remove/reorder/select rows with stable editorIds) and Libraries/UI/pipelineListUi.js (the reorderable row list DOM). Refactor Profile’s renderMotifList to use the generic list with small hooks for Profile-only row chrome (enable toggle, blend select, surface mask label). CSS stays on existing .motif-row classes (optionally aliased as pipeline rows). After this PR, Gen gets a motif list for free — only hooks and registry differ.
+Phase 2 — Motif pipeline editor (~1 PR)
+Goal: Profile-like editing, driven by ROOM_GRAPH_STEP_REGISTRY + shared Pipeline/UI.
 
-PR 4 — Export, registry adapters, room-graph schema
-Add exportPipeline.js (JSON + optional JS snippet) and wire Profile export through it. Add buildRegistryFromMotifTypes(MOTIF_TYPES) so procedural steps formally implement PipelineStepDef without rewriting motif files. Add Libraries/Sandbox/roomGraphStepRegistry.js for the ops you actually use today, plus validateRoomGraphMotifs / tryBuildSandboxRoomGraphSceneDoc calling PR 1 validation and a non-throwing try wrapper. No Gen tab yet — this PR completes the shared contract so the Gen sidebar is mostly wiring, not new architecture.
+Step What
+1
+Row model — Gen rows: { id, enabled, config } via createPipelineRow(deepClone(def.defaults), id). Top-level array mirrors motifs (today: one retryUntil row).
+2
+Motif list — renderPipelineListUi + ROOM_GRAPH_STEP_REGISTRY.list() for labels. Add-step dropdown from registry (filter ops appropriate at top level — basically retryUntil or flat steps if you drop the wrapper later).
+3
+Params panel — Selected row → registry.get(stepId(row.config)) → renderSchemaFields(container, row.config, def.fields). Re-validate on change with validateRoomGraphMotifs(buildMotifsFromEditor()); disable Generate or show inline errors when invalid.
+4
+Nested slots — Hardest part. Start narrow: assume single top-level retryUntil, edit body[] as a sub-list (same list UI, different container). Slot steps (forEachNode.run, forEachEdge.run) as nested “Selected step → Run” panel using def.slots + allowedSteps. Defer full arbitrary-depth tree UI until this works.
+5
+Wire unused Pipeline helpers — removePipelineRowAt, findPipelineRowIndex, remapIndexAfterRemove if body reorder matters; validatePipelineRows is optional if you always export flat config[] through validateRoomGraphMotifs.
+6
+clampFieldValue in renderSchemaFields — Clamp on slider change so pasted/broken JSON can’t leave invalid ranges.
+Generate always passes editor motifs, not DEFAULT_SANDBOX_GRAPH_MOTIFS, so edits actually affect output.
+
+Phase 3 — Presets, export, feedback (~1 PR)
+Step What
+1
+Presets — Dropdown: Default (shipped array), optional localStorage saves (genPreset:v1). Load = deepClone into editor state.
+2
+Export — #genExport textarea: exportPipelineJson(motifs) + Copy; optional exportPipelineJsModule(motifs, "SANDBOX_GRAPH_MOTIFS") for dropping into sandboxRoomGraphGen.js.
+3
+Post-build stats — After successful tryBuild, read doc.meta / layout summary (room count, corridor count, grid size) into #genStatus so you know why a seed worked.
+4
+JSON tab link — After generate, optional “View scene JSON” switches to JSON tab with exported snapshot (reuse controller.exportSceneSnapshot()).
+File map (new vs touched)
+Apps/Editor/ui/
+shellHtml.js ← Gen tab + panel markup
+viewMode.js ← panel visibility
+editorUi.js ← initGenEditor
+gen/GenEditor.js ← NEW (main logic)
+sandboxToyUi.js ← remove graph button
+Libraries/Sandbox/
+createSandboxController.js ← tryLoadGraphScene
+(reuse, no changes required for Phase 1)
+roomGraphStepRegistry.js
+sandboxRoomGraphGen.js (tryBuild, DEFAULT_SANDBOX_GRAPH_MOTIFS)
+Libraries/UI/renderSchemaFields.js, pipelineListUi.js
+Libraries/Pipeline/\*
+Suggested order of implementation
+Phase 1: tab + tryBuild generate
+Phase 2: registry-driven motif editor
+Phase 3: presets + export + stats
+Do Phase 1 first — it’s mostly wiring and immediately improves UX (errors, discoverability). Phase 2 is where the refactor pays off; Phase 3 is polish.
 
 ## BACKLOG
 

@@ -41,6 +41,10 @@ export const TILELAB_UI_HTML = `
                         <span>Map</span>
                     </label>
                     <label class="editor-panel-toggle">
+                        <input type="radio" name="editorSidebarPanel" id="showGenPanelInput" value="gen">
+                        <span>Gen</span>
+                    </label>
+                    <label class="editor-panel-toggle">
                         <input type="radio" name="editorSidebarPanel" id="showJsonPanelInput" value="json">
                         <span>JSON</span>
                     </label>
@@ -97,6 +101,21 @@ export const TILELAB_UI_HTML = `
                         <p class="editor-hint">Play area sets the obstacle grid; cavern bounds are in grid cells. Stamp multiple regions by moving bounds and generating again.</p>
                         <div id="mapSettingsPanel"></div>
                         <div id="mapWallToolPanel" class="editor-block editor-block-separated"></div>
+                    </div>
+                </div>
+                <div id="genPanel" class="editor-panel-section" data-panel="gen">
+                    <div class="editor-panel-head">Room graph</div>
+                    <div class="editor-scroll">
+                        <div id="genToolsPanel"></div>
+                        <details class="editor-block" open>
+                            <summary>Retry loop</summary>
+                            <div id="genRetryPanel"></div>
+                        </details>
+                        <details class="editor-block" open>
+                            <summary>Pipeline body</summary>
+                            <div id="genBodyPanel"></div>
+                        </details>
+                        <div id="genStatusPanel" class="editor-block"></div>
                     </div>
                 </div>
                 <div id="jsonPanel" class="editor-panel-section" data-panel="json">
