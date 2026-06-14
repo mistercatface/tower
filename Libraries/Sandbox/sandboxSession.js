@@ -364,7 +364,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         listPortalLinkTargets: () => {
             if (!selectedRailEdge || !gridHasPortal(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) return [];
             const { col, row, side } = selectedRailEdge;
-            return listPortalLinkTargets(state.obstacleGrid, col, row, side);
+            return listPortalLinkTargets(state, state.obstacleGrid, col, row, side);
         },
         getSelectedVoxelWallInfo: () => (selectedVoxelCell ? getVoxelWallInfo(state.obstacleGrid, selectedVoxelCell.col, selectedVoxelCell.row) : null),
         getSelectedRailWallInfo: () =>
@@ -377,7 +377,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 : null,
         getSelectedPortalInfo: () =>
             selectedRailEdge && gridHasPortal(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
-                ? getPortalInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
+                ? getPortalInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side, state)
                 : null,
         setSelectedForcefieldMode(mode) {
             if (!selectedRailEdge) return false;

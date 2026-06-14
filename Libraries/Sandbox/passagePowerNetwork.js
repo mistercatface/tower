@@ -1,9 +1,10 @@
-import { isPassageLaserEdge } from "../Spatial/grid/CellEdge.js";
+import { isPassagePowerConductorEdge, isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import { isPassagePowered, setPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { canonicalEdgeCellKey, gridWallEdgeNeighbor } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey, gridWallEdgeNeighbor, isCanonicalEdgeRepresentative } from "../World/wallGridCells.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
+import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
 /** @typedef {{ col: number, row: number, side: number, key: number }} PassageEdgeRef */
 /**
  * Cardinal edge endpoints as grid vertices (cell-corner coordinates).
@@ -69,7 +70,7 @@ function buildPassagePowerGraph(grid) {
         const row = (idx / grid.cols) | 0;
         for (let side = 0; side < 4; side++) {
             const edge = grid.edgeStore.get(col, row, side, grid.cols);
-            if (!isPassageLaserEdge(edge)) continue;
+            if (!isPassagePowerConductorEdge(edge)) continue;
             const key = canonicalEdgeCellKey(grid, col, row, side);
             if (edgeByKey.has(key)) continue;
             const ref = { col, row, side, key };
@@ -164,6 +165,72 @@ function floodNetworkPoweredEdgeKeys(grid, energizedSourceIdx, graph) {
     }
     return poweredEdgeKeys;
 }
+/**
+ * @param {{ vertexEdges: Map<number, PassageEdgeRef[]>, edgeByKey: Map<number, PassageEdgeRef> }} graph
+ * @param {Set<number>} poweredEdgeKeys
+ * @param {number} cols
+ * @returns {Map<number, number>}
+ */
+function computePoweredEdgeNetworkIds(graph, poweredEdgeKeys, cols) {
+    /** @type {Map<number, number>} */
+    const networkIdByKey = new Map();
+    let nextId = 0;
+    for (const key of poweredEdgeKeys) {
+        if (networkIdByKey.has(key)) continue;
+        const id = nextId++;
+        /** @type {number[]} */
+        const queue = [key];
+        while (queue.length) {
+            const edgeKey = queue.pop();
+            if (networkIdByKey.has(edgeKey)) continue;
+            networkIdByKey.set(edgeKey, id);
+            const ref = graph.edgeByKey.get(edgeKey);
+            if (!ref) continue;
+            const [vx0, vy0, vx1, vy1] = passageEdgeVertexCoords(ref.col, ref.row, ref.side);
+            const verts = [packVertexKey(vx0, vy0, cols), packVertexKey(vx1, vy1, cols)];
+            for (let vi = 0; vi < 2; vi++) {
+                const edges = graph.vertexEdges.get(verts[vi]);
+                if (!edges) continue;
+                for (let i = 0; i < edges.length; i++) {
+                    const next = edges[i].key;
+                    if (!poweredEdgeKeys.has(next) || networkIdByKey.has(next)) continue;
+                    queue.push(next);
+                }
+            }
+        }
+    }
+    return networkIdByKey;
+}
+/**
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {Set<number>} poweredEdgeKeys
+ * @param {Map<number, number>} networkIdByKey
+ * @returns {boolean}
+ */
+function splitInvalidPortalLinks(grid, poweredEdgeKeys, networkIdByKey) {
+    let changed = false;
+    const size = grid.cols * grid.rows;
+    for (let idx = 0; idx < size; idx++) {
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
+        for (let side = 0; side < 4; side++) {
+            if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
+            const edge = grid.edgeStore.get(col, row, side, grid.cols);
+            if (!isPortalEdge(edge)) continue;
+            const partner = resolvePortalPartner(grid, col, row, side);
+            if (!partner) continue;
+            const keyA = canonicalEdgeCellKey(grid, col, row, side);
+            const keyB = canonicalEdgeCellKey(grid, partner.col, partner.row, partner.side);
+            const poweredA = poweredEdgeKeys.has(keyA);
+            const poweredB = poweredEdgeKeys.has(keyB);
+            const netA = networkIdByKey.get(keyA);
+            const netB = networkIdByKey.get(keyB);
+            if (poweredA && poweredB && netA != null && netA === netB) continue;
+            if (unlinkPortalEdge(grid, col, row, side)) changed = true;
+        }
+    }
+    return changed;
+}
 /** @param {object} state @param {number} col @param {number} row */
 export function isPassagePowerSourceEnergized(state, col, row) {
     const grid = state.obstacleGrid;
@@ -188,6 +255,35 @@ export function isPassagePowerSourceEnergized(state, col, row) {
     });
     return energized;
 }
+/** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function getPassageEdgeNetworkId(state, grid, col, row, side) {
+    const cache = state.sandbox.passagePower;
+    if (!cache) return -1;
+    const key = canonicalEdgeCellKey(grid, col, row, side);
+    if (!cache.poweredKeys.has(key)) return -1;
+    return cache.networkIdByKey.get(key) ?? -1;
+}
+/** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function isPassageEdgeNetworkPowered(state, grid, col, row, side) {
+    const cache = state.sandbox.passagePower;
+    if (!cache) return false;
+    return cache.poweredKeys.has(canonicalEdgeCellKey(grid, col, row, side));
+}
+/**
+ * @param {object} state
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {number} colA
+ * @param {number} rowA
+ * @param {number} sideA
+ * @param {number} colB
+ * @param {number} rowB
+ * @param {number} sideB
+ */
+export function canLinkPortalsOnNetwork(state, grid, colA, rowA, sideA, colB, rowB, sideB) {
+    const netA = getPassageEdgeNetworkId(state, grid, colA, rowA, sideA);
+    if (netA < 0) return false;
+    return netA === getPassageEdgeNetworkId(state, grid, colB, rowB, sideB);
+}
 /** @param {object} state */
 export function syncPassagePowerNetwork(state) {
     const grid = state.obstacleGrid;
@@ -195,6 +291,8 @@ export function syncPassagePowerNetwork(state) {
     const graph = buildPassagePowerGraph(grid);
     const energizedSources = collectEnergizedSourceCells(grid, state);
     const poweredKeys = floodNetworkPoweredEdgeKeys(grid, energizedSources, graph);
+    const networkIdByKey = computePoweredEdgeNetworkIds(graph, poweredKeys, grid.cols);
+    state.sandbox.passagePower = { poweredKeys, networkIdByKey };
     let minCol = Infinity;
     let maxCol = -Infinity;
     let minRow = Infinity;
@@ -212,7 +310,7 @@ export function syncPassagePowerNetwork(state) {
         const row = (idx / grid.cols) | 0;
         for (let side = 0; side < 4; side++) {
             const edge = grid.edgeStore.get(col, row, side, grid.cols);
-            if (!isPassageLaserEdge(edge)) continue;
+            if (!isPassagePowerConductorEdge(edge)) continue;
             const key = canonicalEdgeCellKey(grid, col, row, side);
             const ref = graph.edgeByKey.get(key);
             if (!ref || ref.col !== col || ref.row !== row || ref.side !== side) continue;
@@ -221,9 +319,10 @@ export function syncPassagePowerNetwork(state) {
             setPassagePowered(grid, col, row, side, powered);
             mark(col, row);
             const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-            if (nc >= 0 && nc < grid.cols && nr >= 0 && nr < grid.rows) mark(nc, nr);
+            if (cellInRect(nc, nr, grid.cols, grid.rows)) mark(nc, nr);
         }
     }
+    if (splitInvalidPortalLinks(grid, poweredKeys, networkIdByKey)) grid.bumpWallGridRevision();
     if (minCol === Infinity) return;
     state.navigation.onObstaclesChanged({ startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow });
 }

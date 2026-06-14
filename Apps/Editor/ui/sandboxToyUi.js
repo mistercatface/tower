@@ -88,6 +88,9 @@ function appendPortalEditorFields(body, controller, selected, { stampDefaults = 
             },
         });
     if (!stampDefaults && selected) {
+        if (!selected.onNetwork) appendEditorHint(body, "Off network — extend a powered laser chain from a power source to this edge.");
+        else if (!selected.linked)
+            appendEditorHint(body, linkTargets.length > 0 ? "On network. Link to another portal on the same laser chain below." : "On network, but no other powered portal shares this chain yet.");
         if (selected.linked) {
             appendSelectField(body, "Connection", {
                 value: selected.connection ?? "shared",
@@ -97,9 +100,9 @@ function appendPortalEditorFields(body, controller, selected, { stampDefaults = 
                     onChange();
                 },
             });
-            appendEditorHint(body, `${selected.connectionLabel}. Purple ⇄ = shared link. Orange → = exit direction.`);
-        } else appendEditorHint(body, "Not linked — pick a partner below.");
-        if (linkTargets.length > 0)
+            appendEditorHint(body, `${selected.connectionLabel}. Purple link arrows show travel direction between paired portals.`);
+        }
+        if (selected.onNetwork && linkTargets.length > 0)
             appendSelectField(body, "Link partner", {
                 value: selected.linked && selected.partner ? `${selected.partner.col},${selected.partner.row},${selected.partner.side}` : "",
                 options: [{ value: "", label: "Choose portal…" }, ...linkTargets.map((t) => ({ value: `${t.col},${t.row},${t.side}`, label: t.label }))],
@@ -403,7 +406,7 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
             return;
         }
         if (selectedPortalInfo) {
-            appendEditorHint(body, `Portal · ${selectedPortalInfo.sideLabel}. Link a partner, then set Shared vs One-way connection. Entrance mode is separate (blocks stepping onto the edge).`);
+            appendEditorHint(body, `Portal · ${selectedPortalInfo.sideLabel}. Dim cyan = off network. Bright cyan = on laser chain. Link partners only when both are on the same chain.`);
             appendPortalEditorFields(body, controller, selectedPortalInfo, { linkTargets: portalLinkTargets, onChange });
             const deleteRow = document.createElement("div");
             deleteRow.className = "sandbox-add-row";
@@ -604,7 +607,18 @@ export function mountSandboxToyUi(container, controller, onChange) {
             );
         });
         appendSection(container, "scene-json", "Scene JSON", sectionOpen("scene-json"), (body) => {
-            appendEditorHint(body, "Copy/paste sandbox layout: props, walls, belts, power sources, forcefields. Replace clears the current sandbox first.");
+            appendEditorHint(body, "Copy/paste sandbox layout: props, walls, belts, power sources, forcefields, portals. Replace clears the current sandbox first.");
+            const startDemoBtn = document.createElement("button");
+            startDemoBtn.type = "button";
+            startDemoBtn.className = "secondary";
+            startDemoBtn.textContent = "Load start demo";
+            startDemoBtn.addEventListener("click", () => {
+                if (!window.confirm("Replace the current sandbox with the portal/power start demo?")) return;
+                controller.loadStartScene();
+                textarea.value = controller.exportSceneSnapshot();
+                onChange();
+            });
+            body.appendChild(startDemoBtn);
             const textarea = document.createElement("textarea");
             textarea.className = "editor-export-area";
             textarea.rows = 10;

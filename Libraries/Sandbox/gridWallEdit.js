@@ -2,7 +2,7 @@ import { packCellKey, packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
-import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
+import { syncPassagePowerNetwork, canLinkPortalsOnNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import {
     formatEntranceModeLabel,
@@ -404,6 +404,7 @@ export function stampPortalAt(state, col, row, side, { entranceMode = PASSAGE_MO
     if (gridHasForcefield(grid, col, row, side)) clearForcefieldAt(state, col, row, side);
     if (!setBoundary(grid, col, row, side, { kind: "portal", entranceMode: parseEntranceMode(entranceMode), allowedSide, partnerKey: 0, powered: false })) return false;
     notifyGridWallChange(state, cellBounds(col, row));
+    syncPassagePowerNetwork(state);
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {string} entranceMode @param {number} allowedSide */
@@ -420,11 +421,13 @@ export function clearPortalAt(state, col, row, side) {
     unlinkPortalEdge(grid, col, row, side);
     clearBoundaryPrimary(grid, col, row, side);
     notifyGridWallChange(state, cellBounds(col, row));
+    syncPassagePowerNetwork(state);
     return true;
 }
 /** @param {object} state @param {number} colA @param {number} rowA @param {number} sideA @param {number} colB @param {number} rowB @param {number} sideB */
 export function linkPortalsAt(state, colA, rowA, sideA, colB, rowB, sideB) {
     const grid = state.obstacleGrid;
+    if (!canLinkPortalsOnNetwork(state, grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
     if (!linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
     setPortalLinkProfile(grid, colA, rowA, sideA, PORTAL_LINK_MODE.Shared, 0);
     notifyGridWallChange(state, cellBounds(colA, rowA));
@@ -447,8 +450,8 @@ export function setPortalLinkProfileAt(state, col, row, side, linkMode, linkSour
     if (partner) notifyGridWallChange(state, cellBounds(partner.col, partner.row));
     return true;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
-export function getPortalInfo(grid, col, row, side) {
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {object | null} [state] */
+export function getPortalInfo(grid, col, row, side, state = null) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isPortalEdge(edge)) return null;
     const entranceMode = parseEntranceMode(edge.entranceMode);
@@ -459,6 +462,11 @@ export function getPortalInfo(grid, col, row, side) {
     const fromSelf = route?.fromSelf ?? true;
     let connection = "shared";
     if (linkMode === PORTAL_LINK_MODE.OneWay) connection = fromSelf ? "fromSelf" : "fromPartner";
+    const powered = edge.powered === true;
+    const networkId = state ? getPassageEdgeNetworkId(state, grid, col, row, side) : powered ? 0 : -1;
+    const onNetwork = networkId >= 0;
+    let connectionLabel = "Off network";
+    if (onNetwork) connectionLabel = partner ? formatPortalConnectionLabel(linkMode, fromSelf) : "On network · unlinked";
     return {
         col,
         row,
@@ -471,7 +479,10 @@ export function getPortalInfo(grid, col, row, side) {
         linkMode,
         linkSourceKey: edge.linkSourceKey ?? 0,
         connection,
-        connectionLabel: partner ? formatPortalConnectionLabel(linkMode, fromSelf) : "Unlinked",
+        connectionLabel,
+        powered,
+        onNetwork,
+        networkId,
         sideLabel: formatGridWallEdgeSideLabel(side),
         entranceModeLabel: formatEntranceModeLabel(entranceMode),
     };
@@ -501,9 +512,14 @@ export function listPlacedPortals(grid) {
     }
     return placed;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} selectedCol @param {number} selectedRow @param {number} selectedSide */
-export function listPortalLinkTargets(grid, selectedCol, selectedRow, selectedSide) {
-    return listPlacedPortals(grid).filter((entry) => !isSamePortalEdge(grid, entry.col, entry.row, entry.side, selectedCol, selectedRow, selectedSide));
+/** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} selectedCol @param {number} selectedRow @param {number} selectedSide */
+export function listPortalLinkTargets(state, grid, selectedCol, selectedRow, selectedSide) {
+    const selectedNet = getPassageEdgeNetworkId(state, grid, selectedCol, selectedRow, selectedSide);
+    if (selectedNet < 0) return [];
+    return listPlacedPortals(grid).filter((entry) => {
+        if (isSamePortalEdge(grid, entry.col, entry.row, entry.side, selectedCol, selectedRow, selectedSide)) return false;
+        return getPassageEdgeNetworkId(state, grid, entry.col, entry.row, entry.side) === selectedNet;
+    });
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function listPlacedForcefields(grid) {

@@ -30,18 +30,19 @@ function drawDirectionalArrow(ctx, x, y, ax, ay, size, fillStyle) {
     ctx.closePath();
     ctx.fill();
 }
-/** @param {"unlinked" | "shared" | "source" | "dest"} role */
-function portalEdgeStroke(role) {
-    if (role === "unlinked") return { stroke: "rgba(251, 191, 36, 0.92)", width: 4, dash: [7, 5] };
-    if (role === "source") return { stroke: "rgba(251, 146, 60, 0.98)", width: 5, dash: [] };
-    if (role === "dest") return { stroke: "rgba(56, 189, 248, 0.85)", width: 4, dash: [5, 4] };
-    return { stroke: "rgba(167, 139, 250, 0.98)", width: 5, dash: [] };
+/** @param {boolean} powered @param {"unlinked" | "shared" | "source" | "dest"} role */
+function portalEdgeStroke(powered, role) {
+    if (!powered) return { stroke: "rgba(56, 189, 248, 0.28)", width: 2.5, dash: [6, 5] };
+    if (role === "source") return { stroke: "rgba(56, 189, 248, 0.98)", width: 4.5, dash: [] };
+    if (role === "dest") return { stroke: "rgba(56, 189, 248, 0.75)", width: 3.5, dash: [4, 4] };
+    return { stroke: "rgba(56, 189, 248, 0.95)", width: 4, dash: [] };
 }
-/** @param {"unlinked" | "shared" | "source" | "dest"} role */
-function portalGlyph(role) {
-    if (role === "unlinked") return { fill: "rgba(251, 191, 36, 0.95)", text: "?" };
+/** @param {boolean} powered @param {"unlinked" | "shared" | "source" | "dest"} role */
+function portalGlyph(powered, role) {
+    if (!powered) return { fill: "rgba(56, 189, 248, 0.35)", text: "○" };
+    if (role === "unlinked") return { fill: "rgba(56, 189, 248, 0.85)", text: "?" };
     if (role === "source") return { fill: "rgba(251, 146, 60, 0.98)", text: "→" };
-    if (role === "dest") return { fill: "rgba(56, 189, 248, 0.95)", text: "○" };
+    if (role === "dest") return { fill: "rgba(56, 189, 248, 0.85)", text: "○" };
     return { fill: "rgba(167, 139, 250, 0.98)", text: "⇄" };
 }
 /**
@@ -49,10 +50,11 @@ function portalGlyph(role) {
  * @param {number} x
  * @param {number} y
  * @param {number} lineScale
+ * @param {boolean} powered
  * @param {"unlinked" | "shared" | "source" | "dest"} role
  */
-function drawPortalMidpointGlyph(ctx, x, y, lineScale, role) {
-    const { fill, text } = portalGlyph(role);
+function drawPortalMidpointGlyph(ctx, x, y, lineScale, powered, role) {
+    const { fill, text } = portalGlyph(powered, role);
     const r = 7 * lineScale;
     ctx.fillStyle = fill;
     ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
@@ -141,14 +143,15 @@ export function drawForcefieldEdges(ctx, state, viewport) {
             if (!isForcefieldEdge(edge)) continue;
             if (isPortalEdge(edge)) {
                 if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
-                const route = resolvePortalLinkRoute(grid, col, row, side);
+                const powered = edge.powered === true;
+                const route = powered ? resolvePortalLinkRoute(grid, col, row, side) : null;
                 let role = /** @type {"unlinked" | "shared" | "source" | "dest"} */ ("unlinked");
                 if (route)
                     if (route.linkMode === PORTAL_LINK_MODE.Shared) role = "shared";
                     else if (route.source.col === col && route.source.row === row && route.source.side === side) role = "source";
                     else role = "dest";
                 gridWallEdgeEndpoints(grid, col, row, side, EDGE_P1, EDGE_P2, 0);
-                const stroke = portalEdgeStroke(role);
+                const stroke = portalEdgeStroke(powered, role);
                 ctx.strokeStyle = stroke.stroke;
                 ctx.lineWidth = stroke.width * lineScale;
                 ctx.setLineDash(stroke.dash.map((d) => d * lineScale));
@@ -158,7 +161,7 @@ export function drawForcefieldEdges(ctx, state, viewport) {
                 ctx.stroke();
                 ctx.setLineDash([]);
                 const mid = portalEdgeMidpoint(grid, col, row, side);
-                drawPortalMidpointGlyph(ctx, mid.x, mid.y, lineScale, role);
+                drawPortalMidpointGlyph(ctx, mid.x, mid.y, lineScale, powered, role);
                 if (route) drawPortalConnection(ctx, grid, route.source, route.dest, route.linkMode, lineScale);
                 continue;
             }

@@ -10,6 +10,7 @@ import { isButtonEntity } from "./buttonInput.js";
 import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold } from "./floorButtons.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
+import { spawnSandboxStartScene } from "./sandboxStartScene.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawSandboxMarquee, drawSandboxSelectionRings, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
 import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
@@ -457,6 +458,14 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         exportSceneSnapshot: () => JSON.stringify(collectSandboxSceneSnapshot(state), null, 2),
         importSceneSnapshot(json) {
             applySandboxSceneSnapshot(state, parseSandboxSceneSnapshot(json));
+            resetBehaviors();
+            session.clearPropSelection();
+            session.clearFloorSelection();
+            session.clearWallSelection();
+            session.sync();
+        },
+        loadStartScene() {
+            spawnSandboxStartScene(state);
             resetBehaviors();
             session.clearPropSelection();
             session.clearFloorSelection();

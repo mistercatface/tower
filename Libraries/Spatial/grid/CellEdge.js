@@ -61,6 +61,10 @@ export function isPortalEdge(edge) {
 export function isPassageLaserEdge(edge) {
     return isForcefieldEdge(edge) && edge.mode !== PASSAGE_MODE.Portal;
 }
+/** Laser or portal — both conduct passage power along the shared vertex graph. */
+export function isPassagePowerConductorEdge(edge) {
+    return isPassageLaserEdge(edge) || isPortalEdge(edge);
+}
 /** Static edge kinds that always block crossing (not forcefields — those depend on passage profile + powered). */
 export function edgeBlocksCrossing(edge) {
     return isRailWallEdge(edge) || isBeltRailEdge(edge);
