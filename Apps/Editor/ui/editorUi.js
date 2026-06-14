@@ -5,7 +5,6 @@ import { initAnimationPreview, mountAnimationPreviewCanvas, estimateAnimationPre
 import { mountMapOverview, estimateMapOverviewHeight, paintMapOverviewFrame, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapPanelInputs } from "./mapPanel.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
-import { initGenEditor } from "./gen/GenEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, bindVectorPropsToolbar, syncWorldRenderModeUi } from "./toolbar.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
@@ -79,7 +78,6 @@ export function mountEditorUi(state, { playbackHandlers }) {
     });
     buildMapPanel(state, requestRedraw);
     mountTilelabSandbox(state, requestRedraw);
-    initGenEditor({ controller: state.sandbox.controller, onChange: requestRedraw });
     bindToolbarControls({
         onOverlayChange: () => drawLabFrame(state),
         onRedraw: () => {

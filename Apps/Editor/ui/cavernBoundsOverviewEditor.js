@@ -1,6 +1,5 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { getCavernCenterWorld, getCavernInnerRadiusCells, migrateCavernConfigForMode } from "../world/cavernBounds.js";
-import { applyCellBoundsDrag, applyCellBoundsDragAtPointer, cellBoundsCursor, hitTestCellBounds } from "./cellBoundsOverview.js";
 import { drawWorldBoundsBox, drawWorldCircle, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
 export { drawWorldBoundsBox, drawWorldCircle } from "./mapOverviewDraw.js";
 const EDGE_HIT_PX = 8;
@@ -206,9 +205,9 @@ export function cavernBoundsCursor(mode) {
 }
 /** @param {HTMLCanvasElement} canvas @param {import("../state.js").TileLabGameState} state @param {() => void} onChange */
 export function mountOverviewBoundsEditors(canvas, state, onChange) {
-    /** @type {"cavern" | "rail" | "wall" | null} */
+    /** @type {"cavern" | "rail" | null} */
     let dragTarget = null;
-    /** @type {CavernDragMode | import("./cellBoundsOverview.js").CellBoundsDragMode | null} */
+    /** @type {CavernDragMode | null} */
     let dragMode = null;
     let lastWorldX = 0;
     let lastWorldY = 0;
@@ -231,19 +230,13 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
             else if (dragTarget === "rail")
                 if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.railConfig);
                 else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.railConfig);
-            else if (dragMode === "resize-outer") applyCellBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.wallToolConfig);
-            else applyCellBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.wallToolConfig);
             lastWorldX = world.x;
             lastWorldY = world.y;
             onChange();
             return;
         }
         let cursor = "default";
-        if (state.editor.showMapOverviewWallBounds) {
-            const wallHit = hitTestCellBounds(sx, sy, state.editor.wallToolConfig, state.editor.mapBoundsPreview.wall, frame.cache, frame.displayW, frame.displayH);
-            if (wallHit) cursor = cellBoundsCursor(wallHit);
-        }
-        if (cursor === "default" && state.editor.showMapOverviewRailBounds) {
+        if (state.editor.showMapOverviewRailBounds) {
             const railHit = hitTestRailBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
             if (railHit) cursor = cavernBoundsCursor(railHit);
         }
@@ -259,20 +252,6 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
         const rect = canvas.getBoundingClientRect();
         const sx = ((e.clientX - rect.left) / rect.width) * frame.displayW;
         const sy = ((e.clientY - rect.top) / rect.height) * frame.displayH;
-        if (state.editor.showMapOverviewWallBounds) {
-            const wallHit = hitTestCellBounds(sx, sy, state.editor.wallToolConfig, state.editor.mapBoundsPreview.wall, frame.cache, frame.displayW, frame.displayH);
-            if (wallHit) {
-                e.preventDefault();
-                e.stopPropagation();
-                dragTarget = "wall";
-                dragMode = wallHit;
-                const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
-                lastWorldX = world.x;
-                lastWorldY = world.y;
-                canvas.setPointerCapture(e.pointerId);
-                return;
-            }
-        }
         if (state.editor.showMapOverviewRailBounds) {
             const railHit = hitTestRailBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
             if (railHit) {

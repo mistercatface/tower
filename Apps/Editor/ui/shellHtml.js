@@ -41,10 +41,6 @@ export const TILELAB_UI_HTML = `
                         <span>Map</span>
                     </label>
                     <label class="editor-panel-toggle">
-                        <input type="radio" name="editorSidebarPanel" id="showGenPanelInput" value="gen">
-                        <span>Gen</span>
-                    </label>
-                    <label class="editor-panel-toggle">
                         <input type="radio" name="editorSidebarPanel" id="showJsonPanelInput" value="json">
                         <span>JSON</span>
                     </label>
@@ -100,34 +96,6 @@ export const TILELAB_UI_HTML = `
                     <div class="editor-scroll">
                         <p class="editor-hint">Play area sets the obstacle grid; cavern bounds are in grid cells. Stamp multiple regions by moving bounds and generating again.</p>
                         <div id="mapSettingsPanel"></div>
-                        <div id="mapWallToolPanel" class="editor-block editor-block-separated"></div>
-                    </div>
-                </div>
-                <div id="genPanel" class="editor-panel-section" data-panel="gen">
-                    <div class="editor-panel-head">Room graph</div>
-                    <div class="editor-scroll">
-                        <div id="genPresetTools" class="editor-tools"></div>
-                        <div id="genToolsPanel"></div>
-                        <details class="editor-block" open>
-                            <summary>Retry loop</summary>
-                            <div id="genRetryPanel"></div>
-                            <div id="genUntilPanel"></div>
-                        </details>
-                        <details class="editor-block" open>
-                            <summary>Pipeline body</summary>
-                            <div id="genBodyTools" class="editor-tools"></div>
-                            <div id="genStepList" class="motif-list-host"></div>
-                        </details>
-                        <details class="editor-block" open>
-                            <summary>Selected step</summary>
-                            <div id="genStepParamsPanel"></div>
-                        </details>
-                        <details class="editor-block" open>
-                            <summary>Export</summary>
-                            <textarea id="genExport" class="editor-export-area" readonly spellcheck="false"></textarea>
-                            <div id="genExportTools" class="editor-tools"></div>
-                        </details>
-                        <div id="genStatusPanel" class="editor-block"></div>
                     </div>
                 </div>
                 <div id="jsonPanel" class="editor-panel-section" data-panel="json">

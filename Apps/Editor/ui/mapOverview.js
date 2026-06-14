@@ -3,7 +3,6 @@ import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { refreshLabMapBoundsPreview } from "../world/mapWorld.js";
 import { drawCavernBoundsPreview, drawWorldBoundsBox, mountOverviewBoundsEditors } from "./cavernBoundsOverviewEditor.js";
-import { drawCellBoundsPreview } from "./cellBoundsOverview.js";
 /** @typedef {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} MapOverviewCache */
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let overviewCanvasResize = null;
@@ -38,7 +37,6 @@ export function paintMapOverviewFrame(state) {
         if (railConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.rail, cache, displayW, displayH, "#e040fb", 2);
         else drawCavernBoundsPreview(ctx, railConfig, cache, displayW, displayH, "#e040fb");
     }
-    if (state.editor.showMapOverviewWallBounds) drawCellBoundsPreview(ctx, state.editor.wallToolConfig, state.editor.mapBoundsPreview.wall, cache, displayW, displayH, "#f44336", 2);
 }
 /** Vertical space for main map max-size when overview is visible. */
 export function estimateMapOverviewHeight() {

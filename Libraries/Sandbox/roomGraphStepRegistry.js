@@ -25,8 +25,53 @@ function validateTreeEdgesForNodeCount(treeEdges, nodeCount) {
 }
 const corridorCountField = { path: "corridorCount", label: "Corridor count", min: 1, max: 8, step: 1 };
 const corridorWidthField = { path: "corridorWidth", label: "Corridor width", min: 1, max: 4, step: 1 };
+const roomSizeFields = [
+    { path: "roomMinWidth", label: "Min room width", min: 4, max: 32, step: 1 },
+    { path: "roomMaxWidth", label: "Max room width", min: 4, max: 32, step: 1 },
+    { path: "roomMinHeight", label: "Min room height", min: 4, max: 32, step: 1 },
+    { path: "roomMaxHeight", label: "Max room height", min: 4, max: 32, step: 1 },
+    { path: "nodeSpacingPad", label: "Node spacing pad", min: 0, max: 16, step: 1 },
+];
 /** @type {ReturnType<typeof createStepRegistry>} */
 export const ROOM_GRAPH_STEP_REGISTRY = createStepRegistry();
+ROOM_GRAPH_STEP_REGISTRY.register({
+    id: "buildTopology",
+    label: "Build topology",
+    defaults: { op: "buildTopology", preset: "defaultY", nodeCount: 4 },
+    fields: [
+        { path: "nodeCount", label: "Room count", min: 1, max: 32, step: 1 },
+        {
+            path: "preset",
+            label: "Topology preset",
+            kind: "select",
+            options: [
+                { value: "defaultY", label: "Default Y (4 rooms)" },
+                { value: "hubSpoke", label: "Hub + spokes" },
+                { value: "random", label: "Random tree" },
+            ],
+        },
+    ],
+});
+ROOM_GRAPH_STEP_REGISTRY.register({
+    id: "embedGraph",
+    label: "Embed graph",
+    defaults: { op: "embedGraph", mode: "treeSpread", roomMinWidth: 10, roomMaxWidth: 10, roomMinHeight: 10, roomMaxHeight: 10, nodeSpacingPad: 4 },
+    fields: [
+        {
+            path: "mode",
+            label: "Layout mode",
+            kind: "select",
+            options: [
+                { value: "layered", label: "Layered (depth rows)" },
+                { value: "treeSpread", label: "Tree spread (rays)" },
+                { value: "scatter", label: "Random scatter" },
+            ],
+        },
+        ...roomSizeFields,
+        { path: "gridCols", label: "Grid cols", min: 16, max: 512, step: 1 },
+        { path: "gridRows", label: "Grid rows", min: 16, max: 512, step: 1 },
+    ],
+});
 ROOM_GRAPH_STEP_REGISTRY.register({
     id: "buildNodeGraph",
     label: "Build node graph",

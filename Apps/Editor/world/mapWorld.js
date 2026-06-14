@@ -98,27 +98,6 @@ export function refreshLabMapBoundsPreview(state) {
         cache.railDonutThicknessCells = railCfg.donutThicknessCells;
         getCellBoundsAabbInto(cache.rail, railCfg, cellSize);
     }
-    const wallCfg = state.editor.wallToolConfig;
-    if (
-        cache.wallMode !== wallCfg.boundsMode ||
-        cache.wallCol !== wallCfg.boundsCol ||
-        cache.wallRow !== wallCfg.boundsRow ||
-        cache.wallCols !== wallCfg.boundsCols ||
-        cache.wallRows !== wallCfg.boundsRows ||
-        cache.wallCenterCol !== wallCfg.centerCol ||
-        cache.wallCenterRow !== wallCfg.centerRow ||
-        cache.wallOuterRadiusCells !== wallCfg.outerRadiusCells
-    ) {
-        cache.wallMode = wallCfg.boundsMode;
-        cache.wallCol = wallCfg.boundsCol;
-        cache.wallRow = wallCfg.boundsRow;
-        cache.wallCols = wallCfg.boundsCols;
-        cache.wallRows = wallCfg.boundsRows;
-        cache.wallCenterCol = wallCfg.centerCol;
-        cache.wallCenterRow = wallCfg.centerRow;
-        cache.wallOuterRadiusCells = wallCfg.outerRadiusCells;
-        getCellBoundsAabbInto(cache.wall, wallCfg, cellSize);
-    }
 }
 /**
  * @param {import("../state.js").TileLabGameState["viewport"]} viewport

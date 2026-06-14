@@ -598,38 +598,6 @@ details.editor-block > *:not(summary) {
     color: var(--text);
 }
 
-#genStepParamsPanel .param-field,
-#genUntilPanel .param-field,
-#genRetryPanel .param-field {
-    grid-template-columns: 96px 1fr 44px;
-}
-
-#genStepParamsPanel .editor-subhead,
-#genUntilPanel .editor-subhead {
-    margin-top: 10px;
-}
-
-#genExport {
-    width: 100%;
-    min-height: 120px;
-    margin-bottom: 6px;
-}
-
-#genStatusPanel {
-    margin-top: 8px;
-    font-size: 11px;
-    white-space: pre-wrap;
-    color: var(--muted);
-}
-
-#genStatusPanel[data-status="ok"] {
-    color: #7dcea0;
-}
-
-#genStatusPanel[data-status="error"] {
-    color: #e07070;
-}
-
 @media (max-width: 1100px) {
     :root {
         --editor-w: 40vw;

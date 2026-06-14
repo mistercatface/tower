@@ -1,5 +1,4 @@
 import { generateLabCaverns, generateLabRailCaverns, PLAY_AREA_CELL_OPTIONS, playAreaCellsToIndex, syncCavernBoundsFromPlay } from "../world/mapWorld.js";
-import { buildMapWallToolPanel } from "./mapWallTool.js";
 import { migrateCavernConfigForMode } from "../world/cavernBounds.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
@@ -442,14 +441,6 @@ export function buildMapPanel(state, onGenerated) {
     });
     railRow.appendChild(genRailBtn);
     panel.appendChild(railRow);
-    const wallMount = document.getElementById("mapWallToolPanel");
-    const wallTool = buildMapWallToolPanel(state, wallMount, () => {
-        onGenerated();
-        paintMapOverviewFrame(state);
-    });
-    mapPanelRefreshInputs = () => {
-        refreshBoundInputs();
-        wallTool.refreshBoundInputs();
-    };
+    mapPanelRefreshInputs = refreshBoundInputs;
     onPreviewChange();
 }

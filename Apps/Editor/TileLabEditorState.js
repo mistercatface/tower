@@ -26,15 +26,6 @@ export function createLabMapBoundsPreview() {
         railCenterRow: NaN,
         railOuterRadiusCells: NaN,
         railDonutThicknessCells: NaN,
-        wall: createAabb(),
-        wallMode: "",
-        wallCol: NaN,
-        wallRow: NaN,
-        wallCols: NaN,
-        wallRows: NaN,
-        wallCenterCol: NaN,
-        wallCenterRow: NaN,
-        wallOuterRadiusCells: NaN,
     };
 }
 /** Tilelab editor UI and map-authoring state — not used by sandbox sim logic. */
@@ -73,27 +64,12 @@ export class TileLabEditorState {
             wallHeightLevel: 9,
             edgeThickness: 2,
         };
-        this.wallToolConfig = {
-            boundsMode: "rect",
-            boundsCol: 0,
-            boundsRow: 0,
-            boundsCols: 8,
-            boundsRows: 1,
-            centerCol: 4,
-            centerRow: 4,
-            outerRadiusCells: 4,
-            wallHeightLevel: 1,
-            wallStampMode: "edgeLine",
-            edgeLineSide: 2,
-            edgeThickness: 2,
-        };
         this.sidebarPanel = "sandbox";
         this.showAnimationPreview = false;
         this.showMapOverview = true;
         this.showMapOverviewViewport = true;
         this.showMapOverviewGenBounds = true;
         this.showMapOverviewRailBounds = true;
-        this.showMapOverviewWallBounds = false;
         this.forceVectorPropsAll = false;
     }
 }

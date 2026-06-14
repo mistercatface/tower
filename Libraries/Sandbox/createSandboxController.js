@@ -11,7 +11,6 @@ import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold }
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene } from "./sandboxStartScene.js";
-import { spawnSandboxGraphScene, tryBuildSandboxRoomGraphSceneDoc } from "./sandboxRoomGraphGen.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawSandboxMarquee, drawSandboxPropTileCells, drawSandboxSelectionRings, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
 import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
@@ -521,25 +520,6 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             session.clearFloorSelection();
             session.clearWallSelection();
             session.sync();
-        },
-        loadRandomGraphScene() {
-            spawnSandboxGraphScene(state, { seed: Date.now() >>> 0 });
-            resetBehaviors();
-            session.clearPropSelection();
-            session.clearFloorSelection();
-            session.clearWallSelection();
-            session.sync();
-        },
-        tryLoadGraphScene(options = {}) {
-            const result = tryBuildSandboxRoomGraphSceneDoc(options);
-            if (!result.ok) return result;
-            applySandboxSceneSnapshot(state, result.doc);
-            resetBehaviors();
-            session.clearPropSelection();
-            session.clearFloorSelection();
-            session.clearWallSelection();
-            session.sync();
-            return { ok: true, doc: result.doc };
         },
         sync: () => session.sync(),
         getState: () => session.getState(),
