@@ -79,6 +79,8 @@ export {
     roomWallGapKeysWorld,
     omitRailWallsAtGapKeys,
     tryBuildCorridorRails,
+    tryBuildCorridorForEdge,
+    tryBuildCorridorRailsForEdges,
     tryBuildNodeGraph,
     tryBuildRoomGraphLayout,
     tryBuildSingleCorridorRails,
