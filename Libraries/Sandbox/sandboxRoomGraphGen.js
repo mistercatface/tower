@@ -1,12 +1,26 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
 import { applySandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
-/** Ordered procgen steps — only `op` values handled in `runRoomGraphMotifs` are valid. */
+/** Edit this array to change generation — each step runs in order. */
 export const DEFAULT_SANDBOX_GRAPH_MOTIFS = [
     {
         op: "retryUntil",
         maxAttempts: 60,
         body: [
-            { op: "buildNodeGraph" },
+            {
+                op: "buildNodeGraph",
+                nodeCount: 4,
+                treeEdges: [
+                    [0, 1],
+                    [0, 2],
+                    [2, 3],
+                ],
+                placement: "treeSpread",
+                roomMinWidth: 10,
+                roomMaxWidth: 10,
+                roomMinHeight: 10,
+                roomMaxHeight: 10,
+                nodeSpacingPad: 4,
+            },
             { op: "buildClosedRooms" },
             { op: "forEachNode", run: { op: "punchHolePerIncidentEdge" } },
             { op: "forEachEdge", requireAll: true, canIntersect: false, run: { op: "buildCorridorForEdge", skipPunchIfHolesPresent: true } },
@@ -116,6 +130,9 @@ export const DEFAULT_ROOM_GRAPH_GRID = {
 export const DEFAULT_CORRIDOR_HALF_WIDTH = 0;
 export const DEFAULT_CORRIDOR_EGRESS_CELLS = 2;
 export const DEFAULT_SANDBOX_GRAPH_CELL_SIZE = 16;
+/** Procgen layout grid — grows with node count / tree depth; scene sandbox is at least this large. */
+export const NODE_GRAPH_GRID_MIN = 64;
+export const NODE_GRAPH_GRID_MAX = 384;
 const ROOM_PROP_TYPES = ["blue_ball", "beach_ball", "barrel"];
 /** @param {Partial<NodeGraphGenConfig> & { seed?: number, roomCount?: number, minRooms?: number }} [overrides] */
 export function resolveNodeGraphGenConfig(overrides = {}) {
@@ -245,6 +262,56 @@ function maxTreeDepthFromRoot(children, rootId = 0) {
     }
     return depth(rootId);
 }
+/** @param {NodeGraphGenConfig} config @param {{ a: number, b: number }[]} treeEdges @param {number} nodeCount */
+export function estimateTreeSpreadGridSize(config, treeEdges, nodeCount) {
+    const children = childrenMapFromTreeEdges(treeEdges, nodeCount);
+    const maxDepth = Math.max(1, maxTreeDepthFromRoot(children, 0));
+    let maxFanout = 0;
+    for (let i = 0; i < nodeCount; i++) maxFanout = Math.max(maxFanout, children[i].length);
+    const maxRoom = Math.max(config.roomMaxWidth, config.roomMaxHeight);
+    const corridorPad = config.treeSpreadCorridorPad ?? DEFAULT_CORRIDOR_EGRESS_CELLS + 2;
+    const maxHop = treeSpreadCenterStep(maxRoom, maxRoom, maxRoom, maxRoom, config.nodeSpacingPad, corridorPad);
+    const radial = maxDepth * maxHop + maxRoom;
+    const lateral = Math.ceil(maxFanout / 2) * maxHop;
+    const half = radial + lateral + config.gridEdgeMargin;
+    const size = Math.min(NODE_GRAPH_GRID_MAX, Math.max(NODE_GRAPH_GRID_MIN, half * 2));
+    return {
+        gridCols: Math.max(config.gridCols ?? 0, size),
+        gridRows: Math.max(config.gridRows ?? 0, size),
+    };
+}
+/** Random tree on node ids 0..n-1 (node 0 root). Used when nodeCount > 1 and treeEdges is empty. */
+/** @param {number} nodeCount @param {() => number} rng @param {number} treeParentCandidateCount */
+export function buildRandomTreeEdges(nodeCount, rng, treeParentCandidateCount = DEFAULT_NODE_GRAPH_GEN_CONFIG.treeParentCandidateCount) {
+    if (nodeCount <= 1) return [];
+    /** @type {{ a: number, b: number }[]} */
+    const edges = [];
+    const inTree = new Uint8Array(nodeCount);
+    inTree[0] = 1;
+    for (let k = 1; k < nodeCount; k++) {
+        /** @type {number[]} */
+        const outside = [];
+        for (let j = 0; j < nodeCount; j++) if (!inTree[j]) outside.push(j);
+        const j = outside[(rng() * outside.length) | 0];
+        /** @type {number[]} */
+        const parents = [];
+        for (let i = 0; i < nodeCount; i++) if (inTree[i]) parents.push(i);
+        const pick = parents[Math.min((rng() * Math.min(treeParentCandidateCount, parents.length)) | 0, parents.length - 1)];
+        inTree[j] = 1;
+        edges.push({ a: pick, b: j });
+    }
+    return edges;
+}
+/** @param {NodeGraphGenConfig} config @param {() => number} rng */
+function resolveTreeEdgesForConfig(config, rng) {
+    if (config.nodeCount <= 1) return [];
+    if (Array.isArray(config.treeEdges) && config.treeEdges.length > 0) return parseTreeEdgesSpec(config.treeEdges, config.nodeCount);
+    return buildRandomTreeEdges(config.nodeCount, rng, config.treeParentCandidateCount);
+}
+/** @param {NodeGraphGenConfig} config @param {{ a: number, b: number }[]} treeEdges */
+function configWithTreeSpreadGrid(config, treeEdges) {
+    return { ...config, ...estimateTreeSpreadGridSize(config, treeEdges, config.nodeCount) };
+}
 /** @param {number} centerC @param {number} centerR @param {number} width @param {number} height @param {number} id */
 function graphNodeAtCenter(centerC, centerR, width, height, id) {
     const c0 = (centerC - (width - 1) / 2) | 0;
@@ -271,7 +338,7 @@ function treeSpreadUnitDelta(childIndex, siblingCount) {
 export function placeGraphNodesTreeSpread(rng, config, treeEdges) {
     const { gridCols, gridRows, nodeCount, nodeSpacingPad, gridEdgeMargin, roomMinWidth, roomMaxWidth, roomMinHeight, roomMaxHeight, treeSpreadCorridorPad } = config;
     const children = childrenMapFromTreeEdges(treeEdges, nodeCount);
-    const maxDepth = maxTreeDepthFromRoot(children, 0);
+    const maxDepth = Math.max(1, maxTreeDepthFromRoot(children, 0));
     const maxRoom = Math.max(roomMaxWidth, roomMaxHeight);
     const maxHop = treeSpreadCenterStep(maxRoom, maxRoom, maxRoom, maxRoom, nodeSpacingPad, treeSpreadCorridorPad);
     const vertHalf = (gridRows / 2) | 0;
@@ -387,26 +454,28 @@ export function buildNodeGraph(rng, config) {
     let treeEdges;
     /** @type {GraphNode[]} */
     let nodes;
-    if (config.treeEdges) {
+    /** @type {NodeGraphGenConfig} */
+    let layoutConfig = config;
+    if (config.placement === "treeSpread") {
+        treeEdges = resolveTreeEdgesForConfig(config, rng);
+        layoutConfig = configWithTreeSpreadGrid(config, treeEdges);
+        nodes = placeGraphNodesTreeSpread(rng, layoutConfig, treeEdges);
+    } else if (Array.isArray(config.treeEdges) && config.treeEdges.length > 0) {
         treeEdges = parseTreeEdgesSpec(config.treeEdges, config.nodeCount);
-        if (config.placement === "treeSpread") nodes = placeGraphNodesTreeSpread(rng, config, treeEdges);
-        else {
-            nodes = placeGraphNodes(rng, config);
-            if (nodes.length < config.nodeCount) throw new Error(`placement: placed ${nodes.length}/${config.nodeCount} nodes`);
-        }
+        nodes = placeGraphNodes(rng, config);
+        if (nodes.length < config.nodeCount) throw new Error(`placement: placed ${nodes.length}/${config.nodeCount} nodes`);
     } else {
-        if (config.placement === "treeSpread") throw new Error("treeSpread placement requires treeEdges");
         nodes = placeGraphNodes(rng, config);
         treeEdges = buildBranchingNodeTree(nodes, rng, config.treeParentCandidateCount);
     }
     const directedEdges = buildDirectedGraphEdges(nodes, treeEdges);
-    return { seed: config.seed, config, gridCols: config.gridCols, gridRows: config.gridRows, nodes, treeEdges, directedEdges };
+    return { seed: config.seed, config: layoutConfig, gridCols: layoutConfig.gridCols, gridRows: layoutConfig.gridRows, nodes, treeEdges, directedEdges };
 }
 /** @param {Partial<NodeGraphGenConfig> & { seed?: number, roomCount?: number, minRooms?: number, maxAttempts?: number, treeEdges?: [number, number][] }} [options] */
 export function tryBuildNodeGraph(options = {}) {
     const base = resolveNodeGraphGenConfig(options);
     const maxAttempts = options.maxAttempts ?? options.layoutMaxAttempts ?? base.layoutMaxAttempts;
-    const requiredNodes = base.treeEdges ? base.nodeCount : base.minNodes;
+    const requiredNodes = base.placement === "treeSpread" || (Array.isArray(base.treeEdges) && base.treeEdges.length > 0) ? base.nodeCount : base.minNodes;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const config = { ...base, seed: base.seed + attempt };
         const rng = createSeededRng(config.seed);
@@ -1023,7 +1092,7 @@ export function describeLayoutValidationFailure(motif, ctx) {
     /** @type {string[]} */
     const parts = [];
     const config = resolveNodeGraphGenConfig(ctx.options);
-    const minNodes = motif.minNodes ?? config.minNodes;
+    const minNodes = motif.minNodes ?? config.nodeCount ?? config.minNodes;
     const edgeCount = ctx.layout.graphEdges.length;
     if (ctx.layout.rooms.length < minNodes) parts.push(`rooms ${ctx.layout.rooms.length}/${minNodes}`);
     if (motif.allTreeEdgesRouted && ctx.corridorPaths.length < edgeCount) parts.push(`corridors ${ctx.corridorPaths.length}/${edgeCount} tree edges`);
@@ -1078,7 +1147,8 @@ function runRetryUntilMotif(motif, options) {
 function runRoomGraphMotif(motif, ctx) {
     if (motif.op === "buildNodeGraph") {
         const { op, ...graphParams } = motif;
-        const nodeGraph = tryBuildNodeGraph({ ...ctx.options, ...graphParams });
+        ctx.options = { ...ctx.options, ...graphParams };
+        const nodeGraph = tryBuildNodeGraph(ctx.options);
         ctx.layout = layoutFromNodeGraph(nodeGraph, []);
         ctx.closedRooms = ctx.layout.closedRooms;
         const origin = roomGraphOrigin(ctx.layout.gridCols, ctx.layout.gridRows);
@@ -1179,12 +1249,15 @@ export function roomGraphLayoutToSceneDoc(layout, options) {
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
     const gapKeysWorld = roomWallGapKeysWorld(closedRooms, originCol, originRow);
     const props = options.props ?? [];
+    const scenePad = 48;
+    const cols = Math.max(layout.gridCols + scenePad, NODE_GRAPH_GRID_MIN);
+    const rows = Math.max(layout.gridRows + scenePad, NODE_GRAPH_GRID_MIN);
     return {
         schemaVersion: SANDBOX_SCENE_SCHEMA_VERSION,
         cellSize,
         origin: { minX: -1200, minY: -1200 },
-        cols: 150,
-        rows: 150,
+        cols,
+        rows,
         voxels: [],
         railWalls: mergeRailWalls([roomRails, omitRailWallsAtGapKeys(corridorRails, gapKeysWorld)]),
         forcefields: [],
