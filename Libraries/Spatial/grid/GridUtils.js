@@ -31,6 +31,11 @@ export function gridSideNeighborCell(col, row, side) {
 export function formatGridSideNeighborLabel(side) {
     return GRID_SIDE_NEIGHBOR_LABELS[side] ?? `Side ${side} neighbor`;
 }
+const GRID_EDGE_SIDE_FACING = [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5];
+/** Facing radians for grid edge side 0=N, 1=E, 2=S, 3=W. */
+export function gridEdgeSideFacing(side) {
+    return GRID_EDGE_SIDE_FACING[side];
+}
 export const OCTILE_OFFSETS = [
     { dc: 0, dr: -1, cost: 1 },
     { dc: 1, dr: 0, cost: 1 },

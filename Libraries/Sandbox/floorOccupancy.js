@@ -2,14 +2,14 @@ import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
-import { createConveyorDraw } from "../Render/conveyorDraw.js";
+import { fillCircle } from "../Canvas/CanvasPath.js";
+import { drawCachedPropSprite, GRID_STAMP_RENDER_KEY } from "../Canvas/QuantizedSpriteCache.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
+import { createConveyorDraw } from "../Render/conveyorDraw.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
-import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
+import { syncPassagePowerNetwork, isPassagePowerSourceEnergized } from "./passagePowerNetwork.js";
 import { applyPushableAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
-import { fillCircle } from "../Canvas/CanvasPath.js";
-import { isPassagePowerSourceEnergized } from "./passagePowerNetwork.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 /** @param {object} state @param {number} col @param {number} row */
 export function canStampFloorBeltAt(state, col, row) {
@@ -30,7 +30,32 @@ const beltRailsDrawByTurn = {
     left: createConveyorDraw({ turnDirection: "left", ...railDrawOpts }),
     right: createConveyorDraw({ turnDirection: "right", ...railDrawOpts }),
 };
-const beltDrawScratch = { x: 0, y: 0, facing: 0, halfExtents: { x: 0, y: 0 }, ageMs: 0 };
+const passagePowerSourceDraw = (ctx, prop) => {
+    const energized = prop._powerSource.energized;
+    const cellSize = prop.halfExtents.x * 2;
+    const inset = cellSize * 0.22;
+    const lineScale = getCanvasLineScale(ctx);
+    const half = cellSize * 0.5;
+    const left = prop.x - half + inset;
+    const top = prop.y - half + inset;
+    const size = cellSize - inset * 2;
+    ctx.fillStyle = energized ? "rgba(255, 193, 7, 0.35)" : "rgba(120, 53, 15, 0.25)";
+    ctx.strokeStyle = energized ? "#FFC107" : "#FF8F00";
+    ctx.lineWidth = (energized ? 2.5 : 1.5) * lineScale;
+    ctx.beginPath();
+    ctx.rect(left, top, size, size);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = energized ? "#FFE082" : "#FFB300";
+    fillCircle(ctx, prop.x, prop.y, (energized ? 5 : 4) * lineScale);
+    const corner = inset * 0.55;
+    const innerHalf = half - inset;
+    ctx.fillStyle = energized ? "#FFF59D" : "#FFCA28";
+    fillCircle(ctx, prop.x - innerHalf, prop.y - innerHalf, corner * lineScale);
+    fillCircle(ctx, prop.x + innerHalf, prop.y - innerHalf, corner * lineScale);
+    fillCircle(ctx, prop.x + innerHalf, prop.y + innerHalf, corner * lineScale);
+    fillCircle(ctx, prop.x - innerHalf, prop.y + innerHalf, corner * lineScale);
+};
 /** @param {number} kind */
 function beltDrawForKind(kind) {
     const turn = floorBeltElbowTurn(kind);
@@ -79,18 +104,25 @@ export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {
     const minRow = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).row);
     const maxRow = Math.min(grid.rows - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).row);
     const cellHalf = grid.cellSize * 0.5;
-    beltDrawScratch.halfExtents.x = cellHalf;
-    beltDrawScratch.halfExtents.y = cellHalf;
-    beltDrawScratch.ageMs = state.gameTime;
     const { px, py } = camera;
     forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row, idx) => {
         const kind = grid.floorStore.kind[idx];
         if (!grid.floorStore.isBeltKindAtIdx(idx)) return;
         const { x, y } = grid.gridToWorld(col, row);
-        beltDrawScratch.x = x;
-        beltDrawScratch.y = y;
-        beltDrawScratch.facing = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
-        beltDrawForKind(kind)(ctx, beltDrawScratch, px, py);
+        const facing = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
+        const animFrame = Math.floor(state.gameTime / 60) % 8;
+        const proxy = {
+            x,
+            y,
+            facing,
+            radius: cellHalf,
+            halfExtents: { x: cellHalf, y: cellHalf },
+            ageMs: state.gameTime,
+            getCustomSpriteCacheKey() {
+                return `k${kind}`;
+            },
+        };
+        drawCachedPropSprite(ctx, proxy, px, py, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(kind), { animFrame });
     });
 }
 /**
@@ -107,34 +139,25 @@ export function drawFloorOccupancyPowerSources(ctx, state, viewport, camera) {
     const maxCol = Math.min(grid.cols - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).col);
     const minRow = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).row);
     const maxRow = Math.min(grid.rows - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).row);
-    const inset = grid.cellSize * 0.22;
-    const lineScale = getCanvasLineScale(ctx);
-    ctx.save();
+    const cellHalf = grid.cellSize * 0.5;
+    const { px, py } = camera;
     forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row, idx) => {
         if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return;
         const { x, y } = grid.gridToWorld(col, row);
         const energized = isPassagePowerSourceEnergized(state, col, row);
-        ctx.fillStyle = energized ? "rgba(255, 193, 7, 0.35)" : "rgba(120, 53, 15, 0.25)";
-        ctx.strokeStyle = energized ? "#FFC107" : "#FF8F00";
-        ctx.lineWidth = (energized ? 2.5 : 1.5) * lineScale;
-        const left = x - grid.cellSize * 0.5 + inset;
-        const top = y - grid.cellSize * 0.5 + inset;
-        const size = grid.cellSize - inset * 2;
-        ctx.beginPath();
-        ctx.rect(left, top, size, size);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = energized ? "#FFE082" : "#FFB300";
-        fillCircle(ctx, x, y, (energized ? 5 : 4) * lineScale);
-        const corner = inset * 0.55;
-        const half = grid.cellSize * 0.5 - inset;
-        ctx.fillStyle = energized ? "#FFF59D" : "#FFCA28";
-        fillCircle(ctx, x - half, y - half, corner * lineScale);
-        fillCircle(ctx, x + half, y - half, corner * lineScale);
-        fillCircle(ctx, x + half, y + half, corner * lineScale);
-        fillCircle(ctx, x - half, y + half, corner * lineScale);
+        const proxy = {
+            x,
+            y,
+            facing: 0,
+            radius: cellHalf,
+            halfExtents: { x: cellHalf, y: cellHalf },
+            _powerSource: { energized },
+            getCustomSpriteCacheKey() {
+                return energized ? "on" : "off";
+            },
+        };
+        drawCachedPropSprite(ctx, proxy, px, py, GRID_STAMP_RENDER_KEY.PassagePowerSource, passagePowerSourceDraw);
     });
-    ctx.restore();
 }
 /** @param {object} state @param {number} col @param {number} row */
 export function clearFloorOverlayAt(state, col, row) {

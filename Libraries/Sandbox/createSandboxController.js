@@ -11,6 +11,7 @@ import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold }
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene } from "./sandboxStartScene.js";
+import { spawnSandboxMazeScene } from "./sandboxMazeScene.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawSandboxMarquee, drawSandboxPropTileCells, drawSandboxSelectionRings, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
 import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
@@ -515,6 +516,14 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         },
         loadStartScene() {
             spawnSandboxStartScene(state);
+            resetBehaviors();
+            session.clearPropSelection();
+            session.clearFloorSelection();
+            session.clearWallSelection();
+            session.sync();
+        },
+        loadMazeScene() {
+            spawnSandboxMazeScene(state);
             resetBehaviors();
             session.clearPropSelection();
             session.clearFloorSelection();

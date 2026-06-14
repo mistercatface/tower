@@ -1,5 +1,5 @@
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
-import { drawPortalEdgeStrip } from "../Render/portalDraw.js";
+import { drawPortalEdgeCached } from "../Render/portalDraw.js";
 import { strokeCircle } from "../Canvas/CanvasPath.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { createAabb, aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
@@ -65,12 +65,12 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
         if (gridHasPortal(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side) && camera) {
             const { col, row, side } = selectedRailEdge;
             const edge = grid.getCellEdge(col, row, side);
-            drawPortalEdgeStrip(ctx, grid, col, row, side, edge, camera.px, camera.py, { selected: true });
+            drawPortalEdgeCached(ctx, grid, col, row, side, edge, camera.px, camera.py, { selected: true });
             const route = resolvePortalLinkRoute(grid, col, row, side);
             if (route) {
                 const { col: pCol, row: pRow, side: pSide } = route.partner;
                 const partnerEdge = grid.getCellEdge(pCol, pRow, pSide);
-                drawPortalEdgeStrip(ctx, grid, pCol, pRow, pSide, partnerEdge, camera.px, camera.py, { selected: true });
+                drawPortalEdgeCached(ctx, grid, pCol, pRow, pSide, partnerEdge, camera.px, camera.py, { selected: true });
             }
         } else if (gridHasForcefield(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
             ctx.strokeStyle = "rgba(192, 132, 252, 0.95)";

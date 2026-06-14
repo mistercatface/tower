@@ -1,0 +1,61 @@
+---
+description: All iso/grid gameplay visuals must bake through QuantizedSpriteCache — only 3D building walls are exempt
+alwaysApply: true
+---
+
+# Draw via cached props — no immediate-mode grid FX
+
+## The rule
+
+Every visible gameplay feature that is **not** a 3D building wall (voxel fill face or rail-wall edge in `WorldSceneRenderer.draw3DBuildings`) must draw through:
+
+```text
+PropDrawRecipe  →  drawCachedPropSprite (QuantizedSpriteCache.js)  →  getOrBakePropSprite  →  blitAnchoredSprite
+```
+
+**Do not** call `ctx.stroke`, `ctx.fill`, `drawBox`, or `projectPropVertex` directly from sandbox/grid iteration loops.
+
+### Exempt (wall atlas pipeline only)
+
+- Voxel wall faces — `StaticGridWallDraw` / `drawProjectedWallFace`
+- Rail wall edge boxes — `StaticGridEdgeRailDraw` / `drawProjectedGridEdgeRail`
+- Minimap/editor overview bakes — `labMapCaches` (not in-world presentation)
+
+Everything else — forcefields, portals, floor belts, power sources, buttons, pads, world props — uses **QuantizedSpriteCache**.
+
+## Why grid features kept bypassing this
+
+Grid stamps live on `obstacleGrid` / `floorStore`, not as `WorldProp` entities. Implementers optimized for “stamp data + visible FX fast” and wired a local draw loop instead of the prop pipeline. `createConveyorDraw` was reused **directly** instead of through `drawCachedPropSprite`. Forcefields/portals were added as editor overlay passes with immediate canvas ops.
+
+That pattern is now blocked.
+
+## How to add a new grid/floor visual
+
+1. **Author a `PropDrawRecipe`** — colocate with the primary consumer (`drawForcefields.js`, `floorOccupancy.js`, `portalDraw.js`, or an asset's `*.asset.js`), not a new micro-file.
+2. **Add a `GRID_STAMP_RENDER_KEY`** in `QuantizedSpriteCache.js` (or use an asset `render3DKey` for real WorldProps).
+3. **Build a minimal prop proxy** at the world anchor with `getCustomSpriteCacheKey()` bucketing dynamic state (powered, tripped, anim frame, link role). Include topology identity when geometry can vary.
+4. **Draw only via** `drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, { animFrame?, zoom? })`.
+5. **Register WorldProp assets** through `Assets/props/*.asset.js` + `loadPropAssets()` when the feature is a placed prop — same recipe, same cache path.
+
+```javascript
+// ✅ GOOD
+drawCachedPropSprite(ctx, proxy, px, py, GRID_STAMP_RENDER_KEY.ForcefieldEdge, forcefieldEdgeDraw);
+
+// ❌ BAD — immediate mode from grid scan
+forEachGridEdge(grid, (col, row, side, edge) => {
+  ctx.beginPath();
+  ctx.stroke(...);
+});
+```
+
+## Dynamic state in cache keys
+
+- **Animation** (belts): pass `animFrame` to `drawCachedPropSprite` and/or bucket in `getCustomSpriteCacheKey`.
+- **Power / tripwire / link role**: bucket in `getCustomSpriteCacheKey` — never read live sim state inside the recipe without keying it.
+- **Viewer-dependent one-way tint**: handled by quantized viewer offset in `buildPropSpriteKey` — recipe may use `px`, `py` at bake time.
+
+## Review bar
+
+- Does any new draw loop touch `ctx` without going through `drawCachedPropSprite` or the wall-atlas path? Fix it.
+- Is the recipe reusable from both grid proxies and WorldProp assets? Prefer that.
+- Did I add a one-off `drawFooOverlay` in sandbox? Route it through a recipe + cached blit instead.

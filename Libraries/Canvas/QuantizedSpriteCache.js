@@ -1,4 +1,4 @@
-import { prepModifiedBlit } from "../Render/spriteDrawModifier.js";
+import { prepModifiedBlit, resolveSpriteDrawModifier } from "../Render/spriteDrawModifier.js";
 import { createOffscreenCanvas } from "./offscreenCanvas.js";
 import { createBakedSpriteCache } from "./BakedSpriteCache.js";
 import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQuantize.js";
@@ -188,4 +188,29 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
 }
 export function clearPropSpriteCache() {
     propSpriteCache.clear();
+}
+/** QuantizedSpriteCache render keys for grid-stamped occupancy (not WorldProp assets). */
+export const GRID_STAMP_RENDER_KEY = {
+    ForcefieldEdge: "grid_forcefield_edge",
+    PortalMouthStrip: "grid_portal_mouth",
+    PortalBackStrip: "grid_portal_back",
+    FloorBelt: "grid_floor_belt",
+    PassagePowerSource: "grid_passage_power_source",
+};
+/** @typedef {import("../Render/Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
+/**
+ * Mandatory draw path for iso/grid stamps and world props (except 3D building walls).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object} prop
+ * @param {number} px
+ * @param {number} py
+ * @param {string} renderKey
+ * @param {PropDrawRecipe} draw
+ * @param {{ animFrame?: number, zoom?: number, modifier?: import("../Render/spriteDrawModifier.js").SpriteDrawModifier | null }} [opts]
+ */
+export function drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, { animFrame = 0, zoom = 1, modifier = null } = {}) {
+    const sprite = getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame, zoom });
+    const resolvedModifier = modifier ?? resolveSpriteDrawModifier(prop, { x: px, y: py });
+    blitAnchoredSprite(ctx, sprite, prop.x, prop.y, resolvedModifier);
 }

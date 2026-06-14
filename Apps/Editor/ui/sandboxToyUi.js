@@ -397,6 +397,10 @@ function renderSceneJsonPanel(container, controller, onChange) {
     startDemoBtn.type = "button";
     startDemoBtn.className = "secondary";
     startDemoBtn.textContent = "Load start demo";
+    const mazeDemoBtn = document.createElement("button");
+    mazeDemoBtn.type = "button";
+    mazeDemoBtn.className = "secondary";
+    mazeDemoBtn.textContent = "Load belt test floor";
     const textarea = document.createElement("textarea");
     textarea.className = "editor-export-area";
     textarea.rows = 10;
@@ -407,7 +411,14 @@ function renderSceneJsonPanel(container, controller, onChange) {
         textarea.value = controller.exportSceneSnapshot();
         onChange();
     });
+    mazeDemoBtn.addEventListener("click", () => {
+        if (!window.confirm("Replace the current sandbox with the belt test floor?")) return;
+        controller.loadMazeScene();
+        textarea.value = controller.exportSceneSnapshot();
+        onChange();
+    });
     container.appendChild(startDemoBtn);
+    container.appendChild(mazeDemoBtn);
     container.appendChild(textarea);
     const row = document.createElement("div");
     row.className = "sandbox-add-row";
