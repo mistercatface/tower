@@ -76,14 +76,14 @@ export function createRadioDialogView({ mainCharacterId, elementIds = {}, getSpe
         elements.speakerName.textContent = line.speakerName;
         elements.lineText.textContent = line.text;
         if (elements.hint) elements.hint.textContent = lineIndex + 1 >= lineCount ? "Tap to close" : "Tap to continue";
-        elements.overlay.style.display = "flex";
+        elements.overlay.classList.add("is-open");
     }
     function hide() {
         bindElements();
         if (!elements.overlay) return;
         const advanceBtn = getEl(ids.advanceBtn);
         if (advanceBtn && document.activeElement === advanceBtn) advanceBtn.blur();
-        elements.overlay.style.display = "none";
+        elements.overlay.classList.remove("is-open");
         elements.portraitRow.innerHTML = "";
         lastRemoteSpeaker = null;
         advancePointerId = null;
@@ -91,7 +91,7 @@ export function createRadioDialogView({ mainCharacterId, elementIds = {}, getSpe
     function bindAdvanceInput(onAdvance) {
         bindElements();
         function onAdvanceInput(e) {
-            if (elements.overlay?.style.display !== "flex") return;
+            if (!elements.overlay?.classList.contains("is-open")) return;
             if (e.type === "keydown") {
                 if (e.key !== "Enter" && e.key !== " ") return;
                 e.preventDefault();

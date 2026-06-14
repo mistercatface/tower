@@ -1,10 +1,9 @@
 import { SelectControl } from "./controls/SelectControl.js";
-/** @param {HTMLElement} parent @param {string} text @param {{ tag?: keyof HTMLElementTagNameMap, style?: Partial<CSSStyleDeclaration> }} [opts] */
-export function appendEditorSubhead(parent, text, { tag = "div", style } = {}) {
+/** @param {HTMLElement} parent @param {string} text @param {{ tag?: keyof HTMLElementTagNameMap }} [opts] */
+export function appendEditorSubhead(parent, text, { tag = "div" } = {}) {
     const head = document.createElement(tag);
     head.className = "editor-subhead";
     head.textContent = text;
-    if (style) Object.assign(head.style, style);
     parent.appendChild(head);
     return head;
 }

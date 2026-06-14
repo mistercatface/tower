@@ -37,3 +37,8 @@
     opacity: 0.85;
     margin: 0;
 }
+
+.speed-control-down.is-at-limit,
+.speed-control-up.is-at-limit {
+    opacity: 0.5;
+}

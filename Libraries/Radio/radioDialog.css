@@ -15,6 +15,10 @@
     -webkit-user-select: none;
 }
 
+.radio-dialog.is-open {
+    display: flex;
+}
+
 .radio-dialog-screen {
     display: flex;
     flex-direction: column;

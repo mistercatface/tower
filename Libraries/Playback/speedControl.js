@@ -86,8 +86,8 @@ export function applySpeedControl(host, options = {}) {
             const view = getSpeedControlView(state);
             if (elements.pauseLabel) elements.pauseLabel.textContent = view.pauseLabel;
             if (elements.speedLabel) elements.speedLabel.textContent = view.speedLabel;
-            if (elements.speedDownBtn) elements.speedDownBtn.style.opacity = view.canDecrease ? "1" : "0.5";
-            if (elements.speedUpBtn) elements.speedUpBtn.style.opacity = view.canIncrease ? "1" : "0.5";
+            if (elements.speedDownBtn) elements.speedDownBtn.classList.toggle("is-at-limit", !view.canDecrease);
+            if (elements.speedUpBtn) elements.speedUpBtn.classList.toggle("is-at-limit", !view.canIncrease);
         },
     };
 }

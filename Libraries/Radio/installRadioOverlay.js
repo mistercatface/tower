@@ -13,7 +13,6 @@ function mountRadioDialogDom(host) {
     const overlay = document.createElement("div");
     overlay.id = "radioDialog";
     overlay.className = "radio-dialog";
-    overlay.style.display = "none";
     const screen = document.createElement("button");
     screen.type = "button";
     screen.className = "radio-dialog-screen";

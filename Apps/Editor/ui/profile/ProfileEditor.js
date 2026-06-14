@@ -342,8 +342,7 @@ function reverseAnimationStage(stageIndex) {
 }
 function renderSharedAnimationControls(container) {
     const divider = document.createElement("div");
-    divider.style.borderTop = "1px solid var(--border)";
-    divider.style.margin = "10px 0";
+    divider.className = "animation-divider";
     container.appendChild(divider);
     const activeStageIndex = editorState.animation.selectedStageIndex;
     const activeStage = editorState.animation.stages[activeStageIndex];
@@ -361,9 +360,7 @@ function renderAnimationParams(container) {
     container.innerHTML = "";
     if (!editorState) return;
     const enableWrap = document.createElement("label");
-    enableWrap.className = "check-inline";
-    enableWrap.style.display = "block";
-    enableWrap.style.marginBottom = "8px";
+    enableWrap.className = "check-inline animation-enable-wrap";
     const enableInput = document.createElement("input");
     enableInput.type = "checkbox";
     enableInput.checked = editorState.animation.enabled === true;
@@ -393,19 +390,11 @@ function renderAnimationParams(container) {
     // Render stage tabs
     const stageHeader = document.createElement("div");
     stageHeader.className = "stage-header";
-    stageHeader.style.display = "flex";
-    stageHeader.style.alignItems = "center";
-    stageHeader.style.gap = "6px";
-    stageHeader.style.marginBottom = "10px";
-    stageHeader.style.flexWrap = "wrap";
     const stagesList = editorState.animation.stages;
     stagesList.forEach((stage, idx) => {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = idx === editorState.animation.selectedStageIndex ? "primary" : "secondary";
-        btn.style.padding = "4px 8px";
-        btn.style.fontSize = "11px";
-        btn.style.margin = "0";
+        btn.className = `btn-compact ${idx === editorState.animation.selectedStageIndex ? "primary" : "secondary"}`;
         btn.textContent = `Stage ${idx + 1}`;
         btn.addEventListener("click", () => {
             editorState.animation.selectedStageIndex = idx;
@@ -416,10 +405,7 @@ function renderAnimationParams(container) {
     });
     const addStageBtn = document.createElement("button");
     addStageBtn.type = "button";
-    addStageBtn.className = "secondary";
-    addStageBtn.style.padding = "4px 8px";
-    addStageBtn.style.fontSize = "11px";
-    addStageBtn.style.margin = "0";
+    addStageBtn.className = "secondary btn-compact";
     addStageBtn.textContent = "+";
     addStageBtn.title = "Add Stage";
     addStageBtn.addEventListener("click", () => {
@@ -439,10 +425,7 @@ function renderAnimationParams(container) {
     stageHeader.appendChild(addStageBtn);
     const dupStageBtn = document.createElement("button");
     dupStageBtn.type = "button";
-    dupStageBtn.className = "secondary";
-    dupStageBtn.style.padding = "4px 8px";
-    dupStageBtn.style.fontSize = "11px";
-    dupStageBtn.style.margin = "0";
+    dupStageBtn.className = "secondary btn-compact";
     dupStageBtn.textContent = "Dup";
     dupStageBtn.title = "Duplicate current stage (inserts copy after it)";
     dupStageBtn.addEventListener("click", () => {
@@ -453,10 +436,7 @@ function renderAnimationParams(container) {
     stageHeader.appendChild(dupStageBtn);
     const revStageBtn = document.createElement("button");
     revStageBtn.type = "button";
-    revStageBtn.className = "secondary";
-    revStageBtn.style.padding = "4px 8px";
-    revStageBtn.style.fontSize = "11px";
-    revStageBtn.style.margin = "0";
+    revStageBtn.className = "secondary btn-compact";
     revStageBtn.textContent = "Rev";
     revStageBtn.title = "Reverse current stage: swap start/end; easeIn ↔ easeOut (linear & easeInOut unchanged)";
     revStageBtn.addEventListener("click", () => {
@@ -468,10 +448,7 @@ function renderAnimationParams(container) {
     if (stagesList.length > 1) {
         const removeStageBtn = document.createElement("button");
         removeStageBtn.type = "button";
-        removeStageBtn.className = "secondary";
-        removeStageBtn.style.padding = "4px 8px";
-        removeStageBtn.style.fontSize = "11px";
-        removeStageBtn.style.margin = "0";
+        removeStageBtn.className = "secondary btn-compact";
         removeStageBtn.textContent = "✕";
         removeStageBtn.title = "Remove Current Stage";
         removeStageBtn.addEventListener("click", () => {
@@ -496,7 +473,7 @@ function renderAnimationParams(container) {
         const motifSurface = motif ? ` (${motif.surfaceMask})` : "";
         const paramLabel = track.paramPath;
         row.innerHTML = `
-            <span class="track-label"><strong>Track #${idx + 1}:</strong> ${motifLabel}${motifSurface} - <span style="color: var(--accent); font-weight: 500;">${paramLabel}</span></span>
+            <span class="track-label"><strong>Track #${idx + 1}:</strong> ${motifLabel}${motifSurface} - <span class="track-param-label">${paramLabel}</span></span>
             <span class="track-actions">
                 <button type="button" data-action="remove" title="Remove track">✕</button>
             </span>
@@ -514,16 +491,14 @@ function renderAnimationParams(container) {
                 notifyChange({ lightweight: true });
                 renderAnimationParams(container);
             });
-        else removeBtn.style.display = "none";
+        else removeBtn.classList.add("is-hidden");
         trackListContainer.appendChild(row);
     });
     container.appendChild(trackListContainer);
     // Add track button
     const addTrackBtn = document.createElement("button");
     addTrackBtn.type = "button";
-    addTrackBtn.className = "secondary";
-    addTrackBtn.style.width = "100%";
-    addTrackBtn.style.marginBottom = "10px";
+    addTrackBtn.className = "secondary track-add-btn";
     addTrackBtn.textContent = "+ Add Animation Track";
     addTrackBtn.addEventListener("click", () => {
         const selectedIndex = getSelectedMotifIndex();

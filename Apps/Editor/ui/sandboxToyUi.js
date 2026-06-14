@@ -211,7 +211,7 @@ function appendSpawnPaletteGrid(parent, items, activeKey, onSelect) {
         if (item.key === activeKey) btn.classList.add("is-active");
         const icon = document.createElement("div");
         icon.className = "spawn-palette-icon";
-        icon.style.background = item.swatch;
+        icon.style.setProperty("--swatch", item.swatch);
         icon.textContent = item.glyph;
         const label = document.createElement("span");
         label.className = "spawn-palette-label";

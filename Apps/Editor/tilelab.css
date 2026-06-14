@@ -225,3 +225,41 @@ details.editor-block-motifs {
     color: var(--text);
     background: rgba(255, 255, 255, 0.1);
 }
+
+#animationParamsPanel .animation-divider {
+    border-top: 1px solid var(--border);
+    margin: 10px 0;
+}
+
+#animationParamsPanel .animation-enable-wrap {
+    display: block;
+    margin-bottom: 8px;
+}
+
+#animationParamsPanel .stage-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+#animationParamsPanel .btn-compact {
+    padding: 4px 8px;
+    font-size: 11px;
+    margin: 0;
+}
+
+#animationParamsPanel .track-param-label {
+    color: var(--accent);
+    font-weight: 500;
+}
+
+#animationParamsPanel .track-add-btn {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.is-hidden {
+    display: none;
+}

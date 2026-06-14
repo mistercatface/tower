@@ -59,7 +59,7 @@ export function renderSandboxEquipPanel(container, prop, onChange) {
         slotWrap.appendChild(slot);
     }
     container.appendChild(slotWrap);
-    appendEditorSubhead(container, "Armory", { style: { marginTop: "8px" } });
+    appendEditorSubhead(container, "Armory");
     const armory = document.createElement("div");
     armory.className = "sandbox-equip-armory";
     for (const gunId of playerEquipmentCatalog) {
