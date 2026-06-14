@@ -463,6 +463,16 @@ export class WorldObstacleGrid {
         for (let i = 0; i < hops.length; i++) if (hops[i].exitCol === exitCol && hops[i].exitRow === exitRow) return true;
         return false;
     }
+    /** @param {number} col @param {number} row @param {(exitCol: number, exitRow: number, cost: number) => void} fn */
+    forEachNavHop(col, row, fn) {
+        const hops = this.getPortalHops(col, row);
+        if (!hops) return;
+        for (let i = 0; i < hops.length; i++) {
+            const { exitCol, exitRow, cost } = hops[i];
+            if (this.isBlocked(exitCol, exitRow)) continue;
+            fn(exitCol, exitRow, cost);
+        }
+    }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);
     }

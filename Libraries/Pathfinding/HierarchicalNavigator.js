@@ -1,9 +1,8 @@
-import { colRowToIndex, indexToColRow, forEachCardinalNeighbor } from "../Spatial/grid/GridUtils.js";
+import { colRowToIndex, indexToColRow, forEachCardinalNeighbor, makeAdjacencyKey } from "../Spatial/grid/GridUtils.js";
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid } from "./VoronoiRegions.js";
-import { appendPortalRegionAdjacencies, expandPortalHopsInCellPath, forEachPortalNavHop } from "../Sandbox/portalNavIndex.js";
 export class HierarchicalNavigator {
     constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, navGraph, { damagePadding = 12 } = {}) {
         this.cellSize = cellSize;
@@ -78,7 +77,7 @@ export class HierarchicalNavigator {
                 reachable[nIdx] = 1;
                 queue.push(nIdx);
             });
-            forEachPortalNavHop(this.navGraph, c, r, (nc, nr) => {
+            this.navGraph.forEachNavHop?.(c, r, (nc, nr) => {
                 const nIdx = colRowToIndex(nc, nr, this.cols);
                 if (this.grid[nIdx] !== 0 || reachable[nIdx]) return;
                 reachable[nIdx] = 1;
@@ -129,14 +128,31 @@ export class HierarchicalNavigator {
     connectAllNodes() {
         for (const node of Object.values(this.nodesMap)) node.edges = [];
         const adjacencies = findRegionAdjacencies(this.cellToNode, this.grid, this.cols, this.rows, this.navGraph);
-        appendPortalRegionAdjacencies(this.cellToNode, this.cols, this.rows, this.navGraph, adjacencies);
+        this._appendNavHopRegionAdjacencies(adjacencies);
         this._connectAdjacencies(adjacencies);
     }
     connectPortalRegionPairs() {
         if (!this.cellToNode || !this.navGraph.getPortalHops) return;
         const adjacencies = new Set();
-        appendPortalRegionAdjacencies(this.cellToNode, this.cols, this.rows, this.navGraph, adjacencies);
+        this._appendNavHopRegionAdjacencies(adjacencies);
         this._connectAdjacencies(adjacencies);
+    }
+    _appendNavHopRegionAdjacencies(adjacencies) {
+        if (!this.navGraph.getPortalHops) return;
+        for (let idx = 0; idx < this.cellToNode.length; idx++) {
+            const nodeA = this.cellToNode[idx];
+            if (!nodeA) continue;
+            const fromCol = idx % this.cols;
+            const fromRow = (idx / this.cols) | 0;
+            const hops = this.navGraph.getPortalHops(fromCol, fromRow);
+            if (!hops) continue;
+            for (let i = 0; i < hops.length; i++) {
+                const { exitCol, exitRow } = hops[i];
+                const exitIdx = colRowToIndex(exitCol, exitRow, this.cols);
+                const nodeB = this.cellToNode[exitIdx];
+                if (nodeB && nodeA.id !== nodeB.id) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+            }
+        }
     }
     _connectAdjacencies(adjacencies) {
         for (const key of adjacencies) {
@@ -189,7 +205,7 @@ export class HierarchicalNavigator {
                 const other = this.cellToNode[nIdx];
                 if (other && other.id !== node.id) neighborIds.add(other.id);
             });
-            forEachPortalNavHop(this.navGraph, col, row, (nc, nr) => {
+            this.navGraph.forEachNavHop?.(col, row, (nc, nr) => {
                 const other = this.cellToNode[colRowToIndex(nc, nr, this.cols)];
                 if (other && other.id !== node.id) neighborIds.add(other.id);
             });
@@ -381,34 +397,30 @@ export class HierarchicalNavigator {
         return runLocalAStarFlat(startCol, startRow, targetCol, targetRow, this.navGraph, this.cols, this.rows, maxPathLen, this.aStarGScore, this.aStarCameFrom, this.aStarVisited, this.aStarRunId);
     }
     _cellPathToWaypoints(cells) {
-        return expandPortalHopsInCellPath(cells, this.navGraph).map((cell) => this.gridToWorld(cell.col, cell.row));
+        return cells.map((cell) => this.gridToWorld(cell.col, cell.row));
     }
     _connectTempNode(tempNode, gridCol, gridRow, targetNode, isStart, modifiedCandidates = null) {
         const candidates = new Set();
         const searchRadius = Math.ceil(Math.sqrt(this.maxCellsPerChunk)) * 2;
         if (targetNode) {
             candidates.add(targetNode);
-            if (isStart) {
+            if (isStart)
                 for (const edge of targetNode.edges) {
                     const neighbor = this.nodesMap[edge.targetId];
                     if (neighbor) candidates.add(neighbor);
                 }
-            } else {
+            else
                 for (const node of Object.values(this.nodesMap)) {
                     if (node.id === "start" || node.id === "target") continue;
-                    if (node.edges.some((e) => e.targetId === targetNode.id)) {
-                        candidates.add(node);
-                    }
+                    if (node.edges.some((e) => e.targetId === targetNode.id)) candidates.add(node);
                 }
-            }
-        } else {
+        } else
             for (const id in this.nodesMap) {
                 if (id === "start" || id === "target") continue;
                 const node = this.nodesMap[id];
                 const d = Math.hypot(gridCol - node.col, gridRow - node.row);
                 if (d <= searchRadius) candidates.add(node);
             }
-        }
         for (const candidate of candidates) {
             const path = isStart ? this.runLocalAStar(tempNode.col, tempNode.row, candidate.col, candidate.row, 96) : this.runLocalAStar(candidate.col, candidate.row, tempNode.col, tempNode.row, 96);
             if (path)
@@ -419,7 +431,7 @@ export class HierarchicalNavigator {
                 }
         }
     }
-    computePath(startX, startY, targetX, targetY) {
+    computeCellPath(startX, startY, targetX, targetY) {
         const startGrid = this.worldToGrid(startX, startY);
         const targetGrid = this.worldToGrid(targetX, targetY);
         let startCol = Math.max(0, Math.min(this.cols - 1, startGrid.col));
@@ -448,7 +460,7 @@ export class HierarchicalNavigator {
                 const startWorld = this.gridToWorld(startCol, startRow);
                 const targetWorld = this.gridToWorld(targetCol, targetRow);
                 return {
-                    waypoints: this._cellPathToWaypoints(localPath),
+                    cellPath: localPath,
                     abstractNodes: [
                         { x: startWorld.x, y: startWorld.y, id: "start" },
                         { x: targetWorld.x, y: targetWorld.y, id: "target" },
@@ -481,16 +493,17 @@ export class HierarchicalNavigator {
                         fullCellPath.push({ col: nodeB.col, row: nodeB.row });
                     }
                 }
-                return {
-                    waypoints: this._cellPathToWaypoints(fullCellPath),
-                    abstractNodes: abstractPath.map((node) => ({ x: node.x, y: node.y, id: node.id })),
-                    pathPlanner: "hpa",
-                };
+                return { cellPath: fullCellPath, abstractNodes: abstractPath.map((node) => ({ x: node.x, y: node.y, id: node.id })), pathPlanner: "hpa" };
             }
             return null;
         } finally {
             this.cleanupTempEdges(modifiedCandidates);
         }
+    }
+    computePath(startX, startY, targetX, targetY) {
+        const result = this.computeCellPath(startX, startY, targetX, targetY);
+        if (!result) return null;
+        return { waypoints: this._cellPathToWaypoints(result.cellPath), abstractNodes: result.abstractNodes, pathPlanner: result.pathPlanner };
     }
     findPath(startX, startY, targetX, targetY) {
         const result = this.computePath(startX, startY, targetX, targetY);

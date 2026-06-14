@@ -1,6 +1,5 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { buildPathOverlayFromProgress } from "../../Pathfinding/pathFollow.js";
-import { portalMouthOnPath } from "../portalNavIndex.js";
 import { getRollToCursorConfig, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
@@ -11,8 +10,8 @@ function clearNavPortalCommitment(prop) {
     delete prop._navPortalMouthCol;
     delete prop._navPortalMouthRow;
 }
-/** @param {object} prop @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} state @param {import("../../Pathfinding/navSession.js").NavSessionState} navState */
-function syncNavPortalCommitment(prop, grid, state, navState) {
+/** @param {object} prop @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../../Pathfinding/navSession.js").NavSessionState & { portalHopMouth?: { col: number, row: number } | null }} navState */
+function syncNavPortalCommitment(prop, grid, navState) {
     const path = navState.path;
     if (!path?.length) {
         clearNavPortalCommitment(prop);
@@ -23,7 +22,7 @@ function syncNavPortalCommitment(prop, grid, state, navState) {
     const steerCell = grid.worldToGrid(wp.x, wp.y);
     prop._navSteerCellCol = steerCell.col;
     prop._navSteerCellRow = steerCell.row;
-    const mouth = portalMouthOnPath(grid, state, path);
+    const mouth = navState.portalHopMouth;
     if (mouth) {
         prop._navPortalMouthCol = mouth.col;
         prop._navPortalMouthRow = mouth.row;
@@ -111,7 +110,7 @@ export function createRollToCursorHpaBehavior(state) {
                 arrivalDistance: config.stopRadius,
                 pathOffPathDistance: 80,
             });
-            syncNavPortalCommitment(prop, state.obstacleGrid, state, hpaNav.navState);
+            syncNavPortalCommitment(prop, state.obstacleGrid, hpaNav.navState);
             if (!steering) {
                 releaseMoveTarget(prop);
                 return;
