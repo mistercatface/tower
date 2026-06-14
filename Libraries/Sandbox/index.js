@@ -50,6 +50,7 @@ export { spawnPoolRack } from "./spawnPoolRack.js";
 export { SANDBOX_SCENE_SCHEMA_VERSION, applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
 export { evaluatePortalStepEntry } from "./portalLinks.js";
+export { tickPortalTraverse, applyPortalTraverse } from "./portalTraverse.js";
 export { addSandboxWalls, removeSandboxWalls, clearSandboxWallsInBounds } from "./sandboxWalls.js";
 export {
     bakeAnimatedSurfaceFlipbook,
