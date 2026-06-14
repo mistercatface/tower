@@ -39,10 +39,6 @@ export const TILELAB_UI_HTML = `
                         <span>Profile</span>
                     </label>
                     <label class="editor-panel-toggle">
-                        <input type="radio" name="editorSidebarPanel" id="showMapPanelInput" value="map">
-                        <span>Map</span>
-                    </label>
-                    <label class="editor-panel-toggle">
                         <input type="radio" name="editorSidebarPanel" id="showJsonPanelInput" value="json">
                         <span>JSON</span>
                     </label>
@@ -91,13 +87,6 @@ export const TILELAB_UI_HTML = `
                             <summary>Export</summary>
                             <textarea id="profileExport" readonly></textarea>
                         </details>
-                    </div>
-                </div>
-                <div id="mapPanel" class="editor-panel-section" data-panel="map">
-                    <div class="editor-panel-head">Map</div>
-                    <div class="editor-scroll">
-                        <p class="editor-hint">Play width and height are in the toolbar (apply on Redraw). Cavern and rail generation are in Props.</p>
-                        <div id="mapSettingsPanel"></div>
                     </div>
                 </div>
                 <div id="jsonPanel" class="editor-panel-section" data-panel="json">

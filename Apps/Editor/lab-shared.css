@@ -361,7 +361,6 @@ body {
 
 .col-editor[data-active-panels="sandbox"] #sandboxPanel,
 .col-editor[data-active-panels="profile"] #surfaceEditorPanel,
-.col-editor[data-active-panels="map"] #mapPanel,
 .col-editor[data-active-panels="json"] #jsonPanel,
 .col-editor[data-active-panels=""] .editor-panels-stack {
     flex: 1 1 auto;

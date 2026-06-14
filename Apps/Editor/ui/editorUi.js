@@ -10,7 +10,6 @@ import { initPresetSelect, bindToolbarControls, bindVectorPropsToolbar, syncWorl
 import { applyPlayAreaConfig } from "../world/mapWorld.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
-import { buildMapPanel } from "./mapPanel.js";
 import { mountTilelabSandbox } from "../world/tilelabSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
@@ -77,7 +76,6 @@ export function mountEditorUi(state, { playbackHandlers }) {
         paintMapOverviewFrame(state);
         refreshMapGenPanelInputs();
     });
-    buildMapPanel(state);
     mountPlayAreaToolbarControls(state);
     applyPlayAreaConfig(state);
     mountTilelabSandbox(state, requestRedraw);

@@ -22,7 +22,6 @@ export function applyLabViewChrome(state) {
     const panel = state.editor.sidebarPanel;
     setEditorPanelVisible("sandboxPanel", panel === "sandbox");
     setEditorPanelVisible("surfaceEditorPanel", panel === "profile");
-    setEditorPanelVisible("mapPanel", panel === "map");
     setEditorPanelVisible("jsonPanel", panel === "json");
     setAnimationPreviewVisible(state.editor.showAnimationPreview);
     setMapOverviewVisible(state.editor.showMapOverview);
