@@ -45,10 +45,13 @@ const SANDBOX_SCENE_SCHEMA_VERSION = 7;
 /** @typedef {{ seed: number, gridCols: number, gridRows: number, rooms: GraphNode[], treeEdges: { a: number, b: number }[], graphEdges: DirectedEdge[], nodeGraph: NodeGraph, closedRooms: ClosedRoom[] }} RoomGraphLayout */
 /** @typedef {{ op: "buildNodeGraph" }} BuildNodeGraphMotif */
 /** @typedef {{ op: "buildClosedRooms" }} BuildClosedRoomsMotif */
+/** @typedef {{ op: "punchHoleInClosedRoom" }} PunchHoleInClosedRoomRoomMotif */
+/** @typedef {PunchHoleInClosedRoomRoomMotif} RoomGraphRoomMotif */
+/** @typedef {{ op: "forEachRoom", run: RoomGraphRoomMotif }} ForEachRoomMotif */
 /** @typedef {{ op: "punchOneHolePerRoom" }} PunchOneHolePerRoomMotif */
 /** @typedef {{ op: "buildCorridors", corridorEdgeCount?: number, canIntersect?: boolean, requireAll?: boolean }} BuildCorridorsMotif */
 /** @typedef {{ op: "buildAllCorridors", canIntersect?: boolean, requireAll?: boolean }} BuildAllCorridorsMotif */
-/** @typedef {BuildNodeGraphMotif | BuildClosedRoomsMotif | PunchOneHolePerRoomMotif | BuildCorridorsMotif | BuildAllCorridorsMotif} RoomGraphMotif */
+/** @typedef {BuildNodeGraphMotif | BuildClosedRoomsMotif | ForEachRoomMotif | PunchOneHolePerRoomMotif | BuildCorridorsMotif | BuildAllCorridorsMotif} RoomGraphMotif */
 /** @typedef {{ options: Record<string, unknown>, layout: RoomGraphLayout, closedRooms: ClosedRoom[], corridorRails: RailWall[], corridorPaths: Cell[][], corridorEdgeIndices: number[], originCol: number, originRow: number, corridorRng: () => number, holeRng: () => number }} RoomGraphBuildCtx */
 /** All tunable procgen parameters live here; pass overrides into `resolveNodeGraphGenConfig`. */
 export const DEFAULT_NODE_GRAPH_GEN_CONFIG = {
@@ -679,6 +682,18 @@ export function propsForRoomCenters(layout, originCol, originRow, cellSize = 16)
     }
     return props;
 }
+/** @param {RoomGraphRoomMotif} roomMotif @param {RoomGraphBuildCtx} ctx @param {ClosedRoom} closedRoom */
+function runRoomGraphRoomMotif(roomMotif, ctx, closedRoom) {
+    if (roomMotif.op === "punchHoleInClosedRoom") {
+        punchHoleInClosedRoom(closedRoom, ctx.holeRng);
+        return;
+    }
+    throw new Error(`Unknown room graph room motif op: ${roomMotif.op}`);
+}
+/** @param {ClosedRoom[]} closedRooms @param {RoomGraphRoomMotif} roomMotif @param {RoomGraphBuildCtx} ctx */
+function forEachRoomRunRoomMotif(closedRooms, roomMotif, ctx) {
+    for (let i = 0; i < closedRooms.length; i++) runRoomGraphRoomMotif(roomMotif, ctx, closedRooms[i]);
+}
 /** @param {RoomGraphMotif} motif @param {RoomGraphBuildCtx} ctx */
 function runRoomGraphMotif(motif, ctx) {
     if (motif.op === "buildNodeGraph") {
@@ -697,8 +712,12 @@ function runRoomGraphMotif(motif, ctx) {
         ctx.layout.closedRooms = ctx.closedRooms;
         return;
     }
+    if (motif.op === "forEachRoom") {
+        forEachRoomRunRoomMotif(ctx.closedRooms, motif.run, ctx);
+        return;
+    }
     if (motif.op === "punchOneHolePerRoom") {
-        punchOneHolePerRoom(ctx.closedRooms, ctx.holeRng);
+        forEachRoomRunRoomMotif(ctx.closedRooms, { op: "punchHoleInClosedRoom" }, ctx);
         return;
     }
     if (motif.op === "buildCorridors") {
