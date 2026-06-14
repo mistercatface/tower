@@ -460,9 +460,7 @@ export class WorldObstacleGrid {
     canPortalHop(fromCol, fromRow, exitCol, exitRow) {
         const hops = this.getPortalHops(fromCol, fromRow);
         if (!hops) return false;
-        for (let i = 0; i < hops.length; i++) {
-            if (hops[i].exitCol === exitCol && hops[i].exitRow === exitRow) return true;
-        }
+        for (let i = 0; i < hops.length; i++) if (hops[i].exitCol === exitCol && hops[i].exitRow === exitRow) return true;
         return false;
     }
     getCellBounds(col, row) {
