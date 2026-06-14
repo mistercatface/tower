@@ -1,10 +1,13 @@
 import { fillCircle, strokeOpenPolyline, strokeSegment, traceSegment } from "../../Canvas/CanvasPath.js";
-import { createOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
+import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 import { isRailWallEdge } from "../../Spatial/grid/CellEdge.js";
 import { forEachGridEdge } from "../../World/wallGridCells.js";
 const WALL_OVERLAY_THICKNESS = 20;
 /** Pixels per grid cell in the map overview bake — edges draw on boundaries, not as cell fills. */
 const OVERVIEW_PIXELS_PER_CELL = 4;
+const OVERVIEW_FLOOR_RGB = [12, 14, 18];
+const OVERVIEW_WALL_RGB = [72, 78, 88];
+const OVERVIEW_RAIL_RGB = [224, 64, 251];
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D & { canvas: OffscreenCanvas }} MapImageCache */
 /** @typedef {MapImageCache} ObstacleOverviewCache */
 function bakeCanvas(width, height) {
@@ -109,45 +112,63 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
     }
     return { canvas, minX, minY, maxX, maxY };
 }
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid */
-export function bakeObstacleOverviewCache(obstacleGrid) {
+/** @param {Uint8ClampedArray} px @param {number} w @param {number} h @param {number} x @param {number} y @param {number[]} rgb */
+function setOverviewPixel(px, w, h, x, y, rgb) {
+    if (x < 0 || y < 0 || x >= w || y >= h) return;
+    const i = (y * w + x) * 4;
+    px[i] = rgb[0];
+    px[i + 1] = rgb[1];
+    px[i + 2] = rgb[2];
+    px[i + 3] = 255;
+}
+/** @param {Uint8ClampedArray} px @param {number} w @param {number} h @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {number[]} rgb */
+function strokeOverviewLine(px, w, h, x0, y0, x1, y1, rgb) {
+    if (y0 === y1) {
+        const lo = x0 < x1 ? x0 : x1;
+        const hi = x0 < x1 ? x1 : x0;
+        for (let x = lo; x <= hi; x++) setOverviewPixel(px, w, h, x, y0, rgb);
+        return;
+    }
+    const lo = y0 < y1 ? y0 : y1;
+    const hi = y0 < y1 ? y1 : y0;
+    for (let y = lo; y <= hi; y++) setOverviewPixel(px, w, h, x0, y, rgb);
+}
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {OffscreenCanvas | null | undefined} [reuseCanvas] */
+export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
     const ppc = OVERVIEW_PIXELS_PER_CELL;
     const { cols, rows } = obstacleGrid;
-    const canvas = createOffscreenCanvas(cols * ppc, rows * ppc);
+    const w = cols * ppc;
+    const h = rows * ppc;
+    const canvas = reuseCanvas ?? createOffscreenCanvas(w, h);
+    resizeOffscreenCanvas(canvas, w, h);
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#0c0e12";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#484e58";
+    const data = ctx.createImageData(w, h);
+    const px = data.data;
+    for (let i = 0; i < px.length; i += 4) {
+        px[i] = OVERVIEW_FLOOR_RGB[0];
+        px[i + 1] = OVERVIEW_FLOOR_RGB[1];
+        px[i + 2] = OVERVIEW_FLOOR_RGB[2];
+        px[i + 3] = 255;
+    }
     for (let i = 0; i < obstacleGrid.grid.length; i++) {
         if (obstacleGrid.grid[i] === 0) continue;
         const col = i % cols;
         const row = (i / cols) | 0;
-        ctx.fillRect(col * ppc, row * ppc, ppc, ppc);
+        const x0 = col * ppc;
+        const y0 = row * ppc;
+        for (let dy = 0; dy < ppc; dy++) for (let dx = 0; dx < ppc; dx++) setOverviewPixel(px, w, h, x0 + dx, y0 + dy, OVERVIEW_WALL_RGB);
     }
-    ctx.strokeStyle = "#e040fb";
-    ctx.lineWidth = 1;
-    ctx.lineCap = "butt";
     forEachGridEdge(
         obstacleGrid,
         (col, row, side) => {
-            ctx.beginPath();
-            if (side === 0) {
-                ctx.moveTo(col * ppc, row * ppc);
-                ctx.lineTo((col + 1) * ppc, row * ppc);
-            } else if (side === 1) {
-                ctx.moveTo((col + 1) * ppc, row * ppc);
-                ctx.lineTo((col + 1) * ppc, (row + 1) * ppc);
-            } else if (side === 2) {
-                ctx.moveTo(col * ppc, (row + 1) * ppc);
-                ctx.lineTo((col + 1) * ppc, (row + 1) * ppc);
-            } else {
-                ctx.moveTo(col * ppc, row * ppc);
-                ctx.lineTo(col * ppc, (row + 1) * ppc);
-            }
-            ctx.stroke();
+            if (side === 0) strokeOverviewLine(px, w, h, col * ppc, row * ppc, (col + 1) * ppc - 1, row * ppc, OVERVIEW_RAIL_RGB);
+            else if (side === 1) strokeOverviewLine(px, w, h, (col + 1) * ppc - 1, row * ppc, (col + 1) * ppc - 1, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
+            else if (side === 2) strokeOverviewLine(px, w, h, col * ppc, (row + 1) * ppc - 1, (col + 1) * ppc - 1, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
+            else strokeOverviewLine(px, w, h, col * ppc, row * ppc, col * ppc, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
         },
         { filter: isRailWallEdge, canonicalOnly: true },
     );
+    ctx.putImageData(data, 0, 0);
     return { canvas, minX: obstacleGrid.minX, minY: obstacleGrid.minY, maxX: obstacleGrid.maxX, maxY: obstacleGrid.maxY };
 }
 /** @param {object} state */
@@ -155,5 +176,5 @@ export function rebuildLabMapCaches(state) {
     const grid = state.obstacleGrid;
     state.mapWallCache = bakeWallLayer(state.walls, grid.minX, grid.minY, grid.maxX, grid.maxY);
     state.mapPathDebugCache = bakePathDebugLayer(state.hierarchicalNavigator, grid.minX, grid.minY, grid.maxX, grid.maxY);
-    state.mapOverviewCache = bakeObstacleOverviewCache(grid);
+    state.mapOverviewCache = bakeObstacleOverviewCache(grid, state.mapOverviewCache?.canvas);
 }

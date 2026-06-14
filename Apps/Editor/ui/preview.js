@@ -1,7 +1,6 @@
 import { registerRuntimeSurfaceProfile } from "../../../Config/procedural/profiles.js";
 import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
-import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
@@ -96,7 +95,6 @@ export function drawLabFrame(state) {
     const prevProfileOverride = state.worldSurfaces.surfaceProfileOverride;
     state.worldSurfaces.surfaceProfileOverride = RUNTIME_LAB_PROFILE_ID;
     maybeClearProfileBakeCaches(state, RUNTIME_LAB_PROFILE_ID);
-    rebuildLabMapCaches(state);
     getLabRenderer(canvas, ctx, state).renderSimulationScene(state, viewport);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
