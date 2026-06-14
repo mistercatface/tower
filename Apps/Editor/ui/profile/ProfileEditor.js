@@ -1,6 +1,7 @@
 import { getSurfaceProceduralProfile } from "../../../../Config/procedural/profiles.js";
-import { deepClone, getByPath } from "../../../../Libraries/Pipeline/objectPath.js";
+import { deepClone, getByPath, movePipelineRow, pipelineRowId, remapIndexAfterSwap } from "../../../../Libraries/Pipeline/index.js";
 import { SelectControl } from "../../../../Libraries/UI/controls/SelectControl.js";
+import { renderPipelineListUi } from "../../../../Libraries/UI/pipelineListUi.js";
 import { renderSchemaFields } from "../../../../Libraries/UI/renderSchemaFields.js";
 import { appendEditorSubhead } from "../../../../Libraries/UI/paramFields.js";
 import { mirrorEasingForReversedStage } from "../../../../Libraries/Math/Easing.js";
@@ -196,20 +197,24 @@ function selectMotifById(motifId) {
     selectedMotifId = motifId;
     refreshEditorPanels({ global: false });
 }
+function remapProfileAnimationIndices(remap) {
+    if (!editorState?.animation?.tracks) return;
+    for (const track of editorState.animation.tracks) track.editorMotifIndex = remap(track.editorMotifIndex);
+}
 function renderMotifList(container) {
-    container.innerHTML = "";
-    if (!editorState) return;
-    for (let i = 0; i < editorState.motifs.length; i++) {
-        const row = editorState.motifs[i];
-        const item = document.createElement("div");
-        item.className = `motif-row${row.id === selectedMotifId ? " selected" : ""}`;
-        item.dataset.id = row.id;
-        const label = MOTIF_TYPES[row.config.type]?.label ?? row.config.type;
-        const isContext = isContextMotif(row.config.type);
-        // Build blend mode select inline in row
-        const blendSel = document.createElement("select");
-        blendSel.className = "motif-row-blend";
-        if (!isContext) {
+    if (!editorState) {
+        container.innerHTML = "";
+        return;
+    }
+    renderPipelineListUi(container, editorState.motifs, {
+        getRowId: pipelineRowId,
+        selectedId: selectedMotifId,
+        getLabel: (row) => MOTIF_TYPES[row.config.type]?.label ?? row.config.type,
+        getMeta: (row) => (isContextMotif(row.config.type) ? "moves below" : row.surfaceMask),
+        renderExtras: (row, _index, _item, extrasSlot) => {
+            if (isContextMotif(row.config.type)) return;
+            const blendSel = document.createElement("select");
+            blendSel.className = "motif-row-blend";
             for (const mode of BLEND_OPTIONS) {
                 const o = document.createElement("option");
                 o.value = mode;
@@ -218,81 +223,53 @@ function renderMotifList(container) {
                 blendSel.appendChild(o);
             }
             blendSel.addEventListener("change", (e) => {
-                row.blendMode = e.target.value;
+                row.blendMode = /** @type {HTMLSelectElement} */ (e.target).value;
                 notifyChange();
             });
             blendSel.addEventListener("click", (e) => e.stopPropagation());
-        }
-        item.innerHTML = `
-            <label class="motif-enable"><input type="checkbox" data-action="toggle" ${row.enabled ? "checked" : ""}></label>
-            <span class="motif-label">${label}</span>
-            <span class="motif-layer">${isContext ? "moves below" : row.surfaceMask}</span>
-            <span class="motif-blend-slot"></span>
-            <span class="motif-actions">
-                <button type="button" data-action="up" title="Move up">↑</button>
-                <button type="button" data-action="down" title="Move down">↓</button>
-                <button type="button" data-action="remove" title="Remove">✕</button>
-            </span>
-        `;
-        if (!isContext) item.querySelector(".motif-blend-slot").appendChild(blendSel);
-        item.addEventListener("click", (e) => {
-            if (e.target.closest("button") || e.target.closest("input") || e.target.closest("select")) return;
-            selectMotifById(row.id);
-        });
-        item.querySelector('[data-action="toggle"]').addEventListener("change", (e) => {
-            row.enabled = e.target.checked;
+            extrasSlot.appendChild(blendSel);
+        },
+        onSelect: selectMotifById,
+        onToggleEnabled: (row, _index, enabled) => {
+            row.enabled = enabled;
             notifyChange();
             refreshEditorPanels({ motifParams: false, animation: true, global: false });
-        });
-        item.querySelector('[data-action="up"]').addEventListener("click", () => {
-            if (i > 0) {
-                const tmp = editorState.motifs[i - 1];
-                editorState.motifs[i - 1] = editorState.motifs[i];
-                editorState.motifs[i] = tmp;
-                if (editorState.animation?.tracks)
-                    for (const track of editorState.animation.tracks)
-                        if (track.editorMotifIndex === i) track.editorMotifIndex = i - 1;
-                        else if (track.editorMotifIndex === i - 1) track.editorMotifIndex = i;
-                refreshEditorPanels();
-                notifyChange();
-            }
-        });
-        item.querySelector('[data-action="down"]').addEventListener("click", () => {
-            if (i < editorState.motifs.length - 1) {
-                const tmp = editorState.motifs[i + 1];
-                editorState.motifs[i + 1] = editorState.motifs[i];
-                editorState.motifs[i] = tmp;
-                if (editorState.animation?.tracks)
-                    for (const track of editorState.animation.tracks)
-                        if (track.editorMotifIndex === i) track.editorMotifIndex = i + 1;
-                        else if (track.editorMotifIndex === i + 1) track.editorMotifIndex = i;
-                refreshEditorPanels();
-                notifyChange();
-            }
-        });
-        item.querySelector('[data-action="remove"]').addEventListener("click", () => {
-            editorState.motifs.splice(i, 1);
-            if (selectedMotifId === row.id) selectedMotifId = editorState.motifs[0]?.id ?? null;
+        },
+        onMoveUp: (index) => {
+            if (!movePipelineRow(editorState.motifs, index, -1)) return;
+            remapProfileAnimationIndices(remapIndexAfterSwap(index, index - 1));
+            refreshEditorPanels();
+            notifyChange();
+        },
+        onMoveDown: (index) => {
+            if (!movePipelineRow(editorState.motifs, index, 1)) return;
+            remapProfileAnimationIndices(remapIndexAfterSwap(index, index + 1));
+            refreshEditorPanels();
+            notifyChange();
+        },
+        onRemove: (index, row) => {
+            editorState.motifs.splice(index, 1);
+            if (selectedMotifId === pipelineRowId(row)) selectedMotifId = editorState.motifs[0] ? pipelineRowId(editorState.motifs[0]) : null;
             if (editorState.animation?.tracks) {
                 editorState.animation.tracks = editorState.animation.tracks.filter((track) => {
                     const animIdx = track.editorMotifIndex;
-                    if (animIdx === i) {
+                    if (animIdx === index) {
                         if (editorState.animation.tracks.length === 1) {
                             track.editorMotifIndex = 0;
                             syncAnimationParamRange(0);
                             return true;
                         }
                         return false;
-                    } else if (animIdx > i) track.editorMotifIndex = animIdx - 1;
+                    }
+                    if (animIdx > index) track.editorMotifIndex = animIdx - 1;
                     return true;
                 });
                 if (editorState.animation.selectedTrackIndex >= editorState.animation.tracks.length) editorState.animation.selectedTrackIndex = editorState.animation.tracks.length - 1;
             }
             refreshEditorPanels();
             notifyChange();
-        });
-        container.appendChild(item);
-    }
+        },
+    });
 }
 function renderMotifParams(container) {
     container.innerHTML = "";
