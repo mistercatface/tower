@@ -39,7 +39,7 @@ export function createRollToCursorHpaNav() {
             return;
         }
         const grid = state.obstacleGrid;
-        const gridOpts = { worldToGrid: (wx, wy) => grid.worldToGrid(wx, wy) };
+        const gridOpts = { worldToGrid: (wx, wy) => grid.worldToGrid(wx, wy), grid };
         const expandedCells = expandPortalHopsInCellPath(result.cellPath, grid);
         const rawPath = expandedCells.map((cell) => grid.gridToWorld(cell.col, cell.row));
         navState.path = rawPath;
@@ -72,7 +72,7 @@ export function createRollToCursorHpaNav() {
             const dist = Math.hypot(dx, dy);
             if (dist > 0.01) return { desiredX: dx / dist, desiredY: dy / dist, offPath: dist > (settings.pathOffPathDistance ?? 64) };
         }
-        const result = computePathSteering(agentPose(prop), path, targetX, targetY, settings, navState);
+        const result = computePathSteering(agentPose(prop), path, targetX, targetY, { ...settings, grid }, navState);
         clampHopProgress(hopIdx);
         return result;
     };

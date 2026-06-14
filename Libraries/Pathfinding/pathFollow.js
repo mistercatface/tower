@@ -2,18 +2,28 @@
 /** @typedef {import("../Agent/types.js").SteeringResult} SteeringResult */
 /** @typedef {import("./navSession.js").NavSessionState} NavSessionState */
 const PATH_WAYPOINT_ARRIVAL_PX = 24;
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null | undefined} grid */
+function pathWaypointArrived(bodyX, bodyY, wpX, wpY, arrivalPx, grid) {
+    if (Math.hypot(wpX - bodyX, wpY - bodyY) > arrivalPx) return false;
+    if (!grid?.canStep) return true;
+    const from = grid.worldToGrid(bodyX, bodyY);
+    const to = grid.worldToGrid(wpX, wpY);
+    if (from.col === to.col && from.row === to.row) return true;
+    if (Math.abs(from.col - to.col) > 1 || Math.abs(from.row - to.row) > 1) return true;
+    return grid.canStep(from.col, from.row, to.col, to.row);
+}
 /**
  * Pick the first path index the entity hasn't reached yet. Does not mutate the path.
  *
  * @param {number} x
  * @param {number} y
  * @param {{ x: number, y: number }[]} path
- * @param {{ worldToGrid?: (wx: number, wy: number) => { col: number, row: number } }} [options]
+ * @param {{ worldToGrid?: (wx: number, wy: number) => { col: number, row: number }, grid?: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid }} [options]
  */
 export function findPathProgressIdx(x, y, path, options = {}) {
     if (!path?.length) return 0;
     let idx = 0;
-    const { worldToGrid } = options;
+    const { worldToGrid, grid } = options;
     if (worldToGrid) {
         const here = worldToGrid(x, y);
         for (let i = 0; i < path.length; i++) {
@@ -22,7 +32,7 @@ export function findPathProgressIdx(x, y, path, options = {}) {
         }
     }
     if (idx >= path.length) idx = path.length - 1;
-    while (idx < path.length - 1 && Math.hypot(path[idx].x - x, path[idx].y - y) <= PATH_WAYPOINT_ARRIVAL_PX) idx++;
+    while (idx < path.length - 1 && pathWaypointArrived(x, y, path[idx].x, path[idx].y, PATH_WAYPOINT_ARRIVAL_PX, grid)) idx++;
     return idx;
 }
 /** @deprecated Use findPathProgressIdx — kept so callers can migrate without silent breakage. */
@@ -48,7 +58,8 @@ export function buildPathOverlayFromProgress(x, y, path, progressIdx, grid = nul
     const idx = Math.max(0, Math.min(progressIdx ?? 0, path.length - 1));
     const pathNodes = path.slice(idx);
     const first = pathNodes[0];
-    if (grid && first && Math.hypot(first.x - x, first.y - y) > 1 && cellsAreGridNeighbors(grid, x, y, first.x, first.y)) pathNodes.unshift({ x, y });
+    if (grid && first && Math.hypot(first.x - x, first.y - y) > 1 && cellsAreGridNeighbors(grid, x, y, first.x, first.y) && pathWaypointArrived(x, y, first.x, first.y, PATH_WAYPOINT_ARRIVAL_PX, grid))
+        pathNodes.unshift({ x, y });
     return { pathNodes };
 }
 /**
@@ -72,7 +83,8 @@ export function computePathSteering(pose, path, targetX, targetY, settings = {},
     let dx = steerTarget.x - x;
     let dy = steerTarget.y - y;
     let dist = Math.hypot(dx, dy);
-    while (dist < waypointArrival && step < path.length - 1) {
+    const grid = settings.grid ?? null;
+    while (dist < waypointArrival && step < path.length - 1 && pathWaypointArrived(x, y, path[step].x, path[step].y, waypointArrival, grid)) {
         step++;
         if (navState) navState.pathProgressIdx = step;
         steerTarget = path[step];

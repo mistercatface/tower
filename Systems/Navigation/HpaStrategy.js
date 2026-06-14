@@ -23,7 +23,7 @@ function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, o
         }
     }
     navState.path = path;
-    navState.pathProgressIdx = path ? findPathProgressIdx(entity.x, entity.y, path, { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy) }) : 0;
+    navState.pathProgressIdx = path ? findPathProgressIdx(entity.x, entity.y, path, { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy), grid: obstacleGrid }) : 0;
     navState.lastUpdate = nowMs;
     navState.lastTargetX = targetX;
     navState.lastTargetY = targetY;
@@ -68,12 +68,12 @@ export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator,
         }
     }
     const pose = agentPose(entity);
-    let steering = computeHpaSteering(pose, navState.path, targetX, targetY, settings, navState);
+    let steering = computeHpaSteering(pose, navState.path, targetX, targetY, { ...settings, grid: obstacleGrid }, navState);
     if (navState.path && navState.path.length >= 2 && steering.offPath && now - navState.lastOffPathReplan >= 250) {
         replanReason = "offPath";
         navState.lastOffPathReplan = now;
         replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, hooks, now);
-        steering = computeHpaSteering(pose, navState.path, targetX, targetY, settings, navState);
+        steering = computeHpaSteering(pose, navState.path, targetX, targetY, { ...settings, grid: obstacleGrid }, navState);
     }
     const hasPath = navState.path && navState.path.length >= 1;
     return { steering, mode: hasPath ? "hpa" : "direct", replanReason, pathLen: hasPath ? navState.path.length : 0 };
