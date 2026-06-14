@@ -3,7 +3,7 @@ import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid } from "./VoronoiRegions.js";
-import { appendPortalRegionAdjacencies, forEachPortalNavHop } from "../Sandbox/portalNavIndex.js";
+import { appendPortalRegionAdjacencies, expandPortalHopsInCellPath, forEachPortalNavHop } from "../Sandbox/portalNavIndex.js";
 export class HierarchicalNavigator {
     constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, navGraph, { damagePadding = 12 } = {}) {
         this.cellSize = cellSize;
@@ -380,6 +380,9 @@ export class HierarchicalNavigator {
         this.aStarRunId++;
         return runLocalAStarFlat(startCol, startRow, targetCol, targetRow, this.navGraph, this.cols, this.rows, maxPathLen, this.aStarGScore, this.aStarCameFrom, this.aStarVisited, this.aStarRunId);
     }
+    _cellPathToWaypoints(cells) {
+        return expandPortalHopsInCellPath(cells, this.navGraph).map((cell) => this.gridToWorld(cell.col, cell.row));
+    }
     _connectTempNode(tempNode, gridCol, gridRow, targetNode, isStart, modifiedCandidates = null) {
         const candidates = new Set();
         const searchRadius = Math.ceil(Math.sqrt(this.maxCellsPerChunk)) * 2;
@@ -445,7 +448,7 @@ export class HierarchicalNavigator {
                 const startWorld = this.gridToWorld(startCol, startRow);
                 const targetWorld = this.gridToWorld(targetCol, targetRow);
                 return {
-                    waypoints: localPath.map((cell) => this.gridToWorld(cell.col, cell.row)),
+                    waypoints: this._cellPathToWaypoints(localPath),
                     abstractNodes: [
                         { x: startWorld.x, y: startWorld.y, id: "start" },
                         { x: targetWorld.x, y: targetWorld.y, id: "target" },
@@ -479,7 +482,7 @@ export class HierarchicalNavigator {
                     }
                 }
                 return {
-                    waypoints: fullCellPath.map((cell) => this.gridToWorld(cell.col, cell.row)),
+                    waypoints: this._cellPathToWaypoints(fullCellPath),
                     abstractNodes: abstractPath.map((node) => ({ x: node.x, y: node.y, id: node.id })),
                     pathPlanner: "hpa",
                 };

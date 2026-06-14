@@ -2,7 +2,7 @@ import { CARDINAL_OFFSETS, cellInRect, colRowToIndex, makeAdjacencyKey } from ".
 import { portalTraverseExitCell } from "../Spatial/grid/portalAccess.js";
 import { evaluatePortalStepEntry } from "./portalLinks.js";
 
-/** @typedef {{ exitCol: number, exitRow: number, cost: number }} PortalNavHop */
+/** @typedef {{ mouthCol: number, mouthRow: number, exitCol: number, exitRow: number, cost: number }} PortalNavHop */
 
 /**
  * @param {object} state
@@ -33,7 +33,7 @@ export function buildPortalNavHops(state, grid) {
                 hopsByFromIdx.set(idx, list);
             }
             if (list.some((hop) => hop.exitCol === exit.col && hop.exitRow === exit.row)) continue;
-            list.push({ exitCol: exit.col, exitRow: exit.row, cost: 1 });
+            list.push({ mouthCol: toCol, mouthRow: toRow, exitCol: exit.col, exitRow: exit.row, cost: 1 });
         }
     }
     return hopsByFromIdx;
@@ -85,4 +85,31 @@ export function forEachPortalNavHop(navGraph, col, row, fn) {
         if (navGraph.isBlocked(hop.exitCol, hop.exitRow)) continue;
         fn(hop.exitCol, hop.exitRow, hop.cost);
     }
+}
+
+/**
+ * A* portal hops jump entry → exit in one graph step. Movement must step onto the mouth cell first
+ * so physics traverse fires; insert mouth waypoints and omit the graph exit (replan after traverse).
+ *
+ * @param {{ col: number, row: number }[]} cells
+ * @param {import("../Pathfinding/NavGraph.js").NavGraph & { canPortalHop?: (fromCol: number, fromRow: number, exitCol: number, exitRow: number) => boolean, getPortalHops?: (col: number, row: number) => PortalNavHop[] | null }} navGraph
+ */
+export function expandPortalHopsInCellPath(cells, navGraph) {
+    if (!cells.length || !navGraph.canPortalHop || !navGraph.getPortalHops) return cells;
+    /** @type {{ col: number, row: number }[]} */
+    const out = [{ col: cells[0].col, row: cells[0].row }];
+    for (let i = 1; i < cells.length; i++) {
+        const prev = cells[i - 1];
+        const curr = cells[i];
+        if (navGraph.canPortalHop(prev.col, prev.row, curr.col, curr.row)) {
+            const hops = navGraph.getPortalHops(prev.col, prev.row);
+            const hop = hops?.find((entry) => entry.exitCol === curr.col && entry.exitRow === curr.row);
+            if (hop) {
+                out.push({ col: hop.mouthCol, row: hop.mouthRow });
+                continue;
+            }
+        }
+        out.push({ col: curr.col, row: curr.row });
+    }
+    return out;
 }

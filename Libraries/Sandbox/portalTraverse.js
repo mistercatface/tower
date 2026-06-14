@@ -53,9 +53,11 @@ export function tickPortalTraverse(state, spatialFrame) {
         const prevCol = prevIdx % grid.cols;
         const prevRow = (prevIdx / grid.cols) | 0;
         const entry = evaluatePortalStepEntry(state, grid, prevCol, prevRow, col, row);
-        if (!entry) continue;
-        if (!applyPortalTraverse(state, entity, entry, prevCol, prevRow, col, row)) continue;
-        reindex = true;
+        if (entry && applyPortalTraverse(state, entity, entry, prevCol, prevRow, col, row)) {
+            reindex = true;
+            continue;
+        }
+        entity._gridZonePrevCellIdx = cellIdx;
     }
     if (reindex) spatialFrame.reindexPushables(pushables);
 }
