@@ -2,7 +2,7 @@ export default {
     id: "humanoid",
     sandbox: { equip: true, behaviors: ["dragLaunch", "rollToCursorDirect", "rollToCursorHpa", "shoot"], dragLaunch: { minPower: 25, maxPower: 120 } },
     physics: {
-        radius: 7,
+        radius: 4,
         isPushable: true,
         rolls: false,
         collisionShape: "circle",
