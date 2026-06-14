@@ -1,5 +1,6 @@
 export { applySquareCanvasResize } from "./squareCanvasResize.js";
 export { createOffscreenCanvas, resizeOffscreenCanvas } from "./offscreenCanvas.js";
+export { fillRgbaBuffer, fillRgbaRect, setRgbaPixel, strokeAxisLineRgba, copyRgbTripletsToRgba } from "./imageDataBuffer.js";
 export {
     TAU,
     traceAabbRect,

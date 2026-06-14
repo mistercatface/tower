@@ -1,5 +1,6 @@
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
+import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 import { createWallFaceAxes, fillWallFaceRows, writeFloorPixel, writeRoofPixel, writeWallCellPixel } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan, getTexelResolution } from "./WorldSurfaceResolution.js";
@@ -112,13 +113,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
             }
     }
     const rgbBuffer = composeSurfaceImage(samples, profile, seed, bake);
-    let dataIdx = 0;
-    for (let i = 0; i < numPixels; i++) {
-        data[dataIdx++] = rgbBuffer[i * 3];
-        data[dataIdx++] = rgbBuffer[i * 3 + 1];
-        data[dataIdx++] = rgbBuffer[i * 3 + 2];
-        data[dataIdx++] = 255;
-    }
+    copyRgbTripletsToRgba(data, rgbBuffer, numPixels);
     ctx.putImageData(imgData, 0, 0);
     memoryPool.release(pooled, numPixels);
 }

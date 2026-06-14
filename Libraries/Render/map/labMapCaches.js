@@ -1,4 +1,5 @@
 import { fillCircle, strokeOpenPolyline, strokeSegment, traceSegment } from "../../Canvas/CanvasPath.js";
+import { fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba } from "../../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 import { isRailWallEdge } from "../../Spatial/grid/CellEdge.js";
 import { forEachGridEdge } from "../../World/wallGridCells.js";
@@ -112,27 +113,6 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
     }
     return { canvas, minX, minY, maxX, maxY };
 }
-/** @param {Uint8ClampedArray} px @param {number} w @param {number} h @param {number} x @param {number} y @param {number[]} rgb */
-function setOverviewPixel(px, w, h, x, y, rgb) {
-    if (x < 0 || y < 0 || x >= w || y >= h) return;
-    const i = (y * w + x) * 4;
-    px[i] = rgb[0];
-    px[i + 1] = rgb[1];
-    px[i + 2] = rgb[2];
-    px[i + 3] = 255;
-}
-/** @param {Uint8ClampedArray} px @param {number} w @param {number} h @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {number[]} rgb */
-function strokeOverviewLine(px, w, h, x0, y0, x1, y1, rgb) {
-    if (y0 === y1) {
-        const lo = x0 < x1 ? x0 : x1;
-        const hi = x0 < x1 ? x1 : x0;
-        for (let x = lo; x <= hi; x++) setOverviewPixel(px, w, h, x, y0, rgb);
-        return;
-    }
-    const lo = y0 < y1 ? y0 : y1;
-    const hi = y0 < y1 ? y1 : y0;
-    for (let y = lo; y <= hi; y++) setOverviewPixel(px, w, h, x0, y, rgb);
-}
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {OffscreenCanvas | null | undefined} [reuseCanvas] */
 export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
     const ppc = OVERVIEW_PIXELS_PER_CELL;
@@ -144,27 +124,20 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
     const ctx = canvas.getContext("2d");
     const data = ctx.createImageData(w, h);
     const px = data.data;
-    for (let i = 0; i < px.length; i += 4) {
-        px[i] = OVERVIEW_FLOOR_RGB[0];
-        px[i + 1] = OVERVIEW_FLOOR_RGB[1];
-        px[i + 2] = OVERVIEW_FLOOR_RGB[2];
-        px[i + 3] = 255;
-    }
+    fillRgbaBuffer(px, OVERVIEW_FLOOR_RGB);
     for (let i = 0; i < obstacleGrid.grid.length; i++) {
         if (obstacleGrid.grid[i] === 0) continue;
         const col = i % cols;
         const row = (i / cols) | 0;
-        const x0 = col * ppc;
-        const y0 = row * ppc;
-        for (let dy = 0; dy < ppc; dy++) for (let dx = 0; dx < ppc; dx++) setOverviewPixel(px, w, h, x0 + dx, y0 + dy, OVERVIEW_WALL_RGB);
+        fillRgbaRect(px, w, h, col * ppc, row * ppc, ppc, ppc, OVERVIEW_WALL_RGB);
     }
     forEachGridEdge(
         obstacleGrid,
         (col, row, side) => {
-            if (side === 0) strokeOverviewLine(px, w, h, col * ppc, row * ppc, (col + 1) * ppc - 1, row * ppc, OVERVIEW_RAIL_RGB);
-            else if (side === 1) strokeOverviewLine(px, w, h, (col + 1) * ppc - 1, row * ppc, (col + 1) * ppc - 1, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
-            else if (side === 2) strokeOverviewLine(px, w, h, col * ppc, (row + 1) * ppc - 1, (col + 1) * ppc - 1, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
-            else strokeOverviewLine(px, w, h, col * ppc, row * ppc, col * ppc, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
+            if (side === 0) strokeAxisLineRgba(px, w, h, col * ppc, row * ppc, (col + 1) * ppc - 1, row * ppc, OVERVIEW_RAIL_RGB);
+            else if (side === 1) strokeAxisLineRgba(px, w, h, (col + 1) * ppc - 1, row * ppc, (col + 1) * ppc - 1, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
+            else if (side === 2) strokeAxisLineRgba(px, w, h, col * ppc, (row + 1) * ppc - 1, (col + 1) * ppc - 1, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
+            else strokeAxisLineRgba(px, w, h, col * ppc, row * ppc, col * ppc, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
         },
         { filter: isRailWallEdge, canonicalOnly: true },
     );
