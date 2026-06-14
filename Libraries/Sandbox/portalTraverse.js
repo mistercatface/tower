@@ -1,5 +1,5 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { isPortalEdge, PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
+import { PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import {
     portalBodyCrossedEntryPlane,
     portalBodyInMouthZone,
@@ -83,7 +83,7 @@ function assemblePortalIntakeContext(state, entity, segment) {
     if (entity.isDead) return null;
     const now = state.gameTime;
     if (entity._boundaryTraverseUntil != null && now < entity._boundaryTraverseUntil) return null;
-    if (segment.isDead || !isPortalEdge(segment.passageEdge)) return null;
+    if (segment.isDead) return null;
     const grid = state.obstacleGrid;
     const edge = segment.passageEdge;
     const { gridCol, gridRow, gridSide } = segment;
@@ -112,11 +112,8 @@ export function tryPortalIntake(state, entity, segment) {
     rejectPortalIntake(entity, ctx.cross, ctx.grid, ctx.gameTime);
     return false;
 }
-let passageHandlersRegistered = false;
-/** Wire portal wall contact into the passage handler registry. Idempotent. */
+/** Wire portal wall contact into the passage handler registry. */
 export function registerSandboxPassageHandlers() {
-    if (passageHandlersRegistered) return;
-    passageHandlersRegistered = true;
     registerPortalPassageStepHandler();
     registerPassageWallContactHandler(PASSAGE_MODE.Portal, (ctx) => {
         if (ctx.state && tryPortalIntake(ctx.state, ctx.entity, ctx.segment)) return "consumed";

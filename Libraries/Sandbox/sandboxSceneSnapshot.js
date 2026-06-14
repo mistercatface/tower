@@ -2,6 +2,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { gridCellToGlobalColRow, isCanonicalEdgeRepresentative } from "../World/wallGridCells.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
+import { notifyGridWallChange } from "./boundaryEdit.js";
 import {
     applyStampedForcefieldsFromGlobal,
     applyStampedGridWallsFromGlobal,
@@ -13,7 +14,6 @@ import {
     listPlacedPortals,
     listPlacedRailWalls,
     listPlacedVoxelWalls,
-    notifyStampedGridWallChange,
 } from "./gridWallEdit.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
@@ -190,8 +190,8 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     const powerSourceBounds = applyPassagePowerSourcesFromGlobal(state, doc.powerSources, cellSize);
     const stampBounds = unionStampBounds(unionStampBounds(unionStampBounds(unionStampBounds(wallBounds, forcefieldBounds), portalBounds), beltBounds), powerSourceBounds);
     const grid = state.obstacleGrid;
-    if (stampBounds) notifyStampedGridWallChange(state, stampBounds);
-    else if (grid.cols) notifyStampedGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
+    if (stampBounds) notifyGridWallChange(state, stampBounds);
+    else if (grid.cols) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
     syncPassagePowerNetwork(state);
     for (let i = 0; i < doc.props.length; i++) spawnSnapshotProp(state, doc.props[i]);
 }

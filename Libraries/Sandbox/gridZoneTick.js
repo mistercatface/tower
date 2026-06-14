@@ -20,11 +20,9 @@ export function buildGridZoneSubscriptions(grid) {
     forEachGridEdge(
         grid,
         (col, row, side) => {
-            const key = canonicalEdgeCellKey(grid, col, row, side);
-            if (edges.has(key)) return;
-            edges.set(key, { col, row, side, mode: PASSAGE_MODE.Tripwire });
+            edges.set(canonicalEdgeCellKey(grid, col, row, side), { col, row, side, mode: PASSAGE_MODE.Tripwire });
         },
-        { filter: isPassageTripwireEdge },
+        { canonicalOnly: true, filter: isPassageTripwireEdge },
     );
     return { cells, edges };
 }

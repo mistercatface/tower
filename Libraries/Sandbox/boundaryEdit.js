@@ -16,16 +16,11 @@ export function notifyGridWallChange(state, bounds) {
 }
 /**
  * @param {object} state
- * @param {{ startCol: number, endCol: number, startRow: number, endRow: number }} bounds
+ * @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | { startCol: number, endCol: number, startRow: number, endRow: number }[]} bounds
  * @param {{ power?: boolean, nav?: boolean }} [opts] — power sync also rebuilds boundary nav hops
  */
 export function commitBoundaryEdit(state, bounds, { power = false, nav = false } = {}) {
-    notifyGridWallChange(state, bounds);
-    if (power) syncPassagePowerNetwork(state);
-    else if (nav) syncBoundaryNavIndex(state);
-}
-/** Same as commitBoundaryEdit but notifies each region before one optional sync pass. */
-export function commitBoundaryEditRegions(state, regions, { power = false, nav = false } = {}) {
+    const regions = Array.isArray(bounds) ? bounds : [bounds];
     for (let i = 0; i < regions.length; i++) notifyGridWallChange(state, regions[i]);
     if (power) syncPassagePowerNetwork(state);
     else if (nav) syncBoundaryNavIndex(state);

@@ -33,11 +33,10 @@ import {
     setForcefieldProfileAt,
     setPortalProfileAt,
     setPortalLinkProfileAt,
-    setRailWallAt,
+    stampRailWallAt,
     setVoxelWallHeightAt,
     stampForcefieldAt,
     stampPortalAt,
-    stampRailWallAt,
     stampVoxelWallAt,
     unlinkPortalAt,
     formatGridWallEdgeSideLabel,
@@ -515,7 +514,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         setSelectedRailWallProps(heightLevel, thicknessLevel) {
             if (!selectedRailEdge) return false;
             const { col, row, side } = selectedRailEdge;
-            if (!setRailWallAt(state, col, row, side, heightLevel, thicknessLevel)) return false;
+            if (!stampRailWallAt(state, col, row, side, heightLevel, thicknessLevel)) return false;
             sync();
             return true;
         },
