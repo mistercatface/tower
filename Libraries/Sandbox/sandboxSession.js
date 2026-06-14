@@ -6,7 +6,7 @@ import { stepCardinalFacing } from "../Math/Angle.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
-import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
+import { syncPassagePowerNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import {
@@ -40,12 +40,13 @@ import {
     stampRailWallAt,
     stampVoxelWallAt,
     unlinkPortalAt,
+    formatGridWallEdgeSideLabel,
 } from "./gridWallEdit.js";
 import { PASSAGE_MODE, PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
 import { portalAccessDefaultAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
-import { PORTAL_LINK_MODE } from "./portalLinks.js";
+import { formatPortalConnectionLabel, PORTAL_LINK_MODE } from "./portalLinks.js";
 /** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
@@ -376,10 +377,16 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             selectedRailEdge && gridHasForcefield(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
                 ? getForcefieldInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
                 : null,
-        getSelectedPortalInfo: () =>
-            selectedRailEdge && gridHasPortal(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
-                ? getPortalInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side, state)
-                : null,
+        getSelectedPortalInfo: () => {
+            if (!selectedRailEdge || !gridHasPortal(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) return null;
+            const { col, row, side } = selectedRailEdge;
+            const grid = state.obstacleGrid;
+            const info = getPortalInfo(grid, col, row, side);
+            const networkId = getPassageEdgeNetworkId(state, grid, col, row, side);
+            const onNetwork = networkId >= 0;
+            const connectionLabel = onNetwork ? (info.linked ? formatPortalConnectionLabel(info.linkMode, info.connection === "fromSelf") : "On network · unlinked") : "Off network";
+            return { ...info, sideLabel: formatGridWallEdgeSideLabel(side), onNetwork, networkId, connectionLabel };
+        },
         setSelectedForcefieldMode(mode) {
             if (!selectedRailEdge) return false;
             const { col, row, side } = selectedRailEdge;
@@ -404,12 +411,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const { col, row, side } = selectedRailEdge;
             const info = getPortalInfo(state.obstacleGrid, col, row, side);
             if (!info) return false;
-            const allowedSide =
-                accessMode === PORTAL_ACCESS_MODE.One
-                    ? info.accessMode === PORTAL_ACCESS_MODE.One
-                        ? (info.allowedSide ?? portalAccessDefaultAllowedSide(side))
-                        : portalAccessDefaultAllowedSide(side)
-                    : portalAccessDefaultAllowedSide(side);
+            const allowedSide = accessMode === PORTAL_ACCESS_MODE.One && info.accessMode === PORTAL_ACCESS_MODE.One ? info.allowedSide : portalAccessDefaultAllowedSide(side);
             if (!setPortalProfileAt(state, col, row, side, accessMode, allowedSide, info.accessBlock)) return false;
             sync();
             return true;

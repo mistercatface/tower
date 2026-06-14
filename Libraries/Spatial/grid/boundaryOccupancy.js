@@ -287,14 +287,9 @@ function beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow) {
     return sideX === exitSide || sideY === exitSide;
 }
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow @param {number} ownerCol @param {number} ownerRow @param {number} ownerSide */
-function portalBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide) {
-    const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
-    if (!isPortalEdge(edge)) return false;
-    return portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide);
-}
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow @param {number} ownerCol @param {number} ownerRow @param {number} ownerSide */
 function boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide) {
-    if (portalBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide)) return true;
+    const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
+    if (isPortalEdge(edge) && portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide)) return true;
     return boundaryBlocksStep(grid, ownerCol, ownerRow, ownerSide);
 }
 /**

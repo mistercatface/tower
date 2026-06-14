@@ -1,5 +1,5 @@
 import { gridWallEdgeMirrorSide } from "../../World/wallGridCells.js";
-import { isPortalEdge, parsePortalAccessBlock, parsePortalAccessMode, PORTAL_ACCESS_BLOCK, PORTAL_ACCESS_MODE } from "./CellEdge.js";
+import { parsePortalAccessBlock, PORTAL_ACCESS_BLOCK, PORTAL_ACCESS_MODE } from "./CellEdge.js";
 /** Default allowedSide for access one — owner cell (mirror of stamped edge side). */
 export function portalAccessDefaultAllowedSide(ownerSide) {
     return gridWallEdgeMirrorSide(ownerSide);
@@ -23,11 +23,6 @@ export function portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, allowed
     if (allowedSide === 2) return { col: ownerCol, row: ownerRow + 1 };
     return { col: ownerCol - 1, row: ownerRow };
 }
-/** @param {string} accessMode */
-export function formatPortalAccessModeLabel(accessMode) {
-    if (accessMode === PORTAL_ACCESS_MODE.One) return "One side only";
-    return "Both sides";
-}
 /** @param {string} accessBlock */
 export function formatPortalAccessBlockLabel(accessBlock) {
     if (accessBlock === PORTAL_ACCESS_BLOCK.Step) return "Step only";
@@ -42,11 +37,10 @@ export function formatPortalAccessSideLabel(ownerSide, allowedSide) {
     if (allowedSide === 2) return "South neighbor";
     return "West neighbor";
 }
-/** Non-directional step query (conservative when access is one). */
+/** Non-directional step query (conservative when access is one). Caller must pass a portal edge. */
 export function portalBlocksStepWithoutDirection(edge, ownerSide) {
-    if (!isPortalEdge(edge)) return false;
     if (edge.powered !== true) return true;
-    if (parsePortalAccessMode(edge.accessMode) === PORTAL_ACCESS_MODE.Both) return false;
+    if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return false;
     return portalAccessBlockIncludesStep(edge);
 }
 /**
@@ -54,18 +48,16 @@ export function portalBlocksStepWithoutDirection(edge, ownerSide) {
  * @returns {boolean} true when the step is blocked
  */
 export function portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide) {
-    if (!isPortalEdge(edge)) return false;
     if (edge.powered !== true) return true;
-    if (parsePortalAccessMode(edge.accessMode) === PORTAL_ACCESS_MODE.Both) return false;
+    if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return false;
     if (!portalAccessBlockIncludesStep(edge)) return false;
-    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, edge.allowedSide ?? portalAccessDefaultAllowedSide(ownerSide));
+    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, edge.allowedSide);
     return fromCol !== allowed.col || fromRow !== allowed.row;
 }
-/** Whether a portal edge emits physics collision rails. */
+/** Whether a portal edge emits physics collision rails. Caller must pass a portal edge. */
 export function portalEdgeEmitsCollision(edge) {
-    if (!isPortalEdge(edge)) return false;
     if (edge.powered !== true) return true;
-    if (parsePortalAccessMode(edge.accessMode) === PORTAL_ACCESS_MODE.Both) return false;
+    if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return false;
     return portalAccessBlockIncludesPhysics(edge);
 }
 /** World-unit vector for crossing from the allowed initiator cell through the portal edge. */
@@ -80,12 +72,10 @@ export function portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, allow
  */
 export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, bodyX, bodyY, vx, vy, grid) {
     if (!portalEdgeEmitsCollision(edge)) return false;
-    if (edge.powered !== true) return true;
-    const allowedSide = edge.allowedSide ?? portalAccessDefaultAllowedSide(ownerSide);
-    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, allowedSide);
+    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, edge.allowedSide);
     const { col: bodyCol, row: bodyRow } = grid.worldToGrid(bodyX, bodyY);
     if (bodyCol !== allowed.col || bodyRow !== allowed.row) return true;
-    const cross = portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, allowedSide);
+    const cross = portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, edge.allowedSide);
     return vx * cross.x + vy * cross.y <= 0.5;
 }
 /** @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow */
@@ -108,17 +98,3 @@ function portalSideOutwardVector(side) {
     if (side === 2) return { x: 0, y: 1 };
     return { x: -1, y: 0 };
 }
-/** Side picker options when access is one — owner cell or neighbor across stamped edge. */
-export function portalAccessSideOptions(ownerSide) {
-    const mirror = portalAccessDefaultAllowedSide(ownerSide);
-    const neighborLabel = ownerSide === 0 ? "North neighbor" : ownerSide === 1 ? "East neighbor" : ownerSide === 2 ? "South neighbor" : "West neighbor";
-    return [
-        { value: String(mirror), label: "Owner cell" },
-        { value: String(ownerSide), label: neighborLabel },
-    ];
-}
-export const PORTAL_ACCESS_BLOCK_OPTIONS = [
-    { value: PORTAL_ACCESS_BLOCK.All, label: "Step + physics" },
-    { value: PORTAL_ACCESS_BLOCK.Step, label: "Step only" },
-    { value: PORTAL_ACCESS_BLOCK.Physics, label: "Physics only" },
-];

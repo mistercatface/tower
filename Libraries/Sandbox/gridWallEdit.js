@@ -17,7 +17,7 @@ import {
     PORTAL_ACCESS_MODE,
     railWallCapLevel,
 } from "../Spatial/grid/CellEdge.js";
-import { portalAccessDefaultAllowedSide, formatPortalAccessModeLabel, formatPortalAccessSideLabel, formatPortalAccessBlockLabel } from "../Spatial/grid/portalAccess.js";
+import { portalAccessDefaultAllowedSide, formatPortalAccessSideLabel, formatPortalAccessBlockLabel } from "../Spatial/grid/portalAccess.js";
 import { clearBoundaryPrimary, setBoundary, setPassageProfile, setPortalProfile } from "../Spatial/grid/boundaryOccupancy.js";
 import {
     canonicalEdgeCellKey,
@@ -465,8 +465,8 @@ export function setPortalLinkProfileAt(state, col, row, side, linkMode, linkSour
     if (partner) notifyGridWallChange(state, cellBounds(partner.col, partner.row));
     return true;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {object | null} [state] */
-export function getPortalInfo(grid, col, row, side, state = null) {
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function getPortalInfo(grid, col, row, side) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isPortalEdge(edge)) return null;
     const accessMode = parsePortalAccessMode(edge.accessMode);
@@ -475,36 +475,22 @@ export function getPortalInfo(grid, col, row, side, state = null) {
     const partner = partnerKey ? resolvePortalPartner(grid, col, row, side) : null;
     const linkMode = parsePortalLinkMode(edge.linkMode);
     const route = partner ? resolvePortalLinkRoute(grid, col, row, side) : null;
-    const fromSelf = route?.fromSelf ?? true;
     let connection = "shared";
-    if (linkMode === PORTAL_LINK_MODE.OneWay) connection = fromSelf ? "fromSelf" : "fromPartner";
-    const powered = edge.powered === true;
-    const networkId = state ? getPassageEdgeNetworkId(state, grid, col, row, side) : powered ? 0 : -1;
-    const onNetwork = networkId >= 0;
-    let connectionLabel = "Off network";
-    if (onNetwork) connectionLabel = partner ? formatPortalConnectionLabel(linkMode, fromSelf) : "On network · unlinked";
-    const allowedSide = edge.allowedSide ?? portalAccessDefaultAllowedSide(side);
+    if (linkMode === PORTAL_LINK_MODE.OneWay && route) connection = route.fromSelf ? "fromSelf" : "fromPartner";
     return {
         col,
         row,
         side,
         accessMode,
         accessBlock,
-        allowedSide,
+        allowedSide: edge.allowedSide,
         partnerKey,
         partner,
         linked: partner != null,
         linkMode,
         linkSourceKey: edge.linkSourceKey ?? 0,
         connection,
-        connectionLabel,
-        powered,
-        onNetwork,
-        networkId,
-        sideLabel: formatGridWallEdgeSideLabel(side),
-        accessModeLabel: formatPortalAccessModeLabel(accessMode),
-        accessBlockLabel: formatPortalAccessBlockLabel(accessBlock),
-        accessSideLabel: formatPortalAccessSideLabel(side, allowedSide),
+        powered: edge.powered === true,
     };
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} colA @param {number} rowA @param {number} sideA @param {number} colB @param {number} rowB @param {number} sideB */
@@ -525,10 +511,11 @@ export function listPlacedPortals(grid) {
             const info = getPortalInfo(grid, col, row, side);
             if (!info) continue;
             index++;
-            const linkTag = info.linked ? ` · ${info.connectionLabel}` : " · unlinked";
-            const accessTag = info.accessMode === PORTAL_ACCESS_MODE.Both ? "" : ` · ${info.accessSideLabel}`;
-            const blockTag = info.accessMode === PORTAL_ACCESS_MODE.One && info.accessBlock !== PORTAL_ACCESS_BLOCK.All ? ` · ${info.accessBlockLabel}` : "";
-            placed.push({ col, row, side, label: `Portal #${index} · ${info.sideLabel}${accessTag}${blockTag}${linkTag}` });
+            const sideLabel = formatGridWallEdgeSideLabel(side);
+            const accessTag = info.accessMode === PORTAL_ACCESS_MODE.One ? ` · ${formatPortalAccessSideLabel(side, info.allowedSide)}` : "";
+            const blockTag = info.accessMode === PORTAL_ACCESS_MODE.One && info.accessBlock !== PORTAL_ACCESS_BLOCK.All ? ` · ${formatPortalAccessBlockLabel(info.accessBlock)}` : "";
+            const linkTag = info.linked ? ` · ${formatPortalConnectionLabel(info.linkMode, info.connection === "fromSelf")}` : " · unlinked";
+            placed.push({ col, row, side, label: `Portal #${index} · ${sideLabel}${accessTag}${blockTag}${linkTag}` });
         }
     }
     return placed;

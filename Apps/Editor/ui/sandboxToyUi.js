@@ -16,7 +16,7 @@ import { renderSandboxEquipPanel } from "../../../Libraries/Sandbox/sandboxEquip
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
-import { portalAccessSideOptions, PORTAL_ACCESS_BLOCK_OPTIONS } from "../../../Libraries/Spatial/grid/portalAccess.js";
+import { portalAccessDefaultAllowedSide } from "../../../Libraries/Spatial/grid/portalAccess.js";
 import { PORTAL_ACCESS_BLOCK, PORTAL_ACCESS_MODE } from "../../../Libraries/Spatial/grid/CellEdge.js";
 import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
@@ -39,6 +39,20 @@ const PORTAL_CONNECTION_OPTIONS = [
     { value: "shared", label: "Shared — both ways (⇄)" },
     { value: "fromSelf", label: "One-way — this portal → partner (→)" },
     { value: "fromPartner", label: "One-way — partner → this portal (←)" },
+];
+/** @param {number} ownerSide */
+function portalAccessSideOptions(ownerSide) {
+    const mirror = portalAccessDefaultAllowedSide(ownerSide);
+    const neighborLabel = ownerSide === 0 ? "North neighbor" : ownerSide === 1 ? "East neighbor" : ownerSide === 2 ? "South neighbor" : "West neighbor";
+    return [
+        { value: String(mirror), label: "Owner cell" },
+        { value: String(ownerSide), label: neighborLabel },
+    ];
+}
+const PORTAL_ACCESS_BLOCK_OPTIONS = [
+    { value: PORTAL_ACCESS_BLOCK.All, label: "Step + physics" },
+    { value: PORTAL_ACCESS_BLOCK.Step, label: "Step only" },
+    { value: PORTAL_ACCESS_BLOCK.Physics, label: "Physics only" },
 ];
 const EDGE_SIDE_OPTIONS = [
     { value: "0", label: formatGridWallEdgeSideLabel(0) },

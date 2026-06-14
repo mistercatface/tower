@@ -1,16 +1,7 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex, cellInRect } from "./GridUtils.js";
 import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCellDamage.js";
-import {
-    gridWallEdgeEndpoints,
-    gridEdgeRailCollisionShouldEmit,
-    gridEdgeRailCollisionThicknessPx,
-    gridForcefieldEdge,
-    gridPortalEdge,
-    gridPortalEdgeShouldEmitCollision,
-    gridPoweredPassageEdgeShouldEmit,
-    scanStaticStructureZLevelsFromGrid,
-} from "../../World/wallGridCells.js";
+import { gridWallEdgeEndpoints, gridBlockingPassageEdge, gridEdgeRailCollisionShouldEmit, gridEdgeRailCollisionThicknessPx, scanStaticStructureZLevelsFromGrid } from "../../World/wallGridCells.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
@@ -123,8 +114,7 @@ export class WorldObstacleGrid {
             }
             for (let side = 0; side < 4; side++) {
                 if (!gridEdgeRailCollisionShouldEmit(this, col, row, side)) continue;
-                const poweredPassage = gridPoweredPassageEdgeShouldEmit(this, col, row, side);
-                const portalCollision = gridPortalEdgeShouldEmitCollision(this, col, row, side);
+                const blockingPassage = gridBlockingPassageEdge(this, col, row, side);
                 const thickness = gridEdgeRailCollisionThicknessPx(this, col, row, side);
                 gridWallEdgeEndpoints(this, col, row, side, EDGE_PROXY_P1, EDGE_PROXY_P2, 0);
                 const p1x = EDGE_PROXY_P1.x;
@@ -179,8 +169,7 @@ export class WorldObstacleGrid {
                 proxy.width = len;
                 proxy.height = thickness;
                 proxy.size = Math.max(len, thickness);
-                if (poweredPassage) proxy.passageEdge = gridForcefieldEdge(this, col, row, side);
-                else if (portalCollision) proxy.passageEdge = gridPortalEdge(this, col, row, side);
+                if (blockingPassage) proxy.passageEdge = blockingPassage;
                 else if ("passageEdge" in proxy) delete proxy.passageEdge;
                 out.push(proxy);
             }
