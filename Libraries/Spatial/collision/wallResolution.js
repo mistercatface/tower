@@ -49,8 +49,7 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
             if (seg.isDead) continue;
             if (seg.passageEdge)
                 if (isPortalEdge(seg.passageEdge)) {
-                    if (!portalEdgeBlocksCollision(seg.passageEdge, seg.gridCol, seg.gridRow, seg.gridSide, body.x, body.y, radius, body.vx ?? 0, body.vy ?? 0, dispX, dispY, seg._obstacleGrid))
-                        continue;
+                    if (!portalEdgeBlocksCollision(seg.passageEdge, seg.gridCol, seg.gridRow, seg.gridSide, body, radius, body.vx ?? 0, body.vy ?? 0, dispX, dispY, seg._obstacleGrid)) continue;
                 } else if (!passageEdgeBlocksCollision(seg.passageEdge, seg.gridSide, body.vx ?? 0, body.vy ?? 0)) continue;
             const maxDist = radius + seg.size * 0.75;
             if (Math.abs(body.x - seg.x) > maxDist || Math.abs(body.y - seg.y) > maxDist) continue;

@@ -1,7 +1,7 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { distanceSqToSegment } from "../Spatial/geometry/WallGeometry.js";
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
-import { portalBodyInMouthZone, portalCrossingVectorForEdge, portalHasCrossingIntent, portalMouthAndBackCells, portalTraverseExitCell } from "../Spatial/grid/portalAccess.js";
+import { portalBodyInMouthZone, portalCrossingVectorForEdge, portalEntryCommitted, portalMouthAndBackCells, portalTraverseExitCell } from "../Spatial/grid/portalAccess.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { evaluatePortalStepEntry } from "./portalLinks.js";
 const PORTAL_TRAVERSE_COOLDOWN_MS = 50;
@@ -52,8 +52,8 @@ export function tickPortalContacts(state, spatialFrame) {
             const { gridCol, gridRow, gridSide } = seg;
             if (!portalBodyInMouthZone(grid, edge, gridCol, gridRow, gridSide, entity.x, entity.y, bodyRadius)) continue;
             const cross = portalCrossingVectorForEdge(edge, gridCol, gridRow, gridSide);
-            if (!portalHasCrossingIntent(cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) continue;
             const { mouth, back } = portalMouthAndBackCells(gridCol, gridRow, gridSide, edge);
+            if (!portalEntryCommitted(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) continue;
             const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
             if (!entry) continue;
             if (applyPortalTraverse(state, entity, entry)) {

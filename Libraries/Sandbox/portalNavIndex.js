@@ -31,7 +31,7 @@ export function buildPortalNavHops(state, grid) {
                 hopsByFromIdx.set(idx, list);
             }
             if (list.some((hop) => hop.exitCol === exit.col && hop.exitRow === exit.row)) continue;
-            list.push({ mouthCol: toCol, mouthRow: toRow, exitCol: exit.col, exitRow: exit.row, cost: 1 });
+            list.push({ mouthCol: fromCol, mouthRow: fromRow, exitCol: exit.col, exitRow: exit.row, cost: 1 });
         }
     }
     return hopsByFromIdx;
@@ -106,4 +106,26 @@ export function expandPortalHopsInCellPath(cells, navGraph) {
         out.push({ col: curr.col, row: curr.row });
     }
     return out;
+}
+/**
+ * Portal mouth waypoint on the active world path.
+ *
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {object} state
+ * @param {{ x: number, y: number }[] | null | undefined} path
+ * @returns {{ col: number, row: number } | null}
+ */
+export function portalMouthOnPath(grid, state, path) {
+    if (!path?.length) return null;
+    for (let i = 0; i < path.length; i++) {
+        const { col, row } = grid.worldToGrid(path[i].x, path[i].y);
+        for (let d = 0; d < CARDINAL_OFFSETS.length; d++) {
+            const { dc, dr } = CARDINAL_OFFSETS[d];
+            const toCol = col + dc;
+            const toRow = row + dr;
+            if (!cellInRect(toCol, toRow, grid.cols, grid.rows)) continue;
+            if (evaluatePortalStepEntry(state, grid, col, row, toCol, toRow)) return { col, row };
+        }
+    }
+    return null;
 }

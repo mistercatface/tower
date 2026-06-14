@@ -74,6 +74,19 @@ export function portalHasCrossingIntent(cross, vx, vy, dispX, dispY) {
     return dispX * cross.x + dispY * cross.y > PORTAL_CROSSING_INTENT_EPS;
 }
 /**
+ * HPA path steering this portal mouth, or manual push with crossing intent when no nav waypoint is set.
+ * @param {object} entity
+ * @param {number} mouthCol
+ * @param {number} mouthRow
+ * @param {{ x: number, y: number }} cross
+ */
+export function portalEntryCommitted(entity, mouthCol, mouthRow, cross, vx, vy, dispX, dispY) {
+    if (entity._navSteerCellCol === mouthCol && entity._navSteerCellRow === mouthRow) return true;
+    if (entity._navPortalMouthCol === mouthCol && entity._navPortalMouthRow === mouthRow) return true;
+    if (entity._navSteerCellCol !== undefined || entity._navPortalMouthCol !== undefined) return false;
+    return portalHasCrossingIntent(cross, vx, vy, dispX, dispY);
+}
+/**
  * Mouth-side half-plane test: back cell is never the mouth; center-in-mouth or straddling the plane from the mouth side counts.
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
  */
@@ -96,12 +109,13 @@ export function portalBodyInMouthZone(grid, edge, ownerCol, ownerRow, ownerSide,
  * Directional physics blocking for portal edge rails.
  * @returns {boolean} true when collision should apply
  */
-export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, bodyX, bodyY, bodyRadius, vx, vy, dispX, dispY, grid) {
+export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, entity, bodyRadius, vx, vy, dispX, dispY, grid) {
     if (!portalEdgeEmitsCollision(edge)) return false;
     if (edge.powered !== true) return true;
-    if (!portalBodyInMouthZone(grid, edge, ownerCol, ownerRow, ownerSide, bodyX, bodyY, bodyRadius)) return true;
+    const { mouth } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
+    if (!portalBodyInMouthZone(grid, edge, ownerCol, ownerRow, ownerSide, entity.x, entity.y, bodyRadius)) return true;
     const cross = portalCrossingVectorForEdge(edge, ownerCol, ownerRow, ownerSide);
-    return !portalHasCrossingIntent(cross, vx, vy, dispX, dispY);
+    return !portalEntryCommitted(entity, mouth.col, mouth.row, cross, vx, vy, dispX, dispY);
 }
 /** World cell at the mouth of the partner portal. */
 export function portalTraverseExitCell(grid, partnerCol, partnerRow, partnerSide) {

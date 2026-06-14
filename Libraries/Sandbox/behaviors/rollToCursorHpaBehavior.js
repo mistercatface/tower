@@ -1,8 +1,37 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { buildPathOverlayFromProgress } from "../../Pathfinding/pathFollow.js";
+import { portalMouthOnPath } from "../portalNavIndex.js";
 import { getRollToCursorConfig, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
+/** @param {object} prop */
+function clearNavPortalCommitment(prop) {
+    delete prop._navSteerCellCol;
+    delete prop._navSteerCellRow;
+    delete prop._navPortalMouthCol;
+    delete prop._navPortalMouthRow;
+}
+/** @param {object} prop @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} state @param {import("../../Pathfinding/navSession.js").NavSessionState} navState */
+function syncNavPortalCommitment(prop, grid, state, navState) {
+    const path = navState.path;
+    if (!path?.length) {
+        clearNavPortalCommitment(prop);
+        return;
+    }
+    const idx = Math.min(navState.pathProgressIdx, path.length - 1);
+    const wp = path[idx];
+    const steerCell = grid.worldToGrid(wp.x, wp.y);
+    prop._navSteerCellCol = steerCell.col;
+    prop._navSteerCellRow = steerCell.row;
+    const mouth = portalMouthOnPath(grid, state, path);
+    if (mouth) {
+        prop._navPortalMouthCol = mouth.col;
+        prop._navPortalMouthRow = mouth.row;
+    } else {
+        delete prop._navPortalMouthCol;
+        delete prop._navPortalMouthRow;
+    }
+}
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
 function snapMoveTargetToCellCenter(grid, world) {
     const { col, row } = grid.worldToGrid(world.x, world.y);
@@ -28,6 +57,7 @@ export function createRollToCursorHpaBehavior(state) {
     };
     const releaseMoveTarget = (prop) => {
         clearTarget();
+        clearNavPortalCommitment(prop);
         releaseRollMoveTarget(prop);
     };
     /** @param {{ x: number, y: number }} world @param {boolean} [forceReset] */
@@ -81,6 +111,7 @@ export function createRollToCursorHpaBehavior(state) {
                 arrivalDistance: config.stopRadius,
                 pathOffPathDistance: 80,
             });
+            syncNavPortalCommitment(prop, state.obstacleGrid, state, hpaNav.navState);
             if (!steering) {
                 releaseMoveTarget(prop);
                 return;
