@@ -56,7 +56,14 @@ export {
     spawnSandboxGraphScene,
     DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS,
     DEFAULT_SANDBOX_GRAPH_MOTIFS,
+    SANDBOX_GRAPH_PIPELINE_MOTIFS,
+    HUB_SPOKE_BUILD_NODE_GRAPH,
+    HUB_SPOKE_TREE_EDGES,
     resolveSandboxGraphSceneOptions,
+    parseTreeEdgesSpec,
+    childrenMapFromTreeEdges,
+    placeGraphNodesHubSpoke,
+    computeHubSpokeStepCells,
     buildBranchingNodeTree,
     buildBranchingRoomTree,
     buildDirectedGraphEdges,
@@ -92,6 +99,7 @@ export {
     punchHolesForNodeIncidentEdges,
     corridorPathIntersectsAny,
     validateLayoutPasses,
+    describeLayoutValidationFailure,
     runRoomGraphMotifs,
 } from "./sandboxRoomGraphGen.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
