@@ -79,6 +79,7 @@ export {
     punchHoleInClosedRoom,
     punchHolesForDirectedEdges,
     punchHoleTowardNeighbor,
+    punchHolesTowardNeighbor,
     punchOneHolePerRoom,
     railWallsForClosedRect,
     railWallsForClosedRoom,
