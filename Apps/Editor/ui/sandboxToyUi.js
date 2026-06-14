@@ -136,27 +136,6 @@ function appendPortalEditorFields(body, controller, selected, { stampDefaults = 
         body.appendChild(unlinkRow);
     }
 }
-function readOpenSections(root) {
-    const open = new Set();
-    for (const el of root.querySelectorAll("details[data-sandbox-section]")) if (el.open) open.add(el.dataset.sandboxSection);
-    return open;
-}
-/** @param {HTMLElement} parent @param {string} id @param {string} title @param {boolean} defaultOpen @param {(body: HTMLElement) => void} build */
-function appendSection(parent, id, title, defaultOpen, build) {
-    const details = document.createElement("details");
-    details.className = "editor-block";
-    details.dataset.sandboxSection = id;
-    details.open = defaultOpen;
-    const summary = document.createElement("summary");
-    summary.textContent = title;
-    details.appendChild(summary);
-    const body = document.createElement("div");
-    build(body);
-    details.appendChild(body);
-    parent.appendChild(details);
-    return details;
-}
-/** @param {HTMLElement} parent @param {string} id @param {string} title @param {(body: HTMLElement) => void} build */
 function appendPinnedSection(parent, id, title, build) {
     const block = document.createElement("div");
     block.className = "editor-block editor-block-pinned";
@@ -252,7 +231,6 @@ function appendPropPlaceParams(body, controller, spawnId, onChange) {
     addBtn.addEventListener("click", () => controller.spawnAtCameraOrigin());
     addRow.appendChild(addBtn);
     body.appendChild(addRow);
-    appendEditorHint(body, "Click the map to place, or use Add at camera.");
     if (isGridPassagePowerSourceSpawnAsset(spawnAsset))
         appendEditorHint(body, "Add at camera stamps a power source on the grid. Enable Default energized in Selected, or wire a floor button to the source cell.");
 }
@@ -465,9 +443,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
     const propIds = Object.keys(getWorldPropDefinitions())
         .filter((id) => isSandboxSpawnable(getPropAsset(id)))
         .sort((a, b) => formatSandboxSpawnLabel(a).localeCompare(formatSandboxSpawnLabel(b)));
-    let isFirstRender = true;
     const render = () => {
-        const openSections = readOpenSections(container);
         container.innerHTML = "";
         const paletteItems = buildPlacePaletteItems(propIds);
         if (paletteItems.length === 0) {
@@ -480,10 +456,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
             controller.setPlacePaletteKey(paletteKey);
         }
         const activeItem = paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0];
-        const sectionOpen = (id, fallback = true) => {
-            if (openSections.size > 0) return openSections.has(id);
-            return isFirstRender ? fallback : openSections.has(id);
-        };
         const selectedPropIds = new Set(controller.getSelectedPropIds());
         const selectedProp = controller.getSelectedProp();
         const selectedFloorCell = controller.getSelectedFloorCell();
@@ -498,31 +470,19 @@ export function mountSandboxToyUi(container, controller, onChange) {
         const portalLinkTargets = selectedPortalInfo ? controller.listPortalLinkTargets() : [];
         const wallStampMode = controller.getWallStampMode();
         const selectionCount = selectedPropIds.size;
-        appendSection(container, "spawn", "Spawn", sectionOpen("spawn"), (body) => {
+        appendPinnedSection(container, "palette", "Props", (body) => {
             appendSpawnPaletteGrid(body, paletteItems, paletteKey, (key) => {
                 controller.setPlacePaletteKey(key);
                 onChange();
             });
+        });
+        appendPinnedSection(container, "spawn", "Spawn", (body) => {
             const paramsHost = document.createElement("div");
             paramsHost.className = "spawn-palette-params";
             body.appendChild(paramsHost);
             if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), onChange);
             else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, controller, onChange, { wallStampMode, selectedRail, selectedVoxelInfo, selectedRailInfo, selectedPortalInfo });
             else appendMapGenEditor(paramsHost, state, activeItem.genKind, onChange);
-        });
-        appendPinnedSection(container, "scene", "Scene", (body) => {
-            appendInstanceList(
-                body,
-                controller
-                    .listPlacedSceneItems()
-                    .map((item) => ({
-                        label: item.label,
-                        selected: controller.isSceneItemSelected(item),
-                        onSelect: () => controller.selectSceneItem(item),
-                        onDelete: () => controller.deleteSceneItem(item),
-                    })),
-                "Nothing placed yet.",
-            );
         });
         appendPinnedSection(container, "selected", "Selected", (body) => {
             if (selectionCount > 1) {
@@ -652,7 +612,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     body.appendChild(deleteRow);
                     return;
                 }
-                appendEditorHint(body, "Select an item from Scene, or pick from the Spawn grid to place on the map.");
+                appendEditorHint(body, "Select an item from Scene, or pick from Props to place on the map.");
                 return;
             }
             const behaviorIds = controller.listSelectedBehaviors();
@@ -738,7 +698,20 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 body.appendChild(equipPanel);
             }
         });
-        isFirstRender = false;
+        appendPinnedSection(container, "scene", "Scene", (body) => {
+            appendInstanceList(
+                body,
+                controller
+                    .listPlacedSceneItems()
+                    .map((item) => ({
+                        label: item.label,
+                        selected: controller.isSceneItemSelected(item),
+                        onSelect: () => controller.selectSceneItem(item),
+                        onDelete: () => controller.deleteSceneItem(item),
+                    })),
+                "Nothing placed yet.",
+            );
+        });
     };
     controller.setUiSync(render);
     render();
