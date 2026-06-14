@@ -149,7 +149,7 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
 }
 /**
  * @param {object} state
- * @param {{ col: number, row: number, side: number, mode?: string, allowedSide?: number, defaultPowered?: boolean }[]} forcefields
+ * @param {{ col: number, row: number, side: number, mode?: string, allowedSide?: number }[]} forcefields
  * @param {number} cellSize
  * @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null}
  */

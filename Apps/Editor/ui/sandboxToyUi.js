@@ -34,7 +34,7 @@ const EDGE_SIDE_OPTIONS = [
     { value: "2", label: formatGridWallEdgeSideLabel(2) },
     { value: "3", label: formatGridWallEdgeSideLabel(3) },
 ];
-/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ mode: string, allowedSide?: number, powered?: boolean } | null} selected @param {{ stampDefaults?: boolean, onChange: () => void }} opts */
+/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ mode: string, allowedSide?: number, side?: number } | null} selected @param {{ stampDefaults?: boolean, onChange: () => void }} opts */
 function appendPassageEditorFields(body, controller, selected, { stampDefaults = false, onChange }) {
     const mode = stampDefaults ? controller.getForcefieldStampMode() : selected.mode;
     appendSelectField(body, "Mode", {
@@ -55,19 +55,6 @@ function appendPassageEditorFields(body, controller, selected, { stampDefaults =
                 onChange();
             },
         });
-    const poweredField = document.createElement("label");
-    poweredField.className = "param-field check-inline";
-    const poweredCheckbox = document.createElement("input");
-    poweredCheckbox.type = "checkbox";
-    poweredCheckbox.checked = stampDefaults ? controller.getForcefieldStartsPowered() : controller.isSelectedForcefieldPowered();
-    poweredCheckbox.addEventListener("change", () => {
-        if (stampDefaults) controller.setForcefieldStartsPowered(poweredCheckbox.checked);
-        else controller.setSelectedForcefieldPowered(poweredCheckbox.checked);
-        onChange();
-    });
-    const poweredLabel = mode === "tripwire" ? " Powered (armed)" : mode === "oneWay" ? " Powered (blocks wrong-way crossing)" : " Powered (blocks movement + paths)";
-    poweredField.append(poweredCheckbox, document.createTextNode(poweredLabel));
-    body.appendChild(poweredField);
 }
 function readOpenSections(root) {
     const open = new Set();

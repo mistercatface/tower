@@ -32,7 +32,6 @@ import {
     stampVoxelWallAt,
 } from "./gridWallEdit.js";
 import { PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
-import { isForcefieldPowered, setForcefieldPowered } from "./forcefieldPower.js";
 /** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
@@ -49,7 +48,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let wallStampMode = "voxel";
     let wallHeightLevel = 4;
     let railThicknessLevel = 2;
-    let forcefieldStartsPowered = false;
     let forcefieldStampMode = PASSAGE_MODE.Solid;
     /** @type {{ col: number, row: number } | null} */
     let selectedVoxelCell = null;
@@ -327,11 +325,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             railThicknessLevel = level;
             sync();
         },
-        getForcefieldStartsPowered: () => forcefieldStartsPowered,
-        setForcefieldStartsPowered(powered) {
-            forcefieldStartsPowered = powered;
-            sync();
-        },
         getForcefieldStampMode: () => forcefieldStampMode,
         setForcefieldStampMode(mode) {
             forcefieldStampMode = mode;
@@ -357,17 +350,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             selectedRailEdge && gridHasForcefield(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
                 ? getForcefieldInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
                 : null,
-        isSelectedForcefieldPowered: () => {
-            if (!selectedRailEdge) return false;
-            return isForcefieldPowered(state, state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side);
-        },
-        setSelectedForcefieldPowered(powered) {
-            if (!selectedRailEdge) return false;
-            const { col, row, side } = selectedRailEdge;
-            if (!setForcefieldPowered(state, col, row, side, powered)) return false;
-            sync();
-            return true;
-        },
         setSelectedForcefieldMode(mode) {
             if (!selectedRailEdge) return false;
             const { col, row, side } = selectedRailEdge;
