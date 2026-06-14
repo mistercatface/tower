@@ -14,5 +14,6 @@ export default {
         renderMode: "none",
         rollToCursor: { maxSpeed: 50, accel: 220 },
         maxHealth: 1,
+        wallPhysics: { restitution: 0.2, friction: 0.35 },
     },
 };
