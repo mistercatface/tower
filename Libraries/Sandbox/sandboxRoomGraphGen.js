@@ -1,14 +1,14 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
 import { applySandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 /** Ordered procgen steps — only `op` values handled in `runRoomGraphMotifs` are valid. */
-/** Center hub with three spokes, each with one leaf — 7 nodes, 6 edges. */
-export const HUB_SPOKE_TREE_EDGES = [
+/** Start 0 → two branches → each branch splits to two rooms (7 nodes, 6 edges). */
+export const START_TWO_BY_TWO_TREE_EDGES = [
     [0, 1],
     [0, 2],
-    [0, 3],
+    [1, 3],
     [1, 4],
     [2, 5],
-    [3, 6],
+    [2, 6],
 ];
 /** Stack these in order — each step reads/writes shared build ctx. */
 export const SANDBOX_GRAPH_PIPELINE_MOTIFS = [
@@ -22,21 +22,6 @@ export const SANDBOX_GRAPH_PIPELINE_MOTIFS = [
 export const DEFAULT_SANDBOX_GRAPH_MOTIFS = [
     { op: "retryUntil", maxAttempts: 60, body: SANDBOX_GRAPH_PIPELINE_MOTIFS, until: { op: "validateLayout", allTreeEdgesRouted: true, corridorsIntersect: false } },
 ];
-/** Hub topology — swap onto `buildNodeGraph` in the pipeline when you want this shape. */
-export const HUB_SPOKE_BUILD_NODE_GRAPH = {
-    op: "buildNodeGraph",
-    nodeCount: 7,
-    treeEdges: HUB_SPOKE_TREE_EDGES,
-    placement: "hubSpoke",
-    gridCols: 88,
-    gridRows: 84,
-    roomMinWidth: 9,
-    roomMaxWidth: 9,
-    roomMinHeight: 9,
-    roomMaxHeight: 9,
-    hubCenterRoomWidth: 10,
-    hubCenterRoomHeight: 10,
-};
 /** Per-run overrides (e.g. `seed`) merge onto this; edit motifs to change the pipeline. */
 export const DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS = { motifs: DEFAULT_SANDBOX_GRAPH_MOTIFS };
 /** @param {Record<string, unknown>} [overrides] */
@@ -75,15 +60,13 @@ const SANDBOX_SCENE_SCHEMA_VERSION = 7;
  *   layoutMaxAttempts: number,
  *   treeParentCandidateCount: number,
  *   treeEdges?: [number, number][],
- *   placement?: "random" | "hubSpoke",
- *   hubSpokeStepCells?: number,
- *   hubCenterRoomWidth?: number,
- *   hubCenterRoomHeight?: number,
+ *   placement?: "random" | "treeSpread",
+ *   treeSpreadCorridorPad?: number,
  * }} NodeGraphGenConfig
  */
 /** @typedef {{ seed: number, config: NodeGraphGenConfig, gridCols: number, gridRows: number, nodes: GraphNode[], treeEdges: { a: number, b: number }[], directedEdges: DirectedEdge[] }} NodeGraph */
 /** @typedef {{ seed: number, gridCols: number, gridRows: number, rooms: GraphNode[], treeEdges: { a: number, b: number }[], graphEdges: DirectedEdge[], nodeGraph: NodeGraph, closedRooms: ClosedRoom[] }} RoomGraphLayout */
-/** @typedef {{ op: "buildNodeGraph", nodeCount?: number, treeEdges?: [number, number][], placement?: "random" | "hubSpoke", hubSpokeStepCells?: number, hubCenterRoomWidth?: number, hubCenterRoomHeight?: number, gridCols?: number, gridRows?: number, roomMinWidth?: number, roomMaxWidth?: number, roomMinHeight?: number, roomMaxHeight?: number, nodeSpacingPad?: number }} BuildNodeGraphMotif */
+/** @typedef {{ op: "buildNodeGraph", nodeCount?: number, treeEdges?: [number, number][], placement?: "random" | "treeSpread", treeSpreadCorridorPad?: number, gridCols?: number, gridRows?: number, roomMinWidth?: number, roomMaxWidth?: number, roomMinHeight?: number, roomMaxHeight?: number, nodeSpacingPad?: number }} BuildNodeGraphMotif */
 /** @typedef {{ op: "buildClosedRooms" }} BuildClosedRoomsMotif */
 /** @typedef {{ op: "punchHoleInClosedRoom" }} PunchHoleInClosedRoomRoomMotif */
 /** @typedef {PunchHoleInClosedRoomRoomMotif} RoomGraphRoomMotif */
@@ -117,8 +100,6 @@ export const DEFAULT_NODE_GRAPH_GEN_CONFIG = {
     placementAttemptsPerNode: 1200,
     layoutMaxAttempts: 60,
     treeParentCandidateCount: 3,
-    hubCenterRoomWidth: 12,
-    hubCenterRoomHeight: 12,
 };
 /** @deprecated Use {@link DEFAULT_NODE_GRAPH_GEN_CONFIG}. */
 export const DEFAULT_ROOM_GRAPH_GRID = {
@@ -149,9 +130,7 @@ export function resolveNodeGraphGenConfig(overrides = {}) {
         treeParentCandidateCount: overrides.treeParentCandidateCount ?? DEFAULT_NODE_GRAPH_GEN_CONFIG.treeParentCandidateCount,
         treeEdges: overrides.treeEdges,
         placement: overrides.placement ?? "random",
-        hubSpokeStepCells: overrides.hubSpokeStepCells,
-        hubCenterRoomWidth: overrides.hubCenterRoomWidth ?? DEFAULT_NODE_GRAPH_GEN_CONFIG.hubCenterRoomWidth,
-        hubCenterRoomHeight: overrides.hubCenterRoomHeight ?? DEFAULT_NODE_GRAPH_GEN_CONFIG.hubCenterRoomHeight,
+        treeSpreadCorridorPad: overrides.treeSpreadCorridorPad ?? DEFAULT_CORRIDOR_EGRESS_CELLS + 2,
     };
 }
 /** @param {number} cols @param {number} c @param {number} r */
@@ -248,16 +227,6 @@ export function childrenMapFromTreeEdges(treeEdges, nodeCount) {
     for (let i = 0; i < treeEdges.length; i++) children[treeEdges[i].a].push(treeEdges[i].b);
     return children;
 }
-/** @param {number} centerC @param {number} centerR @param {number} width @param {number} height @param {number} id */
-function graphNodeAtCenter(centerC, centerR, width, height, id) {
-    const c0 = (centerC - (width - 1) / 2) | 0;
-    const r0 = (centerR - (height - 1) / 2) | 0;
-    return { id, c0, r0, c1: c0 + width - 1, r1: r0 + height - 1, centerC, centerR, width, height };
-}
-/** @param {GraphNode} a @param {GraphNode} b @param {number} pad */
-function graphNodesOverlap(a, b, pad) {
-    return a.c0 - pad <= b.c1 && a.c1 + pad >= b.c0 && a.r0 - pad <= b.r1 && a.r1 + pad >= b.r0;
-}
 /** @param {number[][]} children @param {number} [rootId] */
 function maxTreeDepthFromRoot(children, rootId = 0) {
     /** @param {number} id */
@@ -270,53 +239,50 @@ function maxTreeDepthFromRoot(children, rootId = 0) {
     }
     return depth(rootId);
 }
-/** Step size from grid, room spans, and longest root-to-leaf chain on any spoke. */
-/** @param {NodeGraphGenConfig} config @param {{ a: number, b: number }[]} treeEdges @param {number} nodeCount */
-export function computeHubSpokeStepCells(config, treeEdges, nodeCount) {
-    const children = childrenMapFromTreeEdges(treeEdges, nodeCount);
-    const maxDepth = Math.max(1, maxTreeDepthFromRoot(children, 0));
-    const margin = config.gridEdgeMargin;
-    const halfHub = Math.ceil(Math.max(config.hubCenterRoomWidth, config.hubCenterRoomHeight) / 2);
-    const halfSpoke = Math.ceil(Math.max(config.roomMaxWidth, config.roomMaxHeight) / 2);
-    const minPerHop = Math.max(config.roomMaxWidth, config.roomMaxHeight) + config.nodeSpacingPad;
-    const vertHalf = (config.gridRows / 2) | 0;
-    const horizHalf = (config.gridCols / 2) | 0;
-    const maxFromGrid = Math.min(Math.floor((vertHalf - margin - halfHub - halfSpoke) / maxDepth), Math.floor((horizHalf - margin - halfHub - halfSpoke) / maxDepth));
-    if (maxFromGrid < minPerHop) throw new Error(`hubSpoke: grid ${config.gridCols}x${config.gridRows} too small for depth ${maxDepth} (need step ${minPerHop}, max ${maxFromGrid})`);
-    if (config.hubSpokeStepCells != null) {
-        if (config.hubSpokeStepCells < minPerHop || config.hubSpokeStepCells > maxFromGrid)
-            throw new Error(`hubSpoke: hubSpokeStepCells ${config.hubSpokeStepCells} out of range ${minPerHop}-${maxFromGrid}`);
-        return config.hubSpokeStepCells;
-    }
-    return maxFromGrid;
+/** @param {number} centerC @param {number} centerR @param {number} width @param {number} height @param {number} id */
+function graphNodeAtCenter(centerC, centerR, width, height, id) {
+    const c0 = (centerC - (width - 1) / 2) | 0;
+    const r0 = (centerR - (height - 1) / 2) | 0;
+    return { id, c0, r0, c1: c0 + width - 1, r1: r0 + height - 1, centerC, centerR, width, height };
 }
-/** Grid-native N/E/W deltas for a 3-way hub (Manhattan-friendly). */
-const HUB_SPOKE_CARDINAL_DELTAS = [
-    { dc: 0, dr: -1 },
-    { dc: 1, dr: 0 },
-    { dc: -1, dr: 0 },
-];
-/** @param {number} spokeIndex @param {number} spokeCount @param {number} stepCells */
-function hubSpokeCenterDelta(spokeIndex, spokeCount, stepCells) {
-    if (spokeCount === 3 && spokeIndex >= 0 && spokeIndex < 3) {
-        const d = HUB_SPOKE_CARDINAL_DELTAS[spokeIndex];
-        return { dc: d.dc * stepCells, dr: d.dr * stepCells };
-    }
-    const angle = (Math.PI * 2 * spokeIndex) / spokeCount - Math.PI / 2;
-    return { dc: Math.cos(angle) * stepCells, dr: Math.sin(angle) * stepCells };
+/** @param {GraphNode} a @param {GraphNode} b @param {number} pad */
+function graphNodesOverlap(a, b, pad) {
+    return a.c0 - pad <= b.c1 && a.c1 + pad >= b.c0 && a.r0 - pad <= b.r1 && a.r1 + pad >= b.r0;
 }
-/** Place node 0 at grid center; each root child on its own spoke; descendants step further along that spoke. */
+/** @param {number} parentW @param {number} parentH @param {number} childW @param {number} childH @param {number} pad @param {number} corridorPad */
+function treeSpreadCenterStep(parentW, parentH, childW, childH, pad, corridorPad) {
+    const parentHalf = Math.max((parentW - 1) / 2, (parentH - 1) / 2);
+    const childHalf = Math.max((childW - 1) / 2, (childH - 1) / 2);
+    return Math.ceil(parentHalf + childHalf + pad + corridorPad);
+}
+/** @param {number} childIndex @param {number} siblingCount */
+function treeSpreadUnitDelta(childIndex, siblingCount) {
+    const angle = (Math.PI * 2 * childIndex) / siblingCount - Math.PI / 2;
+    return { dc: Math.cos(angle), dr: Math.sin(angle) };
+}
+/** Place rooms along the tree: root at grid center, each child steps outward on its branch ray. */
 /** @param {() => number} rng @param {NodeGraphGenConfig} config @param {{ a: number, b: number }[]} treeEdges */
-export function placeGraphNodesHubSpoke(rng, config, treeEdges) {
-    const { gridCols, gridRows, nodeCount, nodeSpacingPad, gridEdgeMargin, hubCenterRoomWidth, hubCenterRoomHeight, roomMinWidth, roomMaxWidth, roomMinHeight, roomMaxHeight } = config;
-    const stepCells = config.hubSpokeStepCells ?? computeHubSpokeStepCells(config, treeEdges, nodeCount);
+export function placeGraphNodesTreeSpread(rng, config, treeEdges) {
+    const { gridCols, gridRows, nodeCount, nodeSpacingPad, gridEdgeMargin, roomMinWidth, roomMaxWidth, roomMinHeight, roomMaxHeight, treeSpreadCorridorPad } = config;
     const children = childrenMapFromTreeEdges(treeEdges, nodeCount);
-    const rootSpokeCount = children[0].length;
-    if (rootSpokeCount === 0) throw new Error("hubSpoke: root must have at least one child");
+    const maxDepth = maxTreeDepthFromRoot(children, 0);
+    const maxRoom = Math.max(roomMaxWidth, roomMaxHeight);
+    const maxHop = treeSpreadCenterStep(maxRoom, maxRoom, maxRoom, maxRoom, nodeSpacingPad, treeSpreadCorridorPad);
+    const vertHalf = (gridRows / 2) | 0;
+    const horizHalf = (gridCols / 2) | 0;
+    const need = maxDepth * maxHop + maxRoom + gridEdgeMargin;
+    if (need > vertHalf || need > horizHalf) throw new Error(`treeSpread: grid ${gridCols}x${gridRows} too small for depth ${maxDepth} at room size ${maxRoom}`);
+    const widths = new Int32Array(nodeCount);
+    const heights = new Int32Array(nodeCount);
+    for (let i = 0; i < nodeCount; i++) {
+        widths[i] = randomIntInclusive(roomMinWidth, roomMaxWidth, rng);
+        heights[i] = randomIntInclusive(roomMinHeight, roomMaxHeight, rng);
+    }
     /** @type {(GraphNode | undefined)[]} */
     const nodes = [];
-    const spokeIndex = new Int32Array(nodeCount).fill(-1);
-    nodes[0] = graphNodeAtCenter((gridCols / 2) | 0, (gridRows / 2) | 0, hubCenterRoomWidth, hubCenterRoomHeight, 0);
+    const branchDc = new Float64Array(nodeCount);
+    const branchDr = new Float64Array(nodeCount);
+    nodes[0] = graphNodeAtCenter((gridCols / 2) | 0, (gridRows / 2) | 0, widths[0], heights[0], 0);
     /** @type {number[]} */
     const queue = [0];
     for (let qi = 0; qi < queue.length; qi++) {
@@ -325,25 +291,31 @@ export function placeGraphNodesHubSpoke(rng, config, treeEdges) {
         const kids = children[parentId];
         for (let i = 0; i < kids.length; i++) {
             const childId = kids[i];
-            let si = spokeIndex[parentId];
+            let udc = branchDc[parentId];
+            let udr = branchDr[parentId];
             if (parentId === 0) {
-                si = i;
-                spokeIndex[childId] = i;
-            } else spokeIndex[childId] = si;
-            const delta = hubSpokeCenterDelta(si, rootSpokeCount, stepCells);
-            const width = randomIntInclusive(roomMinWidth, roomMaxWidth, rng);
-            const height = randomIntInclusive(roomMinHeight, roomMaxHeight, rng);
-            const centerC = parent.centerC + delta.dc;
-            const centerR = parent.centerR + delta.dr;
-            nodes[childId] = graphNodeAtCenter(centerC, centerR, width, height, childId);
+                const unit = treeSpreadUnitDelta(i, kids.length);
+                udc = unit.dc;
+                udr = unit.dr;
+                branchDc[childId] = udc;
+                branchDr[childId] = udr;
+            } else {
+                branchDc[childId] = udc;
+                branchDr[childId] = udr;
+            }
+            const step = treeSpreadCenterStep(parent.width, parent.height, widths[childId], heights[childId], nodeSpacingPad, treeSpreadCorridorPad);
+            const centerC = Math.round(parent.centerC + udc * step);
+            const centerR = Math.round(parent.centerR + udr * step);
+            nodes[childId] = graphNodeAtCenter(centerC, centerR, widths[childId], heights[childId], childId);
             queue.push(childId);
         }
     }
     for (let i = 0; i < nodeCount; i++) {
         const node = nodes[i];
-        if (node.c0 < gridEdgeMargin || node.r0 < gridEdgeMargin || node.c1 >= gridCols - gridEdgeMargin || node.r1 >= gridRows - gridEdgeMargin)
-            throw new Error(`hubSpoke: node ${i} out of grid bounds`);
-        for (let j = 0; j < i; j++) if (graphNodesOverlap(nodes[j], node, nodeSpacingPad)) throw new Error(`hubSpoke: node ${i} overlaps node ${j}`);
+        if (node.c0 < gridEdgeMargin || node.r0 < gridEdgeMargin || node.c1 >= gridCols - gridEdgeMargin || node.r1 >= gridRows - gridEdgeMargin) {
+            throw new Error(`treeSpread: node ${i} out of grid bounds`);
+        }
+        for (let j = 0; j < i; j++) if (graphNodesOverlap(nodes[j], node, nodeSpacingPad)) throw new Error(`treeSpread: node ${i} overlaps node ${j}`);
     }
     return /** @type {GraphNode[]} */ (nodes);
 }
@@ -412,19 +384,20 @@ export function buildNodeGraph(rng, config) {
     let nodes;
     if (config.treeEdges) {
         treeEdges = parseTreeEdgesSpec(config.treeEdges, config.nodeCount);
-        if (config.placement === "hubSpoke") nodes = placeGraphNodesHubSpoke(rng, config, treeEdges);
+        if (config.placement === "treeSpread") nodes = placeGraphNodesTreeSpread(rng, config, treeEdges);
         else {
             nodes = placeGraphNodes(rng, config);
-            if (nodes.length < config.nodeCount) throw new Error(`random placement: placed ${nodes.length}/${config.nodeCount} nodes`);
+            if (nodes.length < config.nodeCount) throw new Error(`placement: placed ${nodes.length}/${config.nodeCount} nodes`);
         }
     } else {
+        if (config.placement === "treeSpread") throw new Error("treeSpread placement requires treeEdges");
         nodes = placeGraphNodes(rng, config);
         treeEdges = buildBranchingNodeTree(nodes, rng, config.treeParentCandidateCount);
     }
     const directedEdges = buildDirectedGraphEdges(nodes, treeEdges);
     return { seed: config.seed, config, gridCols: config.gridCols, gridRows: config.gridRows, nodes, treeEdges, directedEdges };
 }
-/** @param {Partial<NodeGraphGenConfig> & { seed?: number, roomCount?: number, minRooms?: number, maxAttempts?: number, treeEdges?: [number, number][], placement?: "random" | "hubSpoke" }} [options] */
+/** @param {Partial<NodeGraphGenConfig> & { seed?: number, roomCount?: number, minRooms?: number, maxAttempts?: number, treeEdges?: [number, number][] }} [options] */
 export function tryBuildNodeGraph(options = {}) {
     const base = resolveNodeGraphGenConfig(options);
     const maxAttempts = options.maxAttempts ?? options.layoutMaxAttempts ?? base.layoutMaxAttempts;
