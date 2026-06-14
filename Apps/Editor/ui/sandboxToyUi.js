@@ -199,6 +199,7 @@ function appendSpawnPaletteGrid(parent, items, activeKey, onSelect) {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "spawn-palette-tile";
+        btn.setAttribute("aria-pressed", String(item.key === activeKey));
         if (item.key === activeKey) btn.classList.add("is-active");
         const icon = document.createElement("div");
         icon.className = "spawn-palette-icon";
@@ -243,6 +244,7 @@ function appendPropPlaceParams(body, controller, spawnId, onChange) {
     addBtn.addEventListener("click", () => controller.spawnAtCameraOrigin());
     addRow.appendChild(addBtn);
     body.appendChild(addRow);
+    appendEditorHint(body, "Click the map to place, or use Add at camera.");
     if (isGridPassagePowerSourceSpawnAsset(spawnAsset))
         appendEditorHint(body, "Add at camera stamps a power source on the grid. Enable Default energized in Selected, or wire a floor button to the source cell.");
 }
@@ -512,7 +514,11 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 placed.map((entry) => ({
                     label: `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`,
                     selected: selectedPropIds.has(entry.id),
-                    onSelect: () => controller.setSelectedPropId(entry.id),
+                    onSelect: () => {
+                        controller.setPlacePaletteKey(`prop:${entry.type}`);
+                        controller.setSelectedPropId(entry.id);
+                        onChange();
+                    },
                     onDelete: () => controller.deletePropById(entry.id),
                 })),
                 "No props placed yet.",

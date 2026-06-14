@@ -153,29 +153,30 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         if (!selectedPropIds.delete(propId)) return;
         if (selectedPropId === propId) syncPrimaryFromSet();
     };
+    /** @returns {boolean} */
     const spawnAt = (worldX, worldY) => {
         const asset = getPropAsset(spawnPropId);
-        if (!asset) return null;
+        if (!asset) return false;
         if (isGridFloorBeltSpawnAsset(asset)) {
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(worldX, worldY);
-            if (!canStampFloorBeltAt(state, col, row)) return null;
+            if (!canStampFloorBeltAt(state, col, row)) return false;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
-            if (!grid.writeFloorCell(col, row, kind, 0)) return null;
+            if (!grid.writeFloorCell(col, row, kind, 0)) return false;
             markGridZoneSubscriptionsDirty(state);
             setSelectedFloorCell(col, row);
-            return null;
+            return true;
         }
         if (isGridPassagePowerSourceSpawnAsset(asset)) {
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(worldX, worldY);
-            if (!stampPassagePowerSourceAt(state, col, row, false)) return null;
+            if (!stampPassagePowerSourceAt(state, col, row, false)) return false;
             setSelectedFloorCell(col, row);
-            return null;
+            return true;
         }
         const spawned = spawnPlacedSandboxProp(state, worldX, worldY, spawnPropId, spawnFaction);
         if (spawned) setSinglePropSelection(spawned.id);
-        return spawned;
+        return spawned != null;
     };
     return {
         getSpawnPropId: () => spawnPropId,

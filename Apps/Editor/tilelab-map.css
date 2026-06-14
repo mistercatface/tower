@@ -30,9 +30,20 @@
 }
 
 .spawn-palette-tile.is-active {
-    border-color: rgba(56, 189, 248, 0.45);
-    background: rgba(56, 189, 248, 0.12);
-    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.65);
+    background: rgba(56, 189, 248, 0.14);
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
+}
+
+.spawn-palette-tile.is-active .spawn-palette-icon {
+    box-shadow:
+        0 0 0 2px rgba(56, 189, 248, 0.95),
+        0 0 10px rgba(56, 189, 248, 0.35);
+}
+
+.spawn-palette-tile.is-active .spawn-palette-label {
+    color: #7dd3fc;
+    font-weight: 600;
 }
 
 .spawn-palette-icon {

@@ -293,8 +293,12 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             releasePointerCapture(canvas, e);
             const dragPx = Math.hypot(e.clientX - drag.startClientX, e.clientY - drag.startClientY);
             if (dragPx < MARQUEE_CLICK_THRESHOLD_PX) {
-                session.clearPropSelection();
-                session.clearFloorSelection();
+                const world = clientToWorld(e.clientX, e.clientY);
+                if (!session.isWallPlaceMode() && session.spawnAt(world.x, world.y)) stampPropBehavior(session.getSelectedProp());
+                else {
+                    session.clearPropSelection();
+                    session.clearFloorSelection();
+                }
             } else {
                 const endWorld = clientToWorld(e.clientX, e.clientY);
                 const props = findSandboxPropsInWorldRect(state, state.entityRegistry, aabbFromTwoPointsInto(MARQUEE_BOUNDS, drag.startWorld.x, drag.startWorld.y, endWorld.x, endWorld.y));
