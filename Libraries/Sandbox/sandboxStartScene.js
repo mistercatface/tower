@@ -62,10 +62,10 @@ export function buildSandboxStartSceneDoc() {
         { col: offCol, row: rowOneWay, side: 1, mode: "tripwire" },
     ];
     const portals = [
-        { col: 14, row: rowShared, side: 1, accessMode: PORTAL_ACCESS_MODE.Both, partnerKey: sharedPortalBKey },
-        { col: 16, row: rowShared, side: 3, accessMode: PORTAL_ACCESS_MODE.Both, partnerKey: sharedPortalAKey },
-        { col: 14, row: rowOneWay, side: 1, accessMode: PORTAL_ACCESS_MODE.Both, partnerKey: oneWayPortalDKey, linkMode: "oneWay", linkSourceKey: oneWayPortalCKey },
-        { col: 16, row: rowOneWay, side: 3, accessMode: PORTAL_ACCESS_MODE.Both, partnerKey: oneWayPortalCKey, linkMode: "oneWay", linkSourceKey: oneWayPortalCKey },
+        { col: 14, row: rowShared, side: 1, accessMode: PORTAL_ACCESS_MODE.One, partnerKey: sharedPortalBKey },
+        { col: 16, row: rowShared, side: 3, accessMode: PORTAL_ACCESS_MODE.One, partnerKey: sharedPortalAKey },
+        { col: 14, row: rowOneWay, side: 1, accessMode: PORTAL_ACCESS_MODE.One, partnerKey: oneWayPortalDKey, linkMode: "oneWay", linkSourceKey: oneWayPortalCKey },
+        { col: 16, row: rowOneWay, side: 3, accessMode: PORTAL_ACCESS_MODE.One, partnerKey: oneWayPortalCKey, linkMode: "oneWay", linkSourceKey: oneWayPortalCKey },
         { col: offCol, row: rowShared, side: offSide, accessMode: PORTAL_ACCESS_MODE.One, allowedSide: portalAccessDefaultAllowedSide(offSide) },
     ];
     const half = cellSize * 0.5;

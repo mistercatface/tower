@@ -403,7 +403,7 @@ export function getForcefieldInfo(grid, col, row, side) {
     return { col, row, side, mode, allowedSide: edge.allowedSide ?? side, powered: edge.powered === true, sideLabel: formatGridWallEdgeSideLabel(side), modeLabel: formatPassageModeLabel(mode) };
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {{ accessMode?: string, allowedSide?: number }} [profile] */
-export function stampPortalAt(state, col, row, side, { accessMode = PORTAL_ACCESS_MODE.Both, allowedSide = portalAccessDefaultAllowedSide(side), accessBlock = PORTAL_ACCESS_BLOCK.All } = {}) {
+export function stampPortalAt(state, col, row, side, { accessMode = PORTAL_ACCESS_MODE.One, allowedSide = portalAccessDefaultAllowedSide(side), accessBlock = PORTAL_ACCESS_BLOCK.All } = {}) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (gridHasRailWall(grid, col, row, side)) clearRailWallAt(state, col, row, side);

@@ -37,27 +37,27 @@ export function formatPortalAccessSideLabel(ownerSide, allowedSide) {
     if (allowedSide === 2) return "South neighbor";
     return "West neighbor";
 }
-/** Non-directional step query (conservative when access is one). Caller must pass a portal edge. */
+/** Non-directional step query. Caller must pass a portal edge. Portals never allow normal adjacency walks. */
 export function portalBlocksStepWithoutDirection(edge, ownerSide) {
-    // Off = open doorway (same as unpowered passage). On = never a normal adjacency hop (traverse or block only).
-    if (edge.powered !== true) return false;
     return true;
 }
+/** @param {object} edge @param {number} ownerSide */
+function portalMouthAllowedSide(edge, ownerSide) {
+    if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return portalAccessDefaultAllowedSide(ownerSide);
+    return edge.allowedSide ?? portalAccessDefaultAllowedSide(ownerSide);
+}
 /**
- * Portal step blocking for access sides. Part 3 calls this before traverse.
+ * Portal step blocking — mouth cell only when powered; solid both sides when unpowered.
  * @returns {boolean} true when the step is blocked
  */
 export function portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide) {
-    if (edge.powered !== true) return false;
-    if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return false;
-    if (!portalAccessBlockIncludesStep(edge)) return false;
-    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, edge.allowedSide);
+    if (edge.powered !== true) return true;
+    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
     return fromCol !== allowed.col || fromRow !== allowed.row;
 }
 /** Whether a portal edge emits physics collision rails. Caller must pass a portal edge. */
 export function portalEdgeEmitsCollision(edge) {
-    if (edge.powered !== true) return false;
-    if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return false;
+    if (edge.powered !== true) return true;
     return portalAccessBlockIncludesPhysics(edge);
 }
 /** World-unit vector for crossing from the allowed initiator cell through the portal edge. */
@@ -72,7 +72,8 @@ export function portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, allow
  */
 export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, bodyX, bodyY, vx, vy, grid) {
     if (!portalEdgeEmitsCollision(edge)) return false;
-    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, edge.allowedSide);
+    if (edge.powered !== true) return true;
+    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
     const { col: bodyCol, row: bodyRow } = grid.worldToGrid(bodyX, bodyY);
     if (bodyCol !== allowed.col || bodyRow !== allowed.row) return true;
     const cross = portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, edge.allowedSide);

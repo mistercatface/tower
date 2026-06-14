@@ -64,7 +64,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let wallHeightLevel = 4;
     let railThicknessLevel = 2;
     let forcefieldStampMode = PASSAGE_MODE.Solid;
-    let portalStampAccessMode = PORTAL_ACCESS_MODE.Both;
+    let portalStampAccessMode = PORTAL_ACCESS_MODE.One;
     /** @type {{ col: number, row: number } | null} */
     let selectedVoxelCell = null;
     /** @type {{ col: number, row: number, side: number } | null} */
