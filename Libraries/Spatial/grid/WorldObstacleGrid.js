@@ -39,7 +39,7 @@ export class WorldObstacleGrid {
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
         /** @type {Map<number, { exitCol: number, exitRow: number, cost: number }[]> | null} */
-        this.portalNavHops = null;
+        this.boundaryNavHops = null;
     }
     /** @param {number} damage @param {object} state */
     _staticGridProxyHandleHit(damage, state) {
@@ -449,23 +449,22 @@ export class WorldObstacleGrid {
         return this.isBlocked(col, row);
     }
     canStep(currCol, currRow, nextCol, nextRow) {
-        if (!boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow)) return true;
-        return this.canPortalHop(currCol, currRow, nextCol, nextRow);
+        return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow) || this.canBoundaryHop(currCol, currRow, nextCol, nextRow);
     }
     /** @param {number} col @param {number} row */
-    getPortalHops(col, row) {
-        if (!this.portalNavHops) return null;
-        return this.portalNavHops.get(colRowToIndex(col, row, this.cols)) ?? null;
+    getBoundaryHops(col, row) {
+        if (!this.boundaryNavHops) return null;
+        return this.boundaryNavHops.get(colRowToIndex(col, row, this.cols)) ?? null;
     }
-    canPortalHop(fromCol, fromRow, exitCol, exitRow) {
-        const hops = this.getPortalHops(fromCol, fromRow);
+    canBoundaryHop(fromCol, fromRow, exitCol, exitRow) {
+        const hops = this.getBoundaryHops(fromCol, fromRow);
         if (!hops) return false;
         for (let i = 0; i < hops.length; i++) if (hops[i].exitCol === exitCol && hops[i].exitRow === exitRow) return true;
         return false;
     }
     /** @param {number} col @param {number} row @param {(exitCol: number, exitRow: number, cost: number) => void} fn */
     forEachNavHop(col, row, fn) {
-        const hops = this.getPortalHops(col, row);
+        const hops = this.getBoundaryHops(col, row);
         if (!hops) return;
         for (let i = 0; i < hops.length; i++) {
             const { exitCol, exitRow, cost } = hops[i];

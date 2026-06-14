@@ -1,4 +1,4 @@
-import { isForcefieldEdge, PASSAGE_MODE, passageEdgeBlocksStep } from "./CellEdge.js";
+import { isForcefieldEdge, isPassageLaserEdge, passageEdgeBlocksStep } from "./CellEdge.js";
 /**
  * @typedef {object} PassageStepContext
  * @property {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -34,8 +34,8 @@ export function resolvePassageStepUndirected(ctx) {
     if (!isForcefieldEdge(edge)) return false;
     const handler = handlersByMode.get(edge.mode);
     if (handler) return handler({ ...ctx, directional: false });
-    if (edge.mode === PASSAGE_MODE.Portal) return true;
-    return defaultForcefieldStep({ ...ctx, directional: false });
+    if (isPassageLaserEdge(edge)) return defaultForcefieldStep({ ...ctx, directional: false });
+    return true;
 }
 /**
  * Directional step query — from/to cells matter for modes like portal mouth rules.
@@ -47,6 +47,6 @@ export function resolvePassageStepFrom(ctx) {
     if (!isForcefieldEdge(edge)) return false;
     const handler = handlersByMode.get(edge.mode);
     if (handler) return handler({ ...ctx, directional: true });
-    if (edge.mode === PASSAGE_MODE.Portal) return true;
-    return defaultForcefieldStep({ ...ctx, directional: true });
+    if (isPassageLaserEdge(edge)) return defaultForcefieldStep({ ...ctx, directional: true });
+    return true;
 }

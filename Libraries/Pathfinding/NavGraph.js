@@ -15,6 +15,15 @@
  * @property {(currCol: number, currRow: number, nextCol: number, nextRow: number) => boolean} canStep
  */
 /**
+ * Optional boundary-hop adjacency on a nav graph (portals today; more hop kinds later).
+ *
+ * @typedef {NavGraph & {
+ *   getBoundaryHops: (col: number, row: number) => import("../Sandbox/boundaryNavIndex.js").BoundaryNavHop[] | null,
+ *   canBoundaryHop: (fromCol: number, fromRow: number, exitCol: number, exitRow: number) => boolean,
+ *   forEachNavHop?: (col: number, row: number, fn: (exitCol: number, exitRow: number, cost: number) => void) => void,
+ * }} BoundaryHopNavGraph
+ */
+/**
  * Segment lookup for path clearance. WorldObstacleGrid also satisfies this.
  *
  * @typedef {NavGraph & object} NavSegmentGraph

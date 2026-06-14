@@ -1,4 +1,4 @@
-import { isForcefieldEdge, PASSAGE_MODE, passageEdgeBlocksCollision, passageEdgeEmitsCollision } from "./CellEdge.js";
+import { isForcefieldEdge, isPassageLaserEdge, passageEdgeBlocksCollision, passageEdgeEmitsCollision } from "./CellEdge.js";
 /** @typedef {'collide' | 'skip' | 'consumed'} PassageWallContactResult */
 /**
  * @typedef {object} PassageWallContactContext
@@ -51,6 +51,6 @@ export function resolvePassageWallContact(ctx) {
     const fullCtx = { ...ctx, state: ctx.state ?? passageWallContactRunState };
     const handler = handlersByMode.get(edge.mode);
     if (handler) return handler(fullCtx);
-    if (edge.mode === PASSAGE_MODE.Portal) return "collide";
-    return defaultForcefieldWallContact(fullCtx);
+    if (isPassageLaserEdge(edge)) return defaultForcefieldWallContact(fullCtx);
+    return "collide";
 }

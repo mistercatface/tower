@@ -131,20 +131,20 @@ export class HierarchicalNavigator {
         this._appendNavHopRegionAdjacencies(adjacencies);
         this._connectAdjacencies(adjacencies);
     }
-    connectPortalRegionPairs() {
-        if (!this.cellToNode || !this.navGraph.getPortalHops) return;
+    connectBoundaryHopRegionPairs() {
+        if (!this.cellToNode || !this.navGraph.getBoundaryHops) return;
         const adjacencies = new Set();
         this._appendNavHopRegionAdjacencies(adjacencies);
         this._connectAdjacencies(adjacencies);
     }
     _appendNavHopRegionAdjacencies(adjacencies) {
-        if (!this.navGraph.getPortalHops) return;
+        if (!this.navGraph.getBoundaryHops) return;
         for (let idx = 0; idx < this.cellToNode.length; idx++) {
             const nodeA = this.cellToNode[idx];
             if (!nodeA) continue;
             const fromCol = idx % this.cols;
             const fromRow = (idx / this.cols) | 0;
-            const hops = this.navGraph.getPortalHops(fromCol, fromRow);
+            const hops = this.navGraph.getBoundaryHops(fromCol, fromRow);
             if (!hops) continue;
             for (let i = 0; i < hops.length; i++) {
                 const { exitCol, exitRow } = hops[i];

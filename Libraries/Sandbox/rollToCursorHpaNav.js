@@ -1,7 +1,7 @@
 import { agentPose } from "../Agent/index.js";
 import { createNavState } from "../Pathfinding/navSession.js";
 import { computePathSteering, findPathProgressIdx } from "../Pathfinding/pathFollow.js";
-import { expandPortalHopsInCellPath, portalHopWaypointIndex } from "./portalNavIndex.js";
+import { expandBoundaryHopsInCellPath, boundaryHopWaypointIndex } from "./boundaryNavIndex.js";
 /** @typedef {import("../Pathfinding/navSession.js").NavSessionState} NavSessionState */
 const REPLAN_TARGET_MOVE_PX = 64;
 /** @returns {{ navState: NavSessionState & { boundaryHopIdx: number | null }, reset: () => void, replan: (prop: object, targetX: number, targetY: number, state: object) => void, update: (prop: object, targetX: number, targetY: number, state: object, dtMs: number) => void, getSteering: (prop: object, targetX: number, targetY: number, settings: object, grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid) => import("../Agent/types.js").SteeringResult | null }} */
@@ -48,11 +48,11 @@ export function createRollToCursorHpaNav() {
         }
         const grid = state.obstacleGrid;
         const gridOpts = { worldToGrid: (wx, wy) => grid.worldToGrid(wx, wy), grid };
-        const expandedCells = expandPortalHopsInCellPath(result.cellPath, grid);
+        const expandedCells = expandBoundaryHopsInCellPath(result.cellPath, grid);
         const rawPath = expandedCells.map((cell) => grid.gridToWorld(cell.col, cell.row));
         navState.path = rawPath;
         navState.pathProgressIdx = findPathProgressIdx(prop.x, prop.y, rawPath, gridOpts);
-        navState.boundaryHopIdx = portalHopWaypointIndex(result.cellPath, navState.path, grid);
+        navState.boundaryHopIdx = boundaryHopWaypointIndex(result.cellPath, navState.path, grid);
         navState.abstractPath = navState.path ? (result.abstractNodes ?? null) : null;
         navState.pathPlanner = navState.path ? (result.pathPlanner ?? null) : null;
         navState.lastTargetX = targetX;

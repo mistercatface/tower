@@ -26,7 +26,7 @@ function resolvePortalHopGeometries(grid, p1, p2) {
     const gridDist = Math.max(Math.abs(c1.col - c2.col), Math.abs(c1.row - c2.row));
     if (gridDist <= 1.5) return null;
     // Find a portal hop from c1.col, c1.row that ends near c2.col, c2.row
-    const hops = grid.getPortalHops(c1.col, c1.row);
+    const hops = grid.getBoundaryHops(c1.col, c1.row);
     if (!hops) return null;
     for (const hop of hops) {
         const distToExit = Math.max(Math.abs(hop.exitCol - c2.col), Math.abs(hop.exitRow - c2.row));

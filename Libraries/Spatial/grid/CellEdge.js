@@ -1,12 +1,10 @@
 /** @typedef {{ kind: 'railWall', heightDelta: number, thicknessLevel: number }} RailWallEdge */
 /** @typedef {{ kind: 'conveyor' }} ConveyorEdge */
 /** @typedef {{ kind: 'beltRail' }} BeltRailEdge */
-/** @typedef {{ kind: 'forcefield', mode: string, allowedSide: number, powered: boolean, accessMode?: string, accessBlock?: string, partnerKey?: number, linkMode?: string, linkSourceKey?: number }} ForcefieldEdge */
+/** @typedef {{ kind: 'forcefield', mode: string, allowedSide: number, powered: boolean, accessMode?: string, partnerKey?: number, linkMode?: string, linkSourceKey?: number }} ForcefieldEdge */
 export const EDGE_KIND = { RailWall: "railWall", Conveyor: "conveyor", BeltRail: "beltRail", Forcefield: "forcefield" };
 export const PASSAGE_MODE = { Solid: "solid", OneWay: "oneWay", Tripwire: "tripwire", Portal: "portal" };
 export const PORTAL_ACCESS_MODE = { Both: "both", One: "one" };
-/** Which systems enforce access-one blocking — default both step grid and physics. */
-export const PORTAL_ACCESS_BLOCK = { All: "all", Step: "step", Physics: "physics" };
 /** @param {unknown} raw */
 export function parsePassageMode(raw) {
     if (raw === PASSAGE_MODE.OneWay || raw === PASSAGE_MODE.Tripwire) return raw;
@@ -35,17 +33,10 @@ export function createBeltRailEdge() {
 export function createForcefieldEdge({ mode = PASSAGE_MODE.Solid, allowedSide = 1, powered = false } = {}) {
     return { kind: EDGE_KIND.Forcefield, mode: parsePassageMode(mode), allowedSide, powered: powered === true };
 }
-/** @param {unknown} raw */
-export function parsePortalAccessBlock(raw) {
-    if (raw === PORTAL_ACCESS_BLOCK.Step) return PORTAL_ACCESS_BLOCK.Step;
-    if (raw === PORTAL_ACCESS_BLOCK.Physics) return PORTAL_ACCESS_BLOCK.Physics;
-    return PORTAL_ACCESS_BLOCK.All;
-}
-/** @param {{ accessMode?: string, allowedSide?: number, accessBlock?: string, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} [opts] */
+/** @param {{ accessMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} [opts] */
 export function createPortalEdge({
     accessMode = PORTAL_ACCESS_MODE.Both,
     allowedSide = 1,
-    accessBlock = PORTAL_ACCESS_BLOCK.All,
     partnerKey = 0,
     linkMode = "shared",
     linkSourceKey = 0,
@@ -56,7 +47,6 @@ export function createPortalEdge({
         mode: PASSAGE_MODE.Portal,
         accessMode: parsePortalAccessMode(accessMode),
         allowedSide,
-        accessBlock: parsePortalAccessBlock(accessBlock),
         partnerKey,
         linkMode,
         linkSourceKey,

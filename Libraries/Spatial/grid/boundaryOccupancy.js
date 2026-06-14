@@ -8,7 +8,6 @@ import {
     isPortalEdge,
     isRailWallEdge,
     parsePassageMode,
-    parsePortalAccessBlock,
     parsePortalAccessMode,
     PORTAL_ACCESS_MODE,
 } from "./CellEdge.js";
@@ -20,7 +19,7 @@ import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { gridNeighborFillLevel } from "../../World/wallGridCells.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {{ kind: "passage", mode?: string, allowedSide?: number, powered?: boolean }} PassageBoundarySpec */
-/** @typedef {{ kind: "portal", accessMode?: string, allowedSide?: number, accessBlock?: string, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} PortalBoundarySpec */
+/** @typedef {{ kind: "portal", accessMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} PortalBoundarySpec */
 /** @typedef {RailWallBoundarySpec | PassageBoundarySpec | PortalBoundarySpec} BoundaryPrimarySpec */
 /**
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -37,7 +36,6 @@ export function getBoundary(grid, col, row, side) {
             edge,
             beltRail: false,
             accessMode: parsePortalAccessMode(edge.accessMode),
-            accessBlock: parsePortalAccessBlock(edge.accessBlock),
             allowedSide: edge.allowedSide,
             partnerKey: edge.partnerKey ?? 0,
             linkMode: edge.linkMode ?? "shared",
@@ -66,8 +64,8 @@ export function setPassageProfile(grid, col, row, side, mode, allowedSide) {
     if (!isForcefieldEdge(edge) || isPortalEdge(edge)) return false;
     return setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: edge.powered === true }, { bumpRevision: true });
 }
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {string} accessMode @param {number} [allowedSide] @param {string} [accessBlock] */
-export function setPortalProfile(grid, col, row, side, accessMode, allowedSide, accessBlock) {
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {string} accessMode @param {number} [allowedSide] */
+export function setPortalProfile(grid, col, row, side, accessMode, allowedSide) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isPortalEdge(edge)) return false;
     const ownerSide = side;
@@ -80,7 +78,6 @@ export function setPortalProfile(grid, col, row, side, accessMode, allowedSide, 
             kind: "portal",
             accessMode: PORTAL_ACCESS_MODE.One,
             allowedSide: allowedSide ?? portalAccessDefaultAllowedSide(ownerSide),
-            accessBlock: parsePortalAccessBlock(accessBlock ?? edge.accessBlock),
             partnerKey: edge.partnerKey ?? 0,
             linkMode: edge.linkMode ?? "shared",
             linkSourceKey: edge.linkSourceKey ?? 0,
@@ -133,7 +130,6 @@ export function setBoundary(grid, col, row, side, spec, { bumpRevision = false }
             createPortalEdge({
                 accessMode: spec.accessMode,
                 allowedSide: spec.allowedSide ?? side,
-                accessBlock: spec.accessBlock,
                 partnerKey: spec.partnerKey ?? 0,
                 linkMode: spec.linkMode,
                 linkSourceKey: spec.linkSourceKey,
