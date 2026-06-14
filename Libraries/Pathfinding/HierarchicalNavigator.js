@@ -3,6 +3,7 @@ import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid } from "./VoronoiRegions.js";
+import { appendPortalRegionAdjacencies, forEachPortalNavHop } from "../Sandbox/portalNavIndex.js";
 export class HierarchicalNavigator {
     constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, navGraph, { damagePadding = 12 } = {}) {
         this.cellSize = cellSize;
@@ -77,6 +78,12 @@ export class HierarchicalNavigator {
                 reachable[nIdx] = 1;
                 queue.push(nIdx);
             });
+            forEachPortalNavHop(this.navGraph, c, r, (nc, nr) => {
+                const nIdx = colRowToIndex(nc, nr, this.cols);
+                if (this.grid[nIdx] !== 0 || reachable[nIdx]) return;
+                reachable[nIdx] = 1;
+                queue.push(nIdx);
+            });
         }
         for (const id in this.nodesMap) {
             const node = this.nodesMap[id];
@@ -122,6 +129,13 @@ export class HierarchicalNavigator {
     connectAllNodes() {
         for (const node of Object.values(this.nodesMap)) node.edges = [];
         const adjacencies = findRegionAdjacencies(this.cellToNode, this.grid, this.cols, this.rows, this.navGraph);
+        appendPortalRegionAdjacencies(this.cellToNode, this.cols, this.rows, this.navGraph, adjacencies);
+        this._connectAdjacencies(adjacencies);
+    }
+    connectPortalRegionPairs() {
+        if (!this.cellToNode || !this.navGraph.getPortalHops) return;
+        const adjacencies = new Set();
+        appendPortalRegionAdjacencies(this.cellToNode, this.cols, this.rows, this.navGraph, adjacencies);
         this._connectAdjacencies(adjacencies);
     }
     _connectAdjacencies(adjacencies) {
@@ -173,6 +187,10 @@ export class HierarchicalNavigator {
             const row = (idx / this.cols) | 0;
             forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
                 const other = this.cellToNode[nIdx];
+                if (other && other.id !== node.id) neighborIds.add(other.id);
+            });
+            forEachPortalNavHop(this.navGraph, col, row, (nc, nr) => {
+                const other = this.cellToNode[colRowToIndex(nc, nr, this.cols)];
                 if (other && other.id !== node.id) neighborIds.add(other.id);
             });
         }

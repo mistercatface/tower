@@ -63,6 +63,10 @@ export function createRollToCursorHpaBehavior(state) {
         },
         tick(prop, dt) {
             if (!targetWorld) return;
+            if (prop._portalNavDirty) {
+                prop._portalNavDirty = false;
+                hpaNav.reset();
+            }
             const config = getRollToCursorConfig(prop, { stopRadius: 8 });
             const steerTarget = resolveFloorBeltSteerTarget(state.obstacleGrid, targetWorld.x, targetWorld.y, prop.x, prop.y);
             const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);

@@ -5,6 +5,7 @@ import { canonicalEdgeCellKey, gridWallEdgeNeighbor, isCanonicalEdgeRepresentati
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
+import { syncPortalNavIndex } from "./portalNavIndex.js";
 /** @typedef {{ col: number, row: number, side: number, key: number }} PassageEdgeRef */
 /**
  * Cardinal edge endpoints as grid vertices (cell-corner coordinates).
@@ -323,6 +324,7 @@ export function syncPassagePowerNetwork(state) {
         }
     }
     if (splitInvalidPortalLinks(grid, poweredKeys, networkIdByKey)) grid.bumpWallGridRevision();
+    syncPortalNavIndex(state);
     if (minCol === Infinity) return;
     state.navigation.onObstaclesChanged({ startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow });
 }

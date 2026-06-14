@@ -1,5 +1,6 @@
 import { MinHeap, IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { OCTILE_OFFSETS, octileDistance } from "../Spatial/grid/GridUtils.js";
+import { forEachPortalNavHop } from "../Sandbox/portalNavIndex.js";
 const STALE_F_EPSILON = 1e-4;
 export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, gScore, cameFrom, visited, runId) {
     const startIdx = startRow * cols + startCol;
@@ -43,6 +44,16 @@ export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navG
                 }
             }
         }
+        forEachPortalNavHop(navGraph, currCol, currRow, (nc, nr, hopCost) => {
+            const nIdx = nr * cols + nc;
+            const tentativeG = currentG + hopCost;
+            if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
+                visited[nIdx] = runId;
+                gScore[nIdx] = tentativeG;
+                cameFrom[nIdx] = currIdx;
+                openSet.push(nIdx, tentativeG + octileDistance(nc, nr, targetCol, targetRow));
+            }
+        });
     }
     return null;
 }

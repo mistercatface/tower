@@ -3,6 +3,7 @@ import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork, canLinkPortalsOnNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
+import { syncPortalNavIndex } from "./portalNavIndex.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import {
     formatPassageModeLabel,
@@ -427,6 +428,7 @@ export function setPortalProfileAt(state, col, row, side, accessMode, allowedSid
     const grid = state.obstacleGrid;
     if (!setPortalProfile(grid, col, row, side, accessMode, allowedSide, accessBlock)) return false;
     notifyGridWallChange(state, cellBounds(col, row));
+    syncPortalNavIndex(state);
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side */
@@ -447,6 +449,7 @@ export function linkPortalsAt(state, colA, rowA, sideA, colB, rowB, sideB) {
     setPortalLinkProfile(grid, colA, rowA, sideA, PORTAL_LINK_MODE.Shared, 0);
     notifyGridWallChange(state, cellBounds(colA, rowA));
     notifyGridWallChange(state, cellBounds(colB, rowB));
+    syncPortalNavIndex(state);
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side */
@@ -454,6 +457,7 @@ export function unlinkPortalAt(state, col, row, side) {
     const grid = state.obstacleGrid;
     if (!unlinkPortalEdge(grid, col, row, side)) return false;
     notifyGridWallChange(state, cellBounds(col, row));
+    syncPortalNavIndex(state);
     return true;
 }
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {string} linkMode @param {number} [linkSourceKey] */
@@ -463,6 +467,7 @@ export function setPortalLinkProfileAt(state, col, row, side, linkMode, linkSour
     notifyGridWallChange(state, cellBounds(col, row));
     const partner = resolvePortalPartner(grid, col, row, side);
     if (partner) notifyGridWallChange(state, cellBounds(partner.col, partner.row));
+    syncPortalNavIndex(state);
     return true;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */

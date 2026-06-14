@@ -38,6 +38,8 @@ export class WorldObstacleGrid {
         this.patchBoundsScratch = createAabb();
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
+        /** @type {Map<number, { exitCol: number, exitRow: number, cost: number }[]> | null} */
+        this.portalNavHops = null;
     }
     /** @param {number} damage @param {object} state */
     _staticGridProxyHandleHit(damage, state) {
@@ -447,7 +449,21 @@ export class WorldObstacleGrid {
         return this.isBlocked(col, row);
     }
     canStep(currCol, currRow, nextCol, nextRow) {
-        return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow);
+        if (!boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow)) return true;
+        return this.canPortalHop(currCol, currRow, nextCol, nextRow);
+    }
+    /** @param {number} col @param {number} row */
+    getPortalHops(col, row) {
+        if (!this.portalNavHops) return null;
+        return this.portalNavHops.get(colRowToIndex(col, row, this.cols)) ?? null;
+    }
+    canPortalHop(fromCol, fromRow, exitCol, exitRow) {
+        const hops = this.getPortalHops(fromCol, fromRow);
+        if (!hops) return false;
+        for (let i = 0; i < hops.length; i++) {
+            if (hops[i].exitCol === exitCol && hops[i].exitRow === exitRow) return true;
+        }
+        return false;
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

@@ -25,6 +25,7 @@ export function applyPortalTraverse(state, entity, entry, fromCol, fromRow, toCo
     entity.y = y;
     entity._gridZonePrevCellIdx = colRowToIndex(exit.col, exit.row, grid.cols);
     entity._portalTraverseUntil = state.gameTime + PORTAL_TRAVERSE_COOLDOWN_MS;
+    entity._portalNavDirty = true;
     wakePushableBody(entity);
     return true;
 }
