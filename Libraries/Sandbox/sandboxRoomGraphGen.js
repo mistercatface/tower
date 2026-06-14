@@ -22,9 +22,9 @@ export const DEFAULT_SANDBOX_GRAPH_MOTIFS = [
                 nodeSpacingPad: 4,
             },
             { op: "buildClosedRooms" },
-            { op: "forEachNode", run: { op: "punchHolePerIncidentEdge", corridorCount: 2 } },
-            { op: "forEachEdge", requireAll: true, canIntersect: false, run: { op: "buildCorridorForEdge", corridorCount: 2, skipPunchIfHolesPresent: true } },
-            { op: "validateLayout", allTreeEdgesRouted: true, corridorCount: 2, corridorsIntersect: false },
+            { op: "forEachNode", run: { op: "punchHolePerIncidentEdge", corridorCount: 2, corridorWidth: 2 } },
+            { op: "forEachEdge", requireAll: true, canIntersect: false, run: { op: "buildCorridorForEdge", corridorCount: 2, corridorWidth: 2, skipPunchIfHolesPresent: true } },
+            { op: "validateLayout", allTreeEdgesRouted: true, corridorCount: 2, corridorWidth: 2, corridorsIntersect: false },
             {
                 op: "spawnPropsInNode",
                 nodeId: 0,
@@ -34,7 +34,7 @@ export const DEFAULT_SANDBOX_GRAPH_MOTIFS = [
                 ],
             },
         ],
-        until: { op: "validateLayout", allTreeEdgesRouted: true, corridorCount: 2, corridorsIntersect: false },
+        until: { op: "validateLayout", allTreeEdgesRouted: true, corridorCount: 2, corridorWidth: 2, corridorsIntersect: false },
     },
 ];
 /** Per-run overrides (e.g. `seed`) merge onto this; edit motifs to change the pipeline. */
@@ -92,10 +92,10 @@ const SANDBOX_SCENE_SCHEMA_VERSION = 7;
 /** @typedef {{ op: "buildCorridorForEdge", corridorCount?: number, corridorWidth?: number, canIntersect?: boolean, skipPunchIfHolesPresent?: boolean }} BuildCorridorForEdgeEdgeMotif */
 /** @typedef {PunchHolesTowardNeighborsEdgeMotif | BuildCorridorForEdgeEdgeMotif} RoomGraphEdgeMotif */
 /** @typedef {{ op: "forEachEdge", run: RoomGraphEdgeMotif, shuffle?: boolean, limit?: number, corridorCount?: number, corridorWidth?: number, canIntersect?: boolean, requireAll?: boolean }} ForEachEdgeMotif */
-/** @typedef {{ op: "punchHolePerIncidentEdge", corridorCount?: number }} PunchHolePerIncidentEdgeNodeMotif */
+/** @typedef {{ op: "punchHolePerIncidentEdge", corridorCount?: number, corridorWidth?: number }} PunchHolePerIncidentEdgeNodeMotif */
 /** @typedef {PunchHolePerIncidentEdgeNodeMotif} RoomGraphNodeMotif */
-/** @typedef {{ op: "forEachNode", run: RoomGraphNodeMotif, corridorCount?: number }} ForEachNodeMotif */
-/** @typedef {{ op: "validateLayout", minNodes?: number, corridorCount?: number, corridorsAtLeast?: number, allTreeEdgesRouted?: boolean, corridorsIntersect?: boolean }} ValidateLayoutMotif */
+/** @typedef {{ op: "forEachNode", run: RoomGraphNodeMotif, corridorCount?: number, corridorWidth?: number }} ForEachNodeMotif */
+/** @typedef {{ op: "validateLayout", minNodes?: number, corridorCount?: number, corridorWidth?: number, corridorsAtLeast?: number, allTreeEdgesRouted?: boolean, corridorsIntersect?: boolean }} ValidateLayoutMotif */
 /** @typedef {{ op: "retryUntil", maxAttempts?: number, body: RoomGraphMotif[], until: ValidateLayoutMotif }} RetryUntilMotif */
 /** @typedef {{ op: "punchOneHolePerRoom" }} PunchOneHolePerRoomMotif */
 /** @typedef {{ op: "buildCorridors", corridorEdgeCount?: number, canIntersect?: boolean, requireAll?: boolean }} BuildCorridorsMotif */
@@ -552,23 +552,58 @@ export function railWallsForClosedRooms(closedRooms, originCol, originRow) {
     for (let i = 0; i < closedRooms.length; i++) walls.push(...railWallsForClosedRoom(closedRooms[i], originCol, originRow));
     return walls;
 }
-/** Punch `count` distinct 1-wide holes on the wall face that points at `targetNode`. */
-/** @param {ClosedRoom} closedRoom @param {GraphNode} targetNode @param {() => number} rng @param {number} count */
-export function punchHolesTowardNeighbor(closedRoom, targetNode, rng, count) {
-    const side = socketSideToward(closedRoom.node, targetNode);
-    const open = listClosedRoomWallEdgeSlots(closedRoom.node).filter((slot) => slot.side === side && !closedRoom.gaps.has(roomWallEdgeKey(slot.c, slot.r, slot.side)));
-    if (open.length < count) throw new Error(`punchHolesTowardNeighbor: need ${count} open slots toward node ${targetNode.id}, have ${open.length}`);
-    /** @type {RoomWallHole[]} */
-    const holes = [];
-    for (let i = 0; i < count; i++) {
-        const pick = i + ((rng() * (open.length - i)) | 0);
-        const hole = open[pick];
-        open[pick] = open[i];
-        closedRoom.gaps.add(roomWallEdgeKey(hole.c, hole.r, hole.side));
-        closedRoom.holes.push(hole);
-        holes.push(hole);
+/** @param {RoomWallHole[]} slots @param {number} start @param {number} width */
+function wallSlotsContiguous(slots, start, width) {
+    if (start + width > slots.length) return false;
+    for (let i = 1; i < width; i++) {
+        const a = slots[start + i - 1];
+        const b = slots[start + i];
+        if (a.side !== b.side) return false;
+        if (a.side === 0 || a.side === 2) {
+            if (a.r !== b.r || b.c !== a.c + 1) return false;
+        } else if (a.c !== b.c || b.r !== a.r + 1) return false;
     }
-    return holes;
+    return true;
+}
+/** @param {RoomWallHole} slot @param {RoomWallHole} hole */
+function sameWallSlot(slot, hole) {
+    return slot.c === hole.c && slot.r === hole.r && slot.side === hole.side;
+}
+/** Punch `corridorCount` hole groups on the wall face toward `targetNode`; each group is `corridorWidth` contiguous slots (anchor = center slot per group). */
+/** @param {ClosedRoom} closedRoom @param {GraphNode} targetNode @param {() => number} rng @param {number} corridorCount @param {number} [corridorWidth] */
+export function punchHolesTowardNeighbor(closedRoom, targetNode, rng, corridorCount, corridorWidth = 1) {
+    const side = socketSideToward(closedRoom.node, targetNode);
+    /** @type {RoomWallHole[]} */
+    let open = listClosedRoomWallEdgeSlots(closedRoom.node).filter((slot) => slot.side === side && !closedRoom.gaps.has(roomWallEdgeKey(slot.c, slot.r, slot.side)));
+    const needSlots = corridorCount * corridorWidth;
+    if (open.length < needSlots) throw new Error(`punchHolesTowardNeighbor: need ${needSlots} open slots toward node ${targetNode.id}, have ${open.length}`);
+    /** @type {RoomWallHole[]} */
+    const anchors = [];
+    for (let lane = 0; lane < corridorCount; lane++) {
+        if (corridorWidth === 1) {
+            const pick = (rng() * open.length) | 0;
+            const hole = open[pick];
+            open.splice(pick, 1);
+            closedRoom.gaps.add(roomWallEdgeKey(hole.c, hole.r, hole.side));
+            closedRoom.holes.push(hole);
+            anchors.push(hole);
+            continue;
+        }
+        /** @type {number[]} */
+        const groupStarts = [];
+        for (let s = 0; s <= open.length - corridorWidth; s++) if (wallSlotsContiguous(open, s, corridorWidth)) groupStarts.push(s);
+        if (groupStarts.length === 0) throw new Error(`punchHolesTowardNeighbor: no ${corridorWidth}-wide opening toward node ${targetNode.id}`);
+        const start = groupStarts[(rng() * groupStarts.length) | 0];
+        const group = open.slice(start, start + corridorWidth);
+        for (let gi = 0; gi < group.length; gi++) {
+            const hole = group[gi];
+            closedRoom.gaps.add(roomWallEdgeKey(hole.c, hole.r, hole.side));
+            closedRoom.holes.push(hole);
+        }
+        anchors.push(group[(corridorWidth - 1) >> 1]);
+        open = open.filter((slot) => !group.some((hole) => sameWallSlot(slot, hole)));
+    }
+    return anchors;
 }
 /** Punch one random 1-wide hole on the wall face that points at `targetNode`. */
 /** @param {ClosedRoom} closedRoom @param {GraphNode} targetNode @param {() => number} rng */
@@ -751,10 +786,11 @@ function pickCorridorMidPath(from, to, nodes, rng) {
     return paths[(rng() * paths.length) | 0];
 }
 /** 1-wide corridor: straight egress from parent hole, manhattan mid, straight ingress to child hole. */
-/** @param {RoomWallHole} parentHole @param {RoomWallHole} childHole @param {GraphNode[]} nodes @param {() => number} rng @param {number} egressCells @param {{ existingPaths?: Cell[][], tryAllMidOrders?: boolean }} [options] */
+/** @param {RoomWallHole} parentHole @param {RoomWallHole} childHole @param {GraphNode[]} nodes @param {() => number} rng @param {number} egressCells @param {{ existingPaths?: Cell[][], tryAllMidOrders?: boolean, corridorWidth?: number }} [options] */
 export function buildCorridorPathBetweenHoles(parentHole, childHole, nodes, rng, egressCells, options = {}) {
     const existingPaths = options.existingPaths ?? [];
     const tryAllMidOrders = options.tryAllMidOrders === true;
+    const corridorWidth = options.corridorWidth ?? DEFAULT_CORRIDOR_WIDTH;
     const corridorFrom = stepAcrossSide(parentHole, parentHole.side);
     const corridorTo = stepAcrossSide(childHole, childHole.side);
     const approachEnd = stepAcrossSide(corridorTo, childHole.side);
@@ -780,23 +816,64 @@ export function buildCorridorPathBetweenHoles(parentHole, childHole, nodes, rng,
             path.push(p);
         }
         if (!corridorPathIsClear(nodes, path)) continue;
-        if (existingPaths.length && corridorPathIntersectsAny(path, existingPaths)) continue;
+        if (existingPaths.length && corridorPathIntersectsAny(path, existingPaths, corridorWidth)) continue;
         return path;
     }
     return null;
+}
+/** @param {Cell} p @param {Cell | undefined} prev @param {Cell | undefined} next @param {number} corridorWidth @param {boolean} interiorOnly @param {number} pathIndex @param {number} pathLength */
+function collectCorridorPathPointCells(p, prev, next, corridorWidth, interiorOnly, pathIndex, pathLength) {
+    if (interiorOnly && (pathIndex === 0 || pathIndex === pathLength - 1)) return [];
+    const offsets = corridorPerpendicularOffsets(corridorWidth);
+    let alongH = false;
+    let alongV = false;
+    if (prev) {
+        if (prev.c !== p.c) alongH = true;
+        if (prev.r !== p.r) alongV = true;
+    }
+    if (next) {
+        if (next.c !== p.c) alongH = true;
+        if (next.r !== p.r) alongV = true;
+    }
+    /** @type {Cell[]} */
+    const cells = [];
+    if (alongH && alongV) {
+        for (let oi = 0; oi < offsets.length; oi++)
+            for (let oj = 0; oj < offsets.length; oj++) cells.push({ c: p.c + offsets[oi], r: p.r + offsets[oj] });
+        return cells;
+    }
+    if (alongH) {
+        for (let oi = 0; oi < offsets.length; oi++) cells.push({ c: p.c, r: p.r + offsets[oi] });
+        return cells;
+    }
+    if (alongV) {
+        for (let oi = 0; oi < offsets.length; oi++) cells.push({ c: p.c + offsets[oi], r: p.r });
+        return cells;
+    }
+    cells.push({ c: p.c, r: p.r });
+    return cells;
+}
+/** @param {Cell[]} path @param {number} corridorWidth @param {{ interiorOnly?: boolean }} [options] */
+function corridorPathOccupiedCellKeys(path, corridorWidth, options = {}) {
+    const interiorOnly = options.interiorOnly !== false;
+    /** @type {Set<string>} */
+    const keys = new Set();
+    for (let i = 0; i < path.length; i++) {
+        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, interiorOnly, i, path.length);
+        for (let ci = 0; ci < cells.length; ci++) keys.add(corridorCellKey(cells[ci]));
+    }
+    return keys;
 }
 /** @param {Cell} cell */
 function corridorCellKey(cell) {
     return `${cell.c},${cell.r}`;
 }
-/** @param {Cell[]} path @param {Cell[][]} others — interior cells only; endpoints may meet at room holes. */
-export function corridorPathIntersectsAny(path, others) {
-    /** @type {Set<string>} */
-    const keys = new Set();
-    for (let i = 1; i < path.length - 1; i++) keys.add(corridorCellKey(path[i]));
+/** @param {Cell[]} path @param {Cell[][]} others — interior footprint only; endpoints may meet at room holes. @param {number} [corridorWidth] */
+export function corridorPathIntersectsAny(path, others, corridorWidth = DEFAULT_CORRIDOR_WIDTH) {
+    const keys = corridorPathOccupiedCellKeys(path, corridorWidth);
     for (let i = 0; i < others.length; i++) {
-        const other = others[i];
-        for (let j = 1; j < other.length - 1; j++) if (keys.has(corridorCellKey(other[j]))) return true;
+        const otherKeys = corridorPathOccupiedCellKeys(others[i], corridorWidth);
+        for (const key of otherKeys) if (keys.has(key)) return true;
     }
     return false;
 }
@@ -811,35 +888,9 @@ function markMask(mask, cols, rows, c, r) {
 }
 /** @param {Uint8Array} mask @param {number} cols @param {number} rows @param {Cell[]} path @param {number} corridorWidth */
 function stampCorridorTube(mask, cols, rows, path, corridorWidth) {
-    const offsets = corridorPerpendicularOffsets(corridorWidth);
     for (let i = 0; i < path.length; i++) {
-        const p = path[i];
-        const prev = path[i - 1];
-        const next = path[i + 1];
-        let alongH = false;
-        let alongV = false;
-        if (prev) {
-            if (prev.c !== p.c) alongH = true;
-            if (prev.r !== p.r) alongV = true;
-        }
-        if (next) {
-            if (next.c !== p.c) alongH = true;
-            if (next.r !== p.r) alongV = true;
-        }
-        if (alongH && alongV) {
-            for (let oi = 0; oi < offsets.length; oi++)
-                for (let oj = 0; oj < offsets.length; oj++) markMask(mask, cols, rows, p.c + offsets[oi], p.r + offsets[oj]);
-            continue;
-        }
-        if (alongH) {
-            for (let oi = 0; oi < offsets.length; oi++) markMask(mask, cols, rows, p.c, p.r + offsets[oi]);
-            continue;
-        }
-        if (alongV) {
-            for (let oi = 0; oi < offsets.length; oi++) markMask(mask, cols, rows, p.c + offsets[oi], p.r);
-            continue;
-        }
-        markMask(mask, cols, rows, p.c, p.r);
+        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, false, i, path.length);
+        for (let ci = 0; ci < cells.length; ci++) markMask(mask, cols, rows, cells[ci].c, cells[ci].r);
     }
 }
 /** @param {Uint8Array} mask @param {number} cols @param {number} rows @param {number} originCol @param {number} originRow */
@@ -900,30 +951,30 @@ function clearEdgeHoleFields(edge) {
     edge.corridorTo = undefined;
 }
 /** Route one tree edge: punch facing holes on both rooms. */
-/** @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {number} edgeIndex @param {() => number} rng @param {number} [corridorCount] */
-export function punchHolesOnDirectedEdge(layout, closedRooms, edgeIndex, rng, corridorCount = 1) {
+/** @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {number} edgeIndex @param {() => number} rng @param {number} [corridorCount] @param {number} [corridorWidth] */
+export function punchHolesOnDirectedEdge(layout, closedRooms, edgeIndex, rng, corridorCount = 1, corridorWidth = 1) {
     const edge = layout.graphEdges[edgeIndex];
     const { rooms } = layout;
-    edge.parentHoles = punchHolesTowardNeighbor(closedRooms[edge.a], rooms[edge.b], rng, corridorCount);
-    edge.childHoles = punchHolesTowardNeighbor(closedRooms[edge.b], rooms[edge.a], rng, corridorCount);
+    edge.parentHoles = punchHolesTowardNeighbor(closedRooms[edge.a], rooms[edge.b], rng, corridorCount, corridorWidth);
+    edge.childHoles = punchHolesTowardNeighbor(closedRooms[edge.b], rooms[edge.a], rng, corridorCount, corridorWidth);
     edge.parentHole = edge.parentHoles[0];
     edge.childHole = edge.childHoles[0];
     edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
     edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
 }
 /** One hole per tree edge touching this node, facing the other endpoint. */
-/** @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {number} nodeId @param {() => number} rng @param {number} [corridorCount] */
-export function punchHolesForNodeIncidentEdges(layout, closedRooms, nodeId, rng, corridorCount = 1) {
+/** @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {number} nodeId @param {() => number} rng @param {number} [corridorCount] @param {number} [corridorWidth] */
+export function punchHolesForNodeIncidentEdges(layout, closedRooms, nodeId, rng, corridorCount = 1, corridorWidth = 1) {
     const { graphEdges, rooms } = layout;
     for (let i = 0; i < graphEdges.length; i++) {
         const edge = graphEdges[i];
         if (edge.a === nodeId) {
-            edge.parentHoles = punchHolesTowardNeighbor(closedRooms[nodeId], rooms[edge.b], rng, corridorCount);
+            edge.parentHoles = punchHolesTowardNeighbor(closedRooms[nodeId], rooms[edge.b], rng, corridorCount, corridorWidth);
             edge.parentHole = edge.parentHoles[0];
             edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
         }
         if (edge.b === nodeId) {
-            edge.childHoles = punchHolesTowardNeighbor(closedRooms[nodeId], rooms[edge.a], rng, corridorCount);
+            edge.childHoles = punchHolesTowardNeighbor(closedRooms[nodeId], rooms[edge.a], rng, corridorCount, corridorWidth);
             edge.childHole = edge.childHoles[0];
             edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
         }
@@ -944,7 +995,7 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
     const snapA = snapshotClosedRoom(roomA);
     const snapB = snapshotClosedRoom(roomB);
     const punchedHere = !(skipPunch && edgeHasPunchedHoles(edge, corridorCount));
-    if (punchedHere) punchHolesOnDirectedEdge(layout, closedRooms, edgeIndex, rng, corridorCount);
+    if (punchedHere) punchHolesOnDirectedEdge(layout, closedRooms, edgeIndex, rng, corridorCount, corridorWidth);
     else {
         edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
         edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
@@ -957,7 +1008,7 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
     const lanePaths = canIntersect ? [] : existingPaths.slice();
     for (let lane = 0; lane < corridorCount; lane++) {
         const { parentHole, childHole } = edgeHolePairAtLane(edge, lane);
-        const path = buildCorridorPathBetweenHoles(parentHole, childHole, rooms, rng, egressCells, { existingPaths: lanePaths, tryAllMidOrders: !canIntersect });
+        const path = buildCorridorPathBetweenHoles(parentHole, childHole, rooms, rng, egressCells, { existingPaths: lanePaths, tryAllMidOrders: !canIntersect, corridorWidth });
         if (!path) {
             if (punchedHere) {
                 restoreClosedRoom(roomA, snapA);
@@ -1145,18 +1196,19 @@ function runForEachEdgeMotif(motif, ctx) {
         if (runRoomGraphEdgeMotif(motif.run, ctx, order[k], { canIntersect: motif.canIntersect, corridorCount: motif.corridorCount, corridorWidth: motif.corridorWidth })) okCount++;
     if (motif.requireAll && okCount < limit) throw new Error(`forEachEdge: completed ${okCount}/${limit}`);
 }
-/** @param {RoomGraphNodeMotif} nodeMotif @param {RoomGraphBuildCtx} ctx @param {number} nodeId @param {{ corridorCount?: number }} forEachOpts */
+/** @param {RoomGraphNodeMotif} nodeMotif @param {RoomGraphBuildCtx} ctx @param {number} nodeId @param {{ corridorCount?: number, corridorWidth?: number }} forEachOpts */
 function runRoomGraphNodeMotif(nodeMotif, ctx, nodeId, forEachOpts) {
     if (nodeMotif.op === "punchHolePerIncidentEdge") {
         const corridorCount = nodeMotif.corridorCount ?? forEachOpts.corridorCount ?? 1;
-        punchHolesForNodeIncidentEdges(ctx.layout, ctx.closedRooms, nodeId, ctx.holeRng, corridorCount);
+        const corridorWidth = resolveCorridorWidth({ corridorWidth: nodeMotif.corridorWidth ?? forEachOpts.corridorWidth });
+        punchHolesForNodeIncidentEdges(ctx.layout, ctx.closedRooms, nodeId, ctx.holeRng, corridorCount, corridorWidth);
         return;
     }
     throw new Error(`Unknown room graph node motif op: ${nodeMotif.op}`);
 }
 /** @param {ForEachNodeMotif} motif @param {RoomGraphBuildCtx} ctx */
 function runForEachNodeMotif(motif, ctx) {
-    for (let i = 0; i < ctx.layout.rooms.length; i++) runRoomGraphNodeMotif(motif.run, ctx, i, { corridorCount: motif.corridorCount });
+    for (let i = 0; i < ctx.layout.rooms.length; i++) runRoomGraphNodeMotif(motif.run, ctx, i, { corridorCount: motif.corridorCount, corridorWidth: motif.corridorWidth });
 }
 /** @param {ValidateLayoutMotif} motif @param {RoomGraphBuildCtx} ctx @returns {string} empty when valid */
 export function describeLayoutValidationFailure(motif, ctx) {
@@ -1165,6 +1217,7 @@ export function describeLayoutValidationFailure(motif, ctx) {
     const config = resolveNodeGraphGenConfig(ctx.options);
     const minNodes = motif.minNodes ?? config.nodeCount ?? config.minNodes;
     const corridorCount = motif.corridorCount ?? 1;
+    const corridorWidth = resolveCorridorWidth({ corridorWidth: motif.corridorWidth });
     const edgeCount = ctx.layout.graphEdges.length;
     if (ctx.layout.rooms.length < minNodes) parts.push(`rooms ${ctx.layout.rooms.length}/${minNodes}`);
     if (motif.allTreeEdgesRouted && ctx.corridorPaths.length < edgeCount * corridorCount) parts.push(`corridors ${ctx.corridorPaths.length}/${edgeCount * corridorCount}`);
@@ -1172,7 +1225,7 @@ export function describeLayoutValidationFailure(motif, ctx) {
     if (motif.corridorsIntersect === false)
         for (let i = 0; i < ctx.corridorPaths.length; i++)
             for (let j = i + 1; j < ctx.corridorPaths.length; j++)
-                if (corridorPathIntersectsAny(ctx.corridorPaths[i], [ctx.corridorPaths[j]])) {
+                if (corridorPathIntersectsAny(ctx.corridorPaths[i], [ctx.corridorPaths[j]], corridorWidth)) {
                     parts.push("corridor paths intersect");
                     break;
                 }
