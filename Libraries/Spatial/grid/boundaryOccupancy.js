@@ -71,8 +71,6 @@ export function setPortalProfile(grid, col, row, side, accessMode, allowedSide, 
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isPortalEdge(edge)) return false;
     const ownerSide = side;
-    const parsedAccess = parsePortalAccessMode(accessMode);
-    const resolvedAllowedSide = parsedAccess === PORTAL_ACCESS_MODE.One ? (allowedSide ?? portalAccessDefaultAllowedSide(ownerSide)) : ownerSide;
     return setBoundary(
         grid,
         col,
@@ -80,8 +78,8 @@ export function setPortalProfile(grid, col, row, side, accessMode, allowedSide, 
         side,
         {
             kind: "portal",
-            accessMode: parsedAccess,
-            allowedSide: resolvedAllowedSide,
+            accessMode: PORTAL_ACCESS_MODE.One,
+            allowedSide: allowedSide ?? portalAccessDefaultAllowedSide(ownerSide),
             accessBlock: parsePortalAccessBlock(accessBlock ?? edge.accessBlock),
             partnerKey: edge.partnerKey ?? 0,
             linkMode: edge.linkMode ?? "shared",

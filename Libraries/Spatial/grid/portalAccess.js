@@ -1,4 +1,4 @@
-import { gridWallEdgeMirrorSide } from "../../World/wallGridCells.js";
+import { gridWallEdgeMirrorSide, gridWallEdgeNeighbor } from "../../World/wallGridCells.js";
 import { parsePortalAccessBlock, PORTAL_ACCESS_BLOCK, PORTAL_ACCESS_MODE } from "./CellEdge.js";
 /** Default allowedSide for access one — owner cell (mirror of stamped edge side). */
 export function portalAccessDefaultAllowedSide(ownerSide) {
@@ -42,9 +42,21 @@ export function portalBlocksStepWithoutDirection(edge, ownerSide) {
     return true;
 }
 /** @param {object} edge @param {number} ownerSide */
-function portalMouthAllowedSide(edge, ownerSide) {
+export function portalMouthAllowedSide(edge, ownerSide) {
     if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return portalAccessDefaultAllowedSide(ownerSide);
     return edge.allowedSide ?? portalAccessDefaultAllowedSide(ownerSide);
+}
+/**
+ * @param {number} ownerCol
+ * @param {number} ownerRow
+ * @param {number} ownerSide
+ * @param {object} edge
+ */
+export function portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge) {
+    const mouth = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
+    const { nc, nr } = gridWallEdgeNeighbor(ownerCol, ownerRow, ownerSide);
+    const back = mouth.col === ownerCol && mouth.row === ownerRow ? { col: nc, row: nr } : { col: ownerCol, row: ownerRow };
+    return { mouth, back };
 }
 /**
  * Portal step blocking — mouth cell only when powered; solid both sides when unpowered.

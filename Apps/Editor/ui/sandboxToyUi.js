@@ -17,7 +17,7 @@ import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../.
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
 import { portalAccessDefaultAllowedSide } from "../../../Libraries/Spatial/grid/portalAccess.js";
-import { PORTAL_ACCESS_BLOCK, PORTAL_ACCESS_MODE } from "../../../Libraries/Spatial/grid/CellEdge.js";
+import { PORTAL_ACCESS_BLOCK } from "../../../Libraries/Spatial/grid/CellEdge.js";
 import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 const WALL_STAMP_OPTIONS = [
@@ -31,22 +31,18 @@ const PASSAGE_MODE_OPTIONS = [
     { value: "oneWay", label: "One-way — block against allowed side" },
     { value: "tripwire", label: "Tripwire — sensor, never blocks" },
 ];
-const PORTAL_ACCESS_MODE_OPTIONS = [
-    { value: "both", label: "Both sides — either cell can enter" },
-    { value: "one", label: "One side only" },
-];
 const PORTAL_CONNECTION_OPTIONS = [
     { value: "shared", label: "Shared — both ways (⇄)" },
     { value: "fromSelf", label: "One-way — this portal → partner (→)" },
     { value: "fromPartner", label: "One-way — partner → this portal (←)" },
 ];
 /** @param {number} ownerSide */
-function portalAccessSideOptions(ownerSide) {
+function portalMouthSideOptions(ownerSide) {
     const mirror = portalAccessDefaultAllowedSide(ownerSide);
     const neighborLabel = ownerSide === 0 ? "North neighbor" : ownerSide === 1 ? "East neighbor" : ownerSide === 2 ? "South neighbor" : "West neighbor";
     return [
-        { value: String(mirror), label: "Owner cell" },
-        { value: String(ownerSide), label: neighborLabel },
+        { value: String(mirror), label: "Owner cell (stamped edge)" },
+        { value: String(ownerSide), label: `${neighborLabel} (across edge)` },
     ];
 }
 const PORTAL_ACCESS_BLOCK_OPTIONS = [
@@ -82,76 +78,75 @@ function appendPassageEditorFields(body, controller, selected, { stampDefaults =
             },
         });
 }
-/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ accessMode: string, accessBlock?: string, allowedSide?: number, side?: number, linked?: boolean, partner?: { col: number, row: number, side: number } | null } | null} selected @param {{ stampDefaults?: boolean, linkTargets?: { col: number, row: number, side: number, label: string }[], onChange: () => void }} opts */
-function appendPortalEditorFields(body, controller, selected, { stampDefaults = false, linkTargets = [], onChange }) {
-    const accessMode = stampDefaults ? controller.getPortalStampAccessMode() : selected.accessMode;
-    appendSelectField(body, "Access", {
-        value: accessMode,
-        options: PORTAL_ACCESS_MODE_OPTIONS,
+/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ mouthAllowedSide?: number, accessBlock?: string, side?: number, linked?: boolean, partner?: { col: number, row: number, side: number } | null, onNetwork?: boolean, connection?: string, connectionLabel?: string } | null} selected @param {{ stampDefaults?: boolean, ownerSide: number, linkTargets?: { col: number, row: number, side: number, label: string }[], onChange: () => void }} opts */
+function appendPortalEditorFields(body, controller, selected, { stampDefaults = false, ownerSide, linkTargets = [], onChange }) {
+    if (stampDefaults) {
+        appendSelectField(body, "Portal mouth", {
+            value: controller.getPortalStampMouthNeighbor() ? String(ownerSide) : String(portalAccessDefaultAllowedSide(ownerSide)),
+            options: portalMouthSideOptions(ownerSide),
+            onChange: (value) => {
+                controller.setPortalStampMouthNeighbor(Number(value) === ownerSide);
+                onChange();
+            },
+        });
+        appendEditorHint(body, "One mouth cell per edge; the other side is always a solid wall. Connection direction is set after linking.");
+        return;
+    }
+    if (!selected) return;
+    appendSelectField(body, "Portal mouth", {
+        value: String(selected.mouthAllowedSide ?? portalAccessDefaultAllowedSide(ownerSide)),
+        options: portalMouthSideOptions(ownerSide),
         onChange: (value) => {
-            if (stampDefaults) controller.setPortalStampAccessMode(value);
-            else controller.setSelectedPortalAccessMode(value);
+            controller.setSelectedPortalMouthSide(Number(value));
             onChange();
         },
     });
-    if (accessMode === PORTAL_ACCESS_MODE.One && !stampDefaults && selected) {
-        appendSelectField(body, "Allowed cell", {
-            value: String(selected.allowedSide ?? selected.side),
-            options: portalAccessSideOptions(selected.side ?? 0),
+    appendSelectField(body, "Back-side block", {
+        value: selected.accessBlock ?? PORTAL_ACCESS_BLOCK.All,
+        options: PORTAL_ACCESS_BLOCK_OPTIONS,
+        onChange: (value) => {
+            controller.setSelectedPortalAccessBlock(value);
+            onChange();
+        },
+    });
+    if (!selected.onNetwork) appendEditorHint(body, "Off network — extend a powered laser chain from a power source to this edge.");
+    else if (!selected.linked)
+        appendEditorHint(body, linkTargets.length > 0 ? "On network. Link to another portal on the same laser chain below." : "On network, but no other powered portal shares this chain yet.");
+    if (selected.linked) {
+        appendSelectField(body, "Connection", {
+            value: selected.connection ?? "shared",
+            options: PORTAL_CONNECTION_OPTIONS,
             onChange: (value) => {
-                controller.setSelectedPortalAccessSide(Number(value));
+                controller.setSelectedPortalConnection(value);
                 onChange();
             },
         });
-        appendSelectField(body, "Block enforcement", {
-            value: selected.accessBlock ?? PORTAL_ACCESS_BLOCK.All,
-            options: PORTAL_ACCESS_BLOCK_OPTIONS,
-            onChange: (value) => {
-                controller.setSelectedPortalAccessBlock(value);
-                onChange();
-            },
-        });
+        appendEditorHint(body, `${selected.connectionLabel}. Green/yellow status disc = linked travel direction.`);
     }
-    if (!stampDefaults && selected) {
-        if (!selected.onNetwork) appendEditorHint(body, "Off network — extend a powered laser chain from a power source to this edge.");
-        else if (!selected.linked)
-            appendEditorHint(body, linkTargets.length > 0 ? "On network. Link to another portal on the same laser chain below." : "On network, but no other powered portal shares this chain yet.");
-        if (selected.linked) {
-            appendSelectField(body, "Connection", {
-                value: selected.connection ?? "shared",
-                options: PORTAL_CONNECTION_OPTIONS,
-                onChange: (value) => {
-                    controller.setSelectedPortalConnection(value);
-                    onChange();
-                },
-            });
-            appendEditorHint(body, `${selected.connectionLabel}. Purple link arrows show travel direction between paired portals.`);
-        }
-        if (selected.onNetwork && linkTargets.length > 0)
-            appendSelectField(body, "Link partner", {
-                value: selected.linked && selected.partner ? `${selected.partner.col},${selected.partner.row},${selected.partner.side}` : "",
-                options: [{ value: "", label: "Choose portal…" }, ...linkTargets.map((t) => ({ value: `${t.col},${t.row},${t.side}`, label: t.label }))],
-                onChange: (value) => {
-                    if (!value) return;
-                    const [col, row, side] = value.split(",").map(Number);
-                    controller.linkSelectedPortalTo(col, row, side);
-                    onChange();
-                },
-            });
-        if (selected.linked) {
-            const unlinkRow = document.createElement("div");
-            unlinkRow.className = "sandbox-add-row";
-            const unlinkBtn = document.createElement("button");
-            unlinkBtn.type = "button";
-            unlinkBtn.className = "secondary";
-            unlinkBtn.textContent = "Unlink partner";
-            unlinkBtn.addEventListener("click", () => {
-                controller.unlinkSelectedPortal();
+    if (selected.onNetwork && linkTargets.length > 0)
+        appendSelectField(body, "Link partner", {
+            value: selected.linked && selected.partner ? `${selected.partner.col},${selected.partner.row},${selected.partner.side}` : "",
+            options: [{ value: "", label: "Choose portal…" }, ...linkTargets.map((t) => ({ value: `${t.col},${t.row},${t.side}`, label: t.label }))],
+            onChange: (value) => {
+                if (!value) return;
+                const [col, row, side] = value.split(",").map(Number);
+                controller.linkSelectedPortalTo(col, row, side);
                 onChange();
-            });
-            unlinkRow.appendChild(unlinkBtn);
-            body.appendChild(unlinkRow);
-        }
+            },
+        });
+    if (selected.linked) {
+        const unlinkRow = document.createElement("div");
+        unlinkRow.className = "sandbox-add-row";
+        const unlinkBtn = document.createElement("button");
+        unlinkBtn.type = "button";
+        unlinkBtn.className = "secondary";
+        unlinkBtn.textContent = "Unlink partner";
+        unlinkBtn.addEventListener("click", () => {
+            controller.unlinkSelectedPortal();
+            onChange();
+        });
+        unlinkRow.appendChild(unlinkBtn);
+        body.appendChild(unlinkRow);
     }
 }
 function readOpenSections(root) {
@@ -285,7 +280,7 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
                 }).element,
             );
         if (wallStampMode === "forcefield") appendPassageEditorFields(body, controller, null, { stampDefaults: true, onChange });
-        if (wallStampMode === "portal") appendPortalEditorFields(body, controller, null, { stampDefaults: true, onChange });
+        if (wallStampMode === "portal") appendPortalEditorFields(body, controller, null, { stampDefaults: true, ownerSide: selectedRail?.side ?? selectedPortalInfo?.side ?? 1, onChange });
     });
     const voxelWalls = controller.listPlacedVoxelWalls();
     const railWalls = controller.listPlacedRailWalls();
@@ -431,8 +426,8 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
             return;
         }
         if (selectedPortalInfo) {
-            appendEditorHint(body, `Portal · ${selectedPortalInfo.sideLabel}. Dim cyan = off network. Bright cyan = on laser chain. Link partners only when both are on the same chain.`);
-            appendPortalEditorFields(body, controller, selectedPortalInfo, { linkTargets: portalLinkTargets, onChange });
+            appendEditorHint(body, `Portal · ${selectedPortalInfo.sideLabel}. Mouth cell has the laser strip; opposite side is solid wall. Link on the same powered laser chain.`);
+            appendPortalEditorFields(body, controller, selectedPortalInfo, { ownerSide: selectedPortalInfo.side, linkTargets: portalLinkTargets, onChange });
             const deleteRow = document.createElement("div");
             deleteRow.className = "sandbox-add-row";
             const deleteBtn = document.createElement("button");

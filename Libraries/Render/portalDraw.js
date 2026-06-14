@@ -1,12 +1,10 @@
 import { gridWallEdgeEndpoints } from "../World/wallGridCells.js";
+import { portalMouthAndBackCells } from "../Spatial/grid/portalAccess.js";
 import { PORTAL_LINK_MODE, resolvePortalLinkRoute } from "../Sandbox/portalLinks.js";
-import { extrudeBox, isFaceTowardViewer, projectVertical } from "../Spatial/iso/IsometricProjection.js";
 import { getCanvasLineScale } from "./common/viewportUtils.js";
 import { drawBox } from "./Props3D/SolidDraw.js";
 import { projectPropVertexInto } from "./Props3D/propMesh.js";
-
 /** @typedef {"off" | "unlinked" | "shared" | "oneWay"} PortalDrawLinkRole */
-
 const PORTAL_STRIP_HEIGHT = 10;
 const PORTAL_STRIP_THIN = 2.5;
 const PORTAL_DISC_RADIUS = 2.8;
@@ -16,7 +14,6 @@ const sEdgeP1 = { x: 0, y: 0 };
 const sEdgeP2 = { x: 0, y: 0 };
 const sProp = { x: 0, y: 0, facing: 0 };
 const sProjected = { x: 0, y: 0, depth: 0 };
-
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {number} col
@@ -33,7 +30,6 @@ export function resolvePortalDrawRole(grid, col, row, side, edge) {
     if (route.linkMode === PORTAL_LINK_MODE.Shared) return { powered: true, linkRole: "shared" };
     return { powered: true, linkRole: "oneWay" };
 }
-
 /** @param {number} side @param {number} cellHalf */
 function portalStripLayout(side, cellHalf) {
     const thin = PORTAL_STRIP_THIN;
@@ -41,23 +37,18 @@ function portalStripLayout(side, cellHalf) {
     if (side === 0 || side === 2) return { halfSize: { x: long, y: thin }, facing: 0 };
     return { halfSize: { x: thin, y: long }, facing: 0 };
 }
-
+/** @param {{ x: number, y: number }} halfSize */
+function portalHalfStripSize(halfSize) {
+    return { x: halfSize.x > halfSize.y ? halfSize.x * 0.5 : halfSize.x, y: halfSize.y > halfSize.x ? halfSize.y * 0.5 : halfSize.y };
+}
 /** @param {boolean} powered */
 function laserWallColors(powered) {
-    if (!powered) {
-        return {
-            faceColors: { shadow: "#1e293b", mid: "#334155", highlight: "#475569" },
-            topColors: { light: "#64748b", mid: "#475569", dark: "#334155" },
-            stroke: "#0f172a",
-        };
-    }
-    return {
-        faceColors: { shadow: "#1e1b4b", mid: "#312e81", highlight: "#4338ca" },
-        topColors: { light: "#a5b4fc", mid: "#6366f1", dark: "#4338ca" },
-        stroke: "#1e1b4b",
-    };
+    if (!powered) return { faceColors: { shadow: "#1e293b", mid: "#334155", highlight: "#475569" }, topColors: { light: "#64748b", mid: "#475569", dark: "#334155" }, stroke: "#0f172a" };
+    return { faceColors: { shadow: "#1e1b4b", mid: "#312e81", highlight: "#4338ca" }, topColors: { light: "#a5b4fc", mid: "#6366f1", dark: "#4338ca" }, stroke: "#1e1b4b" };
 }
-
+function solidWallColors() {
+    return { faceColors: { shadow: "#292524", mid: "#44403c", highlight: "#57534e" }, topColors: { light: "#78716c", mid: "#57534e", dark: "#44403c" }, stroke: "#1c1917" };
+}
 /**
  * @param {boolean} powered
  * @param {PortalDrawLinkRole} linkRole
@@ -68,7 +59,6 @@ function statusCircleStyle(powered, linkRole) {
     if (linkRole === "shared") return { fill: "rgba(34, 197, 94, 0.95)", stroke: "rgba(255, 255, 255, 0.9)" };
     return { fill: "rgba(234, 179, 8, 0.98)", stroke: "rgba(255, 255, 255, 0.9)" };
 }
-
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {{ x: number, y: number, facing: number }} prop
@@ -123,51 +113,30 @@ function drawLaserGridOnTop(ctx, prop, px, py, halfSize, height, lineScale, powe
     }
     ctx.restore();
 }
-
-/** @param {number} side */
-function portalStatusFaceIndexFallback(side) {
-    if (side === 0) return 2;
-    if (side === 2) return 0;
-    if (side === 1) return 3;
-    return 1;
-}
-
 /**
- * Long vertical wall face toward the viewer.
- *
- * @param {{ x: number, y: number }} prop
- * @param {number} px
- * @param {number} py
+ * @param {{ x: number, y: number, facing: number }} prop
+ * @param {number} targetX
+ * @param {number} targetY
  * @param {{ x: number, y: number }} halfSize
  * @param {number} facing
- * @param {number} height
- * @param {number} side
- * @returns {number} extrudeBox face index 0..3
  */
-function pickPortalStatusFaceIndex(prop, px, py, halfSize, facing, height, side) {
-    const projection = projectVertical(prop.x, prop.y, px, py, height);
-    const box = extrudeBox(projection, halfSize, facing);
-    const { cx, cy } = projection;
-    const hx = halfSize.x;
-    const hy = halfSize.y;
-    const longBaseLen = 2 * Math.max(hx, hy);
-    let pickIndex = -1;
-    let pickScore = -1;
-    for (let i = 0; i < box.faces.length; i++) {
-        const face = box.faces[i];
-        const baseLen = Math.hypot(face.baseB.x - face.baseA.x, face.baseB.y - face.baseA.y);
-        if (baseLen < longBaseLen - 0.01) continue;
-        const edgeMidX = (face.baseA.x + face.baseB.x) * 0.5;
-        const edgeMidY = (face.baseA.y + face.baseB.y) * 0.5;
-        if (!isFaceTowardViewer(edgeMidX, edgeMidY, cx, cy, px, py)) continue;
-        if (baseLen > pickScore) {
-            pickScore = baseLen;
-            pickIndex = i;
-        }
-    }
-    return pickIndex >= 0 ? pickIndex : portalStatusFaceIndexFallback(side);
+function resolveMouthFaceIndex(prop, targetX, targetY, halfSize, facing) {
+    const dx = targetX - prop.x;
+    const dy = targetY - prop.y;
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    const lx = dx * cos + dy * sin;
+    const ly = -dx * sin + dy * cos;
+    const faces = [
+        { idx: 1, dot: lx },
+        { idx: 3, dot: -lx },
+        { idx: 2, dot: ly },
+        { idx: 0, dot: -ly },
+    ];
+    let pick = faces[0];
+    for (let i = 1; i < faces.length; i++) if (faces[i].dot > pick.dot) pick = faces[i];
+    return pick.idx;
 }
-
 /**
  * @param {number} faceIndex
  * @param {number} hx
@@ -182,10 +151,7 @@ function portalDiscLocalPoint(faceIndex, hx, hy, u, lz) {
     if (faceIndex === 2) return { lx: u, ly: hy + bulge, lz };
     return { lx: -hx - bulge, ly: u, lz };
 }
-
 /**
- * Status disc embedded in the wall face plane (iso-projected, not a flat screen circle).
- *
  * @param {CanvasRenderingContext2D} ctx
  * @param {{ x: number, y: number, facing: number }} prop
  * @param {number} px
@@ -224,9 +190,8 @@ function drawPortalStatusDisc3D(ctx, prop, px, py, faceIndex, halfSize, height, 
     ctx.lineWidth = (selected ? 2 : 1.25) * lineScale;
     ctx.stroke();
 }
-
 /**
- * Raised laser-grid strip on a portal edge + status circle on the wall face.
+ * Mouth-side laser strip + back-side solid wall on one portal edge.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -240,25 +205,43 @@ function drawPortalStatusDisc3D(ctx, prop, px, py, faceIndex, halfSize, height, 
  */
 export function drawPortalEdgeStrip(ctx, grid, col, row, side, edge, px, py, { selected = false } = {}) {
     const { powered, linkRole } = resolvePortalDrawRole(grid, col, row, side, edge);
+    const { mouth, back } = portalMouthAndBackCells(col, row, side, edge);
     gridWallEdgeEndpoints(grid, col, row, side, sEdgeP1, sEdgeP2, 0);
-    sProp.x = (sEdgeP1.x + sEdgeP2.x) * 0.5;
-    sProp.y = (sEdgeP1.y + sEdgeP2.y) * 0.5;
+    const midX = (sEdgeP1.x + sEdgeP2.x) * 0.5;
+    const midY = (sEdgeP1.y + sEdgeP2.y) * 0.5;
+    const mouthWorld = grid.gridToWorld(mouth.col, mouth.row);
+    const backWorld = grid.gridToWorld(back.col, back.row);
     const cellHalf = grid.cellSize * 0.5;
-    const { halfSize, facing } = portalStripLayout(side, cellHalf);
-    sProp.facing = facing;
+    const { halfSize: fullHalf, facing } = portalStripLayout(side, cellHalf);
+    const halfSize = portalHalfStripSize(fullHalf);
     const lineScale = getCanvasLineScale(ctx);
-    const colors = laserWallColors(powered);
+    const wallColors = solidWallColors();
+    sProp.facing = facing;
+    sProp.x = (midX + backWorld.x) * 0.5;
+    sProp.y = (midY + backWorld.y) * 0.5;
     drawBox(ctx, sProp, px, py, {
         halfSize,
         height: PORTAL_STRIP_HEIGHT,
         facing,
-        faceColors: colors.faceColors,
-        topColors: colors.topColors,
-        stroke: colors.stroke,
+        faceColors: wallColors.faceColors,
+        topColors: wallColors.topColors,
+        stroke: wallColors.stroke,
         lineWidth: 1.0 * lineScale,
     });
-    drawLaserGridOnTop(ctx, sProp, px, py, halfSize, PORTAL_STRIP_HEIGHT, lineScale, powered);
-    const faceIndex = pickPortalStatusFaceIndex(sProp, px, py, halfSize, facing, PORTAL_STRIP_HEIGHT, side);
+    const mouthColors = powered ? laserWallColors(true) : wallColors;
+    sProp.x = (midX + mouthWorld.x) * 0.5;
+    sProp.y = (midY + mouthWorld.y) * 0.5;
+    drawBox(ctx, sProp, px, py, {
+        halfSize,
+        height: PORTAL_STRIP_HEIGHT,
+        facing,
+        faceColors: mouthColors.faceColors,
+        topColors: mouthColors.topColors,
+        stroke: mouthColors.stroke,
+        lineWidth: 1.0 * lineScale,
+    });
+    if (powered) drawLaserGridOnTop(ctx, sProp, px, py, halfSize, PORTAL_STRIP_HEIGHT, lineScale, true);
+    const faceIndex = resolveMouthFaceIndex(sProp, mouthWorld.x, mouthWorld.y, halfSize, facing);
     const circle = statusCircleStyle(powered, linkRole);
     drawPortalStatusDisc3D(ctx, sProp, px, py, faceIndex, halfSize, PORTAL_STRIP_HEIGHT, facing, lineScale, circle.fill, circle.stroke, selected);
 }

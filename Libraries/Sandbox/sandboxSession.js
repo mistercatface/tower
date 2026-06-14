@@ -64,7 +64,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let wallHeightLevel = 4;
     let railThicknessLevel = 2;
     let forcefieldStampMode = PASSAGE_MODE.Solid;
-    let portalStampAccessMode = PORTAL_ACCESS_MODE.One;
+    let portalStampMouthNeighbor = false;
     /** @type {{ col: number, row: number } | null} */
     let selectedVoxelCell = null;
     /** @type {{ col: number, row: number, side: number } | null} */
@@ -346,9 +346,9 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             forcefieldStampMode = mode;
             sync();
         },
-        getPortalStampAccessMode: () => portalStampAccessMode,
-        setPortalStampAccessMode(mode) {
-            portalStampAccessMode = mode;
+        getPortalStampMouthNeighbor: () => portalStampMouthNeighbor,
+        setPortalStampMouthNeighbor(neighbor) {
+            portalStampMouthNeighbor = neighbor === true;
             sync();
         },
         getSelectedVoxelCell: () => selectedVoxelCell,
@@ -406,21 +406,11 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             sync();
             return true;
         },
-        setSelectedPortalAccessMode(accessMode) {
+        setSelectedPortalMouthSide(allowedSide) {
             if (!selectedRailEdge) return false;
             const { col, row, side } = selectedRailEdge;
             const info = getPortalInfo(state.obstacleGrid, col, row, side);
             if (!info) return false;
-            const allowedSide = accessMode === PORTAL_ACCESS_MODE.One && info.accessMode === PORTAL_ACCESS_MODE.One ? info.allowedSide : portalAccessDefaultAllowedSide(side);
-            if (!setPortalProfileAt(state, col, row, side, accessMode, allowedSide, info.accessBlock)) return false;
-            sync();
-            return true;
-        },
-        setSelectedPortalAccessSide(allowedSide) {
-            if (!selectedRailEdge) return false;
-            const { col, row, side } = selectedRailEdge;
-            const info = getPortalInfo(state.obstacleGrid, col, row, side);
-            if (!info || info.accessMode !== PORTAL_ACCESS_MODE.One) return false;
             if (!setPortalProfileAt(state, col, row, side, PORTAL_ACCESS_MODE.One, allowedSide, info.accessBlock)) return false;
             sync();
             return true;
@@ -429,8 +419,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (!selectedRailEdge) return false;
             const { col, row, side } = selectedRailEdge;
             const info = getPortalInfo(state.obstacleGrid, col, row, side);
-            if (!info || info.accessMode !== PORTAL_ACCESS_MODE.One) return false;
-            if (!setPortalProfileAt(state, col, row, side, info.accessMode, info.allowedSide, accessBlock)) return false;
+            if (!info) return false;
+            if (!setPortalProfileAt(state, col, row, side, PORTAL_ACCESS_MODE.One, info.mouthAllowedSide, accessBlock)) return false;
             sync();
             return true;
         },
@@ -476,7 +466,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                     setSelectedRailEdge(hit.col, hit.row, hit.side);
                     return true;
                 }
-                if (!stampPortalAt(state, hit.col, hit.row, hit.side, { accessMode: portalStampAccessMode, allowedSide: portalAccessDefaultAllowedSide(hit.side) })) return false;
+                const allowedSide = portalStampMouthNeighbor ? hit.side : portalAccessDefaultAllowedSide(hit.side);
+                if (!stampPortalAt(state, hit.col, hit.row, hit.side, { accessMode: PORTAL_ACCESS_MODE.One, allowedSide })) return false;
                 setSelectedRailEdge(hit.col, hit.row, hit.side);
                 sync();
                 return true;

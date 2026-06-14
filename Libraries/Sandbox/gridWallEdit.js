@@ -18,7 +18,7 @@ import {
     PORTAL_ACCESS_MODE,
     railWallCapLevel,
 } from "../Spatial/grid/CellEdge.js";
-import { portalAccessDefaultAllowedSide, formatPortalAccessSideLabel, formatPortalAccessBlockLabel } from "../Spatial/grid/portalAccess.js";
+import { portalAccessDefaultAllowedSide, formatPortalAccessSideLabel, formatPortalAccessBlockLabel, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { clearBoundaryPrimary, setBoundary, setPassageProfile, setPortalProfile } from "../Spatial/grid/boundaryOccupancy.js";
 import {
     canonicalEdgeCellKey,
@@ -266,12 +266,12 @@ export function applyStampedPortalsFromGlobal(state, portals, cellSize) {
             clearBoundaryPrimary(grid, col, row, side);
         }
         if (gridHasForcefield(grid, col, row, side)) clearBoundaryPrimary(grid, col, row, side);
-        const parsedAccess = parsePortalAccessMode(accessMode);
+        const parsedAccess = PORTAL_ACCESS_MODE.One;
         if (
             !setBoundary(grid, col, row, side, {
                 kind: "portal",
                 accessMode: parsedAccess,
-                allowedSide: parsedAccess === PORTAL_ACCESS_MODE.One ? (allowedSide ?? portalAccessDefaultAllowedSide(side)) : portalAccessDefaultAllowedSide(side),
+                allowedSide: allowedSide ?? portalAccessDefaultAllowedSide(side),
                 accessBlock: parsePortalAccessBlock(accessBlock),
                 partnerKey: 0,
                 linkMode: parsePortalLinkMode(linkMode),
@@ -489,6 +489,7 @@ export function getPortalInfo(grid, col, row, side) {
         accessMode,
         accessBlock,
         allowedSide: edge.allowedSide,
+        mouthAllowedSide: portalMouthAllowedSide(edge, side),
         partnerKey,
         partner,
         linked: partner != null,
@@ -517,8 +518,8 @@ export function listPlacedPortals(grid) {
             if (!info) continue;
             index++;
             const sideLabel = formatGridWallEdgeSideLabel(side);
-            const accessTag = info.accessMode === PORTAL_ACCESS_MODE.One ? ` · ${formatPortalAccessSideLabel(side, info.allowedSide)}` : "";
-            const blockTag = info.accessMode === PORTAL_ACCESS_MODE.One && info.accessBlock !== PORTAL_ACCESS_BLOCK.All ? ` · ${formatPortalAccessBlockLabel(info.accessBlock)}` : "";
+            const accessTag = ` · mouth ${formatPortalAccessSideLabel(side, info.mouthAllowedSide).toLowerCase()}`;
+            const blockTag = info.accessBlock !== PORTAL_ACCESS_BLOCK.All ? ` · ${formatPortalAccessBlockLabel(info.accessBlock)}` : "";
             const linkTag = info.linked ? ` · ${formatPortalConnectionLabel(info.linkMode, info.connection === "fromSelf")}` : " · unlinked";
             placed.push({ col, row, side, label: `Portal #${index} · ${sideLabel}${accessTag}${blockTag}${linkTag}` });
         }

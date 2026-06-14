@@ -72,9 +72,8 @@ export function collectSandboxSceneSnapshot(state) {
         const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
         const info = getPortalInfo(grid, col, row, side);
         if (!info) continue;
-        const entry = { col: globalCol, row: globalRow, side, accessMode: info.accessMode };
-        if (info.accessMode === PORTAL_ACCESS_MODE.One) entry.allowedSide = info.allowedSide;
-        if (info.accessMode === PORTAL_ACCESS_MODE.One && info.accessBlock !== PORTAL_ACCESS_BLOCK.All) entry.accessBlock = info.accessBlock;
+        const entry = { col: globalCol, row: globalRow, side, accessMode: PORTAL_ACCESS_MODE.One, allowedSide: info.mouthAllowedSide };
+        if (info.accessBlock !== PORTAL_ACCESS_BLOCK.All) entry.accessBlock = info.accessBlock;
         if (info.partnerKey) entry.partnerKey = info.partnerKey;
         if (info.linkMode === "oneWay") {
             entry.linkMode = "oneWay";
