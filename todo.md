@@ -1,5 +1,19 @@
 ## CURRENT TASK: BELT MAZES
 
+## SIDE TASK: PIPELINE REFACTOR
+
+PR 1 — Pipeline core (pure library, no UI)
+Add Libraries/Pipeline/ with the shared data layer: objectPath.js (deepClone, getByPath, setByPath), fieldSchema.js (FieldDef shape, numeric clamping), stepRegistry.js (registerStep, getStep, listSteps, stepId normalizing op vs type), and validatePipeline.js (unknown step, missing fields, out-of-range numbers → { ok, errors[] }). No editor changes yet — this PR is import-only proof that Profile, Sandbox, and future Map can share one validation path without touching DOM.
+
+PR 2 — Schema field renderer + ProfileEditor wiring
+Extract renderScalarFields from ProfileEditor.js into Libraries/UI/renderSchemaFields.js, backed by the PR 1 path utils. ProfileEditor deletes its local deepClone / path helpers / renderScalarFields and imports from Pipeline + UI instead. Behavior and layout stay the same; this PR is a straight refactor that proves the field schema works against real MOTIF_TYPES metadata before any list or Gen work lands.
+
+PR 3 — Generic pipeline list UI
+Add Libraries/Pipeline/pipelineList.js (add/remove/reorder/select rows with stable editorIds) and Libraries/UI/pipelineListUi.js (the reorderable row list DOM). Refactor Profile’s renderMotifList to use the generic list with small hooks for Profile-only row chrome (enable toggle, blend select, surface mask label). CSS stays on existing .motif-row classes (optionally aliased as pipeline rows). After this PR, Gen gets a motif list for free — only hooks and registry differ.
+
+PR 4 — Export, registry adapters, room-graph schema
+Add exportPipeline.js (JSON + optional JS snippet) and wire Profile export through it. Add buildRegistryFromMotifTypes(MOTIF_TYPES) so procedural steps formally implement PipelineStepDef without rewriting motif files. Add Libraries/Sandbox/roomGraphStepRegistry.js for the ops you actually use today, plus validateRoomGraphMotifs / tryBuildSandboxRoomGraphSceneDoc calling PR 1 validation and a non-throwing try wrapper. No Gen tab yet — this PR completes the shared contract so the Gen sidebar is mostly wiring, not new architecture.
+
 ## BACKLOG
 
 ## Milestone log
