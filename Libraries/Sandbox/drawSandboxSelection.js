@@ -3,10 +3,13 @@ import { drawPortalEdgeStrip } from "../Render/portalDraw.js";
 import { strokeCircle } from "../Canvas/CanvasPath.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { createAabb, aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
+import { cellBoundsAtOriginInto } from "../Spatial/grid/GridCoords.js";
+import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { gridHasForcefield, gridHasPortal, strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
 import { resolvePortalLinkRoute } from "./portalLinks.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
+const PROP_TILE_CELL_BOUNDS = createAabb();
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
 export function findSandboxPropsInWorldRect(state, registry, bounds) {
     return queryEntitiesInAabbStrict(registry, bounds, { kinds: ["worldProp"], hitTest: "center" });
@@ -85,6 +88,28 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
 export function drawSandboxMarquee(ctx, { marqueeRect }) {
     if (!marqueeRect) return;
     drawAabbHighlight(ctx, marqueeRect, { fill: "rgba(120, 200, 255, 0.08)", stroke: "rgba(120, 200, 255, 0.55)", lineWidth: 1, dash: [4, 3] });
+}
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{
+ *   show: boolean,
+ *   grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid,
+ *   worldProps: object[],
+ * }} options
+ */
+export function drawSandboxPropTileCells(ctx, { show, grid, worldProps }) {
+    if (!show) return;
+    const lineScale = getCanvasLineScale(ctx);
+    ctx.save();
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead) continue;
+        const { col, row } = grid.worldToGrid(prop.x, prop.y);
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
+        cellBoundsAtOriginInto(PROP_TILE_CELL_BOUNDS, grid.minX, grid.minY, col, row, grid.cellSize);
+        drawAabbHighlight(ctx, PROP_TILE_CELL_BOUNDS, { fill: "rgba(160, 255, 120, 0.1)", stroke: "rgba(160, 255, 120, 0.5)", lineWidth: lineScale });
+    }
+    ctx.restore();
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

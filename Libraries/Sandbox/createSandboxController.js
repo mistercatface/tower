@@ -12,7 +12,7 @@ import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene } from "./sandboxStartScene.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
-import { drawSandboxMarquee, drawSandboxSelectionRings, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
+import { drawSandboxMarquee, drawSandboxPropTileCells, drawSandboxSelectionRings, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
 import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { drawSandboxWeaponBars } from "./drawWorldPropWeaponBars.js";
@@ -61,6 +61,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     /** @type {{ x: number, y: number } | null} */
     let buttonWireCursor = null;
     let showSelectionRings = true;
+    let showPropTileCells = false;
     const MARQUEE_CLICK_THRESHOLD_PX = 4;
     /** @type {{ pointerId: number, startClientX: number, startClientY: number, startWorld: { x: number, y: number }, currentWorld: { x: number, y: number } } | null} */
     let marqueeSelect = null;
@@ -399,6 +400,11 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             showSelectionRings = enabled;
             session.sync();
         },
+        getShowPropTileCells: () => showPropTileCells,
+        setShowPropTileCells: (enabled) => {
+            showPropTileCells = enabled;
+            session.sync();
+        },
         deleteSelectedProps: () => session.deleteSelectedProps(),
         setSelectedPropId: (id) => {
             buttonWireMode = false;
@@ -594,6 +600,9 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
                 grid: state.obstacleGrid,
                 camera: { px: state.viewport.x, py: state.viewport.y },
             });
+        },
+        drawPropTileCells(ctx) {
+            drawSandboxPropTileCells(ctx, { show: showPropTileCells, grid: state.obstacleGrid, worldProps: state.worldProps });
         },
         drawMarqueeOverlay(ctx) {
             const { marqueeRect } = selectionDrawState();

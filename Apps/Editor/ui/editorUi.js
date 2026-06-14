@@ -104,6 +104,12 @@ export function mountEditorUi(state, { playbackHandlers }) {
         state.sandbox.controller.setShowSelectionRings(/** @type {HTMLInputElement} */ (e.target).checked);
         requestRedraw();
     });
+    const propTileCellsInput = document.getElementById("showPropTileCellsInput");
+    propTileCellsInput.checked = state.sandbox.controller.getShowPropTileCells();
+    propTileCellsInput.addEventListener("change", (e) => {
+        state.sandbox.controller.setShowPropTileCells(/** @type {HTMLInputElement} */ (e.target).checked);
+        requestRedraw();
+    });
     fitLabStageToView(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
     const { animationPreview, main } = EDITOR_CANVAS_DEFAULTS;
