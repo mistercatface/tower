@@ -20,6 +20,8 @@ export const TILELAB_UI_HTML = `
                 <option value="flat2d">2D</option>
             </select>
         </label>
+        <span id="playAreaColsToolbar"></span>
+        <span id="playAreaRowsToolbar"></span>
         <span class="sep"></span>
         <button type="button" id="regenerateBtn">Redraw</button>
     </div>
@@ -94,7 +96,7 @@ export const TILELAB_UI_HTML = `
                 <div id="mapPanel" class="editor-panel-section" data-panel="map">
                     <div class="editor-panel-head">Map</div>
                     <div class="editor-scroll">
-                        <p class="editor-hint">Play area sets obstacle grid size. Cavern and rail generation are in Props.</p>
+                        <p class="editor-hint">Play width and height are in the toolbar (apply on Redraw). Cavern and rail generation are in Props.</p>
                         <div id="mapSettingsPanel"></div>
                     </div>
                 </div>
