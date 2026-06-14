@@ -6,13 +6,10 @@ import { isButtonEntity } from "./buttonInput.js";
 import { isPullPowerTarget } from "./pullFixtureWalls.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
 import { formatPropTypeLabel } from "../Props/PropCatalog.js";
-import { gridCellToGlobalColRow, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
-import { formatGridWallEdgeSideLabel, gridHasForcefield, hitTestRailWallEdgeAtWorld } from "./gridWallEdit.js";
+import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
 /** @typedef {{ type: "worldProp", id: number }} WorldPropButtonLinkTarget */
-/** @typedef {{ type: "gridEdge", globalCol: number, globalRow: number, side: number }} GridEdgeButtonLinkTarget */
-/** @typedef {WorldPropButtonLinkTarget | GridEdgeButtonLinkTarget} ButtonLinkTarget */
-const WIRE_P1 = { x: 0, y: 0 };
-const WIRE_P2 = { x: 0, y: 0 };
+/** @typedef {{ type: "gridCell", globalCol: number, globalRow: number }} GridCellButtonLinkTarget */
+/** @typedef {WorldPropButtonLinkTarget | GridCellButtonLinkTarget} ButtonLinkTarget */
 /** @param {object} button */
 export function getButtonLinks(button) {
     return button.buttonLinks;
@@ -25,7 +22,7 @@ function setButtonLinks(button, links) {
 function sameButtonLink(a, b) {
     if (a.type !== b.type) return false;
     if (a.type === "worldProp") return a.id === b.id;
-    return a.globalCol === b.globalCol && a.globalRow === b.globalRow && a.side === b.side;
+    return a.globalCol === b.globalCol && a.globalRow === b.globalRow;
 }
 /** @param {object} state @param {number} buttonId @param {ButtonLinkTarget} target */
 export function addButtonLink(state, buttonId, target) {
@@ -58,12 +55,14 @@ export function clearButtonLinks(state, buttonId) {
  * @param {number} worldX
  * @param {number} worldY
  */
-export function findForcefieldLinkTargetAtWorld(state, worldX, worldY) {
+export function findPassagePowerSourceLinkTargetAtWorld(state, worldX, worldY) {
     const grid = state.obstacleGrid;
-    const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-    if (!hit || !gridHasForcefield(grid, hit.col, hit.row, hit.side)) return null;
-    const { globalCol, globalRow } = gridCellToGlobalColRow(grid, hit.col, hit.row);
-    return { type: "gridEdge", globalCol, globalRow, side: hit.side };
+    const { col, row } = grid.worldToGrid(worldX, worldY);
+    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return null;
+    const idx = col + row * grid.cols;
+    if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return null;
+    const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+    return { type: "gridCell", globalCol, globalRow };
 }
 /**
  * @param {object} state
@@ -72,27 +71,28 @@ export function findForcefieldLinkTargetAtWorld(state, worldX, worldY) {
  * @param {number} sourceButtonId
  */
 export function findButtonLinkTarget(state, worldX, worldY, sourceButtonId) {
-    const edgeTarget = findForcefieldLinkTargetAtWorld(state, worldX, worldY);
-    if (edgeTarget) return edgeTarget;
+    const sourceTarget = findPassagePowerSourceLinkTargetAtWorld(state, worldX, worldY);
+    if (sourceTarget) return sourceTarget;
     const prop = findWorldPropAtInView(state.entityRegistry, combatSpatial, worldX, worldY);
     if (!prop || prop.id === sourceButtonId) return null;
     if (isFlipperWorldProp(prop) || isSpawnerWorldProp(prop) || isPullPowerTarget(prop)) return { type: "worldProp", id: prop.id };
     return null;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} globalCol @param {number} globalRow @param {number} side */
-function gridEdgeWireMidpoint(grid, globalCol, globalRow, side) {
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} globalCol @param {number} globalRow */
+function gridCellWireMidpoint(grid, globalCol, globalRow) {
     const half = grid.cellSize * 0.5;
     const { col, row } = grid.worldToGrid(globalCol * grid.cellSize + half, globalRow * grid.cellSize + half);
-    gridWallEdgeEndpoints(grid, col, row, side, WIRE_P1, WIRE_P2, 0);
-    return { x: (WIRE_P1.x + WIRE_P2.x) * 0.5, y: (WIRE_P1.y + WIRE_P2.y) * 0.5 };
+    const { x, y } = grid.gridToWorld(col, row);
+    return { x, y };
 }
 /** @param {object} state @param {ButtonLinkTarget} target */
 export function resolveButtonLinkEndpoint(state, target) {
-    if (target.type === "gridEdge") {
+    if (target.type === "gridCell") {
         const grid = state.obstacleGrid;
-        const { x, y } = gridEdgeWireMidpoint(grid, target.globalCol, target.globalRow, target.side);
-        return { target, label: `Forcefield · ${formatGridWallEdgeSideLabel(target.side)}`, x, y };
+        const { x, y } = gridCellWireMidpoint(grid, target.globalCol, target.globalRow);
+        return { target, label: "Power source", x, y };
     }
+    if (target.type !== "worldProp") return null;
     const prop = state.entityRegistry.getLive(target.id);
     if (!prop) return null;
     const typeLabel = formatPropTypeLabel(prop.type);

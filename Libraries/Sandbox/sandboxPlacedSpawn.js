@@ -2,7 +2,7 @@ import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { isGridFloorBeltSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
 /** @param {object} prop */
@@ -33,6 +33,7 @@ export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, factio
     const asset = getPropAsset(propTypeId);
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
+    if (isGridPassagePowerSourceSpawnAsset(asset)) throw new Error(`Passage power source "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     if (isPoolRackSpawnAsset(asset)) return spawnPoolRack(state, worldX, worldY, asset.sandbox.spawnRack, faction);
     const prop = new WorldProp(worldX, worldY, propTypeId, facing);
     prop.faction = faction;

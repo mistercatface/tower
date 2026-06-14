@@ -4,6 +4,7 @@ import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { createSandboxSession } from "./sandboxSession.js";
+import { clearFloorOverlayAt } from "./floorOccupancy.js";
 import { addButtonLink, clearButtonLinks, drawButtonWires, findButtonLinkTarget, listButtonLinkEndpoints, removeButtonLink } from "./buttonLinks.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold } from "./floorButtons.js";
@@ -161,7 +162,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             }
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(world.x, world.y);
-            if (grid.clearFloorCell(col, row)) {
+            if (clearFloorOverlayAt(state, col, row)) {
                 const selectedFloor = session.getSelectedFloorCell();
                 if (selectedFloor?.col === col && selectedFloor.row === row) session.clearFloorSelection();
                 e.preventDefault();
@@ -230,7 +231,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         }
         const grid = state.obstacleGrid;
         const { col, row } = grid.worldToGrid(world.x, world.y);
-        if (grid.hasFloorBelt(col, row)) {
+        if (grid.hasFloorOccupancy(col, row)) {
             session.setSelectedFloorCell(col, row);
             e.preventDefault();
             e.stopPropagation();
@@ -403,6 +404,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         deletePropById: (id) => session.deletePropById(id),
         listPlacedProps: () => session.listPlacedProps(),
         listPlacedFloorBelts: () => session.listPlacedFloorBelts(),
+        stampPassagePowerSourceAtWorld: (worldX, worldY, defaultPowered) => session.stampPassagePowerSourceAtWorld(worldX, worldY, defaultPowered),
+        listPlacedPassagePowerSources: () => session.listPlacedPassagePowerSources(),
         getSelectedFloorCell: () => session.getSelectedFloorCell(),
         setSelectedFloorCell: (col, row) => session.setSelectedFloorCell(col, row),
         clearFloorSelection: () => session.clearFloorSelection(),
@@ -411,6 +414,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         setSelectedFloorBeltKind: (kind) => session.setSelectedFloorBeltKind(kind),
         deleteSelectedFloorCell: () => session.deleteSelectedFloorCell(),
         getSelectedFloorBeltInfo: () => session.getSelectedFloorBeltInfo(),
+        getSelectedPassagePowerSourceInfo: () => session.getSelectedPassagePowerSourceInfo(),
+        setSelectedPassagePowerSourceDefaultPowered: (powered) => session.setSelectedPassagePowerSourceDefaultPowered(powered),
         getEditorPanelTab: () => session.getEditorPanelTab(),
         setEditorPanelTab: (tab) => session.setEditorPanelTab(tab),
         getWallStampMode: () => session.getWallStampMode(),

@@ -425,11 +425,12 @@ export class WorldObstacleGrid {
     /** @param {number} col @param {number} row */
     hasFloorOccupancy(col, row) {
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
-        return this.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, this.cols));
+        return this.floorStore.hasAnyAtIdx(colRowToIndex(col, row, this.cols));
     }
     /** @param {number} col @param {number} row */
     hasFloorBelt(col, row) {
-        return this.hasFloorOccupancy(col, row);
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+        return this.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, this.cols));
     }
     /** @param {number} col @param {number} row */
     clearFloorCell(col, row) {

@@ -5,6 +5,7 @@ import {
     isSandboxEquippable,
     isSandboxSpawnable,
     isGridFloorBeltSpawnAsset,
+    isGridPassagePowerSourceSpawnAsset,
     isSingleWorldPropSpawnAsset,
     listFloorBeltKindOptions,
 } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
@@ -309,7 +310,7 @@ function renderWallsPanel(container, controller, onChange, sectionOpen) {
             return;
         }
         if (selectedForcefieldInfo) {
-            appendEditorHint(body, `${selectedForcefieldInfo.modeLabel} forcefield · ${selectedForcefieldInfo.sideLabel}. Wire floor buttons from Props tab.`);
+            appendEditorHint(body, `${selectedForcefieldInfo.modeLabel} forcefield · ${selectedForcefieldInfo.sideLabel}. Arms when connected to an energized power source.`);
             appendPassageEditorFields(body, controller, selectedForcefieldInfo, { onChange });
             const deleteRow = document.createElement("div");
             deleteRow.className = "sandbox-add-row";
@@ -364,6 +365,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
         const selectedProp = controller.getSelectedProp();
         const selectedFloorCell = controller.getSelectedFloorCell();
         const selectedFloorBelt = controller.getSelectedFloorBeltInfo();
+        const selectedPowerSource = controller.getSelectedPassagePowerSourceInfo();
         const selectedForcefieldInfo = controller.getSelectedForcefieldInfo();
         const selectionCount = selectedPropIds.size;
         const hasFloorSelection = selectedFloorCell != null;
@@ -386,7 +388,15 @@ export function mountSandboxToyUi(container, controller, onChange) {
         deleteSelectedBtn.className = "secondary";
         deleteSelectedBtn.disabled = selectionCount === 0 && !hasFloorSelection && !hasForcefieldSelection;
         deleteSelectedBtn.textContent =
-            selectionCount > 1 ? `Delete selected (${selectionCount})` : hasForcefieldSelection ? "Delete forcefield" : hasFloorSelection && selectionCount === 0 ? "Delete belt" : "Delete selected";
+            selectionCount > 1
+                ? `Delete selected (${selectionCount})`
+                : hasForcefieldSelection
+                  ? "Delete forcefield"
+                  : selectedPowerSource && selectionCount === 0
+                    ? "Delete power source"
+                    : hasFloorSelection && selectionCount === 0
+                      ? "Delete belt"
+                      : "Delete selected";
         deleteSelectedBtn.addEventListener("click", () => {
             if (hasForcefieldSelection) controller.deleteSelectedWall();
             else if (hasFloorSelection && selectionCount === 0) controller.deleteSelectedFloorCell();
@@ -412,7 +422,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 },
             });
             const spawnAsset = getPropAsset(spawnId);
-            if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset))
+            if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset) && !isGridPassagePowerSourceSpawnAsset(spawnAsset))
                 appendFactionSelect(addRow, {
                     value: controller.getSpawnFaction(),
                     onChange: (faction) => {
@@ -437,9 +447,12 @@ export function mountSandboxToyUi(container, controller, onChange) {
             addBtn.addEventListener("click", () => controller.spawnAtCameraOrigin());
             addRow.appendChild(addBtn);
             body.appendChild(addRow);
+            if (isGridPassagePowerSourceSpawnAsset(spawnAsset))
+                appendEditorHint(body, "Add at camera stamps a power source on the grid. Enable Default energized in Selected, or wire a floor button to the source cell.");
         });
         const placed = controller.listPlacedProps();
         const floorBelts = controller.listPlacedFloorBelts();
+        const powerSources = controller.listPlacedPassagePowerSources();
         const forcefields = controller.listPlacedForcefields();
         appendSection(container, "scene", "Scene", sectionOpen("scene"), (body) => {
             appendEditorSubhead(body, "Props");
@@ -467,6 +480,20 @@ export function mountSandboxToyUi(container, controller, onChange) {
                 })),
                 "No conveyor belts placed yet.",
             );
+            appendEditorSubhead(body, "Power sources");
+            appendInstanceList(
+                body,
+                powerSources.map((entry) => ({
+                    label: entry.label,
+                    selected: selectedFloorCell?.col === entry.col && selectedFloorCell.row === entry.row,
+                    onSelect: () => controller.setSelectedFloorCell(entry.col, entry.row),
+                    onDelete: () => {
+                        controller.setSelectedFloorCell(entry.col, entry.row);
+                        controller.deleteSelectedFloorCell();
+                    },
+                })),
+                "No power sources placed yet.",
+            );
             appendEditorSubhead(body, "Forcefields");
             appendInstanceList(
                 body,
@@ -484,7 +511,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
             );
         });
         appendSection(container, "scene-json", "Scene JSON", sectionOpen("scene-json"), (body) => {
-            appendEditorHint(body, "Copy/paste sandbox layout: props (world x/y), voxel walls, rail walls, floor belts. Replace clears the current sandbox first.");
+            appendEditorHint(body, "Copy/paste sandbox layout: props, walls, belts, power sources, forcefields. Replace clears the current sandbox first.");
             const textarea = document.createElement("textarea");
             textarea.className = "editor-export-area";
             textarea.rows = 10;
@@ -559,6 +586,33 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     body.appendChild(deleteRow);
                     return;
                 }
+                if (selectedPowerSource) {
+                    appendEditorHint(body, "Passage power source. Wire floor buttons to this cell; lasers arm through connected chains.");
+                    const defaultField = document.createElement("label");
+                    defaultField.className = "param-field check-inline";
+                    const defaultCheckbox = document.createElement("input");
+                    defaultCheckbox.type = "checkbox";
+                    defaultCheckbox.checked = selectedPowerSource.defaultPowered;
+                    defaultCheckbox.addEventListener("change", () => {
+                        controller.setSelectedPassagePowerSourceDefaultPowered(defaultCheckbox.checked);
+                        onChange();
+                    });
+                    defaultField.append(defaultCheckbox, document.createTextNode(" Default energized"));
+                    body.appendChild(defaultField);
+                    const deleteRow = document.createElement("div");
+                    deleteRow.className = "sandbox-add-row";
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.type = "button";
+                    deleteBtn.className = "secondary";
+                    deleteBtn.textContent = "Delete power source";
+                    deleteBtn.addEventListener("click", () => {
+                        controller.deleteSelectedFloorCell();
+                        onChange();
+                    });
+                    deleteRow.appendChild(deleteBtn);
+                    body.appendChild(deleteRow);
+                    return;
+                }
                 if (selectedFloorBelt) {
                     appendEditorHint(
                         body,
@@ -624,7 +678,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     body.appendChild(deleteRow);
                     return;
                 }
-                appendEditorHint(body, "Select a prop, conveyor belt, or forcefield from Scene (or click a laser edge on the map).");
+                appendEditorHint(body, "Select a prop, conveyor belt, forcefield, or power source from Scene.");
                 return;
             }
             const behaviorIds = controller.listSelectedBehaviors();

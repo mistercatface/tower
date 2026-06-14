@@ -1,6 +1,6 @@
 # todo
 
-**Current focus:** **Step 3 — Observation (`GridZoneMembership`)** — Step 1 writes + Step 2 blocking reads largely shipped (passage profiles / oneWay / tripwire still open).
+**Current focus:** **Passage power network (Layer D)** — Step 1–2 + Step 3 **core** shipped; optional Step 3 consumers (alarm, crossing links) do **not** block power flood. Interim `gridEdge` button links replaced in D.1.
 
 **3-step plan (overall goal):**
 
@@ -87,19 +87,29 @@ Unify **“can cross?”** for nav and physics — still no enter/on/exit events
 
 ---
 
-## Step 3 — Observation (`GridZoneMembership`) (after Step 2)
+## Step 3 — Observation (`GridZoneMembership`) — **core shipped**
 
 Read-only **“who is on what?”** — never writes grid stores.
 
-**Work:**
+**Shipped:**
 
-1. **`GridZoneMembership` core** — entity-centric diff; packed **`cell`** + **`edge`** zone keys; sparse subscriptions; `zoneEntered` / `zoneOn` / `zoneExited`.
-2. **Belt cell subscriptions** — enter/on/exit on belt cells; keep force apply separate (`tickFloorOccupancy` or split force from membership tick).
-3. **Passage edge subscriptions** — tripwire + optional solid/oneWay cross notifications; powered filter in consumer.
-4. **First consumers** — alarm hook, debug overlay; crossing → target links when prop-extras JSON ships.
-5. **Edge train spike** — `edge` zone on boundary track + ride physics (monorail); builds on same keys.
+- [x] **`GridZoneMembership` core** — `gridZoneMembership.js`: packed cell + edge keys, entity prev set, enter/on/exit diff.
+- [x] **`tickGridZones`** — engine hook after pushable physics; rebuilds sparse subscriptions on grid edits.
+- [x] **Belt cell subscriptions** — enter/on/exit → `state.sandbox.beltZoneEvents` (log buffer; no gameplay consumer yet).
+- [x] **Tripwire edge subscriptions** — powered filter via `isPassagePowered`; `tripwireTriggeredKeys` → red draw while crossed.
+- [x] **`markGridZoneSubscriptionsDirty`** — wall/floor/belt/forcefield edits invalidate subscription cache.
 
-**Step 3 done when:** ball/NPC crossing a belt cell or armed tripwire edge fires enter/on/exit at scale (moving entities only); no per-cell broadphase scan of empty grid.
+**Still open (optional — does not block passage power network):**
+
+- [ ] **Tripwire → alarm / behavior** — wire crossing events to props (needs target link JSON or ad hoc hook).
+- [ ] **Belt segment gameplay** — consumers on `beltZoneEvents` (counters, train logic).
+- [ ] **Crossing → target editor links** — prop-extras / scene JSON for edge subscriptions.
+- [ ] **Unit tests** — synthetic diff moves in `gridZoneMembership`.
+- [ ] **Edge train spike** — `edge` zone on `beltRail` + ride physics.
+
+**Step 3 core done when:** [x] moving entities diff belt cells + armed tripwire edges without O(grid) scan.
+
+**Note for Layer D:** When `networkPowered` flood ships, tripwire “armed” is just `isPassagePowered` reading flood output — **no GridZoneMembership rewrite**. Finish alarm/links whenever; power graph is independent of mode (solid / oneWay / tripwire).
 
 ---
 
@@ -114,7 +124,7 @@ Same **boundary edge** as today’s forcefield, but three concerns stay **separa
 | **A — Occupancy** | `setBoundary`, exclusivity, `boundaryBlocksStep`, powered collision emit | **Now** (current focus) |
 | **B — Passage profile** | Per-edge **mode** + facing (placement blob, scene JSON) | After A |
 | **C — Crossing tracker** | Enter / on / exit signals when entities cross a **zone** (cell or edge) | After B — via shared **`GridZoneMembership`** (see below) |
-| **D — Wiring** | Button → power (done); alarm/behavior **subscriptions** to crossing signals; optional laser-chain editor viz | After C + prop-extras JSON |
+| **D — Wiring** | Button → power (interim: per-edge); **power network** (voxel source → corner taps → laser chain); crossing → alarm/behavior | After C + prop-extras JSON |
 
 **Passage modes (profile on placement blob — like belt kind + facing):**
 
@@ -142,19 +152,160 @@ Consumers: alarm prop, sandbox script hook, future behavior graph. **Not** the s
 
 **Wiring (layer D):**
 
-- [x] **Button → `gridEdge` power** — `buttonLinks` + `syncForcefieldButtonPower` (input).
+- [x] **Button → `gridEdge` power (interim)** — `buttonLinks` + `syncForcefieldButtonPower` toggles each stamped edge’s `powered` directly. Works but wrong model long-term (buttons should feed a **source**, not arbitrary beam segments).
+- [ ] **Passage power network** — see below; replaces per-edge button links once shipped.
 - [ ] **Crossing → target** — link passage edge (or chain id) to alarm / spawner / behavior; editor wire mode analogous to buttons; persist in prop-extras / scene JSON when that ships.
-- [ ] **Laser chain / network id (optional)** — shared `passageNetworkId` on collinear stamped edges for draw (continuous beam) and OR-aggregate “any segment tripped”; **not** required for enter/on/exit on a single edge.
 
-**Implementation order (after boundary API steps 1–4):**
+**Passage power network (target — replaces per-laser button links):**
 
-1. **Passage profile on boundary** — `mode`, `allowedSide` (oneWay), defaults; inspector + schema field on `forcefields[]` / future `boundaries[]`.
-2. **`boundaryBlocksStepFrom`** — solid + oneWay + tripwire semantics; HPA uses directional query.
-3. **`GridZoneMembership`** — generic enter/on/exit (see below); passage edges as **`edge`** zones.
-4. **Crossing consumers + editor links** — alarm, “npc on laser” debug, JSON for subscriptions.
-5. **Chain viz / network id (polish)** — continuous draw across adjacent same-network edges.
+Today each laser is powered in isolation (`edge.powered` or a button wired straight to that edge). Target behavior:
 
-**Explicitly deferred:** beam break by prop volume; diagonal beam graphs; corner-mounted emitters (see corner backlog).
+**Flat plane (v1):** Lasers and power are **height-1** like cell belts — no `zLevel` / vertical stacking in sim rules. Rail walls and voxel fill may still have height for **draw/collision elsewhere**; passage **power graph + armed state** ignore height entirely.
+
+**Two separate concerns on each passage edge:**
+
+| Field | Meaning |
+|-------|---------|
+| **Profile (`mode`, `allowedSide`)** | Behavior when energized: solid / oneWay / tripwire — blocking, crossing events, draw style. |
+| **`networkPowered` (derived)** | Whether this segment is **connected** to an energized source through the laser graph. No source path → cannot be armed regardless of mode. |
+
+Buttons and scene defaults energize **sources**, not individual edges. `edge.powered` at runtime = **`networkPowered`** (after flood), not an author toggle per beam.
+
+| Piece | Role |
+|-------|------|
+| **Power source** | One **cell** stamp that can energize corner taps. Buttons wire here — **not** to individual passage edges. See **where it lives** below. |
+| **Corner tap** | Each source cell has four corners; the **two cardinal edges meeting at a corner** are tap points. A passage edge stamped on either tap edge can plug into that cell when the source is energized. |
+| **Laser chain** | Connected passage edges (shared endpoints / collinear continuation — TBD). Flood from energized corner taps through the graph. |
+| **Mirrored boundary** | `edgeStore` mirrors one physical edge to both cells. For **power graph only**, treat as **one undirected segment** (same as `canonicalEdgeCellKey`). **One-way** lasers still behave directionally for blocking/crossing, but for **connectivity** they occupy **both sides** of the shared boundary — not two independent power nodes. |
+
+**Rough end goal:** Pathfinding-style **flood** on a graph of source cells + passage edges (undirected for wiring). Reachable passage edges get `networkPowered`; then existing mode rules (solid / oneWay / tripwire) apply on top. Lasers do not “self-power”; they only reflect upstream connectivity + source input.
+
+**Where the power source lives (recommended — cell layer, not prop, not edge):**
+
+Sandbox grid today:
+
+| Layer | Store | Examples |
+|-------|--------|----------|
+| **Cell fill** | `grid[]` | Voxel blocks — **blocks** the cell, height levels for walls |
+| **Cell overlay** | `floorStore` | Belts — **walkable**, stamped per cell, height-1 sim |
+| **Boundary** | `edgeStore` | Rail walls, passage lasers, derived belt rails |
+| **Entities** | `WorldProp` | Buttons, balls, flippers — free position, wire **from** buttons |
+
+**Recommendation:** **`floorStore` kind** (e.g. `PassagePowerSource`) — same stamping UX family as belts: one cell, grid-native, scene JSON `powerSources[]` or extended `floorBelts`-style array. Corner taps derive from `(col, row)` cell bounds, not from prop AABB.
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **`floorStore` kind (preferred)** | Matches “height-1 cell stamp”; doesn’t block like voxel; exclusive with belt on same cell is easy; flood keys = cell index | New kind + writer; not a “block” visually unless draw says so |
+| **`grid[]` voxel + flag** | Matches “block in corner” look | Voxels **block** movement/path unless special-cased; conflates with wall heightLevel |
+| **WorldProp snapped to cell** | Reuses prop spawn | Wrong layer — props move, broadphase, not in scene grid JSON today; buttons already props **linking to** grid |
+| **edgeStore** | — | Source is a **cell**, not a boundary |
+
+Button links gain target type **`gridCell`** (or `powerSource` cell index) — parallel to existing `worldProp` and interim `gridEdge`. Input stays on floor buttons (WorldProp); output energizes cell(s), then flood sets passage edges.
+
+**Open design (when implementing):**
+
+- [ ] **Adjacency rule** — which edge-to-edge connections count as “connected laser” (endpoint meet? collinear only? T-junction?).
+- [ ] **Source vs belt exclusivity** — same cell cannot be belt + source, or allow overlay rules.
+- [ ] **Corner → edge mapping** — helper: given source `(col, row)`, list eight directed tap edges (two per corner) for flood seeds.
+- [ ] **Graph sync** — `syncPassagePowerNetwork(state)`: energized sources → flood → write derived `networkPowered` on reachable passage edges; `onObstaclesChanged` when armed set changes blocking.
+- [ ] **Split stored vs derived** — stop persisting `powered` on passage edges in JSON except debug; persist `defaultPowered` / button links on **source cells** only.
+- [ ] **Editor** — Walls tab or Floors tab stamp “Power emitter”; wire mode picks **cell**, not edge; draw energized chain along reachable segments.
+- [ ] **Scene JSON** — `powerSources: [{ col, row, defaultPowered? }]`; remove per-edge `defaultPowered` on `forcefields[]`.
+
+**Supersedes:** optional `passageNetworkId` string tag — network is **connectivity-derived**, not author ids.
+
+**Layer D — 3-part implementation (passage power network):**
+
+Independent of passage **mode** (solid / oneWay / tripwire). Only answers: *is this segment connected to an energized source?* Flat height-1; mirrored boundary = **one graph node** (`canonicalEdgeCellKey`); one-way still directional for blocking/crossing.
+
+| Part | Ship when | Blocks |
+|------|-----------|--------|
+| **D.1 — Sources + graph + flood** | Sources stampable; flood writes armed set; buttons target **cells** | Nothing from Step 3 consumers |
+| **D.2 — Single read path** | Nav, collision, draw, tripwire all use derived power only | D.1 |
+| **D.3 — Editor + JSON + chain draw** | Authoring UX + scene round-trip + visual energized chain | D.1 (D.2 can parallel) |
+
+---
+
+### D.1 — Sources, graph, flood (sim core)
+
+**Goal:** Energized `floorStore` source cell(s) → corner taps → undirected passage graph → derived **`networkPowered`** on reachable laser edges. Buttons energize **source cells**, not `gridEdge`.
+
+**Work:**
+
+1. **`FLOOR_CELL_KIND.PassagePowerSource`** — extend `FloorCell.js` + `FloorCellStore` (kind only v1; optional `defaultPowered` byte like facing slot).
+2. **Stamp writer** — `canStampPassagePowerSourceAt` / `setFloorPowerSource` (exclusive with belt on same cell); `markGridZoneSubscriptionsDirty` N/A (sources don’t zone-subscribe).
+3. **Corner tap API** — `passagePowerCornerTapEdges(grid, sourceCol, sourceRow)` → canonical edge keys for the four cell corners (two cardinal edges per corner meeting at that vertex).
+4. **Passage adjacency** — build undirected graph: nodes = canonical passage edge keys + source corner tap keys; edge connects two nodes when they share an endpoint (collinear continuation + corner meet — document rule in code). One-way passage still **one node** per physical boundary.
+5. **`syncPassagePowerNetwork(state)`** — collect energized sources (`defaultPowered` OR any button `gridCell` link with active signal); BFS/flood from tap seeds through adjacency; diff vs current `edge.powered`; batch `setPassagePowered` + `onObstaclesChanged` on changed bounds.
+6. **Button links** — new target type **`gridCell`** (global col/row of source); `syncForcefieldButtonPower` **deleted** or reduced to calling `syncPassagePowerNetwork` only (no `gridEdge` power path).
+7. **Call sites** — invoke flood after button tick, source stamp/clear, scene apply, forcefield stamp/clear (graph topology change).
+
+**Acceptance:**
+
+- [ ] Source cell + collinear laser chain: button on source arms entire connected subgraph; breaking chain isolates downstream.
+- [ ] One-way segment in chain: power flows through; blocking direction unchanged.
+- [ ] Unlinked laser never arms (no source path) even if old JSON had `defaultPowered` on edge.
+- [ ] Mirrored edge: powering from either cell’s view is identical.
+
+**Open (resolve in D.1):**
+
+- [ ] **Adjacency rule** — endpoint meet only vs allow T-junction through shared grid vertex.
+- [ ] **Source vs belt exclusivity** — reject belt on same cell (match belt stamp guard pattern).
+
+---
+
+### D.2 — Consumers on derived power (delete interim model)
+
+**Goal:** One boolean for gameplay — **`isPassagePowered` = flood result**. No author/per-edge toggle survives except debug.
+
+**Work:**
+
+1. **`isPassagePowered`** — read only post-flood state (rename stored field to `networkPowered` on edge record if helpful; stop persisting per-edge `defaultPowered` in JSON).
+2. **Blocking + collision** — `boundaryBlocksStepFrom`, `gridPassageEdgeShouldEmit`, HPA callback: already use `isPassagePowered`; verify no bypass.
+3. **Draw + tripwire** — `drawForcefields`, `gridZoneTick` `markTripwireTriggered`: armed = `networkPowered` (tripwire mode still required for crossing subscription).
+4. **Remove dead paths** — `gridEdge` button power links; per-edge powered inspector toggle (source + flood is truth); `forcefieldPowered` Map if any remnant.
+5. **Inspector** — passage edge shows **read-only** “network armed” or omits toggle; source cell shows `defaultPowered`.
+
+**Acceptance:**
+
+- [ ] Toggling button updates flood → nav, collision, draw, tripwire red in same frame batch.
+- [ ] Stamping new laser mid-chain picks up power on next flood without manual edge toggle.
+- [ ] Scene load: sources + lasers + buttons → correct armed set after one `syncPassagePowerNetwork`.
+
+---
+
+### D.3 — Editor, JSON, energized chain draw
+
+**Goal:** Author sources and wires like belts; see flooded chain in editor.
+
+**Work:**
+
+1. **Floors tab** — mode: Belts | **Power source**; spawn asset / stamp at cell center; pick/delete like belts.
+2. **Wire mode** — button link target **`gridCell`** (snap pick source cell); deprecate `gridEdge` for power in UI.
+3. **Scene JSON** — `powerSources: [{ col, row, defaultPowered? }]`; strip `defaultPowered` from `forcefields[]` entries; bump schema version when cutover.
+4. **`applySandboxSceneSnapshot`** — batch stamp sources; run flood after apply.
+5. **Chain draw** — `drawForcefields` (or overlay): continuous beam along **networkPowered** connected components (collinear merge like rail draw); source cell icon at corner/center.
+
+**Acceptance:**
+
+- [ ] Export/import round-trips sources, lasers, button→cell links; armed topology matches in fresh session.
+- [ ] Editor shows energized chain distinct from unpowered stamped lasers.
+- [ ] Pick source cell in inspector; pick laser shows mode/facing, not power toggle.
+
+---
+
+**Implementation order (recommended):** D.1 → D.2 → D.3 (D.3 UI can start once D.1 writer exists). Step 3 alarm/belt consumers anytime in parallel.
+
+**Implementation order (overall):**
+
+1. [x] **Passage profile on boundary** — `mode`, `allowedSide`; inspector + JSON.
+2. [x] **`boundaryBlocksStepFrom`** — solid + oneWay + tripwire; HPA directional query.
+3. [x] **`GridZoneMembership` core** — enter/on/exit tick (see Step 3).
+4. [ ] **Crossing consumers + editor links** — alarm, tripwire targets; optional parallel with D.
+5. [ ] **Passage power network (D.1 → D.2 → D.3)** — floorStore source, flood, button → cell.
+6. [ ] **Chain draw polish** — continuous beam along powered reachable segments (fold into D.3).
+
+**Explicitly deferred:** beam break by prop volume; diagonal beam graphs; corner-mounted emitters as separate from voxel-corner taps (see corner backlog).
 
 ---
 
@@ -203,10 +354,11 @@ Consumers: alarm prop, sandbox script hook, future behavior graph. **Not** the s
 
 **Implementation order:**
 
-1. **`GridZoneMembership` core** — packed keys, entity prev set, enter/on/exit dispatch; unit-test diff on synthetic moves.
-2. **Wire belt cell subscriptions** — hook from `tickFloorOccupancy` or replace with membership tick + separate force apply.
-3. **Wire passage edge subscriptions** — after passage profiles; tripwire mode uses enter/on/exit.
-4. **Edge rail / train spike** — “on edge segment” band + velocity along edge tangent (builds on same edge zone keys).
+1. [x] **`GridZoneMembership` core** — packed keys, entity prev set, enter/on/exit dispatch.
+2. [x] **Wire belt cell subscriptions** — `tickGridZones` + `beltZoneEvents`.
+3. [x] **Wire passage edge subscriptions** — tripwire mode + powered filter.
+4. [ ] **Edge rail / train spike** — “on edge segment” band + velocity along edge tangent.
+5. [ ] **Unit tests** — synthetic diff moves.
 
 **Relationship to occupancy API:** membership is **read-only observation** of grid + pose — never writes `edgeStore` / `floorStore`. Occupancy answers blocking; membership answers **who is where** for gameplay.
 

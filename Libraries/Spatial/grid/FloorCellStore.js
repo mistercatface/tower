@@ -1,4 +1,4 @@
-import { FLOOR_CELL_KIND, isFloorBeltKind } from "./FloorCell.js";
+import { FLOOR_CELL_KIND, isFloorBeltKind, isPassagePowerSourceKind } from "./FloorCell.js";
 export class FloorCellStore {
     constructor() {
         /** @type {Uint8Array} */
@@ -46,6 +46,19 @@ export class FloorCellStore {
     /** @param {number} idx */
     isBeltKindAtIdx(idx) {
         return isFloorBeltKind(this.kind[idx]);
+    }
+    /** @param {number} idx */
+    isPassagePowerSourceAtIdx(idx) {
+        return isPassagePowerSourceKind(this.kind[idx]);
+    }
+    /** @param {number} idx @param {boolean} defaultPowered */
+    setPassagePowerSourceAtIdx(idx, defaultPowered) {
+        this.kind[idx] = FLOOR_CELL_KIND.PassagePowerSource;
+        this.facing[idx] = defaultPowered ? 1 : 0;
+    }
+    /** @param {number} idx */
+    passagePowerSourceDefaultPoweredAtIdx(idx) {
+        return this.facing[idx] === 1;
     }
     /** @param {number} idx @param {number} kind @param {number} facingIndex */
     setAtIdx(idx, kind, facingIndex) {

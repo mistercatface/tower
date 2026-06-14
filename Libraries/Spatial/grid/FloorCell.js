@@ -1,9 +1,13 @@
 import { CARDINAL_FACING_STEPS, quantizeCardinalAngle } from "../../Math/Angle.js";
 /** Floor occupancy kinds — walkable cell overlays (belts, pads); not voxelBlock or edgeStore. */
-export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3, BeltRails: 4, BeltElbowLeftRails: 5, BeltElbowRightRails: 6 };
+export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3, BeltRails: 4, BeltElbowLeftRails: 5, BeltElbowRightRails: 6, PassagePowerSource: 7 };
 /** @param {number} kind */
 export function isFloorBeltKind(kind) {
     return kind >= FLOOR_CELL_KIND.Belt && kind <= FLOOR_CELL_KIND.BeltElbowRightRails;
+}
+/** @param {number} kind */
+export function isPassagePowerSourceKind(kind) {
+    return kind === FLOOR_CELL_KIND.PassagePowerSource;
 }
 /** @param {number} kind */
 export function isFloorBeltRailsKind(kind) {

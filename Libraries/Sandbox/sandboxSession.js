@@ -4,8 +4,9 @@ import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
-import { isGridFloorBeltSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
-import { canStampFloorBeltAt } from "./floorOccupancy.js";
+import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
+import { canStampFloorBeltAt, clearPassagePowerSourceAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
+import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import {
@@ -151,6 +152,13 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             setSelectedFloorCell(col, row);
             return null;
         }
+        if (isGridPassagePowerSourceSpawnAsset(asset)) {
+            const grid = state.obstacleGrid;
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            if (!stampPassagePowerSourceAt(state, col, row, false)) return null;
+            setSelectedFloorCell(col, row);
+            return null;
+        }
         const spawned = spawnPlacedSandboxProp(state, worldX, worldY, spawnPropId, spawnFaction);
         if (spawned) setSinglePropSelection(spawned.id);
         return spawned;
@@ -253,8 +261,11 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (!selectedFloorCell) return false;
             const grid = state.obstacleGrid;
             const { col, row } = selectedFloorCell;
-            if (!grid.clearFloorCell(col, row)) return false;
-            markGridZoneSubscriptionsDirty(state);
+            const idx = col + row * grid.cols;
+            if (grid.floorStore.isPassagePowerSourceAtIdx(idx)) {
+                if (!clearPassagePowerSourceAt(state, col, row)) return false;
+            } else if (!grid.clearFloorCell(col, row)) return false;
+            else markGridZoneSubscriptionsDirty(state);
             dropFloorSelection();
             sync();
             return true;
@@ -269,6 +280,26 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const kind = grid.floorStore.kind[idx];
             const facingIndex = grid.floorStore.facing[idx];
             return { col, row, kind, facingIndex, kindLabel: formatFloorBeltKindLabel(kind), facingLabel: formatFloorBeltFacingLabel(facingIndex) };
+        },
+        getSelectedPassagePowerSourceInfo() {
+            if (!selectedFloorCell) return null;
+            const grid = state.obstacleGrid;
+            const { col, row } = selectedFloorCell;
+            if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return null;
+            const idx = col + row * grid.cols;
+            if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return null;
+            return { col, row, defaultPowered: grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx) };
+        },
+        setSelectedPassagePowerSourceDefaultPowered(powered) {
+            if (!selectedFloorCell) return false;
+            const grid = state.obstacleGrid;
+            const { col, row } = selectedFloorCell;
+            const idx = col + row * grid.cols;
+            if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return false;
+            grid.floorStore.setPassagePowerSourceAtIdx(idx, powered);
+            syncPassagePowerNetwork(state);
+            sync();
+            return true;
         },
         getEditorPanelTab: () => editorPanelTab,
         setEditorPanelTab(tab) {
@@ -366,7 +397,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                     setSelectedRailEdge(hit.col, hit.row, hit.side);
                     return true;
                 }
-                if (!stampForcefieldAt(state, hit.col, hit.row, hit.side, { mode: forcefieldStampMode, allowedSide: hit.side, powered: forcefieldStartsPowered })) return false;
+                if (!stampForcefieldAt(state, hit.col, hit.row, hit.side, { mode: forcefieldStampMode, allowedSide: hit.side })) return false;
                 setSelectedRailEdge(hit.col, hit.row, hit.side);
                 sync();
                 return true;
@@ -543,6 +574,29 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 counts.set(kind, index);
                 const facingLabel = formatFloorBeltFacingLabel(grid.floorStore.facing[idx]);
                 placed.push({ col, row, kind, facingIndex: grid.floorStore.facing[idx], label: `${formatFloorBeltKindLabel(kind)} #${index} · ${facingLabel}` });
+            }
+            return placed;
+        },
+        stampPassagePowerSourceAtWorld(worldX, worldY, defaultPowered = false) {
+            const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
+            if (!stampPassagePowerSourceAt(state, col, row, defaultPowered)) return false;
+            setSelectedFloorCell(col, row);
+            sync();
+            return true;
+        },
+        listPlacedPassagePowerSources() {
+            const grid = state.obstacleGrid;
+            /** @type {{ col: number, row: number, defaultPowered: boolean, label: string }[]} */
+            const placed = [];
+            let index = 0;
+            const size = grid.cols * grid.rows;
+            for (let idx = 0; idx < size; idx++) {
+                if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) continue;
+                index++;
+                const col = idx % grid.cols;
+                const row = (idx / grid.cols) | 0;
+                const defaultPowered = grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx);
+                placed.push({ col, row, defaultPowered, label: `Power source #${index}${defaultPowered ? " · default on" : ""}` });
             }
             return placed;
         },
