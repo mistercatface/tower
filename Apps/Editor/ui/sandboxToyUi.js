@@ -402,7 +402,7 @@ function renderSceneJsonPanel(container, controller, onChange) {
     textarea.rows = 10;
     textarea.spellcheck = false;
     startDemoBtn.addEventListener("click", () => {
-        if (!window.confirm("Replace the current sandbox with the portal/power start demo?")) return;
+        if (!window.confirm("Replace the current sandbox with the start scene?")) return;
         controller.loadStartScene();
         textarea.value = controller.exportSceneSnapshot();
         onChange();
