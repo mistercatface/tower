@@ -485,6 +485,11 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         listPlacedRailWalls: () => session.listPlacedRailWalls(),
         listPlacedForcefields: () => session.listPlacedForcefields(),
         listPlacedPortals: () => session.listPlacedPortals(),
+        listPlacedSceneItems: () => session.listPlacedSceneItems(),
+        isSceneItemSelected: (item) => session.isSceneItemSelected(item),
+        selectSceneItem: (item) => session.selectSceneItem(item),
+        deleteSceneItem: (item) => session.deleteSceneItem(item),
+        seedPlacementOrderFromState: () => session.seedPlacementOrderFromState(),
         listPortalLinkTargets: () => session.listPortalLinkTargets(),
         getSelectedVoxelWallInfo: () => session.getSelectedVoxelWallInfo(),
         getSelectedRailWallInfo: () => session.getSelectedRailWallInfo(),
@@ -512,6 +517,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             session.clearPropSelection();
             session.clearFloorSelection();
             session.clearWallSelection();
+            session.seedPlacementOrderFromState();
             session.sync();
         },
         loadStartScene() {
@@ -520,6 +526,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             session.clearPropSelection();
             session.clearFloorSelection();
             session.clearWallSelection();
+            session.seedPlacementOrderFromState();
             session.sync();
         },
         sync: () => session.sync(),

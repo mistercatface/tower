@@ -43,9 +43,10 @@ export function mountTilelabSandbox(state, requestRedraw) {
         ],
         defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
     });
-    state.sandbox.controller.register();
-    unmountToyUi = mountSandboxToyUi(document.getElementById("sandboxToyPanel"), state.sandbox.controller, requestRedraw);
-    unmountSceneJsonUi = mountSceneJsonUi(document.getElementById("sceneJsonPanel"), state.sandbox.controller, requestRedraw);
+    const controller = state.sandbox.controller;
+    controller.register();
+    unmountToyUi = mountSandboxToyUi(document.getElementById("sandboxToyPanel"), controller, () => controller.sync());
+    unmountSceneJsonUi = mountSceneJsonUi(document.getElementById("sceneJsonPanel"), controller, () => controller.sync());
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function destroyTilelabSandbox(state) {

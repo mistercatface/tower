@@ -1,5 +1,5 @@
 import { getPropAsset, getWorldPropDefinitions, formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
-import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, formatSandboxFactionLabel, resolveSandboxFaction } from "../../../Libraries/Combat/sandboxTargeting.js";
+import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS, resolveSandboxFaction } from "../../../Libraries/Combat/sandboxTargeting.js";
 import {
     getSandboxBehaviorLabel,
     isSandboxEquippable,
@@ -17,7 +17,7 @@ import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../.
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
 import { portalAccessDefaultAllowedSide } from "../../../Libraries/Spatial/grid/portalAccess.js";
-import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
+import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 const WALL_STAMP_OPTIONS = [
@@ -510,132 +510,18 @@ export function mountSandboxToyUi(container, controller, onChange) {
             else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, controller, onChange, { wallStampMode, selectedRail, selectedVoxelInfo, selectedRailInfo, selectedPortalInfo });
             else appendMapGenEditor(paramsHost, state, activeItem.genKind, onChange);
         });
-        const placed = controller.listPlacedProps().sort((a, b) => a.label.localeCompare(b.label));
-        const floorBelts = controller.listPlacedFloorBelts();
-        const powerSources = controller.listPlacedPassagePowerSources();
-        const forcefields = controller.listPlacedForcefields();
-        const voxelWalls = controller.listPlacedVoxelWalls();
-        const railWalls = controller.listPlacedRailWalls();
-        const portals = controller.listPlacedPortals();
         appendPinnedSection(container, "scene", "Scene", (body) => {
-            appendEditorSubhead(body, "Props");
             appendInstanceList(
                 body,
-                placed.map((entry) => ({
-                    label: `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`,
-                    selected: selectedPropIds.has(entry.id),
-                    onSelect: () => {
-                        controller.setPlacePaletteKey(`prop:${entry.type}`);
-                        controller.setSelectedPropId(entry.id);
-                        onChange();
-                    },
-                    onDelete: () => controller.deletePropById(entry.id),
-                })),
-                "No props placed yet.",
-            );
-            appendEditorSubhead(body, "Conveyor belts");
-            appendInstanceList(
-                body,
-                floorBelts.map((entry) => ({
-                    label: entry.label,
-                    selected: selectedFloorCell?.col === entry.col && selectedFloorCell.row === entry.row,
-                    onSelect: () => controller.setSelectedFloorCell(entry.col, entry.row),
-                    onDelete: () => {
-                        controller.setSelectedFloorCell(entry.col, entry.row);
-                        controller.deleteSelectedFloorCell();
-                    },
-                })),
-                "No conveyor belts placed yet.",
-            );
-            appendEditorSubhead(body, "Power sources");
-            appendInstanceList(
-                body,
-                powerSources.map((entry) => ({
-                    label: entry.label,
-                    selected: selectedFloorCell?.col === entry.col && selectedFloorCell.row === entry.row,
-                    onSelect: () => controller.setSelectedFloorCell(entry.col, entry.row),
-                    onDelete: () => {
-                        controller.setSelectedFloorCell(entry.col, entry.row);
-                        controller.deleteSelectedFloorCell();
-                    },
-                })),
-                "No power sources placed yet.",
-            );
-            appendEditorSubhead(body, "Voxel blocks");
-            appendInstanceList(
-                body,
-                voxelWalls.map((entry) => ({
-                    label: entry.label,
-                    selected: selectedVoxel?.col === entry.col && selectedVoxel.row === entry.row,
-                    onSelect: () => {
-                        controller.setPlacePaletteKey("wall:voxel");
-                        controller.setSelectedVoxelCell(entry.col, entry.row);
-                        onChange();
-                    },
-                    onDelete: () => {
-                        controller.setSelectedVoxelCell(entry.col, entry.row);
-                        controller.deleteSelectedWall();
-                        onChange();
-                    },
-                })),
-                "No voxel walls placed yet.",
-            );
-            appendEditorSubhead(body, "Rail walls");
-            appendInstanceList(
-                body,
-                railWalls.map((entry) => ({
-                    label: entry.label,
-                    selected: selectedRail?.col === entry.col && selectedRail.row === entry.row && selectedRail.side === entry.side,
-                    onSelect: () => {
-                        controller.setPlacePaletteKey(`wall:rail`);
-                        controller.setSelectedRailEdge(entry.col, entry.row, entry.side);
-                        onChange();
-                    },
-                    onDelete: () => {
-                        controller.setSelectedRailEdge(entry.col, entry.row, entry.side);
-                        controller.deleteSelectedWall();
-                        onChange();
-                    },
-                })),
-                "No rail walls placed yet.",
-            );
-            appendEditorSubhead(body, "Forcefields");
-            appendInstanceList(
-                body,
-                forcefields.map((entry) => ({
-                    label: entry.label,
-                    selected: selectedForcefieldInfo?.col === entry.col && selectedForcefieldInfo.row === entry.row && selectedForcefieldInfo.side === entry.side,
-                    onSelect: () => {
-                        controller.setPlacePaletteKey(`wall:forcefield`);
-                        controller.setSelectedRailEdge(entry.col, entry.row, entry.side);
-                        onChange();
-                    },
-                    onDelete: () => {
-                        controller.setSelectedRailEdge(entry.col, entry.row, entry.side);
-                        controller.deleteSelectedWall();
-                        onChange();
-                    },
-                })),
-                "No forcefields placed yet.",
-            );
-            appendEditorSubhead(body, "Portals");
-            appendInstanceList(
-                body,
-                portals.map((entry) => ({
-                    label: entry.label,
-                    selected: selectedPortalInfo?.col === entry.col && selectedPortalInfo.row === entry.row && selectedPortalInfo.side === entry.side,
-                    onSelect: () => {
-                        controller.setPlacePaletteKey(`wall:portal`);
-                        controller.setSelectedRailEdge(entry.col, entry.row, entry.side);
-                        onChange();
-                    },
-                    onDelete: () => {
-                        controller.setSelectedRailEdge(entry.col, entry.row, entry.side);
-                        controller.deleteSelectedWall();
-                        onChange();
-                    },
-                })),
-                "No portals placed yet.",
+                controller
+                    .listPlacedSceneItems()
+                    .map((item) => ({
+                        label: item.label,
+                        selected: controller.isSceneItemSelected(item),
+                        onSelect: () => controller.selectSceneItem(item),
+                        onDelete: () => controller.deleteSceneItem(item),
+                    })),
+                "Nothing placed yet.",
             );
         });
         appendPinnedSection(container, "selected", "Selected", (body) => {
