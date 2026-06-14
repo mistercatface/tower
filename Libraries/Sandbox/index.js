@@ -50,7 +50,7 @@ export { spawnPoolRack } from "./spawnPoolRack.js";
 export { SANDBOX_SCENE_SCHEMA_VERSION, applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
 export { evaluatePortalStepEntry } from "./portalLinks.js";
-export { tickPortalContacts, tryPortalIntake, applyPortalTraverse } from "./portalTraverse.js";
+export { tryPortalIntake, applyPortalTraverse } from "./portalTraverse.js";
 export { syncPortalNavIndex, buildPortalNavHops, expandPortalHopsInCellPath } from "./portalNavIndex.js";
 export { addSandboxWalls, removeSandboxWalls, clearSandboxWallsInBounds } from "./sandboxWalls.js";
 export {

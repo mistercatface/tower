@@ -93,7 +93,6 @@ function resolvePushablePair(p1, p2, state) {
  *   onProjectileWorldPropHit: (projectile: object, prop: object, events: object[]) => boolean,
  *   onProjectileFactionCollisions: (projectile: object, events: object[]) => void,
  *   resolveWalls: (entity: object, spatialFrame: object) => void,
- *   tickPortalContacts: (state: object, spatialFrame: object) => void,
  *   combatantRestitution?: (a: object, b: object) => number,
  *   onChargeImpact?: (charger: object, other: object, events: object[]) => void,
  *   pushableIterations?: number,
@@ -111,7 +110,6 @@ export function runCollisionPipeline(
         onProjectileWorldPropHit,
         onProjectileFactionCollisions,
         resolveWalls,
-        tickPortalContacts,
         combatantRestitution = () => getCollisionSettings().restitution.combatant,
         onChargeImpact = null,
         pushableIterations = getCollisionSettings().pushableIterations,
@@ -143,14 +141,12 @@ export function runCollisionPipeline(
     const combatants = spatialFrame._combatants;
     const hasPushables = pushables && pushables.length > 0;
     const hasCombatants = combatants && combatants.length > 0;
-    if (hasPushables) {
+    if (hasPushables)
         for (let i = 0; i < pushables.length; i++) {
             const prop = pushables[i];
             prop._frameDispX = prop.x - (prop._portalContactPrevX ?? prop.x);
             prop._frameDispY = prop.y - (prop._portalContactPrevY ?? prop.y);
         }
-        tickPortalContacts(state, spatialFrame);
-    }
     if (hasPushables || hasCombatants)
         for (let iter = 0; iter < pushableIterations; iter++) {
             if (hasCombatants && spatialFrame.forEachActorPushablePair) spatialFrame.forEachActorPushablePair((actor, prop) => resolveActorPushable(actor, prop, resolveWalls, spatialFrame, state));

@@ -89,35 +89,6 @@ export function tryPortalIntake(state, entity, segment) {
     if (!entry) return false;
     return applyPortalTraverse(state, entity, entry);
 }
-/**
- * Portal contact pass — run after motion, before wall resolve (fallback until intake owns crossing).
- *
- * @param {object} state
- * @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
- */
-export function tickPortalContacts(state, spatialFrame) {
-    const pushables = spatialFrame._pushables;
-    const grid = state.obstacleGrid;
-    let reindex = false;
-    for (let i = 0; i < pushables.length; i++) {
-        const entity = pushables[i];
-        if (entity.isDead) continue;
-        if (entity._portalTraverseUntil != null && state.gameTime < entity._portalTraverseUntil) continue;
-        const bodyRadius = entity.getShape().getBoundingRadius();
-        const wallCandidates = spatialFrame.getWallCandidates(entity);
-        for (let j = 0; j < wallCandidates.length; j++) {
-            const seg = wallCandidates[j];
-            if (seg.isDead || !isPortalEdge(seg.passageEdge)) continue;
-            const reach = bodyRadius + grid.cellSize * 0.35;
-            if (distanceSqToSegment(seg, entity.x, entity.y) > reach * reach) continue;
-            if (tryPortalIntake(state, entity, seg)) {
-                reindex = true;
-                break;
-            }
-        }
-    }
-    if (reindex) spatialFrame.reindexPushables(pushables);
-}
 let passageHandlersRegistered = false;
 /** Wire portal wall contact into the passage handler registry. Idempotent. */
 export function registerSandboxPassageHandlers() {
