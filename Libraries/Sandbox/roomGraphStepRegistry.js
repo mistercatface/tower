@@ -62,8 +62,7 @@ ROOM_GRAPH_STEP_REGISTRY.register({
 ROOM_GRAPH_STEP_REGISTRY.register({
     id: "forEachNode",
     label: "For each node",
-    defaults: { op: "forEachNode", run: { op: "punchHolePerIncidentEdge" } },
-    fields: [corridorCountField, corridorWidthField],
+    defaults: { op: "forEachNode", run: { op: "punchHolePerIncidentEdge", corridorCount: 2, corridorWidth: 2 } },
     slots: [{ name: "run", required: true, allowedSteps: ["punchHolePerIncidentEdge"] }],
 });
 ROOM_GRAPH_STEP_REGISTRY.register({ id: "punchHolesTowardNeighbors", label: "Punch holes toward neighbors", defaults: { op: "punchHolesTowardNeighbors" } });
@@ -76,8 +75,12 @@ ROOM_GRAPH_STEP_REGISTRY.register({
 ROOM_GRAPH_STEP_REGISTRY.register({
     id: "forEachEdge",
     label: "For each edge",
-    defaults: { op: "forEachEdge", requireAll: true, canIntersect: false, run: { op: "buildCorridorForEdge" } },
-    fields: [corridorCountField, corridorWidthField, { path: "limit", label: "Edge limit", min: 1, max: 64, step: 1 }],
+    defaults: { op: "forEachEdge", requireAll: true, canIntersect: false, run: { op: "buildCorridorForEdge", corridorCount: 2, corridorWidth: 2, skipPunchIfHolesPresent: true } },
+    fields: [
+        { path: "limit", label: "Edge limit", min: 1, max: 64, step: 1 },
+        { path: "requireAll", label: "Require all edges", kind: "boolean" },
+        { path: "canIntersect", label: "Allow corridor overlap", kind: "boolean" },
+    ],
     slots: [{ name: "run", required: true, allowedSteps: ["buildCorridorForEdge", "punchHolesTowardNeighbors"] }],
 });
 ROOM_GRAPH_STEP_REGISTRY.register({
@@ -89,6 +92,8 @@ ROOM_GRAPH_STEP_REGISTRY.register({
         corridorCountField,
         corridorWidthField,
         { path: "corridorsAtLeast", label: "Corridors at least", min: 0, max: 128, step: 1 },
+        { path: "allTreeEdgesRouted", label: "All tree edges routed", kind: "boolean" },
+        { path: "corridorsIntersect", label: "Allow corridor overlap", kind: "boolean" },
     ],
 });
 ROOM_GRAPH_STEP_REGISTRY.register({

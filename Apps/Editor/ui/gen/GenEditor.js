@@ -1,5 +1,6 @@
 import { deepClone } from "../../../../Libraries/Pipeline/objectPath.js";
 import { createPipelineRow, movePipelineRow, pipelineRowId } from "../../../../Libraries/Pipeline/index.js";
+import { exportPipelineJson, exportPipelineJsModule } from "../../../../Libraries/Pipeline/exportPipeline.js";
 import { stepId } from "../../../../Libraries/Pipeline/stepRegistry.js";
 import { DEFAULT_SANDBOX_GRAPH_MOTIFS, dropStaleBuildNodeGraphTreeEdges } from "../../../../Libraries/Sandbox/sandboxRoomGraphGen.js";
 import { ROOM_GRAPH_STEP_REGISTRY, validateRoomGraphMotifs } from "../../../../Libraries/Sandbox/roomGraphStepRegistry.js";
@@ -8,6 +9,8 @@ import { renderSchemaFields } from "../../../../Libraries/UI/renderSchemaFields.
 import { appendEditorHint, appendEditorSubhead } from "../../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../../Libraries/UI/controls/SliderControl.js";
 import { SelectControl } from "../../../../Libraries/UI/controls/SelectControl.js";
+const GEN_PRESETS_STORAGE_KEY = "tilelab.genPresets.v1";
+const DEFAULT_PRESET_ID = "default";
 /** @typedef {{ seed: number, maxAttempts: number, until: Record<string, unknown>, bodyRows: import("../../../../Libraries/Pipeline/pipelineList.js").PipelineEditorRow[] }} GenEditorState */
 /** @type {GenEditorState | null} */
 let editorState = null;
@@ -21,6 +24,8 @@ let selectedStepId = null;
 let nextStepId = 1;
 /** @type {HTMLButtonElement | null} */
 let generateBtnRef = null;
+/** @type {string} */
+let selectedPresetId = DEFAULT_PRESET_ID;
 const BODY_ADDABLE_STEPS = ROOM_GRAPH_STEP_REGISTRY.list()
     .map((def) => def.id)
     .filter((id) => id !== "retryUntil");
@@ -45,9 +50,76 @@ function createDefaultGenEditorState() {
 export function buildMotifsFromGenEditor(state) {
     return [{ op: "retryUntil", maxAttempts: state.maxAttempts, body: state.bodyRows.map((row) => row.config), until: state.until }];
 }
+/** @param {GenEditorState} [state] */
+export function exportGenMotifsJson(state = editorState) {
+    return exportPipelineJson(buildMotifsFromGenEditor(state));
+}
+/** @param {GenEditorState} [state] */
+export function exportGenMotifsJsModule(state = editorState) {
+    return exportPipelineJsModule(buildMotifsFromGenEditor(state), "SANDBOX_GRAPH_MOTIFS");
+}
 /** @param {GenEditorState} state */
 function buildGraphSceneOptions(state) {
     return { seed: state.seed, motifs: buildMotifsFromGenEditor(state) };
+}
+/** @returns {Record<string, { seed?: number, maxAttempts?: number, until?: Record<string, unknown>, body?: Record<string, unknown>[] }>} */
+function readGenPresets() {
+    const raw = localStorage.getItem(GEN_PRESETS_STORAGE_KEY);
+    if (!raw) return {};
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+        return /** @type {Record<string, { seed?: number, maxAttempts?: number, until?: Record<string, unknown>, body?: Record<string, unknown>[] }>} */ (parsed);
+    } catch {
+        return {};
+    }
+}
+/** @param {Record<string, unknown>} presets */
+function writeGenPresets(presets) {
+    localStorage.setItem(GEN_PRESETS_STORAGE_KEY, JSON.stringify(presets));
+}
+function snapshotEditorState() {
+    return { seed: editorState.seed, maxAttempts: editorState.maxAttempts, until: deepClone(editorState.until), body: editorState.bodyRows.map((row) => deepClone(row.config)) };
+}
+/** @param {{ seed?: number, maxAttempts?: number, until?: Record<string, unknown>, body?: Record<string, unknown>[] }} snapshot */
+function applyEditorSnapshot(snapshot) {
+    nextStepId = 1;
+    editorState.seed = snapshot.seed ?? Date.now() >>> 0;
+    editorState.maxAttempts = snapshot.maxAttempts ?? 60;
+    editorState.until = deepClone(snapshot.until ?? ROOM_GRAPH_STEP_REGISTRY.get("validateLayout").defaults);
+    editorState.bodyRows = configsToBodyRows(snapshot.body ?? []);
+    selectedStepId = editorState.bodyRows[0] ? pipelineRowId(editorState.bodyRows[0]) : null;
+    refreshGenPanels();
+}
+function loadDefaultPreset() {
+    editorState = createDefaultGenEditorState();
+    selectedStepId = editorState.bodyRows[0] ? pipelineRowId(editorState.bodyRows[0]) : null;
+    selectedPresetId = DEFAULT_PRESET_ID;
+    refreshGenPanels();
+}
+/** @param {string} presetId */
+function loadGenPreset(presetId) {
+    if (presetId === DEFAULT_PRESET_ID) {
+        loadDefaultPreset();
+        return;
+    }
+    const presets = readGenPresets();
+    const snapshot = presets[presetId];
+    if (!snapshot) throw new Error(`Unknown preset: ${presetId}`);
+    applyEditorSnapshot(snapshot);
+    selectedPresetId = presetId;
+    syncGenExport();
+}
+function saveCurrentGenPreset() {
+    const name = window.prompt("Preset name");
+    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const presets = readGenPresets();
+    presets[trimmed] = snapshotEditorState();
+    writeGenPresets(presets);
+    selectedPresetId = trimmed;
+    renderGenPresetTools(document.getElementById("genPresetTools"));
 }
 /** @param {string} message @param {"error" | "ok" | "idle"} [kind] */
 function setStatusMessage(message, kind = "idle") {
@@ -60,6 +132,17 @@ function setStatusMessage(message, kind = "idle") {
 function formatValidationErrors(errors) {
     return errors.map((err) => (err.path ? `${err.path}: ${err.message}` : err.message)).join("\n");
 }
+/** @param {{ meta?: { seed?: number, rooms?: unknown[], corridors?: unknown[], edges?: unknown[] }, cols?: number, rows?: number }} doc */
+function formatBuildStats(doc) {
+    const meta = doc.meta;
+    const rooms = meta?.rooms?.length ?? 0;
+    const corridors = meta?.corridors?.length ?? 0;
+    const edges = meta?.edges?.length ?? 0;
+    const seed = meta?.seed ?? "?";
+    const cols = doc.cols ?? "?";
+    const rows = doc.rows ?? "?";
+    return `Generated ${rooms} rooms, ${corridors} corridors (${edges} graph edges), seed ${seed}. Grid ${cols}×${rows}.`;
+}
 function currentValidation() {
     for (const row of editorState.bodyRows) if (stepId(row.config) === "buildNodeGraph") dropStaleBuildNodeGraphTreeEdges(row.config);
     return validateRoomGraphMotifs(buildMotifsFromGenEditor(editorState));
@@ -71,12 +154,23 @@ function syncValidationStatus() {
     if (generateBtnRef) generateBtnRef.disabled = !validation.ok;
     return validation;
 }
-/** @param {{ list?: boolean, params?: boolean }} [options] */
+/** Lightweight update — keep param sliders mounted while dragging. */
+function onGenFieldChange(row) {
+    if (row && stepId(row.config) === "buildNodeGraph") dropStaleBuildNodeGraphTreeEdges(row.config);
+    syncValidationStatus();
+    syncGenExport();
+}
+function syncGenExport() {
+    const exportArea = document.getElementById("genExport");
+    if (exportArea) exportArea.value = exportGenMotifsJson();
+}
+/** @param {{ list?: boolean, params?: boolean, export?: boolean }} [options] */
 function notifyGenChange(options = {}) {
     syncValidationStatus();
-    const { list = true, params = true } = options;
+    const { list = true, params = true, export: syncExport = true } = options;
     if (list) renderGenBodyList();
     if (params) renderGenStepParams();
+    if (syncExport) syncGenExport();
 }
 function selectStepById(stepIdValue) {
     selectedStepId = stepIdValue;
@@ -85,9 +179,99 @@ function selectStepById(stepIdValue) {
 function findSelectedBodyRow() {
     return editorState.bodyRows.find((row) => pipelineRowId(row) === selectedStepId) ?? null;
 }
+function viewSceneJson() {
+    const json = sandboxController.exportSceneSnapshot();
+    const jsonTab = document.querySelector('input[name="editorSidebarPanel"][value="json"]');
+    if (jsonTab) {
+        /** @type {HTMLInputElement} */ (jsonTab).checked = true;
+        jsonTab.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    const textarea = document.querySelector("#sceneJsonPanel textarea");
+    if (textarea) /** @type {HTMLTextAreaElement} */ (textarea).value = json;
+}
+function renderGenPresetTools(container) {
+    if (!container) return;
+    container.innerHTML = "";
+    const row = document.createElement("div");
+    row.className = "editor-tools-row";
+    const presetSelect = document.createElement("select");
+    presetSelect.id = "genPresetSelect";
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = DEFAULT_PRESET_ID;
+    defaultOpt.textContent = "Default (shipped)";
+    presetSelect.appendChild(defaultOpt);
+    const presets = readGenPresets();
+    for (const name of Object.keys(presets).sort()) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        presetSelect.appendChild(opt);
+    }
+    presetSelect.value = selectedPresetId in presets || selectedPresetId === DEFAULT_PRESET_ID ? selectedPresetId : DEFAULT_PRESET_ID;
+    row.appendChild(presetSelect);
+    const loadBtn = document.createElement("button");
+    loadBtn.type = "button";
+    loadBtn.textContent = "Load";
+    loadBtn.addEventListener("click", () => {
+        try {
+            loadGenPreset(presetSelect.value);
+        } catch (err) {
+            setStatusMessage(err instanceof Error ? err.message : String(err), "error");
+        }
+    });
+    row.appendChild(loadBtn);
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "secondary";
+    saveBtn.textContent = "Save";
+    saveBtn.addEventListener("click", () => saveCurrentGenPreset());
+    row.appendChild(saveBtn);
+    const resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.className = "secondary";
+    resetBtn.textContent = "Reset";
+    resetBtn.addEventListener("click", () => {
+        if (!window.confirm("Reset pipeline to the shipped default?")) return;
+        loadDefaultPreset();
+    });
+    row.appendChild(resetBtn);
+    container.appendChild(row);
+}
+function renderGenExportTools(container) {
+    if (!container) return;
+    container.innerHTML = "";
+    const row = document.createElement("div");
+    row.className = "editor-tools-row";
+    const copyJsonBtn = document.createElement("button");
+    copyJsonBtn.type = "button";
+    copyJsonBtn.className = "secondary";
+    copyJsonBtn.textContent = "Copy JSON";
+    copyJsonBtn.addEventListener("click", async () => {
+        syncGenExport();
+        const exportArea = document.getElementById("genExport");
+        const text = exportArea?.value || exportGenMotifsJson();
+        await navigator.clipboard.writeText(text);
+    });
+    row.appendChild(copyJsonBtn);
+    const copyJsBtn = document.createElement("button");
+    copyJsBtn.type = "button";
+    copyJsBtn.className = "secondary";
+    copyJsBtn.textContent = "Copy JS module";
+    copyJsBtn.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(exportGenMotifsJsModule());
+    });
+    row.appendChild(copyJsBtn);
+    const viewJsonBtn = document.createElement("button");
+    viewJsonBtn.type = "button";
+    viewJsonBtn.className = "secondary";
+    viewJsonBtn.textContent = "View scene JSON";
+    viewJsonBtn.addEventListener("click", () => viewSceneJson());
+    row.appendChild(viewJsonBtn);
+    container.appendChild(row);
+}
 function renderGenTools(container) {
     container.innerHTML = "";
-    appendEditorHint(container, "Generate a procedural room graph into the sandbox. Edit pipeline body steps below.");
+    appendEditorHint(container, "Generate a procedural room graph into the sandbox.");
     const row = document.createElement("div");
     row.className = "editor-tools-row";
     const generateBtn = document.createElement("button");
@@ -107,7 +291,7 @@ function renderGenTools(container) {
             setStatusMessage(result.reason, "error");
             return;
         }
-        setStatusMessage(`Generated graph (seed ${editorState.seed}).`, "ok");
+        setStatusMessage(formatBuildStats(result.doc), "ok");
         onChangeCallback?.();
     });
     row.appendChild(generateBtn);
@@ -121,6 +305,7 @@ function renderGenTools(container) {
         renderGenTools(container);
         renderGenRetry(document.getElementById("genRetryPanel"));
         syncValidationStatus();
+        syncGenExport();
     });
     row.appendChild(randomSeedBtn);
     container.appendChild(row);
@@ -132,6 +317,7 @@ function renderGenTools(container) {
         editorState.seed,
         (value) => {
             editorState.seed = value >>> 0;
+            syncGenExport();
         },
         (value) => String(value >>> 0),
     );
@@ -140,12 +326,23 @@ function renderGenTools(container) {
 }
 function renderGenRetry(container) {
     container.innerHTML = "";
-    appendEditorHint(container, "Outer retryUntil wrapper — max attempts here; until criteria stay on the default validateLayout step.");
+    appendEditorHint(container, "Outer retryUntil — max attempts before the whole pipeline gives up.");
     const retrySlider = new SliderControl("Max attempts", 1, 500, 1, editorState.maxAttempts, (value) => {
         editorState.maxAttempts = value;
         notifyGenChange({ list: false, params: false });
     });
     container.appendChild(retrySlider.element);
+}
+function renderGenUntil(container) {
+    container.innerHTML = "";
+    appendEditorSubhead(container, "Until (pass condition)", { tag: "h4" });
+    appendEditorHint(container, "Checked after each attempt succeeds without throwing. validateLayout steps in the pipeline body can still fail fast mid-run.");
+    if (stepId(editorState.until) !== "validateLayout") {
+        appendEditorHint(container, "Until step is not validateLayout — edit via Export JSON.");
+        return;
+    }
+    const def = ROOM_GRAPH_STEP_REGISTRY.get("validateLayout");
+    renderSchemaFields(container, editorState.until, def.fields, () => onGenFieldChange(null));
 }
 function renderGenBodyTools(container) {
     container.innerHTML = "";
@@ -216,7 +413,7 @@ function renderGenStepSlot(container, row, slot) {
         container.appendChild(typeSelect.element);
     }
     const childDef = ROOM_GRAPH_STEP_REGISTRY.get(stepId(childConfig) ?? "");
-    if (childDef?.fields?.length) renderSchemaFields(container, /** @type {Record<string, unknown>} */ (row.config[slot.name]), childDef.fields, () => notifyGenChange({ list: false }));
+    if (childDef?.fields?.length) renderSchemaFields(container, /** @type {Record<string, unknown>} */ (row.config[slot.name]), childDef.fields, () => onGenFieldChange(row));
 }
 function renderGenStepParams() {
     const container = document.getElementById("genStepParamsPanel");
@@ -232,23 +429,21 @@ function renderGenStepParams() {
         container.textContent = `No schema for ${stepId(row.config) ?? "unknown step"}.`;
         return;
     }
-    if (def.fields?.length) {
-        const onFieldChange = () => {
-            if (stepId(row.config) === "buildNodeGraph") dropStaleBuildNodeGraphTreeEdges(row.config);
-            notifyGenChange({ list: false });
-        };
-        renderSchemaFields(container, row.config, def.fields, onFieldChange);
-    }
+    if (def.fields?.length) renderSchemaFields(container, row.config, def.fields, () => onGenFieldChange(row));
     if (stepId(row.config) === "buildNodeGraph" && row.config.placement === "treeSpread" && !row.config.treeEdges)
         appendEditorHint(container, "Tree shape randomizes each attempt when no custom treeEdges are set.");
     for (const slot of def.slots ?? []) renderGenStepSlot(container, row, slot);
 }
 function refreshGenPanels() {
+    renderGenPresetTools(document.getElementById("genPresetTools"));
     renderGenTools(document.getElementById("genToolsPanel"));
     renderGenRetry(document.getElementById("genRetryPanel"));
+    renderGenUntil(document.getElementById("genUntilPanel"));
     renderGenBodyTools(document.getElementById("genBodyTools"));
     renderGenBodyList();
     renderGenStepParams();
+    renderGenExportTools(document.getElementById("genExportTools"));
+    syncGenExport();
 }
 /**
  * @param {{
@@ -261,5 +456,6 @@ export function initGenEditor({ controller, onChange }) {
     onChangeCallback = onChange ?? null;
     editorState = createDefaultGenEditorState();
     selectedStepId = editorState.bodyRows[0] ? pipelineRowId(editorState.bodyRows[0]) : null;
+    selectedPresetId = DEFAULT_PRESET_ID;
     refreshGenPanels();
 }

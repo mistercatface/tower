@@ -106,10 +106,12 @@ export const TILELAB_UI_HTML = `
                 <div id="genPanel" class="editor-panel-section" data-panel="gen">
                     <div class="editor-panel-head">Room graph</div>
                     <div class="editor-scroll">
+                        <div id="genPresetTools" class="editor-tools"></div>
                         <div id="genToolsPanel"></div>
                         <details class="editor-block" open>
                             <summary>Retry loop</summary>
                             <div id="genRetryPanel"></div>
+                            <div id="genUntilPanel"></div>
                         </details>
                         <details class="editor-block" open>
                             <summary>Pipeline body</summary>
@@ -119,6 +121,11 @@ export const TILELAB_UI_HTML = `
                         <details class="editor-block" open>
                             <summary>Selected step</summary>
                             <div id="genStepParamsPanel"></div>
+                        </details>
+                        <details class="editor-block" open>
+                            <summary>Export</summary>
+                            <textarea id="genExport" class="editor-export-area" readonly spellcheck="false"></textarea>
+                            <div id="genExportTools" class="editor-tools"></div>
                         </details>
                         <div id="genStatusPanel" class="editor-block"></div>
                     </div>

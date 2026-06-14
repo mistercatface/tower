@@ -539,7 +539,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             session.clearFloorSelection();
             session.clearWallSelection();
             session.sync();
-            return { ok: true };
+            return { ok: true, doc: result.doc };
         },
         sync: () => session.sync(),
         getState: () => session.getState(),

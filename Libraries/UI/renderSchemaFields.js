@@ -11,6 +11,21 @@ import { SelectControl } from "./controls/SelectControl.js";
 export function renderSchemaFields(container, target, fields, onChange) {
     for (let i = 0; i < fields.length; i++) {
         const field = fields[i];
+        if (field.kind === "boolean") {
+            const label = document.createElement("label");
+            label.className = "check-inline gen-schema-boolean";
+            const input = document.createElement("input");
+            input.type = "checkbox";
+            input.checked = Boolean(getByPath(target, field.path));
+            input.addEventListener("change", () => {
+                setByPath(target, field.path, input.checked);
+                onChange?.();
+            });
+            label.appendChild(input);
+            label.appendChild(document.createTextNode(` ${field.label}`));
+            container.appendChild(label);
+            continue;
+        }
         if (field.options) {
             const val = getByPath(target, field.path) ?? field.options[0];
             const select = new SelectControl(field.label, field.options, val, (newVal) => {

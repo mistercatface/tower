@@ -588,11 +588,31 @@ details.editor-block > *:not(summary) {
     object-fit: contain;
 }
 
-.gen-body-summary {
-    margin: 6px 0 0;
-    padding-left: 18px;
+.gen-schema-boolean {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 6px;
+    align-items: center;
+    margin: 2px 0 6px;
     font-size: 11px;
     color: var(--text);
+}
+
+#genStepParamsPanel .param-field,
+#genUntilPanel .param-field,
+#genRetryPanel .param-field {
+    grid-template-columns: 96px 1fr 44px;
+}
+
+#genStepParamsPanel .editor-subhead,
+#genUntilPanel .editor-subhead {
+    margin-top: 10px;
+}
+
+#genExport {
+    width: 100%;
+    min-height: 120px;
+    margin-bottom: 6px;
 }
 
 #genStatusPanel {
