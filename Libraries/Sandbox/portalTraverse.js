@@ -1,15 +1,17 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { distanceSqToSegment } from "../Spatial/geometry/WallGeometry.js";
-import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
+import { isPortalEdge, PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import {
     portalBodyCrossedEntryPlane,
     portalBodyInMouthZone,
     portalCrossingVectorForEdge,
+    portalEdgeBlocksCollision,
     portalMouthAllowsCrossing,
     portalMouthAndBackCells,
     portalTraverseExitCell,
     portalTraverseExitVector,
 } from "../Spatial/grid/portalAccess.js";
+import { registerPassageWallContactHandler } from "../Spatial/grid/passageWallContact.js";
 import { invalidateWallResolveCache } from "../Motion/WallCollisionResolver.js";
 import { quantizeCardinalAngle } from "../Math/Angle.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
@@ -62,7 +64,33 @@ export function applyPortalTraverse(state, entity, entry) {
     return true;
 }
 /**
- * Portal contact pass — run after motion, before wall resolve.
+ * Portal intake at wall contact — mouth-side gates + immediate traverse.
+ *
+ * @param {object} state
+ * @param {object} entity
+ * @param {object} segment — wall segment with passageEdge, gridCol/Row/Side
+ * @returns {boolean} true when the entity teleported this call
+ */
+export function tryPortalIntake(state, entity, segment) {
+    if (entity.isDead) return false;
+    const now = state.gameTime;
+    if (entity._portalTraverseUntil != null && now < entity._portalTraverseUntil) return false;
+    if (segment.isDead || !isPortalEdge(segment.passageEdge)) return false;
+    const grid = state.obstacleGrid;
+    const edge = segment.passageEdge;
+    const { gridCol, gridRow, gridSide } = segment;
+    const bodyRadius = entity.getShape().getBoundingRadius();
+    if (!portalBodyInMouthZone(grid, edge, gridCol, gridRow, gridSide, entity.x, entity.y, bodyRadius)) return false;
+    const cross = portalCrossingVectorForEdge(edge, gridCol, gridRow, gridSide);
+    const { mouth, back } = portalMouthAndBackCells(gridCol, gridRow, gridSide, edge);
+    if (!portalMouthAllowsCrossing(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) return false;
+    if (!portalBodyCrossedEntryPlane(entity.x, entity.y, mouth, back, cross, grid, bodyRadius)) return false;
+    const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
+    if (!entry) return false;
+    return applyPortalTraverse(state, entity, entry);
+}
+/**
+ * Portal contact pass — run after motion, before wall resolve (fallback until intake owns crossing).
  *
  * @param {object} state
  * @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
@@ -70,12 +98,11 @@ export function applyPortalTraverse(state, entity, entry) {
 export function tickPortalContacts(state, spatialFrame) {
     const pushables = spatialFrame._pushables;
     const grid = state.obstacleGrid;
-    const now = state.gameTime;
     let reindex = false;
     for (let i = 0; i < pushables.length; i++) {
         const entity = pushables[i];
         if (entity.isDead) continue;
-        if (entity._portalTraverseUntil != null && now < entity._portalTraverseUntil) continue;
+        if (entity._portalTraverseUntil != null && state.gameTime < entity._portalTraverseUntil) continue;
         const bodyRadius = entity.getShape().getBoundingRadius();
         const wallCandidates = spatialFrame.getWallCandidates(entity);
         for (let j = 0; j < wallCandidates.length; j++) {
@@ -83,20 +110,22 @@ export function tickPortalContacts(state, spatialFrame) {
             if (seg.isDead || !isPortalEdge(seg.passageEdge)) continue;
             const reach = bodyRadius + grid.cellSize * 0.35;
             if (distanceSqToSegment(seg, entity.x, entity.y) > reach * reach) continue;
-            const edge = seg.passageEdge;
-            const { gridCol, gridRow, gridSide } = seg;
-            if (!portalBodyInMouthZone(grid, edge, gridCol, gridRow, gridSide, entity.x, entity.y, bodyRadius)) continue;
-            const cross = portalCrossingVectorForEdge(edge, gridCol, gridRow, gridSide);
-            const { mouth, back } = portalMouthAndBackCells(gridCol, gridRow, gridSide, edge);
-            if (!portalMouthAllowsCrossing(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) continue;
-            if (!portalBodyCrossedEntryPlane(entity.x, entity.y, mouth, back, cross, grid, bodyRadius)) continue;
-            const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
-            if (!entry) continue;
-            if (applyPortalTraverse(state, entity, entry)) {
+            if (tryPortalIntake(state, entity, seg)) {
                 reindex = true;
                 break;
             }
         }
     }
     if (reindex) spatialFrame.reindexPushables(pushables);
+}
+let passageHandlersRegistered = false;
+/** Wire portal wall contact into the passage handler registry. Idempotent. */
+export function registerSandboxPassageHandlers() {
+    if (passageHandlersRegistered) return;
+    passageHandlersRegistered = true;
+    registerPassageWallContactHandler(PASSAGE_MODE.Portal, (ctx) => {
+        if (ctx.state && tryPortalIntake(ctx.state, ctx.entity, ctx.segment)) return "consumed";
+        if (!portalEdgeBlocksCollision(ctx.edge, ctx.ownerCol, ctx.ownerRow, ctx.ownerSide, ctx.entity, ctx.bodyRadius, ctx.vx, ctx.vy, ctx.dispX, ctx.dispY, ctx.grid)) return "skip";
+        return "collide";
+    });
 }

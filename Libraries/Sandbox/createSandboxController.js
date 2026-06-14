@@ -20,6 +20,7 @@ import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVis
 import { resolveSandboxPropVisual, setSandboxPropVisual } from "./sandboxPropVisual.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "./sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { registerSandboxPassageHandlers } from "./portalTraverse.js";
 /**
  * @typedef {object} SandboxBehavior
  * @property {string} id
@@ -50,6 +51,7 @@ const MARQUEE_BOUNDS = createAabb();
  * }} options
  */
 export function createSandboxController(state, { requestRedraw, getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId }) {
+    registerSandboxPassageHandlers();
     const session = createSandboxSession(state, { requestRedraw, defaultSpawnPropId });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";

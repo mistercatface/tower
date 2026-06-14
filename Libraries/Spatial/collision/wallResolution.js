@@ -1,7 +1,6 @@
 import { getCircleSegmentPenetration } from "../geometry/WallGeometry.js";
 import { applyStaticSurfaceImpulse } from "../../Motion/staticSurfaceImpulse.js";
-import { isPortalEdge, passageEdgeBlocksCollision } from "../../Spatial/grid/CellEdge.js";
-import { portalEdgeBlocksCollision } from "../../Spatial/grid/portalAccess.js";
+import { resolvePassageWallContact } from "../../Spatial/grid/passageWallContact.js";
 import { SatCollision } from "./SatCollision.js";
 import { PolygonShape } from "./Shapes.js";
 import { applyPositionCorrection, computeCircleWallContact, computePolygonWallContact } from "./penetration.js";
@@ -31,7 +30,7 @@ export function ensureWallSegmentPolygonShape(segment) {
 }
 /**
  * Two-pass wall resolution: penetration push-out + static-surface impulse per segment.
- * @param {{ x: number, y: number, radius?: number, vx?: number, vy?: number }} body — mutated
+ * @param {{ x: number, y: number, radius?: number, vx?: number, vy?: number, _frameDispX?: number, _frameDispY?: number }} body — mutated
  * @param {import("./Shapes.js").CircleShape | import("./Shapes.js").PolygonShape} shape
  * @param {object[]} segments
  * @param {{ restitution?: number, friction?: number, passes?: number }} [options]
@@ -47,10 +46,24 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
         let best = null;
         for (const seg of segments) {
             if (seg.isDead) continue;
-            if (seg.passageEdge)
-                if (isPortalEdge(seg.passageEdge)) {
-                    if (!portalEdgeBlocksCollision(seg.passageEdge, seg.gridCol, seg.gridRow, seg.gridSide, body, radius, body.vx ?? 0, body.vy ?? 0, dispX, dispY, seg._obstacleGrid)) continue;
-                } else if (!passageEdgeBlocksCollision(seg.passageEdge, seg.gridSide, body.vx ?? 0, body.vy ?? 0)) continue;
+            if (seg.passageEdge) {
+                const edge = seg.passageEdge;
+                const outcome = resolvePassageWallContact({
+                    entity: body,
+                    segment: seg,
+                    edge,
+                    ownerCol: seg.gridCol,
+                    ownerRow: seg.gridRow,
+                    ownerSide: seg.gridSide,
+                    bodyRadius: radius,
+                    vx: body.vx ?? 0,
+                    vy: body.vy ?? 0,
+                    dispX,
+                    dispY,
+                    grid: seg._obstacleGrid,
+                });
+                if (outcome === "consumed" || outcome === "skip") continue;
+            }
             const maxDist = radius + seg.size * 0.75;
             if (Math.abs(body.x - seg.x) > maxDist || Math.abs(body.y - seg.y) > maxDist) continue;
             let normalX;

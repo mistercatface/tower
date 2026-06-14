@@ -1,4 +1,5 @@
 import { addXY, lengthXY, normalizeXY } from "../Math/Vec2.js";
+import { beginPassageWallContactRun, endPassageWallContactRun } from "../Spatial/grid/passageWallContact.js";
 export const explosionImpactKnockback = { stunMs: 500, pushMs: 500, pushSpeedMultiplier: 6 };
 function resolveKnockbackReturnState(actor) {
     return actor.attackType === "charge" ? "charging_prepare" : "navigating";
@@ -14,7 +15,12 @@ function tryApplyExplosionKnockback(actor, pushAngle, spatialFrame, state) {
         pushSpeedMultiplier: explosionImpactKnockback.pushSpeedMultiplier,
         returnState: resolveKnockbackReturnState(actor),
     });
-    state.wallResolver.resolve(actor, spatialFrame);
+    beginPassageWallContactRun(state);
+    try {
+        state.wallResolver.resolve(actor, spatialFrame);
+    } finally {
+        endPassageWallContactRun();
+    }
 }
 /** Push combatants out of an expanding blast and apply knockback where supported. */
 export function repelActorFromExplosion(actor, exp, spatialFrame, state) {

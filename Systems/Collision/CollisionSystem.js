@@ -1,5 +1,6 @@
 import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spatial/collision/overlap.js";
 import { runCollisionPipeline } from "../../Libraries/Spatial/collision/collisionPipeline.js";
+import { beginPassageWallContactRun, endPassageWallContactRun } from "../../Libraries/Spatial/grid/passageWallContact.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
 import { tickPortalContacts } from "../../Libraries/Sandbox/portalTraverse.js";
@@ -50,7 +51,12 @@ export class CollisionSystem {
         collisionRunCtx.state = state;
         collisionRunCtx.spatialFrame = spatialFrame;
         collisionRunCtx.events = events;
-        return runCollisionPipeline(state, spatialFrame, collisionPipelineHooks);
+        beginPassageWallContactRun(state);
+        try {
+            return runCollisionPipeline(state, spatialFrame, collisionPipelineHooks);
+        } finally {
+            endPassageWallContactRun();
+        }
     }
     static applyChargeImpact(charger, other, events) {
         if (getInteractionPairFilter("chargeImpact").allows(charger, other)) events.push({ target: other, damage: getCollisionSettings().chargeImpactDamage ?? 0 });
