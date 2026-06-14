@@ -48,6 +48,33 @@ export { evaluateInputGates, evaluateInputGateRule, isEntityAtRest, isEntityAsle
 export { resolveWorldPropSandboxBehavior, resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
 export { spawnPoolRack } from "./spawnPoolRack.js";
 export { SANDBOX_SCENE_SCHEMA_VERSION, applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
+export {
+    DEFAULT_NODE_GRAPH_GEN_CONFIG,
+    DEFAULT_ROOM_GRAPH_GRID,
+    buildSandboxRoomGraphSceneDoc,
+    buildBranchingNodeTree,
+    buildBranchingRoomTree,
+    buildDirectedGraphEdges,
+    buildNodeGraph,
+    buildRoomsFromNodeGraph,
+    mergeRailWalls,
+    placeGraphNodes,
+    placeRooms,
+    propsForRoomCenters,
+    punchHoleInClosedRoom,
+    punchHolesForDirectedEdges,
+    railWallsForClosedRect,
+    railWallsForClosedRoom,
+    railWallsForClosedRooms,
+    railWallsForRoomOutlines,
+    resolveNodeGraphGenConfig,
+    roomGraphLayoutToSceneDoc,
+    roomWallEdgeKey,
+    tryBuildCorridorRails,
+    tryBuildNodeGraph,
+    tryBuildRoomGraphLayout,
+    tryLayoutRoomGraph,
+} from "./sandboxRoomGraphGen.js";
 export { buildSandboxGraphSceneDoc, spawnSandboxGraphScene } from "./sandboxGraphScene.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
 export { evaluatePortalStepEntry } from "./portalLinks.js";
