@@ -1,7 +1,9 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
 import { applySandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
-/** Edit generator behavior here — callers only override per-run values like `seed`. */
-export const DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS = { corridorEdgeCount: 2 };
+/** Ordered procgen steps — only `op` values handled in `runRoomGraphMotifs` are valid. */
+export const DEFAULT_SANDBOX_GRAPH_MOTIFS = [{ op: "buildNodeGraph" }, { op: "buildClosedRooms" }, { op: "buildCorridors", corridorEdgeCount: 2, canIntersect: false }];
+/** Per-run overrides (e.g. `seed`) merge onto this; edit motifs to change the pipeline. */
+export const DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS = { motifs: DEFAULT_SANDBOX_GRAPH_MOTIFS };
 /** @param {Record<string, unknown>} [overrides] */
 export function resolveSandboxGraphSceneOptions(overrides = {}) {
     return { ...DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS, ...overrides };
@@ -41,6 +43,13 @@ const SANDBOX_SCENE_SCHEMA_VERSION = 7;
  */
 /** @typedef {{ seed: number, config: NodeGraphGenConfig, gridCols: number, gridRows: number, nodes: GraphNode[], treeEdges: { a: number, b: number }[], directedEdges: DirectedEdge[] }} NodeGraph */
 /** @typedef {{ seed: number, gridCols: number, gridRows: number, rooms: GraphNode[], treeEdges: { a: number, b: number }[], graphEdges: DirectedEdge[], nodeGraph: NodeGraph, closedRooms: ClosedRoom[] }} RoomGraphLayout */
+/** @typedef {{ op: "buildNodeGraph" }} BuildNodeGraphMotif */
+/** @typedef {{ op: "buildClosedRooms" }} BuildClosedRoomsMotif */
+/** @typedef {{ op: "punchOneHolePerRoom" }} PunchOneHolePerRoomMotif */
+/** @typedef {{ op: "buildCorridors", corridorEdgeCount?: number, canIntersect?: boolean, requireAll?: boolean }} BuildCorridorsMotif */
+/** @typedef {{ op: "buildAllCorridors", canIntersect?: boolean, requireAll?: boolean }} BuildAllCorridorsMotif */
+/** @typedef {BuildNodeGraphMotif | BuildClosedRoomsMotif | PunchOneHolePerRoomMotif | BuildCorridorsMotif | BuildAllCorridorsMotif} RoomGraphMotif */
+/** @typedef {{ options: Record<string, unknown>, layout: RoomGraphLayout, closedRooms: ClosedRoom[], corridorRails: RailWall[], corridorPaths: Cell[][], corridorEdgeIndices: number[], originCol: number, originRow: number, corridorRng: () => number, holeRng: () => number }} RoomGraphBuildCtx */
 /** All tunable procgen parameters live here; pass overrides into `resolveNodeGraphGenConfig`. */
 export const DEFAULT_NODE_GRAPH_GEN_CONFIG = {
     gridCols: 88,
@@ -477,6 +486,21 @@ export function buildCorridorPathBetweenHoles(parentHole, childHole, nodes, rng,
     }
     return corridorPathIsClear(nodes, path) ? path : null;
 }
+/** @param {Cell} cell */
+function corridorCellKey(cell) {
+    return `${cell.c},${cell.r}`;
+}
+/** @param {Cell[]} path @param {Cell[][]} others */
+export function corridorPathIntersectsAny(path, others) {
+    /** @type {Set<string>} */
+    const keys = new Set();
+    for (let i = 0; i < path.length; i++) keys.add(corridorCellKey(path[i]));
+    for (let i = 0; i < others.length; i++) {
+        const other = others[i];
+        for (let j = 0; j < other.length; j++) if (keys.has(corridorCellKey(other[j]))) return true;
+    }
+    return false;
+}
 /** @param {DirectedEdge} edge @param {GraphNode[]} nodes @param {() => number} rng @param {number} egressCells */
 function buildEdgeCorridorPath(edge, nodes, rng, egressCells) {
     return buildCorridorPathBetweenHoles(edge.parentHole, edge.childHole, nodes, rng, egressCells);
@@ -555,10 +579,12 @@ export function tryBuildCorridorRails(layout, rng, originCol, originRow, options
     return { paths, mask, railWalls: railWallsFromFloorMask(mask, gridCols, gridRows, originCol, originRow) };
 }
 /** Route one tree edge: punch facing holes on both rooms, return corridor rails or null (restores on failure). */
-/** @param {number} edgeIndex @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng @param {number} originCol @param {number} originRow @param {{ halfWidth?: number, egressCells?: number }} [options] */
+/** @param {number} edgeIndex @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng @param {number} originCol @param {number} originRow @param {{ halfWidth?: number, egressCells?: number, canIntersect?: boolean, existingPaths?: Cell[][] }} [options] */
 export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, originCol, originRow, options = {}) {
     const halfWidth = options.halfWidth ?? DEFAULT_CORRIDOR_HALF_WIDTH;
     const egressCells = options.egressCells ?? DEFAULT_CORRIDOR_EGRESS_CELLS;
+    const canIntersect = options.canIntersect !== false;
+    const existingPaths = options.existingPaths ?? [];
     const { rooms, graphEdges, gridCols, gridRows } = layout;
     const edge = graphEdges[edgeIndex];
     const roomA = closedRooms[edge.a];
@@ -570,7 +596,7 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
     edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
     edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
     const path = buildCorridorPathBetweenHoles(edge.parentHole, edge.childHole, rooms, rng, egressCells);
-    if (!path) {
+    if (!path || (!canIntersect && corridorPathIntersectsAny(path, existingPaths))) {
         restoreClosedRoom(roomA, snapA);
         restoreClosedRoom(roomB, snapB);
         edge.parentHole = undefined;
@@ -586,9 +612,10 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
     return { edgeIndex, edge, path, railWalls };
 }
 /** Punch + route up to `corridorEdgeCount` tree edges (shuffled order). Shared rooms accumulate holes. */
-/** @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng @param {number} originCol @param {number} originRow @param {{ corridorEdgeCount?: number, halfWidth?: number, egressCells?: number }} [options] */
+/** @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng @param {number} originCol @param {number} originRow @param {{ corridorEdgeCount?: number, canIntersect?: boolean, halfWidth?: number, egressCells?: number }} [options] */
 export function tryBuildCorridorRailsForEdges(layout, closedRooms, rng, originCol, originRow, options = {}) {
     const corridorEdgeCount = options.corridorEdgeCount ?? 1;
+    const canIntersect = options.canIntersect !== false;
     const { graphEdges } = layout;
     /** @type {number[]} */
     const order = graphEdges.map((_, i) => i);
@@ -600,9 +627,13 @@ export function tryBuildCorridorRailsForEdges(layout, closedRooms, rng, originCo
     }
     /** @type {{ edgeIndex: number, path: Cell[], railWalls: RailWall[] }[]} */
     const built = [];
+    /** @type {Cell[][]} */
+    const placedPaths = [];
     for (let k = 0; k < order.length && built.length < corridorEdgeCount; k++) {
-        const result = tryBuildCorridorForEdge(order[k], layout, closedRooms, rng, originCol, originRow, options);
-        if (result) built.push(result);
+        const result = tryBuildCorridorForEdge(order[k], layout, closedRooms, rng, originCol, originRow, { ...options, canIntersect, existingPaths: placedPaths });
+        if (!result) continue;
+        built.push(result);
+        placedPaths.push(result.path);
     }
     if (built.length === 0) return null;
     return { edgeIndices: built.map((b) => b.edgeIndex), paths: built.map((b) => b.path), railWalls: mergeRailWalls(built.map((b) => b.railWalls)) };
@@ -648,65 +679,89 @@ export function propsForRoomCenters(layout, originCol, originRow, cellSize = 16)
     }
     return props;
 }
-/** @param {{ corridorEdgeCount?: number, singleCorridor?: boolean, includeCorridors?: boolean }} options */
-function resolveCorridorEdgeCount(options) {
-    if (options.corridorEdgeCount != null) return options.corridorEdgeCount;
-    if (options.singleCorridor === true) return 1;
-    return 0;
+/** @param {RoomGraphMotif} motif @param {RoomGraphBuildCtx} ctx */
+function runRoomGraphMotif(motif, ctx) {
+    if (motif.op === "buildNodeGraph") {
+        const nodeGraph = tryBuildNodeGraph(ctx.options);
+        ctx.layout = layoutFromNodeGraph(nodeGraph, []);
+        ctx.closedRooms = ctx.layout.closedRooms;
+        const origin = roomGraphOrigin(ctx.layout.gridCols, ctx.layout.gridRows);
+        ctx.originCol = origin.originCol;
+        ctx.originRow = origin.originRow;
+        ctx.corridorRng = createSeededRng(ctx.layout.seed + 99991);
+        ctx.holeRng = createSeededRng(ctx.layout.seed + 31337);
+        return;
+    }
+    if (motif.op === "buildClosedRooms") {
+        ctx.closedRooms = buildRoomsFromNodeGraph(ctx.layout.nodeGraph);
+        ctx.layout.closedRooms = ctx.closedRooms;
+        return;
+    }
+    if (motif.op === "punchOneHolePerRoom") {
+        punchOneHolePerRoom(ctx.closedRooms, ctx.holeRng);
+        return;
+    }
+    if (motif.op === "buildCorridors") {
+        const corridor = tryBuildCorridorRailsForEdges(ctx.layout, ctx.closedRooms, ctx.corridorRng, ctx.originCol, ctx.originRow, {
+            corridorEdgeCount: motif.corridorEdgeCount ?? 1,
+            canIntersect: motif.canIntersect !== false,
+        });
+        const want = motif.corridorEdgeCount ?? 1;
+        if (!corridor) {
+            if (motif.requireAll) throw new Error(`buildCorridors: could not place any of ${want} corridors`);
+            return;
+        }
+        if (motif.requireAll && corridor.edgeIndices.length < want) throw new Error(`buildCorridors: placed ${corridor.edgeIndices.length}/${want}`);
+        ctx.corridorEdgeIndices.push(...corridor.edgeIndices);
+        ctx.corridorPaths.push(...corridor.paths);
+        ctx.corridorRails.push(...corridor.railWalls);
+        return;
+    }
+    if (motif.op === "buildAllCorridors") {
+        const corridor = tryBuildCorridorRailsForEdges(ctx.layout, ctx.closedRooms, ctx.corridorRng, ctx.originCol, ctx.originRow, {
+            corridorEdgeCount: ctx.layout.graphEdges.length,
+            canIntersect: motif.canIntersect !== false,
+        });
+        if (!corridor) {
+            if (motif.requireAll) throw new Error("buildAllCorridors: routing failed");
+            return;
+        }
+        if (motif.requireAll && corridor.edgeIndices.length < ctx.layout.graphEdges.length) throw new Error(`buildAllCorridors: placed ${corridor.edgeIndices.length}/${ctx.layout.graphEdges.length}`);
+        ctx.corridorEdgeIndices.push(...corridor.edgeIndices);
+        ctx.corridorPaths.push(...corridor.paths);
+        ctx.corridorRails.push(...corridor.railWalls);
+        return;
+    }
+    throw new Error(`Unknown room graph motif op: ${motif.op}`);
 }
-/** @param {RoomGraphLayout} layout @param {{ originCol: number, originRow: number, cellSize?: number, punchHoles?: boolean, punchOneHolePerRoom?: boolean, includeCorridors?: boolean, singleCorridor?: boolean, corridorEdgeCount?: number, requireCorridors?: boolean, corridorRng?: () => number, holeRng?: () => number }} options */
+/** Run an ordered motif list; throws on unknown ops or unmet requireAll. */
+/** @param {RoomGraphMotif[]} motifs @param {Record<string, unknown>} [options] */
+export function runRoomGraphMotifs(motifs, options = {}) {
+    if (!Array.isArray(motifs) || motifs.length === 0) throw new Error("motifs must be a non-empty array");
+    /** @type {RoomGraphBuildCtx} */
+    const ctx = {
+        options,
+        layout: /** @type {RoomGraphLayout} */ (/** @type {unknown} */ (null)),
+        closedRooms: /** @type {ClosedRoom[]} */ (/** @type {unknown} */ (null)),
+        corridorRails: [],
+        corridorPaths: [],
+        corridorEdgeIndices: [],
+        originCol: 0,
+        originRow: 0,
+        corridorRng: createSeededRng(0),
+        holeRng: createSeededRng(0),
+    };
+    for (let i = 0; i < motifs.length; i++) runRoomGraphMotif(motifs[i], ctx);
+    return ctx;
+}
+/** @param {RoomGraphLayout} layout @param {{ originCol: number, originRow: number, cellSize?: number, corridorRails?: RailWall[], corridorPaths?: Cell[][], corridorEdgeIndices?: number[], motifs?: RoomGraphMotif[] }} options */
 export function roomGraphLayoutToSceneDoc(layout, options) {
     const cellSize = options.cellSize ?? 16;
     const { originCol, originRow } = options;
-    const nodeGraph = layout.nodeGraph ?? {
-        nodes: layout.rooms,
-        treeEdges: layout.treeEdges,
-        directedEdges: layout.graphEdges,
-        seed: layout.seed,
-        config: resolveNodeGraphGenConfig(),
-        gridCols: layout.gridCols,
-        gridRows: layout.gridRows,
-    };
-    const closedRooms = layout.closedRooms ?? buildRoomsFromNodeGraph(nodeGraph);
-    if (options.punchOneHolePerRoom === true && closedRooms.every((room) => room.holes.length === 0)) {
-        const holeRng = options.holeRng ?? createSeededRng(layout.seed + 31337);
-        punchOneHolePerRoom(closedRooms, holeRng);
-    } else if (options.punchHoles === true && closedRooms.every((room) => room.holes.length === 0)) {
-        const holeRng = options.holeRng ?? createSeededRng(layout.seed + 31337);
-        punchHolesForDirectedEdges(nodeGraph, closedRooms, holeRng);
-    }
-    /** @type {RailWall[]} */
-    const corridorRails = [];
-    /** @type {Cell[][]} */
-    const corridorPaths = [];
-    /** @type {number[]} */
-    const corridorEdgeIndices = [];
-    const corridorEdgeCount = resolveCorridorEdgeCount(options);
-    if (corridorEdgeCount > 0) {
-        const rng = options.corridorRng ?? createSeededRng(layout.seed + 99991);
-        const corridor = tryBuildCorridorRailsForEdges(layout, closedRooms, rng, originCol, originRow, { corridorEdgeCount });
-        if (!corridor) {
-            if (options.requireCorridors) throw new Error(`Corridor routing failed — could not place any of ${corridorEdgeCount} corridors`);
-        } else {
-            if (options.requireCorridors && corridor.edgeIndices.length < corridorEdgeCount) throw new Error(`Corridor routing failed — placed ${corridor.edgeIndices.length}/${corridorEdgeCount}`);
-            corridorEdgeIndices.push(...corridor.edgeIndices);
-            corridorRails.push(...corridor.railWalls);
-            corridorPaths.push(...corridor.paths);
-        }
-    } else if (options.includeCorridors) {
-        if (layout.graphEdges.some((edge) => !edge.parentHole || !edge.childHole)) {
-            const holeRng = options.holeRng ?? createSeededRng(layout.seed + 31337);
-            punchHolesForDirectedEdges(nodeGraph, closedRooms, holeRng);
-        }
-        const rng = options.corridorRng ?? createSeededRng(layout.seed);
-        const corridor = tryBuildCorridorRails(layout, rng, originCol, originRow);
-        if (!corridor) {
-            if (options.requireCorridors) throw new Error("Corridor routing failed for this layout");
-        } else {
-            corridorRails.push(...corridor.railWalls);
-            corridorPaths.push(...corridor.paths);
-        }
-    }
+    const closedRooms = layout.closedRooms ?? buildRoomsFromNodeGraph(layout.nodeGraph);
+    const corridorRails = options.corridorRails ?? [];
+    const corridorPaths = options.corridorPaths ?? [];
+    const corridorEdgeIndices = options.corridorEdgeIndices ?? [];
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
     const gapKeysWorld = roomWallGapKeysWorld(closedRooms, originCol, originRow);
     return {
@@ -725,31 +780,24 @@ export function roomGraphLayoutToSceneDoc(layout, options) {
         meta: {
             generator: "roomGraph",
             seed: layout.seed,
-            punchOneHolePerRoom: options.punchOneHolePerRoom === true,
-            punchHoles: options.punchHoles === true,
-            corridorEdgeCount: corridorEdgeCount > 0 ? corridorEdgeCount : undefined,
+            motifs: options.motifs,
             corridorEdgeIndices,
-            includeCorridors: options.includeCorridors === true,
             rooms: layout.rooms.map((r) => ({ id: r.id, c0: r.c0, c1: r.c1, r0: r.r0, r1: r.r1, centerC: r.centerC, centerR: r.centerR, width: r.width, height: r.height })),
             edges: layout.graphEdges,
             corridors: corridorPaths.map((path, i) => ({ edge: corridorEdgeIndices[i] ?? i, length: path.length, from: path[0], to: path[path.length - 1] })),
         },
     };
 }
-/** @param {Partial<NodeGraphGenConfig> & { seed?: number, roomCount?: number, minRooms?: number, punchHoles?: boolean, punchOneHolePerRoom?: boolean, includeCorridors?: boolean, singleCorridor?: boolean, corridorEdgeCount?: number, requireCorridors?: boolean }} [options] */
+/** @param {Record<string, unknown>} [options] */
 export function buildSandboxRoomGraphSceneDoc(options = {}) {
-    const layout = tryBuildRoomGraphLayout({ ...options, punchOneHolePerRoom: options.punchOneHolePerRoom === true, punchHoles: options.punchHoles === true });
-    const { originCol, originRow } = roomGraphOrigin(layout.gridCols, layout.gridRows);
-    return roomGraphLayoutToSceneDoc(layout, {
-        originCol,
-        originRow,
-        punchOneHolePerRoom: options.punchOneHolePerRoom === true,
-        punchHoles: options.punchHoles === true,
-        singleCorridor: options.singleCorridor === true,
-        corridorEdgeCount: options.corridorEdgeCount,
-        includeCorridors: options.includeCorridors === true,
-        requireCorridors: options.requireCorridors === true,
-        corridorRng: createSeededRng(layout.seed + 99991),
-        holeRng: createSeededRng(layout.seed + 31337),
+    const motifs = /** @type {RoomGraphMotif[]} */ (options.motifs ?? DEFAULT_SANDBOX_GRAPH_MOTIFS);
+    const ctx = runRoomGraphMotifs(motifs, options);
+    return roomGraphLayoutToSceneDoc(ctx.layout, {
+        originCol: ctx.originCol,
+        originRow: ctx.originRow,
+        corridorRails: ctx.corridorRails,
+        corridorPaths: ctx.corridorPaths,
+        corridorEdgeIndices: ctx.corridorEdgeIndices,
+        motifs,
     });
 }

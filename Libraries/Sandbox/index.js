@@ -55,6 +55,7 @@ export {
     buildSandboxGraphSceneDoc,
     spawnSandboxGraphScene,
     DEFAULT_SANDBOX_GRAPH_SCENE_OPTIONS,
+    DEFAULT_SANDBOX_GRAPH_MOTIFS,
     resolveSandboxGraphSceneOptions,
     buildBranchingNodeTree,
     buildBranchingRoomTree,
@@ -87,6 +88,8 @@ export {
     tryLayoutRoomGraph,
     wireDirectedEdgeToRoomHoles,
     buildCorridorPathBetweenHoles,
+    corridorPathIntersectsAny,
+    runRoomGraphMotifs,
 } from "./sandboxRoomGraphGen.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
 export { evaluatePortalStepEntry } from "./portalLinks.js";
