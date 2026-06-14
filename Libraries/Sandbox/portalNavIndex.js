@@ -25,7 +25,7 @@ export function buildPortalNavHops(state, grid) {
             if (!cellInRect(toCol, toRow, grid.cols, grid.rows)) continue;
             const entry = evaluatePortalStepEntry(state, grid, fromCol, fromRow, toCol, toRow);
             if (!entry) continue;
-            const exit = portalTraverseExitCell(entry.partner.col, entry.partner.row, fromCol, fromRow, toCol, toRow);
+            const exit = portalTraverseExitCell(entry.partner.col, entry.partner.row, entry.partner.side, fromCol, fromRow, toCol, toRow);
             if (!cellInRect(exit.col, exit.row, grid.cols, grid.rows) || grid.grid[colRowToIndex(exit.col, exit.row, grid.cols)] !== 0) continue;
             let list = hopsByFromIdx.get(idx);
             if (!list) {

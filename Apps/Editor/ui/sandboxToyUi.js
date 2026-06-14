@@ -107,7 +107,7 @@ function appendPortalEditorFields(body, controller, selected, { stampDefaults = 
                 onChange();
             },
         });
-        appendEditorHint(body, `${selected.connectionLabel}. Shared = green both ends; one-way = orange depart, green receive.`);
+        appendEditorHint(body, `${selected.connectionLabel}. Shared = green both ends; one-way = green depart, orange receive.`);
     }
     if (selected.onNetwork && linkTargets.length > 0)
         appendSelectField(body, "Link partner", {

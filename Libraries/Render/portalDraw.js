@@ -57,8 +57,8 @@ function solidWallColors() {
 function statusCircleStyle(powered, linkRole) {
     if (!powered) return { fill: "rgba(100, 116, 139, 0.55)", stroke: "rgba(148, 163, 184, 0.45)" };
     if (linkRole === "unlinked") return { fill: "rgba(167, 139, 250, 0.95)", stroke: "rgba(255, 255, 255, 0.85)" };
-    if (linkRole === "shared" || linkRole === "oneWayReceive") return { fill: "rgba(34, 197, 94, 0.95)", stroke: "rgba(255, 255, 255, 0.9)" };
-    if (linkRole === "oneWayDepart") return { fill: "rgba(251, 146, 60, 0.98)", stroke: "rgba(255, 255, 255, 0.9)" };
+    if (linkRole === "shared" || linkRole === "oneWayDepart") return { fill: "rgba(34, 197, 94, 0.95)", stroke: "rgba(255, 255, 255, 0.9)" };
+    if (linkRole === "oneWayReceive") return { fill: "rgba(251, 146, 60, 0.98)", stroke: "rgba(255, 255, 255, 0.9)" };
     return { fill: "rgba(100, 116, 139, 0.55)", stroke: "rgba(148, 163, 184, 0.45)" };
 }
 /**
