@@ -2,22 +2,24 @@ import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex } from "./GridUtils.js";
 import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCellDamage.js";
 import {
-    gridWallEdgeRailShouldEmit,
-    gridBeltRailEdgeShouldEmit,
-    gridPoweredPassageEdgeShouldEmit,
+    gridWallEdgeEndpoints,
+    gridEdgeRailCollisionShouldEmit,
     gridEdgeRailCollisionThicknessPx,
     gridForcefieldEdge,
+    gridPoweredPassageEdgeShouldEmit,
     scanStaticStructureZLevelsFromGrid,
 } from "../../World/wallGridCells.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
-import { boundaryBlocksStep, boundaryBlocksStepFrom, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
+import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 import { collectSegmentsAlongLine, collectSegmentsInWorldBounds, collectSegmentsNearPose, segmentGridLayoutFromObstacleGrid } from "./segmentGridWalk.js";
 export { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
+const EDGE_PROXY_P1 = { x: 0, y: 0 };
+const EDGE_PROXY_P2 = { x: 0, y: 0 };
 /**
  * Occupancy + per-cell wall segment index. Implements NavGraph for pathfinding.
  * grid[]: 0 = open, 1 … maxWallHeightLevel = static wall height level.
@@ -118,38 +120,14 @@ export class WorldObstacleGrid {
                 out.push(this._borrowStaticWallProxy(x, y, col, row));
             }
             for (let side = 0; side < 4; side++) {
-                const beltRail = gridBeltRailEdgeShouldEmit(this, col, row, side);
-                const railWall = gridWallEdgeRailShouldEmit(this, col, row, side);
+                if (!gridEdgeRailCollisionShouldEmit(this, col, row, side)) continue;
                 const poweredPassage = gridPoweredPassageEdgeShouldEmit(this, col, row, side);
-                if (!beltRail && !railWall && !poweredPassage) continue;
-                const thickness = beltRail ? 1 : gridEdgeRailCollisionThicknessPx(this, col, row, side);
-                const bounds = this.getCellBounds(col, row);
-                const minX = bounds.minX;
-                const minY = bounds.minY;
-                const maxX = bounds.maxX;
-                const maxY = bounds.maxY;
-                let p1x, p1y, p2x, p2y;
-                if (side === 0) {
-                    p1x = minX;
-                    p1y = minY;
-                    p2x = maxX;
-                    p2y = minY;
-                } else if (side === 1) {
-                    p1x = maxX;
-                    p1y = minY;
-                    p2x = maxX;
-                    p2y = maxY;
-                } else if (side === 2) {
-                    p1x = maxX;
-                    p1y = maxY;
-                    p2x = minX;
-                    p2y = maxY;
-                } else {
-                    p1x = minX;
-                    p1y = maxY;
-                    p2x = minX;
-                    p2y = minY;
-                }
+                const thickness = gridEdgeRailCollisionThicknessPx(this, col, row, side);
+                gridWallEdgeEndpoints(this, col, row, side, EDGE_PROXY_P1, EDGE_PROXY_P2, 0);
+                const p1x = EDGE_PROXY_P1.x;
+                const p1y = EDGE_PROXY_P1.y;
+                const p2x = EDGE_PROXY_P2.x;
+                const p2y = EDGE_PROXY_P2.y;
                 const dx = p2x - p1x;
                 const dy = p2y - p1y;
                 const len = Math.hypot(dx, dy);
@@ -366,9 +344,9 @@ export class WorldObstacleGrid {
     clearCellEdge(col, row, side) {
         clearBoundaryPrimary(this, col, row, side, { bumpRevision: true });
     }
-    /** Clear all edge slots on one cell (does not bump revision). */
+    /** Clear all boundary edges on one cell (does not bump revision). */
     clearCellEdges(col, row) {
-        for (let side = 0; side < 4; side++) this.edgeStore.clearMirrored(col, row, side, this.cols, this.rows);
+        clearAllBoundariesAtCell(this, col, row, { bumpRevision: false });
     }
     /** @param {number} col @param {number} row @param {number} side */
     getCellEdge(col, row, side) {

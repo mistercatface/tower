@@ -7,6 +7,7 @@ import { packCellKey, packEdgeCellKey } from "../../../Libraries/DataStructures/
 import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/sandboxWalls.js";
+import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWallAtIdx, gridCellToGlobalColRow } from "../../../Libraries/World/wallGridCells.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
@@ -295,8 +296,8 @@ export function generateLabRailCaverns(state) {
             if (hCells[lr * hCols + lc] !== 1) continue;
             const col = baseCol + lc;
             const row = baseRow + lr;
-            if (row >= 0 && row < grid.rows && col >= 0 && col < grid.cols) grid.writeCellEdge(col, row, 0, level, thickness);
-            else if (row - 1 >= 0 && row - 1 < grid.rows && col >= 0 && col < grid.cols) grid.writeCellEdge(col, row - 1, 2, level, thickness);
+            if (row >= 0 && row < grid.rows && col >= 0 && col < grid.cols) setBoundary(grid, col, row, 0, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
+            else if (row - 1 >= 0 && row - 1 < grid.rows && col >= 0 && col < grid.cols) setBoundary(grid, col, row - 1, 2, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
         }
     // 5. Stamp Vertical Edges
     for (let lr = 0; lr < vRows; lr++)
@@ -304,8 +305,8 @@ export function generateLabRailCaverns(state) {
             if (vCells[lr * vCols + lc] !== 1) continue;
             const col = baseCol + lc;
             const row = baseRow + lr;
-            if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) grid.writeCellEdge(col, row, 3, level, thickness);
-            else if (col - 1 >= 0 && col - 1 < grid.cols && row >= 0 && row < grid.rows) grid.writeCellEdge(col - 1, row, 1, level, thickness);
+            if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, col, row, 3, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
+            else if (col - 1 >= 0 && col - 1 < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, col - 1, row, 1, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
         }
     grid.bumpWallGridRevision();
     const damageBounds = { startCol, endCol, startRow, endRow };

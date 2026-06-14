@@ -102,6 +102,10 @@ export function gridPoweredPassageEdgeShouldEmit(grid, col, row, side) {
     if (!edge || !passageEdgeEmitsCollision(edge)) return false;
     return gridEdgeRailEmitOwner(grid, col, row, side);
 }
+/** Single-owner edge rails that emit collision segments — beltRail, railWall, or powered blocking passage. */
+export function gridEdgeRailCollisionShouldEmit(grid, col, row, side) {
+    return gridBeltRailEdgeShouldEmit(grid, col, row, side) || gridWallEdgeRailShouldEmit(grid, col, row, side) || gridPoweredPassageEdgeShouldEmit(grid, col, row, side);
+}
 /** Edge-rail collision thickness — stored railWall or default rail profile when powered passage blocks. */
 export function gridEdgeRailCollisionThicknessPx(grid, col, row, side, defaultPassageThicknessLevel = 2) {
     const railEdge = gridRailWallEdge(grid, col, row, side);

@@ -87,6 +87,41 @@ export function clearBoundaryPrimary(grid, col, row, side, { bumpRevision = fals
     return true;
 }
 /**
+ * Clear one boundary slot — primary (railWall, passage) or derived beltRail.
+ *
+ * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {number} col
+ * @param {number} row
+ * @param {number} side
+ * @param {{ bumpRevision?: boolean }} [opts]
+ * @returns {boolean}
+ */
+export function clearBoundaryAtSide(grid, col, row, side, { bumpRevision = false } = {}) {
+    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    const edge = grid.edgeStore.get(col, row, side, grid.cols);
+    if (!edge) return false;
+    if (isRailWallEdge(edge) || isForcefieldEdge(edge)) return clearBoundaryPrimary(grid, col, row, side, { bumpRevision });
+    if (isBeltRailEdge(edge)) {
+        clearDerivedBeltRail(grid, col, row, side);
+        if (bumpRevision) grid.bumpWallGridRevision();
+        return true;
+    }
+    return false;
+}
+/**
+ * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {number} col
+ * @param {number} row
+ * @param {{ bumpRevision?: boolean }} [opts]
+ * @returns {boolean}
+ */
+export function clearAllBoundariesAtCell(grid, col, row, { bumpRevision = false } = {}) {
+    let changed = false;
+    for (let side = 0; side < 4; side++) if (clearBoundaryAtSide(grid, col, row, side, { bumpRevision: false })) changed = true;
+    if (changed && bumpRevision) grid.bumpWallGridRevision();
+    return changed;
+}
+/**
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {number} col
  * @param {number} row

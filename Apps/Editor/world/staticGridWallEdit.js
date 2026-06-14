@@ -5,6 +5,7 @@ import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { packCellKey, packEdgeCellKey } from "../../../Libraries/DataStructures/CellKey.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/sandboxWalls.js";
+import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import { cellIsStaticWall, cellIsStaticWallAtIdx } from "../../../Libraries/World/wallGridCells.js";
 import { forEachGlobalCellInBounds, getCellBoundsAabb } from "./cellBoundsConfig.js";
@@ -83,7 +84,7 @@ export function stampWallEdgesInBounds(state, boundsConfig, side, heightLevel, t
     forEachGlobalCellInBounds(boundsConfig, (globalCol, globalRow) => {
         const local = globalCellToLocal(grid, globalCol, globalRow);
         if (!local) return;
-        grid.writeCellEdge(local.col, local.row, side, level, thicknessLevel);
+        setBoundary(grid, local.col, local.row, side, { kind: "railWall", capHeightLevel: level, thicknessLevel });
         any = true;
         if (local.col < startCol) startCol = local.col;
         if (local.col > endCol) endCol = local.col;
