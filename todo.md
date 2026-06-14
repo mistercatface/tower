@@ -4,6 +4,12 @@
 
 ## CURRENT TASK: PORTALS
 
+## REFACTOR TASKS
+
+- Generic registered boundary interaction framework
+- Library pass
+- Hook conveyors + forcefields + portals into proper quantized sprite cache system
+
 ---
 
 ## Passage power network — checklist

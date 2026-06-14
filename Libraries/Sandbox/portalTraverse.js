@@ -1,5 +1,4 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { distanceSqToSegment } from "../Spatial/geometry/WallGeometry.js";
 import { isPortalEdge, PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import {
     portalBodyCrossedEntryPlane,
@@ -17,7 +16,19 @@ import { quantizeCardinalAngle } from "../Math/Angle.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { evaluatePortalStepEntry } from "./portalLinks.js";
 const PORTAL_TRAVERSE_COOLDOWN_MS = 50;
+const PORTAL_REJECT_COOLDOWN_MS = 16;
 const PORTAL_EXIT_PAD_CELL_FRAC = 0.15;
+const PORTAL_REJECT_NUDGE_CELL_FRAC = 0.12;
+/** Push back toward the mouth side when intake evaluated but traverse did not commit. */
+function rejectPortalIntake(entity, cross, grid, gameTime) {
+    const bodyRadius = entity.getShape().getBoundingRadius();
+    const dist = bodyRadius + grid.cellSize * PORTAL_REJECT_NUDGE_CELL_FRAC;
+    entity.x -= cross.x * dist;
+    entity.y -= cross.y * dist;
+    entity._portalTraverseUntil = gameTime + PORTAL_REJECT_COOLDOWN_MS;
+    invalidateWallResolveCache(entity);
+    wakePushableBody(entity);
+}
 /** @param {object} entity @param {{ x: number, y: number }} exitOut */
 function applyPortalExitMotion(entity, exitOut) {
     const exitSpeed = Math.max(Math.hypot(entity.vx, entity.vy), Math.hypot(entity._frameDispX ?? 0, entity._frameDispY ?? 0));
@@ -87,7 +98,9 @@ export function tryPortalIntake(state, entity, segment) {
     if (!portalBodyCrossedEntryPlane(entity.x, entity.y, mouth, back, cross, grid, bodyRadius)) return false;
     const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
     if (!entry) return false;
-    return applyPortalTraverse(state, entity, entry);
+    if (applyPortalTraverse(state, entity, entry)) return true;
+    rejectPortalIntake(entity, cross, grid, now);
+    return false;
 }
 let passageHandlersRegistered = false;
 /** Wire portal wall contact into the passage handler registry. Idempotent. */
