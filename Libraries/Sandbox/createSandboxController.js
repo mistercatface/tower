@@ -523,7 +523,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             session.sync();
         },
         loadMazeScene() {
-            spawnSandboxMazeScene(state);
+            spawnSandboxMazeScene(state, { seed: Date.now() >>> 0 });
             resetBehaviors();
             session.clearPropSelection();
             session.clearFloorSelection();

@@ -400,7 +400,7 @@ function renderSceneJsonPanel(container, controller, onChange) {
     const mazeDemoBtn = document.createElement("button");
     mazeDemoBtn.type = "button";
     mazeDemoBtn.className = "secondary";
-    mazeDemoBtn.textContent = "Load belt test floor";
+    mazeDemoBtn.textContent = "Generate belt network";
     const textarea = document.createElement("textarea");
     textarea.className = "editor-export-area";
     textarea.rows = 10;
@@ -412,7 +412,7 @@ function renderSceneJsonPanel(container, controller, onChange) {
         onChange();
     });
     mazeDemoBtn.addEventListener("click", () => {
-        if (!window.confirm("Replace the current sandbox with the belt test floor?")) return;
+        if (!window.confirm("Replace the sandbox with a new generated belt network?")) return;
         controller.loadMazeScene();
         textarea.value = controller.exportSceneSnapshot();
         onChange();
