@@ -571,7 +571,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             if (visual === "off" || !behavior?.getPathOverlay) return;
             const overlay = behavior.getPathOverlay(prop);
             if (!overlay) return;
-            drawActivePathOverlay(ctx, overlay, state.viewport.zoom, visual);
+            drawActivePathOverlay(ctx, overlay, state.viewport.zoom, visual, state.obstacleGrid);
         },
         drawLaunchPreview(ctx) {
             const prop = session.getSelectedProp();
