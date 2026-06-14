@@ -19,6 +19,7 @@ import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWall
 import { portalAccessDefaultAllowedSide } from "../../../Libraries/Spatial/grid/portalAccess.js";
 import { appendAxisNumberFields, appendEditorHint, appendEditorSubhead, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
+import { appendMapGenEditor } from "./mapGenEditors.js";
 const WALL_STAMP_OPTIONS = [
     { value: "voxel", label: "Voxel block" },
     { value: "rail", label: "Rail wall" },
@@ -179,8 +180,13 @@ function resolvePropPaletteSwatch(asset) {
     const colors = asset?.visuals?.colors;
     return colors?.bodyInspect ?? colors?.top ?? colors?.side ?? "#64748b";
 }
+const MAP_GEN_PALETTE_OPTIONS = [
+    { key: "gen:cavern", genKind: "cavern", label: "Cavern generation", swatch: "#ff9800", glyph: "Cv" },
+    { key: "gen:rail", genKind: "rail", label: "Rail wall generation", swatch: "#e040fb", glyph: "Rw" },
+];
 /** @param {string[]} propIds */
 function buildPlacePaletteItems(propIds) {
+    /** @type {{ key: string, kind: "prop" | "wall" | "gen", label: string, swatch: string, glyph: string, genKind?: "cavern" | "rail" }[]} */
     const items = [];
     for (const id of propIds) {
         const asset = getPropAsset(id);
@@ -189,6 +195,8 @@ function buildPlacePaletteItems(propIds) {
     }
     for (const option of WALL_STAMP_OPTIONS)
         items.push({ key: `wall:${option.value}`, kind: "wall", label: option.label, swatch: WALL_PALETTE_SWATCHES[option.value], glyph: option.label.slice(0, 1) });
+    for (const option of MAP_GEN_PALETTE_OPTIONS) items.push({ key: option.key, kind: "gen", genKind: option.genKind, label: option.label, swatch: option.swatch, glyph: option.glyph });
+    items.sort((a, b) => a.label.localeCompare(b.label));
     return items;
 }
 /** @param {HTMLElement} parent @param {{ key: string, label: string, swatch: string, glyph: string }[]} items @param {string} activeKey @param {(key: string) => void} onSelect */
@@ -453,9 +461,10 @@ function maxWallHeightLevel(controller) {
  * @param {() => void} onChange
  */
 export function mountSandboxToyUi(container, controller, onChange) {
+    const state = controller.getState();
     const propIds = Object.keys(getWorldPropDefinitions())
         .filter((id) => isSandboxSpawnable(getPropAsset(id)))
-        .sort();
+        .sort((a, b) => formatSandboxSpawnLabel(a).localeCompare(formatSandboxSpawnLabel(b)));
     let isFirstRender = true;
     const render = () => {
         const openSections = readOpenSections(container);
@@ -498,9 +507,10 @@ export function mountSandboxToyUi(container, controller, onChange) {
             paramsHost.className = "spawn-palette-params";
             body.appendChild(paramsHost);
             if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), onChange);
-            else appendWallPlaceParams(paramsHost, controller, onChange, { wallStampMode, selectedRail, selectedVoxelInfo, selectedRailInfo, selectedPortalInfo });
+            else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, controller, onChange, { wallStampMode, selectedRail, selectedVoxelInfo, selectedRailInfo, selectedPortalInfo });
+            else appendMapGenEditor(paramsHost, state, activeItem.genKind, onChange);
         });
-        const placed = controller.listPlacedProps();
+        const placed = controller.listPlacedProps().sort((a, b) => a.label.localeCompare(b.label));
         const floorBelts = controller.listPlacedFloorBelts();
         const powerSources = controller.listPlacedPassagePowerSources();
         const forcefields = controller.listPlacedForcefields();

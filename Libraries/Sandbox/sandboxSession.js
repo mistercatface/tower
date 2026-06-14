@@ -318,6 +318,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         getPlacePaletteKey: () => placePaletteKey,
         isWallPlaceMode: () => placePaletteKey.startsWith("wall:"),
+        isMapGenPlaceMode: () => placePaletteKey.startsWith("gen:"),
         setPlacePaletteKey(key) {
             if (placePaletteKey === key) return;
             placePaletteKey = key;
@@ -328,6 +329,11 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 dropFloorSelection();
             } else if (key.startsWith("prop:")) {
                 spawnPropId = key.slice(5);
+                dropWallSelection();
+            } else if (key.startsWith("gen:")) {
+                selectedPropIds.clear();
+                selectedPropId = null;
+                dropFloorSelection();
                 dropWallSelection();
             }
             sync();

@@ -1,5 +1,6 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { getCavernCenterWorld, getCavernInnerRadiusCells, migrateCavernConfigForMode } from "../world/cavernBounds.js";
+import { activeMapGenKind } from "./mapOverview.js";
 import { drawWorldBoundsBox, drawWorldCircle, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
 export { drawWorldBoundsBox, drawWorldCircle } from "./mapOverviewDraw.js";
 const EDGE_HIT_PX = 8;
@@ -222,56 +223,42 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
         const rect = canvas.getBoundingClientRect();
         const sx = ((e.clientX - rect.left) / rect.width) * frame.displayW;
         const sy = ((e.clientY - rect.top) / rect.height) * frame.displayH;
-        if (dragMode && dragTarget) {
-            const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
-            if (dragTarget === "cavern")
-                if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.cavernConfig);
-                else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.cavernConfig);
-            else if (dragTarget === "rail")
-                if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.railConfig);
-                else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.railConfig);
-            lastWorldX = world.x;
-            lastWorldY = world.y;
-            onChange();
+        if (!dragMode) {
+            const genKind = activeMapGenKind(state);
+            if (!genKind) {
+                canvas.style.cursor = "default";
+                return;
+            }
+            const hit =
+                genKind === "rail" ? hitTestRailBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH) : hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
+            canvas.style.cursor = cavernBoundsCursor(hit);
             return;
         }
-        let cursor = "default";
-        if (state.editor.showMapOverviewRailBounds) {
-            const railHit = hitTestRailBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
-            if (railHit) cursor = cavernBoundsCursor(railHit);
-        }
-        if (cursor === "default" && state.editor.showMapOverviewGenBounds) {
-            const cavernHit = hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
-            if (cavernHit) cursor = cavernBoundsCursor(cavernHit);
-        }
-        canvas.style.cursor = cursor;
+        const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
+        if (dragTarget === "cavern")
+            if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.cavernConfig);
+            else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.cavernConfig);
+        else if (dragTarget === "rail")
+            if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.railConfig);
+            else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.railConfig);
+        lastWorldX = world.x;
+        lastWorldY = world.y;
+        onChange();
     });
     canvas.addEventListener("pointerdown", (e) => {
         const frame = getFrame();
         if (!frame) return;
+        const genKind = activeMapGenKind(state);
+        if (!genKind) return;
         const rect = canvas.getBoundingClientRect();
         const sx = ((e.clientX - rect.left) / rect.width) * frame.displayW;
         const sy = ((e.clientY - rect.top) / rect.height) * frame.displayH;
-        if (state.editor.showMapOverviewRailBounds) {
-            const railHit = hitTestRailBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
-            if (railHit) {
-                e.preventDefault();
-                e.stopPropagation();
-                dragTarget = "rail";
-                dragMode = railHit;
-                const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
-                lastWorldX = world.x;
-                lastWorldY = world.y;
-                canvas.setPointerCapture(e.pointerId);
-                return;
-            }
-        }
-        if (!state.editor.showMapOverviewGenBounds) return;
-        const hit = hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
+        const hit =
+            genKind === "rail" ? hitTestRailBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH) : hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
         if (!hit) return;
         e.preventDefault();
         e.stopPropagation();
-        dragTarget = "cavern";
+        dragTarget = genKind;
         dragMode = hit;
         const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
         lastWorldX = world.x;

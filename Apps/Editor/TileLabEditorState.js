@@ -63,8 +63,6 @@ export class TileLabEditorState {
         this.showAnimationPreview = false;
         this.showMapOverview = true;
         this.showMapOverviewViewport = true;
-        this.showMapOverviewGenBounds = true;
-        this.showMapOverviewRailBounds = true;
         this.forceVectorPropsAll = false;
     }
 }

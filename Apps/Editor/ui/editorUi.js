@@ -3,7 +3,7 @@ import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { initAnimationPreview, mountAnimationPreviewCanvas, estimateAnimationPreviewHeight, syncAnimationPreviewCanvasSize } from "./LabAnimationPreview.js";
 import { mountMapOverview, estimateMapOverviewHeight, paintMapOverviewFrame, syncMapOverviewCanvasSize } from "./mapOverview.js";
-import { refreshMapPanelInputs } from "./mapPanel.js";
+import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, bindVectorPropsToolbar, syncWorldRenderModeUi } from "./toolbar.js";
@@ -52,7 +52,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     const requestRedraw = () => {
         drawLabFrame(state);
         repaintUntilBakesDone(state);
-        refreshMapPanelInputs();
+        refreshMapGenPanelInputs();
     };
     const uiRoot = document.getElementById("ui-root");
     uiRoot.innerHTML = TILELAB_UI_HTML;
@@ -74,9 +74,9 @@ export function mountEditorUi(state, { playbackHandlers }) {
     bindViewModeControls(state, requestRedraw, () => resizeCanvases(state));
     mountMapOverview(state, () => {
         paintMapOverviewFrame(state);
-        refreshMapPanelInputs();
+        refreshMapGenPanelInputs();
     });
-    buildMapPanel(state, requestRedraw);
+    buildMapPanel(state);
     mountTilelabSandbox(state, requestRedraw);
     bindToolbarControls({
         onOverlayChange: () => drawLabFrame(state),

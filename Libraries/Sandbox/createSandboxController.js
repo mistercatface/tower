@@ -334,7 +334,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             const dragPx = Math.hypot(e.clientX - drag.startClientX, e.clientY - drag.startClientY);
             if (dragPx < MARQUEE_CLICK_THRESHOLD_PX) {
                 const world = clientToWorld(e.clientX, e.clientY);
-                if (!e.shiftKey && !session.isWallPlaceMode() && session.spawnAt(world.x, world.y)) stampPropBehavior(session.getSelectedProp());
+                if (!e.shiftKey && !session.isWallPlaceMode() && !session.isMapGenPlaceMode() && session.spawnAt(world.x, world.y)) stampPropBehavior(session.getSelectedProp());
                 else {
                     session.clearPropSelection();
                     session.clearFloorSelection();
@@ -469,6 +469,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         getPlacePaletteKey: () => session.getPlacePaletteKey(),
         setPlacePaletteKey: (key) => session.setPlacePaletteKey(key),
         isWallPlaceMode: () => session.isWallPlaceMode(),
+        isMapGenPlaceMode: () => session.isMapGenPlaceMode(),
         getWallStampMode: () => session.getWallStampMode(),
         setWallStampMode: (mode) => session.setWallStampMode(mode),
         getWallHeightLevel: () => session.getWallHeightLevel(),
