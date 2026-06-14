@@ -1,5 +1,5 @@
-import { generateLabCaverns, generateLabRailCaverns, PLAY_AREA_CELL_OPTIONS, playAreaCellsToIndex, syncCavernBoundsFromPlay } from "../world/mapWorld.js";
 import { migrateCavernConfigForMode } from "../world/cavernBounds.js";
+import { applyPlayAreaConfig, generateLabCaverns, generateLabRailCaverns, PLAY_AREA_CELL_OPTIONS, playAreaCellsToIndex, syncCavernBoundsFromPlay } from "../world/mapWorld.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { appendSectionTitle, addNumberField } from "./mapPanelFields.js";
@@ -21,7 +21,7 @@ function addPlayAreaSlider(panel, label, key, state, onPreviewChange, refreshBou
             playAreaCellsToIndex(playConfig[key]),
             (index) => {
                 playConfig[key] = PLAY_AREA_CELL_OPTIONS[index];
-                syncCavernBoundsFromPlay(state.viewport, playConfig, cavernConfig, { center: false, syncSizeFromPlay: true });
+                applyPlayAreaConfig(state);
                 refreshBoundInputs();
                 onPreviewChange();
             },
@@ -41,12 +41,13 @@ export function buildMapPanel(state, onGenerated) {
     const refreshBoundInputs = () => {
         for (let i = 0; i < boundInputs.length; i++) boundInputs[i].input.value = String(boundInputs[i].getValue());
     };
+    applyPlayAreaConfig(state);
     const playSection = document.createElement("div");
     playSection.className = "editor-block";
     appendSectionTitle(playSection, "Play area");
     const playHint = document.createElement("p");
     playHint.className = "editor-hint";
-    playHint.textContent = "Obstacle grid size — centered on the camera when you generate.";
+    playHint.textContent = "Obstacle grid size — expands immediately, centered on the camera. Cavern and rail bounds match.";
     playSection.appendChild(playHint);
     addPlayAreaSlider(playSection, "Play width", "playAreaCols", state, onPreviewChange, refreshBoundInputs);
     addPlayAreaSlider(playSection, "Play height", "playAreaRows", state, onPreviewChange, refreshBoundInputs);

@@ -1,12 +1,7 @@
 import { createAabb } from "../../Libraries/Math/Aabb2D.js";
 export function createLabMapBoundsPreview() {
     return {
-        playArea: createAabb(),
         cavern: createAabb(),
-        playViewportX: NaN,
-        playViewportY: NaN,
-        playCols: NaN,
-        playRows: NaN,
         cavernMode: "",
         cavernCol: NaN,
         cavernRow: NaN,

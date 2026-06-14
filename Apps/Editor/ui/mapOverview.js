@@ -22,7 +22,6 @@ export function paintMapOverviewFrame(state) {
     refreshLabMapBoundsPreview(state);
     if (state.editor.showMapOverviewViewport) drawWorldBoundsBox(ctx, state.viewport.boundsClip, cache, displayW, displayH, "#00e5ff");
     if (state.editor.showMapOverviewGenBounds) {
-        drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.playArea, cache, displayW, displayH, "#76ff03", 2, [6, 4]);
         const cavernConfig = state.editor.cavernConfig;
         if (cavernConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.cavern, cache, displayW, displayH, "#ff9800", 2);
         else drawCavernBoundsPreview(ctx, cavernConfig, cache, displayW, displayH);
