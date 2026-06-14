@@ -38,10 +38,6 @@ function portalStripLayout(side, cellHalf) {
     if (side === 0 || side === 2) return { halfSize: { x: long, y: thin }, facing: 0 };
     return { halfSize: { x: thin, y: long }, facing: 0 };
 }
-/** @param {{ x: number, y: number }} halfSize */
-function portalHalfStripSize(halfSize) {
-    return { x: halfSize.x > halfSize.y ? halfSize.x * 0.5 : halfSize.x, y: halfSize.y > halfSize.x ? halfSize.y * 0.5 : halfSize.y };
-}
 /** @param {boolean} powered */
 function laserWallColors(powered) {
     if (!powered) return { faceColors: { shadow: "#1e293b", mid: "#334155", highlight: "#475569" }, topColors: { light: "#64748b", mid: "#475569", dark: "#334155" }, stroke: "#0f172a" };
@@ -214,36 +210,56 @@ export function drawPortalEdgeStrip(ctx, grid, col, row, side, edge, px, py, { s
     const mouthWorld = grid.gridToWorld(mouth.col, mouth.row);
     const backWorld = grid.gridToWorld(back.col, back.row);
     const cellHalf = grid.cellSize * 0.5;
-    const { halfSize: fullHalf, facing } = portalStripLayout(side, cellHalf);
-    const halfSize = portalHalfStripSize(fullHalf);
+    const { halfSize, facing } = portalStripLayout(side, cellHalf);
     const lineScale = getCanvasLineScale(ctx);
-    const wallColors = solidWallColors();
-    sProp.facing = facing;
-    sProp.x = (midX + backWorld.x) * 0.5;
-    sProp.y = (midY + backWorld.y) * 0.5;
-    drawBox(ctx, sProp, px, py, {
-        halfSize,
-        height: PORTAL_STRIP_HEIGHT,
-        facing,
-        faceColors: wallColors.faceColors,
-        topColors: wallColors.topColors,
-        stroke: wallColors.stroke,
-        lineWidth: 1.0 * lineScale,
-    });
-    const mouthColors = powered ? laserWallColors(true) : wallColors;
-    sProp.x = (midX + mouthWorld.x) * 0.5;
-    sProp.y = (midY + mouthWorld.y) * 0.5;
-    drawBox(ctx, sProp, px, py, {
-        halfSize,
-        height: PORTAL_STRIP_HEIGHT,
-        facing,
-        faceColors: mouthColors.faceColors,
-        topColors: mouthColors.topColors,
-        stroke: mouthColors.stroke,
-        lineWidth: 1.0 * lineScale,
-    });
-    if (powered) drawLaserGridOnTop(ctx, sProp, px, py, halfSize, PORTAL_STRIP_HEIGHT, lineScale, true);
-    const faceIndex = resolveMouthFaceIndex(sProp, mouthWorld.x, mouthWorld.y, halfSize, facing);
-    const circle = statusCircleStyle(powered, linkRole);
-    drawPortalStatusDisc3D(ctx, sProp, px, py, faceIndex, halfSize, PORTAL_STRIP_HEIGHT, facing, lineScale, circle.fill, circle.stroke, selected);
+    const portalColors = powered ? laserWallColors(true) : solidWallColors();
+    const backDirX = Math.sign(backWorld.x - midX);
+    const backDirY = Math.sign(backWorld.y - midY);
+    const mouthDirX = Math.sign(mouthWorld.x - midX);
+    const mouthDirY = Math.sign(mouthWorld.y - midY);
+    const backX = midX + backDirX * PORTAL_STRIP_THIN;
+    const backY = midY + backDirY * PORTAL_STRIP_THIN;
+    const mouthX = midX + mouthDirX * PORTAL_STRIP_THIN;
+    const mouthY = midY + mouthDirY * PORTAL_STRIP_THIN;
+    const backDistSq = (backX - px) ** 2 + (backY - py) ** 2;
+    const mouthDistSq = (mouthX - px) ** 2 + (mouthY - py) ** 2;
+    function drawBack() {
+        sProp.facing = facing;
+        sProp.x = backX;
+        sProp.y = backY;
+        drawBox(ctx, sProp, px, py, {
+            halfSize,
+            height: PORTAL_STRIP_HEIGHT,
+            facing,
+            faceColors: portalColors.faceColors,
+            topColors: portalColors.topColors,
+            stroke: portalColors.stroke,
+            lineWidth: 1.0 * lineScale,
+        });
+    }
+    function drawMouth() {
+        sProp.facing = facing;
+        sProp.x = mouthX;
+        sProp.y = mouthY;
+        drawBox(ctx, sProp, px, py, {
+            halfSize,
+            height: PORTAL_STRIP_HEIGHT,
+            facing,
+            faceColors: portalColors.faceColors,
+            topColors: portalColors.topColors,
+            stroke: portalColors.stroke,
+            lineWidth: 1.0 * lineScale,
+        });
+        if (powered) drawLaserGridOnTop(ctx, sProp, px, py, halfSize, PORTAL_STRIP_HEIGHT, lineScale, true);
+        const faceIndex = resolveMouthFaceIndex(sProp, mouthWorld.x, mouthWorld.y, halfSize, facing);
+        const circle = statusCircleStyle(powered, linkRole);
+        drawPortalStatusDisc3D(ctx, sProp, px, py, faceIndex, halfSize, PORTAL_STRIP_HEIGHT, facing, lineScale, circle.fill, circle.stroke, selected);
+    }
+    if (backDistSq > mouthDistSq) {
+        drawBack();
+        drawMouth();
+    } else {
+        drawMouth();
+        drawBack();
+    }
 }
