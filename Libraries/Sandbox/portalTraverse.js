@@ -6,7 +6,7 @@ import {
     portalBodyInMouthZone,
     portalCrossingVectorForEdge,
     portalEdgeBlocksCollision,
-    portalMouthAllowsCrossing,
+    portalIntakeAllowsCrossing,
     portalMouthAndBackCells,
     portalTraverseExitCell,
     portalTraverseExitVector,
@@ -83,7 +83,7 @@ export function tryPortalIntake(state, entity, segment) {
     if (!portalBodyInMouthZone(grid, edge, gridCol, gridRow, gridSide, entity.x, entity.y, bodyRadius)) return false;
     const cross = portalCrossingVectorForEdge(edge, gridCol, gridRow, gridSide);
     const { mouth, back } = portalMouthAndBackCells(gridCol, gridRow, gridSide, edge);
-    if (!portalMouthAllowsCrossing(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) return false;
+    if (!portalIntakeAllowsCrossing(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) return false;
     if (!portalBodyCrossedEntryPlane(entity.x, entity.y, mouth, back, cross, grid, bodyRadius)) return false;
     const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
     if (!entry) return false;
