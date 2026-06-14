@@ -23,7 +23,9 @@ export function applyPortalTraverse(state, entity, entry, fromCol, fromRow, toCo
     const { x, y } = grid.gridToWorld(exit.col, exit.row);
     entity.x = x;
     entity.y = y;
-    entity._gridZonePrevCellIdx = colRowToIndex(exit.col, exit.row, grid.cols);
+    const exitIdx = colRowToIndex(exit.col, exit.row, grid.cols);
+    entity._portalPrevCellIdx = exitIdx;
+    entity._gridZonePrevCellIdx = exitIdx;
     entity._portalTraverseUntil = state.gameTime + PORTAL_TRAVERSE_COOLDOWN_MS;
     entity._portalNavDirty = true;
     wakePushableBody(entity);
@@ -47,8 +49,12 @@ export function tickPortalTraverse(state, spatialFrame) {
         const { col, row } = grid.worldToGrid(entity.x, entity.y);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         const cellIdx = colRowToIndex(col, row, grid.cols);
-        const prevIdx = entity._gridZonePrevCellIdx;
-        if (prevIdx == null || prevIdx < 0 || prevIdx === cellIdx) continue;
+        const prevIdx = entity._portalPrevCellIdx;
+        if (prevIdx == null || prevIdx < 0) {
+            entity._portalPrevCellIdx = cellIdx;
+            continue;
+        }
+        if (prevIdx === cellIdx) continue;
         if (entity._portalTraverseUntil != null && now < entity._portalTraverseUntil) continue;
         const prevCol = prevIdx % grid.cols;
         const prevRow = (prevIdx / grid.cols) | 0;
@@ -57,7 +63,7 @@ export function tickPortalTraverse(state, spatialFrame) {
             reindex = true;
             continue;
         }
-        entity._gridZonePrevCellIdx = cellIdx;
+        entity._portalPrevCellIdx = cellIdx;
     }
     if (reindex) spatialFrame.reindexPushables(pushables);
 }
