@@ -123,6 +123,17 @@ export function portalTraverseExitCell(grid, partnerCol, partnerRow, partnerSide
     const { mouth } = portalMouthAndBackCells(partnerCol, partnerRow, partnerSide, edge);
     return mouth;
 }
+/** Unit vector emerging from the partner portal mouth (back → mouth, out into open space). */
+export function portalTraverseExitVector(grid, partnerCol, partnerRow, partnerSide) {
+    const edge = grid.edgeStore.get(partnerCol, partnerRow, partnerSide, grid.cols);
+    const { mouth, back } = portalMouthAndBackCells(partnerCol, partnerRow, partnerSide, edge);
+    const mouthWorld = grid.gridToWorld(mouth.col, mouth.row);
+    const backWorld = grid.gridToWorld(back.col, back.row);
+    const dx = mouthWorld.x - backWorld.x;
+    const dy = mouthWorld.y - backWorld.y;
+    const len = Math.hypot(dx, dy);
+    return { x: dx / len, y: dy / len };
+}
 /** @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow */
 export function resolveCardinalStepCrossing(fromCol, fromRow, toCol, toRow) {
     const dc = toCol - fromCol;

@@ -1,10 +1,30 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { distanceSqToSegment } from "../Spatial/geometry/WallGeometry.js";
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
-import { portalBodyInMouthZone, portalCrossingVectorForEdge, portalEntryCommitted, portalMouthAndBackCells, portalTraverseExitCell } from "../Spatial/grid/portalAccess.js";
+import { portalBodyInMouthZone, portalCrossingVectorForEdge, portalEntryCommitted, portalMouthAndBackCells, portalTraverseExitCell, portalTraverseExitVector } from "../Spatial/grid/portalAccess.js";
+import { invalidateWallResolveCache } from "../Motion/WallCollisionResolver.js";
+import { quantizeCardinalAngle } from "../Math/Angle.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { evaluatePortalStepEntry } from "./portalLinks.js";
 const PORTAL_TRAVERSE_COOLDOWN_MS = 50;
+const PORTAL_EXIT_PAD_CELL_FRAC = 0.15;
+/** @param {object} entity @param {{ x: number, y: number }} exitOut */
+function applyPortalExitMotion(entity, exitOut) {
+    const exitSpeed = Math.max(Math.hypot(entity.vx, entity.vy), Math.hypot(entity._frameDispX ?? 0, entity._frameDispY ?? 0));
+    if (exitSpeed > 0) {
+        entity.vx = exitOut.x * exitSpeed;
+        entity.vy = exitOut.y * exitSpeed;
+        if (entity.strategy?.rolls) entity.angularVelocity = (exitSpeed / (entity.radius || 8)) * 0.12;
+    }
+    const exitAngle = Math.atan2(exitOut.y, exitOut.x);
+    if (entity.facing != null) entity.facing = entity.strategy?.cardinalFacing ? quantizeCardinalAngle(exitAngle) : exitAngle;
+    if (entity.angle != null) entity.angle = exitAngle;
+    const steerAgent = entity.mobile ?? entity;
+    if ((steerAgent.desiredX ?? 0) ** 2 + (steerAgent.desiredY ?? 0) ** 2 > 0.0001) {
+        steerAgent.desiredX = exitOut.x;
+        steerAgent.desiredY = exitOut.y;
+    }
+}
 /**
  * @param {object} state
  * @param {object} entity
@@ -14,15 +34,24 @@ const PORTAL_TRAVERSE_COOLDOWN_MS = 50;
 export function applyPortalTraverse(state, entity, entry) {
     const grid = state.obstacleGrid;
     const { partner } = entry;
+    const exitOut = portalTraverseExitVector(grid, partner.col, partner.row, partner.side);
     const exit = portalTraverseExitCell(grid, partner.col, partner.row, partner.side);
     if (!cellInRect(exit.col, exit.row, grid.cols, grid.rows) || grid.isBlocked(exit.col, exit.row)) return false;
-    const { x, y } = grid.gridToWorld(exit.col, exit.row);
-    entity.x = x;
-    entity.y = y;
-    const exitIdx = colRowToIndex(exit.col, exit.row, grid.cols);
-    entity._gridZonePrevCellIdx = exitIdx;
+    const mouthWorld = grid.gridToWorld(exit.col, exit.row);
+    const bodyRadius = entity.getShape().getBoundingRadius();
+    const exitDist = bodyRadius + grid.cellSize * PORTAL_EXIT_PAD_CELL_FRAC;
+    entity.x = mouthWorld.x + exitOut.x * exitDist;
+    entity.y = mouthWorld.y + exitOut.y * exitDist;
+    const exitGrid = grid.worldToGrid(entity.x, entity.y);
+    entity._gridZonePrevCellIdx = colRowToIndex(exitGrid.col, exitGrid.row, grid.cols);
+    applyPortalExitMotion(entity, exitOut);
+    delete entity._navSteerCellCol;
+    delete entity._navSteerCellRow;
+    delete entity._navPortalMouthCol;
+    delete entity._navPortalMouthRow;
     entity._portalTraverseUntil = state.gameTime + PORTAL_TRAVERSE_COOLDOWN_MS;
     entity._portalNavDirty = true;
+    invalidateWallResolveCache(entity);
     wakePushableBody(entity);
     return true;
 }
