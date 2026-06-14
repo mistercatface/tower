@@ -1,10 +1,10 @@
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
+import { drawPortalEdgeStrip } from "../Render/portalDraw.js";
 import { strokeCircle } from "../Canvas/CanvasPath.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { createAabb, aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
-import { gridHasForcefield, gridHasPortal, strokeSelectedForcefieldEdge, strokeSelectedPortalEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
+import { gridHasForcefield, gridHasPortal, strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
 import { resolvePortalLinkRoute } from "./portalLinks.js";
-import { drawPortalConnection } from "./drawForcefields.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
@@ -25,9 +25,10 @@ function selectionRingRadius(prop, lineScale) {
  *   selectedVoxelCell?: { col: number, row: number } | null,
  *   selectedRailEdge?: { col: number, row: number, side: number } | null,
  *   grid?: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null,
+ *   camera?: { px: number, py: number },
  * }} options
  */
-export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selectedFloorCell = null, selectedVoxelCell = null, selectedRailEdge = null, grid = null }) {
+export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selectedFloorCell = null, selectedVoxelCell = null, selectedRailEdge = null, grid = null, camera = null }) {
     if (!showRings) return;
     const lineScale = getCanvasLineScale(ctx);
     ctx.save();
@@ -58,15 +59,15 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
         });
     }
     if (selectedRailEdge && grid)
-        if (gridHasPortal(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
+        if (gridHasPortal(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side) && camera) {
             const { col, row, side } = selectedRailEdge;
-            ctx.strokeStyle = "rgba(16, 185, 129, 0.98)";
-            strokeSelectedPortalEdge(ctx, grid, selectedRailEdge, lineScale);
+            const edge = grid.getCellEdge(col, row, side);
+            drawPortalEdgeStrip(ctx, grid, col, row, side, edge, camera.px, camera.py, { selected: true });
             const route = resolvePortalLinkRoute(grid, col, row, side);
             if (route) {
-                drawPortalConnection(ctx, grid, route.source, route.dest, route.linkMode, lineScale);
-                ctx.strokeStyle = "rgba(244, 114, 182, 0.85)";
-                strokeSelectedPortalEdge(ctx, grid, route.dest, lineScale);
+                const { col: pCol, row: pRow, side: pSide } = route.partner;
+                const partnerEdge = grid.getCellEdge(pCol, pRow, pSide);
+                drawPortalEdgeStrip(ctx, grid, pCol, pRow, pSide, partnerEdge, camera.px, camera.py, { selected: true });
             }
         } else if (gridHasForcefield(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
             ctx.strokeStyle = "rgba(192, 132, 252, 0.95)";

@@ -552,6 +552,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
                 selectedVoxelCell: session.getSelectedVoxelCell(),
                 selectedRailEdge: session.getSelectedRailEdge(),
                 grid: state.obstacleGrid,
+                camera: { px: state.viewport.x, py: state.viewport.y },
             });
         },
         drawMarqueeOverlay(ctx) {
