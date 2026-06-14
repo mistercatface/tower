@@ -1,6 +1,7 @@
 import { getSurfaceProceduralProfile } from "../../../../Config/procedural/profiles.js";
-import { SliderControl } from "../../../../Libraries/UI/controls/SliderControl.js";
+import { deepClone, getByPath } from "../../../../Libraries/Pipeline/objectPath.js";
 import { SelectControl } from "../../../../Libraries/UI/controls/SelectControl.js";
+import { renderSchemaFields } from "../../../../Libraries/UI/renderSchemaFields.js";
 import { appendEditorSubhead } from "../../../../Libraries/UI/paramFields.js";
 import { mirrorEasingForReversedStage } from "../../../../Libraries/Math/Easing.js";
 import { BLEND_OPTIONS, EASING_OPTIONS, LAYER_OPTIONS, MOTIF_TYPES, PALETTE_FIELDS, WARP_FIELDS, getAnimatableMotifFields, isContextMotif } from "./profileSchema.js";
@@ -63,28 +64,6 @@ function animationFromProfile(profile, motifs) {
         tracks.push({ editorMotifIndex: Math.max(0, editorMotifIndex), paramPath, stages: trackStages });
     }
     return { enabled: false, selectedStageIndex: 0, selectedTrackIndex: 0, stages, tracks };
-}
-function deepClone(value) {
-    return JSON.parse(JSON.stringify(value));
-}
-function getByPath(obj, path) {
-    const parts = path.split(".");
-    let cur = obj;
-    for (const part of parts) {
-        if (cur == null) return undefined;
-        cur = cur[part];
-    }
-    return cur;
-}
-function setByPath(obj, path, value) {
-    const parts = path.split(".");
-    let cur = obj;
-    for (let i = 0; i < parts.length - 1; i++) {
-        const part = parts[i];
-        if (cur[part] == null) cur[part] = {};
-        cur = cur[part];
-    }
-    cur[parts[parts.length - 1]] = value;
 }
 function defaultWarp() {
     return { frequency: 0.005, amplitude: 0, octaves: 1, sampleOffset: [0, 0] };
@@ -315,25 +294,6 @@ function renderMotifList(container) {
         container.appendChild(item);
     }
 }
-function renderScalarFields(container, target, fields, changeOptions = {}) {
-    for (const field of fields)
-        if (field.options) {
-            const val = getByPath(target, field.path) ?? field.options[0];
-            const select = new SelectControl(field.label, field.options, val, (newVal) => {
-                setByPath(target, field.path, newVal);
-                notifyChange(changeOptions);
-            });
-            container.appendChild(select.element);
-        } else {
-            const value = getByPath(target, field.path);
-            const num = Number(value ?? 0);
-            const slider = new SliderControl(field.label, field.min, field.max, field.step, num, (newVal) => {
-                setByPath(target, field.path, newVal);
-                notifyChange(changeOptions);
-            });
-            container.appendChild(slider.element);
-        }
-}
 function renderMotifParams(container) {
     container.innerHTML = "";
     if (!editorState || !selectedMotifId) {
@@ -360,10 +320,11 @@ function renderMotifParams(container) {
         });
         container.appendChild(layerSelect.element);
     }
-    renderScalarFields(
+    renderSchemaFields(
         container,
         row.config,
         schema.fields.filter((field) => field.path !== "blendMode" && field.path !== "opacity"),
+        () => notifyChange(),
     );
 }
 function renderGlobalParams(container) {
@@ -372,10 +333,10 @@ function renderGlobalParams(container) {
     const warpRoot = { warp: editorState.warp };
     const paletteRoot = { palette: editorState.palette };
     appendEditorSubhead(container, "Warp", { tag: "h4" });
-    renderScalarFields(container, warpRoot, WARP_FIELDS);
+    renderSchemaFields(container, warpRoot, WARP_FIELDS, () => notifyChange());
     editorState.warp = warpRoot.warp;
     appendEditorSubhead(container, "Palette", { tag: "h4" });
-    renderScalarFields(container, paletteRoot, PALETTE_FIELDS);
+    renderSchemaFields(container, paletteRoot, PALETTE_FIELDS, () => notifyChange());
     editorState.palette = paletteRoot.palette;
 }
 function reverseStageTrackData(stageData) {
@@ -410,14 +371,14 @@ function renderSharedAnimationControls(container) {
     container.appendChild(divider);
     const activeStageIndex = editorState.animation.selectedStageIndex;
     const activeStage = editorState.animation.stages[activeStageIndex];
-    renderScalarFields(
+    renderSchemaFields(
         container,
         activeStage,
         [
             { path: "frames", label: `Stage ${activeStageIndex + 1} Frames`, min: 2, max: 120, step: 1 },
             { path: "durationMs", label: `Stage ${activeStageIndex + 1} Duration (ms)`, min: 200, max: 20000, step: 100 },
         ],
-        { lightweight: true },
+        () => notifyChange({ lightweight: true }),
     );
 }
 function renderAnimationParams(container) {
@@ -659,7 +620,7 @@ function renderAnimationParams(container) {
     const activeStageIndex = editorState.animation.selectedStageIndex;
     const stageData = activeTrack.stages[activeStageIndex];
     if (stageData)
-        renderScalarFields(
+        renderSchemaFields(
             container,
             stageData,
             [
@@ -667,7 +628,7 @@ function renderAnimationParams(container) {
                 { path: "endValue", label: "End", min: activeField.min, max: activeField.max, step: activeField.step },
                 { path: "easing", label: "Easing", options: EASING_OPTIONS },
             ],
-            { lightweight: true },
+            () => notifyChange({ lightweight: true }),
         );
     renderSharedAnimationControls(container);
 }
