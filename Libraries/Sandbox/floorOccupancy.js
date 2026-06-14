@@ -1,6 +1,7 @@
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
+import { stepCardinalFacing } from "../Math/Angle.js";
 import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
 import { fillCircle } from "../Canvas/CanvasPath.js";
 import { drawCachedPropSprite, GRID_STAMP_RENDER_KEY } from "../Canvas/QuantizedSpriteCache.js";
@@ -11,6 +12,31 @@ import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork, isPassagePowerSourceEnergized } from "./passagePowerNetwork.js";
 import { applyPushableAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
+export const GRID_ROTATABLE_OCCUPANT = { FloorBelt: "floorBelt" };
+/** @param {object} state @param {number} worldX @param {number} worldY @returns {{ col: number, row: number, kind: string } | null} */
+export function pickRotatableGridOccupantAtWorld(state, worldX, worldY) {
+    const grid = state.obstacleGrid;
+    const { col, row } = grid.worldToGrid(worldX, worldY);
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
+    const idx = col + row * grid.cols;
+    if (grid.floorStore.isBeltKindAtIdx(idx)) return { col, row, kind: GRID_ROTATABLE_OCCUPANT.FloorBelt };
+    return null;
+}
+/** @param {object} state @param {{ col: number, row: number, kind: string }} occupant @param {number} [steps] quarter-turns clockwise */
+export function rotateGridOccupantAt(state, occupant, steps = 1) {
+    const grid = state.obstacleGrid;
+    const { col, row, kind } = occupant;
+    const idx = col + row * grid.cols;
+    if (kind === GRID_ROTATABLE_OCCUPANT.FloorBelt) {
+        if (!grid.floorStore.isBeltKindAtIdx(idx)) return false;
+        const beltKind = grid.floorStore.kind[idx];
+        const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
+        grid.writeFloorCell(col, row, beltKind, stepCardinalFacing(facingRadians, steps));
+        markGridZoneSubscriptionsDirty(state);
+        return true;
+    }
+    throw new Error(`Unknown rotatable grid occupant kind: ${kind}`);
+}
 /** @param {object} state @param {number} col @param {number} row */
 export function canStampFloorBeltAt(state, col, row) {
     const grid = state.obstacleGrid;

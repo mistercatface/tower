@@ -2,10 +2,9 @@ import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLabel } from "../Combat/sandboxTargeting.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
-import { stepCardinalFacing } from "../Math/Angle.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
-import { canStampFloorBeltAt, clearPassagePowerSourceAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
+import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { syncPassagePowerNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
@@ -254,19 +253,22 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         rotateSelectedFloorBelt(steps = 1) {
             if (!selectedFloorCell) return false;
-            const grid = state.obstacleGrid;
             const { col, row } = selectedFloorCell;
-            const idx = col + row * grid.cols;
-            if (!grid.floorStore.isBeltKindAtIdx(idx)) {
+            const idx = col + row * state.obstacleGrid.cols;
+            if (!state.obstacleGrid.floorStore.isBeltKindAtIdx(idx)) {
                 dropFloorSelection();
                 sync();
                 return false;
             }
-            const kind = grid.floorStore.kind[idx];
-            const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
-            grid.writeFloorCell(col, row, kind, stepCardinalFacing(facingRadians, steps));
-            markGridZoneSubscriptionsDirty(state);
+            if (!rotateGridOccupantAt(state, { col, row, kind: GRID_ROTATABLE_OCCUPANT.FloorBelt }, steps)) return false;
             sync();
+            return true;
+        },
+        rotateHoveredGridOccupantAtWorld(worldX, worldY, steps = 1) {
+            const occupant = pickRotatableGridOccupantAtWorld(state, worldX, worldY);
+            if (!occupant) return false;
+            if (!rotateGridOccupantAt(state, occupant, steps)) return false;
+            setSelectedFloorCell(occupant.col, occupant.row);
             return true;
         },
         moveSelectedFloorBeltTo(targetCol, targetRow) {

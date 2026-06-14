@@ -60,6 +60,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     let interactionBehavior = null;
     /** @type {(() => void) | null} */
     let unbindPointers = null;
+    /** @type {(() => void) | null} */
+    let unbindKeyDown = null;
     let buttonWireMode = false;
     /** @type {{ x: number, y: number } | null} */
     let buttonWireCursor = null;
@@ -574,8 +576,18 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
                 pointercancel: onPointerUp,
                 pointerleave: onPointerLeave,
             });
+            const onKeyDown = (e) => {
+                if (e.code !== "KeyR") return;
+                if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches("textarea, select, input"))) return;
+                if (!placePreviewWorld || interactionBehavior || marqueeSelect || groundNav || buttonWireMode) return;
+                if (session.rotateHoveredGridOccupantAtWorld(placePreviewWorld.x, placePreviewWorld.y)) e.preventDefault();
+            };
+            window.addEventListener("keydown", onKeyDown);
+            unbindKeyDown = () => window.removeEventListener("keydown", onKeyDown);
         },
         destroy() {
+            unbindKeyDown?.();
+            unbindKeyDown = null;
             unbindPointers?.();
             unbindPointers = null;
             buttonWireMode = false;
