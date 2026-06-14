@@ -523,7 +523,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             session.sync();
         },
         loadRandomGraphScene() {
-            spawnSandboxGraphScene(state, { seed: Date.now() >>> 0 });
+            spawnSandboxGraphScene(state, { seed: Date.now() >>> 0, punchOneHolePerRoom: true, singleCorridor: true });
             resetBehaviors();
             session.clearPropSelection();
             session.clearFloorSelection();

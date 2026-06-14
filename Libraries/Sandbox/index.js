@@ -63,6 +63,7 @@ export {
     propsForRoomCenters,
     punchHoleInClosedRoom,
     punchHolesForDirectedEdges,
+    punchOneHolePerRoom,
     railWallsForClosedRect,
     railWallsForClosedRoom,
     railWallsForClosedRooms,
@@ -73,7 +74,10 @@ export {
     tryBuildCorridorRails,
     tryBuildNodeGraph,
     tryBuildRoomGraphLayout,
+    tryBuildSingleCorridorRails,
     tryLayoutRoomGraph,
+    wireDirectedEdgeToRoomHoles,
+    buildCorridorPathBetweenHoles,
 } from "./sandboxRoomGraphGen.js";
 export { buildSandboxGraphSceneDoc, spawnSandboxGraphScene } from "./sandboxGraphScene.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
