@@ -578,6 +578,37 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             sync();
             return true;
         },
+        pickAnyWallAtWorld(worldX, worldY) {
+            const grid = state.obstacleGrid;
+            const edgeHit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
+            if (edgeHit) {
+                const { col, row, side } = edgeHit;
+                if (gridHasPortal(grid, col, row, side)) {
+                    placePaletteKey = "wall:portal";
+                    wallStampMode = "portal";
+                    setSelectedRailEdge(col, row, side);
+                    return true;
+                }
+                if (gridHasForcefield(grid, col, row, side)) {
+                    placePaletteKey = "wall:forcefield";
+                    wallStampMode = "forcefield";
+                    setSelectedRailEdge(col, row, side);
+                    return true;
+                }
+                if (gridHasRailWall(grid, col, row, side)) {
+                    placePaletteKey = "wall:rail";
+                    wallStampMode = "rail";
+                    setSelectedRailEdge(col, row, side);
+                    return true;
+                }
+            }
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            if (!gridHasVoxelWall(grid, col, row)) return false;
+            placePaletteKey = "wall:voxel";
+            wallStampMode = "voxel";
+            setSelectedVoxelCell(col, row);
+            return true;
+        },
         pickWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
             if (wallStampMode === "portal") {

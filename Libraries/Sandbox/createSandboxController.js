@@ -126,6 +126,42 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         return false;
     };
     /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
+    const tryPickPlacedAtWorld = (world, e) => {
+        const registry = state.entityRegistry;
+        const hit = findWorldPropAtInView(registry, combatSpatial, world.x, world.y);
+        if (hit) {
+            const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, state, hit);
+            if (allowed.length === 0) return false;
+            buttonWireMode = false;
+            buttonWireCursor = null;
+            session.setPlacePaletteKey(`prop:${hit.type}`);
+            session.setSelectedPropId(hit.id);
+            const prop = session.getSelectedProp();
+            if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
+                const propBehaviors = listSelectedBehaviors(prop);
+                if (propBehaviors.length > 0) entityMeta().setActiveBehaviorId(prop.id, propBehaviors[0]);
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            session.sync();
+            return true;
+        }
+        const grid = state.obstacleGrid;
+        const { col, row } = grid.worldToGrid(world.x, world.y);
+        if (grid.hasFloorOccupancy(col, row)) {
+            session.setSelectedFloorCell(col, row);
+            e.preventDefault();
+            e.stopPropagation();
+            session.sync();
+            return true;
+        }
+        if (!session.pickAnyWallAtWorld(world.x, world.y)) return false;
+        e.preventDefault();
+        e.stopPropagation();
+        session.sync();
+        return true;
+    };
+    /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
     const handleWallPointerDown = (world, e) => {
         if (e.button === 2) {
             session.deleteWallAtWorld(world.x, world.y);
@@ -148,6 +184,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     const onPointerDown = (e) => {
         const canvas = getCanvas();
         const world = clientToWorld(e.clientX, e.clientY);
+        if (e.button === 0 && e.shiftKey && tryPickPlacedAtWorld(world, e)) return;
         if (session.isWallPlaceMode()) {
             handleWallPointerDown(world, e);
             return;
@@ -294,7 +331,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             const dragPx = Math.hypot(e.clientX - drag.startClientX, e.clientY - drag.startClientY);
             if (dragPx < MARQUEE_CLICK_THRESHOLD_PX) {
                 const world = clientToWorld(e.clientX, e.clientY);
-                if (!session.isWallPlaceMode() && session.spawnAt(world.x, world.y)) stampPropBehavior(session.getSelectedProp());
+                if (!e.shiftKey && !session.isWallPlaceMode() && session.spawnAt(world.x, world.y)) stampPropBehavior(session.getSelectedProp());
                 else {
                     session.clearPropSelection();
                     session.clearFloorSelection();
