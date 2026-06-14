@@ -18,6 +18,7 @@ function bindRailEdge(p1, p2, x1, y1, x2, y2) {
 }
 /** @param {object} box @param {number} viewerX @param {number} viewerY */
 function railWallBoxTowardViewer(box, viewerX, viewerY) {
+    if (viewerX >= box.minX && viewerX <= box.maxX && viewerY >= box.minY && viewerY <= box.maxY) return true;
     const innerMidX = (box.innerP1x + box.innerP2x) * 0.5;
     const innerMidY = (box.innerP1y + box.innerP2y) * 0.5;
     const outerMidX = (box.outerP1x + box.outerP2x) * 0.5;
