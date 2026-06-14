@@ -1,4 +1,5 @@
 import { FLOOR_CELL_KIND, isFloorBeltKind, isPassagePowerSourceKind } from "./FloorCell.js";
+import { cellInRect } from "./GridUtils.js";
 export class FloorCellStore {
     constructor() {
         /** @type {Uint8Array} */
@@ -31,7 +32,7 @@ export class FloorCellStore {
             const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
             const nr = row + rowOffset;
-            if (nc < 0 || nc >= newCols || nr < 0 || nr >= newRows) continue;
+            if (!cellInRect(nc, nr, newCols, newRows)) continue;
             const newIdx = nc + nr * newCols;
             newKind[newIdx] = oldKind[idx];
             newFacing[newIdx] = oldFacing[idx];

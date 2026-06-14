@@ -32,6 +32,7 @@ import {
     stampVoxelWallAt,
 } from "./gridWallEdit.js";
 import { PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
+import { cellInRect } from "../Spatial/grid/GridUtils.js";
 /** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
@@ -272,7 +273,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (!selectedFloorCell) return null;
             const grid = state.obstacleGrid;
             const { col, row } = selectedFloorCell;
-            if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return null;
+            if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
             const idx = col + row * grid.cols;
             if (!grid.floorStore.isBeltKindAtIdx(idx)) return null;
             const kind = grid.floorStore.kind[idx];
@@ -283,7 +284,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (!selectedFloorCell) return null;
             const grid = state.obstacleGrid;
             const { col, row } = selectedFloorCell;
-            if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return null;
+            if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
             const idx = col + row * grid.cols;
             if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return null;
             return { col, row, defaultPowered: grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx) };

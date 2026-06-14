@@ -1,4 +1,5 @@
 import { CARDINAL_FACING_STEPS, quantizeCardinalAngle } from "../../Math/Angle.js";
+import { cellInRect } from "./GridUtils.js";
 /** Floor occupancy kinds — walkable cell overlays (belts, pads); not voxelBlock or edgeStore. */
 export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3, BeltRails: 4, BeltElbowLeftRails: 5, BeltElbowRightRails: 6, PassagePowerSource: 7 };
 /** @param {number} kind */
@@ -90,7 +91,7 @@ export function floorBeltEntryNeighborCell(col, row, entrySide) {
  */
 export function resolveFloorBeltSteerTarget(grid, worldX, worldY, fromX, fromY) {
     const { col, row } = grid.worldToGrid(worldX, worldY);
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return { x: worldX, y: worldY };
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return { x: worldX, y: worldY };
     const idx = col + row * grid.cols;
     if (!grid.floorStore.isBeltKindAtIdx(idx)) return { x: worldX, y: worldY };
     const { col: fromCol, row: fromRow } = grid.worldToGrid(fromX, fromY);

@@ -1,4 +1,5 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
+import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { centerReachAabbInto, createAabb, padAabbInto } from "../../Math/Aabb2D.js";
 import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
@@ -51,7 +52,7 @@ export class EntityGrid {
     _getCellIndex(x, y) {
         const col = Math.floor((x - this.minX) / this.cellSize);
         const row = Math.floor((y - this.minY) / this.cellSize);
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
+        if (!cellInRect(col, row, this.cols, this.rows)) return -1;
         return col + row * this.cols;
     }
     insert(entity) {

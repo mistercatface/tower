@@ -1,4 +1,5 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
+import { cellInRect } from "../grid/GridUtils.js";
 /**
  * @typedef {object} SegmentGridLayout
  * @property {object[][] | null} segmentGrid — per-cell segment lists (sparse)
@@ -19,7 +20,7 @@ import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
  * @param {Set<object>} checked
  */
 function pushCellSegments(segmentGrid, cols, rows, col, row, result, checked) {
-    if (col < 0 || col >= cols || row < 0 || row >= rows) return;
+    if (!cellInRect(col, row, cols, rows)) return;
     const cellSegs = segmentGrid[col + row * cols];
     if (!cellSegs) return;
     for (const segment of cellSegs)

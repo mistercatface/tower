@@ -6,6 +6,7 @@ import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.
 import { packCellKey, packEdgeCellKey } from "../../../Libraries/DataStructures/CellKey.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/sandboxWalls.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
+import { cellInRect } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import { cellIsStaticWall, cellIsStaticWallAtIdx } from "../../../Libraries/World/wallGridCells.js";
 import { forEachGlobalCellInBounds, getCellBoundsAabb } from "./cellBoundsConfig.js";
@@ -14,7 +15,7 @@ import { ensureLabObstacleGridCoverage } from "./mapWorld.js";
 function globalCellToLocal(grid, globalCol, globalRow) {
     const half = grid.cellSize * 0.5;
     const { col, row } = grid.worldToGrid(globalCol * grid.cellSize + half, globalRow * grid.cellSize + half);
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return null;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     return { col, row, idx: col + row * grid.cols };
 }
 /** @param {import("../state.js").TileLabGameState} state @param {import("./cellBoundsConfig.js").CellBoundsConfig} boundsConfig */

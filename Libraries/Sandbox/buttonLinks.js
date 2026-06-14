@@ -7,6 +7,7 @@ import { isPullPowerTarget } from "./pullFixtureWalls.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
 import { formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
+import { cellInRect } from "../Spatial/grid/GridUtils.js";
 /** @typedef {{ type: "worldProp", id: number }} WorldPropButtonLinkTarget */
 /** @typedef {{ type: "gridCell", globalCol: number, globalRow: number }} GridCellButtonLinkTarget */
 /** @typedef {WorldPropButtonLinkTarget | GridCellButtonLinkTarget} ButtonLinkTarget */
@@ -58,7 +59,7 @@ export function clearButtonLinks(state, buttonId) {
 export function findPassagePowerSourceLinkTargetAtWorld(state, worldX, worldY) {
     const grid = state.obstacleGrid;
     const { col, row } = grid.worldToGrid(worldX, worldY);
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return null;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const idx = col + row * grid.cols;
     if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return null;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);

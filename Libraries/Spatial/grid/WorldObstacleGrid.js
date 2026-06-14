@@ -1,5 +1,5 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
-import { colRowToIndex } from "./GridUtils.js";
+import { colRowToIndex, cellInRect } from "./GridUtils.js";
 import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCellDamage.js";
 import {
     gridWallEdgeEndpoints,
@@ -256,7 +256,7 @@ export class WorldObstacleGrid {
             const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
             const nr = row + rowOffset;
-            if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue;
+            if (!cellInRect(nc, nr, this.cols, this.rows)) continue;
             const newIdx = nc + nr * this.cols;
             newGrid[newIdx] = level;
         }
@@ -313,7 +313,7 @@ export class WorldObstacleGrid {
             const lc = i % cols;
             const col = baseCol + lc;
             const row = baseRow + lr;
-            if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) continue;
+            if (!cellInRect(col, row, this.cols, this.rows)) continue;
             const idx = col + row * this.cols;
             if (this.grid[idx] !== level) {
                 this.grid[idx] = level;
@@ -370,7 +370,6 @@ export class WorldObstacleGrid {
     }
     /** @param {number} col @param {number} row @param {number} kind @param {number} facingRadians */
     writeFloorCell(col, row, kind, facingRadians) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
         if (this.isBlocked(col, row)) return false;
         const idx = colRowToIndex(col, row, this.cols);
         const prevKind = this.floorStore.kind[idx];
@@ -390,17 +389,17 @@ export class WorldObstacleGrid {
     }
     /** @param {number} col @param {number} row */
     hasFloorOccupancy(col, row) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+        if (!cellInRect(col, row, this.cols, this.rows)) return false;
         return this.floorStore.hasAnyAtIdx(colRowToIndex(col, row, this.cols));
     }
     /** @param {number} col @param {number} row */
     hasFloorBelt(col, row) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+        if (!cellInRect(col, row, this.cols, this.rows)) return false;
         return this.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, this.cols));
     }
     /** @param {number} col @param {number} row */
     clearFloorCell(col, row) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+        if (!cellInRect(col, row, this.cols, this.rows)) return false;
         const idx = colRowToIndex(col, row, this.cols);
         if (!this.floorStore.hasAnyAtIdx(idx)) return false;
         const kind = this.floorStore.kind[idx];
@@ -447,7 +446,7 @@ export class WorldObstacleGrid {
         return gridToWorldAtOrigin(col, row, this.minX, this.minY, this.cellSize);
     }
     isBlocked(col, row) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return true;
+        if (!cellInRect(col, row, this.cols, this.rows)) return true;
         return this.grid[colRowToIndex(col, row, this.cols)] !== 0;
     }
     isBlockedWorld(x, y) {

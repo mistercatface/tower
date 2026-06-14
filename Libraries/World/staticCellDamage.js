@@ -2,7 +2,7 @@
  * Sparse health + damage handling for static obstacle-grid cells and railWall edges.
  */
 import { packCellKey, packEdgeCellKey } from "../DataStructures/CellKey.js";
-import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { getDamageAlphaFromHealth } from "../Render/Structure3D/wallDamageVisual.js";
 import { cellIsStaticWallAtIdx, gridCellToGlobalColRow, gridRailWallEdge } from "./wallGridCells.js";
 export const STATIC_CELL_MAX_HEALTH = 30;
@@ -39,7 +39,6 @@ export function getStaticCellDamageAlphaAtIdx(grid, state, col, row, idx) {
  * @param {number} side
  */
 export function getStaticEdgeDamageAlphaAt(grid, state, col, row, side) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return 0;
     if (!gridRailWallEdge(grid, col, row, side)) return 0;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
     const { health, maxHealth } = readStaticEdgeHealth(state, globalCol, globalRow, side);
@@ -52,7 +51,7 @@ export function getStaticEdgeDamageAlphaAt(grid, state, col, row, side) {
  * @param {number} row
  */
 export function getStaticCellDamageAlphaAtGrid(grid, state, col, row) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return 0;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return 0;
     return getStaticCellDamageAlphaAtIdx(grid, state, col, row, colRowToIndex(col, row, grid.cols));
 }
 /**
@@ -63,7 +62,7 @@ export function getStaticCellDamageAlphaAtGrid(grid, state, col, row) {
  * @param {number} damage
  */
 export function damageStaticGridCell(state, grid, col, row, damage) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return;
     const idx = colRowToIndex(col, row, grid.cols);
     if (!cellIsStaticWallAtIdx(grid, idx)) return;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
@@ -91,7 +90,6 @@ export function damageStaticGridCell(state, grid, col, row, damage) {
  * @param {number} damage
  */
 export function damageStaticGridEdge(state, grid, col, row, side, damage) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return;
     if (!gridRailWallEdge(grid, col, row, side)) return;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
     const key = packEdgeCellKey(globalCol, globalRow, side);

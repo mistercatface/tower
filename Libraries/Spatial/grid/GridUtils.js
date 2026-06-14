@@ -1,6 +1,10 @@
 export function colRowToIndex(col, row, cols) {
     return row * cols + col;
 }
+/** @param {number} col @param {number} row @param {number} cols @param {number} rows */
+export function cellInRect(col, row, cols, rows) {
+    return col >= 0 && col < cols && row >= 0 && row < rows;
+}
 export function indexToColRow(idx, cols) {
     return { col: idx % cols, row: Math.floor(idx / cols) };
 }
@@ -24,14 +28,14 @@ export function forEachCardinalNeighbor(col, row, cols, rows, fn) {
     for (const { dc, dr } of CARDINAL_OFFSETS) {
         const nc = col + dc;
         const nr = row + dr;
-        if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) fn(nc, nr, colRowToIndex(nc, nr, cols));
+        if (cellInRect(nc, nr, cols, rows)) fn(nc, nr, colRowToIndex(nc, nr, cols));
     }
 }
 export function forEachOctileNeighbor(col, row, cols, rows, fn) {
     for (const { dc, dr, cost } of OCTILE_OFFSETS) {
         const nc = col + dc;
         const nr = row + dr;
-        if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) fn(nc, nr, colRowToIndex(nc, nr, cols), cost);
+        if (cellInRect(nc, nr, cols, rows)) fn(nc, nr, colRowToIndex(nc, nr, cols), cost);
     }
 }
 export function makeAdjacencyKey(idA, idB) {

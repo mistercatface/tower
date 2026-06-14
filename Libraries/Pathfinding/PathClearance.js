@@ -1,4 +1,5 @@
 import { closestPointOnSegment, distanceToSegment, findClosestPointOnPathToWall, minDistanceSegmentToWall, pushPointFromWalls } from "../Spatial/geometry/WallGeometry.js";
+import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { corridorAabbInto, createAabb } from "../Math/Aabb2D.js";
 const CLEARANCE_EPS = 0.01;
 const WALL_QUERY_PAD = 48;
@@ -148,7 +149,7 @@ export function resolveMoveTarget(navGraph, x, y, clearance) {
 export function resolveRepositionTarget(navGraph, x, y, playerRadius) {
     if (!navGraph) return { x, y, col: null, row: null };
     const clickCell = navGraph.worldToGrid(x, y);
-    if (clickCell.col < 0 || clickCell.col >= navGraph.cols || clickCell.row < 0 || clickCell.row >= navGraph.rows || navGraph.isBlocked(clickCell.col, clickCell.row)) return null;
+    if (!cellInRect(clickCell.col, clickCell.row, navGraph.cols, navGraph.rows) || navGraph.isBlocked(clickCell.col, clickCell.row)) return null;
     const center = navGraph.gridToWorld(clickCell.col, clickCell.row);
     if (!canPlaceMoveTarget(navGraph, center.x, center.y, playerRadius)) return null;
     return { x: center.x, y: center.y, col: clickCell.col, row: clickCell.row };

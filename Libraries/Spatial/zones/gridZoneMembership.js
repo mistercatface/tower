@@ -1,5 +1,5 @@
 import { isEdgeZoneKey } from "../../DataStructures/CellKey.js";
-import { colRowToIndex, indexToColRow } from "../grid/GridUtils.js";
+import { cellInRect, colRowToIndex, indexToColRow } from "../grid/GridUtils.js";
 import { isPassagePowered } from "../grid/boundaryOccupancy.js";
 import { canonicalEdgeCellKey } from "../../World/wallGridCells.js";
 /** @typedef {{ col: number, row: number, side: number, mode: string }} GridEdgeSubscription */
@@ -84,7 +84,7 @@ export function resolveEntityGridZoneKeys(entity, grid, subscriptions, out) {
             for (let dr = -1; dr <= 1; dr++) {
                 const nc = col + dc;
                 const nr = row + dr;
-                if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) continue;
+                if (!cellInRect(nc, nr, grid.cols, grid.rows)) continue;
                 for (let side = 0; side < 4; side++) {
                     const key = canonicalEdgeCellKey(grid, nc, nr, side);
                     if (!subscriptions.edges.has(key)) continue;

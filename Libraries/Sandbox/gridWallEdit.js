@@ -3,10 +3,10 @@ import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
-import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { formatPassageModeLabel, isForcefieldEdge, isRailWallEdge, parsePassageMode, PASSAGE_MODE, railWallCapLevel } from "../Spatial/grid/CellEdge.js";
 import { clearBoundaryPrimary, setBoundary, setPassageProfile } from "../Spatial/grid/boundaryOccupancy.js";
-import { cellIsStaticWallAtIdx, gridCellToGlobalColRow, gridForcefieldEdge, gridNeighborFillLevel, gridRailWallEdge, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
+import { cellIsStaticWall, cellIsStaticWallAtIdx, gridCellToGlobalColRow, gridForcefieldEdge, gridNeighborFillLevel, gridRailWallEdge, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
 const ENSURE_AABB = createAabb();
 const EDGE_P1 = { x: 0, y: 0 };
@@ -18,17 +18,14 @@ export function formatGridWallEdgeSideLabel(side) {
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
 export function gridHasVoxelWall(grid, col, row) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
-    return cellIsStaticWallAtIdx(grid, colRowToIndex(col, row, grid.cols));
+    return cellIsStaticWall(grid, col, row);
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridHasRailWall(grid, col, row, side) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
     return gridRailWallEdge(grid, col, row, side) !== null;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridHasForcefield(grid, col, row, side) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
     return gridForcefieldEdge(grid, col, row, side) !== null;
 }
 /**
@@ -40,7 +37,7 @@ export function gridHasForcefield(grid, col, row, side) {
  */
 export function hitTestRailWallEdgeAtWorld(grid, worldX, worldY, hitWorld = grid.cellSize * 0.25) {
     const { col, row } = grid.worldToGrid(worldX, worldY);
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return null;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const bounds = grid.getCellBounds(col, row);
     const localX = worldX - bounds.minX;
     const localY = worldY - bounds.minY;
@@ -130,7 +127,7 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
     for (let i = 0; i < voxels.length; i++) {
         const { col: globalCol, row: globalRow, heightLevel } = voxels[i];
         const { col, row } = toLocal(globalCol, globalRow);
-        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         const idx = colRowToIndex(col, row, grid.cols);
         if (grid.segmentGrid?.[idx]?.length) continue;
         grid.grid[idx] = clampStampWallHeightLevel(heightLevel, settings);
@@ -139,7 +136,7 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
     for (let i = 0; i < railWalls.length; i++) {
         const { col: globalCol, row: globalRow, side, heightLevel, thicknessLevel } = railWalls[i];
         const { col, row } = toLocal(globalCol, globalRow);
-        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         setBoundary(grid, col, row, side, { kind: "railWall", capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
         mark(col, row);
     }
@@ -175,7 +172,7 @@ export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) 
     for (let i = 0; i < forcefields.length; i++) {
         const { col: globalCol, row: globalRow, side, mode, allowedSide } = forcefields[i];
         const { col, row } = toLocal(globalCol, globalRow);
-        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         if (gridHasRailWall(grid, col, row, side)) {
             const { globalCol: gc, globalRow: gr } = gridCellToGlobalColRow(grid, col, row);
             state.staticCellHealth.delete(packEdgeCellKey(gc, gr, side));
@@ -198,7 +195,7 @@ function cellBounds(col, row) {
 /** @param {object} state @param {number} col @param {number} row @param {number} heightLevel */
 export function stampVoxelWallAt(state, col, row, heightLevel) {
     const grid = state.obstacleGrid;
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const idx = colRowToIndex(col, row, grid.cols);
     if (grid.segmentGrid?.[idx]?.length) return false;
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
@@ -209,7 +206,7 @@ export function stampVoxelWallAt(state, col, row, heightLevel) {
 /** @param {object} state @param {number} col @param {number} row */
 export function clearVoxelWallAt(state, col, row) {
     const grid = state.obstacleGrid;
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const idx = colRowToIndex(col, row, grid.cols);
     if (!cellIsStaticWallAtIdx(grid, idx)) return false;
     grid.grid[idx] = 0;
@@ -232,7 +229,7 @@ export function setVoxelWallHeightAt(state, col, row, heightLevel) {
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {number} heightLevel @param {number} thicknessLevel */
 export function stampRailWallAt(state, col, row, side, heightLevel, thicknessLevel) {
     const grid = state.obstacleGrid;
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (gridHasForcefield(grid, col, row, side)) clearForcefieldAt(state, col, row, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     setBoundary(grid, col, row, side, { kind: "railWall", capHeightLevel: level, thicknessLevel });
@@ -256,7 +253,7 @@ export function setRailWallAt(state, col, row, side, heightLevel, thicknessLevel
 /** @param {object} state @param {number} col @param {number} row @param {number} side @param {{ mode?: string, allowedSide?: number }} [profile] */
 export function stampForcefieldAt(state, col, row, side, { mode = PASSAGE_MODE.Solid, allowedSide = side } = {}) {
     const grid = state.obstacleGrid;
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (gridHasRailWall(grid, col, row, side)) clearRailWallAt(state, col, row, side);
     if (!setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide, powered: false })) return false;
     notifyGridWallChange(state, cellBounds(col, row));

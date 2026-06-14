@@ -2,7 +2,7 @@
  * Static wall height levels stored on obstacleGrid.grid (0 = open, 1 … maxWallHeightLevel).
  */
 import { packEdgeCellKey } from "../DataStructures/CellKey.js";
-import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
 import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, createRailWallEdge, railWallCapLevel, railWallHeightPx, railWallThicknessPx, passageEdgeEmitsCollision } from "../Spatial/grid/CellEdge.js";
 import { gridSettings } from "../../Config/balance/grid.js";
@@ -115,6 +115,7 @@ export function gridEdgeRailCollisionThicknessPx(grid, col, row, side, defaultPa
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridBeltRailEdge(grid, col, row, side) {
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isBeltRailEdge(edge)) return null;
     return edge;
@@ -126,6 +127,7 @@ export function gridBeltRailEdgeShouldEmit(grid, col, row, side) {
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridCellEdge(grid, col, row, side) {
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     return grid.edgeStore.get(col, row, side, grid.cols);
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
@@ -136,6 +138,7 @@ export function gridForcefieldEdge(grid, col, row, side) {
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridRailWallEdge(grid, col, row, side) {
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isRailWallEdge(edge)) return null;
     return edge;
@@ -143,7 +146,7 @@ export function gridRailWallEdge(grid, col, row, side) {
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function gridNeighborFillLevel(grid, col, row, side) {
     const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-    if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return 0;
+    if (!cellInRect(nc, nr, grid.cols, grid.rows)) return 0;
     return grid.grid[nc + nr * grid.cols];
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
@@ -173,7 +176,7 @@ export function resolveGridWallEdgeRailNeighborContext(grid, col, row, side) {
     const neighborFillLevel = gridNeighborFillLevel(grid, col, row, side);
     const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
     let neighborFillHeightPx = 0;
-    if (nc >= 0 && nc < grid.cols && nr >= 0 && nr < grid.rows) neighborFillHeightPx = resolveCellWallHeightAtIdx(grid, nc + nr * grid.cols);
+    if (cellInRect(nc, nr, grid.cols, grid.rows)) neighborFillHeightPx = resolveCellWallHeightAtIdx(grid, nc + nr * grid.cols);
     const neighborCap = neighborFillHeightPx > 0 ? neighborFillHeightPx : null;
     const railEdge = gridRailWallEdge(grid, col, row, side);
     const capHeightPx = railEdge ? railWallHeightPx(railEdge, grid.cellSize, neighborFillLevel) : 0;
@@ -441,7 +444,7 @@ export function resolveGridWallFace(grid, col, row, edge) {
     const faceHeight = fillHeight;
     const { nc, nr } = gridWallEdgeNeighbor(col, row, edge);
     let neighborFillHeight = 0;
-    if (nc >= 0 && nc < cols && nr >= 0 && nr < grid.rows) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nc + nr * cols);
+    if (cellInRect(nc, nr, cols, grid.rows)) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nc + nr * cols);
     const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
     if (!gridWallFaceVisible(neighborCap, faceHeight)) return null;
     gridWallEdgeEndpoints(grid, col, row, edge, sP1, sP2, 0);
@@ -533,7 +536,7 @@ export function resolveWallCapHeightPx(capHeight, settings) {
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
 export function cellIsStaticWall(grid, col, row) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     return cellIsStaticWallAtIdx(grid, colRowToIndex(col, row, grid.cols));
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
@@ -546,7 +549,7 @@ export function canonicalEdgeCellKey(grid, col, row, side) {
     const a = gridCellToGlobalColRow(grid, col, row);
     const keyA = packEdgeCellKey(a.globalCol, a.globalRow, side);
     const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-    if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) return keyA;
+    if (!cellInRect(nc, nr, grid.cols, grid.rows)) return keyA;
     const b = gridCellToGlobalColRow(grid, nc, nr);
     const keyB = packEdgeCellKey(b.globalCol, b.globalRow, gridWallEdgeMirrorSide(side));
     return keyA <= keyB ? keyA : keyB;
@@ -563,7 +566,7 @@ export function isCanonicalEdgeRepresentative(grid, col, row, side) {
  * @returns {number} px height; 0 when not a static wall cell
  */
 export function resolveCellWallHeightPx(grid, col, row) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return 0;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return 0;
     return resolveCellWallHeightAtIdx(grid, colRowToIndex(col, row, grid.cols));
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @returns {number[]} */

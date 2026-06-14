@@ -1,11 +1,12 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { buildPathOverlayFromProgress } from "../../Pathfinding/pathFollow.js";
 import { getRollToCursorConfig, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
+import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
 function snapMoveTargetToCellCenter(grid, world) {
     const { col, row } = grid.worldToGrid(world.x, world.y);
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return { world, col: null, row: null };
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
     return { world: grid.gridToWorld(col, row), col, row };
 }
 export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";

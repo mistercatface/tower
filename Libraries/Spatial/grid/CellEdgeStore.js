@@ -1,4 +1,4 @@
-import { colRowToIndex } from "./GridUtils.js";
+import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { gridWallEdgeNeighbor, gridWallEdgeMirrorSide, gridNeighborFillLevel } from "../../World/wallGridCells.js";
 import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isRailWallEdge, railWallHeightPx } from "./CellEdge.js";
@@ -37,7 +37,7 @@ export class CellEdgeStore {
             const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
             const nr = row + rowOffset;
-            if (nc < 0 || nc >= newCols || nr < 0 || nr >= newRows) continue;
+            if (!cellInRect(nc, nr, newCols, newRows)) continue;
             const newIdx = nc + nr * newCols;
             const oldBase = idx * 4;
             const newBase = newIdx * 4;
@@ -103,7 +103,7 @@ export class CellEdgeStore {
      * @param {object | null} edge
      */
     writeMirrored(col, row, side, cols, rows, edge) {
-        if (col < 0 || col >= cols || row < 0 || row >= rows) return;
+        if (!cellInRect(col, row, cols, rows)) return;
         if (!edge) {
             this.clearMirrored(col, row, side, cols, rows);
             return;
@@ -113,7 +113,7 @@ export class CellEdgeStore {
         this._setSlot(col, row, side, cols, ref);
         const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
         const nSide = gridWallEdgeMirrorSide(side);
-        if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) this._setSlot(nc, nr, nSide, cols, ref);
+        if (cellInRect(nc, nr, cols, rows)) this._setSlot(nc, nr, nSide, cols, ref);
     }
     /**
      * @param {number} col
@@ -123,14 +123,14 @@ export class CellEdgeStore {
      * @param {number} rows
      */
     clearMirrored(col, row, side, cols, rows) {
-        if (col < 0 || col >= cols || row < 0 || row >= rows) return;
+        if (!cellInRect(col, row, cols, rows)) return;
         const slot = colRowToIndex(col, row, cols) * 4 + side;
         const ref = this.slots[slot];
         if (ref === EMPTY) return;
         this.slots[slot] = EMPTY;
         const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
         const nSide = gridWallEdgeMirrorSide(side);
-        if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) this.slots[colRowToIndex(nc, nr, cols) * 4 + nSide] = EMPTY;
+        if (cellInRect(nc, nr, cols, rows)) this.slots[colRowToIndex(nc, nr, cols) * 4 + nSide] = EMPTY;
         this._free(ref);
     }
     /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../../Math/Aabb2D.js").Aabb2D} aabb @param {(col: number, row: number, side: number, idx: number, edge: object) => void} fn */

@@ -1,5 +1,5 @@
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
-import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
 import { createConveyorDraw } from "../Render/conveyorDraw.js";
@@ -14,7 +14,7 @@ import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js
 /** @param {object} state @param {number} col @param {number} row */
 export function canStampFloorBeltAt(state, col, row) {
     const grid = state.obstacleGrid;
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (grid.isBlocked(col, row)) return false;
     if (grid.hasFloorOccupancy(col, row)) return false;
     if (findGridAnchoredFloorPropAtCell(state.entityRegistry, col, row)) return false;
@@ -58,7 +58,7 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
     for (let i = 0; i < pushables.length; i++) {
         const entity = pushables[i];
         const { col, row } = grid.worldToGrid(entity.x, entity.y);
-        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         const idx = col + row * grid.cols;
         if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
         applyPushableAccelerationAlongAngle(entity, floorBeltFacingFromIndex(grid.floorStore.facing[idx]), force, dtSec);
@@ -139,7 +139,7 @@ export function drawFloorOccupancyPowerSources(ctx, state, viewport, camera) {
 /** @param {object} state @param {number} col @param {number} row */
 export function clearFloorOverlayAt(state, col, row) {
     const grid = state.obstacleGrid;
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const idx = colRowToIndex(col, row, grid.cols);
     if (grid.floorStore.isPassagePowerSourceAtIdx(idx)) return clearPassagePowerSourceAt(state, col, row);
     if (!grid.clearFloorCell(col, row)) return false;
@@ -180,7 +180,7 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
         const { col: globalCol, row: globalRow, kind, facingIndex } = floorBelts[i];
         if (!isFloorBeltKind(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
         const { col, row } = grid.worldToGrid(globalCol * cellSize + half, globalRow * cellSize + half);
-        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         if (grid.isBlocked(col, row)) continue;
         const idx = colRowToIndex(col, row, grid.cols);
         const prevKind = grid.floorStore.kind[idx];
@@ -203,7 +203,7 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
 /** @param {object} state @param {number} col @param {number} row */
 export function canStampPassagePowerSourceAt(state, col, row) {
     const grid = state.obstacleGrid;
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (grid.isBlocked(col, row)) return false;
     if (grid.hasFloorOccupancy(col, row)) return false;
     if (findGridAnchoredFloorPropAtCell(state.entityRegistry, col, row)) return false;
@@ -220,7 +220,7 @@ export function stampPassagePowerSourceAt(state, col, row, defaultPowered = fals
 /** @param {object} state @param {number} col @param {number} row */
 export function clearPassagePowerSourceAt(state, col, row) {
     const grid = state.obstacleGrid;
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const idx = colRowToIndex(col, row, grid.cols);
     if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return false;
     grid.floorStore.clearAtIdx(idx);
@@ -261,7 +261,7 @@ export function applyPassagePowerSourcesFromGlobal(state, powerSources, cellSize
     for (let i = 0; i < powerSources.length; i++) {
         const { col: globalCol, row: globalRow, defaultPowered } = powerSources[i];
         const { col, row } = grid.worldToGrid(globalCol * cellSize + half, globalRow * cellSize + half);
-        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         if (grid.isBlocked(col, row)) continue;
         if (grid.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, grid.cols))) continue;
         const idx = colRowToIndex(col, row, grid.cols);

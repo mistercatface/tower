@@ -1,4 +1,5 @@
 import { normalizeAngle } from "../../Math/Angle.js";
+import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { normalizeVector } from "../../Math/Vec2.js";
 import { createImpactProfile } from "./config.js";
 import { initializeRagdoll } from "./physics.js";
@@ -8,7 +9,7 @@ export function createObstacleWallChecker(state) {
     if (!grid) return null;
     return (worldX, worldY) => {
         const { col, row } = grid.worldToGrid(worldX, worldY);
-        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return true;
+        if (!cellInRect(col, row, grid.cols, grid.rows)) return true;
         return grid.grid[row * grid.cols + col] !== 0;
     };
 }

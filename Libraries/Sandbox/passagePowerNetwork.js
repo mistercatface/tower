@@ -1,6 +1,6 @@
 import { isForcefieldEdge } from "../Spatial/grid/CellEdge.js";
 import { isPassagePowered, setPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
-import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey, gridWallEdgeNeighbor } from "../World/wallGridCells.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
@@ -111,7 +111,7 @@ function collectEnergizedSourceCells(grid, state) {
             const link = links[i];
             if (link.type !== "gridCell") continue;
             const { col, row } = grid.worldToGrid(link.globalCol * grid.cellSize + half, link.globalRow * grid.cellSize + half);
-            if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+            if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
             const idx = colRowToIndex(col, row, grid.cols);
             if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) continue;
             energized.add(idx);
@@ -167,7 +167,7 @@ function floodNetworkPoweredEdgeKeys(grid, energizedSourceIdx, graph) {
 /** @param {object} state @param {number} col @param {number} row */
 export function isPassagePowerSourceEnergized(state, col, row) {
     const grid = state.obstacleGrid;
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const idx = colRowToIndex(col, row, grid.cols);
     if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return false;
     if (grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx)) return true;

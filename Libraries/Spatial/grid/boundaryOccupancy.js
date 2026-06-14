@@ -1,7 +1,7 @@
 import { createBeltRailEdge, createForcefieldEdge, edgeBlocksCrossing, isBeltRailEdge, isForcefieldEdge, isRailWallEdge, parsePassageMode, passageEdgeBlocksStep } from "./CellEdge.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
-import { colRowToIndex } from "./GridUtils.js";
+import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { gridNeighborFillLevel } from "../../World/wallGridCells.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {{ kind: "passage", mode?: string, allowedSide?: number, powered?: boolean }} PassageBoundarySpec */
@@ -49,7 +49,7 @@ export function setPassageProfile(grid, col, row, side, mode, allowedSide) {
  * @returns {boolean} false when exclusivity rejects the write
  */
 export function setBoundary(grid, col, row, side, spec, { bumpRevision = false } = {}) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (spec === null) {
         clearBoundaryPrimary(grid, col, row, side, { bumpRevision });
         return true;
@@ -79,7 +79,7 @@ export function setBoundary(grid, col, row, side, spec, { bumpRevision = false }
  * @returns {boolean} true when a primary edge was cleared
  */
 export function clearBoundaryPrimary(grid, col, row, side, { bumpRevision = false } = {}) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isRailWallEdge(edge) && !isForcefieldEdge(edge)) return false;
     grid.edgeStore.clearMirrored(col, row, side, grid.cols, grid.rows);
@@ -97,7 +97,7 @@ export function clearBoundaryPrimary(grid, col, row, side, { bumpRevision = fals
  * @returns {boolean}
  */
 export function clearBoundaryAtSide(grid, col, row, side, { bumpRevision = false } = {}) {
-    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!edge) return false;
     if (isRailWallEdge(edge) || isForcefieldEdge(edge)) return clearBoundaryPrimary(grid, col, row, side, { bumpRevision });
