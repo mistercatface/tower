@@ -89,7 +89,7 @@ sandboxToyUi.js
 The Issue: Re-rendering details causes elements to be torn down and rebuilt. This can lead to cursor focus loss, scroll position resets, and difficult-to-track event listener bindings.
 The Recommendation: Since you have modular files, consider introducing a lightweight declarative rendering system (like lit-html or a small custom virtual-DOM/reactive utility) so UI changes only update modified parts, or implement stateful component containers that directly synchronize specific fields rather than full-pane redraws.
 Summary of Analysis
-Reviewed the global constraints and listed files under the main workspace C:\Users\mrjbl\Desktop\tower.
+Reviewed the global constraints and listed files under the main workspace
 Examined project state and architecture entrypoints including main.js, engine.js, State.js, and the todo.md list.
 Analyzed hot paths in entity management, physics loop, viewport-culling, 3D rendering, and UI building.
 Outlined key performance debt resolutions (matching the goals inside the project's own checklist) and provided concrete implementation recipes.
