@@ -39,8 +39,8 @@ export function formatPortalAccessSideLabel(ownerSide, allowedSide) {
 }
 /** Non-directional step query (conservative when access is one). Caller must pass a portal edge. */
 export function portalBlocksStepWithoutDirection(edge, ownerSide) {
-    // A portal edge always blocks normal steps because crossing it either teleports the entity
-    // or blocks it (if unpowered, unlinked, or wrong-side). Normal walk to the opposite cell is never possible.
+    // Off = open doorway (same as unpowered passage). On = never a normal adjacency hop (traverse or block only).
+    if (edge.powered !== true) return false;
     return true;
 }
 /**
@@ -48,7 +48,7 @@ export function portalBlocksStepWithoutDirection(edge, ownerSide) {
  * @returns {boolean} true when the step is blocked
  */
 export function portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide) {
-    if (edge.powered !== true) return true;
+    if (edge.powered !== true) return false;
     if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return false;
     if (!portalAccessBlockIncludesStep(edge)) return false;
     const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, edge.allowedSide);
@@ -56,7 +56,7 @@ export function portalBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, owner
 }
 /** Whether a portal edge emits physics collision rails. Caller must pass a portal edge. */
 export function portalEdgeEmitsCollision(edge) {
-    if (edge.powered !== true) return true;
+    if (edge.powered !== true) return false;
     if (edge.accessMode === PORTAL_ACCESS_MODE.Both) return false;
     return portalAccessBlockIncludesPhysics(edge);
 }
