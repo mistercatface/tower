@@ -74,16 +74,16 @@ export function portalHasCrossingIntent(cross, vx, vy, dispX, dispY) {
     return dispX * cross.x + dispY * cross.y > PORTAL_CROSSING_INTENT_EPS;
 }
 /**
- * HPA path steering this portal mouth, or manual push with crossing intent when no nav waypoint is set.
+ * Hop ticket on the mouth waypoint, or knock-in when not on an active nav path.
  * @param {object} entity
  * @param {number} mouthCol
  * @param {number} mouthRow
  * @param {{ x: number, y: number }} cross
  */
-export function portalEntryCommitted(entity, mouthCol, mouthRow, cross, vx, vy, dispX, dispY) {
-    if (entity._navSteerCellCol === mouthCol && entity._navSteerCellRow === mouthRow) return true;
-    if (entity._navPortalMouthCol === mouthCol && entity._navPortalMouthRow === mouthRow) return true;
-    if (entity._navSteerCellCol !== undefined || entity._navPortalMouthCol !== undefined) return false;
+export function portalMouthAllowsCrossing(entity, mouthCol, mouthRow, cross, vx, vy, dispX, dispY) {
+    const ticket = entity._portalHopTicket;
+    if (ticket) return ticket.mouthCol === mouthCol && ticket.mouthRow === mouthRow;
+    if (entity._portalNavActive) return false;
     return portalHasCrossingIntent(cross, vx, vy, dispX, dispY);
 }
 /**
@@ -115,7 +115,7 @@ export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, e
     const { mouth } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
     if (!portalBodyInMouthZone(grid, edge, ownerCol, ownerRow, ownerSide, entity.x, entity.y, bodyRadius)) return true;
     const cross = portalCrossingVectorForEdge(edge, ownerCol, ownerRow, ownerSide);
-    return !portalEntryCommitted(entity, mouth.col, mouth.row, cross, vx, vy, dispX, dispY);
+    return !portalMouthAllowsCrossing(entity, mouth.col, mouth.row, cross, vx, vy, dispX, dispY);
 }
 /** World cell at the mouth of the partner portal. */
 export function portalTraverseExitCell(grid, partnerCol, partnerRow, partnerSide) {

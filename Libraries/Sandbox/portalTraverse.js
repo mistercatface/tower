@@ -1,7 +1,14 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { distanceSqToSegment } from "../Spatial/geometry/WallGeometry.js";
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
-import { portalBodyInMouthZone, portalCrossingVectorForEdge, portalEntryCommitted, portalMouthAndBackCells, portalTraverseExitCell, portalTraverseExitVector } from "../Spatial/grid/portalAccess.js";
+import {
+    portalBodyInMouthZone,
+    portalCrossingVectorForEdge,
+    portalMouthAllowsCrossing,
+    portalMouthAndBackCells,
+    portalTraverseExitCell,
+    portalTraverseExitVector,
+} from "../Spatial/grid/portalAccess.js";
 import { invalidateWallResolveCache } from "../Motion/WallCollisionResolver.js";
 import { quantizeCardinalAngle } from "../Math/Angle.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
@@ -45,10 +52,8 @@ export function applyPortalTraverse(state, entity, entry) {
     const exitGrid = grid.worldToGrid(entity.x, entity.y);
     entity._gridZonePrevCellIdx = colRowToIndex(exitGrid.col, exitGrid.row, grid.cols);
     applyPortalExitMotion(entity, exitOut);
-    delete entity._navSteerCellCol;
-    delete entity._navSteerCellRow;
-    delete entity._navPortalMouthCol;
-    delete entity._navPortalMouthRow;
+    delete entity._portalHopTicket;
+    delete entity._portalNavActive;
     entity._portalTraverseUntil = state.gameTime + PORTAL_TRAVERSE_COOLDOWN_MS;
     entity._portalNavDirty = true;
     invalidateWallResolveCache(entity);
@@ -82,7 +87,7 @@ export function tickPortalContacts(state, spatialFrame) {
             if (!portalBodyInMouthZone(grid, edge, gridCol, gridRow, gridSide, entity.x, entity.y, bodyRadius)) continue;
             const cross = portalCrossingVectorForEdge(edge, gridCol, gridRow, gridSide);
             const { mouth, back } = portalMouthAndBackCells(gridCol, gridRow, gridSide, edge);
-            if (!portalEntryCommitted(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) continue;
+            if (!portalMouthAllowsCrossing(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) continue;
             const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
             if (!entry) continue;
             if (applyPortalTraverse(state, entity, entry)) {

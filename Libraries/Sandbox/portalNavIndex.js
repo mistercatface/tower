@@ -87,3 +87,20 @@ export function portalHopMouthOnCellPath(cells, navGraph) {
     }
     return null;
 }
+/**
+ * Index of the hop mouth waypoint in a world path, or null when no hop / mouth trimmed away.
+ *
+ * @param {{ col: number, row: number }[]} rawCellPath
+ * @param {{ x: number, y: number }[]} worldPath
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @returns {number | null}
+ */
+export function portalHopWaypointIndex(rawCellPath, worldPath, grid) {
+    const mouth = portalHopMouthOnCellPath(rawCellPath, grid);
+    if (!mouth || !worldPath.length) return null;
+    for (let i = 0; i < worldPath.length; i++) {
+        const cell = grid.worldToGrid(worldPath[i].x, worldPath[i].y);
+        if (cell.col === mouth.col && cell.row === mouth.row) return i;
+    }
+    return null;
+}

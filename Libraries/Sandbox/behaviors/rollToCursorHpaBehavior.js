@@ -4,32 +4,26 @@ import { getRollToCursorConfig, steerRollToward, releaseRollMoveTarget } from ".
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 /** @param {object} prop */
-function clearNavPortalCommitment(prop) {
-    delete prop._navSteerCellCol;
-    delete prop._navSteerCellRow;
-    delete prop._navPortalMouthCol;
-    delete prop._navPortalMouthRow;
+function clearPortalHopTicket(prop) {
+    delete prop._portalHopTicket;
+    delete prop._portalNavActive;
 }
-/** @param {object} prop @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../../Pathfinding/navSession.js").NavSessionState & { portalHopMouth?: { col: number, row: number } | null }} navState */
-function syncNavPortalCommitment(prop, grid, navState) {
+/** @param {object} prop @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../../Pathfinding/navSession.js").NavSessionState & { portalHopWaypointIdx?: number | null }} navState */
+function syncPortalHopTicket(prop, grid, navState) {
+    delete prop._portalHopTicket;
+    delete prop._portalNavActive;
     const path = navState.path;
-    if (!path?.length) {
-        clearNavPortalCommitment(prop);
-        return;
-    }
-    const idx = Math.min(navState.pathProgressIdx, path.length - 1);
-    const wp = path[idx];
-    const steerCell = grid.worldToGrid(wp.x, wp.y);
-    prop._navSteerCellCol = steerCell.col;
-    prop._navSteerCellRow = steerCell.row;
-    const mouth = navState.portalHopMouth;
-    if (mouth) {
-        prop._navPortalMouthCol = mouth.col;
-        prop._navPortalMouthRow = mouth.row;
-    } else {
-        delete prop._navPortalMouthCol;
-        delete prop._navPortalMouthRow;
-    }
+    if (!path?.length) return;
+    prop._portalNavActive = true;
+    const hopIdx = navState.portalHopWaypointIdx;
+    if (hopIdx == null) return;
+    const wp = path[hopIdx];
+    const { col: mouthCol, row: mouthRow } = grid.worldToGrid(wp.x, wp.y);
+    const onHopWaypoint = navState.pathProgressIdx === hopIdx;
+    const propCell = grid.worldToGrid(prop.x, prop.y);
+    const inHopMouthCell = propCell.col === mouthCol && propCell.row === mouthRow;
+    if (!onHopWaypoint && !inHopMouthCell) return;
+    prop._portalHopTicket = { mouthCol, mouthRow };
 }
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
 function snapMoveTargetToCellCenter(grid, world) {
@@ -56,7 +50,7 @@ export function createRollToCursorHpaBehavior(state) {
     };
     const releaseMoveTarget = (prop) => {
         clearTarget();
-        clearNavPortalCommitment(prop);
+        clearPortalHopTicket(prop);
         releaseRollMoveTarget(prop);
     };
     /** @param {{ x: number, y: number }} world @param {boolean} [forceReset] */
@@ -105,12 +99,12 @@ export function createRollToCursorHpaBehavior(state) {
                 return;
             }
             hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
+            syncPortalHopTicket(prop, state.obstacleGrid, hpaNav.navState);
             const steering = hpaNav.getSteering(prop, steerTarget.x, steerTarget.y, {
                 pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5),
                 arrivalDistance: config.stopRadius,
                 pathOffPathDistance: 80,
             });
-            syncNavPortalCommitment(prop, state.obstacleGrid, hpaNav.navState);
             if (!steering) {
                 releaseMoveTarget(prop);
                 return;
