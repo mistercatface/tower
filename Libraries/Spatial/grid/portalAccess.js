@@ -96,6 +96,13 @@ export function portalBodyCrossedEntryPlane(bodyX, bodyY, mouth, back, cross, gr
     const backWorld = grid.gridToWorld(back.col, back.row);
     const midX = (mouthWorld.x + backWorld.x) * 0.5;
     const midY = (mouthWorld.y + backWorld.y) * 0.5;
+    // Check alignment along the portal segment to prevent accidental diagonal crossings
+    if (cross.x === 0) {
+        // Horizontal portal edge: coordinate along edge is X
+        if (Math.abs(bodyX - midX) > grid.cellSize * 0.5 + 0.5) return false;
+    } else if (Math.abs(bodyY - midY) > grid.cellSize * 0.5 + 0.5)
+        // Vertical portal edge: coordinate along edge is Y
+        return false;
     const mouthSide = -((bodyX - midX) * cross.x + (bodyY - midY) * cross.y);
     return mouthSide > -bodyRadius * 0.35;
 }
