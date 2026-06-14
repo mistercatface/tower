@@ -2,6 +2,7 @@ import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spati
 import { runCollisionPipeline } from "../../Libraries/Spatial/collision/collisionPipeline.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
+import { tickPortalContacts } from "../../Libraries/Sandbox/portalTraverse.js";
 /** @type {{ state: object | null, spatialFrame: object | null, events: object[] | null }} */
 const collisionRunCtx = { state: null, spatialFrame: null, events: null };
 const collisionPipelineHooks = {
@@ -26,6 +27,7 @@ const collisionPipelineHooks = {
     resolveWalls(entity, frame) {
         collisionRunCtx.state.wallResolver.resolve(entity, frame);
     },
+    tickPortalContacts,
     combatantRestitution(a, b) {
         const chargeInvolved = a.attackType === "charge" || b.attackType === "charge";
         return chargeInvolved ? 0.65 : 0.15;

@@ -1,5 +1,4 @@
 import { isForcefieldEdge, isPortalEdge, parsePassageMode, PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
-import { tickPortalTraverse } from "./portalTraverse.js";
 import { tickGridZoneMembership } from "../Spatial/zones/gridZoneMembership.js";
 import { isPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
 import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
@@ -52,7 +51,6 @@ function markTripwireTriggered(state, event) {
 }
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame */
 export function tickGridZones(state, spatialFrame) {
-    tickPortalTraverse(state, spatialFrame);
     const subscriptions = ensureGridZoneSubscriptions(state);
     state.sandbox.tripwireTriggeredKeys.clear();
     if (!subscriptions.cells.size && !subscriptions.edges.size) return;

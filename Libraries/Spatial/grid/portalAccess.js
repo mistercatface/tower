@@ -63,18 +63,45 @@ export function portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, allow
     if (allowed.col === ownerCol && allowed.row === ownerRow) return portalSideOutwardVector(ownerSide);
     return portalSideOutwardVector(portalAccessDefaultAllowedSide(ownerSide));
 }
+/** Crossing direction for a portal segment emit owner. */
+export function portalCrossingVectorForEdge(edge, ownerCol, ownerRow, ownerSide) {
+    return portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
+}
+const PORTAL_CROSSING_INTENT_EPS = 0.05;
+/** @param {{ x: number, y: number }} cross @param {number} vx @param {number} vy @param {number} dispX @param {number} dispY */
+export function portalHasCrossingIntent(cross, vx, vy, dispX, dispY) {
+    if (vx * cross.x + vy * cross.y > PORTAL_CROSSING_INTENT_EPS) return true;
+    return dispX * cross.x + dispY * cross.y > PORTAL_CROSSING_INTENT_EPS;
+}
+/**
+ * Mouth-side half-plane test: back cell is never the mouth; center-in-mouth or straddling the plane from the mouth side counts.
+ * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
+ */
+export function portalBodyInMouthZone(grid, edge, ownerCol, ownerRow, ownerSide, bodyX, bodyY, bodyRadius) {
+    const { mouth, back } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
+    const { col, row } = grid.worldToGrid(bodyX, bodyY);
+    if (col === back.col && row === back.row) return false;
+    if (col === mouth.col && row === mouth.row) return true;
+    const cross = portalCrossingVectorForEdge(edge, ownerCol, ownerRow, ownerSide);
+    const mouthWorld = grid.gridToWorld(mouth.col, mouth.row);
+    const backWorld = grid.gridToWorld(back.col, back.row);
+    const midX = (mouthWorld.x + backWorld.x) * 0.5;
+    const midY = (mouthWorld.y + backWorld.y) * 0.5;
+    const relX = bodyX - midX;
+    const relY = bodyY - midY;
+    const mouthSide = -(relX * cross.x + relY * cross.y);
+    return mouthSide >= -bodyRadius && mouthSide <= grid.cellSize * 0.5 + bodyRadius;
+}
 /**
  * Directional physics blocking for portal edge rails.
  * @returns {boolean} true when collision should apply
  */
-export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, bodyX, bodyY, vx, vy, grid) {
+export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, bodyX, bodyY, bodyRadius, vx, vy, dispX, dispY, grid) {
     if (!portalEdgeEmitsCollision(edge)) return false;
     if (edge.powered !== true) return true;
-    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
-    const { col: bodyCol, row: bodyRow } = grid.worldToGrid(bodyX, bodyY);
-    if (bodyCol !== allowed.col || bodyRow !== allowed.row) return true;
-    const cross = portalAllowedCrossingVector(ownerCol, ownerRow, ownerSide, edge.allowedSide);
-    return vx * cross.x + vy * cross.y <= 0.5;
+    if (!portalBodyInMouthZone(grid, edge, ownerCol, ownerRow, ownerSide, bodyX, bodyY, bodyRadius)) return true;
+    const cross = portalCrossingVectorForEdge(edge, ownerCol, ownerRow, ownerSide);
+    return !portalHasCrossingIntent(cross, vx, vy, dispX, dispY);
 }
 /** World cell at the mouth of the partner portal. */
 export function portalTraverseExitCell(grid, partnerCol, partnerRow, partnerSide) {
