@@ -1,29 +1,21 @@
 import { isPassagePowerConductorEdge, isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import { isPassagePowered, setPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
+import { emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStructures/CellRect.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey, gridWallEdgeNeighbor, forEachGridEdge } from "../World/wallGridCells.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
 import { syncBoundaryNavIndex } from "./boundaryNavIndex.js";
-import { syncGridTopologyCaches } from "../Spatial/grid/gridTopologySync.js";
+import { syncGridTopologyCaches } from "../Spatial/grid/vertexPassability.js";
 /** @typedef {{ col: number, row: number, side: number, key: number }} PassageEdgeRef */
-/**
- * Cardinal edge endpoints as grid vertices (cell-corner coordinates).
- * Side 0=N, 1=E, 2=S, 3=W on cell (col, row).
- *
- * @param {number} col
- * @param {number} row
- * @param {number} side
- * @returns {readonly [number, number, number, number]} vx0, vy0, vx1, vy1
- */
+/** Cardinal edge endpoints as grid vertices (cell-corner coordinates). */
 export function passageEdgeVertexCoords(col, row, side) {
     if (side === 0) return [col, row, col + 1, row];
     if (side === 1) return [col + 1, row, col + 1, row + 1];
     if (side === 2) return [col, row + 1, col + 1, row + 1];
     return [col, row, col, row + 1];
 }
-/** @param {number} vx @param {number} vy @param {number} cols */
 function packVertexKey(vx, vy, cols) {
     return vx + vy * (cols + 1);
 }
@@ -31,15 +23,7 @@ function packVertexKey(vx, vy, cols) {
 export function passagePowerSourceSeedVertexKeys(col, row, cols) {
     return [packVertexKey(col, row, cols), packVertexKey(col + 1, row, cols), packVertexKey(col + 1, row + 1, cols), packVertexKey(col, row + 1, cols)];
 }
-/**
- * Canonical edge keys for the two cardinal edges meeting at each cell corner.
- * Used for docs/tests; flood runs on shared vertices, not this list directly.
- *
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {number} col
- * @param {number} row
- * @returns {number[]}
- */
+/** Canonical edge keys for the two cardinal edges meeting at each cell corner. */
 export function passagePowerCornerTapEdgeKeys(grid, col, row) {
     /** @type {number[]} */
     const keys = [];
@@ -57,10 +41,6 @@ export function passagePowerCornerTapEdgeKeys(grid, col, row) {
     }
     return keys;
 }
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @returns {{ vertexEdges: Map<number, PassageEdgeRef[]>, edgeByKey: Map<number, PassageEdgeRef> }}
- */
 function buildPassagePowerGraph(grid) {
     /** @type {Map<number, PassageEdgeRef[]>} */
     const vertexEdges = new Map();
@@ -93,7 +73,6 @@ function buildPassagePowerGraph(grid) {
     );
     return { vertexEdges, edgeByKey };
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} state */
 function collectEnergizedSourceCells(grid, state) {
     /** @type {Set<number>} */
     const energized = new Set();
@@ -119,20 +98,10 @@ function collectEnergizedSourceCells(grid, state) {
     });
     return energized;
 }
-/**
- * Flood from energized source corner vertices through shared-endpoint passage edges.
- *
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {Set<number>} energizedSourceIdx
- * @param {{ vertexEdges: Map<number, PassageEdgeRef[]>, edgeByKey: Map<number, PassageEdgeRef> }} graph
- * @returns {Set<number>}
- */
+/** Flood from energized source corner vertices through shared-endpoint passage edges. */
 function floodNetworkPoweredEdgeKeys(grid, energizedSourceIdx, graph) {
-    /** @type {Set<number>} */
     const poweredEdgeKeys = new Set();
-    /** @type {Set<number>} */
     const poweredVerts = new Set();
-    /** @type {number[]} */
     const queue = [];
     for (const idx of energizedSourceIdx) {
         const col = idx % grid.cols;
@@ -164,12 +133,6 @@ function floodNetworkPoweredEdgeKeys(grid, energizedSourceIdx, graph) {
     }
     return poweredEdgeKeys;
 }
-/**
- * @param {{ vertexEdges: Map<number, PassageEdgeRef[]>, edgeByKey: Map<number, PassageEdgeRef> }} graph
- * @param {Set<number>} poweredEdgeKeys
- * @param {number} cols
- * @returns {Map<number, number>}
- */
 function computePoweredEdgeNetworkIds(graph, poweredEdgeKeys, cols) {
     /** @type {Map<number, number>} */
     const networkIdByKey = new Map();
@@ -200,12 +163,6 @@ function computePoweredEdgeNetworkIds(graph, poweredEdgeKeys, cols) {
     }
     return networkIdByKey;
 }
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {Set<number>} poweredEdgeKeys
- * @param {Map<number, number>} networkIdByKey
- * @returns {boolean}
- */
 function splitInvalidPortalLinks(grid, poweredEdgeKeys, networkIdByKey) {
     let changed = false;
     forEachGridEdge(
@@ -226,7 +183,6 @@ function splitInvalidPortalLinks(grid, poweredEdgeKeys, networkIdByKey) {
     );
     return changed;
 }
-/** @param {object} state @param {number} col @param {number} row */
 export function isPassagePowerSourceEnergized(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
@@ -250,7 +206,6 @@ export function isPassagePowerSourceEnergized(state, col, row) {
     });
     return energized;
 }
-/** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function getPassageEdgeNetworkId(state, grid, col, row, side) {
     const cache = state.sandbox.passagePower;
     if (!cache) return -1;
@@ -258,28 +213,16 @@ export function getPassageEdgeNetworkId(state, grid, col, row, side) {
     if (!cache.poweredKeys.has(key)) return -1;
     return cache.networkIdByKey.get(key) ?? -1;
 }
-/** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 export function isPassageEdgeNetworkPowered(state, grid, col, row, side) {
     const cache = state.sandbox.passagePower;
     if (!cache) return false;
     return cache.poweredKeys.has(canonicalEdgeCellKey(grid, col, row, side));
 }
-/**
- * @param {object} state
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {number} colA
- * @param {number} rowA
- * @param {number} sideA
- * @param {number} colB
- * @param {number} rowB
- * @param {number} sideB
- */
 export function canLinkPortalsOnNetwork(state, grid, colA, rowA, sideA, colB, rowB, sideB) {
     const netA = getPassageEdgeNetworkId(state, grid, colA, rowA, sideA);
     if (netA < 0) return false;
     return netA === getPassageEdgeNetworkId(state, grid, colB, rowB, sideB);
 }
-/** @param {object} state */
 export function passagePowerSyncKey(state) {
     const grid = state.obstacleGrid;
     const energized = collectEnergizedSourceCells(grid, state);
@@ -288,7 +231,6 @@ export function passagePowerSyncKey(state) {
     parts.sort((a, b) => a - b);
     return `${grid.edgeStore.passageEdgeCount}:${parts.join(",")}`;
 }
-/** @param {object} state */
 export function syncPassagePowerNetwork(state) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
@@ -298,21 +240,11 @@ export function syncPassagePowerNetwork(state) {
     const networkIdByKey = computePoweredEdgeNetworkIds(graph, poweredKeys, grid.cols);
     state.sandbox.passagePower = { poweredKeys, networkIdByKey };
     state.sandbox._passagePowerSyncKey = passagePowerSyncKey(state);
-    let minCol = Infinity;
-    let maxCol = -Infinity;
-    let minRow = Infinity;
-    let maxRow = -Infinity;
+    const bounds = emptyCellBounds();
     let boundaryNavDirty = false;
     const portalCount = grid.edgeStore.portalEdgeCount;
     const portalCountChanged = portalCount !== state.sandbox._boundaryNavPortalCount;
     state.sandbox._boundaryNavPortalCount = portalCount;
-    /** @param {number} col @param {number} row */
-    const mark = (col, row) => {
-        if (col < minCol) minCol = col;
-        if (col > maxCol) maxCol = col;
-        if (row < minRow) minRow = row;
-        if (row > maxRow) maxRow = row;
-    };
     for (const ref of graph.edgeByKey.values()) {
         const { col, row, side, key } = ref;
         const edge = grid.edgeStore.get(col, row, side, grid.cols);
@@ -320,9 +252,9 @@ export function syncPassagePowerNetwork(state) {
         if (isPassagePowered(grid, col, row, side) === powered) continue;
         setPassagePowered(grid, col, row, side, powered);
         if (isPortalEdge(edge)) boundaryNavDirty = true;
-        mark(col, row);
+        growCellBounds(bounds, col, row);
         const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-        if (cellInRect(nc, nr, grid.cols, grid.rows)) mark(nc, nr);
+        if (cellInRect(nc, nr, grid.cols, grid.rows)) growCellBounds(bounds, nc, nr);
     }
     if (splitInvalidPortalLinks(grid, poweredKeys, networkIdByKey)) {
         grid.bumpWallGridRevision();
@@ -331,6 +263,6 @@ export function syncPassagePowerNetwork(state) {
     if (!portalCount) grid.boundaryNavHops = new Map();
     else if (boundaryNavDirty || portalCountChanged) syncBoundaryNavIndex(state);
     syncGridTopologyCaches(grid, state.sandbox._passagePowerSyncKey);
-    if (minCol === Infinity) return;
-    state.navigation.onObstaclesChanged({ startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow });
+    if (isEmptyCellBounds(bounds)) return;
+    state.navigation.onObstaclesChanged(bounds);
 }

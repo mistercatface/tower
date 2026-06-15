@@ -47,10 +47,6 @@ import {
     getPortalInfo,
     getRailWallInfo,
     getVoxelWallInfo,
-    gridHasForcefield,
-    gridHasPortal,
-    gridHasRailWall,
-    gridHasVoxelWall,
     hitTestRailWallEdgeAtWorld,
     linkPortalsAt,
     listPlacedForcefields,
@@ -72,7 +68,7 @@ import {
 import { PASSAGE_MODE, PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
 import { portalAccessDefaultAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey, cellIsStaticWall, gridForcefieldEdge, gridPortalEdge, gridRailWallEdge } from "../World/wallGridCells.js";
 import { formatPortalConnectionLabel, PORTAL_LINK_MODE } from "./portalLinks.js";
 /** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
@@ -146,9 +142,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     const forgetRoomNodePlacement = (id) => placementSeqByKey.delete(roomNodePlacementKey(id));
     const forgetRoomLinkPlacement = (linkId) => {
         const prefix = `roomLink:${linkId}:`;
-        for (const key of placementSeqByKey.keys()) {
-            if (key.startsWith(prefix)) placementSeqByKey.delete(key);
-        }
+        for (const key of placementSeqByKey.keys()) if (key.startsWith(prefix)) placementSeqByKey.delete(key);
     };
     const touchRoomLinkCorridors = (link) => {
         const count = roomLinkCorridorLaneCount(link);
@@ -538,21 +532,21 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         listPlacedForcefields: () => listPlacedForcefields(state.obstacleGrid),
         listPlacedPortals: () => listPlacedPortals(state.obstacleGrid),
         listPortalLinkTargets: () => {
-            if (!selectedRailEdge || !gridHasPortal(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) return [];
+            if (!selectedRailEdge || !gridPortalEdge(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) return [];
             const { col, row, side } = selectedRailEdge;
             return listPortalLinkTargets(state, state.obstacleGrid, col, row, side);
         },
         getSelectedVoxelWallInfo: () => (selectedVoxelCell ? getVoxelWallInfo(state.obstacleGrid, selectedVoxelCell.col, selectedVoxelCell.row) : null),
         getSelectedRailWallInfo: () =>
-            selectedRailEdge && gridHasRailWall(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
+            selectedRailEdge && gridRailWallEdge(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
                 ? getRailWallInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
                 : null,
         getSelectedForcefieldInfo: () =>
-            selectedRailEdge && gridHasForcefield(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
+            selectedRailEdge && gridForcefieldEdge(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
                 ? getForcefieldInfo(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)
                 : null,
         getSelectedPortalInfo: () => {
-            if (!selectedRailEdge || !gridHasPortal(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) return null;
+            if (!selectedRailEdge || !gridPortalEdge(state.obstacleGrid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) return null;
             const { col, row, side } = selectedRailEdge;
             const grid = state.obstacleGrid;
             const info = getPortalInfo(grid, col, row, side);
@@ -627,7 +621,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (wallStampMode === "portal") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
-                if (gridHasPortal(grid, hit.col, hit.row, hit.side)) {
+                if (gridPortalEdge(grid, hit.col, hit.row, hit.side)) {
                     setSelectedRailEdge(hit.col, hit.row, hit.side);
                     return true;
                 }
@@ -640,7 +634,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (wallStampMode === "forcefield") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
-                if (gridHasForcefield(grid, hit.col, hit.row, hit.side)) {
+                if (gridForcefieldEdge(grid, hit.col, hit.row, hit.side)) {
                     setSelectedRailEdge(hit.col, hit.row, hit.side);
                     return true;
                 }
@@ -652,7 +646,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(state.obstacleGrid, worldX, worldY);
                 if (!hit) return false;
-                if (gridHasRailWall(state.obstacleGrid, hit.col, hit.row, hit.side)) {
+                if (gridRailWallEdge(state.obstacleGrid, hit.col, hit.row, hit.side)) {
                     setSelectedRailEdge(hit.col, hit.row, hit.side);
                     return true;
                 }
@@ -661,7 +655,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 setSelectedRailEdge(hit.col, hit.row, hit.side);
                 return true;
             }
-            if (gridHasVoxelWall(state.obstacleGrid, col, row)) {
+            if (cellIsStaticWall(state.obstacleGrid, col, row)) {
                 setSelectedVoxelCell(col, row);
                 return true;
             }
@@ -694,7 +688,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const { col, row, side } = selectedRailEdge;
             const info = getRailWallInfo(grid, col, row, side);
             if (!info || info.side === newSide) return true;
-            if (gridHasRailWall(grid, col, row, newSide)) return false;
+            if (gridRailWallEdge(grid, col, row, newSide)) return false;
             if (!clearRailWallAt(state, col, row, side)) return false;
             if (!stampRailWallAt(state, col, row, newSide, info.heightLevel, info.thicknessLevel)) return false;
             setSelectedRailEdge(col, row, newSide);
@@ -712,10 +706,10 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (selectedRailEdge) {
                 const { col, row, side } = selectedRailEdge;
                 const grid = state.obstacleGrid;
-                if (gridHasForcefield(grid, col, row, side)) {
+                if (gridForcefieldEdge(grid, col, row, side)) {
                     if (!clearForcefieldAt(state, col, row, side)) return false;
                     forgetEdgePlacement("forcefield", col, row, side);
-                } else if (gridHasPortal(grid, col, row, side)) {
+                } else if (gridPortalEdge(grid, col, row, side)) {
                     if (!clearPortalAt(state, col, row, side)) return false;
                     forgetEdgePlacement("portal", col, row, side);
                 } else if (!clearRailWallAt(state, col, row, side)) return false;
@@ -732,15 +726,15 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
                 if (wallStampMode === "portal") {
-                    if (!gridHasPortal(grid, hit.col, hit.row, hit.side)) return false;
+                    if (!gridPortalEdge(grid, hit.col, hit.row, hit.side)) return false;
                     if (!clearPortalAt(state, hit.col, hit.row, hit.side)) return false;
                     forgetEdgePlacement("portal", hit.col, hit.row, hit.side);
                 } else if (wallStampMode === "forcefield") {
-                    if (!gridHasForcefield(grid, hit.col, hit.row, hit.side)) return false;
+                    if (!gridForcefieldEdge(grid, hit.col, hit.row, hit.side)) return false;
                     if (!clearForcefieldAt(state, hit.col, hit.row, hit.side)) return false;
                     forgetEdgePlacement("forcefield", hit.col, hit.row, hit.side);
                 } else {
-                    if (!gridHasRailWall(grid, hit.col, hit.row, hit.side)) return false;
+                    if (!gridRailWallEdge(grid, hit.col, hit.row, hit.side)) return false;
                     if (!clearRailWallAt(state, hit.col, hit.row, hit.side)) return false;
                     forgetEdgePlacement("rail", hit.col, hit.row, hit.side);
                 }
@@ -760,19 +754,19 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const edgeHit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
             if (edgeHit) {
                 const { col, row, side } = edgeHit;
-                if (gridHasPortal(grid, col, row, side)) {
+                if (gridPortalEdge(grid, col, row, side)) {
                     placePaletteKey = "wall:portal";
                     wallStampMode = "portal";
                     setSelectedRailEdge(col, row, side);
                     return true;
                 }
-                if (gridHasForcefield(grid, col, row, side)) {
+                if (gridForcefieldEdge(grid, col, row, side)) {
                     placePaletteKey = "wall:forcefield";
                     wallStampMode = "forcefield";
                     setSelectedRailEdge(col, row, side);
                     return true;
                 }
-                if (gridHasRailWall(grid, col, row, side)) {
+                if (gridRailWallEdge(grid, col, row, side)) {
                     placePaletteKey = "wall:rail";
                     wallStampMode = "rail";
                     setSelectedRailEdge(col, row, side);
@@ -780,7 +774,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 }
             }
             const { col, row } = grid.worldToGrid(worldX, worldY);
-            if (!gridHasVoxelWall(grid, col, row)) return false;
+            if (!cellIsStaticWall(grid, col, row)) return false;
             placePaletteKey = "wall:voxel";
             wallStampMode = "voxel";
             setSelectedVoxelCell(col, row);
@@ -790,24 +784,24 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const grid = state.obstacleGrid;
             if (wallStampMode === "portal") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-                if (!hit || !gridHasPortal(grid, hit.col, hit.row, hit.side)) return false;
+                if (!hit || !gridPortalEdge(grid, hit.col, hit.row, hit.side)) return false;
                 setSelectedRailEdge(hit.col, hit.row, hit.side);
                 return true;
             }
             if (wallStampMode === "forcefield") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-                if (!hit || !gridHasForcefield(grid, hit.col, hit.row, hit.side)) return false;
+                if (!hit || !gridForcefieldEdge(grid, hit.col, hit.row, hit.side)) return false;
                 setSelectedRailEdge(hit.col, hit.row, hit.side);
                 return true;
             }
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-                if (!hit || !gridHasRailWall(grid, hit.col, hit.row, hit.side)) return false;
+                if (!hit || !gridRailWallEdge(grid, hit.col, hit.row, hit.side)) return false;
                 setSelectedRailEdge(hit.col, hit.row, hit.side);
                 return true;
             }
             const { col, row } = grid.worldToGrid(worldX, worldY);
-            if (!gridHasVoxelWall(grid, col, row)) return false;
+            if (!cellIsStaticWall(grid, col, row)) return false;
             setSelectedVoxelCell(col, row);
             return true;
         },
@@ -815,7 +809,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         pickForcefieldAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
             const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-            if (!hit || !gridHasForcefield(grid, hit.col, hit.row, hit.side)) return false;
+            if (!hit || !gridForcefieldEdge(grid, hit.col, hit.row, hit.side)) return false;
             setSelectedRailEdge(hit.col, hit.row, hit.side);
             return true;
         },
@@ -920,10 +914,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const nodeA = getRoomNode(state, link.a);
             const nodeB = getRoomNode(state, link.b);
             const limits = nodeA && nodeB ? linkCorridorLimits(nodeA, nodeB) : null;
-            const roll =
-                nodeA && nodeB
-                    ? resolveLinkCorridorRoll(link, nodeA, nodeB, createSeededRng(link.seed ?? link.id * 9973))
-                    : null;
+            const roll = nodeA && nodeB ? resolveLinkCorridorRoll(link, nodeA, nodeB, createSeededRng(link.seed ?? link.id * 9973)) : null;
             return {
                 ...link,
                 corridorType: normalizeCorridorType(link.corridorType),
@@ -981,11 +972,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         listSelectedRoomNodeLinks() {
             const node = this.getSelectedRoomNode();
             if (!node) return [];
-            return listRoomNodeCorridorEntries(state, node.id).map((entry) => ({
-                linkId: entry.link.id,
-                corridorIndex: entry.corridorIndex,
-                label: entry.label,
-            }));
+            return listRoomNodeCorridorEntries(state, node.id).map((entry) => ({ linkId: entry.link.id, corridorIndex: entry.corridorIndex, label: entry.label }));
         },
         deleteSelectedRoomNode() {
             if (selectedRoomNodeId == null) return;
@@ -1013,10 +1000,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 selectedRoomLinkCorridorIndex = Math.min(selectedRoomLinkCorridorIndex, roomLinkCorridorLaneCount(link) - 1);
                 if (patch.corridorCount != null) touchRoomLinkCorridors(link);
             }
-            const deferBake =
-                patch.corridorCount == null &&
-                patch.corridorWidthMin == null &&
-                patch.corridorWidthMax == null;
+            const deferBake = patch.corridorCount == null && patch.corridorWidthMin == null && patch.corridorWidthMax == null;
             if (deferBake) syncRoomGraphBake(state);
             sync();
             return true;

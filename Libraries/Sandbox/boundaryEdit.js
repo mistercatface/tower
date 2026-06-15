@@ -5,9 +5,8 @@ import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { syncBoundaryNavIndex } from "./boundaryNavIndex.js";
-import { syncGridTopologyCaches } from "../Spatial/grid/gridTopologySync.js";
+import { syncGridTopologyCaches } from "../Spatial/grid/vertexPassability.js";
 import { unlinkPortalEdge } from "./portalLinks.js";
-/** @param {object} state @param {{ startCol: number, endCol: number, startRow: number, endRow: number }} bounds */
 export function notifyGridWallChange(state, bounds) {
     state.obstacleGrid.bumpWallGridRevision();
     syncGridTopologyCaches(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
@@ -16,21 +15,13 @@ export function notifyGridWallChange(state, bounds) {
     rebuildLabMapCaches(state);
     markGridZoneSubscriptionsDirty(state);
 }
-/**
- * @param {object} state
- * @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | { startCol: number, endCol: number, startRow: number, endRow: number }[]} bounds
- * @param {{ power?: boolean, nav?: boolean }} [opts] — power sync also rebuilds boundary nav hops
- */
 export function commitBoundaryEdit(state, bounds, { power = false, nav = false } = {}) {
     const regions = Array.isArray(bounds) ? bounds : [bounds];
     for (let i = 0; i < regions.length; i++) notifyGridWallChange(state, regions[i]);
     if (power) syncPassagePowerNetwork(state);
     else if (nav) syncBoundaryNavIndex(state);
 }
-/**
- * Clear whichever primary boundary occupies a slot (railWall, forcefield, portal).
- * @returns {"railWall" | "passage" | "portal" | false}
- */
+/** Clear whichever primary boundary occupies a slot (railWall, forcefield, portal). */
 export function clearPrimaryBoundaryAt(state, col, row, side) {
     const grid = state.obstacleGrid;
     const boundary = getBoundary(grid, col, row, side);

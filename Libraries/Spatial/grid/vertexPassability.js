@@ -13,15 +13,12 @@ const HALF_EDGE_SPECS = [
     { bit: VERTEX_HALF_EDGE.SeWest, fromCol: 0, fromRow: 0, toCol: -1, toRow: 0, ownerCol: 0, ownerRow: 0, ownerSide: 3 },
     { bit: VERTEX_HALF_EDGE.SeNorth, fromCol: 0, fromRow: 0, toCol: 0, toRow: -1, ownerCol: 0, ownerRow: 0, ownerSide: 0 },
 ];
-/** @param {number} vx @param {number} vy @param {number} cols */
 export function packVertexKey(vx, vy, cols) {
     return vx + vy * (cols + 1);
 }
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} vx @param {number} vy */
 export function getVertexPassabilityMask(grid, vx, vy) {
     return grid.vertexPassability[packVertexKey(vx, vy, grid.cols)] ?? 0;
 }
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function recomputeVertexPassability(grid) {
     if (!grid.cols) {
         grid.vertexPassability = new Uint8Array(0);
@@ -47,11 +44,8 @@ export function recomputeVertexPassability(grid) {
         }
     grid.vertexPassability = out;
 }
-/**
- * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {string} passagePowerSyncKey
- */
-export function syncVertexPassability(grid, passagePowerSyncKey) {
+/** Recompute derived grid topology caches (worker-candidate; Spatial-owned). */
+export function syncGridTopologyCaches(grid, passagePowerSyncKey) {
     const key = `${grid.wallGridRevision}:${passagePowerSyncKey}`;
     if (grid._vertexPassabilitySyncKey === key) return;
     recomputeVertexPassability(grid);

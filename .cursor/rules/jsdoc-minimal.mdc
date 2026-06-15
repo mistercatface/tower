@@ -1,0 +1,27 @@
+---
+description: Minimal JSDoc — no redundant @param blocks; short comments only when they add value
+alwaysApply: true
+---
+
+# JSDoc — short and useful only
+
+This is plain JS without `@ts-check`. JSDoc is for **contracts and non-obvious behavior**, not restating signatures.
+
+## Default: no `@param`
+
+## When JSDoc is worth it: NEVER.
+
+Keep useful comments **one line** when possible:
+
+```javascript
+// ✅ GOOD
+/** Recompute derived grid topology caches (Spatial-owned; worker-candidate). */
+export function syncGridTopologyCaches(grid, passagePowerSyncKey) { ... }
+```
+
+Multi-line blocks are for real prose (architecture, persistence boundaries) — not a `@param` list spread across six lines.
+
+## Review bar
+
+- Would deleting this comment make the code harder to understand? If no, delete it.
+- Is the comment longer than the function body? Almost certainly wrong.

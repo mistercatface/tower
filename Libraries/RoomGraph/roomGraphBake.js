@@ -1,3 +1,4 @@
+import { unionCellBounds } from "../DataStructures/CellRect.js";
 import { commitBoundaryEdit } from "../Sandbox/boundaryEdit.js";
 import { clearRailWallsQuiet, stampRailWallsQuiet } from "../Sandbox/gridWallEdit.js";
 import { createSeededRng } from "../Math/SeededRng.js";
@@ -9,13 +10,6 @@ import { clearBakedFloorBeltsQuiet, stampBakedFloorBeltsQuiet } from "./roomGrap
 import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle, stampCorridorBundleBelts, stampCorridorBundleRails } from "./roomGraphCorridorApply.js";
 /** @typedef {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }} BakedRail */
 /** @typedef {{ id: number, c0: number, c1: number, r0: number, r1: number, centerC: number, centerR: number, width: number, height: number }} AuthoredGraphNode */
-/** @typedef {{ startCol: number, endCol: number, startRow: number, endRow: number }} CellBounds */
-/** @param {CellBounds | null} a @param {CellBounds | null} b @returns {CellBounds | null} */
-function unionCellBounds(a, b) {
-    if (!a) return b;
-    if (!b) return a;
-    return { startCol: Math.min(a.startCol, b.startCol), endCol: Math.max(a.endCol, b.endCol), startRow: Math.min(a.startRow, b.startRow), endRow: Math.max(a.endRow, b.endRow) };
-}
 /** @param {import("./roomGraphStore.js").RoomNode} node */
 function roomNodeToGraphNode(node) {
     const c0 = node.col;
@@ -29,15 +23,12 @@ function buildAuthoredBakeLayout(state) {
     const roomNodes = listRoomNodes(state);
     const links = listRoomLinks(state);
     const grid = state.obstacleGrid;
-    /** @type {Map<number, number>} */
     const idToIndex = new Map();
-    /** @type {AuthoredGraphNode[]} */
     const graphNodes = [];
     for (let i = 0; i < roomNodes.length; i++) {
         idToIndex.set(roomNodes[i].id, i);
         graphNodes.push(roomNodeToGraphNode(roomNodes[i]));
     }
-    /** @type {{ a: number, b: number, linkId: number }[]} */
     const graphEdges = [];
     for (let i = 0; i < links.length; i++) {
         const link = links[i];
@@ -47,7 +38,6 @@ function buildAuthoredBakeLayout(state) {
         graphEdges.push({ a, b, linkId: link.id });
     }
     const closedRooms = buildRoomsFromNodeGraph({ nodes: graphNodes, directedEdges: [] });
-    /** @type {Map<number, import("./roomGraphStore.js").RoomNode>} */
     const roomNodeById = new Map();
     for (let i = 0; i < roomNodes.length; i++) roomNodeById.set(roomNodes[i].id, roomNodes[i]);
     return { rooms: graphNodes, graphEdges, closedRooms, gridCols: grid.cols, gridRows: grid.rows, links, roomNodeById };
@@ -55,12 +45,10 @@ function buildAuthoredBakeLayout(state) {
 function listBakedFloorBelts(state) {
     return getRoomGraph(state).bakedFloorBelts ?? [];
 }
-
 /** @param {object} state @param {import("./roomGraphFloorBelts.js").BakedFloorBelt[]} belts */
 function setBakedFloorBelts(state, belts) {
     getRoomGraph(state).bakedFloorBelts = belts;
 }
-
 /** @param {object} state */
 function listBakedRails(state) {
     return getRoomGraph(state).bakedRails ?? [];
@@ -103,16 +91,11 @@ function computeRoomGraphBake(layout) {
     const originRow = 0;
     const { rooms, graphEdges, closedRooms, links } = layout;
     if (!rooms.length) return { rails: [], belts: [] };
-    /** @type {Map<number, import("./roomGraphStore.js").RoomLink>} */
     const linkById = new Map();
     for (let i = 0; i < links.length; i++) linkById.set(links[i].id, links[i]);
-    /** @type {import("./roomGraphClosedRooms.js").Cell[][]} */
     const placedPaths = [];
-    /** @type {number[]} */
     const placedPathWidths = [];
-    /** @type {import("./roomGraphClosedRooms.js").RailWall[][]} */
     const corridorRailLists = [];
-    /** @type {import("./roomGraphFloorBelts.js").BakedFloorBelt[]} */
     const bakedBelts = [];
     for (let edgeIndex = 0; edgeIndex < graphEdges.length; edgeIndex++) {
         const { a, b, linkId } = graphEdges[edgeIndex];

@@ -5,32 +5,19 @@ import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { createAabb, aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
 import { cellBoundsAtOriginInto } from "../Spatial/grid/GridCoords.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { gridHasForcefield, gridHasPortal, strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
+import { gridForcefieldEdge, gridPortalEdge } from "../World/wallGridCells.js";
+import { strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
 import { resolvePortalLinkRoute } from "./portalLinks.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
 const PROP_TILE_CELL_BOUNDS = createAabb();
-/** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {import("../Math/Aabb2D.js").Aabb2D} bounds */
 export function findSandboxPropsInWorldRect(state, registry, bounds) {
     return queryEntitiesInAabbStrict(registry, bounds, { kinds: ["worldProp"], hitTest: "center" });
 }
-/** @param {object} prop */
 function selectionRingRadius(prop, lineScale) {
     const base = prop.getBoundingRadius?.() ?? prop.radius ?? 8;
     return base + 3 * lineScale;
 }
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {{
- *   selectedProps: object[],
- *   showRings: boolean,
- *   selectedFloorCell?: { col: number, row: number } | null,
- *   selectedVoxelCell?: { col: number, row: number } | null,
- *   selectedRailEdge?: { col: number, row: number, side: number } | null,
- *   grid?: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null,
- *   camera?: { px: number, py: number },
- * }} options
- */
 export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selectedFloorCell = null, selectedVoxelCell = null, selectedRailEdge = null, grid = null, camera = null }) {
     if (!showRings) return;
     const lineScale = getCanvasLineScale(ctx);
@@ -62,7 +49,7 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
         });
     }
     if (selectedRailEdge && grid)
-        if (gridHasPortal(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side) && camera) {
+        if (gridPortalEdge(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side) && camera) {
             const { col, row, side } = selectedRailEdge;
             const edge = grid.getCellEdge(col, row, side);
             drawPortalEdgeCached(ctx, grid, col, row, side, edge, camera.px, camera.py, { selected: true });
@@ -72,7 +59,7 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
                 const partnerEdge = grid.getCellEdge(pCol, pRow, pSide);
                 drawPortalEdgeCached(ctx, grid, pCol, pRow, pSide, partnerEdge, camera.px, camera.py, { selected: true });
             }
-        } else if (gridHasForcefield(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
+        } else if (gridForcefieldEdge(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
             ctx.strokeStyle = "rgba(192, 132, 252, 0.95)";
             strokeSelectedForcefieldEdge(ctx, grid, selectedRailEdge, lineScale);
         } else {

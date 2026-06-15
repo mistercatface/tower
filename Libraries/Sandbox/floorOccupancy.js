@@ -1,4 +1,4 @@
-import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
+import { emptyCellBounds, growCellBounds, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
@@ -13,7 +13,6 @@ import { syncPassagePowerNetwork, isPassagePowerSourceEnergized } from "./passag
 import { applyPushableAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 export const GRID_ROTATABLE_OCCUPANT = { FloorBelt: "floorBelt" };
-/** @param {object} state @param {number} worldX @param {number} worldY @returns {{ col: number, row: number, kind: string } | null} */
 export function pickRotatableGridOccupantAtWorld(state, worldX, worldY) {
     const grid = state.obstacleGrid;
     const { col, row } = grid.worldToGrid(worldX, worldY);
@@ -22,7 +21,6 @@ export function pickRotatableGridOccupantAtWorld(state, worldX, worldY) {
     if (grid.floorStore.isBeltKindAtIdx(idx)) return { col, row, kind: GRID_ROTATABLE_OCCUPANT.FloorBelt };
     return null;
 }
-/** @param {object} state @param {{ col: number, row: number, kind: string }} occupant @param {number} [steps] quarter-turns clockwise */
 export function rotateGridOccupantAt(state, occupant, steps = 1) {
     const grid = state.obstacleGrid;
     const { col, row, kind } = occupant;
@@ -37,7 +35,6 @@ export function rotateGridOccupantAt(state, occupant, steps = 1) {
     }
     throw new Error(`Unknown rotatable grid occupant kind: ${kind}`);
 }
-/** @param {object} state @param {number} col @param {number} row */
 export function canStampFloorBeltAt(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
@@ -82,7 +79,6 @@ const passagePowerSourceDraw = (ctx, prop) => {
     fillCircle(ctx, prop.x + innerHalf, prop.y + innerHalf, corner * lineScale);
     fillCircle(ctx, prop.x - innerHalf, prop.y + innerHalf, corner * lineScale);
 };
-/** @param {number} kind */
 function beltDrawForKind(kind) {
     const turn = floorBeltElbowTurn(kind);
     const table = isFloorBeltRailsKind(kind) ? beltRailsDrawByTurn : beltDrawByTurn;
@@ -90,7 +86,6 @@ function beltDrawForKind(kind) {
     if (turn === "right") return table.right;
     return table.straight;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} minCol @param {number} maxCol @param {number} minRow @param {number} maxRow @param {number} facingRadians */
 export function stampFloorBeltsInBounds(grid, minCol, maxCol, minRow, maxRow, facingRadians) {
     let changed = false;
     forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row) => {
@@ -118,12 +113,6 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
         applyPushableAccelerationAlongAngle(entity, beltAngle, force, dtSec);
     }
 }
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {object} state
- * @param {import("../Viewport/Viewport.js").Viewport} viewport
- * @param {{ px: number, py: number }} camera
- */
 export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {
     const grid = state.obstacleGrid;
     if (!grid.floorStore.hasAny()) return;
@@ -154,12 +143,6 @@ export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {
         drawCachedPropSprite(ctx, proxy, px, py, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(kind), { animFrame });
     });
 }
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {object} state
- * @param {import("../Viewport/Viewport.js").Viewport} viewport
- * @param {{ px: number, py: number }} camera
- */
 export function drawFloorOccupancyPowerSources(ctx, state, viewport, camera) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
@@ -188,7 +171,6 @@ export function drawFloorOccupancyPowerSources(ctx, state, viewport, camera) {
         drawCachedPropSprite(ctx, proxy, px, py, GRID_STAMP_RENDER_KEY.PassagePowerSource, passagePowerSourceDraw);
     });
 }
-/** @param {object} state @param {number} col @param {number} row */
 export function clearFloorOverlayAt(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
@@ -198,7 +180,6 @@ export function clearFloorOverlayAt(state, col, row) {
     markGridZoneSubscriptionsDirty(state);
     return true;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function listPlacedFloorBeltsForSnapshot(grid) {
     /** @type {{ col: number, row: number, kind: number, facingIndex: number }[]} */
     const belts = [];
@@ -212,22 +193,11 @@ export function listPlacedFloorBeltsForSnapshot(grid) {
     }
     return belts;
 }
-/** @param {object} state @param {{ col: number, row: number, kind: number, facingIndex: number }[]} floorBelts @param {number} cellSize */
 export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
     const grid = state.obstacleGrid;
     const half = cellSize * 0.5;
     let edgeChanged = false;
-    let minCol = Infinity;
-    let maxCol = -Infinity;
-    let minRow = Infinity;
-    let maxRow = -Infinity;
-    /** @param {number} col @param {number} row */
-    const mark = (col, row) => {
-        if (col < minCol) minCol = col;
-        if (col > maxCol) maxCol = col;
-        if (row < minRow) minRow = row;
-        if (row > maxRow) maxRow = row;
-    };
+    const bounds = emptyCellBounds();
     for (let i = 0; i < floorBelts.length; i++) {
         const { col: globalCol, row: globalRow, kind, facingIndex } = floorBelts[i];
         if (!isFloorBeltKind(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
@@ -245,14 +215,13 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
         grid.floorStore.setAtIdx(idx, kind, facing);
         if (isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) edgeChanged = true;
         if (isFloorBeltRailsKind(kind)) grid.syncFloorBeltRailEdges(col, row, kind, facing);
-        mark(col, row);
+        growCellBounds(bounds, col, row);
     }
     if (edgeChanged) grid.bumpWallGridRevision();
-    if (minCol === Infinity) return null;
+    if (isEmptyCellBounds(bounds)) return null;
     markGridZoneSubscriptionsDirty(state);
-    return { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow };
+    return bounds;
 }
-/** @param {object} state @param {number} col @param {number} row */
 export function canStampPassagePowerSourceAt(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
@@ -261,7 +230,6 @@ export function canStampPassagePowerSourceAt(state, col, row) {
     if (findGridAnchoredFloorPropAtCell(state.entityRegistry, col, row)) return false;
     return true;
 }
-/** @param {object} state @param {number} col @param {number} row @param {boolean} [defaultPowered] */
 export function stampPassagePowerSourceAt(state, col, row, defaultPowered = false) {
     if (!canStampPassagePowerSourceAt(state, col, row)) return false;
     const idx = colRowToIndex(col, row, state.obstacleGrid.cols);
@@ -269,7 +237,6 @@ export function stampPassagePowerSourceAt(state, col, row, defaultPowered = fals
     syncPassagePowerNetwork(state);
     return true;
 }
-/** @param {object} state @param {number} col @param {number} row */
 export function clearPassagePowerSourceAt(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
@@ -279,7 +246,6 @@ export function clearPassagePowerSourceAt(state, col, row) {
     syncPassagePowerNetwork(state);
     return true;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function listPlacedPassagePowerSourcesForSnapshot(grid) {
     /** @type {{ col: number, row: number, defaultPowered?: boolean }[]} */
     const sources = [];
@@ -295,21 +261,10 @@ export function listPlacedPassagePowerSourcesForSnapshot(grid) {
     }
     return sources;
 }
-/** @param {object} state @param {{ col: number, row: number, defaultPowered?: boolean }[]} powerSources @param {number} cellSize */
 export function applyPassagePowerSourcesFromGlobal(state, powerSources, cellSize) {
     const grid = state.obstacleGrid;
     const half = cellSize * 0.5;
-    let minCol = Infinity;
-    let maxCol = -Infinity;
-    let minRow = Infinity;
-    let maxRow = -Infinity;
-    /** @param {number} col @param {number} row */
-    const mark = (col, row) => {
-        if (col < minCol) minCol = col;
-        if (col > maxCol) maxCol = col;
-        if (row < minRow) minRow = row;
-        if (row > maxRow) maxRow = row;
-    };
+    const bounds = emptyCellBounds();
     for (let i = 0; i < powerSources.length; i++) {
         const { col: globalCol, row: globalRow, defaultPowered } = powerSources[i];
         const { col, row } = grid.worldToGrid(globalCol * cellSize + half, globalRow * cellSize + half);
@@ -318,8 +273,8 @@ export function applyPassagePowerSourcesFromGlobal(state, powerSources, cellSize
         if (grid.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, grid.cols))) continue;
         const idx = colRowToIndex(col, row, grid.cols);
         grid.floorStore.setPassagePowerSourceAtIdx(idx, defaultPowered === true);
-        mark(col, row);
+        growCellBounds(bounds, col, row);
     }
-    if (minCol === Infinity) return null;
-    return { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow };
+    if (isEmptyCellBounds(bounds)) return null;
+    return bounds;
 }

@@ -1,14 +1,4 @@
 import { createSeparationState } from "../Motion/applySeparation.js";
-/** @typedef {import("./types.js").MobileAgent} MobileAgent */
-/** @typedef {import("./types.js").AgentPose} AgentPose */
-/**
- * Initialize locomotion fields on an existing entity. Pose (x, y, angle, radius) stays on host.
- * Sets host.mobile = host so navigation/motion can target the contract explicitly.
- *
- * @param {object} host
- * @param {Partial<MobileAgent>} [options]
- * @returns {MobileAgent}
- */
 export function initMobileAgent(host, options = {}) {
     host.vx = options.vx ?? host.vx ?? 0;
     host.vy = options.vy ?? host.vy ?? 0;
@@ -23,18 +13,9 @@ export function initMobileAgent(host, options = {}) {
     host.mobile = host;
     return host;
 }
-/**
- * @param {object} entity
- * @returns {MobileAgent}
- */
 export function getMobileAgent(entity) {
     return entity.mobile ?? entity;
 }
-/**
- * Extract planning pose from any object with x/y (entity, mobile agent, snapshot).
- * @param {{ x: number, y: number, radius?: number }} source
- * @returns {AgentPose}
- */
 export function agentPose(source) {
     return { x: source.x, y: source.y, radius: source.radius ?? 6 };
 }
