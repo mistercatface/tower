@@ -148,7 +148,7 @@ export function clearRoomLinksForNode(state, nodeId) {
 }
 /** @param {RoomLink} link */
 export function formatRoomLinkLabel(link) {
-    return `Link #${link.id} · node ${link.a} ↔ node ${link.b}`;
+    return `Link #${link.id} · node ${link.a} → node ${link.b}`;
 }
 /** @param {RoomNode} node */
 export function formatRoomNodeLabel(node) {

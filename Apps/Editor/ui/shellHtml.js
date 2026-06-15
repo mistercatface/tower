@@ -12,6 +12,7 @@ export const TILELAB_UI_HTML = `
         <label class="check-inline"><input id="showMapOverviewViewportInput" type="checkbox" checked> Overview Viewport</label>
         <label class="check-inline"><input id="showSelectionRingsInput" type="checkbox" checked> Selection rings</label>
         <label class="check-inline"><input id="showPropTileCellsInput" type="checkbox"> Prop tile cells</label>
+        <label class="check-inline"><input id="showRoomNodesAlwaysInput" type="checkbox"> Show nodes always</label>
         <span class="sep"></span>
         <label class="toolbar-select">
             Render mode

@@ -53,6 +53,83 @@ function portalMouthSideOptions(ownerSide) {
         { value: String(ownerSide), label: `${neighborLabel} (across edge)` },
     ];
 }
+/** @param {HTMLElement} body @param {NonNullable<ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController["getSelectedRoomLinkInfo"]>>} selectedRoomLink @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {() => void} onChange */
+function appendRoomLinkCorridorInspector(body, selectedRoomLink, controller, onChange) {
+    const limitHint =
+        selectedRoomLink.maxCorridorWidth != null ? ` Max corridor width for this wall pair: ${selectedRoomLink.maxCorridorWidth}.` : "";
+    const rollHint =
+        selectedRoomLink.rolledCorridorWidths != null
+            ? ` Current seed: ${selectedRoomLink.rolledCorridorCount} corridor(s), widths [${selectedRoomLink.rolledCorridorWidths.join(", ")}].`
+            : "";
+    appendEditorHint(
+        body,
+        `${selectedRoomLink.label}. Corridor count is fixed; width range rolls per corridor on reroll.${limitHint}${rollHint}`,
+    );
+    appendSelectField(body, "Corridor type", {
+        value: selectedRoomLink.corridorType ?? "empty",
+        options: CORRIDOR_TYPE_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
+        onChange: (corridorType) => {
+            controller.updateSelectedRoomLink({ corridorType });
+            onChange();
+        },
+    });
+    appendNumberField(body, "Corridor count", {
+        value: selectedRoomLink.corridorCount ?? 1,
+        step: 1,
+        min: 1,
+        max: selectedRoomLink.maxCorridorCount,
+        onChange: (corridorCount) => {
+            controller.updateSelectedRoomLink({ corridorCount });
+            onChange();
+        },
+    });
+    appendNumberRangeField(body, "Corridor width", {
+        minValue: selectedRoomLink.corridorWidthMin ?? 1,
+        maxValue: selectedRoomLink.corridorWidthMax ?? 1,
+        floor: 1,
+        ceiling: selectedRoomLink.maxCorridorWidth ?? 1,
+        onMinChange: (corridorWidthMin) => {
+            controller.updateSelectedRoomLink({ corridorWidthMin });
+            onChange();
+        },
+        onMaxChange: (corridorWidthMax) => {
+            controller.updateSelectedRoomLink({ corridorWidthMax });
+            onChange();
+        },
+    });
+    const intersectRow = document.createElement("label");
+    intersectRow.className = "param-field check-inline";
+    const intersectCheck = document.createElement("input");
+    intersectCheck.type = "checkbox";
+    intersectCheck.checked = selectedRoomLink.canIntersect === true;
+    intersectCheck.addEventListener("change", () => {
+        controller.updateSelectedRoomLink({ canIntersect: intersectCheck.checked });
+        onChange();
+    });
+    intersectRow.append(intersectCheck, document.createTextNode(" Corridors may intersect"));
+    body.appendChild(intersectRow);
+    const actionRow = document.createElement("div");
+    actionRow.className = "sandbox-add-row";
+    const rerollBtn = document.createElement("button");
+    rerollBtn.type = "button";
+    rerollBtn.className = "secondary";
+    rerollBtn.textContent = "Reroll corridor";
+    rerollBtn.addEventListener("click", () => {
+        controller.rerollSelectedRoomLink();
+        onChange();
+    });
+    actionRow.appendChild(rerollBtn);
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "secondary";
+    deleteBtn.textContent = "Delete link";
+    deleteBtn.addEventListener("click", () => {
+        controller.deleteSelectedRoomLink();
+        onChange();
+    });
+    actionRow.appendChild(deleteBtn);
+    body.appendChild(actionRow);
+}
 /** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ mode: string, allowedSide?: number, side?: number } | null} selected @param {{ stampDefaults?: boolean, onChange: () => void }} opts */
 function appendPassageEditorFields(body, controller, selected, { stampDefaults = false, onChange }) {
     const mode = stampDefaults ? controller.getForcefieldStampMode() : selected.mode;
@@ -640,83 +717,6 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     body.appendChild(deleteRow);
                     return;
                 }
-                if (selectedRoomLink) {
-                    const limitHint =
-                        selectedRoomLink.maxCorridorWidth != null ? ` Max corridor width for this wall pair: ${selectedRoomLink.maxCorridorWidth}.` : "";
-                    const rollHint =
-                        selectedRoomLink.rolledCorridorWidths != null
-                            ? ` Current seed: ${selectedRoomLink.rolledCorridorCount} corridor(s), widths [${selectedRoomLink.rolledCorridorWidths.join(", ")}].`
-                            : "";
-                    appendEditorHint(
-                        body,
-                        `${selectedRoomLink.label}. Corridor count is fixed; width range rolls per corridor on reroll.${limitHint}${rollHint}`,
-                    );
-                    appendSelectField(body, "Corridor type", {
-                        value: selectedRoomLink.corridorType ?? "empty",
-                        options: CORRIDOR_TYPE_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
-                        onChange: (corridorType) => {
-                            controller.updateSelectedRoomLink({ corridorType });
-                            onChange();
-                        },
-                    });
-                    appendNumberField(body, "Corridor count", {
-                        value: selectedRoomLink.corridorCount ?? 1,
-                        step: 1,
-                        min: 1,
-                        max: selectedRoomLink.maxCorridorCount,
-                        onChange: (corridorCount) => {
-                            controller.updateSelectedRoomLink({ corridorCount });
-                            onChange();
-                        },
-                    });
-                    appendNumberRangeField(body, "Corridor width", {
-                        minValue: selectedRoomLink.corridorWidthMin ?? 1,
-                        maxValue: selectedRoomLink.corridorWidthMax ?? 1,
-                        floor: 1,
-                        ceiling: selectedRoomLink.maxCorridorWidth ?? 1,
-                        onMinChange: (corridorWidthMin) => {
-                            controller.updateSelectedRoomLink({ corridorWidthMin });
-                            onChange();
-                        },
-                        onMaxChange: (corridorWidthMax) => {
-                            controller.updateSelectedRoomLink({ corridorWidthMax });
-                            onChange();
-                        },
-                    });
-                    const intersectRow = document.createElement("label");
-                    intersectRow.className = "param-field check-inline";
-                    const intersectCheck = document.createElement("input");
-                    intersectCheck.type = "checkbox";
-                    intersectCheck.checked = selectedRoomLink.canIntersect === true;
-                    intersectCheck.addEventListener("change", () => {
-                        controller.updateSelectedRoomLink({ canIntersect: intersectCheck.checked });
-                        onChange();
-                    });
-                    intersectRow.append(intersectCheck, document.createTextNode(" Corridors may intersect"));
-                    body.appendChild(intersectRow);
-                    const actionRow = document.createElement("div");
-                    actionRow.className = "sandbox-add-row";
-                    const rerollBtn = document.createElement("button");
-                    rerollBtn.type = "button";
-                    rerollBtn.className = "secondary";
-                    rerollBtn.textContent = "Reroll corridor";
-                    rerollBtn.addEventListener("click", () => {
-                        controller.rerollSelectedRoomLink();
-                        onChange();
-                    });
-                    actionRow.appendChild(rerollBtn);
-                    const deleteBtn = document.createElement("button");
-                    deleteBtn.type = "button";
-                    deleteBtn.className = "secondary";
-                    deleteBtn.textContent = "Delete link";
-                    deleteBtn.addEventListener("click", () => {
-                        controller.deleteSelectedRoomLink();
-                        onChange();
-                    });
-                    actionRow.appendChild(deleteBtn);
-                    body.appendChild(actionRow);
-                    return;
-                }
                 if (selectedRoomNode) {
                     appendEditorHint(
                         body,
@@ -736,6 +736,11 @@ export function mountSandboxToyUi(container, controller, onChange) {
                         },
                         onChange,
                     );
+                    if (
+                        selectedRoomLink &&
+                        (selectedRoomLink.a === selectedRoomNode.id || selectedRoomLink.b === selectedRoomNode.id)
+                    )
+                        appendRoomLinkCorridorInspector(body, selectedRoomLink, controller, onChange);
                     const deleteRow = document.createElement("div");
                     deleteRow.className = "sandbox-add-row";
                     const deleteBtn = document.createElement("button");
@@ -748,6 +753,10 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     });
                     deleteRow.appendChild(deleteBtn);
                     body.appendChild(deleteRow);
+                    return;
+                }
+                if (selectedRoomLink) {
+                    appendRoomLinkCorridorInspector(body, selectedRoomLink, controller, onChange);
                     return;
                 }
                 appendEditorHint(body, "Select an item from Scene, or pick from Props to place on the map.");

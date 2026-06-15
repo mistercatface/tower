@@ -113,6 +113,12 @@ export function mountEditorUi(state, { playbackHandlers }) {
         state.sandbox.controller.setShowPropTileCells(/** @type {HTMLInputElement} */ (e.target).checked);
         requestRedraw();
     });
+    const roomNodesAlwaysInput = document.getElementById("showRoomNodesAlwaysInput");
+    roomNodesAlwaysInput.checked = state.sandbox.controller.getShowRoomNodesAlways();
+    roomNodesAlwaysInput.addEventListener("change", (e) => {
+        state.sandbox.controller.setShowRoomNodesAlways(/** @type {HTMLInputElement} */ (e.target).checked);
+        requestRedraw();
+    });
     fitLabStageToView(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
     const { animationPreview, main } = EDITOR_CANVAS_DEFAULTS;

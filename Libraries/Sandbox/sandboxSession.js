@@ -222,6 +222,18 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         dropWallSelection();
         selectedPropIds.clear();
         selectedPropId = null;
+        selectedRoomLinkId = id;
+        if (id != null && selectedRoomNodeId != null) {
+            const link = getRoomLink(state, id);
+            if (link && link.a !== selectedRoomNodeId && link.b !== selectedRoomNodeId) selectedRoomNodeId = null;
+        }
+        sync();
+    };
+    const setSelectedRoomLinkFromScene = (id) => {
+        dropFloorSelection();
+        dropWallSelection();
+        selectedPropIds.clear();
+        selectedPropId = null;
         selectedRoomNodeId = null;
         selectedRoomLinkId = id;
         sync();
@@ -920,7 +932,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const link = addRoomLink(state, a, b);
             if (!link) return null;
             touchRoomLinkPlacement(link.id);
-            setSelectedRoomLinkId(link.id);
+            selectedRoomNodeId = a;
+            selectedRoomLinkId = link.id;
             syncRoomGraphBake(state);
             sync();
             return link;
@@ -928,7 +941,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         removeRoomLinkById(linkId) {
             if (!removeRoomLink(state, linkId)) return false;
             forgetRoomLinkPlacement(linkId);
-            if (selectedRoomLinkId === linkId) dropRoomGraphSelection();
+            if (selectedRoomLinkId === linkId) selectedRoomLinkId = null;
             syncRoomGraphBake(state);
             sync();
             return true;
@@ -967,7 +980,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (selectedRoomLinkId == null) return;
             forgetRoomLinkPlacement(selectedRoomLinkId);
             removeRoomLink(state, selectedRoomLinkId);
-            dropRoomGraphSelection();
+            selectedRoomLinkId = null;
             syncRoomGraphBake(state);
             sync();
         },
@@ -1076,7 +1089,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 return;
             }
             if (item.kind === "roomLink") {
-                setSelectedRoomLinkId(item.roomLinkId);
+                setSelectedRoomLinkFromScene(item.roomLinkId);
                 return;
             }
             if (item.kind === "floorBelt" || item.kind === "powerSource") {

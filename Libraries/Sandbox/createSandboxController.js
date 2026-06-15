@@ -71,6 +71,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     let roomNodeWireCursor = null;
     let showSelectionRings = true;
     let showPropTileCells = false;
+    let showRoomNodesAlways = false;
     const MARQUEE_CLICK_THRESHOLD_PX = 4;
     /** @type {{ pointerId: number, startClientX: number, startClientY: number, startWorld: { x: number, y: number }, currentWorld: { x: number, y: number } } | null} */
     let marqueeSelect = null;
@@ -493,6 +494,11 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             showPropTileCells = enabled;
             session.sync();
         },
+        getShowRoomNodesAlways: () => showRoomNodesAlways,
+        setShowRoomNodesAlways: (enabled) => {
+            showRoomNodesAlways = enabled;
+            session.sync();
+        },
         deleteSelectedProps: () => session.deleteSelectedProps(),
         setSelectedPropId: (id) => {
             buttonWireMode = false;
@@ -740,6 +746,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
                 selectedLinkId: session.getSelectedRoomLinkId(),
                 wireFromNodeId: roomNodeWireMode ? session.getSelectedRoomNodeId() : null,
                 wireCursor: roomNodeWireMode ? roomNodeWireCursor : null,
+                showRoomNodesAlways,
+                wireModeActive: roomNodeWireMode,
             });
             drawForcefieldEdges(ctx, state, state.viewport);
             drawButtonWires(ctx, state, { wireFromPropId: buttonWireMode ? session.getSelectedPropId() : null, wireCursor: buttonWireMode ? buttonWireCursor : null });

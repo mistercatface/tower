@@ -143,7 +143,7 @@ export function appendRoomNodeWireInspector(body, wire, onChange) {
     appendEditorHint(
         body,
         links.length
-            ? `${links.length} link${links.length === 1 ? "" : "s"} — select a link for corridor settings`
+            ? `${links.length} link${links.length === 1 ? "" : "s"} — pick a link below for corridor settings`
             : "No links — connect to another room node.",
     );
     if (links.length)
