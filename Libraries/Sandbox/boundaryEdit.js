@@ -5,6 +5,7 @@ import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { syncBoundaryNavIndex } from "./boundaryNavIndex.js";
+import { syncVertexPassability } from "../Spatial/grid/vertexPassability.js";
 import { unlinkPortalEdge } from "./portalLinks.js";
 /** @param {object} state @param {{ startCol: number, endCol: number, startRow: number, endRow: number }} bounds */
 export function notifyGridWallChange(state, bounds) {
@@ -13,6 +14,7 @@ export function notifyGridWallChange(state, bounds) {
     state.navigation.onObstaclesChanged(bounds);
     rebuildLabMapCaches(state);
     markGridZoneSubscriptionsDirty(state);
+    syncVertexPassability(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
 }
 /**
  * @param {object} state

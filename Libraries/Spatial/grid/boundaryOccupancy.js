@@ -285,7 +285,7 @@ function beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow) {
     return sideX === exitSide || sideY === exitSide;
 }
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow @param {number} ownerCol @param {number} ownerRow @param {number} ownerSide */
-function boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide) {
+export function boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide) {
     const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
     if (grid.edgeStore.passageEdgeCount > 0 && edge?.kind === EDGE_KIND.Forcefield)
         if (resolvePassageStepFrom({ grid, edge, ownerCol, ownerRow, ownerSide, crossedSide: ownerSide, fromCol, fromRow, toCol, toRow, directional: true })) return true;
@@ -307,23 +307,23 @@ export function boundaryBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow) {
     const dr = toRow - fromRow;
     if (dc !== 0 && dr === 0) {
         const side = dc > 0 ? 1 : 3;
-        return boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
+        return boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
     }
     if (dc === 0 && dr !== 0) {
         const side = dr > 0 ? 2 : 0;
-        return boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
+        return boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
     }
     if (dc !== 0 && dr !== 0) {
         if (grid.isBlocked(fromCol + dc, fromRow) || grid.isBlocked(fromCol, fromRow + dr)) return true;
         const sideX = dc > 0 ? 1 : 3;
         const sideY = dr > 0 ? 2 : 0;
-        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, sideX)) return true;
-        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, sideY)) return true;
-        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow + dr, sideX)) return true;
-        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol + dc, fromRow, sideY)) return true;
+        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, sideX)) return true;
+        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, sideY)) return true;
+        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow + dr, sideX)) return true;
+        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol + dc, fromRow, sideY)) return true;
         // Shoulder cells share the corner vertex — both axes must be clear (L-shaped forcefields).
-        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol + dc, fromRow, sideX)) return true;
-        if (boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow + dr, sideY)) return true;
+        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol + dc, fromRow, sideX)) return true;
+        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow + dr, sideY)) return true;
     }
     return false;
 }

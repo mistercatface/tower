@@ -4,6 +4,7 @@ import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from ".
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
 import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { recomputePortalSlotIndex } from "./portalLinks.js";
+import { assertVertexPassability } from "../Spatial/grid/vertexPassability.js";
 import { notifyGridWallChange } from "./boundaryEdit.js";
 import {
     applyStampedForcefieldsFromGlobal,
@@ -190,6 +191,8 @@ function clearSandboxSceneContent(state) {
     state.sandbox.passagePower = null;
     state.sandbox._passageEdgeDrawCache = null;
     state.obstacleGrid.portalSlotByKey.clear();
+    state.obstacleGrid._vertexPassabilitySyncKey = "";
+    state.obstacleGrid.vertexPassability = new Uint8Array(0);
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string }} entry */
 function spawnSnapshotProp(state, entry) {
@@ -222,6 +225,7 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     if (stampBounds) notifyGridWallChange(state, stampBounds);
     else if (grid.cols) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
     syncPassagePowerNetwork(state);
+    assertVertexPassability(grid);
     applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);
     syncRoomGraphBake(state);
     for (let i = 0; i < doc.props.length; i++) spawnSnapshotProp(state, doc.props[i]);

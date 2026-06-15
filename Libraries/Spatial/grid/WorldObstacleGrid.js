@@ -42,6 +42,9 @@ export class WorldObstacleGrid {
         this.boundaryNavHops = null;
         /** @type {Map<number, { col: number, row: number, side: number }>} */
         this.portalSlotByKey = new Map();
+        /** @type {Uint8Array} */
+        this.vertexPassability = new Uint8Array(0);
+        this._vertexPassabilitySyncKey = "";
     }
     /** @param {number} damage @param {object} state */
     _staticGridProxyHandleHit(damage, state) {

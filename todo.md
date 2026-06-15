@@ -2,8 +2,6 @@
 
 ## BACKLOG
 
-**UI REFACTOR** - separate css from js to start.
-
 ## Milestone log
 
 Newest first. User-visible capabilities only.
