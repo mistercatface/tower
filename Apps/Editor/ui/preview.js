@@ -91,7 +91,6 @@ export function drawLabFrame(state) {
     const ctx = state.editor.ctx;
     const viewport = state.viewport;
     const showVignette = document.getElementById("showVignetteInput").checked;
-    const showWalls = document.getElementById("showWallsInput").checked;
     const showPathDebug = document.getElementById("showPathDebugInput").checked;
     const prevProfileOverride = state.worldSurfaces.surfaceProfileOverride;
     state.worldSurfaces.surfaceProfileOverride = RUNTIME_LAB_PROFILE_ID;
@@ -103,20 +102,11 @@ export function drawLabFrame(state) {
     ctx.fillStyle = "#080a0e";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
-    if (showWalls || showPathDebug) {
+    if (showPathDebug) {
         ctx.save();
         viewport.apply(ctx);
-        if (showPathDebug) {
-            const pathCache = state.mapPathDebugCache;
-            ctx.drawImage(pathCache.canvas, pathCache.minX, pathCache.minY);
-        }
-        if (showWalls) {
-            ctx.save();
-            ctx.globalAlpha = 0.35;
-            const wallCache = state.mapWallCache;
-            ctx.drawImage(wallCache.canvas, wallCache.minX, wallCache.minY);
-            ctx.restore();
-        }
+        const pathCache = state.mapPathDebugCache;
+        ctx.drawImage(pathCache.canvas, pathCache.minX, pathCache.minY);
         ctx.restore();
     }
     ctx.save();

@@ -8,8 +8,7 @@ import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, c
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { buildGridNavSnapshot, snapshotNavCacheKey } from "../../Pathfinding/GridNavSnapshot.js";
-import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
-import { collectSegmentsAlongLine, collectSegmentsInWorldBounds, collectSegmentsNearPose, segmentGridLayoutFromObstacleGrid } from "./segmentGridWalk.js";
+import { clearWallCells } from "./wallGridBake.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
 export class WorldObstacleGrid {
@@ -25,7 +24,6 @@ export class WorldObstacleGrid {
         this.grid = new Uint8Array(0);
         this.edgeStore = new CellEdgeStore();
         this.floorStore = new FloorCellStore();
-        this.segmentGrid = [];
         this.wallGridRevision = 0;
         this._structureZLevelsRevision = -1;
         this._structureZLevels = [];
@@ -106,19 +104,7 @@ export class WorldObstacleGrid {
         const size = this.cellSize;
         let proxy = this._staticWallProxies[this._staticWallProxyCount];
         if (!proxy) {
-            proxy = {
-                x: 0,
-                y: 0,
-                angle: 0,
-                size,
-                padding: 0,
-                isDead: false,
-                isStaticGridProxy: true,
-                isStaticGridFace: false,
-                isEdgeRail: false,
-                gridCol: 0,
-                gridRow: 0,
-            };
+            proxy = { x: 0, y: 0, angle: 0, size, padding: 0, isDead: false, isStaticGridProxy: true, isStaticGridFace: false, isEdgeRail: false, gridCol: 0, gridRow: 0 };
             this._staticWallProxies[this._staticWallProxyCount] = proxy;
         }
         this._staticWallProxyCount++;
@@ -150,7 +136,7 @@ export class WorldObstacleGrid {
         const minRow = Math.max(0, er - pad);
         const maxRow = Math.min(this.rows - 1, er + pad);
         forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (col, row, idx) => {
-            if (this.grid[idx] !== 0 && !this.segmentGrid?.[idx]?.length) {
+            if (this.grid[idx] !== 0) {
                 const { x, y } = this.gridToWorld(col, row);
                 out.push(this._borrowStaticWallProxy(x, y, col, row));
             }
@@ -217,22 +203,6 @@ export class WorldObstacleGrid {
         });
         return out;
     }
-    rebuild(walls) {
-        const bounds = computeBoundsFromWalls(walls, this.cellSize);
-        this.minX = bounds.minX;
-        this.maxX = bounds.maxX;
-        this.minY = bounds.minY;
-        this.maxY = bounds.maxY;
-        this.cols = Math.ceil((this.maxX - this.minX) / this.cellSize);
-        this.rows = Math.ceil((this.maxY - this.minY) / this.cellSize);
-        const size = this.cols * this.rows;
-        this.grid = new Uint8Array(size);
-        this.edgeStore.reset(size);
-        this.floorStore.reset(size);
-        this.invalidateStructureZLevelsCache();
-        this.segmentGrid = new Array(size);
-        for (const wall of walls) this.addWall(wall);
-    }
     rebuildFixed(centerX, centerY, width, height) {
         centeredAabbInto(this.patchBoundsScratch, centerX, centerY, width, height);
         this.minX = this.patchBoundsScratch.minX;
@@ -247,7 +217,6 @@ export class WorldObstacleGrid {
         this.floorStore.reset(size);
         this.invalidateStructureZLevelsCache();
         this.invalidateGridNavSnapshot();
-        this.segmentGrid = null;
     }
     expandToCoverAabb(aabb) {
         if (this.cols <= 0) {
@@ -297,34 +266,12 @@ export class WorldObstacleGrid {
         this.invalidateGridNavSnapshot();
         return true;
     }
-    markWall(wall) {
-        markWallOnGrid(wall, this.grid, this.cols, this.rows, { worldToGrid: (x, y) => this.worldToGrid(x, y), cellCenter: (col, row) => this.gridToWorld(col, row), cellSize: this.cellSize });
-    }
-    addWall(wall) {
-        markWallOnGrid(wall, this.grid, this.cols, this.rows, {
-            worldToGrid: (x, y) => this.worldToGrid(x, y),
-            cellCenter: (col, row) => this.gridToWorld(col, row),
-            cellSize: this.cellSize,
-            onBlockedCell: (_col, _row, idx) => {
-                if (!this.segmentGrid[idx]) this.segmentGrid[idx] = [];
-                if (!this.segmentGrid[idx].includes(wall)) this.segmentGrid[idx].push(wall);
-            },
-        });
-    }
-    patchAfterWallRemoved(wall, wallSpatialIndex) {
-        const bounds = getWallCellBounds(wall, (x, y) => this.worldToGrid(x, y), this.cols, this.rows);
-        clearWallCells(this.grid, this.cols, bounds, this.segmentGrid);
-        const worldBounds = cellBoundsToWorldBoundsInto(this.patchBoundsScratch, bounds, this.minX, this.minY, this.cellSize);
-        const localWalls = wallSpatialIndex ? wallSpatialIndex.collectInBounds(worldBounds) : [];
-        for (const localWall of localWalls) this.addWall(localWall);
-        return bounds;
-    }
     // originCol/originRow are global cell coords; cells is row-major with 1 = blocked.
-    stampStaticWalls(originCol, originRow, cols, rows, cells, wallSpatialIndex = null, { additive = false, heightLevel }) {
+    stampStaticWalls(originCol, originRow, cols, rows, cells, { additive = false, heightLevel }) {
         const level = heightLevel;
         const { col: baseCol, row: baseRow } = this.worldToGrid(originCol * this.cellSize, originRow * this.cellSize);
         const gridBounds = { startCol: Math.max(0, baseCol), endCol: Math.min(this.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(this.rows - 1, baseRow + rows - 1) };
-        if (!additive) clearWallCells(this.grid, this.cols, gridBounds, this.segmentGrid);
+        if (!additive) clearWallCells(this.grid, this.cols, gridBounds);
         let changed = false;
         const stampSize = rows * cols;
         for (let i = 0; i < stampSize; i++) {
@@ -341,11 +288,6 @@ export class WorldObstacleGrid {
             }
         }
         if (changed) this.bumpWallGridRevision();
-        if (wallSpatialIndex && this.segmentGrid) {
-            const worldBounds = cellBoundsToWorldBoundsInto(this.patchBoundsScratch, gridBounds, this.minX, this.minY, this.cellSize);
-            const localWalls = wallSpatialIndex.collectInBounds(worldBounds);
-            for (let i = 0; i < localWalls.length; i++) this.addWall(localWalls[i]);
-        }
         return gridBounds;
     }
     writeCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
@@ -485,17 +427,5 @@ export class WorldObstacleGrid {
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);
-    }
-    _segmentLayout() {
-        return segmentGridLayoutFromObstacleGrid(this);
-    }
-    getNearbySegments(entity) {
-        return collectSegmentsNearPose(this._segmentLayout(), entity);
-    }
-    getSegmentsAlongLine(x1, y1, x2, y2) {
-        return collectSegmentsAlongLine(this._segmentLayout(), x1, y1, x2, y2);
-    }
-    getSegmentsInBounds(bounds) {
-        return collectSegmentsInWorldBounds(this._segmentLayout(), bounds);
     }
 }

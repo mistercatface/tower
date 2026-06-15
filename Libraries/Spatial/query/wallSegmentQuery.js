@@ -1,19 +1,14 @@
-import { collectSegmentsAlongLine, segmentGridLayoutFromObstacleGrid } from "../grid/segmentGridWalk.js";
 /** @typedef {import("./wallContext.js").WallContext} WallContext */
 /**
- * Collect wall segments near an entity from spatial index, obstacle grid, or fallback list.
- * @param {import("./SpatialQuery.js").SpatialQuery} wallQuery
+ * @param {import("./SpatialQuery.js").SpatialQuery} _wallQuery
  * @param {WallContext | null} wallCtx
  * @param {object} entity
  * @returns {object[]}
  */
-export function collectWallSegmentsForEntity(wallQuery, wallCtx, entity) {
-    if (!wallCtx) return [];
-    let segments;
-    if (wallCtx.wallSpatialIndex) segments = [...wallCtx.wallSpatialIndex.collectNearby(entity, wallQuery)];
-    else if (wallCtx.obstacleGrid) segments = [...wallCtx.obstacleGrid.getNearbySegments(entity)];
-    else segments = [...(wallCtx.walls ?? [])];
-    if (wallCtx.obstacleGrid) wallCtx.obstacleGrid.appendStaticWallProxiesNear(entity, segments);
+export function collectWallSegmentsForEntity(_wallQuery, wallCtx, entity) {
+    if (!wallCtx?.obstacleGrid) return [];
+    const segments = [];
+    wallCtx.obstacleGrid.appendStaticWallProxiesNear(entity, segments);
     return segments;
 }
 /**
@@ -21,7 +16,25 @@ export function collectWallSegmentsForEntity(wallQuery, wallCtx, entity) {
  * @returns {object[]}
  */
 export function collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2) {
-    if (!wallCtx) return [];
-    if (wallCtx.obstacleGrid?.segmentGrid) return collectSegmentsAlongLine(segmentGridLayoutFromObstacleGrid(wallCtx.obstacleGrid), x1, y1, x2, y2);
-    return wallCtx.walls ?? [];
+    if (!wallCtx?.obstacleGrid) return [];
+    const grid = wallCtx.obstacleGrid;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    const steps = Math.max(2, Math.ceil(len / 8));
+    const seen = new Set();
+    const result = [];
+    for (let step = 0; step <= steps; step++) {
+        const t = step / steps;
+        const batch = [];
+        grid.appendStaticWallProxiesNear({ x: x1 + dx * t, y: y1 + dy * t, radius: 0 }, batch);
+        for (let i = 0; i < batch.length; i++) {
+            const seg = batch[i];
+            if (!seen.has(seg)) {
+                seen.add(seg);
+                result.push(seg);
+            }
+        }
+    }
+    return result;
 }

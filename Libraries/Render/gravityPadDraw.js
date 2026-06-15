@@ -9,7 +9,7 @@ export function createGravityPadDraw() {
         const lineScale = getCanvasLineScale(ctx);
         ctx.lineWidth = 2 * lineScale;
         ctx.fillStyle = `rgba(255, 100, 100, ${0.22 * off})`;
-        ctx.strokeStyle = prop.wallMode && prop.wallsUp ? `rgba(180, 180, 200, ${0.95 * off})` : `rgba(255, 80, 80, ${0.9 * off})`;
+        ctx.strokeStyle = `rgba(255, 80, 80, ${0.9 * off})`;
         fillStrokeClosedPolygonTranslated(ctx, prop.x, prop.y, [
             { x: -hx, y: -hy },
             { x: hx, y: -hy },

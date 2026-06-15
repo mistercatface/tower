@@ -7,7 +7,7 @@ import { WORLD_RENDER_MODE_FLAT2D } from "./WorldRenderMode.js";
 export function createRadialStructurePass(renderer) {
     return {
         draw(ctx, state, viewport) {
-            renderer.render3D.draw3DBuildings(ctx, renderer.worldSceneDrawInput, viewport, state.walls);
+            renderer.render3D.draw3DBuildings(ctx, renderer.worldSceneDrawInput, viewport);
             state.worldSurfaces.drawRoofs(ctx, state, viewport);
         },
     };
@@ -17,7 +17,7 @@ export function createFlat2dStructurePass(renderer) {
     return {
         draw(ctx, state, viewport) {
             state.worldSurfaces.drawFlatWallRails(ctx, state, viewport);
-            renderer.render3D.draw3DBuildings(ctx, renderer.worldSceneDrawInput, viewport, state.walls, { skipWalls: true });
+            renderer.render3D.draw3DBuildings(ctx, renderer.worldSceneDrawInput, viewport, { skipWalls: true });
         },
     };
 }

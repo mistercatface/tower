@@ -53,7 +53,6 @@ export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStar
 export { evaluatePortalStepEntry } from "./portalLinks.js";
 export { tryPortalIntake, applyPortalTraverse } from "./portalTraverse.js";
 export { syncBoundaryNavIndex } from "./boundaryNavSync.js";
-export { addSandboxWalls, removeSandboxWalls, clearSandboxWallsInBounds } from "./sandboxWalls.js";
 export {
     bakeAnimatedSurfaceFlipbook,
     releaseAnimatedSurfaceFlipbook,

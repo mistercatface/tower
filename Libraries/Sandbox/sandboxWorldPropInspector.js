@@ -1,6 +1,5 @@
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
-import { syncPullFixtureWalls, teardownPullFixtureWalls } from "./pullFixtureWalls.js";
 import { isButtonEntity, isMassButtonInputMode } from "./buttonInput.js";
 import { appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../UI/paramFields.js";
 /** @param {object} prop @param {number} degrees */
@@ -30,25 +29,11 @@ function applyVoidPitPatch(prop, patch) {
 function readGravityPullTrigger(prop) {
     return prop.triggers?.find((trigger) => trigger.effect === "pull");
 }
-function applyGravityPadPatch(state, prop, patch) {
-    if (patch.wallMode != null && patch.wallMode !== prop.wallMode) {
-        if (prop.wallMode && prop.wallsUp) teardownPullFixtureWalls(state, prop);
-        prop.wallMode = patch.wallMode;
-        if (!prop.wallMode) {
-            prop.walls = [];
-            prop.wallsUp = false;
-        } else {
-            prop.walls = [];
-            prop.wallsUp = false;
-            syncPullFixtureWalls(state, prop);
-        }
-    }
+function applyGravityPadPatch(_state, prop, patch) {
     if (patch.halfWidth != null || patch.halfHeight != null) {
         const halfWidth = patch.halfWidth ?? prop.halfExtents.x;
         const halfHeight = patch.halfHeight ?? prop.halfExtents.y;
-        if (prop.wallMode && prop.wallsUp) teardownPullFixtureWalls(state, prop);
         resizeFloorPropHalfExtents(prop, halfWidth, halfHeight);
-        if (prop.wallMode && prop.wallsUp) syncPullFixtureWalls(state, prop);
     }
     const pullTrigger = readGravityPullTrigger(prop);
     if (!pullTrigger) return;
@@ -243,14 +228,6 @@ export function appendSandboxWorldPropInspectorFields(body, prop, { state, sync,
         appendNumberField(body, "Height", { value: prop.halfExtents.y * 2, step: 1, min: 1, onChange: (height) => patch(() => applyGravityPadPatch(state, prop, { halfHeight: height / 2 })) });
         appendNumberField(body, "Force X", { value: pullTrigger.forceX, step: 50, onChange: (forceX) => patch(() => applyGravityPadPatch(state, prop, { forceX })) });
         appendNumberField(body, "Force Y", { value: pullTrigger.forceY, step: 50, onChange: (forceY) => patch(() => applyGravityPadPatch(state, prop, { forceY })) });
-        const wallRow = document.createElement("label");
-        wallRow.className = "param-field";
-        const wallCheck = document.createElement("input");
-        wallCheck.type = "checkbox";
-        wallCheck.checked = prop.wallMode === true;
-        wallCheck.addEventListener("change", () => patch(() => applyGravityPadPatch(state, prop, { wallMode: wallCheck.checked })));
-        wallRow.append("Wall mode ", wallCheck);
-        body.appendChild(wallRow);
         return;
     }
     appendNumberField(body, "Facing (°)", { value: Math.round(((prop.facing ?? 0) * 180) / Math.PI), step: 5, onChange: (degrees) => patch(() => applyWorldPropFacing(prop, degrees)) });

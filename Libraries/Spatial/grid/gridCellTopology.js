@@ -2,7 +2,6 @@ import { packEdgeCellKey } from "../../DataStructures/CellKey.js";
 import { portalEdgeEmitsCollision } from "./portalAccess.js";
 import { isBeltRailEdge, isForcefieldEdge, isPortalEdge, isRailWallEdge, createRailWallEdge, railWallThicknessPx, passageEdgeEmitsCollision } from "./CellEdge.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
-
 export function edgeNeighbor(col, row, side) {
     let nc = col;
     let nr = row;
@@ -12,11 +11,9 @@ export function edgeNeighbor(col, row, side) {
     else nc = col - 1;
     return { nc, nr };
 }
-
 export function edgeMirrorSide(side) {
     return (side + 2) % 4;
 }
-
 export function cellEdgeEndpoints(grid, col, row, side, p1, p2, inset = 0) {
     const bounds = grid.getCellBounds(col, row);
     const minX = bounds.minX;
@@ -45,54 +42,45 @@ export function cellEdgeEndpoints(grid, col, row, side, p1, p2, inset = 0) {
         p2.y = minY;
     }
 }
-
 function edgeRailEmitOwner(grid, col, row, side) {
     if (side === 2 || side === 1) return true;
     if (side === 0) return row === 0;
     return col === 0;
 }
-
 export function edgeAt(grid, col, row, side) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     return grid.edgeStore.get(col, row, side, grid.cols);
 }
-
 export function beltRailEdgeAt(grid, col, row, side) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isBeltRailEdge(edge)) return null;
     return edge;
 }
-
 export function railWallEdgeAt(grid, col, row, side) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isRailWallEdge(edge)) return null;
     return edge;
 }
-
 export function forcefieldEdgeAt(grid, col, row, side) {
     const edge = edgeAt(grid, col, row, side);
     if (!isForcefieldEdge(edge) || isPortalEdge(edge)) return null;
     return edge;
 }
-
 export function portalEdgeAt(grid, col, row, side) {
     const edge = edgeAt(grid, col, row, side);
     if (!isPortalEdge(edge)) return null;
     return edge;
 }
-
 export function railWallEdgeShouldEmit(grid, col, row, side) {
     if (!railWallEdgeAt(grid, col, row, side)) return false;
     return edgeRailEmitOwner(grid, col, row, side);
 }
-
 export function beltRailEdgeShouldEmit(grid, col, row, side) {
     if (!beltRailEdgeAt(grid, col, row, side)) return false;
     return edgeRailEmitOwner(grid, col, row, side);
 }
-
 export function blockingPassageEdgeAt(grid, col, row, side) {
     if (!edgeRailEmitOwner(grid, col, row, side)) return null;
     const forcefield = forcefieldEdgeAt(grid, col, row, side);
@@ -101,52 +89,40 @@ export function blockingPassageEdgeAt(grid, col, row, side) {
     if (portal && portalEdgeEmitsCollision(portal)) return portal;
     return null;
 }
-
 export function edgeRailCollisionShouldEmit(grid, col, row, side) {
     return beltRailEdgeShouldEmit(grid, col, row, side) || railWallEdgeShouldEmit(grid, col, row, side) || blockingPassageEdgeAt(grid, col, row, side) != null;
 }
-
 export function edgeRailCollisionThicknessPx(grid, col, row, side, defaultPassageThicknessLevel = 2) {
     const railEdge = railWallEdgeAt(grid, col, row, side);
     if (railEdge) return railWallThicknessPx(railEdge);
     if (blockingPassageEdgeAt(grid, col, row, side)) return railWallThicknessPx(createRailWallEdge(0, defaultPassageThicknessLevel));
     return 1;
 }
-
 export function neighborFillLevel(grid, col, row, side) {
     const { nc, nr } = edgeNeighbor(col, row, side);
     if (!cellInRect(nc, nr, grid.cols, grid.rows)) return 0;
     return grid.grid[nc + nr * grid.cols];
 }
-
 export function cellIsStaticWallAtIdx(grid, idx) {
-    if (grid.grid[idx] === 0) return false;
-    if (!grid.segmentGrid) return true;
-    return !grid.segmentGrid[idx]?.length;
+    return grid.grid[idx] !== 0;
 }
-
 export function resolveCellWallHeightAtIdx(grid, idx) {
     const level = grid.grid[idx];
     if (level === 0) return 0;
-    if (grid.segmentGrid?.[idx]?.length) return 0;
     return level * grid.cellSize;
 }
-
 export function cellIsStaticWall(grid, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     return cellIsStaticWallAtIdx(grid, colRowToIndex(col, row, grid.cols));
 }
-
 export function resolveCellWallHeightPx(grid, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return 0;
     return resolveCellWallHeightAtIdx(grid, colRowToIndex(col, row, grid.cols));
 }
-
 export function cellToGlobalColRow(grid, col, row) {
     const cellSize = grid.cellSize;
     return { globalCol: Math.floor((grid.minX + col * cellSize) / cellSize), globalRow: Math.floor((grid.minY + row * cellSize) / cellSize) };
 }
-
 export function canonicalEdgeCellKey(grid, col, row, side) {
     const a = cellToGlobalColRow(grid, col, row);
     const keyA = packEdgeCellKey(a.globalCol, a.globalRow, side);
@@ -156,12 +132,10 @@ export function canonicalEdgeCellKey(grid, col, row, side) {
     const keyB = packEdgeCellKey(b.globalCol, b.globalRow, edgeMirrorSide(side));
     return keyA <= keyB ? keyA : keyB;
 }
-
 export function isCanonicalEdgeRepresentative(grid, col, row, side) {
     const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
     return packEdgeCellKey(globalCol, globalRow, side) === canonicalEdgeCellKey(grid, col, row, side);
 }
-
 export function forEachCellEdge(grid, fn, { canonicalOnly = false, minCol, maxCol, minRow, maxRow, filter } = {}) {
     if (!grid.cols) return;
     const startCol = minCol ?? 0;

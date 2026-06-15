@@ -1,5 +1,4 @@
 import { resolveBodyAgainstWallSegments } from "../Spatial/collision/wallResolution.js";
-
 /** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
 export function invalidateWallResolveCache(...entities) {
     for (let i = 0; i < entities.length; i++) entities[i]._wallResolvedFrame = null;

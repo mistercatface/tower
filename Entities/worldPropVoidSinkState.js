@@ -30,7 +30,7 @@ export class WorldPropVoidSinkState {
     resolveSpriteDrawModifier(prop, viewport) {
         return resolveVoidSinkDrawModifier(prop, viewport);
     }
-    update(prop, dt, _walls, state) {
+    update(prop, dt, state) {
         const voidX = prop.voidX;
         const voidY = prop.voidY;
         if (voidX == null || voidY == null) {

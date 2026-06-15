@@ -6,8 +6,8 @@ import { clipToAabb } from "../Canvas/CanvasPath.js";
 import { getChunkSizePx, worldBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
-import { chunkHasWallSegments, chunkHasBlockedCells, buildStaticRoofMaskCanvas, applyStaticRoofMaskToCanvas } from "./HorizontalSurfaceDraw.js";
-import { projectHorizontalSurfaceCornersInto, clipChunkToWallFootprints, clipChunkToBlockedCells, clipChunkToStaticEdgeRails, clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
+import { chunkHasBlockedCells, buildStaticRoofMaskCanvas, applyStaticRoofMaskToCanvas } from "./HorizontalSurfaceDraw.js";
+import { projectHorizontalSurfaceCornersInto, clipChunkToBlockedCells, clipChunkToStaticEdgeRails, clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
@@ -240,27 +240,14 @@ export class WorldSurfaceEngine {
      *   viewport: import("../../Libraries/Viewport/Viewport.js").Viewport,
      *   state: object,
      *   zLevel?: number,
-     *   wallSpatialIndex?: import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null,
      *   playBounds?: import("../Math/Aabb2D.js").Aabb2D | null,
      *   beforeDraw?: (ctx: CanvasRenderingContext2D, bounds: import("../Math/Aabb2D.js").Aabb2D) => void,
-     *   requireWallSegments?: boolean,
      *   flatWallRails?: boolean,
      *   staticRoofDraw?: boolean,
      * }} options
      */
     drawGroundChunks(ctx, options) {
-        const {
-            obstacleGrid,
-            viewport,
-            state,
-            zLevel = 0,
-            wallSpatialIndex = null,
-            playBounds = null,
-            beforeDraw,
-            requireWallSegments = true,
-            flatWallRails = false,
-            staticRoofDraw = false,
-        } = options;
+        const { obstacleGrid, viewport, state, zLevel = 0, playBounds = null, beforeDraw, flatWallRails = false, staticRoofDraw = false } = options;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
         const viewportBounds = viewport.boundsDraw;
@@ -285,20 +272,12 @@ export class WorldSurfaceEngine {
                 const originY = obstacleGrid.minY + chunkRow * chunkSizePx;
                 if (
                     zLevel > 0 &&
-                    requireWallSegments &&
-                    !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx) &&
                     !chunkHasBlockedCells(obstacleGrid, originX, originY, chunkSizePx) &&
                     !(staticRoofDraw && chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel)) &&
                     !(flatWallRails && chunkHasStaticStructureAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel))
                 )
                     continue;
-                if (
-                    zLevel > 0 &&
-                    flatWallRails &&
-                    !chunkHasWallSegments(wallSpatialIndex, originX, originY, chunkSizePx) &&
-                    !chunkHasStaticStructureAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel)
-                )
-                    continue;
+                if (zLevel > 0 && flatWallRails && !chunkHasStaticStructureAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel)) continue;
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
                 const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel, texelResolution);
                 const canvas = canvases[0];
@@ -316,7 +295,6 @@ export class WorldSurfaceEngine {
                     settings: this.settings,
                     texelResolution,
                     state,
-                    wallSpatialIndex: flatWallRails ? wallSpatialIndex : null,
                     chunkAabb: chunkWorldAabbInto(createAabb(), originX, originY, chunkSizePx),
                     camera: passCamera,
                 };

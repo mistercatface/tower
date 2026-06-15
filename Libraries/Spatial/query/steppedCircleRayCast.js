@@ -27,23 +27,10 @@ const DEFAULT_STEP = 8;
  * @returns {object[]}
  */
 function collectCandidateWalls(startX, startY, dx, dy, maxDist, wallCtx) {
-    const walls = wallCtx?.walls ?? [];
-    if (walls.length === 0) return [];
+    if (!wallCtx?.obstacleGrid) return [];
     const endX = startX + dx * maxDist;
     const endY = startY + dy * maxDist;
-    if (wallCtx?.obstacleGrid) return collectWallSegmentsAlongLine(wallCtx, startX, startY, endX, endY);
-    const minX = Math.min(startX, endX);
-    const maxX = Math.max(startX, endX);
-    const minY = Math.min(startY, endY);
-    const maxY = Math.max(startY, endY);
-    const temp = [];
-    for (const seg of walls) {
-        if (seg.isDead) continue;
-        const limit = seg.size * 0.75 + 1.5;
-        if (seg.x < minX - limit || seg.x > maxX + limit || seg.y < minY - limit || seg.y > maxY + limit) continue;
-        temp.push(seg);
-    }
-    return temp;
+    return collectWallSegmentsAlongLine(wallCtx, startX, startY, endX, endY);
 }
 /**
  * @param {{ x: number, y: number, radius: number }} rayCircle

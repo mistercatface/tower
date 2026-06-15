@@ -1,5 +1,5 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
-import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
+import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
@@ -67,4 +67,8 @@ export function collectPlacedSandboxPropEntries(state) {
         for (let i = 0; i < members.length; i++) entries.push(serializePlacedProp(members[i]));
     }
     return entries;
+}
+/** @param {object} state @param {object} prop */
+export function removeSandboxWorldProp(state, prop) {
+    removeWorldPropFromState(state, prop);
 }

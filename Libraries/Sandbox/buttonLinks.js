@@ -3,7 +3,7 @@ import { fillCircle, strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { isFlipperWorldProp } from "./behaviors/flipperBehavior.js";
 import { isButtonEntity } from "./buttonInput.js";
-import { isPullPowerTarget } from "./pullFixtureWalls.js";
+import { isPullPowerTarget } from "./floorEffects.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
 import { formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";

@@ -84,7 +84,6 @@ export function getBaseSpriteCacheKey(prop, deps) {
     let key = `${orientKey}_${radius}_${halfX}x${halfY}`;
     if (prop.sinkDepth != null) key += `_d${Math.round(prop.sinkDepth)}`;
     if (prop.powered === false) key += "_off";
-    if (prop.wallMode && prop.wallsUp) key += "_walls";
     if (prop._buttonDrawPressed) key += "_on";
     return key;
 }

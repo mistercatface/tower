@@ -1,4 +1,4 @@
-import { removeSandboxWorldProp } from "../Sandbox/pullFixtureWalls.js";
+import { removeSandboxWorldProp } from "../Sandbox/sandboxPlacedSpawn.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
 import { advancePushableSleep, evaluatePushableSleepEligible } from "./pushableSleep.js";

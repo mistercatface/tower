@@ -3,7 +3,6 @@ export const TILELAB_UI_HTML = `
     <div class="toolbar">
         <h1>Editor</h1>
         <span class="sep"></span>
-        <label class="check-inline"><input id="showWallsInput" type="checkbox"> Physics Walls</label>
         <label class="check-inline"><input id="showPathDebugInput" type="checkbox"> HPA* Grid</label>
         <label class="check-inline"><input id="showVectorPropsAllInput" type="checkbox"> Vector props</label>
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>

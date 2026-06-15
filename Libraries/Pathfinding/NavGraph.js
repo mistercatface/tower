@@ -30,7 +30,7 @@
 //   Queries: resolveVoxelWallFace, collectVoxelWallFacesInAabb, resolveRailWallBox, collectRailWallBoxesInAabb
 //   Owner: World/wallGridBake.js
 //
-// Stamp — dynamic segment walls → grid[] + segmentGrid (nav/collision, editor walls, pull fixtures).
+// Stamp — voxel fill grid[] + edge rails (nav/collision, editor caverns, sandbox paint).
 //   Owner: Spatial/grid/wallGridBake.js (distinct from World/wallGridBake.js)
 //
 // ── Parameters ────────────────────────────────────────────────────────────────
@@ -77,6 +77,3 @@
 //   forEachBoundaryHopCell?: (fn: (col: number, row: number, hops: import("./boundaryNavHops.js").BoundaryNavHop[]) => void) => void,
 // }} BoundaryHopNavGraph
 //
-// @typedef {NavGraph & object} NavSegmentGraph
-// @property {(entity: { x: number, y: number, radius?: number }) => object[]} getNearbySegments
-// @property {(bounds: import("../Math/Aabb2D.js").Aabb2D) => object[]} getSegmentsInBounds

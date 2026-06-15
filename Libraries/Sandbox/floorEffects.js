@@ -6,7 +6,6 @@ import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive, isSustainedFlipperButtonInputMode, isSustainedSpawnerButtonInputMode } from "./buttonInput.js";
 import { fireSpawner, isSpawnerWorldProp } from "./spawnerConfig.js";
-import { isPullPowerTarget, syncPullFixtureWalls } from "./pullFixtureWalls.js";
 /** @typedef {{ when?: FloorTriggerWhen, effect: string, force?: number, forceX?: number, forceY?: number }} FloorTriggerDef */
 /** @typedef {"enter" | "exit" | "occupied" | "empty"} FloorTriggerWhen */
 /**
@@ -19,6 +18,10 @@ import { isPullPowerTarget, syncPullFixtureWalls } from "./pullFixtureWalls.js";
 /** @param {number} propId */
 function pullPowerKeyForProp(propId) {
     return `prop:${propId}`;
+}
+/** @param {object} entity */
+export function isPullPowerTarget(entity) {
+    return entity?.triggers?.some((trigger) => trigger.effect === "pull") === true;
 }
 /** @param {object} state */
 export function syncSandboxButtonPower(state) {
@@ -40,7 +43,6 @@ export function syncSandboxButtonPower(state) {
         if (!isPullPowerTarget(prop)) return;
         const powered = poweredByTargetId.has(pullPowerKeyForProp(prop.id)) ? poweredByTargetId.get(pullPowerKeyForProp(prop.id)) : true;
         prop.powered = powered;
-        syncPullFixtureWalls(state, prop);
     });
 }
 /** @param {object} prop @param {object} pit */

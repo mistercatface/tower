@@ -198,7 +198,7 @@ export class WorldProp extends Entity {
                 }
         }
         if (!asleep && resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
-        if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state.walls, state);
+        if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }
     spawnShards(gameState) {
         if (!gameState || !gameState.worldProps) return;

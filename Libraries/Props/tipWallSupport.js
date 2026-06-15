@@ -27,9 +27,7 @@ export function measureTipFallWallBlock(prop, wallCtx = null) {
             firstBlock = Math.min(firstBlock, i);
             break;
         }
-        let segments = [];
-        if (wallCtx?.obstacleGrid?.getNearbySegments) segments = collectWallSegmentsForEntity(wallProbeQuery, wallCtx, { x: px, y: py, radius: radius * 0.85 });
-        else if (wallCtx?.walls?.length) segments = wallCtx.walls;
+        const segments = collectWallSegmentsForEntity(wallProbeQuery, wallCtx, { x: px, y: py, radius: radius * 0.85 });
         for (let s = 0; s < segments.length; s++) {
             const wall = segments[s];
             if (wall.isDead) continue;

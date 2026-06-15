@@ -21,7 +21,7 @@ import {
 } from "./gridWallEdit.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
-import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
+import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";

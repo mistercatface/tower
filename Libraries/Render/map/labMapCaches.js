@@ -3,7 +3,6 @@ import { fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba } from "../../Canvas/i
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 import { isRailWallEdge } from "../../Spatial/grid/CellEdge.js";
 import { forEachCellEdge } from "../../Spatial/grid/gridCellTopology.js";
-const WALL_OVERLAY_THICKNESS = 20;
 /** Pixels per grid cell in the map overview bake — edges draw on boundaries, not as cell fills. */
 const OVERVIEW_PIXELS_PER_CELL = 4;
 const OVERVIEW_FLOOR_RGB = [12, 14, 18];
@@ -16,29 +15,6 @@ function bakeCanvas(width, height) {
     const h = Math.ceil(height);
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
     return createOffscreenCanvas(w, h);
-}
-function drawWallSegment(ctx, seg) {
-    ctx.save();
-    ctx.translate(seg.x, seg.y);
-    ctx.rotate(seg.angle);
-    ctx.fillStyle = "rgba(120, 120, 120, 0.8)";
-    const halfSize = seg.size / 2;
-    ctx.fillRect(-halfSize, -WALL_OVERLAY_THICKNESS / 2, seg.size, WALL_OVERLAY_THICKNESS);
-    ctx.strokeStyle = "rgba(120, 120, 120, 1)";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(-halfSize, -WALL_OVERLAY_THICKNESS / 2, seg.size, WALL_OVERLAY_THICKNESS);
-    ctx.restore();
-}
-function bakeWallLayer(walls, minX, minY, maxX, maxY) {
-    const canvas = bakeCanvas(maxX - minX, maxY - minY);
-    if (!canvas) return null;
-    const ctx = canvas.getContext("2d");
-    ctx.translate(-minX, -minY);
-    for (const seg of walls) {
-        if (seg.isDead) continue;
-        drawWallSegment(ctx, seg);
-    }
-    return { canvas, minX, minY, maxX, maxY };
 }
 function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
     const canvas = bakeCanvas(maxX - minX, maxY - minY);
@@ -147,7 +123,6 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
 /** @param {object} state */
 export function rebuildLabMapCaches(state) {
     const grid = state.obstacleGrid;
-    state.mapWallCache = bakeWallLayer(state.walls, grid.minX, grid.minY, grid.maxX, grid.maxY);
     state.mapPathDebugCache = bakePathDebugLayer(state.hierarchicalNavigator, grid.minX, grid.minY, grid.maxX, grid.maxY);
     state.mapOverviewCache = bakeObstacleOverviewCache(grid, state.mapOverviewCache?.canvas);
 }

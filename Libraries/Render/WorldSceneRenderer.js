@@ -103,7 +103,7 @@ export class WorldSceneRenderer {
         for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
         for (let i = 0; i < this.staticGridEdgeRailDrawables.length; i++) visibleObjects.push(this.staticGridEdgeRailDrawables[i]);
     }
-    draw3DBuildings(ctx, input, viewport, _walls, options = {}) {
+    draw3DBuildings(ctx, input, viewport, options = {}) {
         const skipWalls = options.skipWalls === true;
         const px = viewport.x;
         const py = viewport.y;

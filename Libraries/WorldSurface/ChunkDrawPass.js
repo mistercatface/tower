@@ -2,10 +2,10 @@
  * Per-chunk horizontal surface draw context — built once per visible chunk in `drawGroundChunks`.
  */
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
-import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
-import { traceAabbRect, traceClosedPolygon, clipToPath } from "../Canvas/CanvasPath.js";
+import { traceAabbRect, clipToPath } from "../Canvas/CanvasPath.js";
 import { resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
+import { railWallFootprintAabb, forEachEmittingRailWallAtZLevel } from "../World/wallGridBake.js";
 /**
  * @typedef {Object} ChunkDrawPass
  * @property {number} chunkCol
@@ -19,7 +19,6 @@ import { resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js"
  * @property {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} settings
  * @property {number} texelResolution — pixels per world unit; read once per `drawGroundChunks` pass
  * @property {object | null} state
- * @property {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null} wallSpatialIndex
  * @property {import("../Math/Aabb2D.js").Aabb2D} chunkAabb
  * @property {import("../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
  */
@@ -39,12 +38,10 @@ export function projectHorizontalSurfaceCornersInto(out4, pass, rect = null) {
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
 export function clipChunkToBlockedCells(ctx, pass) {
     const { obstacleGrid } = pass;
-    const segmentGrid = obstacleGrid.segmentGrid;
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
         forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
             if (obstacleGrid.grid[idx] === 0) return;
-            if (segmentGrid?.[idx]?.length) return;
             traceAabbRect(clipCtx, obstacleGrid.getCellBounds(col, row));
             clippedAny = true;
         });
@@ -52,39 +49,13 @@ export function clipChunkToBlockedCells(ctx, pass) {
     });
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
-export function clipChunkToWallFootprints(ctx, pass) {
-    const { wallSpatialIndex } = pass;
-    if (!wallSpatialIndex) return false;
-    const segments = wallSpatialIndex.collectInBounds(pass.chunkAabb);
-    return clipToPath(ctx, (clipCtx) => {
-        let clippedAny = false;
-        for (let i = 0; i < segments.length; i++) {
-            const wall = segments[i];
-            if (wall.isDead || wall.collisionOnly) continue;
-            traceClosedPolygon(clipCtx, getSegmentFootprintCorners(wall));
-            clippedAny = true;
-        }
-        return clippedAny;
-    });
-}
-/** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
 export function clipChunkToFlatWallFootprints(ctx, pass) {
-    const { obstacleGrid, wallSpatialIndex, zLevel } = pass;
-    const segmentGrid = obstacleGrid.segmentGrid;
+    const { obstacleGrid, zLevel } = pass;
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
-        if (wallSpatialIndex) {
-            const segments = wallSpatialIndex.collectInBounds(pass.chunkAabb);
-            for (let i = 0; i < segments.length; i++) {
-                const wall = segments[i];
-                if (wall.isDead || wall.collisionOnly) continue;
-                traceClosedPolygon(clipCtx, getSegmentFootprintCorners(wall));
-                clippedAny = true;
-            }
-        }
         forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
             const cellZ = resolveCellWallHeightAtIdx(obstacleGrid, idx);
-            if (cellZ === zLevel && !segmentGrid?.[idx]?.length) {
+            if (cellZ === zLevel) {
                 traceAabbRect(clipCtx, obstacleGrid.getCellBounds(col, row));
                 clippedAny = true;
             }

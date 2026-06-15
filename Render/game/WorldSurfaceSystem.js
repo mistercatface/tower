@@ -26,16 +26,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         const staticHeights = state.obstacleGrid.collectStaticFillZLevels();
         for (let i = 0; i < staticHeights.length; i++) {
             const zLevel = staticHeights[i];
-            this.drawGroundChunks(ctx, {
-                obstacleGrid: state.obstacleGrid,
-                wallSpatialIndex: state.wallSpatialIndex,
-                viewport,
-                state,
-                zLevel,
-                playBounds: playBoundsFromObstacleGrid(state.obstacleGrid),
-                requireWallSegments: false,
-                staticRoofDraw: true,
-            });
+            this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, viewport, state, zLevel, playBounds: playBoundsFromObstacleGrid(state.obstacleGrid), staticRoofDraw: true });
         }
     }
     drawFlatWallRails(ctx, state, viewport) {
@@ -43,16 +34,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         const fallbackZ = this.settings.wallHeight;
         const levels = zLevels.length ? zLevels : [fallbackZ];
         const playBounds = playBoundsFromObstacleGrid(state.obstacleGrid);
-        for (let i = 0; i < levels.length; i++)
-            this.drawGroundChunks(ctx, {
-                obstacleGrid: state.obstacleGrid,
-                wallSpatialIndex: state.wallSpatialIndex,
-                viewport,
-                state,
-                zLevel: levels[i],
-                playBounds,
-                requireWallSegments: false,
-                flatWallRails: true,
-            });
+        for (let i = 0; i < levels.length; i++) this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, viewport, state, zLevel: levels[i], playBounds, flatWallRails: true });
     }
 }

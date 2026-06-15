@@ -1,10 +1,8 @@
 import { distanceToSegment } from "../geometry/WallGeometry.js";
-import { corridorAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { collectWallSegmentsAlongLine } from "./wallSegmentQuery.js";
 /**
  * @typedef {import("./wallContext.js").WallContext} WallContext
  */
-const LOS_CORRIDOR_BOUNDS = createAabb();
 /**
  * Corridor line-of-sight test against wall segments.
  *
@@ -20,10 +18,8 @@ const LOS_CORRIDOR_BOUNDS = createAabb();
 export function hasLineOfSight(x1, y1, x2, y2, wallCtx, sourceRadius = 0, targetRadius = sourceRadius) {
     if (!wallCtx) return true;
     const corridorRadius = Math.max(sourceRadius, targetRadius);
-    let candidateWalls;
-    if (wallCtx.obstacleGrid) candidateWalls = collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2);
-    else if (wallCtx.wallSpatialIndex) candidateWalls = wallCtx.wallSpatialIndex.collectInBounds(corridorAabbInto(LOS_CORRIDOR_BOUNDS, x1, y1, x2, y2, corridorRadius));
-    else candidateWalls = wallCtx.walls;
+    if (!wallCtx?.obstacleGrid) return true;
+    const candidateWalls = collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2);
     const dx = x2 - x1;
     const dy = y2 - y1;
     const lineLen = Math.hypot(dx, dy);

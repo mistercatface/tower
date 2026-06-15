@@ -68,11 +68,6 @@ export function initFloorTriggerProp(prop) {
     prop.triggers = prop.strategy.floorTriggers.map((trigger) => ({ ...trigger }));
     if (prop.strategy.sinkDepth != null) prop.sinkDepth = prop.strategy.sinkDepth;
     if (prop.strategy.captureTolerance != null) prop.captureTolerance = prop.strategy.captureTolerance;
-    if (prop.strategy.wallMode === true) {
-        prop.wallMode = true;
-        prop.walls = [];
-        prop.wallsUp = false;
-    }
     prop.powered = prop.strategy.powered !== false;
     prop.aabb = createAabb();
     syncFloorPropCollisionShape(prop);

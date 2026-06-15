@@ -4,8 +4,6 @@ import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
 import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
-import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
-import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/sandboxWalls.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/grid/gridCellTopology.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
@@ -122,7 +120,7 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
         const cy = (bounds.minY + bounds.maxY) * 0.5;
         if (Math.hypot(cx - centerWorldX, cy - centerWorldY) >= radiusWorld) return;
         let cellChanged = false;
-        if (cellIsStaticWallAtIdx(grid, idx) && (!grid.segmentGrid || !grid.segmentGrid[idx]?.length)) {
+        if (cellIsStaticWallAtIdx(grid, idx)) {
             grid.grid[idx] = 0;
             cellChanged = true;
         }
@@ -147,16 +145,10 @@ export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     const cellSize = gridSettings.cellSize;
     let required = getCavernBoundsPreview(state.editor.cavernConfig);
     if (extraAabb) required = unionAabb(required, extraAabb);
-    if (state.walls.length) required = unionAabb(required, computeBoundsFromWalls(state.walls, cellSize));
     required = padAabb(required, cellSize);
     const grid = state.obstacleGrid;
     const expanded = grid.expandToCoverAabb(required);
-    if (!grid.segmentGrid) {
-        grid.segmentGrid = new Array(grid.cols * grid.rows);
-        for (const wall of state.walls) grid.addWall(wall);
-    } else if (expanded) {
-        grid.segmentGrid = new Array(grid.cols * grid.rows);
-        for (const wall of state.walls) grid.addWall(wall);
+    if (expanded) {
         const centerX = (grid.minX + grid.maxX) / 2;
         const centerY = (grid.minY + grid.maxY) / 2;
         state.hierarchicalNavigator.initialize(centerX, centerY);
@@ -174,16 +166,14 @@ function generateCavernOccupancy(config) {
 export function generateLabCaverns(state) {
     const { cavernConfig } = state.editor;
     const cellSize = gridSettings.cellSize;
-    const stampBounds = getCavernBoundsPreview(cavernConfig);
     /** @type {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
     let stamp = null;
     withSeededRandom(state.mapSeed, () => {
         stamp = generateCavernOccupancy(cavernConfig);
     });
     ensureLabObstacleGridCoverage(state);
-    clearSandboxWallsInBounds(state, stampBounds);
     const level = clampStampWallHeightLevel(cavernConfig.wallHeightLevel, state.worldSurfaces.settings);
-    const damageBounds = state.obstacleGrid.stampStaticWalls(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, state.wallSpatialIndex, { additive: true, heightLevel: level });
+    const damageBounds = state.obstacleGrid.stampStaticWalls(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, { additive: true, heightLevel: level });
     if (cavernConfig.boundsMode === "donut") {
         const innerR = getCavernInnerRadiusCells(cavernConfig) * cellSize;
         const center = getCavernCenterWorld(cavernConfig, cellSize);
@@ -200,7 +190,6 @@ export function generateLabRailCaverns(state) {
     const cellSize = gridSettings.cellSize;
     const stampBounds = getCellBoundsAabb(railConfig, cellSize);
     ensureLabObstacleGridCoverage(state, stampBounds);
-    clearSandboxWallsInBounds(state, stampBounds);
     const level = clampStampWallHeightLevel(railConfig.wallHeightLevel, state.worldSurfaces.settings);
     const thickness = railConfig.edgeThickness ?? 2;
     const grid = state.obstacleGrid;
@@ -248,9 +237,7 @@ export function generateLabRailCaverns(state) {
     for (let r = startRow; r <= endRow; r++)
         for (let c = startCol; c <= endCol; c++) {
             const idx = c + r * grid.cols;
-            if (grid.grid[idx] !== 0 && (!grid.segmentGrid || !grid.segmentGrid[idx]?.length)) {
-                grid.grid[idx] = 0;
-            }
+            if (grid.grid[idx] !== 0) grid.grid[idx] = 0;
             if (grid.edgeStore.hasAnyAtIdx(idx)) grid.clearCellEdges(c, r);
         }
     // 4. Stamp Horizontal Edges

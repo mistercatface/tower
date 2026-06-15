@@ -1,7 +1,7 @@
 import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLabel } from "../Combat/sandboxTargeting.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
+import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
 import {
@@ -1150,7 +1150,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             this.deleteSelectedWall();
         },
         clear() {
-            for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state.worldProps[i]);
+            for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i]);
             state.obstacleGrid.clearAllFloorCells();
             unbakeRoomGraph(state);
             clearRoomGraph(state);

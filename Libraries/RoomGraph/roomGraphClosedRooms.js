@@ -1,21 +1,17 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
-
 /** @typedef {{ c: number, r: number }} Cell */
 /** @typedef {{ id: number, c0: number, r0: number, c1: number, r1: number, centerC: number, centerR: number, width: number, height: number }} GraphNode */
 /** @typedef {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number }} RailWall */
 /** @typedef {{ c: number, r: number, side: number }} RoomWallHole */
 /** @typedef {{ node: GraphNode, gaps: Set<string>, holes: RoomWallHole[] }} ClosedRoom */
-
 /** @param {number} c @param {number} r @param {number} side */
 export function roomWallEdgeKey(c, r, side) {
     return `${c},${r},${side}`;
 }
-
 /** @param {{ nodes: GraphNode[] }} nodeGraph */
 export function buildRoomsFromNodeGraph(nodeGraph) {
     return nodeGraph.nodes.map((node) => ({ node, gaps: new Set(), holes: [] }));
 }
-
 /** @param {GraphNode} node @param {number} originCol @param {number} originRow @param {Set<string>} [gaps] */
 export function railWallsForClosedRect(node, originCol, originRow, gaps = new Set()) {
     /** @type {RailWall[]} */
@@ -35,12 +31,10 @@ export function railWallsForClosedRect(node, originCol, originRow, gaps = new Se
     }
     return walls;
 }
-
 /** @param {ClosedRoom} closedRoom @param {number} originCol @param {number} originRow */
 export function railWallsForClosedRoom(closedRoom, originCol, originRow) {
     return railWallsForClosedRect(closedRoom.node, originCol, originRow, closedRoom.gaps);
 }
-
 /** @param {ClosedRoom[]} closedRooms @param {number} originCol @param {number} originRow */
 export function railWallsForClosedRooms(closedRooms, originCol, originRow) {
     /** @type {RailWall[]} */
@@ -48,18 +42,15 @@ export function railWallsForClosedRooms(closedRooms, originCol, originRow) {
     for (let i = 0; i < closedRooms.length; i++) walls.push(...railWallsForClosedRoom(closedRooms[i], originCol, originRow));
     return walls;
 }
-
 /** @param {number} c @param {number} r @param {number} side @param {number} originCol @param {number} originRow */
 function roomWallGapKeyWorld(c, r, side, originCol, originRow) {
     return `${c + originCol},${r + originRow},${side}`;
 }
-
 /** @param {RoomWallHole} hole @param {number} originCol @param {number} originRow */
 function roomWallGapKeysWorldForHole(hole, originCol, originRow) {
     const neighbor = gridSideNeighborCell(hole.c, hole.r, hole.side);
     return [roomWallGapKeyWorld(hole.c, hole.r, hole.side, originCol, originRow), roomWallGapKeyWorld(neighbor.col, neighbor.row, (hole.side + 2) % 4, originCol, originRow)];
 }
-
 /** @param {ClosedRoom[]} closedRooms @param {number} originCol @param {number} originRow */
 export function roomWallGapKeysWorld(closedRooms, originCol, originRow) {
     /** @type {Set<string>} */
@@ -74,12 +65,10 @@ export function roomWallGapKeysWorld(closedRooms, originCol, originRow) {
     }
     return keys;
 }
-
 /** @param {RailWall[]} railWalls @param {Set<string>} gapKeysWorld */
 export function omitRailWallsAtGapKeys(railWalls, gapKeysWorld) {
     return railWalls.filter((w) => !gapKeysWorld.has(`${w.col},${w.row},${w.side}`));
 }
-
 /** @param {RailWall[][]} lists */
 export function mergeRailWalls(lists) {
     /** @type {Set<string>} */
@@ -98,7 +87,6 @@ export function mergeRailWalls(lists) {
     }
     return out;
 }
-
 /** @param {ClosedRoom} closedRoom @param {RoomWallHole[][]} holeGroups */
 export function applyCorridorHoleGroups(closedRoom, holeGroups) {
     for (let lane = 0; lane < holeGroups.length; lane++) {
@@ -110,7 +98,6 @@ export function applyCorridorHoleGroups(closedRoom, holeGroups) {
         }
     }
 }
-
 /** @param {ClosedRoom} roomA @param {ClosedRoom} roomB @param {RoomWallHole[][]} parentHoleGroups @param {RoomWallHole[][]} childHoleGroups */
 export function applyCorridorHoleGroupsToRooms(roomA, roomB, parentHoleGroups, childHoleGroups) {
     applyCorridorHoleGroups(roomA, parentHoleGroups);

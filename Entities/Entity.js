@@ -35,19 +35,17 @@ export class Entity {
     isVisible(viewport) {
         return viewport.isVisible(this.x, this.y, this.getBoundingRadius());
     }
-    resolveWallContext(stateOrWalls) {
-        if (!stateOrWalls) return null;
-        if (stateOrWalls.walls) return wallContextFromState(stateOrWalls);
-        return { walls: stateOrWalls, wallSpatialIndex: null, obstacleGrid: null };
+    resolveWallContext(state) {
+        return wallContextFromState(state);
     }
-    hasLineOfSightFromPoint(x, y, stateOrWalls, { sourceRadius = 0 } = {}) {
-        const wallCtx = this.resolveWallContext(stateOrWalls);
+    hasLineOfSightFromPoint(x, y, state, { sourceRadius = 0 } = {}) {
+        const wallCtx = this.resolveWallContext(state);
         if (!wallCtx) return true;
         return hasLineOfSight(x, y, this.x, this.y, wallCtx, sourceRadius, this.radius ?? 0);
     }
-    hasLineOfSightTo(other, stateOrWalls) {
+    hasLineOfSightTo(other, state) {
         if (!other) return false;
-        const wallCtx = this.resolveWallContext(stateOrWalls);
+        const wallCtx = this.resolveWallContext(state);
         if (!wallCtx) return true;
         return hasLineOfSight(this.x, this.y, other.x, other.y, wallCtx, this.radius ?? 0, other.radius ?? 0);
     }

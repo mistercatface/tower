@@ -76,7 +76,7 @@ export function bindVectorPropsToolbar(state, onChange) {
 /** @param {{ onOverlayChange: () => void, onRedraw: () => void, onStageResize: () => void, onRenderModeChange: (mode: import("../../../Render/WorldRenderMode.js").WorldRenderMode) => void }} handlers */
 export function bindToolbarControls(handlers) {
     const { onOverlayChange, onRedraw, onStageResize, onRenderModeChange } = handlers;
-    for (const id of ["showVignetteInput", "showWallsInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onOverlayChange);
+    for (const id of ["showVignetteInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onOverlayChange);
     const renderModeSelect = document.getElementById("worldRenderModeSelect");
     for (const mode of WORLD_RENDER_MODE_OPTIONS) {
         const option = renderModeSelect.querySelector(`option[value="${mode}"]`);

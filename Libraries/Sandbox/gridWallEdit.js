@@ -16,14 +16,7 @@ import {
 } from "../Spatial/grid/CellEdge.js";
 import { portalAccessDefaultAllowedSide, formatPortalAccessSideLabel, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { setBoundary, setPassageProfile, setPortalProfile, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
-import {
-    canonicalEdgeCellKey,
-    cellIsStaticWall,
-    cellIsStaticWallAtIdx,
-    forEachCellEdge,
-    neighborFillLevel,
-    cellEdgeEndpoints,
-} from "../Spatial/grid/gridCellTopology.js";
+import { canonicalEdgeCellKey, cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 import { findPortalEdgeByKey } from "../Spatial/grid/portalSlotIndex.js";
 import {
     formatPortalConnectionLabel,
@@ -141,7 +134,6 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
         const { col, row } = toLocal(globalCol, globalRow);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         const idx = colRowToIndex(col, row, grid.cols);
-        if (grid.segmentGrid?.[idx]?.length) continue;
         grid.grid[idx] = clampStampWallHeightLevel(heightLevel, settings);
         growCellBounds(bounds, col, row);
     }
@@ -227,7 +219,6 @@ export function stampVoxelWallAt(state, col, row, heightLevel) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const idx = colRowToIndex(col, row, grid.cols);
-    if (grid.segmentGrid?.[idx]?.length) return false;
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     grid.grid[idx] = level;
     notifyGridWallChange(state, cellBoundsAt(col, row));
