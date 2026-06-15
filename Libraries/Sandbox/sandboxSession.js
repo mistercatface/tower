@@ -20,6 +20,11 @@ import {
     removeRoomLink,
     removeRoomNode,
     stampRoomNodeAt,
+    updateRoomLink,
+    syncRoomGraphBake,
+    unbakeRoomGraph,
+    rerollRoomLinkBake,
+    expandGridForRoomNodeFootprint,
 } from "../RoomGraph/index.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { syncPassagePowerNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
@@ -270,10 +275,13 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         if (isRoomNodeSpawnAsset(asset)) {
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(worldX, worldY);
+            expandGridForRoomNodeFootprint(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows);
             const node = stampRoomNodeAt(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows);
             if (!node) return false;
             touchRoomNodePlacement(node.id);
             setSelectedRoomNodeId(node.id);
+            syncRoomGraphBake(state);
+            sync();
             return true;
         }
         const spawned = spawnPlacedSandboxProp(state, worldX, worldY, spawnPropId, spawnFaction);
@@ -894,6 +902,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const link = addRoomLink(state, a, b);
             if (!link) return null;
             touchRoomLinkPlacement(link.id);
+            syncRoomGraphBake(state);
             sync();
             return link;
         },
@@ -901,6 +910,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (!removeRoomLink(state, linkId)) return false;
             forgetRoomLinkPlacement(linkId);
             if (selectedRoomLinkId === linkId) dropRoomGraphSelection();
+            syncRoomGraphBake(state);
             sync();
             return true;
         },
@@ -911,6 +921,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             clearRoomLinksForNode(state, node.id);
             for (let i = 0; i < links.length; i++) forgetRoomLinkPlacement(links[i].id);
             if (selectedRoomLinkId != null && !getRoomLink(state, selectedRoomLinkId)) dropRoomGraphSelection();
+            syncRoomGraphBake(state);
             sync();
         },
         listSelectedRoomNodeLinks() {
@@ -930,6 +941,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             forgetRoomNodePlacement(selectedRoomNodeId);
             for (let i = 0; i < links.length; i++) forgetRoomLinkPlacement(links[i].id);
             dropRoomGraphSelection();
+            syncRoomGraphBake(state);
             sync();
         },
         deleteSelectedRoomLink() {
@@ -937,6 +949,19 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             forgetRoomLinkPlacement(selectedRoomLinkId);
             removeRoomLink(state, selectedRoomLinkId);
             dropRoomGraphSelection();
+            syncRoomGraphBake(state);
+            sync();
+        },
+        updateSelectedRoomLink(patch) {
+            if (selectedRoomLinkId == null) return false;
+            if (!updateRoomLink(state, selectedRoomLinkId, patch)) return false;
+            syncRoomGraphBake(state);
+            sync();
+            return true;
+        },
+        rerollSelectedRoomLink() {
+            if (selectedRoomLinkId == null) return;
+            rerollRoomLinkBake(state, selectedRoomLinkId);
             sync();
         },
         listPlacedRoomNodes() {
@@ -1075,6 +1100,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         clear() {
             for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state.worldProps[i]);
             state.obstacleGrid.clearAllFloorCells();
+            unbakeRoomGraph(state);
             clearRoomGraph(state);
             selectedPropIds.clear();
             selectedPropId = null;

@@ -163,10 +163,10 @@
     padding: 2px;
 }
 
-/* Scene list grows with content; the sandbox sidebar scrolls as a whole. */
+/* Scene list — tall cap with internal scroll so the sidebar stays usable. */
 .sandbox-panel-body [data-sandbox-section="scene"] .toy-instance-list {
-    max-height: none;
-    overflow-y: visible;
+    max-height: 1024px;
+    overflow-y: auto;
 }
 
 .toy-instance-row {

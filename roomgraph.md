@@ -108,8 +108,8 @@ Extract from `sandboxRoomGraphGen.js`: hole punch, corridor path, rail stamp (no
 **Defaults:** e.g. `corridorCount: 2`, `corridorWidth: 2`, `canIntersect: false`, random `seed`.
 
 **PR 3 done when:**
-- [ ] Connect + bake produces walkable corridors
-- [ ] Reroll / delete link updates geometry
+- [x] Connect + bake produces walkable corridors
+- [x] Reroll / delete link updates geometry
 - [ ] Motif procgen unused; old file trimmed or deleted
 
 ---

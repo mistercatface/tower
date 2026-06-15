@@ -2,7 +2,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { gridCellToGlobalColRow, isCanonicalEdgeRepresentative } from "../World/wallGridCells.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
-import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot } from "../RoomGraph/index.js";
+import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { notifyGridWallChange } from "./boundaryEdit.js";
 import {
     applyStampedForcefieldsFromGlobal,
@@ -173,6 +173,7 @@ function clearSandboxSceneContent(state) {
     state.obstacleGrid.clearAllFloorCells();
     clearAllStampedGridWalls(state, { notify: false });
     getSandboxEntityMeta(state).clear();
+    unbakeRoomGraph(state);
     clearRoomGraph(state);
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string }} entry */
@@ -205,5 +206,6 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     else if (grid.cols) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
     syncPassagePowerNetwork(state);
     applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);
+    syncRoomGraphBake(state);
     for (let i = 0; i < doc.props.length; i++) spawnSnapshotProp(state, doc.props[i]);
 }

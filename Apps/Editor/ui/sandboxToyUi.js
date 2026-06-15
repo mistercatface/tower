@@ -18,7 +18,7 @@ import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../.
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
 import { portalAccessDefaultAllowedSide } from "../../../Libraries/Spatial/grid/portalAccess.js";
-import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendSelectField } from "../../../Libraries/UI/paramFields.js";
+import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 const WALL_STAMP_OPTIONS = [
@@ -640,9 +640,47 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     return;
                 }
                 if (selectedRoomLink) {
-                    appendEditorHint(body, `${selectedRoomLink.label}. Corridor settings arrive in the next pass.`);
-                    const deleteRow = document.createElement("div");
-                    deleteRow.className = "sandbox-add-row";
+                    appendEditorHint(body, `${selectedRoomLink.label}. Corridors rebake when settings change.`);
+                    appendNumberField(body, "Corridor count", {
+                        value: selectedRoomLink.corridorCount ?? 2,
+                        step: 1,
+                        min: 1,
+                        onChange: (corridorCount) => {
+                            controller.updateSelectedRoomLink({ corridorCount });
+                            onChange();
+                        },
+                    });
+                    appendNumberField(body, "Corridor width", {
+                        value: selectedRoomLink.corridorWidth ?? 2,
+                        step: 1,
+                        min: 1,
+                        onChange: (corridorWidth) => {
+                            controller.updateSelectedRoomLink({ corridorWidth });
+                            onChange();
+                        },
+                    });
+                    const intersectRow = document.createElement("label");
+                    intersectRow.className = "param-field check-inline";
+                    const intersectCheck = document.createElement("input");
+                    intersectCheck.type = "checkbox";
+                    intersectCheck.checked = selectedRoomLink.canIntersect === true;
+                    intersectCheck.addEventListener("change", () => {
+                        controller.updateSelectedRoomLink({ canIntersect: intersectCheck.checked });
+                        onChange();
+                    });
+                    intersectRow.append(intersectCheck, document.createTextNode(" Corridors may intersect"));
+                    body.appendChild(intersectRow);
+                    const actionRow = document.createElement("div");
+                    actionRow.className = "sandbox-add-row";
+                    const rerollBtn = document.createElement("button");
+                    rerollBtn.type = "button";
+                    rerollBtn.className = "secondary";
+                    rerollBtn.textContent = "Reroll corridor";
+                    rerollBtn.addEventListener("click", () => {
+                        controller.rerollSelectedRoomLink();
+                        onChange();
+                    });
+                    actionRow.appendChild(rerollBtn);
                     const deleteBtn = document.createElement("button");
                     deleteBtn.type = "button";
                     deleteBtn.className = "secondary";
@@ -651,8 +689,8 @@ export function mountSandboxToyUi(container, controller, onChange) {
                         controller.deleteSelectedRoomLink();
                         onChange();
                     });
-                    deleteRow.appendChild(deleteBtn);
-                    body.appendChild(deleteRow);
+                    actionRow.appendChild(deleteBtn);
+                    body.appendChild(actionRow);
                     return;
                 }
                 if (selectedRoomNode) {

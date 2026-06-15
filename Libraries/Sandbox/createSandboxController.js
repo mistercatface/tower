@@ -523,6 +523,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         getSelectedRoomLinkInfo: () => session.getSelectedRoomLinkInfo(),
         deleteSelectedRoomNode: () => session.deleteSelectedRoomNode(),
         deleteSelectedRoomLink: () => session.deleteSelectedRoomLink(),
+        updateSelectedRoomLink: (patch) => session.updateSelectedRoomLink(patch),
+        rerollSelectedRoomLink: () => session.rerollSelectedRoomLink(),
         listSelectedRoomNodeLinks: () => session.listSelectedRoomNodeLinks(),
         removeRoomLinkById: (linkId) => session.removeRoomLinkById(linkId),
         clearSelectedRoomNodeLinks: () => session.clearSelectedRoomNodeLinks(),

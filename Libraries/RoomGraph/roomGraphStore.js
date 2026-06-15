@@ -1,14 +1,14 @@
 /** @typedef {{ id: number, col: number, row: number, width: number, height: number }} RoomNode */
 /** @typedef {{ id: number, a: number, b: number, corridorCount?: number, corridorWidth?: number, canIntersect?: boolean, seed?: number }} RoomLink */
-/** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number }} RoomGraphDoc */
+/** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[] }} RoomGraphDoc */
 /** @param {object} state @returns {RoomGraphDoc} */
 export function getRoomGraph(state) {
-    if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0 };
+    if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [] };
     return state.roomGraph;
 }
 /** @param {object} state */
 export function clearRoomGraph(state) {
-    state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0 };
+    state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [] };
 }
 /** @param {object} state @returns {RoomNode[]} */
 export function listRoomNodes(state) {
@@ -116,6 +116,16 @@ export function addRoomLink(state, a, b) {
     graph.links.push(link);
     return link;
 }
+/** @param {object} state @param {number} linkId @param {{ corridorCount?: number, corridorWidth?: number, canIntersect?: boolean, seed?: number }} patch @returns {boolean} */
+export function updateRoomLink(state, linkId, patch) {
+    const link = getRoomLink(state, linkId);
+    if (!link) return false;
+    if (patch.corridorCount != null) link.corridorCount = Math.max(1, Math.min(8, Math.round(patch.corridorCount)));
+    if (patch.corridorWidth != null) link.corridorWidth = Math.max(1, Math.min(8, Math.round(patch.corridorWidth)));
+    if (patch.canIntersect != null) link.canIntersect = patch.canIntersect;
+    if (patch.seed != null) link.seed = patch.seed | 0;
+    return true;
+}
 /** @param {object} state @param {number} linkId @returns {boolean} */
 export function removeRoomLink(state, linkId) {
     const graph = getRoomGraph(state);
@@ -150,7 +160,7 @@ export function listRoomNodeLinkEntries(state, nodeId) {
 }
 /** @param {object} state @param {RoomGraphDoc} doc */
 export function replaceRoomGraph(state, doc) {
-    state.roomGraph = { nodes: doc.nodes.map((node) => ({ ...node })), links: doc.links.map((link) => ({ ...link })), nextNodeId: doc.nextNodeId, nextLinkId: doc.nextLinkId };
+    state.roomGraph = { nodes: doc.nodes.map((node) => ({ ...node })), links: doc.links.map((link) => ({ ...link })), nextNodeId: doc.nextNodeId, nextLinkId: doc.nextLinkId, bakedRails: [] };
 }
 /** @param {object} state @returns {RoomGraphDoc} */
 export function cloneRoomGraphDoc(state) {
