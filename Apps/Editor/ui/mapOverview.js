@@ -1,9 +1,10 @@
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
+import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
-import { refreshLabMapBoundsPreview } from "../world/mapWorld.js";
-import { drawCavernBoundsPreview, drawWorldBoundsBox, mountOverviewBoundsEditors } from "./cavernBoundsOverviewEditor.js";
-/** @typedef {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} MapOverviewCache */
+import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../world/mapGenBounds.js";
+import { drawMapGenBoundsPreview, mountOverviewBoundsEditors } from "./mapGenBoundsOverviewEditor.js";
+import { drawWorldBoundsBox } from "./mapOverviewDraw.js";
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let overviewCanvasResize = null;
 let overviewCtx = null;
@@ -14,6 +15,13 @@ export function activeMapGenKind(state) {
     if (key === "gen:rail") return "rail";
     if (key === "gen:erase") return "erase";
     return null;
+}
+/** @param {CanvasRenderingContext2D} ctx @param {import("../state.js").TileLabGameState} state @param {import("../world/mapGenBounds.js").typeof MAP_GEN_KINDS[number]} kind @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH */
+function paintMapGenBoundsOverlay(ctx, state, kind, cache, displayW, displayH) {
+    const config = getMapGenBoundsConfig(state.editor, kind);
+    const color = MAP_GEN_OVERLAY_COLORS[kind];
+    if (config.boundsMode === "rect") drawWorldBoundsBox(ctx, getMapGenBoundsAabbCache(state.editor, kind).aabb, cache, displayW, displayH, color, 2);
+    else drawMapGenBoundsPreview(ctx, config, cache, displayW, displayH, color);
 }
 /** Blit cached map and draw live viewport / generation bounds — not part of the bake. */
 export function paintMapOverviewFrame(state) {
@@ -27,22 +35,10 @@ export function paintMapOverviewFrame(state) {
     ctx.drawImage(cache.canvas, 0, 0, canvas.width, canvas.height);
     const displayW = canvas.width;
     const displayH = canvas.height;
-    refreshLabMapBoundsPreview(state);
+    refreshAllMapGenBoundsPreviews(state.editor, gridSettings.cellSize);
     if (state.editor.showMapOverviewViewport) drawWorldBoundsBox(ctx, state.viewport.boundsClip, cache, displayW, displayH, "#00e5ff");
     const genKind = activeMapGenKind(state);
-    if (genKind === "cavern") {
-        const cavernConfig = state.editor.cavernConfig;
-        if (cavernConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.cavern, cache, displayW, displayH, "#ff9800", 2);
-        else drawCavernBoundsPreview(ctx, cavernConfig, cache, displayW, displayH);
-    } else if (genKind === "rail") {
-        const railConfig = state.editor.railConfig;
-        if (railConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.rail, cache, displayW, displayH, "#e040fb", 2);
-        else drawCavernBoundsPreview(ctx, railConfig, cache, displayW, displayH, "#e040fb");
-    } else if (genKind === "erase") {
-        const eraseConfig = state.editor.eraseConfig;
-        if (eraseConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.erase, cache, displayW, displayH, "#f44336", 2);
-        else drawCavernBoundsPreview(ctx, eraseConfig, cache, displayW, displayH, "#f44336");
-    }
+    if (genKind) paintMapGenBoundsOverlay(ctx, state, genKind, cache, displayW, displayH);
 }
 /** Vertical space for main map max-size when overview is visible. */
 export function estimateMapOverviewHeight() {

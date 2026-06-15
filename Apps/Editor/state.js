@@ -2,7 +2,6 @@ import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { TileLabEditorState } from "./TileLabEditorState.js";
-export { createLabMapBoundsPreview } from "./TileLabEditorState.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
 /** Square canvas pixel defaults — main map, map overview, animation preview. */

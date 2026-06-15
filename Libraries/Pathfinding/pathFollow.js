@@ -35,11 +35,6 @@ export function findPathProgressIdx(x, y, path, options = {}) {
     while (idx < path.length - 1 && pathWaypointArrived(x, y, path[idx].x, path[idx].y, PATH_WAYPOINT_ARRIVAL_PX, grid)) idx++;
     return idx;
 }
-/** @deprecated Use findPathProgressIdx — kept so callers can migrate without silent breakage. */
-export function trimPathAhead(x, y, path, options = {}) {
-    if (!path?.length) return path;
-    return path.slice(findPathProgressIdx(x, y, path, options));
-}
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} ax @param {number} ay @param {number} bx @param {number} by */
 function cellsAreGridNeighbors(grid, ax, ay, bx, by) {
     const a = grid.worldToGrid(ax, ay);

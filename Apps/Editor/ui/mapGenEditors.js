@@ -1,5 +1,6 @@
-import { migrateCavernConfigForMode } from "../world/cavernBounds.js";
-import { applyPlayAreaConfig, eraseLabWallsInBounds, generateLabCaverns, generateLabRailCaverns, syncCavernBoundsFromPlay } from "../world/mapWorld.js";
+import { gridSettings } from "../../../Config/Config.js";
+import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay } from "../world/mapGenBounds.js";
+import { applyPlayAreaConfig, eraseLabWallsInBounds, generateLabCaverns, generateLabRailCaverns } from "../world/mapWorld.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { addNumberField } from "./mapPanelFields.js";
@@ -8,19 +9,24 @@ let mapGenBoundInputs = [];
 export function refreshMapGenPanelInputs() {
     for (let i = 0; i < mapGenBoundInputs.length; i++) mapGenBoundInputs[i].input.value = String(mapGenBoundInputs[i].getValue());
 }
+/** @param {HTMLElement} parent @param {string} text */
+function appendEditorHint(parent, text) {
+    const hint = document.createElement("p");
+    hint.className = "editor-hint";
+    hint.textContent = text;
+    parent.appendChild(hint);
+}
 /**
  * @param {HTMLElement} panel
+ * @param {import("../world/mapGenBounds.js").MapGenBoundsConfig} config
  * @param {import("../state.js").TileLabGameState} state
+ * @param {string} overlayHint
  * @param {() => void} onPreviewChange
- * @param {() => void} onGenerated
  */
-export function buildCavernGenEditor(panel, state, onPreviewChange, onGenerated) {
-    mapGenBoundInputs = [];
-    const { playConfig, cavernConfig } = state.editor;
-    const surfaceSettings = state.worldSurfaces.settings;
+function appendMapGenBoundsControls(panel, config, state, overlayHint, onPreviewChange) {
+    const { playConfig } = state.editor;
     const boundInputs = mapGenBoundInputs;
-    const refreshBoundInputs = refreshMapGenPanelInputs;
-    appendEditorHint(panel, "Orange overlay on map overview — drag inside to move, drag edges/rings to resize.");
+    appendEditorHint(panel, overlayHint);
     const modeField = document.createElement("label");
     modeField.className = "param-field";
     const modeLabel = document.createElement("span");
@@ -32,7 +38,7 @@ export function buildCavernGenEditor(panel, state, onPreviewChange, onGenerated)
         opt.textContent = mode === "rect" ? "Rectangle" : mode === "circle" ? "Circle" : "Donut";
         modeSelect.appendChild(opt);
     }
-    modeSelect.value = cavernConfig.boundsMode;
+    modeSelect.value = config.boundsMode;
     modeField.append(modeLabel, modeSelect);
     panel.appendChild(modeField);
     const rectFields = document.createElement("div");
@@ -45,122 +51,114 @@ export function buildCavernGenEditor(panel, state, onPreviewChange, onGenerated)
     syncBtn.className = "secondary";
     syncBtn.textContent = "Center bounds on camera";
     syncBtn.addEventListener("click", () => {
-        syncCavernBoundsFromPlay(state.viewport, playConfig, cavernConfig);
-        migrateCavernConfigForMode(cavernConfig);
-        refreshBoundInputs();
+        syncMapGenBoundsFromPlay(state.viewport, playConfig, config, gridSettings.cellSize);
+        migrateMapGenBoundsForMode(config);
+        refreshMapGenPanelInputs();
         onPreviewChange();
     });
     syncRow.appendChild(syncBtn);
     panel.appendChild(syncRow);
-    addNumberField(
+    const setBound = (setter) => (v) => {
+        setter(v);
+        migrateMapGenBoundsForMode(config);
+    };
+    const addBound = (parent, label, get, set, opts) => addNumberField(parent, label, get, setBound(set), opts, onPreviewChange, boundInputs);
+    addBound(
         rectFields,
         "Bounds col",
-        () => cavernConfig.boundsCol,
+        () => config.boundsCol,
         (v) => {
-            cavernConfig.boundsCol = Math.round(v);
-            migrateCavernConfigForMode(cavernConfig);
+            config.boundsCol = Math.round(v);
         },
-        undefined,
-        onPreviewChange,
-        boundInputs,
     );
-    addNumberField(
+    addBound(
         rectFields,
         "Bounds row",
-        () => cavernConfig.boundsRow,
+        () => config.boundsRow,
         (v) => {
-            cavernConfig.boundsRow = Math.round(v);
-            migrateCavernConfigForMode(cavernConfig);
+            config.boundsRow = Math.round(v);
         },
-        undefined,
-        onPreviewChange,
-        boundInputs,
     );
-    addNumberField(
+    addBound(
         rectFields,
         "Bounds cols",
-        () => cavernConfig.boundsCols,
+        () => config.boundsCols,
         (v) => {
-            cavernConfig.boundsCols = Math.max(1, Math.round(v));
-            migrateCavernConfigForMode(cavernConfig);
+            config.boundsCols = Math.max(1, Math.round(v));
         },
         { min: 1 },
-        onPreviewChange,
-        boundInputs,
     );
-    addNumberField(
+    addBound(
         rectFields,
         "Bounds rows",
-        () => cavernConfig.boundsRows,
+        () => config.boundsRows,
         (v) => {
-            cavernConfig.boundsRows = Math.max(1, Math.round(v));
-            migrateCavernConfigForMode(cavernConfig);
+            config.boundsRows = Math.max(1, Math.round(v));
         },
         { min: 1 },
-        onPreviewChange,
-        boundInputs,
     );
-    addNumberField(
+    addBound(
         circleFields,
         "Center col",
-        () => cavernConfig.centerCol,
+        () => config.centerCol,
         (v) => {
-            cavernConfig.centerCol = Math.round(v);
-            migrateCavernConfigForMode(cavernConfig);
+            config.centerCol = Math.round(v);
         },
-        undefined,
-        onPreviewChange,
-        boundInputs,
     );
-    addNumberField(
+    addBound(
         circleFields,
         "Center row",
-        () => cavernConfig.centerRow,
+        () => config.centerRow,
         (v) => {
-            cavernConfig.centerRow = Math.round(v);
-            migrateCavernConfigForMode(cavernConfig);
+            config.centerRow = Math.round(v);
         },
-        undefined,
-        onPreviewChange,
-        boundInputs,
     );
-    addNumberField(
+    addBound(
         circleFields,
         "Radius (cells)",
-        () => cavernConfig.outerRadiusCells,
+        () => config.outerRadiusCells,
         (v) => {
-            cavernConfig.outerRadiusCells = Math.max(1, Math.round(v));
-            migrateCavernConfigForMode(cavernConfig);
+            config.outerRadiusCells = Math.max(1, Math.round(v));
         },
         { min: 1 },
-        onPreviewChange,
-        boundInputs,
     );
     addNumberField(
         donutFields,
         "Donut thickness (cells)",
-        () => cavernConfig.donutThicknessCells,
+        () => config.donutThicknessCells,
         (v) => {
-            cavernConfig.donutThicknessCells = Math.max(1, Math.min(cavernConfig.outerRadiusCells - 1, Math.round(v)));
+            config.donutThicknessCells = Math.max(1, Math.min(config.outerRadiusCells - 1, Math.round(v)));
         },
         { min: 1 },
         onPreviewChange,
         boundInputs,
     );
     const updateModeVisibility = () => {
-        rectFields.hidden = cavernConfig.boundsMode !== "rect";
-        circleFields.hidden = cavernConfig.boundsMode === "rect";
-        donutFields.hidden = cavernConfig.boundsMode !== "donut";
+        rectFields.hidden = config.boundsMode !== "rect";
+        circleFields.hidden = config.boundsMode === "rect";
+        donutFields.hidden = config.boundsMode !== "donut";
     };
     modeSelect.addEventListener("change", () => {
-        cavernConfig.boundsMode = /** @type {"rect" | "circle" | "donut"} */ (modeSelect.value);
-        migrateCavernConfigForMode(cavernConfig);
-        refreshBoundInputs();
+        config.boundsMode = /** @type {"rect" | "circle" | "donut"} */ (modeSelect.value);
+        migrateMapGenBoundsForMode(config);
+        refreshMapGenPanelInputs();
         updateModeVisibility();
         onPreviewChange();
     });
     panel.append(rectFields, circleFields, donutFields);
     updateModeVisibility();
+}
+/**
+ * @param {HTMLElement} panel
+ * @param {import("../state.js").TileLabGameState} state
+ * @param {() => void} onPreviewChange
+ * @param {() => void} onGenerated
+ */
+export function buildCavernGenEditor(panel, state, onPreviewChange, onGenerated) {
+    mapGenBoundInputs = [];
+    const { cavernConfig } = state.editor;
+    const surfaceSettings = state.worldSurfaces.settings;
+    appendMapGenBoundsControls(panel, cavernConfig, state, "Orange overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
     const addSlider = (label, min, max, step, key, format = (v) => String(v)) => {
         panel.appendChild(
             new SliderControl(
@@ -211,151 +209,9 @@ export function buildCavernGenEditor(panel, state, onPreviewChange, onGenerated)
  */
 export function buildRailGenEditor(panel, state, onPreviewChange, onGenerated) {
     mapGenBoundInputs = [];
-    const { playConfig, railConfig } = state.editor;
+    const { railConfig } = state.editor;
     const surfaceSettings = state.worldSurfaces.settings;
-    const boundInputs = mapGenBoundInputs;
-    const refreshBoundInputs = refreshMapGenPanelInputs;
-    appendEditorHint(panel, "Purple overlay on map overview — drag inside to move, drag edges/rings to resize.");
-    const modeField = document.createElement("label");
-    modeField.className = "param-field";
-    const modeLabel = document.createElement("span");
-    modeLabel.textContent = "Bounds shape";
-    const modeSelect = document.createElement("select");
-    for (const mode of ["rect", "circle", "donut"]) {
-        const opt = document.createElement("option");
-        opt.value = mode;
-        opt.textContent = mode === "rect" ? "Rectangle" : mode === "circle" ? "Circle" : "Donut";
-        modeSelect.appendChild(opt);
-    }
-    modeSelect.value = railConfig.boundsMode;
-    modeField.append(modeLabel, modeSelect);
-    panel.appendChild(modeField);
-    const rectFields = document.createElement("div");
-    const circleFields = document.createElement("div");
-    const donutFields = document.createElement("div");
-    const syncRow = document.createElement("div");
-    syncRow.className = "editor-tools-row";
-    const syncBtn = document.createElement("button");
-    syncBtn.type = "button";
-    syncBtn.className = "secondary";
-    syncBtn.textContent = "Center bounds on camera";
-    syncBtn.addEventListener("click", () => {
-        syncCavernBoundsFromPlay(state.viewport, playConfig, railConfig);
-        migrateCavernConfigForMode(railConfig);
-        refreshBoundInputs();
-        onPreviewChange();
-    });
-    syncRow.appendChild(syncBtn);
-    panel.appendChild(syncRow);
-    addNumberField(
-        rectFields,
-        "Bounds col",
-        () => railConfig.boundsCol,
-        (v) => {
-            railConfig.boundsCol = Math.round(v);
-            migrateCavernConfigForMode(railConfig);
-        },
-        undefined,
-        onPreviewChange,
-        boundInputs,
-    );
-    addNumberField(
-        rectFields,
-        "Bounds row",
-        () => railConfig.boundsRow,
-        (v) => {
-            railConfig.boundsRow = Math.round(v);
-            migrateCavernConfigForMode(railConfig);
-        },
-        undefined,
-        onPreviewChange,
-        boundInputs,
-    );
-    addNumberField(
-        rectFields,
-        "Bounds cols",
-        () => railConfig.boundsCols,
-        (v) => {
-            railConfig.boundsCols = Math.max(1, Math.round(v));
-            migrateCavernConfigForMode(railConfig);
-        },
-        { min: 1 },
-        onPreviewChange,
-        boundInputs,
-    );
-    addNumberField(
-        rectFields,
-        "Bounds rows",
-        () => railConfig.boundsRows,
-        (v) => {
-            railConfig.boundsRows = Math.max(1, Math.round(v));
-            migrateCavernConfigForMode(railConfig);
-        },
-        { min: 1 },
-        onPreviewChange,
-        boundInputs,
-    );
-    addNumberField(
-        circleFields,
-        "Center col",
-        () => railConfig.centerCol,
-        (v) => {
-            railConfig.centerCol = Math.round(v);
-            migrateCavernConfigForMode(railConfig);
-        },
-        undefined,
-        onPreviewChange,
-        boundInputs,
-    );
-    addNumberField(
-        circleFields,
-        "Center row",
-        () => railConfig.centerRow,
-        (v) => {
-            railConfig.centerRow = Math.round(v);
-            migrateCavernConfigForMode(railConfig);
-        },
-        undefined,
-        onPreviewChange,
-        boundInputs,
-    );
-    addNumberField(
-        circleFields,
-        "Radius (cells)",
-        () => railConfig.outerRadiusCells,
-        (v) => {
-            railConfig.outerRadiusCells = Math.max(1, Math.round(v));
-            migrateCavernConfigForMode(railConfig);
-        },
-        { min: 1 },
-        onPreviewChange,
-        boundInputs,
-    );
-    addNumberField(
-        donutFields,
-        "Donut thickness (cells)",
-        () => railConfig.donutThicknessCells,
-        (v) => {
-            railConfig.donutThicknessCells = Math.max(1, Math.min(railConfig.outerRadiusCells - 1, Math.round(v)));
-        },
-        { min: 1 },
-        onPreviewChange,
-        boundInputs,
-    );
-    const updateModeVisibility = () => {
-        rectFields.hidden = railConfig.boundsMode !== "rect";
-        circleFields.hidden = railConfig.boundsMode === "rect";
-        donutFields.hidden = railConfig.boundsMode !== "donut";
-    };
-    modeSelect.addEventListener("change", () => {
-        railConfig.boundsMode = /** @type {"rect" | "circle" | "donut"} */ (modeSelect.value);
-        migrateCavernConfigForMode(railConfig);
-        refreshBoundInputs();
-        updateModeVisibility();
-        onPreviewChange();
-    });
-    panel.append(rectFields, circleFields, donutFields);
-    updateModeVisibility();
+    appendMapGenBoundsControls(panel, railConfig, state, "Purple overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
     const addSlider = (label, min, max, step, key, format = (v) => String(v)) => {
         panel.appendChild(
             new SliderControl(
@@ -395,65 +251,14 @@ export function buildRailGenEditor(panel, state, onPreviewChange, onGenerated) {
  */
 export function buildEraseEditor(panel, state, onPreviewChange, onGenerated) {
     mapGenBoundInputs = [];
-    const { playConfig, eraseConfig } = state.editor;
-    const boundInputs = mapGenBoundInputs;
-    const refreshBoundInputs = refreshMapGenPanelInputs;
-    appendEditorHint(panel, "Red overlay on map overview — drag inside to move, drag edges/rings to resize. Clears voxel walls and rail edges in bounds.");
-    const modeField = document.createElement("label");
-    modeField.className = "param-field";
-    const modeLabel = document.createElement("span");
-    modeLabel.textContent = "Bounds shape";
-    const modeSelect = document.createElement("select");
-    for (const mode of ["rect", "circle", "donut"]) {
-        const opt = document.createElement("option");
-        opt.value = mode;
-        opt.textContent = mode === "rect" ? "Rectangle" : mode === "circle" ? "Circle" : "Donut";
-        modeSelect.appendChild(opt);
-    }
-    modeSelect.value = eraseConfig.boundsMode;
-    modeField.append(modeLabel, modeSelect);
-    panel.appendChild(modeField);
-    const rectFields = document.createElement("div");
-    const circleFields = document.createElement("div");
-    const donutFields = document.createElement("div");
-    const syncRow = document.createElement("div");
-    syncRow.className = "editor-tools-row";
-    const syncBtn = document.createElement("button");
-    syncBtn.type = "button";
-    syncBtn.className = "secondary";
-    syncBtn.textContent = "Center bounds on camera";
-    syncBtn.addEventListener("click", () => {
-        syncCavernBoundsFromPlay(state.viewport, playConfig, eraseConfig);
-        migrateCavernConfigForMode(eraseConfig);
-        refreshBoundInputs();
-        onPreviewChange();
-    });
-    syncRow.appendChild(syncBtn);
-    panel.appendChild(syncRow);
-    const addBound = (parent, label, get, set, opts) =>
-        addNumberField(parent, label, get, set, opts, onPreviewChange, boundInputs);
-    addBound(rectFields, "Bounds col", () => eraseConfig.boundsCol, (v) => { eraseConfig.boundsCol = Math.round(v); migrateCavernConfigForMode(eraseConfig); });
-    addBound(rectFields, "Bounds row", () => eraseConfig.boundsRow, (v) => { eraseConfig.boundsRow = Math.round(v); migrateCavernConfigForMode(eraseConfig); });
-    addBound(rectFields, "Bounds cols", () => eraseConfig.boundsCols, (v) => { eraseConfig.boundsCols = Math.max(1, Math.round(v)); migrateCavernConfigForMode(eraseConfig); }, { min: 1 });
-    addBound(rectFields, "Bounds rows", () => eraseConfig.boundsRows, (v) => { eraseConfig.boundsRows = Math.max(1, Math.round(v)); migrateCavernConfigForMode(eraseConfig); }, { min: 1 });
-    addBound(circleFields, "Center col", () => eraseConfig.centerCol, (v) => { eraseConfig.centerCol = Math.round(v); migrateCavernConfigForMode(eraseConfig); });
-    addBound(circleFields, "Center row", () => eraseConfig.centerRow, (v) => { eraseConfig.centerRow = Math.round(v); migrateCavernConfigForMode(eraseConfig); });
-    addBound(circleFields, "Radius (cells)", () => eraseConfig.outerRadiusCells, (v) => { eraseConfig.outerRadiusCells = Math.max(1, Math.round(v)); migrateCavernConfigForMode(eraseConfig); }, { min: 1 });
-    addBound(donutFields, "Donut thickness (cells)", () => eraseConfig.donutThicknessCells, (v) => { eraseConfig.donutThicknessCells = Math.max(1, Math.min(eraseConfig.outerRadiusCells - 1, Math.round(v))); }, { min: 1 });
-    const updateModeVisibility = () => {
-        rectFields.hidden = eraseConfig.boundsMode !== "rect";
-        circleFields.hidden = eraseConfig.boundsMode === "rect";
-        donutFields.hidden = eraseConfig.boundsMode !== "donut";
-    };
-    modeSelect.addEventListener("change", () => {
-        eraseConfig.boundsMode = /** @type {"rect" | "circle" | "donut"} */ (modeSelect.value);
-        migrateCavernConfigForMode(eraseConfig);
-        refreshBoundInputs();
-        updateModeVisibility();
-        onPreviewChange();
-    });
-    panel.append(rectFields, circleFields, donutFields);
-    updateModeVisibility();
+    const { eraseConfig } = state.editor;
+    appendMapGenBoundsControls(
+        panel,
+        eraseConfig,
+        state,
+        "Red overlay on map overview — drag inside to move, drag edges/rings to resize. Clears voxel walls and rail edges in bounds.",
+        onPreviewChange,
+    );
     const row = document.createElement("div");
     row.className = "editor-tools-row";
     const eraseBtn = document.createElement("button");
@@ -465,13 +270,6 @@ export function buildEraseEditor(panel, state, onPreviewChange, onGenerated) {
     });
     row.appendChild(eraseBtn);
     panel.appendChild(row);
-}
-/** @param {HTMLElement} parent @param {string} text */
-function appendEditorHint(parent, text) {
-    const hint = document.createElement("p");
-    hint.className = "editor-hint";
-    hint.textContent = text;
-    parent.appendChild(hint);
 }
 /** @param {import("../state.js").TileLabGameState} state @param {"cavern" | "rail" | "erase"} kind @param {() => void} onGenerated */
 export function appendMapGenEditor(parent, state, kind, onGenerated) {
