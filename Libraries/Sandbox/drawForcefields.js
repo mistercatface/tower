@@ -130,9 +130,37 @@ function createForcefieldDrawProxy(midX, midY, side, cellHalf, edgeKey, { mode, 
         _localP1: { x: EDGE_P1.x - midX, y: EDGE_P1.y - midY },
         _localP2: { x: EDGE_P2.x - midX, y: EDGE_P2.y - midY },
         getCustomSpriteCacheKey() {
-            return `${edgeKey}_${mode}_${powered ? 1 : 0}_${tripped ? 1 : 0}_${allowedSide}`;
+            return `${edgeKey}_${mode}_${powered ? 1 : 0}_${allowedSide}`;
         },
     };
+}
+/** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+function passageEdgeDrawRevision(state, grid) {
+    return `${grid.wallGridRevision}:${state.sandbox._passagePowerSyncKey ?? ""}`;
+}
+/** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+function syncPassageEdgeDrawCache(state, grid) {
+    const revision = passageEdgeDrawRevision(state, grid);
+    if (state.sandbox._passageEdgeDrawCache?.revision === revision) return;
+    /** @type {Array<{ type: "portal", col: number, row: number, side: number, edge: object, midX: number, midY: number } | { type: "forcefield", proxy: ReturnType<typeof createForcefieldDrawProxy>, edgeKey: number, midX: number, midY: number }>} */
+    const items = [];
+    forEachGridEdge(
+        grid,
+        (col, row, side, edge) => {
+            gridWallEdgeEndpoints(grid, col, row, side, EDGE_P1, EDGE_P2, 0);
+            const midX = (EDGE_P1.x + EDGE_P2.x) * 0.5;
+            const midY = (EDGE_P1.y + EDGE_P2.y) * 0.5;
+            if (isPortalEdge(edge)) items.push({ type: "portal", col, row, side, edge, midX, midY });
+            else {
+                const { mode, allowedSide, powered } = resolvePassageEdge(edge, side);
+                const cellHalf = grid.cellSize * 0.5;
+                const edgeKey = canonicalEdgeCellKey(grid, col, row, side);
+                items.push({ type: "forcefield", proxy: createForcefieldDrawProxy(midX, midY, side, cellHalf, edgeKey, { mode, allowedSide, powered, tripped: false }), edgeKey, midX, midY });
+            }
+        },
+        { canonicalOnly: true, filter: isForcefieldEdge },
+    );
+    state.sandbox._passageEdgeDrawCache = { revision, items };
 }
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -142,36 +170,28 @@ function createForcefieldDrawProxy(midX, midY, side, cellHalf, edgeKey, { mode, 
 export function drawForcefieldEdges(ctx, state, viewport) {
     const grid = state.obstacleGrid;
     if (!grid.cols || !grid.edgeStore.passageEdgeCount) return;
+    syncPassageEdgeDrawCache(state, grid);
+    const cached = state.sandbox._passageEdgeDrawCache.items;
     const bounds = viewport.boundsVisibleDefault;
-    const minCol = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).col);
-    const maxCol = Math.min(grid.cols - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).col);
-    const minRow = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).row);
-    const maxRow = Math.min(grid.rows - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).row);
+    const minX = bounds.minX;
+    const maxX = bounds.maxX;
+    const minY = bounds.minY;
+    const maxY = bounds.maxY;
     const tripwireTriggered = state.sandbox.tripwireTriggeredKeys;
     const px = viewport.x;
     const py = viewport.y;
     const drawables = [];
-    forEachGridEdge(
-        grid,
-        (col, row, side, edge) => {
-            gridWallEdgeEndpoints(grid, col, row, side, EDGE_P1, EDGE_P2, 0);
-            const midX = (EDGE_P1.x + EDGE_P2.x) * 0.5;
-            const midY = (EDGE_P1.y + EDGE_P2.y) * 0.5;
-            const distSq = (midX - px) ** 2 + (midY - py) ** 2;
-            if (isPortalEdge(edge)) drawables.push({ type: "portal", col, row, side, edge, distSq });
-            else {
-                const { mode, allowedSide, powered } = resolvePassageEdge(edge, side);
-                const tripped = powered && tripwireTriggered.has(canonicalEdgeCellKey(grid, col, row, side));
-                const cellHalf = grid.cellSize * 0.5;
-                drawables.push({
-                    type: "forcefield",
-                    proxy: createForcefieldDrawProxy(midX, midY, side, cellHalf, canonicalEdgeCellKey(grid, col, row, side), { mode, allowedSide, powered, tripped }),
-                    distSq,
-                });
-            }
-        },
-        { minCol, maxCol, minRow, maxRow, canonicalOnly: true, filter: isForcefieldEdge },
-    );
+    for (let i = 0; i < cached.length; i++) {
+        const item = cached[i];
+        if (item.midX < minX || item.midX > maxX || item.midY < minY || item.midY > maxY) continue;
+        const distSq = (item.midX - px) ** 2 + (item.midY - py) ** 2;
+        if (item.type === "portal") drawables.push({ type: "portal", col: item.col, row: item.row, side: item.side, edge: item.edge, distSq });
+        else {
+            const tripped = item.proxy._forcefield.powered && tripwireTriggered.has(item.edgeKey);
+            if (tripped !== item.proxy._forcefield.tripped) item.proxy._forcefield.tripped = tripped;
+            drawables.push({ type: "forcefield", proxy: item.proxy, distSq });
+        }
+    }
     drawables.sort((a, b) => b.distSq - a.distSq);
     for (let i = 0; i < drawables.length; i++) {
         const item = drawables[i];

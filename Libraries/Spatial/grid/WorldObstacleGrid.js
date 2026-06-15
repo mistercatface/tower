@@ -40,6 +40,8 @@ export class WorldObstacleGrid {
         this._staticWallProxyCount = 0;
         /** @type {Map<number, { exitCol: number, exitRow: number, cost: number }[]> | null} */
         this.boundaryNavHops = null;
+        /** @type {Map<number, { col: number, row: number, side: number }>} */
+        this.portalSlotByKey = new Map();
     }
     /** @param {number} damage @param {object} state */
     _staticGridProxyHandleHit(damage, state) {

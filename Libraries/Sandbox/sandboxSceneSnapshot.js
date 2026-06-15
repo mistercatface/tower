@@ -3,6 +3,7 @@ import { gridCellToGlobalColRow, isCanonicalEdgeRepresentative } from "../World/
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
 import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";
+import { recomputePortalSlotIndex } from "./portalLinks.js";
 import { notifyGridWallChange } from "./boundaryEdit.js";
 import {
     applyStampedForcefieldsFromGlobal,
@@ -187,6 +188,8 @@ function clearSandboxSceneContent(state) {
     state.sandbox._passagePowerSyncKey = null;
     state.sandbox._boundaryNavPortalCount = 0;
     state.sandbox.passagePower = null;
+    state.sandbox._passageEdgeDrawCache = null;
+    state.obstacleGrid.portalSlotByKey.clear();
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string }} entry */
 function spawnSnapshotProp(state, entry) {
@@ -215,6 +218,7 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     const stampBounds = unionStampBounds(unionStampBounds(unionStampBounds(unionStampBounds(wallBounds, forcefieldBounds), portalBounds), beltBounds), powerSourceBounds);
     const grid = state.obstacleGrid;
     grid.edgeStore.recomputePassageEdgeCount();
+    recomputePortalSlotIndex(grid);
     if (stampBounds) notifyGridWallChange(state, stampBounds);
     else if (grid.cols) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
     syncPassagePowerNetwork(state);

@@ -5,6 +5,29 @@ import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey, forEachGridEdge } from "../World/wallGridCells.js";
 import { canLinkPortalsOnNetwork } from "./passagePowerNetwork.js";
 export const PORTAL_LINK_MODE = { Shared: "shared", OneWay: "oneWay" };
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+export function recomputePortalSlotIndex(grid) {
+    /** @type {Map<number, { col: number, row: number, side: number }>} */
+    const index = new Map();
+    if (grid.cols && grid.edgeStore.portalEdgeCount)
+        forEachGridEdge(
+            grid,
+            (col, row, side) => {
+                index.set(canonicalEdgeCellKey(grid, col, row, side), { col, row, side });
+            },
+            { canonicalOnly: true, filter: isPortalEdge },
+        );
+    grid.portalSlotByKey = index;
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function registerPortalEdgeSlot(grid, col, row, side) {
+    if (!grid.portalSlotByKey) grid.portalSlotByKey = new Map();
+    grid.portalSlotByKey.set(canonicalEdgeCellKey(grid, col, row, side), { col, row, side });
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function unregisterPortalEdgeSlot(grid, col, row, side) {
+    grid.portalSlotByKey?.delete(canonicalEdgeCellKey(grid, col, row, side));
+}
 /** @param {unknown} raw */
 export function parsePortalLinkMode(raw) {
     if (raw === PORTAL_LINK_MODE.OneWay) return PORTAL_LINK_MODE.OneWay;
@@ -22,18 +45,11 @@ export function formatPortalConnectionLabel(linkMode, fromSelf) {
  */
 export function findPortalEdgeByKey(grid, key) {
     if (!key || !grid.cols) return null;
-    let found = null;
-    forEachGridEdge(
-        grid,
-        (col, row, side, edge) => {
-            if (!isPortalEdge(edge)) return;
-            if (canonicalEdgeCellKey(grid, col, row, side) !== key) return;
-            found = { col, row, side, edge };
-            return false;
-        },
-        { filter: isPortalEdge },
-    );
-    return found;
+    const slot = grid.portalSlotByKey?.get(key);
+    if (!slot) return null;
+    const edge = grid.edgeStore.get(slot.col, slot.row, slot.side, grid.cols);
+    if (!isPortalEdge(edge)) return null;
+    return { col: slot.col, row: slot.row, side: slot.side, edge };
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -60,8 +76,8 @@ export function resolvePortalPartner(grid, col, row, side) {
  * @param {number} side
  * @returns {{ linkMode: string, linkSourceKey: number, partner: { col: number, row: number, side: number }, source: { col: number, row: number, side: number }, dest: { col: number, row: number, side: number }, fromSelf: boolean } | null}
  */
-export function resolvePortalLinkRoute(grid, col, row, side) {
-    const partner = resolvePortalPartner(grid, col, row, side);
+export function resolvePortalLinkRoute(grid, col, row, side, partnerIn = null) {
+    const partner = partnerIn ?? resolvePortalPartner(grid, col, row, side);
     if (!partner) return null;
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     const selfKey = canonicalEdgeCellKey(grid, col, row, side);
@@ -174,7 +190,7 @@ export function evaluatePortalStepEntry(state, grid, fromCol, fromRow, toCol, to
     const partner = resolvePortalPartner(grid, ownerCol, ownerRow, ownerSide);
     if (!partner) return null;
     if (!canLinkPortalsOnNetwork(state, grid, ownerCol, ownerRow, ownerSide, partner.col, partner.row, partner.side)) return null;
-    const route = resolvePortalLinkRoute(grid, ownerCol, ownerRow, ownerSide);
+    const route = resolvePortalLinkRoute(grid, ownerCol, ownerRow, ownerSide, partner);
     if (!route) return null;
     if (route.linkMode === PORTAL_LINK_MODE.OneWay) {
         const isSource = route.source.col === ownerCol && route.source.row === ownerRow && route.source.side === ownerSide;

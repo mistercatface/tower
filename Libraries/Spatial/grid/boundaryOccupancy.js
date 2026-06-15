@@ -12,6 +12,7 @@ import {
     parsePortalAccessMode,
     PORTAL_ACCESS_MODE,
 } from "./CellEdge.js";
+import { registerPortalEdgeSlot, unregisterPortalEdgeSlot } from "../../Sandbox/portalLinks.js";
 import { portalAccessDefaultAllowedSide } from "./portalAccess.js";
 import { resolvePassageStepFrom, resolvePassageStepUndirected } from "./passageStep.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
@@ -137,6 +138,7 @@ export function setBoundary(grid, col, row, side, spec, { bumpRevision = false }
                 powered: spec.powered,
             }),
         );
+        registerPortalEdgeSlot(grid, col, row, side);
         if (bumpRevision) grid.bumpWallGridRevision();
         return true;
     }
@@ -154,6 +156,7 @@ export function clearBoundaryPrimary(grid, col, row, side, { bumpRevision = fals
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isRailWallEdge(edge) && !isForcefieldEdge(edge)) return false;
+    if (isPortalEdge(edge)) unregisterPortalEdgeSlot(grid, col, row, side);
     grid.edgeStore.clearMirrored(col, row, side, grid.cols, grid.rows);
     if (bumpRevision) grid.bumpWallGridRevision();
     return true;
@@ -284,9 +287,8 @@ function beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow) {
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow @param {number} ownerCol @param {number} ownerRow @param {number} ownerSide */
 function boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide) {
     const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
-    if (grid.edgeStore.passageEdgeCount > 0 && edge?.kind === EDGE_KIND.Forcefield) {
+    if (grid.edgeStore.passageEdgeCount > 0 && edge?.kind === EDGE_KIND.Forcefield)
         if (resolvePassageStepFrom({ grid, edge, ownerCol, ownerRow, ownerSide, crossedSide: ownerSide, fromCol, fromRow, toCol, toRow, directional: true })) return true;
-    }
     return boundaryBlocksStep(grid, ownerCol, ownerRow, ownerSide);
 }
 /**
