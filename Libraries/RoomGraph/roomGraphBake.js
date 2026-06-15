@@ -122,22 +122,19 @@ function clearAuthoredEdgeHoleFields(edge) {
 function computeRoomGraphRailWalls(layout) {
     const originCol = 0;
     const originRow = 0;
-    const { rooms, graphEdges, closedRooms, links, gridCols, gridRows, nodeGraph } = layout;
+    const { rooms, graphEdges, closedRooms, links, nodeGraph } = layout;
     if (!rooms.length) return [];
+    /** @type {Map<number, import("./roomGraphStore.js").RoomLink>} */
+    const linkById = new Map();
+    for (let i = 0; i < links.length; i++) linkById.set(links[i].id, links[i]);
     /** @type {import("../Sandbox/sandboxRoomGraphGen.js").Cell[][]} */
     const placedPaths = [];
     /** @type {import("../Sandbox/sandboxRoomGraphGen.js").RailWall[][]} */
     const corridorRailLists = [];
-    const layoutForEdge = { rooms, graphEdges: nodeGraph.directedEdges, gridCols, gridRows, closedRooms };
+    const layoutForEdge = { rooms, graphEdges: nodeGraph.directedEdges, gridCols: layout.gridCols, gridRows: layout.gridRows, closedRooms };
     for (let edgeIndex = 0; edgeIndex < graphEdges.length; edgeIndex++) {
         const linkId = graphEdges[edgeIndex].linkId;
-        let link = null;
-        for (let i = 0; i < links.length; i++) {
-            if (links[i].id === linkId) {
-                link = links[i];
-                break;
-            }
-        }
+        const link = linkById.get(linkId);
         if (!link) continue;
         const directedEdge = nodeGraph.directedEdges[edgeIndex];
         const roomA = closedRooms[directedEdge.a];

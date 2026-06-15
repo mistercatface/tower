@@ -5,10 +5,12 @@ import { runCardinalAStarFlat } from "../AStar.js";
  * reserved corridor footprints live in `reservedKeys` ("col,row").
  */
 export class CorridorGridPathfinder {
-    /** @param {number} cols @param {number} rows */
-    constructor(cols, rows) {
+    /** @param {number} cols @param {number} rows @param {number} [originCol] @param {number} [originRow] */
+    constructor(cols, rows, originCol = 0, originRow = 0) {
         this.cols = cols;
         this.rows = rows;
+        this.originCol = originCol;
+        this.originRow = originRow;
         const size = cols * rows;
         this.roomBlocked = new Uint8Array(size);
         this.gScore = new Float32Array(size);
@@ -17,6 +19,29 @@ export class CorridorGridPathfinder {
         this.runId = 0;
         /** @type {Set<string>} */
         this.reservedKeys = new Set();
+    }
+
+    /** @param {number} col @param {number} row */
+    globalToLocal(col, row) {
+        return { col: col - this.originCol, row: row - this.originRow };
+    }
+
+    /** @param {number} col @param {number} row */
+    isBlockedGlobal(col, row) {
+        const localCol = col - this.originCol;
+        const localRow = row - this.originRow;
+        if (localCol < 0 || localRow < 0 || localCol >= this.cols || localRow >= this.rows) return true;
+        const idx = localRow * this.cols + localCol;
+        if (this.roomBlocked[idx]) return true;
+        return this.reservedKeys.has(`${col},${row}`);
+    }
+
+    /** @param {number} col @param {number} row */
+    isBlocked(col, row) {
+        if (col < 0 || row < 0 || col >= this.cols || row >= this.rows) return true;
+        const idx = row * this.cols + col;
+        if (this.roomBlocked[idx]) return true;
+        return this.reservedKeys.has(`${col + this.originCol},${row + this.originRow}`);
     }
 
     /** @param {Uint8Array} roomBlocked */
@@ -29,17 +54,12 @@ export class CorridorGridPathfinder {
         this.reservedKeys = keys;
     }
 
-    /** @param {number} col @param {number} row */
-    isBlocked(col, row) {
-        if (col < 0 || row < 0 || col >= this.cols || row >= this.rows) return true;
-        const idx = row * this.cols + col;
-        if (this.roomBlocked[idx]) return true;
-        return this.reservedKeys.has(`${col},${row}`);
-    }
-
     /** @param {number} startCol @param {number} startRow @param {number} goalCol @param {number} goalRow @param {number} [maxPathLen] */
     findPath(startCol, startRow, goalCol, goalRow, maxPathLen = 512) {
-        const { cols, rows } = this;
+        const start = this.globalToLocal(startCol, startRow);
+        const goal = this.globalToLocal(goalCol, goalRow);
+        if (this.isBlocked(start.col, start.row) || this.isBlocked(goal.col, goal.row)) return null;
+        const { cols, rows, originCol, originRow } = this;
         const navGraph = {
             cols,
             rows,
@@ -57,16 +77,16 @@ export class CorridorGridPathfinder {
             },
         };
         this.runId++;
-        const flat = runCardinalAStarFlat(startCol, startRow, goalCol, goalRow, navGraph, cols, rows, maxPathLen, this.gScore, this.cameFrom, this.visited, this.runId);
+        const flat = runCardinalAStarFlat(start.col, start.row, goal.col, goal.row, navGraph, cols, rows, maxPathLen, this.gScore, this.cameFrom, this.visited, this.runId);
         if (!flat) return null;
         /** @type {{ c: number, r: number }[]} */
         const path = new Array(flat.length);
-        for (let i = 0; i < flat.length; i++) path[i] = { c: flat[i].col, r: flat[i].row };
+        for (let i = 0; i < flat.length; i++) path[i] = { c: flat[i].col + originCol, r: flat[i].row + originRow };
         return path;
     }
 }
 
-/** @param {number} cols @param {number} rows */
-export function createCorridorGridPathfinder(cols, rows) {
-    return new CorridorGridPathfinder(cols, rows);
+/** @param {import("./corridorWalkGrid.js").CorridorSearchBounds} bounds */
+export function createCorridorGridPathfinder(bounds) {
+    return new CorridorGridPathfinder(bounds.cols, bounds.rows, bounds.originCol, bounds.originRow);
 }

@@ -13,12 +13,14 @@ export {
     listWallHoleGroups,
     maxCorridorLanesBetweenNodes,
     maxDisjointWallHoleGroups,
+    pickSpreadNonOverlappingGroups,
     shuffleIndexOrder,
     socketSideToward,
+    sortWallHoleGroupsAlongWall,
     wallHoleGroupsOverlap,
     wallSlotsContiguous,
 } from "./corridorWallSlots.js";
-export { buildRoomInteriorBlockedGrid, cellInsideAnyRoom, corridorPathMidCellsClear } from "./corridorWalkGrid.js";
+export { buildRoomInteriorBlockedGrid, buildRoomInteriorBlockedGridLocal, cellInsideAnyRoom, corridorPathMidCellsClear, corridorSearchBounds } from "./corridorWalkGrid.js";
 export { CorridorGridPathfinder, createCorridorGridPathfinder } from "./corridorGridPathfinder.js";
-export { buildCorridorLanePath, createCorridorLaneRouter } from "./corridorLanePath.js";
+export { addCorridorPathToOccupied, buildCorridorLanePath, createCorridorLaneRouter, removeCorridorPathFromOccupied } from "./corridorLanePath.js";
 export { tryRouteCorridorsBetweenRooms } from "./corridorMultiLane.js";

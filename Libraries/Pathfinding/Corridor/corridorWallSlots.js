@@ -108,6 +108,42 @@ export function maxCorridorLanesBetweenNodes(nodeA, nodeB, corridorWidth) {
     return Math.min(maxDisjointWallHoleGroups(parentGroups), maxDisjointWallHoleGroups(childGroups));
 }
 
+/** @param {WallHoleGroup[]} groups @param {number} side */
+export function sortWallHoleGroupsAlongWall(groups, side) {
+    const sorted = groups.slice();
+    if (side === 0 || side === 2) sorted.sort((a, b) => a.anchor.c - b.anchor.c);
+    else sorted.sort((a, b) => a.anchor.r - b.anchor.r);
+    return sorted;
+}
+
+/** @param {WallHoleGroup[]} groups @param {number} count */
+export function pickSpreadNonOverlappingGroups(groups, count) {
+    if (groups.length < count) return null;
+    /** @type {WallHoleGroup[]} */
+    const picked = [];
+    const step = groups.length / count;
+    for (let i = 0; i < count; i++) {
+        let idx = Math.min(groups.length - 1, (step * i + step * 0.5) | 0);
+        let attempts = 0;
+        while (attempts < groups.length) {
+            const group = groups[idx];
+            let clash = false;
+            for (let j = 0; j < picked.length; j++) if (wallHoleGroupsOverlap(group, picked[j])) {
+                clash = true;
+                break;
+            }
+            if (!clash) {
+                picked.push(group);
+                break;
+            }
+            idx = (idx + 1) % groups.length;
+            attempts++;
+        }
+        if (picked.length !== i + 1) return null;
+    }
+    return picked;
+}
+
 /** @param {() => number} rng @param {number} length */
 export function shuffleIndexOrder(rng, length) {
     /** @type {number[]} */

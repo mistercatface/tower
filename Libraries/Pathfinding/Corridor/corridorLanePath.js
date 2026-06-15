@@ -2,14 +2,23 @@ import { gridSideNeighborCell } from "../../Spatial/grid/GridUtils.js";
 import {
     corridorPathHitsOccupied,
     corridorPathIntersectsAny,
+    corridorPathOccupiedCellKeys,
     corridorPathsToOccupiedKeys,
 } from "./corridorFootprint.js";
 import { createCorridorGridPathfinder } from "./corridorGridPathfinder.js";
-import { buildRoomInteriorBlockedGrid, corridorPathMidCellsClear } from "./corridorWalkGrid.js";
+import { buildRoomInteriorBlockedGridLocal, corridorPathMidCellsClear, corridorSearchBounds } from "./corridorWalkGrid.js";
 
 /** @typedef {{ c: number, r: number, side: number }} WallHole */
 /** @typedef {{ c: number, r: number }} CorridorCell */
 /** @typedef {{ c0: number, c1: number, r0: number, r1: number }} RoomRect */
+
+/** @param {RoomRect[]} rooms @param {number} [pad] */
+export function createCorridorLaneRouter(rooms, pad = 12) {
+    const bounds = corridorSearchBounds(rooms, pad);
+    const pathfinder = createCorridorGridPathfinder(bounds);
+    pathfinder.setRoomBlocked(buildRoomInteriorBlockedGridLocal(bounds.originCol, bounds.originRow, bounds.cols, bounds.rows, rooms));
+    return pathfinder;
+}
 
 /** @param {CorridorCell} cell @param {number} side */
 function stepAcrossSide(cell, side) {
@@ -42,13 +51,9 @@ function assembleCorridorPath(corridorFrom, egressCells, parentSide, midPath, co
 }
 
 /**
- * Route one corridor lane: fixed egress/ingress strips + A* mid section.
- *
  * @param {WallHole} parentHole
  * @param {WallHole} childHole
  * @param {RoomRect[]} rooms
- * @param {number} cols
- * @param {number} rows
  * @param {number} egressCells
  * @param {number} corridorWidth
  * @param {CorridorCell[][]} lanePaths
@@ -57,7 +62,7 @@ function assembleCorridorPath(corridorFrom, egressCells, parentSide, midPath, co
  * @param {{ canIntersect?: boolean, maxPathLen?: number }} [options]
  * @returns {CorridorCell[] | null}
  */
-export function buildCorridorLanePath(parentHole, childHole, rooms, cols, rows, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, options = {}) {
+export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, options = {}) {
     const canIntersect = options.canIntersect === true;
     const corridorFrom = stepAcrossSide(parentHole, parentHole.side);
     const corridorTo = stepAcrossSide(childHole, childHole.side);
@@ -83,9 +88,14 @@ export function buildCorridorLanePath(parentHole, childHole, rooms, cols, rows, 
     return path;
 }
 
-/** @param {number} cols @param {number} rows @param {RoomRect[]} rooms */
-export function createCorridorLaneRouter(cols, rows, rooms) {
-    const pathfinder = createCorridorGridPathfinder(cols, rows);
-    pathfinder.setRoomBlocked(buildRoomInteriorBlockedGrid(cols, rows, rooms));
-    return pathfinder;
+/** @param {CorridorCell[]} path @param {Set<string>} occupied @param {number} corridorWidth */
+export function addCorridorPathToOccupied(path, occupied, corridorWidth) {
+    const keys = corridorPathOccupiedCellKeys(path, corridorWidth);
+    for (const key of keys) occupied.add(key);
+}
+
+/** @param {CorridorCell[]} path @param {Set<string>} occupied @param {number} corridorWidth */
+export function removeCorridorPathFromOccupied(path, occupied, corridorWidth) {
+    const keys = corridorPathOccupiedCellKeys(path, corridorWidth);
+    for (const key of keys) occupied.delete(key);
 }
