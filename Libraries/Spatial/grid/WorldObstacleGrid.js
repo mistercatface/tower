@@ -39,6 +39,7 @@ export class WorldObstacleGrid {
         this.vertexPassability = new Uint8Array(0);
         this._vertexPassabilitySyncKey = "";
         this.gridNavSnapshot = null;
+        this.gridTopologyEpoch = 0;
     }
     ensureGridNavSnapshot() {
         const cacheKey = snapshotNavCacheKey(this);
@@ -217,6 +218,7 @@ export class WorldObstacleGrid {
         this.floorStore.reset(size);
         this.invalidateStructureZLevelsCache();
         this.invalidateGridNavSnapshot();
+        this.gridTopologyEpoch++;
     }
     expandToCoverAabb(aabb) {
         if (this.cols <= 0) {
@@ -264,6 +266,7 @@ export class WorldObstacleGrid {
         this.grid = newGrid;
         this.invalidateStructureZLevelsCache();
         this.invalidateGridNavSnapshot();
+        this.gridTopologyEpoch++;
         return true;
     }
     // originCol/originRow are global cell coords; cells is row-major with 1 = blocked.

@@ -35,7 +35,9 @@ export class HpaPathSession {
                 let result = null;
                 try {
                     result = await this.hierarchicalNavigator.computeCellPath(params.startX, params.startY, params.targetX, params.targetY, replanCtx);
-                } catch (_) {}
+                } catch (err) {
+                    console.error("HPA replan failed", err);
+                }
                 this.worker.releaseSlot(slot);
                 navState.hpaReplanSlot = -1;
                 if (navState.hpaReplanRequestId !== requestId) continue;

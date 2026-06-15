@@ -59,7 +59,7 @@ export class NavigationService {
         return this._controller.updateFlowField(opts);
     }
     onObstaclesChanged(damageBounds) {
-        this._controller.onObstaclesChanged(damageBounds);
+        this._controller.onObstaclesChanged(damageBounds, this._controller.hierarchicalNavigator?.navGraph);
     }
     get obstacleGeneration() {
         return this._controller.obstacleGeneration;

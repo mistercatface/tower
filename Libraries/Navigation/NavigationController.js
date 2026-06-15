@@ -45,6 +45,7 @@ export class NavigationController {
         this.navStates = new WeakMap();
         this.debugByEntity = new WeakMap();
         this.obstacleGeneration = 0;
+        this._gridTopologyEpoch = 0;
     }
     /** @returns {NavSessionState} */
     getNavState(entity) {
@@ -100,8 +101,14 @@ export class NavigationController {
         if (distToCenter > recenterThreshold) grid.shiftCenter(playerX, playerY);
         return newGridPos;
     }
-    onObstaclesChanged(damageBounds) {
-        if (this.hierarchicalNavigator && damageBounds) this.hierarchicalNavigator.rebuildDamagedArea(damageBounds);
+    onObstaclesChanged(damageBounds, obstacleGrid = null) {
+        const grid = obstacleGrid ?? this.hierarchicalNavigator?.navGraph;
+        if (this.hierarchicalNavigator && grid && grid.gridTopologyEpoch !== this._gridTopologyEpoch) {
+            this._gridTopologyEpoch = grid.gridTopologyEpoch;
+            const centerX = (grid.minX + grid.maxX) / 2;
+            const centerY = (grid.minY + grid.maxY) / 2;
+            this.hierarchicalNavigator.initialize(centerX, centerY);
+        } else if (this.hierarchicalNavigator && damageBounds) this.hierarchicalNavigator.rebuildDamagedArea(damageBounds);
         this.flowFieldGrid.refresh();
         this.obstacleGeneration += 1;
     }

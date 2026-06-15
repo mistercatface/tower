@@ -1,0 +1,35 @@
+---
+description: No silent fallbacks or alternate code paths unless the user explicitly approves
+alwaysApply: true
+---
+
+# No fallbacks without explicit approval
+
+When something fails, fix the primary system. Do not paper over it with alternate paths, degraded modes, or "just in case" branches.
+
+## Forbidden unless the user confirms
+
+- Adding a fallback path because the real system is broken or incomplete (e.g. direct-steer when HPA replan fails, local A* when abstract graph is truncated, legacy API when new API errors)
+- Silent `catch` blocks that swallow errors and continue with null/empty/default behavior
+- "If worker fails, run on main thread" / "if HPA fails, use flow field" without the user asking for that product behavior
+- Truncating data silently (buffer overfill, partial graph bake, clipped node lists) instead of sizing correctly or failing loud
+- Proposing fallbacks in plans or reviews as the default fix — diagnose and repair the intended path first
+
+## Required instead
+
+- Size buffers and graph limits for real workload (count regions, measure grid, read constants)
+- Fail fast with a clear error when invariants break (graph node cap exceeded, missing region coverage after grid resize)
+- Log or surface replan failures; do not clear the path and pretend nothing happened without reason
+- One code path through the system the feature is supposed to use (HPA session → worker → abstract + local A*)
+
+## OK without asking
+
+- User-visible optional modes they already chose (e.g. a toolbar toggle for a debug overlay)
+- Documented optional features marked optional in API/docs
+- Persistence migration at real save/load boundaries (not runtime in-memory migration)
+
+## Review bar
+
+- Am I routing around a bug instead of fixing it?
+- Would removing this branch force the real bug to surface? If yes, fix the bug.
+- Did the user ask for a fallback? If no, do not add one and do not suggest one as the main fix.

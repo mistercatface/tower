@@ -167,6 +167,7 @@ export class HpaPathWorker {
         return this._readCellPath(slot);
     }
     async runAbstractAStar(slot, startNodeId, targetNodeId, nodesMap, nodeIds) {
+        if (nodeIds.length > MAX_HPA_GRAPH_NODES) throw new Error(`HPA abstract graph has ${nodeIds.length} nodes (max ${MAX_HPA_GRAPH_NODES})`);
         await this._ensureNavSnapshot();
         const baked = bakeAbstractGraphFlat(nodesMap, nodeIds);
         const startIdx = baked.idToIdx.get(startNodeId);
