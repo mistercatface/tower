@@ -11,6 +11,8 @@ export class CellEdgeStore {
         this.pool = [];
         /** @type {number[]} */
         this.free = [];
+        /** Mirrored passage edges (forcefield + portal) — one count per pooled edge. */
+        this.passageEdgeCount = 0;
     }
     /** @param {number} cellCount */
     reset(cellCount) {
@@ -18,6 +20,19 @@ export class CellEdgeStore {
         this.slots.fill(EMPTY);
         this.pool.length = 0;
         this.free.length = 0;
+        this.passageEdgeCount = 0;
+    }
+    /** Full scan — reconciles count after bulk grid rebuilds. */
+    recomputePassageEdgeCount() {
+        const seen = new Set();
+        let count = 0;
+        for (let i = 0; i < this.slots.length; i++) {
+            const ref = this.slots[i];
+            if (ref === EMPTY || seen.has(ref)) continue;
+            seen.add(ref);
+            if (isForcefieldEdge(this.pool[ref])) count++;
+        }
+        this.passageEdgeCount = count;
     }
     /**
      * @param {Int32Array} oldSlots
@@ -129,6 +144,7 @@ export class CellEdgeStore {
         const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
         const nSide = gridWallEdgeMirrorSide(side);
         if (cellInRect(nc, nr, cols, rows)) this._setSlot(nc, nr, nSide, cols, ref);
+        if (isForcefieldEdge(edge)) this.passageEdgeCount++;
     }
     /**
      * @param {number} col
@@ -142,6 +158,7 @@ export class CellEdgeStore {
         const slot = colRowToIndex(col, row, cols) * 4 + side;
         const ref = this.slots[slot];
         if (ref === EMPTY) return;
+        if (isForcefieldEdge(this.pool[ref])) this.passageEdgeCount--;
         this.slots[slot] = EMPTY;
         const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
         const nSide = gridWallEdgeMirrorSide(side);

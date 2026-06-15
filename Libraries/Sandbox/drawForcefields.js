@@ -141,7 +141,7 @@ function createForcefieldDrawProxy(midX, midY, side, cellHalf, edgeKey, { mode, 
  */
 export function drawForcefieldEdges(ctx, state, viewport) {
     const grid = state.obstacleGrid;
-    if (!grid.cols) return;
+    if (!grid.cols || !grid.edgeStore.passageEdgeCount) return;
     const bounds = viewport.boundsVisibleDefault;
     const minCol = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).col);
     const maxCol = Math.min(grid.cols - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).col);

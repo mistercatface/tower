@@ -2,6 +2,7 @@ import {
     createBeltRailEdge,
     createForcefieldEdge,
     createPortalEdge,
+    EDGE_KIND,
     edgeBlocksCrossing,
     isBeltRailEdge,
     isForcefieldEdge,
@@ -252,6 +253,7 @@ export function clearBeltBoundariesForCell(grid, col, row, kind, facingIndex) {
 export function boundaryBlocksStep(grid, col, row, side) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (edgeBlocksCrossing(edge)) return true;
+    if (!grid.edgeStore.passageEdgeCount) return false;
     return resolvePassageStepUndirected({ grid, edge, ownerCol: col, ownerRow: row, ownerSide: side, crossedSide: side, fromCol: col, fromRow: row, toCol: col, toRow: row, directional: false });
 }
 /** @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow */
@@ -282,7 +284,9 @@ function beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow) {
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow @param {number} ownerCol @param {number} ownerRow @param {number} ownerSide */
 function boundaryBlocksStepOnEdge(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide) {
     const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
-    if (resolvePassageStepFrom({ grid, edge, ownerCol, ownerRow, ownerSide, crossedSide: ownerSide, fromCol, fromRow, toCol, toRow, directional: true })) return true;
+    if (grid.edgeStore.passageEdgeCount > 0 && edge?.kind === EDGE_KIND.Forcefield) {
+        if (resolvePassageStepFrom({ grid, edge, ownerCol, ownerRow, ownerSide, crossedSide: ownerSide, fromCol, fromRow, toCol, toRow, directional: true })) return true;
+    }
     return boundaryBlocksStep(grid, ownerCol, ownerRow, ownerSide);
 }
 /**

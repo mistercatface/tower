@@ -17,13 +17,14 @@ export function buildGridZoneSubscriptions(grid) {
     if (!grid.cols) return { cells, edges };
     const size = grid.cols * grid.rows;
     for (let idx = 0; idx < size; idx++) if (grid.floorStore.isBeltKindAtIdx(idx)) cells.add(idx);
-    forEachGridEdge(
-        grid,
-        (col, row, side) => {
-            edges.set(canonicalEdgeCellKey(grid, col, row, side), { col, row, side, mode: PASSAGE_MODE.Tripwire });
-        },
-        { canonicalOnly: true, filter: isPassageTripwireEdge },
-    );
+    if (grid.edgeStore.passageEdgeCount > 0)
+        forEachGridEdge(
+            grid,
+            (col, row, side) => {
+                edges.set(canonicalEdgeCellKey(grid, col, row, side), { col, row, side, mode: PASSAGE_MODE.Tripwire });
+            },
+            { canonicalOnly: true, filter: isPassageTripwireEdge },
+        );
     return { cells, edges };
 }
 /** @param {object} state */

@@ -202,6 +202,7 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     const powerSourceBounds = applyPassagePowerSourcesFromGlobal(state, doc.powerSources, cellSize);
     const stampBounds = unionStampBounds(unionStampBounds(unionStampBounds(unionStampBounds(wallBounds, forcefieldBounds), portalBounds), beltBounds), powerSourceBounds);
     const grid = state.obstacleGrid;
+    grid.edgeStore.recomputePassageEdgeCount();
     if (stampBounds) notifyGridWallChange(state, stampBounds);
     else if (grid.cols) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
     syncPassagePowerNetwork(state);

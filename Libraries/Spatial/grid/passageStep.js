@@ -30,6 +30,7 @@ function defaultForcefieldStep(ctx) {
  * @returns {boolean}
  */
 export function resolvePassageStepUndirected(ctx) {
+    if (!ctx.grid.edgeStore.passageEdgeCount) return false;
     const { edge } = ctx;
     if (!isForcefieldEdge(edge)) return false;
     const handler = handlersByMode.get(edge.mode);
@@ -43,6 +44,7 @@ export function resolvePassageStepUndirected(ctx) {
  * @returns {boolean}
  */
 export function resolvePassageStepFrom(ctx) {
+    if (!ctx.grid.edgeStore.passageEdgeCount) return false;
     const { edge } = ctx;
     if (!isForcefieldEdge(edge)) return false;
     const handler = handlersByMode.get(edge.mode);
