@@ -52,33 +52,3 @@ export class Entity {
         return hasLineOfSight(this.x, this.y, other.x, other.y, wallCtx, this.radius ?? 0, other.radius ?? 0);
     }
 }
-export class DestructibleEntity extends Entity {
-    constructor(x, y, angle = 0, maxHealth = 1, health = maxHealth, isDead = false) {
-        super(x, y, angle, isDead);
-        this.maxHealth = maxHealth;
-        this.health = health;
-    }
-    reset(x, y, angle = 0, maxHealth = 1, health = maxHealth, isDead = false) {
-        super.reset(x, y, angle, isDead);
-        this.maxHealth = maxHealth;
-        this.health = health;
-    }
-    takeDamage(amount) {
-        this.health -= amount;
-        if (this.health <= 0 && !this.isDead) {
-            this.isDead = true;
-            return true;
-        }
-        return false;
-    }
-    heal(amount) {
-        this.health = Math.min(this.maxHealth, this.health + amount);
-    }
-    fullHeal() {
-        this.health = this.maxHealth;
-    }
-    updateMaxHealth(newMaxHealth) {
-        this.maxHealth = newMaxHealth;
-        this.health = Math.min(this.health, this.maxHealth);
-    }
-}

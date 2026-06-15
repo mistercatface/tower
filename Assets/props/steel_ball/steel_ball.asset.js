@@ -4,8 +4,6 @@ export default {
     sandbox: { dragLaunch: { minPower: 35, maxPower: 750 } },
     physics: {
         hitBehavior: "none",
-        canDamageWalls: true,
-        wallDamage: 12,
         radius: 7,
         isPushable: true,
         rolls: true,

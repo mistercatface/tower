@@ -7,7 +7,6 @@ import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/
 import { railWallCapUvCorners } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
-import { drawDamageOverlayInClip, drawPolygonDamageOverlay } from "./wallDamageVisual.js";
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
@@ -251,11 +250,10 @@ function assignCapSampleSrc(sample) {
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedRailWallCap(ctx, box, wallCtx) {
-    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState, damageAlpha } = wallCtx;
+    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState } = wallCtx;
     projectRailWallTopCornersInto(sCapCorners, box, camera);
     if (!proceduralSurfaceDraw || !gameState) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
-        if (damageAlpha > 0) drawPolygonDamageOverlay(ctx, sCapCorners, damageAlpha);
         return;
     }
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
@@ -263,12 +261,10 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
     const sample = worldSurfaces.getHorizontalCapDrawSample(uvCorners, box.wallCapHeight, gameState, profileId, wallCtx.texelResolution);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
-        if (damageAlpha > 0) drawPolygonDamageOverlay(ctx, sCapCorners, damageAlpha);
         return;
     }
     assignCapSampleSrc(sample);
     blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, worldSurfaces.settings.wallTextureBleedPx ?? 1);
-    if (damageAlpha > 0) drawPolygonDamageOverlay(ctx, sCapCorners, damageAlpha);
 }
 /**
  * Horizontal cap from world AABB corners (voxelBlock caps, generic quads).
@@ -316,7 +312,7 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedWallFace(ctx, p1, p2, wallCtx) {
-    const { wallHeight, wallBaseZ, proceduralSurfaceDraw, fillStyle, damageAlpha, camera } = wallCtx;
+    const { wallHeight, wallBaseZ, proceduralSurfaceDraw, fillStyle, camera } = wallCtx;
     const topZ = wallBaseZ + wallHeight;
     const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, camera, sFaceBottom);
     const faceTop = projectWallFaceBandInto(p1, p2, topZ, camera, sharedScratchFace);
@@ -326,5 +322,4 @@ export function drawProjectedWallFace(ctx, p1, p2, wallCtx) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
     }
-    if (damageAlpha > 0) drawDamageOverlayInClip(ctx, damageAlpha, (clipCtx) => appendProjectedFaceBand(clipCtx, faceBottom, faceTop));
 }

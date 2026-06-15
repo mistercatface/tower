@@ -1,6 +1,5 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex, cellInRect } from "./GridUtils.js";
-import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCellDamage.js";
 import { cellEdgeEndpoints, blockingPassageEdgeAt, edgeRailCollisionShouldEmit, edgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
@@ -51,10 +50,6 @@ export class WorldObstacleGrid {
     }
     invalidateGridNavSnapshot() {
         this.gridNavSnapshot = null;
-    }
-    _staticGridProxyHandleHit(damage, state) {
-        if (this.isEdgeRail) damageStaticGridEdge(state, this._obstacleGrid, this.gridCol, this.gridRow, this.gridSide, damage);
-        else damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
     }
     bumpWallGridRevision() {
         this.wallGridRevision = (this.wallGridRevision + 1) | 0;
@@ -123,7 +118,6 @@ export class WorldObstacleGrid {
                 isEdgeRail: false,
                 gridCol: 0,
                 gridRow: 0,
-                handleHit: this._staticGridProxyHandleHit,
             };
             this._staticWallProxies[this._staticWallProxyCount] = proxy;
         }
@@ -189,7 +183,6 @@ export class WorldObstacleGrid {
                         gridRow: row,
                         gridSide: side,
                         shape: undefined,
-                        handleHit: this._staticGridProxyHandleHit,
                     };
                     this._staticWallProxies[this._staticWallProxyCount] = proxy;
                 } else {

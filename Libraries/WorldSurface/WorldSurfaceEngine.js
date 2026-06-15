@@ -7,17 +7,7 @@ import { getChunkSizePx, worldBoundsToChunkRange, worldToChunkCol, worldToChunkR
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
 import { chunkHasWallSegments, chunkHasBlockedCells, buildStaticRoofMaskCanvas, applyStaticRoofMaskToCanvas } from "./HorizontalSurfaceDraw.js";
-import {
-    projectHorizontalSurfaceCornersInto,
-    clipChunkToWallFootprints,
-    clipChunkToBlockedCells,
-    clipChunkToStaticEdgeRails,
-    clipChunkToFlatWallFootprints,
-    drawWallFootprintDamageOverlays,
-    drawStaticRoofDamageOverlays,
-    drawStaticWallFootprintDamageOverlays,
-    drawStaticEdgeRailFootprintDamageOverlays,
-} from "./ChunkDrawPass.js";
+import { projectHorizontalSurfaceCornersInto, clipChunkToWallFootprints, clipChunkToBlockedCells, clipChunkToStaticEdgeRails, clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
@@ -340,16 +330,12 @@ export class WorldSurfaceEngine {
                         }
                         const corners = projectHorizontalSurfaceCornersInto(sRoofChunkCorners, pass);
                         drawProjectedHorizontalChunk(ctx, drawCanvas, corners, this.settings);
-                        drawStaticRoofDamageOverlays(ctx, pass, sRoofChunkCorners);
                     } else if (flatWallRails) {
                         if (!clipChunkToFlatWallFootprints(ctx, pass)) {
                             ctx.restore();
                             continue;
                         }
                         drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
-                        drawWallFootprintDamageOverlays(ctx, pass);
-                        drawStaticWallFootprintDamageOverlays(ctx, pass);
-                        drawStaticEdgeRailFootprintDamageOverlays(ctx, pass);
                     }
                     ctx.restore();
                 } else drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);

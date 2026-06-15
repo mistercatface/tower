@@ -1,9 +1,9 @@
-import { DestructibleEntity } from "./Entity.js";
+import { Entity } from "./Entity.js";
 import { centerReachAabbInto, createAabb } from "../Libraries/Math/Aabb2D.js";
 import { getWallReach } from "../Libraries/Spatial/geometry/WallGeometry.js";
-export class Segment extends DestructibleEntity {
-    constructor(x, y, angle, size, padding = 10, maxHealth = 30, health = 30, isDead = false, wallHeight = null) {
-        super(x, y, angle, maxHealth, health, isDead);
+export class Segment extends Entity {
+    constructor(x, y, angle, size, padding = 10, isDead = false, wallHeight = null) {
+        super(x, y, angle, isDead);
         this.size = size;
         this.padding = padding;
         this.wallHeight = wallHeight;
@@ -11,17 +11,6 @@ export class Segment extends DestructibleEntity {
     }
     getBounds() {
         return centerReachAabbInto(this.bounds, this.x, this.y, getWallReach(this));
-    }
-    handleHit(damage, state) {
-        const died = this.takeDamage(damage);
-        if (died) {
-            const idx = state.walls.indexOf(this);
-            if (idx !== -1) state.walls.splice(idx, 1);
-            if (state.wallSpatialIndex) state.wallSpatialIndex.remove(this);
-            const damageBounds = state.obstacleGrid.patchAfterWallRemoved(this, state.wallSpatialIndex);
-            state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-            state.navigation.onObstaclesChanged(damageBounds);
-        }
     }
 }
 export function buildArcWall(segmentsArray, x, y, radius, startAngle, endAngle, size) {

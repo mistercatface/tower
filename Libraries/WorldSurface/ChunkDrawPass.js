@@ -5,10 +5,7 @@ import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.
 import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { traceAabbRect, traceClosedPolygon, clipToPath } from "../Canvas/CanvasPath.js";
-import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
 import { resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
-import { railWallFootprintAabb, forEachEmittingRailWallAtZLevel } from "../World/wallGridBake.js";
-import { getStaticCellDamageAlphaAtIdx, getStaticEdgeDamageAlphaAt } from "../World/staticCellDamage.js";
 /**
  * @typedef {Object} ChunkDrawPass
  * @property {number} chunkCol
@@ -38,23 +35,6 @@ function chunkRect(pass, rect = null) {
 export function projectHorizontalSurfaceCornersInto(out4, pass, rect = null) {
     const { originX, originY, sizePx, zLevel } = chunkRect(pass, rect);
     return projectWorldAabbCornersInto(out4, originX, originY, originX + sizePx, originY + sizePx, zLevel, pass.camera);
-}
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {ChunkDrawPass} pass
- * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} cornerScratch
- */
-export function drawStaticRoofDamageOverlays(ctx, pass, cornerScratch) {
-    const { obstacleGrid, state, zLevel } = pass;
-    const cellSize = obstacleGrid.cellSize;
-    forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
-        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) !== zLevel) return;
-        const damageAlpha = getStaticCellDamageAlphaAtIdx(obstacleGrid, state, col, row, idx);
-        if (damageAlpha <= 0) return;
-        const bounds = obstacleGrid.getCellBounds(col, row);
-        const corners = projectHorizontalSurfaceCornersInto(cornerScratch, pass, { originX: bounds.minX, originY: bounds.minY, sizePx: cellSize });
-        drawPolygonDamageOverlay(ctx, corners, damageAlpha);
-    });
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass @returns {boolean} */
 export function clipChunkToBlockedCells(ctx, pass) {
@@ -127,36 +107,4 @@ export function clipChunkToStaticEdgeRails(ctx, pass) {
         });
         return clippedAny;
     });
-}
-/** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
-export function drawStaticWallFootprintDamageOverlays(ctx, pass) {
-    const { obstacleGrid, state, zLevel } = pass;
-    forEachObstacleGridCellInAabb(obstacleGrid, pass.chunkAabb, (col, row, idx) => {
-        if (zLevel > 0 && resolveCellWallHeightAtIdx(obstacleGrid, idx) !== zLevel) return;
-        const damageAlpha = getStaticCellDamageAlphaAtIdx(obstacleGrid, state, col, row, idx);
-        if (damageAlpha <= 0) return;
-        drawAabbDamageOverlay(ctx, obstacleGrid.getCellBounds(col, row), damageAlpha);
-    });
-}
-/** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
-export function drawStaticEdgeRailFootprintDamageOverlays(ctx, pass) {
-    const { obstacleGrid, state, zLevel } = pass;
-    forEachEmittingRailWallAtZLevel(obstacleGrid, pass.chunkAabb, zLevel, (col, row, side) => {
-        const damageAlpha = getStaticEdgeDamageAlphaAt(obstacleGrid, state, col, row, side);
-        if (damageAlpha <= 0) return;
-        drawAabbDamageOverlay(ctx, railWallFootprintAabb(obstacleGrid, col, row, side), damageAlpha);
-    });
-}
-/** @param {CanvasRenderingContext2D} ctx @param {ChunkDrawPass} pass */
-export function drawWallFootprintDamageOverlays(ctx, pass) {
-    const { wallSpatialIndex } = pass;
-    if (!wallSpatialIndex) return;
-    const segments = wallSpatialIndex.collectInBounds(pass.chunkAabb);
-    for (let i = 0; i < segments.length; i++) {
-        const wall = segments[i];
-        if (wall.isDead || wall.collisionOnly) continue;
-        const damageAlpha = getDamageAlphaFromHealth(wall.health, wall.maxHealth);
-        if (damageAlpha <= 0) continue;
-        drawPolygonDamageOverlay(ctx, getSegmentFootprintCorners(wall), damageAlpha);
-    }
 }

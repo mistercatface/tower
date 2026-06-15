@@ -1,7 +1,6 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 /** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
-import { getStaticCellDamageAlphaAtIdx, getStaticEdgeDamageAlphaAt } from "../World/staticCellDamage.js";
 import { collectStaticGridEdgeRailDrawables, drawProjectedGridEdgeRail } from "./Structure3D/StaticGridEdgeRailDraw.js";
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
@@ -119,7 +118,6 @@ export class WorldSceneRenderer {
             gameState: input.gameState,
             fillStyle: this.settings.floorShadow ?? "#12161c",
             wallHeight: 0,
-            damageAlpha: 0,
             cacheObj: null,
             worldBounds: viewport.boundsDraw,
             camera: elevationCameraFromViewport(viewport, input.worldSurfaces.settings.cameraHeight),
@@ -140,14 +138,12 @@ export class WorldSceneRenderer {
                 wallCtx.wallBaseZ = obj.wallBaseZ;
                 wallCtx.wallCapHeight = obj.wallCapHeight;
                 wallCtx.cacheObj = obj;
-                wallCtx.damageAlpha = getStaticEdgeDamageAlphaAt(input.obstacleGrid, input.gameState, obj.gridCol, obj.gridRow, obj.gridSide);
                 drawProjectedGridEdgeRail(ctx, obj, wallCtx);
             } else if (!skipWalls && obj.staticGrid) {
                 wallCtx.wallHeight = obj.wallHeight;
                 wallCtx.wallBaseZ = obj.wallBaseZ;
                 wallCtx.wallCapHeight = obj.wallCapHeight;
                 wallCtx.cacheObj = obj;
-                wallCtx.damageAlpha = getStaticCellDamageAlphaAtIdx(input.obstacleGrid, input.gameState, obj.gridCol, obj.gridRow, obj.gridIdx);
                 drawProjectedWallFace(ctx, obj.p1, obj.p2, wallCtx);
             }
         }

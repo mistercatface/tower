@@ -21,7 +21,7 @@ function buildPullFixtureWalls(state, fixture) {
     /** @type {import("../../Entities/Wall.js").Segment[]} */
     const walls = [];
     forEachObstacleGridCellInAabb(grid, stamp, (col, row) => {
-        const wall = new Segment(originX + col * cellSize + halfCell, originY + row * cellSize + halfCell, 0, cellSize, 0, 30, 30, false, cellSize);
+        const wall = new Segment(originX + col * cellSize + halfCell, originY + row * cellSize + halfCell, 0, cellSize, 0, false, cellSize);
         wall.collisionOnly = true;
         wall.sandboxFixtureId = fixture.id;
         walls.push(wall);

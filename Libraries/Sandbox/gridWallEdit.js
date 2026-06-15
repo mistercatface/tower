@@ -1,4 +1,3 @@
-import { packCellKey } from "../DataStructures/CellKey.js";
 import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStructures/CellRect.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { canLinkPortalsOnNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
@@ -22,7 +21,6 @@ import {
     cellIsStaticWall,
     cellIsStaticWallAtIdx,
     forEachCellEdge,
-    cellToGlobalColRow,
     neighborFillLevel,
     cellEdgeEndpoints,
 } from "../Spatial/grid/gridCellTopology.js";
@@ -118,8 +116,6 @@ export function clearAllStampedGridWalls(state, { notify = true } = {}) {
         if (!cellIsStaticWallAtIdx(grid, idx)) continue;
         const col = idx % grid.cols;
         const row = (idx / grid.cols) | 0;
-        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
-        state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
         grid.grid[idx] = 0;
     }
     for (let idx = 0; idx < size; idx++) {
@@ -243,8 +239,6 @@ export function clearVoxelWallAt(state, col, row) {
     const idx = colRowToIndex(col, row, grid.cols);
     if (!cellIsStaticWallAtIdx(grid, idx)) return false;
     grid.grid[idx] = 0;
-    const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
-    state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
     notifyGridWallChange(state, cellBoundsAt(col, row));
     return true;
 }

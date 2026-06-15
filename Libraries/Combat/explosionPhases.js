@@ -1,5 +1,3 @@
-import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
-import { minDistanceSegmentToWall } from "../Spatial/geometry/WallGeometry.js";
 import { LIBRARY_EXPLOSION_DEFAULTS as explosionSettings } from "./explosionDefaults.js";
 function blastDamage(exp, dist, maxMultiplier, minMultiplier) {
     const maxDmg = exp.damage * maxMultiplier;
@@ -22,23 +20,6 @@ function applyBlastToTarget(state, exp, allEvents, target) {
     if (target.strategy?.onHit) target.strategy.onHit(state, target, { isDead: false, isExplosion: true, x: exp.x, y: exp.y }, allEvents);
 }
 function applyExpandingDamage(state, exp, allEvents) {
-    for (const seg of state.walls) {
-        if (seg.isDead || exp.hitTargets.has(seg)) continue;
-        if (CollisionSystem.checkCircleRect(exp, seg)) {
-            let blocked = false;
-            for (const otherSeg of state.walls) {
-                if (otherSeg === seg || otherSeg.isDead) continue;
-                if (minDistanceSegmentToWall(exp.x, exp.y, seg.x, seg.y, otherSeg) === 0) {
-                    blocked = true;
-                    break;
-                }
-            }
-            if (!blocked) {
-                allEvents.push({ target: seg, damage: explosionSettings.wallBlastDamage, type: "blast" });
-                exp.hitTargets.add(seg);
-            }
-        }
-    }
     state.entityRegistry.forEachOfKind("worldProp", (p) => applyBlastToTarget(state, exp, allEvents, p));
 }
 export class ExplosionExpandingPhase {

@@ -1,7 +1,5 @@
-import { packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { clearBoundaryPrimary, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
-import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { syncBoundaryNavIndex } from "./boundaryNavSync.js";
@@ -26,10 +24,7 @@ export function clearPrimaryBoundaryAt(state, col, row, side) {
     const grid = state.obstacleGrid;
     const boundary = getBoundary(grid, col, row, side);
     if (!boundary.primary) return false;
-    if (boundary.primary === "railWall") {
-        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
-        state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
-    } else if (boundary.primary === "portal") unlinkPortalEdge(grid, col, row, side);
+    if (boundary.primary === "portal") unlinkPortalEdge(grid, col, row, side);
     clearBoundaryPrimary(grid, col, row, side);
     return boundary.primary;
 }

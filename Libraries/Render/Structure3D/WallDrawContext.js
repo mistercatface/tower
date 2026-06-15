@@ -1,5 +1,5 @@
 /**
- * Shared context for projected wall-face draw (atlas sample, solid fill, damage overlay).
+ * Shared context for projected wall-face draw (atlas sample, solid fill).
  */
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 /**
@@ -11,7 +11,6 @@
  * @property {{ settings: import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings }} worldSurfaces
  * @property {ProceduralSurfaceDrawContext} proceduralSurfaceDraw
  * @property {string} fillStyle
- * @property {number} damageAlpha
  * @property {object | null} cacheObj
  * @property {import("../../Math/Aabb2D.js").Aabb2D} worldBounds
  * @property {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera

@@ -49,7 +49,6 @@ export class WorldProp extends Entity {
         this.vy = 0;
         this.angularVelocity = 0;
         this.mass = this.strategy.mass;
-        this.canDamageWalls = !!this.strategy.canDamageWalls;
         this.zIndex = 10;
         if (this.strategy.cardinalFacing) this.facing = quantizeCardinalAngle(facing ?? 0);
         else this.facing = facing ?? Math.random() * Math.PI * 2;
