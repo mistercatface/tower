@@ -279,6 +279,15 @@ export function canLinkPortalsOnNetwork(state, grid, colA, rowA, sideA, colB, ro
     return netA === getPassageEdgeNetworkId(state, grid, colB, rowB, sideB);
 }
 /** @param {object} state */
+export function passagePowerSyncKey(state) {
+    const grid = state.obstacleGrid;
+    const energized = collectEnergizedSourceCells(grid, state);
+    const parts = [];
+    for (const idx of energized) parts.push(idx);
+    parts.sort((a, b) => a - b);
+    return `${grid.edgeStore.passageEdgeCount}:${parts.join(",")}`;
+}
+/** @param {object} state */
 export function syncPassagePowerNetwork(state) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
@@ -287,10 +296,15 @@ export function syncPassagePowerNetwork(state) {
     const poweredKeys = floodNetworkPoweredEdgeKeys(grid, energizedSources, graph);
     const networkIdByKey = computePoweredEdgeNetworkIds(graph, poweredKeys, grid.cols);
     state.sandbox.passagePower = { poweredKeys, networkIdByKey };
+    state.sandbox._passagePowerSyncKey = passagePowerSyncKey(state);
     let minCol = Infinity;
     let maxCol = -Infinity;
     let minRow = Infinity;
     let maxRow = -Infinity;
+    let boundaryNavDirty = false;
+    const portalCount = grid.edgeStore.portalEdgeCount;
+    const portalCountChanged = portalCount !== state.sandbox._boundaryNavPortalCount;
+    state.sandbox._boundaryNavPortalCount = portalCount;
     /** @param {number} col @param {number} row */
     const mark = (col, row) => {
         if (col < minCol) minCol = col;
@@ -298,27 +312,23 @@ export function syncPassagePowerNetwork(state) {
         if (row < minRow) minRow = row;
         if (row > maxRow) maxRow = row;
     };
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        for (let side = 0; side < 4; side++) {
-            const edge = grid.edgeStore.get(col, row, side, grid.cols);
-            if (!isPassagePowerConductorEdge(edge)) continue;
-            const key = canonicalEdgeCellKey(grid, col, row, side);
-            const ref = graph.edgeByKey.get(key);
-            if (!ref || ref.col !== col || ref.row !== row || ref.side !== side) continue;
-            const powered = poweredKeys.has(key);
-            if (isPassagePowered(grid, col, row, side) === powered) continue;
-            setPassagePowered(grid, col, row, side, powered);
-            mark(col, row);
-            const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-            if (cellInRect(nc, nr, grid.cols, grid.rows)) mark(nc, nr);
-        }
+    for (const ref of graph.edgeByKey.values()) {
+        const { col, row, side, key } = ref;
+        const edge = grid.edgeStore.get(col, row, side, grid.cols);
+        const powered = poweredKeys.has(key);
+        if (isPassagePowered(grid, col, row, side) === powered) continue;
+        setPassagePowered(grid, col, row, side, powered);
+        if (isPortalEdge(edge)) boundaryNavDirty = true;
+        mark(col, row);
+        const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
+        if (cellInRect(nc, nr, grid.cols, grid.rows)) mark(nc, nr);
     }
-    if (splitInvalidPortalLinks(grid, poweredKeys, networkIdByKey)) grid.bumpWallGridRevision();
-    if (grid.edgeStore.portalEdgeCount > 0) syncBoundaryNavIndex(state);
-    else grid.boundaryNavHops = new Map();
+    if (splitInvalidPortalLinks(grid, poweredKeys, networkIdByKey)) {
+        grid.bumpWallGridRevision();
+        boundaryNavDirty = true;
+    }
+    if (!portalCount) grid.boundaryNavHops = new Map();
+    else if (boundaryNavDirty || portalCountChanged) syncBoundaryNavIndex(state);
     if (minCol === Infinity) return;
     state.navigation.onObstaclesChanged({ startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow });
 }

@@ -138,21 +138,16 @@ export class HierarchicalNavigator {
         this._connectAdjacencies(adjacencies);
     }
     _appendNavHopRegionAdjacencies(adjacencies) {
-        if (!this.navGraph.getBoundaryHops) return;
-        for (let idx = 0; idx < this.cellToNode.length; idx++) {
-            const nodeA = this.cellToNode[idx];
-            if (!nodeA) continue;
-            const fromCol = idx % this.cols;
-            const fromRow = (idx / this.cols) | 0;
-            const hops = this.navGraph.getBoundaryHops(fromCol, fromRow);
-            if (!hops) continue;
+        if (!this.navGraph.forEachBoundaryHopCell) return;
+        this.navGraph.forEachBoundaryHopCell((fromCol, fromRow, hops) => {
+            const nodeA = this.cellToNode[colRowToIndex(fromCol, fromRow, this.cols)];
+            if (!nodeA) return;
             for (let i = 0; i < hops.length; i++) {
                 const { exitCol, exitRow } = hops[i];
-                const exitIdx = colRowToIndex(exitCol, exitRow, this.cols);
-                const nodeB = this.cellToNode[exitIdx];
+                const nodeB = this.cellToNode[colRowToIndex(exitCol, exitRow, this.cols)];
                 if (nodeB && nodeA.id !== nodeB.id) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
-        }
+        });
     }
     _connectAdjacencies(adjacencies) {
         for (const key of adjacencies) {

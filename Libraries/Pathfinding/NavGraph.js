@@ -21,6 +21,7 @@
  *   getBoundaryHops: (col: number, row: number) => import("../Sandbox/boundaryNavIndex.js").BoundaryNavHop[] | null,
  *   canBoundaryHop: (fromCol: number, fromRow: number, exitCol: number, exitRow: number) => boolean,
  *   forEachNavHop?: (col: number, row: number, fn: (exitCol: number, exitRow: number, cost: number) => void) => void,
+ *   forEachBoundaryHopCell?: (fn: (col: number, row: number, hops: import("../Sandbox/boundaryNavIndex.js").BoundaryNavHop[]) => void) => void,
  * }} BoundaryHopNavGraph
  */
 /**

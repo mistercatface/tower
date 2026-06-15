@@ -472,6 +472,12 @@ export class WorldObstacleGrid {
             fn(exitCol, exitRow, cost);
         }
     }
+    /** @param {(col: number, row: number, hops: import("../../Sandbox/boundaryNavIndex.js").BoundaryNavHop[]) => void} fn */
+    forEachBoundaryHopCell(fn) {
+        const hopsByIdx = this.boundaryNavHops;
+        if (!hopsByIdx) return;
+        for (const [idx, hops] of hopsByIdx) fn(idx % this.cols, (idx / this.cols) | 0, hops);
+    }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);
     }

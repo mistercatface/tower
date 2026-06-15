@@ -184,6 +184,9 @@ function clearSandboxSceneContent(state) {
     getSandboxEntityMeta(state).clear();
     unbakeRoomGraph(state);
     clearRoomGraph(state);
+    state.sandbox._passagePowerSyncKey = null;
+    state.sandbox._boundaryNavPortalCount = 0;
+    state.sandbox.passagePower = null;
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string }} entry */
 function spawnSnapshotProp(state, entry) {
