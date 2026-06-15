@@ -3,15 +3,12 @@
  * Vertical bands: projectWorldPointInto. Horizontal caps: box top ring + per-corner chunk UV.
  */
 import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
-/** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
-import { gridRailWallCapUvCorners } from "../../World/wallGridBake.js";
+import { railWallCapUvCorners } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { drawDamageOverlayInClip, drawPolygonDamageOverlay } from "./wallDamageVisual.js";
-/** @typedef {import("./WallDrawContext.js").WallDrawContext} WallDrawContext */
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
-/** @typedef {{ proj1X: number, proj1Y: number, proj2X: number, proj2Y: number }} ProjectedWallBand */
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sBandPoint0 = { x: 0, y: 0 };
@@ -26,11 +23,9 @@ const sCapCorners = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },
 ];
-/** @param {ProjectedWallBand} faceBottom @param {ProjectedWallBand} faceTop */
 export function appendProjectedFaceBand(ctx, faceBottom, faceTop) {
     traceQuad(ctx, { x: faceBottom.proj1X, y: faceBottom.proj1Y }, { x: faceTop.proj1X, y: faceTop.proj1Y }, { x: faceTop.proj2X, y: faceTop.proj2Y }, { x: faceBottom.proj2X, y: faceBottom.proj2Y });
 }
-/** @param {ProjectedWallBand} faceBottom @param {ProjectedWallBand} faceTop */
 export function traceProjectedFaceBand(ctx, faceBottom, faceTop) {
     ctx.beginPath();
     appendProjectedFaceBand(ctx, faceBottom, faceTop);
@@ -264,7 +259,7 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
         return;
     }
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
-    const uvCorners = gridRailWallCapUvCorners(gameState.obstacleGrid, box);
+    const uvCorners = railWallCapUvCorners(gameState.obstacleGrid, box);
     const sample = worldSurfaces.getHorizontalCapDrawSample(uvCorners, box.wallCapHeight, gameState, profileId, wallCtx.texelResolution);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);

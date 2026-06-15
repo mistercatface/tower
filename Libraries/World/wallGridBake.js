@@ -5,34 +5,34 @@ import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spat
 import { gridSettings } from "../../Config/balance/grid.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
-export function gridWallFaceVisible(neighborCap, faceHeight) {
+export function voxelWallFaceVisible(neighborCap, faceHeight) {
     if (neighborCap == null) return true;
     return faceHeight > neighborCap;
 }
-export function gridWallFaceBaseZ(neighborCap, faceHeight) {
+export function voxelWallFaceBaseZ(neighborCap, faceHeight) {
     if (neighborCap == null || faceHeight <= neighborCap) return 0;
     return neighborCap;
 }
-export function gridWallEdgeInwardNormal(edge) {
+export function railWallInwardNormal(edge) {
     if (edge === 0) return { x: 0, y: 1 };
     if (edge === 1) return { x: -1, y: 0 };
     if (edge === 2) return { x: 0, y: -1 };
     return { x: 1, y: 0 };
 }
-export function gridRailWallTopZAt(grid, col, row, side) {
+export function railWallTopZAt(grid, col, row, side) {
     const edge = railWallEdgeAt(grid, col, row, side);
     if (!edge) return 0;
     return railWallHeightPx(edge, grid.cellSize, neighborFillLevel(grid, col, row, side));
 }
-export function gridRailWallAtZLevel(grid, col, row, side, zLevel) {
-    return railWallEdgeShouldEmit(grid, col, row, side) && gridRailWallTopZAt(grid, col, row, side) === zLevel;
+export function railWallAtZLevel(grid, col, row, side, zLevel) {
+    return railWallEdgeShouldEmit(grid, col, row, side) && railWallTopZAt(grid, col, row, side) === zLevel;
 }
-export function gridRailWallFootprintHalfThickness(grid, col, row, side) {
+export function railWallFootprintHalfThickness(grid, col, row, side) {
     const railEdge = railWallEdgeAt(grid, col, row, side);
     if (!railEdge) return 0;
     return railWallThicknessPx(railEdge) / 2;
 }
-export function resolveGridWallEdgeRailNeighborContext(grid, col, row, side) {
+export function resolveRailWallNeighborContext(grid, col, row, side) {
     const neighborFillLevel = neighborFillLevel(grid, col, row, side);
     const { nc, nr } = edgeNeighbor(col, row, side);
     let neighborFillHeightPx = 0;
@@ -45,20 +45,20 @@ export function resolveGridWallEdgeRailNeighborContext(grid, col, row, side) {
 export function forEachEmittingRailWallAtZLevel(grid, aabb, zLevel, fn) {
     forEachObstacleGridCellInAabb(grid, aabb, (col, row, idx) => {
         for (let side = 0; side < 4; side++) {
-            if (!gridRailWallAtZLevel(grid, col, row, side, zLevel)) continue;
+            if (!railWallAtZLevel(grid, col, row, side, zLevel)) continue;
             fn(col, row, side, idx);
         }
     });
 }
-export function gridWallEdgeRailFootprintAabb(grid, col, row, edge) {
-    const halfT = gridRailWallFootprintHalfThickness(grid, col, row, edge);
+export function railWallFootprintAabb(grid, col, row, edge) {
+    const halfT = railWallFootprintHalfThickness(grid, col, row, edge);
     const b = grid.getCellBounds(col, row);
     if (edge === 0) return { minX: b.minX, minY: b.minY - halfT, maxX: b.maxX, maxY: b.minY + halfT };
     if (edge === 1) return { minX: b.maxX - halfT, minY: b.minY, maxX: b.maxX + halfT, maxY: b.maxY };
     if (edge === 2) return { minX: b.minX, minY: b.maxY - halfT, maxX: b.maxX, maxY: b.maxY + halfT };
     return { minX: b.minX - halfT, minY: b.minY, maxX: b.minX + halfT, maxY: b.maxY };
 }
-export function gridRailWallCapUvCorners(grid, box) {
+export function railWallCapUvCorners(grid, box) {
     const b = grid.getCellBounds(box.gridCol, box.gridRow);
     if (box.gridSide === 0)
         return [
@@ -88,8 +88,8 @@ export function gridRailWallCapUvCorners(grid, box) {
         { x: b.maxX, y: b.maxY },
     ];
 }
-function gridWallEdgeRailSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
-    const halfT = gridRailWallFootprintHalfThickness(grid, col, row, edge);
+function railWallSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
+    const halfT = railWallFootprintHalfThickness(grid, col, row, edge);
     const b = grid.getCellBounds(col, row);
     if (edge === 0) {
         const y = railSide === 0 ? b.minY + halfT : b.minY - halfT;
@@ -117,24 +117,24 @@ function gridWallEdgeRailSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
         p2.y = b.minY;
     }
 }
-export function resolveGridWallEdgeRailBox(grid, col, row, edge) {
+export function resolveRailWallBox(grid, col, row, edge) {
     if (!railWallEdgeShouldEmit(grid, col, row, edge)) return null;
     const cols = grid.cols;
     const idx = col + row * cols;
     const railEdge = railWallEdgeAt(grid, col, row, edge);
     if (!railEdge) return null;
-    const { neighborCap, capHeightPx: edgeHeight } = resolveGridWallEdgeRailNeighborContext(grid, col, row, edge);
+    const { neighborCap, capHeightPx: edgeHeight } = resolveRailWallNeighborContext(grid, col, row, edge);
     if (edgeHeight <= 0) return null;
-    if (!gridWallFaceVisible(neighborCap, edgeHeight)) return null;
-    const fp = gridWallEdgeRailFootprintAabb(grid, col, row, edge);
-    const inward = gridWallEdgeInwardNormal(edge);
-    gridWallEdgeRailSideEndpoints(grid, col, row, edge, 0, sP1, sP2);
+    if (!voxelWallFaceVisible(neighborCap, edgeHeight)) return null;
+    const fp = railWallFootprintAabb(grid, col, row, edge);
+    const inward = railWallInwardNormal(edge);
+    railWallSideEndpoints(grid, col, row, edge, 0, sP1, sP2);
     const innerP1x = sP1.x;
     const innerP1y = sP1.y;
     const innerP2x = sP2.x;
     const innerP2y = sP2.y;
-    gridWallEdgeRailSideEndpoints(grid, col, row, edge, 1, sP1, sP2);
-    const wallBaseZ = gridWallFaceBaseZ(neighborCap, edgeHeight);
+    railWallSideEndpoints(grid, col, row, edge, 1, sP1, sP2);
+    const wallBaseZ = voxelWallFaceBaseZ(neighborCap, edgeHeight);
     return {
         staticGridEdgeRail: true,
         gridCol: col,
@@ -258,7 +258,7 @@ export function mergeCollinearRailWallBoxes(boxes) {
     }
     return merged;
 }
-export function resolveGridWallFace(grid, col, row, edge) {
+export function resolveVoxelWallFace(grid, col, row, edge) {
     const cols = grid.cols;
     const idx = col + row * cols;
     const fillHeight = resolveCellWallHeightAtIdx(grid, idx);
@@ -271,14 +271,14 @@ export function resolveGridWallFace(grid, col, row, edge) {
     let neighborFillHeight = 0;
     if (cellInRect(nc, nr, cols, grid.rows)) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nc + nr * cols);
     const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
-    if (!gridWallFaceVisible(neighborCap, faceHeight)) return null;
+    if (!voxelWallFaceVisible(neighborCap, faceHeight)) return null;
     cellEdgeEndpoints(grid, col, row, edge, sP1, sP2, 0);
     const cellBounds = grid.getCellBounds(col, row);
     const cx = (cellBounds.minX + cellBounds.maxX) / 2;
     const cy = (cellBounds.minY + cellBounds.maxY) / 2;
     const ecx = (sP1.x + sP2.x) / 2;
     const ecy = (sP1.y + sP2.y) / 2;
-    const wallBaseZ = gridWallFaceBaseZ(neighborCap, faceHeight);
+    const wallBaseZ = voxelWallFaceBaseZ(neighborCap, faceHeight);
     return {
         staticGrid: true,
         gridCol: col,
@@ -296,22 +296,22 @@ export function resolveGridWallFace(grid, col, row, edge) {
         outY: ecy - cy,
     };
 }
-export function collectGridWallFacesInAabb(grid, bounds, out) {
+export function collectVoxelWallFacesInAabb(grid, bounds, out) {
     out.length = 0;
     forEachObstacleGridCellInAabb(grid, bounds, (col, row, idx) => {
         if (resolveCellWallHeightAtIdx(grid, idx) === 0) return;
         for (let edge = 0; edge < 4; edge++) {
-            const face = resolveGridWallFace(grid, col, row, edge);
+            const face = resolveVoxelWallFace(grid, col, row, edge);
             if (face) out.push(face);
         }
     });
 }
-export function collectGridEdgeRailBoxesInAabb(grid, bounds, out) {
+export function collectRailWallBoxesInAabb(grid, bounds, out) {
     out.length = 0;
     forEachObstacleGridCellInAabb(grid, bounds, (col, row, idx) => {
         if (!grid.edgeStore.hasAnyAtIdx(idx)) return;
         for (let edge = 0; edge < 4; edge++) {
-            const box = resolveGridWallEdgeRailBox(grid, col, row, edge);
+            const box = resolveRailWallBox(grid, col, row, edge);
             if (box) out.push(box);
         }
     });

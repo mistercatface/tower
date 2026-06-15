@@ -1,7 +1,7 @@
 /**
  * Edge rail draw — thin axis-aligned box via projectWorldPointInto.
  */
-import { collectGridEdgeRailBoxesInAabb } from "../../World/wallGridBake.js";
+import { collectRailWallBoxesInAabb } from "../../World/wallGridBake.js";
 import { isOutwardFaceTowardViewer } from "../../Spatial/iso/IsometricProjection.js";
 import { drawProjectedWallFace, drawProjectedRailWallCap } from "./ProjectedWallDraw.js";
 import { storeWallGridDrawCache, wallGridDrawCacheHit } from "./StaticGridWallDraw.js";
@@ -47,7 +47,7 @@ export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, viewe
     const bounds = viewport.boundsQuery;
     const wallGridRevision = obstacleGrid.wallGridRevision;
     if (!wallGridDrawCacheHit(sBoxCache, obstacleGrid, wallGridRevision, bounds)) {
-        collectGridEdgeRailBoxesInAabb(obstacleGrid, bounds, sBoxCache.boxes);
+        collectRailWallBoxesInAabb(obstacleGrid, bounds, sBoxCache.boxes);
         storeWallGridDrawCache(sBoxCache, obstacleGrid, wallGridRevision, bounds);
     }
     const boxes = sBoxCache.boxes;

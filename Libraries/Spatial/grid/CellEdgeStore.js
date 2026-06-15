@@ -5,18 +5,12 @@ import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isPortalEdge, isR
 const EMPTY = -1;
 export class CellEdgeStore {
     constructor() {
-        /** @type {Int32Array} */
         this.slots = new Int32Array(0);
-        /** @type {object[]} */
         this.pool = [];
-        /** @type {number[]} */
         this.free = [];
-        /** Mirrored passage edges (forcefield + portal) — one count per pooled edge. */
-        this.passageEdgeCount = 0;
-        /** Mirrored portal edges — subset of passage edges. */
-        this.portalEdgeCount = 0;
+        this.passageEdgeCount = 0; /** Mirrored passage edges (forcefield + portal) — one count per pooled edge. */
+        this.portalEdgeCount = 0; /** Mirrored portal edges — subset of passage edges. */
     }
-    /** @param {number} cellCount */
     reset(cellCount) {
         this.slots = new Int32Array(cellCount * 4);
         this.slots.fill(EMPTY);
@@ -41,15 +35,6 @@ export class CellEdgeStore {
         this.passageEdgeCount = passageCount;
         this.portalEdgeCount = portalCount;
     }
-    /**
-     * @param {Int32Array} oldSlots
-     * @param {number} oldCols
-     * @param {number} oldRows
-     * @param {number} colOffset
-     * @param {number} rowOffset
-     * @param {number} newCols
-     * @param {number} newRows
-     */
     remapSlots(oldSlots, oldCols, oldRows, colOffset, rowOffset, newCols, newRows) {
         const newSlots = new Int32Array(newCols * newRows * 4);
         newSlots.fill(EMPTY);
@@ -67,17 +52,14 @@ export class CellEdgeStore {
         }
         this.slots = newSlots;
     }
-    /** @param {number} col @param {number} row @param {number} side @param {number} cols */
     get(col, row, side, cols) {
         const ref = this.slots[colRowToIndex(col, row, cols) * 4 + side];
         if (ref === EMPTY) return null;
         return this.pool[ref];
     }
-    /** @param {number} col @param {number} row @param {number} side @param {number} cols */
     has(col, row, side, cols) {
         return this.slots[colRowToIndex(col, row, cols) * 4 + side] !== EMPTY;
     }
-    /** @param {object} edge */
     _alloc(edge) {
         if (this.free.length) {
             const ref = this.free.pop();
@@ -123,22 +105,12 @@ export class CellEdgeStore {
         this.pool.push(edge);
         return ref;
     }
-    /** @param {number} ref */
     _free(ref) {
         this.free.push(ref);
     }
-    /** @param {number} cols @param {number} col @param {number} row @param {number} side @param {number} ref */
     _setSlot(col, row, side, cols, ref) {
         this.slots[colRowToIndex(col, row, cols) * 4 + side] = ref;
     }
-    /**
-     * @param {number} col
-     * @param {number} row
-     * @param {number} side
-     * @param {number} cols
-     * @param {number} rows
-     * @param {object | null} edge
-     */
     writeMirrored(col, row, side, cols, rows, edge) {
         if (!cellInRect(col, row, cols, rows)) return;
         if (!edge) {
@@ -154,13 +126,6 @@ export class CellEdgeStore {
         if (isForcefieldEdge(edge)) this.passageEdgeCount++;
         if (isPortalEdge(edge)) this.portalEdgeCount++;
     }
-    /**
-     * @param {number} col
-     * @param {number} row
-     * @param {number} side
-     * @param {number} cols
-     * @param {number} rows
-     */
     clearMirrored(col, row, side, cols, rows) {
         if (!cellInRect(col, row, cols, rows)) return;
         const slot = colRowToIndex(col, row, cols) * 4 + side;
@@ -174,7 +139,6 @@ export class CellEdgeStore {
         if (cellInRect(nc, nr, cols, rows)) this.slots[colRowToIndex(nc, nr, cols) * 4 + nSide] = EMPTY;
         this._free(ref);
     }
-    /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../../Math/Aabb2D.js").Aabb2D} aabb @param {(col: number, row: number, side: number, idx: number, edge: object) => void} fn */
     forEachInAabb(grid, aabb, fn) {
         forEachObstacleGridCellInAabb(grid, aabb, (col, row, idx) => {
             for (let side = 0; side < 4; side++) {
@@ -183,7 +147,6 @@ export class CellEdgeStore {
             }
         });
     }
-    /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @returns {number[]} */
     collectTopZLevels(grid) {
         const seen = new Set();
         const cols = grid.cols;
@@ -202,13 +165,11 @@ export class CellEdgeStore {
         out.sort((a, b) => a - b);
         return out;
     }
-    /** @param {number} idx */
     hasAnyAtIdx(idx) {
         const base = idx * 4;
         return this.slots[base] !== EMPTY || this.slots[base + 1] !== EMPTY || this.slots[base + 2] !== EMPTY || this.slots[base + 3] !== EMPTY;
     }
 }
-/** @param {number} capHeightLevel absolute cap level @param {number} thicknessLevel @param {number} neighborFillLevel */
 export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel) {
     return createRailWallEdge(capHeightLevel - neighborFillLevel, thicknessLevel);
 }

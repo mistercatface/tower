@@ -128,7 +128,7 @@ export class WorldObstacleGrid {
     }
     appendStaticWallProxiesNear(entity, out) {
         // Edge-rail collision: railWall, powered passage (same segment + thickness path), or beltRail.
-        // Draw uses resolveGridWallEdgeRailBox; do not swap proxy math without ball regression tests.
+        // Draw uses resolveRailWallBox; do not swap proxy math without ball regression tests.
         this._staticWallProxyCount = 0;
         const radius = entity.radius ?? 0;
         const { col: ec, row: er } = this.worldToGrid(entity.x, entity.y);

@@ -27,6 +27,7 @@
 //
 // Bake — 3D presentation derived from cell fill + edges (faces, rail boxes, chunk Z probes).
 //   Not part of NavGraph; Render / WorldSurface only.
+//   Queries: resolveVoxelWallFace, collectVoxelWallFacesInAabb, resolveRailWallBox, collectRailWallBoxesInAabb
 //   Owner: World/wallGridBake.js
 //
 // Stamp — dynamic segment walls → grid[] + segmentGrid (nav/collision, editor walls, pull fixtures).
@@ -53,11 +54,6 @@
 // portalSlotIndex.js    — canonical portal edge key → slot lookup
 // vertexPassability.js  — vertex cache + syncGridTopologyCaches
 // boundaryNavHops.js    — hop build (callback for portal pairing), path expansion
-//
-// ── Bake renames (World/wallGridBake.js, later pass) ──────────────────────────
-//
-// resolveGridWallFace → resolveVoxelWallFace
-// resolveGridWallEdgeRailBox → resolveRailWallBox
 //
 // @typedef {object} NavGraph
 // @property {number} cols
