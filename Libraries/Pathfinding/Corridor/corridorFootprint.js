@@ -1,5 +1,4 @@
 /** @typedef {{ c: number, r: number }} CorridorCell */
-
 /** @param {number} width */
 export function corridorPerpendicularOffsets(width) {
     const offsets = new Array(width);
@@ -7,12 +6,10 @@ export function corridorPerpendicularOffsets(width) {
     for (let i = 0; i < width; i++) offsets[i] = i - base;
     return offsets;
 }
-
 /** @param {CorridorCell} cell */
 export function corridorCellKey(cell) {
     return `${cell.c},${cell.r}`;
 }
-
 /** @param {CorridorCell} p @param {CorridorCell | undefined} prev @param {CorridorCell | undefined} next @param {number} corridorWidth @param {boolean} interiorOnly @param {number} pathIndex @param {number} pathLength */
 export function collectCorridorPathPointCells(p, prev, next, corridorWidth, interiorOnly, pathIndex, pathLength) {
     if (interiorOnly && (pathIndex === 0 || pathIndex === pathLength - 1)) return [];
@@ -59,7 +56,6 @@ export function collectCorridorPathPointCells(p, prev, next, corridorWidth, inte
     cells.push({ c: p.c, r: p.r });
     return cells;
 }
-
 /** @param {CorridorCell[]} path @param {number} corridorWidth @param {{ interiorOnly?: boolean }} [options] */
 export function corridorPathOccupiedCellKeys(path, corridorWidth, options = {}) {
     const interiorOnly = options.interiorOnly !== false;
@@ -71,29 +67,25 @@ export function corridorPathOccupiedCellKeys(path, corridorWidth, options = {}) 
     }
     return keys;
 }
-
-/** @param {CorridorCell[]} path @param {number} pathWidth @param {CorridorCell[][]} others @param {number[]} otherWidths */
-export function corridorPathIntersectsPaths(path, pathWidth, others, otherWidths) {
-    const keys = corridorPathOccupiedCellKeys(path, pathWidth);
+/** @param {CorridorCell[]} path @param {number} pathWidth @param {CorridorCell[][]} others @param {number[]} otherWidths @param {{ interiorOnly?: boolean }} [options] */
+export function corridorPathIntersectsPaths(path, pathWidth, others, otherWidths, options = {}) {
+    const keys = corridorPathOccupiedCellKeys(path, pathWidth, options);
     for (let i = 0; i < others.length; i++) {
-        const otherKeys = corridorPathOccupiedCellKeys(others[i], otherWidths[i]);
+        const otherKeys = corridorPathOccupiedCellKeys(others[i], otherWidths[i], options);
         for (const key of otherKeys) if (keys.has(key)) return true;
     }
     return false;
 }
-
 /** @param {CorridorCell[]} path @param {CorridorCell[][]} others @param {number} corridorWidth @param {number[]} [otherWidths] */
 export function corridorPathIntersectsAny(path, others, corridorWidth, otherWidths) {
     const widths = otherWidths ?? others.map(() => corridorWidth);
     return corridorPathIntersectsPaths(path, corridorWidth, others, widths);
 }
-
 /** True when any floor cell is shared — edge-adjacent tubes are allowed. */
 /** @param {CorridorCell[]} path @param {CorridorCell[][]} others @param {number} corridorWidth @param {number[]} [otherWidths] */
 export function corridorPathFootprintsOverlap(path, others, corridorWidth, otherWidths) {
     return corridorPathIntersectsAny(path, others, corridorWidth, otherWidths);
 }
-
 /** @param {CorridorCell[][]} paths @param {number[]} widths @param {{ interiorOnly?: boolean }} [options] */
 export function corridorPathsToOccupiedKeysWithWidths(paths, widths, options = {}) {
     /** @type {Set<string>} */
@@ -104,7 +96,6 @@ export function corridorPathsToOccupiedKeysWithWidths(paths, widths, options = {
     }
     return keys;
 }
-
 /** @param {CorridorCell[][]} paths @param {number} corridorWidth @param {{ interiorOnly?: boolean }} [options] */
 export function corridorPathsToOccupiedKeys(paths, corridorWidth, options = {}) {
     return corridorPathsToOccupiedKeysWithWidths(
@@ -113,7 +104,6 @@ export function corridorPathsToOccupiedKeys(paths, corridorWidth, options = {}) 
         options,
     );
 }
-
 /** @param {CorridorCell[]} path @param {Set<string>} occupied @param {number} corridorWidth @param {{ interiorOnly?: boolean }} [options] */
 export function corridorPathHitsOccupied(path, occupied, corridorWidth, options = {}) {
     const keys = corridorPathOccupiedCellKeys(path, corridorWidth, options);

@@ -27,7 +27,15 @@ export {
     wallHoleGroupsOverlap,
     wallSlotsContiguous,
 } from "./corridorWallSlots.js";
-export { buildRoomInteriorBlockedGrid, buildRoomInteriorBlockedGridLocal, cellInsideAnyRoom, corridorPathFootprintInsideAnyRoom, corridorPathMidCellsClear, corridorSearchBounds } from "./corridorWalkGrid.js";
+export {
+    buildRoomInteriorBlockedGrid,
+    buildRoomInteriorBlockedGridLocal,
+    cellInsideAnyRoom,
+    corridorPathFootprintInsideAnyRoom,
+    corridorPathMidCellsClear,
+    corridorSearchBounds,
+} from "./corridorWalkGrid.js";
 export { CorridorGridPathfinder, createCorridorGridPathfinder } from "./corridorGridPathfinder.js";
 export { addCorridorPathToOccupied, buildCorridorLanePath, createCorridorLaneRouter, removeCorridorPathFromOccupied } from "./corridorLanePath.js";
+export { solveCorridorBundle, solveUniformCorridorBundle } from "./corridorBundle.js";
 export { tryRouteCorridorLanes, tryRouteCorridorsBetweenRooms } from "./corridorMultiLane.js";

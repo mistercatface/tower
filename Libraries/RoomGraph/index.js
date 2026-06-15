@@ -30,3 +30,4 @@ export { DEFAULT_ROOM_NODE_COLS, DEFAULT_ROOM_NODE_ROWS, canStampRoomNodeAt, res
 export { drawPlacedRoomNodes } from "./roomGraphDraw.js";
 export { collectRoomGraphForSnapshot, applyRoomGraphFromSnapshot } from "./roomGraphSnapshot.js";
 export { syncRoomGraphBake, unbakeRoomGraph, rerollRoomLinkBake, expandGridForRoomNodeFootprint } from "./roomGraphBake.js";
+export { MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";

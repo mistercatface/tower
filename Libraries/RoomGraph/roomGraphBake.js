@@ -7,12 +7,10 @@ import {
     omitRailWallsAtGapKeys,
     railWallsForClosedRooms,
     roomWallGapKeysWorld,
-    socketSideToward,
-    travelFromSocketSide,
-    tryBuildCorridorForEdge,
 } from "../Sandbox/sandboxRoomGraphGen.js";
 import { getRoomGraph, listRoomLinks, listRoomNodes } from "./roomGraphStore.js";
 import { resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
+import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle, stampCorridorBundleRails } from "./roomGraphCorridorApply.js";
 
 /** @typedef {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }} BakedRail */
 /** @typedef {{ id: number, c0: number, c1: number, r0: number, r1: number, centerC: number, centerR: number, width: number, height: number }} AuthoredGraphNode */
@@ -56,19 +54,11 @@ function buildAuthoredBakeLayout(state) {
         if (a == null || b == null) continue;
         graphEdges.push({ a, b, linkId: link.id });
     }
-    const nodeGraph = {
-        nodes: graphNodes,
-        directedEdges: graphEdges.map(({ a, b }) => {
-            const parent = graphNodes[a];
-            const child = graphNodes[b];
-            return { a, b, travel: travelFromSocketSide(socketSideToward(parent, child)), parentSocket: socketSideToward(parent, child), childSocket: socketSideToward(child, parent) };
-        }),
-    };
-    const closedRooms = buildRoomsFromNodeGraph(nodeGraph);
+    const closedRooms = buildRoomsFromNodeGraph({ nodes: graphNodes, directedEdges: [] });
     /** @type {Map<number, import("./roomGraphStore.js").RoomNode>} */
     const roomNodeById = new Map();
     for (let i = 0; i < roomNodes.length; i++) roomNodeById.set(roomNodes[i].id, roomNodes[i]);
-    return { rooms: graphNodes, graphEdges, closedRooms, gridCols: grid.cols, gridRows: grid.rows, links, nodeGraph, roomNodeById };
+    return { rooms: graphNodes, graphEdges, closedRooms, gridCols: grid.cols, gridRows: grid.rows, links, roomNodeById };
 }
 
 /** @param {object} state */
@@ -112,21 +102,11 @@ function restoreClosedRoomState(closedRoom, snap) {
     closedRoom.holes = snap.holes.slice();
 }
 
-/** @param {{ parentHole?: unknown, childHole?: unknown, parentHoles?: unknown, childHoles?: unknown, corridorFrom?: unknown, corridorTo?: unknown }} edge */
-function clearAuthoredEdgeHoleFields(edge) {
-    edge.parentHole = undefined;
-    edge.childHole = undefined;
-    edge.parentHoles = undefined;
-    edge.childHoles = undefined;
-    edge.corridorFrom = undefined;
-    edge.corridorTo = undefined;
-}
-
 /** @param {ReturnType<typeof buildAuthoredBakeLayout>} layout @returns {BakedRail[]} */
 function computeRoomGraphRailWalls(layout) {
     const originCol = 0;
     const originRow = 0;
-    const { rooms, graphEdges, closedRooms, links, nodeGraph } = layout;
+    const { rooms, graphEdges, closedRooms, links } = layout;
     if (!rooms.length) return [];
     /** @type {Map<number, import("./roomGraphStore.js").RoomLink>} */
     const linkById = new Map();
@@ -137,42 +117,35 @@ function computeRoomGraphRailWalls(layout) {
     const placedPathWidths = [];
     /** @type {import("../Sandbox/sandboxRoomGraphGen.js").RailWall[][]} */
     const corridorRailLists = [];
-    const layoutForEdge = { rooms, graphEdges: nodeGraph.directedEdges, gridCols: layout.gridCols, gridRows: layout.gridRows, closedRooms };
     for (let edgeIndex = 0; edgeIndex < graphEdges.length; edgeIndex++) {
-        const linkId = graphEdges[edgeIndex].linkId;
+        const { a, b, linkId } = graphEdges[edgeIndex];
         const link = linkById.get(linkId);
         if (!link) continue;
-        const directedEdge = nodeGraph.directedEdges[edgeIndex];
-        const roomA = closedRooms[directedEdge.a];
-        const roomB = closedRooms[directedEdge.b];
+        const roomA = closedRooms[a];
+        const roomB = closedRooms[b];
         const snapA = snapshotClosedRoomState(roomA);
         const snapB = snapshotClosedRoomState(roomB);
         const nodeA = layout.roomNodeById.get(link.a);
         const nodeB = layout.roomNodeById.get(link.b);
         const rng = createSeededRng(link.seed ?? link.id * 9973);
-        const { corridorCount, corridorWidths } = resolveLinkCorridorRoll(link, nodeA, nodeB, rng);
+        const { corridorWidths } = resolveLinkCorridorRoll(link, nodeA, nodeB, rng);
         const canIntersect = link.canIntersect === true;
-        let result = null;
-        try {
-            result = tryBuildCorridorForEdge(edgeIndex, layoutForEdge, closedRooms, rng, originCol, originRow, {
-                corridorWidths,
-                canIntersect,
-                existingPaths: canIntersect ? [] : placedPaths,
-                existingPathWidths: canIntersect ? [] : placedPathWidths,
-                skipPunchIfHolesPresent: false,
-            });
-        } catch {
+        const bundle = solveAuthoredLinkCorridorBundle(rooms[a], rooms[b], rooms, corridorWidths, rng, {
+            canIntersect,
+            existingPaths: canIntersect ? [] : placedPaths,
+            existingPathWidths: canIntersect ? [] : placedPathWidths,
+        });
+        if (!bundle) {
             restoreClosedRoomState(roomA, snapA);
             restoreClosedRoomState(roomB, snapB);
-            clearAuthoredEdgeHoleFields(directedEdge);
             continue;
         }
-        if (!result) continue;
-        for (let pi = 0; pi < result.paths.length; pi++) {
-            placedPaths.push(result.paths[pi]);
-            placedPathWidths.push(result.corridorWidths[pi]);
+        applyCorridorBundleToRooms(bundle, roomA, roomB);
+        for (let pi = 0; pi < bundle.paths.length; pi++) {
+            placedPaths.push(bundle.paths[pi]);
+            placedPathWidths.push(bundle.corridorWidths[pi]);
         }
-        corridorRailLists.push(result.railWalls);
+        corridorRailLists.push(stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow));
     }
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
     const gapKeys = roomWallGapKeysWorld(closedRooms, originCol, originRow);

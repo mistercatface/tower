@@ -9,8 +9,8 @@ import {
     corridorPerpendicularOffsets,
     corridorSearchBounds,
     createCorridorLaneRouter,
-    tryRouteCorridorLanes,
     tryRouteCorridorsBetweenRooms,
+    solveCorridorBundle,
 } from "../Pathfinding/Corridor/index.js";
 export { corridorPerpendicularOffsets, corridorPathIntersectsAny };
 import { applySandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
@@ -22,15 +22,7 @@ export const DEFAULT_SANDBOX_GRAPH_MOTIFS = [
         maxAttempts: 60,
         body: [
             { op: "buildTopology", preset: "defaultY", nodeCount: 4 },
-            {
-                op: "embedGraph",
-                mode: "treeSpread",
-                roomMinWidth: 10,
-                roomMaxWidth: 10,
-                roomMinHeight: 10,
-                roomMaxHeight: 10,
-                nodeSpacingPad: 4,
-            },
+            { op: "embedGraph", mode: "treeSpread", roomMinWidth: 10, roomMaxWidth: 10, roomMinHeight: 10, roomMaxHeight: 10, nodeSpacingPad: 4 },
             { op: "buildClosedRooms" },
             { op: "forEachNode", run: { op: "punchHolePerIncidentEdge", corridorCount: 2, corridorWidth: 2 } },
             { op: "forEachEdge", shuffle: false, requireAll: true, canIntersect: false, run: { op: "buildCorridorForEdge", corridorCount: 2, corridorWidth: 2, skipPunchIfHolesPresent: true } },
@@ -884,7 +876,7 @@ export function railWallsForRoomOutlines(layout, originCol, originRow) {
     return railWallsForClosedRooms(closedRooms, originCol, originRow);
 }
 /** @param {ClosedRoom} closedRoom @param {RoomWallHole[][]} holeGroups */
-function applyCorridorHoleGroups(closedRoom, holeGroups) {
+export function applyCorridorHoleGroups(closedRoom, holeGroups) {
     for (let lane = 0; lane < holeGroups.length; lane++) {
         const group = holeGroups[lane];
         for (let i = 0; i < group.length; i++) {
@@ -894,7 +886,16 @@ function applyCorridorHoleGroups(closedRoom, holeGroups) {
         }
     }
 }
-
+/** @param {ClosedRoom} roomA @param {ClosedRoom} roomB @param {RoomWallHole[][]} parentHoleGroups @param {RoomWallHole[][]} childHoleGroups */
+export function applyCorridorHoleGroupsToRooms(roomA, roomB, parentHoleGroups, childHoleGroups) {
+    applyCorridorHoleGroups(roomA, parentHoleGroups);
+    applyCorridorHoleGroups(roomB, childHoleGroups);
+}
+/** @param {Cell[][]} paths @param {number[]} corridorWidths @param {GraphNode[]} rooms @param {ClosedRoom[]} closedRooms @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number} originCol @param {number} originRow */
+export function buildCorridorRailWallsFromPaths(paths, corridorWidths, rooms, closedRooms, stampBounds, originCol, originRow) {
+    const gapKeysWorld = roomWallGapKeysWorld(closedRooms, originCol, originRow);
+    return corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms);
+}
 /** 1-wide corridor: straight egress from parent hole, A* mid, straight ingress to child hole. */
 /** @param {RoomWallHole} parentHole @param {RoomWallHole} childHole @param {GraphNode[]} nodes @param {() => number} rng @param {number} egressCells @param {{ existingPaths?: Cell[][], corridorWidth?: number, gridCols?: number, gridRows?: number, canIntersect?: boolean }} [options] */
 export function buildCorridorPathBetweenHoles(parentHole, childHole, nodes, rng, egressCells, options = {}) {
@@ -923,7 +924,6 @@ function stampCorridorTube(mask, cols, rows, path, corridorWidth, rooms) {
 function railWallEdgeKey(wall) {
     return `${wall.col},${wall.row},${wall.side}`;
 }
-
 /** @param {RailWall[]} rails */
 function dedupeRailWallsByEdge(rails) {
     /** @type {Set<string>} */
@@ -939,7 +939,6 @@ function dedupeRailWallsByEdge(rails) {
     }
     return out;
 }
-
 /** Per-lane floor masks so adjacent corridors keep a shared divider rail on their common edge. */
 /** @param {Cell[]} paths @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number | number[]} corridorWidths @param {Set<string>} gapKeysWorld @param {GraphNode[]} rooms */
 function corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms) {
@@ -953,7 +952,6 @@ function corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWo
     }
     return omitRailWallsAtGapKeys(dedupeRailWallsByEdge(rails), gapKeysWorld);
 }
-
 /** @param {Uint8Array} mask @param {{ originCol: number, originRow: number, cols: number, rows: number }} bounds @param {Cell[]} path @param {number} corridorWidth @param {import("../Pathfinding/Corridor/corridorWalkGrid.js").RoomRect[]} rooms */
 function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms) {
     for (let i = 0; i < path.length; i++) {
@@ -967,7 +965,6 @@ function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms) {
         }
     }
 }
-
 /** @param {Uint8Array} mask @param {number} cols @param {number} rows @param {number} originCol @param {number} originRow */
 function railWallsFromFloorMask(mask, cols, rows, originCol, originRow) {
     /** @type {RailWall[]} */
@@ -1072,9 +1069,9 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
     /** @type {Cell[][]} */
     let paths = [];
     if (punchedHere) {
-        const route = tryRouteCorridorLanes({
-            parentNode: rooms[edge.a],
-            childNode: rooms[edge.b],
+        const route = solveCorridorBundle({
+            roomA: rooms[edge.a],
+            roomB: rooms[edge.b],
             allRooms: rooms,
             corridorWidths,
             egressCells,
@@ -1084,8 +1081,7 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
             options: { canIntersect },
         });
         if (!route) return null;
-        applyCorridorHoleGroups(roomA, route.parentHoleGroups);
-        applyCorridorHoleGroups(roomB, route.childHoleGroups);
+        applyCorridorHoleGroupsToRooms(roomA, roomB, route.parentHoleGroups, route.childHoleGroups);
         edge.parentHoles = route.parentAnchors;
         edge.childHoles = route.childAnchors;
         edge.parentHole = route.parentAnchors[0];
@@ -1109,6 +1105,7 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
             const path = buildCorridorLanePath(parentHole, childHole, rooms, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, {
                 canIntersect,
                 laneWidths,
+                footprint: { interiorOnly: false },
             });
             if (!path) return null;
             paths.push(path);
@@ -1119,8 +1116,7 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
     /** @type {RailWall[][]} */
     const railLists = [];
     const stampBounds = corridorSearchBounds(rooms, DEFAULT_CORRIDOR_EGRESS_CELLS + 6);
-    const gapKeysWorld = roomWallGapKeysWorld(closedRooms, originCol, originRow);
-    railLists.push(corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms));
+    railLists.push(buildCorridorRailWallsFromPaths(paths, corridorWidths, rooms, closedRooms, stampBounds, originCol, originRow));
     return { edgeIndex, edge, path: paths[0], paths, corridorWidths, railWalls: mergeRailWalls(railLists) };
 }
 /** Punch + route up to `corridorEdgeCount` tree edges (shuffled order). Shared rooms accumulate holes. */
