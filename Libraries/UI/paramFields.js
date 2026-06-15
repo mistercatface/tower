@@ -15,8 +15,8 @@ export function appendEditorHint(parent, text) {
     parent.appendChild(hint);
     return hint;
 }
-/** @param {HTMLElement} parent @param {string} labelText @param {{ value: number, step?: number, min?: number, onChange: (value: number) => void }} opts */
-export function appendNumberField(parent, labelText, { value, step = 1, min, onChange }) {
+/** @param {HTMLElement} parent @param {string} labelText @param {{ value: number, step?: number, min?: number, max?: number, onChange: (value: number) => void }} opts */
+export function appendNumberField(parent, labelText, { value, step = 1, min, max, onChange }) {
     const field = document.createElement("div");
     field.className = "param-field";
     const label = document.createElement("span");
@@ -25,6 +25,7 @@ export function appendNumberField(parent, labelText, { value, step = 1, min, onC
     input.type = "number";
     input.step = String(step);
     if (min != null) input.min = String(min);
+    if (max != null) input.max = String(max);
     input.value = String(value);
     const valueSpan = document.createElement("span");
     valueSpan.className = "param-value";
@@ -39,6 +40,41 @@ export function appendNumberField(parent, labelText, { value, step = 1, min, onC
         valueSpan.textContent = String(next);
     });
     field.append(label, input, valueSpan);
+    parent.appendChild(field);
+}
+/** @param {HTMLElement} parent @param {string} labelText @param {{ minValue: number, maxValue: number, floor?: number, ceiling: number, onMinChange: (value: number) => void, onMaxChange: (value: number) => void }} opts */
+export function appendNumberRangeField(parent, labelText, { minValue, maxValue, floor = 1, ceiling, onMinChange, onMaxChange }) {
+    const cap = Math.max(floor, ceiling);
+    const field = document.createElement("div");
+    field.className = "param-field param-field-range";
+    const label = document.createElement("span");
+    label.className = "param-field-range-label";
+    label.textContent = `${labelText}:`;
+    const between = document.createElement("span");
+    between.className = "param-field-range-word";
+    between.textContent = "between";
+    const minSelect = document.createElement("select");
+    minSelect.className = "param-field-range-select";
+    const and = document.createElement("span");
+    and.className = "param-field-range-word";
+    and.textContent = "and";
+    const maxSelect = document.createElement("select");
+    maxSelect.className = "param-field-range-select";
+    const fillSelect = (select, value) => {
+        select.replaceChildren();
+        for (let v = floor; v <= cap; v++) {
+            const option = document.createElement("option");
+            option.value = String(v);
+            option.textContent = String(v);
+            if (v === value) option.selected = true;
+            select.appendChild(option);
+        }
+    };
+    fillSelect(minSelect, minValue);
+    fillSelect(maxSelect, maxValue);
+    minSelect.addEventListener("change", () => onMinChange(Number(minSelect.value)));
+    maxSelect.addEventListener("change", () => onMaxChange(Number(maxSelect.value)));
+    field.append(label, between, minSelect, and, maxSelect);
     parent.appendChild(field);
 }
 /**

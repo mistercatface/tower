@@ -91,6 +91,39 @@ export function maxDisjointWallHoleGroups(groups) {
     return picked.length;
 }
 
+/** @param {RoomRect} node @param {number} corridorWidth */
+export function listRoomWallHoleGroups(node, corridorWidth) {
+    /** @type {WallHoleGroup[]} */
+    const groups = [];
+    for (let side = 0; side < 4; side++) {
+        const sideGroups = listWallHoleGroups(listFacingWallSlots(node, side), corridorWidth);
+        for (let i = 0; i < sideGroups.length; i++) groups.push(sideGroups[i]);
+    }
+    return groups;
+}
+
+/** @param {RoomRect} node */
+export function maxRoomWallCorridorWidth(node) {
+    let max = 0;
+    for (let side = 0; side < 4; side++) {
+        const len = listFacingWallSlots(node, side).length;
+        if (len > max) max = len;
+    }
+    return max;
+}
+
+/** @param {WallHoleGroup[]} groups */
+export function sortWallHoleGroupsBySideAndPosition(groups) {
+    const sorted = groups.slice();
+    sorted.sort((a, b) => {
+        const sideDelta = a.anchor.side - b.anchor.side;
+        if (sideDelta !== 0) return sideDelta;
+        if (a.anchor.side === 0 || a.anchor.side === 2) return a.anchor.c - b.anchor.c;
+        return a.anchor.r - b.anchor.r;
+    });
+    return sorted;
+}
+
 /** @param {RoomRect} node @param {{ centerC: number, centerR: number }} target */
 export function socketSideToward(node, target) {
     const dx = target.centerC - node.centerC;
@@ -99,13 +132,17 @@ export function socketSideToward(node, target) {
     return dy > 0 ? 2 : 0;
 }
 
+/** @param {RoomRect} nodeA @param {RoomRect} nodeB */
+export function maxCorridorWidthBetweenNodes(nodeA, nodeB) {
+    return Math.min(maxRoomWallCorridorWidth(nodeA), maxRoomWallCorridorWidth(nodeB));
+}
+
 /** @param {RoomRect} nodeA @param {RoomRect} nodeB @param {number} corridorWidth */
 export function maxCorridorLanesBetweenNodes(nodeA, nodeB, corridorWidth) {
-    const parentSide = socketSideToward(nodeA, nodeB);
-    const childSide = socketSideToward(nodeB, nodeA);
-    const parentGroups = listWallHoleGroups(listFacingWallSlots(nodeA, parentSide), corridorWidth);
-    const childGroups = listWallHoleGroups(listFacingWallSlots(nodeB, childSide), corridorWidth);
-    return Math.min(maxDisjointWallHoleGroups(parentGroups), maxDisjointWallHoleGroups(childGroups));
+    return Math.min(
+        maxDisjointWallHoleGroups(listRoomWallHoleGroups(nodeA, corridorWidth)),
+        maxDisjointWallHoleGroups(listRoomWallHoleGroups(nodeB, corridorWidth)),
+    );
 }
 
 /** @param {WallHoleGroup[]} groups @param {number} side */

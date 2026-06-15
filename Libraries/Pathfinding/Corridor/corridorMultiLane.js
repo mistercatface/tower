@@ -1,18 +1,12 @@
-import { corridorPathsToOccupiedKeys } from "./corridorFootprint.js";
+import { corridorPathsToOccupiedKeysWithWidths } from "./corridorFootprint.js";
 import {
     addCorridorPathToOccupied,
     buildCorridorLanePath,
     createCorridorLaneRouter,
-    removeCorridorPathFromOccupied,
 } from "./corridorLanePath.js";
 import {
-    listFacingWallSlots,
-    listWallHoleGroups,
-    maxCorridorLanesBetweenNodes,
-    pickSpreadNonOverlappingGroups,
+    listRoomWallHoleGroups,
     shuffleIndexOrder,
-    socketSideToward,
-    sortWallHoleGroupsAlongWall,
     wallHoleGroupsOverlap,
 } from "./corridorWallSlots.js";
 
@@ -28,31 +22,151 @@ import {
  * @property {WallHole[][]} parentHoleGroups
  * @property {WallHole[][]} childHoleGroups
  * @property {CorridorCell[][]} paths
+ * @property {number[]} corridorWidths
  */
 
-/** @param {WallHoleGroup[]} pickedParent @param {WallHoleGroup[]} pickedChild @param {object} ctx @returns {CorridorRouteResult | null} */
-function routePickedHoleGroups(pickedParent, pickedChild, ctx) {
-    const { allRooms, corridorCount, corridorWidth, egressCells, existingPaths, canIntersect, pathfinder, options } = ctx;
-    const baseOccupied = corridorPathsToOccupiedKeys(existingPaths, corridorWidth);
+/** @param {RoomNode} node @param {number} corridorWidth @param {WallHoleGroup[]} picked */
+function availableWallHoleGroups(node, corridorWidth, picked) {
+    const groups = listRoomWallHoleGroups(node, corridorWidth);
+    /** @type {WallHoleGroup[]} */
+    const out = [];
+    for (let i = 0; i < groups.length; i++) {
+        const group = groups[i];
+        let clash = false;
+        for (let j = 0; j < picked.length; j++) {
+            if (wallHoleGroupsOverlap(group, picked[j])) {
+                clash = true;
+                break;
+            }
+        }
+        if (!clash) out.push(group);
+    }
+    return out;
+}
+
+/**
+ * @param {object} params
+ * @param {RoomNode} params.parentNode
+ * @param {RoomNode} params.childNode
+ * @param {RoomNode[]} params.allRooms
+ * @param {number} params.corridorWidth
+ * @param {WallHoleGroup[]} params.pickedParent
+ * @param {WallHoleGroup[]} params.pickedChild
+ * @param {CorridorCell[][]} params.paths
+ * @param {number[]} params.pathWidths
+ * @param {number} params.egressCells
+ * @param {Set<string>} params.laneOccupied
+ * @param {boolean} params.canIntersect
+ * @param {import("./corridorGridPathfinder.js").CorridorGridPathfinder} params.pathfinder
+ * @param {() => number} params.rng
+ * @param {{ maxPathLen?: number }} params.options
+ * @returns {{ parentGroup: WallHoleGroup, childGroup: WallHoleGroup, path: CorridorCell[] } | null}
+ */
+function tryRouteOneCorridorLane(params) {
+    const {
+        parentNode,
+        childNode,
+        allRooms,
+        corridorWidth,
+        pickedParent,
+        pickedChild,
+        paths,
+        pathWidths,
+        egressCells,
+        laneOccupied,
+        canIntersect,
+        pathfinder,
+        rng,
+        options,
+    } = params;
+    const parentGroups = availableWallHoleGroups(parentNode, corridorWidth, pickedParent);
+    const childGroups = availableWallHoleGroups(childNode, corridorWidth, pickedChild);
+    if (!parentGroups.length || !childGroups.length) return null;
+    const parentOrder = shuffleIndexOrder(rng, parentGroups.length);
+    const childOrder = shuffleIndexOrder(rng, childGroups.length);
+    for (let poi = 0; poi < parentOrder.length; poi++) {
+        const pg = parentGroups[parentOrder[poi]];
+        for (let coi = 0; coi < childOrder.length; coi++) {
+            const cg = childGroups[childOrder[coi]];
+            const path = buildCorridorLanePath(
+                pg.anchor,
+                cg.anchor,
+                allRooms,
+                egressCells,
+                corridorWidth,
+                paths,
+                laneOccupied,
+                pathfinder,
+                { canIntersect, maxPathLen: options.maxPathLen, laneWidths: pathWidths },
+            );
+            if (!path) continue;
+            return { parentGroup: pg, childGroup: cg, path };
+        }
+    }
+    return null;
+}
+
+/**
+ * @param {object} params
+ * @param {RoomNode} params.parentNode
+ * @param {RoomNode} params.childNode
+ * @param {RoomNode[]} params.allRooms
+ * @param {number[]} params.corridorWidths
+ * @param {number} params.egressCells
+ * @param {CorridorCell[][]} [params.existingPaths]
+ * @param {number[]} [params.existingPathWidths]
+ * @param {() => number} params.rng
+ * @param {{ canIntersect?: boolean, maxPathLen?: number }} [params.options]
+ * @returns {CorridorRouteResult | null}
+ */
+export function tryRouteCorridorLanes(params) {
+    const {
+        parentNode,
+        childNode,
+        allRooms,
+        corridorWidths,
+        egressCells,
+        existingPaths = [],
+        existingPathWidths = [],
+        rng,
+        options = {},
+    } = params;
+    const canIntersect = options.canIntersect === true;
+    const pathfinder = createCorridorLaneRouter(allRooms);
+    /** @type {Set<string>} */
+    const laneOccupied = canIntersect ? new Set() : corridorPathsToOccupiedKeysWithWidths(existingPaths, existingPathWidths);
+    /** @type {WallHoleGroup[]} */
+    const pickedParent = [];
+    /** @type {WallHoleGroup[]} */
+    const pickedChild = [];
     /** @type {CorridorCell[][]} */
     const paths = [];
-    /** @type {CorridorCell[][]} */
-    const lanePaths = [];
-    for (let lane = 0; lane < corridorCount; lane++) {
-        const path = buildCorridorLanePath(
-            pickedParent[lane].anchor,
-            pickedChild[lane].anchor,
+    /** @type {number[]} */
+    const pathWidths = [];
+    for (let lane = 0; lane < corridorWidths.length; lane++) {
+        const corridorWidth = corridorWidths[lane];
+        const result = tryRouteOneCorridorLane({
+            parentNode,
+            childNode,
             allRooms,
-            egressCells,
             corridorWidth,
-            lanePaths,
-            baseOccupied,
+            pickedParent,
+            pickedChild,
+            paths,
+            pathWidths,
+            egressCells,
+            laneOccupied,
+            canIntersect,
             pathfinder,
-            { canIntersect, maxPathLen: options.maxPathLen },
-        );
-        if (!path) return null;
-        paths.push(path);
-        lanePaths.push(path);
+            rng,
+            options,
+        });
+        if (!result) return null;
+        pickedParent.push(result.parentGroup);
+        pickedChild.push(result.childGroup);
+        paths.push(result.path);
+        pathWidths.push(corridorWidth);
+        if (!canIntersect) addCorridorPathToOccupied(result.path, laneOccupied, corridorWidth);
     }
     return {
         parentAnchors: pickedParent.map((g) => g.anchor),
@@ -60,31 +174,8 @@ function routePickedHoleGroups(pickedParent, pickedChild, ctx) {
         parentHoleGroups: pickedParent.map((g) => g.slots),
         childHoleGroups: pickedChild.map((g) => g.slots),
         paths,
+        corridorWidths: pathWidths,
     };
-}
-
-/** @param {object} params @returns {CorridorRouteResult | null} */
-function tryGreedyCorridorRoute(params) {
-    const { parentNode, childNode, allRooms, corridorCount, corridorWidth, egressCells, existingPaths, options = {} } = params;
-    const canIntersect = options.canIntersect === true;
-    const parentSide = socketSideToward(parentNode, childNode);
-    const childSide = socketSideToward(childNode, parentNode);
-    const parentGroups = sortWallHoleGroupsAlongWall(listWallHoleGroups(listFacingWallSlots(parentNode, parentSide), corridorWidth), parentSide);
-    const childGroups = sortWallHoleGroupsAlongWall(listWallHoleGroups(listFacingWallSlots(childNode, childSide), corridorWidth), childSide);
-    const pickedParent = pickSpreadNonOverlappingGroups(parentGroups, corridorCount);
-    const pickedChild = pickSpreadNonOverlappingGroups(childGroups, corridorCount);
-    if (!pickedParent || !pickedChild) return null;
-    const pathfinder = createCorridorLaneRouter(allRooms);
-    return routePickedHoleGroups(pickedParent, pickedChild, {
-        allRooms,
-        corridorCount,
-        corridorWidth,
-        egressCells,
-        existingPaths,
-        canIntersect,
-        pathfinder,
-        options,
-    });
 }
 
 /**
@@ -101,104 +192,8 @@ function tryGreedyCorridorRoute(params) {
  * @returns {CorridorRouteResult | null}
  */
 export function tryRouteCorridorsBetweenRooms(params) {
-    const {
-        parentNode,
-        childNode,
-        allRooms,
-        corridorCount,
-        corridorWidth,
-        egressCells,
-        existingPaths,
-        rng,
-        options = {},
-    } = params;
-    const canIntersect = options.canIntersect === true;
-
-    if (corridorCount > maxCorridorLanesBetweenNodes(parentNode, childNode, corridorWidth)) return null;
-
-    const greedy = tryGreedyCorridorRoute(params);
-    if (greedy) return greedy;
-
-    const parentSide = socketSideToward(parentNode, childNode);
-    const childSide = socketSideToward(childNode, parentNode);
-    const parentGroups = listWallHoleGroups(listFacingWallSlots(parentNode, parentSide), corridorWidth);
-    const childGroups = listWallHoleGroups(listFacingWallSlots(childNode, childSide), corridorWidth);
-    if (parentGroups.length < corridorCount || childGroups.length < corridorCount) return null;
-
-    const parentOrder = shuffleIndexOrder(rng, parentGroups.length);
-    const childOrder = shuffleIndexOrder(rng, childGroups.length);
-
-    const pathfinder = createCorridorLaneRouter(allRooms);
-    const baseOccupied = corridorPathsToOccupiedKeys(existingPaths, corridorWidth);
-    /** @type {Set<string>} */
-    const laneOccupied = new Set(baseOccupied);
-
-    /** @type {WallHoleGroup[]} */
-    const pickedParent = [];
-    /** @type {WallHoleGroup[]} */
-    const pickedChild = [];
-    /** @type {CorridorCell[][]} */
-    const paths = [];
-
-    /** @param {number} lane @returns {CorridorRouteResult | null} */
-    function backtrack(lane) {
-        if (lane === corridorCount) {
-            return {
-                parentAnchors: pickedParent.map((g) => g.anchor),
-                childAnchors: pickedChild.map((g) => g.anchor),
-                parentHoleGroups: pickedParent.map((g) => g.slots),
-                childHoleGroups: pickedChild.map((g) => g.slots),
-                paths: paths.slice(),
-            };
-        }
-
-        for (let poi = 0; poi < parentOrder.length; poi++) {
-            const pg = parentGroups[parentOrder[poi]];
-            let parentClash = false;
-            for (let i = 0; i < pickedParent.length; i++) if (wallHoleGroupsOverlap(pg, pickedParent[i])) {
-                parentClash = true;
-                break;
-            }
-            if (parentClash) continue;
-
-            for (let coi = 0; coi < childOrder.length; coi++) {
-                const cg = childGroups[childOrder[coi]];
-                let childClash = false;
-                for (let i = 0; i < pickedChild.length; i++) if (wallHoleGroupsOverlap(cg, pickedChild[i])) {
-                    childClash = true;
-                    break;
-                }
-                if (childClash) continue;
-
-                const path = buildCorridorLanePath(
-                    pg.anchor,
-                    cg.anchor,
-                    allRooms,
-                    egressCells,
-                    corridorWidth,
-                    paths,
-                    laneOccupied,
-                    pathfinder,
-                    { canIntersect, maxPathLen: options.maxPathLen },
-                );
-                if (!path) continue;
-
-                pickedParent.push(pg);
-                pickedChild.push(cg);
-                paths.push(path);
-                if (!canIntersect) addCorridorPathToOccupied(path, laneOccupied, corridorWidth);
-                const result = backtrack(lane + 1);
-                if (result) return result;
-                if (!canIntersect) removeCorridorPathFromOccupied(path, laneOccupied, corridorWidth);
-                paths.pop();
-                pickedChild.pop();
-                pickedParent.pop();
-            }
-        }
-        return null;
-    }
-
-    return backtrack(0);
+    const { corridorCount, corridorWidth, existingPaths, options = {}, ...rest } = params;
+    const corridorWidths = new Array(corridorCount).fill(corridorWidth);
+    const existingPathWidths = existingPaths.map(() => corridorWidth);
+    return tryRouteCorridorLanes({ ...rest, corridorWidths, existingPaths, existingPathWidths, options });
 }
-
-export { maxCorridorLanesBetweenNodes } from "./corridorWallSlots.js";

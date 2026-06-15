@@ -1,6 +1,8 @@
 /** @typedef {{ c0: number, c1: number, r0: number, r1: number }} RoomRect */
 /** @typedef {{ originCol: number, originRow: number, cols: number, rows: number }} CorridorSearchBounds */
 
+import { collectCorridorPathPointCells } from "./corridorFootprint.js";
+
 /** @param {RoomRect[]} rooms @param {number} [pad] */
 export function corridorSearchBounds(rooms, pad = 12) {
     let c0 = Infinity;
@@ -49,6 +51,15 @@ export function cellInsideAnyRoom(rooms, c, r) {
 export function corridorPathMidCellsClear(rooms, path) {
     for (let i = 1; i < path.length - 1; i++) if (cellInsideAnyRoom(rooms, path[i].c, path[i].r)) return false;
     return true;
+}
+
+/** @param {import("./corridorFootprint.js").CorridorCell[]} path @param {RoomRect[]} rooms @param {number} corridorWidth */
+export function corridorPathFootprintInsideAnyRoom(rooms, path, corridorWidth) {
+    for (let i = 0; i < path.length; i++) {
+        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, false, i, path.length);
+        for (let ci = 0; ci < cells.length; ci++) if (cellInsideAnyRoom(rooms, cells[ci].c, cells[ci].r)) return true;
+    }
+    return false;
 }
 
 /** @param {number} cols @param {number} rows @param {RoomRect[]} rooms */

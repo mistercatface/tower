@@ -72,25 +72,46 @@ export function corridorPathOccupiedCellKeys(path, corridorWidth, options = {}) 
     return keys;
 }
 
-/** @param {CorridorCell[]} path @param {CorridorCell[][]} others @param {number} corridorWidth */
-export function corridorPathIntersectsAny(path, others, corridorWidth) {
-    const keys = corridorPathOccupiedCellKeys(path, corridorWidth);
+/** @param {CorridorCell[]} path @param {number} pathWidth @param {CorridorCell[][]} others @param {number[]} otherWidths */
+export function corridorPathIntersectsPaths(path, pathWidth, others, otherWidths) {
+    const keys = corridorPathOccupiedCellKeys(path, pathWidth);
     for (let i = 0; i < others.length; i++) {
-        const otherKeys = corridorPathOccupiedCellKeys(others[i], corridorWidth);
+        const otherKeys = corridorPathOccupiedCellKeys(others[i], otherWidths[i]);
         for (const key of otherKeys) if (keys.has(key)) return true;
     }
     return false;
 }
 
-/** @param {CorridorCell[][]} paths @param {number} corridorWidth @param {{ interiorOnly?: boolean }} [options] */
-export function corridorPathsToOccupiedKeys(paths, corridorWidth, options = {}) {
+/** @param {CorridorCell[]} path @param {CorridorCell[][]} others @param {number} corridorWidth @param {number[]} [otherWidths] */
+export function corridorPathIntersectsAny(path, others, corridorWidth, otherWidths) {
+    const widths = otherWidths ?? others.map(() => corridorWidth);
+    return corridorPathIntersectsPaths(path, corridorWidth, others, widths);
+}
+
+/** True when any floor cell is shared — edge-adjacent tubes are allowed. */
+/** @param {CorridorCell[]} path @param {CorridorCell[][]} others @param {number} corridorWidth @param {number[]} [otherWidths] */
+export function corridorPathFootprintsOverlap(path, others, corridorWidth, otherWidths) {
+    return corridorPathIntersectsAny(path, others, corridorWidth, otherWidths);
+}
+
+/** @param {CorridorCell[][]} paths @param {number[]} widths @param {{ interiorOnly?: boolean }} [options] */
+export function corridorPathsToOccupiedKeysWithWidths(paths, widths, options = {}) {
     /** @type {Set<string>} */
     const keys = new Set();
     for (let i = 0; i < paths.length; i++) {
-        const laneKeys = corridorPathOccupiedCellKeys(paths[i], corridorWidth, options);
+        const laneKeys = corridorPathOccupiedCellKeys(paths[i], widths[i], options);
         for (const key of laneKeys) keys.add(key);
     }
     return keys;
+}
+
+/** @param {CorridorCell[][]} paths @param {number} corridorWidth @param {{ interiorOnly?: boolean }} [options] */
+export function corridorPathsToOccupiedKeys(paths, corridorWidth, options = {}) {
+    return corridorPathsToOccupiedKeysWithWidths(
+        paths,
+        paths.map(() => corridorWidth),
+        options,
+    );
 }
 
 /** @param {CorridorCell[]} path @param {Set<string>} occupied @param {number} corridorWidth @param {{ interiorOnly?: boolean }} [options] */

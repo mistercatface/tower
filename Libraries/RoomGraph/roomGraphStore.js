@@ -1,5 +1,6 @@
+import { clampLinkCorridorRanges, ensureLinkCorridorFields } from "./roomGraphLinkCorridor.js";
 /** @typedef {{ id: number, col: number, row: number, width: number, height: number }} RoomNode */
-/** @typedef {{ id: number, a: number, b: number, corridorCount?: number, corridorWidth?: number, canIntersect?: boolean, seed?: number }} RoomLink */
+/** @typedef {{ id: number, a: number, b: number, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, canIntersect?: boolean, seed?: number }} RoomLink */
 /** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[] }} RoomGraphDoc */
 /** @param {object} state @returns {RoomGraphDoc} */
 export function getRoomGraph(state) {
@@ -112,18 +113,23 @@ export function addRoomLink(state, a, b) {
     const existing = findRoomLinkBetween(state, a, b);
     if (existing) return existing;
     const graph = getRoomGraph(state);
-    const link = { id: graph.nextLinkId++, a, b, corridorCount: 1, corridorWidth: 1, canIntersect: false, seed: (Math.random() * 0xffffffff) | 0 };
+    const link = { id: graph.nextLinkId++, a, b, corridorCount: 1, corridorWidthMin: 1, corridorWidthMax: 1, canIntersect: false, seed: (Math.random() * 0xffffffff) | 0 };
     graph.links.push(link);
     return link;
 }
-/** @param {object} state @param {number} linkId @param {{ corridorCount?: number, corridorWidth?: number, canIntersect?: boolean, seed?: number }} patch @returns {boolean} */
+/** @param {object} state @param {number} linkId @param {{ corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, canIntersect?: boolean, seed?: number }} patch @returns {boolean} */
 export function updateRoomLink(state, linkId, patch) {
     const link = getRoomLink(state, linkId);
     if (!link) return false;
-    if (patch.corridorCount != null) link.corridorCount = Math.max(1, Math.min(8, Math.round(patch.corridorCount)));
-    if (patch.corridorWidth != null) link.corridorWidth = Math.max(1, Math.min(8, Math.round(patch.corridorWidth)));
+    if (patch.corridorCount != null) link.corridorCount = Math.round(patch.corridorCount);
+    if (patch.corridorWidthMin != null) link.corridorWidthMin = Math.round(patch.corridorWidthMin);
+    if (patch.corridorWidthMax != null) link.corridorWidthMax = Math.round(patch.corridorWidthMax);
     if (patch.canIntersect != null) link.canIntersect = patch.canIntersect;
     if (patch.seed != null) link.seed = patch.seed | 0;
+    const nodeA = getRoomNode(state, link.a);
+    const nodeB = getRoomNode(state, link.b);
+    if (nodeA && nodeB) clampLinkCorridorRanges(link, nodeA, nodeB);
+    else ensureLinkCorridorFields(link);
     return true;
 }
 /** @param {object} state @param {number} linkId @returns {boolean} */
@@ -160,7 +166,15 @@ export function listRoomNodeLinkEntries(state, nodeId) {
 }
 /** @param {object} state @param {RoomGraphDoc} doc */
 export function replaceRoomGraph(state, doc) {
-    state.roomGraph = { nodes: doc.nodes.map((node) => ({ ...node })), links: doc.links.map((link) => ({ ...link })), nextNodeId: doc.nextNodeId, nextLinkId: doc.nextLinkId, bakedRails: [] };
+    const links = doc.links.map((link) => {
+        const copy = { ...link };
+        ensureLinkCorridorFields(copy);
+        const nodeA = doc.nodes.find((node) => node.id === copy.a);
+        const nodeB = doc.nodes.find((node) => node.id === copy.b);
+        if (nodeA && nodeB) clampLinkCorridorRanges(copy, nodeA, nodeB);
+        return copy;
+    });
+    state.roomGraph = { nodes: doc.nodes.map((node) => ({ ...node })), links, nextNodeId: doc.nextNodeId, nextLinkId: doc.nextLinkId, bakedRails: [] };
 }
 /** @param {object} state @returns {RoomGraphDoc} */
 export function cloneRoomGraphDoc(state) {

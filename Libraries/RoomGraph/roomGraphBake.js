@@ -12,6 +12,7 @@ import {
     tryBuildCorridorForEdge,
 } from "../Sandbox/sandboxRoomGraphGen.js";
 import { getRoomGraph, listRoomLinks, listRoomNodes } from "./roomGraphStore.js";
+import { resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
 
 /** @typedef {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }} BakedRail */
 /** @typedef {{ id: number, c0: number, c1: number, r0: number, r1: number, centerC: number, centerR: number, width: number, height: number }} AuthoredGraphNode */
@@ -64,7 +65,10 @@ function buildAuthoredBakeLayout(state) {
         }),
     };
     const closedRooms = buildRoomsFromNodeGraph(nodeGraph);
-    return { rooms: graphNodes, graphEdges, closedRooms, gridCols: grid.cols, gridRows: grid.rows, links, nodeGraph };
+    /** @type {Map<number, import("./roomGraphStore.js").RoomNode>} */
+    const roomNodeById = new Map();
+    for (let i = 0; i < roomNodes.length; i++) roomNodeById.set(roomNodes[i].id, roomNodes[i]);
+    return { rooms: graphNodes, graphEdges, closedRooms, gridCols: grid.cols, gridRows: grid.rows, links, nodeGraph, roomNodeById };
 }
 
 /** @param {object} state */
@@ -129,6 +133,8 @@ function computeRoomGraphRailWalls(layout) {
     for (let i = 0; i < links.length; i++) linkById.set(links[i].id, links[i]);
     /** @type {import("../Sandbox/sandboxRoomGraphGen.js").Cell[][]} */
     const placedPaths = [];
+    /** @type {number[]} */
+    const placedPathWidths = [];
     /** @type {import("../Sandbox/sandboxRoomGraphGen.js").RailWall[][]} */
     const corridorRailLists = [];
     const layoutForEdge = { rooms, graphEdges: nodeGraph.directedEdges, gridCols: layout.gridCols, gridRows: layout.gridRows, closedRooms };
@@ -141,17 +147,18 @@ function computeRoomGraphRailWalls(layout) {
         const roomB = closedRooms[directedEdge.b];
         const snapA = snapshotClosedRoomState(roomA);
         const snapB = snapshotClosedRoomState(roomB);
+        const nodeA = layout.roomNodeById.get(link.a);
+        const nodeB = layout.roomNodeById.get(link.b);
         const rng = createSeededRng(link.seed ?? link.id * 9973);
-        const corridorCount = link.corridorCount ?? 1;
-        const corridorWidth = link.corridorWidth ?? 1;
+        const { corridorCount, corridorWidths } = resolveLinkCorridorRoll(link, nodeA, nodeB, rng);
         const canIntersect = link.canIntersect === true;
         let result = null;
         try {
             result = tryBuildCorridorForEdge(edgeIndex, layoutForEdge, closedRooms, rng, originCol, originRow, {
-                corridorCount,
-                corridorWidth,
+                corridorWidths,
                 canIntersect,
                 existingPaths: canIntersect ? [] : placedPaths,
+                existingPathWidths: canIntersect ? [] : placedPathWidths,
                 skipPunchIfHolesPresent: false,
             });
         } catch {
@@ -161,7 +168,10 @@ function computeRoomGraphRailWalls(layout) {
             continue;
         }
         if (!result) continue;
-        for (let pi = 0; pi < result.paths.length; pi++) placedPaths.push(result.paths[pi]);
+        for (let pi = 0; pi < result.paths.length; pi++) {
+            placedPaths.push(result.paths[pi]);
+            placedPathWidths.push(result.corridorWidths[pi]);
+        }
         corridorRailLists.push(result.railWalls);
     }
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);

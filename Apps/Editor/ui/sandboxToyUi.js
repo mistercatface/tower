@@ -18,7 +18,7 @@ import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../.
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
 import { portalAccessDefaultAllowedSide } from "../../../Libraries/Spatial/grid/portalAccess.js";
-import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField } from "../../../Libraries/UI/paramFields.js";
+import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNumberField, appendNumberRangeField, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 const WALL_STAMP_OPTIONS = [
@@ -640,27 +640,37 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     return;
                 }
                 if (selectedRoomLink) {
+                    const limitHint =
+                        selectedRoomLink.maxCorridorWidth != null ? ` Max corridor width for this wall pair: ${selectedRoomLink.maxCorridorWidth}.` : "";
+                    const rollHint =
+                        selectedRoomLink.rolledCorridorWidths != null
+                            ? ` Current seed: ${selectedRoomLink.rolledCorridorCount} corridor(s), widths [${selectedRoomLink.rolledCorridorWidths.join(", ")}].`
+                            : "";
                     appendEditorHint(
                         body,
-                        `${selectedRoomLink.label}. Corridor count and width apply when you reroll.${
-                            selectedRoomLink.maxCorridorLanes != null ? ` Up to ${selectedRoomLink.maxCorridorLanes} lanes fit on the facing walls at this width.` : ""
-                        }`,
+                        `${selectedRoomLink.label}. Corridor count is fixed; width range rolls per corridor on reroll.${limitHint}${rollHint}`,
                     );
                     appendNumberField(body, "Corridor count", {
                         value: selectedRoomLink.corridorCount ?? 1,
                         step: 1,
                         min: 1,
+                        max: selectedRoomLink.maxCorridorCount,
                         onChange: (corridorCount) => {
                             controller.updateSelectedRoomLink({ corridorCount });
                             onChange();
                         },
                     });
-                    appendNumberField(body, "Corridor width", {
-                        value: selectedRoomLink.corridorWidth ?? 1,
-                        step: 1,
-                        min: 1,
-                        onChange: (corridorWidth) => {
-                            controller.updateSelectedRoomLink({ corridorWidth });
+                    appendNumberRangeField(body, "Corridor width", {
+                        minValue: selectedRoomLink.corridorWidthMin ?? 1,
+                        maxValue: selectedRoomLink.corridorWidthMax ?? 1,
+                        floor: 1,
+                        ceiling: selectedRoomLink.maxCorridorWidth ?? 1,
+                        onMinChange: (corridorWidthMin) => {
+                            controller.updateSelectedRoomLink({ corridorWidthMin });
+                            onChange();
+                        },
+                        onMaxChange: (corridorWidthMax) => {
+                            controller.updateSelectedRoomLink({ corridorWidthMax });
                             onChange();
                         },
                     });

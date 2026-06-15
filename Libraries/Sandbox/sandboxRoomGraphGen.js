@@ -1,12 +1,15 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
 import {
     buildCorridorLanePath,
+    cellInsideAnyRoom,
     collectCorridorPathPointCells,
     corridorPathIntersectsAny,
     corridorPathsToOccupiedKeys,
+    corridorPathsToOccupiedKeysWithWidths,
     corridorPerpendicularOffsets,
     corridorSearchBounds,
     createCorridorLaneRouter,
+    tryRouteCorridorLanes,
     tryRouteCorridorsBetweenRooms,
 } from "../Pathfinding/Corridor/index.js";
 export { corridorPerpendicularOffsets, corridorPathIntersectsAny };
@@ -912,15 +915,51 @@ function markMask(mask, cols, rows, c, r) {
     mask[cellIdx(cols, c, r)] = 1;
 }
 /** @param {Uint8Array} mask @param {number} cols @param {number} rows @param {Cell[]} path @param {number} corridorWidth */
-function stampCorridorTube(mask, cols, rows, path, corridorWidth) {
+function stampCorridorTube(mask, cols, rows, path, corridorWidth, rooms) {
     const bounds = { originCol: 0, originRow: 0, cols, rows };
-    stampCorridorTubeLocal(mask, bounds, path, corridorWidth);
+    stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms);
 }
-/** @param {Uint8Array} mask @param {{ originCol: number, originRow: number, cols: number, rows: number }} bounds @param {Cell[]} path @param {number} corridorWidth */
-function stampCorridorTubeLocal(mask, bounds, path, corridorWidth) {
+/** @param {RailWall} wall */
+function railWallEdgeKey(wall) {
+    return `${wall.col},${wall.row},${wall.side}`;
+}
+
+/** @param {RailWall[]} rails */
+function dedupeRailWallsByEdge(rails) {
+    /** @type {Set<string>} */
+    const seen = new Set();
+    /** @type {RailWall[]} */
+    const out = [];
+    for (let i = 0; i < rails.length; i++) {
+        const wall = rails[i];
+        const key = railWallEdgeKey(wall);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(wall);
+    }
+    return out;
+}
+
+/** Per-lane floor masks so adjacent corridors keep a shared divider rail on their common edge. */
+/** @param {Cell[]} paths @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number | number[]} corridorWidths @param {Set<string>} gapKeysWorld @param {GraphNode[]} rooms */
+function corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms) {
+    /** @type {RailWall[]} */
+    const rails = [];
+    for (let pi = 0; pi < paths.length; pi++) {
+        const laneMask = new Uint8Array(stampBounds.cols * stampBounds.rows);
+        const width = Array.isArray(corridorWidths) ? corridorWidths[pi] : corridorWidths;
+        stampCorridorTubeLocal(laneMask, stampBounds, paths[pi], width, rooms);
+        rails.push(...railWallsFromFloorMask(laneMask, stampBounds.cols, stampBounds.rows, stampBounds.originCol, stampBounds.originRow));
+    }
+    return omitRailWallsAtGapKeys(dedupeRailWallsByEdge(rails), gapKeysWorld);
+}
+
+/** @param {Uint8Array} mask @param {{ originCol: number, originRow: number, cols: number, rows: number }} bounds @param {Cell[]} path @param {number} corridorWidth @param {import("../Pathfinding/Corridor/corridorWalkGrid.js").RoomRect[]} rooms */
+function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms) {
     for (let i = 0; i < path.length; i++) {
         const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, false, i, path.length);
         for (let ci = 0; ci < cells.length; ci++) {
+            if (cellInsideAnyRoom(rooms, cells[ci].c, cells[ci].r)) continue;
             const lc = cells[ci].c - bounds.originCol;
             const lr = cells[ci].r - bounds.originRow;
             if (lc < 0 || lr < 0 || lc >= bounds.cols || lr >= bounds.rows) continue;
@@ -962,7 +1001,7 @@ export function tryBuildCorridorRails(layout, rng, originCol, originRow, options
         const path = buildEdgeCorridorPath(edge, rooms, rng, egressCells);
         if (!path) return null;
         paths.push(path);
-        stampCorridorTube(mask, gridCols, gridRows, path, corridorWidth);
+        stampCorridorTube(mask, gridCols, gridRows, path, corridorWidth, rooms);
     }
     return { paths, mask, railWalls: railWallsFromFloorMask(mask, gridCols, gridRows, originCol, originRow) };
 }
@@ -1016,13 +1055,14 @@ export function punchHolesForNodeIncidentEdges(layout, closedRooms, nodeId, rng,
         }
     }
 }
-/** @param {number} edgeIndex @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng @param {number} originCol @param {number} originRow @param {{ corridorCount?: number, corridorWidth?: number, halfWidth?: number, egressCells?: number, canIntersect?: boolean, existingPaths?: Cell[][], skipPunchIfHolesPresent?: boolean }} [options] */
+/** @param {number} edgeIndex @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng @param {number} originCol @param {number} originRow @param {{ corridorCount?: number, corridorWidth?: number, corridorWidths?: number[], halfWidth?: number, egressCells?: number, canIntersect?: boolean, existingPaths?: Cell[][], existingPathWidths?: number[], skipPunchIfHolesPresent?: boolean }} [options] */
 export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, originCol, originRow, options = {}) {
-    const corridorCount = options.corridorCount ?? 1;
-    const corridorWidth = resolveCorridorWidth(options);
+    const corridorWidths = options.corridorWidths ?? new Array(options.corridorCount ?? 1).fill(resolveCorridorWidth(options));
+    const corridorCount = corridorWidths.length;
     const egressCells = options.egressCells ?? DEFAULT_CORRIDOR_EGRESS_CELLS;
-    const canIntersect = options.canIntersect !== false;
+    const canIntersect = options.canIntersect === true;
     const existingPaths = options.existingPaths ?? [];
+    const existingPathWidths = options.existingPathWidths ?? existingPaths.map(() => corridorWidths[0]);
     const skipPunch = options.skipPunchIfHolesPresent === true;
     const { rooms, graphEdges, gridCols, gridRows } = layout;
     const edge = graphEdges[edgeIndex];
@@ -1032,14 +1072,14 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
     /** @type {Cell[][]} */
     let paths = [];
     if (punchedHere) {
-        const route = tryRouteCorridorsBetweenRooms({
+        const route = tryRouteCorridorLanes({
             parentNode: rooms[edge.a],
             childNode: rooms[edge.b],
             allRooms: rooms,
-            corridorCount,
-            corridorWidth,
+            corridorWidths,
             egressCells,
             existingPaths: canIntersect ? [] : existingPaths,
+            existingPathWidths: canIntersect ? [] : existingPathWidths,
             rng,
             options: { canIntersect },
         });
@@ -1057,25 +1097,31 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
         edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
         edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
         const pathfinder = createCorridorLaneRouter(rooms);
-        const baseOccupied = corridorPathsToOccupiedKeys(canIntersect ? [] : existingPaths, corridorWidth);
+        /** @type {Set<string>} */
+        const baseOccupied = canIntersect ? new Set() : corridorPathsToOccupiedKeysWithWidths(existingPaths, existingPathWidths);
         /** @type {Cell[][]} */
         const lanePaths = canIntersect ? [] : existingPaths.slice();
+        /** @type {number[]} */
+        const laneWidths = canIntersect ? [] : existingPathWidths.slice();
         for (let lane = 0; lane < corridorCount; lane++) {
+            const corridorWidth = corridorWidths[lane];
             const { parentHole, childHole } = edgeHolePairAtLane(edge, lane);
-            const path = buildCorridorLanePath(parentHole, childHole, rooms, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, { canIntersect });
+            const path = buildCorridorLanePath(parentHole, childHole, rooms, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, {
+                canIntersect,
+                laneWidths,
+            });
             if (!path) return null;
             paths.push(path);
             lanePaths.push(path);
+            laneWidths.push(corridorWidth);
         }
     }
     /** @type {RailWall[][]} */
     const railLists = [];
     const stampBounds = corridorSearchBounds(rooms, DEFAULT_CORRIDOR_EGRESS_CELLS + 6);
-    const mask = new Uint8Array(stampBounds.cols * stampBounds.rows);
-    for (let pi = 0; pi < paths.length; pi++) stampCorridorTubeLocal(mask, stampBounds, paths[pi], corridorWidth);
     const gapKeysWorld = roomWallGapKeysWorld(closedRooms, originCol, originRow);
-    railLists.push(omitRailWallsAtGapKeys(railWallsFromFloorMask(mask, stampBounds.cols, stampBounds.rows, stampBounds.originCol, stampBounds.originRow), gapKeysWorld));
-    return { edgeIndex, edge, path: paths[0], paths, railWalls: mergeRailWalls(railLists) };
+    railLists.push(corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms));
+    return { edgeIndex, edge, path: paths[0], paths, corridorWidths, railWalls: mergeRailWalls(railLists) };
 }
 /** Punch + route up to `corridorEdgeCount` tree edges (shuffled order). Shared rooms accumulate holes. */
 /** @param {RoomGraphLayout} layout @param {ClosedRoom[]} closedRooms @param {() => number} rng @param {number} originCol @param {number} originRow @param {{ corridorEdgeCount?: number, canIntersect?: boolean, corridorWidth?: number, halfWidth?: number, egressCells?: number }} [options] */
