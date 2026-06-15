@@ -317,7 +317,8 @@ export function syncPassagePowerNetwork(state) {
         }
     }
     if (splitInvalidPortalLinks(grid, poweredKeys, networkIdByKey)) grid.bumpWallGridRevision();
-    syncBoundaryNavIndex(state);
+    if (grid.edgeStore.portalEdgeCount > 0) syncBoundaryNavIndex(state);
+    else grid.boundaryNavHops = new Map();
     if (minCol === Infinity) return;
     state.navigation.onObstaclesChanged({ startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow });
 }

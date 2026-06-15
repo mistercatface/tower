@@ -1,6 +1,7 @@
-import { CARDINAL_OFFSETS, cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { portalCrossingVectorForEdge, portalTraverseExitCell, portalTraverseExitVector } from "../Spatial/grid/portalAccess.js";
-import { gridWallEdgeEndpoints } from "../World/wallGridCells.js";
+import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
+import { portalCrossingVectorForEdge, portalMouthAndBackCells, portalTraverseExitCell, portalTraverseExitVector } from "../Spatial/grid/portalAccess.js";
+import { forEachGridEdge, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
 import { evaluatePortalStepEntry } from "./portalLinks.js";
 /**
  * @typedef {{
@@ -27,30 +28,26 @@ const DRAW_P2 = { x: 0, y: 0 };
 export function buildBoundaryNavHops(state, grid) {
     /** @type {Map<number, BoundaryNavHop[]>} */
     const hopsByFromIdx = new Map();
-    if (!grid.cols) return hopsByFromIdx;
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        if (grid.grid[idx] !== 0) continue;
-        const fromCol = idx % grid.cols;
-        const fromRow = (idx / grid.cols) | 0;
-        for (let d = 0; d < CARDINAL_OFFSETS.length; d++) {
-            const { dc, dr } = CARDINAL_OFFSETS[d];
-            const toCol = fromCol + dc;
-            const toRow = fromRow + dr;
-            if (!cellInRect(toCol, toRow, grid.cols, grid.rows)) continue;
-            const entry = evaluatePortalStepEntry(state, grid, fromCol, fromRow, toCol, toRow);
-            if (!entry) continue;
+    if (!grid.cols || !grid.edgeStore.portalEdgeCount) return hopsByFromIdx;
+    forEachGridEdge(
+        grid,
+        (ownerCol, ownerRow, ownerSide, edge) => {
+            const { mouth, back } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
+            if (grid.grid[colRowToIndex(mouth.col, mouth.row, grid.cols)] !== 0) return;
+            const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
+            if (!entry) return;
             const exit = portalTraverseExitCell(grid, entry.partner.col, entry.partner.row, entry.partner.side);
-            if (!cellInRect(exit.col, exit.row, grid.cols, grid.rows) || grid.grid[colRowToIndex(exit.col, exit.row, grid.cols)] !== 0) continue;
+            if (!cellInRect(exit.col, exit.row, grid.cols, grid.rows) || grid.grid[colRowToIndex(exit.col, exit.row, grid.cols)] !== 0) return;
+            const idx = colRowToIndex(mouth.col, mouth.row, grid.cols);
             let list = hopsByFromIdx.get(idx);
             if (!list) {
                 list = [];
                 hopsByFromIdx.set(idx, list);
             }
-            if (list.some((hop) => hop.exitCol === exit.col && hop.exitRow === exit.row)) continue;
+            if (list.some((hop) => hop.exitCol === exit.col && hop.exitRow === exit.row)) return;
             list.push({
-                mouthCol: fromCol,
-                mouthRow: fromRow,
+                mouthCol: mouth.col,
+                mouthRow: mouth.row,
                 exitCol: exit.col,
                 exitRow: exit.row,
                 cost: 1,
@@ -61,13 +58,18 @@ export function buildBoundaryNavHops(state, grid) {
                 partnerRow: entry.partner.row,
                 partnerSide: entry.partner.side,
             });
-        }
-    }
+        },
+        { canonicalOnly: true, filter: isPortalEdge },
+    );
     return hopsByFromIdx;
 }
 /** @param {object} state */
 export function syncBoundaryNavIndex(state) {
     const grid = state.obstacleGrid;
+    if (!grid.edgeStore.portalEdgeCount) {
+        grid.boundaryNavHops = new Map();
+        return;
+    }
     grid.boundaryNavHops = buildBoundaryNavHops(state, grid);
     state.hierarchicalNavigator?.connectBoundaryHopRegionPairs?.();
 }

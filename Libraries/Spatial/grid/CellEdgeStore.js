@@ -13,6 +13,8 @@ export class CellEdgeStore {
         this.free = [];
         /** Mirrored passage edges (forcefield + portal) — one count per pooled edge. */
         this.passageEdgeCount = 0;
+        /** Mirrored portal edges — subset of passage edges. */
+        this.portalEdgeCount = 0;
     }
     /** @param {number} cellCount */
     reset(cellCount) {
@@ -21,18 +23,23 @@ export class CellEdgeStore {
         this.pool.length = 0;
         this.free.length = 0;
         this.passageEdgeCount = 0;
+        this.portalEdgeCount = 0;
     }
-    /** Full scan — reconciles count after bulk grid rebuilds. */
+    /** Full scan — reconciles passage/portal counts after bulk grid rebuilds. */
     recomputePassageEdgeCount() {
         const seen = new Set();
-        let count = 0;
+        let passageCount = 0;
+        let portalCount = 0;
         for (let i = 0; i < this.slots.length; i++) {
             const ref = this.slots[i];
             if (ref === EMPTY || seen.has(ref)) continue;
             seen.add(ref);
-            if (isForcefieldEdge(this.pool[ref])) count++;
+            const edge = this.pool[ref];
+            if (isForcefieldEdge(edge)) passageCount++;
+            if (isPortalEdge(edge)) portalCount++;
         }
-        this.passageEdgeCount = count;
+        this.passageEdgeCount = passageCount;
+        this.portalEdgeCount = portalCount;
     }
     /**
      * @param {Int32Array} oldSlots
@@ -145,6 +152,7 @@ export class CellEdgeStore {
         const nSide = gridWallEdgeMirrorSide(side);
         if (cellInRect(nc, nr, cols, rows)) this._setSlot(nc, nr, nSide, cols, ref);
         if (isForcefieldEdge(edge)) this.passageEdgeCount++;
+        if (isPortalEdge(edge)) this.portalEdgeCount++;
     }
     /**
      * @param {number} col
@@ -159,6 +167,7 @@ export class CellEdgeStore {
         const ref = this.slots[slot];
         if (ref === EMPTY) return;
         if (isForcefieldEdge(this.pool[ref])) this.passageEdgeCount--;
+        if (isPortalEdge(this.pool[ref])) this.portalEdgeCount--;
         this.slots[slot] = EMPTY;
         const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
         const nSide = gridWallEdgeMirrorSide(side);

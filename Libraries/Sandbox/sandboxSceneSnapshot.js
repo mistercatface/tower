@@ -97,10 +97,19 @@ export function collectSandboxSceneSnapshot(state) {
         roomGraph: collectRoomGraphForSnapshot(state, grid),
     };
 }
+/** @param {Record<string, unknown>} doc */
+function normalizeSandboxSceneDoc(doc) {
+    if (doc.schemaVersion === 7) {
+        doc.schemaVersion = 8;
+        if (!doc.roomGraph) doc.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0 };
+    }
+    return doc;
+}
 /** @param {unknown} raw */
 export function parseSandboxSceneSnapshot(raw) {
     const doc = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!doc || typeof doc !== "object") throw new Error("Scene JSON must be an object");
+    normalizeSandboxSceneDoc(doc);
     // Strict version match — intentional; do not add legacy schema adapters here yet.
     if (doc.schemaVersion !== SANDBOX_SCENE_SCHEMA_VERSION) throw new Error(`Unsupported schema version: ${doc.schemaVersion}`);
     if (!Array.isArray(doc.voxels)) throw new Error("Scene JSON missing voxels array");

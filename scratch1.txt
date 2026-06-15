@@ -179,7 +179,8 @@ Provided complete, copy-pasteable diff files to allow you to easily apply them.
 
 
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
+  "roomGraph": { "nodes": [], "links": [], "nextNodeId": 0, "nextLinkId": 0 }
   "cellSize": 16,
   "origin": {
     "minX": -1200,
