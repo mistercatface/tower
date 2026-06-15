@@ -478,7 +478,7 @@ export class WorldObstacleGrid {
             fn(exitCol, exitRow, cost);
         }
     }
-    /** @param {(col: number, row: number, hops: import("../../Sandbox/boundaryNavIndex.js").BoundaryNavHop[]) => void} fn */
+    /** @param {(col: number, row: number, hops: import("../../Pathfinding/boundaryNavHops.js").BoundaryNavHop[]) => void} fn */
     forEachBoundaryHopCell(fn) {
         const hopsByIdx = this.boundaryNavHops;
         if (!hopsByIdx) return;

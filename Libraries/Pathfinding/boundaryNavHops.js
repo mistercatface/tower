@@ -2,9 +2,7 @@ import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import { portalCrossingVectorForEdge, portalMouthAndBackCells, portalTraverseExitCell, portalTraverseExitVector } from "../Spatial/grid/portalAccess.js";
 import { forEachGridEdge, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
-import { evaluatePortalStepEntry } from "./portalLinks.js";
-/**
- * @typedef {{
+/** @typedef {{
  *   mouthCol: number,
  *   mouthRow: number,
  *   exitCol: number,
@@ -16,16 +14,16 @@ import { evaluatePortalStepEntry } from "./portalLinks.js";
  *   partnerCol: number,
  *   partnerRow: number,
  *   partnerSide: number,
- * }} BoundaryNavHop
- */
+ * }} BoundaryNavHop */
+/** @typedef {{ source: { col: number, row: number, side: number }, partner: { col: number, row: number, side: number } }} PortalHopEntry */
 const DRAW_P1 = { x: 0, y: 0 };
 const DRAW_P2 = { x: 0, y: 0 };
 /**
- * @param {object} state
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {(grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, mouthCol: number, mouthRow: number, backCol: number, backRow: number) => PortalHopEntry | null} resolvePortalHopEntry
  * @returns {Map<number, BoundaryNavHop[]>}
  */
-export function buildBoundaryNavHops(state, grid) {
+export function buildBoundaryNavHops(grid, resolvePortalHopEntry) {
     /** @type {Map<number, BoundaryNavHop[]>} */
     const hopsByFromIdx = new Map();
     if (!grid.cols || !grid.edgeStore.portalEdgeCount) return hopsByFromIdx;
@@ -34,7 +32,7 @@ export function buildBoundaryNavHops(state, grid) {
         (ownerCol, ownerRow, ownerSide, edge) => {
             const { mouth, back } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
             if (grid.grid[colRowToIndex(mouth.col, mouth.row, grid.cols)] !== 0) return;
-            const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
+            const entry = resolvePortalHopEntry(grid, mouth.col, mouth.row, back.col, back.row);
             if (!entry) return;
             const exit = portalTraverseExitCell(grid, entry.partner.col, entry.partner.row, entry.partner.side);
             if (!cellInRect(exit.col, exit.row, grid.cols, grid.rows) || grid.grid[colRowToIndex(exit.col, exit.row, grid.cols)] !== 0) return;
@@ -63,32 +61,14 @@ export function buildBoundaryNavHops(state, grid) {
     );
     return hopsByFromIdx;
 }
-/** @param {object} state */
-export function syncBoundaryNavIndex(state) {
-    const grid = state.obstacleGrid;
-    if (!grid.edgeStore.portalEdgeCount) {
-        grid.boundaryNavHops = new Map();
-        return;
-    }
-    grid.boundaryNavHops = buildBoundaryNavHops(state, grid);
-    state.hierarchicalNavigator?.connectBoundaryHopRegionPairs?.();
-}
-/** @typedef {import("../Pathfinding/NavGraph.js").BoundaryHopNavGraph} BoundaryHopNavGraph */
-/**
- * @param {{ col: number, row: number }} prev
- * @param {{ col: number, row: number }} curr
- * @param {BoundaryHopNavGraph} navGraph
- * @returns {BoundaryNavHop | null}
- */
+/** @typedef {import("./NavGraph.js").BoundaryHopNavGraph} BoundaryHopNavGraph */
+/** @param {{ col: number, row: number }} prev @param {{ col: number, row: number }} curr @param {BoundaryHopNavGraph} navGraph */
 function boundaryHopOnCellStep(prev, curr, navGraph) {
     if (!navGraph.canBoundaryHop(prev.col, prev.row, curr.col, curr.row)) return null;
     const hops = navGraph.getBoundaryHops(prev.col, prev.row);
     return hops?.find((entry) => entry.exitCol === curr.col && entry.exitRow === curr.row) ?? null;
 }
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {BoundaryNavHop} hop
- */
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {BoundaryNavHop} hop */
 export function boundaryHopDrawGeometry(grid, hop) {
     gridWallEdgeEndpoints(grid, hop.ownerCol, hop.ownerRow, hop.ownerSide, DRAW_P1, DRAW_P2, 0);
     const entryMid = { x: (DRAW_P1.x + DRAW_P2.x) * 0.5, y: (DRAW_P1.y + DRAW_P2.y) * 0.5 };
@@ -99,11 +79,7 @@ export function boundaryHopDrawGeometry(grid, hop) {
     const exitVector = portalTraverseExitVector(grid, hop.partnerCol, hop.partnerRow, hop.partnerSide);
     return { entryMid, entryCross, exitMid, exitVector };
 }
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {{ x: number, y: number }} fromWorld
- * @param {{ x: number, y: number }} toWorld
- */
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} fromWorld @param {{ x: number, y: number }} toWorld */
 export function boundaryHopDrawGeometryBetweenWorldPoints(grid, fromWorld, toWorld) {
     const c1 = grid.worldToGrid(fromWorld.x, fromWorld.y);
     const c2 = grid.worldToGrid(toWorld.x, toWorld.y);
@@ -118,13 +94,7 @@ export function boundaryHopDrawGeometryBetweenWorldPoints(grid, fromWorld, toWor
     }
     return null;
 }
-/**
- * Boundary hops jump entry → exit in one graph step. Movement must step onto the mouth cell first
- * so physics traverse fires; insert mouth waypoints and omit the graph exit (replan after traverse).
- *
- * @param {{ col: number, row: number }[]} cells
- * @param {BoundaryHopNavGraph} navGraph
- */
+/** Boundary hops jump entry → exit in one graph step; insert mouth waypoints and omit the graph exit. */
 export function expandBoundaryHopsInCellPath(cells, navGraph) {
     if (!cells.length || !navGraph.canBoundaryHop || !navGraph.getBoundaryHops) return cells;
     /** @type {{ col: number, row: number }[]} */
@@ -142,13 +112,7 @@ export function expandBoundaryHopsInCellPath(cells, navGraph) {
     }
     return out;
 }
-/**
- * Mouth cell for an explicit boundary hop on a cell path (entry → exit), not incidental portal proximity.
- *
- * @param {{ col: number, row: number }[]} cells
- * @param {BoundaryHopNavGraph} navGraph
- * @returns {{ col: number, row: number } | null}
- */
+/** @param {{ col: number, row: number }[]} cells @param {BoundaryHopNavGraph} navGraph */
 export function boundaryHopMouthOnCellPath(cells, navGraph) {
     if (!cells.length || !navGraph.canBoundaryHop) return null;
     for (let i = 1; i < cells.length; i++) {
@@ -157,14 +121,7 @@ export function boundaryHopMouthOnCellPath(cells, navGraph) {
     }
     return null;
 }
-/**
- * Index of the hop mouth waypoint in a world path, or null when no hop / mouth trimmed away.
- *
- * @param {{ col: number, row: number }[]} rawCellPath
- * @param {{ x: number, y: number }[]} worldPath
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @returns {number | null}
- */
+/** @param {{ col: number, row: number }[]} rawCellPath @param {{ x: number, y: number }[]} worldPath @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function boundaryHopWaypointIndex(rawCellPath, worldPath, grid) {
     const mouth = boundaryHopMouthOnCellPath(rawCellPath, grid);
     if (!mouth || !worldPath.length) return null;

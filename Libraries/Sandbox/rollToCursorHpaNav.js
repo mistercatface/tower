@@ -1,7 +1,7 @@
 import { agentPose } from "../Agent/index.js";
 import { createNavState } from "../Pathfinding/navSession.js";
 import { computePathSteering, findPathProgressIdx } from "../Pathfinding/pathFollow.js";
-import { expandBoundaryHopsInCellPath, boundaryHopWaypointIndex } from "./boundaryNavIndex.js";
+import { expandBoundaryHopsInCellPath, boundaryHopWaypointIndex } from "../Pathfinding/boundaryNavHops.js";
 /** @typedef {import("../Pathfinding/navSession.js").NavSessionState} NavSessionState */
 const REPLAN_TARGET_MOVE_PX = 64;
 /** @returns {{ navState: NavSessionState & { boundaryHopIdx: number | null }, reset: () => void, replan: (prop: object, targetX: number, targetY: number, state: object) => void, update: (prop: object, targetX: number, targetY: number, state: object, dtMs: number) => void, getSteering: (prop: object, targetX: number, targetY: number, settings: object, grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid) => import("../Agent/types.js").SteeringResult | null }} */

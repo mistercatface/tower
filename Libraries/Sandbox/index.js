@@ -51,7 +51,8 @@ export { SANDBOX_SCENE_SCHEMA_VERSION, applySandboxSceneSnapshot, collectSandbox
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
 export { evaluatePortalStepEntry } from "./portalLinks.js";
 export { tryPortalIntake, applyPortalTraverse } from "./portalTraverse.js";
-export { syncBoundaryNavIndex, buildBoundaryNavHops, expandBoundaryHopsInCellPath } from "./boundaryNavIndex.js";
+export { syncBoundaryNavIndex } from "./boundaryNavSync.js";
+export { buildBoundaryNavHops, expandBoundaryHopsInCellPath } from "../Pathfinding/boundaryNavHops.js";
 export { addSandboxWalls, removeSandboxWalls, clearSandboxWallsInBounds } from "./sandboxWalls.js";
 export {
     bakeAnimatedSurfaceFlipbook,

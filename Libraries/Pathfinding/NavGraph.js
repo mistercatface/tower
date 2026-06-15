@@ -7,7 +7,7 @@
  * - **Edges** (`CellEdgeStore`) — rail walls, forcefields, portals on cell sides (4-way storage)
  * - **Boundaries** (`boundaryOccupancy`) — crossing API over edges (cardinal step + passage policy)
  * - **Vertices** (`vertexPassability`) — corner keys; diagonal shoulder rules + half-edge masks
- * - **Hops** (`boundaryNavHops`, Sandbox today) — abstract portal jumps for HPA / nav
+ * - **Hops** (`boundaryNavHops` on grid) — abstract portal jumps for HPA / nav
  *
  * @typedef {object} NavGraph
  * @property {number} cols
@@ -26,10 +26,10 @@
  * Optional boundary-hop adjacency on a nav graph (portals today; more hop kinds later).
  *
  * @typedef {NavGraph & {
- *   getBoundaryHops: (col: number, row: number) => import("../Sandbox/boundaryNavIndex.js").BoundaryNavHop[] | null,
+ *   getBoundaryHops: (col: number, row: number) => import("./boundaryNavHops.js").BoundaryNavHop[] | null,
  *   canBoundaryHop: (fromCol: number, fromRow: number, exitCol: number, exitRow: number) => boolean,
  *   forEachNavHop?: (col: number, row: number, fn: (exitCol: number, exitRow: number, cost: number) => void) => void,
- *   forEachBoundaryHopCell?: (fn: (col: number, row: number, hops: import("../Sandbox/boundaryNavIndex.js").BoundaryNavHop[]) => void) => void,
+ *   forEachBoundaryHopCell?: (fn: (col: number, row: number, hops: import("./boundaryNavHops.js").BoundaryNavHop[]) => void) => void,
  * }} BoundaryHopNavGraph
  */
 /**

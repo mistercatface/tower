@@ -12,6 +12,14 @@ export { computeFlowSteering } from "./flowSteering.js";
 export { computeFlowFieldSteering } from "./flowSteering.js";
 export { computeHpaSteering } from "./hpaSteering.js";
 export { trimPathAhead, findPathProgressIdx, buildPathOverlayFromProgress, computePathSteering } from "./pathFollow.js";
+export {
+    buildBoundaryNavHops,
+    expandBoundaryHopsInCellPath,
+    boundaryHopMouthOnCellPath,
+    boundaryHopWaypointIndex,
+    boundaryHopDrawGeometry,
+    boundaryHopDrawGeometryBetweenWorldPoints,
+} from "./boundaryNavHops.js";
 export { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid } from "./VoronoiRegions.js";
 export { readNavGrid } from "./NavGraph.js";
 export { HierarchicalNavigator } from "./HierarchicalNavigator.js";

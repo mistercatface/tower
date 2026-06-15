@@ -4,7 +4,7 @@ import { clearBoundaryPrimary, getBoundary } from "../Spatial/grid/boundaryOccup
 import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
-import { syncBoundaryNavIndex } from "./boundaryNavIndex.js";
+import { syncBoundaryNavIndex } from "./boundaryNavSync.js";
 import { syncGridTopologyCaches } from "../Spatial/grid/vertexPassability.js";
 import { unlinkPortalEdge } from "./portalLinks.js";
 export function notifyGridWallChange(state, bounds) {

@@ -6,7 +6,7 @@ import { canonicalEdgeCellKey, gridWallEdgeNeighbor, forEachGridEdge } from "../
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
-import { syncBoundaryNavIndex } from "./boundaryNavIndex.js";
+import { syncBoundaryNavIndex } from "./boundaryNavSync.js";
 import { syncGridTopologyCaches } from "../Spatial/grid/vertexPassability.js";
 /** @typedef {{ col: number, row: number, side: number, key: number }} PassageEdgeRef */
 /** Cardinal edge endpoints as grid vertices (cell-corner coordinates). */

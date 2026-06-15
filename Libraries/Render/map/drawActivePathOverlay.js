@@ -2,7 +2,7 @@
 import { getCanvasLineScale } from "../common/viewportUtils.js";
 import { fillStrokeCircle, strokeCircle, strokeOpenPolyline } from "../../Canvas/CanvasPath.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
-import { boundaryHopDrawGeometryBetweenWorldPoints } from "../../Sandbox/boundaryNavIndex.js";
+import { boundaryHopDrawGeometryBetweenWorldPoints } from "../../Pathfinding/boundaryNavHops.js";
 /**
  * @typedef {Object} ActivePathOverlay
  * @property {"direct" | "hpa"} mode
