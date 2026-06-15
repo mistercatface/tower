@@ -62,8 +62,8 @@ export function portalBodyCrossedEntryPlane(bodyX, bodyY, mouth, back, cross, gr
     // Check alignment along the portal segment to prevent accidental diagonal crossings
     if (cross.x === 0) {
         // Horizontal portal edge: coordinate along edge is X
-        if (Math.abs(bodyX - midX) > grid.cellSize * 0.5 + 0.5) return false;
-    } else if (Math.abs(bodyY - midY) > grid.cellSize * 0.5 + 0.5)
+        if (Math.abs(bodyX - midX) > grid.cellHalfSize + 0.5) return false;
+    } else if (Math.abs(bodyY - midY) > grid.cellHalfSize + 0.5)
         // Vertical portal edge: coordinate along edge is Y
         return false;
     const mouthSide = -((bodyX - midX) * cross.x + (bodyY - midY) * cross.y);
@@ -86,7 +86,7 @@ export function portalBodyInMouthZone(grid, edge, ownerCol, ownerRow, ownerSide,
     const relX = bodyX - midX;
     const relY = bodyY - midY;
     const mouthSide = -(relX * cross.x + relY * cross.y);
-    return mouthSide >= -bodyRadius && mouthSide <= grid.cellSize * 0.5 + bodyRadius;
+    return mouthSide >= -bodyRadius && mouthSide <= grid.cellHalfSize + bodyRadius;
 }
 /**
  * Directional physics blocking for portal edge rails.

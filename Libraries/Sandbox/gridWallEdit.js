@@ -125,7 +125,7 @@ export function clearAllStampedGridWalls(state, { notify = true } = {}) {
 export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSize) {
     const grid = state.obstacleGrid;
     const settings = state.worldSurfaces.settings;
-    const half = cellSize * 0.5;
+    const half = grid.cellHalfSize;
     const bounds = emptyCellBounds();
     const toLocal = (globalCol, globalRow) => {
         const x = globalCol * cellSize + half;
@@ -153,7 +153,7 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
 }
 export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) {
     const grid = state.obstacleGrid;
-    const half = cellSize * 0.5;
+    const half = grid.cellHalfSize;
     const bounds = emptyCellBounds();
     const toLocal = (globalCol, globalRow) => {
         const x = globalCol * cellSize + half;
@@ -173,7 +173,7 @@ export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) 
 }
 export function applyStampedPortalsFromGlobal(state, portals, cellSize) {
     const grid = state.obstacleGrid;
-    const half = cellSize * 0.5;
+    const half = grid.cellHalfSize;
     const bounds = emptyCellBounds();
     const toLocal = (globalCol, globalRow) => {
         const x = globalCol * cellSize + half;

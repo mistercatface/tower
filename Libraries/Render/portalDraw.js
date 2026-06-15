@@ -327,7 +327,7 @@ export function drawPortalEdgeCached(ctx, grid, col, row, side, edge, px, py, { 
     const midX = (sEdgeP1.x + sEdgeP2.x) * 0.5;
     const midY = (sEdgeP1.y + sEdgeP2.y) * 0.5;
     const mouthWorld = grid.gridToWorld(mouth.col, mouth.row);
-    const cellHalf = grid.cellSize * 0.5;
+    const cellHalf = grid.cellHalfSize;
     const { halfSize, facing } = portalStripLayout(side, cellHalf);
     const localP1 = { x: sEdgeP1.x - midX, y: sEdgeP1.y - midY };
     const localP2 = { x: sEdgeP2.x - midX, y: sEdgeP2.y - midY };

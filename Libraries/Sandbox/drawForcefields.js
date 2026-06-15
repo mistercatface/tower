@@ -153,7 +153,7 @@ function syncPassageEdgeDrawCache(state, grid) {
             if (isPortalEdge(edge)) items.push({ type: "portal", col, row, side, edge, midX, midY });
             else {
                 const { mode, allowedSide, powered } = resolvePassageEdge(edge, side);
-                const cellHalf = grid.cellSize * 0.5;
+                const cellHalf = grid.cellHalfSize;
                 const edgeKey = canonicalEdgeCellKey(grid, col, row, side);
                 items.push({ type: "forcefield", proxy: createForcefieldDrawProxy(midX, midY, side, cellHalf, edgeKey, { mode, allowedSide, powered, tripped: false }), edgeKey, midX, midY });
             }

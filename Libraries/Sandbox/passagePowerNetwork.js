@@ -81,7 +81,7 @@ function collectEnergizedSourceCells(grid, state) {
         if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) continue;
         if (grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx)) energized.add(idx);
     }
-    const half = grid.cellSize * 0.5;
+    const half = grid.cellHalfSize;
     forEachButtonEntity(state, (button) => {
         const signal = buttonEffectiveActive(state, button);
         if (!signal) return;
@@ -189,7 +189,7 @@ export function isPassagePowerSourceEnergized(state, col, row) {
     const idx = colRowToIndex(col, row, grid.cols);
     if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return false;
     if (grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx)) return true;
-    const half = grid.cellSize * 0.5;
+    const half = grid.cellHalfSize;
     let energized = false;
     forEachButtonEntity(state, (button) => {
         if (energized || !buttonEffectiveActive(state, button)) return;

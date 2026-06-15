@@ -113,38 +113,38 @@ export function parseSandboxSceneSnapshot(raw) {
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
 function expandGridForSnapshot(state, doc) {
     const cellSize = doc.cellSize ?? state.obstacleGrid.cellSize;
-    const half = cellSize * 0.5;
+    const cellHalfSize = state.obstacleGrid.cellHalfSize;
     const bounds = emptyAabb();
-    const includeWorldPoint = (x, y) => growAabbFromCenterInto(bounds, x, y, half, half);
+    const includeWorldPoint = (x, y) => growAabbFromCenterInto(bounds, x, y, cellHalfSize, cellHalfSize);
     for (let i = 0; i < doc.voxels.length; i++) {
         const { col, row } = doc.voxels[i];
-        includeWorldPoint(col * cellSize + half, row * cellSize + half);
+        includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
     }
     for (let i = 0; i < doc.railWalls.length; i++) {
         const { col, row } = doc.railWalls[i];
-        includeWorldPoint(col * cellSize + half, row * cellSize + half);
+        includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
     }
     for (let i = 0; i < doc.forcefields.length; i++) {
         const { col, row } = doc.forcefields[i];
-        includeWorldPoint(col * cellSize + half, row * cellSize + half);
+        includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
     }
     for (let i = 0; i < doc.portals.length; i++) {
         const { col, row } = doc.portals[i];
-        includeWorldPoint(col * cellSize + half, row * cellSize + half);
+        includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
     }
     for (let i = 0; i < doc.floorBelts.length; i++) {
         const { col, row } = doc.floorBelts[i];
-        includeWorldPoint(col * cellSize + half, row * cellSize + half);
+        includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
     }
     for (let i = 0; i < doc.powerSources.length; i++) {
         const { col, row } = doc.powerSources[i];
-        includeWorldPoint(col * cellSize + half, row * cellSize + half);
+        includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
     }
     for (let i = 0; i < doc.props.length; i++) includeWorldPoint(doc.props[i].x, doc.props[i].y);
     for (let i = 0; i < doc.roomGraph.nodes.length; i++) {
         const node = doc.roomGraph.nodes[i];
-        includeWorldPoint(node.col * cellSize + half, node.row * cellSize + half);
-        includeWorldPoint((node.col + node.width - 1) * cellSize + half, (node.row + node.height - 1) * cellSize + half);
+        includeWorldPoint(node.col * cellSize + cellHalfSize, node.row * cellSize + cellHalfSize);
+        includeWorldPoint((node.col + node.width - 1) * cellSize + cellHalfSize, (node.row + node.height - 1) * cellSize + cellHalfSize);
     }
     if (isEmptyAabb(bounds)) return;
     state.obstacleGrid.expandToCoverAabb(bounds);

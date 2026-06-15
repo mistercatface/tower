@@ -81,7 +81,7 @@ export function findButtonLinkTarget(state, worldX, worldY, sourceButtonId) {
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} globalCol @param {number} globalRow */
 function gridCellWireMidpoint(grid, globalCol, globalRow) {
-    const half = grid.cellSize * 0.5;
+    const half = grid.cellHalfSize;
     const { col, row } = grid.worldToGrid(globalCol * grid.cellSize + half, globalRow * grid.cellSize + half);
     const { x, y } = grid.gridToWorld(col, row);
     return { x, y };

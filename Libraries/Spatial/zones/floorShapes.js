@@ -115,7 +115,7 @@ export function resizeFloorPropHalfExtents(prop, halfWidth, halfHeight) {
 }
 /** @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid */
 export function obstacleGridCellHalfExtents(obstacleGrid) {
-    const half = obstacleGrid.cellSize * 0.5;
+    const half = obstacleGrid.cellHalfSize;
     return { halfWidth: half, halfHeight: half };
 }
 /** @param {object} prop @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {number} worldX @param {number} worldY */

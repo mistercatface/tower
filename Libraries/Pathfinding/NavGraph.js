@@ -13,6 +13,7 @@
  * @property {number} cols
  * @property {number} rows
  * @property {number} cellSize
+ * @property {number} cellHalfSize
  * @property {number} minX
  * @property {number} minY
  * @property {Uint8Array} grid — 0 = open floor, >0 = static wall height level

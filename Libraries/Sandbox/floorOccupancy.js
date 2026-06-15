@@ -121,7 +121,7 @@ export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {
     const maxCol = Math.min(grid.cols - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).col);
     const minRow = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).row);
     const maxRow = Math.min(grid.rows - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).row);
-    const cellHalf = grid.cellSize * 0.5;
+    const cellHalf = grid.cellHalfSize;
     const { px, py } = camera;
     forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row, idx) => {
         const kind = grid.floorStore.kind[idx];
@@ -151,7 +151,7 @@ export function drawFloorOccupancyPowerSources(ctx, state, viewport, camera) {
     const maxCol = Math.min(grid.cols - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).col);
     const minRow = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).row);
     const maxRow = Math.min(grid.rows - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).row);
-    const cellHalf = grid.cellSize * 0.5;
+    const cellHalf = grid.cellHalfSize;
     const { px, py } = camera;
     forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row, idx) => {
         if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return;
@@ -195,7 +195,7 @@ export function listPlacedFloorBeltsForSnapshot(grid) {
 }
 export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
     const grid = state.obstacleGrid;
-    const half = cellSize * 0.5;
+    const half = grid.cellHalfSize;
     let edgeChanged = false;
     const bounds = emptyCellBounds();
     for (let i = 0; i < floorBelts.length; i++) {
@@ -263,7 +263,7 @@ export function listPlacedPassagePowerSourcesForSnapshot(grid) {
 }
 export function applyPassagePowerSourcesFromGlobal(state, powerSources, cellSize) {
     const grid = state.obstacleGrid;
-    const half = cellSize * 0.5;
+    const half = grid.cellHalfSize;
     const bounds = emptyCellBounds();
     for (let i = 0; i < powerSources.length; i++) {
         const { col: globalCol, row: globalRow, defaultPowered } = powerSources[i];
