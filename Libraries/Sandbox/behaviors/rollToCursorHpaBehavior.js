@@ -1,15 +1,8 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { buildPathOverlayFromProgress } from "../../Pathfinding/pathFollow.js";
 import { clearCrossingGrantOnEntity, refreshNavCrossingGrant, syncCrossingGrantToEntity } from "../../Pathfinding/crossingGrant.js";
-import { getRollToCursorConfig, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
-import { cellInRect } from "../../Spatial/grid/GridUtils.js";
+import { getRollToCursorConfig, snapRollMoveTargetToCellCenter, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
-/** @param {{ x: number, y: number }} world @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-function snapMoveTargetToCellCenter(grid, world) {
-    const { col, row } = grid.worldToGrid(world.x, world.y);
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
-    return { world: grid.gridToWorld(col, row), col, row };
-}
 export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
 /** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createRollToCursorHpaBehavior(state) {
@@ -34,7 +27,7 @@ export function createRollToCursorHpaBehavior(state) {
     };
     /** @param {{ x: number, y: number }} world @param {boolean} [forceReset] */
     const applyMoveTarget = (world, forceReset = false) => {
-        const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
+        const snapped = snapRollMoveTargetToCellCenter(state.obstacleGrid, world);
         const cellChanged = snapped.col !== targetCellCol || snapped.row !== targetCellRow;
         targetWorld = snapped.world;
         targetCellCol = snapped.col;

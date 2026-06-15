@@ -8,6 +8,7 @@ import {
     createSpawnerBehavior,
     createRollToCursorDirectBehavior,
     createRollToCursorHpaBehavior,
+    createRollToCursorFlowBehavior,
     createShootBehavior,
     createSandboxController,
     DRAG_LAUNCH_BEHAVIOR_ID,
@@ -40,6 +41,7 @@ export function mountTilelabSandbox(state, requestRedraw) {
             createShootBehavior(state),
             createRollToCursorDirectBehavior(),
             createRollToCursorHpaBehavior(state),
+            createRollToCursorFlowBehavior(state),
         ],
         defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
     });

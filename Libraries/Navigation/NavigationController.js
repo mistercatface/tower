@@ -86,9 +86,10 @@ export class NavigationController {
             this._setDebug(entity, { mode: plan.mode, replanReason: plan.replanReason ?? null, pathLen: plan.pathLen, dist });
         } else {
             navState.path = null;
-            plan = computeFlowFieldSteering(agentPose(entity), targetX, targetY, grid);
-            applySteeringResult(mobile, plan.steering);
-            this._setDebug(entity, { mode: plan.mode, replanReason: null, pathLen: 0, dist });
+            const steering = computeFlowFieldSteering(agentPose(entity), targetX, targetY, grid);
+            applySteeringResult(mobile, steering ?? ARRIVED_STEERING);
+            this._setDebug(entity, { mode: steering ? "flow" : "flowIdle", replanReason: null, pathLen: 0, dist });
+            plan = { steering: steering ?? ARRIVED_STEERING, mode: steering ? "flow" : "flowIdle", pathLen: 0 };
         }
         if (this.onSteerComplete) this.onSteerComplete(entity, { navState, plan, dist, settings });
     }

@@ -14,6 +14,7 @@ export { createSpawnerBehavior, SPAWNER_BEHAVIOR_ID } from "./behaviors/spawnerB
 export { isSpawnerProp, isSpawnerWorldProp, listSpawnerSpawnPropIds, resolveSpawnerPropId, fireSpawner } from "./spawnerConfig.js";
 export { createRollToCursorDirectBehavior, ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 export { createRollToCursorHpaBehavior, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
+export { createRollToCursorFlowBehavior, ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID } from "./behaviors/rollToCursorFlowBehavior.js";
 export { createShootBehavior, SHOOT_BEHAVIOR_ID } from "./behaviors/shootBehavior.js";
 export {
     resolveSandboxPathVisual,

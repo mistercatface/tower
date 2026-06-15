@@ -5,7 +5,7 @@ import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { boundaryHopDrawGeometryBetweenWorldPoints } from "../../Pathfinding/boundaryNavHops.js";
 /**
  * @typedef {Object} ActivePathOverlay
- * @property {"direct" | "hpa"} mode
+ * @property {"direct" | "hpa" | "flow"} mode
  * @property {number} [targetX]
  * @property {number} [targetY]
  * @property {Array<{ x: number, y: number }>} [pathNodes]
@@ -70,6 +70,21 @@ function drawNormalPathOverlay(ctx, overlay, grid) {
         strokeOpenPolyline(ctx, pathNodes);
         ctx.setLineDash([]);
         ctx.strokeStyle = "rgba(0, 188, 212, 0.85)";
+        ctx.lineWidth = 2 * lineScale;
+        const end = pathNodes[pathNodes.length - 1];
+        strokeCircle(ctx, end.x, end.y, 4 * lineScale);
+        ctx.restore();
+        return;
+    }
+    if (mode === "flow") {
+        if (!pathNodes || pathNodes.length < 2) return;
+        ctx.save();
+        ctx.setLineDash([5 * lineScale, 4 * lineScale]);
+        ctx.strokeStyle = "rgba(76, 175, 80, 0.55)";
+        ctx.lineWidth = 1.5 * lineScale;
+        strokeOpenPolyline(ctx, pathNodes);
+        ctx.setLineDash([]);
+        ctx.strokeStyle = "rgba(76, 175, 80, 0.9)";
         ctx.lineWidth = 2 * lineScale;
         const end = pathNodes[pathNodes.length - 1];
         strokeCircle(ctx, end.x, end.y, 4 * lineScale);
@@ -150,6 +165,23 @@ export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug", grid
             }
         if (targetX != null && targetY != null) {
             ctx.fillStyle = "rgba(156, 39, 176, 0.85)";
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2 / zoom;
+            fillStrokeCircle(ctx, targetX, targetY, 5 / zoom);
+        }
+        return;
+    }
+    if (mode === "flow") {
+        if (!pathNodes || pathNodes.length < 2) return;
+        ctx.strokeStyle = "rgba(76, 175, 80, 0.75)";
+        ctx.lineWidth = 3 / zoom;
+        ctx.setLineDash([8 / zoom, 6 / zoom]);
+        strokeOpenPolyline(ctx, pathNodes);
+        ctx.setLineDash([]);
+        const end = pathNodes[pathNodes.length - 1];
+        drawPathMarker(ctx, end.x, end.y, 10 / zoom, "rgba(76, 175, 80, 0.9)", null, zoom);
+        if (targetX != null && targetY != null) {
+            ctx.fillStyle = "rgba(129, 199, 132, 0.9)";
             ctx.strokeStyle = "#fff";
             ctx.lineWidth = 2 / zoom;
             fillStrokeCircle(ctx, targetX, targetY, 5 / zoom);

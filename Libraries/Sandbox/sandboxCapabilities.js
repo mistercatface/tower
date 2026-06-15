@@ -1,5 +1,6 @@
 import { ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
+import { ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID } from "./behaviors/rollToCursorFlowBehavior.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { FLOOR_CELL_KIND, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { syncWorldPropWeaponState } from "../Combat/worldPropWeaponState.js";
@@ -13,9 +14,10 @@ export const SANDBOX_BEHAVIOR_LABELS = {
     cueStrike: "Cue strike",
     rollToCursorDirect: "Roll to cursor (direct)",
     rollToCursorHpa: "Roll to cursor (HPA)",
+    rollToCursorFlow: "Roll to cursor (flow)",
     shoot: "Shoot",
 };
-const ROLL_BEHAVIOR_IDS = new Set([ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID]);
+const ROLL_BEHAVIOR_IDS = new Set([ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID, ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID]);
 /** @param {string} behaviorId */
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
