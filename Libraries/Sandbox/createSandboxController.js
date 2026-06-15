@@ -137,6 +137,16 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         for (let i = 0; i < behaviors.length; i++) if (behaviors[i].tryCanvasInput?.(world, e)) return true;
         return false;
     };
+    /** @param {{ x: number, y: number }} world @param {PointerEvent} e @returns {boolean} */
+    const tryPlaceSpawnAtWorld = (world, e) => {
+        if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || buttonWireMode || roomNodeWireMode) return false;
+        if (!session.spawnAt(world.x, world.y)) return false;
+        stampPropBehavior(session.getSelectedProp());
+        e.preventDefault();
+        e.stopPropagation();
+        session.sync();
+        return true;
+    };
     /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
     const tryPickPlacedAtWorld = (world, e) => {
         const registry = state.entityRegistry;
@@ -204,6 +214,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     const onPointerDown = (e) => {
         const canvas = getCanvas();
         const world = clientToWorld(e.clientX, e.clientY);
+        if (e.button === 0 && (e.ctrlKey || e.metaKey) && tryPlaceSpawnAtWorld(world, e)) return;
         if (e.button === 0 && e.shiftKey && tryPickPlacedAtWorld(world, e)) return;
         if (session.isWallPlaceMode()) {
             handleWallPointerDown(world, e);
