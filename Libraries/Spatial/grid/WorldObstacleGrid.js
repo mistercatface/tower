@@ -8,6 +8,7 @@ import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToI
 import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
+import { buildGridNavSnapshot, snapshotNavCacheKey } from "../../Pathfinding/GridNavSnapshot.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 import { collectSegmentsAlongLine, collectSegmentsInWorldBounds, collectSegmentsNearPose, segmentGridLayoutFromObstacleGrid } from "./segmentGridWalk.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
@@ -35,9 +36,20 @@ export class WorldObstacleGrid {
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
         this.boundaryNavHops = null;
+        this.boundaryNavEpoch = 0;
         this.portalSlotByKey = new Map();
         this.vertexPassability = new Uint8Array(0);
         this._vertexPassabilitySyncKey = "";
+        this.gridNavSnapshot = null;
+    }
+    ensureGridNavSnapshot() {
+        const cacheKey = snapshotNavCacheKey(this);
+        if (this.gridNavSnapshot?.cacheKey === cacheKey) return this.gridNavSnapshot;
+        this.gridNavSnapshot = buildGridNavSnapshot(this, cacheKey);
+        return this.gridNavSnapshot;
+    }
+    invalidateGridNavSnapshot() {
+        this.gridNavSnapshot = null;
     }
     _staticGridProxyHandleHit(damage, state) {
         if (this.isEdgeRail) damageStaticGridEdge(state, this._obstacleGrid, this.gridCol, this.gridRow, this.gridSide, damage);
@@ -46,6 +58,7 @@ export class WorldObstacleGrid {
     bumpWallGridRevision() {
         this.wallGridRevision = (this.wallGridRevision + 1) | 0;
         this.invalidateStructureZLevelsCache();
+        this.invalidateGridNavSnapshot();
     }
     invalidateStructureZLevelsCache() {
         this._structureZLevelsRevision = -1;
@@ -235,6 +248,7 @@ export class WorldObstacleGrid {
         this.edgeStore.reset(size);
         this.floorStore.reset(size);
         this.invalidateStructureZLevelsCache();
+        this.invalidateGridNavSnapshot();
         this.segmentGrid = null;
     }
     expandToCoverAabb(aabb) {
@@ -282,6 +296,7 @@ export class WorldObstacleGrid {
         this.floorStore.remap(oldFloorKind, oldFloorFacing, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
         this.grid = newGrid;
         this.invalidateStructureZLevelsCache();
+        this.invalidateGridNavSnapshot();
         return true;
     }
     markWall(wall) {

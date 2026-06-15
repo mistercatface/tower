@@ -54,6 +54,7 @@
 // portalSlotIndex.js    — canonical portal edge key → slot lookup
 // vertexPassability.js  — vertex cache + syncGridTopologyCaches
 // boundaryNavHops.js    — hop build (callback for portal pairing), path expansion
+// GridNavSnapshot.js    — frozen walkability + octile neighbors for worker consumers
 //
 // @typedef {object} NavGraph
 // @property {number} cols

@@ -2,6 +2,7 @@ import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
+import { snapshotGridToWorld, snapshotIsBlocked, snapshotOctileNeighborIdx, snapshotWorldToGrid } from "./GridNavSnapshot.js";
 const MAX_CACHE = 100;
 /**
  * Sliding-window flow-field over a NavGraph. BFS runs in an injected worker;
@@ -48,10 +49,10 @@ export class FlowFieldGrid {
         this.refresh();
     }
     syncLocalObstacles() {
+        const navSnapshot = this.navGraph.ensureGridNavSnapshot();
         const size = this.cols * this.rows;
-        const navCols = this.navGraph.cols;
-        const navRows = this.navGraph.rows;
-        const navGrid = this.navGraph.grid;
+        const navCols = navSnapshot.cols;
+        const navRows = navSnapshot.rows;
         const cellSize = this.cellSize;
         const half = cellSize / 2;
         const wxBase = this.centerX - this.offsetX + half;
@@ -59,21 +60,24 @@ export class FlowFieldGrid {
         for (let idx = 0; idx < size; idx++) {
             const col = idx % this.cols;
             const row = (idx / this.cols) | 0;
-            const worldCell = this.navGraph.worldToGrid(col * cellSize + wxBase, row * cellSize + wyBase);
+            const worldX = col * cellSize + wxBase;
+            const worldY = row * cellSize + wyBase;
+            const worldCell = snapshotWorldToGrid(navSnapshot, worldX, worldY);
             if (worldCell.col >= 0 && worldCell.col < navCols && worldCell.row >= 0 && worldCell.row < navRows) {
-                this.grid[idx] = navGrid[worldCell.row * navCols + worldCell.col];
-                // Update neighbor grid based on edge walls
+                this.grid[idx] = snapshotIsBlocked(navSnapshot, worldCell.col, worldCell.row) ? 1 : 0;
                 const base = idx * 8;
-                let i = 0;
-                for (const { dc, dr } of OCTILE_OFFSETS) {
-                    const nc = col + dc;
-                    const nr = row + dr;
-                    if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
-                        const nextWorldCell = this.navGraph.worldToGrid(nc * cellSize + wxBase, nr * cellSize + wyBase);
-                        if (this.navGraph.canStep(worldCell.col, worldCell.row, nextWorldCell.col, nextWorldCell.row)) this.neighborGrid[base + i] = nr * this.cols + nc;
-                        else this.neighborGrid[base + i] = -1;
-                    } else this.neighborGrid[base + i] = -1;
-                    i++;
+                for (let i = 0; i < OCTILE_OFFSETS.length; i++) {
+                    const nNavIdx = snapshotOctileNeighborIdx(navSnapshot, worldCell.col, worldCell.row, i);
+                    if (nNavIdx < 0) {
+                        this.neighborGrid[base + i] = -1;
+                        continue;
+                    }
+                    const nNavCol = nNavIdx % navCols;
+                    const nNavRow = (nNavIdx / navCols) | 0;
+                    const nWorld = snapshotGridToWorld(navSnapshot, nNavCol, nNavRow);
+                    const localN = worldToGridCentered(nWorld.x, nWorld.y, this.centerX, this.centerY, this.offsetX, this.offsetY, cellSize);
+                    if (localN.col >= 0 && localN.col < this.cols && localN.row >= 0 && localN.row < this.rows) this.neighborGrid[base + i] = localN.row * this.cols + localN.col;
+                    else this.neighborGrid[base + i] = -1;
                 }
             } else {
                 this.grid[idx] = 1;

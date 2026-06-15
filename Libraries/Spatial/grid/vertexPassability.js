@@ -50,6 +50,7 @@ export function syncGridTopologyCaches(grid, passagePowerSyncKey) {
     if (grid._vertexPassabilitySyncKey === key) return;
     recomputeVertexPassability(grid);
     grid._vertexPassabilitySyncKey = key;
+    grid.invalidateGridNavSnapshot();
 }
 /** Boundary-only diagonal block test — shoulders + vertex half-edge mask. Caller handles destination cell + belts. */
 export function diagonalBoundaryBlockedFromVertexCache(grid, fromCol, fromRow, toCol, toRow) {
