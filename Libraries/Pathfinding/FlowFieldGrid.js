@@ -2,7 +2,7 @@ import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
-import { snapshotGridToWorld, snapshotIsBlocked, snapshotWorldToGrid, snapshotCanStep } from "./GridNavSnapshot.js";
+import { snapshotIsBlocked, snapshotWorldToGrid, snapshotCanStep } from "./GridNavSnapshot.js";
 const MAX_CACHE = 100;
 export class FlowFieldGrid {
     constructor(cellSize, width, height, navGraph, workerUrl) {
@@ -63,22 +63,24 @@ export class FlowFieldGrid {
                 const base = idx * 8;
                 for (let i = 0; i < OCTILE_OFFSETS.length; i++) {
                     const { dc, dr } = OCTILE_OFFSETS[i];
+                    const nc = col + dc;
+                    const nr = row + dr;
+                    if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) {
+                        this.neighborGrid[base + i] = -1;
+                        continue;
+                    }
                     const nNavCol = worldCell.col + dc;
                     const nNavRow = worldCell.row + dr;
                     if (nNavCol < 0 || nNavCol >= navCols || nNavRow < 0 || nNavRow >= navRows) {
                         this.neighborGrid[base + i] = -1;
                         continue;
                     }
-                    // For the backward BFS flow field, we need the reverse transition:
-                    // we can visit the neighbor from the current cell only if the neighbor can step to the current cell.
+                    // Backward BFS: neighbor can enter the current cell (reverse of agent flow).
                     if (!snapshotCanStep(navSnapshot, nNavCol, nNavRow, worldCell.col, worldCell.row)) {
                         this.neighborGrid[base + i] = -1;
                         continue;
                     }
-                    const nWorld = snapshotGridToWorld(navSnapshot, nNavCol, nNavRow);
-                    const localN = worldToGridCentered(nWorld.x, nWorld.y, this.centerX, this.centerY, this.offsetX, this.offsetY, cellSize);
-                    if (localN.col >= 0 && localN.col < this.cols && localN.row >= 0 && localN.row < this.rows) this.neighborGrid[base + i] = localN.row * this.cols + localN.col;
-                    else this.neighborGrid[base + i] = -1;
+                    this.neighborGrid[base + i] = nr * this.cols + nc;
                 }
             } else {
                 this.grid[idx] = 1;
