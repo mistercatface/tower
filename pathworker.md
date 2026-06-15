@@ -1,275 +1,86 @@
-# Path worker — status & plan
+# Path worker
 
-HPA click-to-move on big maps.
+HPA click-to-move on big maps. **Main requests a path; worker plans and stitches it.** Main applies waypoints and steers — no A*, stitch, or graph surgery on the click hot path.
 
-## End goal
+---
 
-**Main thread asks; worker answers.** An entity on the main thread should only request a path (from → to) and receive a ready-to-steer result. No graph surgery, no local A*, no stitch, no nav snapshot bake on the main thread in that pipeline.
+## Worker vs main
 
-Whether the worker returns a full cell path, the next N waypoints, or abstract nodes + one leg is a **policy knob** on the same pipe — not a separate architecture. Establish the full worker-owned pipeline first; tune granularity later.
+| | Worker | Main |
+|---|--------|------|
+| **Replan** | Abstract A*, temp-connect, per-leg local A*, stitch | `requestPath` → await result |
+| **Nav octile** | Bakes from shared SABs; `navView` for A* | Packs topology into SABs on edit; reads zero-copy views for flow/debug |
+| **Path output** | Writes cell path + abstract idx to slot SABs | `applyHpaReplanResult`; steer/overlay from SAB (`hpaPathSlot.js`) |
+| **Abstract graph** | Persist CSR in SABs; A* at replan time | Owns `HierarchicalNavigator.nodesMap`; `rebuildDamagedArea` on edits; `packHpaGraphForWorker` on `graphEpoch` bump |
+| **Region assignment** | — | Voronoi chunks (`generateVoronoiRegions`) on init; incremental merge/split on edits |
+| **Portal traverse** | — | Crossing grant, physics, hop mouth handling |
 
-**Second pillar:** minimize data moving between main and worker. Prefer worker-resident state and zero-copy SAB views over repacking and mirroring. Treat lazy init and sync-on-update as a fallback — easy to accidentally sync on every edit and throttle the whole game.
+**Click path today:** `requestPath` → await nav/graph sync if stale → worker replan + stitch → main apply from slot SAB.
+
+**Edit path today:** main `rebuildDamagedArea` + `patchNavTopology(dirtyBounds)` → worker octile patch → `syncAbstractGraph`.
+
+---
+
+## Done
+
+- Worker-owned stitch (`hpaStitch.js`); main never stitches on replan hot path
+- `HpaPathWorker.requestPath` + SAB path-follow (`pathSlot`, `pathLen`)
+- No octile mirror-back; `getNavSnapshotView()` zero-copy SAB views
+- Slim replan payload; temp-connect candidates derived on worker (`hpaReplanPrep.js`)
+- Edit reconnect is cost-only (no `edge.path`; worker local A* at stitch)
+- Incremental nav topology: `patchNavTopology(dirtyBounds)` with coalesced rects; full sync only on init / no bounds / grid resize
+- Portal hop follow: SAB path clamps at hop mouth; no steer-to-exit across hop edge
+- Scene sidebar: bulk cavern terrain not listed per-voxel (was a separate freeze)
+
+---
+
+## Still to do
+
+### Region graph (biggest gap)
+
+Incremental `rebuildDamagedArea` merges opened cells into neighbor regions and moves the centroid — it does **not** subdivide oversized regions or rerun Voronoi in a large erased area. Carving into existing walkable space can leave one region with hundreds of cells while HPA expects ~`maxCellsPerChunk` (64).
+
+**Next:** subdivide after merge, or localized Voronoi regen in dirty hull; longer term `patchRegionGraph` on worker (main stops owning `nodesMap` surgery).
+
+### Graph + data on worker
+
+- Move region graph build/patch off main (`patchRegionGraph`)
+- Incremental hop CSR (dirty-only; today full O(cells) repack on patch)
+- Worker-owned graph — main stops `packHpaGraphForWorker` on every edit epoch
+
+### Correctness / features
+
+- Portal abstract edge cost: `_connectRegionPair` uses centroid Chebyshev, not hop cost 1
+- Belt transfer edges (same machinery as portal hops)
+- `canStep` / hops in edit-time split (`_splitRegionIfDisconnected` is cardinal-only today)
+- Partial paths: `maxLegs` / `maxCells` policy on `requestPath`
+
+### Other
+
+- Sidebar render incremental (`sandboxToyUi.js`) — editor jank, orthogonal to path worker
+
+---
+
+## Nav model (reference)
 
 ```
-Main:  requestPath({ from, to, navEpoch }) → await PathResult
-Worker: nav snapshot + region graph + replan + stitch → PathResult (cells, hops, abstract)
-Main:  applyPathResult(navState, result)   // assign waypoints only
+Reachability = LocalWalk (octile / canStep)  ∪  Transfers (hop CSR)
+Physics      = portal grant, belts, collision — separate from path graph
 ```
 
-Cross-thread ideal: main sends **coordinates + epoch**, worker returns **path slot index or compact PathResult** — not multi-MB snapshot round-trips.
+Forcefields → `canStep` filters. Portals → hop CSR + region adjacency. Belts (target) → transfer edges like portals.
 
 ---
 
-## What was actually freezing the game (fixed)
+## Rules
 
-**Not pathfinding.** The Scene sidebar listed **every wall voxel** (`listPlacedVoxelWalls` → full grid scan → one DOM row per cell). Big cavern gen = tens of thousands of rows; every `sync()` wiped `innerHTML` and rebuilt the whole panel → layout thrash / apparent freeze.
+- No mirror-back; SAB views only
+- No full-grid topology repack scattered across invalidation handlers — one `patchNavTopology` entry
+- No in-memory migration shims — refresh is the migration
+- Extend `Libraries/Pathfinding/` — no parallel worker copies
 
-**Fix:** Scene list shows **hand-tracked** voxel placements only (`listTrackedVoxelWalls` in `sandboxSession.js`). Bulk cavern/map-gen terrain stays on the grid, not in the Scene list. Export/import unchanged.
+## Don't regress
 
----
-
-## Worker refactor — current state
-
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-| 1 | Stop clearing path on click (sandbox) | **Done** | `markTargetChanged` in `rollToCursorHpaNav.js` |
-| 2 | One-shot worker replan | **Done** | `runOneShotReplan` — single `replan` IPC per request |
-| 3 | Abstract-first apply | **Done** | `abstractReady` → region centroids; worker stitches full cell path; main applies from slot SAB |
-| 4 | Persistent abstract graph on worker | **Partial** | Worker CSR in SABs; main still owns `nodesMap` and rebuilds on wall edits |
-| 5 | Snapshot off click path | **Partial** | No octile mirror-back; flow uses `getNavSnapshotView()`; topology pack on epoch still on main |
-| 6 | Worker-owned path response | **Done** | Worker stitches via `hpaStitch.js`; writes cell path to slot SAB; main reads + applies only |
-| 7 | Edit-time graph off main | **Partial** | `rebuildDamagedArea` still on main; reconnect cost-only (no local A*, no `edge.path`) |
-| 8 | Leg advancement / partial path policy | **Not done** | Full replan every target change; granularity tunable once #6 is done |
-| 9 | Minimal main ↔ worker data | **Partial** | No mirror; slim replan; SAB path-follow (no cell clone); graph CSR repack on epoch still on main |
-
-**Net:** Worker owns replan + stitch + nav octile read model. Main still packs topology into SABs on epoch change and owns region graph surgery on edits. No octile mirror-back; edit reconnect is cost-only.
-
----
-
-## Data transfer — second priority (P1)
-
-**Goal:** the least data passed between main and worker, period. Every crossing should be justified.
-
-### Preference ladder (best → acceptable → avoid)
-
-| Tier | Approach | When |
-|------|----------|------|
-| **1 — Worker-only** | Nav snapshot, region graph, leg geometry live on worker; main never holds a copy | Default for pathfinding hot path |
-| **2 — SAB, zero-copy** | Main and worker share one buffer; main writes dirty topology slices, worker reads views, writes results into slot pools | Grid edits, path output — already started (`sabPathColsPool`, persist graph SABs) |
-| **3 — Small messages** | `postMessage` carries only `{ type, slot, epoch, requestId }` — no typed arrays in payload | Replan done, graph patched |
-| **4 — Lazy init / sync-on-update** | Build or refresh worker state only when something changes | **Fallback only** — see below |
-
-### Why sync-on-update is the weak option
-
-"Sync when the grid updates" sounds efficient but **update is not one event** in this codebase. Any of these can invalidate nav topology:
-
-- Wall voxel stamp/remove (`wallGridRevision`)
-- Floor belt / button / pad edits
-- Portal link or passage power changes (`boundaryNavEpoch`)
-- Forcefield trip / power network flood
-- Cavern gen, import, room resize
-
-If each handler calls "ensure worker is fresh," you get **death by a thousand full repacks** — main scans grid → copies blocked + cardinal + vertex + hops into SABs → worker rebakes octile → main mirrors octile back. That pattern already throttles on busy edits even when click path is "async."
-
-**Better model:** worker holds authoritative nav + graph; main sends **dirty rect + revision bump** (tiny message). Worker patches incrementally. Main keeps **epoch integers only** (`navEpoch`, `graphEpoch`) to detect staleness — not duplicate megabyte arrays.
-
-### Current waste (target for removal)
-
-| Transfer | Direction | Size / cost | Fix |
-|----------|-----------|-------------|-----|
-| `packBlockedFromGrid` + hop CSR pack | main → SAB | O(cells) per topology change | Worker builds from topology SABs main already maintains; or main writes only dirty cell bitmask |
-| `_mirrorNavSnapshotToMain` | ~~worker → main~~ | **Removed** — `createWorkerNavSnapshotView` |
-| Replan candidate arrays | ~~main → worker~~ | **Removed** — `hpaReplanPrep.js` on worker |
-| `packHpaGraphForWorker` | main → SAB | O(nodes + edges) per graph epoch | Worker owns graph after PR2; main never repacks |
-| `nodesMap.edge.path` | main only | O(path cells × edges) duplicated conceptually | Worker stores legs at stitch or in edge-path pool SAB |
-| `abstractReady` + `hpaDone` | worker → main | abstract idx + temp legs read from SAB | OK if main only **views** slot SABs to apply waypoints — bad if main copies into new arrays unnecessarily |
-| `_mirrorNavSnapshotToMain` | ~~worker → main~~ | **Removed** — `createWorkerNavSnapshotView` |
-| Replan candidate arrays | ~~main → worker~~ | **Removed** — `hpaReplanPrep.js` on worker |
-
-### Rules
-
-- **No mirror-back** unless a main-thread consumer is proven and can't use a SAB view.
-- **No repack on click** — replan message is `{ slot, startCol, startRow, targetCol, targetRow, navEpoch, graphEpoch }`.
-- **Epoch not snapshot** — main checks `grid.navTopologyRevision` / `graphEpoch`; worker refuses stale replans instead of silently syncing.
-- **Path out is bounded** — `MAX_HPA_PATH_LEN` slot pool; main maps cells to world in apply only (cheap), doesn't clone path into a second structure.
-- **Expand SAB pools, not postMessage payloads** — new fields get a documented layout in `hpaAbstractFlat.js` or path slot meta, not serialized objects.
-
----
-
-## Architecture (today)
-
-```
-Click → HpaPathSession._drainReplan
-      → HpaPathWorker.requestPath (snap + prep on main; graph sync via navigator)
-      → await nav/graph sync if stale
-      → worker replan + stitch
-      → abstractReady: applyHpaAbstractFirst (centroid path array, brief)
-      → hpaDone: applyHpaReplanResult (pathSlot + pathLen; steer from SAB)
-```
-
-**Warm click:** no `HierarchicalNavigator.computeCellPath`, no main stitch, no cell-path clone.
-
-**Wall edit:** `rebuildDamagedArea` on main (cost-only edges); `hpaPathSession` still uses navigator for `syncAbstractGraph` only.
-
----
-
-## Nav topology model (target theory)
-
-Two mechanisms — not one — but they compose cleanly:
-
-```
-Full reachability = LocalWalk(canStep / octile)  ∪  Transfers(hop CSR)
-Runtime physics   = portal grant/traverse, belt force, laser collision (separate from path graph)
-```
-
-| Feature | Path layer | HPA region assignment | HPA abstract edges | Runtime |
-|--------|------------|----------------------|-------------------|---------|
-| **Walls** | blocked cells | flood stops at solid | walk-adjacent only | collision |
-| **One-way forcefields** | filtered `canStep` / cardinal+vertex | bidirectional `canStep` splits chunks; adjacency if either direction works | walk adjacency | collision + powered rules |
-| **Portals** | hop CSR (mouth → exit, cost 1) | mouth/exit can share a region if walk-connected; usually different chunks | **hop region pair** via `_appendNavHopRegionAdjacencies` | crossing grant + traverse |
-| **Belts (today)** | wrong-side entry blocked in `canStep` | partial via entry rules | none | belt force + entry snap |
-| **Belts (target)** | **transfer edges** (enter → exit, cost = belt length) | same as portals when generalized | hop-style region edges | entry/exit physics |
-
-**HPA-awareness order (already / next):** forcefields first (via `canStep` in `VoronoiRegions` flood); portals second (non-local hop edges); belts last until belt graph lands on the same transfer machinery as portals.
-
-**Unification target:** generalize hop CSR to **TransferEdge** `{ fromCell, toCell, cost, kind }` for portals + belt chains. Keep forcefields in **LocalWalk** — they are edge permissions, not wormholes. Physics policies stay out of the graph.
-
-**Gap:** `_splitRegionIfDisconnected` (edit-time surgery) uses open cardinal neighbors only — not `canStep` or hops — so one-ways/portals inside a chunk can be wrong until full region rebuild.
-
-### Known issue — portal centroid cost on abstract graph
-
-Cell-level hops are correct: mouth → exit in one A* expansion, **cost 1**, any world distance (`forEachNavHop` in `AStar.js`, `boundaryNavHops`).
-
-Region-level edges added for the same portal use **`_connectRegionPair`**, which sets abstract edge cost to **Chebyshev distance between region centroids** (`HierarchicalNavigator.js`), not hop cost 1.
-
-**Effect:** connectivity is right (far linked portals reach each other; `pruneUnreachableRegions` floods through hops), but abstract A* **overcharges** portal legs vs cell-level reality. Stitch/local A* still finds the real hop in the cell path; abstract ranking and leg choice can be suboptimal when multiple routes exist.
-
-**Fix (future PR):** tag hop-derived region edges in persist CSR with **transfer cost** (mouth→exit hop cost, or stitched leg length at graph build). Do not use centroid distance for `TransferEdge` adjacency. Same layout extension covers belt graph edges later.
-
----
-
-### Still on main (must move)
-
-| Work | Where today | Why it blocks end goal |
-|------|-------------|------------------------|
-| Region graph + `edge.path` | `HierarchicalNavigator.nodesMap` | Graph build on main; worker stitches via per-leg local A* at replan time |
-| ~~Path stitch~~ | ~~main~~ | **Worker-owned** (`hpaStitch.js` + `HpaWorkerEntry`) |
-| ~~Nav snapshot mirror~~ | ~~`_mirrorNavSnapshotToMain`~~ | **Removed** — `getNavSnapshotView()` zero-copy SAB views |
-| Edit reconnect A* | ~~`_connectRegionPair`~~ | **Cost-only octile** — worker local A* at stitch |
-| Topology repack | `patchNavTopology` / `scheduleNavTopologySync` | Edit path patches dirty rect + margin; full sync on init, no bounds, or `gridTopologyEpoch` bump |
-| Graph repack | `packHpaGraphForWorker` | On `graphEpoch` bump only |
-| Portal abstract edge cost | `_connectRegionPair` | Centroid Chebyshev — should be transfer/hop cost (see above) |
-| Hop expand / apply | `hpaPathSlot.js`, `boundaryNavHops.js` | SAB view at apply/steer; no `expandBoundaryHopsInCellPath` clone on hot path |
-
----
-
-## Priority order
-
-### P0 — Worker returns the path (establish the pipe)
-
-1. ~~**Worker stitch + cell path output**~~ — done (PR1).
-2. ~~**Single apply entry**~~ — done; `_finishFullStitch` / `queueMicrotask` stitch removed.
-
-### P1 — Minimize main ↔ worker data
-
-3. ~~**Worker-authoritative nav read model**~~ — done: no mirror-back; flow + HNav use `getNavSnapshotView()`.
-4. ~~**Incremental topology push**~~ — done (PR4): `patchNavTopology(dirtyBounds)`; full `scheduleNavTopologySync` only on init / no bounds / topology epoch bump.
-5. ~~**Path via slot SAB only**~~ — done (PR3): `pathSlot` + `pathLen` on `navState`; steer/overlay read SAB; slot leased until next replan.
-6. ~~**Slim replan payload**~~ — done: worker derives temp-connect candidates (`hpaReplanPrep.js`).
-
-### P2 — Graph + snapshot maintenance off main
-
-7. **Edit-time region graph on worker** — deferred: main still runs `rebuildDamagedArea` surgery; reconnect is cost-only.
-8. ~~**Drop main `edge.path` on reconnect**~~ — done; worker stitches via per-leg local A*.
-
-### P3 — Policy + cleanup (same pipe, tunable knobs)
-
-9. **Leg advancement / partial paths** — `requestPath` accepts `maxLegs` or `maxCells`; worker returns prefix from same slot pool. Not a new pipeline.
-10. ~~**Thin main API**~~ — done (PR3): `HpaPathWorker.requestPath` + `applyHpaReplanResult`; `HierarchicalNavigator` off click hot path (graph sync on edits only).
-11. **Sidebar render** — incremental `sandboxToyUi.js` (orthogonal but still editor jank).
-
----
-
-## Code organization (libraries, reuse, clarity)
-
-**Extend existing modules — no parallel implementations.**
-
-| Domain | Own it in | Reuse / extend |
-|--------|-----------|----------------|
-| A* | `AStar.js` | `runLocalAStarFlat`, `runAbstractAStarFlat` — worker + main import same |
-| Nav snapshot | `GridNavSnapshot.js` | `buildOctileNeighborsFromTopology`, `createWorkerNavSnapshotView`, hop CSR |
-| Replan prep | `hpaPathRequest.js` | snap endpoints, `prepareHpaReplanPrep`, `buildHpaReplanResult` |
-| Worker temp-connect | `hpaReplanPrep.js` | temp-connect candidate collection on worker persist CSR |
-| Abstract CSR | `hpaAbstractFlat.js` | `packHpaGraphForWorker` — extend for leg path pools when needed |
-| Hop waypoints | `boundaryNavHops.js` | `boundaryHopMouthOnSabPath` — hop idx on cell path in SAB |
-| Path apply / SAB follow | `hpaPathPlan.js`, `hpaPathSlot.js` | apply surface + steer/overlay from slot SAB |
-| Nav state shape | `navSession.js` | `NavSessionState` typedef — one contract |
-
-**New shared code belongs in `Libraries/Pathfinding/`** only when it's a coherent subsystem (e.g. `hpaStitch.js` for leg concat + abstract→cell resolution), not one-off worker copies. `Render/Navigation/HpaWorkerEntry.js` stays a thin host: init SABs, dispatch messages, import library functions.
-
-**Patterns to enforce:**
-
-- **Worker produces / main applies** — CPU on worker, `navState` mutation on main.
-- **One pack format** — graph, legs, and path results use SAB layouts defined beside `hpaAbstractFlat.js`, not ad-hoc per message.
-- **No duplicate stitch** — `appendCellLeg` today lives in worker entry; consolidate with `stitchAbstractLegRange`.
-- **Fail fast** — no main-thread fallbacks that silently re-run A* if worker path is missing.
-- **Epoch over copy** — main tracks `navEpoch` / `graphEpoch`; worker is source of truth for bulk data.
-- **No mirror-back** — if main needs a byte, prefer `SharedArrayBuffer` view over `new Uint8Array(workerBuffer)`.
-- **No sync-on-update sprawl** — one bounded `patchNavTopology(dirtyBounds)` entry from edits, not every invalidation handler scheduling a full rebake.
-
----
-
-## 3-part PR plan
-
-### PR 1 — Worker-owned stitch (`P0` + start `P1`) — **Done**
-
-**Goal:** `hpaDone` delivers a complete cell path in the path slot SAB; main never calls `stitchAbstractCellPath` on the replan hot path.
-
-- Add `Libraries/Pathfinding/hpaStitch.js` — extract `stitchAbstractLegRange` / `_appendAbstractLeg` from `HierarchicalNavigator`; worker entry imports it.
-- Worker replan: after abstract A*, stitch all legs on worker using worker nav view; write cells to `sabPathColsPool` / `sabPathRowsPool`.
-- `HpaPathSession`: delete `_finishFullStitch` + `queueMicrotask` stitch; apply reads slot SAB views, does not rebuild temp-leg `Map`.
-- `applyHpaReplanResult` maps slot cells → world waypoints only.
-
-**Acceptance:** warm click — zero main-thread `stitchAbstract*`; path apply reads SAB views, no full path array clone unless required for `navState.path`.
-
-### PR 2 — Worker-owned graph + stop mirror (`P1` + `P2`) — **Done (partial)**
-
-**Shipped:** removed `_mirrorNavSnapshotToMain`; `createWorkerNavSnapshotView` + `getNavSnapshotView()`; flow reads worker SAB views; `_connectRegionPair` cost-only; worker derives temp-connect candidates (`hpaReplanPrep.js`); slim replan `postMessage`.
-
-**Deferred:** `patchRegionGraph` on worker; incremental abstract graph; full graph off main.
-
-**Acceptance met:** edit reconnect no `runLocalAStar` / `ensureGridNavSnapshot`; no octile mirror alloc on nav sync.
-
-
-### PR 3 — Thin request/apply API + SAB path-follow (`P3`) — **Done**
-
-**Shipped:** `HpaPathWorker.requestPath` (snap + prep + replan); `hpaPathRequest.js`; `HpaPathSession` calls `requestPath` only (no `computeCellPath`); `navState.pathSlot` + `pathLen`; steer/overlay/crossing-grant from SAB via `hpaPathSlot.js`; removed `_workerReplanResult` / worker branch from `HierarchicalNavigator`.
-
-**Deferred:** `maxCells` / `maxLegs` partial path policy; belt graph on worker.
-
-**Acceptance met:** sandbox click is epoch check → `requestPath` → SAB apply; no `HierarchicalNavigator` on hot path.
-
-### PR 4 — Incremental nav topology push (`P1` #4) — **Done**
-
-**Goal:** one `patchNavTopology(dirtyBounds)` path from edits → worker; stop full-grid `packBlockedFromGrid` on every topology bump.
-
-**Shipped:**
-- `GridNavSnapshot.js` — `expandCellBoundsForNavPatch`, `packBlockedIntoRect`, `copyNavTopologySlicesIntoRect`, `buildOctileNeighborsFromTopologyRect`, exported `bakeHopCsr`.
-- `HpaPathWorker.patchNavTopology` — coalesced dirty-rect union; packs blocked/cardinal/vertex into existing nav SABs; full hop CSR repack (O(cells), acceptable for now); worker `patchNavSnapshot` rebakes octile on data rect + 1-cell shell.
-- Fallback to `scheduleNavTopologySync` when: no bounds, empty bounds, never synced, grid size change, or `gridTopologyEpoch` bump; `_deferFullNavSync` if fallback races an in-flight patch.
-- `HpaWorkerEntry` — `patchNavSnapshot` handler (reuses `syncNavDone`).
-- `NavigationService.onObstaclesChanged` — `patchNavTopology(damageBounds)` when bounds present; full sync otherwise. Init (`SharedGameState`) and `FlowFieldGrid.refresh` still use full sync.
-
-**Deferred in PR4:** `patchRegionGraph`; portal centroid cost fix; belt transfer edges; incremental hop CSR (dirty-only).
-
-**Acceptance met:** wall stamp in a box — main packs O(dirty area + margin); warm click after edit still `requestPath` → worker replan; no full grid blocked scan on `onObstaclesChanged` when bounds are provided.
-
----
-
-## Non-goals / don't regress
-
-- Scene list must **not** enumerate bulk terrain voxels again.
-- No dual nav snapshot pipelines (main sync bake + worker bake) once P2 lands.
-- No in-memory migration shims — refresh is the migration.
-- No new micro-modules — helpers go into existing Pathfinding libs per workspace rules.
-- No "smart" lazy sync that repacks the whole grid from scattered `invalidate*` call sites — one explicit patch path only.
+- Scene list must not enumerate bulk terrain voxels
+- No dual nav bake pipelines
+- No main-thread A* / stitch fallback on missing worker path
