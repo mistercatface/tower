@@ -2,7 +2,7 @@ import { applyHpaAbstractFirst, applyHpaReplanResult, clearHpaNavPath } from "./
 /**
  * Async HPA replan controller — one leased worker slot per in-flight replan per navState.
  * Coalesces superseding requests; keeps last good path until apply.
- * Abstract-first: coarse region waypoints while worker finishes temp-connect, then first leg, then full stitch.
+ * Worker owns stitch; main applies path from slot SAB read.
  */
 export class HpaPathSession {
     constructor(hpaPathWorker, hierarchicalNavigator) {
@@ -24,14 +24,6 @@ export class HpaPathSession {
             this._draining.add(navState);
             void this._drainReplan(navState);
         }
-    }
-    _finishFullStitch(navState, requestId, stitch, params) {
-        const fullCellPath = this.hierarchicalNavigator.stitchAbstractCellPath(stitch.abstractIdx, stitch.prep, stitch.tempLegs);
-        const fullResult = this.hierarchicalNavigator._workerReplanResult(fullCellPath, stitch.prep, stitch.abstractIdx);
-        if (navState.hpaReplanRequestId !== 0) return;
-        if (navState.hpaStitchRequestId !== requestId) return;
-        if (!fullResult) clearHpaNavPath(navState);
-        else applyHpaReplanResult(navState, fullResult, params);
     }
     async _drainReplan(navState) {
         try {
@@ -61,13 +53,7 @@ export class HpaPathSession {
                 if (navState.hpaReplanRequestId !== requestId) continue;
                 navState.hpaReplanRequestId = 0;
                 if (!workerOut?.result) clearHpaNavPath(navState);
-                else {
-                    applyHpaReplanResult(navState, workerOut.result, params);
-                    if (!workerOut.complete && workerOut.stitch) {
-                        navState.hpaStitchRequestId = requestId;
-                        queueMicrotask(() => this._finishFullStitch(navState, requestId, workerOut.stitch, params));
-                    }
-                }
+                else applyHpaReplanResult(navState, workerOut.result, params);
             }
         } finally {
             this._draining.delete(navState);

@@ -1,5 +1,6 @@
 import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfinding/AStar.js";
 import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
+import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
 let maxSlots;
 let maxPathLen;
 let maxAbstractLen;
@@ -25,11 +26,6 @@ let aStarVisited;
 let replanRunId = 0;
 let persistNodeCount = 0;
 let persistEdgeWrite = 0;
-const MAX_TEMP_LEGS = 16;
-let sabReplanLegMetaPool;
-function slotReplanLegMeta(slot) {
-    return new Int32Array(sabReplanLegMetaPool, slot * 32 * 4, 32);
-}
 let extNodeCol;
 let extNodeRow;
 let extEdgeOffsets;
@@ -134,35 +130,6 @@ function writeAbstractPath(slot, pathIdx) {
     if (!pathIdx) return;
     const abstractIdx = slotAbstractIdx(slot);
     for (let i = 0; i < pathIdx.length; i++) abstractIdx[i] = pathIdx[i];
-}
-function appendCellLeg(fullPath, leg) {
-    if (!leg) return fullPath;
-    if (!fullPath) return leg.slice();
-    fullPath.push(...leg.slice(1));
-    return fullPath;
-}
-function writeTempLegs(slot, tempLegs) {
-    const meta = slotReplanLegMeta(slot);
-    const pathCols = slotPathCols(slot);
-    const pathRows = slotPathRows(slot);
-    let legCount = 0;
-    let cellOffset = 0;
-    for (const [key, path] of tempLegs) {
-        if (legCount >= MAX_TEMP_LEGS) break;
-        const [from, to] = key.split(",").map(Number);
-        const base = 1 + legCount * 4;
-        meta[base] = from;
-        meta[base + 1] = to;
-        meta[base + 2] = path.length;
-        meta[base + 3] = cellOffset;
-        for (let i = 0; i < path.length; i++) {
-            pathCols[cellOffset + i] = path[i].col;
-            pathRows[cellOffset + i] = path[i].row;
-        }
-        cellOffset += path.length;
-        legCount++;
-    }
-    meta[0] = legCount;
 }
 function octileGridCost(fromCol, fromRow, toCol, toRow) {
     return Math.max(Math.abs(toCol - fromCol), Math.abs(toRow - fromRow));
@@ -333,7 +300,6 @@ function runReplan(slot, data, requestId) {
     writeAbstractPath(slot, estimateAbstract);
     self.postMessage({ type: "abstractReady", slot, requestId });
     const extended = buildExtendedEdges(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen);
-    writeTempLegs(slot, extended.tempLegs);
     const abstractPath = runAbstractAStarFlat(
         extended.startTemp,
         extended.targetTemp,
@@ -345,7 +311,17 @@ function runReplan(slot, data, requestId) {
         extended.extCount,
     );
     writeAbstractPath(slot, abstractPath);
-    writeCellPath(slot, null);
+    if (!abstractPath) {
+        writeCellPath(slot, null);
+        return;
+    }
+    const nodeCol = persistNodeColView().subarray(0, persistNodeCount);
+    const nodeRow = persistNodeRowView().subarray(0, persistNodeCount);
+    const prep = { startCol, startRow, targetCol, targetRow, nodeCount: persistNodeCount, nodeCol, nodeRow };
+    const resolveRegionLeg = (aIdx, bIdx) =>
+        runLocalAStarFlat(nodeCol[aIdx], nodeRow[aIdx], nodeCol[bIdx], nodeRow[bIdx], navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
+    const cellPath = stitchAbstractCellPath(abstractPath, prep, extended.tempLegs, resolveRegionLeg);
+    writeCellPath(slot, cellPath);
 }
 self.onmessage = function (e) {
     const { type, data, slot, requestId } = e.data;
@@ -365,7 +341,6 @@ self.onmessage = function (e) {
         sabPersistGraphEdgeTargets = data.sabPersistGraphEdgeTargets;
         sabPersistGraphEdgeCosts = data.sabPersistGraphEdgeCosts;
         sabPersistGraphEdgeSources = data.sabPersistGraphEdgeSources;
-        sabReplanLegMetaPool = data.sabReplanLegMetaPool;
         return;
     }
     if (type === "buildNavSnapshot") {

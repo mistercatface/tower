@@ -11,7 +11,6 @@ export function clearHpaNavPath(navState) {
     navState.boundaryHopIdx = null;
     navState.navPathActive = false;
     navState.crossingGrant = null;
-    navState.hpaStitchRequestId = 0;
 }
 export function applyHpaAbstractFirst(navState, result, { obstacleGrid, startX, startY, targetX, targetY, nowMs }) {
     const nodes = result.abstractNodes;

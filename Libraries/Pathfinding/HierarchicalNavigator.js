@@ -501,41 +501,6 @@ export class HierarchicalNavigator {
         if (!cellPath) return { cellPath: null, abstractNodes, pathPlanner: "hpa" };
         return { cellPath, abstractNodes, pathPlanner: "hpa" };
     }
-    _appendAbstractLeg(abstractIdx, prep, tempLegs, legIndex, fullCellPath) {
-        const { nodeIds, nodeCount, nodeCol, nodeRow, startCol, startRow, targetCol, targetRow } = prep;
-        const startTemp = nodeCount;
-        const targetTemp = nodeCount + 1;
-        const aIdx = abstractIdx[legIndex];
-        const bIdx = abstractIdx[legIndex + 1];
-        let leg = tempLegs.get(`${aIdx},${bIdx}`);
-        if (!leg && aIdx < nodeCount && bIdx < nodeCount) {
-            const nodeA = this.nodesMap[nodeIds[aIdx]];
-            const nodeB = this.nodesMap[nodeIds[bIdx]];
-            const edge = nodeA?.edges.find((e) => e.targetId === nodeB.id);
-            if (edge?.path) leg = edge.path;
-        }
-        if (!leg) {
-            const aCol = aIdx === startTemp ? startCol : aIdx === targetTemp ? targetCol : nodeCol[aIdx];
-            const aRow = aIdx === startTemp ? startRow : aIdx === targetTemp ? targetRow : nodeRow[aIdx];
-            const bCol = bIdx === startTemp ? startCol : bIdx === targetTemp ? targetCol : nodeCol[bIdx];
-            const bRow = bIdx === startTemp ? startRow : bIdx === targetTemp ? targetRow : nodeRow[bIdx];
-            if (fullCellPath.length === 0) fullCellPath.push({ col: aCol, row: aRow });
-            fullCellPath.push({ col: bCol, row: bRow });
-            return;
-        }
-        if (fullCellPath.length === 0) fullCellPath.push(...leg);
-        else fullCellPath.push(...leg.slice(1));
-    }
-    stitchAbstractLegRange(abstractIdx, prep, tempLegs, legStart, legEndExclusive) {
-        if (!abstractIdx.length || legEndExclusive <= legStart) return null;
-        const fullCellPath = [];
-        const lastLeg = Math.min(legEndExclusive, abstractIdx.length - 1);
-        for (let i = legStart; i < lastLeg; i++) this._appendAbstractLeg(abstractIdx, prep, tempLegs, i, fullCellPath);
-        return fullCellPath.length ? fullCellPath : null;
-    }
-    stitchAbstractCellPath(abstractIdx, prep, tempLegs) {
-        return this.stitchAbstractLegRange(abstractIdx, prep, tempLegs, 0, abstractIdx.length - 1);
-    }
     _cellPathToWaypoints(cells) {
         return cells.map((cell) => this.gridToWorld(cell.col, cell.row));
     }

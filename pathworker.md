@@ -34,15 +34,15 @@ Cross-thread ideal: main sends **coordinates + epoch**, worker returns **path sl
 |---|------|--------|-------|
 | 1 | Stop clearing path on click (sandbox) | **Done** | `markTargetChanged` in `rollToCursorHpaNav.js` |
 | 2 | One-shot worker replan | **Done** | `runOneShotReplan` — single `replan` IPC per request |
-| 3 | Abstract-first + first-leg apply | **Done** | `abstractReady` → region waypoints; first leg on `hpaDone`; full stitch via `queueMicrotask` on **main** |
+| 3 | Abstract-first apply | **Done** | `abstractReady` → region centroids; worker stitches full cell path; main applies from slot SAB |
 | 4 | Persistent abstract graph on worker | **Partial** | Worker CSR in SABs; **main** still owns `nodesMap`, `edge.path`, and rebuilds on wall edits |
 | 5 | Snapshot off click path | **Partial** | Worker bakes octile; main still packs topology + mirrors full snapshot back; edit path still sync-bakes |
-| 6 | Worker-owned path response | **Not done** | Worker returns `abstractIdx` + temp legs; **main** stitches via `stitchAbstractLegRange` / `_finishFullStitch` |
+| 6 | Worker-owned path response | **Done** | Worker stitches via `hpaStitch.js`; writes cell path to slot SAB; main reads + applies only |
 | 7 | Edit-time graph off main | **Not done** | `rebuildDamagedArea` → `_connectRegionPair` → sync `runLocalAStar` + `ensureGridNavSnapshot` on main |
 | 8 | Leg advancement / partial path policy | **Not done** | Full replan every target change; granularity tunable once #6 is done |
 | 9 | Minimal main ↔ worker data | **Not done** | Main packs topology + mirrors full octile snapshot back; graph repack on epoch; path legs cross as main `edge.path` + temp-leg maps |
 
-**Net:** Replan CPU mostly moved to worker. **Path materialization and graph maintenance are still split** — main owns the nav world model (`nodesMap`, `edge.path`, stitch, edit reconnect). **Data still bounces both ways** — pack on main, bake on worker, copy back to main. That split is the remaining work.
+**Net:** Worker owns replan + stitch. Main reads cell path from slot SAB and applies. **Graph maintenance and snapshot mirroring** still split — main owns `nodesMap` / edit reconnect; data still bounces on topology sync.
 
 ---
 
@@ -82,7 +82,7 @@ If each handler calls "ensure worker is fresh," you get **death by a thousand fu
 | `packHpaGraphForWorker` | main → SAB | O(nodes + edges) per graph epoch | Worker owns graph after PR2; main never repacks |
 | `nodesMap.edge.path` | main only | O(path cells × edges) duplicated conceptually | Worker stores legs at stitch or in edge-path pool SAB |
 | `abstractReady` + `hpaDone` | worker → main | abstract idx + temp legs read from SAB | OK if main only **views** slot SABs to apply waypoints — bad if main copies into new arrays unnecessarily |
-| `_readTempLegs` → `Map` | SAB → main heap | Rebuilds JS objects per replan | Main views SAB directly in apply or worker sends world waypoints in path slot |
+| `_readTempLegs` → `Map` | ~~SAB → main heap~~ | **Removed in PR1** — worker stitches before `hpaDone` |
 
 ### Rules
 
@@ -100,14 +100,13 @@ If each handler calls "ensure worker is fresh," you get **death by a thousand fu
 Click → HpaPathSession._drainReplan
       → prepareWorkerReplan (main: scan nodesMap)
       → await nav sync (main packs SABs → worker bake → main mirrors snapshot)
-      → await graph sync (main packHpaGraphForWorker — costs only, no leg geometry)
-      → worker replan (abstract A* + temp-connect local A*)
+      → await graph sync (main packHpaGraphForWorker — costs only)
+      → worker replan (abstract A* + temp-connect + stitch via hpaStitch.js)
       → abstractReady: main apply region centroids
-      → hpaDone: main stitchAbstractLegRange (leg 0) → queueMicrotask full stitch on main
-      → applyHpaReplanResult / expandBoundaryHopsInCellPath (main)
+      → hpaDone: main reads stitched cell path from slot SAB → applyHpaReplanResult
 ```
 
-**Warm click:** no `rebuildDamagedArea`, no Scene grid scan — but still main stitch + graph/apply.
+**Warm click:** no `rebuildDamagedArea`, no main stitch — still graph pack + `_readCellPath` copy for apply.
 
 **Wall edit:** `onObstaclesChanged` → `rebuildDamagedArea` on main (region surgery + local A* reconnect) → worker nav/graph reschedule.
 
@@ -115,8 +114,8 @@ Click → HpaPathSession._drainReplan
 
 | Work | Where today | Why it blocks end goal |
 |------|-------------|------------------------|
-| Region graph + `edge.path` | `HierarchicalNavigator.nodesMap` | Worker only gets CSR costs; stitch needs leg geometry on main |
-| Path stitch | `stitchAbstractLegRange`, `HpaPathSession._finishFullStitch` | Worker writes `writeCellPath(null)` |
+| Region graph + `edge.path` | `HierarchicalNavigator.nodesMap` | Graph build on main; worker stitches via per-leg local A* at replan time |
+| ~~Path stitch~~ | ~~main~~ | **Worker-owned** (`hpaStitch.js` + `HpaWorkerEntry`) |
 | Edit reconnect A* | `_connectRegionPair` in `rebuildDamagedArea` | Sync local A* per neighbor on every wall change |
 | Nav snapshot mirror | `_mirrorNavSnapshotToMain` | Full octile copy back after worker bake — **P1 waste** |
 | Topology repack | `scheduleNavTopologySync` | Main repacks full blocked + hops before every worker bake — **P1 waste** |
@@ -129,14 +128,14 @@ Click → HpaPathSession._drainReplan
 
 ### P0 — Worker returns the path (establish the pipe)
 
-1. **Worker stitch + cell path output** — move `stitchAbstractLegRange` logic into `Libraries/Pathfinding`; worker runs it against worker nav view + persist graph, writes final cells to path slot SAB (`writeCellPath` non-null). Main drops `_finishFullStitch` / main-thread stitch on replan hot path.
-2. **Single apply entry** — main receives `PathResult` (cells via SAB view or compact read); `applyHpaReplanResult` stays the only mutation of `navState.path`.
+1. ~~**Worker stitch + cell path output**~~ — done (PR1).
+2. ~~**Single apply entry**~~ — done; `_finishFullStitch` / `queueMicrotask` stitch removed.
 
 ### P1 — Minimize main ↔ worker data
 
 3. **Worker-authoritative nav + graph** — no `_mirrorNavSnapshotToMain`; no main `gridNavSnapshot` on HPA hot path. Main keeps epoch counters only.
 4. **Incremental topology push** — wall/floor/boundary edits send dirty bounds + revision, not full-grid repack. Worker patches its nav view; avoid sync-on-every-`invalidateGridNavSnapshot` handler chaining into full rebake.
-5. **Path via slot SAB only** — `hpaDone` / `abstractReady` signal slot + meta; main reads `sabPathColsPool` / `sabAbstractIdxPool` views to apply — no `_readTempLegs` → `Map` → restitch on main.
+5. **Path via slot SAB only** — ~~`_readTempLegs` → Map~~ done; main still clones via `_readCellPath` → apply (PR3: view-only apply).
 6. **Replan payload slim** — one `replan` message: coords, epochs, slot id. No candidate arrays or graph blobs in `postMessage` (worker derives candidates from its own graph).
 
 ### P2 — Graph + snapshot maintenance off main
@@ -182,7 +181,7 @@ Click → HpaPathSession._drainReplan
 
 ## 3-part PR plan
 
-### PR 1 — Worker-owned stitch (`P0` + start `P1`)
+### PR 1 — Worker-owned stitch (`P0` + start `P1`) — **Done**
 
 **Goal:** `hpaDone` delivers a complete cell path in the path slot SAB; main never calls `stitchAbstractCellPath` on the replan hot path.
 

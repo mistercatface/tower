@@ -41,7 +41,6 @@ export class HpaPathWorker {
         this.sabPersistGraphEdgeTargets = new SharedArrayBuffer(MAX_GRAPH_EDGES * 2);
         this.sabPersistGraphEdgeCosts = new SharedArrayBuffer(MAX_GRAPH_EDGES * 2);
         this.sabPersistGraphEdgeSources = new SharedArrayBuffer(MAX_GRAPH_EDGES * 2);
-        this.sabReplanLegMetaPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * 32 * 4);
         this.host.worker.onmessage = (e) => {
             const { type, slot, requestId } = e.data;
             if (type === SYNC_NAV_DONE) {
@@ -88,7 +87,6 @@ export class HpaPathWorker {
                 sabPersistGraphEdgeTargets: this.sabPersistGraphEdgeTargets,
                 sabPersistGraphEdgeCosts: this.sabPersistGraphEdgeCosts,
                 sabPersistGraphEdgeSources: this.sabPersistGraphEdgeSources,
-                sabReplanLegMetaPool: this.sabReplanLegMetaPool,
             },
         });
     }
@@ -203,7 +201,7 @@ export class HpaPathWorker {
         const hopCost = [];
         const lists = new Array(size);
         const hopsByIdx = grid.boundaryNavHops;
-        if (hopsByIdx) {
+        if (hopsByIdx)
             for (const [idx, hops] of hopsByIdx) {
                 const bucket = [];
                 for (let i = 0; i < hops.length; i++) {
@@ -213,7 +211,6 @@ export class HpaPathWorker {
                 }
                 if (bucket.length) lists[idx] = bucket;
             }
-        }
         let write = 0;
         for (let idx = 0; idx < size; idx++) {
             hopOffsets[idx] = write;
@@ -289,24 +286,6 @@ export class HpaPathWorker {
     getGraphMeta() {
         return { nodeCount: this.graphNodeCount, nodeIds: this.graphNodeIds, nodeCol: this.graphNodeCol, nodeRow: this.graphNodeRow, idToIdx: this.graphIdToIdx };
     }
-    _readTempLegs(slot) {
-        const meta = new Int32Array(this.sabReplanLegMetaPool, slot * 32 * 4, 32);
-        const legCount = meta[0];
-        const pathCols = this._pathCols(slot);
-        const pathRows = this._pathRows(slot);
-        const tempLegs = new Map();
-        for (let i = 0; i < legCount; i++) {
-            const base = 1 + i * 4;
-            const from = meta[base];
-            const to = meta[base + 1];
-            const len = meta[base + 2];
-            const offset = meta[base + 3];
-            const path = new Array(len);
-            for (let j = 0; j < len; j++) path[j] = { col: pathCols[offset + j], row: pathRows[offset + j] };
-            tempLegs.set(`${from},${to}`, path);
-        }
-        return tempLegs;
-    }
     async runOneShotReplan(slot, prep, nav, graphEpoch, replanCtx = null) {
         await this._ensureWorkerNavReady();
         await this._ensureWorkerGraphReady(nav, graphEpoch);
@@ -315,26 +294,18 @@ export class HpaPathWorker {
             payload.startCandidates = prep.startCandidates;
             payload.targetCandidates = prep.targetCandidates;
             payload.regionConnectMaxLen = prep.regionConnectMaxLen;
-            if (replanCtx?.onAbstractReady && replanCtx.replanRequestId != null) {
+            if (replanCtx?.onAbstractReady && replanCtx.replanRequestId != null)
                 this._replanHooks[slot] = { requestId: replanCtx.replanRequestId, onAbstractReady: replanCtx.onAbstractReady, prep, nav };
-            }
         }
         try {
             await this._dispatchAndWait(slot, "replan", payload);
         } finally {
             this._replanHooks[slot] = null;
         }
-        if (prep.mode === "local") {
-            const cellPath = this._readCellPath(slot);
-            return { complete: true, result: nav._workerReplanResult(cellPath, prep, []) };
-        }
         const abstractIdx = this._readAbstractIdx(slot);
-        const tempLegs = this._readTempLegs(slot);
-        const legCount = abstractIdx.length > 1 ? abstractIdx.length - 1 : 0;
-        const firstCellPath = legCount > 0 ? nav.stitchAbstractLegRange(abstractIdx, prep, tempLegs, 0, 1) : null;
-        const result = nav._workerReplanResult(firstCellPath, prep, abstractIdx);
+        const cellPath = this._readCellPath(slot);
+        const result = nav._workerReplanResult(cellPath, prep, abstractIdx);
         if (!result) return null;
-        if (legCount <= 1) return { complete: true, result };
-        return { complete: false, result, stitch: { abstractIdx, prep, tempLegs } };
+        return { complete: true, result };
     }
 }
