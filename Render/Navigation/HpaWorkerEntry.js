@@ -1,5 +1,5 @@
 import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfinding/AStar.js";
-import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
+import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology, buildOctileNeighborsFromTopologyRect } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
 let maxSlots;
@@ -93,6 +93,23 @@ function buildNavSnapshotOnWorker(data) {
     const octileNeighbors = new Int32Array(data.sabOctileNeighbors);
     buildOctileNeighborsFromTopology(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors);
     bindNavFromBuild({ ...data, sabBlocked: data.sabBlocked, sabOctileNeighbors: data.sabOctileNeighbors });
+}
+function patchNavSnapshotOnWorker(data) {
+    if (!navSnapshot) {
+        buildNavSnapshotOnWorker(data);
+        return;
+    }
+    const blocked = new Uint8Array(data.sabBlocked);
+    const cardinalOpen = new Uint8Array(data.sabCardinalOpen);
+    const vertexPassability = new Uint8Array(data.sabVertexPassability);
+    const octileNeighbors = new Int32Array(data.sabOctileNeighbors);
+    buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vertexPassability, data.cols, data.rows, octileNeighbors, data.startCol, data.endCol, data.startRow, data.endRow);
+    navSnapshot.blocked = blocked;
+    navSnapshot.octileNeighbors = octileNeighbors;
+    navSnapshot.hopOffsets = new Int32Array(data.sabHopOffsets);
+    navSnapshot.hopExitIdx = new Int32Array(data.sabHopExitIdx);
+    navSnapshot.hopCost = new Uint8Array(data.sabHopCost);
+    navView = createSnapshotLocalNavView(navSnapshot);
 }
 function buildPersistGraphCsr(nodeCount, edgeWrite) {
     const srcSources = persistEdgeSourcesView().subarray(0, edgeWrite);
@@ -382,6 +399,11 @@ self.onmessage = function (e) {
     }
     if (type === "buildNavSnapshot") {
         buildNavSnapshotOnWorker(e.data);
+        self.postMessage({ type: "syncNavDone" });
+        return;
+    }
+    if (type === "patchNavSnapshot") {
+        patchNavSnapshotOnWorker(e.data);
         self.postMessage({ type: "syncNavDone" });
         return;
     }

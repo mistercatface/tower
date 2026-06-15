@@ -1,7 +1,17 @@
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { packHpaGraphForWorker, MAX_HPA_GRAPH_NODES } from "./hpaAbstractFlat.js";
-import { packBlockedFromGrid, snapshotNavCacheKey, createWorkerNavSnapshotView } from "./GridNavSnapshot.js";
+import {
+    bakeHopCsr,
+    copyNavTopologySlicesIntoRect,
+    createWorkerNavSnapshotView,
+    expandCellBoundsForNavPatch,
+    NAV_TOPOLOGY_OCTILE_SHELL,
+    packBlockedFromGrid,
+    packBlockedIntoRect,
+    snapshotNavCacheKey,
+} from "./GridNavSnapshot.js";
 import { buildHpaReplanResult, prepareHpaReplanPrep, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
+import { isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
@@ -22,6 +32,10 @@ export class HpaPathWorker {
         this._navSize = 0;
         this._navSyncPromise = null;
         this._navSnapshotView = null;
+        this._lastGridTopologyEpoch = -1;
+        /** @type {import("../DataStructures/CellRect.js").CellBounds | null} */
+        this._pendingPatchBounds = null;
+        this._deferFullNavSync = false;
         this._graphEpoch = -1;
         this._graphSyncTargetEpoch = -1;
         this._graphSyncPromise = null;
@@ -54,6 +68,10 @@ export class HpaPathWorker {
                 this._navSyncResolve = null;
                 this._navSyncPromise = null;
                 resolve();
+                if (this._deferFullNavSync) {
+                    this._deferFullNavSync = false;
+                    this.scheduleNavTopologySync(this.navGraph);
+                }
                 return;
             }
             if (type === GRAPH_SYNC_DONE) {
@@ -172,17 +190,23 @@ export class HpaPathWorker {
     navCacheKey() {
         return this._navKey;
     }
+    _canIncrementalPatch(grid) {
+        const size = grid.cols * grid.rows;
+        return this._navSize === size && size > 0 && this._navKey !== "" && this.navBlocked;
+    }
     scheduleNavTopologySync(grid = this.navGraph) {
         const cacheKey = snapshotNavCacheKey(grid);
         if (cacheKey === this._navKey) return;
         if (this._navSyncPromise) return;
+        this._pendingPatchBounds = null;
+        this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
         this._navKey = cacheKey;
         this._navSnapshotView = null;
         this.navGraph.gridNavSnapshot = null;
         const size = grid.cols * grid.rows;
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
         const blocked = packBlockedFromGrid(grid);
-        const hops = this._packHopCsr(grid, blocked);
+        const hops = bakeHopCsr(grid, blocked, grid.cols, grid.rows);
         this._ensureNavBuffers(size, hops.hopExitIdx.byteLength, hops.hopCost.byteLength, vertCount);
         this.navBlocked.set(blocked);
         this.navCardinalOpen.set(grid.navCardinalOpen);
@@ -206,40 +230,74 @@ export class HpaPathWorker {
             });
         });
     }
-    _packHopCsr(grid, blocked) {
-        const { cols, rows } = grid;
-        const size = cols * rows;
-        const hopOffsets = new Int32Array(size + 1);
-        const hopExitIdx = [];
-        const hopCost = [];
-        const lists = new Array(size);
-        const hopsByIdx = grid.boundaryNavHops;
-        if (hopsByIdx)
-            for (const [idx, hops] of hopsByIdx) {
-                const bucket = [];
-                for (let i = 0; i < hops.length; i++) {
-                    const { exitCol, exitRow, cost } = hops[i];
-                    if (blocked[exitCol + exitRow * cols]) continue;
-                    bucket.push({ exitIdx: exitCol + exitRow * cols, cost });
-                }
-                if (bucket.length) lists[idx] = bucket;
-            }
-        let write = 0;
-        for (let idx = 0; idx < size; idx++) {
-            hopOffsets[idx] = write;
-            const bucket = lists[idx];
-            if (bucket)
-                for (let i = 0; i < bucket.length; i++) {
-                    hopExitIdx.push(bucket[i].exitIdx);
-                    hopCost.push(bucket[i].cost);
-                    write++;
-                }
+    _fallbackToFullNavSync(grid) {
+        this._pendingPatchBounds = null;
+        if (this._navSyncPromise) {
+            this._deferFullNavSync = true;
+            return;
         }
-        hopOffsets[size] = write;
-        return { hopOffsets, hopExitIdx: Int32Array.from(hopExitIdx), hopCost: Uint8Array.from(hopCost) };
+        this.scheduleNavTopologySync(grid);
+    }
+    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds} bounds */
+    patchNavTopology(grid, bounds) {
+        const cacheKey = snapshotNavCacheKey(grid);
+        if (cacheKey === this._navKey) return;
+        if (isEmptyCellBounds(bounds) || grid.gridTopologyEpoch !== this._lastGridTopologyEpoch || !this._canIncrementalPatch(grid)) {
+            this._fallbackToFullNavSync(grid);
+            return;
+        }
+        this._pendingPatchBounds = unionCellBounds(this._pendingPatchBounds, bounds);
+        if (this._navSyncPromise) return;
+        void this._drainNavTopologySync(grid);
+    }
+    async _drainNavTopologySync(grid) {
+        try {
+            while (this._pendingPatchBounds) {
+                const dataBounds = expandCellBoundsForNavPatch(this._pendingPatchBounds, grid.cols, grid.rows);
+                const octileBounds = expandCellBoundsForNavPatch(dataBounds, grid.cols, grid.rows, NAV_TOPOLOGY_OCTILE_SHELL);
+                this._pendingPatchBounds = null;
+                const cacheKey = snapshotNavCacheKey(grid);
+                if (cacheKey === this._navKey) continue;
+                this._navKey = cacheKey;
+                this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
+                this._navSnapshotView = null;
+                this.navGraph.gridNavSnapshot = null;
+                packBlockedIntoRect(grid, dataBounds, this.navBlocked);
+                copyNavTopologySlicesIntoRect(grid, dataBounds, this.navCardinalOpen, this.navVertexPassability);
+                const hops = bakeHopCsr(grid, this.navBlocked, grid.cols, grid.rows);
+                this._ensureNavBuffers(grid.cols * grid.rows, hops.hopExitIdx.byteLength, hops.hopCost.byteLength, (grid.cols + 1) * (grid.rows + 1));
+                this.navHopOffsets.set(hops.hopOffsets);
+                this.navHopExitIdx.set(hops.hopExitIdx);
+                this.navHopCost.set(hops.hopCost);
+                this._navSyncPromise = new Promise((resolve) => {
+                    this._navSyncResolve = resolve;
+                    this.host.worker.postMessage({
+                        type: "patchNavSnapshot",
+                        cols: grid.cols,
+                        rows: grid.rows,
+                        startCol: octileBounds.startCol,
+                        endCol: octileBounds.endCol,
+                        startRow: octileBounds.startRow,
+                        endRow: octileBounds.endRow,
+                        sabBlocked: this.sabBlocked,
+                        sabCardinalOpen: this.sabCardinalOpen,
+                        sabVertexPassability: this.sabVertexPassability,
+                        sabHopOffsets: this.sabHopOffsets,
+                        sabHopExitIdx: this.sabHopExitIdx,
+                        sabHopCost: this.sabHopCost,
+                        sabOctileNeighbors: this.sabOctileNeighbors,
+                    });
+                });
+                await this._navSyncPromise;
+            }
+        } finally {
+            if (this._pendingPatchBounds && snapshotNavCacheKey(grid) !== this._navKey) void this._drainNavTopologySync(grid);
+        }
     }
     async _ensureWorkerNavReady() {
-        this.scheduleNavTopologySync();
+        const grid = this.navGraph;
+        const cacheKey = snapshotNavCacheKey(grid);
+        if (cacheKey !== this._navKey) this.scheduleNavTopologySync(grid);
         if (this._navSyncPromise) await this._navSyncPromise;
     }
     syncAbstractGraph(navigator, graphEpoch) {

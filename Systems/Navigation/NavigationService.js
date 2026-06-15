@@ -1,5 +1,6 @@
 import { NavigationController } from "../../Libraries/Navigation/index.js";
 import { refreshNavCrossingGrant, syncCrossingGrantToEntity } from "../../Libraries/Pathfinding/crossingGrant.js";
+import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
 import { VIEWPORT_VISIBILITY_PAD_WIDE } from "../../Libraries/Viewport/Viewport.js";
 import { planHpaSteering } from "./HpaStrategy.js";
 /**
@@ -65,7 +66,9 @@ export class NavigationService {
     onObstaclesChanged(damageBounds) {
         this._controller.onObstaclesChanged(damageBounds, this._controller.hierarchicalNavigator?.navGraph);
         if (this._hpaPathWorker) {
-            this._hpaPathWorker.scheduleNavTopologySync(this._controller.hierarchicalNavigator?.navGraph);
+            const grid = this._controller.hierarchicalNavigator?.navGraph;
+            if (grid && damageBounds && !isEmptyCellBounds(damageBounds)) this._hpaPathWorker.patchNavTopology(grid, damageBounds);
+            else if (grid) this._hpaPathWorker.scheduleNavTopologySync(grid);
             this._hpaPathWorker.syncAbstractGraph(this._hierarchicalNavigator, this._controller.obstacleGeneration);
         }
     }

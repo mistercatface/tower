@@ -1,6 +1,14 @@
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
+import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
+
+/** Octile + diagonal vertex passability can affect neighbors up to 2 cells away. */
+export const NAV_TOPOLOGY_PATCH_MARGIN = 2;
+/** Rebake shell so cells outside the data rect drop edges into changed cells. */
+export const NAV_TOPOLOGY_OCTILE_SHELL = 1;
+
+/** @typedef {{ startCol: number, endCol: number, startRow: number, endRow: number }} CellBounds */
 /**
  * @typedef {object} GridNavSnapshot
  * @property {string} cacheKey
@@ -17,7 +25,41 @@ import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
  * @property {Uint8Array} hopCost
  */
 const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
-function bakeHopCsr(grid, blocked, cols, rows) {
+
+/** @param {CellBounds} bounds @param {number} cols @param {number} rows @param {number} [margin] */
+export function expandCellBoundsForNavPatch(bounds, cols, rows, margin = NAV_TOPOLOGY_PATCH_MARGIN) {
+    return {
+        startCol: Math.max(0, bounds.startCol - margin),
+        endCol: Math.min(cols - 1, bounds.endCol + margin),
+        startRow: Math.max(0, bounds.startRow - margin),
+        endRow: Math.min(rows - 1, bounds.endRow + margin),
+    };
+}
+
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {CellBounds} bounds @param {Uint8Array} blocked */
+export function packBlockedIntoRect(grid, bounds, blocked) {
+    const { cols } = grid;
+    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, (col, row, idx) => {
+        blocked[idx] = grid.grid[idx] !== 0 ? 1 : 0;
+    });
+}
+
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {CellBounds} bounds @param {Uint8Array} cardinalOpen @param {Uint8Array} vertexPassability */
+export function copyNavTopologySlicesIntoRect(grid, bounds, cardinalOpen, vertexPassability) {
+    const { cols, rows } = grid;
+    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, (_col, _row, idx) => {
+        cardinalOpen[idx] = grid.navCardinalOpen[idx];
+    });
+    const vCols = cols + 1;
+    const vStartCol = Math.max(0, bounds.startCol);
+    const vEndCol = Math.min(cols, bounds.endCol + 1);
+    const vStartRow = Math.max(0, bounds.startRow);
+    const vEndRow = Math.min(rows, bounds.endRow + 1);
+    for (let vy = vStartRow; vy <= vEndRow; vy++)
+        for (let vx = vStartCol; vx <= vEndCol; vx++) vertexPassability[vx + vy * vCols] = grid.vertexPassability[vx + vy * vCols];
+}
+
+export function bakeHopCsr(grid, blocked, cols, rows) {
     const size = cols * rows;
     const hopOffsets = new Int32Array(size + 1);
     const hopExitIdx = [];
@@ -57,23 +99,34 @@ function bakeOctileNeighbors(grid, cols, rows, blocked, octileNeighbors, startRo
 }
 /** Worker/main-safe octile bake from prepacked topology (no grid.canStep). */
 export function buildOctileNeighborsFromTopology(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors) {
-    octileNeighbors.fill(-1);
-    for (let row = 0; row < rows; row++)
-        for (let col = 0; col < cols; col++) {
-            const idx = colRowToIndex(col, row, cols);
-            if (blocked[idx]) continue;
-            const base = idx * 8;
-            for (let i = 0; i < OCTILE_OFFSETS.length; i++) {
-                const { dc, dr } = OCTILE_OFFSETS[i];
-                const nc = col + dc;
-                const nr = row + dr;
-                if (!cellInRect(nc, nr, cols, rows)) continue;
-                const nIdx = colRowToIndex(nc, nr, cols);
-                if (blocked[nIdx]) continue;
-                const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & CARDINAL_BITS[`${dc},${dr}`]) !== 0 : diagonalStepOpen(blocked, vertexPassability, cols, rows, col, row, dc, dr);
-                if (open) octileNeighbors[base + i] = nIdx;
-            }
+    buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, 0, cols - 1, 0, rows - 1);
+}
+
+/** Rebake octile neighbors for cells in [startCol..endCol] × [startRow..endRow] inclusive. */
+export function buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, startCol, endCol, startRow, endRow) {
+    forEachDenseCellInRect(startCol, endCol, startRow, endRow, cols, (col, row, idx) => {
+        const base = idx * 8;
+        if (blocked[idx]) {
+            for (let i = 0; i < OCTILE_OFFSETS.length; i++) octileNeighbors[base + i] = -1;
+            return;
         }
+        for (let i = 0; i < OCTILE_OFFSETS.length; i++) {
+            const { dc, dr } = OCTILE_OFFSETS[i];
+            const nc = col + dc;
+            const nr = row + dr;
+            if (!cellInRect(nc, nr, cols, rows)) {
+                octileNeighbors[base + i] = -1;
+                continue;
+            }
+            const nIdx = colRowToIndex(nc, nr, cols);
+            if (blocked[nIdx]) {
+                octileNeighbors[base + i] = -1;
+                continue;
+            }
+            const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & CARDINAL_BITS[`${dc},${dr}`]) !== 0 : diagonalStepOpen(blocked, vertexPassability, cols, rows, col, row, dc, dr);
+            octileNeighbors[base + i] = open ? nIdx : -1;
+        }
+    });
 }
 export function packBlockedFromGrid(grid) {
     const size = grid.cols * grid.rows;

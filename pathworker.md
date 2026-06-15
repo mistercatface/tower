@@ -156,7 +156,7 @@ Region-level edges added for the same portal use **`_connectRegionPair`**, which
 | ~~Path stitch~~ | ~~main~~ | **Worker-owned** (`hpaStitch.js` + `HpaWorkerEntry`) |
 | ~~Nav snapshot mirror~~ | ~~`_mirrorNavSnapshotToMain`~~ | **Removed** — `getNavSnapshotView()` zero-copy SAB views |
 | Edit reconnect A* | ~~`_connectRegionPair`~~ | **Cost-only octile** — worker local A* at stitch |
-| Topology repack | `scheduleNavTopologySync` | Main still packs blocked + hops on epoch change (PR2 remainder) |
+| Topology repack | `patchNavTopology` / `scheduleNavTopologySync` | Edit path patches dirty rect + margin; full sync on init, no bounds, or `gridTopologyEpoch` bump |
 | Graph repack | `packHpaGraphForWorker` | On `graphEpoch` bump only |
 | Portal abstract edge cost | `_connectRegionPair` | Centroid Chebyshev — should be transfer/hop cost (see above) |
 | Hop expand / apply | `hpaPathSlot.js`, `boundaryNavHops.js` | SAB view at apply/steer; no `expandBoundaryHopsInCellPath` clone on hot path |
@@ -173,7 +173,7 @@ Region-level edges added for the same portal use **`_connectRegionPair`**, which
 ### P1 — Minimize main ↔ worker data
 
 3. ~~**Worker-authoritative nav read model**~~ — done: no mirror-back; flow + HNav use `getNavSnapshotView()`.
-4. **Incremental topology push** — **Next (PR4):** still full pack on `scheduleNavTopologySync`.
+4. ~~**Incremental topology push**~~ — done (PR4): `patchNavTopology(dirtyBounds)`; full `scheduleNavTopologySync` only on init / no bounds / topology epoch bump.
 5. ~~**Path via slot SAB only**~~ — done (PR3): `pathSlot` + `pathLen` on `navState`; steer/overlay read SAB; slot leased until next replan.
 6. ~~**Slim replan payload**~~ — done: worker derives temp-connect candidates (`hpaReplanPrep.js`).
 
@@ -236,7 +236,7 @@ Region-level edges added for the same portal use **`_connectRegionPair`**, which
 
 **Shipped:** removed `_mirrorNavSnapshotToMain`; `createWorkerNavSnapshotView` + `getNavSnapshotView()`; flow reads worker SAB views; `_connectRegionPair` cost-only; worker derives temp-connect candidates (`hpaReplanPrep.js`); slim replan `postMessage`.
 
-**Deferred:** `patchNavTopology` / `patchRegionGraph` on worker; incremental topology push; full graph off main.
+**Deferred:** `patchRegionGraph` on worker; incremental abstract graph; full graph off main.
 
 **Acceptance met:** edit reconnect no `runLocalAStar` / `ensureGridNavSnapshot`; no octile mirror alloc on nav sync.
 
@@ -249,18 +249,20 @@ Region-level edges added for the same portal use **`_connectRegionPair`**, which
 
 **Acceptance met:** sandbox click is epoch check → `requestPath` → SAB apply; no `HierarchicalNavigator` on hot path.
 
-### PR 4 — Incremental nav topology push (`P1` #4) — **Next**
+### PR 4 — Incremental nav topology push (`P1` #4) — **Done**
 
-**Goal:** one `patchNavTopology(dirtyBounds, navEpoch)` path from edits → worker; stop full-grid `packBlockedFromGrid` + hop CSR repack on every topology bump.
+**Goal:** one `patchNavTopology(dirtyBounds)` path from edits → worker; stop full-grid `packBlockedFromGrid` on every topology bump.
 
-- Main writes only dirty rect (+ margin for octile/hop locality) into existing nav SABs.
-- Worker `patchNavSnapshot` rebakes octile for affected hull; patch hop CSR entries touched by dirty bounds.
-- Route `NavigationService.onObstaclesChanged` / consolidated invalidation through patch — no scattered full `scheduleNavTopologySync`.
-- Epoch guard: stale replan refuses or awaits patch; no silent full rebake on click.
+**Shipped:**
+- `GridNavSnapshot.js` — `expandCellBoundsForNavPatch`, `packBlockedIntoRect`, `copyNavTopologySlicesIntoRect`, `buildOctileNeighborsFromTopologyRect`, exported `bakeHopCsr`.
+- `HpaPathWorker.patchNavTopology` — coalesced dirty-rect union; packs blocked/cardinal/vertex into existing nav SABs; full hop CSR repack (O(cells), acceptable for now); worker `patchNavSnapshot` rebakes octile on data rect + 1-cell shell.
+- Fallback to `scheduleNavTopologySync` when: no bounds, empty bounds, never synced, grid size change, or `gridTopologyEpoch` bump; `_deferFullNavSync` if fallback races an in-flight patch.
+- `HpaWorkerEntry` — `patchNavSnapshot` handler (reuses `syncNavDone`).
+- `NavigationService.onObstaclesChanged` — `patchNavTopology(damageBounds)` when bounds present; full sync otherwise. Init (`SharedGameState`) and `FlowFieldGrid.refresh` still use full sync.
 
-**Deferred in PR4:** `patchRegionGraph`; portal centroid cost fix; belt transfer edges.
+**Deferred in PR4:** `patchRegionGraph`; portal centroid cost fix; belt transfer edges; incremental hop CSR (dirty-only).
 
-**Acceptance:** wall stamp in a box — main work O(dirty area); warm click after edit still `requestPath` → worker replan; no full grid scan on main per invalidation handler.
+**Acceptance met:** wall stamp in a box — main packs O(dirty area + margin); warm click after edit still `requestPath` → worker replan; no full grid blocked scan on `onObstaclesChanged` when bounds are provided.
 
 ---
 
