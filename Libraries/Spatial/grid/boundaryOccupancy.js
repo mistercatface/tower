@@ -19,6 +19,7 @@ import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { gridNeighborFillLevel } from "../../World/wallGridCells.js";
+import { diagonalBoundaryBlockedFromVertexCache } from "./vertexPassability.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {{ kind: "passage", mode?: string, allowedSide?: number, powered?: boolean }} PassageBoundarySpec */
 /** @typedef {{ kind: "portal", accessMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} PortalBoundarySpec */
@@ -313,17 +314,6 @@ export function boundaryBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow) {
         const side = dr > 0 ? 2 : 0;
         return boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
     }
-    if (dc !== 0 && dr !== 0) {
-        if (grid.isBlocked(fromCol + dc, fromRow) || grid.isBlocked(fromCol, fromRow + dr)) return true;
-        const sideX = dc > 0 ? 1 : 3;
-        const sideY = dr > 0 ? 2 : 0;
-        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, sideX)) return true;
-        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, sideY)) return true;
-        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow + dr, sideX)) return true;
-        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol + dc, fromRow, sideY)) return true;
-        // Shoulder cells share the corner vertex — both axes must be clear (L-shaped forcefields).
-        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol + dc, fromRow, sideX)) return true;
-        if (boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow + dr, sideY)) return true;
-    }
+    if (dc !== 0 && dr !== 0) return diagonalBoundaryBlockedFromVertexCache(grid, fromCol, fromRow, toCol, toRow);
     return false;
 }

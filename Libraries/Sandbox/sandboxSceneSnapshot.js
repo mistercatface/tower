@@ -4,7 +4,6 @@ import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from ".
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
 import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { recomputePortalSlotIndex } from "./portalLinks.js";
-import { assertVertexPassability } from "../Spatial/grid/vertexPassability.js";
 import { notifyGridWallChange } from "./boundaryEdit.js";
 import {
     applyStampedForcefieldsFromGlobal,
@@ -225,7 +224,6 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     if (stampBounds) notifyGridWallChange(state, stampBounds);
     else if (grid.cols) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
     syncPassagePowerNetwork(state);
-    assertVertexPassability(grid);
     applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);
     syncRoomGraphBake(state);
     for (let i = 0; i < doc.props.length; i++) spawnSnapshotProp(state, doc.props[i]);
