@@ -7,9 +7,7 @@ export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
 /** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createRollToCursorHpaBehavior(state) {
     let targetWorld = null;
-    /** @type {number | null} */
     let targetCellCol = null;
-    /** @type {number | null} */
     let targetCellRow = null;
     let dragging = false;
     const hpaNav = createRollToCursorHpaNav();

@@ -1,5 +1,46 @@
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
+
+/**
+ * @typedef {object} GridNavSnapshot
+ * @property {string} cacheKey
+ * @property {number} cols
+ * @property {number} rows
+ * @property {number} cellSize
+ * @property {number} cellHalfSize
+ * @property {number} minX
+ * @property {number} minY
+ * @property {Uint8Array} blocked
+ * @property {Int32Array} octileNeighbors
+ * @property {Int32Array} hopOffsets
+ * @property {Int32Array} hopExitIdx
+ * @property {Uint8Array} hopCost
+ */
+
+function bakeHopCsr(grid, blocked, cols, rows) {
+    const size = cols * rows;
+    const hopOffsets = new Int32Array(size + 1);
+    const hopExitIdx = [];
+    const hopCost = [];
+    let write = 0;
+    for (let idx = 0; idx < size; idx++) {
+        hopOffsets[idx] = write;
+        const col = idx % cols;
+        const row = (idx / cols) | 0;
+        const hops = grid.getBoundaryHops(col, row);
+        if (hops)
+            for (let i = 0; i < hops.length; i++) {
+                const { exitCol, exitRow, cost } = hops[i];
+                if (blocked[colRowToIndex(exitCol, exitRow, cols)]) continue;
+                hopExitIdx.push(colRowToIndex(exitCol, exitRow, cols));
+                hopCost.push(cost);
+                write++;
+            }
+    }
+    hopOffsets[size] = write;
+    return { hopOffsets, hopExitIdx: Int32Array.from(hopExitIdx), hopCost: Uint8Array.from(hopCost) };
+}
+
 export function buildGridNavSnapshot(grid, cacheKey) {
     const { cols, rows, cellSize, cellHalfSize, minX, minY } = grid;
     const size = cols * rows;
@@ -23,21 +64,27 @@ export function buildGridNavSnapshot(grid, cacheKey) {
                 if (grid.canStep(col, row, nc, nr)) octileNeighbors[base + i] = colRowToIndex(nc, nr, cols);
             }
         }
-    return { cacheKey, cols, rows, cellSize, cellHalfSize, minX, minY, blocked, octileNeighbors };
+    const hops = bakeHopCsr(grid, blocked, cols, rows);
+    return { cacheKey, cols, rows, cellSize, cellHalfSize, minX, minY, blocked, octileNeighbors, ...hops };
 }
+
 export function snapshotNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid._vertexPassabilitySyncKey}:${grid.boundaryNavEpoch}:${grid.floorNavEpoch}`;
 }
+
 export function snapshotIsBlocked(snapshot, col, row) {
     if (!cellInRect(col, row, snapshot.cols, snapshot.rows)) return true;
     return snapshot.blocked[colRowToIndex(col, row, snapshot.cols)] !== 0;
 }
+
 export function snapshotWorldToGrid(snapshot, x, y) {
     return worldToGridAtOrigin(x, y, snapshot.minX, snapshot.minY, snapshot.cellSize);
 }
+
 export function snapshotGridToWorld(snapshot, col, row) {
     return gridToWorldAtOrigin(col, row, snapshot.minX, snapshot.minY, snapshot.cellSize);
 }
+
 export function snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) {
     const { cols, rows } = snapshot;
     if (!cellInRect(fromCol, fromRow, cols, rows) || !cellInRect(toCol, toRow, cols, rows)) return false;
@@ -49,4 +96,22 @@ export function snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) {
         if (fromCol + dc === toCol && fromRow + dr === toRow) return snapshot.octileNeighbors[fromIdx * 8 + i] === toIdx;
     }
     return false;
+}
+
+export function snapshotForEachNavHop(snapshot, col, row, fn) {
+    const { cols, hopOffsets, hopExitIdx, hopCost } = snapshot;
+    const idx = colRowToIndex(col, row, cols);
+    const start = hopOffsets[idx];
+    const end = hopOffsets[idx + 1];
+    for (let i = start; i < end; i++) {
+        const exitIdx = hopExitIdx[i];
+        fn(exitIdx % cols, (exitIdx / cols) | 0, hopCost[i]);
+    }
+}
+
+export function createSnapshotLocalNavView(snapshot) {
+    return {
+        canStep: (fromCol, fromRow, toCol, toRow) => snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow),
+        forEachNavHop: (col, row, fn) => snapshotForEachNavHop(snapshot, col, row, fn),
+    };
 }

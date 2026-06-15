@@ -2,6 +2,7 @@ import { colRowToIndex, indexToColRow, forEachCardinalNeighbor, makeAdjacencyKey
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
+import { createSnapshotLocalNavView } from "./GridNavSnapshot.js";
 import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid } from "./VoronoiRegions.js";
 export class HierarchicalNavigator {
     constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, navGraph, { damagePadding = 12 } = {}) {
@@ -18,6 +19,8 @@ export class HierarchicalNavigator {
         this.aStarCameFrom = null;
         this.aStarVisited = null;
         this.aStarRunId = 0;
+        this._localNavViewKey = "";
+        this._localNavView = null;
     }
     get grid() {
         return this.navGraph.grid;
@@ -389,7 +392,16 @@ export class HierarchicalNavigator {
     }
     runLocalAStar(startCol, startRow, targetCol, targetRow, maxPathLen = 80) {
         this.aStarRunId++;
-        return runLocalAStarFlat(startCol, startRow, targetCol, targetRow, this.navGraph, this.cols, this.rows, maxPathLen, this.aStarGScore, this.aStarCameFrom, this.aStarVisited, this.aStarRunId);
+        const navView = this._snapshotLocalNavView();
+        return runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, this.cols, this.rows, maxPathLen, this.aStarGScore, this.aStarCameFrom, this.aStarVisited, this.aStarRunId);
+    }
+    _snapshotLocalNavView() {
+        const snapshot = this.navGraph.ensureGridNavSnapshot();
+        if (snapshot.cacheKey !== this._localNavViewKey) {
+            this._localNavViewKey = snapshot.cacheKey;
+            this._localNavView = createSnapshotLocalNavView(snapshot);
+        }
+        return this._localNavView;
     }
     _cellPathToWaypoints(cells) {
         return cells.map((cell) => this.gridToWorld(cell.col, cell.row));
