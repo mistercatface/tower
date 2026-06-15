@@ -1,8 +1,9 @@
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
 import { getCanvasLineScale } from "../common/viewportUtils.js";
-import { fillStrokeCircle, strokeCircle, strokeOpenPolyline } from "../../Canvas/CanvasPath.js";
-import { cellInRect } from "../../Spatial/grid/GridUtils.js";
+import { fillStrokeCircle, strokeCircle, strokeOpenPolyline, strokeSegment } from "../../Canvas/CanvasPath.js";
 import { boundaryHopDrawGeometryBetweenWorldPoints } from "../../Pathfinding/boundaryNavHops.js";
+import { decodeFlowFieldCell } from "../../Pathfinding/sampleFlowDirection.js";
+/** @typedef {import("../../Pathfinding/FlowFieldGrid.js").FlowFieldGrid} FlowFieldGrid */
 /**
  * @typedef {Object} ActivePathOverlay
  * @property {"direct" | "hpa" | "flow"} mode
@@ -11,6 +12,7 @@ import { boundaryHopDrawGeometryBetweenWorldPoints } from "../../Pathfinding/bou
  * @property {Array<{ x: number, y: number }>} [pathNodes]
  * @property {Array<{ x: number, y: number, id?: string }>} [abstractPath]
  * @property {"local" | "hpa"} [pathPlanner]
+ * @property {FlowFieldGrid} [flowFieldGrid]
  */
 const P1 = { x: 0, y: 0 };
 const P2 = { x: 0, y: 0 };
@@ -77,18 +79,7 @@ function drawNormalPathOverlay(ctx, overlay, grid) {
         return;
     }
     if (mode === "flow") {
-        if (!pathNodes || pathNodes.length < 2) return;
-        ctx.save();
-        ctx.setLineDash([5 * lineScale, 4 * lineScale]);
-        ctx.strokeStyle = "rgba(76, 175, 80, 0.55)";
-        ctx.lineWidth = 1.5 * lineScale;
-        strokeOpenPolyline(ctx, pathNodes);
-        ctx.setLineDash([]);
-        ctx.strokeStyle = "rgba(76, 175, 80, 0.9)";
-        ctx.lineWidth = 2 * lineScale;
-        const end = pathNodes[pathNodes.length - 1];
-        strokeCircle(ctx, end.x, end.y, 4 * lineScale);
-        ctx.restore();
+        drawFlowFieldOverlay(ctx, overlay, lineScale, null);
         return;
     }
     ctx.save();
@@ -101,6 +92,51 @@ function drawNormalPathOverlay(ctx, overlay, grid) {
         strokeCircle(ctx, targetX, targetY, 5 * lineScale);
     }
     ctx.restore();
+}
+function drawFlowTargetMarker(ctx, x, y, lineScale, ready) {
+    ctx.fillStyle = ready ? "rgba(129, 199, 132, 0.95)" : "rgba(255, 193, 7, 0.85)";
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1.5 * lineScale;
+    fillStrokeCircle(ctx, x, y, 4 * lineScale);
+}
+function drawFlowCellArrow(ctx, cx, cy, dirX, dirY, halfLen, color, lineWidth) {
+    const x1 = cx - dirX * halfLen;
+    const y1 = cy - dirY * halfLen;
+    const x2 = cx + dirX * halfLen;
+    const y2 = cy + dirY * halfLen;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    strokeSegment(ctx, x1, y1, x2, y2);
+    drawPathArrowhead(ctx, x2, y2, dirX, dirY, color, lineWidth);
+}
+/** @param {import("../../Viewport/Viewport.js").Viewport | null} [viewport] */
+function drawFlowFieldOverlay(ctx, overlay, lineScale, viewport) {
+    const { flowFieldGrid, targetX, targetY } = overlay;
+    if (!flowFieldGrid || targetX == null || targetY == null) return;
+    const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
+    const arrowHalfLen = flowFieldGrid.cellSize * 0.32;
+    const bounds = viewport?.boundsDraw;
+    if (!flowField) {
+        drawFlowTargetMarker(ctx, targetX, targetY, lineScale, false);
+        return;
+    }
+    const { cols, rows } = flowFieldGrid;
+    const step = lineScale > 2.2 ? 2 : 1;
+    const shaftColor = "rgba(76, 175, 80, 0.7)";
+    const shaftWidth = 1.25 * lineScale;
+    for (let row = 0; row < rows; row += step)
+        for (let col = 0; col < cols; col += step) {
+            const idx = row * cols + col;
+            if (flowFieldGrid.grid[idx]) continue;
+            const val = flowField[idx];
+            if (val === 255) continue;
+            const { x, y } = flowFieldGrid.gridToWorld(col, row);
+            if (bounds && (x < bounds.minX || x > bounds.maxX || y < bounds.minY || y > bounds.maxY)) continue;
+            const dir = decodeFlowFieldCell(val);
+            if (!dir) continue;
+            drawFlowCellArrow(ctx, x, y, dir.x, dir.y, arrowHalfLen, shaftColor, shaftWidth);
+        }
+    drawFlowTargetMarker(ctx, targetX, targetY, lineScale, true);
 }
 function drawPathMarker(ctx, x, y, radius, fillStyle, label, zoom) {
     ctx.fillStyle = fillStyle;
@@ -141,8 +177,9 @@ function drawAbstractPath(ctx, abstractPath, zoom, pathPlanner = "hpa") {
  * @param {number} zoom
  * @param {PathOverlayVisual} [visual]
  * @param {object} [grid]
+ * @param {import("../../Viewport/Viewport.js").Viewport} [viewport]
  */
-export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug", grid = null) {
+export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug", grid = null, viewport = null) {
     if (visual === "normal") {
         drawNormalPathOverlay(ctx, overlay, grid);
         return;
@@ -172,20 +209,7 @@ export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug", grid
         return;
     }
     if (mode === "flow") {
-        if (!pathNodes || pathNodes.length < 2) return;
-        ctx.strokeStyle = "rgba(76, 175, 80, 0.75)";
-        ctx.lineWidth = 3 / zoom;
-        ctx.setLineDash([8 / zoom, 6 / zoom]);
-        strokeOpenPolyline(ctx, pathNodes);
-        ctx.setLineDash([]);
-        const end = pathNodes[pathNodes.length - 1];
-        drawPathMarker(ctx, end.x, end.y, 10 / zoom, "rgba(76, 175, 80, 0.9)", null, zoom);
-        if (targetX != null && targetY != null) {
-            ctx.fillStyle = "rgba(129, 199, 132, 0.9)";
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 2 / zoom;
-            fillStrokeCircle(ctx, targetX, targetY, 5 / zoom);
-        }
+        drawFlowFieldOverlay(ctx, overlay, 1 / zoom, viewport);
         return;
     }
     if (!pathNodes || pathNodes.length < 2) return;

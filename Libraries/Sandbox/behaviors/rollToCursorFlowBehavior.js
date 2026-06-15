@@ -1,16 +1,8 @@
 import { agentPose } from "../../Agent/index.js";
 import { computeFlowFieldSteering } from "../../Pathfinding/flowSteering.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
-import {
-    getRollToCursorConfig,
-    releaseRollMoveTarget,
-    snapRollMoveTargetToCellCenter,
-    steerRollToward,
-    syncFlowFieldWindowForRollTarget,
-} from "../rollToCursorMotion.js";
-
+import { getRollToCursorConfig, releaseRollMoveTarget, snapRollMoveTargetToCellCenter, steerRollToward, syncFlowFieldWindowForRollTarget } from "../rollToCursorMotion.js";
 export const ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID = "rollToCursorFlow";
-
 /** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createRollToCursorFlowBehavior(state) {
     let targetWorld = null;
@@ -84,8 +76,10 @@ export function createRollToCursorFlowBehavior(state) {
             if (!steering) return;
             steerRollToward(prop, steering.desiredX, steering.desiredY, dt, config);
         },
-        getPathOverlay() {
-            return null;
+        getPathOverlay(prop) {
+            if (!targetWorld) return null;
+            const steerTarget = resolveFloorBeltSteerTarget(state.obstacleGrid, targetWorld.x, targetWorld.y, prop.x, prop.y);
+            return { mode: "flow", targetX: steerTarget.x, targetY: steerTarget.y, flowFieldGrid: state.flowFieldGrid };
         },
         reset() {
             clearTarget();

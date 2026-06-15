@@ -33,14 +33,14 @@ export function railWallFootprintHalfThickness(grid, col, row, side) {
     return railWallThicknessPx(railEdge) / 2;
 }
 export function resolveRailWallNeighborContext(grid, col, row, side) {
-    const neighborFillLevel = neighborFillLevel(grid, col, row, side);
+    const fillLevel = neighborFillLevel(grid, col, row, side);
     const { nc, nr } = edgeNeighbor(col, row, side);
     let neighborFillHeightPx = 0;
     if (cellInRect(nc, nr, grid.cols, grid.rows)) neighborFillHeightPx = resolveCellWallHeightAtIdx(grid, nc + nr * grid.cols);
     const neighborCap = neighborFillHeightPx > 0 ? neighborFillHeightPx : null;
     const railEdge = railWallEdgeAt(grid, col, row, side);
-    const capHeightPx = railEdge ? railWallHeightPx(railEdge, grid.cellSize, neighborFillLevel) : 0;
-    return { neighborFillLevel, neighborFillHeightPx, neighborCap, capHeightPx };
+    const capHeightPx = railEdge ? railWallHeightPx(railEdge, grid.cellSize, fillLevel) : 0;
+    return { neighborFillLevel: fillLevel, neighborFillHeightPx, neighborCap, capHeightPx };
 }
 export function forEachEmittingRailWallAtZLevel(grid, aabb, zLevel, fn) {
     forEachObstacleGridCellInAabb(grid, aabb, (col, row, idx) => {

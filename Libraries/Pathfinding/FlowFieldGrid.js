@@ -2,7 +2,7 @@ import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
-import { snapshotGridToWorld, snapshotIsBlocked, snapshotOctileNeighborIdx, snapshotWorldToGrid } from "./GridNavSnapshot.js";
+import { snapshotGridToWorld, snapshotIsBlocked, snapshotOctileNeighborIdx, snapshotWorldToGrid, snapshotCanStep } from "./GridNavSnapshot.js";
 const MAX_CACHE = 100;
 export class FlowFieldGrid {
     constructor(cellSize, width, height, navGraph, workerUrl) {
@@ -59,13 +59,19 @@ export class FlowFieldGrid {
                 this.grid[idx] = snapshotIsBlocked(navSnapshot, worldCell.col, worldCell.row) ? 1 : 0;
                 const base = idx * 8;
                 for (let i = 0; i < OCTILE_OFFSETS.length; i++) {
-                    const nNavIdx = snapshotOctileNeighborIdx(navSnapshot, worldCell.col, worldCell.row, i);
-                    if (nNavIdx < 0) {
+                    const { dc, dr } = OCTILE_OFFSETS[i];
+                    const nNavCol = worldCell.col + dc;
+                    const nNavRow = worldCell.row + dr;
+                    if (nNavCol < 0 || nNavCol >= navCols || nNavRow < 0 || nNavRow >= navRows) {
                         this.neighborGrid[base + i] = -1;
                         continue;
                     }
-                    const nNavCol = nNavIdx % navCols;
-                    const nNavRow = (nNavIdx / navCols) | 0;
+                    // For the backward BFS flow field, we need the reverse transition:
+                    // we can visit the neighbor from the current cell only if the neighbor can step to the current cell.
+                    if (!snapshotCanStep(navSnapshot, nNavCol, nNavRow, worldCell.col, worldCell.row)) {
+                        this.neighborGrid[base + i] = -1;
+                        continue;
+                    }
                     const nWorld = snapshotGridToWorld(navSnapshot, nNavCol, nNavRow);
                     const localN = worldToGridCentered(nWorld.x, nWorld.y, this.centerX, this.centerY, this.offsetX, this.offsetY, cellSize);
                     if (localN.col >= 0 && localN.col < this.cols && localN.row >= 0 && localN.row < this.rows) this.neighborGrid[base + i] = localN.row * this.cols + localN.col;
@@ -99,9 +105,7 @@ export class FlowFieldGrid {
         const focusX = (propX + targetX) * 0.5;
         const focusY = (propY + targetY) * 0.5;
         const needsRecenter =
-            !this.containsWorldPoint(propX, propY) ||
-            !this.containsWorldPoint(targetX, targetY) ||
-            Math.max(Math.abs(focusX - this.centerX), Math.abs(focusY - this.centerY)) > recenterThreshold;
+            !this.containsWorldPoint(propX, propY) || !this.containsWorldPoint(targetX, targetY) || Math.max(Math.abs(focusX - this.centerX), Math.abs(focusY - this.centerY)) > recenterThreshold;
         if (needsRecenter) {
             this.centerX = focusX;
             this.centerY = focusY;
