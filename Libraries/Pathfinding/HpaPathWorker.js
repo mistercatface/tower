@@ -23,6 +23,7 @@ export class HpaPathWorker {
         this._navSyncPromise = null;
         this._navSnapshotView = null;
         this._graphEpoch = -1;
+        this._graphSyncTargetEpoch = -1;
         this._graphSyncPromise = null;
         this.graphIdToIdx = new Map();
         this.graphNodeIds = [];
@@ -56,6 +57,7 @@ export class HpaPathWorker {
                 return;
             }
             if (type === GRAPH_SYNC_DONE) {
+                this._graphEpoch = this._graphSyncTargetEpoch;
                 const resolve = this._graphSyncResolve;
                 this._graphSyncResolve = null;
                 this._graphSyncPromise = null;
@@ -242,6 +244,7 @@ export class HpaPathWorker {
     }
     syncAbstractGraph(navigator, graphEpoch) {
         if (graphEpoch === this._graphEpoch && this.graphNodeCount > 0) return;
+        if (this._graphSyncPromise) return;
         const nodeIds = Object.keys(navigator.nodesMap).filter((id) => !id.startsWith("__hpa_"));
         if (nodeIds.length > MAX_HPA_GRAPH_NODES) throw new Error(`HPA abstract graph has ${nodeIds.length} nodes (max ${MAX_HPA_GRAPH_NODES})`);
         const packed = packHpaGraphForWorker(navigator.nodesMap, nodeIds);
@@ -251,7 +254,7 @@ export class HpaPathWorker {
         this.graphNodeRow = packed.nodeRow;
         this.graphNodeCount = packed.nodeCount;
         this._graphEdgeWrite = packed.edgeWrite;
-        this._graphEpoch = graphEpoch;
+        this._graphSyncTargetEpoch = graphEpoch;
         const persistNodeCol = new Int16Array(this.sabPersistGraphNodeCol);
         const persistNodeRow = new Int16Array(this.sabPersistGraphNodeRow);
         const persistEdgeSources = new Int16Array(this.sabPersistGraphEdgeSources);
