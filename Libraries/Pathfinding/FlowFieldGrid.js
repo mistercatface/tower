@@ -29,8 +29,8 @@ export class FlowFieldGrid {
             if (e.data.type === "flowDone") this.slotReadyId[e.data.slot] = e.data.requestId;
         };
         this.worker.postMessage({ type: "init", data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabObstacle: this.sabObstacle, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool } });
-        this.offsetX = width / 2 + cellSize / 2;
-        this.offsetY = height / 2 + cellSize / 2;
+        this.offsetX = width / 2;
+        this.offsetY = height / 2;
         this.centerX = 0;
         this.centerY = 0;
         this.cellBounds = createAabb();
