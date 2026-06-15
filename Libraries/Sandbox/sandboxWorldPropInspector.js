@@ -125,6 +125,58 @@ export function appendButtonWireInspector(body, wire, onChange) {
 }
 /**
  * @param {HTMLElement} body
+ * @param {{
+ *   listLinks: () => { linkId: number, label: string }[],
+ *   isWireActive: () => boolean,
+ *   startWire: () => void,
+ *   cancelWire: () => void,
+ *   clearLinks: () => void,
+ *   removeLink: (linkId: number) => void,
+ * }} wire
+ * @param {() => void} onChange
+ */
+export function appendRoomNodeWireInspector(body, wire, onChange) {
+    const links = wire.listLinks();
+    appendEditorHint(body, links.length ? `${links.length} link${links.length === 1 ? "" : "s"} connected` : "No links — connect to another room node.");
+    if (links.length)
+        appendInstanceList(
+            body,
+            links.map((entry) => ({
+                label: entry.label,
+                onDelete: () => {
+                    wire.removeLink(entry.linkId);
+                    onChange();
+                },
+            })),
+        );
+    const wireRow = document.createElement("div");
+    wireRow.className = "sandbox-add-row";
+    const wireActive = wire.isWireActive();
+    const connectBtn = document.createElement("button");
+    connectBtn.type = "button";
+    connectBtn.className = wireActive ? "primary" : "secondary";
+    connectBtn.textContent = wireActive ? "Click a room node to link…" : "Connect…";
+    connectBtn.addEventListener("click", () => {
+        if (wireActive) wire.cancelWire();
+        else wire.startWire();
+        onChange();
+    });
+    wireRow.appendChild(connectBtn);
+    if (links.length) {
+        const clearBtn = document.createElement("button");
+        clearBtn.type = "button";
+        clearBtn.className = "secondary";
+        clearBtn.textContent = "Clear all";
+        clearBtn.addEventListener("click", () => {
+            wire.clearLinks();
+            onChange();
+        });
+        wireRow.appendChild(clearBtn);
+    }
+    body.appendChild(wireRow);
+}
+/**
+ * @param {HTMLElement} body
  * @param {object} prop
  * @param {{ state: object, sync?: () => void, onChange: () => void }} ctx
  */

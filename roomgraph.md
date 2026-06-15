@@ -87,9 +87,9 @@ Spawn-only asset `room_node` (`sandbox.roomNode: true`) — not a WorldProp. Spa
 **Out of scope:** Corridor geometry, reroll, bake.
 
 **PR 2 done when:**
-- [ ] Wire mode matches button-wire UX
-- [ ] Links persist in snapshot
-- [ ] Selected shows node fields + Connect; link row in Scene
+- [x] Wire mode matches button-wire UX
+- [x] Links persist in snapshot
+- [x] Selected shows node fields + Connect; link row in Scene
 
 ---
 

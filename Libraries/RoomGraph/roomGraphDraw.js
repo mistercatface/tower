@@ -1,24 +1,53 @@
+import { fillCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
-import { listRoomNodes } from "./roomGraphStore.js";
+import { listRoomLinks, listRoomNodes, roomNodeCenterWorld } from "./roomGraphStore.js";
 const NODE_OUTLINE_BOUNDS = createAabb();
-/** @param {CanvasRenderingContext2D} ctx @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-export function drawPlacedRoomNodes(ctx, state, grid) {
+/** @param {CanvasRenderingContext2D} ctx @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ selectedNodeId?: number | null, selectedLinkId?: number | null, wireFromNodeId?: number | null, wireCursor?: { x: number, y: number } | null }} [options] */
+export function drawPlacedRoomNodes(ctx, state, grid, { selectedNodeId = null, selectedLinkId = null, wireFromNodeId = null, wireCursor = null } = {}) {
     const nodes = listRoomNodes(state);
-    if (!nodes.length) return;
+    const links = listRoomLinks(state);
     const lineScale = getCanvasLineScale(ctx);
     const half = grid.cellSize * 0.5;
     ctx.save();
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        const nodeA = nodes.find((node) => node.id === link.a);
+        const nodeB = nodes.find((node) => node.id === link.b);
+        if (!nodeA || !nodeB) continue;
+        const a = roomNodeCenterWorld(grid, nodeA);
+        const b = roomNodeCenterWorld(grid, nodeB);
+        drawWire(ctx, a.x, a.y, b.x, b.y, link.id === selectedLinkId ? "#64B5F6" : "#5C9FD6");
+    }
+    if (wireFromNodeId != null && wireCursor) {
+        const fromNode = nodes.find((node) => node.id === wireFromNodeId);
+        if (fromNode) {
+            const from = roomNodeCenterWorld(grid, fromNode);
+            drawWire(ctx, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D");
+        }
+    }
     for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
+        const selected = node.id === selectedNodeId;
         const c0 = grid.gridToWorld(node.col, node.row);
         const c1 = grid.gridToWorld(node.col + node.width - 1, node.row + node.height - 1);
         drawAabbHighlight(ctx, aabbFromTwoPointsInto(NODE_OUTLINE_BOUNDS, c0.x - half, c0.y - half, c1.x + half, c1.y + half), {
-            fill: "rgba(120, 180, 255, 0.08)",
-            stroke: "rgba(120, 180, 255, 0.55)",
+            fill: selected ? "rgba(120, 180, 255, 0.16)" : "rgba(120, 180, 255, 0.08)",
+            stroke: selected ? "rgba(120, 180, 255, 0.95)" : "rgba(120, 180, 255, 0.55)",
             lineWidth: lineScale,
             dash: [6, 4],
         });
     }
+    ctx.restore();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {string} color */
+function drawWire(ctx, x0, y0, x1, y1, color) {
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = color;
+    strokeSegment(ctx, x0, y0, x1, y1);
+    ctx.fillStyle = color;
+    fillCircle(ctx, x1, y1, 3);
     ctx.restore();
 }

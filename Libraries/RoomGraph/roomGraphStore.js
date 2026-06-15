@@ -1,40 +1,33 @@
 /** @typedef {{ id: number, col: number, row: number, width: number, height: number }} RoomNode */
 /** @typedef {{ id: number, a: number, b: number, corridorCount?: number, corridorWidth?: number, canIntersect?: boolean, seed?: number }} RoomLink */
 /** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number }} RoomGraphDoc */
-
 /** @param {object} state @returns {RoomGraphDoc} */
 export function getRoomGraph(state) {
     if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0 };
     return state.roomGraph;
 }
-
 /** @param {object} state */
 export function clearRoomGraph(state) {
     state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0 };
 }
-
 /** @param {object} state @returns {RoomNode[]} */
 export function listRoomNodes(state) {
     return getRoomGraph(state).nodes;
 }
-
 /** @param {object} state @returns {RoomLink[]} */
 export function listRoomLinks(state) {
     return getRoomGraph(state).links;
 }
-
 /** @param {object} state @param {number} id @returns {RoomNode | undefined} */
 export function getRoomNode(state, id) {
     const nodes = listRoomNodes(state);
     for (let i = 0; i < nodes.length; i++) if (nodes[i].id === id) return nodes[i];
 }
-
 /** @param {object} state @param {number} id @returns {RoomLink | undefined} */
 export function getRoomLink(state, id) {
     const links = listRoomLinks(state);
     for (let i = 0; i < links.length; i++) if (links[i].id === id) return links[i];
 }
-
 /** @param {object} state @param {number} col @param {number} row @returns {RoomNode | null} */
 export function pickRoomNodeAt(state, col, row) {
     const nodes = listRoomNodes(state);
@@ -44,17 +37,14 @@ export function pickRoomNodeAt(state, col, row) {
     }
     return null;
 }
-
 /** @param {RoomNode} node @param {number} col @param {number} row */
 export function roomNodeContainsCell(node, col, row) {
     return col >= node.col && col < node.col + node.width && row >= node.row && row < node.row + node.height;
 }
-
 /** @param {object} state @param {number} col @param {number} row */
 export function roomNodeOccupiesCell(state, col, row) {
     return pickRoomNodeAt(state, col, row) != null;
 }
-
 /** @param {object} state @param {Omit<RoomNode, "id">} spec @returns {RoomNode} */
 export function addRoomNode(state, spec) {
     const graph = getRoomGraph(state);
@@ -62,7 +52,6 @@ export function addRoomNode(state, spec) {
     graph.nodes.push(node);
     return node;
 }
-
 /** @param {object} state @param {number} nodeId @returns {boolean} */
 export function removeRoomNode(state, nodeId) {
     const graph = getRoomGraph(state);
@@ -71,7 +60,6 @@ export function removeRoomNode(state, nodeId) {
     graph.links = graph.links.filter((link) => link.a !== nodeId && link.b !== nodeId);
     return graph.nodes.length < before;
 }
-
 /** @param {object} state @param {number} nodeId @returns {RoomLink[]} */
 export function linksForNode(state, nodeId) {
     const links = listRoomLinks(state);
@@ -83,7 +71,6 @@ export function linksForNode(state, nodeId) {
     }
     return out;
 }
-
 /** @param {object} state @param {number} nodeId @returns {number[]} */
 export function neighborNodeIds(state, nodeId) {
     const links = linksForNode(state, nodeId);
@@ -95,35 +82,78 @@ export function neighborNodeIds(state, nodeId) {
     }
     return neighbors;
 }
-
 /** @param {RoomNode} node @returns {{ col: number, row: number }} */
 export function roomNodeCenterCell(node) {
-    return { col: node.col + ((node.width - 1) / 2) | 0, row: node.row + ((node.height - 1) / 2) | 0 };
+    return { col: (node.col + (node.width - 1) / 2) | 0, row: (node.row + (node.height - 1) / 2) | 0 };
 }
-
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {RoomNode} node @returns {{ x: number, y: number }} */
 export function roomNodeCenterWorld(grid, node) {
     const { col, row } = roomNodeCenterCell(node);
     return grid.gridToWorld(col, row);
 }
-
+/** @param {number} a @param {number} b @returns {[number, number]} */
+export function normalizeLinkEndpoints(a, b) {
+    return a <= b ? [a, b] : [b, a];
+}
+/** @param {object} state @param {number} a @param {number} b @returns {RoomLink | null} */
+export function findRoomLinkBetween(state, a, b) {
+    const [lo, hi] = normalizeLinkEndpoints(a, b);
+    const links = listRoomLinks(state);
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        const [la, lb] = normalizeLinkEndpoints(link.a, link.b);
+        if (la === lo && lb === hi) return links[i];
+    }
+    return null;
+}
+/** @param {object} state @param {number} a @param {number} b @returns {RoomLink | null} */
+export function addRoomLink(state, a, b) {
+    if (a === b) return null;
+    const existing = findRoomLinkBetween(state, a, b);
+    if (existing) return existing;
+    const graph = getRoomGraph(state);
+    const link = { id: graph.nextLinkId++, a, b, corridorCount: 2, corridorWidth: 2, canIntersect: false, seed: (Math.random() * 0xffffffff) | 0 };
+    graph.links.push(link);
+    return link;
+}
+/** @param {object} state @param {number} linkId @returns {boolean} */
+export function removeRoomLink(state, linkId) {
+    const graph = getRoomGraph(state);
+    const before = graph.links.length;
+    graph.links = graph.links.filter((link) => link.id !== linkId);
+    return graph.links.length < before;
+}
+/** @param {object} state @param {number} nodeId */
+export function clearRoomLinksForNode(state, nodeId) {
+    const graph = getRoomGraph(state);
+    graph.links = graph.links.filter((link) => link.a !== nodeId && link.b !== nodeId);
+}
+/** @param {RoomLink} link */
+export function formatRoomLinkLabel(link) {
+    return `Link #${link.id} · node ${link.a} ↔ node ${link.b}`;
+}
+/** @param {RoomNode} node */
+export function formatRoomNodeLabel(node) {
+    return `Room node #${node.id} · ${node.width}×${node.height} @ (${node.col},${node.row})`;
+}
+/** @param {object} state @param {number} nodeId @returns {{ link: RoomLink, otherNodeId: number, label: string }[]} */
+export function listRoomNodeLinkEntries(state, nodeId) {
+    const links = linksForNode(state, nodeId);
+    /** @type {{ link: RoomLink, otherNodeId: number, label: string }[]} */
+    const entries = [];
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        const otherNodeId = link.a === nodeId ? link.b : link.a;
+        entries.push({ link, otherNodeId, label: `${formatRoomLinkLabel(link)} → node ${otherNodeId}` });
+    }
+    return entries;
+}
 /** @param {object} state @param {RoomGraphDoc} doc */
 export function replaceRoomGraph(state, doc) {
-    state.roomGraph = {
-        nodes: doc.nodes.map((node) => ({ ...node })),
-        links: doc.links.map((link) => ({ ...link })),
-        nextNodeId: doc.nextNodeId,
-        nextLinkId: doc.nextLinkId,
-    };
+    state.roomGraph = { nodes: doc.nodes.map((node) => ({ ...node })), links: doc.links.map((link) => ({ ...link })), nextNodeId: doc.nextNodeId, nextLinkId: doc.nextLinkId };
 }
-
 /** @param {object} state @returns {RoomGraphDoc} */
 export function cloneRoomGraphDoc(state) {
     const graph = getRoomGraph(state);
-    return {
-        nodes: graph.nodes.map((node) => ({ ...node })),
-        links: graph.links.map((link) => ({ ...link })),
-        nextNodeId: graph.nextNodeId,
-        nextLinkId: graph.nextLinkId,
-    };
+    return { nodes: graph.nodes.map((node) => ({ ...node })), links: graph.links.map((link) => ({ ...link })), nextNodeId: graph.nextNodeId, nextLinkId: graph.nextLinkId };
 }

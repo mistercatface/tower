@@ -11,7 +11,7 @@ import {
     listFloorBeltKindOptions,
 } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../../Libraries/Sandbox/spawnerConfig.js";
-import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector } from "../../../Libraries/Sandbox/sandboxWorldPropInspector.js";
+import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector, appendRoomNodeWireInspector } from "../../../Libraries/Sandbox/sandboxWorldPropInspector.js";
 import { isButtonEntity } from "../../../Libraries/Sandbox/buttonInput.js";
 import { renderSandboxEquipPanel } from "../../../Libraries/Sandbox/sandboxEquipPanel.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPathVisual.js";
@@ -492,6 +492,8 @@ export function mountSandboxToyUi(container, controller, onChange) {
         const selectedRailInfo = controller.getSelectedRailWallInfo();
         const selectedForcefieldInfo = controller.getSelectedForcefieldInfo();
         const selectedPortalInfo = controller.getSelectedPortalInfo();
+        const selectedRoomLink = controller.getSelectedRoomLinkInfo();
+        const selectedRoomNode = controller.getSelectedRoomNodeInfo();
         const portalLinkTargets = selectedPortalInfo ? controller.listPortalLinkTargets() : [];
         const wallStampMode = controller.getWallStampMode();
         const selectionCount = selectedPropIds.size;
@@ -631,6 +633,53 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     deleteBtn.textContent = "Delete belt";
                     deleteBtn.addEventListener("click", () => {
                         controller.deleteSelectedFloorCell();
+                        onChange();
+                    });
+                    deleteRow.appendChild(deleteBtn);
+                    body.appendChild(deleteRow);
+                    return;
+                }
+                if (selectedRoomLink) {
+                    appendEditorHint(body, `${selectedRoomLink.label}. Corridor settings arrive in the next pass.`);
+                    const deleteRow = document.createElement("div");
+                    deleteRow.className = "sandbox-add-row";
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.type = "button";
+                    deleteBtn.className = "secondary";
+                    deleteBtn.textContent = "Delete link";
+                    deleteBtn.addEventListener("click", () => {
+                        controller.deleteSelectedRoomLink();
+                        onChange();
+                    });
+                    deleteRow.appendChild(deleteBtn);
+                    body.appendChild(deleteRow);
+                    return;
+                }
+                if (selectedRoomNode) {
+                    appendEditorHint(
+                        body,
+                        `${selectedRoomNode.label}. Anchor (${selectedRoomNode.col}, ${selectedRoomNode.row}), size ${selectedRoomNode.width}×${selectedRoomNode.height}. Click the footprint on the map to re-select.`,
+                    );
+                    appendRoomNodeWireInspector(
+                        body,
+                        {
+                            listLinks: () => controller.listSelectedRoomNodeLinks(),
+                            isWireActive: () => controller.isRoomNodeWireLinkActive(),
+                            startWire: () => controller.startRoomNodeWireLink(),
+                            cancelWire: () => controller.cancelRoomNodeWireLink(),
+                            clearLinks: () => controller.clearSelectedRoomNodeLinks(),
+                            removeLink: (linkId) => controller.removeRoomLinkById(linkId),
+                        },
+                        onChange,
+                    );
+                    const deleteRow = document.createElement("div");
+                    deleteRow.className = "sandbox-add-row";
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.type = "button";
+                    deleteBtn.className = "secondary";
+                    deleteBtn.textContent = "Delete room node";
+                    deleteBtn.addEventListener("click", () => {
+                        controller.deleteSelectedRoomNode();
                         onChange();
                     });
                     deleteRow.appendChild(deleteBtn);

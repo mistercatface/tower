@@ -4,7 +4,23 @@ import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
-import { clearRoomGraph, DEFAULT_ROOM_NODE_COLS, DEFAULT_ROOM_NODE_ROWS, stampRoomNodeAt } from "../RoomGraph/index.js";
+import {
+    clearRoomGraph,
+    DEFAULT_ROOM_NODE_COLS,
+    DEFAULT_ROOM_NODE_ROWS,
+    addRoomLink,
+    clearRoomLinksForNode,
+    formatRoomLinkLabel,
+    formatRoomNodeLabel,
+    getRoomLink,
+    getRoomNode,
+    listRoomLinks,
+    listRoomNodes,
+    pickRoomNodeAt,
+    removeRoomLink,
+    removeRoomNode,
+    stampRoomNodeAt,
+} from "../RoomGraph/index.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { syncPassagePowerNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
@@ -70,6 +86,10 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let selectedVoxelCell = null;
     /** @type {{ col: number, row: number, side: number } | null} */
     let selectedRailEdge = null;
+    /** @type {number | null} */
+    let selectedRoomNodeId = null;
+    /** @type {number | null} */
+    let selectedRoomLinkId = null;
     /** @type {(() => void) | null} */
     let uiSync = null;
     let nextPlacementSeq = 1;
@@ -99,6 +119,18 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     const forgetFloorPlacement = (col, row) => placementSeqByKey.delete(floorPlacementKey(col, row));
     const forgetVoxelPlacement = (col, row) => placementSeqByKey.delete(voxelPlacementKey(col, row));
     const forgetEdgePlacement = (kind, col, row, side) => placementSeqByKey.delete(edgePlacementKey(kind, col, row, side));
+    const roomNodePlacementKey = (id) => `roomNode:${id}`;
+    const roomLinkPlacementKey = (id) => `roomLink:${id}`;
+    const touchRoomNodePlacement = (id) => {
+        const key = roomNodePlacementKey(id);
+        if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
+    };
+    const touchRoomLinkPlacement = (id) => {
+        const key = roomLinkPlacementKey(id);
+        if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
+    };
+    const forgetRoomNodePlacement = (id) => placementSeqByKey.delete(roomNodePlacementKey(id));
+    const forgetRoomLinkPlacement = (id) => placementSeqByKey.delete(roomLinkPlacementKey(id));
     const resetPlacementOrder = () => {
         placementSeqByKey.clear();
         nextPlacementSeq = 1;
@@ -124,6 +156,10 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         selectedPropIds.clear();
         selectedPropId = null;
     };
+    const dropRoomGraphSelection = () => {
+        selectedRoomNodeId = null;
+        selectedRoomLinkId = null;
+    };
     const dropFloorSelection = () => {
         if (selectedFloorCell == null) return;
         selectedFloorCell = null;
@@ -134,6 +170,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     };
     const setSelectedVoxelCell = (col, row) => {
         dropFloorSelection();
+        dropRoomGraphSelection();
         selectedPropIds.clear();
         selectedPropId = null;
         selectedRailEdge = null;
@@ -142,6 +179,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     };
     const setSelectedRailEdge = (col, row, side) => {
         dropFloorSelection();
+        dropRoomGraphSelection();
         selectedPropIds.clear();
         selectedPropId = null;
         selectedVoxelCell = null;
@@ -157,14 +195,34 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         }
         dropFloorSelection();
         dropWallSelection();
+        dropRoomGraphSelection();
         selectedPropIds = new Set([id]);
         selectedPropId = id;
+        sync();
+    };
+    const setSelectedRoomNodeId = (id) => {
+        dropFloorSelection();
+        dropWallSelection();
+        selectedPropIds.clear();
+        selectedPropId = null;
+        selectedRoomLinkId = null;
+        selectedRoomNodeId = id;
+        sync();
+    };
+    const setSelectedRoomLinkId = (id) => {
+        dropFloorSelection();
+        dropWallSelection();
+        selectedPropIds.clear();
+        selectedPropId = null;
+        selectedRoomNodeId = null;
+        selectedRoomLinkId = id;
         sync();
     };
     const setSelectedFloorCell = (col, row) => {
         selectedPropIds.clear();
         selectedPropId = null;
         dropWallSelection();
+        dropRoomGraphSelection();
         selectedFloorCell = { col, row };
         sync();
     };
@@ -214,7 +272,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const { col, row } = grid.worldToGrid(worldX, worldY);
             const node = stampRoomNodeAt(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows);
             if (!node) return false;
-            sync();
+            touchRoomNodePlacement(node.id);
+            setSelectedRoomNodeId(node.id);
             return true;
         }
         const spawned = spawnPlacedSandboxProp(state, worldX, worldY, spawnPropId, spawnFaction);
@@ -803,6 +862,89 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             }
             return placed;
         },
+        getSelectedRoomNodeId: () => selectedRoomNodeId,
+        getSelectedRoomLinkId: () => selectedRoomLinkId,
+        getSelectedRoomNode: () => (selectedRoomNodeId == null ? null : (getRoomNode(state, selectedRoomNodeId) ?? null)),
+        getSelectedRoomLink: () => (selectedRoomLinkId == null ? null : (getRoomLink(state, selectedRoomLinkId) ?? null)),
+        getSelectedRoomNodeInfo() {
+            const node = this.getSelectedRoomNode();
+            if (!node) return null;
+            return { ...node, label: formatRoomNodeLabel(node) };
+        },
+        getSelectedRoomLinkInfo() {
+            const link = this.getSelectedRoomLink();
+            if (!link) return null;
+            return { ...link, label: formatRoomLinkLabel(link) };
+        },
+        setSelectedRoomNodeId(id) {
+            setSelectedRoomNodeId(id);
+        },
+        setSelectedRoomLinkId(id) {
+            setSelectedRoomLinkId(id);
+        },
+        pickRoomNodeAtWorld(worldX, worldY) {
+            const grid = state.obstacleGrid;
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            const node = pickRoomNodeAt(state, col, row);
+            if (!node) return false;
+            setSelectedRoomNodeId(node.id);
+            return true;
+        },
+        addRoomLinkBetweenNodes(a, b) {
+            const link = addRoomLink(state, a, b);
+            if (!link) return null;
+            touchRoomLinkPlacement(link.id);
+            sync();
+            return link;
+        },
+        removeRoomLinkById(linkId) {
+            if (!removeRoomLink(state, linkId)) return false;
+            forgetRoomLinkPlacement(linkId);
+            if (selectedRoomLinkId === linkId) dropRoomGraphSelection();
+            sync();
+            return true;
+        },
+        clearSelectedRoomNodeLinks() {
+            const node = this.getSelectedRoomNode();
+            if (!node) return;
+            const links = listRoomLinks(state).filter((link) => link.a === node.id || link.b === node.id);
+            clearRoomLinksForNode(state, node.id);
+            for (let i = 0; i < links.length; i++) forgetRoomLinkPlacement(links[i].id);
+            if (selectedRoomLinkId != null && !getRoomLink(state, selectedRoomLinkId)) dropRoomGraphSelection();
+            sync();
+        },
+        listSelectedRoomNodeLinks() {
+            const node = this.getSelectedRoomNode();
+            if (!node) return [];
+            return listRoomLinks(state)
+                .filter((link) => link.a === node.id || link.b === node.id)
+                .map((link) => {
+                    const otherNodeId = link.a === node.id ? link.b : link.a;
+                    return { linkId: link.id, label: `${formatRoomLinkLabel(link)} → node ${otherNodeId}` };
+                });
+        },
+        deleteSelectedRoomNode() {
+            if (selectedRoomNodeId == null) return;
+            const links = listRoomLinks(state).filter((link) => link.a === selectedRoomNodeId || link.b === selectedRoomNodeId);
+            removeRoomNode(state, selectedRoomNodeId);
+            forgetRoomNodePlacement(selectedRoomNodeId);
+            for (let i = 0; i < links.length; i++) forgetRoomLinkPlacement(links[i].id);
+            dropRoomGraphSelection();
+            sync();
+        },
+        deleteSelectedRoomLink() {
+            if (selectedRoomLinkId == null) return;
+            forgetRoomLinkPlacement(selectedRoomLinkId);
+            removeRoomLink(state, selectedRoomLinkId);
+            dropRoomGraphSelection();
+            sync();
+        },
+        listPlacedRoomNodes() {
+            return listRoomNodes(state).map((node) => ({ id: node.id, col: node.col, row: node.row, width: node.width, height: node.height, label: formatRoomNodeLabel(node) }));
+        },
+        listPlacedRoomLinks() {
+            return listRoomLinks(state).map((link) => ({ id: link.id, a: link.a, b: link.b, label: formatRoomLinkLabel(link) }));
+        },
         seedPlacementOrderFromState() {
             resetPlacementOrder();
             const props = this.listPlacedProps().sort((a, b) => a.id - b.id);
@@ -813,6 +955,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             for (const entry of this.listPlacedRailWalls()) touchEdgePlacement("rail", entry.col, entry.row, entry.side);
             for (const entry of this.listPlacedForcefields()) touchEdgePlacement("forcefield", entry.col, entry.row, entry.side);
             for (const entry of this.listPlacedPortals()) touchEdgePlacement("portal", entry.col, entry.row, entry.side);
+            for (const entry of this.listPlacedRoomNodes()) touchRoomNodePlacement(entry.id);
+            for (const entry of this.listPlacedRoomLinks()) touchRoomLinkPlacement(entry.id);
         },
         listPlacedSceneItems() {
             /** @type {{ seq: number, kind: string, label: string, propId?: number, propType?: string, col?: number, row?: number, side?: number }[]} */
@@ -858,11 +1002,17 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                     row: entry.row,
                     side: entry.side,
                 });
+            for (const entry of this.listPlacedRoomNodes())
+                items.push({ seq: placementSeq(roomNodePlacementKey(entry.id), 7e9 + entry.id), kind: "roomNode", label: entry.label, roomNodeId: entry.id });
+            for (const entry of this.listPlacedRoomLinks())
+                items.push({ seq: placementSeq(roomLinkPlacementKey(entry.id), 8e9 + entry.id), kind: "roomLink", label: entry.label, roomLinkId: entry.id });
             items.sort((a, b) => a.seq - b.seq);
             return items;
         },
         isSceneItemSelected(item) {
             if (item.kind === "prop") return selectedPropIds.has(item.propId);
+            if (item.kind === "roomNode") return selectedRoomNodeId === item.roomNodeId;
+            if (item.kind === "roomLink") return selectedRoomLinkId === item.roomLinkId;
             if (item.kind === "floorBelt" || item.kind === "powerSource") return selectedFloorCell?.col === item.col && selectedFloorCell.row === item.row;
             if (item.kind === "voxel") return selectedVoxelCell?.col === item.col && selectedVoxelCell.row === item.row;
             return selectedRailEdge?.col === item.col && selectedRailEdge.row === item.row && selectedRailEdge.side === item.side;
@@ -871,6 +1021,14 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (item.kind === "prop") {
                 this.setPlacePaletteKey(`prop:${item.propType}`);
                 setSinglePropSelection(item.propId);
+                return;
+            }
+            if (item.kind === "roomNode") {
+                setSelectedRoomNodeId(item.roomNodeId);
+                return;
+            }
+            if (item.kind === "roomLink") {
+                setSelectedRoomLinkId(item.roomLinkId);
                 return;
             }
             if (item.kind === "floorBelt" || item.kind === "powerSource") {
@@ -889,6 +1047,16 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         deleteSceneItem(item) {
             if (item.kind === "prop") {
                 this.deletePropById(item.propId);
+                return;
+            }
+            if (item.kind === "roomNode") {
+                setSelectedRoomNodeId(item.roomNodeId);
+                this.deleteSelectedRoomNode();
+                return;
+            }
+            if (item.kind === "roomLink") {
+                setSelectedRoomLinkId(item.roomLinkId);
+                this.deleteSelectedRoomLink();
                 return;
             }
             if (item.kind === "floorBelt" || item.kind === "powerSource") {
@@ -912,6 +1080,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             selectedPropId = null;
             dropFloorSelection();
             dropWallSelection();
+            dropRoomGraphSelection();
             resetPlacementOrder();
             sync();
         },
