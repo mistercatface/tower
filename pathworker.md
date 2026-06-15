@@ -111,6 +111,42 @@ Click → HpaPathSession._drainReplan
 
 **Wall edit:** `rebuildDamagedArea` on main (cost-only edges); `hpaPathSession` still uses navigator for `syncAbstractGraph` only.
 
+---
+
+## Nav topology model (target theory)
+
+Two mechanisms — not one — but they compose cleanly:
+
+```
+Full reachability = LocalWalk(canStep / octile)  ∪  Transfers(hop CSR)
+Runtime physics   = portal grant/traverse, belt force, laser collision (separate from path graph)
+```
+
+| Feature | Path layer | HPA region assignment | HPA abstract edges | Runtime |
+|--------|------------|----------------------|-------------------|---------|
+| **Walls** | blocked cells | flood stops at solid | walk-adjacent only | collision |
+| **One-way forcefields** | filtered `canStep` / cardinal+vertex | bidirectional `canStep` splits chunks; adjacency if either direction works | walk adjacency | collision + powered rules |
+| **Portals** | hop CSR (mouth → exit, cost 1) | mouth/exit can share a region if walk-connected; usually different chunks | **hop region pair** via `_appendNavHopRegionAdjacencies` | crossing grant + traverse |
+| **Belts (today)** | wrong-side entry blocked in `canStep` | partial via entry rules | none | belt force + entry snap |
+| **Belts (target)** | **transfer edges** (enter → exit, cost = belt length) | same as portals when generalized | hop-style region edges | entry/exit physics |
+
+**HPA-awareness order (already / next):** forcefields first (via `canStep` in `VoronoiRegions` flood); portals second (non-local hop edges); belts last until belt graph lands on the same transfer machinery as portals.
+
+**Unification target:** generalize hop CSR to **TransferEdge** `{ fromCell, toCell, cost, kind }` for portals + belt chains. Keep forcefields in **LocalWalk** — they are edge permissions, not wormholes. Physics policies stay out of the graph.
+
+**Gap:** `_splitRegionIfDisconnected` (edit-time surgery) uses open cardinal neighbors only — not `canStep` or hops — so one-ways/portals inside a chunk can be wrong until full region rebuild.
+
+### Known issue — portal centroid cost on abstract graph
+
+Cell-level hops are correct: mouth → exit in one A* expansion, **cost 1**, any world distance (`forEachNavHop` in `AStar.js`, `boundaryNavHops`).
+
+Region-level edges added for the same portal use **`_connectRegionPair`**, which sets abstract edge cost to **Chebyshev distance between region centroids** (`HierarchicalNavigator.js`), not hop cost 1.
+
+**Effect:** connectivity is right (far linked portals reach each other; `pruneUnreachableRegions` floods through hops), but abstract A* **overcharges** portal legs vs cell-level reality. Stitch/local A* still finds the real hop in the cell path; abstract ranking and leg choice can be suboptimal when multiple routes exist.
+
+**Fix (future PR):** tag hop-derived region edges in persist CSR with **transfer cost** (mouth→exit hop cost, or stitched leg length at graph build). Do not use centroid distance for `TransferEdge` adjacency. Same layout extension covers belt graph edges later.
+
+---
 
 ### Still on main (must move)
 
@@ -121,7 +157,8 @@ Click → HpaPathSession._drainReplan
 | ~~Nav snapshot mirror~~ | ~~`_mirrorNavSnapshotToMain`~~ | **Removed** — `getNavSnapshotView()` zero-copy SAB views |
 | Edit reconnect A* | ~~`_connectRegionPair`~~ | **Cost-only octile** — worker local A* at stitch |
 | Topology repack | `scheduleNavTopologySync` | Main still packs blocked + hops on epoch change (PR2 remainder) |
-| Graph repack | `packHpaGraphForWorker` | On `graphEpoch` bump only — PR3 may move off hot path |
+| Graph repack | `packHpaGraphForWorker` | On `graphEpoch` bump only |
+| Portal abstract edge cost | `_connectRegionPair` | Centroid Chebyshev — should be transfer/hop cost (see above) |
 | Hop expand / apply | `hpaPathSlot.js`, `boundaryNavHops.js` | SAB view at apply/steer; no `expandBoundaryHopsInCellPath` clone on hot path |
 
 ---
@@ -136,7 +173,7 @@ Click → HpaPathSession._drainReplan
 ### P1 — Minimize main ↔ worker data
 
 3. ~~**Worker-authoritative nav read model**~~ — done: no mirror-back; flow + HNav use `getNavSnapshotView()`.
-4. **Incremental topology push** — deferred: still full pack on `scheduleNavTopologySync`.
+4. **Incremental topology push** — **Next (PR4):** still full pack on `scheduleNavTopologySync`.
 5. ~~**Path via slot SAB only**~~ — done (PR3): `pathSlot` + `pathLen` on `navState`; steer/overlay read SAB; slot leased until next replan.
 6. ~~**Slim replan payload**~~ — done: worker derives temp-connect candidates (`hpaReplanPrep.js`).
 
@@ -211,6 +248,19 @@ Click → HpaPathSession._drainReplan
 **Deferred:** `maxCells` / `maxLegs` partial path policy; belt graph on worker.
 
 **Acceptance met:** sandbox click is epoch check → `requestPath` → SAB apply; no `HierarchicalNavigator` on hot path.
+
+### PR 4 — Incremental nav topology push (`P1` #4) — **Next**
+
+**Goal:** one `patchNavTopology(dirtyBounds, navEpoch)` path from edits → worker; stop full-grid `packBlockedFromGrid` + hop CSR repack on every topology bump.
+
+- Main writes only dirty rect (+ margin for octile/hop locality) into existing nav SABs.
+- Worker `patchNavSnapshot` rebakes octile for affected hull; patch hop CSR entries touched by dirty bounds.
+- Route `NavigationService.onObstaclesChanged` / consolidated invalidation through patch — no scattered full `scheduleNavTopologySync`.
+- Epoch guard: stale replan refuses or awaits patch; no silent full rebake on click.
+
+**Deferred in PR4:** `patchRegionGraph`; portal centroid cost fix; belt transfer edges.
+
+**Acceptance:** wall stamp in a box — main work O(dirty area); warm click after edit still `requestPath` → worker replan; no full grid scan on main per invalidation handler.
 
 ---
 
