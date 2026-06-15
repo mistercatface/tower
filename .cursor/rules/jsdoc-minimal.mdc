@@ -1,27 +1,59 @@
 ---
-description: Minimal JSDoc — no redundant @param blocks; short comments only when they add value
+description: No inline JSDoc noise — no @param, no @type in functions; one-line prose only when needed
 alwaysApply: true
 ---
 
-# JSDoc — short and useful only
+# JSDoc — almost none
 
-This is plain JS without `@ts-check`. JSDoc is for **contracts and non-obvious behavior**, not restating signatures.
+Plain JS, no `@ts-check`. **Do not annotate signatures.** The code is the contract.
 
-## Default: no `@param`
+## Banned
 
-## When JSDoc is worth it: NEVER.
-
-Keep useful comments **one line** when possible:
+- `@param` / `@returns` on functions, methods, constructors, closures — anywhere
+- `@type` on locals, params, fields inside functions, constructors, loops, callbacks
+- `@typedef` spam on every export; multi-line blocks that only list types
+- JSDoc on obvious primitives (`/** @param {number} col */`)
+- `@param {object} state` — useless everywhere
 
 ```javascript
-// ✅ GOOD
-/** Recompute derived grid topology caches (Spatial-owned; worker-candidate). */
-export function syncGridTopologyCaches(grid, passagePowerSyncKey) { ... }
+// ❌ BANNED
+/** @param {number} col @param {number} row */
+export function growCellBounds(bounds, col, row) { ... }
+
+// ❌ BANNED — inside function body
+function stamp() {
+    /** @type {{ col: number, row: number }[]} */
+    const stamped = [];
+    /** @param {number} globalCol @param {number} globalRow */
+    const toLocal = (globalCol, globalRow) => { ... };
+}
+
+// ❌ BANNED — constructor / class field
+constructor(grid) {
+    /** @type {Map<number, Hop[]>} */
+    this.hops = new Map();
+}
 ```
 
-Multi-line blocks are for real prose (architecture, persistence boundaries) — not a `@param` list spread across six lines.
+## Allowed (rare)
+
+- **One line** of prose when it explains non-obvious *why* (schema version, worker boundary, encoding quirk) — no `@` tags required
+- **Module-level `@typedef`** only for shapes that cross a real boundary (snapshot JSON, public API between folders) — one typedef per concept, not per function
+
+```javascript
+// ✅ OK — why, not types
+/** Portal hops are built with a Sandbox policy callback injected at sync time. */
+export function buildBoundaryNavHops(grid, resolvePortalHopEntry) { ... }
+```
+
+## When adding code
+
+- Default: **no JSDoc at all**
+- If you reach for `@type` inside a function — use a plain `const` / destructuring; the name should carry meaning
+- If you reach for `@param` — delete the comment block instead
+- Do not "fix" missing JSDoc in files you are not otherwise changing
 
 ## Review bar
 
-- Would deleting this comment make the code harder to understand? If no, delete it.
-- Is the comment longer than the function body? Almost certainly wrong.
+- Any `@param` or inner `@type` in the diff → remove unless user explicitly asked for it
+- Comment longer than the function → delete the comment

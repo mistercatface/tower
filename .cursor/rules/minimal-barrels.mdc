@@ -1,0 +1,59 @@
+---
+description: Minimal index.js barrels — direct imports default; no hand-maintained re-export catalogs
+alwaysApply: true
+---
+
+# Barrels (`index.js`) — minimal or skip
+
+**Default import style in this repo:** direct path to the module that owns the symbol.
+
+```javascript
+// ✅ GOOD — what the codebase actually uses
+import { expandBoundaryHopsInCellPath } from "../Pathfinding/boundaryNavHops.js";
+
+// ❌ BAD — do not add new imports through a barrel nobody uses
+import { expandBoundaryHopsInCellPath } from "../Pathfinding/index.js";
+```
+
+## Do not maintain export catalogs
+
+Do **not** update `Libraries/*/index.js` every time you add or move an internal helper. That file is not the wiring layer — it is optional surface area.
+
+- Adding `boundaryNavHops.js` does **not** require touching `Pathfinding/index.js`
+- Removing a function does **not** require cleaning the barrel unless the barrel is the only public entry (see below)
+
+## When a barrel exists at all
+
+Only for a **true package boundary** with a small, stable top-level API:
+
+| OK | Not OK |
+|----|--------|
+| `Sandbox/index.js` — toy/session entry points consumers actually import | `Pathfinding/index.js` listing every A* helper |
+| `RoomGraph/index.js` — orchestration surface | Re-exporting every file in a folder "for discoverability" |
+| `Corridor/index.js` — sub-package with several modules, one door | `export { foo } from "./foo.js"` passthrough chains |
+
+A minimal barrel exports **entry types** (navigator, session factory, schema version) — not every function in the folder.
+
+## Forbidden barrel patterns
+
+```javascript
+// ❌ Passthrough catalog — delete or stop updating
+export { buildBoundaryNavHops, expandBoundaryHopsInCellPath, boundaryHopMouthOnCellPath, ... } from "./boundaryNavHops.js";
+
+// ❌ Wrapper that only forwards
+export function gridHasVoxelWall(grid, col, row) {
+    return cellIsStaticWall(grid, col, row);
+}
+```
+
+## New modules
+
+1. Put the export in the domain file (`boundaryNavHops.js`, `CellRect.js`, …)
+2. Import that file directly from callers
+3. Touch `index.js` **only** if the user asks for a public package API or the symbol is a documented top-level entry for external consumers
+
+## Review bar
+
+- Did this PR edit an `index.js` that no caller imports? Revert that edit.
+- Did we add a barrel re-export for a single internal helper? Remove it.
+- Would deleting the barrel line break any import in the repo? If no, the barrel edit was unnecessary.

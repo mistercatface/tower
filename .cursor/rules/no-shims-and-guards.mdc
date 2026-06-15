@@ -38,6 +38,8 @@ Do not create new files for one to three tiny helpers that many files would impo
 When implementing a change, remove the old path in the same pass. Do not leave:
 
 - Re-exports or wrappers that only forward to the new API
+- `index.js` lines that only re-export a symbol callers should import from the source module (see `minimal-barrels.mdc`)
+- One-function files that call one other function with no added logic (`syncX` → `syncY`, `gridHasFoo` → `cellIsFoo`)
 - "Legacy" or "compat" branches "just in case"
 - Duplicate functions where one calls the other with no added logic
 - Commented-out old code or `TODO remove` cleanup deferred to a follow-up
@@ -87,6 +89,8 @@ prop.facing = quantizeCardinalAngle(angle);
 ## Review bar before finishing
 
 - Would removing a guard hide a real bug? If yes, fix the caller instead.
+- Any new function that only forwards to another with no added logic? Inline at call sites or delete.
+- Did this PR touch an unused `index.js` barrel? Revert unless adding a real top-level API entry.
 - Would this new file be imported from 5+ places for <20 lines total? Inline or extend an existing module.
 - Is anything left that exists only because the old API used to? Delete it now.
 - Did I add sync/teardown "for users who didn't refresh"? Remove it — refresh is not a migration scenario here.

@@ -33,17 +33,13 @@ export class WorldObstacleGrid {
         this.segmentGrid = [];
         this.wallGridRevision = 0;
         this._structureZLevelsRevision = -1;
-        /** @type {number[]} */
         this._structureZLevels = [];
         this.cellBoundsScratch = createAabb();
         this.patchBoundsScratch = createAabb();
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
-        /** @type {Map<number, { exitCol: number, exitRow: number, cost: number }[]> | null} */
         this.boundaryNavHops = null;
-        /** @type {Map<number, { col: number, row: number, side: number }>} */
         this.portalSlotByKey = new Map();
-        /** @type {Uint8Array} */
         this.vertexPassability = new Uint8Array(0);
         this._vertexPassabilitySyncKey = "";
     }
