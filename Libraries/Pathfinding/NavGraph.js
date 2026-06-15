@@ -54,6 +54,7 @@
 // portalSlotIndex.js    — canonical portal edge key → slot lookup
 // vertexPassability.js  — vertex cache + syncGridTopologyCaches
 // boundaryNavHops.js    — hop build (callback for portal pairing), path expansion
+// hpaPathPlan.js        — unified HPA replan: computeCellPath → hop-expanded world path
 // GridNavSnapshot.js    — frozen walkability + octile neighbors (cacheKey includes floorNavEpoch)
 //
 // @typedef {object} NavGraph

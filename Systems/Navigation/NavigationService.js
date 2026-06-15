@@ -1,4 +1,5 @@
 import { NavigationController } from "../../Libraries/Navigation/index.js";
+import { refreshNavCrossingGrant, syncCrossingGrantToEntity } from "../../Libraries/Pathfinding/crossingGrant.js";
 import { VIEWPORT_VISIBILITY_PAD_WIDE } from "../../Libraries/Viewport/Viewport.js";
 import { planHpaSteering } from "./HpaStrategy.js";
 /**
@@ -7,6 +8,7 @@ import { planHpaSteering } from "./HpaStrategy.js";
  */
 export class NavigationService {
     constructor(flowFieldGrid, hierarchicalNavigator, settings) {
+        const obstacleGrid = hierarchicalNavigator.navGraph;
         this._controller = new NavigationController({
             flowFieldGrid,
             hierarchicalNavigator,
@@ -20,12 +22,16 @@ export class NavigationService {
                     navState,
                     profile,
                     controller.settings,
-                    controller.flowFieldGrid.navGraph,
+                    state.obstacleGrid,
                     controller.obstacleGeneration,
                     (e) => state.viewport.isVisible(e.x, e.y, e.radius, VIEWPORT_VISIBILITY_PAD_WIDE),
                     state?.gameTime ?? Date.now(),
                 ),
-            onSteerComplete: (entity, { navState, settings }) => {
+            onSteerComplete: (entity, { navState, settings, plan }) => {
+                if (plan.mode === "hpa") {
+                    refreshNavCrossingGrant(navState, obstacleGrid);
+                    syncCrossingGrantToEntity(entity, navState);
+                }
                 entity.hpaPath = navState.path;
                 if (entity.isMoving) {
                     entity.targetNodeX = entity.x + entity.desiredX * settings.targetNodeLookahead;
@@ -60,8 +66,5 @@ export class NavigationService {
     }
     rebuildNavigationGraph(playerX, playerY) {
         this._controller.rebuildNavigationGraph(playerX, playerY);
-    }
-    rebuildPlayerFlowField(targetX, targetY) {
-        this._controller.rebuildPlayerFlowField(targetX, targetY);
     }
 }

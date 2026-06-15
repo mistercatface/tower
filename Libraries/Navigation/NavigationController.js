@@ -110,9 +110,6 @@ export class NavigationController {
         this.flowFieldGrid.refresh();
         this.obstacleGeneration += 1;
     }
-    rebuildPlayerFlowField(targetX, targetY) {
-        this.flowFieldGrid.syncLocalObstacles();
-    }
     _checkArrived(entity, targetX, targetY, settings) {
         if (this.isArrived) return this.isArrived(entity, targetX, targetY, settings);
         if (entity.targetCellBounds && circleIntersectsAabb(entity.x, entity.y, entity.radius, entity.targetCellBounds)) return true;

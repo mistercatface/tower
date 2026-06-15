@@ -16,6 +16,8 @@
  * @property {number | null} [boundaryHopIdx] — world-path index of an upcoming boundary hop mouth
  * @property {boolean} [navPathActive] — entity is following a nav path; blocks manual boundary crossing
  * @property {import("./crossingGrant.js").CrossingGrant | null} [crossingGrant] — mouth cell authorized for the current hop
+ * @property {Array<{ x: number, y: number, id?: string }> | null} [abstractPath]
+ * @property {"local" | "hpa" | null} [pathPlanner]
  */
 /** @returns {NavSessionState} */
 export function createNavState() {
