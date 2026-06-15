@@ -60,6 +60,10 @@ function boundaryHopOnCellStep(prev, curr, navGraph) {
     const hops = navGraph.getBoundaryHops(prev.col, prev.row);
     return hops?.find((entry) => entry.exitCol === curr.col && entry.exitRow === curr.row) ?? null;
 }
+/** @param {{ col: number, row: number }} prev @param {{ col: number, row: number }} curr */
+export function boundaryHopOnSabCellStep(prev, curr, navGraph) {
+    return boundaryHopOnCellStep(prev, curr, navGraph);
+}
 export function boundaryHopDrawGeometry(grid, hop) {
     cellEdgeEndpoints(grid, hop.ownerCol, hop.ownerRow, hop.ownerSide, DRAW_P1, DRAW_P2, 0);
     const entryMid = { x: (DRAW_P1.x + DRAW_P2.x) * 0.5, y: (DRAW_P1.y + DRAW_P2.y) * 0.5 };

@@ -94,7 +94,7 @@ export function createRollToCursorHpaBehavior(state) {
             if (hopIdx != null && progressIdx > hopIdx) progressIdx = hopIdx;
             const trace =
                 hpaNav.navState.pathLen > 0 && hpaNav.navState.pathSlot >= 0
-                    ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.hpaPathWorker, hpaNav.navState.pathSlot, hpaNav.navState.pathLen, progressIdx, state.obstacleGrid)
+                    ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.hpaPathWorker, hpaNav.navState.pathSlot, hpaNav.navState.pathLen, progressIdx, state.obstacleGrid, hopIdx)
                     : { pathNodes: hpaNav.navState.path?.slice(progressIdx) ?? [] };
             return {
                 mode: "hpa",

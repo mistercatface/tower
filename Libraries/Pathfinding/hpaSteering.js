@@ -1,6 +1,6 @@
 import { computeDirectSteering } from "../Agent/steering.js";
 import { computePathSteering } from "./pathFollow.js";
-import { computeSabPathSteering, sabPathWorldAt } from "./hpaPathSlot.js";
+import { computeSabPathSteering } from "./hpaPathSlot.js";
 /** @typedef {import("../Agent/types.js").AgentPose} AgentPose */
 /** @typedef {import("../Agent/types.js").SteeringResult} SteeringResult */
 /** @typedef {import("./navSession.js").NavSessionState} NavSessionState */
@@ -29,8 +29,8 @@ export function computeHpaNavSteering(pose, navState, targetX, targetY, settings
     const hopIdx = navState.boundaryHopIdx;
     const pathTail = useSab ? navState.pathLen - 1 : (navState.path?.length ?? 0) - 1;
     clampHopProgress(navState, hopIdx);
-    if (hopIdx != null && navState.pathProgressIdx === hopIdx && hopIdx < pathTail) {
-        const next = useSab ? sabPathWorldAt(worker, navState.pathSlot, hopIdx + 1, grid) : navState.path[hopIdx + 1];
+    if (!useSab && hopIdx != null && navState.pathProgressIdx === hopIdx && hopIdx < pathTail) {
+        const next = navState.path[hopIdx + 1];
         const dx = next.x - pose.x;
         const dy = next.y - pose.y;
         const dist = Math.hypot(dx, dy);
