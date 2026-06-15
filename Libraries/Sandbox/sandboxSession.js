@@ -74,9 +74,7 @@ import { formatPortalConnectionLabel, PORTAL_LINK_MODE } from "./portalLinks.js"
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
-    /** @type {Set<number>} */
     let selectedPropIds = new Set();
-    /** @type {number | null} */
     let selectedPropId = null;
     /** @type {{ col: number, row: number } | null} */
     let selectedFloorCell = null;
