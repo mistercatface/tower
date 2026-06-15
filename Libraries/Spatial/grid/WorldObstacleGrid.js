@@ -4,7 +4,7 @@ import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCe
 import { cellEdgeEndpoints, blockingPassageEdgeAt, edgeRailCollisionShouldEmit, edgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
-import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
+import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
 import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
@@ -37,6 +37,7 @@ export class WorldObstacleGrid {
         this._staticWallProxyCount = 0;
         this.boundaryNavHops = null;
         this.boundaryNavEpoch = 0;
+        this.floorNavEpoch = 0;
         this.portalSlotByKey = new Map();
         this.vertexPassability = new Uint8Array(0);
         this._vertexPassabilitySyncKey = "";
@@ -58,6 +59,10 @@ export class WorldObstacleGrid {
     bumpWallGridRevision() {
         this.wallGridRevision = (this.wallGridRevision + 1) | 0;
         this.invalidateStructureZLevelsCache();
+        this.invalidateGridNavSnapshot();
+    }
+    bumpFloorNavEpoch() {
+        this.floorNavEpoch = (this.floorNavEpoch + 1) | 0;
         this.invalidateGridNavSnapshot();
     }
     invalidateStructureZLevelsCache() {
@@ -388,6 +393,9 @@ export class WorldObstacleGrid {
         let edgeChanged = false;
         if (isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) edgeChanged = true;
         if (isFloorBeltRailsKind(kind)) this.syncFloorBeltRailEdges(col, row, kind, facingIndex);
+        const floorNavChanged =
+            (isFloorBeltKind(prevKind) || isFloorBeltKind(kind) || isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
+        if (floorNavChanged) this.bumpFloorNavEpoch();
         if (edgeChanged) this.bumpWallGridRevision();
         return true;
     }
@@ -412,6 +420,7 @@ export class WorldObstacleGrid {
             this.clearFloorBeltRailEdges(col, row, kind, facingIndex);
             this.bumpWallGridRevision();
         }
+        if (isFloorBeltKind(kind) || isFloorBeltRailsKind(kind)) this.bumpFloorNavEpoch();
         this.floorStore.clearAtIdx(idx);
         return true;
     }

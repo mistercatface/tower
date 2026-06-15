@@ -2,7 +2,7 @@ import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
-import { snapshotGridToWorld, snapshotIsBlocked, snapshotOctileNeighborIdx, snapshotWorldToGrid, snapshotCanStep } from "./GridNavSnapshot.js";
+import { snapshotGridToWorld, snapshotIsBlocked, snapshotWorldToGrid, snapshotCanStep } from "./GridNavSnapshot.js";
 const MAX_CACHE = 100;
 export class FlowFieldGrid {
     constructor(cellSize, width, height, navGraph, workerUrl) {
@@ -34,6 +34,9 @@ export class FlowFieldGrid {
         this.centerX = 0;
         this.centerY = 0;
         this.cellBounds = createAabb();
+    }
+    invalidateLocalTopology() {
+        this._topologyKey = "";
     }
     invalidateFlowSlots() {
         this.cacheLookup.fill(-1);
@@ -93,7 +96,7 @@ export class FlowFieldGrid {
         return true;
     }
     refresh() {
-        this._topologyKey = "";
+        this.invalidateLocalTopology();
         this.ensureLocalTopology(this.navGraph.ensureGridNavSnapshot());
     }
     shiftCenter(newCenterX, newCenterY) {
@@ -109,7 +112,7 @@ export class FlowFieldGrid {
         if (needsRecenter) {
             this.centerX = focusX;
             this.centerY = focusY;
-            this._topologyKey = "";
+            this.invalidateLocalTopology();
         }
         this.ensureLocalTopology(this.navGraph.ensureGridNavSnapshot());
     }
@@ -160,7 +163,7 @@ export class FlowFieldGrid {
     }
     clear() {
         this.grid.fill(0);
-        this._topologyKey = "";
+        this.invalidateLocalTopology();
         this.invalidateFlowSlots();
     }
     worldToGrid(x, y) {

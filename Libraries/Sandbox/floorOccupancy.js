@@ -198,6 +198,7 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
     const half = grid.cellHalfSize;
     let edgeChanged = false;
     const bounds = emptyCellBounds();
+    let floorNavChanged = false;
     for (let i = 0; i < floorBelts.length; i++) {
         const { col: globalCol, row: globalRow, kind, facingIndex } = floorBelts[i];
         if (!isFloorBeltKind(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
@@ -212,12 +213,14 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
             edgeChanged = true;
         }
         const facing = ((facingIndex % 4) + 4) % 4;
+        if (prevKind !== kind || prevFacing !== facing) floorNavChanged = true;
         grid.floorStore.setAtIdx(idx, kind, facing);
         if (isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) edgeChanged = true;
         if (isFloorBeltRailsKind(kind)) grid.syncFloorBeltRailEdges(col, row, kind, facing);
         growCellBounds(bounds, col, row);
     }
     if (edgeChanged) grid.bumpWallGridRevision();
+    if (floorNavChanged) grid.bumpFloorNavEpoch();
     if (isEmptyCellBounds(bounds)) return null;
     markGridZoneSubscriptionsDirty(state);
     return bounds;

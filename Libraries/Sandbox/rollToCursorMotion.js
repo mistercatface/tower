@@ -5,10 +5,6 @@ import { strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 const ROLL_TO_CURSOR_DEFAULTS = { maxSpeed: 180, accel: 600, stopRadius: 6 };
 export const ROLL_TO_CURSOR_FLOW_RECENTER_THRESHOLD = 400;
-/** @param {import("../Pathfinding/FlowFieldGrid.js").FlowFieldGrid} flowFieldGrid */
-export function syncFlowFieldWindowForRollTarget(flowFieldGrid, propX, propY, targetX, targetY) {
-    flowFieldGrid.ensureRollTargetWindow(propX, propY, targetX, targetY, ROLL_TO_CURSOR_FLOW_RECENTER_THRESHOLD);
-}
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
 export function snapRollMoveTargetToCellCenter(grid, world) {
     const { col, row } = grid.worldToGrid(world.x, world.y);

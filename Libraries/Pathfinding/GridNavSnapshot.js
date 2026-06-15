@@ -1,7 +1,7 @@
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 export function buildGridNavSnapshot(grid, cacheKey) {
-    const { cols, rows, cellSize, cellHalfSize, minX, minY, wallGridRevision, boundaryNavEpoch } = grid;
+    const { cols, rows, cellSize, cellHalfSize, minX, minY } = grid;
     const size = cols * rows;
     const blocked = new Uint8Array(size);
     const octileNeighbors = new Int32Array(size * 8);
@@ -23,10 +23,10 @@ export function buildGridNavSnapshot(grid, cacheKey) {
                 if (grid.canStep(col, row, nc, nr)) octileNeighbors[base + i] = colRowToIndex(nc, nr, cols);
             }
         }
-    return { cacheKey, revision: wallGridRevision, boundaryNavEpoch, cols, rows, cellSize, cellHalfSize, minX, minY, blocked, octileNeighbors, vertexPassability: grid.vertexPassability };
+    return { cacheKey, cols, rows, cellSize, cellHalfSize, minX, minY, blocked, octileNeighbors };
 }
 export function snapshotNavCacheKey(grid) {
-    return `${grid.wallGridRevision}:${grid._vertexPassabilitySyncKey}:${grid.boundaryNavEpoch}`;
+    return `${grid.wallGridRevision}:${grid._vertexPassabilitySyncKey}:${grid.boundaryNavEpoch}:${grid.floorNavEpoch}`;
 }
 export function snapshotIsBlocked(snapshot, col, row) {
     if (!cellInRect(col, row, snapshot.cols, snapshot.rows)) return true;
@@ -37,10 +37,6 @@ export function snapshotWorldToGrid(snapshot, x, y) {
 }
 export function snapshotGridToWorld(snapshot, col, row) {
     return gridToWorldAtOrigin(col, row, snapshot.minX, snapshot.minY, snapshot.cellSize);
-}
-export function snapshotOctileNeighborIdx(snapshot, col, row, offsetIndex) {
-    const idx = colRowToIndex(col, row, snapshot.cols);
-    return snapshot.octileNeighbors[idx * 8 + offsetIndex];
 }
 export function snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) {
     const { cols, rows } = snapshot;
@@ -53,19 +49,4 @@ export function snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) {
         if (fromCol + dc === toCol && fromRow + dr === toRow) return snapshot.octileNeighbors[fromIdx * 8 + i] === toIdx;
     }
     return false;
-}
-export function createSnapshotNavGraphView(snapshot) {
-    return {
-        cols: snapshot.cols,
-        rows: snapshot.rows,
-        cellSize: snapshot.cellSize,
-        cellHalfSize: snapshot.cellHalfSize,
-        minX: snapshot.minX,
-        minY: snapshot.minY,
-        grid: snapshot.blocked,
-        worldToGrid: (x, y) => snapshotWorldToGrid(snapshot, x, y),
-        gridToWorld: (col, row) => snapshotGridToWorld(snapshot, col, row),
-        isBlocked: (col, row) => snapshotIsBlocked(snapshot, col, row),
-        canStep: (fromCol, fromRow, toCol, toRow) => snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow),
-    };
 }
