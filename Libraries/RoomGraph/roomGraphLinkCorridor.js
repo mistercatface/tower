@@ -1,5 +1,7 @@
 import { maxCorridorWidthBetweenNodes } from "../Pathfinding/Corridor/index.js";
 
+import { normalizeCorridorType } from "./roomGraphCorridorTypes.js";
+
 export const MAX_CORRIDOR_COUNT = 100;
 
 /** @param {{ col: number, row: number, width: number, height: number }} node */
@@ -27,6 +29,7 @@ export function normalizeCorridorRange(min, max, floor, ceiling) {
 
 /** @param {import("./roomGraphStore.js").RoomLink} link */
 export function ensureLinkCorridorFields(link) {
+    link.corridorType = normalizeCorridorType(link.corridorType);
     if (link.corridorCount == null) link.corridorCount = link.corridorCountMax ?? link.corridorCountMin ?? 1;
     if (link.corridorWidthMin == null && link.corridorWidthMax == null) {
         const width = link.corridorWidth ?? 1;

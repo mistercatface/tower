@@ -17,6 +17,7 @@ import { renderSandboxEquipPanel } from "../../../Libraries/Sandbox/sandboxEquip
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
+import { CORRIDOR_TYPE_OPTIONS } from "../../../Libraries/RoomGraph/index.js";
 import { portalAccessDefaultAllowedSide } from "../../../Libraries/Spatial/grid/portalAccess.js";
 import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNumberField, appendNumberRangeField, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
@@ -650,6 +651,14 @@ export function mountSandboxToyUi(container, controller, onChange) {
                         body,
                         `${selectedRoomLink.label}. Corridor count is fixed; width range rolls per corridor on reroll.${limitHint}${rollHint}`,
                     );
+                    appendSelectField(body, "Corridor type", {
+                        value: selectedRoomLink.corridorType ?? "empty",
+                        options: CORRIDOR_TYPE_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
+                        onChange: (corridorType) => {
+                            controller.updateSelectedRoomLink({ corridorType });
+                            onChange();
+                        },
+                    });
                     appendNumberField(body, "Corridor count", {
                         value: selectedRoomLink.corridorCount ?? 1,
                         step: 1,

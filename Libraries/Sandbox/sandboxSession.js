@@ -27,6 +27,7 @@ import {
     expandGridForRoomNodeFootprint,
 } from "../RoomGraph/index.js";
 import { linkCorridorLimits, MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "../RoomGraph/roomGraphLinkCorridor.js";
+import { normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
 import { createSeededRng } from "../Math/SeededRng.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { syncPassagePowerNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
@@ -893,6 +894,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                     : null;
             return {
                 ...link,
+                corridorType: normalizeCorridorType(link.corridorType),
                 label: formatRoomLinkLabel(link),
                 maxCorridorWidth: limits?.maxWidth ?? null,
                 maxCorridorCount: MAX_CORRIDOR_COUNT,

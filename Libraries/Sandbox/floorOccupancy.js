@@ -1,6 +1,6 @@
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
+import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind, isFloorBeltTwoWayRailsKind } from "../Spatial/grid/FloorCell.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
 import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
 import { fillCircle } from "../Canvas/CanvasPath.js";
@@ -112,7 +112,20 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         const idx = col + row * grid.cols;
         if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
-        applyPushableAccelerationAlongAngle(entity, floorBeltFacingFromIndex(grid.floorStore.facing[idx]), force, dtSec);
+        const kind = grid.floorStore.kind[idx];
+        const facingIndex = grid.floorStore.facing[idx];
+        const beltAngle = floorBeltFacingFromIndex(facingIndex);
+        if (isFloorBeltTwoWayRailsKind(kind)) {
+            const vx = entity.vx ?? 0;
+            const vy = entity.vy ?? 0;
+            const cos = Math.cos(beltAngle);
+            const sin = Math.sin(beltAngle);
+            const along = vx * cos + vy * sin;
+            const pushAngle = along < 0 ? beltAngle + Math.PI : beltAngle;
+            applyPushableAccelerationAlongAngle(entity, pushAngle, force, dtSec);
+            continue;
+        }
+        applyPushableAccelerationAlongAngle(entity, beltAngle, force, dtSec);
     }
 }
 /**

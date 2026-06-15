@@ -1,15 +1,16 @@
 import { clampLinkCorridorRanges, ensureLinkCorridorFields } from "./roomGraphLinkCorridor.js";
+import { CORRIDOR_TYPE_EMPTY } from "./roomGraphCorridorTypes.js";
 /** @typedef {{ id: number, col: number, row: number, width: number, height: number }} RoomNode */
-/** @typedef {{ id: number, a: number, b: number, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, canIntersect?: boolean, seed?: number }} RoomLink */
-/** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[] }} RoomGraphDoc */
+/** @typedef {{ id: number, a: number, b: number, corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, canIntersect?: boolean, seed?: number }} RoomLink */
+/** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[], bakedFloorBelts?: { col: number, row: number, kind: number, facingIndex: number }[] }} RoomGraphDoc */
 /** @param {object} state @returns {RoomGraphDoc} */
 export function getRoomGraph(state) {
-    if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [] };
+    if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [] };
     return state.roomGraph;
 }
 /** @param {object} state */
 export function clearRoomGraph(state) {
-    state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [] };
+    state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [] };
 }
 /** @param {object} state @returns {RoomNode[]} */
 export function listRoomNodes(state) {
@@ -113,14 +114,15 @@ export function addRoomLink(state, a, b) {
     const existing = findRoomLinkBetween(state, a, b);
     if (existing) return existing;
     const graph = getRoomGraph(state);
-    const link = { id: graph.nextLinkId++, a, b, corridorCount: 1, corridorWidthMin: 1, corridorWidthMax: 1, canIntersect: false, seed: (Math.random() * 0xffffffff) | 0 };
+    const link = { id: graph.nextLinkId++, a, b, corridorType: CORRIDOR_TYPE_EMPTY, corridorCount: 1, corridorWidthMin: 1, corridorWidthMax: 1, canIntersect: false, seed: (Math.random() * 0xffffffff) | 0 };
     graph.links.push(link);
     return link;
 }
-/** @param {object} state @param {number} linkId @param {{ corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, canIntersect?: boolean, seed?: number }} patch @returns {boolean} */
+/** @param {object} state @param {number} linkId @param {{ corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, canIntersect?: boolean, seed?: number }} patch @returns {boolean} */
 export function updateRoomLink(state, linkId, patch) {
     const link = getRoomLink(state, linkId);
     if (!link) return false;
+    if (patch.corridorType != null) link.corridorType = patch.corridorType;
     if (patch.corridorCount != null) link.corridorCount = Math.round(patch.corridorCount);
     if (patch.corridorWidthMin != null) link.corridorWidthMin = Math.round(patch.corridorWidthMin);
     if (patch.corridorWidthMax != null) link.corridorWidthMax = Math.round(patch.corridorWidthMax);
@@ -174,7 +176,7 @@ export function replaceRoomGraph(state, doc) {
         if (nodeA && nodeB) clampLinkCorridorRanges(copy, nodeA, nodeB);
         return copy;
     });
-    state.roomGraph = { nodes: doc.nodes.map((node) => ({ ...node })), links, nextNodeId: doc.nextNodeId, nextLinkId: doc.nextLinkId, bakedRails: [] };
+    state.roomGraph = { nodes: doc.nodes.map((node) => ({ ...node })), links, nextNodeId: doc.nextNodeId, nextLinkId: doc.nextLinkId, bakedRails: [], bakedFloorBelts: [] };
 }
 /** @param {object} state @returns {RoomGraphDoc} */
 export function cloneRoomGraphDoc(state) {

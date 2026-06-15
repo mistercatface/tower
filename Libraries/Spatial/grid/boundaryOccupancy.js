@@ -14,7 +14,7 @@ import {
 import { portalAccessDefaultAllowedSide } from "./portalAccess.js";
 import { resolvePassageStepFrom, resolvePassageStepUndirected } from "./passageStep.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
-import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
+import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind, isFloorBeltTwoWayRailsKind } from "./FloorCell.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { gridNeighborFillLevel } from "../../World/wallGridCells.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
@@ -269,6 +269,7 @@ function beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow) {
     const idx = colRowToIndex(toCol, toRow, grid.cols);
     if (!grid.floorStore.isBeltKindAtIdx(idx)) return false;
     const kind = grid.floorStore.kind[idx];
+    if (isFloorBeltTwoWayRailsKind(kind)) return false;
     const { exitSide } = floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
     const dc = fromCol - toCol;
     const dr = fromRow - toRow;
