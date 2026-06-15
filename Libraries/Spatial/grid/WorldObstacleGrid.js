@@ -7,7 +7,7 @@ import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToI
 import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
-import { buildGridNavSnapshot, snapshotNavCacheKey } from "../../Pathfinding/GridNavSnapshot.js";
+import { buildGridNavSnapshot, buildGridNavSnapshotAsync, snapshotNavCacheKey } from "../../Pathfinding/GridNavSnapshot.js";
 import { clearWallCells } from "./wallGridBake.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
@@ -39,6 +39,7 @@ export class WorldObstacleGrid {
         this.vertexPassability = new Uint8Array(0);
         this._vertexPassabilitySyncKey = "";
         this.gridNavSnapshot = null;
+        this._navSnapshotBuild = null;
         this.gridTopologyEpoch = 0;
     }
     ensureGridNavSnapshot() {
@@ -47,8 +48,29 @@ export class WorldObstacleGrid {
         this.gridNavSnapshot = buildGridNavSnapshot(this, cacheKey);
         return this.gridNavSnapshot;
     }
+    async ensureGridNavSnapshotAsync() {
+        const cacheKey = snapshotNavCacheKey(this);
+        if (this.gridNavSnapshot?.cacheKey === cacheKey) return this.gridNavSnapshot;
+        this._kickNavSnapshotBuild(cacheKey);
+        const build = this._navSnapshotBuild;
+        if (build?.key === cacheKey) {
+            this.gridNavSnapshot = await build.promise;
+            return this.gridNavSnapshot;
+        }
+        return this.ensureGridNavSnapshot();
+    }
     invalidateGridNavSnapshot() {
         this.gridNavSnapshot = null;
+        this._kickNavSnapshotBuild(snapshotNavCacheKey(this));
+    }
+    _kickNavSnapshotBuild(cacheKey) {
+        if (this._navSnapshotBuild?.key === cacheKey) return;
+        const grid = this;
+        const promise = buildGridNavSnapshotAsync(grid, cacheKey);
+        this._navSnapshotBuild = { key: cacheKey, promise };
+        void promise.then((snapshot) => {
+            if (this._navSnapshotBuild?.key === cacheKey) this.gridNavSnapshot = snapshot;
+        });
     }
     bumpWallGridRevision() {
         this.wallGridRevision = (this.wallGridRevision + 1) | 0;

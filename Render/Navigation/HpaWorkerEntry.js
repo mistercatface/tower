@@ -21,6 +21,12 @@ let rows;
 let aStarGScore;
 let aStarCameFrom;
 let aStarVisited;
+let replanRunId = 0;
+let extNodeCol;
+let extNodeRow;
+let extEdgeOffsets;
+let extEdgeTargets;
+let extEdgeCosts;
 function slotPathMeta(slot) {
     return new Int32Array(sabPathMetaPool, slot * 8, 2);
 }
@@ -86,6 +92,103 @@ function writeAbstractPath(slot, pathIdx) {
     const abstractIdx = slotAbstractIdx(slot);
     for (let i = 0; i < pathIdx.length; i++) abstractIdx[i] = pathIdx[i];
 }
+function appendCellLeg(fullPath, leg) {
+    if (!leg) return fullPath;
+    if (!fullPath) return leg.slice();
+    fullPath.push(...leg.slice(1));
+    return fullPath;
+}
+function buildExtendedEdges(slot, nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen) {
+    const startTemp = nodeCount;
+    const targetTemp = nodeCount + 1;
+    const extCount = nodeCount + 2;
+    const baseCol = slotGraphNodeCol(slot).subarray(0, nodeCount);
+    const baseRow = slotGraphNodeRow(slot).subarray(0, nodeCount);
+    const baseOffsets = slotGraphEdgeOffsets(slot).subarray(0, nodeCount + 1);
+    const baseTargets = slotGraphEdgeTargets(slot).subarray(0, edgeWrite);
+    const baseCosts = slotGraphEdgeCosts(slot).subarray(0, edgeWrite);
+    if (!extNodeCol || extNodeCol.length < extCount) {
+        extNodeCol = new Int16Array(maxGraphNodes + 2);
+        extNodeRow = new Int16Array(maxGraphNodes + 2);
+        extEdgeOffsets = new Int32Array(maxGraphNodes + 3);
+        extEdgeTargets = new Int16Array(maxGraphEdges + 64);
+        extEdgeCosts = new Uint16Array(maxGraphEdges + 64);
+    }
+    extNodeCol.set(baseCol);
+    extNodeRow.set(baseRow);
+    extNodeCol[startTemp] = startCol;
+    extNodeRow[startTemp] = startRow;
+    extNodeCol[targetTemp] = targetCol;
+    extNodeRow[targetTemp] = targetRow;
+    const extra = [];
+    for (let i = 0; i < nodeCount; i++) for (let e = baseOffsets[i]; e < baseOffsets[i + 1]; e++) extra.push([i, baseTargets[e], baseCosts[e]]);
+    for (let i = 0; i < startCandidates.length; i++) {
+        const cIdx = startCandidates[i];
+        const path = runLocalAStarFlat(startCol, startRow, extNodeCol[cIdx], extNodeRow[cIdx], navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
+        if (path) extra.push([startTemp, cIdx, path.length]);
+    }
+    for (let i = 0; i < targetCandidates.length; i++) {
+        const cIdx = targetCandidates[i];
+        const path = runLocalAStarFlat(extNodeCol[cIdx], extNodeRow[cIdx], targetCol, targetRow, navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
+        if (path) extra.push([cIdx, targetTemp, path.length]);
+    }
+    let write = 0;
+    for (let i = 0; i < extCount; i++) {
+        extEdgeOffsets[i] = write;
+        for (let e = 0; e < extra.length; e++) {
+            if (extra[e][0] !== i) continue;
+            extEdgeTargets[write] = extra[e][1];
+            extEdgeCosts[write] = extra[e][2];
+            write++;
+        }
+    }
+    extEdgeOffsets[extCount] = write;
+    return { extCount, startTemp, targetTemp, edgeWrite: write };
+}
+function stitchIdxPath(abstractPath, nodeCol, nodeRow, stitchMaxLen) {
+    let fullPath = null;
+    for (let i = 0; i < abstractPath.length - 1; i++) {
+        const aCol = nodeCol[abstractPath[i]];
+        const aRow = nodeRow[abstractPath[i]];
+        const bCol = nodeCol[abstractPath[i + 1]];
+        const bRow = nodeRow[abstractPath[i + 1]];
+        const leg = runLocalAStarFlat(aCol, aRow, bCol, bRow, navView, cols, rows, stitchMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
+        if (!leg) {
+            if (!fullPath) fullPath = [{ col: aCol, row: aRow }];
+            fullPath.push({ col: bCol, row: bRow });
+            continue;
+        }
+        fullPath = appendCellLeg(fullPath, leg);
+    }
+    return fullPath;
+}
+function runReplan(slot, data) {
+    const { mode, startCol, startRow, targetCol, targetRow, localMaxLen } = data;
+    if (mode === "local") {
+        const path = runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, cols, rows, localMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
+        writeCellPath(slot, path);
+        writeAbstractPath(slot, null);
+        return;
+    }
+    const { nodeCount, edgeWrite, startCandidates, targetCandidates, regionConnectMaxLen, stitchMaxLen } = data;
+    const extended = buildExtendedEdges(slot, nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen);
+    const abstractPath = runAbstractAStarFlat(
+        extended.startTemp,
+        extended.targetTemp,
+        extNodeCol.subarray(0, extended.extCount),
+        extNodeRow.subarray(0, extended.extCount),
+        extEdgeOffsets.subarray(0, extended.extCount + 1),
+        extEdgeTargets.subarray(0, extended.edgeWrite),
+        extEdgeCosts.subarray(0, extended.edgeWrite),
+        extended.extCount,
+    );
+    writeAbstractPath(slot, abstractPath);
+    if (!abstractPath) {
+        writeCellPath(slot, null);
+        return;
+    }
+    writeCellPath(slot, stitchIdxPath(abstractPath, extNodeCol, extNodeRow, stitchMaxLen));
+}
 self.onmessage = function (e) {
     const { type, data, slot, requestId, startCol, startRow, targetCol, targetRow, maxPathLen: maxLen, runId, startIdx, targetIdx, nodeCount, edgeWrite } = e.data;
     if (type === "init") {
@@ -114,6 +217,11 @@ self.onmessage = function (e) {
         const path = runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, cols, rows, maxLen, aStarGScore, aStarCameFrom, aStarVisited, runId);
         writeCellPath(slot, path);
         slotPathMeta(slot)[1] = 0;
+        self.postMessage({ type: "hpaDone", slot, requestId });
+        return;
+    }
+    if (type === "replan") {
+        runReplan(slot, e.data);
         self.postMessage({ type: "hpaDone", slot, requestId });
         return;
     }

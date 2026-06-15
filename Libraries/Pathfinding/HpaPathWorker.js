@@ -100,7 +100,7 @@ export class HpaPathWorker {
         return new Uint16Array(this.sabGraphEdgeCostsPool, slot * MAX_GRAPH_EDGES * 2, MAX_GRAPH_EDGES);
     }
     async _ensureNavSnapshot() {
-        const snapshot = this.navGraph.ensureGridNavSnapshot();
+        const snapshot = await this.navGraph.ensureGridNavSnapshotAsync();
         if (snapshot.cacheKey === this._navKey) return;
         if (this._navSyncPromise) {
             await this._navSyncPromise;
@@ -160,6 +160,43 @@ export class HpaPathWorker {
         const path = new Array(len);
         for (let i = 0; i < len; i++) path[i] = { col: pathCols[i], row: pathRows[i] };
         return path;
+    }
+    _readAbstractIdx(slot) {
+        const pathMeta = this._pathMeta(slot);
+        const len = pathMeta[1];
+        if (len <= 0) return [];
+        const abstractIdx = this._abstractIdx(slot);
+        const out = new Array(len);
+        for (let i = 0; i < len; i++) out[i] = abstractIdx[i];
+        return out;
+    }
+    async runOneShotReplan(slot, prep, nav) {
+        await this._ensureNavSnapshot();
+        const payload = { mode: prep.mode, startCol: prep.startCol, startRow: prep.startRow, targetCol: prep.targetCol, targetRow: prep.targetRow, localMaxLen: 96 };
+        if (prep.mode === "hpa") {
+            const baked = prep.baked;
+            const graphNodeCol = this._graphNodeCol(slot);
+            const graphNodeRow = this._graphNodeRow(slot);
+            const graphEdgeOffsets = this._graphEdgeOffsets(slot);
+            const graphEdgeTargets = this._graphEdgeTargets(slot);
+            const graphEdgeCosts = this._graphEdgeCosts(slot);
+            graphNodeCol.set(baked.nodeCol);
+            graphNodeRow.set(baked.nodeRow);
+            graphEdgeOffsets.set(baked.edgeOffsets);
+            graphEdgeTargets.fill(0);
+            graphEdgeCosts.fill(0);
+            graphEdgeTargets.set(baked.edgeTargets);
+            graphEdgeCosts.set(baked.edgeCosts);
+            payload.nodeCount = baked.nodeCount;
+            payload.edgeWrite = baked.edgeWrite;
+            payload.startCandidates = prep.startCandidates;
+            payload.targetCandidates = prep.targetCandidates;
+            payload.regionConnectMaxLen = prep.regionConnectMaxLen;
+            payload.stitchMaxLen = prep.stitchMaxLen;
+        }
+        await this._dispatchAndWait(slot, "replan", payload);
+        const cellPath = this._readCellPath(slot);
+        return nav._workerReplanResult(cellPath, prep, this._readAbstractIdx(slot));
     }
     async runLocalAStar(slot, startCol, startRow, targetCol, targetRow, maxPathLen, runId) {
         await this._ensureNavSnapshot();
