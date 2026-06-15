@@ -1,5 +1,5 @@
 import { runAbstractAStarFlat } from "./AStar.js";
-export const MAX_HPA_GRAPH_NODES = 1024;
+export const MAX_HPA_GRAPH_NODES = 4096;
 /**
  * @param {Record<string, { col: number, row: number, edges: { targetId: string, cost: number }[] }>} nodesMap
  * @param {string[]} nodeIds

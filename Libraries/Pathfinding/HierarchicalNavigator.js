@@ -499,6 +499,35 @@ export class HierarchicalNavigator {
         });
         return { cellPath, abstractNodes, pathPlanner: "hpa" };
     }
+    stitchAbstractCellPath(abstractIdx, prep, tempLegs) {
+        const { nodeIds, nodeCount, nodeCol, nodeRow, startCol, startRow, targetCol, targetRow } = prep;
+        const startTemp = nodeCount;
+        const targetTemp = nodeCount + 1;
+        let fullCellPath = [];
+        for (let i = 0; i < abstractIdx.length - 1; i++) {
+            const aIdx = abstractIdx[i];
+            const bIdx = abstractIdx[i + 1];
+            let leg = tempLegs.get(`${aIdx},${bIdx}`);
+            if (!leg && aIdx < nodeCount && bIdx < nodeCount) {
+                const nodeA = this.nodesMap[nodeIds[aIdx]];
+                const nodeB = this.nodesMap[nodeIds[bIdx]];
+                const edge = nodeA?.edges.find((e) => e.targetId === nodeB.id);
+                if (edge?.path) leg = edge.path;
+            }
+            if (!leg) {
+                const aCol = aIdx === startTemp ? startCol : aIdx === targetTemp ? targetCol : nodeCol[aIdx];
+                const aRow = aIdx === startTemp ? startRow : aIdx === targetTemp ? targetRow : nodeRow[aIdx];
+                const bCol = bIdx === startTemp ? startCol : bIdx === targetTemp ? targetCol : nodeCol[bIdx];
+                const bRow = bIdx === startTemp ? startRow : bIdx === targetTemp ? targetRow : nodeRow[bIdx];
+                if (fullCellPath.length === 0) fullCellPath.push({ col: aCol, row: aRow });
+                fullCellPath.push({ col: bCol, row: bRow });
+                continue;
+            }
+            if (fullCellPath.length === 0) fullCellPath.push(...leg);
+            else fullCellPath.push(...leg.slice(1));
+        }
+        return fullCellPath.length ? fullCellPath : null;
+    }
     _cellPathToWaypoints(cells) {
         return cells.map((cell) => this.gridToWorld(cell.col, cell.row));
     }
