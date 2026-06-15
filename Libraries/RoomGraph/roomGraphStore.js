@@ -112,7 +112,7 @@ export function addRoomLink(state, a, b) {
     const existing = findRoomLinkBetween(state, a, b);
     if (existing) return existing;
     const graph = getRoomGraph(state);
-    const link = { id: graph.nextLinkId++, a, b, corridorCount: 2, corridorWidth: 2, canIntersect: false, seed: (Math.random() * 0xffffffff) | 0 };
+    const link = { id: graph.nextLinkId++, a, b, corridorCount: 1, corridorWidth: 1, canIntersect: false, seed: (Math.random() * 0xffffffff) | 0 };
     graph.links.push(link);
     return link;
 }

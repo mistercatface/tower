@@ -132,17 +132,32 @@ export function appendButtonWireInspector(body, wire, onChange) {
  *   cancelWire: () => void,
  *   clearLinks: () => void,
  *   removeLink: (linkId: number) => void,
+ *   selectedLinkId?: () => number | null,
+ *   selectLink?: (linkId: number) => void,
  * }} wire
  * @param {() => void} onChange
  */
 export function appendRoomNodeWireInspector(body, wire, onChange) {
     const links = wire.listLinks();
-    appendEditorHint(body, links.length ? `${links.length} link${links.length === 1 ? "" : "s"} connected` : "No links — connect to another room node.");
+    const selectedLinkId = wire.selectedLinkId?.() ?? null;
+    appendEditorHint(
+        body,
+        links.length
+            ? `${links.length} link${links.length === 1 ? "" : "s"} — select a link for corridor settings`
+            : "No links — connect to another room node.",
+    );
     if (links.length)
         appendInstanceList(
             body,
             links.map((entry) => ({
                 label: entry.label,
+                selected: entry.linkId === selectedLinkId,
+                onSelect: wire.selectLink
+                    ? () => {
+                          wire.selectLink(entry.linkId);
+                          onChange();
+                      }
+                    : undefined,
                 onDelete: () => {
                     wire.removeLink(entry.linkId);
                     onChange();

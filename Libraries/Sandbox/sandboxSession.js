@@ -902,6 +902,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             const link = addRoomLink(state, a, b);
             if (!link) return null;
             touchRoomLinkPlacement(link.id);
+            setSelectedRoomLinkId(link.id);
             syncRoomGraphBake(state);
             sync();
             return link;
@@ -955,7 +956,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         updateSelectedRoomLink(patch) {
             if (selectedRoomLinkId == null) return false;
             if (!updateRoomLink(state, selectedRoomLinkId, patch)) return false;
-            syncRoomGraphBake(state);
+            if (patch.corridorCount == null && patch.corridorWidth == null) syncRoomGraphBake(state);
             sync();
             return true;
         },

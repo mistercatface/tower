@@ -263,8 +263,12 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
                 const grid = state.obstacleGrid;
                 const { col, row } = grid.worldToGrid(world.x, world.y);
                 const target = pickRoomNodeAt(state, col, row);
-                if (target && target.id !== fromNode.id) session.addRoomLinkBetweenNodes(fromNode.id, target.id);
-                else session.sync();
+                if (target && target.id !== fromNode.id) {
+                    if (session.addRoomLinkBetweenNodes(fromNode.id, target.id)) {
+                        roomNodeWireMode = false;
+                        roomNodeWireCursor = null;
+                    }
+                } else session.sync();
                 e.preventDefault();
                 e.stopPropagation();
                 return;
@@ -521,6 +525,8 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         isRoomNodeWireLinkActive: () => roomNodeWireMode,
         getSelectedRoomNodeInfo: () => session.getSelectedRoomNodeInfo(),
         getSelectedRoomLinkInfo: () => session.getSelectedRoomLinkInfo(),
+        getSelectedRoomLinkId: () => session.getSelectedRoomLinkId(),
+        setSelectedRoomLinkId: (linkId) => session.setSelectedRoomLinkId(linkId),
         deleteSelectedRoomNode: () => session.deleteSelectedRoomNode(),
         deleteSelectedRoomLink: () => session.deleteSelectedRoomLink(),
         updateSelectedRoomLink: (patch) => session.updateSelectedRoomLink(patch),

@@ -100,6 +100,67 @@ export function ensureObstacleGridAtWorld(state, worldX, worldY) {
 function cellBounds(col, row) {
     return { startCol: col, endCol: col, startRow: row, endRow: row };
 }
+/** @param {object} state @param {{ col: number, row: number, side: number }[]} rails @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} */
+export function clearRailWallsQuiet(state, rails) {
+    let minCol = Infinity;
+    let maxCol = -Infinity;
+    let minRow = Infinity;
+    let maxRow = -Infinity;
+    let changed = false;
+    for (let i = 0; i < rails.length; i++) {
+        const { col, row, side } = rails[i];
+        if (clearPrimaryBoundaryAt(state, col, row, side) !== "railWall") continue;
+        changed = true;
+        if (col < minCol) minCol = col;
+        if (col > maxCol) maxCol = col;
+        if (row < minRow) minRow = row;
+        if (row > maxRow) maxRow = row;
+    }
+    if (!changed) return null;
+    return { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow };
+}
+/**
+ * @param {object} state
+ * @param {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[]} railWalls
+ * @returns {{ bounds: { startCol: number, endCol: number, startRow: number, endRow: number } | null, stamped: { col: number, row: number, side: number, heightLevel: number, thicknessLevel: number }[] }}
+ */
+export function stampRailWallsQuiet(state, railWalls) {
+    const grid = state.obstacleGrid;
+    const settings = state.worldSurfaces.settings;
+    /** @type {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number }[]} */
+    const stamped = [];
+    let minCol = Infinity;
+    let maxCol = -Infinity;
+    let minRow = Infinity;
+    let maxRow = -Infinity;
+    for (let i = 0; i < railWalls.length; i++) {
+        const wall = railWalls[i];
+        const { col, row, side } = wall;
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
+        clearPrimaryBoundaryAt(state, col, row, side);
+        const heightLevel = clampStampWallHeightLevel(wall.heightLevel ?? 1, settings);
+        const thicknessLevel = wall.thicknessLevel ?? 1;
+        setBoundary(grid, col, row, side, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+        stamped.push({ col, row, side, heightLevel, thicknessLevel });
+        if (col < minCol) minCol = col;
+        if (col > maxCol) maxCol = col;
+        if (row < minRow) minRow = row;
+        if (row > maxRow) maxRow = row;
+    }
+    if (!stamped.length) return { bounds: null, stamped };
+    return { bounds: { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow }, stamped };
+}
+/** @param {object} state @param {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[]} railWalls */
+export function stampRailWallsBatch(state, railWalls) {
+    const { bounds, stamped } = stampRailWallsQuiet(state, railWalls);
+    if (bounds) commitBoundaryEdit(state, bounds);
+    return stamped;
+}
+/** @param {object} state @param {{ col: number, row: number, side: number }[]} rails */
+export function clearRailWallsBatch(state, rails) {
+    const bounds = clearRailWallsQuiet(state, rails);
+    if (bounds) commitBoundaryEdit(state, bounds);
+}
 export function clearAllStampedGridWalls(state, { notify = true } = {}) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;

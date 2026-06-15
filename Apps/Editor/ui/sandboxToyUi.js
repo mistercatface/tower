@@ -640,9 +640,9 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     return;
                 }
                 if (selectedRoomLink) {
-                    appendEditorHint(body, `${selectedRoomLink.label}. Corridors rebake when settings change.`);
+                    appendEditorHint(body, `${selectedRoomLink.label}. Corridor count and width apply when you reroll.`);
                     appendNumberField(body, "Corridor count", {
-                        value: selectedRoomLink.corridorCount ?? 2,
+                        value: selectedRoomLink.corridorCount ?? 1,
                         step: 1,
                         min: 1,
                         onChange: (corridorCount) => {
@@ -651,7 +651,7 @@ export function mountSandboxToyUi(container, controller, onChange) {
                         },
                     });
                     appendNumberField(body, "Corridor width", {
-                        value: selectedRoomLink.corridorWidth ?? 2,
+                        value: selectedRoomLink.corridorWidth ?? 1,
                         step: 1,
                         min: 1,
                         onChange: (corridorWidth) => {
@@ -707,6 +707,8 @@ export function mountSandboxToyUi(container, controller, onChange) {
                             cancelWire: () => controller.cancelRoomNodeWireLink(),
                             clearLinks: () => controller.clearSelectedRoomNodeLinks(),
                             removeLink: (linkId) => controller.removeRoomLinkById(linkId),
+                            selectedLinkId: () => controller.getSelectedRoomLinkId(),
+                            selectLink: (linkId) => controller.setSelectedRoomLinkId(linkId),
                         },
                         onChange,
                     );
