@@ -30,7 +30,7 @@ export function createRollToCursorHpaBehavior(state) {
         targetWorld = snapped.world;
         targetCellCol = snapped.col;
         targetCellRow = snapped.row;
-        if (forceReset || cellChanged) hpaNav.reset();
+        if (forceReset || cellChanged) hpaNav.markTargetChanged();
     };
     return {
         id: ROLL_TO_CURSOR_HPA_BEHAVIOR_ID,

@@ -4,11 +4,13 @@ import { clearHpaNavPath, requestHpaNavReplan } from "../Pathfinding/hpaPathPlan
 import { computeHpaNavSteering } from "../Pathfinding/hpaSteering.js";
 /** @typedef {import("../Pathfinding/navSession.js").NavSessionState} NavSessionState */
 const REPLAN_TARGET_MOVE_PX = 64;
-/** @returns {{ navState: NavSessionState, reset: () => void, replan: (prop: object, targetX: number, targetY: number, state: object) => void, update: (prop: object, targetX: number, targetY: number, state: object, dtMs: number) => void, getSteering: (prop: object, targetX: number, targetY: number, settings: object, grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid) => import("../Agent/types.js").SteeringResult | null }} */
+/** @returns {{ navState: NavSessionState, reset: () => void, markTargetChanged: () => void, replan: (prop: object, targetX: number, targetY: number, state: object) => void, update: (prop: object, targetX: number, targetY: number, state: object, dtMs: number) => void, getSteering: (prop: object, targetX: number, targetY: number, settings: object, grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid) => import("../Agent/types.js").SteeringResult | null }} */
 export function createRollToCursorHpaNav() {
     const navState = createNavState();
     let replanClockMs = 0;
+    let pendingTargetReplan = false;
     const reset = () => {
+        pendingTargetReplan = false;
         clearHpaNavPath(navState);
         navState.pathProgressIdx = 0;
         navState.lastTargetX = null;
@@ -18,15 +20,26 @@ export function createRollToCursorHpaNav() {
         navState.hpaReplanSlot = -1;
         replanClockMs = 0;
     };
+    /** New target cell — one replan when idle; keep path steering until apply. */
+    const markTargetChanged = () => {
+        pendingTargetReplan = true;
+        navState.boundaryHopIdx = null;
+        navState.crossingGrant = null;
+    };
     const replan = (prop, targetX, targetY, state) => {
         requestHpaNavReplan(state.hpaPathSession, navState, { obstacleGrid: state.obstacleGrid, startX: prop.x, startY: prop.y, targetX, targetY, nowMs: replanClockMs });
     };
     const update = (prop, targetX, targetY, state, dtMs) => {
         replanClockMs += dtMs;
+        if (state.hpaPathSession.isReplanInFlight(navState)) return;
+        if (pendingTargetReplan) {
+            pendingTargetReplan = false;
+            replan(prop, targetX, targetY, state);
+            return;
+        }
         const targetMovedPx = navState.lastTargetX == null || navState.lastTargetY == null ? Infinity : Math.hypot(targetX - navState.lastTargetX, targetY - navState.lastTargetY);
-        const needsReplan = !navState.path || targetMovedPx >= REPLAN_TARGET_MOVE_PX;
-        if (needsReplan) replan(prop, targetX, targetY, state);
+        if (!navState.path || targetMovedPx >= REPLAN_TARGET_MOVE_PX) replan(prop, targetX, targetY, state);
     };
     const getSteering = (prop, targetX, targetY, settings, grid) => computeHpaNavSteering(agentPose(prop), navState, targetX, targetY, settings, grid);
-    return { navState, reset, replan, update, getSteering };
+    return { navState, reset, markTargetChanged, replan, update, getSteering };
 }
