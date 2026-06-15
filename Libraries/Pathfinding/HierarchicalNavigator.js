@@ -5,6 +5,8 @@ import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import { createSnapshotLocalNavView } from "./GridNavSnapshot.js";
 import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid } from "./VoronoiRegions.js";
 export class HierarchicalNavigator {
+    /** @type {import("./HpaPathWorker.js").HpaPathWorker | null} */
+    hpaPathWorker = null;
     constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, navGraph, { damagePadding = 12 } = {}) {
         this.cellSize = cellSize;
         this.maxCellsPerChunk = maxCellsPerChunk;
@@ -168,14 +170,10 @@ export class HierarchicalNavigator {
     }
     _connectRegionPair(nodeA, nodeB) {
         if (!nodeA || !nodeB || nodeA.id === nodeB.id) return;
-        if (!nodeA.edges.some((e) => e.targetId === nodeB.id)) {
-            const pathAB = this.runLocalAStar(nodeA.col, nodeA.row, nodeB.col, nodeB.row, this.maxCellsPerChunk * 2);
-            if (pathAB) nodeA.edges.push({ targetId: nodeB.id, cost: pathAB.length, path: pathAB });
-        }
-        if (!nodeB.edges.some((e) => e.targetId === nodeA.id)) {
-            const pathBA = this.runLocalAStar(nodeB.col, nodeB.row, nodeA.col, nodeA.row, this.maxCellsPerChunk * 2);
-            if (pathBA) nodeB.edges.push({ targetId: nodeA.id, cost: pathBA.length, path: pathBA });
-        }
+        const costAB = Math.max(Math.abs(nodeA.col - nodeB.col), Math.abs(nodeA.row - nodeB.row));
+        if (costAB > 0 && !nodeA.edges.some((e) => e.targetId === nodeB.id)) nodeA.edges.push({ targetId: nodeB.id, cost: costAB });
+        const costBA = Math.max(Math.abs(nodeB.col - nodeA.col), Math.abs(nodeB.row - nodeA.row));
+        if (costBA > 0 && !nodeB.edges.some((e) => e.targetId === nodeA.id)) nodeB.edges.push({ targetId: nodeA.id, cost: costBA });
     }
     _expandDamageBounds(bounds, padding = this.damagePadding) {
         return {
@@ -410,46 +408,20 @@ export class HierarchicalNavigator {
         return runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, this.cols, this.rows, maxPathLen, this.aStarGScore, this.aStarCameFrom, this.aStarVisited, this.aStarRunId);
     }
     _snapshotLocalNavView() {
+        const workerView = this.hpaPathWorker?.getNavSnapshotView();
+        if (workerView) {
+            if (workerView.cacheKey !== this._localNavViewKey) {
+                this._localNavViewKey = workerView.cacheKey;
+                this._localNavView = createSnapshotLocalNavView(workerView);
+            }
+            return this._localNavView;
+        }
         const snapshot = this.navGraph.ensureGridNavSnapshot();
         if (snapshot.cacheKey !== this._localNavViewKey) {
             this._localNavViewKey = snapshot.cacheKey;
             this._localNavView = createSnapshotLocalNavView(snapshot);
         }
         return this._localNavView;
-    }
-    _collectTempConnectCandidateIdxs(gridCol, gridRow, targetNode, isStart, idToIdx) {
-        const candidates = new Set();
-        const searchRadius = Math.ceil(Math.sqrt(this.maxCellsPerChunk)) * 2;
-        if (targetNode) {
-            const targetIdx = idToIdx.get(targetNode.id);
-            if (targetIdx !== undefined) candidates.add(targetIdx);
-            if (isStart)
-                for (const edge of targetNode.edges) {
-                    const neighbor = this.nodesMap[edge.targetId];
-                    if (neighbor) {
-                        const idx = idToIdx.get(neighbor.id);
-                        if (idx !== undefined) candidates.add(idx);
-                    }
-                }
-            else
-                for (const id in this.nodesMap) {
-                    if (this._isHpaTempNodeId(id)) continue;
-                    const node = this.nodesMap[id];
-                    if (node.edges.some((e) => e.targetId === targetNode.id)) {
-                        const idx = idToIdx.get(id);
-                        if (idx !== undefined) candidates.add(idx);
-                    }
-                }
-        } else
-            for (const id in this.nodesMap) {
-                if (this._isHpaTempNodeId(id)) continue;
-                const node = this.nodesMap[id];
-                const idx = idToIdx.get(id);
-                if (idx === undefined) continue;
-                const d = Math.hypot(gridCol - node.col, gridRow - node.row);
-                if (d <= searchRadius) candidates.add(idx);
-            }
-        return [...candidates];
     }
     prepareWorkerReplan(startCol, startRow, targetCol, targetRow, graphMeta) {
         const startIdx = colRowToIndex(startCol, startRow, this.cols);
@@ -458,22 +430,8 @@ export class HierarchicalNavigator {
         const targetNode = this.cellToNode[targetIdx];
         const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);
         if (cellDist < 32 || (startNode && targetNode && startNode.id === targetNode.id)) return { mode: "local", startCol, startRow, targetCol, targetRow };
-        const { idToIdx, nodeIds, nodeCol, nodeRow } = graphMeta;
-        return {
-            mode: "hpa",
-            startCol,
-            startRow,
-            targetCol,
-            targetRow,
-            nodeCount: graphMeta.nodeCount,
-            nodeIds,
-            nodeCol,
-            nodeRow,
-            startCandidates: this._collectTempConnectCandidateIdxs(startCol, startRow, startNode, true, idToIdx),
-            targetCandidates: this._collectTempConnectCandidateIdxs(targetCol, targetRow, targetNode, false, idToIdx),
-            regionConnectMaxLen: 96,
-            stitchMaxLen: this.maxCellsPerChunk * 2,
-        };
+        const { nodeIds, nodeCol, nodeRow } = graphMeta;
+        return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: 96, stitchMaxLen: this.maxCellsPerChunk * 2 };
     }
     _workerReplanResult(cellPath, prep, abstractIdx) {
         if (prep.mode === "local") {

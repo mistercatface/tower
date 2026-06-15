@@ -1,11 +1,13 @@
 import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfinding/AStar.js";
 import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
+import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
 let maxSlots;
 let maxPathLen;
 let maxAbstractLen;
 let maxGraphNodes;
 let maxGraphEdges;
+let maxCellsPerChunk;
 let sabPathMetaPool;
 let sabPathColsPool;
 let sabPathRowsPool;
@@ -277,6 +279,39 @@ function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol,
     const totalEdges = extEdgeOffsets[extCount];
     return { extCount, startTemp, targetTemp, edgeWrite: totalEdges, tempLegs };
 }
+function collectReplanTempCandidates(startCol, startRow, targetCol, targetRow) {
+    const nodeCol = persistNodeColView().subarray(0, persistNodeCount);
+    const nodeRow = persistNodeRowView().subarray(0, persistNodeCount);
+    const edgeOffsets = persistEdgeOffsetsView().subarray(0, persistNodeCount + 1);
+    const edgeTargets = persistEdgeTargetsView().subarray(0, persistEdgeWrite);
+    const startRegionIdx = nearestRegionNodeIdx(nodeCol, nodeRow, persistNodeCount, startCol, startRow);
+    const targetRegionIdx = nearestRegionNodeIdx(nodeCol, nodeRow, persistNodeCount, targetCol, targetRow);
+    const startCandidates = collectPersistTempConnectCandidates({
+        gridCol: startCol,
+        gridRow: startRow,
+        isStart: true,
+        anchorRegionIdx: startRegionIdx,
+        nodeCol,
+        nodeRow,
+        nodeCount: persistNodeCount,
+        edgeOffsets,
+        edgeTargets,
+        maxCellsPerChunk,
+    });
+    const targetCandidates = collectPersistTempConnectCandidates({
+        gridCol: targetCol,
+        gridRow: targetRow,
+        isStart: false,
+        anchorRegionIdx: targetRegionIdx,
+        nodeCol,
+        nodeRow,
+        nodeCount: persistNodeCount,
+        edgeOffsets,
+        edgeTargets,
+        maxCellsPerChunk,
+    });
+    return { startCandidates, targetCandidates };
+}
 function runReplan(slot, data, requestId) {
     const { mode, startCol, startRow, targetCol, targetRow, localMaxLen } = data;
     if (mode === "local") {
@@ -285,7 +320,8 @@ function runReplan(slot, data, requestId) {
         writeAbstractPath(slot, null);
         return;
     }
-    const { startCandidates, targetCandidates, regionConnectMaxLen } = data;
+    const { regionConnectMaxLen } = data;
+    const { startCandidates, targetCandidates } = collectReplanTempCandidates(startCol, startRow, targetCol, targetRow);
     const estimated = buildExtendedEdgesEstimate(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates);
     const estimateAbstract = runAbstractAStarFlat(
         estimated.startTemp,
@@ -331,6 +367,7 @@ self.onmessage = function (e) {
         maxAbstractLen = data.maxAbstractLen;
         maxGraphNodes = data.maxGraphNodes;
         maxGraphEdges = data.maxGraphEdges;
+        maxCellsPerChunk = data.maxCellsPerChunk;
         sabPathMetaPool = data.sabPathMetaPool;
         sabPathColsPool = data.sabPathColsPool;
         sabPathRowsPool = data.sabPathRowsPool;

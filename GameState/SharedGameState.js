@@ -20,6 +20,7 @@ export class SharedGameState {
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.hpaPathWorker = new HpaPathWorker(HPA_WORKER_URL, this.obstacleGrid);
         this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, { damagePadding: 12 });
+        this.hierarchicalNavigator.hpaPathWorker = this.hpaPathWorker;
         this.hpaPathSession = new HpaPathSession(this.hpaPathWorker, this.hierarchicalNavigator);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid, FLOW_FIELD_WORKER_URL, this.hpaPathWorker);
         this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator, navigationSettings, this.hpaPathWorker);

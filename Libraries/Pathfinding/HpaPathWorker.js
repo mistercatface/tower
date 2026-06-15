@@ -1,6 +1,7 @@
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { packHpaGraphForWorker, MAX_HPA_GRAPH_NODES } from "./hpaAbstractFlat.js";
-import { packBlockedFromGrid, snapshotNavCacheKey } from "./GridNavSnapshot.js";
+import { packBlockedFromGrid, snapshotNavCacheKey, createWorkerNavSnapshotView } from "./GridNavSnapshot.js";
+import { gridSettings } from "../../Config/balance/grid.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
@@ -19,6 +20,7 @@ export class HpaPathWorker {
         this._navKey = "";
         this._navSize = 0;
         this._navSyncPromise = null;
+        this._navSnapshotView = null;
         this._graphEpoch = -1;
         this._graphSyncPromise = null;
         this.graphIdToIdx = new Map();
@@ -44,7 +46,8 @@ export class HpaPathWorker {
         this.host.worker.onmessage = (e) => {
             const { type, slot, requestId } = e.data;
             if (type === SYNC_NAV_DONE) {
-                this._mirrorNavSnapshotToMain();
+                this._navSnapshotView = createWorkerNavSnapshotView(this.navGraph, this._navKey, this.navBlocked, this.navOctileNeighbors, this.navHopOffsets, this.navHopExitIdx, this.navHopCost);
+                this.navGraph.gridNavSnapshot = null;
                 const resolve = this._navSyncResolve;
                 this._navSyncResolve = null;
                 this._navSyncPromise = null;
@@ -77,6 +80,7 @@ export class HpaPathWorker {
                 maxAbstractLen: MAX_HPA_ABSTRACT_LEN,
                 maxGraphNodes: MAX_HPA_GRAPH_NODES,
                 maxGraphEdges: MAX_GRAPH_EDGES,
+                maxCellsPerChunk: gridSettings.maxCellsPerChunk,
                 sabPathMetaPool: this.sabPathMetaPool,
                 sabPathColsPool: this.sabPathColsPool,
                 sabPathRowsPool: this.sabPathRowsPool,
@@ -143,29 +147,19 @@ export class HpaPathWorker {
             this.navVertexPassability = new Uint8Array(this.sabVertexPassability);
         }
     }
-    _mirrorNavSnapshotToMain() {
-        const grid = this.navGraph;
-        if (!this._navSize || !grid.cols) return;
-        grid.gridNavSnapshot = {
-            cacheKey: this._navKey,
-            cols: grid.cols,
-            rows: grid.rows,
-            cellSize: grid.cellSize,
-            cellHalfSize: grid.cellHalfSize,
-            minX: grid.minX,
-            minY: grid.minY,
-            blocked: new Uint8Array(this.navBlocked),
-            octileNeighbors: new Int32Array(this.navOctileNeighbors),
-            hopOffsets: new Int32Array(this.navHopOffsets),
-            hopExitIdx: new Int32Array(this.navHopExitIdx),
-            hopCost: new Uint8Array(this.navHopCost),
-        };
+    getNavSnapshotView() {
+        return this._navSnapshotView;
+    }
+    navCacheKey() {
+        return this._navKey;
     }
     scheduleNavTopologySync(grid = this.navGraph) {
         const cacheKey = snapshotNavCacheKey(grid);
         if (cacheKey === this._navKey) return;
         if (this._navSyncPromise) return;
         this._navKey = cacheKey;
+        this._navSnapshotView = null;
+        this.navGraph.gridNavSnapshot = null;
         const size = grid.cols * grid.rows;
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
         const blocked = packBlockedFromGrid(grid);
@@ -291,8 +285,6 @@ export class HpaPathWorker {
         await this._ensureWorkerGraphReady(nav, graphEpoch);
         const payload = { mode: prep.mode, startCol: prep.startCol, startRow: prep.startRow, targetCol: prep.targetCol, targetRow: prep.targetRow, localMaxLen: 96 };
         if (prep.mode === "hpa") {
-            payload.startCandidates = prep.startCandidates;
-            payload.targetCandidates = prep.targetCandidates;
             payload.regionConnectMaxLen = prep.regionConnectMaxLen;
             if (replanCtx?.onAbstractReady && replanCtx.replanRequestId != null)
                 this._replanHooks[slot] = { requestId: replanCtx.replanRequestId, onAbstractReady: replanCtx.onAbstractReady, prep, nav };
