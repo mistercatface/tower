@@ -1,27 +1,8 @@
 import { agentPose } from "../../Libraries/Agent/index.js";
 import { computeHpaSteering } from "../../Libraries/Pathfinding/hpaSteering.js";
 import { findPathProgressIdx } from "../../Libraries/Pathfinding/pathFollow.js";
-import { prepareNavigationPath, orthogonalizePath } from "../../Libraries/Pathfinding/PathClearance.js";
-function shouldApplyClearance(navState, targetX, targetY, obstaclesChanged) {
-    if (obstaclesChanged) return true;
-    if (!navState.path) return true;
-    if (navState.lastTargetX !== targetX || navState.lastTargetY !== targetY) return true;
-    return false;
-}
-function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, hooks, nowMs) {
-    const rawPath = hierarchicalNavigator.findPath(entity.x, entity.y, targetX, targetY);
-    let path = rawPath ?? null;
-    if (path && obstacleGrid && applyClearance) {
-        const isVisible = hooks.isVisible(entity);
-        if (!isVisible) {
-            // Off-screen: bypass geometry-based path clearance relaxation for performance.
-            // The raw A* path is already grid-walkable.
-        } else if (profile?.skipPathClearance) path = orthogonalizePath(path, obstacleGrid, entity.radius);
-        else {
-            const clearance = entity.radius + settings.pathClearanceMargin;
-            path = prepareNavigationPath(path, obstacleGrid, clearance, { x: targetX, y: targetY });
-        }
-    }
+function replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, nowMs) {
+    const path = hierarchicalNavigator.findPath(entity.x, entity.y, targetX, targetY) ?? null;
     navState.path = path;
     navState.pathProgressIdx = path ? findPathProgressIdx(entity.x, entity.y, path, { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy), grid: obstacleGrid }) : 0;
     navState.lastUpdate = nowMs;
@@ -51,7 +32,7 @@ export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator,
         navState.obstacleGeneration = obstacleGeneration;
         navState.path = null;
         if (isVisible || navState.stuckFrames > settings.stuckReplanFrames) {
-            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, true, profile, hooks, now);
+            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, now);
             replanReason = "obstacles";
             navState.stuckFrames = 0;
             didReplanForObstacles = true;
@@ -61,9 +42,8 @@ export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator,
     if (needsReplan && !didReplanForObstacles) {
         if (!navState.path) replanReason = "noPath";
         else if (navState.stuckFrames > settings.stuckReplanFrames) replanReason = "stuck";
-        const applyClearance = shouldApplyClearance(navState, targetX, targetY, false);
         if (isVisible || navState.stuckFrames > settings.stuckReplanFrames) {
-            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, applyClearance, profile, hooks, now);
+            replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, now);
             navState.stuckFrames = 0;
         }
     }
@@ -72,7 +52,7 @@ export function planHpaSteering(entity, targetX, targetY, hierarchicalNavigator,
     if (navState.path && navState.path.length >= 2 && steering.offPath && now - navState.lastOffPathReplan >= 250) {
         replanReason = "offPath";
         navState.lastOffPathReplan = now;
-        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, settings, false, profile, hooks, now);
+        replanPath(entity, targetX, targetY, hierarchicalNavigator, navState, obstacleGrid, now);
         steering = computeHpaSteering(pose, navState.path, targetX, targetY, { ...settings, grid: obstacleGrid }, navState);
     }
     const hasPath = navState.path && navState.path.length >= 1;
