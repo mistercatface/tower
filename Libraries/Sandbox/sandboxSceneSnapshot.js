@@ -2,6 +2,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { gridCellToGlobalColRow, isCanonicalEdgeRepresentative } from "../World/wallGridCells.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
+import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot } from "../RoomGraph/index.js";
 import { notifyGridWallChange } from "./boundaryEdit.js";
 import {
     applyStampedForcefieldsFromGlobal,
@@ -30,7 +31,7 @@ import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
  * boundary until we deliberately add that.
  */
 /** Current snapshot format; bump when fields change (no vN→vN+1 migration code until then). */
-export const SANDBOX_SCENE_SCHEMA_VERSION = 7;
+export const SANDBOX_SCENE_SCHEMA_VERSION = 8;
 /** @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} a @param {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} b */
 function unionStampBounds(a, b) {
     if (!a) return b;
@@ -93,6 +94,7 @@ export function collectSandboxSceneSnapshot(state) {
         floorBelts: listPlacedFloorBeltsForSnapshot(grid),
         powerSources: listPlacedPassagePowerSourcesForSnapshot(grid),
         props: collectPlacedSandboxPropEntries(state),
+        roomGraph: collectRoomGraphForSnapshot(state, grid),
     };
 }
 /** @param {unknown} raw */
@@ -108,6 +110,9 @@ export function parseSandboxSceneSnapshot(raw) {
     if (!Array.isArray(doc.floorBelts)) throw new Error("Scene JSON missing floorBelts array");
     if (!Array.isArray(doc.powerSources)) throw new Error("Scene JSON missing powerSources array");
     if (!Array.isArray(doc.props)) throw new Error("Scene JSON missing props array");
+    if (!doc.roomGraph || typeof doc.roomGraph !== "object") throw new Error("Scene JSON missing roomGraph");
+    if (!Array.isArray(doc.roomGraph.nodes)) throw new Error("Scene JSON missing roomGraph.nodes array");
+    if (!Array.isArray(doc.roomGraph.links)) throw new Error("Scene JSON missing roomGraph.links array");
     return doc;
 }
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
@@ -154,6 +159,11 @@ function expandGridForSnapshot(state, doc) {
         includeWorldPoint(col * cellSize + half, row * cellSize + half);
     }
     for (let i = 0; i < doc.props.length; i++) includeWorldPoint(doc.props[i].x, doc.props[i].y);
+    for (let i = 0; i < doc.roomGraph.nodes.length; i++) {
+        const node = doc.roomGraph.nodes[i];
+        includeWorldPoint(node.col * cellSize + half, node.row * cellSize + half);
+        includeWorldPoint((node.col + node.width - 1) * cellSize + half, (node.row + node.height - 1) * cellSize + half);
+    }
     if (!Number.isFinite(minX)) return;
     state.obstacleGrid.expandToCoverAabb({ minX, minY, maxX, maxY });
 }
@@ -163,6 +173,7 @@ function clearSandboxSceneContent(state) {
     state.obstacleGrid.clearAllFloorCells();
     clearAllStampedGridWalls(state, { notify: false });
     getSandboxEntityMeta(state).clear();
+    clearRoomGraph(state);
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string }} entry */
 function spawnSnapshotProp(state, entry) {
@@ -193,5 +204,6 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     if (stampBounds) notifyGridWallChange(state, stampBounds);
     else if (grid.cols) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
     syncPassagePowerNetwork(state);
+    applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);
     for (let i = 0; i < doc.props.length; i++) spawnSnapshotProp(state, doc.props[i]);
 }

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "cellSize": 16,
   "origin": {
     "minX": -1200,
@@ -4238,5 +4238,11 @@
       "facing": 0,
       "faction": "alpha"
     }
-  ]
+  ],
+  "roomGraph": {
+    "nodes": [],
+    "links": [],
+    "nextNodeId": 0,
+    "nextLinkId": 0
+  }
 }

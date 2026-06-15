@@ -4,8 +4,8 @@ import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canStampFloorBeltAt, canStampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, strokeSelectedForcefieldEdge, strokeSelectedPortalEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
-import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isGridRoomNodeSpawnAsset } from "./sandboxCapabilities.js";
-import { resolveGridRoomNodePlacePreview } from "./gridRoomNodes.js";
+import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset } from "./sandboxCapabilities.js";
+import { resolveRoomNodePlacePreview } from "../RoomGraph/index.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 const PREVIEW_CELL_BOUNDS = createAabb();
 /** @param {string} propTypeId */
@@ -22,8 +22,8 @@ function resolveSpawnPreviewRadius(propTypeId) {
  *   isWallPlaceMode: () => boolean,
  *   getWallStampMode: () => string,
  *   getSpawnPropId: () => string,
- *   getSpawnGridRoomNodeCols: () => number,
- *   getSpawnGridRoomNodeRows: () => number,
+ *   getSpawnRoomNodeCols: () => number,
+ *   getSpawnRoomNodeRows: () => number,
  * }} session
  * @param {number} worldX
  * @param {number} worldY
@@ -52,9 +52,9 @@ export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
         const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
         return { kind: "cell", col, row, valid: canStampPassagePowerSourceAt(state, col, row), tint: "power" };
     }
-    if (isGridRoomNodeSpawnAsset(asset)) {
+    if (isRoomNodeSpawnAsset(asset)) {
         const { col, row } = grid.worldToGrid(worldX, worldY);
-        return resolveGridRoomNodePlacePreview(state, col, row, session.getSpawnGridRoomNodeCols(), session.getSpawnGridRoomNodeRows());
+        return resolveRoomNodePlacePreview(state, col, row, session.getSpawnRoomNodeCols(), session.getSpawnRoomNodeRows());
     }
     return { kind: "circle", x: worldX, y: worldY, radius: resolveSpawnPreviewRadius(session.getSpawnPropId()), valid: true };
 }

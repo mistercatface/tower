@@ -41,6 +41,7 @@ export function buildSandboxStartSceneDoc() {
         floorBelts: [],
         powerSources: [{ col: 0, row: 3, defaultPowered: true }],
         props: [{ type: "blue_ball", x: 0, y: 0, facing: 0, faction: "alpha" }],
+        roomGraph: { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0 },
     };
 }
 /** Replace the current sandbox with the preconfigured start scene. */

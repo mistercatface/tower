@@ -6,7 +6,7 @@ import {
     isSandboxSpawnable,
     isGridFloorBeltSpawnAsset,
     isGridPassagePowerSourceSpawnAsset,
-    isGridRoomNodeSpawnAsset,
+    isRoomNodeSpawnAsset,
     isSingleWorldPropSpawnAsset,
     listFloorBeltKindOptions,
 } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
@@ -207,7 +207,7 @@ function appendPropPlaceParams(body, controller, spawnId, onChange) {
     const addRow = document.createElement("div");
     addRow.className = "sandbox-add-row";
     const spawnAsset = getPropAsset(spawnId);
-    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset) && !isGridPassagePowerSourceSpawnAsset(spawnAsset) && !isGridRoomNodeSpawnAsset(spawnAsset))
+    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset) && !isGridPassagePowerSourceSpawnAsset(spawnAsset) && !isRoomNodeSpawnAsset(spawnAsset))
         appendFactionSelect(addRow, {
             value: controller.getSpawnFaction(),
             onChange: (faction) => {
@@ -232,23 +232,23 @@ function appendPropPlaceParams(body, controller, spawnId, onChange) {
     addBtn.addEventListener("click", () => controller.spawnAtCameraOrigin());
     addRow.appendChild(addBtn);
     body.appendChild(addRow);
-    if (isGridRoomNodeSpawnAsset(spawnAsset)) {
+    if (isRoomNodeSpawnAsset(spawnAsset)) {
         appendAxisNumberFields(body, {
             Width: {
-                value: controller.getSpawnGridRoomNodeCols(),
+                value: controller.getSpawnRoomNodeCols(),
                 step: 1,
                 min: 1,
                 onChange: (cols) => {
-                    controller.setSpawnGridRoomNodeCols(cols);
+                    controller.setSpawnRoomNodeCols(cols);
                     onChange();
                 },
             },
             Height: {
-                value: controller.getSpawnGridRoomNodeRows(),
+                value: controller.getSpawnRoomNodeRows(),
                 step: 1,
                 min: 1,
                 onChange: (rows) => {
-                    controller.setSpawnGridRoomNodeRows(rows);
+                    controller.setSpawnRoomNodeRows(rows);
                     onChange();
                 },
             },

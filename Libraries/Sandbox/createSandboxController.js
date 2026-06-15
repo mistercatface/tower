@@ -14,7 +14,7 @@ import { spawnSandboxStartScene } from "./sandboxStartScene.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawSandboxMarquee, drawSandboxPropTileCells, drawSandboxSelectionRings, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
 import { drawSandboxPlacePreview, resolveSandboxPlacePreview } from "./drawSandboxPlacePreview.js";
-import { drawPlacedGridRoomNodes } from "./gridRoomNodes.js";
+import { drawPlacedRoomNodes } from "../RoomGraph/index.js";
 import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { drawSandboxWeaponBars } from "./drawWorldPropWeaponBars.js";
@@ -400,10 +400,10 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
         },
         getSpawnFaction: () => session.getSpawnFaction(),
         setSpawnFaction: (faction) => session.setSpawnFaction(faction),
-        getSpawnGridRoomNodeCols: () => session.getSpawnGridRoomNodeCols(),
-        setSpawnGridRoomNodeCols: (cols) => session.setSpawnGridRoomNodeCols(cols),
-        getSpawnGridRoomNodeRows: () => session.getSpawnGridRoomNodeRows(),
-        setSpawnGridRoomNodeRows: (rows) => session.setSpawnGridRoomNodeRows(rows),
+        getSpawnRoomNodeCols: () => session.getSpawnRoomNodeCols(),
+        setSpawnRoomNodeCols: (cols) => session.setSpawnRoomNodeCols(cols),
+        getSpawnRoomNodeRows: () => session.getSpawnRoomNodeRows(),
+        setSpawnRoomNodeRows: (rows) => session.setSpawnRoomNodeRows(rows),
         getSelectedPropId: () => session.getSelectedPropId(),
         getSelectedPropIds: () => session.getSelectedPropIds(),
         getSelectedProp: () => session.getSelectedProp(),
@@ -632,7 +632,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             behavior?.drawOverlay?.(ctx, prop);
         },
         drawBehaviorOverlays(ctx) {
-            drawPlacedGridRoomNodes(ctx, state, state.obstacleGrid);
+            drawPlacedRoomNodes(ctx, state, state.obstacleGrid);
             drawForcefieldEdges(ctx, state, state.viewport);
             drawButtonWires(ctx, state, { wireFromPropId: buttonWireMode ? session.getSelectedPropId() : null, wireCursor: buttonWireMode ? buttonWireCursor : null });
             for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx);
