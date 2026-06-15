@@ -6,6 +6,7 @@ import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Li
 import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/grid/gridCellTopology.js";
+import { syncGridTopologyCaches } from "../../../Libraries/Spatial/grid/vertexPassability.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
     applyCavernShapeMask,
@@ -180,6 +181,7 @@ export function generateLabCaverns(state) {
         clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
     }
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
+    syncGridTopologyCaches(state.obstacleGrid, state.sandbox?._passagePowerSyncKey ?? "");
     state.navigation.onObstaclesChanged(damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
@@ -266,6 +268,7 @@ export function generateLabRailCaverns(state) {
         clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
     }
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
+    syncGridTopologyCaches(state.obstacleGrid, state.sandbox?._passagePowerSyncKey ?? "");
     state.navigation.onObstaclesChanged(damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();

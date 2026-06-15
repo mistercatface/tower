@@ -267,7 +267,7 @@ export class HierarchicalNavigator {
     _stripBlockedCellsFromRegions(startCol, endCol, startRow, endRow) {
         const touched = new Set();
         forEachDenseCellInRect(startCol, endCol, startRow, endRow, this.cols, (_col, _row, idx) => {
-            if (this.grid[idx] !== 1) return;
+            if (this.grid[idx] === 0) return;
             const node = this.cellToNode[idx];
             if (!node) return;
             touched.add(node.id);
