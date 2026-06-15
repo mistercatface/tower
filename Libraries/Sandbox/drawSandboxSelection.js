@@ -2,7 +2,7 @@ import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewport
 import { drawPortalEdgeCached } from "../Render/portalDraw.js";
 import { strokeCircle } from "../Canvas/CanvasPath.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
-import { createAabb, aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
+import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellBoundsAtOriginInto } from "../Spatial/grid/GridCoords.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { gridForcefieldEdge, gridPortalEdge } from "../World/wallGridCells.js";
@@ -30,8 +30,7 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
     }
     if (selectedFloorCell && grid) {
         const { x, y } = grid.gridToWorld(selectedFloorCell.col, selectedFloorCell.row);
-        const half = grid.cellSize * 0.5;
-        drawAabbHighlight(ctx, aabbFromTwoPointsInto(FLOOR_BELT_SELECTION_BOUNDS, x - half, y - half, x + half, y + half), {
+        drawAabbHighlight(ctx, centeredAabbInto(FLOOR_BELT_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), {
             fill: "rgba(120, 200, 255, 0.1)",
             stroke: "rgba(120, 200, 255, 0.75)",
             lineWidth: lineScale,
@@ -40,8 +39,7 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
     }
     if (selectedVoxelCell && grid) {
         const { x, y } = grid.gridToWorld(selectedVoxelCell.col, selectedVoxelCell.row);
-        const half = grid.cellSize * 0.5;
-        drawAabbHighlight(ctx, aabbFromTwoPointsInto(WALL_CELL_SELECTION_BOUNDS, x - half, y - half, x + half, y + half), {
+        drawAabbHighlight(ctx, centeredAabbInto(WALL_CELL_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), {
             fill: "rgba(255, 152, 0, 0.12)",
             stroke: "rgba(255, 152, 0, 0.85)",
             lineWidth: lineScale,

@@ -1,6 +1,6 @@
 import { getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
-import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
+import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canStampFloorBeltAt, canStampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, strokeSelectedForcefieldEdge, strokeSelectedPortalEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
@@ -82,7 +82,6 @@ export function drawSandboxPlacePreview(ctx, preview, grid) {
     }
     if (preview.kind === "cell") {
         const { x, y } = grid.gridToWorld(preview.col, preview.row);
-        const half = grid.cellSize * 0.5;
         const tint = preview.tint ?? "floor";
         const stroke =
             tint === "voxel"
@@ -108,19 +107,18 @@ export function drawSandboxPlacePreview(ctx, preview, grid) {
                   : valid
                     ? "rgba(100, 255, 160, 0.12)"
                     : "rgba(255, 96, 96, 0.1)";
-        drawAabbHighlight(ctx, aabbFromTwoPointsInto(PREVIEW_CELL_BOUNDS, x - half, y - half, x + half, y + half), { fill, stroke, lineWidth: lineScale, dash: [4, 3] });
+        drawAabbHighlight(ctx, centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), { fill, stroke, lineWidth: lineScale, dash: [4, 3] });
         ctx.restore();
         return;
     }
     if (preview.kind === "cellRect") {
-        const half = grid.cellSize * 0.5;
         for (let i = 0; i < preview.cells.length; i++) {
             const cell = preview.cells[i];
             const { x, y } = grid.gridToWorld(cell.col, cell.row);
             const clear = cell.clear;
             const fill = clear ? "rgba(120, 180, 255, 0.14)" : "rgba(255, 96, 96, 0.16)";
             const stroke = clear ? "rgba(120, 180, 255, 0.85)" : "rgba(255, 96, 96, 0.9)";
-            drawAabbHighlight(ctx, aabbFromTwoPointsInto(PREVIEW_CELL_BOUNDS, x - half, y - half, x + half, y + half), { fill, stroke, lineWidth: lineScale, dash: [4, 3] });
+            drawAabbHighlight(ctx, centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), { fill, stroke, lineWidth: lineScale, dash: [4, 3] });
         }
         ctx.restore();
         return;

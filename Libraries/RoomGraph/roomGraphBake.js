@@ -1,4 +1,5 @@
 import { unionCellBounds } from "../DataStructures/CellRect.js";
+import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
 import { commitBoundaryEdit } from "../Sandbox/boundaryEdit.js";
 import { clearRailWallsQuiet, stampRailWallsQuiet } from "../Sandbox/gridWallEdit.js";
 import { createSeededRng } from "../Math/SeededRng.js";
@@ -60,21 +61,16 @@ function setBakedRails(state, rails) {
 /** @param {AuthoredGraphNode[]} graphNodes */
 function expandGridForGraphNodes(state, graphNodes) {
     const grid = state.obstacleGrid;
-    const half = grid.cellSize * 0.5;
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
+    const half = grid.cellHalfSize;
+    const bounds = emptyAabb();
     for (let i = 0; i < graphNodes.length; i++) {
         const node = graphNodes[i];
         const c0 = grid.gridToWorld(node.c0, node.r0);
         const c1 = grid.gridToWorld(node.c1, node.r1);
-        minX = Math.min(minX, c0.x - half, c1.x - half);
-        minY = Math.min(minY, c0.y - half, c1.y - half);
-        maxX = Math.max(maxX, c0.x + half, c1.x + half);
-        maxY = Math.max(maxY, c0.y + half, c1.y + half);
+        growAabbFromCenterInto(bounds, c0.x, c0.y, half, half);
+        growAabbFromCenterInto(bounds, c1.x, c1.y, half, half);
     }
-    if (Number.isFinite(minX)) state.obstacleGrid.expandToCoverAabb({ minX, minY, maxX, maxY });
+    if (!isEmptyAabb(bounds)) state.obstacleGrid.expandToCoverAabb(bounds);
 }
 /** @param {import("./roomGraphClosedRooms.js").ClosedRoom} closedRoom */
 function snapshotClosedRoomState(closedRoom) {
@@ -177,8 +173,11 @@ export function rerollRoomLinkBake(state, linkId) {
 /** @param {object} state @param {number} anchorCol @param {number} anchorRow @param {number} width @param {number} height */
 export function expandGridForRoomNodeFootprint(state, anchorCol, anchorRow, width, height) {
     const grid = state.obstacleGrid;
-    const half = grid.cellSize * 0.5;
+    const half = grid.cellHalfSize;
     const c0 = grid.gridToWorld(anchorCol, anchorRow);
     const c1 = grid.gridToWorld(anchorCol + width - 1, anchorRow + height - 1);
-    grid.expandToCoverAabb({ minX: c0.x - half, minY: c0.y - half, maxX: c1.x + half, maxY: c1.y + half });
+    const bounds = emptyAabb();
+    growAabbFromCenterInto(bounds, c0.x, c0.y, half, half);
+    growAabbFromCenterInto(bounds, c1.x, c1.y, half, half);
+    grid.expandToCoverAabb(bounds);
 }

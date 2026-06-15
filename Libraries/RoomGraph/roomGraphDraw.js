@@ -1,5 +1,5 @@
 import { fillCircle, strokeSegment } from "../Canvas/CanvasPath.js";
-import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
+import { createAabb, emptyAabbInto, growAabbFromCenterInto } from "../Math/Aabb2D.js";
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { listRoomLinks, listRoomNodes, roomNodeCenterWorld } from "./roomGraphStore.js";
 const NODE_OUTLINE_BOUNDS = createAabb();
@@ -9,7 +9,7 @@ export function drawPlacedRoomNodes(ctx, state, grid, { selectedNodeId = null, s
     const nodes = listRoomNodes(state);
     const links = listRoomLinks(state);
     const lineScale = getCanvasLineScale(ctx);
-    const half = grid.cellSize * 0.5;
+    const half = grid.cellHalfSize;
     ctx.save();
     if (showRoomNodesAlways) {
         for (let i = 0; i < links.length; i++) {
@@ -34,7 +34,10 @@ export function drawPlacedRoomNodes(ctx, state, grid, { selectedNodeId = null, s
         const selected = node.id === selectedNodeId;
         const c0 = grid.gridToWorld(node.col, node.row);
         const c1 = grid.gridToWorld(node.col + node.width - 1, node.row + node.height - 1);
-        drawAabbHighlight(ctx, aabbFromTwoPointsInto(NODE_OUTLINE_BOUNDS, c0.x - half, c0.y - half, c1.x + half, c1.y + half), {
+        const bounds = emptyAabbInto(NODE_OUTLINE_BOUNDS);
+        growAabbFromCenterInto(bounds, c0.x, c0.y, half, half);
+        growAabbFromCenterInto(bounds, c1.x, c1.y, half, half);
+        drawAabbHighlight(ctx, bounds, {
             fill: selected ? "rgba(120, 180, 255, 0.16)" : wireModeActive ? "rgba(120, 180, 255, 0.12)" : "rgba(120, 180, 255, 0.08)",
             stroke: selected ? "rgba(120, 180, 255, 0.95)" : wireModeActive ? "rgba(120, 180, 255, 0.75)" : "rgba(120, 180, 255, 0.55)",
             lineWidth: lineScale,

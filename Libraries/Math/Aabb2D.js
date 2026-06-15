@@ -4,6 +4,32 @@
 export function createAabb() {
     return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 }
+/** @param {Aabb2D} out */
+export function emptyAabbInto(out) {
+    out.minX = Infinity;
+    out.minY = Infinity;
+    out.maxX = -Infinity;
+    out.maxY = -Infinity;
+    return out;
+}
+export function emptyAabb() {
+    return emptyAabbInto(createAabb());
+}
+export function isEmptyAabb({ minX }) {
+    return minX === Infinity;
+}
+/** @param {Aabb2D} out */
+export function growAabbFromCenterInto(out, cx, cy, halfW, halfH) {
+    out.minX = Math.min(out.minX, cx - halfW);
+    out.minY = Math.min(out.minY, cy - halfH);
+    out.maxX = Math.max(out.maxX, cx + halfW);
+    out.maxY = Math.max(out.maxY, cy + halfH);
+    return out;
+}
+/** @param {Aabb2D} out */
+export function growAabbFromCenterSizeInto(out, cx, cy, width, height) {
+    return growAabbFromCenterInto(out, cx, cy, width / 2, height / 2);
+}
 /** @param {Aabb2D} out @param {Aabb2D} src @returns {Aabb2D} */
 export function copyAabbInto(out, src) {
     out.minX = src.minX;
@@ -57,6 +83,10 @@ export function unionAabbInto(out, a, b) {
 }
 export function unionAabb(a, b) {
     return unionAabbInto(createAabb(), a, b);
+}
+/** @param {Aabb2D} out @param {Aabb2D} other */
+export function growAabbInto(out, other) {
+    return unionAabbInto(out, out, other);
 }
 /** @param {Aabb2D} out @returns {Aabb2D} */
 export function padAabbInto(out, { minX, minY, maxX, maxY }, pad) {

@@ -1,5 +1,6 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { unionCellBoundsList } from "../DataStructures/CellRect.js";
+import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
 import { gridCellToGlobalColRow, isCanonicalEdgeRepresentative } from "../World/wallGridCells.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
@@ -113,21 +114,8 @@ export function parseSandboxSceneSnapshot(raw) {
 function expandGridForSnapshot(state, doc) {
     const cellSize = doc.cellSize ?? state.obstacleGrid.cellSize;
     const half = cellSize * 0.5;
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    /** @param {number} x @param {number} y */
-    const includeWorldPoint = (x, y) => {
-        const cellMinX = x - half;
-        const cellMinY = y - half;
-        const cellMaxX = x + half;
-        const cellMaxY = y + half;
-        if (cellMinX < minX) minX = cellMinX;
-        if (cellMinY < minY) minY = cellMinY;
-        if (cellMaxX > maxX) maxX = cellMaxX;
-        if (cellMaxY > maxY) maxY = cellMaxY;
-    };
+    const bounds = emptyAabb();
+    const includeWorldPoint = (x, y) => growAabbFromCenterInto(bounds, x, y, half, half);
     for (let i = 0; i < doc.voxels.length; i++) {
         const { col, row } = doc.voxels[i];
         includeWorldPoint(col * cellSize + half, row * cellSize + half);
@@ -158,8 +146,8 @@ function expandGridForSnapshot(state, doc) {
         includeWorldPoint(node.col * cellSize + half, node.row * cellSize + half);
         includeWorldPoint((node.col + node.width - 1) * cellSize + half, (node.row + node.height - 1) * cellSize + half);
     }
-    if (!Number.isFinite(minX)) return;
-    state.obstacleGrid.expandToCoverAabb({ minX, minY, maxX, maxY });
+    if (isEmptyAabb(bounds)) return;
+    state.obstacleGrid.expandToCoverAabb(bounds);
 }
 /** @param {object} state */
 function clearSandboxSceneContent(state) {

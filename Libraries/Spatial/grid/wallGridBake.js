@@ -1,4 +1,5 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
+import { emptyAabb, growAabbFromCenterInto, growAabbFromCenterSizeInto, isEmptyAabb } from "../../Math/Aabb2D.js";
 import { colRowToIndex } from "./GridUtils.js";
 import { pointToSegmentPaddingDistanceSq, getWallReach } from "../geometry/WallGeometry.js";
 import { spatialWorldMargin } from "../../../Config/Config.js";
@@ -46,31 +47,19 @@ export function clearWallCells(grid, cols, bounds, segmentGrid = null) {
     });
 }
 export function computeBoundsFromWalls(walls, cellSize) {
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    let latticeMinX = Infinity;
-    let latticeMaxX = -Infinity;
-    let latticeMinY = Infinity;
-    let latticeMaxY = -Infinity;
+    const bounds = emptyAabb();
+    const latticeBounds = emptyAabb();
     for (const wall of walls) {
         const half = wall.size / 2;
         const reach = half + wall.padding;
-        minX = Math.min(minX, wall.x - reach);
-        maxX = Math.max(maxX, wall.x + reach);
-        minY = Math.min(minY, wall.y - reach);
-        maxY = Math.max(maxY, wall.y + reach);
-        if (isGridTileWall(wall, cellSize)) {
-            const left = wall.x - half;
-            const top = wall.y - half;
-            latticeMinX = Math.min(latticeMinX, left);
-            latticeMaxX = Math.max(latticeMaxX, left + wall.size);
-            latticeMinY = Math.min(latticeMinY, top);
-            latticeMaxY = Math.max(latticeMaxY, top + wall.size);
-        }
+        growAabbFromCenterInto(bounds, wall.x, wall.y, reach, reach);
+        if (isGridTileWall(wall, cellSize)) growAabbFromCenterSizeInto(latticeBounds, wall.x, wall.y, wall.size, wall.size);
     }
-    if (minX === Infinity) {
+    let minX;
+    let minY;
+    let maxX;
+    let maxY;
+    if (isEmptyAabb(bounds)) {
         minX = -2000;
         maxX = 2000;
         minY = -2000;
@@ -78,26 +67,26 @@ export function computeBoundsFromWalls(walls, cellSize) {
     } else {
         const marginCells = Math.ceil(spatialWorldMargin / cellSize);
         const margin = marginCells * cellSize;
-        if (latticeMinX !== Infinity) {
-            minX = latticeMinX - margin;
-            maxX = latticeMaxX + margin;
-            minY = latticeMinY - margin;
-            maxY = latticeMaxY + margin;
-            const phaseX = (((latticeMinX - minX) % cellSize) + cellSize) % cellSize;
+        if (!isEmptyAabb(latticeBounds)) {
+            minX = latticeBounds.minX - margin;
+            maxX = latticeBounds.maxX + margin;
+            minY = latticeBounds.minY - margin;
+            maxY = latticeBounds.maxY + margin;
+            const phaseX = (((latticeBounds.minX - minX) % cellSize) + cellSize) % cellSize;
             if (phaseX !== 0) {
                 minX += phaseX;
                 maxX += phaseX;
             }
-            const phaseY = (((latticeMinY - minY) % cellSize) + cellSize) % cellSize;
+            const phaseY = (((latticeBounds.minY - minY) % cellSize) + cellSize) % cellSize;
             if (phaseY !== 0) {
                 minY += phaseY;
                 maxY += phaseY;
             }
         } else {
-            minX -= margin;
-            maxX += margin;
-            minY -= margin;
-            maxY += margin;
+            minX = bounds.minX - margin;
+            maxX = bounds.maxX + margin;
+            minY = bounds.minY - margin;
+            maxY = bounds.maxY + margin;
             minX = Math.floor(minX / cellSize) * cellSize;
             minY = Math.floor(minY / cellSize) * cellSize;
             maxX = Math.ceil(maxX / cellSize) * cellSize;

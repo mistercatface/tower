@@ -20,6 +20,7 @@ const EDGE_PROXY_P2 = { x: 0, y: 0 };
 export class WorldObstacleGrid {
     constructor(cellSize) {
         this.cellSize = cellSize;
+        this.cellHalfSize = cellSize * 0.5;
         this.minX = 0;
         this.maxX = 0;
         this.minY = 0;
