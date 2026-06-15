@@ -103,9 +103,6 @@ export function gridNeighborFillLevel(grid, col, row, side) {
     if (!cellInRect(nc, nr, grid.cols, grid.rows)) return 0;
     return grid.grid[nc + nr * grid.cols];
 }
-export function gridValueAtIdx(grid, idx) {
-    return grid.grid[idx];
-}
 export function cellIsStaticWallAtIdx(grid, idx) {
     if (grid.grid[idx] === 0) return false;
     if (!grid.segmentGrid) return true;
@@ -159,18 +156,4 @@ export function forEachGridEdge(grid, fn, { canonicalOnly = false, minCol, maxCo
                 if (fn(col, row, side, edge, cellIdx) === false) return;
             }
         }
-}
-export function collectStaticFillRoofHeightsFromGrid(grid) {
-    const seen = new Set();
-    const out = [];
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const px = resolveCellWallHeightAtIdx(grid, idx);
-        if (px > 0 && !seen.has(px)) {
-            seen.add(px);
-            out.push(px);
-        }
-    }
-    out.sort((a, b) => a - b);
-    return out;
 }

@@ -2,7 +2,6 @@ import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.j
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
-import { collectStaticFillRoofHeightsFromGrid } from "../../Libraries/Spatial/grid/gridCellTopology.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     constructor(settings = getGameWorldSurfaceSettings()) {
         super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel) });
@@ -24,7 +23,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, viewport, state, zLevel: 0, playBounds: playBoundsFromObstacleGrid(state.obstacleGrid) });
     }
     drawRoofs(ctx, state, viewport) {
-        const staticHeights = collectStaticFillRoofHeightsFromGrid(state.obstacleGrid);
+        const staticHeights = state.obstacleGrid.collectStaticFillZLevels();
         for (let i = 0; i < staticHeights.length; i++) {
             const zLevel = staticHeights[i];
             this.drawGroundChunks(ctx, {

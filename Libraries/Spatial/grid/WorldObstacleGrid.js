@@ -10,7 +10,6 @@ import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 import { collectSegmentsAlongLine, collectSegmentsInWorldBounds, collectSegmentsNearPose, segmentGridLayoutFromObstacleGrid } from "./segmentGridWalk.js";
-export { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
 export class WorldObstacleGrid {
@@ -30,6 +29,7 @@ export class WorldObstacleGrid {
         this.wallGridRevision = 0;
         this._structureZLevelsRevision = -1;
         this._structureZLevels = [];
+        this._fillZLevels = [];
         this.cellBoundsScratch = createAabb();
         this.patchBoundsScratch = createAabb();
         this._staticWallProxies = [];
@@ -50,30 +50,44 @@ export class WorldObstacleGrid {
     invalidateStructureZLevelsCache() {
         this._structureZLevelsRevision = -1;
     }
-    collectStaticStructureZLevels() {
-        if (this._structureZLevelsRevision === this.wallGridRevision) return this._structureZLevels;
-        const seen = new Set();
-        const out = [];
+    _rebuildStaticZLevelCaches() {
+        const fillSeen = new Set();
+        const fillOut = [];
+        const structSeen = new Set();
+        const structOut = [];
         const size = this.cols * this.rows;
         for (let idx = 0; idx < size; idx++) {
             const px = resolveCellWallHeightAtIdx(this, idx);
-            if (px > 0 && !seen.has(px)) {
-                seen.add(px);
-                out.push(px);
+            if (px > 0 && !fillSeen.has(px)) {
+                fillSeen.add(px);
+                fillOut.push(px);
+                structSeen.add(px);
+                structOut.push(px);
             }
         }
+        fillOut.sort((a, b) => a - b);
         const edgeLevels = this.edgeStore.collectTopZLevels(this);
         for (let i = 0; i < edgeLevels.length; i++) {
             const px = edgeLevels[i];
-            if (!seen.has(px)) {
-                seen.add(px);
-                out.push(px);
+            if (!structSeen.has(px)) {
+                structSeen.add(px);
+                structOut.push(px);
             }
         }
-        out.sort((a, b) => a - b);
-        this._structureZLevels = out;
+        structOut.sort((a, b) => a - b);
+        this._fillZLevels = fillOut;
+        this._structureZLevels = structOut;
         this._structureZLevelsRevision = this.wallGridRevision;
+    }
+    // Voxel fill caps + edge-rail tops (px) — all horizontal structure layers for chunk/surface passes.
+    collectStaticStructureZLevels() {
+        if (this._structureZLevelsRevision !== this.wallGridRevision) this._rebuildStaticZLevelCaches();
         return this._structureZLevels;
+    }
+    // Voxel fill caps only (px) — horizontal roofs over stamped grid[] walls, not edge rails.
+    collectStaticFillZLevels() {
+        if (this._structureZLevelsRevision !== this.wallGridRevision) this._rebuildStaticZLevelCaches();
+        return this._fillZLevels;
     }
     _borrowStaticWallProxy(x, y, col, row) {
         const size = this.cellSize;

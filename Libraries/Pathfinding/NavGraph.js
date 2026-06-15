@@ -39,7 +39,3 @@
  * @property {(entity: { x: number, y: number, radius?: number }) => object[]} getNearbySegments
  * @property {(bounds: import("../Math/Aabb2D.js").Aabb2D) => object[]} getSegmentsInBounds
  */
-/** @param {NavGraph} navGraph */
-export function readNavGrid(navGraph) {
-    return { grid: navGraph.grid, cols: navGraph.cols, rows: navGraph.rows, minX: navGraph.minX, minY: navGraph.minY, cellSize: navGraph.cellSize };
-}
