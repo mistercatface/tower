@@ -1,120 +1,86 @@
 # Path worker
 
-HPA click-to-move on big maps. **Main requests a path; worker plans and stitches it.** Main applies waypoints and steers — no A*, stitch, or graph surgery on the click hot path.
+**~70%** — HPA click-to-move on big maps. **Main requests a path; worker plans and stitches it.** Main applies waypoints and steers — no A\*, stitch, or graph surgery on the click hot path.
+
+The click/replan pipe is largely wired. What blocks “done” is **abstract graph integrity after edits** — today add/delete/update leave wrong region nodes, adjacent duplicate centroids, and edges that don’t match real `canStep` connectivity. Paths on a freshly loaded map are more trustworthy than paths after carving rails/voxels.
+
+---
+
+## Priorities (in order)
+
+### 1. Graph CRUD — predictable edit semantics (~40%)
+
+`HierarchicalNavigator.rebuildDamagedArea` must behave like a real CRUD layer: edit → graph matches navigable topology, no residue.
+
+**Broken today**
+
+- **Delete / open connectivity** — removing a rail or voxel can join two floor cells but **never merges** their regions (`mergeSmallRegions` runs only on full init).
+- **Split without merge** — every edit re-splits regions in the damage patch; disconnected components peel into new adjacent centroids; opened corridors still show paired blue nodes.
+- **Assign orphans** — `_assignOpenedCells` only merges into neighbors when `canStep` reaches them during flood; otherwise it mints a 1-cell region next to an existing one.
+- **Historical residue** — regions can still span `canStep`-disconnected cells until split runs; centroids sit in pockets while edges route through other cells in the same region.
+
+**Target contract**
+
+| Operation | Expectation |
+| --------- | ----------- |
+| **Add** wall/rail | Split or repack in dirty hull; no new abstract edge unless a real crossing exists; unreachable pockets pruned from seed. |
+| **Delete** wall/rail | Merge passably connected regions in hull; no extra centroids; no stale edges to removed components. |
+| **Update** boundary | Same as add/delete for touched topology; incremental `mergeSmallRegions` (or localized repack), not init-only. |
+
+**Work**
+
+- Merge when `canStep` opens between existing regions (mirror `mergeSmallRegions` on incremental path).
+- Run `mergeSmallRegions` (or equivalent) after reconnect in `rebuildDamagedArea`.
+- Localized repack in dirty hull on topology-only edits (rails), not only large voxel carves.
+- Edge validation stays (`_regionsSharePassableLink`); extend tests around rail maze erase / single-edge delete.
+
+### 2. Worker-owned abstract graph (~15%)
+
+- `patchRegionGraph` on worker — region assignment + persist CSR patch; main drops per-edit `rebuildDamagedArea` + full `packHpaGraphForWorker`
+- Incremental hop CSR (dirty-only; today full O(cells) repack on patch)
+
+### 3. Path correctness polish
+
+- Portal abstract edge cost (centroid Chebyshev today, not hop cost 1)
+- Belt transfer edges (portal hop machinery)
+- Partial paths: `maxLegs` / `maxCells` on `requestPath`
 
 ---
 
 ## Worker vs main
 
 | | Worker | Main |
-|---|--------|------|
+| --- | --- | --- |
 | **Replan** | Abstract A*, temp-connect, per-leg local A*, stitch | `requestPath` → await result |
-| **Nav octile** | Bakes from shared SABs; `navView` for A* | Packs topology into SABs on edit; reads zero-copy views for flow/debug |
-| **Path output** | Writes cell path + abstract idx to slot SABs | `applyHpaReplanResult`; steer/overlay from SAB (`hpaPathSlot.js`) |
-| **Abstract graph** | Persist CSR in SABs; A* at replan time | Owns `HierarchicalNavigator.nodesMap`; `rebuildDamagedArea` on edits; `packHpaGraphForWorker` on `graphEpoch` bump |
-| **Region assignment** | — | Voronoi chunks on init; incremental merge/split + repack on edits |
-| **Portal traverse** | — | Crossing grant, physics, hop mouth handling |
+| **Nav octile** | Bakes from SABs; `navView` for A* | `patchNavTopology(dirtyBounds)`; zero-copy views |
+| **Path output** | Cell path + abstract idx in slot SABs | `applyHpaReplanResult`; steer from `hpaPathSlot.js` |
+| **Abstract graph** | CSR persist; A* at replan (target) | `nodesMap`; `rebuildDamagedArea` today (→ worker patch) |
+| **Portal traverse** | — | Crossing grant, hop mouth on path follow |
 
-**Click path:** `requestPath` → await nav/graph sync if stale → worker replan + stitch → main apply from slot SAB.
+**Click:** `requestPath` → nav/graph sync if stale → worker replan + stitch → main apply.
 
-**Edit path:** main `rebuildDamagedArea` + `patchNavTopology(dirtyBounds)` → worker octile patch → `syncAbstractGraph`.
+**Edit (today):** `rebuildDamagedArea` + `patchNavTopology` → worker octile patch → `syncAbstractGraph`.
 
 ---
 
 ## Done
 
-- Worker-owned stitch (`hpaStitch.js`); main never stitches on replan hot path
-- `HpaPathWorker.requestPath` + SAB path-follow (`pathSlot`, `pathLen`)
-- No octile mirror-back; `getNavSnapshotView()` zero-copy SAB views
-- Slim replan payload; temp-connect candidates derived on worker (`hpaReplanPrep.js`)
-- Edit reconnect is cost-only (no `edge.path`; worker local A* at stitch)
-- Incremental nav topology: `patchNavTopology(dirtyBounds)` with coalesced rects; full sync only on init / no bounds / grid resize
-- Portal hop follow: SAB path clamps at hop mouth; no steer-to-exit across hop edge
-- Scene sidebar: bulk cavern terrain not listed per-voxel (was a separate freeze)
-- **PR5 — Region repack on carve:** oversized regions subdivided after edit; large opens (`≥ 2 × maxCellsPerChunk`) trigger localized hull repack with distance-to-wall seeding; editor wall eraser tool for testing (`gen:erase`)
-
----
-
-## Still to do
-
-### Graph on worker
-
-- `patchRegionGraph` — move region assignment + persist CSR patch off main
-- Incremental hop CSR (dirty-only; today full O(cells) repack on patch)
-- Main stops `packHpaGraphForWorker` on every edit epoch once worker owns graph
-
-### Correctness / features
-
-- Portal abstract edge cost: `_connectRegionPair` uses centroid Chebyshev, not hop cost 1
-- Belt transfer edges (same machinery as portal hops)
-- `canStep` / hops in edit-time split (`_splitRegionIfDisconnected` is cardinal-only today)
-- Partial paths: `maxLegs` / `maxCells` policy on `requestPath`
-
-### Other
-
-- Sidebar render incremental (`sandboxToyUi.js`) — editor jank, orthogonal to path worker
-
----
-
-## Nav model (reference)
-
-```
-Reachability = LocalWalk (octile / canStep)  ∪  Transfers (hop CSR)
-Physics      = portal grant, belts, collision — separate from path graph
-```
-
-Forcefields → `canStep` filters. Portals → hop CSR + region adjacency. Belts (target) → transfer edges like portals.
+- Worker-owned stitch; main never stitches on replan hot path
+- `HpaPathWorker.requestPath` + SAB path-follow
+- Zero-copy nav views; no octile mirror-back
+- Incremental `patchNavTopology`; full sync only on init / resize / no bounds
+- Cost-only abstract edges; worker local A* at stitch
+- Portal hop mouth clamp on path follow
+- Region repack on large carve; subdivide oversized regions in dirty hull
+- Edit-time `canStep` on split/reconnect/prune; edge validation against real crossings
+- Editor eraser (`gen:erase`) for carve testing
 
 ---
 
 ## Rules
 
-- No mirror-back; SAB views only
-- No full-grid topology repack scattered across invalidation handlers — one `patchNavTopology` entry
+- **No main-thread fallbacks** on click/replan — no main A*, stitch, or sync octile bake for convenience; stale epoch → await worker, don’t plan locally
+- One `patchNavTopology` entry; no scattered full-grid repacks
 - No in-memory migration shims — refresh is the migration
 - Extend `Libraries/Pathfinding/` — no parallel worker copies
-
-## Don't regress
-
-- Scene list must not enumerate bulk terrain voxels
-- No dual nav bake pipelines
-
----
-
-## No main-thread fallbacks
-
-**This is non-negotiable.** If the worker path is missing, stale, or slow, main does **not** pick up the work.
-
-- No `HierarchicalNavigator.computeCellPath`, `runLocalAStar`, or `stitchAbstractCellPath` on the click/replan hot path
-- No "just this once" sync bake that mirrors octile back to main for convenience
-- No silent retry on main when `requestPath` returns null or a slot is empty — surface the failure or await the worker; do not reroute to main A*
-- No edit-time local A* for graph reconnect (cost-only edges + worker stitch at replan is the contract)
-- Stale epoch → refuse or await worker patch/sync; never plan against a graph or nav view main rebuilt locally
-
-Main thread role stays **request, apply, steer, physics** — not pathfinding CPU. Any fallback reintroduces the freeze pattern we removed and masks worker bugs instead of fixing them.
-
----
-
-## PR5 post-mortem — region repack on carve
-
-**Problem fixed:** carving walls merged opened cells into one neighbor region and only moved the centroid — HPA regions could balloon to hundreds of cells.
-
-**Shipped (`HierarchicalNavigator.rebuildDamagedArea`):**
-- `_createRegionFromCells` uses exported `floodFillRegion` with distance-to-wall seed order (same as init Voronoi)
-- After assign/merge: `_subdivideOversizedRegionsInBox` splits any region in dirty hull with `cells.length > maxCellsPerChunk`
-- Large carves (`openedCellCount ≥ 2 × maxCellsPerChunk`): `_repackRegionCellsInBox` removes all regions touching the hull and rechunks their cells
-- Touched regions reconnect via existing cost-only `_reconnectRegionEdges`; still no main A* on edit path
-
-**Editor test tool:** palette `gen:erase` — rect/circle/donut bounds on map overview (red overlay), **Erase walls in bounds** clears voxel walls + rail edges in shape (`eraseLabWallsInBounds`); does not delete props.
-
-**Deferred from PR5:** `patchRegionGraph` on worker; `canStep`/hop-aware split; portal centroid cost.
-
-**Acceptance:** carve large area → multiple ≤64-cell regions; `onObstaclesChanged` → `patchNavTopology` + `syncAbstractGraph`; click path unchanged.
-
----
-
-## Next PR — `patchRegionGraph` on worker
-
-Main sends dirty rect + `graphEpoch`; worker patches region assignment and persist CSR incrementally. Main drops `rebuildDamagedArea` and full `packHpaGraphForWorker` on every edit. Reuse PR4 coalescing pattern (`patchNavTopology`).
-
-**After that:** portal hop cost on abstract edges, incremental hop CSR, belt transfer edges, partial-path policy — same pipe, no main-thread fallbacks.
+- Scene list must not enumerate bulk terrain voxels; no dual nav bake pipelines
