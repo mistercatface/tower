@@ -30,6 +30,7 @@ let sabReplanLegMetaPool;
 function slotReplanLegMeta(slot) {
     return new Int32Array(sabReplanLegMetaPool, slot * 32 * 4, 32);
 }
+let extNodeCol;
 let extNodeRow;
 let extEdgeOffsets;
 let extEdgeTargets;
@@ -97,23 +98,20 @@ function buildNavSnapshotOnWorker(data) {
 }
 function buildPersistGraphCsr(nodeCount, edgeWrite) {
     const srcSources = persistEdgeSourcesView().subarray(0, edgeWrite);
-    const srcTargets = persistEdgeTargetsView().subarray(0, edgeWrite);
-    const srcCosts = persistEdgeCostsView().subarray(0, edgeWrite);
     const edgeOffsets = persistEdgeOffsetsView();
-    const outTargets = persistEdgeTargetsView();
-    const outCosts = persistEdgeCostsView();
-    let write = 0;
-    for (let i = 0; i < nodeCount; i++) {
-        edgeOffsets[i] = write;
-        for (let e = 0; e < edgeWrite; e++) {
-            if (srcSources[e] !== i) continue;
-            outTargets[write] = srcTargets[e];
-            outCosts[write] = srcCosts[e];
-            write++;
-        }
+    edgeOffsets.fill(0, 0, nodeCount + 1);
+    for (let e = 0; e < edgeWrite; e++) {
+        const src = srcSources[e];
+        if (src >= 0 && src < nodeCount) edgeOffsets[src + 1]++;
     }
-    edgeOffsets[nodeCount] = write;
-    return write;
+    let sum = 0;
+    for (let i = 0; i < nodeCount; i++) {
+        const count = edgeOffsets[i + 1];
+        edgeOffsets[i] = sum;
+        sum += count;
+    }
+    edgeOffsets[nodeCount] = sum;
+    return sum;
 }
 function syncPersistAbstractGraph(nodeCount, edgeWrite) {
     persistNodeCount = nodeCount;
@@ -188,37 +186,59 @@ function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol,
     extNodeRow[startTemp] = startRow;
     extNodeCol[targetTemp] = targetCol;
     extNodeRow[targetTemp] = targetRow;
-    const extra = [];
     const tempLegs = new Map();
-    for (let i = 0; i < nodeCount; i++) for (let e = baseOffsets[i]; e < baseOffsets[i + 1]; e++) extra.push([i, baseTargets[e], baseCosts[e]]);
-    for (let i = 0; i < startCandidates.length; i++) {
-        const cIdx = startCandidates[i];
-        const path = runLocalAStarFlat(startCol, startRow, extNodeCol[cIdx], extNodeRow[cIdx], navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
-        if (path) {
-            extra.push([startTemp, cIdx, path.length]);
-            tempLegs.set(`${startTemp},${cIdx}`, path);
-        }
-    }
+    const targetConnectCost = new Int32Array(nodeCount);
     for (let i = 0; i < targetCandidates.length; i++) {
         const cIdx = targetCandidates[i];
         const path = runLocalAStarFlat(extNodeCol[cIdx], extNodeRow[cIdx], targetCol, targetRow, navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
         if (path) {
-            extra.push([cIdx, targetTemp, path.length]);
+            targetConnectCost[cIdx] = path.length;
             tempLegs.set(`${cIdx},${targetTemp}`, path);
         }
     }
-    let write = 0;
-    for (let i = 0; i < extCount; i++) {
-        extEdgeOffsets[i] = write;
-        for (let e = 0; e < extra.length; e++) {
-            if (extra[e][0] !== i) continue;
-            extEdgeTargets[write] = extra[e][1];
-            extEdgeCosts[write] = extra[e][2];
+    const startEdges = [];
+    for (let i = 0; i < startCandidates.length; i++) {
+        const cIdx = startCandidates[i];
+        const path = runLocalAStarFlat(startCol, startRow, extNodeCol[cIdx], extNodeRow[cIdx], navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
+        if (path) {
+            startEdges.push({ targetIdx: cIdx, cost: path.length });
+            tempLegs.set(`${startTemp},${cIdx}`, path);
+        }
+    }
+    // prefix-sum: calculate offsets
+    extEdgeOffsets[0] = 0;
+    for (let i = 0; i < nodeCount; i++) {
+        const baseCount = baseOffsets[i + 1] - baseOffsets[i];
+        const extraCount = targetConnectCost[i] > 0 ? 1 : 0;
+        extEdgeOffsets[i + 1] = extEdgeOffsets[i] + baseCount + extraCount;
+    }
+    extEdgeOffsets[startTemp + 1] = extEdgeOffsets[startTemp] + startEdges.length;
+    extEdgeOffsets[targetTemp + 1] = extEdgeOffsets[targetTemp];
+    // populate edges
+    for (let i = 0; i < nodeCount; i++) {
+        let write = extEdgeOffsets[i];
+        const baseStart = baseOffsets[i];
+        const baseEnd = baseOffsets[i + 1];
+        for (let e = baseStart; e < baseEnd; e++) {
+            extEdgeTargets[write] = baseTargets[e];
+            extEdgeCosts[write] = baseCosts[e];
+            write++;
+        }
+        if (targetConnectCost[i] > 0) {
+            extEdgeTargets[write] = targetTemp;
+            extEdgeCosts[write] = targetConnectCost[i];
             write++;
         }
     }
-    extEdgeOffsets[extCount] = write;
-    return { extCount, startTemp, targetTemp, edgeWrite: write, tempLegs };
+    let startWrite = extEdgeOffsets[startTemp];
+    for (let i = 0; i < startEdges.length; i++) {
+        const edge = startEdges[i];
+        extEdgeTargets[startWrite] = edge.targetIdx;
+        extEdgeCosts[startWrite] = edge.cost;
+        startWrite++;
+    }
+    const totalEdges = extEdgeOffsets[extCount];
+    return { extCount, startTemp, targetTemp, edgeWrite: totalEdges, tempLegs };
 }
 function runReplan(slot, data) {
     const { mode, startCol, startRow, targetCol, targetRow, localMaxLen } = data;
