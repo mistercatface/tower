@@ -109,12 +109,12 @@ export class NavigationController {
             const centerY = (grid.minY + grid.maxY) / 2;
             this.hierarchicalNavigator.initialize(centerX, centerY);
         } else if (this.hierarchicalNavigator && damageBounds) this.hierarchicalNavigator.rebuildDamagedArea(damageBounds);
-        this.flowFieldGrid.refresh();
+        this.flowFieldGrid.invalidateNavTopology();
         this.obstacleGeneration += 1;
     }
     rebuildNavigationGraph(playerX, playerY) {
         if (this.hierarchicalNavigator) this.hierarchicalNavigator.rebuildRegions(playerX, playerY);
-        this.flowFieldGrid.refresh();
+        this.flowFieldGrid.invalidateNavTopology();
         this.obstacleGeneration += 1;
     }
     _checkArrived(entity, targetX, targetY, settings) {

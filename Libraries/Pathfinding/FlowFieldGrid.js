@@ -2,16 +2,17 @@ import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
-import { snapshotIsBlocked, snapshotWorldToGrid, snapshotCanStep } from "./GridNavSnapshot.js";
+import { snapshotIsBlocked, snapshotWorldToGrid, snapshotCanStep, snapshotNavCacheKey } from "./GridNavSnapshot.js";
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 const MAX_CACHE = 100;
 const FLOW_DONE = "flowDone";
 export class FlowFieldGrid {
-    constructor(cellSize, width, height, navGraph, workerUrl) {
+    constructor(cellSize, width, height, navGraph, workerUrl, hpaPathWorker = null) {
         this.cellSize = cellSize;
         this.width = width;
         this.height = height;
         this.navGraph = navGraph;
+        this.hpaPathWorker = hpaPathWorker;
         this.cols = Math.ceil(width / cellSize);
         this.rows = Math.ceil(height / cellSize);
         const size = this.cols * this.rows;
@@ -99,14 +100,29 @@ export class FlowFieldGrid {
         this.invalidateFlowSlots();
         return true;
     }
-    refresh() {
+    invalidateNavTopology() {
         this.invalidateLocalTopology();
-        this.ensureLocalTopology(this.navGraph.ensureGridNavSnapshot());
+        this.invalidateFlowSlots();
+    }
+    /** Uses worker-built nav snapshot — never calls sync buildGridNavSnapshot on main. */
+    syncLocalTopology() {
+        const cacheKey = snapshotNavCacheKey(this.navGraph);
+        const snapshot = this.navGraph.gridNavSnapshot;
+        if (!snapshot || snapshot.cacheKey !== cacheKey) {
+            this.hpaPathWorker?.scheduleNavTopologySync(this.navGraph);
+            return false;
+        }
+        return this.ensureLocalTopology(snapshot);
+    }
+    refresh() {
+        this.invalidateNavTopology();
+        this.hpaPathWorker?.scheduleNavTopologySync(this.navGraph);
     }
     shiftCenter(newCenterX, newCenterY) {
         this.centerX = newCenterX;
         this.centerY = newCenterY;
-        this.refresh();
+        this.invalidateLocalTopology();
+        this.syncLocalTopology();
     }
     ensureRollTargetWindow(propX, propY, targetX, targetY, recenterThreshold) {
         const focusX = (propX + targetX) * 0.5;
@@ -118,7 +134,7 @@ export class FlowFieldGrid {
             this.centerY = focusY;
             this.invalidateLocalTopology();
         }
-        this.ensureLocalTopology(this.navGraph.ensureGridNavSnapshot());
+        this.syncLocalTopology();
     }
     isFlowSlotReady(slot) {
         return this._workerHost.isReady(slot);

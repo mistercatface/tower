@@ -42,6 +42,7 @@ export class HpaPathWorker {
         this.host.worker.onmessage = (e) => {
             const { type, slot, requestId } = e.data;
             if (type === SYNC_NAV_DONE) {
+                this._mirrorNavSnapshotToMain();
                 const resolve = this._navSyncResolve;
                 this._navSyncResolve = null;
                 this._navSyncPromise = null;
@@ -132,6 +133,24 @@ export class HpaPathWorker {
             this.navVertexPassability = new Uint8Array(this.sabVertexPassability);
         }
     }
+    _mirrorNavSnapshotToMain() {
+        const grid = this.navGraph;
+        if (!this._navSize || !grid.cols) return;
+        grid.gridNavSnapshot = {
+            cacheKey: this._navKey,
+            cols: grid.cols,
+            rows: grid.rows,
+            cellSize: grid.cellSize,
+            cellHalfSize: grid.cellHalfSize,
+            minX: grid.minX,
+            minY: grid.minY,
+            blocked: new Uint8Array(this.navBlocked),
+            octileNeighbors: new Int32Array(this.navOctileNeighbors),
+            hopOffsets: new Int32Array(this.navHopOffsets),
+            hopExitIdx: new Int32Array(this.navHopExitIdx),
+            hopCost: new Uint8Array(this.navHopCost),
+        };
+    }
     scheduleNavTopologySync(grid = this.navGraph) {
         const cacheKey = snapshotNavCacheKey(grid);
         if (cacheKey === this._navKey) return;
@@ -170,18 +189,27 @@ export class HpaPathWorker {
         const hopOffsets = new Int32Array(size + 1);
         const hopExitIdx = [];
         const hopCost = [];
-        let write = 0;
-        for (let idx = 0; idx < size; idx++) {
-            hopOffsets[idx] = write;
-            const col = idx % cols;
-            const row = (idx / cols) | 0;
-            const hops = grid.getBoundaryHops(col, row);
-            if (hops)
+        const lists = new Array(size);
+        const hopsByIdx = grid.boundaryNavHops;
+        if (hopsByIdx) {
+            for (const [idx, hops] of hopsByIdx) {
+                const bucket = [];
                 for (let i = 0; i < hops.length; i++) {
                     const { exitCol, exitRow, cost } = hops[i];
                     if (blocked[exitCol + exitRow * cols]) continue;
-                    hopExitIdx.push(exitCol + exitRow * cols);
-                    hopCost.push(cost);
+                    bucket.push({ exitIdx: exitCol + exitRow * cols, cost });
+                }
+                if (bucket.length) lists[idx] = bucket;
+            }
+        }
+        let write = 0;
+        for (let idx = 0; idx < size; idx++) {
+            hopOffsets[idx] = write;
+            const bucket = lists[idx];
+            if (bucket)
+                for (let i = 0; i < bucket.length; i++) {
+                    hopExitIdx.push(bucket[i].exitIdx);
+                    hopCost.push(bucket[i].cost);
                     write++;
                 }
         }
