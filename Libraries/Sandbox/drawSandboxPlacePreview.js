@@ -4,7 +4,8 @@ import { aabbFromTwoPointsInto, createAabb } from "../Math/Aabb2D.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canStampFloorBeltAt, canStampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, strokeSelectedForcefieldEdge, strokeSelectedPortalEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
-import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isGridRoomNodeSpawnAsset } from "./sandboxCapabilities.js";
+import { resolveGridRoomNodePlacePreview } from "./gridRoomNodes.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 const PREVIEW_CELL_BOUNDS = createAabb();
 /** @param {string} propTypeId */
@@ -21,6 +22,8 @@ function resolveSpawnPreviewRadius(propTypeId) {
  *   isWallPlaceMode: () => boolean,
  *   getWallStampMode: () => string,
  *   getSpawnPropId: () => string,
+ *   getSpawnGridRoomNodeCols: () => number,
+ *   getSpawnGridRoomNodeRows: () => number,
  * }} session
  * @param {number} worldX
  * @param {number} worldY
@@ -48,6 +51,10 @@ export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
     if (isGridPassagePowerSourceSpawnAsset(asset)) {
         const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
         return { kind: "cell", col, row, valid: canStampPassagePowerSourceAt(state, col, row), tint: "power" };
+    }
+    if (isGridRoomNodeSpawnAsset(asset)) {
+        const { col, row } = grid.worldToGrid(worldX, worldY);
+        return resolveGridRoomNodePlacePreview(state, col, row, session.getSpawnGridRoomNodeCols(), session.getSpawnGridRoomNodeRows());
     }
     return { kind: "circle", x: worldX, y: worldY, radius: resolveSpawnPreviewRadius(session.getSpawnPropId()), valid: true };
 }
@@ -102,6 +109,19 @@ export function drawSandboxPlacePreview(ctx, preview, grid) {
                     ? "rgba(100, 255, 160, 0.12)"
                     : "rgba(255, 96, 96, 0.1)";
         drawAabbHighlight(ctx, aabbFromTwoPointsInto(PREVIEW_CELL_BOUNDS, x - half, y - half, x + half, y + half), { fill, stroke, lineWidth: lineScale, dash: [4, 3] });
+        ctx.restore();
+        return;
+    }
+    if (preview.kind === "cellRect") {
+        const half = grid.cellSize * 0.5;
+        for (let i = 0; i < preview.cells.length; i++) {
+            const cell = preview.cells[i];
+            const { x, y } = grid.gridToWorld(cell.col, cell.row);
+            const clear = cell.clear;
+            const fill = clear ? "rgba(120, 180, 255, 0.14)" : "rgba(255, 96, 96, 0.16)";
+            const stroke = clear ? "rgba(120, 180, 255, 0.85)" : "rgba(255, 96, 96, 0.9)";
+            drawAabbHighlight(ctx, aabbFromTwoPointsInto(PREVIEW_CELL_BOUNDS, x - half, y - half, x + half, y + half), { fill, stroke, lineWidth: lineScale, dash: [4, 3] });
+        }
         ctx.restore();
         return;
     }

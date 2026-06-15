@@ -3,7 +3,8 @@ import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLab
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./pullFixtureWalls.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
-import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isGridRoomNodeSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
+import { DEFAULT_GRID_ROOM_NODE_COLS, DEFAULT_GRID_ROOM_NODE_ROWS, stampGridRoomNodeAt } from "./gridRoomNodes.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { syncPassagePowerNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
@@ -63,6 +64,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let railThicknessLevel = 2;
     let forcefieldStampMode = PASSAGE_MODE.Solid;
     let portalStampMouthNeighbor = false;
+    let spawnGridRoomNodeCols = DEFAULT_GRID_ROOM_NODE_COLS;
+    let spawnGridRoomNodeRows = DEFAULT_GRID_ROOM_NODE_ROWS;
     /** @type {{ col: number, row: number } | null} */
     let selectedVoxelCell = null;
     /** @type {{ col: number, row: number, side: number } | null} */
@@ -206,6 +209,14 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             setSelectedFloorCell(col, row);
             return true;
         }
+        if (isGridRoomNodeSpawnAsset(asset)) {
+            const grid = state.obstacleGrid;
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            const node = stampGridRoomNodeAt(state, col, row, spawnGridRoomNodeCols, spawnGridRoomNodeRows);
+            if (!node) return false;
+            sync();
+            return true;
+        }
         const spawned = spawnPlacedSandboxProp(state, worldX, worldY, spawnPropId, spawnFaction);
         if (spawned) {
             touchPropPlacement(spawned.id);
@@ -222,6 +233,16 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         getSpawnFaction: () => spawnFaction,
         setSpawnFaction: (faction) => {
             spawnFaction = faction;
+        },
+        getSpawnGridRoomNodeCols: () => spawnGridRoomNodeCols,
+        setSpawnGridRoomNodeCols: (cols) => {
+            spawnGridRoomNodeCols = Math.max(1, Math.min(32, Math.round(cols)));
+            sync();
+        },
+        getSpawnGridRoomNodeRows: () => spawnGridRoomNodeRows,
+        setSpawnGridRoomNodeRows: (rows) => {
+            spawnGridRoomNodeRows = Math.max(1, Math.min(32, Math.round(rows)));
+            sync();
         },
         getSelectedPropId: () => selectedPropId,
         getSelectedPropIds: () => {
@@ -886,6 +907,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         clear() {
             for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state.worldProps[i]);
             state.obstacleGrid.clearAllFloorCells();
+            state.sandboxGridRoomNodes = [];
+            state.sandboxGridRoomNodeIdCounter = 0;
             selectedPropIds.clear();
             selectedPropId = null;
             dropFloorSelection();

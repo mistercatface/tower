@@ -6,6 +6,7 @@ import {
     isSandboxSpawnable,
     isGridFloorBeltSpawnAsset,
     isGridPassagePowerSourceSpawnAsset,
+    isGridRoomNodeSpawnAsset,
     isSingleWorldPropSpawnAsset,
     listFloorBeltKindOptions,
 } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
@@ -206,7 +207,7 @@ function appendPropPlaceParams(body, controller, spawnId, onChange) {
     const addRow = document.createElement("div");
     addRow.className = "sandbox-add-row";
     const spawnAsset = getPropAsset(spawnId);
-    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset) && !isGridPassagePowerSourceSpawnAsset(spawnAsset))
+    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset) && !isGridPassagePowerSourceSpawnAsset(spawnAsset) && !isGridRoomNodeSpawnAsset(spawnAsset))
         appendFactionSelect(addRow, {
             value: controller.getSpawnFaction(),
             onChange: (faction) => {
@@ -231,6 +232,30 @@ function appendPropPlaceParams(body, controller, spawnId, onChange) {
     addBtn.addEventListener("click", () => controller.spawnAtCameraOrigin());
     addRow.appendChild(addBtn);
     body.appendChild(addRow);
+    if (isGridRoomNodeSpawnAsset(spawnAsset)) {
+        appendAxisNumberFields(body, {
+            Width: {
+                value: controller.getSpawnGridRoomNodeCols(),
+                step: 1,
+                min: 1,
+                onChange: (cols) => {
+                    controller.setSpawnGridRoomNodeCols(cols);
+                    onChange();
+                },
+            },
+            Height: {
+                value: controller.getSpawnGridRoomNodeRows(),
+                step: 1,
+                min: 1,
+                onChange: (rows) => {
+                    controller.setSpawnGridRoomNodeRows(rows);
+                    onChange();
+                },
+            },
+        });
+        appendEditorHint(body, "Hover the map to preview the footprint. Blocked cells turn red; click only places when every cell is clear.");
+        return;
+    }
     if (isGridPassagePowerSourceSpawnAsset(spawnAsset))
         appendEditorHint(body, "Add at camera stamps a power source on the grid. Enable Default energized in Selected, or wire a floor button to the source cell.");
 }

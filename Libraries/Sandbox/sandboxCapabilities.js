@@ -51,13 +51,17 @@ export function isGridFloorBeltSpawnAsset(asset) {
 export function isGridPassagePowerSourceSpawnAsset(asset) {
     return asset?.sandbox?.gridPassagePowerSource === true;
 }
+/** Spawn stamps a rectangular room node footprint on the grid — not a WorldProp. */
+export function isGridRoomNodeSpawnAsset(asset) {
+    return asset?.sandbox?.gridRoomNode === true;
+}
 /** Spawn stamps a pool ball rack — not a single WorldProp. */
 export function isPoolRackSpawnAsset(asset) {
     return asset?.sandbox?.spawnRack === "8ball" || asset?.sandbox?.spawnRack === "9ball";
 }
 /** @param {object | null | undefined} asset */
 export function isSingleWorldPropSpawnAsset(asset) {
-    return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset) && !isGridPassagePowerSourceSpawnAsset(asset) && !isPoolRackSpawnAsset(asset);
+    return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset) && !isGridPassagePowerSourceSpawnAsset(asset) && !isGridRoomNodeSpawnAsset(asset) && !isPoolRackSpawnAsset(asset);
 }
 /** @param {object | null | undefined} asset */
 export function resolveFloorBeltKindFromSpawnAsset(asset) {
