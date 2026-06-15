@@ -7,11 +7,12 @@ import { drawCavernBoundsPreview, drawWorldBoundsBox, mountOverviewBoundsEditors
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let overviewCanvasResize = null;
 let overviewCtx = null;
-/** @param {import("../state.js").TileLabGameState} state @returns {"cavern" | "rail" | null} */
+/** @param {import("../state.js").TileLabGameState} state @returns {"cavern" | "rail" | "erase" | null} */
 export function activeMapGenKind(state) {
     const key = state.sandbox.controller?.getPlacePaletteKey();
     if (key === "gen:cavern") return "cavern";
     if (key === "gen:rail") return "rail";
+    if (key === "gen:erase") return "erase";
     return null;
 }
 /** Blit cached map and draw live viewport / generation bounds — not part of the bake. */
@@ -37,6 +38,10 @@ export function paintMapOverviewFrame(state) {
         const railConfig = state.editor.railConfig;
         if (railConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.rail, cache, displayW, displayH, "#e040fb", 2);
         else drawCavernBoundsPreview(ctx, railConfig, cache, displayW, displayH, "#e040fb");
+    } else if (genKind === "erase") {
+        const eraseConfig = state.editor.eraseConfig;
+        if (eraseConfig.boundsMode === "rect") drawWorldBoundsBox(ctx, state.editor.mapBoundsPreview.erase, cache, displayW, displayH, "#f44336", 2);
+        else drawCavernBoundsPreview(ctx, eraseConfig, cache, displayW, displayH, "#f44336");
     }
 }
 /** Vertical space for main map max-size when overview is visible. */

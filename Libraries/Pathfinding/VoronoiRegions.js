@@ -46,7 +46,7 @@ export function computeDistanceTransform(grid, cols, rows, distToWall = null) {
     for (let i = 0; i < size; i++) if (distances[i] === Infinity) distances[i] = 1000;
     return distances;
 }
-function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, nodeCells, maxCellsPerChunk, navGraph) {
+export function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, nodeCells, maxCellsPerChunk, navGraph, unassigned = null) {
     let cellCount = 0;
     const queue = [startIdx];
     cellToNode[startIdx] = node;
@@ -63,7 +63,8 @@ function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, nodeCells
             if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
                 if (navGraph && (!navGraph.canStep(c, r, nc, nr) || !navGraph.canStep(nc, nr, c, r))) continue;
                 const nIdx = nr * cols + nc;
-                if (grid[nIdx] === 0 && cellToNode[nIdx] === null) {
+                if (grid[nIdx] === 0 && cellToNode[nIdx] === null && (!unassigned || unassigned.has(nIdx))) {
+                    if (unassigned) unassigned.delete(nIdx);
                     cellToNode[nIdx] = node;
                     nodeCells.push(nIdx);
                     queue.push(nIdx);

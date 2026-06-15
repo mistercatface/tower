@@ -241,10 +241,11 @@ function resolvePropPaletteSwatch(asset) {
 const MAP_GEN_PALETTE_OPTIONS = [
     { key: "gen:cavern", genKind: "cavern", label: "Cavern generation", swatch: "#ff9800", glyph: "Cv" },
     { key: "gen:rail", genKind: "rail", label: "Rail wall generation", swatch: "#e040fb", glyph: "Rw" },
+    { key: "gen:erase", genKind: "erase", label: "Wall eraser", swatch: "#f44336", glyph: "Er" },
 ];
 /** @param {string[]} propIds */
 function buildPlacePaletteItems(propIds) {
-    /** @type {{ key: string, kind: "prop" | "wall" | "gen", label: string, swatch: string, glyph: string, genKind?: "cavern" | "rail" }[]} */
+    /** @type {{ key: string, kind: "prop" | "wall" | "gen", label: string, swatch: string, glyph: string, genKind?: "cavern" | "rail" | "erase" }[]} */
     const items = [];
     for (const id of propIds) {
         const asset = getPropAsset(id);

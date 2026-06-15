@@ -1,5 +1,5 @@
 import { migrateCavernConfigForMode } from "../world/cavernBounds.js";
-import { applyPlayAreaConfig, generateLabCaverns, generateLabRailCaverns, syncCavernBoundsFromPlay } from "../world/mapWorld.js";
+import { applyPlayAreaConfig, eraseLabWallsInBounds, generateLabCaverns, generateLabRailCaverns, syncCavernBoundsFromPlay } from "../world/mapWorld.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { addNumberField } from "./mapPanelFields.js";
@@ -387,6 +387,85 @@ export function buildRailGenEditor(panel, state, onPreviewChange, onGenerated) {
     row.appendChild(genBtn);
     panel.appendChild(row);
 }
+/**
+ * @param {HTMLElement} panel
+ * @param {import("../state.js").TileLabGameState} state
+ * @param {() => void} onPreviewChange
+ * @param {() => void} onGenerated
+ */
+export function buildEraseEditor(panel, state, onPreviewChange, onGenerated) {
+    mapGenBoundInputs = [];
+    const { playConfig, eraseConfig } = state.editor;
+    const boundInputs = mapGenBoundInputs;
+    const refreshBoundInputs = refreshMapGenPanelInputs;
+    appendEditorHint(panel, "Red overlay on map overview — drag inside to move, drag edges/rings to resize. Clears voxel walls and rail edges in bounds.");
+    const modeField = document.createElement("label");
+    modeField.className = "param-field";
+    const modeLabel = document.createElement("span");
+    modeLabel.textContent = "Bounds shape";
+    const modeSelect = document.createElement("select");
+    for (const mode of ["rect", "circle", "donut"]) {
+        const opt = document.createElement("option");
+        opt.value = mode;
+        opt.textContent = mode === "rect" ? "Rectangle" : mode === "circle" ? "Circle" : "Donut";
+        modeSelect.appendChild(opt);
+    }
+    modeSelect.value = eraseConfig.boundsMode;
+    modeField.append(modeLabel, modeSelect);
+    panel.appendChild(modeField);
+    const rectFields = document.createElement("div");
+    const circleFields = document.createElement("div");
+    const donutFields = document.createElement("div");
+    const syncRow = document.createElement("div");
+    syncRow.className = "editor-tools-row";
+    const syncBtn = document.createElement("button");
+    syncBtn.type = "button";
+    syncBtn.className = "secondary";
+    syncBtn.textContent = "Center bounds on camera";
+    syncBtn.addEventListener("click", () => {
+        syncCavernBoundsFromPlay(state.viewport, playConfig, eraseConfig);
+        migrateCavernConfigForMode(eraseConfig);
+        refreshBoundInputs();
+        onPreviewChange();
+    });
+    syncRow.appendChild(syncBtn);
+    panel.appendChild(syncRow);
+    const addBound = (parent, label, get, set, opts) =>
+        addNumberField(parent, label, get, set, opts, onPreviewChange, boundInputs);
+    addBound(rectFields, "Bounds col", () => eraseConfig.boundsCol, (v) => { eraseConfig.boundsCol = Math.round(v); migrateCavernConfigForMode(eraseConfig); });
+    addBound(rectFields, "Bounds row", () => eraseConfig.boundsRow, (v) => { eraseConfig.boundsRow = Math.round(v); migrateCavernConfigForMode(eraseConfig); });
+    addBound(rectFields, "Bounds cols", () => eraseConfig.boundsCols, (v) => { eraseConfig.boundsCols = Math.max(1, Math.round(v)); migrateCavernConfigForMode(eraseConfig); }, { min: 1 });
+    addBound(rectFields, "Bounds rows", () => eraseConfig.boundsRows, (v) => { eraseConfig.boundsRows = Math.max(1, Math.round(v)); migrateCavernConfigForMode(eraseConfig); }, { min: 1 });
+    addBound(circleFields, "Center col", () => eraseConfig.centerCol, (v) => { eraseConfig.centerCol = Math.round(v); migrateCavernConfigForMode(eraseConfig); });
+    addBound(circleFields, "Center row", () => eraseConfig.centerRow, (v) => { eraseConfig.centerRow = Math.round(v); migrateCavernConfigForMode(eraseConfig); });
+    addBound(circleFields, "Radius (cells)", () => eraseConfig.outerRadiusCells, (v) => { eraseConfig.outerRadiusCells = Math.max(1, Math.round(v)); migrateCavernConfigForMode(eraseConfig); }, { min: 1 });
+    addBound(donutFields, "Donut thickness (cells)", () => eraseConfig.donutThicknessCells, (v) => { eraseConfig.donutThicknessCells = Math.max(1, Math.min(eraseConfig.outerRadiusCells - 1, Math.round(v))); }, { min: 1 });
+    const updateModeVisibility = () => {
+        rectFields.hidden = eraseConfig.boundsMode !== "rect";
+        circleFields.hidden = eraseConfig.boundsMode === "rect";
+        donutFields.hidden = eraseConfig.boundsMode !== "donut";
+    };
+    modeSelect.addEventListener("change", () => {
+        eraseConfig.boundsMode = /** @type {"rect" | "circle" | "donut"} */ (modeSelect.value);
+        migrateCavernConfigForMode(eraseConfig);
+        refreshBoundInputs();
+        updateModeVisibility();
+        onPreviewChange();
+    });
+    panel.append(rectFields, circleFields, donutFields);
+    updateModeVisibility();
+    const row = document.createElement("div");
+    row.className = "editor-tools-row";
+    const eraseBtn = document.createElement("button");
+    eraseBtn.type = "button";
+    eraseBtn.textContent = "Erase walls in bounds";
+    eraseBtn.addEventListener("click", () => {
+        eraseLabWallsInBounds(state);
+        onGenerated();
+    });
+    row.appendChild(eraseBtn);
+    panel.appendChild(row);
+}
 /** @param {HTMLElement} parent @param {string} text */
 function appendEditorHint(parent, text) {
     const hint = document.createElement("p");
@@ -394,9 +473,10 @@ function appendEditorHint(parent, text) {
     hint.textContent = text;
     parent.appendChild(hint);
 }
-/** @param {import("../state.js").TileLabGameState} state @param {"cavern" | "rail"} kind @param {() => void} onGenerated */
+/** @param {import("../state.js").TileLabGameState} state @param {"cavern" | "rail" | "erase"} kind @param {() => void} onGenerated */
 export function appendMapGenEditor(parent, state, kind, onGenerated) {
     const onPreviewChange = () => paintMapOverviewFrame(state);
     if (kind === "cavern") buildCavernGenEditor(parent, state, onPreviewChange, onGenerated);
-    else buildRailGenEditor(parent, state, onPreviewChange, onGenerated);
+    else if (kind === "rail") buildRailGenEditor(parent, state, onPreviewChange, onGenerated);
+    else buildEraseEditor(parent, state, onPreviewChange, onGenerated);
 }

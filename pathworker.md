@@ -12,12 +12,12 @@ HPA click-to-move on big maps. **Main requests a path; worker plans and stitches
 | **Nav octile** | Bakes from shared SABs; `navView` for A* | Packs topology into SABs on edit; reads zero-copy views for flow/debug |
 | **Path output** | Writes cell path + abstract idx to slot SABs | `applyHpaReplanResult`; steer/overlay from SAB (`hpaPathSlot.js`) |
 | **Abstract graph** | Persist CSR in SABs; A* at replan time | Owns `HierarchicalNavigator.nodesMap`; `rebuildDamagedArea` on edits; `packHpaGraphForWorker` on `graphEpoch` bump |
-| **Region assignment** | — | Voronoi chunks (`generateVoronoiRegions`) on init; incremental merge/split on edits |
+| **Region assignment** | — | Voronoi chunks on init; incremental merge/split + repack on edits |
 | **Portal traverse** | — | Crossing grant, physics, hop mouth handling |
 
-**Click path today:** `requestPath` → await nav/graph sync if stale → worker replan + stitch → main apply from slot SAB.
+**Click path:** `requestPath` → await nav/graph sync if stale → worker replan + stitch → main apply from slot SAB.
 
-**Edit path today:** main `rebuildDamagedArea` + `patchNavTopology(dirtyBounds)` → worker octile patch → `syncAbstractGraph`.
+**Edit path:** main `rebuildDamagedArea` + `patchNavTopology(dirtyBounds)` → worker octile patch → `syncAbstractGraph`.
 
 ---
 
@@ -31,22 +31,17 @@ HPA click-to-move on big maps. **Main requests a path; worker plans and stitches
 - Incremental nav topology: `patchNavTopology(dirtyBounds)` with coalesced rects; full sync only on init / no bounds / grid resize
 - Portal hop follow: SAB path clamps at hop mouth; no steer-to-exit across hop edge
 - Scene sidebar: bulk cavern terrain not listed per-voxel (was a separate freeze)
+- **PR5 — Region repack on carve:** oversized regions subdivided after edit; large opens (`≥ 2 × maxCellsPerChunk`) trigger localized hull repack with distance-to-wall seeding; editor wall eraser tool for testing (`gen:erase`)
 
 ---
 
 ## Still to do
 
-### Region graph (biggest gap)
+### Graph on worker
 
-Incremental `rebuildDamagedArea` merges opened cells into neighbor regions and moves the centroid — it does **not** subdivide oversized regions or rerun Voronoi in a large erased area. Carving into existing walkable space can leave one region with hundreds of cells while HPA expects ~`maxCellsPerChunk` (64).
-
-**Next:** subdivide after merge, or localized Voronoi regen in dirty hull; longer term `patchRegionGraph` on worker (main stops owning `nodesMap` surgery).
-
-### Graph + data on worker
-
-- Move region graph build/patch off main (`patchRegionGraph`)
+- `patchRegionGraph` — move region assignment + persist CSR patch off main
 - Incremental hop CSR (dirty-only; today full O(cells) repack on patch)
-- Worker-owned graph — main stops `packHpaGraphForWorker` on every edit epoch
+- Main stops `packHpaGraphForWorker` on every edit epoch once worker owns graph
 
 ### Correctness / features
 
@@ -100,15 +95,26 @@ Main thread role stays **request, apply, steer, physics** — not pathfinding CP
 
 ---
 
-## Next PR — region graph repack on carve
+## PR5 post-mortem — region repack on carve
 
-**Problem:** `rebuildDamagedArea` merges newly opened cells into an adjacent region and moves its centroid. It never subdivides. Erasing walls into existing walkable space can leave one HPA region with hundreds of cells while the abstract graph still assumes chunk-sized (~64 cell) regions. Nav octile is correct; abstract routing is wrong.
+**Problem fixed:** carving walls merged opened cells into one neighbor region and only moved the centroid — HPA regions could balloon to hundreds of cells.
 
-**Scope:** After `_assignOpenedCells` and merges, subdivide any region in the dirty hull that exceeds `maxCellsPerChunk` — reuse `floodFillRegion` / Voronoi seeding locally inside the expanded damage box, not a full-grid regen. Reconnect abstract edges for touched regions only (same cost-only `_reconnectRegionEdges` pattern). Escalate to localized `generateVoronoiRegions` in the hull when opened-cell count or merge size crosses a threshold. Still on main; still `syncAbstractGraph` to worker afterward.
+**Shipped (`HierarchicalNavigator.rebuildDamagedArea`):**
+- `_createRegionFromCells` uses exported `floodFillRegion` with distance-to-wall seed order (same as init Voronoi)
+- After assign/merge: `_subdivideOversizedRegionsInBox` splits any region in dirty hull with `cells.length > maxCellsPerChunk`
+- Large carves (`openedCellCount ≥ 2 × maxCellsPerChunk`): `_repackRegionCellsInBox` removes all regions touching the hull and rechunks their cells
+- Touched regions reconnect via existing cost-only `_reconnectRegionEdges`; still no main A* on edit path
 
-**Acceptance:** carve a large box into cavern wall → region count grows appropriately, no single region >> 64 cells, warm click `requestPath` still works; no new main-thread A* on click or edit reconnect.
+**Editor test tool:** palette `gen:erase` — rect/circle/donut bounds on map overview (red overlay), **Erase walls in bounds** clears voxel walls + rail edges in shape (`eraseLabWallsInBounds`); does not delete props.
 
-## After that
+**Deferred from PR5:** `patchRegionGraph` on worker; `canStep`/hop-aware split; portal centroid cost.
 
-Move region graph maintenance to the worker (`patchRegionGraph`): main sends dirty rect + epoch, worker patches assignment and persist CSR incrementally, main drops `rebuildDamagedArea` and stops repacking the full graph on every edit. Then portal hop cost on abstract edges, incremental hop CSR, belt transfer edges, and partial-path policy — same pipe, tunable knobs.
+**Acceptance:** carve large area → multiple ≤64-cell regions; `onObstaclesChanged` → `patchNavTopology` + `syncAbstractGraph`; click path unchanged.
 
+---
+
+## Next PR — `patchRegionGraph` on worker
+
+Main sends dirty rect + `graphEpoch`; worker patches region assignment and persist CSR incrementally. Main drops `rebuildDamagedArea` and full `packHpaGraphForWorker` on every edit. Reuse PR4 coalescing pattern (`patchNavTopology`).
+
+**After that:** portal hop cost on abstract edges, incremental hop CSR, belt transfer edges, partial-path policy — same pipe, no main-thread fallbacks.

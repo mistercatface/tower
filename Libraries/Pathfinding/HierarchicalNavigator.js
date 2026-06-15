@@ -3,7 +3,7 @@ import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import { createSnapshotLocalNavView } from "./GridNavSnapshot.js";
-import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid } from "./VoronoiRegions.js";
+import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid, floodFillRegion } from "./VoronoiRegions.js";
 export class HierarchicalNavigator {
     /** @type {import("./HpaPathWorker.js").HpaPathWorker | null} */
     hpaPathWorker = null;
@@ -229,37 +229,61 @@ export class HierarchicalNavigator {
         delete this.nodesMap[absorb.id];
         repositionNodeCentroid(keep, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
     }
+    _removeRegionNode(node) {
+        if (!node) return;
+        const nodeCells = node.cells;
+        for (let i = 0; i < nodeCells.length; i++) this.cellToNode[nodeCells[i]] = null;
+        const id = node.id;
+        delete this.nodesMap[id];
+        for (const otherId in this.nodesMap) this.nodesMap[otherId].edges = this.nodesMap[otherId].edges.filter((e) => e.targetId !== id);
+    }
+    /** @param {number[]} cells @returns {string[]} */
     _createRegionFromCells(cells) {
+        if (cells.length === 0) return [];
+        if (!this.distToWall || this.distToWall.length !== this.cols * this.rows) computeDistanceTransform(this.grid, this.cols, this.rows, this.distToWall);
         const unassigned = new Set(cells);
-        while (unassigned.size > 0) {
-            const startIdx = unassigned.values().next().value;
-            unassigned.delete(startIdx);
+        const starts = [...unassigned].sort((a, b) => this.distToWall[b] - this.distToWall[a]);
+        const newIds = [];
+        for (let s = 0; s < starts.length; s++) {
+            const startIdx = starts[s];
+            if (!unassigned.has(startIdx)) continue;
             const startCol = startIdx % this.cols;
             const startRow = (startIdx / this.cols) | 0;
             const id = `node_${++this.nodeIdCounter}`;
             const node = new RegionNode(id, startCol, startRow, startCol, startRow, this.minX, this.minY, this.cellSize);
             this.nodesMap[id] = node;
-            const queue = [startIdx];
-            this.cellToNode[startIdx] = node;
-            node.cells.push(startIdx);
-            let cellCount = 1;
-            let head = 0;
-            while (head < queue.length && cellCount < this.maxCellsPerChunk) {
-                const currIdx = queue[head++];
-                const col = currIdx % this.cols;
-                const row = (currIdx / this.cols) | 0;
-                forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
-                    if (this.grid[nIdx] !== 0 || !unassigned.has(nIdx)) return;
-                    if (this.navGraph && (!this.navGraph.canStep(col, row, nc, nr) || !this.navGraph.canStep(nc, nr, col, row))) return;
-                    unassigned.delete(nIdx);
-                    this.cellToNode[nIdx] = node;
-                    node.cells.push(nIdx);
-                    queue.push(nIdx);
-                    cellCount++;
-                });
-            }
+            node.cells.length = 0;
+            floodFillRegion(startIdx, node, this.grid, this.cols, this.rows, this.cellToNode, node.cells, this.maxCellsPerChunk, this.navGraph, unassigned);
             repositionNodeCentroid(node, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
+            newIds.push(id);
         }
+        return newIds;
+    }
+    /** @returns {string[]} */
+    _subdivideOversizedRegionsInBox(startCol, endCol, startRow, endRow) {
+        computeDistanceTransform(this.grid, this.cols, this.rows, this.distToWall);
+        const newIds = [];
+        for (const id of [...this._collectRegionIdsInBox(startCol, endCol, startRow, endRow)]) {
+            const node = this.nodesMap[id];
+            if (!node || node.cells.length <= this.maxCellsPerChunk) continue;
+            const cells = node.cells;
+            this._removeRegionNode(node);
+            newIds.push(...this._createRegionFromCells(cells));
+        }
+        return newIds;
+    }
+    /** @returns {string[]} */
+    _repackRegionCellsInBox(startCol, endCol, startRow, endRow) {
+        const regionIds = this._collectRegionIdsInBox(startCol, endCol, startRow, endRow);
+        const cells = [];
+        for (const id of regionIds) {
+            const node = this.nodesMap[id];
+            if (!node) continue;
+            cells.push(...node.cells);
+            this._removeRegionNode(node);
+        }
+        if (cells.length === 0) return [];
+        return this._createRegionFromCells(cells);
     }
     /** @returns {Set<string>} */
     _stripBlockedCellsFromRegions(startCol, endCol, startRow, endRow) {
@@ -330,8 +354,10 @@ export class HierarchicalNavigator {
         }
         return regionIds;
     }
+    /** @returns {number} */
     _assignOpenedCells(startCol, endCol, startRow, endRow) {
         const visited = new Uint8Array(this.cols * this.rows);
+        let openedCellCount = 0;
         forEachDenseCellInRect(startCol, endCol, startRow, endRow, this.cols, (col, row, idx) => {
             if (this.grid[idx] !== 0 || this.cellToNode[idx] || visited[idx]) return;
             const component = [];
@@ -357,8 +383,10 @@ export class HierarchicalNavigator {
                     queue.push(nIdx);
                 });
             }
-            if (neighborRegions.size === 0) this._createRegionFromCells(component);
-            else {
+            if (neighborRegions.size === 0) {
+                this._createRegionFromCells(component);
+                openedCellCount += component.length;
+            } else {
                 const regions = [...neighborRegions.values()];
                 let keep = regions[0];
                 for (let i = 1; i < regions.length; i++) this._mergeRegionInto(keep, regions[i]);
@@ -367,8 +395,10 @@ export class HierarchicalNavigator {
                     keep.cells.push(cellIdx);
                 }
                 repositionNodeCentroid(keep, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
+                openedCellCount += component.length;
             }
         });
+        return openedCellCount;
     }
     rebuildDamagedArea(bounds) {
         if (!bounds || this.cols === 0 || this.rows === 0) return;
@@ -381,8 +411,14 @@ export class HierarchicalNavigator {
             if (!node) continue;
             for (const regionId of this._splitRegionIfDisconnected(node)) reconnectIds.add(regionId);
         }
-        this._assignOpenedCells(box.startCol, box.endCol, box.startRow, box.endRow);
+        const openedCellCount = this._assignOpenedCells(box.startCol, box.endCol, box.startRow, box.endRow);
         for (const id of this._collectRegionIdsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
+        const repackThreshold = this.maxCellsPerChunk * 2;
+        if (openedCellCount >= repackThreshold) {
+            for (const id of this._repackRegionCellsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
+        } else {
+            for (const id of this._subdivideOversizedRegionsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
+        }
         for (const id of reconnectIds) this._reconnectRegionEdges(this.nodesMap[id]);
     }
     findNearestOpenCell(col, row) {

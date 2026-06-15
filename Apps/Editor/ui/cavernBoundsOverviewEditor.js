@@ -114,6 +114,46 @@ export function hitTestRailBounds(sx, sy, state, cache, displayW, displayH) {
     if (distPx < outerPx - EDGE_HIT_PX && (config.boundsMode !== "donut" || distPx > innerPx + EDGE_HIT_PX)) return "move";
     return null;
 }
+/** @param {number} sx @param {number} sy @param {import("../state.js").TileLabGameState} state @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @returns {CavernDragMode | null} */
+export function hitTestEraseBounds(sx, sy, state, cache, displayW, displayH) {
+    const config = state.editor.eraseConfig;
+    const cellSize = gridSettings.cellSize;
+    if (config.boundsMode === "rect") {
+        const bounds = state.editor.mapBoundsPreview.erase;
+        const tl = worldToScreen(bounds.minX, bounds.minY, cache, displayW, displayH);
+        const br = worldToScreen(bounds.maxX, bounds.maxY, cache, displayW, displayH);
+        const left = tl.x;
+        const top = tl.y;
+        const right = br.x;
+        const bottom = br.y;
+        const nearLeft = Math.abs(sx - left) <= EDGE_HIT_PX;
+        const nearRight = Math.abs(sx - right) <= EDGE_HIT_PX;
+        const nearTop = Math.abs(sy - top) <= EDGE_HIT_PX;
+        const nearBottom = Math.abs(sy - bottom) <= EDGE_HIT_PX;
+        const insideX = sx >= left && sx <= right;
+        const insideY = sy >= top && sy <= bottom;
+        if (!insideX || !insideY) return null;
+        if (nearRight && nearBottom) return "resize-se";
+        if (nearLeft && nearBottom) return "resize-sw";
+        if (nearRight && nearTop) return "resize-ne";
+        if (nearLeft && nearTop) return "resize-nw";
+        if (nearRight) return "resize-e";
+        if (nearLeft) return "resize-w";
+        if (nearBottom) return "resize-s";
+        if (nearTop) return "resize-n";
+        return "move";
+    }
+    const center = getCavernCenterWorld(config, cellSize);
+    const centerS = worldToScreen(center.x, center.y, cache, displayW, displayH);
+    const distPx = Math.hypot(sx - centerS.x, sy - centerS.y);
+    const mapW = cache.maxX - cache.minX;
+    const outerPx = ((config.outerRadiusCells * cellSize) / mapW) * displayW;
+    const innerPx = ((getCavernInnerRadiusCells(config) * cellSize) / mapW) * displayW;
+    if (Math.abs(distPx - outerPx) <= EDGE_HIT_PX) return "resize-outer";
+    if (config.boundsMode === "donut" && Math.abs(distPx - innerPx) <= EDGE_HIT_PX) return "resize-inner";
+    if (distPx < outerPx - EDGE_HIT_PX && (config.boundsMode !== "donut" || distPx > innerPx + EDGE_HIT_PX)) return "move";
+    return null;
+}
 /**
  * @param {CavernDragMode} mode
  * @param {number} dxWorld
@@ -204,9 +244,15 @@ export function cavernBoundsCursor(mode) {
     if (mode === "resize-n" || mode === "resize-s") return "ns-resize";
     return "nwse-resize";
 }
+/** @param {import("../state.js").TileLabGameState} state @param {"cavern" | "rail" | "erase"} genKind @param {number} sx @param {number} sy @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @returns {CavernDragMode | null} */
+function hitTestMapGenBounds(genKind, sx, sy, state, cache, displayW, displayH) {
+    if (genKind === "rail") return hitTestRailBounds(sx, sy, state, cache, displayW, displayH);
+    if (genKind === "erase") return hitTestEraseBounds(sx, sy, state, cache, displayW, displayH);
+    return hitTestCavernBounds(sx, sy, state, cache, displayW, displayH);
+}
 /** @param {HTMLCanvasElement} canvas @param {import("../state.js").TileLabGameState} state @param {() => void} onChange */
 export function mountOverviewBoundsEditors(canvas, state, onChange) {
-    /** @type {"cavern" | "rail" | null} */
+    /** @type {"cavern" | "rail" | "erase" | null} */
     let dragTarget = null;
     /** @type {CavernDragMode | null} */
     let dragMode = null;
@@ -229,8 +275,7 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
                 canvas.style.cursor = "default";
                 return;
             }
-            const hit =
-                genKind === "rail" ? hitTestRailBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH) : hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
+            const hit = hitTestMapGenBounds(genKind, sx, sy, state, frame.cache, frame.displayW, frame.displayH);
             canvas.style.cursor = cavernBoundsCursor(hit);
             return;
         }
@@ -241,6 +286,9 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
         else if (dragTarget === "rail")
             if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.railConfig);
             else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.railConfig);
+        else if (dragTarget === "erase")
+            if (dragMode === "resize-outer" || dragMode === "resize-inner") applyCavernBoundsDragAtPointer(dragMode, world.x, world.y, state.editor.eraseConfig);
+            else applyCavernBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, state.editor.eraseConfig);
         lastWorldX = world.x;
         lastWorldY = world.y;
         onChange();
@@ -253,8 +301,7 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
         const rect = canvas.getBoundingClientRect();
         const sx = ((e.clientX - rect.left) / rect.width) * frame.displayW;
         const sy = ((e.clientY - rect.top) / rect.height) * frame.displayH;
-        const hit =
-            genKind === "rail" ? hitTestRailBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH) : hitTestCavernBounds(sx, sy, state, frame.cache, frame.displayW, frame.displayH);
+        const hit = hitTestMapGenBounds(genKind, sx, sy, state, frame.cache, frame.displayW, frame.displayH);
         if (!hit) return;
         e.preventDefault();
         e.stopPropagation();

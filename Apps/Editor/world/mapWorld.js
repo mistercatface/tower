@@ -6,6 +6,7 @@ import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Li
 import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/grid/gridCellTopology.js";
+import { cellInRect } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { syncGridTopologyCaches } from "../../../Libraries/Spatial/grid/vertexPassability.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
@@ -20,7 +21,7 @@ import {
     isCavernGlobalCellInBounds,
     migrateCavernConfigForMode,
 } from "./cavernBounds.js";
-import { getCellBoundsAabb, getCellBoundsAabbInto } from "./cellBoundsConfig.js";
+import { getCellBoundsAabb, getCellBoundsAabbInto, getCellBoundsStampExtent } from "./cellBoundsConfig.js";
 export { getCavernBoundsAabb, centerCavernBoundsOnViewport, syncCavernSizeFromPlayArea };
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 const CLEAR_CIRCLE_BOUNDS = createAabb();
@@ -84,6 +85,29 @@ export function refreshLabMapBoundsPreview(state) {
         cache.railDonutThicknessCells = railCfg.donutThicknessCells;
         getCellBoundsAabbInto(cache.rail, railCfg, cellSize);
     }
+    const eraseCfg = state.editor.eraseConfig;
+    if (
+        cache.eraseMode !== eraseCfg.boundsMode ||
+        cache.eraseCol !== eraseCfg.boundsCol ||
+        cache.eraseRow !== eraseCfg.boundsRow ||
+        cache.eraseCols !== eraseCfg.boundsCols ||
+        cache.eraseRows !== eraseCfg.boundsRows ||
+        cache.eraseCenterCol !== eraseCfg.centerCol ||
+        cache.eraseCenterRow !== eraseCfg.centerRow ||
+        cache.eraseOuterRadiusCells !== eraseCfg.outerRadiusCells ||
+        cache.eraseDonutThicknessCells !== eraseCfg.donutThicknessCells
+    ) {
+        cache.eraseMode = eraseCfg.boundsMode;
+        cache.eraseCol = eraseCfg.boundsCol;
+        cache.eraseRow = eraseCfg.boundsRow;
+        cache.eraseCols = eraseCfg.boundsCols;
+        cache.eraseRows = eraseCfg.boundsRows;
+        cache.eraseCenterCol = eraseCfg.centerCol;
+        cache.eraseCenterRow = eraseCfg.centerRow;
+        cache.eraseOuterRadiusCells = eraseCfg.outerRadiusCells;
+        cache.eraseDonutThicknessCells = eraseCfg.donutThicknessCells;
+        getCellBoundsAabbInto(cache.erase, eraseCfg, cellSize);
+    }
 }
 /**
  * @param {import("../state.js").TileLabGameState["viewport"]} viewport
@@ -101,8 +125,10 @@ export function applyPlayAreaConfig(state) {
     const { playConfig, cavernConfig, railConfig } = state.editor;
     syncCavernBoundsFromPlay(viewport, playConfig, cavernConfig, { center: true, syncSizeFromPlay: true });
     syncCavernBoundsFromPlay(viewport, playConfig, railConfig, { center: true, syncSizeFromPlay: true });
+    syncCavernBoundsFromPlay(viewport, playConfig, state.editor.eraseConfig, { center: true, syncSizeFromPlay: true });
     migrateCavernConfigForMode(cavernConfig);
     migrateCavernConfigForMode(railConfig);
+    migrateCavernConfigForMode(state.editor.eraseConfig);
     ensureLabObstacleGridCoverage(state);
     rebuildLabMapCaches(state);
 }
@@ -141,7 +167,63 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     state.navigation.onObstaclesChanged(damageBounds);
 }
-/** @param {import("../state.js").TileLabGameState} state @param {import("../../Math/Aabb2D.js").Aabb2D | null} [extraAabb] */
+/** @param {import("../TileLabEditorState.js").TileLabEditorState["eraseConfig"]} config @param {number} globalCol @param {number} globalRow */
+function isEraseCellInShape(config, globalCol, globalRow) {
+    if (config.boundsMode === "rect") return globalCol >= config.boundsCol && globalCol < config.boundsCol + config.boundsCols && globalRow >= config.boundsRow && globalRow < config.boundsRow + config.boundsRows;
+    const dist = Math.hypot(globalCol - config.centerCol, globalRow - config.centerRow);
+    if (config.boundsMode === "circle") return dist <= config.outerRadiusCells;
+    const innerR = getCavernInnerRadiusCells(config);
+    return dist <= config.outerRadiusCells && dist >= innerR;
+}
+/** @param {import("../state.js").TileLabGameState} state @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} */
+function eraseWallsInShape(state) {
+    const grid = state.obstacleGrid;
+    if (!grid?.cols) return null;
+    const { eraseConfig } = state.editor;
+    const cellSize = grid.cellSize;
+    const { originCol, originRow, cols, rows } = getCellBoundsStampExtent(eraseConfig);
+    let startCol = Infinity;
+    let endCol = -1;
+    let startRow = Infinity;
+    let endRow = -1;
+    for (let lr = 0; lr < rows; lr++)
+        for (let lc = 0; lc < cols; lc++) {
+            const globalCol = originCol + lc;
+            const globalRow = originRow + lr;
+            if (!isEraseCellInShape(eraseConfig, globalCol, globalRow)) continue;
+            const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
+            if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
+            const idx = col + row * grid.cols;
+            let cellChanged = false;
+            if (cellIsStaticWallAtIdx(grid, idx)) {
+                grid.grid[idx] = 0;
+                cellChanged = true;
+            }
+            if (grid.edgeStore.hasAnyAtIdx(idx)) {
+                grid.clearCellEdges(col, row);
+                cellChanged = true;
+            }
+            if (!cellChanged) continue;
+            if (col < startCol) startCol = col;
+            if (col > endCol) endCol = col;
+            if (row < startRow) startRow = row;
+            if (row > endRow) endRow = row;
+        }
+    if (startCol === Infinity) return null;
+    grid.bumpWallGridRevision();
+    return { startCol, endCol, startRow, endRow };
+}
+/** @param {import("../state.js").TileLabGameState} state */
+export function eraseLabWallsInBounds(state) {
+    ensureLabObstacleGridCoverage(state, getCellBoundsAabb(state.editor.eraseConfig, gridSettings.cellSize));
+    const damageBounds = eraseWallsInShape(state);
+    if (!damageBounds) return;
+    state.worldSurfaces.invalidateGridBounds(damageBounds, state);
+    syncGridTopologyCaches(state.obstacleGrid, state.sandbox?._passagePowerSyncKey ?? "");
+    state.navigation.onObstaclesChanged(damageBounds);
+    state.worldSurfaces.clearBakeCache();
+    rebuildLabMapCaches(state);
+}
 export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     const cellSize = gridSettings.cellSize;
     let required = getCavernBoundsPreview(state.editor.cavernConfig);

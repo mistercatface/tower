@@ -21,6 +21,16 @@ export function createLabMapBoundsPreview() {
         railCenterRow: NaN,
         railOuterRadiusCells: NaN,
         railDonutThicknessCells: NaN,
+        erase: createAabb(),
+        eraseMode: "",
+        eraseCol: NaN,
+        eraseRow: NaN,
+        eraseCols: NaN,
+        eraseRows: NaN,
+        eraseCenterCol: NaN,
+        eraseCenterRow: NaN,
+        eraseOuterRadiusCells: NaN,
+        eraseDonutThicknessCells: NaN,
     };
 }
 /** Tilelab editor UI and map-authoring state — not used by sandbox sim logic. */
@@ -58,6 +68,17 @@ export class TileLabEditorState {
             iterations: 3,
             wallHeightLevel: 9,
             edgeThickness: 2,
+        };
+        this.eraseConfig = {
+            boundsMode: "rect",
+            boundsCol: -8,
+            boundsRow: -8,
+            boundsCols: 32,
+            boundsRows: 32,
+            centerCol: 8,
+            centerRow: 8,
+            outerRadiusCells: 16,
+            donutThicknessCells: 4,
         };
         this.sidebarPanel = "sandbox";
         this.showAnimationPreview = false;
