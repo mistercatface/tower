@@ -2,7 +2,7 @@
 
 **~70%** — HPA click-to-move on big maps. **Main requests a path; worker plans and stitches it.** Main applies waypoints and steers — no A\*, stitch, or graph surgery on the click hot path.
 
-The click/replan pipe is largely wired. What blocks “done” is **abstract graph integrity after edits** — today add/delete/update leave wrong region nodes, adjacent duplicate centroids, and edges that don’t match real `canStep` connectivity. Paths on a freshly loaded map are more trustworthy than paths after carving rails/voxels.
+The click/replan pipe is largely wired. What blocks “done” is **abstract graph integrity after edits** — incremental split/assign/reconnect leaves wrong region nodes, adjacent duplicate centroids, and edges that don’t match real `canStep` connectivity. The fix is **hull cut + rebuild** (recompute assignment in the dirty patch), not merge heuristics on stale state.
 
 ---
 
@@ -14,25 +14,31 @@ The click/replan pipe is largely wired. What blocks “done” is **abstract gra
 
 **Broken today**
 
-- **Delete / open connectivity** — removing a rail or voxel can join two floor cells but **never merges** their regions (`mergeSmallRegions` runs only on full init).
-- **Split without merge** — every edit re-splits regions in the damage patch; disconnected components peel into new adjacent centroids; opened corridors still show paired blue nodes.
-- **Assign orphans** — `_assignOpenedCells` only merges into neighbors when `canStep` reaches them during flood; otherwise it mints a 1-cell region next to an existing one.
-- **Historical residue** — regions can still span `canStep`-disconnected cells until split runs; centroids sit in pockets while edges route through other cells in the same region.
+- **Incremental surgery, not recompute** — `rebuildDamagedArea` splits, assigns opened cells, subdivides, and reconnects on top of old `nodesMap` / `cellToNode`. That leaves residue: adjacent duplicate centroids, regions spanning `canStep`-disconnected cells, stale abstract edges.
+- **Repack only on huge carves** — `_repackRegionCellsInBox` (cut hull → `_createRegionFromCells`) runs only when `openedCellCount ≥ 2 × maxCellsPerChunk`. Rail deletes and small edits never get the clean rebuild path.
+- **Assign orphans** — `_assignOpenedCells` mints 1-cell regions when flood fill can’t reach a neighbor through `canStep`; paired blue nodes beside an existing region.
+- **Merge is init-only** — `mergeSmallRegions` runs on full Voronoi init, not on edits; incremental “merge passably connected” was patch-on-patch, not the target model.
 
-**Target contract**
+**Target contract — hull cut + rebuild**
+
+Define a **dirty hull** (edit bounds + `damagePadding` + nav topology margin). Inside the hull, region assignment is **recomputed from current walk topology**, not patched.
 
 | Operation | Expectation |
 | --------- | ----------- |
-| **Add** wall/rail | Split or repack in dirty hull; no new abstract edge unless a real crossing exists; unreachable pockets pruned from seed. |
-| **Delete** wall/rail | Merge passably connected regions in hull; no extra centroids; no stale edges to removed components. |
-| **Update** boundary | Same as add/delete for touched topology; incremental `mergeSmallRegions` (or localized repack), not init-only. |
+| **Add** wall/rail | Strip blocked cells; repack open cells in hull; reconnect boundary to exterior; prune unreachable from seed. |
+| **Delete** wall/rail | Same repack — no merge step. One Voronoi partition per `canStep`(+hop) component inside hull; no extra centroids; no stale edges. |
+| **Update** boundary | Same hull semantics for any touched topology. |
+
+“Passably connected” applies only at the **hull boundary** — which exterior region links to which new interior region across a real `canStep`/hop crossing. Inside the hull, connectivity is whatever flood fill produces.
 
 **Work**
 
-- Merge when `canStep` opens between existing regions (mirror `mergeSmallRegions` on incremental path).
-- Run `mergeSmallRegions` (or equivalent) after reconnect in `rebuildDamagedArea`.
-- Localized repack in dirty hull on topology-only edits (rails), not only large voxel carves.
-- Edge validation stays (`_regionsSharePassableLink`); extend tests around rail maze erase / single-edge delete.
+- Make localized hull repack the default in `rebuildDamagedArea` (every topology edit), not only large voxel opens.
+- Cut: collect open cells from regions touching hull → remove those region nodes → clear `cellToNode` in hull.
+- Rebuild: `_createRegionFromCells` per walk component (same math as init: distance-to-wall seeding, `maxCellsPerChunk`, `canStep`).
+- Stitch: reconnect hull regions to unchanged exterior; `_validateRegionEdges` / `_regionsSharePassableLink`; prune unreachable from seed.
+- Drop or demote incremental split/assign/merge paths that duplicate repack (keep strip-blocked for adds).
+- Tests: rail maze erase, single-edge delete — node count, centroids, and edges match walk components.
 
 ### 2. Worker-owned abstract graph (~15%)
 
@@ -71,7 +77,7 @@ The click/replan pipe is largely wired. What blocks “done” is **abstract gra
 - Incremental `patchNavTopology`; full sync only on init / resize / no bounds
 - Cost-only abstract edges; worker local A* at stitch
 - Portal hop mouth clamp on path follow
-- Region repack on large carve; subdivide oversized regions in dirty hull
+- Region repack on large carve only (→ default hull repack is next); subdivide oversized in dirty hull
 - Edit-time `canStep` on split/reconnect/prune; edge validation against real crossings
 - Editor eraser (`gen:erase`) for carve testing
 
