@@ -3,7 +3,9 @@ import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
 import { snapshotIsBlocked, snapshotWorldToGrid, snapshotCanStep } from "./GridNavSnapshot.js";
+import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 const MAX_CACHE = 100;
+const FLOW_DONE = "flowDone";
 export class FlowFieldGrid {
     constructor(cellSize, width, height, navGraph, workerUrl) {
         this.cellSize = cellSize;
@@ -20,15 +22,16 @@ export class FlowFieldGrid {
         this.sabFlowPool = new SharedArrayBuffer(size * MAX_CACHE);
         this.cacheLookup = new Int32Array(size).fill(-1);
         this.cacheCounter = 0;
-        this.slotRequestId = new Int32Array(MAX_CACHE);
-        this.slotReadyId = new Int32Array(MAX_CACHE);
         this._topologyKey = "";
         if (!workerUrl) throw new Error("FlowFieldGrid requires an injected workerUrl");
-        this.worker = new Worker(workerUrl, { type: "module" });
-        this.worker.onmessage = (e) => {
-            if (e.data.type === "flowDone") this.slotReadyId[e.data.slot] = e.data.requestId;
+        this._workerHost = createSabSlotWorkerHost(workerUrl, MAX_CACHE);
+        this._workerHost.worker.onmessage = (e) => {
+            if (e.data.type === FLOW_DONE) this._workerHost.markReady(e.data.slot, e.data.requestId);
         };
-        this.worker.postMessage({ type: "init", data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabObstacle: this.sabObstacle, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool } });
+        this._workerHost.worker.postMessage({
+            type: "init",
+            data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabObstacle: this.sabObstacle, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool },
+        });
         this.offsetX = width / 2;
         this.offsetY = height / 2;
         this.centerX = 0;
@@ -41,8 +44,7 @@ export class FlowFieldGrid {
     invalidateFlowSlots() {
         this.cacheLookup.fill(-1);
         this.cacheCounter = 0;
-        this.slotRequestId.fill(0);
-        this.slotReadyId.fill(0);
+        this._workerHost.invalidateSlots();
     }
     rebuildLocalObstacles(navSnapshot) {
         const size = this.cols * this.rows;
@@ -119,8 +121,7 @@ export class FlowFieldGrid {
         this.ensureLocalTopology(this.navGraph.ensureGridNavSnapshot());
     }
     isFlowSlotReady(slot) {
-        const requestId = this.slotRequestId[slot];
-        return requestId > 0 && this.slotReadyId[slot] === requestId;
+        return this._workerHost.isReady(slot);
     }
     flowFieldView(slot) {
         const size = this.cols * this.rows;
@@ -132,10 +133,7 @@ export class FlowFieldGrid {
         return slot;
     }
     postFlowRequest(slot, tx, ty, range) {
-        let requestId = (this.slotRequestId[slot] + 1) | 0;
-        if (requestId === 0) requestId = 1;
-        this.slotRequestId[slot] = requestId;
-        this.worker.postMessage({ type: "updateFlow", slot, requestId, tx, ty, range });
+        this._workerHost.post(slot, { type: "updateFlow", tx, ty, range });
     }
     ensureFlowRequest(targetX, targetY, range = 999999) {
         const target = this.worldToGrid(targetX, targetY);

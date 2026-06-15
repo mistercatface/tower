@@ -48,3 +48,4 @@ export function installGameWorldSurfaceSettings(overrides) {
 }
 export const TILE_WORKER_URL = new URL("./WorldSurface/TileWorkerEntry.js", import.meta.url);
 export const FLOW_FIELD_WORKER_URL = new URL("./Navigation/FlowFieldWorkerEntry.js", import.meta.url);
+export const HPA_WORKER_URL = new URL("./Navigation/HpaWorkerEntry.js", import.meta.url);

@@ -7,6 +7,8 @@ alwaysApply: true
 
 Plain JS, no `@ts-check`. **Do not annotate signatures.** The code is the contract.
 
+**Constructors and all function bodies: zero `@type`, zero `@param` — see `no-inline-type-in-constructors.mdc`.**
+
 ## Banned
 
 - `@param` / `@returns` on functions, methods, constructors, closures — anywhere

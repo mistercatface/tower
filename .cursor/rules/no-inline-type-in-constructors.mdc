@@ -1,0 +1,56 @@
+---
+description: Never put /** @type or any @tag JSDoc inside constructors or function bodies
+alwaysApply: true
+---
+
+# No inline JSDoc inside constructors or functions
+
+**`/** @type { ... } */` and all other `@` tags are banned inside constructors, methods, loops, and callbacks.** Not "prefer less." Not "only when needed." **Never.**
+
+Module-level `@typedef` for cross-boundary shapes is fine. One-line prose (no `@` tags) is fine. Everything else inside `{ }` blocks is not.
+
+## Constructors — especially
+
+Do not annotate `this`, locals, or params inside a `constructor`:
+
+```javascript
+// ❌ NEVER
+constructor(grid) {
+    /** @type {Map<number, Hop[]>} */
+    this.hops = new Map();
+    /** @type {import("./Foo.js").Foo | null} */
+    this._foo = null;
+}
+
+// ✅ JUST WRITE THE CODE
+constructor(grid) {
+    this.hops = new Map();
+    this._foo = null;
+}
+```
+
+## Any function body — same rule
+
+```javascript
+// ❌ NEVER
+function bake() {
+    /** @type {Int32Array} */
+    const offsets = new Int32Array(size);
+    for (const item of items) {
+        /** @type {number} */
+        let write = 0;
+    }
+}
+
+// ✅ NEVER ADD @type TO "FIX" INFERENCE — USE PLAIN JS
+function bake() {
+    const offsets = new Int32Array(size);
+    let write = 0;
+}
+```
+
+## If an agent adds it
+
+Remove it in the same pass. Do not refactor the surrounding code to "justify" the annotation. Do not replace inner `@type` with inner `@param`. Delete the comment block.
+
+See also `jsdoc-minimal.mdc` for the full JSDoc policy.

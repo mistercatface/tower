@@ -146,3 +146,45 @@ export function runAbstractAStar(startNodeId, targetNodeId, nodesMap) {
     }
     return null;
 }
+/** Flat CSR abstract A* — node indices, worker-safe. */
+export function runAbstractAStarFlat(startIdx, targetIdx, nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount) {
+    if (startIdx === targetIdx) return [startIdx];
+    const targetCol = nodeCol[targetIdx];
+    const targetRow = nodeRow[targetIdx];
+    const openSet = new MinHeap((a, b) => a.f - b.f);
+    const cameFrom = new Int16Array(nodeCount);
+    cameFrom.fill(-1);
+    const gScore = new Float32Array(nodeCount);
+    gScore.fill(Infinity);
+    gScore[startIdx] = 0;
+    openSet.push({ id: startIdx, f: octileDistance(nodeCol[startIdx], nodeRow[startIdx], targetCol, targetRow) });
+    while (openSet.size > 0) {
+        const curr = openSet.pop();
+        const currentIdx = curr.id;
+        const currentG = gScore[currentIdx];
+        const bestF = currentG + octileDistance(nodeCol[currentIdx], nodeRow[currentIdx], targetCol, targetRow);
+        if (curr.f > bestF + STALE_F_EPSILON) continue;
+        if (currentIdx === targetIdx) {
+            const path = [];
+            let node = currentIdx;
+            while (node !== -1) {
+                path.push(node);
+                node = cameFrom[node];
+            }
+            path.reverse();
+            return path;
+        }
+        const edgeStart = edgeOffsets[currentIdx];
+        const edgeEnd = edgeOffsets[currentIdx + 1];
+        for (let i = edgeStart; i < edgeEnd; i++) {
+            const neighborIdx = edgeTargets[i];
+            const tentativeG = currentG + edgeCosts[i];
+            if (tentativeG < gScore[neighborIdx]) {
+                cameFrom[neighborIdx] = currentIdx;
+                gScore[neighborIdx] = tentativeG;
+                openSet.push({ id: neighborIdx, f: tentativeG + octileDistance(nodeCol[neighborIdx], nodeRow[neighborIdx], targetCol, targetRow) });
+            }
+        }
+    }
+    return null;
+}

@@ -1,10 +1,8 @@
 import { expandBoundaryHopsInCellPath, boundaryHopWaypointIndex } from "./boundaryNavHops.js";
 import { findPathProgressIdx } from "./pathFollow.js";
-
 /** @typedef {import("./navSession.js").NavSessionState} NavSessionState */
 /** @typedef {import("./HierarchicalNavigator.js").HierarchicalNavigator} HierarchicalNavigator */
 /** @typedef {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
-
 /** @param {NavSessionState} navState */
 export function clearHpaNavPath(navState) {
     navState.path = null;
@@ -14,7 +12,6 @@ export function clearHpaNavPath(navState) {
     navState.navPathActive = false;
     navState.crossingGrant = null;
 }
-
 /**
  * @param {{
  *   hierarchicalNavigator: HierarchicalNavigator | null | undefined,
@@ -26,14 +23,14 @@ export function clearHpaNavPath(navState) {
  *   targetY: number,
  *   nowMs: number,
  * }} params
- * @returns {{ cellPath: { col: number, row: number }[], worldPath: { x: number, y: number }[], abstractNodes: { x: number, y: number, id?: string }[] | null, pathPlanner: string | null } | null}
+ * @returns {Promise<{ cellPath: { col: number, row: number }[], worldPath: { x: number, y: number }[], abstractNodes: { x: number, y: number, id?: string }[] | null, pathPlanner: string | null } | null>}
  */
-export function replanHpaNavPath({ hierarchicalNavigator, navState, obstacleGrid, startX, startY, targetX, targetY, nowMs }) {
+export async function replanHpaNavPath({ hierarchicalNavigator, navState, obstacleGrid, startX, startY, targetX, targetY, nowMs }) {
     if (!hierarchicalNavigator?.computeCellPath) {
         clearHpaNavPath(navState);
         return null;
     }
-    const result = hierarchicalNavigator.computeCellPath(startX, startY, targetX, targetY);
+    const result = await hierarchicalNavigator.computeCellPath(startX, startY, targetX, targetY);
     if (!result) {
         clearHpaNavPath(navState);
         return null;
