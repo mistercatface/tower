@@ -12,7 +12,7 @@ import {
     parsePortalAccessMode,
     PORTAL_ACCESS_MODE,
 } from "./CellEdge.js";
-import { registerPortalEdgeSlot, unregisterPortalEdgeSlot } from "../../Sandbox/portalLinks.js";
+import { registerPortalEdgeSlot, unregisterPortalEdgeSlot } from "./portalSlotIndex.js";
 import { portalAccessDefaultAllowedSide } from "./portalAccess.js";
 import { resolvePassageStepFrom, resolvePassageStepUndirected } from "./passageStep.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";

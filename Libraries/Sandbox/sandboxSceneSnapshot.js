@@ -3,7 +3,7 @@ import { gridCellToGlobalColRow, isCanonicalEdgeRepresentative } from "../World/
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
 import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";
-import { recomputePortalSlotIndex } from "./portalLinks.js";
+import { recomputePortalSlotIndex } from "../Spatial/grid/portalSlotIndex.js";
 import { notifyGridWallChange } from "./boundaryEdit.js";
 import {
     applyStampedForcefieldsFromGlobal,

@@ -28,8 +28,8 @@ import {
     gridRailWallEdge,
     gridWallEdgeEndpoints,
 } from "../World/wallGridCells.js";
+import { findPortalEdgeByKey } from "../Spatial/grid/portalSlotIndex.js";
 import {
-    findPortalEdgeByKey,
     formatPortalConnectionLabel,
     linkPortalEdges,
     parsePortalLinkMode,

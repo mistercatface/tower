@@ -6,7 +6,7 @@ import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
 import { syncBoundaryNavIndex } from "./boundaryNavIndex.js";
-import { syncVertexPassability } from "../Spatial/grid/vertexPassability.js";
+import { syncGridTopologyCaches } from "../Spatial/grid/gridTopologySync.js";
 /** @typedef {{ col: number, row: number, side: number, key: number }} PassageEdgeRef */
 /**
  * Cardinal edge endpoints as grid vertices (cell-corner coordinates).
@@ -330,7 +330,7 @@ export function syncPassagePowerNetwork(state) {
     }
     if (!portalCount) grid.boundaryNavHops = new Map();
     else if (boundaryNavDirty || portalCountChanged) syncBoundaryNavIndex(state);
-    syncVertexPassability(grid, state.sandbox._passagePowerSyncKey);
+    syncGridTopologyCaches(grid, state.sandbox._passagePowerSyncKey);
     if (minCol === Infinity) return;
     state.navigation.onObstaclesChanged({ startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow });
 }

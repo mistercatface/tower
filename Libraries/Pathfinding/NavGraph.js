@@ -2,17 +2,24 @@
  * Read-only occupancy grid + coordinate mapping consumed by pathfinding algorithms.
  * `Libraries/Spatial/grid/WorldObstacleGrid` implements this shape.
  *
+ * Grid layers (see also `Libraries/Spatial/grid/`):
+ * - **Cells** (`grid[]`) — walkability / static wall height per cell center
+ * - **Edges** (`CellEdgeStore`) — rail walls, forcefields, portals on cell sides (4-way storage)
+ * - **Boundaries** (`boundaryOccupancy`) — crossing API over edges (cardinal step + passage policy)
+ * - **Vertices** (`vertexPassability`) — corner keys; diagonal shoulder rules + half-edge masks
+ * - **Hops** (`boundaryNavHops`, Sandbox today) — abstract portal jumps for HPA / nav
+ *
  * @typedef {object} NavGraph
  * @property {number} cols
  * @property {number} rows
  * @property {number} cellSize
  * @property {number} minX
  * @property {number} minY
- * @property {Uint8Array} grid — 0 walkable, 1 blocked
+ * @property {Uint8Array} grid — 0 = open floor, >0 = static wall height level
  * @property {(x: number, y: number) => { col: number, row: number }} worldToGrid
  * @property {(col: number, row: number) => { x: number, y: number }} gridToWorld
- * @property {(col: number, row: number) => boolean} isBlocked
- * @property {(currCol: number, currRow: number, nextCol: number, nextRow: number) => boolean} canStep
+ * @property {(col: number, row: number) => boolean} isBlocked — true when `grid[idx] !== 0`
+ * @property {(currCol: number, currRow: number, nextCol: number, nextRow: number) => boolean} canStep — cell centers + edge/passage rules + vertex cache for diagonals
  */
 /**
  * Optional boundary-hop adjacency on a nav graph (portals today; more hop kinds later).

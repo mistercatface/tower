@@ -1,33 +1,11 @@
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
+import { findPortalEdgeByKey } from "../Spatial/grid/portalSlotIndex.js";
 import { resolveCardinalStepCrossing } from "../Spatial/grid/portalAccess.js";
 import { portalPassageBlocksStepFrom } from "./portalStep.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { canonicalEdgeCellKey, forEachGridEdge } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
 import { canLinkPortalsOnNetwork } from "./passagePowerNetwork.js";
 export const PORTAL_LINK_MODE = { Shared: "shared", OneWay: "oneWay" };
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-export function recomputePortalSlotIndex(grid) {
-    /** @type {Map<number, { col: number, row: number, side: number }>} */
-    const index = new Map();
-    if (grid.cols && grid.edgeStore.portalEdgeCount)
-        forEachGridEdge(
-            grid,
-            (col, row, side) => {
-                index.set(canonicalEdgeCellKey(grid, col, row, side), { col, row, side });
-            },
-            { canonicalOnly: true, filter: isPortalEdge },
-        );
-    grid.portalSlotByKey = index;
-}
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
-export function registerPortalEdgeSlot(grid, col, row, side) {
-    if (!grid.portalSlotByKey) grid.portalSlotByKey = new Map();
-    grid.portalSlotByKey.set(canonicalEdgeCellKey(grid, col, row, side), { col, row, side });
-}
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
-export function unregisterPortalEdgeSlot(grid, col, row, side) {
-    grid.portalSlotByKey?.delete(canonicalEdgeCellKey(grid, col, row, side));
-}
 /** @param {unknown} raw */
 export function parsePortalLinkMode(raw) {
     if (raw === PORTAL_LINK_MODE.OneWay) return PORTAL_LINK_MODE.OneWay;
@@ -37,19 +15,6 @@ export function parsePortalLinkMode(raw) {
 export function formatPortalConnectionLabel(linkMode, fromSelf) {
     if (linkMode !== PORTAL_LINK_MODE.OneWay) return "Shared (⇄)";
     return fromSelf ? "One-way (this → partner)" : "One-way (partner → this)";
-}
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {number} key
- * @returns {{ col: number, row: number, side: number, edge: object } | null}
- */
-export function findPortalEdgeByKey(grid, key) {
-    if (!key || !grid.cols) return null;
-    const slot = grid.portalSlotByKey?.get(key);
-    if (!slot) return null;
-    const edge = grid.edgeStore.get(slot.col, slot.row, slot.side, grid.cols);
-    if (!isPortalEdge(edge)) return null;
-    return { col: slot.col, row: slot.row, side: slot.side, edge };
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
