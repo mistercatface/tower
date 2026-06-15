@@ -24,12 +24,23 @@ Do **not** update `Libraries/*/index.js` every time you add or move an internal 
 
 ## When a barrel exists at all
 
-Only for a **true package boundary** with a small, stable top-level API:
+Only for a **true package boundary** with a small, stable top-level API.
+
+**Canonical template:** `Libraries/Pathfinding/index.js` — four lines, entry types only:
+
+```javascript
+export { HierarchicalNavigator } from "./HierarchicalNavigator.js";
+export { FlowFieldGrid } from "./FlowFieldGrid.js";
+export { createNavState } from "./navSession.js";
+export * as Corridor from "./Corridor/index.js";
+```
+
+Everything else (`boundaryNavHops.js`, `pathFollow.js`, `AStar.js`, …) is imported **directly** from its module. Do not add those to the barrel.
 
 | OK | Not OK |
 |----|--------|
-| `Sandbox/index.js` — toy/session entry points consumers actually import | `Pathfinding/index.js` listing every A* helper |
-| `RoomGraph/index.js` — orchestration surface | Re-exporting every file in a folder "for discoverability" |
+| `Pathfinding/index.js` — navigator, flow grid, session, nested `Corridor` namespace | Listing every A* / hop / steering helper in `index.js` |
+| `Sandbox/index.js` — toy/session entry points consumers actually import | Re-exporting every file in a folder "for discoverability" |
 | `Corridor/index.js` — sub-package with several modules, one door | `export { foo } from "./foo.js"` passthrough chains |
 
 A minimal barrel exports **entry types** (navigator, session factory, schema version) — not every function in the folder.
