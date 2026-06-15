@@ -6,6 +6,7 @@ export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
 const MAX_GRAPH_EDGES = MAX_HPA_GRAPH_NODES * 32;
 const HPA_DONE = "hpaDone";
+const ABSTRACT_READY = "abstractReady";
 const SYNC_NAV_DONE = "syncNavDone";
 const GRAPH_SYNC_DONE = "graphSyncDone";
 /**
@@ -28,6 +29,8 @@ export class HpaPathWorker {
         this._slotFree = [];
         for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
         this._slotOwner = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
+        /** @type {Array<{ requestId: number, onAbstractReady?: (result: object) => void, prep: object, nav: object } | null>} */
+        this._replanHooks = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
         this.sabPathMetaPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * 8);
         this.sabPathColsPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_HPA_PATH_LEN * 2);
         this.sabPathRowsPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_HPA_PATH_LEN * 2);
@@ -54,6 +57,15 @@ export class HpaPathWorker {
                 this._graphSyncResolve = null;
                 this._graphSyncPromise = null;
                 resolve();
+                return;
+            }
+            if (type === ABSTRACT_READY) {
+                const hook = this._replanHooks[slot];
+                if (hook && hook.requestId === requestId) {
+                    const abstractIdx = this._readAbstractIdx(slot);
+                    const abstractResult = hook.nav._workerReplanResult(null, hook.prep, abstractIdx);
+                    if (abstractResult) hook.onAbstractReady?.(abstractResult);
+                }
                 return;
             }
             if (type === HPA_DONE) this.host.markReady(slot, requestId);
@@ -295,7 +307,7 @@ export class HpaPathWorker {
         }
         return tempLegs;
     }
-    async runOneShotReplan(slot, prep, nav, graphEpoch) {
+    async runOneShotReplan(slot, prep, nav, graphEpoch, replanCtx = null) {
         await this._ensureWorkerNavReady();
         await this._ensureWorkerGraphReady(nav, graphEpoch);
         const payload = { mode: prep.mode, startCol: prep.startCol, startRow: prep.startRow, targetCol: prep.targetCol, targetRow: prep.targetRow, localMaxLen: 96 };
@@ -303,11 +315,26 @@ export class HpaPathWorker {
             payload.startCandidates = prep.startCandidates;
             payload.targetCandidates = prep.targetCandidates;
             payload.regionConnectMaxLen = prep.regionConnectMaxLen;
+            if (replanCtx?.onAbstractReady && replanCtx.replanRequestId != null) {
+                this._replanHooks[slot] = { requestId: replanCtx.replanRequestId, onAbstractReady: replanCtx.onAbstractReady, prep, nav };
+            }
         }
-        await this._dispatchAndWait(slot, "replan", payload);
-        if (prep.mode === "local") return nav._workerReplanResult(this._readCellPath(slot), prep, []);
+        try {
+            await this._dispatchAndWait(slot, "replan", payload);
+        } finally {
+            this._replanHooks[slot] = null;
+        }
+        if (prep.mode === "local") {
+            const cellPath = this._readCellPath(slot);
+            return { complete: true, result: nav._workerReplanResult(cellPath, prep, []) };
+        }
         const abstractIdx = this._readAbstractIdx(slot);
-        const cellPath = nav.stitchAbstractCellPath(abstractIdx, prep, this._readTempLegs(slot));
-        return nav._workerReplanResult(cellPath, prep, abstractIdx);
+        const tempLegs = this._readTempLegs(slot);
+        const legCount = abstractIdx.length > 1 ? abstractIdx.length - 1 : 0;
+        const firstCellPath = legCount > 0 ? nav.stitchAbstractLegRange(abstractIdx, prep, tempLegs, 0, 1) : null;
+        const result = nav._workerReplanResult(firstCellPath, prep, abstractIdx);
+        if (!result) return null;
+        if (legCount <= 1) return { complete: true, result };
+        return { complete: false, result, stitch: { abstractIdx, prep, tempLegs } };
     }
 }

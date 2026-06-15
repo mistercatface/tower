@@ -11,8 +11,27 @@ export function clearHpaNavPath(navState) {
     navState.boundaryHopIdx = null;
     navState.navPathActive = false;
     navState.crossingGrant = null;
+    navState.hpaStitchRequestId = 0;
+}
+export function applyHpaAbstractFirst(navState, result, { obstacleGrid, startX, startY, targetX, targetY, nowMs }) {
+    const nodes = result.abstractNodes;
+    if (!nodes?.length) return;
+    const gridOpts = { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy), grid: obstacleGrid };
+    navState.path = nodes.map((node) => ({ x: node.x, y: node.y }));
+    navState.pathProgressIdx = findPathProgressIdx(startX, startY, navState.path, gridOpts);
+    navState.boundaryHopIdx = null;
+    navState.abstractPath = nodes;
+    navState.pathPlanner = result.pathPlanner ?? "hpa";
+    navState.lastTargetX = targetX;
+    navState.lastTargetY = targetY;
+    navState.lastUpdate = nowMs;
 }
 export function applyHpaReplanResult(navState, result, { obstacleGrid, startX, startY, targetX, targetY, nowMs }) {
+    if (!result.cellPath?.length) {
+        if (result.abstractNodes?.length) applyHpaAbstractFirst(navState, result, { obstacleGrid, startX, startY, targetX, targetY, nowMs });
+        else clearHpaNavPath(navState);
+        return;
+    }
     const gridOpts = { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy), grid: obstacleGrid };
     const expandedCells = expandBoundaryHopsInCellPath(result.cellPath, obstacleGrid);
     const worldPath = expandedCells.map((cell) => obstacleGrid.gridToWorld(cell.col, cell.row));

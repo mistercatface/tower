@@ -476,8 +476,8 @@ export class HierarchicalNavigator {
         };
     }
     _workerReplanResult(cellPath, prep, abstractIdx) {
-        if (!cellPath) return null;
         if (prep.mode === "local") {
+            if (!cellPath) return null;
             const startWorld = this.gridToWorld(prep.startCol, prep.startRow);
             const targetWorld = this.gridToWorld(prep.targetCol, prep.targetRow);
             return {
@@ -489,6 +489,7 @@ export class HierarchicalNavigator {
                 pathPlanner: "local",
             };
         }
+        if (!abstractIdx.length) return null;
         const { nodeCol, nodeRow, startCol, startRow, targetCol, targetRow, nodeIds, nodeCount } = prep;
         const startTemp = nodeCount;
         const targetTemp = nodeCount + 1;
@@ -497,36 +498,43 @@ export class HierarchicalNavigator {
             if (idx === targetTemp) return { ...this.gridToWorld(targetCol, targetRow), id: "target" };
             return { ...this.gridToWorld(nodeCol[idx], nodeRow[idx]), id: nodeIds[idx] };
         });
+        if (!cellPath) return { cellPath: null, abstractNodes, pathPlanner: "hpa" };
         return { cellPath, abstractNodes, pathPlanner: "hpa" };
     }
-    stitchAbstractCellPath(abstractIdx, prep, tempLegs) {
+    _appendAbstractLeg(abstractIdx, prep, tempLegs, legIndex, fullCellPath) {
         const { nodeIds, nodeCount, nodeCol, nodeRow, startCol, startRow, targetCol, targetRow } = prep;
         const startTemp = nodeCount;
         const targetTemp = nodeCount + 1;
-        let fullCellPath = [];
-        for (let i = 0; i < abstractIdx.length - 1; i++) {
-            const aIdx = abstractIdx[i];
-            const bIdx = abstractIdx[i + 1];
-            let leg = tempLegs.get(`${aIdx},${bIdx}`);
-            if (!leg && aIdx < nodeCount && bIdx < nodeCount) {
-                const nodeA = this.nodesMap[nodeIds[aIdx]];
-                const nodeB = this.nodesMap[nodeIds[bIdx]];
-                const edge = nodeA?.edges.find((e) => e.targetId === nodeB.id);
-                if (edge?.path) leg = edge.path;
-            }
-            if (!leg) {
-                const aCol = aIdx === startTemp ? startCol : aIdx === targetTemp ? targetCol : nodeCol[aIdx];
-                const aRow = aIdx === startTemp ? startRow : aIdx === targetTemp ? targetRow : nodeRow[aIdx];
-                const bCol = bIdx === startTemp ? startCol : bIdx === targetTemp ? targetCol : nodeCol[bIdx];
-                const bRow = bIdx === startTemp ? startRow : bIdx === targetTemp ? targetRow : nodeRow[bIdx];
-                if (fullCellPath.length === 0) fullCellPath.push({ col: aCol, row: aRow });
-                fullCellPath.push({ col: bCol, row: bRow });
-                continue;
-            }
-            if (fullCellPath.length === 0) fullCellPath.push(...leg);
-            else fullCellPath.push(...leg.slice(1));
+        const aIdx = abstractIdx[legIndex];
+        const bIdx = abstractIdx[legIndex + 1];
+        let leg = tempLegs.get(`${aIdx},${bIdx}`);
+        if (!leg && aIdx < nodeCount && bIdx < nodeCount) {
+            const nodeA = this.nodesMap[nodeIds[aIdx]];
+            const nodeB = this.nodesMap[nodeIds[bIdx]];
+            const edge = nodeA?.edges.find((e) => e.targetId === nodeB.id);
+            if (edge?.path) leg = edge.path;
         }
+        if (!leg) {
+            const aCol = aIdx === startTemp ? startCol : aIdx === targetTemp ? targetCol : nodeCol[aIdx];
+            const aRow = aIdx === startTemp ? startRow : aIdx === targetTemp ? targetRow : nodeRow[aIdx];
+            const bCol = bIdx === startTemp ? startCol : bIdx === targetTemp ? targetCol : nodeCol[bIdx];
+            const bRow = bIdx === startTemp ? startRow : bIdx === targetTemp ? targetRow : nodeRow[bIdx];
+            if (fullCellPath.length === 0) fullCellPath.push({ col: aCol, row: aRow });
+            fullCellPath.push({ col: bCol, row: bRow });
+            return;
+        }
+        if (fullCellPath.length === 0) fullCellPath.push(...leg);
+        else fullCellPath.push(...leg.slice(1));
+    }
+    stitchAbstractLegRange(abstractIdx, prep, tempLegs, legStart, legEndExclusive) {
+        if (!abstractIdx.length || legEndExclusive <= legStart) return null;
+        const fullCellPath = [];
+        const lastLeg = Math.min(legEndExclusive, abstractIdx.length - 1);
+        for (let i = legStart; i < lastLeg; i++) this._appendAbstractLeg(abstractIdx, prep, tempLegs, i, fullCellPath);
         return fullCellPath.length ? fullCellPath : null;
+    }
+    stitchAbstractCellPath(abstractIdx, prep, tempLegs) {
+        return this.stitchAbstractLegRange(abstractIdx, prep, tempLegs, 0, abstractIdx.length - 1);
     }
     _cellPathToWaypoints(cells) {
         return cells.map((cell) => this.gridToWorld(cell.col, cell.row));
@@ -589,7 +597,7 @@ export class HierarchicalNavigator {
         const targetNode = this.cellToNode[targetIdx];
         if (replanCtx?.hpaWorker) {
             const prep = this.prepareWorkerReplan(startCol, startRow, targetCol, targetRow, replanCtx.hpaWorker.getGraphMeta());
-            return replanCtx.hpaWorker.runOneShotReplan(replanCtx.hpaSlot, prep, this, replanCtx.graphEpoch);
+            return replanCtx.hpaWorker.runOneShotReplan(replanCtx.hpaSlot, prep, this, replanCtx.graphEpoch, replanCtx);
         }
         const { startTempId, targetTempId } = this._replanTempIds(replanCtx);
         const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);

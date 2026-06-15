@@ -20,6 +20,7 @@
  * @property {"local" | "hpa" | null} [pathPlanner]
  * @property {number} [hpaReplanRequestId] — 0 = idle; non-zero while worker replan in flight
  * @property {number} [hpaReplanSlot] — leased HpaPathWorker slot, -1 when idle
+ * @property {number} [hpaStitchRequestId] — replan id owning an in-flight full stitch apply
  */
 /** @returns {NavSessionState} */
 export function createNavState() {

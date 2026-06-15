@@ -164,6 +164,76 @@ function writeTempLegs(slot, tempLegs) {
     }
     meta[0] = legCount;
 }
+function octileGridCost(fromCol, fromRow, toCol, toRow) {
+    return Math.max(Math.abs(toCol - fromCol), Math.abs(toRow - fromRow));
+}
+/** Temp-connect costs from octile distance only — for fast abstract-first estimate. */
+function buildExtendedEdgesEstimate(nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates) {
+    const startTemp = nodeCount;
+    const targetTemp = nodeCount + 1;
+    const extCount = nodeCount + 2;
+    const baseCol = persistNodeColView().subarray(0, nodeCount);
+    const baseRow = persistNodeRowView().subarray(0, nodeCount);
+    const baseOffsets = persistEdgeOffsetsView().subarray(0, nodeCount + 1);
+    const baseTargets = persistEdgeTargetsView().subarray(0, edgeWrite);
+    const baseCosts = persistEdgeCostsView().subarray(0, edgeWrite);
+    if (!extNodeCol || extNodeCol.length < extCount) {
+        extNodeCol = new Int16Array(maxGraphNodes + 2);
+        extNodeRow = new Int16Array(maxGraphNodes + 2);
+        extEdgeOffsets = new Int32Array(maxGraphNodes + 3);
+        extEdgeTargets = new Int16Array(maxGraphEdges + 64);
+        extEdgeCosts = new Uint16Array(maxGraphEdges + 64);
+    }
+    extNodeCol.set(baseCol);
+    extNodeRow.set(baseRow);
+    extNodeCol[startTemp] = startCol;
+    extNodeRow[startTemp] = startRow;
+    extNodeCol[targetTemp] = targetCol;
+    extNodeRow[targetTemp] = targetRow;
+    const targetConnectCost = new Int32Array(nodeCount);
+    for (let i = 0; i < targetCandidates.length; i++) {
+        const cIdx = targetCandidates[i];
+        const cost = octileGridCost(extNodeCol[cIdx], extNodeRow[cIdx], targetCol, targetRow);
+        if (cost > 0) targetConnectCost[cIdx] = cost;
+    }
+    const startEdges = [];
+    for (let i = 0; i < startCandidates.length; i++) {
+        const cIdx = startCandidates[i];
+        const cost = octileGridCost(startCol, startRow, extNodeCol[cIdx], extNodeRow[cIdx]);
+        if (cost > 0) startEdges.push({ targetIdx: cIdx, cost });
+    }
+    extEdgeOffsets[0] = 0;
+    for (let i = 0; i < nodeCount; i++) {
+        const baseCount = baseOffsets[i + 1] - baseOffsets[i];
+        const extraCount = targetConnectCost[i] > 0 ? 1 : 0;
+        extEdgeOffsets[i + 1] = extEdgeOffsets[i] + baseCount + extraCount;
+    }
+    extEdgeOffsets[startTemp + 1] = extEdgeOffsets[startTemp] + startEdges.length;
+    extEdgeOffsets[targetTemp + 1] = extEdgeOffsets[targetTemp];
+    for (let i = 0; i < nodeCount; i++) {
+        let write = extEdgeOffsets[i];
+        const baseStart = baseOffsets[i];
+        const baseEnd = baseOffsets[i + 1];
+        for (let e = baseStart; e < baseEnd; e++) {
+            extEdgeTargets[write] = baseTargets[e];
+            extEdgeCosts[write] = baseCosts[e];
+            write++;
+        }
+        if (targetConnectCost[i] > 0) {
+            extEdgeTargets[write] = targetTemp;
+            extEdgeCosts[write] = targetConnectCost[i];
+            write++;
+        }
+    }
+    let startWrite = extEdgeOffsets[startTemp];
+    for (let i = 0; i < startEdges.length; i++) {
+        extEdgeTargets[startWrite] = startEdges[i].targetIdx;
+        extEdgeCosts[startWrite] = startEdges[i].cost;
+        startWrite++;
+    }
+    const totalEdges = extEdgeOffsets[extCount];
+    return { extCount, startTemp, targetTemp, edgeWrite: totalEdges };
+}
 function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen) {
     const startTemp = nodeCount;
     const targetTemp = nodeCount + 1;
@@ -240,7 +310,7 @@ function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol,
     const totalEdges = extEdgeOffsets[extCount];
     return { extCount, startTemp, targetTemp, edgeWrite: totalEdges, tempLegs };
 }
-function runReplan(slot, data) {
+function runReplan(slot, data, requestId) {
     const { mode, startCol, startRow, targetCol, targetRow, localMaxLen } = data;
     if (mode === "local") {
         const path = runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, cols, rows, localMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
@@ -249,6 +319,19 @@ function runReplan(slot, data) {
         return;
     }
     const { startCandidates, targetCandidates, regionConnectMaxLen } = data;
+    const estimated = buildExtendedEdgesEstimate(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates);
+    const estimateAbstract = runAbstractAStarFlat(
+        estimated.startTemp,
+        estimated.targetTemp,
+        extNodeCol.subarray(0, estimated.extCount),
+        extNodeRow.subarray(0, estimated.extCount),
+        extEdgeOffsets.subarray(0, estimated.extCount + 1),
+        extEdgeTargets.subarray(0, estimated.edgeWrite),
+        extEdgeCosts.subarray(0, estimated.edgeWrite),
+        estimated.extCount,
+    );
+    writeAbstractPath(slot, estimateAbstract);
+    self.postMessage({ type: "abstractReady", slot, requestId });
     const extended = buildExtendedEdges(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen);
     writeTempLegs(slot, extended.tempLegs);
     const abstractPath = runAbstractAStarFlat(
@@ -296,7 +379,7 @@ self.onmessage = function (e) {
         return;
     }
     if (type === "replan") {
-        runReplan(slot, e.data);
+        runReplan(slot, e.data, requestId);
         self.postMessage({ type: "hpaDone", slot, requestId });
     }
 };
