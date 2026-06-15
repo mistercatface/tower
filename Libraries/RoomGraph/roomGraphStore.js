@@ -93,18 +93,12 @@ export function roomNodeCenterWorld(grid, node) {
     const { col, row } = roomNodeCenterCell(node);
     return grid.gridToWorld(col, row);
 }
-/** @param {number} a @param {number} b @returns {[number, number]} */
-export function normalizeLinkEndpoints(a, b) {
-    return a <= b ? [a, b] : [b, a];
-}
 /** @param {object} state @param {number} a @param {number} b @returns {RoomLink | null} */
 export function findRoomLinkBetween(state, a, b) {
-    const [lo, hi] = normalizeLinkEndpoints(a, b);
     const links = listRoomLinks(state);
     for (let i = 0; i < links.length; i++) {
         const link = links[i];
-        const [la, lb] = normalizeLinkEndpoints(link.a, link.b);
-        if (la === lo && lb === hi) return links[i];
+        if (link.a === a && link.b === b) return link;
     }
     return null;
 }
@@ -150,6 +144,11 @@ export function clearRoomLinksForNode(state, nodeId) {
 export function formatRoomLinkLabel(link) {
     return `Link #${link.id} · node ${link.a} → node ${link.b}`;
 }
+/** @param {number} nodeId @param {RoomLink} link */
+export function formatRoomLinkLabelForNode(nodeId, link) {
+    if (link.a === nodeId) return `Link #${link.id} · → node ${link.b}`;
+    return `Link #${link.id} · node ${link.a} → here`;
+}
 /** @param {RoomNode} node */
 export function formatRoomNodeLabel(node) {
     return `Room node #${node.id} · ${node.width}×${node.height} @ (${node.col},${node.row})`;
@@ -162,7 +161,7 @@ export function listRoomNodeLinkEntries(state, nodeId) {
     for (let i = 0; i < links.length; i++) {
         const link = links[i];
         const otherNodeId = link.a === nodeId ? link.b : link.a;
-        entries.push({ link, otherNodeId, label: `${formatRoomLinkLabel(link)} → node ${otherNodeId}` });
+        entries.push({ link, otherNodeId, label: formatRoomLinkLabelForNode(nodeId, link) });
     }
     return entries;
 }

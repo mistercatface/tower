@@ -4,7 +4,7 @@ import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCe
 import { gridWallEdgeEndpoints, gridBlockingPassageEdge, gridEdgeRailCollisionShouldEmit, gridEdgeRailCollisionThicknessPx, scanStaticStructureZLevelsFromGrid } from "../../World/wallGridCells.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
-import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltRailsKind, isFloorBeltTwoWayRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
+import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
 import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
@@ -426,7 +426,6 @@ export class WorldObstacleGrid {
         const idx = colRowToIndex(targetCol, targetRow, this.cols);
         if (!this.floorStore.isBeltKindAtIdx(idx)) return { col: targetCol, row: targetRow };
         const kind = this.floorStore.kind[idx];
-        if (isFloorBeltTwoWayRailsKind(kind)) return { col: targetCol, row: targetRow };
         const facingIndex = this.floorStore.facing[idx];
         const { entrySide } = floorBeltEntryExitSides(kind, facingIndex);
         const neighbor = floorBeltEntryNeighborCell(targetCol, targetRow, entrySide);

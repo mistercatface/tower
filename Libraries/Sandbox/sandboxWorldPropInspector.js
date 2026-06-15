@@ -143,8 +143,8 @@ export function appendRoomNodeWireInspector(body, wire, onChange) {
     appendEditorHint(
         body,
         links.length
-            ? `${links.length} link${links.length === 1 ? "" : "s"} — pick a link below for corridor settings`
-            : "No links — connect to another room node.",
+            ? `${links.length} link${links.length === 1 ? "" : "s"} — pick a link below for corridor settings. Wire order sets belt direction (source → target).`
+            : "No links — connect to another room node. First pick is the belt source; second pick is the target.",
     );
     if (links.length)
         appendInstanceList(

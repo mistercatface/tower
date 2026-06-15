@@ -2,7 +2,6 @@ import { CARDINAL_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { collectCorridorPathPointCells } from "../Pathfinding/Corridor/corridorFootprint.js";
 import { cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
 import { gridSideFromCellToNeighbor, resolveRailedBeltFromSides } from "../Spatial/grid/FloorCell.js";
-import { isTwoWayConveyorCorridorType } from "./roomGraphCorridorTypes.js";
 
 /** @typedef {import("./roomGraphClosedRooms.js").Cell} Cell */
 /** @typedef {import("./roomGraphClosedRooms.js").GraphNode} GraphNode */
@@ -29,9 +28,8 @@ function pathFootprintSteps(path, width) {
  * @param {number} r
  * @param {Map<string, number>} step
  * @param {Set<string>} footprint
- * @param {boolean} twoWay
  */
-function beltSpecForFootprintCell(c, r, step, footprint, twoWay) {
+function beltSpecForFootprintCell(c, r, step, footprint) {
     const myStep = step.get(`${c},${r}`);
     /** @type {{ c: number, r: number, step: number } | null} */
     let prev = null;
@@ -49,27 +47,26 @@ function beltSpecForFootprintCell(c, r, step, footprint, twoWay) {
     if (prev && next) {
         const entrySide = gridSideFromCellToNeighbor(c, r, prev.c, prev.r);
         const exitSide = gridSideFromCellToNeighbor(c, r, next.c, next.r);
-        return resolveRailedBeltFromSides(entrySide, exitSide, twoWay);
+        return resolveRailedBeltFromSides(entrySide, exitSide);
     }
     if (next) {
         const exitSide = gridSideFromCellToNeighbor(c, r, next.c, next.r);
-        return resolveRailedBeltFromSides((exitSide + 2) % 4, exitSide, twoWay);
+        return resolveRailedBeltFromSides((exitSide + 2) % 4, exitSide);
     }
     if (prev) {
         const entrySide = gridSideFromCellToNeighbor(c, r, prev.c, prev.r);
-        return resolveRailedBeltFromSides(entrySide, (entrySide + 2) % 4, twoWay);
+        return resolveRailedBeltFromSides(entrySide, (entrySide + 2) % 4);
     }
-    return resolveRailedBeltFromSides(3, 1, twoWay);
+    return resolveRailedBeltFromSides(3, 1);
 }
 
 /**
+ * Belt flow follows path order: link.a room → link.b room (wire pick order).
  * @param {Cell[][]} paths
  * @param {number[]} corridorWidths
  * @param {GraphNode[]} rooms
- * @param {import("./roomGraphCorridorTypes.js").CorridorType} corridorType
  */
-export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms, corridorType) {
-    const twoWay = isTwoWayConveyorCorridorType(corridorType);
+export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms) {
     /** @type {Map<string, number>} */
     const step = new Map();
     /** @type {Set<string>} */
@@ -90,7 +87,7 @@ export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms, corrid
         const c = Number(key.slice(0, comma));
         const r = Number(key.slice(comma + 1));
         if (cellInsideAnyRoom(rooms, c, r)) continue;
-        const spec = beltSpecForFootprintCell(c, r, step, footprint, twoWay);
+        const spec = beltSpecForFootprintCell(c, r, step, footprint);
         byCell.set(key, { col: c, row: r, kind: spec.kind, facingIndex: spec.facingIndex });
     }
     return [...byCell.values()];

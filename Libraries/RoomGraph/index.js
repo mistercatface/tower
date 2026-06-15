@@ -16,12 +16,12 @@ export {
     roomNodeCenterWorld,
     replaceRoomGraph,
     cloneRoomGraphDoc,
-    normalizeLinkEndpoints,
     findRoomLinkBetween,
     addRoomLink,
     removeRoomLink,
     clearRoomLinksForNode,
     formatRoomLinkLabel,
+    formatRoomLinkLabelForNode,
     formatRoomNodeLabel,
     listRoomNodeLinkEntries,
     updateRoomLink,
@@ -31,4 +31,4 @@ export { drawPlacedRoomNodes } from "./roomGraphDraw.js";
 export { collectRoomGraphForSnapshot, applyRoomGraphFromSnapshot } from "./roomGraphSnapshot.js";
 export { syncRoomGraphBake, unbakeRoomGraph, rerollRoomLinkBake, expandGridForRoomNodeFootprint } from "./roomGraphBake.js";
 export { MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
-export { CORRIDOR_TYPE_OPTIONS, CORRIDOR_TYPE_EMPTY, formatCorridorTypeLabel, normalizeCorridorType } from "./roomGraphCorridorTypes.js";
+export { CORRIDOR_TYPE_OPTIONS, CORRIDOR_TYPE_EMPTY, CORRIDOR_TYPE_CONVEYOR_ONE_WAY, formatCorridorTypeLabel, normalizeCorridorType } from "./roomGraphCorridorTypes.js";

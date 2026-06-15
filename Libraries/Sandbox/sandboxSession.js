@@ -11,6 +11,7 @@ import {
     addRoomLink,
     clearRoomLinksForNode,
     formatRoomLinkLabel,
+    formatRoomLinkLabelForNode,
     formatRoomNodeLabel,
     getRoomLink,
     getRoomNode,
@@ -961,10 +962,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             if (!node) return [];
             return listRoomLinks(state)
                 .filter((link) => link.a === node.id || link.b === node.id)
-                .map((link) => {
-                    const otherNodeId = link.a === node.id ? link.b : link.a;
-                    return { linkId: link.id, label: `${formatRoomLinkLabel(link)} → node ${otherNodeId}` };
-                });
+                .map((link) => ({ linkId: link.id, label: formatRoomLinkLabelForNode(node.id, link) }));
         },
         deleteSelectedRoomNode() {
             if (selectedRoomNodeId == null) return;

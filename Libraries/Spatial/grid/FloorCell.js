@@ -10,17 +10,10 @@ export const FLOOR_CELL_KIND = {
     BeltElbowLeftRails: 5,
     BeltElbowRightRails: 6,
     PassagePowerSource: 7,
-    BeltRailsTwoWay: 8,
-    BeltElbowLeftRailsTwoWay: 9,
-    BeltElbowRightRailsTwoWay: 10,
 };
 /** @param {number} kind */
 export function isFloorBeltKind(kind) {
-    return (kind >= FLOOR_CELL_KIND.Belt && kind <= FLOOR_CELL_KIND.BeltElbowRightRails) || isFloorBeltTwoWayRailsKind(kind);
-}
-/** @param {number} kind */
-export function isFloorBeltTwoWayRailsKind(kind) {
-    return kind === FLOOR_CELL_KIND.BeltRailsTwoWay || kind === FLOOR_CELL_KIND.BeltElbowLeftRailsTwoWay || kind === FLOOR_CELL_KIND.BeltElbowRightRailsTwoWay;
+    return kind >= FLOOR_CELL_KIND.Belt && kind <= FLOOR_CELL_KIND.BeltElbowRightRails;
 }
 /** @param {number} kind */
 export function isPassagePowerSourceKind(kind) {
@@ -28,17 +21,12 @@ export function isPassagePowerSourceKind(kind) {
 }
 /** @param {number} kind */
 export function isFloorBeltRailsKind(kind) {
-    return (
-        kind === FLOOR_CELL_KIND.BeltRails ||
-        kind === FLOOR_CELL_KIND.BeltElbowLeftRails ||
-        kind === FLOOR_CELL_KIND.BeltElbowRightRails ||
-        isFloorBeltTwoWayRailsKind(kind)
-    );
+    return kind === FLOOR_CELL_KIND.BeltRails || kind === FLOOR_CELL_KIND.BeltElbowLeftRails || kind === FLOOR_CELL_KIND.BeltElbowRightRails;
 }
 /** @param {number} kind @returns {"left" | "right" | null} */
 export function floorBeltElbowTurn(kind) {
-    if (kind === FLOOR_CELL_KIND.BeltElbowLeft || kind === FLOOR_CELL_KIND.BeltElbowLeftRails || kind === FLOOR_CELL_KIND.BeltElbowLeftRailsTwoWay) return "left";
-    if (kind === FLOOR_CELL_KIND.BeltElbowRight || kind === FLOOR_CELL_KIND.BeltElbowRightRails || kind === FLOOR_CELL_KIND.BeltElbowRightRailsTwoWay) return "right";
+    if (kind === FLOOR_CELL_KIND.BeltElbowLeft || kind === FLOOR_CELL_KIND.BeltElbowLeftRails) return "left";
+    if (kind === FLOOR_CELL_KIND.BeltElbowRight || kind === FLOOR_CELL_KIND.BeltElbowRightRails) return "right";
     return null;
 }
 /**
@@ -71,9 +59,6 @@ const FLOOR_BELT_KIND_LABELS = {
     [FLOOR_CELL_KIND.BeltRails]: "Conveyor (rails)",
     [FLOOR_CELL_KIND.BeltElbowLeftRails]: "Conveyor Elbow L (rails)",
     [FLOOR_CELL_KIND.BeltElbowRightRails]: "Conveyor Elbow R (rails)",
-    [FLOOR_CELL_KIND.BeltRailsTwoWay]: "Conveyor (rails, two way)",
-    [FLOOR_CELL_KIND.BeltElbowLeftRailsTwoWay]: "Conveyor Elbow L (rails, two way)",
-    [FLOOR_CELL_KIND.BeltElbowRightRailsTwoWay]: "Conveyor Elbow R (rails, two way)",
 };
 const FLOOR_BELT_FACING_LABELS = ["E", "S", "W", "N"];
 /** @param {number} kind */
@@ -94,12 +79,10 @@ export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     if (dc === 0 && dr === -1) return 0;
     throw new Error(`gridSideFromCellToNeighbor: non-cardinal step ${dc},${dr}`);
 }
-/** @param {number} entrySide @param {number} exitSide @param {boolean} [twoWay] */
-export function resolveRailedBeltFromSides(entrySide, exitSide, twoWay = false) {
+/** @param {number} entrySide @param {number} exitSide */
+export function resolveRailedBeltFromSides(entrySide, exitSide) {
     /** @type {number[]} */
-    const kinds = twoWay
-        ? [FLOOR_CELL_KIND.BeltRailsTwoWay, FLOOR_CELL_KIND.BeltElbowLeftRailsTwoWay, FLOOR_CELL_KIND.BeltElbowRightRailsTwoWay]
-        : [FLOOR_CELL_KIND.BeltRails, FLOOR_CELL_KIND.BeltElbowLeftRails, FLOOR_CELL_KIND.BeltElbowRightRails];
+    const kinds = [FLOOR_CELL_KIND.BeltRails, FLOOR_CELL_KIND.BeltElbowLeftRails, FLOOR_CELL_KIND.BeltElbowRightRails];
     for (let ki = 0; ki < kinds.length; ki++) {
         const kind = kinds[ki];
         for (let facingIndex = 0; facingIndex < CARDINAL_FACING_STEPS; facingIndex++) {
@@ -107,7 +90,7 @@ export function resolveRailedBeltFromSides(entrySide, exitSide, twoWay = false) 
             if (sides.entrySide === entrySide && sides.exitSide === exitSide) return { kind, facingIndex };
         }
     }
-    return { kind: twoWay ? FLOOR_CELL_KIND.BeltRailsTwoWay : FLOOR_CELL_KIND.BeltRails, facingIndex: 0 };
+    return { kind: FLOOR_CELL_KIND.BeltRails, facingIndex: 0 };
 }
 /** @param {number} cardinalIndex 0…3 */
 export function floorBeltFacingFromIndex(cardinalIndex) {
@@ -144,7 +127,6 @@ export function resolveFloorBeltSteerTarget(grid, worldX, worldY, fromX, fromY) 
     const idx = col + row * grid.cols;
     const kind = grid.floorStore.kind[idx];
     if (!grid.floorStore.isBeltKindAtIdx(idx)) return { x: worldX, y: worldY };
-    if (isFloorBeltTwoWayRailsKind(kind)) return { x: worldX, y: worldY };
     const { col: fromCol, row: fromRow } = grid.worldToGrid(fromX, fromY);
     if (fromCol === col && fromRow === row) return { x: worldX, y: worldY };
     const { entrySide } = floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);

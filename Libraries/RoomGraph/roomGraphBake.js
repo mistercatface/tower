@@ -143,7 +143,7 @@ function computeRoomGraphBake(layout) {
             placedPaths.push(bundle.paths[pi]);
             placedPathWidths.push(bundle.corridorWidths[pi]);
         }
-        if (isConveyorCorridorType(corridorType)) bakedBelts.push(...stampCorridorBundleBelts(bundle, rooms, corridorType));
+        if (isConveyorCorridorType(corridorType)) bakedBelts.push(...stampCorridorBundleBelts(bundle, rooms));
         else corridorRailLists.push(stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow));
     }
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
