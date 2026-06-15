@@ -6,7 +6,7 @@ import { isButtonEntity } from "./buttonInput.js";
 import { isPullPowerTarget } from "./pullFixtureWalls.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
 import { formatPropTypeLabel } from "../Props/PropCatalog.js";
-import { gridCellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
+import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 /** @typedef {{ type: "worldProp", id: number }} WorldPropButtonLinkTarget */
 /** @typedef {{ type: "gridCell", globalCol: number, globalRow: number }} GridCellButtonLinkTarget */
@@ -62,7 +62,7 @@ export function findPassagePowerSourceLinkTargetAtWorld(state, worldX, worldY) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const idx = col + row * grid.cols;
     if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return null;
-    const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+    const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
     return { type: "gridCell", globalCol, globalRow };
 }
 /**

@@ -1,7 +1,7 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { unionCellBoundsList } from "../DataStructures/CellRect.js";
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
-import { gridCellToGlobalColRow, isCanonicalEdgeRepresentative } from "../Spatial/grid/gridCellTopology.js";
+import { cellToGlobalColRow, isCanonicalEdgeRepresentative } from "../Spatial/grid/gridCellTopology.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
 import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";
@@ -39,7 +39,7 @@ export const SANDBOX_SCENE_SCHEMA_VERSION = 8;
 export function collectSandboxSceneSnapshot(state) {
     const grid = state.obstacleGrid;
     const voxels = listPlacedVoxelWalls(grid).map(({ col, row, heightLevel }) => {
-        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
         return { col: globalCol, row: globalRow, heightLevel };
     });
     const railWalls = [];
@@ -47,7 +47,7 @@ export function collectSandboxSceneSnapshot(state) {
     for (let i = 0; i < listed.length; i++) {
         const { col, row, side, heightLevel, thicknessLevel } = listed[i];
         if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
-        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
         railWalls.push({ col: globalCol, row: globalRow, side, heightLevel, thicknessLevel });
     }
     const forcefields = [];
@@ -55,7 +55,7 @@ export function collectSandboxSceneSnapshot(state) {
     for (let i = 0; i < listedForcefields.length; i++) {
         const { col, row, side } = listedForcefields[i];
         if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
-        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
         const info = getForcefieldInfo(grid, col, row, side);
         if (!info) continue;
         const entry = { col: globalCol, row: globalRow, side, mode: info.mode };
@@ -67,7 +67,7 @@ export function collectSandboxSceneSnapshot(state) {
     for (let i = 0; i < listedPortals.length; i++) {
         const { col, row, side } = listedPortals[i];
         if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
-        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
         const info = getPortalInfo(grid, col, row, side);
         if (!info) continue;
         const entry = { col: globalCol, row: globalRow, side, accessMode: PORTAL_ACCESS_MODE.One, allowedSide: info.mouthAllowedSide };

@@ -1,7 +1,7 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex, cellInRect } from "./GridUtils.js";
 import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCellDamage.js";
-import { gridWallEdgeEndpoints, gridBlockingPassageEdge, gridEdgeRailCollisionShouldEmit, gridEdgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
+import { cellEdgeEndpoints, blockingPassageEdgeAt, edgeRailCollisionShouldEmit, edgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
@@ -143,10 +143,10 @@ export class WorldObstacleGrid {
                 out.push(this._borrowStaticWallProxy(x, y, col, row));
             }
             for (let side = 0; side < 4; side++) {
-                if (!gridEdgeRailCollisionShouldEmit(this, col, row, side)) continue;
-                const blockingPassage = gridBlockingPassageEdge(this, col, row, side);
-                const thickness = gridEdgeRailCollisionThicknessPx(this, col, row, side);
-                gridWallEdgeEndpoints(this, col, row, side, EDGE_PROXY_P1, EDGE_PROXY_P2, 0);
+                if (!edgeRailCollisionShouldEmit(this, col, row, side)) continue;
+                const blockingPassage = blockingPassageEdgeAt(this, col, row, side);
+                const thickness = edgeRailCollisionThicknessPx(this, col, row, side);
+                cellEdgeEndpoints(this, col, row, side, EDGE_PROXY_P1, EDGE_PROXY_P2, 0);
                 const p1x = EDGE_PROXY_P1.x;
                 const p1y = EDGE_PROXY_P1.y;
                 const p2x = EDGE_PROXY_P2.x;

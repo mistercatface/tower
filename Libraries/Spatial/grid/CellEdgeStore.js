@@ -1,6 +1,6 @@
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
-import { gridWallEdgeNeighbor, gridWallEdgeMirrorSide, gridNeighborFillLevel } from "./gridCellTopology.js";
+import { edgeNeighbor, edgeMirrorSide, neighborFillLevel } from "./gridCellTopology.js";
 import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isPortalEdge, isRailWallEdge, railWallHeightPx, PASSAGE_MODE, PORTAL_ACCESS_MODE } from "./CellEdge.js";
 const EMPTY = -1;
 export class CellEdgeStore {
@@ -148,8 +148,8 @@ export class CellEdgeStore {
         this.clearMirrored(col, row, side, cols, rows);
         const ref = this._alloc(edge);
         this._setSlot(col, row, side, cols, ref);
-        const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-        const nSide = gridWallEdgeMirrorSide(side);
+        const { nc, nr } = edgeNeighbor(col, row, side);
+        const nSide = edgeMirrorSide(side);
         if (cellInRect(nc, nr, cols, rows)) this._setSlot(nc, nr, nSide, cols, ref);
         if (isForcefieldEdge(edge)) this.passageEdgeCount++;
         if (isPortalEdge(edge)) this.portalEdgeCount++;
@@ -169,8 +169,8 @@ export class CellEdgeStore {
         if (isForcefieldEdge(this.pool[ref])) this.passageEdgeCount--;
         if (isPortalEdge(this.pool[ref])) this.portalEdgeCount--;
         this.slots[slot] = EMPTY;
-        const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
-        const nSide = gridWallEdgeMirrorSide(side);
+        const { nc, nr } = edgeNeighbor(col, row, side);
+        const nSide = edgeMirrorSide(side);
         if (cellInRect(nc, nr, cols, rows)) this.slots[colRowToIndex(nc, nr, cols) * 4 + nSide] = EMPTY;
         this._free(ref);
     }
@@ -196,7 +196,7 @@ export class CellEdgeStore {
                 if (!isRailWallEdge(edge)) continue;
                 const col = idx % cols;
                 const row = (idx / cols) | 0;
-                seen.add(railWallHeightPx(edge, grid.cellSize, gridNeighborFillLevel(grid, col, row, side)));
+                seen.add(railWallHeightPx(edge, grid.cellSize, neighborFillLevel(grid, col, row, side)));
             }
         const out = [...seen];
         out.sort((a, b) => a - b);

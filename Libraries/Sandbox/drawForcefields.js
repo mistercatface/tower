@@ -4,7 +4,7 @@ import { drawPortalEdgeCached } from "../Render/portalDraw.js";
 import { projectPropVertex } from "../Render/Props3D/propMesh.js";
 import { isForcefieldEdge, isPortalEdge, PASSAGE_MODE, resolvePassageEdge } from "../Spatial/grid/CellEdge.js";
 import { gridEdgeSideFacing, gridSideOutwardVector } from "../Spatial/grid/GridUtils.js";
-import { forEachGridEdge, gridWallEdgeEndpoints, canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
+import { forEachCellEdge, cellEdgeEndpoints, canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
 const EDGE_P1 = { x: 0, y: 0 };
 const EDGE_P2 = { x: 0, y: 0 };
 const FORCEFIELD_HEIGHT = 10;
@@ -144,10 +144,10 @@ function syncPassageEdgeDrawCache(state, grid) {
     if (state.sandbox._passageEdgeDrawCache?.revision === revision) return;
     /** @type {Array<{ type: "portal", col: number, row: number, side: number, edge: object, midX: number, midY: number } | { type: "forcefield", proxy: ReturnType<typeof createForcefieldDrawProxy>, edgeKey: number, midX: number, midY: number }>} */
     const items = [];
-    forEachGridEdge(
+    forEachCellEdge(
         grid,
         (col, row, side, edge) => {
-            gridWallEdgeEndpoints(grid, col, row, side, EDGE_P1, EDGE_P2, 0);
+            cellEdgeEndpoints(grid, col, row, side, EDGE_P1, EDGE_P2, 0);
             const midX = (EDGE_P1.x + EDGE_P2.x) * 0.5;
             const midY = (EDGE_P1.y + EDGE_P2.y) * 0.5;
             if (isPortalEdge(edge)) items.push({ type: "portal", col, row, side, edge, midX, midY });

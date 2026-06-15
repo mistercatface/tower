@@ -21,10 +21,10 @@ import {
     canonicalEdgeCellKey,
     cellIsStaticWall,
     cellIsStaticWallAtIdx,
-    forEachGridEdge,
-    gridCellToGlobalColRow,
-    gridNeighborFillLevel,
-    gridWallEdgeEndpoints,
+    forEachCellEdge,
+    cellToGlobalColRow,
+    neighborFillLevel,
+    cellEdgeEndpoints,
 } from "../Spatial/grid/gridCellTopology.js";
 import { findPortalEdgeByKey } from "../Spatial/grid/portalSlotIndex.js";
 import {
@@ -118,7 +118,7 @@ export function clearAllStampedGridWalls(state, { notify = true } = {}) {
         if (!cellIsStaticWallAtIdx(grid, idx)) continue;
         const col = idx % grid.cols;
         const row = (idx / grid.cols) | 0;
-        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
         state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
         grid.grid[idx] = 0;
     }
@@ -243,7 +243,7 @@ export function clearVoxelWallAt(state, col, row) {
     const idx = colRowToIndex(col, row, grid.cols);
     if (!cellIsStaticWallAtIdx(grid, idx)) return false;
     grid.grid[idx] = 0;
-    const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+    const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
     state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
     notifyGridWallChange(state, cellBoundsAt(col, row));
     return true;
@@ -383,7 +383,7 @@ export function listPlacedPortals(grid) {
     /** @type {{ col: number, row: number, side: number, label: string }[]} */
     const placed = [];
     let index = 0;
-    forEachGridEdge(
+    forEachCellEdge(
         grid,
         (col, row, side) => {
             const info = getPortalInfo(grid, col, row, side);
@@ -409,7 +409,7 @@ export function listPlacedForcefields(grid) {
     /** @type {{ col: number, row: number, side: number, label: string }[]} */
     const placed = [];
     let index = 0;
-    forEachGridEdge(
+    forEachCellEdge(
         grid,
         (col, row, side, edge) => {
             const mode = parsePassageMode(edge.mode);
@@ -442,10 +442,10 @@ export function listPlacedRailWalls(grid) {
     /** @type {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number, label: string }[]} */
     const placed = [];
     const counts = new Map();
-    forEachGridEdge(
+    forEachCellEdge(
         grid,
         (col, row, side, edge) => {
-            const capLevel = railWallCapLevel(edge, gridNeighborFillLevel(grid, col, row, side));
+            const capLevel = railWallCapLevel(edge, neighborFillLevel(grid, col, row, side));
             const key = `${side}:${capLevel}:${edge.thicknessLevel}`;
             const index = (counts.get(key) ?? 0) + 1;
             counts.set(key, index);
@@ -463,11 +463,11 @@ export function getVoxelWallInfo(grid, col, row) {
 export function getRailWallInfo(grid, col, row, side) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isRailWallEdge(edge)) return null;
-    const heightLevel = railWallCapLevel(edge, gridNeighborFillLevel(grid, col, row, side));
+    const heightLevel = railWallCapLevel(edge, neighborFillLevel(grid, col, row, side));
     return { col, row, side, heightLevel, thicknessLevel: edge.thicknessLevel, sideLabel: formatGridWallEdgeSideLabel(side) };
 }
 export function strokeSelectedRailWallEdge(ctx, grid, edge, lineScale) {
-    gridWallEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
+    cellEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
     ctx.lineWidth = 3 * lineScale;
     ctx.beginPath();
     ctx.moveTo(EDGE_P1.x, EDGE_P1.y);
@@ -475,7 +475,7 @@ export function strokeSelectedRailWallEdge(ctx, grid, edge, lineScale) {
     ctx.stroke();
 }
 export function strokeSelectedForcefieldEdge(ctx, grid, edge, lineScale) {
-    gridWallEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
+    cellEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
     ctx.lineWidth = 4 * lineScale;
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
@@ -485,7 +485,7 @@ export function strokeSelectedForcefieldEdge(ctx, grid, edge, lineScale) {
     ctx.setLineDash([]);
 }
 export function strokeSelectedPortalEdge(ctx, grid, edge, lineScale) {
-    gridWallEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
+    cellEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
     ctx.lineWidth = 4 * lineScale;
     ctx.setLineDash([4, 3, 10, 3]);
     ctx.beginPath();

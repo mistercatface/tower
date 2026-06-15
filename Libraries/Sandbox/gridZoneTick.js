@@ -1,7 +1,7 @@
 import { isPassageTripwireEdge, PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import { tickGridZoneMembership } from "../Spatial/zones/gridZoneMembership.js";
 import { isPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
-import { canonicalEdgeCellKey, forEachGridEdge } from "../Spatial/grid/gridCellTopology.js";
+import { canonicalEdgeCellKey, forEachCellEdge } from "../Spatial/grid/gridCellTopology.js";
 /** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneSubscriptions} GridZoneSubscriptions */
 /** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneEvent} GridZoneEvent */
 /** @param {object} state */
@@ -18,7 +18,7 @@ export function buildGridZoneSubscriptions(grid) {
     const size = grid.cols * grid.rows;
     for (let idx = 0; idx < size; idx++) if (grid.floorStore.isBeltKindAtIdx(idx)) cells.add(idx);
     if (grid.edgeStore.passageEdgeCount > 0)
-        forEachGridEdge(
+        forEachCellEdge(
             grid,
             (col, row, side) => {
                 edges.set(canonicalEdgeCellKey(grid, col, row, side), { col, row, side, mode: PASSAGE_MODE.Tripwire });

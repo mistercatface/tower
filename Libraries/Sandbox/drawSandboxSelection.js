@@ -5,7 +5,7 @@ import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellBoundsAtOriginInto } from "../Spatial/grid/GridCoords.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { gridForcefieldEdge, gridPortalEdge } from "../Spatial/grid/gridCellTopology.js";
+import { forcefieldEdgeAt, portalEdgeAt } from "../Spatial/grid/gridCellTopology.js";
 import { strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
 import { resolvePortalLinkRoute } from "./portalLinks.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
@@ -47,7 +47,7 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
         });
     }
     if (selectedRailEdge && grid)
-        if (gridPortalEdge(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side) && camera) {
+        if (portalEdgeAt(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side) && camera) {
             const { col, row, side } = selectedRailEdge;
             const edge = grid.getCellEdge(col, row, side);
             drawPortalEdgeCached(ctx, grid, col, row, side, edge, camera.px, camera.py, { selected: true });
@@ -57,7 +57,7 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
                 const partnerEdge = grid.getCellEdge(pCol, pRow, pSide);
                 drawPortalEdgeCached(ctx, grid, pCol, pRow, pSide, partnerEdge, camera.px, camera.py, { selected: true });
             }
-        } else if (gridForcefieldEdge(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
+        } else if (forcefieldEdgeAt(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
             ctx.strokeStyle = "rgba(192, 132, 252, 0.95)";
             strokeSelectedForcefieldEdge(ctx, grid, selectedRailEdge, lineScale);
         } else {

@@ -18,7 +18,7 @@ import { resolvePassageStepFrom, resolvePassageStepUndirected } from "./passageS
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
-import { gridNeighborFillLevel } from "./gridCellTopology.js";
+import { neighborFillLevel } from "./gridCellTopology.js";
 import { diagonalBoundaryBlockedFromVertexCache } from "./vertexPassability.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {{ kind: "passage", mode?: string, allowedSide?: number, powered?: boolean }} PassageBoundarySpec */
@@ -108,7 +108,7 @@ export function setBoundary(grid, col, row, side, spec, { bumpRevision = false }
     }
     if (spec.kind === "railWall") {
         if (spec.capHeightLevel === 0) return setBoundary(grid, col, row, side, null, { bumpRevision });
-        grid.edgeStore.writeMirrored(col, row, side, grid.cols, grid.rows, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, gridNeighborFillLevel(grid, col, row, side)));
+        grid.edgeStore.writeMirrored(col, row, side, grid.cols, grid.rows, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, col, row, side)));
         if (bumpRevision) grid.bumpWallGridRevision();
         return true;
     }

@@ -9,7 +9,7 @@
 //
 // Edge — data on one side of a cell (side 0=N, 1=E, 2=S, 3=W) in CellEdgeStore.
 //   Kinds: railWall, beltRail, forcefield (incl. portal mode). Stored per (col, row, side).
-//   Queries: gridRailWallEdge, gridPortalEdge, gridCellEdge, forEachGridEdge
+//   Queries: railWallEdgeAt, portalEdgeAt, edgeAt, forEachCellEdge
 //   Owner: gridCellTopology.js (read), CellEdge.js (types), CellEdgeStore.js (write)
 //
 // Boundary — crossing policy over a shared edge (can this step cross this side?).
@@ -29,16 +29,15 @@
 //   Not part of NavGraph; Render / WorldSurface only.
 //   Owner: World/wallGridBake.js
 //
-// Stamp — writing segment walls into grid[] (legacy dynamic walls on the obstacle grid).
+// Stamp — dynamic segment walls → grid[] + segmentGrid (nav/collision, editor walls, pull fixtures).
 //   Owner: Spatial/grid/wallGridBake.js (distinct from World/wallGridBake.js)
 //
 // ── Parameters ────────────────────────────────────────────────────────────────
 //
-// side — cardinal index 0=N, 1=E, 2=S, 3=W on the owning cell. Prefer "side" over "edge"
-//   in new code; many legacy symbols still say gridWallEdge* but mean any cell side.
+// side — cardinal index 0=N, 1=E, 2=S, 3=W on the owning cell.
 //
 // col, row — cell indices in the obstacle grid's local frame (not global world cells).
-//   gridCellToGlobalColRow / canonicalEdgeCellKey when a stable cross-chunk id is needed.
+//   cellToGlobalColRow / canonicalEdgeCellKey when a stable cross-chunk id is needed.
 //
 // ── Z levels (world px height) ────────────────────────────────────────────────
 //
@@ -55,13 +54,10 @@
 // vertexPassability.js  — vertex cache + syncGridTopologyCaches
 // boundaryNavHops.js    — hop build (callback for portal pairing), path expansion
 //
-// ── Legacy names (rename toward glossary in a later pass) ─────────────────────
+// ── Bake renames (World/wallGridBake.js, later pass) ──────────────────────────
 //
-// gridWallEdgeNeighbor      → edgeNeighbor (topology)
-// gridWallEdgeEndpoints     → cellEdgeEndpoints
-// gridWallEdgeRailShouldEmit → railWallEdgeShouldEmit
-// resolveGridWallFace       → resolveVoxelWallFace (bake)
-// resolveGridWallEdgeRailBox → resolveRailWallBox (bake)
+// resolveGridWallFace → resolveVoxelWallFace
+// resolveGridWallEdgeRailBox → resolveRailWallBox
 //
 // @typedef {object} NavGraph
 // @property {number} cols

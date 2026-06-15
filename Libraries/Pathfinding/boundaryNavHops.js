@@ -1,7 +1,7 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import { portalCrossingVectorForEdge, portalMouthAndBackCells, portalTraverseExitCell, portalTraverseExitVector } from "../Spatial/grid/portalAccess.js";
-import { forEachGridEdge, gridWallEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
+import { forEachCellEdge, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 /** @typedef {{
  *   mouthCol: number,
  *   mouthRow: number,
@@ -21,7 +21,7 @@ const DRAW_P2 = { x: 0, y: 0 };
 export function buildBoundaryNavHops(grid, resolvePortalHopEntry) {
     const hopsByFromIdx = new Map();
     if (!grid.cols || !grid.edgeStore.portalEdgeCount) return hopsByFromIdx;
-    forEachGridEdge(
+    forEachCellEdge(
         grid,
         (ownerCol, ownerRow, ownerSide, edge) => {
             const { mouth, back } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
@@ -61,11 +61,11 @@ function boundaryHopOnCellStep(prev, curr, navGraph) {
     return hops?.find((entry) => entry.exitCol === curr.col && entry.exitRow === curr.row) ?? null;
 }
 export function boundaryHopDrawGeometry(grid, hop) {
-    gridWallEdgeEndpoints(grid, hop.ownerCol, hop.ownerRow, hop.ownerSide, DRAW_P1, DRAW_P2, 0);
+    cellEdgeEndpoints(grid, hop.ownerCol, hop.ownerRow, hop.ownerSide, DRAW_P1, DRAW_P2, 0);
     const entryMid = { x: (DRAW_P1.x + DRAW_P2.x) * 0.5, y: (DRAW_P1.y + DRAW_P2.y) * 0.5 };
     const edge = grid.edgeStore.get(hop.ownerCol, hop.ownerRow, hop.ownerSide, grid.cols);
     const entryCross = portalCrossingVectorForEdge(edge, hop.ownerCol, hop.ownerRow, hop.ownerSide);
-    gridWallEdgeEndpoints(grid, hop.partnerCol, hop.partnerRow, hop.partnerSide, DRAW_P1, DRAW_P2, 0);
+    cellEdgeEndpoints(grid, hop.partnerCol, hop.partnerRow, hop.partnerSide, DRAW_P1, DRAW_P2, 0);
     const exitMid = { x: (DRAW_P1.x + DRAW_P2.x) * 0.5, y: (DRAW_P1.y + DRAW_P2.y) * 0.5 };
     const exitVector = portalTraverseExitVector(grid, hop.partnerCol, hop.partnerRow, hop.partnerSide);
     return { entryMid, entryCross, exitMid, exitVector };

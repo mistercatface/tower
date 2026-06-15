@@ -1,9 +1,9 @@
 import { isPortalEdge } from "./CellEdge.js";
-import { canonicalEdgeCellKey, forEachGridEdge } from "./gridCellTopology.js";
+import { canonicalEdgeCellKey, forEachCellEdge } from "./gridCellTopology.js";
 export function recomputePortalSlotIndex(grid) {
     const index = new Map();
     if (grid.cols && grid.edgeStore.portalEdgeCount)
-        forEachGridEdge(
+        forEachCellEdge(
             grid,
             (col, row, side) => {
                 index.set(canonicalEdgeCellKey(grid, col, row, side), { col, row, side });

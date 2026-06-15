@@ -2,7 +2,7 @@ import { emptyCellBounds, growCellBounds, isEmptyCellBounds, forEachDenseCellInR
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
-import { gridCellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
+import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { fillCircle } from "../Canvas/CanvasPath.js";
 import { drawCachedPropSprite, GRID_STAMP_RENDER_KEY } from "../Canvas/QuantizedSpriteCache.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
@@ -188,7 +188,7 @@ export function listPlacedFloorBeltsForSnapshot(grid) {
         if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
         const col = idx % grid.cols;
         const row = (idx / grid.cols) | 0;
-        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
         belts.push({ col: globalCol, row: globalRow, kind: grid.floorStore.kind[idx], facingIndex: grid.floorStore.facing[idx] });
     }
     return belts;
@@ -254,7 +254,7 @@ export function listPlacedPassagePowerSourcesForSnapshot(grid) {
         if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) continue;
         const col = idx % grid.cols;
         const row = (idx / grid.cols) | 0;
-        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
         const entry = { col: globalCol, row: globalRow };
         if (grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx)) entry.defaultPowered = true;
         sources.push(entry);

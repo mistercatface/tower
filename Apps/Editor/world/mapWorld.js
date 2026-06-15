@@ -8,7 +8,7 @@ import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/sandboxWalls.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
-import { cellIsStaticWallAtIdx, gridCellToGlobalColRow } from "../../../Libraries/Spatial/grid/gridCellTopology.js";
+import { cellIsStaticWallAtIdx, cellToGlobalColRow } from "../../../Libraries/Spatial/grid/gridCellTopology.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
     applyCavernShapeMask,
@@ -125,13 +125,13 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
         let cellChanged = false;
         if (cellIsStaticWallAtIdx(grid, idx) && (!grid.segmentGrid || !grid.segmentGrid[idx]?.length)) {
             grid.grid[idx] = 0;
-            const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+            const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
             state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
             cellChanged = true;
         }
         for (let side = 0; side < 4; side++) {
             if (!grid.edgeStore.has(col, row, side, grid.cols)) continue;
-            const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
+            const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
             state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
         }
         if (grid.edgeStore.hasAnyAtIdx(idx)) {
@@ -258,12 +258,12 @@ export function generateLabRailCaverns(state) {
             const idx = c + r * grid.cols;
             if (grid.grid[idx] !== 0 && (!grid.segmentGrid || !grid.segmentGrid[idx]?.length)) {
                 grid.grid[idx] = 0;
-                const { globalCol, globalRow } = gridCellToGlobalColRow(grid, c, r);
+                const { globalCol, globalRow } = cellToGlobalColRow(grid, c, r);
                 state.staticCellHealth.delete(packCellKey(globalCol, globalRow));
             }
             for (let side = 0; side < 4; side++) {
                 if (!grid.edgeStore.has(c, r, side, grid.cols)) continue;
-                const { globalCol, globalRow } = gridCellToGlobalColRow(grid, c, r);
+                const { globalCol, globalRow } = cellToGlobalColRow(grid, c, r);
                 state.staticCellHealth.delete(packEdgeCellKey(globalCol, globalRow, side));
             }
             if (grid.edgeStore.hasAnyAtIdx(idx)) grid.clearCellEdges(c, r);

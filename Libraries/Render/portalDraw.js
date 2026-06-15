@@ -1,4 +1,4 @@
-import { gridWallEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
+import { cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 import { portalMouthAndBackCells } from "../Spatial/grid/portalAccess.js";
 import { PORTAL_LINK_MODE, resolvePortalLinkRoute } from "../Sandbox/portalLinks.js";
 import { getCanvasLineScale } from "./common/viewportUtils.js";
@@ -323,7 +323,7 @@ const portalMouthStripDraw = createPortalMouthStripDraw();
 export function drawPortalEdgeCached(ctx, grid, col, row, side, edge, px, py, { selected = false, ageMs = 0 } = {}) {
     const { powered, linkRole } = resolvePortalDrawRole(grid, col, row, side, edge);
     const { mouth } = portalMouthAndBackCells(col, row, side, edge);
-    gridWallEdgeEndpoints(grid, col, row, side, sEdgeP1, sEdgeP2, 0);
+    cellEdgeEndpoints(grid, col, row, side, sEdgeP1, sEdgeP2, 0);
     const midX = (sEdgeP1.x + sEdgeP2.x) * 0.5;
     const midY = (sEdgeP1.y + sEdgeP2.y) * 0.5;
     const mouthWorld = grid.gridToWorld(mouth.col, mouth.row);

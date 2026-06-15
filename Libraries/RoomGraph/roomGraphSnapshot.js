@@ -1,10 +1,10 @@
-import { gridCellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
+import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { cloneRoomGraphDoc, replaceRoomGraph } from "./roomGraphStore.js";
 /** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function collectRoomGraphForSnapshot(state, grid) {
     const graph = cloneRoomGraphDoc(state);
     const nodes = graph.nodes.map((node) => {
-        const { globalCol, globalRow } = gridCellToGlobalColRow(grid, node.col, node.row);
+        const { globalCol, globalRow } = cellToGlobalColRow(grid, node.col, node.row);
         return { ...node, col: globalCol, row: globalRow };
     });
     return { nodes, links: graph.links, nextNodeId: graph.nextNodeId, nextLinkId: graph.nextLinkId };

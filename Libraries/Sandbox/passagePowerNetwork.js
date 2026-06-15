@@ -2,7 +2,7 @@ import { isPassagePowerConductorEdge, isPortalEdge } from "../Spatial/grid/CellE
 import { isPassagePowered, setPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
 import { emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStructures/CellRect.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { canonicalEdgeCellKey, gridWallEdgeNeighbor, forEachGridEdge } from "../Spatial/grid/gridCellTopology.js";
+import { canonicalEdgeCellKey, edgeNeighbor, forEachCellEdge } from "../Spatial/grid/gridCellTopology.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
@@ -46,7 +46,7 @@ function buildPassagePowerGraph(grid) {
     const vertexEdges = new Map();
     /** @type {Map<number, PassageEdgeRef>} */
     const edgeByKey = new Map();
-    forEachGridEdge(
+    forEachCellEdge(
         grid,
         (col, row, side) => {
             const key = canonicalEdgeCellKey(grid, col, row, side);
@@ -165,7 +165,7 @@ function computePoweredEdgeNetworkIds(graph, poweredEdgeKeys, cols) {
 }
 function splitInvalidPortalLinks(grid, poweredEdgeKeys, networkIdByKey) {
     let changed = false;
-    forEachGridEdge(
+    forEachCellEdge(
         grid,
         (col, row, side) => {
             const partner = resolvePortalPartner(grid, col, row, side);
@@ -253,7 +253,7 @@ export function syncPassagePowerNetwork(state) {
         setPassagePowered(grid, col, row, side, powered);
         if (isPortalEdge(edge)) boundaryNavDirty = true;
         growCellBounds(bounds, col, row);
-        const { nc, nr } = gridWallEdgeNeighbor(col, row, side);
+        const { nc, nr } = edgeNeighbor(col, row, side);
         if (cellInRect(nc, nr, grid.cols, grid.rows)) growCellBounds(bounds, nc, nr);
     }
     if (splitInvalidPortalLinks(grid, poweredKeys, networkIdByKey)) {

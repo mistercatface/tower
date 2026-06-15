@@ -2,7 +2,7 @@ import { fillCircle, strokeOpenPolyline, strokeSegment, traceSegment } from "../
 import { fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba } from "../../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 import { isRailWallEdge } from "../../Spatial/grid/CellEdge.js";
-import { forEachGridEdge } from "../../Spatial/grid/gridCellTopology.js";
+import { forEachCellEdge } from "../../Spatial/grid/gridCellTopology.js";
 const WALL_OVERLAY_THICKNESS = 20;
 /** Pixels per grid cell in the map overview bake — edges draw on boundaries, not as cell fills. */
 const OVERVIEW_PIXELS_PER_CELL = 4;
@@ -131,7 +131,7 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
         const row = (i / cols) | 0;
         fillRgbaRect(px, w, h, col * ppc, row * ppc, ppc, ppc, OVERVIEW_WALL_RGB);
     }
-    forEachGridEdge(
+    forEachCellEdge(
         obstacleGrid,
         (col, row, side) => {
             if (side === 0) strokeAxisLineRgba(px, w, h, col * ppc, row * ppc, (col + 1) * ppc - 1, row * ppc, OVERVIEW_RAIL_RGB);

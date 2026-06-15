@@ -1,9 +1,9 @@
 import { crossingGrantAllows } from "../../Pathfinding/crossingGrant.js";
 import { formatGridSideNeighborLabel, gridSideNeighborCell, gridSideOutwardVector } from "./GridUtils.js";
-import { gridWallEdgeMirrorSide, gridWallEdgeNeighbor } from "./gridCellTopology.js";
+import { edgeMirrorSide, edgeNeighbor } from "./gridCellTopology.js";
 import { PORTAL_ACCESS_MODE } from "./CellEdge.js";
 export function portalAccessDefaultAllowedSide(ownerSide) {
-    return gridWallEdgeMirrorSide(ownerSide);
+    return edgeMirrorSide(ownerSide);
 }
 // allowedSide === mirror(ownerSide) → owner cell; otherwise neighbor in direction allowedSide.
 export function portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, allowedSide) {
@@ -20,7 +20,7 @@ export function portalMouthAllowedSide(edge, ownerSide) {
 }
 export function portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge) {
     const mouth = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
-    const { nc, nr } = gridWallEdgeNeighbor(ownerCol, ownerRow, ownerSide);
+    const { nc, nr } = edgeNeighbor(ownerCol, ownerRow, ownerSide);
     const back = mouth.col === ownerCol && mouth.row === ownerRow ? { col: nc, row: nr } : { col: ownerCol, row: ownerRow };
     return { mouth, back };
 }
