@@ -153,6 +153,24 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         nextPlacementSeq = 1;
     };
     const placementSeq = (key, fallback) => placementSeqByKey.get(key) ?? fallback;
+    /** Hand-placed voxels only — bulk cavern/map-gen stamps are not tracked here. */
+    const listTrackedVoxelWalls = () => {
+        const grid = state.obstacleGrid;
+        /** @type {{ col: number, row: number, heightLevel: number, label: string }[]} */
+        const placed = [];
+        for (const key of placementSeqByKey.keys()) {
+            if (!key.startsWith("voxel:")) continue;
+            const coords = key.slice(6);
+            const comma = coords.indexOf(",");
+            const col = Number(coords.slice(0, comma));
+            const row = Number(coords.slice(comma + 1));
+            if (!cellIsStaticWall(grid, col, row)) continue;
+            const heightLevel = grid.grid[col + row * grid.cols];
+            placed.push({ col, row, heightLevel, label: `Voxel · (${col},${row}) · height ${heightLevel}` });
+        }
+        placed.sort((a, b) => placementSeq(voxelPlacementKey(a.col, a.row), 0) - placementSeq(voxelPlacementKey(b.col, b.row), 0));
+        return placed;
+    };
     const sync = () => {
         requestRedraw();
         uiSync?.();
@@ -1044,7 +1062,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 items.push({ seq: placementSeq(floorPlacementKey(entry.col, entry.row), 1e9 + entry.col + entry.row * 1e6), kind: "floorBelt", label: entry.label, col: entry.col, row: entry.row });
             for (const entry of this.listPlacedPassagePowerSources())
                 items.push({ seq: placementSeq(floorPlacementKey(entry.col, entry.row), 2e9 + entry.col + entry.row * 1e6), kind: "powerSource", label: entry.label, col: entry.col, row: entry.row });
-            for (const entry of this.listPlacedVoxelWalls())
+            for (const entry of listTrackedVoxelWalls())
                 items.push({ seq: placementSeq(voxelPlacementKey(entry.col, entry.row), 3e9 + entry.col + entry.row * 1e6), kind: "voxel", label: entry.label, col: entry.col, row: entry.row });
             for (const entry of this.listPlacedRailWalls())
                 items.push({
