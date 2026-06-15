@@ -19,7 +19,8 @@ import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { SPLITTABLE_MIN_PIECE_SIZE } from "../Libraries/Props/splittable.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 import { ensureLocomotionWorldProp, updateLocomotionWorldProp, usesLocomotionWorldProp } from "../Libraries/Props/locomotionWorldProp.js";
-import { initFloorButtonProp, initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
+import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
+import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
 import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
 class WorldPropNormalState {
     getRender3DKey(prop) {

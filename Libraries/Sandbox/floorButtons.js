@@ -1,8 +1,21 @@
-import { processFloorShapes } from "../Spatial/zones/floorShapes.js";
+import { createAabb } from "../Math/Aabb2D.js";
+import { processFloorShapes, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { buttonEffectiveActive, isButtonActive, isButtonEntity, isMassButtonInputMode, isMassOverThreshold, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";
 import { runButtonTapLinks, syncButtonFlipperLinks, syncSandboxButtonPower, tickButtonSpawnerLinks } from "./floorEffects.js";
 import { syncForcefieldButtonPower } from "./forcefieldPower.js";
 const POINTER_HIT_PADDING = 4;
+export function initFloorButtonProp(prop) {
+    prop._occupants = new Set();
+    prop._nextOccupants = new Set();
+    prop.buttonLinks = prop.strategy.buttonLinks.map((link) => ({ ...link }));
+    prop.inputMode = prop.strategy.inputMode;
+    prop.massThreshold = prop.strategy.massThreshold;
+    prop.invert = prop.strategy.invert === true;
+    prop._toggleLatched = false;
+    prop.aabb = createAabb();
+    syncFloorPropCollisionShape(prop);
+    syncFloorTriggerAabb(prop);
+}
 /** @param {object} state @param {number} wx @param {number} wy @param {number} [padding] */
 export function hitTestFloorButton(state, wx, wy, padding = POINTER_HIT_PADDING) {
     /** @type {object | null} */
