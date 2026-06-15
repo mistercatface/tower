@@ -83,4 +83,32 @@ Forcefields → `canStep` filters. Portals → hop CSR + region adjacency. Belts
 
 - Scene list must not enumerate bulk terrain voxels
 - No dual nav bake pipelines
-- No main-thread A* / stitch fallback on missing worker path
+
+---
+
+## No main-thread fallbacks
+
+**This is non-negotiable.** If the worker path is missing, stale, or slow, main does **not** pick up the work.
+
+- No `HierarchicalNavigator.computeCellPath`, `runLocalAStar`, or `stitchAbstractCellPath` on the click/replan hot path
+- No "just this once" sync bake that mirrors octile back to main for convenience
+- No silent retry on main when `requestPath` returns null or a slot is empty — surface the failure or await the worker; do not reroute to main A*
+- No edit-time local A* for graph reconnect (cost-only edges + worker stitch at replan is the contract)
+- Stale epoch → refuse or await worker patch/sync; never plan against a graph or nav view main rebuilt locally
+
+Main thread role stays **request, apply, steer, physics** — not pathfinding CPU. Any fallback reintroduces the freeze pattern we removed and masks worker bugs instead of fixing them.
+
+---
+
+## Next PR — region graph repack on carve
+
+**Problem:** `rebuildDamagedArea` merges newly opened cells into an adjacent region and moves its centroid. It never subdivides. Erasing walls into existing walkable space can leave one HPA region with hundreds of cells while the abstract graph still assumes chunk-sized (~64 cell) regions. Nav octile is correct; abstract routing is wrong.
+
+**Scope:** After `_assignOpenedCells` and merges, subdivide any region in the dirty hull that exceeds `maxCellsPerChunk` — reuse `floodFillRegion` / Voronoi seeding locally inside the expanded damage box, not a full-grid regen. Reconnect abstract edges for touched regions only (same cost-only `_reconnectRegionEdges` pattern). Escalate to localized `generateVoronoiRegions` in the hull when opened-cell count or merge size crosses a threshold. Still on main; still `syncAbstractGraph` to worker afterward.
+
+**Acceptance:** carve a large box into cavern wall → region count grows appropriately, no single region >> 64 cells, warm click `requestPath` still works; no new main-thread A* on click or edit reconnect.
+
+## After that
+
+Move region graph maintenance to the worker (`patchRegionGraph`): main sends dirty rect + epoch, worker patches assignment and persist CSR incrementally, main drops `rebuildDamagedArea` and stops repacking the full graph on every edit. Then portal hop cost on abstract edges, incremental hop CSR, belt transfer edges, and partial-path policy — same pipe, tunable knobs.
+
