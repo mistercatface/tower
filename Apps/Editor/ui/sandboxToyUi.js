@@ -732,7 +732,8 @@ export function mountSandboxToyUi(container, controller, onChange) {
                             clearLinks: () => controller.clearSelectedRoomNodeLinks(),
                             removeLink: (linkId) => controller.removeRoomLinkById(linkId),
                             selectedLinkId: () => controller.getSelectedRoomLinkId(),
-                            selectLink: (linkId) => controller.setSelectedRoomLinkId(linkId),
+                            selectedCorridorIndex: () => controller.getSelectedRoomLinkCorridorIndex(),
+                            selectLink: (linkId, corridorIndex) => controller.setSelectedRoomLinkId(linkId, corridorIndex),
                         },
                         onChange,
                     );

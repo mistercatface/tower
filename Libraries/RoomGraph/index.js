@@ -22,8 +22,13 @@ export {
     clearRoomLinksForNode,
     formatRoomLinkLabel,
     formatRoomLinkLabelForNode,
+    formatRoomLinkCorridorLabel,
+    formatRoomLinkCorridorLabelForNode,
+    formatRoomLinkCorridorFlowNote,
+    roomLinkCorridorLaneCount,
     formatRoomNodeLabel,
-    listRoomNodeLinkEntries,
+    listRoomNodeCorridorEntries,
+    listRoomLinkCorridorSceneEntries,
     updateRoomLink,
 } from "./roomGraphStore.js";
 export { DEFAULT_ROOM_NODE_COLS, DEFAULT_ROOM_NODE_ROWS, canStampRoomNodeAt, resolveRoomNodePlacePreview, roomNodeCellBlocked, stampRoomNodeAt } from "./roomGraphPlacement.js";

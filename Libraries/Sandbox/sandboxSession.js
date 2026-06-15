@@ -11,12 +11,15 @@ import {
     addRoomLink,
     clearRoomLinksForNode,
     formatRoomLinkLabel,
-    formatRoomLinkLabelForNode,
+    formatRoomLinkCorridorLabel,
     formatRoomNodeLabel,
     getRoomLink,
     getRoomNode,
     listRoomLinks,
     listRoomNodes,
+    listRoomLinkCorridorSceneEntries,
+    listRoomNodeCorridorEntries,
+    roomLinkCorridorLaneCount,
     pickRoomNodeAt,
     removeRoomLink,
     removeRoomNode,
@@ -99,6 +102,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     let selectedRoomNodeId = null;
     /** @type {number | null} */
     let selectedRoomLinkId = null;
+    /** @type {number} */
+    let selectedRoomLinkCorridorIndex = 0;
     /** @type {(() => void) | null} */
     let uiSync = null;
     let nextPlacementSeq = 1;
@@ -129,17 +134,26 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     const forgetVoxelPlacement = (col, row) => placementSeqByKey.delete(voxelPlacementKey(col, row));
     const forgetEdgePlacement = (kind, col, row, side) => placementSeqByKey.delete(edgePlacementKey(kind, col, row, side));
     const roomNodePlacementKey = (id) => `roomNode:${id}`;
-    const roomLinkPlacementKey = (id) => `roomLink:${id}`;
+    const roomLinkPlacementKey = (linkId, corridorIndex) => `roomLink:${linkId}:${corridorIndex}`;
     const touchRoomNodePlacement = (id) => {
         const key = roomNodePlacementKey(id);
         if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
     };
-    const touchRoomLinkPlacement = (id) => {
-        const key = roomLinkPlacementKey(id);
+    const touchRoomLinkPlacement = (linkId, corridorIndex) => {
+        const key = roomLinkPlacementKey(linkId, corridorIndex);
         if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
     };
     const forgetRoomNodePlacement = (id) => placementSeqByKey.delete(roomNodePlacementKey(id));
-    const forgetRoomLinkPlacement = (id) => placementSeqByKey.delete(roomLinkPlacementKey(id));
+    const forgetRoomLinkPlacement = (linkId) => {
+        const prefix = `roomLink:${linkId}:`;
+        for (const key of placementSeqByKey.keys()) {
+            if (key.startsWith(prefix)) placementSeqByKey.delete(key);
+        }
+    };
+    const touchRoomLinkCorridors = (link) => {
+        const count = roomLinkCorridorLaneCount(link);
+        for (let ci = 0; ci < count; ci++) touchRoomLinkPlacement(link.id, ci);
+    };
     const resetPlacementOrder = () => {
         placementSeqByKey.clear();
         nextPlacementSeq = 1;
@@ -168,6 +182,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
     const dropRoomGraphSelection = () => {
         selectedRoomNodeId = null;
         selectedRoomLinkId = null;
+        selectedRoomLinkCorridorIndex = 0;
     };
     const dropFloorSelection = () => {
         if (selectedFloorCell == null) return;
@@ -215,28 +230,31 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         selectedPropIds.clear();
         selectedPropId = null;
         selectedRoomLinkId = null;
+        selectedRoomLinkCorridorIndex = 0;
         selectedRoomNodeId = id;
         sync();
     };
-    const setSelectedRoomLinkId = (id) => {
+    const setSelectedRoomLinkId = (id, corridorIndex = 0) => {
         dropFloorSelection();
         dropWallSelection();
         selectedPropIds.clear();
         selectedPropId = null;
         selectedRoomLinkId = id;
+        selectedRoomLinkCorridorIndex = id == null ? 0 : corridorIndex;
         if (id != null && selectedRoomNodeId != null) {
             const link = getRoomLink(state, id);
             if (link && link.a !== selectedRoomNodeId && link.b !== selectedRoomNodeId) selectedRoomNodeId = null;
         }
         sync();
     };
-    const setSelectedRoomLinkFromScene = (id) => {
+    const setSelectedRoomLinkFromScene = (linkId, corridorIndex = 0) => {
         dropFloorSelection();
         dropWallSelection();
         selectedPropIds.clear();
         selectedPropId = null;
         selectedRoomNodeId = null;
-        selectedRoomLinkId = id;
+        selectedRoomLinkId = linkId;
+        selectedRoomLinkCorridorIndex = corridorIndex;
         sync();
     };
     const setSelectedFloorCell = (col, row) => {
@@ -888,6 +906,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         },
         getSelectedRoomNodeId: () => selectedRoomNodeId,
         getSelectedRoomLinkId: () => selectedRoomLinkId,
+        getSelectedRoomLinkCorridorIndex: () => selectedRoomLinkCorridorIndex,
         getSelectedRoomNode: () => (selectedRoomNodeId == null ? null : (getRoomNode(state, selectedRoomNodeId) ?? null)),
         getSelectedRoomLink: () => (selectedRoomLinkId == null ? null : (getRoomLink(state, selectedRoomLinkId) ?? null)),
         getSelectedRoomNodeInfo() {
@@ -908,7 +927,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             return {
                 ...link,
                 corridorType: normalizeCorridorType(link.corridorType),
-                label: formatRoomLinkLabel(link),
+                label: formatRoomLinkCorridorLabel(link, selectedRoomLinkCorridorIndex),
+                corridorIndex: selectedRoomLinkCorridorIndex,
                 maxCorridorWidth: limits?.maxWidth ?? null,
                 maxCorridorCount: MAX_CORRIDOR_COUNT,
                 rolledCorridorCount: roll?.corridorCount ?? null,
@@ -918,8 +938,8 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         setSelectedRoomNodeId(id) {
             setSelectedRoomNodeId(id);
         },
-        setSelectedRoomLinkId(id) {
-            setSelectedRoomLinkId(id);
+        setSelectedRoomLinkId(id, corridorIndex) {
+            setSelectedRoomLinkId(id, corridorIndex);
         },
         pickRoomNodeAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
@@ -932,9 +952,10 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         addRoomLinkBetweenNodes(a, b) {
             const link = addRoomLink(state, a, b);
             if (!link) return null;
-            touchRoomLinkPlacement(link.id);
+            touchRoomLinkCorridors(link);
             selectedRoomNodeId = a;
             selectedRoomLinkId = link.id;
+            selectedRoomLinkCorridorIndex = 0;
             syncRoomGraphBake(state);
             sync();
             return link;
@@ -960,9 +981,11 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         listSelectedRoomNodeLinks() {
             const node = this.getSelectedRoomNode();
             if (!node) return [];
-            return listRoomLinks(state)
-                .filter((link) => link.a === node.id || link.b === node.id)
-                .map((link) => ({ linkId: link.id, label: formatRoomLinkLabelForNode(node.id, link) }));
+            return listRoomNodeCorridorEntries(state, node.id).map((entry) => ({
+                linkId: entry.link.id,
+                corridorIndex: entry.corridorIndex,
+                label: entry.label,
+            }));
         },
         deleteSelectedRoomNode() {
             if (selectedRoomNodeId == null) return;
@@ -985,6 +1008,11 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         updateSelectedRoomLink(patch) {
             if (selectedRoomLinkId == null) return false;
             if (!updateRoomLink(state, selectedRoomLinkId, patch)) return false;
+            const link = getRoomLink(state, selectedRoomLinkId);
+            if (link) {
+                selectedRoomLinkCorridorIndex = Math.min(selectedRoomLinkCorridorIndex, roomLinkCorridorLaneCount(link) - 1);
+                if (patch.corridorCount != null) touchRoomLinkCorridors(link);
+            }
             const deferBake =
                 patch.corridorCount == null &&
                 patch.corridorWidthMin == null &&
@@ -1002,7 +1030,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             return listRoomNodes(state).map((node) => ({ id: node.id, col: node.col, row: node.row, width: node.width, height: node.height, label: formatRoomNodeLabel(node) }));
         },
         listPlacedRoomLinks() {
-            return listRoomLinks(state).map((link) => ({ id: link.id, a: link.a, b: link.b, label: formatRoomLinkLabel(link) }));
+            return listRoomLinkCorridorSceneEntries(state);
         },
         seedPlacementOrderFromState() {
             resetPlacementOrder();
@@ -1015,7 +1043,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             for (const entry of this.listPlacedForcefields()) touchEdgePlacement("forcefield", entry.col, entry.row, entry.side);
             for (const entry of this.listPlacedPortals()) touchEdgePlacement("portal", entry.col, entry.row, entry.side);
             for (const entry of this.listPlacedRoomNodes()) touchRoomNodePlacement(entry.id);
-            for (const entry of this.listPlacedRoomLinks()) touchRoomLinkPlacement(entry.id);
+            for (const entry of this.listPlacedRoomLinks()) touchRoomLinkPlacement(entry.linkId, entry.corridorIndex);
         },
         listPlacedSceneItems() {
             /** @type {{ seq: number, kind: string, label: string, propId?: number, propType?: string, col?: number, row?: number, side?: number }[]} */
@@ -1064,14 +1092,20 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
             for (const entry of this.listPlacedRoomNodes())
                 items.push({ seq: placementSeq(roomNodePlacementKey(entry.id), 7e9 + entry.id), kind: "roomNode", label: entry.label, roomNodeId: entry.id });
             for (const entry of this.listPlacedRoomLinks())
-                items.push({ seq: placementSeq(roomLinkPlacementKey(entry.id), 8e9 + entry.id), kind: "roomLink", label: entry.label, roomLinkId: entry.id });
+                items.push({
+                    seq: placementSeq(roomLinkPlacementKey(entry.linkId, entry.corridorIndex), 8e9 + entry.linkId + entry.corridorIndex * 1e6),
+                    kind: "roomLink",
+                    label: entry.label,
+                    roomLinkId: entry.linkId,
+                    corridorIndex: entry.corridorIndex,
+                });
             items.sort((a, b) => a.seq - b.seq);
             return items;
         },
         isSceneItemSelected(item) {
             if (item.kind === "prop") return selectedPropIds.has(item.propId);
             if (item.kind === "roomNode") return selectedRoomNodeId === item.roomNodeId;
-            if (item.kind === "roomLink") return selectedRoomLinkId === item.roomLinkId;
+            if (item.kind === "roomLink") return selectedRoomLinkId === item.roomLinkId && selectedRoomLinkCorridorIndex === item.corridorIndex;
             if (item.kind === "floorBelt" || item.kind === "powerSource") return selectedFloorCell?.col === item.col && selectedFloorCell.row === item.row;
             if (item.kind === "voxel") return selectedVoxelCell?.col === item.col && selectedVoxelCell.row === item.row;
             return selectedRailEdge?.col === item.col && selectedRailEdge.row === item.row && selectedRailEdge.side === item.side;
@@ -1087,7 +1121,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 return;
             }
             if (item.kind === "roomLink") {
-                setSelectedRoomLinkFromScene(item.roomLinkId);
+                setSelectedRoomLinkFromScene(item.roomLinkId, item.corridorIndex ?? 0);
                 return;
             }
             if (item.kind === "floorBelt" || item.kind === "powerSource") {
@@ -1114,7 +1148,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 return;
             }
             if (item.kind === "roomLink") {
-                setSelectedRoomLinkId(item.roomLinkId);
+                setSelectedRoomLinkId(item.roomLinkId, item.corridorIndex ?? 0);
                 this.deleteSelectedRoomLink();
                 return;
             }

@@ -1,5 +1,5 @@
 import { clampLinkCorridorRanges, ensureLinkCorridorFields } from "./roomGraphLinkCorridor.js";
-import { CORRIDOR_TYPE_EMPTY } from "./roomGraphCorridorTypes.js";
+import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "./roomGraphCorridorTypes.js";
 /** @typedef {{ id: number, col: number, row: number, width: number, height: number }} RoomNode */
 /** @typedef {{ id: number, a: number, b: number, corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, canIntersect?: boolean, seed?: number }} RoomLink */
 /** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[], bakedFloorBelts?: { col: number, row: number, kind: number, facingIndex: number }[] }} RoomGraphDoc */
@@ -144,6 +144,28 @@ export function clearRoomLinksForNode(state, nodeId) {
 export function formatRoomLinkLabel(link) {
     return `Link #${link.id} · node ${link.a} → node ${link.b}`;
 }
+/** @param {RoomLink} link */
+export function roomLinkCorridorLaneCount(link) {
+    return Math.max(1, Math.round(link.corridorCount ?? 1));
+}
+/** @param {RoomLink} link */
+export function formatRoomLinkCorridorFlowNote(link) {
+    return normalizeCorridorType(link.corridorType) === CORRIDOR_TYPE_EMPTY ? "bidirectional" : "one-way belt";
+}
+/** @param {RoomLink} link @param {number} corridorIndex */
+export function formatRoomLinkCorridorLabel(link, corridorIndex) {
+    const count = roomLinkCorridorLaneCount(link);
+    const lanePart = count > 1 ? ` · corridor ${corridorIndex + 1}/${count}` : "";
+    return `Link #${link.id} · node ${link.a} → node ${link.b}${lanePart} · ${formatRoomLinkCorridorFlowNote(link)}`;
+}
+/** @param {number} nodeId @param {RoomLink} link @param {number} corridorIndex */
+export function formatRoomLinkCorridorLabelForNode(nodeId, link, corridorIndex) {
+    const count = roomLinkCorridorLaneCount(link);
+    const lanePart = count > 1 ? ` · corridor ${corridorIndex + 1}/${count}` : "";
+    const flow = formatRoomLinkCorridorFlowNote(link);
+    if (link.a === nodeId) return `Link #${link.id} · → node ${link.b}${lanePart} · ${flow}`;
+    return `Link #${link.id} · node ${link.a} → here${lanePart} · ${flow}`;
+}
 /** @param {number} nodeId @param {RoomLink} link */
 export function formatRoomLinkLabelForNode(nodeId, link) {
     if (link.a === nodeId) return `Link #${link.id} · → node ${link.b}`;
@@ -153,15 +175,32 @@ export function formatRoomLinkLabelForNode(nodeId, link) {
 export function formatRoomNodeLabel(node) {
     return `Room node #${node.id} · ${node.width}×${node.height} @ (${node.col},${node.row})`;
 }
-/** @param {object} state @param {number} nodeId @returns {{ link: RoomLink, otherNodeId: number, label: string }[]} */
-export function listRoomNodeLinkEntries(state, nodeId) {
+/** @param {object} state @returns {{ linkId: number, corridorIndex: number, a: number, b: number, label: string }[]} */
+export function listRoomLinkCorridorSceneEntries(state) {
+    const links = listRoomLinks(state);
+    /** @type {{ linkId: number, corridorIndex: number, a: number, b: number, label: string }[]} */
+    const entries = [];
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        const count = roomLinkCorridorLaneCount(link);
+        for (let ci = 0; ci < count; ci++) {
+            entries.push({ linkId: link.id, corridorIndex: ci, a: link.a, b: link.b, label: formatRoomLinkCorridorLabel(link, ci) });
+        }
+    }
+    return entries;
+}
+/** @param {object} state @param {number} nodeId @returns {{ link: RoomLink, otherNodeId: number, corridorIndex: number, label: string }[]} */
+export function listRoomNodeCorridorEntries(state, nodeId) {
     const links = linksForNode(state, nodeId);
-    /** @type {{ link: RoomLink, otherNodeId: number, label: string }[]} */
+    /** @type {{ link: RoomLink, otherNodeId: number, corridorIndex: number, label: string }[]} */
     const entries = [];
     for (let i = 0; i < links.length; i++) {
         const link = links[i];
         const otherNodeId = link.a === nodeId ? link.b : link.a;
-        entries.push({ link, otherNodeId, label: formatRoomLinkLabelForNode(nodeId, link) });
+        const count = roomLinkCorridorLaneCount(link);
+        for (let ci = 0; ci < count; ci++) {
+            entries.push({ link, otherNodeId, corridorIndex: ci, label: formatRoomLinkCorridorLabelForNode(nodeId, link, ci) });
+        }
     }
     return entries;
 }

@@ -126,24 +126,26 @@ export function appendButtonWireInspector(body, wire, onChange) {
 /**
  * @param {HTMLElement} body
  * @param {{
- *   listLinks: () => { linkId: number, label: string }[],
+ *   listLinks: () => { linkId: number, corridorIndex: number, label: string }[],
  *   isWireActive: () => boolean,
  *   startWire: () => void,
  *   cancelWire: () => void,
  *   clearLinks: () => void,
  *   removeLink: (linkId: number) => void,
  *   selectedLinkId?: () => number | null,
- *   selectLink?: (linkId: number) => void,
+ *   selectedCorridorIndex?: () => number,
+ *   selectLink?: (linkId: number, corridorIndex: number) => void,
  * }} wire
  * @param {() => void} onChange
  */
 export function appendRoomNodeWireInspector(body, wire, onChange) {
     const links = wire.listLinks();
     const selectedLinkId = wire.selectedLinkId?.() ?? null;
+    const selectedCorridorIndex = wire.selectedCorridorIndex?.() ?? 0;
     appendEditorHint(
         body,
         links.length
-            ? `${links.length} link${links.length === 1 ? "" : "s"} — pick a link below for corridor settings. Wire order sets belt direction (source → target).`
+            ? `${links.length} corridor${links.length === 1 ? "" : "s"} — pick one below for settings. Wire order sets belt direction (source → target).`
             : "No links — connect to another room node. First pick is the belt source; second pick is the target.",
     );
     if (links.length)
@@ -151,10 +153,10 @@ export function appendRoomNodeWireInspector(body, wire, onChange) {
             body,
             links.map((entry) => ({
                 label: entry.label,
-                selected: entry.linkId === selectedLinkId,
+                selected: entry.linkId === selectedLinkId && entry.corridorIndex === selectedCorridorIndex,
                 onSelect: wire.selectLink
                     ? () => {
-                          wire.selectLink(entry.linkId);
+                          wire.selectLink(entry.linkId, entry.corridorIndex);
                           onChange();
                       }
                     : undefined,
