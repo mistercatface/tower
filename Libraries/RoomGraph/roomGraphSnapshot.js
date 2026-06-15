@@ -1,4 +1,4 @@
-import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
+import { gridCellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { cloneRoomGraphDoc, replaceRoomGraph } from "./roomGraphStore.js";
 /** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function collectRoomGraphForSnapshot(state, grid) {

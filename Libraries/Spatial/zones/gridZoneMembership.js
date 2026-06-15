@@ -1,7 +1,7 @@
 import { isEdgeZoneKey } from "../../DataStructures/CellKey.js";
 import { cellInRect, colRowToIndex, indexToColRow } from "../grid/GridUtils.js";
 import { isPassagePowered } from "../grid/boundaryOccupancy.js";
-import { canonicalEdgeCellKey } from "../../World/wallGridCells.js";
+import { canonicalEdgeCellKey } from "../grid/gridCellTopology.js";
 /** @typedef {{ col: number, row: number, side: number, mode: string }} GridEdgeSubscription */
 /** @typedef {{ cells: Set<number>, edges: Map<number, GridEdgeSubscription> }} GridZoneSubscriptions */
 /**

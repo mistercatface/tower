@@ -6,7 +6,7 @@ import { isButtonEntity } from "./buttonInput.js";
 import { isPullPowerTarget } from "./pullFixtureWalls.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
 import { formatPropTypeLabel } from "../Props/PropCatalog.js";
-import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
+import { gridCellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 /** @typedef {{ type: "worldProp", id: number }} WorldPropButtonLinkTarget */
 /** @typedef {{ type: "gridCell", globalCol: number, globalRow: number }} GridCellButtonLinkTarget */

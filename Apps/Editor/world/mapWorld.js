@@ -8,7 +8,7 @@ import { worldBoundsFromCellOrigin, forEachObstacleGridCellInAabb } from "../../
 import { computeBoundsFromWalls } from "../../../Libraries/Spatial/grid/wallGridBake.js";
 import { clearSandboxWallsInBounds } from "../../../Libraries/Sandbox/sandboxWalls.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
-import { cellIsStaticWallAtIdx, gridCellToGlobalColRow } from "../../../Libraries/World/wallGridCells.js";
+import { cellIsStaticWallAtIdx, gridCellToGlobalColRow } from "../../../Libraries/Spatial/grid/gridCellTopology.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
     applyCavernShapeMask,

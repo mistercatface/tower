@@ -14,27 +14,15 @@ export {
     drawWallFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
-import { resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
+import { resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
-/**
- * @param {import("../Spatial/indexes/WallSpatialIndex.js").WallSpatialIndex | null | undefined} wallSpatialIndex
- * @param {number} chunkOriginX
- * @param {number} chunkOriginY
- * @param {number} chunkSizePx
- */
 export function chunkHasWallSegments(wallSpatialIndex, chunkOriginX, chunkOriginY, chunkSizePx) {
     if (!wallSpatialIndex) return false;
     const segments = wallSpatialIndex.collectInBounds(chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx));
     for (let i = 0; i < segments.length; i++) if (!segments[i].isDead) return true;
     return false;
 }
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
- * @param {number} chunkOriginX
- * @param {number} chunkOriginY
- * @param {number} chunkSizePx
- */
 export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
     let found = false;
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
@@ -42,17 +30,6 @@ export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, c
     });
     return found;
 }
-/**
- * World-aligned alpha mask for static stamp roofs in one chunk (baked once per invalidation).
- *
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
- * @param {number} chunkOriginX
- * @param {number} chunkOriginY
- * @param {number} chunkSizePx
- * @param {number} zLevel
- * @param {number} texelResolution
- * @returns {OffscreenCanvas | null}
- */
 export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, texelResolution) {
     const bakeSize = bakePixelsForWorldSpan(chunkSizePx, { texelResolution });
     const cellBakeSize = bakePixelsForWorldSpan(obstacleGrid.cellSize, { texelResolution });
@@ -70,7 +47,6 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
     });
     return any ? canvas : null;
 }
-/** @param {CanvasImageSource} roofCanvas @param {CanvasImageSource} maskCanvas */
 export function applyStaticRoofMaskToCanvas(roofCanvas, maskCanvas) {
     const w = roofCanvas.width;
     const h = roofCanvas.height;

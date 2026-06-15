@@ -1,7 +1,7 @@
 /**
  * Viewport-scoped draw + query for static obstacle-grid walls (no Segment entities).
  */
-import { collectGridWallFacesInAabb } from "../../World/wallGridCells.js";
+import { collectGridWallFacesInAabb } from "../../World/wallGridBake.js";
 import { isOutwardFaceTowardViewer } from "../../Spatial/iso/IsometricProjection.js";
 /** @type {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, faces: object[] }} */
 const sGeomCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: [] };

@@ -5,7 +5,7 @@ import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellBoundsAtOriginInto } from "../Spatial/grid/GridCoords.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { gridForcefieldEdge, gridPortalEdge } from "../World/wallGridCells.js";
+import { gridForcefieldEdge, gridPortalEdge } from "../Spatial/grid/gridCellTopology.js";
 import { strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
 import { resolvePortalLinkRoute } from "./portalLinks.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();

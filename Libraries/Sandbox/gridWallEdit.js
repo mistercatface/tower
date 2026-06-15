@@ -17,7 +17,15 @@ import {
 } from "../Spatial/grid/CellEdge.js";
 import { portalAccessDefaultAllowedSide, formatPortalAccessSideLabel, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { setBoundary, setPassageProfile, setPortalProfile, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
-import { canonicalEdgeCellKey, cellIsStaticWall, cellIsStaticWallAtIdx, forEachGridEdge, gridCellToGlobalColRow, gridNeighborFillLevel, gridWallEdgeEndpoints } from "../World/wallGridCells.js";
+import {
+    canonicalEdgeCellKey,
+    cellIsStaticWall,
+    cellIsStaticWallAtIdx,
+    forEachGridEdge,
+    gridCellToGlobalColRow,
+    gridNeighborFillLevel,
+    gridWallEdgeEndpoints,
+} from "../Spatial/grid/gridCellTopology.js";
 import { findPortalEdgeByKey } from "../Spatial/grid/portalSlotIndex.js";
 import {
     formatPortalConnectionLabel,

@@ -2,7 +2,7 @@ import { fillCircle, strokeOpenPolyline, strokeSegment, traceSegment } from "../
 import { fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba } from "../../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 import { isRailWallEdge } from "../../Spatial/grid/CellEdge.js";
-import { forEachGridEdge } from "../../World/wallGridCells.js";
+import { forEachGridEdge } from "../../Spatial/grid/gridCellTopology.js";
 const WALL_OVERLAY_THICKNESS = 20;
 /** Pixels per grid cell in the map overview bake — edges draw on boundaries, not as cell fills. */
 const OVERVIEW_PIXELS_PER_CELL = 4;

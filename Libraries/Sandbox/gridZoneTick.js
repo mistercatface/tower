@@ -1,7 +1,7 @@
 import { isPassageTripwireEdge, PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import { tickGridZoneMembership } from "../Spatial/zones/gridZoneMembership.js";
 import { isPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
-import { canonicalEdgeCellKey, forEachGridEdge } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey, forEachGridEdge } from "../Spatial/grid/gridCellTopology.js";
 /** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneSubscriptions} GridZoneSubscriptions */
 /** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneEvent} GridZoneEvent */
 /** @param {object} state */

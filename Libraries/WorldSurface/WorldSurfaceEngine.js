@@ -18,7 +18,7 @@ import {
     drawStaticWallFootprintDamageOverlays,
     drawStaticEdgeRailFootprintDamageOverlays,
 } from "./ChunkDrawPass.js";
-import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridCells.js";
+import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
@@ -39,10 +39,6 @@ const sRoofChunkCorners = [
  * @property {(state: object, chunkCol: number, chunkRow: number, zLevel?: number) => object} buildChunkPayload
  */
 export class WorldSurfaceEngine {
-    /**
-     * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} settings
-     * @param {WorldSurfaceEngineHooks} [hooks]
-     */
     constructor(settings, hooks = {}) {
         this.settings = settings;
         this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
@@ -52,12 +48,6 @@ export class WorldSurfaceEngine {
     clear() {
         this.surfaceCache.clear();
     }
-    /**
-     * @param {{ startCol: number, endCol: number, startRow: number, endRow: number }} bounds
-     * @param {{ cellSize: number, minX: number, minY: number }} obstacleGrid
-     * @param {(x: number, y: number) => string} resolveProfileAt
-     * @param {number} [cellsPerChunk]
-     */
     invalidateGridBounds(bounds, obstacleGrid, resolveProfileAt, cellsPerChunk = this.settings.cellsPerChunk, roofZLevels = null) {
         if (!bounds || !obstacleGrid) return;
         const cellSize = obstacleGrid.cellSize;

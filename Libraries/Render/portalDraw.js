@@ -1,4 +1,4 @@
-import { gridWallEdgeEndpoints } from "../World/wallGridCells.js";
+import { gridWallEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 import { portalMouthAndBackCells } from "../Spatial/grid/portalAccess.js";
 import { PORTAL_LINK_MODE, resolvePortalLinkRoute } from "../Sandbox/portalLinks.js";
 import { getCanvasLineScale } from "./common/viewportUtils.js";

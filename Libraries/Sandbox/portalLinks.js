@@ -3,7 +3,7 @@ import { findPortalEdgeByKey } from "../Spatial/grid/portalSlotIndex.js";
 import { resolveCardinalStepCrossing } from "../Spatial/grid/portalAccess.js";
 import { portalPassageBlocksStepFrom } from "./portalStep.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
 import { canLinkPortalsOnNetwork } from "./passagePowerNetwork.js";
 export const PORTAL_LINK_MODE = { Shared: "shared", OneWay: "oneWay" };
 /** @param {unknown} raw */

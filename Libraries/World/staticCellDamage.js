@@ -4,40 +4,24 @@
 import { packCellKey, packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { getDamageAlphaFromHealth } from "../Render/Structure3D/wallDamageVisual.js";
-import { cellIsStaticWallAtIdx, gridCellToGlobalColRow, gridRailWallEdge } from "./wallGridCells.js";
+import { cellIsStaticWallAtIdx, gridCellToGlobalColRow, gridRailWallEdge } from "../Spatial/grid/gridCellTopology.js";
 export const STATIC_CELL_MAX_HEALTH = 30;
-/** @param {object} state @param {number} globalCol @param {number} globalRow */
 function readStaticCellHealth(state, globalCol, globalRow) {
     const entry = state.staticCellHealth.get(packCellKey(globalCol, globalRow));
     if (entry) return entry;
     return { health: STATIC_CELL_MAX_HEALTH, maxHealth: STATIC_CELL_MAX_HEALTH };
 }
-/** @param {object} state @param {number} globalCol @param {number} globalRow @param {number} side */
 function readStaticEdgeHealth(state, globalCol, globalRow, side) {
     const entry = state.staticCellHealth.get(packEdgeCellKey(globalCol, globalRow, side));
     if (entry) return entry;
     return { health: STATIC_CELL_MAX_HEALTH, maxHealth: STATIC_CELL_MAX_HEALTH };
 }
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {object} state
- * @param {number} col
- * @param {number} row
- * @param {number} idx
- */
 export function getStaticCellDamageAlphaAtIdx(grid, state, col, row, idx) {
     if (!cellIsStaticWallAtIdx(grid, idx)) return 0;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);
     const { health, maxHealth } = readStaticCellHealth(state, globalCol, globalRow);
     return getDamageAlphaFromHealth(health, maxHealth);
 }
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {object} state
- * @param {number} col
- * @param {number} row
- * @param {number} side
- */
 export function getStaticEdgeDamageAlphaAt(grid, state, col, row, side) {
     if (!gridRailWallEdge(grid, col, row, side)) return 0;
     const { globalCol, globalRow } = gridCellToGlobalColRow(grid, col, row);

@@ -1,7 +1,7 @@
 import { packEdgeCellKey } from "../DataStructures/CellKey.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { clearBoundaryPrimary, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
-import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
+import { gridCellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { syncBoundaryNavIndex } from "./boundaryNavSync.js";

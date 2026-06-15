@@ -1,6 +1,6 @@
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
-import { gridWallEdgeNeighbor, gridWallEdgeMirrorSide, gridNeighborFillLevel } from "../../World/wallGridCells.js";
+import { gridWallEdgeNeighbor, gridWallEdgeMirrorSide, gridNeighborFillLevel } from "./gridCellTopology.js";
 import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isPortalEdge, isRailWallEdge, railWallHeightPx, PASSAGE_MODE, PORTAL_ACCESS_MODE } from "./CellEdge.js";
 const EMPTY = -1;
 export class CellEdgeStore {

@@ -18,7 +18,7 @@ import { resolvePassageStepFrom, resolvePassageStepUndirected } from "./passageS
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
-import { gridNeighborFillLevel } from "../../World/wallGridCells.js";
+import { gridNeighborFillLevel } from "./gridCellTopology.js";
 import { diagonalBoundaryBlockedFromVertexCache } from "./vertexPassability.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {{ kind: "passage", mode?: string, allowedSide?: number, powered?: boolean }} PassageBoundarySpec */

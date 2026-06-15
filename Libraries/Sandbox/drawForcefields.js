@@ -4,7 +4,7 @@ import { drawPortalEdgeCached } from "../Render/portalDraw.js";
 import { projectPropVertex } from "../Render/Props3D/propMesh.js";
 import { isForcefieldEdge, isPortalEdge, PASSAGE_MODE, resolvePassageEdge } from "../Spatial/grid/CellEdge.js";
 import { gridEdgeSideFacing, gridSideOutwardVector } from "../Spatial/grid/GridUtils.js";
-import { forEachGridEdge, gridWallEdgeEndpoints, canonicalEdgeCellKey } from "../World/wallGridCells.js";
+import { forEachGridEdge, gridWallEdgeEndpoints, canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
 const EDGE_P1 = { x: 0, y: 0 };
 const EDGE_P2 = { x: 0, y: 0 };
 const FORCEFIELD_HEIGHT = 10;

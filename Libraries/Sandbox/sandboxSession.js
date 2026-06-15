@@ -68,7 +68,7 @@ import {
 import { PASSAGE_MODE, PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
 import { portalAccessDefaultAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { canonicalEdgeCellKey, cellIsStaticWall, gridForcefieldEdge, gridPortalEdge, gridRailWallEdge } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey, cellIsStaticWall, gridForcefieldEdge, gridPortalEdge, gridRailWallEdge } from "../Spatial/grid/gridCellTopology.js";
 import { formatPortalConnectionLabel, PORTAL_LINK_MODE } from "./portalLinks.js";
 /** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {

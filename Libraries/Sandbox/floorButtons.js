@@ -1,6 +1,6 @@
 import { createAabb } from "../Math/Aabb2D.js";
 import { processFloorShapes, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
-import { buttonEffectiveActive, isButtonActive, isButtonEntity, isMassButtonInputMode, isMassOverThreshold, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";
+import { isButtonActive, isButtonEntity, isMassButtonInputMode, isMassOverThreshold, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";
 import { runButtonTapLinks, syncButtonFlipperLinks, syncSandboxButtonPower, tickButtonSpawnerLinks } from "./floorEffects.js";
 import { syncForcefieldButtonPower } from "./forcefieldPower.js";
 const POINTER_HIT_PADDING = 4;
@@ -16,9 +16,7 @@ export function initFloorButtonProp(prop) {
     syncFloorPropCollisionShape(prop);
     syncFloorTriggerAabb(prop);
 }
-/** @param {object} state @param {number} wx @param {number} wy @param {number} [padding] */
 export function hitTestFloorButton(state, wx, wy, padding = POINTER_HIT_PADDING) {
-    /** @type {object | null} */
     let hit = null;
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
         if (prop.isDead || !isButtonEntity(prop)) return;
@@ -26,7 +24,6 @@ export function hitTestFloorButton(state, wx, wy, padding = POINTER_HIT_PADDING)
     });
     return hit;
 }
-/** @param {object} state @param {object} button @param {{ x: number, y: number }} world */
 export function handleButtonPointerDown(state, button, world) {
     if (!isButtonEntity(button) || isMassButtonInputMode(button.inputMode)) return false;
     if (button.inputMode === "toggle") {
@@ -38,7 +35,6 @@ export function handleButtonPointerDown(state, button, world) {
     runButtonTapLinks(state, button, { world });
     return true;
 }
-/** @param {object} state */
 export function releaseButtonPointerHold(state) {
     state.entityRegistry.forEachOfKind("worldProp", (button) => {
         if (!isButtonEntity(button) || isMassButtonInputMode(button.inputMode) || button.inputMode === "toggle") return;
@@ -46,7 +42,6 @@ export function releaseButtonPointerHold(state) {
         button._pointerHeld = false;
     });
 }
-/** @param {object} state @param {object} button */
 function tickFloorButton(state, button) {
     if (button.inputMode === "massToggle") {
         const massActive = isMassOverThreshold(state, button);
@@ -66,11 +61,8 @@ function tickFloorButton(state, button) {
     button._buttonWasActive = active;
     button._buttonDrawPressed = active;
 }
-/** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame */
 export function tickFloorButtons(state, spatialFrame) {
-    /** @type {object[]} */
     const massButtons = [];
-    /** @type {object[]} */
     const buttons = [];
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
         if (prop.isDead || !isButtonEntity(prop)) return;

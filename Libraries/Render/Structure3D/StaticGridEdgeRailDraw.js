@@ -1,7 +1,7 @@
 /**
  * Edge rail draw — thin axis-aligned box via projectWorldPointInto.
  */
-import { collectGridEdgeRailBoxesInAabb } from "../../World/wallGridCells.js";
+import { collectGridEdgeRailBoxesInAabb } from "../../World/wallGridBake.js";
 import { isOutwardFaceTowardViewer } from "../../Spatial/iso/IsometricProjection.js";
 import { drawProjectedWallFace, drawProjectedRailWallCap } from "./ProjectedWallDraw.js";
 import { storeWallGridDrawCache, wallGridDrawCacheHit } from "./StaticGridWallDraw.js";

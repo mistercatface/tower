@@ -1,13 +1,9 @@
-/**
- * Game-facing world-surface system: wraps WorldSurfaceEngine with GameState profile / invalidation hooks.
- */
 import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
-import { collectStaticRoofHeightsFromGrid } from "../../Libraries/World/wallGridCells.js";
+import { collectStaticFillRoofHeightsFromGrid } from "../../Libraries/Spatial/grid/gridCellTopology.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
-    /** @param {import("../../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} [settings] */
     constructor(settings = getGameWorldSurfaceSettings()) {
         super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel) });
         this.worldSurfaceSeed = 0;
@@ -24,13 +20,11 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         const roofZ = state.obstacleGrid.collectStaticStructureZLevels();
         super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, roofZ);
     }
-    /** Draw procedural ground: baked chunk textures (simulation/inspector scenes only). */
     drawGround(ctx, state, viewport) {
         this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, viewport, state, zLevel: 0, playBounds: playBoundsFromObstacleGrid(state.obstacleGrid) });
     }
-    /** Chunk-cached roof layers for stamped static walls. */
     drawRoofs(ctx, state, viewport) {
-        const staticHeights = collectStaticRoofHeightsFromGrid(state.obstacleGrid);
+        const staticHeights = collectStaticFillRoofHeightsFromGrid(state.obstacleGrid);
         for (let i = 0; i < staticHeights.length; i++) {
             const zLevel = staticHeights[i];
             this.drawGroundChunks(ctx, {
@@ -45,7 +39,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
             });
         }
     }
-    /** Flat world-aligned wall rails — segment footprints + static voxelBlock cells + railWall edges. */
     drawFlatWallRails(ctx, state, viewport) {
         const zLevels = state.obstacleGrid.collectStaticStructureZLevels();
         const fallbackZ = this.settings.wallHeight;

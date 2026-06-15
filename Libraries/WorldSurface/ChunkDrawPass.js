@@ -6,7 +6,8 @@ import { getSegmentFootprintCorners } from "../Spatial/geometry/WallGeometry.js"
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { traceAabbRect, traceClosedPolygon, clipToPath } from "../Canvas/CanvasPath.js";
 import { getDamageAlphaFromHealth, drawAabbDamageOverlay, drawPolygonDamageOverlay } from "../Render/Structure3D/wallDamageVisual.js";
-import { gridWallEdgeRailFootprintAabb, forEachEmittingRailWallAtZLevel, resolveCellWallHeightAtIdx } from "../World/wallGridCells.js";
+import { resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
+import { gridWallEdgeRailFootprintAabb, forEachEmittingRailWallAtZLevel } from "../World/wallGridBake.js";
 import { getStaticCellDamageAlphaAtIdx, getStaticEdgeDamageAlphaAt } from "../World/staticCellDamage.js";
 /**
  * @typedef {Object} ChunkDrawPass

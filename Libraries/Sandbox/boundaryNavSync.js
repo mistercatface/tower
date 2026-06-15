@@ -1,6 +1,5 @@
 import { buildBoundaryNavHops } from "../Pathfinding/boundaryNavHops.js";
 import { evaluatePortalStepEntry } from "./portalLinks.js";
-/** @param {object} state */
 export function syncBoundaryNavIndex(state) {
     const grid = state.obstacleGrid;
     if (!grid.edgeStore.portalEdgeCount) {

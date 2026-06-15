@@ -4,14 +4,6 @@ import { aabbOverlap, centerHalfExtentsAabbInto, createAabb } from "../../Math/A
 import { NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
 import { quantizeCardinalAngle, stepCardinalFacing } from "../../Math/Angle.js";
 import { snapWorldToObstacleCellCenter } from "../grid/GridCoords.js";
-/** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
-/**
- * Track which entities overlap flat floor props (circle or rect polygon).
- *
- * @param {import("../world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
- * @param {object[]} shapes
- * @param {{ onEnter: (shape: object, entity: object) => void, onExit: (shape: object, entityId: number) => void }} handlers
- */
 export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
     if (!shapes.length) return;
     for (let z = 0; z < shapes.length; z++) {
@@ -34,7 +26,6 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
         floorShape._nextOccupants = prev;
     }
 }
-/** @param {object} prop */
 export function syncFloorPropCollisionShape(prop) {
     if (prop.halfExtents) {
         const hx = prop.halfExtents.x;
@@ -49,16 +40,13 @@ export function syncFloorPropCollisionShape(prop) {
     }
     prop.shape = new CircleShape(prop.radius);
 }
-/** @param {object} prop */
 export function syncFloorTriggerAabb(prop) {
     if (prop.halfExtents) centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, prop.halfExtents.x, prop.halfExtents.y, NEIGHBOR_QUERY_PAD);
     else centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, prop.radius, prop.radius, NEIGHBOR_QUERY_PAD);
 }
-/** @param {object} prop */
 export function floorCircleRadius(prop) {
     return prop.shape?.radius ?? prop.radius;
 }
-/** @param {object} prop */
 export function readFloorPropHalfExtents(prop) {
     if (prop.halfExtents) return { halfWidth: prop.halfExtents.x, halfHeight: prop.halfExtents.y };
     if (prop.shape?.type === "Polygon") {
@@ -67,7 +55,6 @@ export function readFloorPropHalfExtents(prop) {
     }
     throw new Error("readFloorPropHalfExtents requires halfExtents or polygon shape");
 }
-/** @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {{ _occupants: Set<number> }} floorShape */
 export function floorShapeHasLiveOccupant(registry, floorShape) {
     for (const entityId of floorShape._occupants) {
         const entity = registry.get(entityId);
@@ -75,7 +62,6 @@ export function floorShapeHasLiveOccupant(registry, floorShape) {
     }
     return false;
 }
-/** @param {object} prop */
 export function initFloorTriggerProp(prop) {
     prop._occupants = new Set();
     prop._nextOccupants = new Set();
@@ -92,19 +78,16 @@ export function initFloorTriggerProp(prop) {
     syncFloorPropCollisionShape(prop);
     syncFloorTriggerAabb(prop);
 }
-/** @param {object} prop @param {number} halfWidth @param {number} halfHeight */
 export function resizeFloorPropHalfExtents(prop, halfWidth, halfHeight) {
     prop.halfExtents = { x: halfWidth, y: halfHeight };
     prop.radius = Math.max(halfWidth, halfHeight);
     syncFloorPropCollisionShape(prop);
     syncFloorTriggerAabb(prop);
 }
-/** @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid */
 export function obstacleGridCellHalfExtents(obstacleGrid) {
     const half = obstacleGrid.cellHalfSize;
     return { halfWidth: half, halfHeight: half };
 }
-/** @param {object} prop @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {number} worldX @param {number} worldY */
 export function anchorFloorPropToObstacleGrid(prop, obstacleGrid, worldX, worldY) {
     const { col, row, x, y } = snapWorldToObstacleCellCenter(obstacleGrid, worldX, worldY);
     prop.gridCol = col;
@@ -114,13 +97,10 @@ export function anchorFloorPropToObstacleGrid(prop, obstacleGrid, worldX, worldY
     const { halfWidth, halfHeight } = obstacleGridCellHalfExtents(obstacleGrid);
     resizeFloorPropHalfExtents(prop, halfWidth, halfHeight);
 }
-/** @param {object} prop @param {number} [steps] */
 export function rotateCardinalFloorProp(prop, steps = 1) {
     prop.facing = stepCardinalFacing(prop.facing ?? 0, steps);
 }
-/** @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry @param {number} col @param {number} row @param {number} [exceptPropId] */
 export function findGridAnchoredFloorPropAtCell(registry, col, row, exceptPropId = -1) {
-    /** @type {object | null} */
     let hit = null;
     registry.forEachOfKind("worldProp", (prop) => {
         if (prop.isDead || !prop.strategy?.gridAnchored || prop.id === exceptPropId) return;
@@ -128,7 +108,6 @@ export function findGridAnchoredFloorPropAtCell(registry, col, row, exceptPropId
     });
     return hit;
 }
-/** @param {{ aabb: Aabb2D }} entity @param {import("../../Viewport/Viewport.js").Viewport} viewport */
 export function isAabbInView(entity, viewport) {
     return aabbOverlap(entity.aabb, viewport.boundsClip);
 }

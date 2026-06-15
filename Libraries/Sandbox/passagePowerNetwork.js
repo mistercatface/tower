@@ -2,7 +2,7 @@ import { isPassagePowerConductorEdge, isPortalEdge } from "../Spatial/grid/CellE
 import { isPassagePowered, setPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
 import { emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStructures/CellRect.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { canonicalEdgeCellKey, gridWallEdgeNeighbor, forEachGridEdge } from "../World/wallGridCells.js";
+import { canonicalEdgeCellKey, gridWallEdgeNeighbor, forEachGridEdge } from "../Spatial/grid/gridCellTopology.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";

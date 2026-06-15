@@ -1,7 +1,7 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { unionCellBoundsList } from "../DataStructures/CellRect.js";
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
-import { gridCellToGlobalColRow, isCanonicalEdgeRepresentative } from "../World/wallGridCells.js";
+import { gridCellToGlobalColRow, isCanonicalEdgeRepresentative } from "../Spatial/grid/gridCellTopology.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
 import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";

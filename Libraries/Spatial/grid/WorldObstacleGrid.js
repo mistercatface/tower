@@ -1,7 +1,7 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex, cellInRect } from "./GridUtils.js";
 import { damageStaticGridCell, damageStaticGridEdge } from "../../World/staticCellDamage.js";
-import { gridWallEdgeEndpoints, gridBlockingPassageEdge, gridEdgeRailCollisionShouldEmit, gridEdgeRailCollisionThicknessPx, scanStaticStructureZLevelsFromGrid } from "../../World/wallGridCells.js";
+import { gridWallEdgeEndpoints, gridBlockingPassageEdge, gridEdgeRailCollisionShouldEmit, gridEdgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
@@ -13,10 +13,6 @@ import { collectSegmentsAlongLine, collectSegmentsInWorldBounds, collectSegments
 export { getWallCellBounds, markWallOnGrid, clearWallCells, computeBoundsFromWalls } from "./wallGridBake.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
-/**
- * Occupancy + per-cell wall segment index. Implements NavGraph for pathfinding.
- * grid[]: 0 = open, 1 … maxWallHeightLevel = static wall height level.
- */
 export class WorldObstacleGrid {
     constructor(cellSize) {
         this.cellSize = cellSize;
@@ -43,7 +39,6 @@ export class WorldObstacleGrid {
         this.vertexPassability = new Uint8Array(0);
         this._vertexPassabilitySyncKey = "";
     }
-    /** @param {number} damage @param {object} state */
     _staticGridProxyHandleHit(damage, state) {
         if (this.isEdgeRail) damageStaticGridEdge(state, this._obstacleGrid, this.gridCol, this.gridRow, this.gridSide, damage);
         else damageStaticGridCell(state, this._obstacleGrid, this.gridCol, this.gridRow, damage);
@@ -55,10 +50,28 @@ export class WorldObstacleGrid {
     invalidateStructureZLevelsCache() {
         this._structureZLevelsRevision = -1;
     }
-    /** voxelBlock + railWall top heights (px), cached on `wallGridRevision`. */
     collectStaticStructureZLevels() {
         if (this._structureZLevelsRevision === this.wallGridRevision) return this._structureZLevels;
-        this._structureZLevels = scanStaticStructureZLevelsFromGrid(this);
+        const seen = new Set();
+        const out = [];
+        const size = this.cols * this.rows;
+        for (let idx = 0; idx < size; idx++) {
+            const px = resolveCellWallHeightAtIdx(this, idx);
+            if (px > 0 && !seen.has(px)) {
+                seen.add(px);
+                out.push(px);
+            }
+        }
+        const edgeLevels = this.edgeStore.collectTopZLevels(this);
+        for (let i = 0; i < edgeLevels.length; i++) {
+            const px = edgeLevels[i];
+            if (!seen.has(px)) {
+                seen.add(px);
+                out.push(px);
+            }
+        }
+        out.sort((a, b) => a - b);
+        this._structureZLevels = out;
         this._structureZLevelsRevision = this.wallGridRevision;
         return this._structureZLevels;
     }
@@ -99,7 +112,6 @@ export class WorldObstacleGrid {
         if ("gridSide" in proxy) delete proxy.gridSide;
         return proxy;
     }
-    /** @param {object} entity @param {object[]} out */
     appendStaticWallProxiesNear(entity, out) {
         // Edge-rail collision: railWall, powered passage (same segment + thickness path), or beltRail.
         // Draw uses resolveGridWallEdgeRailBox; do not swap proxy math without ball regression tests.
@@ -211,11 +223,6 @@ export class WorldObstacleGrid {
         this.invalidateStructureZLevelsCache();
         this.segmentGrid = null;
     }
-    /**
-     * Grow world coverage to include aabb. Preserves existing blocked cells; never shrinks or recenters inward.
-     * @param {{ minX: number, minY: number, maxX: number, maxY: number }} aabb
-     * @returns {boolean} true when grid origin or dimensions changed
-     */
     expandToCoverAabb(aabb) {
         if (this.cols <= 0) {
             const width = aabb.maxX - aabb.minX;
@@ -285,18 +292,7 @@ export class WorldObstacleGrid {
         for (const localWall of localWalls) this.addWall(localWall);
         return bounds;
     }
-    /**
-     * Stamp static wall cells from a cell-origin-aligned bitmap (value 1 = wall).
-     * Writes heightLevel into grid for each stamped cell.
-     * @param {number} originCol Global cell column (region minX = originCol * cellSize).
-     * @param {number} originRow
-     * @param {number} cols
-     * @param {number} rows
-     * @param {ArrayLike<number>} cells Row-major; value 1 = blocked.
-     * @param {import("../indexes/WallSpatialIndex.js").WallSpatialIndex | null} [wallSpatialIndex]
-     * @param {{ additive?: boolean, heightLevel?: number }} [options]
-     * @returns {{ startCol: number, endCol: number, startRow: number, endRow: number }}
-     */
+    // originCol/originRow are global cell coords; cells is row-major with 1 = blocked.
     stampStaticWalls(originCol, originRow, cols, rows, cells, wallSpatialIndex = null, { additive = false, heightLevel }) {
         const level = heightLevel;
         const { col: baseCol, row: baseRow } = this.worldToGrid(originCol * this.cellSize, originRow * this.cellSize);
@@ -325,13 +321,6 @@ export class WorldObstacleGrid {
         }
         return gridBounds;
     }
-    /**
-     * @param {number} col
-     * @param {number} row
-     * @param {number} side 0=N, 1=E, 2=S, 3=W
-     * @param {number} capHeightLevel absolute cap height level (0 clears)
-     * @param {number} thicknessLevel
-     */
     writeCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
         setBoundary(this, col, row, side, { kind: "railWall", capHeightLevel, thicknessLevel });
     }
@@ -341,31 +330,24 @@ export class WorldObstacleGrid {
     clearCellEdge(col, row, side) {
         clearBoundaryPrimary(this, col, row, side, { bumpRevision: true });
     }
-    /** Clear all boundary edges on one cell (does not bump revision). */
     clearCellEdges(col, row) {
         clearAllBoundariesAtCell(this, col, row, { bumpRevision: false });
     }
-    /** @param {number} col @param {number} row @param {number} side */
     getCellEdge(col, row, side) {
         return this.edgeStore.get(col, row, side, this.cols);
     }
-    /** @param {number} col @param {number} row @param {number} side */
     hasCellEdge(col, row, side) {
         return this.edgeStore.has(col, row, side, this.cols);
     }
-    /** @param {number} col @param {number} row @param {number} side */
     edgeBlocksStep(col, row, side) {
         return boundaryBlocksStep(this, col, row, side);
     }
-    /** @param {number} col @param {number} row @param {number} kind @param {number} facingIndex */
     syncFloorBeltRailEdges(col, row, kind, facingIndex) {
         reconcileBeltBoundaries(this, col, row, kind, facingIndex);
     }
-    /** @param {number} col @param {number} row @param {number} kind @param {number} facingIndex */
     clearFloorBeltRailEdges(col, row, kind, facingIndex) {
         clearBeltBoundariesForCell(this, col, row, kind, facingIndex);
     }
-    /** @param {number} col @param {number} row @param {number} kind @param {number} facingRadians */
     writeFloorCell(col, row, kind, facingRadians) {
         if (this.isBlocked(col, row)) return false;
         const idx = colRowToIndex(col, row, this.cols);
@@ -380,21 +362,17 @@ export class WorldObstacleGrid {
         if (edgeChanged) this.bumpWallGridRevision();
         return true;
     }
-    /** @param {number} col @param {number} row @param {number} facingRadians */
     writeFloorBelt(col, row, facingRadians) {
         return this.writeFloorCell(col, row, FLOOR_CELL_KIND.Belt, facingRadians);
     }
-    /** @param {number} col @param {number} row */
     hasFloorOccupancy(col, row) {
         if (!cellInRect(col, row, this.cols, this.rows)) return false;
         return this.floorStore.hasAnyAtIdx(colRowToIndex(col, row, this.cols));
     }
-    /** @param {number} col @param {number} row */
     hasFloorBelt(col, row) {
         if (!cellInRect(col, row, this.cols, this.rows)) return false;
         return this.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, this.cols));
     }
-    /** @param {number} col @param {number} row */
     clearFloorCell(col, row) {
         if (!cellInRect(col, row, this.cols, this.rows)) return false;
         const idx = colRowToIndex(col, row, this.cols);
@@ -420,10 +398,7 @@ export class WorldObstacleGrid {
         this.floorStore.reset(size);
         this.bumpWallGridRevision();
     }
-    /**
-     * When path goal is on a belt cell, plan to the upstream neighbor so HPA approaches from entry.
-     * @param {number} fromCol @param {number} fromRow @param {number} targetCol @param {number} targetRow
-     */
+    // Belt goal cells snap to upstream entry so HPA approaches from the belt mouth.
     snapPathTargetCell(fromCol, fromRow, targetCol, targetRow) {
         const idx = colRowToIndex(targetCol, targetRow, this.cols);
         if (!this.floorStore.isBeltKindAtIdx(idx)) return { col: targetCol, row: targetRow };
@@ -453,7 +428,6 @@ export class WorldObstacleGrid {
     canStep(currCol, currRow, nextCol, nextRow) {
         return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow) || this.canBoundaryHop(currCol, currRow, nextCol, nextRow);
     }
-    /** @param {number} col @param {number} row */
     getBoundaryHops(col, row) {
         if (!this.boundaryNavHops) return null;
         return this.boundaryNavHops.get(colRowToIndex(col, row, this.cols)) ?? null;
@@ -464,7 +438,6 @@ export class WorldObstacleGrid {
         for (let i = 0; i < hops.length; i++) if (hops[i].exitCol === exitCol && hops[i].exitRow === exitRow) return true;
         return false;
     }
-    /** @param {number} col @param {number} row @param {(exitCol: number, exitRow: number, cost: number) => void} fn */
     forEachNavHop(col, row, fn) {
         const hops = this.getBoundaryHops(col, row);
         if (!hops) return;
@@ -474,7 +447,6 @@ export class WorldObstacleGrid {
             fn(exitCol, exitRow, cost);
         }
     }
-    /** @param {(col: number, row: number, hops: import("../../Pathfinding/boundaryNavHops.js").BoundaryNavHop[]) => void} fn */
     forEachBoundaryHopCell(fn) {
         const hopsByIdx = this.boundaryNavHops;
         if (!hopsByIdx) return;

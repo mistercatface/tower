@@ -5,7 +5,7 @@
 import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
 /** @typedef {import("../WorldSceneTypes.js").ProceduralSurfaceDrawContext} ProceduralSurfaceDrawContext */
 import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
-import { gridRailWallCapUvCorners } from "../../World/wallGridCells.js";
+import { gridRailWallCapUvCorners } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { drawDamageOverlayInClip, drawPolygonDamageOverlay } from "./wallDamageVisual.js";

@@ -2,7 +2,7 @@ import { emptyCellBounds, growCellBounds, isEmptyCellBounds, forEachDenseCellInR
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
-import { gridCellToGlobalColRow } from "../World/wallGridCells.js";
+import { gridCellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { fillCircle } from "../Canvas/CanvasPath.js";
 import { drawCachedPropSprite, GRID_STAMP_RENDER_KEY } from "../Canvas/QuantizedSpriteCache.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
