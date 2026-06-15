@@ -40,7 +40,7 @@ Cross-thread ideal: main sends **coordinates + epoch**, worker returns **path sl
 | 6 | Worker-owned path response | **Done** | Worker stitches via `hpaStitch.js`; writes cell path to slot SAB; main reads + applies only |
 | 7 | Edit-time graph off main | **Partial** | `rebuildDamagedArea` still on main; reconnect cost-only (no local A*, no `edge.path`) |
 | 8 | Leg advancement / partial path policy | **Not done** | Full replan every target change; granularity tunable once #6 is done |
-| 9 | Minimal main ↔ worker data | **Partial** | No mirror; slim replan payload; graph CSR repack on epoch still on main |
+| 9 | Minimal main ↔ worker data | **Partial** | No mirror; slim replan; SAB path-follow (no cell clone); graph CSR repack on epoch still on main |
 
 **Net:** Worker owns replan + stitch + nav octile read model. Main still packs topology into SABs on epoch change and owns region graph surgery on edits. No octile mirror-back; edit reconnect is cost-only.
 
@@ -100,17 +100,16 @@ If each handler calls "ensure worker is fresh," you get **death by a thousand fu
 
 ```
 Click → HpaPathSession._drainReplan
-      → prepareWorkerReplan (main: scan nodesMap)
-      → await nav sync if stale (main packs topology SABs → worker bake — no mirror-back)
-      → await graph sync if epoch changed (main CSR pack)
-      → worker replan (worker derives temp-connect candidates; slim postMessage)
-      → abstractReady: main apply region centroids
-      → hpaDone: main reads stitched cell path from slot SAB → applyHpaReplanResult
+      → HpaPathWorker.requestPath (snap + prep on main; graph sync via navigator)
+      → await nav/graph sync if stale
+      → worker replan + stitch
+      → abstractReady: applyHpaAbstractFirst (centroid path array, brief)
+      → hpaDone: applyHpaReplanResult (pathSlot + pathLen; steer from SAB)
 ```
 
-**Warm click:** no main stitch, no octile mirror, no `runLocalAStar` on edit reconnect.
+**Warm click:** no `HierarchicalNavigator.computeCellPath`, no main stitch, no cell-path clone.
 
-**Wall edit:** `rebuildDamagedArea` on main (cost-only edges, no path arrays, no snapshot bake).
+**Wall edit:** `rebuildDamagedArea` on main (cost-only edges); `hpaPathSession` still uses navigator for `syncAbstractGraph` only.
 
 
 ### Still on main (must move)
@@ -123,7 +122,7 @@ Click → HpaPathSession._drainReplan
 | Edit reconnect A* | ~~`_connectRegionPair`~~ | **Cost-only octile** — worker local A* at stitch |
 | Topology repack | `scheduleNavTopologySync` | Main still packs blocked + hops on epoch change (PR2 remainder) |
 | Graph repack | `packHpaGraphForWorker` | On `graphEpoch` bump only — PR3 may move off hot path |
-| Hop expand / apply | `hpaPathPlan.js`, `boundaryNavHops.js` | Fine on main if cheap — keep as apply-only |
+| Hop expand / apply | `hpaPathSlot.js`, `boundaryNavHops.js` | SAB view at apply/steer; no `expandBoundaryHopsInCellPath` clone on hot path |
 
 ---
 
@@ -138,7 +137,7 @@ Click → HpaPathSession._drainReplan
 
 3. ~~**Worker-authoritative nav read model**~~ — done: no mirror-back; flow + HNav use `getNavSnapshotView()`.
 4. **Incremental topology push** — deferred: still full pack on `scheduleNavTopologySync`.
-5. **Path via slot SAB only** — ~~`_readTempLegs` → Map~~ done; main still clones via `_readCellPath` → apply (PR3).
+5. ~~**Path via slot SAB only**~~ — done (PR3): `pathSlot` + `pathLen` on `navState`; steer/overlay read SAB; slot leased until next replan.
 6. ~~**Slim replan payload**~~ — done: worker derives temp-connect candidates (`hpaReplanPrep.js`).
 
 ### P2 — Graph + snapshot maintenance off main
@@ -149,7 +148,7 @@ Click → HpaPathSession._drainReplan
 ### P3 — Policy + cleanup (same pipe, tunable knobs)
 
 9. **Leg advancement / partial paths** — `requestPath` accepts `maxLegs` or `maxCells`; worker returns prefix from same slot pool. Not a new pipeline.
-10. **Thin main API** — `HpaPathSession` / `HpaPathWorker` collapse to `requestPath` + `applyPathResult`; slim `HierarchicalNavigator` on main to editor-only or remove from hot path.
+10. ~~**Thin main API**~~ — done (PR3): `HpaPathWorker.requestPath` + `applyHpaReplanResult`; `HierarchicalNavigator` off click hot path (graph sync on edits only).
 11. **Sidebar render** — incremental `sandboxToyUi.js` (orthogonal but still editor jank).
 
 ---
@@ -162,11 +161,11 @@ Click → HpaPathSession._drainReplan
 |--------|-----------|----------------|
 | A* | `AStar.js` | `runLocalAStarFlat`, `runAbstractAStarFlat` — worker + main import same |
 | Nav snapshot | `GridNavSnapshot.js` | `buildOctileNeighborsFromTopology`, `createWorkerNavSnapshotView`, hop CSR |
-| Replan prep | `hpaReplanPrep.js` | temp-connect candidate collection on worker persist CSR |
+| Replan prep | `hpaPathRequest.js` | snap endpoints, `prepareHpaReplanPrep`, `buildHpaReplanResult` |
+| Worker temp-connect | `hpaReplanPrep.js` | temp-connect candidate collection on worker persist CSR |
 | Abstract CSR | `hpaAbstractFlat.js` | `packHpaGraphForWorker` — extend for leg path pools when needed |
-| Region topology | `VoronoiRegions.js` | flood fill, adjacency — worker region build should call these, not fork |
-| Hop waypoints | `boundaryNavHops.js` | `expandBoundaryHopsInCellPath` — apply on main from worker cell path |
-| Path apply | `hpaPathPlan.js` | single apply surface; no stitch logic here |
+| Hop waypoints | `boundaryNavHops.js` | `boundaryHopMouthOnSabPath` — hop idx on cell path in SAB |
+| Path apply / SAB follow | `hpaPathPlan.js`, `hpaPathSlot.js` | apply surface + steer/overlay from slot SAB |
 | Nav state shape | `navSession.js` | `NavSessionState` typedef — one contract |
 
 **New shared code belongs in `Libraries/Pathfinding/`** only when it's a coherent subsystem (e.g. `hpaStitch.js` for leg concat + abstract→cell resolution), not one-off worker copies. `Render/Navigation/HpaWorkerEntry.js` stays a thin host: init SABs, dispatch messages, import library functions.
@@ -205,17 +204,13 @@ Click → HpaPathSession._drainReplan
 **Acceptance met:** edit reconnect no `runLocalAStar` / `ensureGridNavSnapshot`; no octile mirror alloc on nav sync.
 
 
-### PR 3 — Thin request/apply API + policy hooks (`P3`)
+### PR 3 — Thin request/apply API + SAB path-follow (`P3`) — **Done**
 
-**Goal:** one obvious contract; partial paths are a parameter, not a fork.
+**Shipped:** `HpaPathWorker.requestPath` (snap + prep + replan); `hpaPathRequest.js`; `HpaPathSession` calls `requestPath` only (no `computeCellPath`); `navState.pathSlot` + `pathLen`; steer/overlay/crossing-grant from SAB via `hpaPathSlot.js`; removed `_workerReplanResult` / worker branch from `HierarchicalNavigator`.
 
-- `HpaPathWorker.requestPath({ startX, startY, targetX, targetY, navEpoch, graphEpoch, maxCells? })` → slot index + meta (read path from SAB).
-- `HpaPathSession` becomes thin wrapper: coalesce requests, call `requestPath`, `applyPathResult`.
-- Optional `maxCells` / `maxLegs` — worker writes prefix into same slot pool.
-- Worker derives temp-connect candidates internally — done in PR2 (`hpaReplanPrep.js`).
-- Remove dead main-path code; document SAB layouts in `hpaAbstractFlat.js`.
+**Deferred:** `maxCells` / `maxLegs` partial path policy; belt graph on worker.
 
-**Acceptance:** sandbox click path is epoch check → slim message → SAB apply; no `HierarchicalNavigator` on hot path.
+**Acceptance met:** sandbox click is epoch check → `requestPath` → SAB apply; no `HierarchicalNavigator` on hot path.
 
 ---
 

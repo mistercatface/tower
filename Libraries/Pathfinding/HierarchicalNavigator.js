@@ -423,45 +423,6 @@ export class HierarchicalNavigator {
         }
         return this._localNavView;
     }
-    prepareWorkerReplan(startCol, startRow, targetCol, targetRow, graphMeta) {
-        const startIdx = colRowToIndex(startCol, startRow, this.cols);
-        const targetIdx = colRowToIndex(targetCol, targetRow, this.cols);
-        const startNode = this.cellToNode[startIdx];
-        const targetNode = this.cellToNode[targetIdx];
-        const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);
-        if (cellDist < 32 || (startNode && targetNode && startNode.id === targetNode.id)) return { mode: "local", startCol, startRow, targetCol, targetRow };
-        const { nodeIds, nodeCol, nodeRow } = graphMeta;
-        return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: 96, stitchMaxLen: this.maxCellsPerChunk * 2 };
-    }
-    _workerReplanResult(cellPath, prep, abstractIdx) {
-        if (prep.mode === "local") {
-            if (!cellPath) return null;
-            const startWorld = this.gridToWorld(prep.startCol, prep.startRow);
-            const targetWorld = this.gridToWorld(prep.targetCol, prep.targetRow);
-            return {
-                cellPath,
-                abstractNodes: [
-                    { x: startWorld.x, y: startWorld.y, id: "start" },
-                    { x: targetWorld.x, y: targetWorld.y, id: "target" },
-                ],
-                pathPlanner: "local",
-            };
-        }
-        if (!abstractIdx.length) return null;
-        const { nodeCol, nodeRow, startCol, startRow, targetCol, targetRow, nodeIds, nodeCount } = prep;
-        const startTemp = nodeCount;
-        const targetTemp = nodeCount + 1;
-        const abstractNodes = abstractIdx.map((idx) => {
-            if (idx === startTemp) return { ...this.gridToWorld(startCol, startRow), id: "start" };
-            if (idx === targetTemp) return { ...this.gridToWorld(targetCol, targetRow), id: "target" };
-            return { ...this.gridToWorld(nodeCol[idx], nodeRow[idx]), id: nodeIds[idx] };
-        });
-        if (!cellPath) return { cellPath: null, abstractNodes, pathPlanner: "hpa" };
-        return { cellPath, abstractNodes, pathPlanner: "hpa" };
-    }
-    _cellPathToWaypoints(cells) {
-        return cells.map((cell) => this.gridToWorld(cell.col, cell.row));
-    }
     async _connectTempNode(tempNode, gridCol, gridRow, targetNode, isStart, targetTempId, modifiedCandidates = null, replanCtx = null) {
         const candidates = new Set();
         const searchRadius = Math.ceil(Math.sqrt(this.maxCellsPerChunk)) * 2;
@@ -518,10 +479,6 @@ export class HierarchicalNavigator {
         const targetIdx = colRowToIndex(targetCol, targetRow, this.cols);
         const startNode = this.cellToNode[startIdx];
         const targetNode = this.cellToNode[targetIdx];
-        if (replanCtx?.hpaWorker) {
-            const prep = this.prepareWorkerReplan(startCol, startRow, targetCol, targetRow, replanCtx.hpaWorker.getGraphMeta());
-            return replanCtx.hpaWorker.runOneShotReplan(replanCtx.hpaSlot, prep, this, replanCtx.graphEpoch, replanCtx);
-        }
         const { startTempId, targetTempId } = this._replanTempIds(replanCtx);
         const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);
         if (cellDist < 32 || (startNode && targetNode && startNode.id === targetNode.id)) {

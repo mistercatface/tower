@@ -29,13 +29,14 @@ export class NavigationService {
                     controller.obstacleGeneration,
                     { isVisible: (e) => state.viewport.isVisible(e.x, e.y, e.radius, VIEWPORT_VISIBILITY_PAD_WIDE) },
                     state?.gameTime ?? Date.now(),
+                    state.hpaPathWorker,
                 ),
             onSteerComplete: (entity, { navState, settings, plan }) => {
                 if (plan.mode === "hpa") {
-                    refreshNavCrossingGrant(navState, obstacleGrid);
+                    refreshNavCrossingGrant(navState, obstacleGrid, this._hpaPathWorker);
                     syncCrossingGrantToEntity(entity, navState);
                 }
-                entity.hpaPath = navState.path;
+                entity.hpaPath = navState.pathLen > 0 ? null : navState.path;
                 if (entity.isMoving) {
                     entity.targetNodeX = entity.x + entity.desiredX * settings.targetNodeLookahead;
                     entity.targetNodeY = entity.y + entity.desiredY * settings.targetNodeLookahead;

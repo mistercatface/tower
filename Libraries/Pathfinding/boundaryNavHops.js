@@ -109,6 +109,15 @@ export function boundaryHopMouthOnCellPath(cells, navGraph) {
     }
     return null;
 }
+/** @param {(i: number) => { col: number, row: number }} readCell @param {number} len */
+export function boundaryHopMouthOnSabPath(readCell, len, navGraph) {
+    if (len <= 1 || !navGraph.canBoundaryHop) return null;
+    for (let i = 1; i < len; i++) {
+        const hop = boundaryHopOnCellStep(readCell(i - 1), readCell(i), navGraph);
+        if (hop) return { col: hop.mouthCol, row: hop.mouthRow };
+    }
+    return null;
+}
 export function boundaryHopWaypointIndex(rawCellPath, worldPath, grid) {
     const mouth = boundaryHopMouthOnCellPath(rawCellPath, grid);
     if (!mouth || !worldPath.length) return null;

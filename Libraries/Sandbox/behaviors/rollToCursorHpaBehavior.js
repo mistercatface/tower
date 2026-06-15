@@ -1,5 +1,5 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
-import { buildPathOverlayFromProgress } from "../../Pathfinding/pathFollow.js";
+import { buildSabPathOverlayFromProgress } from "../../Pathfinding/hpaPathSlot.js";
 import { clearCrossingGrantOnEntity, refreshNavCrossingGrant, syncCrossingGrantToEntity } from "../../Pathfinding/crossingGrant.js";
 import { getRollToCursorConfig, snapRollMoveTargetToCellCenter, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
@@ -16,7 +16,7 @@ export function createRollToCursorHpaBehavior(state) {
         targetCellCol = null;
         targetCellRow = null;
         dragging = false;
-        hpaNav.reset();
+        hpaNav.reset(state);
     };
     const releaseMoveTarget = (prop) => {
         clearTarget();
@@ -60,11 +60,12 @@ export function createRollToCursorHpaBehavior(state) {
             const steerTarget = resolveFloorBeltSteerTarget(state.obstacleGrid, targetWorld.x, targetWorld.y, prop.x, prop.y);
             if (prop._navPathStale) {
                 prop._navPathStale = false;
-                hpaNav.reset();
+                hpaNav.reset(state);
                 hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
             } else hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
             const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);
-            const isFinalLeg = !hpaNav.navState.path || hpaNav.navState.pathProgressIdx >= hpaNav.navState.path.length - 1;
+            const pathTail = hpaNav.navState.pathLen > 0 ? hpaNav.navState.pathLen - 1 : (hpaNav.navState.path?.length ?? 0) - 1;
+            const isFinalLeg = pathTail < 0 || hpaNav.navState.pathProgressIdx >= pathTail;
             if (isFinalLeg && distToTarget <= config.stopRadius) {
                 releaseMoveTarget(prop);
                 return;
@@ -75,8 +76,9 @@ export function createRollToCursorHpaBehavior(state) {
                 steerTarget.y,
                 { pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5), arrivalDistance: config.stopRadius, pathOffPathDistance: 80 },
                 state.obstacleGrid,
+                state.hpaPathWorker,
             );
-            refreshNavCrossingGrant(hpaNav.navState, state.obstacleGrid);
+            refreshNavCrossingGrant(hpaNav.navState, state.obstacleGrid, state.hpaPathWorker);
             syncCrossingGrantToEntity(prop, hpaNav.navState);
             if (!steering) return;
             if (steering.desiredX === 0 && steering.desiredY === 0) {
@@ -90,7 +92,10 @@ export function createRollToCursorHpaBehavior(state) {
             const hopIdx = hpaNav.navState.boundaryHopIdx;
             let progressIdx = hpaNav.navState.pathProgressIdx;
             if (hopIdx != null && progressIdx > hopIdx) progressIdx = hopIdx;
-            const trace = buildPathOverlayFromProgress(prop.x, prop.y, hpaNav.navState.path, progressIdx, state.obstacleGrid);
+            const trace =
+                hpaNav.navState.pathLen > 0 && hpaNav.navState.pathSlot >= 0
+                    ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.hpaPathWorker, hpaNav.navState.pathSlot, hpaNav.navState.pathLen, progressIdx, state.obstacleGrid)
+                    : { pathNodes: hpaNav.navState.path?.slice(progressIdx) ?? [] };
             return {
                 mode: "hpa",
                 pathNodes: trace.pathNodes,

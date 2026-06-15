@@ -9,9 +9,10 @@ export function createRollToCursorHpaNav() {
     const navState = createNavState();
     let replanClockMs = 0;
     let pendingTargetReplan = false;
-    const reset = () => {
+    const reset = (state) => {
         pendingTargetReplan = false;
-        clearHpaNavPath(navState);
+        if (state?.hpaPathWorker) clearHpaNavPath(navState, state.hpaPathWorker);
+        else clearHpaNavPath(navState);
         navState.pathProgressIdx = 0;
         navState.lastTargetX = null;
         navState.lastTargetY = null;
@@ -46,8 +47,9 @@ export function createRollToCursorHpaNav() {
             return;
         }
         const targetMovedPx = navState.lastTargetX == null || navState.lastTargetY == null ? Infinity : Math.hypot(targetX - navState.lastTargetX, targetY - navState.lastTargetY);
-        if (!navState.path || targetMovedPx >= REPLAN_TARGET_MOVE_PX) replan(prop, targetX, targetY, state);
+        if (!navState.pathLen && !navState.path) replan(prop, targetX, targetY, state);
+        else if (targetMovedPx >= REPLAN_TARGET_MOVE_PX) replan(prop, targetX, targetY, state);
     };
-    const getSteering = (prop, targetX, targetY, settings, grid) => computeHpaNavSteering(agentPose(prop), navState, targetX, targetY, settings, grid);
+    const getSteering = (prop, targetX, targetY, settings, grid, worker) => computeHpaNavSteering(agentPose(prop), navState, targetX, targetY, settings, grid, worker);
     return { navState, reset, markTargetChanged, replan, update, getSteering };
 }

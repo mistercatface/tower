@@ -2,7 +2,6 @@ import { applyHpaAbstractFirst, applyHpaReplanResult, clearHpaNavPath } from "./
 /**
  * Async HPA replan controller — one leased worker slot per in-flight replan per navState.
  * Coalesces superseding requests; keeps last good path until apply.
- * Worker owns stitch; main applies path from slot SAB read.
  */
 export class HpaPathSession {
     constructor(hpaPathWorker, hierarchicalNavigator) {
@@ -30,12 +29,7 @@ export class HpaPathSession {
             while (navState.hpaReplanRequestId !== 0) {
                 const requestId = navState.hpaReplanRequestId;
                 const params = this._pendingParams.get(navState);
-                const slot = this.worker.leaseSlot(navState);
-                navState.hpaReplanSlot = slot;
                 const replanCtx = {
-                    hpaWorker: this.worker,
-                    hpaSlot: slot,
-                    graphEpoch: params.graphEpoch,
                     replanRequestId: requestId,
                     onAbstractReady: (abstractResult) => {
                         if (navState.hpaReplanRequestId !== requestId) return;
@@ -44,16 +38,27 @@ export class HpaPathSession {
                 };
                 let workerOut = null;
                 try {
-                    workerOut = await this.hierarchicalNavigator.computeCellPath(params.startX, params.startY, params.targetX, params.targetY, replanCtx);
+                    workerOut = await this.worker.requestPath({
+                        obstacleGrid: params.obstacleGrid,
+                        navigator: this.hierarchicalNavigator,
+                        startX: params.startX,
+                        startY: params.startY,
+                        targetX: params.targetX,
+                        targetY: params.targetY,
+                        graphEpoch: params.graphEpoch,
+                        navState,
+                        ...replanCtx,
+                    });
                 } catch (err) {
                     console.error("HPA replan failed", err);
                 }
-                this.worker.releaseSlot(slot);
-                navState.hpaReplanSlot = -1;
-                if (navState.hpaReplanRequestId !== requestId) continue;
+                if (navState.hpaReplanRequestId !== requestId) {
+                    if (workerOut?.result?.pathSlot >= 0) this.worker.releaseSlot(workerOut.result.pathSlot);
+                    continue;
+                }
                 navState.hpaReplanRequestId = 0;
-                if (!workerOut?.result) clearHpaNavPath(navState);
-                else applyHpaReplanResult(navState, workerOut.result, params);
+                if (!workerOut?.result) clearHpaNavPath(navState, this.worker);
+                else applyHpaReplanResult(navState, workerOut.result, { ...params, worker: this.worker });
             }
         } finally {
             this._draining.delete(navState);

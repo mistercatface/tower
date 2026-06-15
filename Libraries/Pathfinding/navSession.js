@@ -13,13 +13,15 @@
  * @property {number | null} lastTargetX
  * @property {number | null} lastTargetY
  * @property {number} lastOffPathReplan
- * @property {number | null} [boundaryHopIdx] — world-path index of an upcoming boundary hop mouth
+ * @property {number | null} [boundaryHopIdx] — cell-path index of an upcoming boundary hop mouth
  * @property {boolean} [navPathActive] — entity is following a nav path; blocks manual boundary crossing
  * @property {import("./crossingGrant.js").CrossingGrant | null} [crossingGrant] — mouth cell authorized for the current hop
  * @property {Array<{ x: number, y: number, id?: string }> | null} [abstractPath]
  * @property {"local" | "hpa" | null} [pathPlanner]
  * @property {number} [hpaReplanRequestId] — 0 = idle; non-zero while worker replan in flight
- * @property {number} [hpaReplanSlot] — leased HpaPathWorker slot, -1 when idle
+ * @property {number} [hpaReplanSlot] — leased HpaPathWorker slot during replan, -1 when idle
+ * @property {number} [pathSlot] — worker path SAB slot while following a path, -1 when idle
+ * @property {number} [pathLen] — cell count in pathSlot SAB; 0 when steering from abstract path array only
  */
 /** @returns {NavSessionState} */
 export function createNavState() {
@@ -36,6 +38,8 @@ export function createNavState() {
         lastOffPathReplan: 0,
         hpaReplanRequestId: 0,
         hpaReplanSlot: -1,
+        pathSlot: -1,
+        pathLen: 0,
     };
 }
 export {};
