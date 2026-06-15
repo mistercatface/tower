@@ -26,6 +26,7 @@ import {
     rerollRoomLinkBake,
     expandGridForRoomNodeFootprint,
 } from "../RoomGraph/index.js";
+import { maxCorridorLanesBetweenNodes } from "../Pathfinding/Corridor/index.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { syncPassagePowerNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
@@ -67,6 +68,14 @@ import { portalAccessDefaultAllowedSide } from "../Spatial/grid/portalAccess.js"
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey } from "../World/wallGridCells.js";
 import { formatPortalConnectionLabel, PORTAL_LINK_MODE } from "./portalLinks.js";
+/** @param {{ col: number, row: number, width: number, height: number }} node */
+function roomNodeRouteRect(node) {
+    const c0 = node.col;
+    const r0 = node.row;
+    const c1 = node.col + node.width - 1;
+    const r1 = node.row + node.height - 1;
+    return { c0, r0, c1, r1, centerC: c0 + ((node.width - 1) / 2) | 0, centerR: r0 + ((node.height - 1) / 2) | 0 };
+}
 /** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
 export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
@@ -882,7 +891,12 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         getSelectedRoomLinkInfo() {
             const link = this.getSelectedRoomLink();
             if (!link) return null;
-            return { ...link, label: formatRoomLinkLabel(link) };
+            const nodeA = getRoomNode(state, link.a);
+            const nodeB = getRoomNode(state, link.b);
+            const corridorWidth = link.corridorWidth ?? 1;
+            const maxCorridorLanes =
+                nodeA && nodeB ? maxCorridorLanesBetweenNodes(roomNodeRouteRect(nodeA), roomNodeRouteRect(nodeB), corridorWidth) : null;
+            return { ...link, label: formatRoomLinkLabel(link), maxCorridorLanes };
         },
         setSelectedRoomNodeId(id) {
             setSelectedRoomNodeId(id);

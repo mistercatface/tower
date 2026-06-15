@@ -1,6 +1,56 @@
 import { MinHeap, IdxMinHeap } from "../DataStructures/MinHeap.js";
-import { OCTILE_OFFSETS, octileDistance } from "../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, OCTILE_OFFSETS, octileDistance } from "../Spatial/grid/GridUtils.js";
 const STALE_F_EPSILON = 1e-4;
+/** @param {number} c0 @param {number} r0 @param {number} c1 @param {number} r1 */
+function manhattanDistance(c0, r0, c1, r1) {
+    return Math.abs(c0 - c1) + Math.abs(r0 - r1);
+}
+/** 4-connected grid A* — for axis-aligned tubes (corridors); never cuts corners diagonally. */
+export function runCardinalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, gScore, cameFrom, visited, runId) {
+    const startIdx = startRow * cols + startCol;
+    const targetIdx = targetRow * cols + targetCol;
+    if (startIdx === targetIdx) return [{ col: startCol, row: startRow }];
+    const openSet = new IdxMinHeap();
+    gScore[startIdx] = 0;
+    visited[startIdx] = runId;
+    cameFrom[startIdx] = -1;
+    openSet.push(startIdx, manhattanDistance(startCol, startRow, targetCol, targetRow));
+    while (openSet.size > 0) {
+        const curr = openSet.pop();
+        const currIdx = curr.idx;
+        const currCol = currIdx % cols;
+        const currRow = (currIdx / cols) | 0;
+        const currentG = gScore[currIdx];
+        if (curr.f > currentG + manhattanDistance(currCol, currRow, targetCol, targetRow) + STALE_F_EPSILON) continue;
+        if (currentG > maxPathLen) continue;
+        if (currIdx === targetIdx) {
+            const path = [];
+            let currNode = currIdx;
+            while (currNode !== -1) {
+                path.push({ col: currNode % cols, row: (currNode / cols) | 0 });
+                currNode = cameFrom[currNode];
+            }
+            path.reverse();
+            return path;
+        }
+        for (const offset of CARDINAL_OFFSETS) {
+            const nc = currCol + offset.dc;
+            const nr = currRow + offset.dr;
+            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                if (!navGraph.canStep(currCol, currRow, nc, nr)) continue;
+                const nIdx = nr * cols + nc;
+                const tentativeG = currentG + 1;
+                if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
+                    visited[nIdx] = runId;
+                    gScore[nIdx] = tentativeG;
+                    cameFrom[nIdx] = currIdx;
+                    openSet.push(nIdx, tentativeG + manhattanDistance(nc, nr, targetCol, targetRow));
+                }
+            }
+        }
+    }
+    return null;
+}
 export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, gScore, cameFrom, visited, runId) {
     const startIdx = startRow * cols + startCol;
     const targetIdx = targetRow * cols + targetCol;

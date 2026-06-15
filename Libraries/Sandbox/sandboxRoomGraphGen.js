@@ -1,4 +1,14 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
+import {
+    buildCorridorLanePath,
+    collectCorridorPathPointCells,
+    corridorPathIntersectsAny,
+    corridorPathsToOccupiedKeys,
+    corridorPerpendicularOffsets,
+    createCorridorLaneRouter,
+    tryRouteCorridorsBetweenRooms,
+} from "../Pathfinding/Corridor/index.js";
+export { corridorPerpendicularOffsets, corridorPathIntersectsAny };
 import { applySandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 import { validateRoomGraphMotifs } from "./roomGraphStepRegistry.js";
 /** Edit this array to change generation — each step runs in order. */
@@ -130,13 +140,6 @@ export const DEFAULT_ROOM_GRAPH_GRID = {
 export const DEFAULT_CORRIDOR_HALF_WIDTH = 0;
 export const DEFAULT_CORRIDOR_WIDTH = 1;
 export const DEFAULT_CORRIDOR_EGRESS_CELLS = 2;
-/** @param {number} width */
-export function corridorPerpendicularOffsets(width) {
-    const offsets = new Array(width);
-    const base = (width - 1) >> 1;
-    for (let i = 0; i < width; i++) offsets[i] = i - base;
-    return offsets;
-}
 /** @param {{ corridorWidth?: number, halfWidth?: number }} [options] */
 export function resolveCorridorWidth(options = {}) {
     if (options.corridorWidth != null) return options.corridorWidth;
@@ -876,152 +879,41 @@ export function railWallsForRoomOutlines(layout, originCol, originRow) {
         );
     return railWallsForClosedRooms(closedRooms, originCol, originRow);
 }
-/** @param {Cell} from @param {Cell} to @param {boolean} horizontalFirst */
-function manhattanPath(from, to, horizontalFirst) {
-    /** @type {Cell[]} */
-    const path = [from];
-    let c = from.c;
-    let r = from.r;
-    if (horizontalFirst) {
-        while (c !== to.c) {
-            c += c < to.c ? 1 : -1;
-            path.push({ c, r });
-        }
-        while (r !== to.r) {
-            r += r < to.r ? 1 : -1;
-            path.push({ c, r });
-        }
-    } else {
-        while (r !== to.r) {
-            r += r < to.r ? 1 : -1;
-            path.push({ c, r });
-        }
-        while (c !== to.c) {
-            c += c < to.c ? 1 : -1;
-            path.push({ c, r });
-        }
-    }
-    return path;
-}
-/** @param {GraphNode[]} nodes @param {number} c @param {number} r */
-function cellInsideAnyNode(nodes, c, r) {
+/** @param {GraphNode[]} nodes @param {number} [pad] */
+function corridorGridBoundsFromRooms(nodes, pad = 24) {
+    let maxC = pad;
+    let maxR = pad;
     for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        if (c >= node.c0 && c <= node.c1 && r >= node.r0 && r <= node.r1) return true;
+        maxC = Math.max(maxC, nodes[i].c1 + pad);
+        maxR = Math.max(maxR, nodes[i].r1 + pad);
     }
-    return false;
+    return { gridCols: maxC + 1, gridRows: maxR + 1 };
 }
-/** @param {GraphNode[]} nodes @param {Cell[]} path */
-function corridorPathIsClear(nodes, path) {
-    for (let i = 1; i < path.length - 1; i++) if (cellInsideAnyNode(nodes, path[i].c, path[i].r)) return false;
-    return true;
-}
-/** @param {Cell} from @param {Cell} to @param {GraphNode[]} nodes */
-function listClearCorridorMidPaths(from, to, nodes) {
-    /** @type {Cell[][]} */
-    const paths = [];
-    for (const horizontalFirst of [true, false]) {
-        const path = manhattanPath(from, to, horizontalFirst);
-        if (corridorPathIsClear(nodes, path)) paths.push(path);
+
+/** @param {ClosedRoom} closedRoom @param {RoomWallHole[][]} holeGroups */
+function applyCorridorHoleGroups(closedRoom, holeGroups) {
+    for (let lane = 0; lane < holeGroups.length; lane++) {
+        const group = holeGroups[lane];
+        for (let i = 0; i < group.length; i++) {
+            const hole = group[i];
+            closedRoom.gaps.add(roomWallEdgeKey(hole.c, hole.r, hole.side));
+            closedRoom.holes.push(hole);
+        }
     }
-    return paths;
 }
-/** @param {Cell} from @param {Cell} to @param {GraphNode[]} nodes @param {() => number} rng */
-function pickCorridorMidPath(from, to, nodes, rng) {
-    const paths = listClearCorridorMidPaths(from, to, nodes);
-    if (paths.length === 0) return null;
-    return paths[(rng() * paths.length) | 0];
-}
-/** 1-wide corridor: straight egress from parent hole, manhattan mid, straight ingress to child hole. */
-/** @param {RoomWallHole} parentHole @param {RoomWallHole} childHole @param {GraphNode[]} nodes @param {() => number} rng @param {number} egressCells @param {{ existingPaths?: Cell[][], tryAllMidOrders?: boolean, corridorWidth?: number }} [options] */
+
+/** 1-wide corridor: straight egress from parent hole, A* mid, straight ingress to child hole. */
+/** @param {RoomWallHole} parentHole @param {RoomWallHole} childHole @param {GraphNode[]} nodes @param {() => number} rng @param {number} egressCells @param {{ existingPaths?: Cell[][], corridorWidth?: number, gridCols?: number, gridRows?: number, canIntersect?: boolean }} [options] */
 export function buildCorridorPathBetweenHoles(parentHole, childHole, nodes, rng, egressCells, options = {}) {
     const existingPaths = options.existingPaths ?? [];
-    const tryAllMidOrders = options.tryAllMidOrders === true;
     const corridorWidth = options.corridorWidth ?? DEFAULT_CORRIDOR_WIDTH;
-    const corridorFrom = stepAcrossSide(parentHole, parentHole.side);
-    const corridorTo = stepAcrossSide(childHole, childHole.side);
-    const approachEnd = stepAcrossSide(corridorTo, childHole.side);
-    let egressEnd = corridorFrom;
-    for (let i = 0; i < egressCells; i++) egressEnd = stepAcrossSide(egressEnd, parentHole.side);
-    const allMids = listClearCorridorMidPaths(egressEnd, approachEnd, nodes);
-    if (allMids.length === 0) return null;
-    const mids = tryAllMidOrders ? allMids : [allMids[(rng() * allMids.length) | 0]];
-    for (let mi = 0; mi < mids.length; mi++) {
-        const mid = mids[mi];
-        /** @type {Cell[]} */
-        const path = [corridorFrom];
-        let p = corridorFrom;
-        for (let i = 0; i < egressCells; i++) {
-            p = stepAcrossSide(p, parentHole.side);
-            path.push(p);
-        }
-        for (let i = 1; i < mid.length; i++) path.push(mid[i]);
-        p = path[path.length - 1];
-        while (p.c !== corridorTo.c || p.r !== corridorTo.r) {
-            if (p.c !== corridorTo.c) p = { c: p.c + (corridorTo.c > p.c ? 1 : -1), r: p.r };
-            else p = { c: p.c, r: p.r + (corridorTo.r > p.r ? 1 : -1) };
-            path.push(p);
-        }
-        if (!corridorPathIsClear(nodes, path)) continue;
-        if (existingPaths.length && corridorPathIntersectsAny(path, existingPaths, corridorWidth)) continue;
-        return path;
-    }
-    return null;
-}
-/** @param {Cell} p @param {Cell | undefined} prev @param {Cell | undefined} next @param {number} corridorWidth @param {boolean} interiorOnly @param {number} pathIndex @param {number} pathLength */
-function collectCorridorPathPointCells(p, prev, next, corridorWidth, interiorOnly, pathIndex, pathLength) {
-    if (interiorOnly && (pathIndex === 0 || pathIndex === pathLength - 1)) return [];
-    const offsets = corridorPerpendicularOffsets(corridorWidth);
-    let alongH = false;
-    let alongV = false;
-    if (prev) {
-        if (prev.c !== p.c) alongH = true;
-        if (prev.r !== p.r) alongV = true;
-    }
-    if (next) {
-        if (next.c !== p.c) alongH = true;
-        if (next.r !== p.r) alongV = true;
-    }
-    /** @type {Cell[]} */
-    const cells = [];
-    if (alongH && alongV) {
-        for (let oi = 0; oi < offsets.length; oi++) for (let oj = 0; oj < offsets.length; oj++) cells.push({ c: p.c + offsets[oi], r: p.r + offsets[oj] });
-        return cells;
-    }
-    if (alongH) {
-        for (let oi = 0; oi < offsets.length; oi++) cells.push({ c: p.c, r: p.r + offsets[oi] });
-        return cells;
-    }
-    if (alongV) {
-        for (let oi = 0; oi < offsets.length; oi++) cells.push({ c: p.c + offsets[oi], r: p.r });
-        return cells;
-    }
-    cells.push({ c: p.c, r: p.r });
-    return cells;
-}
-/** @param {Cell[]} path @param {number} corridorWidth @param {{ interiorOnly?: boolean }} [options] */
-function corridorPathOccupiedCellKeys(path, corridorWidth, options = {}) {
-    const interiorOnly = options.interiorOnly !== false;
-    /** @type {Set<string>} */
-    const keys = new Set();
-    for (let i = 0; i < path.length; i++) {
-        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, interiorOnly, i, path.length);
-        for (let ci = 0; ci < cells.length; ci++) keys.add(corridorCellKey(cells[ci]));
-    }
-    return keys;
-}
-/** @param {Cell} cell */
-function corridorCellKey(cell) {
-    return `${cell.c},${cell.r}`;
-}
-/** @param {Cell[]} path @param {Cell[][]} others — interior footprint only; endpoints may meet at room holes. @param {number} [corridorWidth] */
-export function corridorPathIntersectsAny(path, others, corridorWidth = DEFAULT_CORRIDOR_WIDTH) {
-    const keys = corridorPathOccupiedCellKeys(path, corridorWidth);
-    for (let i = 0; i < others.length; i++) {
-        const otherKeys = corridorPathOccupiedCellKeys(others[i], corridorWidth);
-        for (const key of otherKeys) if (keys.has(key)) return true;
-    }
-    return false;
+    const canIntersect = options.canIntersect === true;
+    const bounds = corridorGridBoundsFromRooms(nodes);
+    const gridCols = options.gridCols ?? bounds.gridCols;
+    const gridRows = options.gridRows ?? bounds.gridRows;
+    const pathfinder = createCorridorLaneRouter(gridCols, gridRows, nodes);
+    const baseOccupied = corridorPathsToOccupiedKeys(existingPaths, corridorWidth);
+    return buildCorridorLanePath(parentHole, childHole, nodes, gridCols, gridRows, egressCells, corridorWidth, existingPaths, baseOccupied, pathfinder, { canIntersect });
 }
 /** @param {DirectedEdge} edge @param {GraphNode[]} nodes @param {() => number} rng @param {number} egressCells */
 function buildEdgeCorridorPath(edge, nodes, rng, egressCells) {
@@ -1138,37 +1030,56 @@ export function tryBuildCorridorForEdge(edgeIndex, layout, closedRooms, rng, ori
     const edge = graphEdges[edgeIndex];
     const roomA = closedRooms[edge.a];
     const roomB = closedRooms[edge.b];
-    const snapA = snapshotClosedRoom(roomA);
-    const snapB = snapshotClosedRoom(roomB);
     const punchedHere = !(skipPunch && edgeHasPunchedHoles(edge, corridorCount));
-    if (punchedHere) punchHolesOnDirectedEdge(layout, closedRooms, edgeIndex, rng, corridorCount, corridorWidth);
-    else {
+    /** @type {Cell[][]} */
+    let paths = [];
+    if (punchedHere) {
+        const route = tryRouteCorridorsBetweenRooms({
+            parentNode: rooms[edge.a],
+            childNode: rooms[edge.b],
+            allRooms: rooms,
+            corridorCount,
+            corridorWidth,
+            egressCells,
+            gridCols,
+            gridRows,
+            existingPaths: canIntersect ? [] : existingPaths,
+            rng,
+            options: { canIntersect },
+        });
+        if (!route) return null;
+        applyCorridorHoleGroups(roomA, route.parentHoleGroups);
+        applyCorridorHoleGroups(roomB, route.childHoleGroups);
+        edge.parentHoles = route.parentAnchors;
+        edge.childHoles = route.childAnchors;
+        edge.parentHole = route.parentAnchors[0];
+        edge.childHole = route.childAnchors[0];
         edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
         edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
+        paths = route.paths;
+    } else {
+        edge.corridorFrom = stepAcrossSide(edge.parentHole, edge.parentHole.side);
+        edge.corridorTo = stepAcrossSide(edge.childHole, edge.childHole.side);
+        const pathfinder = createCorridorLaneRouter(gridCols, gridRows, rooms);
+        const baseOccupied = corridorPathsToOccupiedKeys(canIntersect ? [] : existingPaths, corridorWidth);
+        /** @type {Cell[][]} */
+        const lanePaths = canIntersect ? [] : existingPaths.slice();
+        for (let lane = 0; lane < corridorCount; lane++) {
+            const { parentHole, childHole } = edgeHolePairAtLane(edge, lane);
+            const path = buildCorridorLanePath(parentHole, childHole, rooms, gridCols, gridRows, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, { canIntersect });
+            if (!path) return null;
+            paths.push(path);
+            lanePaths.push(path);
+        }
     }
-    /** @type {Cell[][]} */
-    const paths = [];
     /** @type {RailWall[][]} */
     const railLists = [];
-    /** @type {Cell[][]} */
-    const lanePaths = canIntersect ? [] : existingPaths.slice();
-    for (let lane = 0; lane < corridorCount; lane++) {
-        const { parentHole, childHole } = edgeHolePairAtLane(edge, lane);
-        const path = buildCorridorPathBetweenHoles(parentHole, childHole, rooms, rng, egressCells, { existingPaths: lanePaths, tryAllMidOrders: !canIntersect, corridorWidth });
-        if (!path) {
-            if (punchedHere) {
-                restoreClosedRoom(roomA, snapA);
-                restoreClosedRoom(roomB, snapB);
-                clearEdgeHoleFields(edge);
-            }
-            return null;
-        }
+    for (let pi = 0; pi < paths.length; pi++) {
+        const path = paths[pi];
         const mask = new Uint8Array(gridCols * gridRows);
         stampCorridorTube(mask, gridCols, gridRows, path, corridorWidth);
         const gapKeysWorld = roomWallGapKeysWorld(closedRooms, originCol, originRow);
         railLists.push(omitRailWallsAtGapKeys(railWallsFromFloorMask(mask, gridCols, gridRows, originCol, originRow), gapKeysWorld));
-        paths.push(path);
-        lanePaths.push(path);
     }
     return { edgeIndex, edge, path: paths[0], paths, railWalls: mergeRailWalls(railLists) };
 }

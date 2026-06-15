@@ -640,7 +640,12 @@ export function mountSandboxToyUi(container, controller, onChange) {
                     return;
                 }
                 if (selectedRoomLink) {
-                    appendEditorHint(body, `${selectedRoomLink.label}. Corridor count and width apply when you reroll.`);
+                    appendEditorHint(
+                        body,
+                        `${selectedRoomLink.label}. Corridor count and width apply when you reroll.${
+                            selectedRoomLink.maxCorridorLanes != null ? ` Up to ${selectedRoomLink.maxCorridorLanes} lanes fit on the facing walls at this width.` : ""
+                        }`,
+                    );
                     appendNumberField(body, "Corridor count", {
                         value: selectedRoomLink.corridorCount ?? 1,
                         step: 1,

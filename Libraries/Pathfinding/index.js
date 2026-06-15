@@ -2,7 +2,7 @@
  * Libraries/Pathfinding — pure navigation math (A*, HPA regions, flow fields, path follow).
  * Pose input uses AgentPose from Libraries/Agent; output is SteeringResult.
  */
-export { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
+export { runLocalAStarFlat, runCardinalAStarFlat, runAbstractAStar } from "./AStar.js";
 export { computeFlowField } from "./flowFieldBfs.js";
 export { FlowFieldGrid } from "./FlowFieldGrid.js";
 export { gridReachabilityBfs } from "./gridReachabilityBfs.js";
@@ -16,3 +16,4 @@ export { prepareNavigationPath, orthogonalizePath, placeAtWallClearance, resolve
 export { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid } from "./VoronoiRegions.js";
 export { readNavGrid } from "./NavGraph.js";
 export { HierarchicalNavigator } from "./HierarchicalNavigator.js";
+export * as Corridor from "./Corridor/index.js";
