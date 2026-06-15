@@ -27,7 +27,7 @@ import {
     expandGridForRoomNodeFootprint,
 } from "../RoomGraph/index.js";
 import { linkCorridorLimits, MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "../RoomGraph/roomGraphLinkCorridor.js";
-import { createSeededRng } from "./sandboxRoomGraphGen.js";
+import { createSeededRng } from "../Math/SeededRng.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { syncPassagePowerNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";

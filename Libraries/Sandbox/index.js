@@ -48,8 +48,6 @@ export { evaluateInputGates, evaluateInputGateRule, isEntityAtRest, isEntityAsle
 export { resolveWorldPropSandboxBehavior, resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
 export { spawnPoolRack } from "./spawnPoolRack.js";
 export { SANDBOX_SCENE_SCHEMA_VERSION, applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
-export * from "./sandboxRoomGraphGen.js";
-export * from "./roomGraphStepRegistry.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
 export { evaluatePortalStepEntry } from "./portalLinks.js";
 export { tryPortalIntake, applyPortalTraverse } from "./portalTraverse.js";

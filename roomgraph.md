@@ -1,6 +1,6 @@
 # Room graph — authored rooms + corridors
 
-Manual replacement for procgen motif pipeline (`sandboxRoomGraphGen.js` / `DEFAULT_SANDBOX_GRAPH_MOTIFS`). Users place **room nodes** on the grid, connect them with **links**, and bake corridors between them. Procgen stays in the repo until bake is proven, then the motif stack is deleted.
+Manual room graph authoring: users place **room nodes** on the grid, connect them with **links**, and bake corridors between them. The old procgen motif pipeline (`DEFAULT_SANDBOX_GRAPH_MOTIFS`, `sandboxRoomGraphGen.js`, `roomGraphStepRegistry.js`) has been removed.
 
 ## Architecture
 
@@ -43,7 +43,7 @@ Spawn-only asset `room_node` (`sandbox.roomNode: true`) — not a WorldProp. Spa
 1. **Authoring** — Place room nodes with size preview; pick, move, delete; connect nodes via wire GUI; edit link corridor settings; reroll corridor.
 2. **Bake** — Node outlines + link corridors appear on grid (holes, rails); unbake on delete; reroll rebakes one link.
 3. **Persistence** — Scene snapshot includes `roomGraph`; load restores nodes + links; bake runs on apply (or lazy on open).
-4. **Procgen retired** — No editor entry point to motifs; `sandboxRoomGraphGen` motif path removed; corridor math lives under `RoomGraph/`.
+4. **Procgen retired** — Motif procgen deleted; corridor bake lives under `RoomGraph/` + `Pathfinding/Corridor/`.
 5. **Traversal-ready** — Adjacency API on store; room centers computable for future abstract pathfinding.
 
 ---
@@ -95,13 +95,14 @@ Spawn-only asset `room_node` (`sandbox.roomNode: true`) — not a WorldProp. Spa
 
 ### PR 3 — Link settings + corridor bake
 
-**Goal:** Links become real geometry; extract bake from procgen.
+**Goal:** Links become real geometry; bake modules under `RoomGraph/`.
 
-| Add | Purpose |
-|-----|---------|
+| Module | Purpose |
+|--------|---------|
 | `roomGraphBake.js` | Node outline, link corridor, unbake, reroll |
-
-Extract from `sandboxRoomGraphGen.js`: hole punch, corridor path, rail stamp (not motifs).
+| `roomGraphClosedRooms.js` | Closed room rects, perimeter rails, hole apply |
+| `roomGraphCorridorRails.js` | Corridor tube → rail stamp |
+| `roomGraphCorridorApply.js` | Bundle solver → holes + rails |
 
 **Selected (link):** corridor count, width, canIntersect, reroll, delete.
 
@@ -110,7 +111,7 @@ Extract from `sandboxRoomGraphGen.js`: hole punch, corridor path, rail stamp (no
 **PR 3 done when:**
 - [x] Connect + bake produces walkable corridors
 - [x] Reroll / delete link updates geometry
-- [ ] Motif procgen unused; old file trimmed or deleted
+- [x] Motif procgen deleted; bake utilities live in `RoomGraph/`
 
 ---
 
@@ -121,8 +122,14 @@ Libraries/RoomGraph/
   roomGraphStore.js       PR 1
   roomGraphPlacement.js   PR 1
   roomGraphDraw.js        PR 1
+  roomGraphClosedRooms.js bake — closed rects + perimeter rails
+  roomGraphCorridorRails.js bake — corridor tube stamp
+  roomGraphCorridorApply.js bake — bundle apply
   roomGraphBake.js        PR 3
   index.js
+
+Libraries/Math/
+  SeededRng.js            link corridor width rolls
 
 Libraries/Sandbox/
   createSandboxController.js   wire mode PR 2

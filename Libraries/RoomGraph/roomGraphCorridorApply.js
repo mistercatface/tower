@@ -1,13 +1,15 @@
 import { corridorSearchBounds, solveCorridorBundle } from "../Pathfinding/Corridor/index.js";
-import { applyCorridorHoleGroupsToRooms, buildCorridorRailWallsFromPaths, DEFAULT_CORRIDOR_EGRESS_CELLS } from "../Sandbox/sandboxRoomGraphGen.js";
-/** @param {import("../Pathfinding/Corridor/corridorBundle.js").CorridorBundle} bundle @param {import("../Sandbox/sandboxRoomGraphGen.js").ClosedRoom} roomA @param {import("../Sandbox/sandboxRoomGraphGen.js").ClosedRoom} roomB */
+import { applyCorridorHoleGroupsToRooms } from "./roomGraphClosedRooms.js";
+import { buildCorridorRailWallsFromPaths, DEFAULT_CORRIDOR_EGRESS_CELLS } from "./roomGraphCorridorRails.js";
+
+/** @param {import("../Pathfinding/Corridor/corridorBundle.js").CorridorBundle} bundle @param {import("./roomGraphClosedRooms.js").ClosedRoom} roomA @param {import("./roomGraphClosedRooms.js").ClosedRoom} roomB */
 export function applyCorridorBundleToRooms(bundle, roomA, roomB) {
     applyCorridorHoleGroupsToRooms(roomA, roomB, bundle.parentHoleGroups, bundle.childHoleGroups);
 }
 /**
  * @param {import("../Pathfinding/Corridor/corridorBundle.js").CorridorBundle} bundle
- * @param {import("../Sandbox/sandboxRoomGraphGen.js").GraphNode[]} rooms
- * @param {import("../Sandbox/sandboxRoomGraphGen.js").ClosedRoom[]} closedRooms
+ * @param {import("./roomGraphClosedRooms.js").GraphNode[]} rooms
+ * @param {import("./roomGraphClosedRooms.js").ClosedRoom[]} closedRooms
  * @param {number} originCol
  * @param {number} originRow
  */
@@ -16,12 +18,12 @@ export function stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, 
     return buildCorridorRailWallsFromPaths(bundle.paths, bundle.corridorWidths, rooms, closedRooms, stampBounds, originCol, originRow);
 }
 /**
- * @param {import("../Sandbox/sandboxRoomGraphGen.js").GraphNode} roomA
- * @param {import("../Sandbox/sandboxRoomGraphGen.js").GraphNode} roomB
- * @param {import("../Sandbox/sandboxRoomGraphGen.js").GraphNode[]} allRooms
+ * @param {import("./roomGraphClosedRooms.js").GraphNode} roomA
+ * @param {import("./roomGraphClosedRooms.js").GraphNode} roomB
+ * @param {import("./roomGraphClosedRooms.js").GraphNode[]} allRooms
  * @param {number[]} corridorWidths
  * @param {() => number} rng
- * @param {{ canIntersect?: boolean, existingPaths?: import("../Sandbox/sandboxRoomGraphGen.js").Cell[][], existingPathWidths?: number[] }} options
+ * @param {{ canIntersect?: boolean, existingPaths?: import("./roomGraphClosedRooms.js").Cell[][], existingPathWidths?: number[] }} options
  */
 export function solveAuthoredLinkCorridorBundle(roomA, roomB, allRooms, corridorWidths, rng, options) {
     return solveCorridorBundle({

@@ -1,37 +1,27 @@
 import { commitBoundaryEdit } from "../Sandbox/boundaryEdit.js";
 import { clearRailWallsQuiet, stampRailWallsQuiet } from "../Sandbox/gridWallEdit.js";
-import {
-    buildRoomsFromNodeGraph,
-    createSeededRng,
-    mergeRailWalls,
-    omitRailWallsAtGapKeys,
-    railWallsForClosedRooms,
-    roomWallGapKeysWorld,
-} from "../Sandbox/sandboxRoomGraphGen.js";
+import { createSeededRng } from "../Math/SeededRng.js";
+import { buildRoomsFromNodeGraph, mergeRailWalls, omitRailWallsAtGapKeys, railWallsForClosedRooms, roomWallGapKeysWorld } from "./roomGraphClosedRooms.js";
 import { getRoomGraph, listRoomLinks, listRoomNodes } from "./roomGraphStore.js";
 import { resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
 import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle, stampCorridorBundleRails } from "./roomGraphCorridorApply.js";
-
 /** @typedef {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }} BakedRail */
 /** @typedef {{ id: number, c0: number, c1: number, r0: number, r1: number, centerC: number, centerR: number, width: number, height: number }} AuthoredGraphNode */
 /** @typedef {{ startCol: number, endCol: number, startRow: number, endRow: number }} CellBounds */
-
 /** @param {CellBounds | null} a @param {CellBounds | null} b @returns {CellBounds | null} */
 function unionCellBounds(a, b) {
     if (!a) return b;
     if (!b) return a;
     return { startCol: Math.min(a.startCol, b.startCol), endCol: Math.max(a.endCol, b.endCol), startRow: Math.min(a.startRow, b.startRow), endRow: Math.max(a.endRow, b.endRow) };
 }
-
 /** @param {import("./roomGraphStore.js").RoomNode} node */
 function roomNodeToGraphNode(node) {
     const c0 = node.col;
     const r0 = node.row;
     const c1 = node.col + node.width - 1;
     const r1 = node.row + node.height - 1;
-    return { id: node.id, c0, c1, r0, r1, centerC: c0 + ((node.width - 1) / 2) | 0, centerR: r0 + ((node.height - 1) / 2) | 0, width: node.width, height: node.height };
+    return { id: node.id, c0, c1, r0, r1, centerC: (c0 + (node.width - 1) / 2) | 0, centerR: (r0 + (node.height - 1) / 2) | 0, width: node.width, height: node.height };
 }
-
 /** @param {object} state */
 function buildAuthoredBakeLayout(state) {
     const roomNodes = listRoomNodes(state);
@@ -60,17 +50,14 @@ function buildAuthoredBakeLayout(state) {
     for (let i = 0; i < roomNodes.length; i++) roomNodeById.set(roomNodes[i].id, roomNodes[i]);
     return { rooms: graphNodes, graphEdges, closedRooms, gridCols: grid.cols, gridRows: grid.rows, links, roomNodeById };
 }
-
 /** @param {object} state */
 function listBakedRails(state) {
     return getRoomGraph(state).bakedRails ?? [];
 }
-
 /** @param {object} state @param {BakedRail[]} rails */
 function setBakedRails(state, rails) {
     getRoomGraph(state).bakedRails = rails;
 }
-
 /** @param {AuthoredGraphNode[]} graphNodes */
 function expandGridForGraphNodes(state, graphNodes) {
     const grid = state.obstacleGrid;
@@ -90,18 +77,15 @@ function expandGridForGraphNodes(state, graphNodes) {
     }
     if (Number.isFinite(minX)) state.obstacleGrid.expandToCoverAabb({ minX, minY, maxX, maxY });
 }
-
-/** @param {import("../Sandbox/sandboxRoomGraphGen.js").ClosedRoom} closedRoom */
+/** @param {import("./roomGraphClosedRooms.js").ClosedRoom} closedRoom */
 function snapshotClosedRoomState(closedRoom) {
     return { gaps: new Set(closedRoom.gaps), holes: closedRoom.holes.slice() };
 }
-
-/** @param {import("../Sandbox/sandboxRoomGraphGen.js").ClosedRoom} closedRoom @param {{ gaps: Set<string>, holes: import("../Sandbox/sandboxRoomGraphGen.js").RoomWallHole[] }} snap */
+/** @param {import("./roomGraphClosedRooms.js").ClosedRoom} closedRoom @param {{ gaps: Set<string>, holes: import("./roomGraphClosedRooms.js").RoomWallHole[] }} snap */
 function restoreClosedRoomState(closedRoom, snap) {
     closedRoom.gaps = new Set(snap.gaps);
     closedRoom.holes = snap.holes.slice();
 }
-
 /** @param {ReturnType<typeof buildAuthoredBakeLayout>} layout @returns {BakedRail[]} */
 function computeRoomGraphRailWalls(layout) {
     const originCol = 0;
@@ -111,11 +95,11 @@ function computeRoomGraphRailWalls(layout) {
     /** @type {Map<number, import("./roomGraphStore.js").RoomLink>} */
     const linkById = new Map();
     for (let i = 0; i < links.length; i++) linkById.set(links[i].id, links[i]);
-    /** @type {import("../Sandbox/sandboxRoomGraphGen.js").Cell[][]} */
+    /** @type {import("./roomGraphClosedRooms.js").Cell[][]} */
     const placedPaths = [];
     /** @type {number[]} */
     const placedPathWidths = [];
-    /** @type {import("../Sandbox/sandboxRoomGraphGen.js").RailWall[][]} */
+    /** @type {import("./roomGraphClosedRooms.js").RailWall[][]} */
     const corridorRailLists = [];
     for (let edgeIndex = 0; edgeIndex < graphEdges.length; edgeIndex++) {
         const { a, b, linkId } = graphEdges[edgeIndex];
@@ -152,7 +136,6 @@ function computeRoomGraphRailWalls(layout) {
     const corridorRails = corridorRailLists.length ? omitRailWallsAtGapKeys(mergeRailWalls(corridorRailLists), gapKeys) : [];
     return mergeRailWalls([roomRails, corridorRails]);
 }
-
 /** Rebuild all room-graph-owned rail walls from `state.roomGraph`. */
 export function syncRoomGraphBake(state) {
     let dirtyBounds = clearRailWallsQuiet(state, listBakedRails(state));
@@ -169,14 +152,12 @@ export function syncRoomGraphBake(state) {
     dirtyBounds = unionCellBounds(dirtyBounds, stampBounds);
     if (dirtyBounds) commitBoundaryEdit(state, dirtyBounds);
 }
-
 /** @param {object} state */
 export function unbakeRoomGraph(state) {
     const bounds = clearRailWallsQuiet(state, listBakedRails(state));
     setBakedRails(state, []);
     if (bounds) commitBoundaryEdit(state, bounds);
 }
-
 /** @param {object} state @param {number} linkId */
 export function rerollRoomLinkBake(state, linkId) {
     const links = listRoomLinks(state);
@@ -187,7 +168,6 @@ export function rerollRoomLinkBake(state, linkId) {
         return;
     }
 }
-
 /** @param {object} state @param {number} anchorCol @param {number} anchorRow @param {number} width @param {number} height */
 export function expandGridForRoomNodeFootprint(state, anchorCol, anchorRow, width, height) {
     const grid = state.obstacleGrid;
