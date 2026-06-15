@@ -5,12 +5,11 @@ import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import { createSnapshotLocalNavView } from "./GridNavSnapshot.js";
 import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid } from "./VoronoiRegions.js";
 export class HierarchicalNavigator {
-    constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, navGraph, { damagePadding = 12, hpaPathWorker = null } = {}) {
+    constructor(cellSize, maxCellsPerChunk, minCellsPerChunk, navGraph, { damagePadding = 12 } = {}) {
         this.cellSize = cellSize;
         this.maxCellsPerChunk = maxCellsPerChunk;
         this.minCellsPerChunk = minCellsPerChunk;
         this.navGraph = navGraph;
-        this.hpaPathWorker = hpaPathWorker;
         this.damagePadding = damagePadding;
         this.distToWall = null;
         this.cellToNode = null;
@@ -22,6 +21,14 @@ export class HierarchicalNavigator {
         this.aStarRunId = 0;
         this._localNavViewKey = "";
         this._localNavView = null;
+        this._replanRunToken = 0;
+    }
+    _replanTempIds(replanCtx) {
+        const token = replanCtx?.hpaSlot ?? ++this._replanRunToken;
+        return { startTempId: `__hpa_s_${token}`, targetTempId: `__hpa_t_${token}` };
+    }
+    _isHpaTempNodeId(id) {
+        return id.startsWith("__hpa_");
     }
     get grid() {
         return this.navGraph.grid;
@@ -396,9 +403,9 @@ export class HierarchicalNavigator {
         const navView = this._snapshotLocalNavView();
         return runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, this.cols, this.rows, maxPathLen, this.aStarGScore, this.aStarCameFrom, this.aStarVisited, this.aStarRunId);
     }
-    async _runReplanLocalAStar(startCol, startRow, targetCol, targetRow, maxPathLen = 80) {
+    async _runReplanLocalAStar(startCol, startRow, targetCol, targetRow, maxPathLen = 80, replanCtx = null) {
         this.aStarRunId++;
-        if (this.hpaPathWorker) return this.hpaPathWorker.runLocalAStar(startCol, startRow, targetCol, targetRow, maxPathLen, this.aStarRunId);
+        if (replanCtx?.hpaWorker) return replanCtx.hpaWorker.runLocalAStar(replanCtx.hpaSlot, startCol, startRow, targetCol, targetRow, maxPathLen, this.aStarRunId);
         const navView = this._snapshotLocalNavView();
         return runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, this.cols, this.rows, maxPathLen, this.aStarGScore, this.aStarCameFrom, this.aStarVisited, this.aStarRunId);
     }
@@ -413,7 +420,7 @@ export class HierarchicalNavigator {
     _cellPathToWaypoints(cells) {
         return cells.map((cell) => this.gridToWorld(cell.col, cell.row));
     }
-    async _connectTempNode(tempNode, gridCol, gridRow, targetNode, isStart, modifiedCandidates = null) {
+    async _connectTempNode(tempNode, gridCol, gridRow, targetNode, isStart, targetTempId, modifiedCandidates = null, replanCtx = null) {
         const candidates = new Set();
         const searchRadius = Math.ceil(Math.sqrt(this.maxCellsPerChunk)) * 2;
         if (targetNode) {
@@ -425,29 +432,29 @@ export class HierarchicalNavigator {
                 }
             else
                 for (const node of Object.values(this.nodesMap)) {
-                    if (node.id === "start" || node.id === "target") continue;
+                    if (this._isHpaTempNodeId(node.id)) continue;
                     if (node.edges.some((e) => e.targetId === targetNode.id)) candidates.add(node);
                 }
         } else
             for (const id in this.nodesMap) {
-                if (id === "start" || id === "target") continue;
+                if (this._isHpaTempNodeId(id)) continue;
                 const node = this.nodesMap[id];
                 const d = Math.hypot(gridCol - node.col, gridRow - node.row);
                 if (d <= searchRadius) candidates.add(node);
             }
         for (const candidate of candidates) {
             const path = isStart
-                ? await this._runReplanLocalAStar(tempNode.col, tempNode.row, candidate.col, candidate.row, 96)
-                : await this._runReplanLocalAStar(candidate.col, candidate.row, tempNode.col, tempNode.row, 96);
+                ? await this._runReplanLocalAStar(tempNode.col, tempNode.row, candidate.col, candidate.row, 96, replanCtx)
+                : await this._runReplanLocalAStar(candidate.col, candidate.row, tempNode.col, tempNode.row, 96, replanCtx);
             if (path)
                 if (isStart) tempNode.edges.push({ targetId: candidate.id, cost: path.length, path: path });
                 else {
-                    candidate.edges.push({ targetId: "target", cost: path.length, path: path });
+                    candidate.edges.push({ targetId: targetTempId, cost: path.length, path: path });
                     if (modifiedCandidates) modifiedCandidates.push(candidate);
                 }
         }
     }
-    async computeCellPath(startX, startY, targetX, targetY) {
+    async computeCellPath(startX, startY, targetX, targetY, replanCtx = null) {
         const startGrid = this.worldToGrid(startX, startY);
         const targetGrid = this.worldToGrid(targetX, targetY);
         let startCol = Math.max(0, Math.min(this.cols - 1, startGrid.col));
@@ -469,9 +476,10 @@ export class HierarchicalNavigator {
         const targetIdx = colRowToIndex(targetCol, targetRow, this.cols);
         const startNode = this.cellToNode[startIdx];
         const targetNode = this.cellToNode[targetIdx];
+        const { startTempId, targetTempId } = this._replanTempIds(replanCtx);
         const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);
         if (cellDist < 32 || (startNode && targetNode && startNode.id === targetNode.id)) {
-            const localPath = await this._runReplanLocalAStar(startCol, startRow, targetCol, targetRow, 96);
+            const localPath = await this._runReplanLocalAStar(startCol, startRow, targetCol, targetRow, 96, replanCtx);
             if (localPath) {
                 const startWorld = this.gridToWorld(startCol, startRow);
                 const targetWorld = this.gridToWorld(targetCol, targetRow);
@@ -486,16 +494,18 @@ export class HierarchicalNavigator {
             }
             return null;
         }
-        const startTempNode = new RegionNode("start", startCol, startRow, -999, -999, this.minX, this.minY, this.cellSize);
-        const targetTempNode = new RegionNode("target", targetCol, targetRow, -999, -999, this.minX, this.minY, this.cellSize);
-        this.nodesMap["start"] = startTempNode;
-        this.nodesMap["target"] = targetTempNode;
+        const startTempNode = new RegionNode(startTempId, startCol, startRow, -999, -999, this.minX, this.minY, this.cellSize);
+        const targetTempNode = new RegionNode(targetTempId, targetCol, targetRow, -999, -999, this.minX, this.minY, this.cellSize);
+        this.nodesMap[startTempId] = startTempNode;
+        this.nodesMap[targetTempId] = targetTempNode;
         const modifiedCandidates = [];
         try {
-            await this._connectTempNode(startTempNode, startCol, startRow, startNode, true, modifiedCandidates);
-            await this._connectTempNode(targetTempNode, targetCol, targetRow, targetNode, false, modifiedCandidates);
-            const nodeIds = Object.keys(this.nodesMap);
-            const abstractPath = this.hpaPathWorker ? await this.hpaPathWorker.runAbstractAStar("start", "target", this.nodesMap, nodeIds) : runAbstractAStar("start", "target", this.nodesMap);
+            await this._connectTempNode(startTempNode, startCol, startRow, startNode, true, targetTempId, modifiedCandidates, replanCtx);
+            await this._connectTempNode(targetTempNode, targetCol, targetRow, targetNode, false, targetTempId, modifiedCandidates, replanCtx);
+            const nodeIds = Object.keys(this.nodesMap).filter((id) => !this._isHpaTempNodeId(id) || id === startTempId || id === targetTempId);
+            const abstractPath = replanCtx?.hpaWorker
+                ? await replanCtx.hpaWorker.runAbstractAStar(replanCtx.hpaSlot, startTempId, targetTempId, this.nodesMap, nodeIds)
+                : runAbstractAStar(startTempId, targetTempId, this.nodesMap);
             if (abstractPath) {
                 let fullCellPath = [];
                 for (let i = 0; i < abstractPath.length - 1; i++) {
@@ -514,7 +524,7 @@ export class HierarchicalNavigator {
             }
             return null;
         } finally {
-            this.cleanupTempEdges(modifiedCandidates);
+            this.cleanupTempEdges(modifiedCandidates, startTempId, targetTempId);
         }
     }
     async computePath(startX, startY, targetX, targetY) {
@@ -526,18 +536,13 @@ export class HierarchicalNavigator {
         const result = await this.computePath(startX, startY, targetX, targetY);
         return result ? result.waypoints : null;
     }
-    cleanupTempEdges(modifiedCandidates) {
-        delete this.nodesMap["start"];
-        delete this.nodesMap["target"];
+    cleanupTempEdges(modifiedCandidates, startTempId, targetTempId) {
+        delete this.nodesMap[startTempId];
+        delete this.nodesMap[targetTempId];
         if (modifiedCandidates)
             for (let i = 0; i < modifiedCandidates.length; i++) {
                 const node = modifiedCandidates[i];
-                node.edges = node.edges.filter((e) => e.targetId !== "target");
-            }
-        else
-            for (const id in this.nodesMap) {
-                const node = this.nodesMap[id];
-                node.edges = node.edges.filter((e) => e.targetId !== "target");
+                node.edges = node.edges.filter((e) => e.targetId !== targetTempId);
             }
     }
 }

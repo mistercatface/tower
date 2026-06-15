@@ -1,45 +1,33 @@
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { bakeAbstractGraphFlat, MAX_HPA_GRAPH_NODES } from "./hpaAbstractFlat.js";
+export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
+const MAX_GRAPH_EDGES = MAX_HPA_GRAPH_NODES * 32;
 const HPA_DONE = "hpaDone";
 const SYNC_NAV_DONE = "syncNavDone";
-const SLOT = 0;
 /**
- * Worker-backed local / abstract A* for HPA replans.
- * Async slot wait — callers await runLocalAStar / runAbstractAStar.
+ * Multi-slot HPA A* worker. Each in-flight replan leases a slot until complete.
  */
 export class HpaPathWorker {
-    /**
-     * @param {URL | string} workerUrl
-     * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} navGraph
-     */
     constructor(workerUrl, navGraph) {
         this.navGraph = navGraph;
-        this.host = createSabSlotWorkerHost(workerUrl, 1);
+        this.host = createSabSlotWorkerHost(workerUrl, MAX_HPA_REPLAN_SLOTS);
         this._navKey = "";
-        this._cols = 0;
-        this._rows = 0;
         this._navSize = 0;
         this._navSyncPromise = null;
-        this.sabPathMeta = new SharedArrayBuffer(8);
-        this.pathMeta = new Int32Array(this.sabPathMeta);
-        this.sabPathCols = new SharedArrayBuffer(MAX_HPA_PATH_LEN * 2);
-        this.sabPathRows = new SharedArrayBuffer(MAX_HPA_PATH_LEN * 2);
-        this.pathCols = new Int16Array(this.sabPathCols);
-        this.pathRows = new Int16Array(this.sabPathRows);
-        this.sabAbstractIdx = new SharedArrayBuffer(MAX_HPA_ABSTRACT_LEN * 2);
-        this.abstractIdx = new Int16Array(this.sabAbstractIdx);
-        this.sabGraphNodeCol = new SharedArrayBuffer(MAX_HPA_GRAPH_NODES * 2);
-        this.sabGraphNodeRow = new SharedArrayBuffer(MAX_HPA_GRAPH_NODES * 2);
-        this.sabGraphEdgeOffsets = new SharedArrayBuffer((MAX_HPA_GRAPH_NODES + 1) * 4);
-        this.sabGraphEdgeTargets = new SharedArrayBuffer(MAX_HPA_GRAPH_NODES * 32 * 2);
-        this.sabGraphEdgeCosts = new SharedArrayBuffer(MAX_HPA_GRAPH_NODES * 32 * 2);
-        this.graphNodeCol = new Int16Array(this.sabGraphNodeCol);
-        this.graphNodeRow = new Int16Array(this.sabGraphNodeRow);
-        this.graphEdgeOffsets = new Int32Array(this.sabGraphEdgeOffsets);
-        this.graphEdgeTargets = new Int16Array(this.sabGraphEdgeTargets);
-        this.graphEdgeCosts = new Uint16Array(this.sabGraphEdgeCosts);
+        this._slotFree = [];
+        for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
+        this._slotOwner = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
+        this.sabPathMetaPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * 8);
+        this.sabPathColsPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_HPA_PATH_LEN * 2);
+        this.sabPathRowsPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_HPA_PATH_LEN * 2);
+        this.sabAbstractIdxPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_HPA_ABSTRACT_LEN * 2);
+        this.sabGraphNodeColPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_HPA_GRAPH_NODES * 2);
+        this.sabGraphNodeRowPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_HPA_GRAPH_NODES * 2);
+        this.sabGraphEdgeOffsetsPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * (MAX_HPA_GRAPH_NODES + 1) * 4);
+        this.sabGraphEdgeTargetsPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_GRAPH_EDGES * 2);
+        this.sabGraphEdgeCostsPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_GRAPH_EDGES * 2);
         this.host.worker.onmessage = (e) => {
             const { type, slot, requestId } = e.data;
             if (type === SYNC_NAV_DONE) {
@@ -54,20 +42,62 @@ export class HpaPathWorker {
         this.host.worker.postMessage({
             type: "init",
             data: {
-                sabPathMeta: this.sabPathMeta,
-                sabPathCols: this.sabPathCols,
-                sabPathRows: this.sabPathRows,
-                sabAbstractIdx: this.sabAbstractIdx,
-                sabGraphNodeCol: this.sabGraphNodeCol,
-                sabGraphNodeRow: this.sabGraphNodeRow,
-                sabGraphEdgeOffsets: this.sabGraphEdgeOffsets,
-                sabGraphEdgeTargets: this.sabGraphEdgeTargets,
-                sabGraphEdgeCosts: this.sabGraphEdgeCosts,
+                maxSlots: MAX_HPA_REPLAN_SLOTS,
                 maxPathLen: MAX_HPA_PATH_LEN,
                 maxAbstractLen: MAX_HPA_ABSTRACT_LEN,
                 maxGraphNodes: MAX_HPA_GRAPH_NODES,
+                maxGraphEdges: MAX_GRAPH_EDGES,
+                sabPathMetaPool: this.sabPathMetaPool,
+                sabPathColsPool: this.sabPathColsPool,
+                sabPathRowsPool: this.sabPathRowsPool,
+                sabAbstractIdxPool: this.sabAbstractIdxPool,
+                sabGraphNodeColPool: this.sabGraphNodeColPool,
+                sabGraphNodeRowPool: this.sabGraphNodeRowPool,
+                sabGraphEdgeOffsetsPool: this.sabGraphEdgeOffsetsPool,
+                sabGraphEdgeTargetsPool: this.sabGraphEdgeTargetsPool,
+                sabGraphEdgeCostsPool: this.sabGraphEdgeCostsPool,
             },
         });
+    }
+    leaseSlot(owner) {
+        const slot = this._slotFree.pop();
+        if (slot === undefined) throw new Error(`HpaPathWorker slot pool exhausted (${MAX_HPA_REPLAN_SLOTS} in flight)`);
+        this._slotOwner[slot] = owner;
+        return slot;
+    }
+    releaseSlot(slot) {
+        this._slotOwner[slot] = null;
+        this._slotFree.push(slot);
+    }
+    inFlightCount() {
+        return MAX_HPA_REPLAN_SLOTS - this._slotFree.length;
+    }
+    _pathMeta(slot) {
+        return new Int32Array(this.sabPathMetaPool, slot * 8, 2);
+    }
+    _pathCols(slot) {
+        return new Int16Array(this.sabPathColsPool, slot * MAX_HPA_PATH_LEN * 2, MAX_HPA_PATH_LEN);
+    }
+    _pathRows(slot) {
+        return new Int16Array(this.sabPathRowsPool, slot * MAX_HPA_PATH_LEN * 2, MAX_HPA_PATH_LEN);
+    }
+    _abstractIdx(slot) {
+        return new Int16Array(this.sabAbstractIdxPool, slot * MAX_HPA_ABSTRACT_LEN * 2, MAX_HPA_ABSTRACT_LEN);
+    }
+    _graphNodeCol(slot) {
+        return new Int16Array(this.sabGraphNodeColPool, slot * MAX_HPA_GRAPH_NODES * 2, MAX_HPA_GRAPH_NODES);
+    }
+    _graphNodeRow(slot) {
+        return new Int16Array(this.sabGraphNodeRowPool, slot * MAX_HPA_GRAPH_NODES * 2, MAX_HPA_GRAPH_NODES);
+    }
+    _graphEdgeOffsets(slot) {
+        return new Int32Array(this.sabGraphEdgeOffsetsPool, slot * (MAX_HPA_GRAPH_NODES + 1) * 4, MAX_HPA_GRAPH_NODES + 1);
+    }
+    _graphEdgeTargets(slot) {
+        return new Int16Array(this.sabGraphEdgeTargetsPool, slot * MAX_GRAPH_EDGES * 2, MAX_GRAPH_EDGES);
+    }
+    _graphEdgeCosts(slot) {
+        return new Uint16Array(this.sabGraphEdgeCostsPool, slot * MAX_GRAPH_EDGES * 2, MAX_GRAPH_EDGES);
     }
     async _ensureNavSnapshot() {
         const snapshot = this.navGraph.ensureGridNavSnapshot();
@@ -77,8 +107,6 @@ export class HpaPathWorker {
             if (snapshot.cacheKey === this._navKey) return;
         }
         this._navKey = snapshot.cacheKey;
-        this._cols = snapshot.cols;
-        this._rows = snapshot.rows;
         const size = snapshot.cols * snapshot.rows;
         if (this._navSize !== size) {
             this._navSize = size;
@@ -119,47 +147,50 @@ export class HpaPathWorker {
         });
         await this._navSyncPromise;
     }
-    async _dispatchAndWait(type, extra) {
-        const requestId = this.host.post(SLOT, { type, ...extra });
-        await this.host.waitForSlot(SLOT, requestId);
+    async _dispatchAndWait(slot, type, extra) {
+        const requestId = this.host.post(slot, { type, ...extra });
+        await this.host.waitForSlot(slot, requestId);
     }
-    _readCellPath() {
-        const len = this.pathMeta[0];
+    _readCellPath(slot) {
+        const pathMeta = this._pathMeta(slot);
+        const len = pathMeta[0];
         if (len <= 0) return null;
+        const pathCols = this._pathCols(slot);
+        const pathRows = this._pathRows(slot);
         const path = new Array(len);
-        for (let i = 0; i < len; i++) path[i] = { col: this.pathCols[i], row: this.pathRows[i] };
+        for (let i = 0; i < len; i++) path[i] = { col: pathCols[i], row: pathRows[i] };
         return path;
     }
-    async runLocalAStar(startCol, startRow, targetCol, targetRow, maxPathLen, runId) {
+    async runLocalAStar(slot, startCol, startRow, targetCol, targetRow, maxPathLen, runId) {
         await this._ensureNavSnapshot();
-        await this._dispatchAndWait("localAStar", { startCol, startRow, targetCol, targetRow, maxPathLen, runId });
-        return this._readCellPath();
+        await this._dispatchAndWait(slot, "localAStar", { startCol, startRow, targetCol, targetRow, maxPathLen, runId });
+        return this._readCellPath(slot);
     }
-    /**
-     * @param {string} startNodeId
-     * @param {string} targetNodeId
-     * @param {Record<string, { col: number, row: number, edges: { targetId: string, cost: number }[] }>} nodesMap
-     * @param {string[]} nodeIds
-     * @returns {Promise<object[] | null>}
-     */
-    async runAbstractAStar(startNodeId, targetNodeId, nodesMap, nodeIds) {
+    async runAbstractAStar(slot, startNodeId, targetNodeId, nodesMap, nodeIds) {
         await this._ensureNavSnapshot();
         const baked = bakeAbstractGraphFlat(nodesMap, nodeIds);
         const startIdx = baked.idToIdx.get(startNodeId);
         const targetIdx = baked.idToIdx.get(targetNodeId);
         if (startIdx === undefined || targetIdx === undefined) return null;
-        this.graphNodeCol.set(baked.nodeCol);
-        this.graphNodeRow.set(baked.nodeRow);
-        this.graphEdgeOffsets.set(baked.edgeOffsets);
-        this.graphEdgeTargets.fill(0);
-        this.graphEdgeCosts.fill(0);
-        this.graphEdgeTargets.set(baked.edgeTargets);
-        this.graphEdgeCosts.set(baked.edgeCosts);
-        await this._dispatchAndWait("abstractAStar", { startIdx, targetIdx, nodeCount: baked.nodeCount, edgeWrite: baked.edgeWrite });
-        const len = this.pathMeta[1];
+        const graphNodeCol = this._graphNodeCol(slot);
+        const graphNodeRow = this._graphNodeRow(slot);
+        const graphEdgeOffsets = this._graphEdgeOffsets(slot);
+        const graphEdgeTargets = this._graphEdgeTargets(slot);
+        const graphEdgeCosts = this._graphEdgeCosts(slot);
+        graphNodeCol.set(baked.nodeCol);
+        graphNodeRow.set(baked.nodeRow);
+        graphEdgeOffsets.set(baked.edgeOffsets);
+        graphEdgeTargets.fill(0);
+        graphEdgeCosts.fill(0);
+        graphEdgeTargets.set(baked.edgeTargets);
+        graphEdgeCosts.set(baked.edgeCosts);
+        await this._dispatchAndWait(slot, "abstractAStar", { startIdx, targetIdx, nodeCount: baked.nodeCount, edgeWrite: baked.edgeWrite });
+        const pathMeta = this._pathMeta(slot);
+        const len = pathMeta[1];
         if (len <= 0) return null;
+        const abstractIdx = this._abstractIdx(slot);
         const path = new Array(len);
-        for (let i = 0; i < len; i++) path[i] = nodesMap[nodeIds[this.abstractIdx[i]]];
+        for (let i = 0; i < len; i++) path[i] = nodesMap[nodeIds[abstractIdx[i]]];
         return path;
     }
 }

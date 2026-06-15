@@ -1,6 +1,6 @@
 import { agentPose } from "../Agent/index.js";
 import { createNavState } from "../Pathfinding/navSession.js";
-import { clearHpaNavPath, replanHpaNavPath } from "../Pathfinding/hpaPathPlan.js";
+import { clearHpaNavPath, requestHpaNavReplan } from "../Pathfinding/hpaPathPlan.js";
 import { computeHpaNavSteering } from "../Pathfinding/hpaSteering.js";
 /** @typedef {import("../Pathfinding/navSession.js").NavSessionState} NavSessionState */
 const REPLAN_TARGET_MOVE_PX = 64;
@@ -8,31 +8,18 @@ const REPLAN_TARGET_MOVE_PX = 64;
 export function createRollToCursorHpaNav() {
     const navState = createNavState();
     let replanClockMs = 0;
-    let replanInFlight = false;
     const reset = () => {
         clearHpaNavPath(navState);
         navState.pathProgressIdx = 0;
         navState.lastTargetX = null;
         navState.lastTargetY = null;
         navState.lastUpdate = 0;
+        navState.hpaReplanRequestId = 0;
+        navState.hpaReplanSlot = -1;
         replanClockMs = 0;
-        replanInFlight = false;
     };
     const replan = (prop, targetX, targetY, state) => {
-        if (replanInFlight) return;
-        replanInFlight = true;
-        replanHpaNavPath({
-            hierarchicalNavigator: state.hierarchicalNavigator,
-            navState,
-            obstacleGrid: state.obstacleGrid,
-            startX: prop.x,
-            startY: prop.y,
-            targetX,
-            targetY,
-            nowMs: replanClockMs,
-        }).finally(() => {
-            replanInFlight = false;
-        });
+        requestHpaNavReplan(state.hpaPathSession, navState, { obstacleGrid: state.obstacleGrid, startX: prop.x, startY: prop.y, targetX, targetY, nowMs: replanClockMs });
     };
     const update = (prop, targetX, targetY, state, dtMs) => {
         replanClockMs += dtMs;

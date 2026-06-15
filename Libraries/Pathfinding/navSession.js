@@ -18,9 +18,24 @@
  * @property {import("./crossingGrant.js").CrossingGrant | null} [crossingGrant] — mouth cell authorized for the current hop
  * @property {Array<{ x: number, y: number, id?: string }> | null} [abstractPath]
  * @property {"local" | "hpa" | null} [pathPlanner]
+ * @property {number} [hpaReplanRequestId] — 0 = idle; non-zero while worker replan in flight
+ * @property {number} [hpaReplanSlot] — leased HpaPathWorker slot, -1 when idle
  */
 /** @returns {NavSessionState} */
 export function createNavState() {
-    return { path: null, lastUpdate: 0, lastX: null, lastY: null, stuckFrames: 0, pathProgressIdx: 0, obstacleGeneration: -1, lastTargetX: null, lastTargetY: null, lastOffPathReplan: 0 };
+    return {
+        path: null,
+        lastUpdate: 0,
+        lastX: null,
+        lastY: null,
+        stuckFrames: 0,
+        pathProgressIdx: 0,
+        obstacleGeneration: -1,
+        lastTargetX: null,
+        lastTargetY: null,
+        lastOffPathReplan: 0,
+        hpaReplanRequestId: 0,
+        hpaReplanSlot: -1,
+    };
 }
 export {};

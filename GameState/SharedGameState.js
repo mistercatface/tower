@@ -3,6 +3,7 @@ import { FLOW_FIELD_WORKER_URL, HPA_WORKER_URL } from "../Render/WorldSurfaceBoo
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
+import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { HierarchicalNavigator } from "../Libraries/Pathfinding/HierarchicalNavigator.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { WallSpatialIndex } from "../Libraries/Spatial/indexes/WallSpatialIndex.js";
@@ -18,10 +19,8 @@ export class SharedGameState {
         this.phase = "simulation";
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.hpaPathWorker = new HpaPathWorker(HPA_WORKER_URL, this.obstacleGrid);
-        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, {
-            damagePadding: 12,
-            hpaPathWorker: this.hpaPathWorker,
-        });
+        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, { damagePadding: 12 });
+        this.hpaPathSession = new HpaPathSession(this.hpaPathWorker, this.hierarchicalNavigator);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid, FLOW_FIELD_WORKER_URL);
         this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator, navigationSettings);
         this.wallSpatialIndex = new WallSpatialIndex(100);
