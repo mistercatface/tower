@@ -2,8 +2,8 @@ import { agentPose } from "../../Libraries/Agent/index.js";
 import { computeDirectSteering } from "../../Libraries/Agent/steering.js";
 import { requestHpaNavReplan } from "../../Libraries/Pathfinding/hpaPathPlan.js";
 import { computeHpaNavSteering } from "../../Libraries/Pathfinding/hpaSteering.js";
-function replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, nowMs) {
-    requestHpaNavReplan(hpaPathSession, navState, { obstacleGrid, startX: entity.x, startY: entity.y, targetX, targetY, nowMs });
+function replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, graphEpoch, nowMs) {
+    requestHpaNavReplan(hpaPathSession, navState, { obstacleGrid, startX: entity.x, startY: entity.y, targetX, targetY, nowMs, graphEpoch });
 }
 /**
  * HPA replan policy + pure steering compute. Does not mutate desiredX/Y.
@@ -27,7 +27,7 @@ export function planHpaSteering(entity, targetX, targetY, hpaPathSession, navSta
     if (obstaclesChanged) {
         navState.obstacleGeneration = obstacleGeneration;
         if (isVisible || navState.stuckFrames > settings.stuckReplanFrames) {
-            replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, now);
+            replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, obstacleGeneration, now);
             replanReason = "obstacles";
             navState.stuckFrames = 0;
             didReplanForObstacles = true;
@@ -38,7 +38,7 @@ export function planHpaSteering(entity, targetX, targetY, hpaPathSession, navSta
         if (!navState.path) replanReason = "noPath";
         else if (navState.stuckFrames > settings.stuckReplanFrames) replanReason = "stuck";
         if (isVisible || navState.stuckFrames > settings.stuckReplanFrames) {
-            replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, now);
+            replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, obstacleGeneration, now);
             navState.stuckFrames = 0;
         }
     }
@@ -49,7 +49,7 @@ export function planHpaSteering(entity, targetX, targetY, hpaPathSession, navSta
     if (navState.path && navState.path.length >= 2 && steering.offPath && now - navState.lastOffPathReplan >= 250) {
         replanReason = "offPath";
         navState.lastOffPathReplan = now;
-        replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, now);
+        replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, obstacleGeneration, now);
         steering = computeHpaNavSteering(pose, navState, targetX, targetY, steerSettings, obstacleGrid);
         if (!steering) steering = computeDirectSteering(pose, targetX, targetY);
     }

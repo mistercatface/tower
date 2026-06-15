@@ -31,6 +31,47 @@ export function bakeAbstractGraphFlat(nodesMap, nodeIds) {
     return { nodeCount, nodeCol, nodeRow, edgeOffsets, edgeTargets: Int16Array.from(edgeTargets), edgeCosts: Uint16Array.from(edgeCosts), edgeWrite: write, idToIdx };
 }
 /**
+ * Pack region graph for worker CSR build — no main-thread bake.
+ * @param {Record<string, { col: number, row: number, edges: { targetId: string, cost: number }[] }>} nodesMap
+ * @param {string[]} nodeIds
+ */
+export function packHpaGraphForWorker(nodesMap, nodeIds) {
+    const nodeCount = nodeIds.length;
+    const nodeCol = new Int16Array(nodeCount);
+    const nodeRow = new Int16Array(nodeCount);
+    const edgeSources = [];
+    const edgeTargets = [];
+    const edgeCosts = [];
+    const idToIdx = new Map();
+    for (let i = 0; i < nodeCount; i++) {
+        idToIdx.set(nodeIds[i], i);
+        const node = nodesMap[nodeIds[i]];
+        nodeCol[i] = node.col;
+        nodeRow[i] = node.row;
+    }
+    for (let i = 0; i < nodeCount; i++) {
+        const edges = nodesMap[nodeIds[i]].edges;
+        for (let e = 0; e < edges.length; e++) {
+            const targetIdx = idToIdx.get(edges[e].targetId);
+            if (targetIdx === undefined) continue;
+            edgeSources.push(i);
+            edgeTargets.push(targetIdx);
+            edgeCosts.push(edges[e].cost);
+        }
+    }
+    return {
+        nodeCount,
+        nodeCol,
+        nodeRow,
+        edgeSources: Int16Array.from(edgeSources),
+        edgeTargets: Int16Array.from(edgeTargets),
+        edgeCosts: Uint16Array.from(edgeCosts),
+        edgeWrite: edgeSources.length,
+        idToIdx,
+        nodeIds,
+    };
+}
+/**
  * @param {string} startNodeId
  * @param {string} targetNodeId
  * @param {Record<string, { col: number, row: number, edges: { targetId: string, cost: number }[] }>} nodesMap

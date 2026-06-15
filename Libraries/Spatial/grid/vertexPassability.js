@@ -1,5 +1,5 @@
-import { cellInRect } from "./GridUtils.js";
-import { boundaryDirectedCrossingBlocked } from "./boundaryOccupancy.js";
+import { cellInRect, colRowToIndex } from "./GridUtils.js";
+import { boundaryDirectedCrossingBlocked, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
 /** Bit i set when half-edge i is open (not boundary-blocked). See {@link HALF_EDGE_SPECS}. */
 export const VERTEX_HALF_EDGE = { NwEast: 1 << 0, NwSouth: 1 << 1, NeWest: 1 << 2, NeSouth: 1 << 3, SwEast: 1 << 4, SwNorth: 1 << 5, SeWest: 1 << 6, SeNorth: 1 << 7 };
 /** @type {readonly { bit: number, fromCol: number, fromRow: number, toCol: number, toRow: number, ownerCol: number, ownerRow: number, ownerSide: number }[]} */
@@ -44,11 +44,49 @@ export function recomputeVertexPassability(grid) {
         }
     grid.vertexPassability = out;
 }
+const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
+const DIAGONAL_VERTEX_BITS = {
+    "1,1": [VERTEX_HALF_EDGE.NwEast, VERTEX_HALF_EDGE.NwSouth, VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.NeSouth],
+    "-1,-1": [VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.SeNorth, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeWest],
+    "1,-1": [VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.NwEast],
+    "-1,1": [VERTEX_HALF_EDGE.NeWest, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.NwSouth],
+};
+/** Cardinal step bits per open cell — baked on topology sync, not on click. */
+export function recomputeNavCardinalOpen(grid) {
+    const { cols, rows } = grid;
+    const size = cols * rows;
+    const out = new Uint8Array(size);
+    for (let row = 0; row < rows; row++)
+        for (let col = 0; col < cols; col++) {
+            if (grid.isBlocked(col, row)) continue;
+            let mask = 0;
+            for (const key in CARDINAL_BITS) {
+                const [dc, dr] = key.split(",").map(Number);
+                const nc = col + dc;
+                const nr = row + dr;
+                if (!cellInRect(nc, nr, cols, rows)) continue;
+                if (!grid.isBlocked(nc, nr) && !boundaryBlocksStepFrom(grid, col, row, nc, nr)) mask |= CARDINAL_BITS[key];
+            }
+            out[colRowToIndex(col, row, cols)] = mask;
+        }
+    grid.navCardinalOpen = out;
+}
+export function diagonalStepOpen(blocked, vertexPassability, cols, rows, col, row, dc, dr) {
+    if (blocked[colRowToIndex(col + dc, row, cols)] || blocked[colRowToIndex(col, row + dr, cols)]) return false;
+    const cvx = dc > 0 ? col + dc : col;
+    const cvy = dr > 0 ? row + dr : row;
+    const mask = vertexPassability[packVertexKey(cvx, cvy, cols)] ?? 0;
+    const need = DIAGONAL_VERTEX_BITS[`${dc},${dr}`];
+    if (!need) return false;
+    for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return false;
+    return true;
+}
 /** Recompute derived grid topology caches (worker-candidate; Spatial-owned). */
 export function syncGridTopologyCaches(grid, passagePowerSyncKey) {
     const key = `${grid.wallGridRevision}:${passagePowerSyncKey}`;
     if (grid._vertexPassabilitySyncKey === key) return;
     recomputeVertexPassability(grid);
+    recomputeNavCardinalOpen(grid);
     grid._vertexPassabilitySyncKey = key;
     grid.invalidateGridNavSnapshot();
 }

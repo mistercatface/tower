@@ -27,7 +27,15 @@ export function createRollToCursorHpaNav() {
         navState.crossingGrant = null;
     };
     const replan = (prop, targetX, targetY, state) => {
-        requestHpaNavReplan(state.hpaPathSession, navState, { obstacleGrid: state.obstacleGrid, startX: prop.x, startY: prop.y, targetX, targetY, nowMs: replanClockMs });
+        requestHpaNavReplan(state.hpaPathSession, navState, {
+            obstacleGrid: state.obstacleGrid,
+            startX: prop.x,
+            startY: prop.y,
+            targetX,
+            targetY,
+            nowMs: replanClockMs,
+            graphEpoch: state.navigation.obstacleGeneration,
+        });
     };
     const update = (prop, targetX, targetY, state, dtMs) => {
         replanClockMs += dtMs;

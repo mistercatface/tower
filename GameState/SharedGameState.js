@@ -11,6 +11,7 @@ import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { NavigationService } from "../Systems/Navigation/NavigationService.js";
 import { EntityRegistry } from "./EntityRegistry.js";
+import { syncGridTopologyCaches } from "../Libraries/Spatial/grid/vertexPassability.js";
 const navigationSettings = { arrivalDistance: 2, recenterThreshold: 400, stuckReplanFrames: 20, stuckMoveThreshold: 1.5, targetNodeLookahead: 10, pathWaypointArrival: 10 };
 export class SharedGameState {
     constructor() {
@@ -21,7 +22,7 @@ export class SharedGameState {
         this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, { damagePadding: 12 });
         this.hpaPathSession = new HpaPathSession(this.hpaPathWorker, this.hierarchicalNavigator);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid, FLOW_FIELD_WORKER_URL);
-        this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator, navigationSettings);
+        this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator, navigationSettings, this.hpaPathWorker);
         this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());
         this.viewport = null;
         this.lastTime = 0;
@@ -34,6 +35,9 @@ export class SharedGameState {
         this.entityRegistry = new EntityRegistry();
         this.wallResolver = new WallCollisionResolver();
         this.obstacleGrid.rebuildFixed(0, 0, gridSettings.width, gridSettings.height);
+        syncGridTopologyCaches(this.obstacleGrid, "");
         this.hierarchicalNavigator.initialize(0, 0);
+        this.hpaPathWorker.scheduleNavTopologySync(this.obstacleGrid);
+        this.hpaPathWorker.syncAbstractGraph(this.hierarchicalNavigator, 0);
     }
 }

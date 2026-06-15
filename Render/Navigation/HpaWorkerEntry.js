@@ -1,5 +1,5 @@
 import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfinding/AStar.js";
-import { createSnapshotLocalNavView } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
+import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 let maxSlots;
 let maxPathLen;
 let maxAbstractLen;
@@ -9,11 +9,12 @@ let sabPathMetaPool;
 let sabPathColsPool;
 let sabPathRowsPool;
 let sabAbstractIdxPool;
-let sabGraphNodeColPool;
-let sabGraphNodeRowPool;
-let sabGraphEdgeOffsetsPool;
-let sabGraphEdgeTargetsPool;
-let sabGraphEdgeCostsPool;
+let sabPersistGraphNodeCol;
+let sabPersistGraphNodeRow;
+let sabPersistGraphEdgeOffsets;
+let sabPersistGraphEdgeTargets;
+let sabPersistGraphEdgeCosts;
+let sabPersistGraphEdgeSources;
 let navSnapshot;
 let navView;
 let cols;
@@ -22,6 +23,8 @@ let aStarGScore;
 let aStarCameFrom;
 let aStarVisited;
 let replanRunId = 0;
+let persistNodeCount = 0;
+let persistEdgeWrite = 0;
 let extNodeCol;
 let extNodeRow;
 let extEdgeOffsets;
@@ -39,22 +42,25 @@ function slotPathRows(slot) {
 function slotAbstractIdx(slot) {
     return new Int16Array(sabAbstractIdxPool, slot * maxAbstractLen * 2, maxAbstractLen);
 }
-function slotGraphNodeCol(slot) {
-    return new Int16Array(sabGraphNodeColPool, slot * maxGraphNodes * 2, maxGraphNodes);
+function persistNodeColView() {
+    return new Int16Array(sabPersistGraphNodeCol, 0, maxGraphNodes);
 }
-function slotGraphNodeRow(slot) {
-    return new Int16Array(sabGraphNodeRowPool, slot * maxGraphNodes * 2, maxGraphNodes);
+function persistNodeRowView() {
+    return new Int16Array(sabPersistGraphNodeRow, 0, maxGraphNodes);
 }
-function slotGraphEdgeOffsets(slot) {
-    return new Int32Array(sabGraphEdgeOffsetsPool, slot * (maxGraphNodes + 1) * 4, maxGraphNodes + 1);
+function persistEdgeOffsetsView() {
+    return new Int32Array(sabPersistGraphEdgeOffsets, 0, maxGraphNodes + 1);
 }
-function slotGraphEdgeTargets(slot) {
-    return new Int16Array(sabGraphEdgeTargetsPool, slot * maxGraphEdges * 2, maxGraphEdges);
+function persistEdgeTargetsView() {
+    return new Int16Array(sabPersistGraphEdgeTargets, 0, maxGraphEdges);
 }
-function slotGraphEdgeCosts(slot) {
-    return new Uint16Array(sabGraphEdgeCostsPool, slot * maxGraphEdges * 2, maxGraphEdges);
+function persistEdgeCostsView() {
+    return new Uint16Array(sabPersistGraphEdgeCosts, 0, maxGraphEdges);
 }
-function bindNavBuffers(data) {
+function persistEdgeSourcesView() {
+    return new Int16Array(sabPersistGraphEdgeSources, 0, maxGraphEdges);
+}
+function bindNavFromBuild(data) {
     cols = data.cols;
     rows = data.rows;
     const size = cols * rows;
@@ -73,6 +79,41 @@ function bindNavBuffers(data) {
         aStarCameFrom = new Int32Array(size);
         aStarVisited = new Int32Array(size);
     }
+}
+function buildNavSnapshotOnWorker(data) {
+    cols = data.cols;
+    rows = data.rows;
+    const size = cols * rows;
+    const blocked = new Uint8Array(data.sabBlocked);
+    const cardinalOpen = new Uint8Array(data.sabCardinalOpen);
+    const vertexPassability = new Uint8Array(data.sabVertexPassability);
+    const octileNeighbors = new Int32Array(data.sabOctileNeighbors);
+    buildOctileNeighborsFromTopology(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors);
+    bindNavFromBuild({ ...data, sabBlocked: data.sabBlocked, sabOctileNeighbors: data.sabOctileNeighbors });
+}
+function buildPersistGraphCsr(nodeCount, edgeWrite) {
+    const srcSources = persistEdgeSourcesView().subarray(0, edgeWrite);
+    const srcTargets = persistEdgeTargetsView().subarray(0, edgeWrite);
+    const srcCosts = persistEdgeCostsView().subarray(0, edgeWrite);
+    const edgeOffsets = persistEdgeOffsetsView();
+    const outTargets = persistEdgeTargetsView();
+    const outCosts = persistEdgeCostsView();
+    let write = 0;
+    for (let i = 0; i < nodeCount; i++) {
+        edgeOffsets[i] = write;
+        for (let e = 0; e < edgeWrite; e++) {
+            if (srcSources[e] !== i) continue;
+            outTargets[write] = srcTargets[e];
+            outCosts[write] = srcCosts[e];
+            write++;
+        }
+    }
+    edgeOffsets[nodeCount] = write;
+    return write;
+}
+function syncPersistAbstractGraph(nodeCount, edgeWrite) {
+    persistNodeCount = nodeCount;
+    persistEdgeWrite = buildPersistGraphCsr(nodeCount, edgeWrite);
 }
 function writeCellPath(slot, path) {
     const pathMeta = slotPathMeta(slot);
@@ -98,15 +139,15 @@ function appendCellLeg(fullPath, leg) {
     fullPath.push(...leg.slice(1));
     return fullPath;
 }
-function buildExtendedEdges(slot, nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen) {
+function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen) {
     const startTemp = nodeCount;
     const targetTemp = nodeCount + 1;
     const extCount = nodeCount + 2;
-    const baseCol = slotGraphNodeCol(slot).subarray(0, nodeCount);
-    const baseRow = slotGraphNodeRow(slot).subarray(0, nodeCount);
-    const baseOffsets = slotGraphEdgeOffsets(slot).subarray(0, nodeCount + 1);
-    const baseTargets = slotGraphEdgeTargets(slot).subarray(0, edgeWrite);
-    const baseCosts = slotGraphEdgeCosts(slot).subarray(0, edgeWrite);
+    const baseCol = persistNodeColView().subarray(0, nodeCount);
+    const baseRow = persistNodeRowView().subarray(0, nodeCount);
+    const baseOffsets = persistEdgeOffsetsView().subarray(0, nodeCount + 1);
+    const baseTargets = persistEdgeTargetsView().subarray(0, edgeWrite);
+    const baseCosts = persistEdgeCostsView().subarray(0, edgeWrite);
     if (!extNodeCol || extNodeCol.length < extCount) {
         extNodeCol = new Int16Array(maxGraphNodes + 2);
         extNodeRow = new Int16Array(maxGraphNodes + 2);
@@ -170,8 +211,8 @@ function runReplan(slot, data) {
         writeAbstractPath(slot, null);
         return;
     }
-    const { nodeCount, edgeWrite, startCandidates, targetCandidates, regionConnectMaxLen, stitchMaxLen } = data;
-    const extended = buildExtendedEdges(slot, nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen);
+    const { startCandidates, targetCandidates, regionConnectMaxLen, stitchMaxLen } = data;
+    const extended = buildExtendedEdges(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen);
     const abstractPath = runAbstractAStarFlat(
         extended.startTemp,
         extended.targetTemp,
@@ -190,7 +231,7 @@ function runReplan(slot, data) {
     writeCellPath(slot, stitchIdxPath(abstractPath, extNodeCol, extNodeRow, stitchMaxLen));
 }
 self.onmessage = function (e) {
-    const { type, data, slot, requestId, startCol, startRow, targetCol, targetRow, maxPathLen: maxLen, runId, startIdx, targetIdx, nodeCount, edgeWrite } = e.data;
+    const { type, data, slot, requestId } = e.data;
     if (type === "init") {
         maxSlots = data.maxSlots;
         maxPathLen = data.maxPathLen;
@@ -201,43 +242,26 @@ self.onmessage = function (e) {
         sabPathColsPool = data.sabPathColsPool;
         sabPathRowsPool = data.sabPathRowsPool;
         sabAbstractIdxPool = data.sabAbstractIdxPool;
-        sabGraphNodeColPool = data.sabGraphNodeColPool;
-        sabGraphNodeRowPool = data.sabGraphNodeRowPool;
-        sabGraphEdgeOffsetsPool = data.sabGraphEdgeOffsetsPool;
-        sabGraphEdgeTargetsPool = data.sabGraphEdgeTargetsPool;
-        sabGraphEdgeCostsPool = data.sabGraphEdgeCostsPool;
+        sabPersistGraphNodeCol = data.sabPersistGraphNodeCol;
+        sabPersistGraphNodeRow = data.sabPersistGraphNodeRow;
+        sabPersistGraphEdgeOffsets = data.sabPersistGraphEdgeOffsets;
+        sabPersistGraphEdgeTargets = data.sabPersistGraphEdgeTargets;
+        sabPersistGraphEdgeCosts = data.sabPersistGraphEdgeCosts;
+        sabPersistGraphEdgeSources = data.sabPersistGraphEdgeSources;
         return;
     }
-    if (type === "syncNav") {
-        bindNavBuffers(e.data);
+    if (type === "buildNavSnapshot") {
+        buildNavSnapshotOnWorker(e.data);
         self.postMessage({ type: "syncNavDone" });
         return;
     }
-    if (type === "localAStar") {
-        const path = runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, cols, rows, maxLen, aStarGScore, aStarCameFrom, aStarVisited, runId);
-        writeCellPath(slot, path);
-        slotPathMeta(slot)[1] = 0;
-        self.postMessage({ type: "hpaDone", slot, requestId });
+    if (type === "syncAbstractGraph") {
+        syncPersistAbstractGraph(e.data.nodeCount, e.data.edgeWrite);
+        self.postMessage({ type: "graphSyncDone" });
         return;
     }
     if (type === "replan") {
         runReplan(slot, e.data);
-        self.postMessage({ type: "hpaDone", slot, requestId });
-        return;
-    }
-    if (type === "abstractAStar") {
-        const pathIdx = runAbstractAStarFlat(
-            startIdx,
-            targetIdx,
-            slotGraphNodeCol(slot).subarray(0, nodeCount),
-            slotGraphNodeRow(slot).subarray(0, nodeCount),
-            slotGraphEdgeOffsets(slot).subarray(0, nodeCount + 1),
-            slotGraphEdgeTargets(slot).subarray(0, edgeWrite),
-            slotGraphEdgeCosts(slot).subarray(0, edgeWrite),
-            nodeCount,
-        );
-        writeAbstractPath(slot, pathIdx);
-        slotPathMeta(slot)[0] = 0;
         self.postMessage({ type: "hpaDone", slot, requestId });
     }
 };

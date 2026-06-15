@@ -1,5 +1,6 @@
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
+import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
 /**
  * @typedef {object} GridNavSnapshot
  * @property {string} cacheKey
@@ -15,6 +16,7 @@ import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridU
  * @property {Int32Array} hopExitIdx
  * @property {Uint8Array} hopCost
  */
+const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
 function bakeHopCsr(grid, blocked, cols, rows) {
     const size = cols * rows;
     const hopOffsets = new Int32Array(size + 1);
@@ -53,38 +55,38 @@ function bakeOctileNeighbors(grid, cols, rows, blocked, octileNeighbors, startRo
             }
         }
 }
+/** Worker/main-safe octile bake from prepacked topology (no grid.canStep). */
+export function buildOctileNeighborsFromTopology(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors) {
+    octileNeighbors.fill(-1);
+    for (let row = 0; row < rows; row++)
+        for (let col = 0; col < cols; col++) {
+            const idx = colRowToIndex(col, row, cols);
+            if (blocked[idx]) continue;
+            const base = idx * 8;
+            for (let i = 0; i < OCTILE_OFFSETS.length; i++) {
+                const { dc, dr } = OCTILE_OFFSETS[i];
+                const nc = col + dc;
+                const nr = row + dr;
+                if (!cellInRect(nc, nr, cols, rows)) continue;
+                const nIdx = colRowToIndex(nc, nr, cols);
+                if (blocked[nIdx]) continue;
+                const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & CARDINAL_BITS[`${dc},${dr}`]) !== 0 : diagonalStepOpen(blocked, vertexPassability, cols, rows, col, row, dc, dr);
+                if (open) octileNeighbors[base + i] = nIdx;
+            }
+        }
+}
+export function packBlockedFromGrid(grid) {
+    const size = grid.cols * grid.rows;
+    const blocked = new Uint8Array(size);
+    for (let idx = 0; idx < size; idx++) blocked[idx] = grid.grid[idx] !== 0 ? 1 : 0;
+    return blocked;
+}
 export function buildGridNavSnapshot(grid, cacheKey) {
     const { cols, rows, cellSize, cellHalfSize, minX, minY } = grid;
     const size = cols * rows;
-    const blocked = new Uint8Array(size);
+    const blocked = packBlockedFromGrid(grid);
     const octileNeighbors = new Int32Array(size * 8);
-    octileNeighbors.fill(-1);
-    for (let row = 0; row < rows; row++)
-        for (let col = 0; col < cols; col++) {
-            const idx = colRowToIndex(col, row, cols);
-            blocked[idx] = grid.isBlocked(col, row) ? 1 : 0;
-        }
     bakeOctileNeighbors(grid, cols, rows, blocked, octileNeighbors, 0, rows);
-    const hops = bakeHopCsr(grid, blocked, cols, rows);
-    return { cacheKey, cols, rows, cellSize, cellHalfSize, minX, minY, blocked, octileNeighbors, ...hops };
-}
-const NAV_SNAPSHOT_ROWS_PER_CHUNK = 32;
-/** Yields between row batches so replan clicks don't monopolize the main thread. */
-export async function buildGridNavSnapshotAsync(grid, cacheKey, rowsPerChunk = NAV_SNAPSHOT_ROWS_PER_CHUNK) {
-    const { cols, rows, cellSize, cellHalfSize, minX, minY } = grid;
-    const size = cols * rows;
-    const blocked = new Uint8Array(size);
-    const octileNeighbors = new Int32Array(size * 8);
-    octileNeighbors.fill(-1);
-    for (let row = 0; row < rows; row++)
-        for (let col = 0; col < cols; col++) {
-            const idx = colRowToIndex(col, row, cols);
-            blocked[idx] = grid.isBlocked(col, row) ? 1 : 0;
-        }
-    for (let startRow = 0; startRow < rows; startRow += rowsPerChunk) {
-        bakeOctileNeighbors(grid, cols, rows, blocked, octileNeighbors, startRow, Math.min(rows, startRow + rowsPerChunk));
-        await new Promise((resolve) => setTimeout(resolve, 0));
-    }
     const hops = bakeHopCsr(grid, blocked, cols, rows);
     return { cacheKey, cols, rows, cellSize, cellHalfSize, minX, minY, blocked, octileNeighbors, ...hops };
 }

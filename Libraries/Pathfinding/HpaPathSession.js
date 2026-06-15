@@ -31,7 +31,7 @@ export class HpaPathSession {
                 const params = this._pendingParams.get(navState);
                 const slot = this.worker.leaseSlot(navState);
                 navState.hpaReplanSlot = slot;
-                const replanCtx = { hpaWorker: this.worker, hpaSlot: slot };
+                const replanCtx = { hpaWorker: this.worker, hpaSlot: slot, graphEpoch: params.graphEpoch };
                 let result = null;
                 try {
                     result = await this.hierarchicalNavigator.computeCellPath(params.startX, params.startY, params.targetX, params.targetY, replanCtx);

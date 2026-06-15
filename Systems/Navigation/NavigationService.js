@@ -7,12 +7,15 @@ import { planHpaSteering } from "./HpaStrategy.js";
  * into Libraries/Navigation/NavigationController.
  */
 export class NavigationService {
-    constructor(flowFieldGrid, hierarchicalNavigator, settings) {
+    constructor(flowFieldGrid, hierarchicalNavigator, settings, hpaPathWorker = null) {
         const obstacleGrid = hierarchicalNavigator.navGraph;
+        this._hpaPathWorker = hpaPathWorker;
+        this._hierarchicalNavigator = hierarchicalNavigator;
         this._controller = new NavigationController({
             flowFieldGrid,
             hierarchicalNavigator,
             settings,
+            hpaPathWorker,
             planHpa: (entity, targetX, targetY, navState, profile, controller, state) =>
                 planHpaSteering(
                     entity,
@@ -60,6 +63,10 @@ export class NavigationService {
     }
     onObstaclesChanged(damageBounds) {
         this._controller.onObstaclesChanged(damageBounds, this._controller.hierarchicalNavigator?.navGraph);
+        if (this._hpaPathWorker) {
+            this._hpaPathWorker.scheduleNavTopologySync(this._controller.hierarchicalNavigator?.navGraph);
+            this._hpaPathWorker.syncAbstractGraph(this._hierarchicalNavigator, this._controller.obstacleGeneration);
+        }
     }
     get obstacleGeneration() {
         return this._controller.obstacleGeneration;
