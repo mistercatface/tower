@@ -53,14 +53,14 @@ function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
                     const rIdx = idx + 1;
                     if (hnav.grid[rIdx] === 0) {
                         const rightNode = hnav.cellToNode[rIdx];
-                        if (rightNode && rightNode.id !== node.id) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
+                        if (rightNode && rightNode.id !== node.id && hnav.navGraph.canStep(col, row, col + 1, row)) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
                     }
                 }
                 if (row + 1 < hnav.rows) {
                     const bIdx = idx + hnav.cols;
                     if (hnav.grid[bIdx] === 0) {
                         const bottomNode = hnav.cellToNode[bIdx];
-                        if (bottomNode && bottomNode.id !== node.id) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
+                        if (bottomNode && bottomNode.id !== node.id && hnav.navGraph.canStep(col, row, col, row + 1)) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
                     }
                 }
             }

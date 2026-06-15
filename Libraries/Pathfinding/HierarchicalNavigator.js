@@ -73,7 +73,41 @@ export class HierarchicalNavigator {
         this.connectAllNodes();
         if (seedWorldX != null && seedWorldY != null) this.pruneUnreachableRegions(seedWorldX, seedWorldY);
     }
+    _canWalkBetween(fromCol, fromRow, toCol, toRow) {
+        return this.navGraph.canStep(fromCol, fromRow, toCol, toRow) || this.navGraph.canStep(toCol, toRow, fromCol, fromRow);
+    }
+    /** @param {import("./VoronoiRegions.js").RegionNode} nodeA @param {import("./VoronoiRegions.js").RegionNode} nodeB */
+    _regionsSharePassableLink(nodeA, nodeB) {
+        if (!nodeA || !nodeB || nodeA.id === nodeB.id) return false;
+        const targetCells = new Set(nodeB.cells);
+        for (let i = 0; i < nodeA.cells.length; i++) {
+            const idx = nodeA.cells[i];
+            const col = idx % this.cols;
+            const row = (idx / this.cols) | 0;
+            let linked = false;
+            forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
+                if (linked || !targetCells.has(nIdx)) return;
+                if (this._canWalkBetween(col, row, nc, nr)) linked = true;
+            });
+            if (linked) return true;
+            this.navGraph.forEachNavHop?.(col, row, (nc, nr) => {
+                if (targetCells.has(colRowToIndex(nc, nr, this.cols))) linked = true;
+            });
+            if (linked) return true;
+        }
+        return false;
+    }
+    /** @param {import("./VoronoiRegions.js").RegionNode} node */
+    _validateRegionEdges(node) {
+        if (!node) return;
+        node.edges = node.edges.filter((edge) => {
+            const other = this.nodesMap[edge.targetId];
+            return other && this._regionsSharePassableLink(node, other);
+        });
+    }
     pruneUnreachableRegions(worldX, worldY) {
+        this._pruneSeedX = worldX;
+        this._pruneSeedY = worldY;
         const { col, row } = this.worldToGrid(worldX, worldY);
         const start = this.findNearestOpenCell(col, row);
         const startIdx = colRowToIndex(start.col, start.row, this.cols);
@@ -87,6 +121,7 @@ export class HierarchicalNavigator {
             const r = (idx / this.cols) | 0;
             forEachCardinalNeighbor(c, r, this.cols, this.rows, (nc, nr, nIdx) => {
                 if (this.grid[nIdx] !== 0 || reachable[nIdx]) return;
+                if (!this._canWalkBetween(c, r, nc, nr)) return;
                 reachable[nIdx] = 1;
                 queue.push(nIdx);
             });
@@ -143,6 +178,7 @@ export class HierarchicalNavigator {
         const adjacencies = findRegionAdjacencies(this.cellToNode, this.grid, this.cols, this.rows, this.navGraph);
         this._appendNavHopRegionAdjacencies(adjacencies);
         this._connectAdjacencies(adjacencies);
+        for (const id in this.nodesMap) this._validateRegionEdges(this.nodesMap[id]);
     }
     connectBoundaryHopRegionPairs() {
         if (!this.cellToNode || !this.navGraph.getBoundaryHops) return;
@@ -206,6 +242,8 @@ export class HierarchicalNavigator {
             const col = idx % this.cols;
             const row = (idx / this.cols) | 0;
             forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
+                if (this.grid[nIdx] !== 0) return;
+                if (!this._canWalkBetween(col, row, nc, nr)) return;
                 const other = this.cellToNode[nIdx];
                 if (other && other.id !== node.id) neighborIds.add(other.id);
             });
@@ -214,7 +252,10 @@ export class HierarchicalNavigator {
                 if (other && other.id !== node.id) neighborIds.add(other.id);
             });
         }
-        for (const otherId of neighborIds) this._connectRegionPair(node, this.nodesMap[otherId]);
+        for (const otherId of neighborIds) {
+            const other = this.nodesMap[otherId];
+            if (other && this._regionsSharePassableLink(node, other)) this._connectRegionPair(node, other);
+        }
     }
     _mergeRegionInto(keep, absorb) {
         if (!keep || !absorb || keep.id === absorb.id) return;
@@ -329,6 +370,7 @@ export class HierarchicalNavigator {
                 const row = (idx / this.cols) | 0;
                 forEachCardinalNeighbor(col, row, this.cols, this.rows, (nc, nr, nIdx) => {
                     if (this.grid[nIdx] !== 0 || !cellSet.has(nIdx) || consumed.has(nIdx)) return;
+                    if (!this._canWalkBetween(col, row, nc, nr)) return;
                     consumed.add(nIdx);
                     queue.push(nIdx);
                 });
@@ -404,9 +446,9 @@ export class HierarchicalNavigator {
         if (!bounds || this.cols === 0 || this.rows === 0) return;
         this.ensureBuffers();
         const box = this._expandDamageBounds(bounds);
-        const touched = this._stripBlockedCellsFromRegions(box.startCol, box.endCol, box.startRow, box.endRow);
+        this._stripBlockedCellsFromRegions(box.startCol, box.endCol, box.startRow, box.endRow);
         const reconnectIds = new Set();
-        for (const id of touched) {
+        for (const id of this._collectRegionIdsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) {
             const node = this.nodesMap[id];
             if (!node) continue;
             for (const regionId of this._splitRegionIfDisconnected(node)) reconnectIds.add(regionId);
@@ -414,12 +456,11 @@ export class HierarchicalNavigator {
         const openedCellCount = this._assignOpenedCells(box.startCol, box.endCol, box.startRow, box.endRow);
         for (const id of this._collectRegionIdsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
         const repackThreshold = this.maxCellsPerChunk * 2;
-        if (openedCellCount >= repackThreshold) {
-            for (const id of this._repackRegionCellsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
-        } else {
-            for (const id of this._subdivideOversizedRegionsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
-        }
+        if (openedCellCount >= repackThreshold) for (const id of this._repackRegionCellsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
+        else for (const id of this._subdivideOversizedRegionsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
         for (const id of reconnectIds) this._reconnectRegionEdges(this.nodesMap[id]);
+        for (const id in this.nodesMap) this._validateRegionEdges(this.nodesMap[id]);
+        if (this._pruneSeedX != null && this._pruneSeedY != null) this.pruneUnreachableRegions(this._pruneSeedX, this._pruneSeedY);
     }
     findNearestOpenCell(col, row) {
         if (this.grid[colRowToIndex(col, row, this.cols)] === 0) return { col, row };
