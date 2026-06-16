@@ -79,29 +79,37 @@ function assertGraphFrameKey(gridFrameKey) {
     if (gridFrameKey !== requireGridFrame().key) throw new Error(`HPA grid frame mismatch: worker ${gridFrame.key}, request ${gridFrameKey ?? ""}`);
 }
 function syncGridFrame(frame) {
-    if (gridFrame && gridFrame.key !== frame.key && (gridFrame.cols !== frame.cols || gridFrame.rows !== frame.rows)) throw new Error("nav sync grid size changed without grid frame rebinding");
+    if (gridFrame?.key === frame.key) {
+        if (gridFrame.cols !== frame.cols || gridFrame.rows !== frame.rows) throw new Error("nav sync grid size mismatch for unchanged frame key");
+        gridFrame = frame;
+        if (navSimView) bindNavSimGridFrame(navSimView, frame);
+        return;
+    }
+    const sizeChanged = !gridFrame || gridFrame.cols !== frame.cols || gridFrame.rows !== frame.rows;
     gridFrame = frame;
-    if (navSimView) bindNavSimGridFrame(navSimView, frame);
+    if (sizeChanged) {
+        navSimView = null;
+        regionGraphState = null;
+    } else if (navSimView) bindNavSimGridFrame(navSimView, frame);
 }
 function ensureNavSimView(data) {
     syncGridFrame(data.gridFrame);
     const edgePool = bindNavEdgePoolFromSab(new Uint8Array(data.sabEdgePool), data.edgePoolCount);
+    const gridFill = new Uint8Array(data.sabGridFill);
+    const floorKind = new Uint8Array(data.sabFloorKind);
+    const floorFacing = new Uint8Array(data.sabFloorFacing);
+    const edgeSlots = new Int32Array(data.sabEdgeSlots);
     const cardinalOpen = new Uint8Array(data.sabCardinalOpen);
     const vertexPassability = new Uint8Array(data.sabVertexPassability);
-    if (!navSimView)
-        navSimView = createNavSimView(
-            gridFrame,
-            new Uint8Array(data.sabGridFill),
-            new Uint8Array(data.sabFloorKind),
-            new Uint8Array(data.sabFloorFacing),
-            new Int32Array(data.sabEdgeSlots),
-            edgePool,
-            data.passageEdgeCount,
-            vertexPassability,
-        );
+    if (!navSimView) navSimView = createNavSimView(gridFrame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, data.passageEdgeCount, vertexPassability);
     else {
         bindNavSimEdgePool(navSimView, edgePool, data.passageEdgeCount);
+        navSimView.grid = gridFill;
+        navSimView.floorStore.kind = floorKind;
+        navSimView.floorStore.facing = floorFacing;
+        navSimView.edgeStore.slots = edgeSlots;
         navSimView.vertexPassability = vertexPassability;
+        bindNavSimGridFrame(navSimView, gridFrame);
     }
     return { simView: navSimView, cardinalOpen, vertexPassability };
 }
