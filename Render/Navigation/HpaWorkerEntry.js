@@ -263,8 +263,10 @@ function writeAbstractPath(slot, pathIdx) {
 function octileGridCost(fromCol, fromRow, toCol, toRow) {
     return Math.max(Math.abs(toCol - fromCol), Math.abs(toRow - fromRow));
 }
-/** Temp-connect costs from octile distance only — for fast abstract-first estimate. */
-function buildExtendedEdgesEstimate(nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates) {
+/**
+ * @param {(fromCol: number, fromRow: number, toCol: number, toRow: number, legKey: string) => { cost: number, path?: { col: number, row: number }[] | null }} resolveLegCost
+ */
+function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, resolveLegCost) {
     const startTemp = nodeCount;
     const targetTemp = nodeCount + 1;
     const extCount = nodeCount + 2;
@@ -286,17 +288,26 @@ function buildExtendedEdgesEstimate(nodeCount, edgeWrite, startCol, startRow, ta
     extNodeRow[startTemp] = startRow;
     extNodeCol[targetTemp] = targetCol;
     extNodeRow[targetTemp] = targetRow;
+    const tempLegs = new Map();
     const targetConnectCost = new Int32Array(nodeCount);
     for (let i = 0; i < targetCandidates.length; i++) {
         const cIdx = targetCandidates[i];
-        const cost = octileGridCost(extNodeCol[cIdx], extNodeRow[cIdx], targetCol, targetRow);
-        if (cost > 0) targetConnectCost[cIdx] = cost;
+        const legKey = `${cIdx},${targetTemp}`;
+        const { cost, path } = resolveLegCost(extNodeCol[cIdx], extNodeRow[cIdx], targetCol, targetRow, legKey);
+        if (cost > 0) {
+            targetConnectCost[cIdx] = cost;
+            if (path) tempLegs.set(legKey, path);
+        }
     }
     const startEdges = [];
     for (let i = 0; i < startCandidates.length; i++) {
         const cIdx = startCandidates[i];
-        const cost = octileGridCost(startCol, startRow, extNodeCol[cIdx], extNodeRow[cIdx]);
-        if (cost > 0) startEdges.push({ targetIdx: cIdx, cost });
+        const legKey = `${startTemp},${cIdx}`;
+        const { cost, path } = resolveLegCost(startCol, startRow, extNodeCol[cIdx], extNodeRow[cIdx], legKey);
+        if (cost > 0) {
+            startEdges.push({ targetIdx: cIdx, cost });
+            if (path) tempLegs.set(legKey, path);
+        }
     }
     extEdgeOffsets[0] = 0;
     for (let i = 0; i < nodeCount; i++) {
@@ -325,82 +336,6 @@ function buildExtendedEdgesEstimate(nodeCount, edgeWrite, startCol, startRow, ta
     for (let i = 0; i < startEdges.length; i++) {
         extEdgeTargets[startWrite] = startEdges[i].targetIdx;
         extEdgeCosts[startWrite] = startEdges[i].cost;
-        startWrite++;
-    }
-    const totalEdges = extEdgeOffsets[extCount];
-    return { extCount, startTemp, targetTemp, edgeWrite: totalEdges };
-}
-function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen) {
-    const startTemp = nodeCount;
-    const targetTemp = nodeCount + 1;
-    const extCount = nodeCount + 2;
-    const baseCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, nodeCount);
-    const baseRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, nodeCount);
-    const baseOffsets = hpaPersistEdgeOffsetsView(sabPersistGraphEdgeOffsets, maxGraphNodes).subarray(0, nodeCount + 1);
-    const baseTargets = hpaPersistEdgeTargetsView(sabPersistGraphEdgeTargets, maxGraphEdges).subarray(0, edgeWrite);
-    const baseCosts = hpaPersistEdgeCostsView(sabPersistGraphEdgeCosts, maxGraphEdges).subarray(0, edgeWrite);
-    if (!extNodeCol || extNodeCol.length < extCount) {
-        extNodeCol = new Int16Array(maxGraphNodes + 2);
-        extNodeRow = new Int16Array(maxGraphNodes + 2);
-        extEdgeOffsets = new Int32Array(maxGraphNodes + 3);
-        extEdgeTargets = new Int16Array(maxGraphEdges + 64);
-        extEdgeCosts = new Uint16Array(maxGraphEdges + 64);
-    }
-    extNodeCol.set(baseCol);
-    extNodeRow.set(baseRow);
-    extNodeCol[startTemp] = startCol;
-    extNodeRow[startTemp] = startRow;
-    extNodeCol[targetTemp] = targetCol;
-    extNodeRow[targetTemp] = targetRow;
-    const tempLegs = new Map();
-    const targetConnectCost = new Int32Array(nodeCount);
-    for (let i = 0; i < targetCandidates.length; i++) {
-        const cIdx = targetCandidates[i];
-        const path = runLocalAStarFlat(extNodeCol[cIdx], extNodeRow[cIdx], targetCol, targetRow, navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
-        if (path) {
-            targetConnectCost[cIdx] = path.length;
-            tempLegs.set(`${cIdx},${targetTemp}`, path);
-        }
-    }
-    const startEdges = [];
-    for (let i = 0; i < startCandidates.length; i++) {
-        const cIdx = startCandidates[i];
-        const path = runLocalAStarFlat(startCol, startRow, extNodeCol[cIdx], extNodeRow[cIdx], navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
-        if (path) {
-            startEdges.push({ targetIdx: cIdx, cost: path.length });
-            tempLegs.set(`${startTemp},${cIdx}`, path);
-        }
-    }
-    // prefix-sum: calculate offsets
-    extEdgeOffsets[0] = 0;
-    for (let i = 0; i < nodeCount; i++) {
-        const baseCount = baseOffsets[i + 1] - baseOffsets[i];
-        const extraCount = targetConnectCost[i] > 0 ? 1 : 0;
-        extEdgeOffsets[i + 1] = extEdgeOffsets[i] + baseCount + extraCount;
-    }
-    extEdgeOffsets[startTemp + 1] = extEdgeOffsets[startTemp] + startEdges.length;
-    extEdgeOffsets[targetTemp + 1] = extEdgeOffsets[targetTemp];
-    // populate edges
-    for (let i = 0; i < nodeCount; i++) {
-        let write = extEdgeOffsets[i];
-        const baseStart = baseOffsets[i];
-        const baseEnd = baseOffsets[i + 1];
-        for (let e = baseStart; e < baseEnd; e++) {
-            extEdgeTargets[write] = baseTargets[e];
-            extEdgeCosts[write] = baseCosts[e];
-            write++;
-        }
-        if (targetConnectCost[i] > 0) {
-            extEdgeTargets[write] = targetTemp;
-            extEdgeCosts[write] = targetConnectCost[i];
-            write++;
-        }
-    }
-    let startWrite = extEdgeOffsets[startTemp];
-    for (let i = 0; i < startEdges.length; i++) {
-        const edge = startEdges[i];
-        extEdgeTargets[startWrite] = edge.targetIdx;
-        extEdgeCosts[startWrite] = edge.cost;
         startWrite++;
     }
     const totalEdges = extEdgeOffsets[extCount];
@@ -452,7 +387,10 @@ function runReplan(slot, data, requestId) {
         return prep.mode;
     }
     const { startCandidates, targetCandidates } = collectReplanTempCandidates(startCol, startRow, targetCol, targetRow);
-    const estimated = buildExtendedEdgesEstimate(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates);
+    const estimated = buildExtendedEdges(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, (fromCol, fromRow, toCol, toRow) => {
+        const cost = octileGridCost(fromCol, fromRow, toCol, toRow);
+        return { cost: cost > 0 ? cost : 0 };
+    });
     const estimateAbstract = runAbstractAStarFlat(
         estimated.startTemp,
         estimated.targetTemp,
@@ -465,7 +403,10 @@ function runReplan(slot, data, requestId) {
     );
     writeAbstractPath(slot, estimateAbstract);
     self.postMessage({ type: "abstractReady", slot, requestId });
-    const extended = buildExtendedEdges(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, regionConnectMaxLen);
+    const extended = buildExtendedEdges(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, (fromCol, fromRow, toCol, toRow) => {
+        const path = runLocalAStarFlat(fromCol, fromRow, toCol, toRow, navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
+        return path ? { cost: path.length, path } : { cost: 0 };
+    });
     const abstractPath = runAbstractAStarFlat(
         extended.startTemp,
         extended.targetTemp,
