@@ -6,7 +6,7 @@ import { initAnimationPreview, mountAnimationPreviewCanvas, setAnimationPreviewA
 import { mountMapOverview, paintMapOverviewFrame, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
-import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode } from "./preview.js";
+import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, requestLabFrame } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, bindVectorPropsToolbar, syncWorldRenderModeUi, mountPlayAreaToolbarControls, commitPlayAreaFromToolbar } from "./toolbar.js";
 import { initTileLabWorld } from "../world/mapWorld.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
@@ -47,6 +47,7 @@ function scheduleProfileRefresh(state, drawAfterProfilePush, debounceMs) {
 function onMapCanvasResize(state, size, repaintMapOverviewIfVisible) {
     state.viewport.setCanvasSize(size, size);
     fitLabStageToView(state);
+    requestLabFrame();
     repaintMapOverviewIfVisible();
 }
 function resizeCanvases(state) {
@@ -88,7 +89,14 @@ export function mountEditorUi(state, { playbackHandlers }) {
         },
     });
     pushEditorProfile(state);
-    mountLabViewport(state, repaintMapOverviewIfVisible, playbackHandlers);
+    mountLabViewport(
+        state,
+        () => {
+            requestLabFrame();
+            repaintMapOverviewIfVisible();
+        },
+        playbackHandlers,
+    );
     bindViewModeControls(
         state,
         () => {},
@@ -111,6 +119,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     bindToolbarControls({
         onOverlayChange: () => {
             if (document.getElementById("showPathDebugInput").checked) void ensureLabPathDebugCache(state);
+            requestLabFrame();
         },
         onRedraw: () => {
             commitPlayAreaFromToolbar(state);

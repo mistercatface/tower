@@ -15,6 +15,7 @@ import {
 } from "../../../Libraries/Sandbox/index.js";
 import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
 import { mountSandboxToyUi, mountSceneJsonUi } from "../ui/sandboxToyUi.js";
+import { requestLabFrame } from "../ui/preview.js";
 let unmountToyUi = null;
 let unmountSceneJsonUi = null;
 /** @param {import("../state.js").TileLabGameState} state */
@@ -40,6 +41,7 @@ export function mountTilelabSandbox(state) {
             createRollToCursorFlowBehavior(state),
         ],
         defaultBehaviorId: DRAG_LAUNCH_BEHAVIOR_ID,
+        requestFrame: requestLabFrame,
     });
     const controller = state.sandbox.controller;
     controller.register();

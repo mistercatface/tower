@@ -46,7 +46,15 @@ const editorSceneHooks = {
 let labRenderer = null;
 let labRendererSettings = null;
 let lastProfileBakeKey = "";
-let bakeRepaintRaf = null;
+let labViewDirty = true;
+export function requestLabFrame() {
+    labViewDirty = true;
+}
+export function shouldRenderLabFrame(state) {
+    if (!state.isPaused) return true;
+    if (state.worldSurfaces.hasPendingSurfaceBakes()) return true;
+    return labViewDirty;
+}
 function buildLabRuntimeProfile() {
     const profile = buildProfileFromEditor();
     if (profile?.animation) delete profile.animation;
@@ -123,6 +131,7 @@ export function drawLabFrame(state) {
     state.sandbox.controller?.drawOverlay(ctx);
     ctx.restore();
     state.worldSurfaces.surfaceProfileOverride = prevProfileOverride;
+    labViewDirty = false;
     if (showVignette) {
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -136,11 +145,6 @@ export function drawLabFrame(state) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function repaintUntilBakesDone(state) {
-    if (bakeRepaintRaf != null) cancelAnimationFrame(bakeRepaintRaf);
-    const tick = () => {
-        drawLabFrame(state);
-        if (state.worldSurfaces.hasPendingSurfaceBakes()) bakeRepaintRaf = requestAnimationFrame(tick);
-        else bakeRepaintRaf = null;
-    };
-    if (state.worldSurfaces.hasPendingSurfaceBakes()) bakeRepaintRaf = requestAnimationFrame(tick);
+    requestLabFrame();
+    drawLabFrame(state);
 }

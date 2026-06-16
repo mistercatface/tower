@@ -23,6 +23,7 @@ import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNum
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { setFormFieldName } from "../../../Libraries/UI/Component.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
+import { requestLabFrame } from "./preview.js";
 import { SANDBOX_PALETTE_TAG_FILTERS, resolvePlacePaletteTags, sandboxPaletteMatchesFilter } from "../../../Libraries/Sandbox/sandboxPaletteTags.js";
 const WALL_STAMP_OPTIONS = [
     { value: "voxel", label: "Voxel block" },
@@ -768,7 +769,10 @@ export function mountSandboxToyUi(container, controller) {
             );
         });
     }
-    controller.setUiSync(refreshPanel);
+    controller.setUiSync(() => {
+        refreshPanel();
+        requestLabFrame();
+    });
     refreshPanel();
     return () => {
         controller.setUiSync(null);

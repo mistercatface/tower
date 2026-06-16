@@ -19,7 +19,7 @@ import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.j
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi, resizeEditorLayout } from "./ui/editorUi.js";
-import { drawLabFrame } from "./ui/preview.js";
+import { drawLabFrame, shouldRenderLabFrame } from "./ui/preview.js";
 /** @type {object[]} */
 const simulationEvents = [];
 /** @param {object[]} events @param {import("./state.js").TileLabGameState} state */
@@ -93,7 +93,7 @@ export function createEditorApp() {
         tickSandboxCameraFollow(state.viewport, state, state.entityRegistry, dt);
         state.sandbox.controller?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
-        drawLabFrame(state);
+        if (shouldRenderLabFrame(state)) drawLabFrame(state);
         requestAnimationFrame(loop);
     }
     events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);
