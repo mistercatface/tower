@@ -13,13 +13,13 @@ import {
     floodFillRegion,
 } from "./VoronoiRegions.js";
 export const REGION_CELL_UNASSIGNED = -1;
-/** @param {import("../DataStructures/CellRect.js").CellBounds} bounds @param {number} cols @param {number} rows @param {number} [padding] */
-export function expandRegionDamageBounds(bounds, cols, rows, padding = 12) {
+/** @param {import("../DataStructures/CellRect.js").CellBounds} bounds @param {import("./GridNavSnapshot.js").GridFrame} frame @param {number} [padding] */
+export function expandRegionDamageBounds(bounds, frame, padding = 12) {
     return {
         startCol: Math.max(0, bounds.startCol - padding),
-        endCol: Math.min(cols - 1, bounds.endCol + padding),
+        endCol: Math.min(frame.cols - 1, bounds.endCol + padding),
         startRow: Math.max(0, bounds.startRow - padding),
-        endRow: Math.min(rows - 1, bounds.endRow + padding),
+        endRow: Math.min(frame.rows - 1, bounds.endRow + padding),
     };
 }
 /**
@@ -230,11 +230,7 @@ function pruneUnreachableRegions(navGraph, blocked, cols, rows, minX, minY, cell
 /**
  * @param {{
  *   blocked: Uint8Array,
- *   cols: number,
- *   rows: number,
- *   minX: number,
- *   minY: number,
- *   cellSize: number,
+ *   frame: import("./GridNavSnapshot.js").GridFrame,
  *   navGraph: object,
  *   maxCellsPerChunk: number,
  *   minCellsPerChunk: number,
@@ -243,7 +239,8 @@ function pruneUnreachableRegions(navGraph, blocked, cols, rows, minX, minY, cell
  * }} opts
  */
 export function buildFullRegionGraph(opts) {
-    const { blocked, cols, rows, minX, minY, cellSize, navGraph, maxCellsPerChunk, minCellsPerChunk, seedWorldX = null, seedWorldY = null } = opts;
+    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, seedWorldX = null, seedWorldY = null } = opts;
+    const { cols, rows, minX, minY, cellSize } = frame;
     const size = cols * rows;
     const cellToNode = new Array(size).fill(null);
     const distToWall = computeDistanceTransform(blocked, cols, rows);
@@ -258,11 +255,7 @@ export function buildFullRegionGraph(opts) {
  *   cellToNode: Array<import("./VoronoiRegions.js").RegionNode | null>,
  *   nodeIdCounter: number,
  *   blocked: Uint8Array,
- *   cols: number,
- *   rows: number,
- *   minX: number,
- *   minY: number,
- *   cellSize: number,
+ *   frame: import("./GridNavSnapshot.js").GridFrame,
  *   navGraph: object,
  *   maxCellsPerChunk: number,
  *   minCellsPerChunk: number,
@@ -274,10 +267,11 @@ export function buildFullRegionGraph(opts) {
  * @param {import("../DataStructures/CellRect.js").CellBounds} bounds
  */
 export function rebuildDamagedRegionGraph(state, bounds) {
-    const { blocked, cols, rows, minX, minY, cellSize, navGraph, maxCellsPerChunk, minCellsPerChunk, damagePadding = 12, seedWorldX = null, seedWorldY = null } = state;
+    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, damagePadding = 12, seedWorldX = null, seedWorldY = null } = state;
+    const { cols, rows, minX, minY, cellSize } = frame;
     if (!bounds || cols === 0 || rows === 0) return state;
     let distToWall = state.distToWall;
-    const box = expandRegionDamageBounds(bounds, cols, rows, damagePadding);
+    const box = expandRegionDamageBounds(bounds, frame, damagePadding);
     stripBlockedCellsFromRegions(blocked, cols, rows, minX, minY, cellSize, box.startCol, box.endCol, box.startRow, box.endRow, state.cellToNode, state.nodesMap);
     const {
         repackedIds,
@@ -311,9 +305,9 @@ export function rebuildDamagedRegionGraph(state, bounds) {
     if (seedWorldX != null && seedWorldY != null) pruneUnreachableRegions(navGraph, blocked, cols, rows, minX, minY, cellSize, state.cellToNode, state.nodesMap, seedWorldX, seedWorldY);
     return state;
 }
-/** @param {Record<string, import("./VoronoiRegions.js").RegionNode>} nodesMap @param {Array<import("./VoronoiRegions.js").RegionNode | null>} cellToNode @param {number} cols @param {number} rows */
-export function packRegionGraphFlat(nodesMap, cellToNode, cols, rows) {
-    const size = cols * rows;
+/** @param {Record<string, import("./VoronoiRegions.js").RegionNode>} nodesMap @param {Array<import("./VoronoiRegions.js").RegionNode | null>} cellToNode @param {import("./GridNavSnapshot.js").GridFrame} frame */
+export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
+    const size = frame.cols * frame.rows;
     const cellToRegion = new Int16Array(size);
     cellToRegion.fill(REGION_CELL_UNASSIGNED);
     const nodeIds = Object.keys(nodesMap)
@@ -356,8 +350,9 @@ export function packRegionGraphFlat(nodesMap, cellToNode, cols, rows) {
         idToIdx,
     };
 }
-/** @param {Int16Array} cellToRegion @param {Int16Array} nodeCol @param {Int16Array} nodeRow @param {number} nodeCount @param {number} cols @param {number} rows @param {number} minX @param {number} minY @param {number} cellSize */
-export function unpackRegionGraphToNodes(cellToRegion, nodeCol, nodeRow, nodeCount, cols, rows, minX, minY, cellSize) {
+/** @param {Int16Array} cellToRegion @param {Int16Array} nodeCol @param {Int16Array} nodeRow @param {number} nodeCount @param {import("./GridNavSnapshot.js").GridFrame} frame */
+export function unpackRegionGraphToNodes(cellToRegion, nodeCol, nodeRow, nodeCount, frame) {
+    const { cols, rows, minX, minY, cellSize } = frame;
     const size = cols * rows;
     const cellToNode = new Array(size).fill(null);
     const nodesMap = {};

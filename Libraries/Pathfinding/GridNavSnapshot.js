@@ -4,22 +4,27 @@ import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { octileNeighborBase, octileNeighborOffset } from "./navTopologySab.js";
 /** @typedef {{ startCol: number, endCol: number, startRow: number, endRow: number }} CellBounds */
+/** @typedef {{ minX: number, minY: number, cellSize: number, cols: number, rows: number, key: string }} GridFrame */
 /**
  * @typedef {object} GridNavSnapshot
  * @property {string} cacheKey
- * @property {number} cols
- * @property {number} rows
- * @property {number} cellSize
+ * @property {GridFrame} frame
  * @property {number} cellHalfSize
- * @property {number} minX
- * @property {number} minY
  * @property {Uint8Array} blocked
  * @property {Int32Array} octileNeighbors
  */
 const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
-/** Stable id for worker grid frame — sent only when this changes (resize / origin shift). */
+/** Stable id for obstacle-grid frame — resize or origin shift changes this. */
 export function gridNavFrameKey(grid) {
     return `${grid.cols}:${grid.rows}:${grid.minX}:${grid.minY}:${grid.cellSize}`;
+}
+/** @param {{ minX: number, minY: number, cellSize: number, cols: number, rows: number }} grid */
+export function gridFrameFromGrid(grid) {
+    return { minX: grid.minX, minY: grid.minY, cellSize: grid.cellSize, cols: grid.cols, rows: grid.rows, key: gridNavFrameKey(grid) };
+}
+/** @param {GridFrame} frame @param {string} cacheKey @param {Uint8Array} blocked @param {Int32Array} octileNeighbors */
+export function createWorkerNavSnapshotView(frame, cacheKey, blocked, octileNeighbors) {
+    return { cacheKey, frame, cellHalfSize: frame.cellSize * 0.5, blocked, octileNeighbors };
 }
 /** Worker/main-safe octile bake from prepacked topology (no grid.canStep). */
 export function buildOctileNeighborsFromTopology(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors) {
@@ -52,17 +57,20 @@ export function buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vert
     });
 }
 export function snapshotIsBlocked(snapshot, col, row) {
-    if (!cellInRect(col, row, snapshot.cols, snapshot.rows)) return true;
-    return snapshot.blocked[colRowToIndex(col, row, snapshot.cols)] !== 0;
+    const { cols, rows } = snapshot.frame;
+    if (!cellInRect(col, row, cols, rows)) return true;
+    return snapshot.blocked[colRowToIndex(col, row, cols)] !== 0;
 }
 export function snapshotWorldToGrid(snapshot, x, y) {
-    return worldToGridAtOrigin(x, y, snapshot.minX, snapshot.minY, snapshot.cellSize);
+    const { minX, minY, cellSize } = snapshot.frame;
+    return worldToGridAtOrigin(x, y, minX, minY, cellSize);
 }
 export function snapshotGridToWorld(snapshot, col, row) {
-    return gridToWorldAtOrigin(col, row, snapshot.minX, snapshot.minY, snapshot.cellSize);
+    const { minX, minY, cellSize } = snapshot.frame;
+    return gridToWorldAtOrigin(col, row, minX, minY, cellSize);
 }
 export function snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) {
-    const { cols, rows } = snapshot;
+    const { cols, rows } = snapshot.frame;
     if (!cellInRect(fromCol, fromRow, cols, rows) || !cellInRect(toCol, toRow, cols, rows)) return false;
     const fromIdx = colRowToIndex(fromCol, fromRow, cols);
     if (snapshot.blocked[fromIdx]) return false;
@@ -75,8 +83,4 @@ export function snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) {
 }
 export function createSnapshotLocalNavView(snapshot) {
     return { canStep: (fromCol, fromRow, toCol, toRow) => snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) };
-}
-/** Zero-copy nav snapshot view over worker SAB buffers (no main-thread octile bake). */
-export function createWorkerNavSnapshotView(grid, cacheKey, blocked, octileNeighbors) {
-    return { cacheKey, cols: grid.cols, rows: grid.rows, cellSize: grid.cellSize, cellHalfSize: grid.cellHalfSize, minX: grid.minX, minY: grid.minY, blocked, octileNeighbors };
 }

@@ -40,8 +40,6 @@ let sabPersistGraphEdgeSources;
 let sabCellToRegionIdx;
 let navSnapshot;
 let navView;
-let cols;
-let rows;
 let aStarGScore;
 let aStarCameFrom;
 let aStarVisited;
@@ -55,45 +53,45 @@ let extNodeRow;
 let extEdgeOffsets;
 let extEdgeTargets;
 let extEdgeCosts;
-let minX;
-let minY;
-let cellSize;
-/** @type {{ cols: number, rows: number, minX: number, minY: number, cellSize: number, key: string } | null} */
-let workerGridFrame = null;
+/** @type {import("../../Libraries/Pathfinding/GridNavSnapshot.js").GridFrame | null} */
+let gridFrame = null;
 let damagePadding;
 let pruneSeedWorldX;
 let pruneSeedWorldY;
 /** @type {ReturnType<typeof createNavSimView> | null} */
 let navSimView = null;
-/** @type {{ nodesMap: Record<string, object>, cellToNode: Array<object | null>, nodeIdCounter: number, distToWall: Float32Array | null, blocked: Uint8Array, cols: number, rows: number, minX: number, minY: number, cellSize: number, navGraph: object, maxCellsPerChunk: number, minCellsPerChunk: number, damagePadding: number, seedWorldX: number | null, seedWorldY: number | null } | null} */
+/** @type {{
+ *   nodesMap: Record<string, object>,
+ *   cellToNode: Array<object | null>,
+ *   nodeIdCounter: number,
+ *   distToWall: Float32Array | null,
+ *   blocked: Uint8Array,
+ *   frame: import("../../Libraries/Pathfinding/GridNavSnapshot.js").GridFrame,
+ *   navGraph: object,
+ *   maxCellsPerChunk: number,
+ *   minCellsPerChunk: number,
+ *   damagePadding: number,
+ *   seedWorldX: number | null,
+ *   seedWorldY: number | null,
+ * } | null} */
 let regionGraphState = null;
-function applyWorkerGridFrame(data) {
-    if (data.minX !== undefined) {
-        workerGridFrame = { cols: data.cols, rows: data.rows, minX: data.minX, minY: data.minY, cellSize: data.cellSize, key: data.gridFrameKey };
-        cols = data.cols;
-        rows = data.rows;
-        minX = data.minX;
-        minY = data.minY;
-        cellSize = data.cellSize;
-        if (navSimView) {
-            navSimView.cols = data.cols;
-            navSimView.rows = data.rows;
-            bindNavSimGridFrame(navSimView, data.minX, data.minY, data.cellSize);
-        }
-        return;
-    }
-    if (!workerGridFrame || data.gridFrameKey !== workerGridFrame.key) throw new Error(`nav sync missing grid frame (key=${data.gridFrameKey ?? ""})`);
-    if (data.cols !== workerGridFrame.cols || data.rows !== workerGridFrame.rows) throw new Error("nav sync grid size changed without grid frame rebinding");
+function assertGraphFrameKey(gridFrameKey) {
+    if (!gridFrame) throw new Error("HPA worker missing grid frame");
+    if (gridFrameKey !== gridFrame.key) throw new Error(`HPA grid frame mismatch: worker ${gridFrame.key}, request ${gridFrameKey ?? ""}`);
+}
+function syncGridFrame(frame) {
+    if (gridFrame && gridFrame.key !== frame.key && (gridFrame.cols !== frame.cols || gridFrame.rows !== frame.rows)) throw new Error("nav sync grid size changed without grid frame rebinding");
+    gridFrame = frame;
+    if (navSimView) bindNavSimGridFrame(navSimView, frame);
 }
 function ensureNavSimView(data) {
-    applyWorkerGridFrame(data);
+    syncGridFrame(data.gridFrame);
     const edgePool = bindNavEdgePoolFromSab(new Uint8Array(data.sabEdgePool), data.edgePoolCount);
     const cardinalOpen = new Uint8Array(data.sabCardinalOpen);
     const vertexPassability = new Uint8Array(data.sabVertexPassability);
     if (!navSimView)
         navSimView = createNavSimView(
-            workerGridFrame.cols,
-            workerGridFrame.rows,
+            gridFrame,
             new Uint8Array(data.sabGridFill),
             new Uint8Array(data.sabFloorKind),
             new Uint8Array(data.sabFloorFacing),
@@ -101,9 +99,6 @@ function ensureNavSimView(data) {
             edgePool,
             data.passageEdgeCount,
             vertexPassability,
-            workerGridFrame.minX,
-            workerGridFrame.minY,
-            workerGridFrame.cellSize,
         );
     else {
         bindNavSimEdgePool(navSimView, edgePool, data.passageEdgeCount);
@@ -117,11 +112,9 @@ function bakeNavTopologyFull(data) {
     recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen);
     return baked;
 }
-function bindNavFromBuild(data) {
-    cols = data.cols;
-    rows = data.rows;
-    const size = cols * rows;
-    navSnapshot = { cols, rows, blocked: new Uint8Array(data.sabBlocked), octileNeighbors: new Int32Array(data.sabOctileNeighbors) };
+function bindNavFromBuild(data, blocked, octileNeighbors) {
+    const size = gridFrame.cols * gridFrame.rows;
+    navSnapshot = { cacheKey: data.navCacheKey, frame: gridFrame, blocked, octileNeighbors };
     navView = createSnapshotLocalNavView(navSnapshot);
     if (!aStarGScore || aStarGScore.length !== size) {
         aStarGScore = new Float32Array(size);
@@ -130,13 +123,11 @@ function bindNavFromBuild(data) {
     }
 }
 function buildNavSnapshotOnWorker(data) {
-    cols = data.cols;
-    rows = data.rows;
     const blocked = new Uint8Array(data.sabBlocked);
     const octileNeighbors = new Int32Array(data.sabOctileNeighbors);
     const baked = bakeNavTopologyFull(data);
-    buildOctileNeighborsFromTopology(blocked, baked.cardinalOpen, baked.vertexPassability, cols, rows, octileNeighbors);
-    bindNavFromBuild({ ...data, sabBlocked: data.sabBlocked, sabOctileNeighbors: data.sabOctileNeighbors });
+    buildOctileNeighborsFromTopology(blocked, baked.cardinalOpen, baked.vertexPassability, gridFrame.cols, gridFrame.rows, octileNeighbors);
+    bindNavFromBuild(data, blocked, octileNeighbors);
 }
 function buildPersistGraphCsr(nodeCount, edgeWrite) {
     const srcSources = hpaPersistEdgeSourcesView(sabPersistGraphEdgeSources, maxGraphEdges).subarray(0, edgeWrite);
@@ -159,10 +150,9 @@ function syncPersistAbstractGraph(nodeCount, edgeWrite) {
     persistNodeCount = nodeCount;
     persistEdgeWrite = buildPersistGraphCsr(nodeCount, edgeWrite);
 }
-function writeRegionGraphToSab(expectedCols, expectedRows) {
+function writeRegionGraphToSab() {
     if (!regionGraphState) return null;
-    if (expectedCols !== cols || expectedRows !== rows) throw new Error(`HPA region graph size mismatch: nav ${cols}x${rows}, graph ${expectedCols}x${expectedRows}`);
-    const packed = packRegionGraphFlat(regionGraphState.nodesMap, regionGraphState.cellToNode, cols, rows);
+    const packed = packRegionGraphFlat(regionGraphState.nodesMap, regionGraphState.cellToNode, gridFrame);
     if (packed.nodeCount > maxGraphNodes) throw new Error(`HPA region graph has ${packed.nodeCount} nodes (max ${maxGraphNodes})`);
     const persistNodeCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes);
     const persistNodeRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes);
@@ -174,27 +164,20 @@ function writeRegionGraphToSab(expectedCols, expectedRows) {
     persistEdgeSources.set(packed.edgeSources);
     persistEdgeTargets.set(packed.edgeTargets);
     persistEdgeCosts.set(packed.edgeCosts);
-    hpaCellToRegionView(sabCellToRegionIdx, cols * rows).set(packed.cellToRegion);
+    hpaCellToRegionView(sabCellToRegionIdx, gridFrame.cols * gridFrame.rows).set(packed.cellToRegion);
     syncPersistAbstractGraph(packed.nodeCount, packed.edgeWrite);
     persistNodeIds = packed.nodeIds;
     return { nodeCount: packed.nodeCount, edgeWrite: packed.edgeWrite, nodeIds: packed.nodeIds };
 }
 function buildRegionGraphFullOnWorker(data) {
     if (!navSnapshot) throw new Error("buildRegionGraphFull requires nav snapshot");
-    if (data.cols !== cols || data.rows !== rows) throw new Error(`buildRegionGraphFull cols/rows mismatch: nav ${cols}x${rows}, request ${data.cols}x${data.rows}`);
-    minX = data.minX;
-    minY = data.minY;
-    cellSize = data.cellSize;
+    assertGraphFrameKey(data.gridFrameKey);
     damagePadding = data.damagePadding;
     pruneSeedWorldX = data.seedWorldX;
     pruneSeedWorldY = data.seedWorldY;
     const built = buildFullRegionGraph({
         blocked: navSnapshot.blocked,
-        cols,
-        rows,
-        minX,
-        minY,
-        cellSize,
+        frame: gridFrame,
         navGraph: navView,
         maxCellsPerChunk,
         minCellsPerChunk: data.minCellsPerChunk ?? minCellsPerChunk,
@@ -204,11 +187,7 @@ function buildRegionGraphFullOnWorker(data) {
     regionGraphState = {
         ...built,
         blocked: navSnapshot.blocked,
-        cols,
-        rows,
-        minX,
-        minY,
-        cellSize,
+        frame: gridFrame,
         navGraph: navView,
         maxCellsPerChunk,
         minCellsPerChunk: data.minCellsPerChunk ?? minCellsPerChunk,
@@ -217,17 +196,18 @@ function buildRegionGraphFullOnWorker(data) {
         seedWorldY: data.seedWorldY,
         distToWall: null,
     };
-    return writeRegionGraphToSab(data.cols, data.rows);
+    return writeRegionGraphToSab();
 }
 function patchRegionGraphOnWorker(data) {
     if (!navSnapshot || !regionGraphState) throw new Error("patchRegionGraph requires nav snapshot and region graph");
-    if (data.cols !== cols || data.rows !== rows) throw new Error(`patchRegionGraph cols/rows mismatch: nav ${cols}x${rows}, request ${data.cols}x${data.rows}`);
+    assertGraphFrameKey(data.gridFrameKey);
     regionGraphState.blocked = navSnapshot.blocked;
+    regionGraphState.frame = gridFrame;
     regionGraphState.navGraph = navView;
     regionGraphState.seedWorldX = data.seedWorldX ?? pruneSeedWorldX;
     regionGraphState.seedWorldY = data.seedWorldY ?? pruneSeedWorldY;
     rebuildDamagedRegionGraph(regionGraphState, { startCol: data.startCol, endCol: data.endCol, startRow: data.startRow, endRow: data.endRow });
-    return writeRegionGraphToSab(data.cols, data.rows);
+    return writeRegionGraphToSab();
 }
 function postGraphPatchDone(meta) {
     self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [] });
@@ -374,6 +354,7 @@ function buildReplanResult(slot) {
 }
 function runReplan(slot, data) {
     const { startCol, startRow, targetCol, targetRow } = data;
+    const { cols, rows } = gridFrame;
     const cellToRegion = hpaCellToRegionView(sabCellToRegionIdx, cols * rows);
     const nodeCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, persistNodeCount);
     const nodeRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, persistNodeCount);

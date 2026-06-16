@@ -56,8 +56,8 @@ export class FlowFieldGrid {
     }
     rebuildLocalFlowNavMap(navSnapshot) {
         const size = this.cols * this.rows;
-        const navCols = navSnapshot.cols;
-        const navRows = navSnapshot.rows;
+        const navCols = navSnapshot.frame.cols;
+        const navRows = navSnapshot.frame.rows;
         this.navCols = navCols;
         this.navRows = navRows;
         const navToFlow = new Int32Array(navCols * navRows).fill(-1);

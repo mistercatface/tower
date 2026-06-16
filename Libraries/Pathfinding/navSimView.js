@@ -3,6 +3,7 @@ import { cellEdgeSlotOffset } from "../Spatial/grid/cellEdgeSlots.js";
 import { isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
 /**
  * Minimal grid shape for nav topology bake (main packs SABs; worker reads this view).
+ * @param {import("./GridNavSnapshot.js").GridFrame} frame
  * @param {Uint8Array} gridFill
  * @param {Uint8Array} floorKind
  * @param {Uint8Array} floorFacing
@@ -10,7 +11,7 @@ import { isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
  * @param {object[]} edgePool
  * @param {Uint8Array} vertexPassability
  */
-export function createNavSimView(cols, rows, gridFill, floorKind, floorFacing, edgeSlots, edgePool, passageEdgeCount, vertexPassability, minX, minY, cellSize) {
+export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, passageEdgeCount, vertexPassability) {
     const edgeStore = {
         passageEdgeCount,
         slots: edgeSlots,
@@ -21,12 +22,8 @@ export function createNavSimView(cols, rows, gridFill, floorKind, floorFacing, e
             return edgeStore.pool[ref];
         },
     };
-    return {
-        cols,
-        rows,
-        minX,
-        minY,
-        cellSize,
+    const simView = {
+        frame,
         grid: gridFill,
         vertexPassability,
         edgeStore,
@@ -38,18 +35,49 @@ export function createNavSimView(cols, rows, gridFill, floorKind, floorFacing, e
             },
         },
         isBlocked(col, row) {
-            return gridFill[colRowToIndex(col, row, cols)] !== 0;
+            return gridFill[colRowToIndex(col, row, frame.cols)] !== 0;
         },
     };
+    Object.defineProperties(simView, {
+        cols: {
+            get() {
+                return frame.cols;
+            },
+            enumerable: true,
+        },
+        rows: {
+            get() {
+                return frame.rows;
+            },
+            enumerable: true,
+        },
+        minX: {
+            get() {
+                return frame.minX;
+            },
+            enumerable: true,
+        },
+        minY: {
+            get() {
+                return frame.minY;
+            },
+            enumerable: true,
+        },
+        cellSize: {
+            get() {
+                return frame.cellSize;
+            },
+            enumerable: true,
+        },
+    });
+    return simView;
 }
 /** @param {ReturnType<typeof createNavSimView>} simView @param {object[]} edgePool @param {number} passageEdgeCount */
 export function bindNavSimEdgePool(simView, edgePool, passageEdgeCount) {
     simView.edgeStore.pool = edgePool;
     simView.edgeStore.passageEdgeCount = passageEdgeCount;
 }
-/** @param {ReturnType<typeof createNavSimView>} simView @param {number} minX @param {number} minY @param {number} cellSize */
-export function bindNavSimGridFrame(simView, minX, minY, cellSize) {
-    simView.minX = minX;
-    simView.minY = minY;
-    simView.cellSize = cellSize;
+/** @param {ReturnType<typeof createNavSimView>} simView @param {import("./GridNavSnapshot.js").GridFrame} frame */
+export function bindNavSimGridFrame(simView, frame) {
+    simView.frame = frame;
 }

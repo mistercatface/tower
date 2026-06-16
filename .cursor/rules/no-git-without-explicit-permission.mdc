@@ -1,0 +1,19 @@
+---
+description: Never run git commit, push, branch, or PR unless the user explicitly asks in that message
+alwaysApply: true
+---
+
+# No git remote actions without explicit permission
+
+Do **not** run any of the following unless the user **explicitly asks in the current message** (e.g. "commit this", "push", "open a PR"):
+
+- `git commit` (including `--amend`)
+- `git push` (any remote)
+- `git checkout -b` / branch creation for shipping work
+- `gh pr create` or other PR/issue creation on GitHub
+
+Implementing code, drafting commit messages, or mentioning that the user *could* commit is fine. **Do not execute** those commands proactively — not at the end of a task, not because the user said "PR this out" in a planning sense without a clear "go commit/push it", and not to "finish shipping" work.
+
+Local read-only git (`status`, `diff`, `log`) is OK when needed to understand or implement a task.
+
+If the user only asked for a plan, implementation, or review, stop when the code is done. Wait for an explicit git/PR request.

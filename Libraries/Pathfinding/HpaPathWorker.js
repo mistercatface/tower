@@ -1,6 +1,6 @@
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
-import { createWorkerNavSnapshotView, snapshotCanStep, gridNavFrameKey } from "./GridNavSnapshot.js";
+import { createWorkerNavSnapshotView, snapshotCanStep, gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { gridNavSnapshotCacheKey } from "../Spatial/grid/gridNavEpoch.js";
 import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, packBlockedFromGrid } from "./navTopologySab.js";
 import {
@@ -36,7 +36,7 @@ export class HpaPathWorker {
         this.host = createSabSlotWorkerHost(workerUrl, MAX_HPA_REPLAN_SLOTS);
         this._navKey = "";
         this._navSize = 0;
-        this._workerGridFrameKey = "";
+        this._gridFrame = null;
         this.sabEdgePool = new SharedArrayBuffer(navEdgePoolSabByteLength(4));
         this.navEdgePoolBytes = new Uint8Array(this.sabEdgePool);
         this._edgePoolSabRefs = 0;
@@ -70,7 +70,7 @@ export class HpaPathWorker {
         this.host.worker.onmessage = (e) => {
             const { type, slot, requestId } = e.data;
             if (type === SYNC_NAV_DONE) {
-                this._navSnapshotView = createWorkerNavSnapshotView(this.navGraph, this._navKey, this.navBlocked, this.navOctileNeighbors);
+                this._navSnapshotView = createWorkerNavSnapshotView(this._gridFrame, this._navKey, this.navBlocked, this.navOctileNeighbors);
                 this.navGraph.gridNavSnapshot = this._navSnapshotView;
                 const resolve = this._navSyncResolve;
                 this._navSyncResolve = null;
@@ -158,17 +158,7 @@ export class HpaPathWorker {
         this.setPruneSeed(seedWorldX, seedWorldY);
         await this._postGraphPatch(
             "buildRegionGraphFull",
-            {
-                cols: grid.cols,
-                rows: grid.rows,
-                minX: grid.minX,
-                minY: grid.minY,
-                cellSize: grid.cellSize,
-                damagePadding: this._damagePadding,
-                minCellsPerChunk: gridSettings.minCellsPerChunk,
-                seedWorldX,
-                seedWorldY,
-            },
+            { gridFrameKey: this._gridFrame.key, damagePadding: this._damagePadding, minCellsPerChunk: gridSettings.minCellsPerChunk, seedWorldX, seedWorldY },
             graphEpoch,
         );
     }
@@ -177,12 +167,11 @@ export class HpaPathWorker {
         await this.scheduleNavTopologySyncAwait(grid);
         const size = grid.cols * grid.rows;
         this._ensureGraphCellBuffers(size);
-        const box = expandRegionDamageBounds(bounds, grid.cols, grid.rows, this._damagePadding);
+        const box = expandRegionDamageBounds(bounds, this._gridFrame, this._damagePadding);
         await this._postGraphPatch(
             "patchRegionGraph",
             {
-                cols: grid.cols,
-                rows: grid.rows,
+                gridFrameKey: this._gridFrame.key,
                 startCol: box.startCol,
                 endCol: box.endCol,
                 startRow: box.startRow,
@@ -342,10 +331,10 @@ export class HpaPathWorker {
             if (this._navSyncPromise) await this._navSyncPromise;
         }
     }
-    _navSimPayload(grid = this.navGraph) {
-        const gridFrameKey = gridNavFrameKey(grid);
-        const payload = {
-            gridFrameKey,
+    _navSyncPayload(grid = this.navGraph) {
+        this._gridFrame = gridFrameFromGrid(grid);
+        return {
+            gridFrame: this._gridFrame,
             sabEdgePool: this.sabEdgePool,
             edgePoolCount: this._edgePoolSabRefs,
             sabGridFill: this.sabGridFill,
@@ -354,13 +343,6 @@ export class HpaPathWorker {
             sabEdgeSlots: this.sabEdgeSlots,
             passageEdgeCount: grid.edgeStore.passageEdgeCount,
         };
-        if (gridFrameKey !== this._workerGridFrameKey) {
-            this._workerGridFrameKey = gridFrameKey;
-            payload.minX = grid.minX;
-            payload.minY = grid.minY;
-            payload.cellSize = grid.cellSize;
-        }
-        return payload;
     }
     scheduleNavTopologySync(grid = this.navGraph) {
         const cacheKey = gridNavSnapshotCacheKey(grid);
@@ -380,18 +362,17 @@ export class HpaPathWorker {
         this.navBlocked.set(packBlockedFromGrid(grid));
         packNavTopologyFromGrid(grid, this._navArena);
         this._packNavEdgePoolForWorker(grid);
+        const navPayload = this._navSyncPayload(grid);
         this._navSyncPromise = new Promise((resolve) => {
             this._navSyncResolve = resolve;
             this.host.worker.postMessage({
                 type: "buildNavSnapshot",
                 navCacheKey: cacheKey,
-                cols: grid.cols,
-                rows: grid.rows,
                 sabBlocked: this.sabBlocked,
                 sabCardinalOpen: this.sabCardinalOpen,
                 sabVertexPassability: this.sabVertexPassability,
                 sabOctileNeighbors: this.sabOctileNeighbors,
-                ...this._navSimPayload(grid),
+                ...navPayload,
             });
         });
     }
