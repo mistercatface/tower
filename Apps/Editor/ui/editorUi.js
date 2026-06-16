@@ -2,7 +2,7 @@ import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profile
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { ensureLabPathDebugCache } from "../../../Libraries/Render/map/labMapCaches.js";
-import { initAnimationPreview, mountAnimationPreviewCanvas, syncAnimationPreviewCanvasSize } from "./LabAnimationPreview.js";
+import { initAnimationPreview, mountAnimationPreviewCanvas, setAnimationPreviewActive, syncAnimationPreviewCanvasSize } from "./LabAnimationPreview.js";
 import { mountMapOverview, paintMapOverviewFrame, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
@@ -145,6 +145,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     const { main } = EDITOR_CANVAS_DEFAULTS;
     mountAnimationPreviewCanvas(animCanvas, { host: document.getElementById("animationPreviewHost"), maxSize: () => computeMapColumnSlotMax(state) });
     initAnimationPreview(animCanvas, buildProfileFromEditor);
+    setAnimationPreviewActive(state.editor.showAnimationPreview);
     mapCanvasResize = applySquareCanvasResize(state.editor.canvas, {
         host: document.getElementById("mapStage"),
         initialSize: main.initialSize,

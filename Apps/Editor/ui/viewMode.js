@@ -1,4 +1,5 @@
 import { paintMapOverviewFrame } from "./mapOverview.js";
+import { setAnimationPreviewActive } from "./LabAnimationPreview.js";
 /** @param {string} panelId @param {boolean} visible */
 function setEditorPanelVisible(panelId, visible) {
     const panel = document.getElementById(panelId);
@@ -10,6 +11,7 @@ function setAnimationPreviewVisible(visible) {
     const stage = document.getElementById("animationStage");
     stage.classList.toggle("is-visible", visible);
     stage.hidden = !visible;
+    setAnimationPreviewActive(visible);
 }
 /** @param {boolean} visible */
 function setMapOverviewVisible(visible) {

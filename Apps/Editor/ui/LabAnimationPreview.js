@@ -28,9 +28,14 @@ let rafId = null;
 let lastGameTime = 0;
 let lastDrawTime = 0;
 let isAnimationEnabled = false;
+let previewActive = false;
 let patchCanvas = null;
 let patchCtx = null;
 let previewCtx = null;
+let previewCanvas = null;
+/** @type {(() => object | null) | null} */
+let readProfileConfig = null;
+let currentProfileStr = null;
 function ensurePatchSurface(destW, destH) {
     if (!patchCanvas) {
         patchCanvas = createOffscreenCanvas(destW, destH);
@@ -51,39 +56,59 @@ export function mountAnimationPreviewCanvas(canvas, { host, maxSize }) {
 export function syncAnimationPreviewCanvasSize(state, stackSize) {
     if (state.editor.showAnimationPreview) animationCanvasResize.setSize(stackSize);
 }
-export function initAnimationPreview(canvas, getProfileConfig) {
-    previewCtx = canvas.getContext("2d");
-    let currentProfileStr = null;
-    function tick(timestamp) {
-        rafId = requestAnimationFrame(tick);
-        const profile = getProfileConfig();
-        if (!profile) return;
-        let forceDraw = false;
-        const profileStr = JSON.stringify(profile);
-        if (profileStr !== currentProfileStr) {
-            currentProfileStr = profileStr;
-            isAnimationEnabled = Boolean(profile.animation);
-            forceDraw = true;
+/** @param {boolean} active */
+export function setAnimationPreviewActive(active) {
+    previewActive = active;
+    if (!active) {
+        if (rafId !== null) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
         }
-        if (!isAnimationEnabled) {
-            if (forceDraw || lastDrawTime === 0) {
-                drawFrame(previewCtx, canvas, profile, 0);
-                lastDrawTime = timestamp;
-            }
-            return;
-        }
-        const delta = timestamp - lastDrawTime;
-        if (forceDraw || delta > 32 || lastDrawTime === 0) {
-            const duration = getAnimationDuration(profile.animation);
-            if (!forceDraw || delta <= 32) lastGameTime = (lastGameTime + delta) % duration;
-            drawFrame(previewCtx, canvas, profile, lastGameTime);
+        return;
+    }
+    if (rafId === null) {
+        lastDrawTime = performance.now();
+        lastGameTime = 0;
+        rafId = requestAnimationFrame(runAnimationPreviewTick);
+    }
+}
+function runAnimationPreviewTick(timestamp) {
+    if (!previewActive) {
+        rafId = null;
+        return;
+    }
+    rafId = requestAnimationFrame(runAnimationPreviewTick);
+    const profile = readProfileConfig?.();
+    if (!profile) return;
+    let forceDraw = false;
+    const profileStr = JSON.stringify(profile);
+    if (profileStr !== currentProfileStr) {
+        currentProfileStr = profileStr;
+        isAnimationEnabled = Boolean(profile.animation);
+        forceDraw = true;
+    }
+    if (!isAnimationEnabled) {
+        if (forceDraw || lastDrawTime === 0) {
+            drawFrame(previewCtx, previewCanvas, profile, 0);
             lastDrawTime = timestamp;
         }
+        return;
     }
+    const delta = timestamp - lastDrawTime;
+    if (forceDraw || delta > 32 || lastDrawTime === 0) {
+        const duration = getAnimationDuration(profile.animation);
+        if (!forceDraw || delta <= 32) lastGameTime = (lastGameTime + delta) % duration;
+        drawFrame(previewCtx, previewCanvas, profile, lastGameTime);
+        lastDrawTime = timestamp;
+    }
+}
+export function initAnimationPreview(canvas, getProfileConfig) {
+    previewCtx = canvas.getContext("2d");
+    previewCanvas = canvas;
+    readProfileConfig = getProfileConfig;
+    currentProfileStr = null;
     if (rafId !== null) cancelAnimationFrame(rafId);
-    lastDrawTime = performance.now();
-    lastGameTime = 0;
-    rafId = requestAnimationFrame(tick);
+    rafId = null;
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

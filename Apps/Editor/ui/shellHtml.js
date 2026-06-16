@@ -100,7 +100,7 @@ export const TILELAB_UI_HTML = `
         <section class="col col-map">
             <div class="map-container">
                 <div class="map-viewport-column">
-                    <div class="animation-stage is-visible" id="animationStage">
+                    <div class="animation-stage" id="animationStage" hidden>
                         <div id="animationPreviewHost">
                             <canvas id="animationPreviewCanvas"></canvas>
                         </div>
