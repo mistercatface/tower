@@ -2,7 +2,7 @@
 
 HPA pathfinding on large maps — worker owns nav graph mutation and replan; main owns sim writes and steering.
 
-**Status:** worker owns region graph build/patch (including portal hop abstract edges), nav topology derivation, and one-shot replan. Main still bakes hop CSR before nav pack and mirrors persist CSR for debug/replan assembly. Roughly **~90%** of the north star.
+**Status:** ~**92%** of the north star. Worker derives cardinal/vertex/octile topology from sim SABs, wires portal hop abstract edges inline on region patch/full build, and runs one-shot replan. Main still bakes hop CSR from `boundaryNavHops`, runs `syncGridTopologyCaches` for live `grid.canStep`, and mirrors persist CSR for debug overlay + waypoint assembly. Flow field still owns a separate `sabObstacle` copy.
 
 ---
 
@@ -25,11 +25,11 @@ HPA pathfinding on large maps — worker owns nav graph mutation and replan; mai
 
 ## Groundwork (done)
 
-Spatial topology decoupling landed before the worker cutover:
+Spatial topology decoupling before the worker cutover:
 
-- **PR1** — `portalSlotIndex`, `vertexPassability`, `syncGridTopologyCaches` spine; Spatial ⊥ Sandbox for grid nav.
-- **PR2** — `boundaryNavHops.js` (Pathfinding) + `boundaryNavSync.js` (Sandbox policy); old `boundaryNavIndex` deleted.
-- **PR3** — `gridCellTopology.js` (queries) + `World/wallGridBake.js` (3D bake); `wallGridCells.js` deleted.
+- **G1** — `portalSlotIndex`, `vertexPassability`, `syncGridTopologyCaches` spine; Spatial ⊥ Sandbox for grid nav.
+- **G2** — `boundaryNavHops.js` (Pathfinding) + `boundaryNavSync.js` (Sandbox policy); old `boundaryNavIndex` deleted.
+- **G3** — `gridCellTopology.js` (queries) + `World/wallGridBake.js` (3D bake); `wallGridCells.js` deleted.
 - **Naming** — `gridCellTopology` exports match `NavGraph.js` glossary.
 
 ---
@@ -38,7 +38,7 @@ Spatial topology decoupling landed before the worker cutover:
 
 ### Nav + replan SABs
 
-- `HpaPathWorker` + `HpaWorkerEntry`: nav snapshot SABs (`blocked`, cardinal, vertex, hop CSR, octile), 512 replan slots, async `HpaPathSession`.
+- `HpaPathWorker` + `HpaWorkerEntry`: nav snapshot SABs (`blocked`, sim slices, cardinal, vertex, hop CSR, octile), 512 replan slots, async `HpaPathSession`.
 - One-shot `runReplan` on worker (temp connect → local or abstract A* → stitch); no per-candidate worker round-trips.
 - `prepareHpaReplanPrep` on worker; main sends endpoints + `graphEpoch`, reads `replanMode` on `hpaDone`.
 - Unified `replanHpaNavPath` for game + sandbox; sandbox keeps path across retarget (`markTargetChanged`).
@@ -46,9 +46,9 @@ Spatial topology decoupling landed before the worker cutover:
 ### Region graph on worker
 
 - Worker-only `buildRegionGraphFull` / `patchRegionGraph` / `rebuildDamagedRegionGraph`.
-- Main path removed: no `HierarchicalNavigator` graph upload, no main `bakeAbstractGraphFlat` on replan.
+- `wireNavHopRegionEdges` after repack — portal/boundary hop abstract edges in the same graph patch (no second `connectRegionIdxPairs` message).
 - `NavigationService` serializes nav + graph sync on `_workerNavGraphSyncChain`.
-- `sabCellToRegionIdx` on worker; Tile Lab HPA* Grid reads worker SAB via `getRegionGraphDebugView` (lazy bake on toggle).
+- Tile Lab HPA* Grid reads worker SAB via `getRegionGraphDebugView` (lazy bake on toggle).
 
 ### Tile Lab hygiene
 
@@ -57,51 +57,59 @@ Spatial topology decoupling landed before the worker cutover:
 
 ---
 
+## Worker cutover PRs (done)
+
+| PR | Summary |
+| --- | --- |
+| **W1** | Worker derives cardinal/vertex/octile from sim SABs (`navSimView`, `recompute*Into`); main packs raw grid/floor/edge slices only. Edit spine: `onObstaclesChanged` only (no per-site `syncGridTopologyCaches`). |
+| **W2** | `wireNavHopRegionEdges` on worker after region patch/full build; deleted `_collectHopRegionPairs`, `reconnectBoundaryHopRegionPairs`, and `connectRegionIdxPairs` worker message. |
+| **Fix** | `navSimView` `edgeStore.get` reads live `edgeStore.pool` so passage `powered` updates reach worker topology (forcefields + portal mouth rules). |
+
+---
+
 ## Current architecture
 
 ```text
 Edit / init on main:
-  grid / edgeStore change
+  grid / edgeStore / passage power change
   → NavigationService.onObstaclesChanged(bounds)
-      → syncGridTopologyCaches (main canStep cache only)
-      → pack sim + hop CSR into worker SABs (patchNavTopology / full sync)
-      → buildRegionGraphFull or patchRegionGraph (worker rebakes topology + wires hop region edges)
+      → syncGridTopologyCaches (main grid.canStep cache only)
+      → syncBoundaryNavIndex when portal hop table changes (Sandbox policy)
+      → pack sim slices + hop CSR into worker SABs
+      → buildRegionGraphFull or patchRegionGraph
+          worker: rebake topology → wireNavHopRegionEdges → writeRegionGraphToSab
 
 Replan:
   main: resolveSnappedPathEndpoints → requestPath(endpoints, graphEpoch)
   worker: prepareHpaReplanPrep → plan + stitch → cell path in slot SAB
-  main: buildHpaReplanResult from worker replanMode + mirrored graph meta (waypoints only)
-
-Debug (Tile Lab): checkbox on → ensureLabPathDebugCache when epoch/topology stale.
+  main: buildHpaReplanResult from worker replanMode + mirrored graph meta
 ```
 
-**Still on main:** hop CSR bake (`bakeHopCsr` from `boundaryNavHops`); main `syncGridTopologyCaches` for `grid.canStep`; endpoint snap before `requestPath`; mirrored persist CSR for debug overlay and waypoint assembly.
-
-**Separate copy:** flow field can read worker nav snapshot, but still maintains its own obstacle buffer path in some code paths — not fully deduped.
+**Still on main:** `buildBoundaryNavHops` + `bakeHopCsr`; `syncGridTopologyCaches`; endpoint snap before `requestPath`; mirrored persist CSR; flow `sabObstacle` (third nav copy).
 
 ---
 
-## Next PR
+## Next 2 PRs
 
 ### PR3 — Regression harness + flow/nav dedup
 
-Add automated repro cases called out in the plan but not started: rail-maze single-delete (path stable vs fresh load), cavern add/delete cycle (path matches cold rebuild), edit → replan without refresh, and epoch mismatch (stale replan discarded, no silent stale-graph path). Wire into whatever test runner the repo already uses for grid fixtures — goal is CI signal before further worker moves.
+Pathfinding behavior is now split across worker topology, worker region graph, main hop CSR, and a separate flow-field obstacle buffer — exactly the kind of setup where a small invalidation bug shows up as “paths walk through powered forcefields until refresh.” Automated fixtures are the guardrail before any further worker moves. Target cases: rail-maze single-delete (path stable vs cold load), cavern add/delete cycle (patch path matches full rebuild), edit → replan without refresh, epoch mismatch (stale replan discarded, no silent stale-graph route), and portal link/power toggles (hop CSR + abstract edge present after one sync chain).
 
-In the same pass, finish flow-field alignment with worker nav: flow BFS should read worker `sabBlocked` / nav snapshot only and drop the third standalone `sabObstacle` copy where it still exists. That closes the “one nav truth” loop left after PR1–PR2 and makes memory + invalidation behavior easier to reason about under load.
+In the same pass, align flow field with worker nav truth: flow BFS should consume worker `sabBlocked` / nav snapshot (or a single shared blocked SAB owned by `HpaPathWorker`) and drop `FlowFieldGrid.sabObstacle` as an independent main-side bake. That removes the third copy, simplifies invalidation (one blocked grid epoch), and makes Tile Lab flow vs HPA debug overlays consistent under edits. Wire tests into whatever runner the repo already uses for grid fixtures — goal is CI signal, not a new harness framework.
 
----
+### PR4 — Worker hop CSR + boundary nav pack
 
-## Done (worker cutover PRs)
+Today main still runs `buildBoundaryNavHops` (Sandbox portal policy via `evaluatePortalStepEntry`) and `bakeHopCsr` on every nav sync, then copies hop offsets into worker SABs. That keeps hop discovery tied to main-thread grid mutation and duplicates work on large maps — the same smell PR1 removed for cardinal/vertex. Move hop CSR derivation onto the worker: pack minimal hop inputs (portal link keys, powered flags, mouth/back geometry already in sim edge pool) and either port `buildBoundaryNavHops` math to a worker-safe entry or post a compact hop descriptor table built at the Sandbox policy boundary once per `boundaryNavEpoch`.
 
-- **PR1** — Worker derives cardinal/vertex/octile from sim SABs; main packs raw grid/edge slices only.
-- **PR2** — `wireNavHopRegionEdges` on worker after region patch/full build; removed main hop pair scan + second graph message.
+After worker owns hop CSR, delete main `bakeHopCsr` from `HpaPathWorker` sync paths and slim `syncBoundaryNavIndex` to bump epoch + invalidate only (no separate reconnect hook). Region graph already wires hop edges via `wireNavHopRegionEdges` over `forEachNavHop`; local A* and replan stitch already consume hop CSR on the worker — this PR completes “one nav snapshot” for walk + hop expansion. Optional stretch in the same PR: lazy main `syncGridTopologyCaches` from worker snapshot for diagonal `grid.canStep` (E3 endgame), or defer that to Later.
 
 ---
 
 ## Later (not blocking)
 
-- **Shared sim SAB** — optional zero-copy sim read on worker (raw grid/edge slices without main-side cache bake).
+- **Shared sim SAB** — optional zero-copy sim read on worker without per-sync `edgePool` postMessage clone.
 - **Portal abstract edge cost** — centroid Chebyshev today, not hop distance.
 - **Belt transfer edges** in region adjacency.
 - **Partial paths** — `maxLegs` / `maxCells` on `requestPath`.
 - **Mass path overlays** in Tile Lab (all active HPA movers, not selected prop only).
+- **Main canStep from worker snapshot** — drop duplicate main topology bake if gameplay reads worker SAB lazily.
