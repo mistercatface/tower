@@ -13,12 +13,13 @@ export function notifyGridWallChange(state, bounds) {
 }
 export function commitBoundaryEdit(state, bounds, { power = false, nav = false } = {}) {
     const regions = Array.isArray(bounds) ? bounds : [bounds];
-    for (let i = 0; i < regions.length; i++) notifyGridWallChange(state, regions[i]);
-    if (power) syncPassagePowerNetwork(state);
-    else if (nav) {
-        syncBoundaryNavIndex(state);
-        ensureBoundaryNavHops(state);
+    if (nav) syncBoundaryNavIndex(state);
+    if (power) {
+        syncPassagePowerNetwork(state);
+        return;
     }
+    for (let i = 0; i < regions.length; i++) notifyGridWallChange(state, regions[i]);
+    if (nav) ensureBoundaryNavHops(state);
 }
 /** Clear whichever primary boundary occupies a slot (railWall, forcefield, portal). */
 export function clearPrimaryBoundaryAt(state, col, row, side) {

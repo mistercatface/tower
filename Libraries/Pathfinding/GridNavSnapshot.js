@@ -187,7 +187,10 @@ export function snapshotForEachNavHop(snapshot, col, row, fn) {
     }
 }
 export function createSnapshotLocalNavView(snapshot) {
-    return { canStep: (fromCol, fromRow, toCol, toRow) => snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow), forEachNavHop: (col, row, fn) => snapshotForEachNavHop(snapshot, col, row, fn) };
+    return {
+        canStep: (fromCol, fromRow, toCol, toRow) => snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) || snapshotCanBoundaryHop(snapshot, fromCol, fromRow, toCol, toRow),
+        forEachNavHop: (col, row, fn) => snapshotForEachNavHop(snapshot, col, row, fn),
+    };
 }
 /** Zero-copy nav snapshot view over worker SAB buffers (no main-thread octile bake). */
 export function createWorkerNavSnapshotView(grid, cacheKey, blocked, octileNeighbors, hopOffsets, hopExitIdx, hopCost) {

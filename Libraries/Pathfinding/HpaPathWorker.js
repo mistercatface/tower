@@ -367,6 +367,7 @@ export class HpaPathWorker {
         }
     }
     _navSimPayload(grid = this.navGraph) {
+        grid._recomputePassagePowerForNav?.();
         const { passageNetworkKeys, passageNetworkIds } = packPassageNetworkPolicy(grid);
         return {
             sabGridFill: this.sabGridFill,

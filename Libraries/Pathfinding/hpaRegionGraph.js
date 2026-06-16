@@ -298,6 +298,7 @@ export function buildFullRegionGraph(opts) {
     const distToWall = computeDistanceTransform(blocked, cols, rows);
     const result = generateVoronoiRegions({ grid: blocked, distToWall, cols, rows, minX, minY, cellSize, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
     connectAllNodes(navGraph, blocked, cols, rows, result.cellToNode, result.nodesMap);
+    wireNavHopRegionEdges(navGraph, cols, rows, result.cellToNode, result.nodesMap);
     if (seedWorldX != null && seedWorldY != null) pruneUnreachableRegions(navGraph, blocked, cols, rows, minX, minY, cellSize, result.cellToNode, result.nodesMap, seedWorldX, seedWorldY);
     return { nodesMap: result.nodesMap, cellToNode: result.cellToNode, nodeIdCounter: result.nodeIdCounter };
 }

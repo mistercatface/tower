@@ -231,9 +231,10 @@ export function passagePowerSyncKey(state) {
     parts.sort((a, b) => a - b);
     return `${grid.edgeStore.passageEdgeCount}:${parts.join(",")}`;
 }
-export function syncPassagePowerNetwork(state) {
+/** Recompute passage-power keys on grid (no nav notify). Called before worker policy pack. */
+export function recomputePassagePowerNetwork(state) {
     const grid = state.obstacleGrid;
-    if (!grid.cols) return;
+    if (!grid.cols) return null;
     const graph = buildPassagePowerGraph(grid);
     const energizedSources = collectEnergizedSourceCells(grid, state);
     const poweredKeys = floodNetworkPoweredEdgeKeys(grid, energizedSources, graph);
@@ -243,6 +244,15 @@ export function syncPassagePowerNetwork(state) {
     stampPassageNetworkIdsOnGrid(grid);
     state.sandbox.passagePower = { poweredKeys, networkIdByKey };
     state.sandbox._passagePowerSyncKey = passagePowerSyncKey(state);
+    return { graph, poweredKeys, networkIdByKey };
+}
+export function syncPassagePowerNetwork(state) {
+    const grid = state.obstacleGrid;
+    if (!grid.cols) return;
+    const prevPowerKey = grid._passagePowerNavKey;
+    const computed = recomputePassagePowerNetwork(state);
+    if (!computed) return;
+    const { graph, poweredKeys, networkIdByKey } = computed;
     const bounds = emptyCellBounds();
     let boundaryNavDirty = false;
     const portalCount = grid.edgeStore.portalEdgeCount;
@@ -269,6 +279,11 @@ export function syncPassagePowerNetwork(state) {
         ensureBoundaryNavHops(state);
     }
     grid._passagePowerNavKey = state.sandbox._passagePowerSyncKey;
-    if (isEmptyCellBounds(bounds)) return;
+    const powerKeyChanged = grid._passagePowerNavKey !== prevPowerKey;
+    if (isEmptyCellBounds(bounds) && !powerKeyChanged && !boundaryNavDirty && !portalCountChanged) return;
+    if (isEmptyCellBounds(bounds)) {
+        state.navigation.onObstaclesChanged({ startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
+        return;
+    }
     state.navigation.onObstaclesChanged(bounds);
 }

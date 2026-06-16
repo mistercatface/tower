@@ -193,9 +193,9 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     const grid = state.obstacleGrid;
     grid.edgeStore.recomputePassageEdgeCount();
     recomputePortalSlotIndex(grid);
+    syncPassagePowerNetwork(state);
     if (stampBounds) notifyGridWallChange(state, stampBounds);
     else if (grid.cols) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
-    syncPassagePowerNetwork(state);
     applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);
     syncRoomGraphBake(state);
     for (let i = 0; i < doc.props.length; i++) spawnSnapshotProp(state, doc.props[i]);
