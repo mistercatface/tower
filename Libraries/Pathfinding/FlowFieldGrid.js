@@ -68,8 +68,8 @@ export class FlowFieldGrid {
         const rebind = !this._flowNavBound || this._flowNavBoundSize !== navSize;
         if (rebind) {
             const sabBlocked = this.hpaPathWorker.getNavBlockedSab();
-            const sabOctileNeighbors = this.hpaPathWorker.getNavOctileNeighborsSab();
-            this._workerHost.worker.postMessage({ type: "bindFlowNavArena", data: { sabBlocked, sabOctileNeighbors, navCols: navFrame.cols, navRows: navFrame.rows } });
+            const sabOctilePredecessors = this.hpaPathWorker.getNavOctilePredecessorsSab();
+            this._workerHost.worker.postMessage({ type: "bindFlowNavArena", data: { sabBlocked, sabOctilePredecessors, navCols: navFrame.cols, navRows: navFrame.rows } });
             this._navBlockedView = new Uint8Array(sabBlocked);
             this._flowNavBound = true;
             this._flowNavBoundSize = navSize;

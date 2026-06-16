@@ -1,6 +1,6 @@
 import { flowCellBlocked } from "./flowFieldWindow.js";
 /**
- * BFS flow-field on octile neighbor grid. Worker-only — reads nav blocked SAB + flow neighbor remap.
+ * BFS flow-field integrated backward from the goal on reverse nav adjacency (octile predecessors).
  *
  * @param {Uint8Array} vectorMap — output slice (length = gridSize)
  * @param {object} params

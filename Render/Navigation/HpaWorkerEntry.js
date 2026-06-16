@@ -7,7 +7,14 @@ import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../..
 import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Libraries/Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
 import { clampCellBoundsToGrid } from "../../Libraries/DataStructures/CellRect.js";
-import { buildOctileNeighborsFromTopologyRect, createNavLocalView, expandNavTopologyBakeBounds, navTopologyFromSab, recomputeBlockedFromGridFill } from "../../Libraries/Pathfinding/navTopologySab.js";
+import {
+    buildOctileNeighborsFromTopologyRect,
+    buildOctilePredecessorsFromForwardGrid,
+    createNavLocalView,
+    expandNavTopologyBakeBounds,
+    navTopologyFromSab,
+    recomputeBlockedFromGridFill,
+} from "../../Libraries/Pathfinding/navTopologySab.js";
 import {
     hpaCellToRegionView,
     hpaPathSlotAbstractIdx,
@@ -115,7 +122,7 @@ function bindNavArena(data) {
     vertexPassability = new Uint8Array(data.sabVertexPassability);
     const edgePool = bindNavEdgePoolFromSab(new Uint8Array(sabEdgePool), edgePoolCount);
     navSimView = createNavSimView(gridFrame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, passageEdgeCount, vertexPassability);
-    navTopology = navTopologyFromSab(data.sabBlocked, data.sabOctileNeighbors);
+    navTopology = navTopologyFromSab(data.sabBlocked, data.sabOctileNeighbors, data.sabOctilePredecessors);
     navView = createNavLocalView(requireGridFrame(), navTopology);
     const size = requireGridFrame().cols * requireGridFrame().rows;
     if (!aStarGScore || aStarGScore.length !== size) {
@@ -151,6 +158,7 @@ function bakeNavTopology(damageBounds) {
     const octRow0 = bakeBounds ? bakeBounds.startRow : 0;
     const octRow1 = bakeBounds ? bakeBounds.endRow : rows - 1;
     buildOctileNeighborsFromTopologyRect(topology.blocked, baked.cardinalOpen, baked.vertexPassability, cols, rows, topology.octileNeighbors, octCol0, octCol1, octRow0, octRow1);
+    buildOctilePredecessorsFromForwardGrid(topology.octileNeighbors, topology.octilePredecessors, cols, rows, bakeBounds);
     return baked;
 }
 function buildNavTopologyOnWorker(data) {

@@ -4,7 +4,7 @@ let GRID_WIDTH;
 let GRID_SIZE;
 let FlowToNavIdx;
 let NavBlocked;
-let OctileNeighbors;
+let OctilePredecessors;
 let NavCols;
 let NavRows;
 let NeighborGrid;
@@ -28,7 +28,7 @@ self.onmessage = function (e) {
     }
     if (type === "bindFlowNavArena") {
         NavBlocked = new Uint8Array(data.sabBlocked);
-        OctileNeighbors = new Int32Array(data.sabOctileNeighbors);
+        OctilePredecessors = new Int32Array(data.sabOctilePredecessors);
         NavCols = data.navCols;
         NavRows = data.navRows;
         navArenaBound = true;
@@ -36,7 +36,7 @@ self.onmessage = function (e) {
     }
     if (type === "syncFlowWindow") {
         if (!navArenaBound) throw new Error("syncFlowWindow requires bound flow nav arena");
-        rebuildFlowNeighborGrid(FlowToNavIdx, OctileNeighbors, NeighborGrid, GRID_SIZE, NavCols, NavRows);
+        rebuildFlowNeighborGrid(FlowToNavIdx, OctilePredecessors, NeighborGrid, GRID_SIZE, NavCols, NavRows);
         self.postMessage({ type: "flowWindowDone" });
         return;
     }

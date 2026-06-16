@@ -302,6 +302,7 @@ export class HpaPathWorker {
         this.sabFloorFacing = arena.sabFloorFacing;
         this.sabEdgeSlots = arena.sabEdgeSlots;
         this.sabOctileNeighbors = arena.sabOctileNeighbors;
+        this.sabOctilePredecessors = arena.sabOctilePredecessors;
         this.sabCardinalOpen = arena.sabCardinalOpen;
         this.sabVertexPassability = arena.sabVertexPassability;
     }
@@ -322,8 +323,8 @@ export class HpaPathWorker {
     getNavBlockedSab() {
         return this.sabBlocked;
     }
-    getNavOctileNeighborsSab() {
-        return this.sabOctileNeighbors;
+    getNavOctilePredecessorsSab() {
+        return this.sabOctilePredecessors;
     }
     async scheduleNavTopologySyncAwait(grid = this.navGraph, damageBounds = null) {
         const targetKey = gridNavCacheKey(grid);
@@ -350,6 +351,7 @@ export class HpaPathWorker {
             sabCardinalOpen: this.sabCardinalOpen,
             sabVertexPassability: this.sabVertexPassability,
             sabOctileNeighbors: this.sabOctileNeighbors,
+            sabOctilePredecessors: this.sabOctilePredecessors,
             sabEdgePool: this.sabEdgePool,
             sabGridFill: this.sabGridFill,
             sabFloorKind: this.sabFloorKind,

@@ -18,8 +18,8 @@ export function rebuildFlowToNavIdx(flowToNavIdx, flowCols, centerX, centerY, of
     }
     return { navCols, navRows };
 }
-/** @param {Int32Array} flowToNavIdx @param {Int32Array} octileNeighbors @param {Int32Array} neighborGrid @param {number} flowSize @param {number} navCols @param {number} navRows */
-export function rebuildFlowNeighborGrid(flowToNavIdx, octileNeighbors, neighborGrid, flowSize, navCols, navRows) {
+/** @param {Int32Array} flowToNavIdx @param {Int32Array} octilePredecessors @param {Int32Array} neighborGrid @param {number} flowSize @param {number} navCols @param {number} navRows */
+export function rebuildFlowNeighborGrid(flowToNavIdx, octilePredecessors, neighborGrid, flowSize, navCols, navRows) {
     const navToFlow = new Int32Array(navCols * navRows).fill(-1);
     for (let idx = 0; idx < flowSize; idx++) {
         const navIdx = flowToNavIdx[idx];
@@ -34,8 +34,8 @@ export function rebuildFlowNeighborGrid(flowToNavIdx, octileNeighbors, neighborG
         }
         const navBase = navIdx * 8;
         for (let i = 0; i < 8; i++) {
-            const navNIdx = octileNeighbors[navBase + i];
-            neighborGrid[base + i] = navNIdx >= 0 ? navToFlow[navNIdx] : -1;
+            const navPredIdx = octilePredecessors[navBase + i];
+            neighborGrid[base + i] = navPredIdx >= 0 ? navToFlow[navPredIdx] : -1;
         }
     }
 }

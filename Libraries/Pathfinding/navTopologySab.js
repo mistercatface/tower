@@ -6,6 +6,7 @@ import { clampCellBoundsToGrid, forEachDenseCellInRect } from "../DataStructures
 export const OCTILE_DIRS_PER_CELL = 8;
 export const OCTILE_NEIGHBOR_BYTES = OCTILE_DIRS_PER_CELL * 4;
 const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
+const OCTILE_REVERSE_DIR = OCTILE_OFFSETS.map(({ dc, dr }) => OCTILE_OFFSETS.findIndex(({ dc: dc2, dr: dr2 }) => dc2 === -dc && dr2 === -dr));
 /** @param {number} cellIdx */
 export function octileNeighborBase(cellIdx) {
     return cellIdx * OCTILE_DIRS_PER_CELL;
@@ -24,6 +25,7 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {SharedArrayBuffer} sabFloorFacing
  * @property {SharedArrayBuffer} sabEdgeSlots
  * @property {SharedArrayBuffer} sabOctileNeighbors
+ * @property {SharedArrayBuffer} sabOctilePredecessors
  * @property {SharedArrayBuffer} sabCardinalOpen
  * @property {SharedArrayBuffer} sabVertexPassability
  * @property {Uint8Array} blocked
@@ -32,6 +34,7 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {Uint8Array} floorFacing
  * @property {Int32Array} edgeSlots
  * @property {Int32Array} octileNeighbors
+ * @property {Int32Array} octilePredecessors
  * @property {Uint8Array} cardinalOpen
  * @property {Uint8Array} vertexPassability
  * @property {NavTopology} topologyHandle
@@ -40,9 +43,9 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
 export function navTopologyFromArena(arena) {
     return arena.topologyHandle;
 }
-/** @param {ArrayBufferLike} sabBlocked @param {ArrayBufferLike} sabOctileNeighbors @returns {NavTopology} */
-export function navTopologyFromSab(sabBlocked, sabOctileNeighbors) {
-    return { blocked: new Uint8Array(sabBlocked), octileNeighbors: new Int32Array(sabOctileNeighbors) };
+/** @param {ArrayBufferLike} sabBlocked @param {ArrayBufferLike} sabOctileNeighbors @param {ArrayBufferLike} sabOctilePredecessors @returns {NavTopology & { octilePredecessors: Int32Array }} */
+export function navTopologyFromSab(sabBlocked, sabOctileNeighbors, sabOctilePredecessors) {
+    return { blocked: new Uint8Array(sabBlocked), octileNeighbors: new Int32Array(sabOctileNeighbors), octilePredecessors: new Int32Array(sabOctilePredecessors) };
 }
 /** @param {number} cellCount @param {number} vertCount */
 export function createNavTopologySabArena(cellCount, vertCount) {
@@ -56,6 +59,7 @@ export function createNavTopologySabArena(cellCount, vertCount) {
         sabFloorFacing: new SharedArrayBuffer(cellCount),
         sabEdgeSlots: new SharedArrayBuffer(cellCount * CELL_EDGE_SLOT_BYTES),
         sabOctileNeighbors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES),
+        sabOctilePredecessors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES),
         sabCardinalOpen: new SharedArrayBuffer(cellCount),
         sabVertexPassability: new SharedArrayBuffer(vertBytes),
         blocked: undefined,
@@ -64,6 +68,7 @@ export function createNavTopologySabArena(cellCount, vertCount) {
         floorFacing: undefined,
         edgeSlots: undefined,
         octileNeighbors: undefined,
+        octilePredecessors: undefined,
         cardinalOpen: undefined,
         vertexPassability: undefined,
         topologyHandle: undefined,
@@ -79,6 +84,7 @@ export function bindNavTopologySabViews(arena) {
     arena.floorFacing = new Uint8Array(arena.sabFloorFacing);
     arena.edgeSlots = new Int32Array(arena.sabEdgeSlots);
     arena.octileNeighbors = new Int32Array(arena.sabOctileNeighbors);
+    arena.octilePredecessors = new Int32Array(arena.sabOctilePredecessors);
     arena.cardinalOpen = new Uint8Array(arena.sabCardinalOpen);
     arena.vertexPassability = new Uint8Array(arena.sabVertexPassability);
     if (!arena.topologyHandle) arena.topologyHandle = { blocked: arena.blocked, octileNeighbors: arena.octileNeighbors };
@@ -161,6 +167,29 @@ export function buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vert
             octileNeighbors[octileNeighborOffset(idx, i)] = open ? nIdx : -1;
         }
     });
+}
+/** @param {Int32Array} octileNeighbors @param {Int32Array} octilePredecessors @param {number} cols @param {number} rows @param {import("../DataStructures/CellRect.js").CellBounds | null} targetBounds */
+export function buildOctilePredecessorsFromForwardGrid(octileNeighbors, octilePredecessors, cols, rows, targetBounds = null) {
+    const cellCount = cols * rows;
+    if (!targetBounds) octilePredecessors.fill(-1);
+    else
+        forEachDenseCellInRect(targetBounds.startCol, targetBounds.endCol, targetBounds.startRow, targetBounds.endRow, cols, (col, row, idx) => {
+            const base = octileNeighborBase(idx);
+            for (let i = 0; i < OCTILE_DIRS_PER_CELL; i++) octilePredecessors[base + i] = -1;
+        });
+    for (let idx = 0; idx < cellCount; idx++) {
+        const base = octileNeighborBase(idx);
+        for (let i = 0; i < OCTILE_DIRS_PER_CELL; i++) {
+            const nIdx = octileNeighbors[base + i];
+            if (nIdx < 0) continue;
+            if (targetBounds) {
+                const col = nIdx % cols;
+                const row = (nIdx / cols) | 0;
+                if (col < targetBounds.startCol || col > targetBounds.endCol || row < targetBounds.startRow || row > targetBounds.endRow) continue;
+            }
+            octilePredecessors[octileNeighborOffset(nIdx, OCTILE_REVERSE_DIR[i])] = idx;
+        }
+    }
 }
 /** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology @param {number} col @param {number} row */
 export function navIsBlocked(frame, topology, col, row) {
