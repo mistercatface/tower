@@ -42,6 +42,9 @@ export class HpaPathWorker {
         this._edgePoolSabRefs = 0;
         this._navSyncPromise = null;
         this._navArena = null;
+        this._workerNavArenaBound = false;
+        this._workerBoundNavSize = 0;
+        this._workerBoundEdgePoolSab = 0;
         this._deferFullNavSync = false;
         this._graphEpoch = -1;
         this._graphPatchTargetEpoch = -1;
@@ -326,17 +329,28 @@ export class HpaPathWorker {
             if (this._navSyncPromise) await this._navSyncPromise;
         }
     }
-    _navSyncPayload(grid = this.navGraph) {
+    _navTopologySyncMessage(grid, cacheKey, rebindArena) {
         this._gridFrame = gridFrameFromGrid(grid);
-        return {
+        const payload = {
+            type: "buildNavTopology",
+            navCacheKey: cacheKey,
             gridFrame: this._gridFrame,
-            sabEdgePool: this.sabEdgePool,
             edgePoolCount: this._edgePoolSabRefs,
+            passageEdgeCount: grid.edgeStore.passageEdgeCount,
+            rebindArena,
+        };
+        if (!rebindArena) return payload;
+        return {
+            ...payload,
+            sabBlocked: this.sabBlocked,
+            sabCardinalOpen: this.sabCardinalOpen,
+            sabVertexPassability: this.sabVertexPassability,
+            sabOctileNeighbors: this.sabOctileNeighbors,
+            sabEdgePool: this.sabEdgePool,
             sabGridFill: this.sabGridFill,
             sabFloorKind: this.sabFloorKind,
             sabFloorFacing: this.sabFloorFacing,
             sabEdgeSlots: this.sabEdgeSlots,
-            passageEdgeCount: grid.edgeStore.passageEdgeCount,
         };
     }
     scheduleNavTopologySync(grid = this.navGraph) {
@@ -357,18 +371,15 @@ export class HpaPathWorker {
         this._ensureNavBuffers(size, vertCount, edgePoolRefs);
         packNavTopologyFromGrid(grid, this._navArena);
         this._packNavEdgePoolForWorker(grid);
-        const navPayload = this._navSyncPayload(grid);
+        const rebindArena = !this._workerNavArenaBound || this._workerBoundNavSize !== size || this._workerBoundEdgePoolSab !== this.sabEdgePool.byteLength;
+        if (rebindArena) {
+            this._workerNavArenaBound = true;
+            this._workerBoundNavSize = size;
+            this._workerBoundEdgePoolSab = this.sabEdgePool.byteLength;
+        }
         this._navSyncPromise = new Promise((resolve) => {
             this._navSyncResolve = resolve;
-            this.host.worker.postMessage({
-                type: "buildNavTopology",
-                navCacheKey: cacheKey,
-                sabBlocked: this.sabBlocked,
-                sabCardinalOpen: this.sabCardinalOpen,
-                sabVertexPassability: this.sabVertexPassability,
-                sabOctileNeighbors: this.sabOctileNeighbors,
-                ...navPayload,
-            });
+            this.host.worker.postMessage(this._navTopologySyncMessage(grid, cacheKey, rebindArena));
         });
     }
     async _ensureWorkerGraphReady(graphEpoch) {

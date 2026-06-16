@@ -71,6 +71,12 @@ let navSimView = null;
  *   seedWorldY: number | null,
  * } | null} */
 let regionGraphState = null;
+let navArenaBound = false;
+let sabEdgePool;
+let edgePoolCount = 0;
+let passageEdgeCount = 0;
+let cardinalOpen;
+let vertexPassability;
 function requireGridFrame() {
     if (!gridFrame) throw new Error("HPA worker missing grid frame");
     return gridFrame;
@@ -92,54 +98,62 @@ function syncGridFrame(frame) {
         regionGraphState = null;
         navTopology = null;
         navCacheKey = "";
+        navArenaBound = false;
     } else if (navSimView) bindNavSimGridFrame(navSimView, frame);
 }
-function requireNavTopology() {
-    if (!navTopology) throw new Error("HPA worker missing nav topology");
-    return navTopology;
-}
-function ensureNavSimView(data) {
+function bindNavArena(data) {
     syncGridFrame(data.gridFrame);
-    const edgePool = bindNavEdgePoolFromSab(new Uint8Array(data.sabEdgePool), data.edgePoolCount);
+    sabEdgePool = data.sabEdgePool;
+    edgePoolCount = data.edgePoolCount;
+    passageEdgeCount = data.passageEdgeCount;
     const gridFill = new Uint8Array(data.sabGridFill);
     const floorKind = new Uint8Array(data.sabFloorKind);
     const floorFacing = new Uint8Array(data.sabFloorFacing);
     const edgeSlots = new Int32Array(data.sabEdgeSlots);
-    const cardinalOpen = new Uint8Array(data.sabCardinalOpen);
-    const vertexPassability = new Uint8Array(data.sabVertexPassability);
-    if (!navSimView) navSimView = createNavSimView(gridFrame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, data.passageEdgeCount, vertexPassability);
-    else {
-        bindNavSimEdgePool(navSimView, edgePool, data.passageEdgeCount);
-        navSimView.grid = gridFill;
-        navSimView.floorStore.kind = floorKind;
-        navSimView.floorStore.facing = floorFacing;
-        navSimView.edgeStore.slots = edgeSlots;
-        navSimView.vertexPassability = vertexPassability;
-        bindNavSimGridFrame(navSimView, gridFrame);
-    }
-    return { simView: navSimView, cardinalOpen, vertexPassability };
-}
-function bakeNavTopologyFull(data) {
-    const baked = ensureNavSimView(data);
-    recomputeVertexPassabilityInto(baked.simView, baked.vertexPassability);
-    recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen);
-    return baked;
-}
-function bindNavFromBuild(data) {
-    const frame = requireGridFrame();
-    const size = frame.cols * frame.rows;
-    navCacheKey = data.navCacheKey;
+    cardinalOpen = new Uint8Array(data.sabCardinalOpen);
+    vertexPassability = new Uint8Array(data.sabVertexPassability);
+    const edgePool = bindNavEdgePoolFromSab(new Uint8Array(sabEdgePool), edgePoolCount);
+    navSimView = createNavSimView(gridFrame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, passageEdgeCount, vertexPassability);
     navTopology = navTopologyFromSab(data.sabBlocked, data.sabOctileNeighbors);
-    navView = createNavLocalView(frame, navTopology);
+    navView = createNavLocalView(requireGridFrame(), navTopology);
+    const size = requireGridFrame().cols * requireGridFrame().rows;
     if (!aStarGScore || aStarGScore.length !== size) {
         aStarGScore = new Float32Array(size);
         aStarCameFrom = new Int32Array(size);
         aStarVisited = new Int32Array(size);
     }
+    navArenaBound = true;
+}
+function syncNavSimEdgePool() {
+    bindNavSimEdgePool(navSimView, bindNavEdgePoolFromSab(new Uint8Array(sabEdgePool), edgePoolCount), passageEdgeCount);
+}
+function requireNavSimBake() {
+    if (!navArenaBound || !navSimView) throw new Error("HPA worker nav arena not bound");
+    return { simView: navSimView, cardinalOpen, vertexPassability };
+}
+function requireNavTopology() {
+    if (!navTopology) throw new Error("HPA worker missing nav topology");
+    return navTopology;
+}
+function bakeNavTopologyFull() {
+    const baked = requireNavSimBake();
+    recomputeVertexPassabilityInto(baked.simView, baked.vertexPassability);
+    recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen);
+    return baked;
 }
 function buildNavTopologyOnWorker(data) {
-    const baked = bakeNavTopologyFull(data);
-    bindNavFromBuild(data);
+    if (data.rebindArena) bindNavArena(data);
+    else {
+        if (!navArenaBound) throw new Error("buildNavTopology requires bound nav arena");
+        syncGridFrame(data.gridFrame);
+        if (data.edgePoolCount !== edgePoolCount || data.passageEdgeCount !== passageEdgeCount) {
+            edgePoolCount = data.edgePoolCount;
+            passageEdgeCount = data.passageEdgeCount;
+            syncNavSimEdgePool();
+        }
+    }
+    navCacheKey = data.navCacheKey;
+    const baked = bakeNavTopologyFull();
     const frame = requireGridFrame();
     const topology = requireNavTopology();
     recomputeBlockedFromGridFill(baked.simView.grid, topology.blocked);
