@@ -1,94 +1,96 @@
-import { CARDINAL_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { collectCorridorPathPointCells } from "../Pathfinding/Corridor/corridorFootprint.js";
 import { cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
 import { gridSideFromCellToNeighbor, resolveRailedBeltFromSides } from "../Spatial/grid/FloorCell.js";
-
+import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
 /** @typedef {import("./roomGraphClosedRooms.js").Cell} Cell */
 /** @typedef {import("./roomGraphClosedRooms.js").GraphNode} GraphNode */
 /** @typedef {{ col: number, row: number, kind: number, facingIndex: number }} BakedFloorBelt */
-
-/** @param {Cell[]} path @param {number} width @returns {Map<string, number>} */
-function pathFootprintSteps(path, width) {
-    /** @type {Map<string, number>} */
-    const step = new Map();
+/** @typedef {{ c: number, r: number, side: number }} WallHole */
+function oppositeSide(side) {
+    return (side + 2) % 4;
+}
+/** @param {WallHole} hole */
+export function roomInteriorCellFromWallHole(hole) {
+    const n = gridSideNeighborCell(hole.c, hole.r, oppositeSide(hole.side));
+    return { c: n.col, r: n.row };
+}
+/** @param {WallHole} hole */
+export function corridorExteriorCellFromWallHole(hole) {
+    const n = gridSideNeighborCell(hole.c, hole.r, hole.side);
+    return { c: n.col, r: n.row };
+}
+/** @param {Cell[]} path */
+export function collapsePathRevisits(path) {
+    const out = [];
+    const indexByKey = new Map();
     for (let i = 0; i < path.length; i++) {
-        if (i > 0 && path[i].c === path[i - 1].c && path[i].r === path[i - 1].r) continue;
-        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], width, false, i, path.length);
+        const p = path[i];
+        const key = `${p.c},${p.r}`;
+        if (indexByKey.has(key)) out.length = indexByKey.get(key);
+        indexByKey.set(key, out.length);
+        out.push({ c: p.c, r: p.r });
+    }
+    return out;
+}
+/** @param {Cell[]} path @param {number} width @param {GraphNode[]} rooms @returns {Map<string, BakedFloorBelt>} */
+function beltsForCollapsedPath(path, width, rooms) {
+    const collapsed = collapsePathRevisits(path);
+    const byCell = new Map();
+    for (let i = 0; i < collapsed.length; i++) {
+        if (i > 0 && collapsed[i].c === collapsed[i - 1].c && collapsed[i].r === collapsed[i - 1].r) continue;
+        const prev = i > 0 ? collapsed[i - 1] : null;
+        const next = i < collapsed.length - 1 ? collapsed[i + 1] : null;
+        const cells = collectCorridorPathPointCells(collapsed[i], prev, next, width, false, i, collapsed.length);
+        let spec;
+        if (prev && next) {
+            const entrySide = gridSideFromCellToNeighbor(collapsed[i].c, collapsed[i].r, prev.c, prev.r);
+            const exitSide = gridSideFromCellToNeighbor(collapsed[i].c, collapsed[i].r, next.c, next.r);
+            spec = resolveRailedBeltFromSides(entrySide, exitSide);
+        } else if (next) {
+            const exitSide = gridSideFromCellToNeighbor(collapsed[i].c, collapsed[i].r, next.c, next.r);
+            spec = resolveRailedBeltFromSides((exitSide + 2) % 4, exitSide);
+        } else if (prev) {
+            const entrySide = gridSideFromCellToNeighbor(collapsed[i].c, collapsed[i].r, prev.c, prev.r);
+            spec = resolveRailedBeltFromSides(entrySide, (entrySide + 2) % 4);
+        } else spec = resolveRailedBeltFromSides(3, 1);
         for (let ci = 0; ci < cells.length; ci++) {
-            const key = `${cells[ci].c},${cells[ci].r}`;
-            const prev = step.get(key);
-            if (prev == null || i < prev) step.set(key, i);
+            const cell = cells[ci];
+            if (cellInsideAnyRoom(rooms, cell.c, cell.r)) continue;
+            byCell.set(`${cell.c},${cell.r}`, { col: cell.c, row: cell.r, kind: spec.kind, facingIndex: spec.facingIndex });
         }
     }
-    return step;
+    return byCell;
 }
-
-/**
- * @param {number} c
- * @param {number} r
- * @param {Map<string, number>} step
- * @param {Set<string>} footprint
- */
-function beltSpecForFootprintCell(c, r, step, footprint) {
-    const myStep = step.get(`${c},${r}`);
-    /** @type {{ c: number, r: number, step: number } | null} */
-    let prev = null;
-    /** @type {{ c: number, r: number, step: number } | null} */
-    let next = null;
-    for (let si = 0; si < CARDINAL_OFFSETS.length; si++) {
-        const nc = c + CARDINAL_OFFSETS[si].dc;
-        const nr = r + CARDINAL_OFFSETS[si].dr;
-        const key = `${nc},${nr}`;
-        if (!footprint.has(key)) continue;
-        const nStep = step.get(key);
-        if (nStep < myStep && (prev == null || nStep > prev.step)) prev = { c: nc, r: nr, step: nStep };
-        if (nStep > myStep && (next == null || nStep < next.step)) next = { c: nc, r: nr, step: nStep };
-    }
-    if (prev && next) {
-        const entrySide = gridSideFromCellToNeighbor(c, r, prev.c, prev.r);
-        const exitSide = gridSideFromCellToNeighbor(c, r, next.c, next.r);
-        return resolveRailedBeltFromSides(entrySide, exitSide);
-    }
-    if (next) {
-        const exitSide = gridSideFromCellToNeighbor(c, r, next.c, next.r);
-        return resolveRailedBeltFromSides((exitSide + 2) % 4, exitSide);
-    }
-    if (prev) {
-        const entrySide = gridSideFromCellToNeighbor(c, r, prev.c, prev.r);
-        return resolveRailedBeltFromSides(entrySide, (entrySide + 2) % 4);
-    }
-    return resolveRailedBeltFromSides(3, 1);
+/** @param {Map<string, BakedFloorBelt>} byCell @param {WallHole} parentHole @param {WallHole} childHole @param {GraphNode[]} rooms */
+function stampRoomInteriorBelts(byCell, parentHole, childHole, rooms) {
+    const roomA = rooms[0];
+    const roomB = rooms[1];
+    const interiorA = roomInteriorCellFromWallHole(parentHole);
+    const interiorB = roomInteriorCellFromWallHole(childHole);
+    if (!cellInsideAnyRoom([roomA], interiorA.c, interiorA.r)) return;
+    if (!cellInsideAnyRoom([roomB], interiorB.c, interiorB.r)) return;
+    const exitFromA = parentHole.side;
+    const specA = resolveRailedBeltFromSides(oppositeSide(exitFromA), exitFromA);
+    byCell.set(`${interiorA.c},${interiorA.r}`, { col: interiorA.c, row: interiorA.r, kind: specA.kind, facingIndex: specA.facingIndex });
+    const entryToB = childHole.side;
+    const specB = resolveRailedBeltFromSides(entryToB, oppositeSide(entryToB));
+    byCell.set(`${interiorB.c},${interiorB.r}`, { col: interiorB.c, row: interiorB.r, kind: specB.kind, facingIndex: specB.facingIndex });
 }
-
 /**
  * Belt flow follows path order: link.a room → link.b room (wire pick order).
  * @param {Cell[][]} paths
  * @param {number[]} corridorWidths
  * @param {GraphNode[]} rooms
+ * @param {{ parentAnchors?: WallHole[], childAnchors?: WallHole[] }} [anchors]
  */
-export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms) {
-    /** @type {Map<string, number>} */
-    const step = new Map();
-    /** @type {Set<string>} */
-    const footprint = new Set();
-    for (let pi = 0; pi < paths.length; pi++) {
-        const pathSteps = pathFootprintSteps(paths[pi], corridorWidths[pi]);
-        for (const [key, pathStep] of pathSteps) {
-            footprint.add(key);
-            const composite = pi * 100000 + pathStep;
-            const prev = step.get(key);
-            if (prev == null || composite < prev) step.set(key, composite);
-        }
-    }
-    /** @type {Map<string, BakedFloorBelt>} */
+export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms, anchors = {}) {
     const byCell = new Map();
-    for (const key of footprint) {
-        const comma = key.indexOf(",");
-        const c = Number(key.slice(0, comma));
-        const r = Number(key.slice(comma + 1));
-        if (cellInsideAnyRoom(rooms, c, r)) continue;
-        const spec = beltSpecForFootprintCell(c, r, step, footprint);
-        byCell.set(key, { col: c, row: r, kind: spec.kind, facingIndex: spec.facingIndex });
+    const parentAnchors = anchors.parentAnchors ?? [];
+    const childAnchors = anchors.childAnchors ?? [];
+    for (let pi = 0; pi < paths.length; pi++) {
+        const laneBelts = beltsForCollapsedPath(paths[pi], corridorWidths[pi], rooms);
+        for (const [key, belt] of laneBelts) byCell.set(key, belt);
+        if (parentAnchors[pi] && childAnchors[pi]) stampRoomInteriorBelts(byCell, parentAnchors[pi], childAnchors[pi], rooms);
     }
     return [...byCell.values()];
 }

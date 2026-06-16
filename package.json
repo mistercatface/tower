@@ -1,0 +1,7 @@
+{
+    "type": "module",
+    "scripts": {
+        "test": "node --test tests/corridorWidthOne.test.js tests/corridorMultiLane.test.js",
+        "test:corridor": "node --test tests/corridorWidthOne.test.js"
+    }
+}
