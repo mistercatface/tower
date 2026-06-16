@@ -158,7 +158,6 @@ function clearSandboxSceneContent(state) {
     getSandboxEntityMeta(state).clear();
     unbakeRoomGraph(state);
     clearRoomGraph(state);
-    state.sandbox.passagePower = null;
     state.sandbox._passageEdgeDrawCache = null;
     setGridPassagePowerNavKey(state.obstacleGrid, "");
     state.obstacleGrid.portalSlotByKey.clear();

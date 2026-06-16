@@ -2,6 +2,7 @@ import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds } from
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { canLinkPortalsOnPolicy } from "./portalLinks.js";
 import { getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
+import { passageNetworkPolicyFromGrid } from "../Pathfinding/navPassagePolicySab.js";
 import { clearPrimaryBoundaryAt, commitBoundaryEdit, notifyGridWallChange } from "./boundaryEdit.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import {
@@ -313,8 +314,8 @@ export function clearPortalAt(state, col, row, side) {
 }
 export function linkPortalsAt(state, colA, rowA, sideA, colB, rowB, sideB) {
     const grid = state.obstacleGrid;
-    const cache = state.sandbox.passagePower;
-    if (!cache || !canLinkPortalsOnPolicy(cache, grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
+    const policy = passageNetworkPolicyFromGrid(grid);
+    if (!canLinkPortalsOnPolicy(policy, grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
     if (!linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
     setPortalLinkProfile(grid, colA, rowA, sideA, PORTAL_LINK_MODE.Shared, 0);
     commitBoundaryEdit(state, [cellBoundsAt(colA, rowA), cellBoundsAt(colB, rowB)]);
@@ -385,11 +386,11 @@ export function listPlacedPortals(grid) {
     return placed;
 }
 export function listPortalLinkTargets(state, grid, selectedCol, selectedRow, selectedSide) {
-    const selectedNet = getPassageEdgeNetworkId(state, grid, selectedCol, selectedRow, selectedSide);
+    const selectedNet = getPassageEdgeNetworkId(grid, selectedCol, selectedRow, selectedSide);
     if (selectedNet < 0) return [];
     return listPlacedPortals(grid).filter((entry) => {
         if (isSamePortalEdge(grid, entry.col, entry.row, entry.side, selectedCol, selectedRow, selectedSide)) return false;
-        return getPassageEdgeNetworkId(state, grid, entry.col, entry.row, entry.side) === selectedNet;
+        return getPassageEdgeNetworkId(grid, entry.col, entry.row, entry.side) === selectedNet;
     });
 }
 export function listPlacedForcefields(grid) {

@@ -585,7 +585,7 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
             const { col, row, side } = selectedRailEdge;
             const grid = state.obstacleGrid;
             const info = getPortalInfo(grid, col, row, side);
-            const networkId = getPassageEdgeNetworkId(state, grid, col, row, side);
+            const networkId = getPassageEdgeNetworkId(grid, col, row, side);
             const onNetwork = networkId >= 0;
             const connectionLabel = onNetwork ? (info.linked ? formatPortalConnectionLabel(info.linkMode, info.connection === "fromSelf") : "On network · unlinked") : "Off network";
             return { ...info, sideLabel: formatGridWallEdgeSideLabel(side), onNetwork, networkId, connectionLabel };

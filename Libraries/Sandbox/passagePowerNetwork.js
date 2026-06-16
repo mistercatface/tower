@@ -205,12 +205,12 @@ export function isPassagePowerSourceEnergized(state, col, row) {
     });
     return energized;
 }
-export function getPassageEdgeNetworkId(state, grid, col, row, side) {
-    const cache = state.sandbox.passagePower;
-    if (!cache) return -1;
+export function getPassageEdgeNetworkId(grid, col, row, side) {
+    const networkIdByKey = grid._passageNetworkIdByKey;
+    if (!networkIdByKey) return -1;
     const key = canonicalEdgeCellKey(grid, col, row, side);
-    if (!cache.poweredKeys.has(key)) return -1;
-    return cache.networkIdByKey.get(key) ?? -1;
+    if (!networkIdByKey.has(key)) return -1;
+    return networkIdByKey.get(key) ?? -1;
 }
 export function passagePowerNavKey(state) {
     const grid = state.obstacleGrid;
@@ -230,7 +230,6 @@ export function recomputePassagePowerNetwork(state) {
     const networkIdByKey = computePoweredEdgeNetworkIds(graph, poweredKeys, grid.cols);
     grid._passagePoweredKeys = poweredKeys;
     grid._passageNetworkIdByKey = networkIdByKey;
-    state.sandbox.passagePower = { poweredKeys, networkIdByKey };
     setGridPassagePowerNavKey(grid, passagePowerNavKey(state));
     return { graph, poweredKeys, networkIdByKey };
 }

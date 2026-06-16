@@ -1,4 +1,17 @@
+import { canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
 /** @typedef {{ networkIdByKey: Map<number, number> }} PassageNetworkPolicyView */
+const EMPTY_PASSAGE_NETWORK_POLICY = { networkIdByKey: new Map() };
+/** Main-thread read of the same policy the worker binds from SAB. */
+export function passageNetworkPolicyFromGrid(grid) {
+    if (!grid._passageNetworkIdByKey) return EMPTY_PASSAGE_NETWORK_POLICY;
+    return { networkIdByKey: grid._passageNetworkIdByKey };
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
+export function isPassageEdgeOnPolicy(grid, col, row, side) {
+    const networkIdByKey = grid._passageNetworkIdByKey;
+    if (!networkIdByKey) return false;
+    return networkIdByKey.has(canonicalEdgeCellKey(grid, col, row, side));
+}
 /** @param {Int32Array} keys @param {Int32Array} ids */
 export function createPassageNetworkPolicyView(keys, ids) {
     const networkIdByKey = new Map();

@@ -1,3 +1,4 @@
+import { isPassageEdgeOnPolicy } from "../../Pathfinding/navPassagePolicySab.js";
 import { crossingGrantAllows } from "../../Pathfinding/crossingGrant.js";
 import { formatGridSideNeighborLabel, gridSideNeighborCell, gridSideOutwardVector } from "./GridUtils.js";
 import { edgeMirrorSide, edgeNeighbor } from "./gridCellTopology.js";
@@ -65,7 +66,7 @@ export function portalBodyInMouthZone(grid, edge, ownerCol, ownerRow, ownerSide,
 }
 export function portalEdgeBlocksCollision(edge, ownerCol, ownerRow, ownerSide, entity, bodyRadius, vx, vy, dispX, dispY, grid) {
     if (!portalEdgeEmitsCollision(edge)) return false;
-    if (edge.powered !== true) return true;
+    if (!isPassageEdgeOnPolicy(grid, ownerCol, ownerRow, ownerSide)) return true;
     if (!portalBodyInMouthZone(grid, edge, ownerCol, ownerRow, ownerSide, entity.x, entity.y, bodyRadius)) return true;
     const cross = portalCrossingVectorForEdge(edge, ownerCol, ownerRow, ownerSide);
     const { mouth } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
