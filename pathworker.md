@@ -14,14 +14,18 @@ The click/replan pipe is largely wired. What blocks “done” is **abstract gra
 
 **Broken today**
 
-- **Incremental surgery, not recompute** — `rebuildDamagedArea` splits, assigns opened cells, subdivides, and reconnects on top of old `nodesMap` / `cellToNode`. That leaves residue: adjacent duplicate centroids, regions spanning `canStep`-disconnected cells, stale abstract edges.
-- **Repack only on huge carves** — `_repackRegionCellsInBox` (cut hull → `_createRegionFromCells`) runs only when `openedCellCount ≥ 2 × maxCellsPerChunk`. Rail deletes and small edits never get the clean rebuild path.
-- **Assign orphans** — `_assignOpenedCells` mints 1-cell regions when flood fill can’t reach a neighbor through `canStep`; paired blue nodes beside an existing region.
-- **Merge is init-only** — `mergeSmallRegions` runs on full Voronoi init, not on edits; incremental “merge passably connected” was patch-on-patch, not the target model.
+- ~~Incremental surgery / repack threshold gate~~ — fixed: `rebuildDamagedArea` is hull cut + rebuild only.
+- **Worker still full-syncs** abstract graph after each edit; `patchRegionGraph` not landed.
+- **No automated tests** for rail maze erase / single-edge delete vs walk components.
+- **Distant latent bugs** — regions never touched by any edit hull keep prior state until an edit reaches them.
 
 **Target contract — hull cut + rebuild**
 
 Define a **dirty hull** (edit bounds + `damagePadding` + nav topology margin). Inside the hull, region assignment is **recomputed from current walk topology**, not patched.
+
+**Mutation trigger:** `onObstaclesChanged(damageBounds)` means nav topology may have changed — always hull-repack. Do **not** gate on `openedCellCount` or voxel opens; rail deletes change `canStep` with `grid` unchanged.
+
+**Post-rebuild invariants (fail loud in dev):** every region is one `canStep`(+hop) component; every assigned floor cell appears in its region’s `cells`; every abstract edge passes `_regionsSharePassableLink`.
 
 | Operation | Expectation |
 | --------- | ----------- |
@@ -33,11 +37,10 @@ Define a **dirty hull** (edit bounds + `damagePadding` + nav topology margin). I
 
 **Work**
 
-- Make localized hull repack the default in `rebuildDamagedArea` (every topology edit), not only large voxel opens.
-- Cut: collect open cells from regions touching hull → remove those region nodes → clear `cellToNode` in hull.
-- Rebuild: `_createRegionFromCells` per walk component (same math as init: distance-to-wall seeding, `maxCellsPerChunk`, `canStep`).
-- Stitch: reconnect hull regions to unchanged exterior; `_validateRegionEdges` / `_regionsSharePassableLink`; prune unreachable from seed.
-- Drop or demote incremental split/assign/merge paths that duplicate repack (keep strip-blocked for adds).
+- Cut: regions touching hull + unassigned open floor in hull → remove nodes → `_createRegionFromCells`.
+- Rebuild: per walk component (distance-to-wall seeding, `maxCellsPerChunk`, `canStep`).
+- Stitch: `_reconnectRegionEdges` on repacked ids; `_validateRegionEdges`; `_assertRegionGraphIntegrity`; prune unreachable from seed.
+- Worker `patchRegionGraph` reuses same hull contract (main implementation lands first).
 - Tests: rail maze erase, single-edge delete — node count, centroids, and edges match walk components.
 
 ### 2. Worker-owned abstract graph (~15%)
@@ -77,7 +80,7 @@ Define a **dirty hull** (edit bounds + `damagePadding` + nav topology margin). I
 - Incremental `patchNavTopology`; full sync only on init / resize / no bounds
 - Cost-only abstract edges; worker local A* at stitch
 - Portal hop mouth clamp on path follow
-- Region repack on large carve only (→ default hull repack is next); subdivide oversized in dirty hull
+- Hull repack default on every topology edit (`_repackHullRegions`); incremental split/assign/subdivide removed
 - Edit-time `canStep` on split/reconnect/prune; edge validation against real crossings
 - Editor eraser (`gen:erase`) for carve testing
 
