@@ -5,7 +5,7 @@ import { bindNavEdgePoolFromSab } from "../../Libraries/Spatial/grid/navEdgePool
 import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Libraries/Spatial/grid/vertexPassability.js";
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
-import { prepareHpaReplanPrep } from "../../Libraries/Pathfinding/hpaPathRequest.js";
+import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Libraries/Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
 import {
     hpaCellToRegionView,
@@ -375,13 +375,13 @@ function collectReplanTempCandidates(startCol, startRow, targetCol, targetRow) {
     return { startCandidates, targetCandidates };
 }
 function runReplan(slot, data, requestId) {
-    const { startCol, startRow, targetCol, targetRow, localMaxLen, regionConnectMaxLen } = data;
+    const { startCol, startRow, targetCol, targetRow } = data;
     const cellToRegion = hpaCellToRegionView(sabCellToRegionIdx, cols * rows);
     const nodeCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, persistNodeCount);
     const nodeRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, persistNodeCount);
     const prep = prepareHpaReplanPrep(cols, cellToRegion, { nodeCount: persistNodeCount, nodeIds: persistNodeIds, nodeCol, nodeRow }, startCol, startRow, targetCol, targetRow);
     if (prep.mode === "local") {
-        const path = runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, cols, rows, localMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
+        const path = runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, cols, rows, HPA_LOCAL_MAX_LEN, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
         writeCellPath(slot, path);
         writeAbstractPath(slot, null);
         return prep.mode;
@@ -404,7 +404,7 @@ function runReplan(slot, data, requestId) {
     writeAbstractPath(slot, estimateAbstract);
     self.postMessage({ type: "abstractReady", slot, requestId });
     const extended = buildExtendedEdges(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, (fromCol, fromRow, toCol, toRow) => {
-        const path = runLocalAStarFlat(fromCol, fromRow, toCol, toRow, navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
+        const path = runLocalAStarFlat(fromCol, fromRow, toCol, toRow, navView, cols, rows, prep.regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
         return path ? { cost: path.length, path } : { cost: 0 };
     });
     const abstractPath = runAbstractAStarFlat(
@@ -422,10 +422,9 @@ function runReplan(slot, data, requestId) {
         writeCellPath(slot, null);
         return prep.mode;
     }
-    const stitchPrep = { startCol, startRow, targetCol, targetRow, nodeCount: persistNodeCount, nodeCol, nodeRow };
     const resolveRegionLeg = (aIdx, bIdx) =>
-        runLocalAStarFlat(nodeCol[aIdx], nodeRow[aIdx], nodeCol[bIdx], nodeRow[bIdx], navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
-    const cellPath = stitchAbstractCellPath(abstractPath, stitchPrep, extended.tempLegs, resolveRegionLeg);
+        runLocalAStarFlat(nodeCol[aIdx], nodeRow[aIdx], nodeCol[bIdx], nodeRow[bIdx], navView, cols, rows, prep.regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
+    const cellPath = stitchAbstractCellPath(abstractPath, prep, extended.tempLegs, resolveRegionLeg);
     writeCellPath(slot, cellPath);
     return prep.mode;
 }

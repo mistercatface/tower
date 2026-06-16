@@ -1,4 +1,7 @@
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+export const HPA_LOCAL_MAX_LEN = 96;
+export const HPA_REGION_CONNECT_MAX_LEN = 96;
+export const HPA_LOCAL_DISTANCE_THRESHOLD = 32;
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function findNearestOpenCell(grid, col, row) {
     if (!grid.isBlocked(col, row)) return { col, row };
@@ -53,9 +56,9 @@ export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startCol, st
     const startRegion = cellToRegion[startIdx];
     const targetRegion = cellToRegion[targetIdx];
     const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);
-    if (cellDist < 32 || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", startCol, startRow, targetCol, targetRow };
+    if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", startCol, startRow, targetCol, targetRow };
     const { nodeIds, nodeCol, nodeRow } = graphMeta;
-    return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: 96 };
+    return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN };
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid

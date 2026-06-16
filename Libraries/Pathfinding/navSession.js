@@ -19,6 +19,10 @@
  * @property {number} [pathSlot] — worker path SAB slot while following a path, -1 when idle
  * @property {number} [pathLen] — cell count in pathSlot SAB; 0 when steering from abstract path array only
  */
+/** @param {NavSessionState} navState */
+export function navHasPath(navState) {
+    return navState.pathLen > 0 || !!navState.path?.length;
+}
 /** @returns {NavSessionState} */
 export function createNavState() {
     return {

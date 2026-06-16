@@ -17,7 +17,7 @@ import {
 } from "./hpaWorkerSab.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
-import { buildHpaReplanResult, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
+import { buildHpaReplanResult, resolveSnappedPathEndpoints, HPA_LOCAL_MAX_LEN, HPA_REGION_CONNECT_MAX_LEN } from "./hpaPathRequest.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
@@ -432,7 +432,7 @@ export class HpaPathWorker {
     _buildReplanResultPrep(mode, startCol, startRow, targetCol, targetRow) {
         if (mode === "local") return { mode: "local", startCol, startRow, targetCol, targetRow };
         const { nodeCount, nodeIds, nodeCol, nodeRow } = this.getGraphMeta();
-        return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: 96 };
+        return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN };
     }
     async runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, obstacleGrid, graphEpoch, replanCtx = null) {
         await this._ensureWorkerNavReady();
@@ -440,7 +440,7 @@ export class HpaPathWorker {
         if (replanCtx?.onAbstractReady && replanCtx.replanRequestId != null)
             this._replanHooks[slot] = { requestId: replanCtx.replanRequestId, onAbstractReady: replanCtx.onAbstractReady, obstacleGrid, startCol, startRow, targetCol, targetRow };
         try {
-            await this._dispatchAndWait(slot, "replan", { startCol, startRow, targetCol, targetRow, localMaxLen: 96, regionConnectMaxLen: 96 });
+            await this._dispatchAndWait(slot, "replan", { startCol, startRow, targetCol, targetRow, localMaxLen: HPA_LOCAL_MAX_LEN, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN });
         } finally {
             this._replanHooks[slot] = null;
         }

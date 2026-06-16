@@ -91,10 +91,8 @@ export class NavigationService {
         const graphEpoch = this._controller.obstacleGeneration + 1;
         const seed = this._resolvePruneSeed(grid, damageBounds);
         this._hpaPathWorker.setPruneSeed(seed.x, seed.y);
-        await this._hpaPathWorker.scheduleNavTopologySyncAwait(grid);
         if (topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds)) await this._hpaPathWorker.buildRegionGraphFull(grid, seed.x, seed.y, graphEpoch);
         else await this._hpaPathWorker.patchRegionGraph(grid, damageBounds, graphEpoch);
-        grid.gridNavSnapshot = this._hpaPathWorker.getNavSnapshotView();
         this._controller.obstacleGeneration = graphEpoch;
     }
     get obstacleGeneration() {

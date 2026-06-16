@@ -1,9 +1,7 @@
 import { agentPose } from "../../Libraries/Agent/index.js";
 import { computeDirectSteering } from "../../Libraries/Agent/steering.js";
 import { computeHpaNavSteering } from "../../Libraries/Pathfinding/hpaSteering.js";
-function navHasPath(navState) {
-    return navState.pathLen > 0 || !!navState.path?.length;
-}
+import { navHasPath } from "../../Libraries/Pathfinding/navSession.js";
 function replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, graphEpoch, nowMs) {
     hpaPathSession.requestReplan(navState, { obstacleGrid, startX: entity.x, startY: entity.y, targetX, targetY, nowMs, graphEpoch });
 }
