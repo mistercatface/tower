@@ -1,6 +1,7 @@
 import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStructures/CellRect.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
-import { canLinkPortalsOnNetwork, getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
+import { canLinkPortalsOnPolicy } from "./portalLinks.js";
+import { getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
 import { clearPrimaryBoundaryAt, commitBoundaryEdit, notifyGridWallChange } from "./boundaryEdit.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import {
@@ -312,7 +313,8 @@ export function clearPortalAt(state, col, row, side) {
 }
 export function linkPortalsAt(state, colA, rowA, sideA, colB, rowB, sideB) {
     const grid = state.obstacleGrid;
-    if (!canLinkPortalsOnNetwork(state, grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
+    const cache = state.sandbox.passagePower;
+    if (!cache || !canLinkPortalsOnPolicy(cache, grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
     if (!linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
     setPortalLinkProfile(grid, colA, rowA, sideA, PORTAL_LINK_MODE.Shared, 0);
     commitBoundaryEdit(state, [cellBoundsAt(colA, rowA), cellBoundsAt(colB, rowB)], { nav: true });

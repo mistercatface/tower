@@ -1,4 +1,5 @@
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
+import { CELL_EDGE_SIDES, cellEdgeSlotBase, cellEdgeSlotOffset } from "./cellEdgeSlots.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { edgeNeighbor, edgeMirrorSide, neighborFillLevel } from "./gridCellTopology.js";
 import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isPortalEdge, isRailWallEdge, railWallHeightPx, PASSAGE_MODE, PORTAL_ACCESS_MODE } from "./CellEdge.js";
@@ -12,7 +13,7 @@ export class CellEdgeStore {
         this.portalEdgeCount = 0; /** Mirrored portal edges — subset of passage edges. */
     }
     reset(cellCount) {
-        this.slots = new Int32Array(cellCount * 4);
+        this.slots = new Int32Array(cellCount * CELL_EDGE_SIDES);
         this.slots.fill(EMPTY);
         this.pool.length = 0;
         this.free.length = 0;
@@ -36,7 +37,7 @@ export class CellEdgeStore {
         this.portalEdgeCount = portalCount;
     }
     remapSlots(oldSlots, oldCols, oldRows, colOffset, rowOffset, newCols, newRows) {
-        const newSlots = new Int32Array(newCols * newRows * 4);
+        const newSlots = new Int32Array(newCols * newRows * CELL_EDGE_SIDES);
         newSlots.fill(EMPTY);
         const oldSize = oldCols * oldRows;
         for (let idx = 0; idx < oldSize; idx++) {
@@ -46,19 +47,19 @@ export class CellEdgeStore {
             const nr = row + rowOffset;
             if (!cellInRect(nc, nr, newCols, newRows)) continue;
             const newIdx = nc + nr * newCols;
-            const oldBase = idx * 4;
-            const newBase = newIdx * 4;
-            for (let side = 0; side < 4; side++) newSlots[newBase + side] = oldSlots[oldBase + side];
+            const oldBase = cellEdgeSlotBase(idx);
+            const newBase = cellEdgeSlotBase(newIdx);
+            for (let side = 0; side < CELL_EDGE_SIDES; side++) newSlots[newBase + side] = oldSlots[oldBase + side];
         }
         this.slots = newSlots;
     }
     get(col, row, side, cols) {
-        const ref = this.slots[colRowToIndex(col, row, cols) * 4 + side];
+        const ref = this.slots[cellEdgeSlotOffset(colRowToIndex(col, row, cols), side)];
         if (ref === EMPTY) return null;
         return this.pool[ref];
     }
     has(col, row, side, cols) {
-        return this.slots[colRowToIndex(col, row, cols) * 4 + side] !== EMPTY;
+        return this.slots[cellEdgeSlotOffset(colRowToIndex(col, row, cols), side)] !== EMPTY;
     }
     _alloc(edge) {
         if (this.free.length) {
@@ -109,7 +110,7 @@ export class CellEdgeStore {
         this.free.push(ref);
     }
     _setSlot(col, row, side, cols, ref) {
-        this.slots[colRowToIndex(col, row, cols) * 4 + side] = ref;
+        this.slots[cellEdgeSlotOffset(colRowToIndex(col, row, cols), side)] = ref;
     }
     writeMirrored(col, row, side, cols, rows, edge) {
         if (!cellInRect(col, row, cols, rows)) return;
@@ -128,7 +129,7 @@ export class CellEdgeStore {
     }
     clearMirrored(col, row, side, cols, rows) {
         if (!cellInRect(col, row, cols, rows)) return;
-        const slot = colRowToIndex(col, row, cols) * 4 + side;
+        const slot = cellEdgeSlotOffset(colRowToIndex(col, row, cols), side);
         const ref = this.slots[slot];
         if (ref === EMPTY) return;
         if (isForcefieldEdge(this.pool[ref])) this.passageEdgeCount--;
@@ -136,12 +137,12 @@ export class CellEdgeStore {
         this.slots[slot] = EMPTY;
         const { nc, nr } = edgeNeighbor(col, row, side);
         const nSide = edgeMirrorSide(side);
-        if (cellInRect(nc, nr, cols, rows)) this.slots[colRowToIndex(nc, nr, cols) * 4 + nSide] = EMPTY;
+        if (cellInRect(nc, nr, cols, rows)) this.slots[cellEdgeSlotOffset(colRowToIndex(nc, nr, cols), nSide)] = EMPTY;
         this._free(ref);
     }
     forEachInAabb(grid, aabb, fn) {
         forEachObstacleGridCellInAabb(grid, aabb, (col, row, idx) => {
-            for (let side = 0; side < 4; side++) {
+            for (let side = 0; side < CELL_EDGE_SIDES; side++) {
                 const edge = this.get(col, row, side, grid.cols);
                 if (edge) fn(col, row, side, idx, edge);
             }
@@ -152,8 +153,8 @@ export class CellEdgeStore {
         const cols = grid.cols;
         const size = grid.cols * grid.rows;
         for (let idx = 0; idx < size; idx++)
-            for (let side = 0; side < 4; side++) {
-                const ref = this.slots[idx * 4 + side];
+            for (let side = 0; side < CELL_EDGE_SIDES; side++) {
+                const ref = this.slots[cellEdgeSlotOffset(idx, side)];
                 if (ref === EMPTY) continue;
                 const edge = this.pool[ref];
                 if (!isRailWallEdge(edge)) continue;
@@ -166,7 +167,7 @@ export class CellEdgeStore {
         return out;
     }
     hasAnyAtIdx(idx) {
-        const base = idx * 4;
+        const base = cellEdgeSlotBase(idx);
         return this.slots[base] !== EMPTY || this.slots[base + 1] !== EMPTY || this.slots[base + 2] !== EMPTY || this.slots[base + 3] !== EMPTY;
     }
 }

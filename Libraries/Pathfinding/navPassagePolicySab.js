@@ -1,4 +1,10 @@
-import { createPassageNetworkPolicyView } from "./navSimHopBake.js";
+/** @typedef {{ networkIdByKey: Map<number, number> }} PassageNetworkPolicyView */
+/** @param {Int32Array} keys @param {Int32Array} ids */
+export function createPassageNetworkPolicyView(keys, ids) {
+    const networkIdByKey = new Map();
+    for (let i = 0; i < keys.length; i++) networkIdByKey.set(keys[i], ids[i]);
+    return { networkIdByKey };
+}
 /** @param {number} keyCount */
 export function navPassagePolicySabByteLength(keyCount) {
     return Math.max(4 + keyCount * 8, 12);

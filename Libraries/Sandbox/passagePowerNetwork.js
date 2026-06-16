@@ -5,7 +5,7 @@ import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey, edgeNeighbor, forEachCellEdge } from "../Spatial/grid/gridCellTopology.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
-import { resolvePortalPartner, unlinkPortalEdge, canLinkPortalsOnPolicy } from "./portalLinks.js";
+import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
 /** @typedef {{ col: number, row: number, side: number, key: number }} PassageEdgeRef */
 /** Cardinal edge endpoints as grid vertices (cell-corner coordinates). */
 export function passageEdgeVertexCoords(col, row, side) {
@@ -210,11 +210,6 @@ export function getPassageEdgeNetworkId(state, grid, col, row, side) {
     const key = canonicalEdgeCellKey(grid, col, row, side);
     if (!cache.poweredKeys.has(key)) return -1;
     return cache.networkIdByKey.get(key) ?? -1;
-}
-export function canLinkPortalsOnNetwork(state, grid, colA, rowA, sideA, colB, rowB, sideB) {
-    const cache = state.sandbox.passagePower;
-    if (!cache) return false;
-    return canLinkPortalsOnPolicy(cache, grid, colA, rowA, sideA, colB, rowB, sideB);
 }
 export function passagePowerNavKey(state) {
     const grid = state.obstacleGrid;

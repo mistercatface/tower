@@ -10,6 +10,19 @@ import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
 import { prepareHpaReplanPrep } from "../../Libraries/Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
+import {
+    hpaCellToRegionView,
+    hpaPathSlotAbstractIdx,
+    hpaPathSlotCols,
+    hpaPathSlotMeta,
+    hpaPathSlotRows,
+    hpaPersistEdgeCostsView,
+    hpaPersistEdgeOffsetsView,
+    hpaPersistEdgeSourcesView,
+    hpaPersistEdgeTargetsView,
+    hpaPersistNodeColView,
+    hpaPersistNodeRowView,
+} from "../../Libraries/Pathfinding/hpaWorkerSab.js";
 let maxSlots;
 let maxPathLen;
 let maxAbstractLen;
@@ -55,43 +68,10 @@ let pruneSeedWorldX;
 let pruneSeedWorldY;
 /** @type {ReturnType<typeof createNavSimView> | null} */
 let navSimView = null;
-/** @type {import("../../Libraries/Pathfinding/navSimHopBake.js").PassageNetworkPolicyView} */
+/** @type {import("../../Libraries/Pathfinding/navPassagePolicySab.js").PassageNetworkPolicyView} */
 let passageNetworkPolicy = bindPassagePolicyFromSab(new SharedArrayBuffer(12), 0);
 /** @type {{ nodesMap: Record<string, object>, cellToNode: Array<object | null>, nodeIdCounter: number, distToWall: Float32Array | null, blocked: Uint8Array, cols: number, rows: number, minX: number, minY: number, cellSize: number, navGraph: object, maxCellsPerChunk: number, minCellsPerChunk: number, damagePadding: number, seedWorldX: number | null, seedWorldY: number | null } | null} */
 let regionGraphState = null;
-function cellToRegionView() {
-    return new Int16Array(sabCellToRegionIdx, 0, cols * rows);
-}
-function slotPathMeta(slot) {
-    return new Int32Array(sabPathMetaPool, slot * 8, 2);
-}
-function slotPathCols(slot) {
-    return new Int16Array(sabPathColsPool, slot * maxPathLen * 2, maxPathLen);
-}
-function slotPathRows(slot) {
-    return new Int16Array(sabPathRowsPool, slot * maxPathLen * 2, maxPathLen);
-}
-function slotAbstractIdx(slot) {
-    return new Int16Array(sabAbstractIdxPool, slot * maxAbstractLen * 2, maxAbstractLen);
-}
-function persistNodeColView() {
-    return new Int16Array(sabPersistGraphNodeCol, 0, maxGraphNodes);
-}
-function persistNodeRowView() {
-    return new Int16Array(sabPersistGraphNodeRow, 0, maxGraphNodes);
-}
-function persistEdgeOffsetsView() {
-    return new Int32Array(sabPersistGraphEdgeOffsets, 0, maxGraphNodes + 1);
-}
-function persistEdgeTargetsView() {
-    return new Int16Array(sabPersistGraphEdgeTargets, 0, maxGraphEdges);
-}
-function persistEdgeCostsView() {
-    return new Uint16Array(sabPersistGraphEdgeCosts, 0, maxGraphEdges);
-}
-function persistEdgeSourcesView() {
-    return new Int16Array(sabPersistGraphEdgeSources, 0, maxGraphEdges);
-}
 function applyWorkerGridFrame(data) {
     if (data.minX !== undefined) {
         workerGridFrame = { cols: data.cols, rows: data.rows, minX: data.minX, minY: data.minY, cellSize: data.cellSize, key: data.gridFrameKey };
@@ -184,8 +164,8 @@ function buildNavSnapshotOnWorker(data) {
     bindNavFromBuild({ ...data, sabBlocked: data.sabBlocked, sabOctileNeighbors: data.sabOctileNeighbors });
 }
 function buildPersistGraphCsr(nodeCount, edgeWrite) {
-    const srcSources = persistEdgeSourcesView().subarray(0, edgeWrite);
-    const edgeOffsets = persistEdgeOffsetsView();
+    const srcSources = hpaPersistEdgeSourcesView(sabPersistGraphEdgeSources, maxGraphEdges).subarray(0, edgeWrite);
+    const edgeOffsets = hpaPersistEdgeOffsetsView(sabPersistGraphEdgeOffsets, maxGraphNodes);
     edgeOffsets.fill(0, 0, nodeCount + 1);
     for (let e = 0; e < edgeWrite; e++) {
         const src = srcSources[e];
@@ -209,17 +189,17 @@ function writeRegionGraphToSab(expectedCols, expectedRows) {
     if (expectedCols !== cols || expectedRows !== rows) throw new Error(`HPA region graph size mismatch: nav ${cols}x${rows}, graph ${expectedCols}x${expectedRows}`);
     const packed = packRegionGraphFlat(regionGraphState.nodesMap, regionGraphState.cellToNode, cols, rows);
     if (packed.nodeCount > maxGraphNodes) throw new Error(`HPA region graph has ${packed.nodeCount} nodes (max ${maxGraphNodes})`);
-    const persistNodeCol = persistNodeColView();
-    const persistNodeRow = persistNodeRowView();
-    const persistEdgeSources = persistEdgeSourcesView();
-    const persistEdgeTargets = persistEdgeTargetsView();
-    const persistEdgeCosts = persistEdgeCostsView();
+    const persistNodeCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes);
+    const persistNodeRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes);
+    const persistEdgeSources = hpaPersistEdgeSourcesView(sabPersistGraphEdgeSources, maxGraphEdges);
+    const persistEdgeTargets = hpaPersistEdgeTargetsView(sabPersistGraphEdgeTargets, maxGraphEdges);
+    const persistEdgeCosts = hpaPersistEdgeCostsView(sabPersistGraphEdgeCosts, maxGraphEdges);
     persistNodeCol.set(packed.nodeCol);
     persistNodeRow.set(packed.nodeRow);
     persistEdgeSources.set(packed.edgeSources);
     persistEdgeTargets.set(packed.edgeTargets);
     persistEdgeCosts.set(packed.edgeCosts);
-    cellToRegionView().set(packed.cellToRegion);
+    hpaCellToRegionView(sabCellToRegionIdx, cols * rows).set(packed.cellToRegion);
     syncPersistAbstractGraph(packed.nodeCount, packed.edgeWrite);
     persistNodeIds = packed.nodeIds;
     return { nodeCount: packed.nodeCount, edgeWrite: packed.edgeWrite, nodeIds: packed.nodeIds };
@@ -288,21 +268,21 @@ function runGraphPatch(fn) {
     }
 }
 function writeCellPath(slot, path) {
-    const pathMeta = slotPathMeta(slot);
+    const pathMeta = hpaPathSlotMeta(sabPathMetaPool, slot);
     pathMeta[0] = path ? path.length : 0;
     if (!path) return;
-    const pathCols = slotPathCols(slot);
-    const pathRows = slotPathRows(slot);
+    const pathCols = hpaPathSlotCols(sabPathColsPool, slot, maxPathLen);
+    const pathRows = hpaPathSlotRows(sabPathRowsPool, slot, maxPathLen);
     for (let i = 0; i < path.length; i++) {
         pathCols[i] = path[i].col;
         pathRows[i] = path[i].row;
     }
 }
 function writeAbstractPath(slot, pathIdx) {
-    const pathMeta = slotPathMeta(slot);
+    const pathMeta = hpaPathSlotMeta(sabPathMetaPool, slot);
     pathMeta[1] = pathIdx ? pathIdx.length : 0;
     if (!pathIdx) return;
-    const abstractIdx = slotAbstractIdx(slot);
+    const abstractIdx = hpaPathSlotAbstractIdx(sabAbstractIdxPool, slot, maxAbstractLen);
     for (let i = 0; i < pathIdx.length; i++) abstractIdx[i] = pathIdx[i];
 }
 function octileGridCost(fromCol, fromRow, toCol, toRow) {
@@ -313,11 +293,11 @@ function buildExtendedEdgesEstimate(nodeCount, edgeWrite, startCol, startRow, ta
     const startTemp = nodeCount;
     const targetTemp = nodeCount + 1;
     const extCount = nodeCount + 2;
-    const baseCol = persistNodeColView().subarray(0, nodeCount);
-    const baseRow = persistNodeRowView().subarray(0, nodeCount);
-    const baseOffsets = persistEdgeOffsetsView().subarray(0, nodeCount + 1);
-    const baseTargets = persistEdgeTargetsView().subarray(0, edgeWrite);
-    const baseCosts = persistEdgeCostsView().subarray(0, edgeWrite);
+    const baseCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, nodeCount);
+    const baseRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, nodeCount);
+    const baseOffsets = hpaPersistEdgeOffsetsView(sabPersistGraphEdgeOffsets, maxGraphNodes).subarray(0, nodeCount + 1);
+    const baseTargets = hpaPersistEdgeTargetsView(sabPersistGraphEdgeTargets, maxGraphEdges).subarray(0, edgeWrite);
+    const baseCosts = hpaPersistEdgeCostsView(sabPersistGraphEdgeCosts, maxGraphEdges).subarray(0, edgeWrite);
     if (!extNodeCol || extNodeCol.length < extCount) {
         extNodeCol = new Int16Array(maxGraphNodes + 2);
         extNodeRow = new Int16Array(maxGraphNodes + 2);
@@ -379,11 +359,11 @@ function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol,
     const startTemp = nodeCount;
     const targetTemp = nodeCount + 1;
     const extCount = nodeCount + 2;
-    const baseCol = persistNodeColView().subarray(0, nodeCount);
-    const baseRow = persistNodeRowView().subarray(0, nodeCount);
-    const baseOffsets = persistEdgeOffsetsView().subarray(0, nodeCount + 1);
-    const baseTargets = persistEdgeTargetsView().subarray(0, edgeWrite);
-    const baseCosts = persistEdgeCostsView().subarray(0, edgeWrite);
+    const baseCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, nodeCount);
+    const baseRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, nodeCount);
+    const baseOffsets = hpaPersistEdgeOffsetsView(sabPersistGraphEdgeOffsets, maxGraphNodes).subarray(0, nodeCount + 1);
+    const baseTargets = hpaPersistEdgeTargetsView(sabPersistGraphEdgeTargets, maxGraphEdges).subarray(0, edgeWrite);
+    const baseCosts = hpaPersistEdgeCostsView(sabPersistGraphEdgeCosts, maxGraphEdges).subarray(0, edgeWrite);
     if (!extNodeCol || extNodeCol.length < extCount) {
         extNodeCol = new Int16Array(maxGraphNodes + 2);
         extNodeRow = new Int16Array(maxGraphNodes + 2);
@@ -452,10 +432,10 @@ function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol,
     return { extCount, startTemp, targetTemp, edgeWrite: totalEdges, tempLegs };
 }
 function collectReplanTempCandidates(startCol, startRow, targetCol, targetRow) {
-    const nodeCol = persistNodeColView().subarray(0, persistNodeCount);
-    const nodeRow = persistNodeRowView().subarray(0, persistNodeCount);
-    const edgeOffsets = persistEdgeOffsetsView().subarray(0, persistNodeCount + 1);
-    const edgeTargets = persistEdgeTargetsView().subarray(0, persistEdgeWrite);
+    const nodeCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, persistNodeCount);
+    const nodeRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, persistNodeCount);
+    const edgeOffsets = hpaPersistEdgeOffsetsView(sabPersistGraphEdgeOffsets, maxGraphNodes).subarray(0, persistNodeCount + 1);
+    const edgeTargets = hpaPersistEdgeTargetsView(sabPersistGraphEdgeTargets, maxGraphEdges).subarray(0, persistEdgeWrite);
     const startRegionIdx = nearestRegionNodeIdx(nodeCol, nodeRow, persistNodeCount, startCol, startRow);
     const targetRegionIdx = nearestRegionNodeIdx(nodeCol, nodeRow, persistNodeCount, targetCol, targetRow);
     const startCandidates = collectPersistTempConnectCandidates({
@@ -486,9 +466,9 @@ function collectReplanTempCandidates(startCol, startRow, targetCol, targetRow) {
 }
 function runReplan(slot, data, requestId) {
     const { startCol, startRow, targetCol, targetRow, localMaxLen, regionConnectMaxLen } = data;
-    const cellToRegion = cellToRegionView();
-    const nodeCol = persistNodeColView().subarray(0, persistNodeCount);
-    const nodeRow = persistNodeRowView().subarray(0, persistNodeCount);
+    const cellToRegion = hpaCellToRegionView(sabCellToRegionIdx, cols * rows);
+    const nodeCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, persistNodeCount);
+    const nodeRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, persistNodeCount);
     const prep = prepareHpaReplanPrep(cols, cellToRegion, { nodeCount: persistNodeCount, nodeIds: persistNodeIds, nodeCol, nodeRow }, startCol, startRow, targetCol, targetRow);
     if (prep.mode === "local") {
         const path = runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, cols, rows, localMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
