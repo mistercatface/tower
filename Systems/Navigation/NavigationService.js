@@ -87,9 +87,8 @@ export class NavigationService {
     async _syncWorkerNavGraph(grid, damageBounds, topologyChanged) {
         const graphEpoch = this._controller.obstacleGeneration + 1;
         const seed = this._resolvePruneSeed(grid, damageBounds);
-        this._hpaPathWorker.setPruneSeed(seed.x, seed.y);
-        if (topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds)) await this._hpaPathWorker.buildRegionGraphFull(grid, seed.x, seed.y, graphEpoch);
-        else await this._hpaPathWorker.patchRegionGraph(grid, damageBounds, graphEpoch);
+        const fullGraph = topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds);
+        await this._hpaPathWorker.syncObstacleNavGraph(grid, damageBounds, graphEpoch, seed.x, seed.y, fullGraph);
         this._controller.obstacleGeneration = graphEpoch;
     }
     get obstacleGeneration() {

@@ -6,7 +6,8 @@ import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
 import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Libraries/Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
-import { buildOctileNeighborsFromTopology, createNavLocalView, navTopologyFromSab, recomputeBlockedFromGridFill } from "../../Libraries/Pathfinding/navTopologySab.js";
+import { clampCellBoundsToGrid } from "../../Libraries/DataStructures/CellRect.js";
+import { buildOctileNeighborsFromTopologyRect, createNavLocalView, expandNavTopologyBakeBounds, navTopologyFromSab, recomputeBlockedFromGridFill } from "../../Libraries/Pathfinding/navTopologySab.js";
 import {
     hpaCellToRegionView,
     hpaPathSlotAbstractIdx,
@@ -135,10 +136,21 @@ function requireNavTopology() {
     if (!navTopology) throw new Error("HPA worker missing nav topology");
     return navTopology;
 }
-function bakeNavTopologyFull() {
+function bakeNavTopology(damageBounds) {
+    const frame = requireGridFrame();
     const baked = requireNavSimBake();
-    recomputeVertexPassabilityInto(baked.simView, baked.vertexPassability);
-    recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen);
+    const { cols, rows } = frame;
+    const copyBounds = damageBounds ? clampCellBoundsToGrid(damageBounds, cols, rows) : null;
+    const bakeBounds = copyBounds ? expandNavTopologyBakeBounds(copyBounds, cols, rows) : null;
+    recomputeVertexPassabilityInto(baked.simView, baked.vertexPassability, bakeBounds);
+    recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen, bakeBounds);
+    const topology = requireNavTopology();
+    recomputeBlockedFromGridFill(baked.simView.grid, topology.blocked, cols, copyBounds);
+    const octCol0 = bakeBounds ? bakeBounds.startCol : 0;
+    const octCol1 = bakeBounds ? bakeBounds.endCol : cols - 1;
+    const octRow0 = bakeBounds ? bakeBounds.startRow : 0;
+    const octRow1 = bakeBounds ? bakeBounds.endRow : rows - 1;
+    buildOctileNeighborsFromTopologyRect(topology.blocked, baked.cardinalOpen, baked.vertexPassability, cols, rows, topology.octileNeighbors, octCol0, octCol1, octRow0, octRow1);
     return baked;
 }
 function buildNavTopologyOnWorker(data) {
@@ -153,11 +165,7 @@ function buildNavTopologyOnWorker(data) {
         }
     }
     navCacheKey = data.navCacheKey;
-    const baked = bakeNavTopologyFull();
-    const frame = requireGridFrame();
-    const topology = requireNavTopology();
-    recomputeBlockedFromGridFill(baked.simView.grid, topology.blocked);
-    buildOctileNeighborsFromTopology(topology.blocked, baked.cardinalOpen, baked.vertexPassability, frame.cols, frame.rows, topology.octileNeighbors);
+    bakeNavTopology(data.damageBounds ?? null);
 }
 function buildPersistGraphCsr(nodeCount, edgeWrite) {
     const srcSources = hpaPersistEdgeSourcesView(sabPersistGraphEdgeSources, maxGraphEdges).subarray(0, edgeWrite);

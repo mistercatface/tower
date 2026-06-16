@@ -1,7 +1,7 @@
-import { CELL_EDGE_SLOT_BYTES } from "../Spatial/grid/cellEdgeSlots.js";
+import { CELL_EDGE_SLOT_BYTES, CELL_EDGE_SIDES, cellEdgeSlotBase } from "../Spatial/grid/cellEdgeSlots.js";
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
-import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
+import { clampCellBoundsToGrid, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 /** Octile step slots per cell in nav snapshot CSR. */
 export const OCTILE_DIRS_PER_CELL = 8;
 export const OCTILE_NEIGHBOR_BYTES = OCTILE_DIRS_PER_CELL * 4;
@@ -87,19 +87,48 @@ export function growNavTopologyVertexSab(arena, vertCount) {
     arena.sabVertexPassability = new SharedArrayBuffer(vertBytes);
     arena.vertexPassability = new Uint8Array(arena.sabVertexPassability);
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {NavTopologySabArena} arena */
-export function packNavTopologyFromGrid(grid, arena) {
-    arena.gridFill.set(grid.grid);
-    arena.floorKind.set(grid.floorStore.kind);
-    arena.floorFacing.set(grid.floorStore.facing);
-    arena.edgeSlots.set(grid.edgeStore.slots);
+/** @param {import("../DataStructures/CellRect.js").CellBounds} bounds @param {number} cols @param {number} rows @param {number} [padding] */
+export function expandNavTopologyBakeBounds(bounds, cols, rows, padding = 1) {
+    return {
+        startCol: Math.max(0, bounds.startCol - padding),
+        endCol: Math.min(cols - 1, bounds.endCol + padding),
+        startRow: Math.max(0, bounds.startRow - padding),
+        endRow: Math.min(rows - 1, bounds.endRow + padding),
+    };
 }
-/** @param {Uint8Array} gridFill @param {Uint8Array} blocked */
-export function recomputeBlockedFromGridFill(gridFill, blocked) {
-    for (let idx = 0; idx < gridFill.length; idx++) blocked[idx] = gridFill[idx] !== 0 ? 1 : 0;
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {NavTopologySabArena} arena @param {import("../DataStructures/CellRect.js").CellBounds | null} damageBounds */
+export function packNavTopologyFromGrid(grid, arena, damageBounds = null) {
+    const { cols } = grid;
+    if (!damageBounds) {
+        arena.gridFill.set(grid.grid);
+        arena.floorKind.set(grid.floorStore.kind);
+        arena.floorFacing.set(grid.floorStore.facing);
+        arena.edgeSlots.set(grid.edgeStore.slots);
+        return;
+    }
+    const bounds = clampCellBoundsToGrid(damageBounds, cols, grid.rows);
+    for (let row = bounds.startRow; row <= bounds.endRow; row++) {
+        const rowStart = row * cols + bounds.startCol;
+        const span = bounds.endCol - bounds.startCol + 1;
+        arena.gridFill.set(grid.grid.subarray(rowStart, rowStart + span), rowStart);
+        arena.floorKind.set(grid.floorStore.kind.subarray(rowStart, rowStart + span), rowStart);
+        arena.floorFacing.set(grid.floorStore.facing.subarray(rowStart, rowStart + span), rowStart);
+    }
+    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, (col, row, idx) => {
+        const slotBase = cellEdgeSlotBase(idx);
+        arena.edgeSlots.set(grid.edgeStore.slots.subarray(slotBase, slotBase + CELL_EDGE_SIDES), slotBase);
+    });
 }
-export function buildOctileNeighborsFromTopology(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors) {
-    buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, 0, cols - 1, 0, rows - 1);
+/** @param {Uint8Array} gridFill @param {Uint8Array} blocked @param {number} cols @param {import("../DataStructures/CellRect.js").CellBounds | null} damageBounds */
+export function recomputeBlockedFromGridFill(gridFill, blocked, cols, damageBounds = null) {
+    if (!damageBounds) {
+        for (let idx = 0; idx < gridFill.length; idx++) blocked[idx] = gridFill[idx] !== 0 ? 1 : 0;
+        return;
+    }
+    const bounds = clampCellBoundsToGrid(damageBounds, cols, gridFill.length / cols);
+    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, (col, row, idx) => {
+        blocked[idx] = gridFill[idx] !== 0 ? 1 : 0;
+    });
 }
 export function buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, startCol, endCol, startRow, endRow) {
     forEachDenseCellInRect(startCol, endCol, startRow, endRow, cols, (col, row, idx) => {

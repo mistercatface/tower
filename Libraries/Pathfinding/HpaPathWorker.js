@@ -46,6 +46,7 @@ export class HpaPathWorker {
         this._workerBoundNavSize = 0;
         this._workerBoundEdgePoolSab = 0;
         this._deferFullNavSync = false;
+        this._deferNavBounds = null;
         this._graphEpoch = -1;
         this._graphPatchTargetEpoch = -1;
         this._graphPatchChain = Promise.resolve();
@@ -82,7 +83,8 @@ export class HpaPathWorker {
                 if (this._deferFullNavSync) {
                     this._deferFullNavSync = false;
                     this._navKey = "";
-                    this.scheduleNavTopologySync(this.navGraph);
+                    this.scheduleNavTopologySync(this.navGraph, this._deferNavBounds);
+                    this._deferNavBounds = null;
                 }
                 return;
             }
@@ -154,23 +156,21 @@ export class HpaPathWorker {
         this._graphPatchChain = this._graphPatchChain.then(run, run);
         return this._graphPatchChain;
     }
-    async buildRegionGraphFull(grid, seedWorldX = null, seedWorldY = null, graphEpoch = 0) {
-        await this.scheduleNavTopologySyncAwait(grid);
+    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds | null} damageBounds @param {number} graphEpoch @param {number} seedWorldX @param {number} seedWorldY @param {boolean} fullGraph */
+    async syncObstacleNavGraph(grid, damageBounds, graphEpoch, seedWorldX, seedWorldY, fullGraph) {
+        await this.scheduleNavTopologySyncAwait(grid, fullGraph ? null : damageBounds);
         const size = grid.cols * grid.rows;
         this._ensureGraphCellBuffers(size);
         this.setPruneSeed(seedWorldX, seedWorldY);
-        await this._postGraphPatch(
-            "buildRegionGraphFull",
-            { gridFrameKey: this._gridFrame.key, damagePadding: this._damagePadding, minCellsPerChunk: gridSettings.minCellsPerChunk, seedWorldX, seedWorldY },
-            graphEpoch,
-        );
-    }
-    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds} bounds @param {number} graphEpoch */
-    async patchRegionGraph(grid, bounds, graphEpoch) {
-        await this.scheduleNavTopologySyncAwait(grid);
-        const size = grid.cols * grid.rows;
-        this._ensureGraphCellBuffers(size);
-        const box = expandRegionDamageBounds(bounds, this._gridFrame, this._damagePadding);
+        if (fullGraph) {
+            await this._postGraphPatch(
+                "buildRegionGraphFull",
+                { gridFrameKey: this._gridFrame.key, damagePadding: this._damagePadding, minCellsPerChunk: gridSettings.minCellsPerChunk, seedWorldX, seedWorldY },
+                graphEpoch,
+            );
+            return;
+        }
+        const box = expandRegionDamageBounds(damageBounds, this._gridFrame, this._damagePadding);
         await this._postGraphPatch(
             "patchRegionGraph",
             {
@@ -179,8 +179,8 @@ export class HpaPathWorker {
                 endCol: box.endCol,
                 startRow: box.startRow,
                 endRow: box.endRow,
-                seedWorldX: this._pruneSeedWorldX ?? null,
-                seedWorldY: this._pruneSeedWorldY ?? null,
+                seedWorldX: seedWorldX ?? null,
+                seedWorldY: seedWorldY ?? null,
             },
             graphEpoch,
         );
@@ -322,14 +322,14 @@ export class HpaPathWorker {
     getNavBlockedSab() {
         return this.sabBlocked;
     }
-    async scheduleNavTopologySyncAwait(grid = this.navGraph) {
+    async scheduleNavTopologySyncAwait(grid = this.navGraph, damageBounds = null) {
         const targetKey = gridNavCacheKey(grid);
         while (this._navKey !== targetKey || this._navSyncPromise) {
-            this.scheduleNavTopologySync(grid);
+            this.scheduleNavTopologySync(grid, damageBounds);
             if (this._navSyncPromise) await this._navSyncPromise;
         }
     }
-    _navTopologySyncMessage(grid, cacheKey, rebindArena) {
+    _navTopologySyncMessage(grid, cacheKey, rebindArena, damageBounds) {
         this._gridFrame = gridFrameFromGrid(grid);
         const payload = {
             type: "buildNavTopology",
@@ -338,6 +338,7 @@ export class HpaPathWorker {
             edgePoolCount: this._edgePoolSabRefs,
             passageEdgeCount: grid.edgeStore.passageEdgeCount,
             rebindArena,
+            damageBounds,
         };
         if (!rebindArena) return payload;
         return {
@@ -353,11 +354,12 @@ export class HpaPathWorker {
             sabEdgeSlots: this.sabEdgeSlots,
         };
     }
-    scheduleNavTopologySync(grid = this.navGraph) {
+    scheduleNavTopologySync(grid = this.navGraph, damageBounds = null) {
         const cacheKey = gridNavCacheKey(grid);
         if (cacheKey === this._navKey) return;
         if (this._navSyncPromise) {
             this._deferFullNavSync = true;
+            this._deferNavBounds = damageBounds;
             this._navKey = "";
             return;
         }
@@ -369,9 +371,9 @@ export class HpaPathWorker {
         this.navGraph.navTopology = null;
         const edgePoolRefs = Math.max(grid.edgeStore.pool.length, 4);
         this._ensureNavBuffers(size, vertCount, edgePoolRefs);
-        packNavTopologyFromGrid(grid, this._navArena);
-        this._packNavEdgePoolForWorker(grid);
         const rebindArena = !this._workerNavArenaBound || this._workerBoundNavSize !== size || this._workerBoundEdgePoolSab !== this.sabEdgePool.byteLength;
+        packNavTopologyFromGrid(grid, this._navArena, rebindArena ? null : damageBounds);
+        this._packNavEdgePoolForWorker(grid);
         if (rebindArena) {
             this._workerNavArenaBound = true;
             this._workerBoundNavSize = size;
@@ -379,7 +381,7 @@ export class HpaPathWorker {
         }
         this._navSyncPromise = new Promise((resolve) => {
             this._navSyncResolve = resolve;
-            this.host.worker.postMessage(this._navTopologySyncMessage(grid, cacheKey, rebindArena));
+            this.host.worker.postMessage(this._navTopologySyncMessage(grid, cacheKey, rebindArena, rebindArena ? null : damageBounds));
         });
     }
     async _ensureWorkerGraphReady(graphEpoch) {
@@ -407,7 +409,7 @@ export class HpaPathWorker {
      */
     async requestPath(opts) {
         const { obstacleGrid, startX, startY, targetX, targetY, graphEpoch, navState } = opts;
-        await this.scheduleNavTopologySyncAwait(obstacleGrid);
+        await this.scheduleNavTopologySyncAwait(obstacleGrid, null);
         const navKey = gridNavCacheKey(obstacleGrid);
         if (obstacleGrid.gridNavCacheKey !== navKey) return null;
         this.releaseOwnedPathSlot(navState);

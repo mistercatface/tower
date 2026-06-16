@@ -7,6 +7,15 @@ export function emptyCellBounds() {
 export function isEmptyCellBounds(bounds) {
     return bounds.startCol === Infinity;
 }
+/** @param {CellBounds} bounds @param {number} cols @param {number} rows @returns {CellBounds} */
+export function clampCellBoundsToGrid(bounds, cols, rows) {
+    return {
+        startCol: Math.max(0, bounds.startCol),
+        endCol: Math.min(cols - 1, bounds.endCol),
+        startRow: Math.max(0, bounds.startRow),
+        endRow: Math.min(rows - 1, bounds.endRow),
+    };
+}
 /** @param {CellBounds} bounds @param {number} col @param {number} row @returns {CellBounds} */
 export function growCellBounds(bounds, col, row) {
     if (col < bounds.startCol) bounds.startCol = col;
