@@ -1,4 +1,4 @@
-const PATH_WAYPOINT_ARRIVAL_PX = 24;
+const PATH_WAYPOINT_ARRIVAL_PX = 16;
 function sabWaypointArrived(bodyX, bodyY, worker, slot, i, arrivalPx, grid) {
     const wp = sabPathWorldAt(worker, slot, i, grid);
     if (Math.hypot(wp.x - bodyX, wp.y - bodyY) > arrivalPx) return false;
