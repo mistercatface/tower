@@ -9,6 +9,7 @@ import { addButtonLink, clearButtonLinks, drawButtonWires, findButtonLinkTarget,
 import { isButtonEntity } from "./buttonInput.js";
 import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold } from "./floorButtons.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
+import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene } from "./sandboxStartScene.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
@@ -63,6 +64,9 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     let unbindPointers = null;
     /** @type {(() => void) | null} */
     let unbindKeyDown = null;
+    /** @type {(() => void) | null} */
+    let unbindKeyUp = null;
+    let pKeyHeld = false;
     let buttonWireMode = false;
     /** @type {{ x: number, y: number } | null} */
     let buttonWireCursor = null;
@@ -132,6 +136,22 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     /** @param {{ prop: object, behavior: SandboxBehavior }} move @param {{ x: number, y: number }} world */
     const issueGroundMove = (move, world) => {
         move.behavior.setGroundMoveTarget(move.prop, world);
+    };
+    /** @param {{ x: number, y: number }} world */
+    const issueMassHpaGroundMove = (world) => {
+        if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || buttonWireMode || roomNodeWireMode) return false;
+        const hpaBehavior = behaviorById.get(ROLL_TO_CURSOR_HPA_BEHAVIOR_ID);
+        if (!hpaBehavior?.setGroundMoveTarget) return false;
+        let moved = 0;
+        state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+            if (prop.isDead) return;
+            const allowed = resolveSandboxBehaviors(getPropAsset(prop.type), behaviors, state, prop);
+            if (!allowed.includes(ROLL_TO_CURSOR_HPA_BEHAVIOR_ID)) return;
+            if (getPropBehaviorId(prop) !== ROLL_TO_CURSOR_HPA_BEHAVIOR_ID) return;
+            hpaBehavior.setGroundMoveTarget(prop, world);
+            moved++;
+        });
+        return moved > 0;
     };
     /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
     const tryCanvasInput = (world, e) => {
@@ -258,6 +278,12 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             return;
         }
         if (e.button !== 0) return;
+        if (pKeyHeld && issueMassHpaGroundMove(world)) {
+            e.preventDefault();
+            e.stopPropagation();
+            session.sync();
+            return;
+        }
         if (buttonWireMode) {
             const button = session.getSelectedProp();
             if (isButtonEntity(button)) {
@@ -690,17 +716,29 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
                 pointerleave: onPointerLeave,
             });
             const onKeyDown = (e) => {
-                if (e.code !== "KeyR") return;
                 if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches("textarea, select, input"))) return;
+                if (e.code === "KeyP") {
+                    pKeyHeld = true;
+                    return;
+                }
+                if (e.code !== "KeyR") return;
                 if (!placePreviewWorld || interactionBehavior || marqueeSelect || groundNav || buttonWireMode || roomNodeWireMode) return;
                 if (session.rotateHoveredGridOccupantAtWorld(placePreviewWorld.x, placePreviewWorld.y)) e.preventDefault();
             };
+            const onKeyUp = (e) => {
+                if (e.code === "KeyP") pKeyHeld = false;
+            };
             window.addEventListener("keydown", onKeyDown);
+            window.addEventListener("keyup", onKeyUp);
             unbindKeyDown = () => window.removeEventListener("keydown", onKeyDown);
+            unbindKeyUp = () => window.removeEventListener("keyup", onKeyUp);
         },
         destroy() {
             unbindKeyDown?.();
             unbindKeyDown = null;
+            unbindKeyUp?.();
+            unbindKeyUp = null;
+            pKeyHeld = false;
             unbindPointers?.();
             unbindPointers = null;
             buttonWireMode = false;
@@ -723,6 +761,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
             const prop = session.getSelectedProp();
             const behavior = resolveBehavior();
             if (!prop || !behavior?.tick) return;
+            if (behavior.tickWorld) return;
             behavior.tick(prop, dt);
         },
         /** @param {CanvasRenderingContext2D} ctx */
