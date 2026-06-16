@@ -1,6 +1,7 @@
 import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfinding/AStar.js";
 import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology, buildOctileNeighborsFromTopologyRect } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 import { createNavSimView, bindNavSimEdgePool } from "../../Libraries/Pathfinding/navSimView.js";
+import { bakeHopCsrOnSim, createPassageNetworkPolicyView } from "../../Libraries/Pathfinding/navSimHopBake.js";
 import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Libraries/Spatial/grid/vertexPassability.js";
 import { registerPortalPassageStepHandler } from "../../Libraries/Sandbox/portalStep.js";
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
@@ -50,6 +51,8 @@ let pruneSeedWorldX;
 let pruneSeedWorldY;
 /** @type {ReturnType<typeof createNavSimView> | null} */
 let navSimView = null;
+/** @type {import("../../Libraries/Pathfinding/navSimHopBake.js").PassageNetworkPolicyView} */
+let passageNetworkPolicy = createPassageNetworkPolicyView(new Int32Array(0), new Int32Array(0));
 /** @type {{ nodesMap: Record<string, object>, cellToNode: Array<object | null>, nodeIdCounter: number, distToWall: Float32Array | null, blocked: Uint8Array, cols: number, rows: number, minX: number, minY: number, cellSize: number, navGraph: object, maxCellsPerChunk: number, minCellsPerChunk: number, damagePadding: number, seedWorldX: number | null, seedWorldY: number | null } | null} */
 let regionGraphState = null;
 function cellToRegionView() {
@@ -120,6 +123,12 @@ function bakeNavTopologyPatch(data) {
     recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen, dataBounds);
     return baked;
 }
+function bindPassageNetworkPolicy(data) {
+    passageNetworkPolicy = createPassageNetworkPolicyView(new Int32Array(data.passageNetworkKeys), new Int32Array(data.passageNetworkIds));
+}
+function bakeHopTopology(data, baked, blocked) {
+    bakeHopCsrOnSim(baked.simView, passageNetworkPolicy, blocked, data.cols, data.rows, new Int32Array(data.sabHopOffsets), new Int32Array(data.sabHopExitIdx), new Uint8Array(data.sabHopCost));
+}
 function bindNavFromBuild(data) {
     cols = data.cols;
     rows = data.rows;
@@ -147,6 +156,8 @@ function buildNavSnapshotOnWorker(data) {
     const octileNeighbors = new Int32Array(data.sabOctileNeighbors);
     const baked = bakeNavTopologyFull(data);
     buildOctileNeighborsFromTopology(blocked, baked.cardinalOpen, baked.vertexPassability, cols, rows, octileNeighbors);
+    bindPassageNetworkPolicy(data);
+    bakeHopTopology(data, baked, blocked);
     bindNavFromBuild({ ...data, sabBlocked: data.sabBlocked, sabOctileNeighbors: data.sabOctileNeighbors });
 }
 function patchNavSnapshotOnWorker(data) {
@@ -158,6 +169,8 @@ function patchNavSnapshotOnWorker(data) {
     const octileNeighbors = new Int32Array(data.sabOctileNeighbors);
     const baked = bakeNavTopologyPatch(data);
     buildOctileNeighborsFromTopologyRect(blocked, baked.cardinalOpen, baked.vertexPassability, data.cols, data.rows, octileNeighbors, data.startCol, data.endCol, data.startRow, data.endRow);
+    bindPassageNetworkPolicy(data);
+    bakeHopTopology(data, baked, blocked);
     navSnapshot.blocked = blocked;
     navSnapshot.octileNeighbors = octileNeighbors;
     navSnapshot.hopOffsets = new Int32Array(data.sabHopOffsets);

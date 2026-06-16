@@ -166,6 +166,16 @@ export function snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) {
     }
     return false;
 }
+export function snapshotCanBoundaryHop(snapshot, fromCol, fromRow, exitCol, exitRow) {
+    const { cols, hopOffsets, hopExitIdx } = snapshot;
+    if (!hopOffsets || !hopExitIdx) return false;
+    const fromIdx = colRowToIndex(fromCol, fromRow, cols);
+    const exitIdx = colRowToIndex(exitCol, exitRow, cols);
+    const start = hopOffsets[fromIdx];
+    const end = hopOffsets[fromIdx + 1];
+    for (let i = start; i < end; i++) if (hopExitIdx[i] === exitIdx) return true;
+    return false;
+}
 export function snapshotForEachNavHop(snapshot, col, row, fn) {
     const { cols, hopOffsets, hopExitIdx, hopCost } = snapshot;
     const idx = colRowToIndex(col, row, cols);
