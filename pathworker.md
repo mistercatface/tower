@@ -58,6 +58,8 @@ Debug (Tile Lab):
 - `NavigationService` serializes nav + graph sync on `_workerNavGraphSyncChain`.
 - Debug overlay reads worker state, not main `nodesMap`.
 - `sabCellToRegionIdx` on worker; main `getRegionGraphDebugView` / `getCellToRegionView`.
+- Tile Lab startup: `initTileLabWorld` → `onObstaclesChanged` → `rebuildLabMapCaches` (no overview bake on mount).
+- Removed dead main graph upload helpers (`packHpaGraphForWorker`, etc.); `MAX_HPA_GRAPH_NODES` lives in `HpaPathWorker.js`.
 
 ---
 
@@ -77,9 +79,8 @@ Today main scans `forEachBoundaryHopCell` and posts pair list; worker connects. 
 
 ### Cleanup (low risk)
 
-- Delete unused `packHpaGraphForWorker` and any other dead main upload helpers in `hpaAbstractFlat.js`.
-- Tile Lab: one explicit init gate (`await navigation.awaitWorkerNavReady()` then bake caches) instead of scattered rAF debounces and duplicate path-debug rebuilds.
-- Update stale comments that still describe main-side graph authority.
+- ~~Delete unused `packHpaGraphForWorker`~~ — done; file removed.
+- ~~Tile Lab init gate (`initTileLabWorld` → nav ready → map caches → layout)~~ — done.
 
 ### Regression tests (not started)
 

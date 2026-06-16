@@ -7,7 +7,7 @@ import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, bindVectorPropsToolbar, syncWorldRenderModeUi, mountPlayAreaToolbarControls, commitPlayAreaFromToolbar } from "./toolbar.js";
-import { applyPlayAreaConfig } from "../world/mapWorld.js";
+import { initTileLabWorld } from "../world/mapWorld.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { mountTilelabSandbox } from "../world/tilelabSandbox.js";
@@ -77,16 +77,12 @@ export function mountEditorUi(state, { playbackHandlers }) {
     pushEditorProfile(state);
     mountLabViewport(state, requestRedraw, playbackHandlers);
     bindViewModeControls(state, requestRedraw, () => resizeCanvases(state));
-    mountMapOverview(
-        state,
-        () => {
-            paintMapOverviewFrame(state);
-            refreshMapGenPanelInputs();
-        },
-        { skipInitialBake: true },
-    );
+    mountMapOverview(state, () => {
+        paintMapOverviewFrame(state);
+        refreshMapGenPanelInputs();
+    });
     mountPlayAreaToolbarControls(state);
-    void applyPlayAreaConfig(state).then(() => {
+    void initTileLabWorld(state).then(() => {
         resizeCanvases(state);
         drawLabFrame(state);
     });

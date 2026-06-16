@@ -30,6 +30,10 @@ export function playAreaCellsToIndex(cells) {
     const index = PLAY_AREA_CELL_OPTIONS.indexOf(cells);
     return index >= 0 ? index : PLAY_AREA_CELL_OPTIONS.indexOf(256);
 }
+/** Tile Lab cold start: play area, nav worker sync, map overview + path-debug caches. */
+export async function initTileLabWorld(state) {
+    await applyPlayAreaConfig(state);
+}
 /** Resize obstacle grid and sync cavern/rail stamp bounds to play area — centered on the camera. */
 export async function applyPlayAreaConfig(state) {
     const { viewport, editor } = state;

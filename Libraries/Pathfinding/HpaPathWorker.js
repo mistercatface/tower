@@ -1,5 +1,4 @@
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
-import { MAX_HPA_GRAPH_NODES } from "./hpaAbstractFlat.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import {
     bakeHopCsr,
@@ -20,6 +19,7 @@ import { gridSettings } from "../../Config/balance/grid.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
+export const MAX_HPA_GRAPH_NODES = 4096;
 const MAX_GRAPH_EDGES = MAX_HPA_GRAPH_NODES * 32;
 const HPA_DONE = "hpaDone";
 const ABSTRACT_READY = "abstractReady";
