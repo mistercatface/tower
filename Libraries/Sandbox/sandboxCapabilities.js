@@ -4,7 +4,6 @@ import { ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID } from "./behaviors/rollToCursorFlowBeh
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { FLOOR_CELL_KIND, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { syncWorldPropWeaponState } from "../Combat/worldPropWeaponState.js";
-import { normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
@@ -61,10 +60,6 @@ export function isRoomNodeSpawnAsset(asset) {
 /** Spawn stamps a room-graph corridor link — not a WorldProp. */
 export function isRoomLinkSpawnAsset(asset) {
     return asset?.sandbox?.roomLink === true;
-}
-/** @param {object | null | undefined} asset */
-export function corridorTypeFromSpawnAsset(asset) {
-    return normalizeCorridorType(asset?.sandbox?.corridorType);
 }
 /** Spawn stamps a pool ball rack — not a single WorldProp. */
 export function isPoolRackSpawnAsset(asset) {

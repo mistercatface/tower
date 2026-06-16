@@ -102,18 +102,19 @@ export function findRoomLinkBetween(state, a, b) {
     }
     return null;
 }
-/** @param {object} state @param {number} a @param {number} b @param {{ corridorType?: string }} [options] @returns {RoomLink | null} */
+/** @param {object} state @param {number} a @param {number} b @param {{ corridorType?: string, corridorWidthMin?: number, corridorWidthMax?: number }} [options] @returns {RoomLink | null} */
 export function addRoomLink(state, a, b, options = {}) {
     if (a === b) return null;
     const graph = getRoomGraph(state);
+    const width = Math.max(1, Math.round(options.corridorWidthMin ?? options.corridorWidthMax ?? 1));
     const link = {
         id: graph.nextLinkId++,
         a,
         b,
         corridorType: normalizeCorridorType(options.corridorType),
         corridorCount: 1,
-        corridorWidthMin: 1,
-        corridorWidthMax: 1,
+        corridorWidthMin: width,
+        corridorWidthMax: width,
         seed: (Math.random() * 0xffffffff) | 0,
     };
     graph.links.push(link);
@@ -123,7 +124,7 @@ export function addRoomLink(state, a, b, options = {}) {
 export function updateRoomLink(state, linkId, patch) {
     const link = getRoomLink(state, linkId);
     if (!link) return false;
-    if (patch.corridorType != null) link.corridorType = patch.corridorType;
+    if (patch.corridorType != null) link.corridorType = normalizeCorridorType(patch.corridorType);
     if (patch.corridorCount != null) link.corridorCount = Math.round(patch.corridorCount);
     if (patch.corridorWidthMin != null) link.corridorWidthMin = Math.round(patch.corridorWidthMin);
     if (patch.corridorWidthMax != null) link.corridorWidthMax = Math.round(patch.corridorWidthMax);

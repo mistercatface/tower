@@ -31,7 +31,7 @@ import {
     expandGridForRoomNodeFootprint,
 } from "../RoomGraph/index.js";
 import { linkCorridorLimits, MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "../RoomGraph/roomGraphLinkCorridor.js";
-import { normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
+import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
 import { createSeededRng } from "../Math/SeededRng.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
@@ -75,6 +75,8 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
     let forcefieldStampMode = PASSAGE_MODE.Solid;
     let spawnRoomNodeCols = DEFAULT_ROOM_NODE_COLS;
     let spawnRoomNodeRows = DEFAULT_ROOM_NODE_ROWS;
+    let spawnCorridorType = CORRIDOR_TYPE_EMPTY;
+    let spawnCorridorWidth = 1;
     /** @type {{ col: number, row: number } | null} */
     let selectedVoxelCell = null;
     /** @type {{ col: number, row: number, side: number } | null} */
@@ -360,6 +362,16 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
         getSpawnRoomNodeRows: () => spawnRoomNodeRows,
         setSpawnRoomNodeRows: (rows) => {
             spawnRoomNodeRows = Math.max(1, Math.min(32, Math.round(rows)));
+            notifyUi();
+        },
+        getSpawnCorridorType: () => spawnCorridorType,
+        setSpawnCorridorType: (type) => {
+            spawnCorridorType = normalizeCorridorType(type);
+            notifyUi();
+        },
+        getSpawnCorridorWidth: () => spawnCorridorWidth,
+        setSpawnCorridorWidth: (width) => {
+            spawnCorridorWidth = Math.max(1, Math.min(8, Math.round(width)));
             notifyUi();
         },
         getSelectedPropId: () => selectedPropId,

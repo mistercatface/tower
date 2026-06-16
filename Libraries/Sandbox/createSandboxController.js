@@ -8,7 +8,7 @@ import { clearFloorOverlayAt } from "./floorOccupancy.js";
 import { addButtonLink, clearButtonLinks, drawButtonWires, findButtonLinkTarget, listButtonLinkEndpoints, removeButtonLink } from "./buttonLinks.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold } from "./floorButtons.js";
-import { resolveSandboxBehaviors, isRoomLinkSpawnAsset, corridorTypeFromSpawnAsset } from "./sandboxCapabilities.js";
+import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "./sandboxCapabilities.js";
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene } from "./sandboxStartScene.js";
@@ -306,8 +306,15 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             if (target)
                 if (corridorLinkWireFromNodeId == null) corridorLinkWireFromNodeId = target.id;
                 else if (target.id !== corridorLinkWireFromNodeId) {
-                    const corridorType = corridorTypeFromSpawnAsset(spawnAsset());
-                    if (session.addRoomLinkBetweenNodes(corridorLinkWireFromNodeId, target.id, { corridorType })) enterCorridorLinkWireMode();
+                    const width = session.getSpawnCorridorWidth();
+                    if (
+                        session.addRoomLinkBetweenNodes(corridorLinkWireFromNodeId, target.id, {
+                            corridorType: session.getSpawnCorridorType(),
+                            corridorWidthMin: width,
+                            corridorWidthMax: width,
+                        })
+                    )
+                        enterCorridorLinkWireMode();
                 }
             session.sync();
             e.preventDefault();
@@ -476,6 +483,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         setSpawnRoomNodeCols: (cols) => session.setSpawnRoomNodeCols(cols),
         getSpawnRoomNodeRows: () => session.getSpawnRoomNodeRows(),
         setSpawnRoomNodeRows: (rows) => session.setSpawnRoomNodeRows(rows),
+        getSpawnCorridorType: () => session.getSpawnCorridorType(),
+        setSpawnCorridorType: (type) => session.setSpawnCorridorType(type),
+        getSpawnCorridorWidth: () => session.getSpawnCorridorWidth(),
+        setSpawnCorridorWidth: (width) => session.setSpawnCorridorWidth(width),
         getSelectedPropId: () => session.getSelectedPropId(),
         getSelectedPropIds: () => session.getSelectedPropIds(),
         getSelectedProp: () => session.getSelectedProp(),

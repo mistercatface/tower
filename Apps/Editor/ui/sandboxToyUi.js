@@ -18,6 +18,7 @@ import { renderSandboxEquipPanel } from "../../../Libraries/Sandbox/sandboxEquip
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
+import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../../../Libraries/RoomGraph/roomGraphCorridorTypes.js";
 import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
@@ -41,7 +42,14 @@ const EDGE_SIDE_OPTIONS = [
 /** @param {HTMLElement} body @param {NonNullable<ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController["getSelectedRoomLinkInfo"]>>} selectedRoomLink @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller */
 function appendRoomLinkCorridorInspector(body, selectedRoomLink, controller) {
     const limitHint = selectedRoomLink.maxCorridorWidth != null ? ` Max width for this wall pair: ${selectedRoomLink.maxCorridorWidth}.` : "";
-    appendEditorHint(body, `${selectedRoomLink.label}. Change width, then Reroll to regenerate the path.${limitHint}`);
+    appendEditorHint(body, `${selectedRoomLink.label}. Change type or width, then Reroll to regenerate the path.${limitHint}`);
+    appendSelectField(body, "Type", {
+        value: selectedRoomLink.corridorType,
+        options: CORRIDOR_AUTHORING_TYPE_OPTIONS,
+        onChange: (value) => {
+            controller.updateSelectedRoomLink({ corridorType: value });
+        },
+    });
     appendNumberField(body, "Width", {
         value: selectedRoomLink.corridorWidthMin ?? 1,
         step: 1,
@@ -217,11 +225,27 @@ function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
     body.appendChild(addRow);
     if (isRoomLinkSpawnAsset(spawnAsset)) {
         const fromNodeId = controller.getCorridorLinkWireFromNodeId();
+        appendSelectField(body, "Type", {
+            value: controller.getSpawnCorridorType(),
+            options: CORRIDOR_AUTHORING_TYPE_OPTIONS,
+            onChange: (value) => {
+                controller.setSpawnCorridorType(value);
+            },
+        });
+        appendNumberField(body, "Width", {
+            value: controller.getSpawnCorridorWidth(),
+            step: 1,
+            min: 1,
+            max: 8,
+            onChange: (width) => {
+                controller.setSpawnCorridorWidth(width);
+            },
+        });
         appendEditorHint(
             body,
             fromNodeId != null
-                ? "Source room selected — click the target room. The corridor draws immediately; pick it from Scene to adjust width or reroll."
-                : "Click the source room, then the target. One width-1 corridor is placed right away.",
+                ? "Source room selected — click the target room. The corridor draws immediately; pick it from Scene to adjust type, width, or reroll."
+                : "Pick type and width, then click the source room and target room.",
         );
         return;
     }
