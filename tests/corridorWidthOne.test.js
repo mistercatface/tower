@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { assertBundleLanes, generateWidthOneFixtures, makeHorizontalFixture, maxLanesForFixture, solveTwoRoomBundle } from "./corridorHarness.js";
+import { assertBundleLanes, assertManySeparateLinks, generateWidthOneFixtures, makeHorizontalFixture, maxLanesForFixture, solveTwoRoomBundle } from "./corridorHarness.js";
 const CORRIDOR_WIDTH = 1;
 describe("width-1 corridors reach room interiors", () => {
     const spotFixtures = [
@@ -41,6 +41,10 @@ describe("width-1 corridors reach room interiors", () => {
             }
         }
         assert.equal(failures.length, 0, JSON.stringify(failures.slice(0, 5), null, 2));
+    });
+    it("12 separate width-1 links use any wall edge when facing wall fills up", () => {
+        assertManySeparateLinks(makeHorizontalFixture(8, 8, 8, 8, 8), 12);
+        assertManySeparateLinks(makeHorizontalFixture(8, 8, 2, 12, 8), 12);
     });
 });
 describe("width-1 corridors across room sizes and gaps", () => {
