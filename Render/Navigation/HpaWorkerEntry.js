@@ -2,7 +2,6 @@ import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfin
 import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology, buildOctileNeighborsFromTopologyRect } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
-import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { buildFullRegionGraph, connectRegionIdxPairs, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
 let maxSlots;
 let maxPathLen;
