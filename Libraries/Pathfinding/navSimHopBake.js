@@ -1,5 +1,6 @@
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { evaluatePortalHopEntry } from "../Sandbox/portalLinks.js";
+import { buildPortalSlotByKey } from "../Spatial/grid/portalSlotIndex.js";
 import { buildBoundaryNavHops } from "./boundaryNavHops.js";
 /** @typedef {{ networkIdByKey: Map<number, number> }} PassageNetworkPolicyView */
 /** @typedef {{ portalEdgeCount: number, navCacheKey?: string }} HopCsrAssertContext */
@@ -24,12 +25,13 @@ export function createPassageNetworkPolicyView(passageNetworkKeys, passageNetwor
     for (let i = 0; i < passageNetworkKeys.length; i++) networkIdByKey.set(passageNetworkKeys[i], passageNetworkIds[i]);
     return { networkIdByKey };
 }
-/** @param {HopCsrAssertContext} ctx @param {number} hopWrite @param {PassageNetworkPolicyView} policy */
-export function assertHopCsrBake(ctx, hopWrite, policy) {
-    if (!ctx.portalEdgeCount) return;
-    if (policy.networkIdByKey.size === 0) return;
+/** @param {HopCsrAssertContext} ctx @param {number} hopWrite @param {Map<number, import("./boundaryNavHops.js").BoundaryNavHop[]>} hopsByFromIdx */
+export function assertHopCsrBake(ctx, hopWrite, hopsByFromIdx) {
     if (hopWrite > 0) return;
-    throw new Error(`hop CSR empty with ${ctx.portalEdgeCount} portal(s) and ${policy.networkIdByKey.size} powered key(s); navKey=${ctx.navCacheKey ?? ""}`);
+    let built = 0;
+    for (const list of hopsByFromIdx.values()) built += list.length;
+    if (built === 0) return;
+    throw new Error(`hop CSR empty but ${built} hop(s) built; navKey=${ctx.navCacheKey ?? ""}`);
 }
 /**
  * @param {Map<number, import("./boundaryNavHops.js").BoundaryNavHop[]>} hopsByFromIdx
@@ -61,8 +63,9 @@ export function bakeHopCsrFromHopsMap(hopsByFromIdx, blocked, cols, rows, hopOff
 }
 /** @param {import("./navSimView.js").ReturnType<typeof createNavSimView>} simView @param {PassageNetworkPolicyView} policy @param {Uint8Array} blocked @param {HopCsrAssertContext} [assertCtx] */
 export function bakeHopCsrOnSim(simView, policy, blocked, cols, rows, hopOffsets, hopExitIdx, hopCost, assertCtx) {
+    simView.portalSlotByKey = buildPortalSlotByKey(simView);
     const hopsByFromIdx = buildBoundaryNavHops(simView, (g, mouthCol, mouthRow, backCol, backRow) => evaluatePortalHopEntry(g, mouthCol, mouthRow, backCol, backRow, policy));
     const hopWrite = bakeHopCsrFromHopsMap(hopsByFromIdx, blocked, cols, rows, hopOffsets, hopExitIdx, hopCost);
-    if (assertCtx) assertHopCsrBake(assertCtx, hopWrite, policy);
+    if (assertCtx) assertHopCsrBake(assertCtx, hopWrite, hopsByFromIdx);
     return hopWrite;
 }

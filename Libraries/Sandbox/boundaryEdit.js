@@ -14,10 +14,7 @@ export function notifyGridWallChange(state, bounds, { fullNavSync = false } = {}
 export function commitBoundaryEdit(state, bounds, { power = false, nav = false } = {}) {
     const regions = Array.isArray(bounds) ? bounds : [bounds];
     if (nav) state.obstacleGrid.invalidateGridNavSnapshot();
-    if (power) {
-        void syncPassagePowerNetwork(state);
-        return;
-    }
+    if (power) return syncPassagePowerNetwork(state);
     for (let i = 0; i < regions.length; i++) notifyGridWallChange(state, regions[i]);
 }
 /** Clear whichever primary boundary occupies a slot (railWall, forcefield, portal). */
