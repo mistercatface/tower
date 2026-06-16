@@ -50,8 +50,6 @@ export class HpaPathWorker {
         this._graphPatchChain = Promise.resolve();
         this._graphSize = 0;
         this._damagePadding = 12;
-        /** @type {(() => void) | null} */
-        this.onGraphPatched = null;
         this.graphIdToIdx = new Map();
         this.graphNodeIds = [];
         this.graphNodeCount = 0;
@@ -100,7 +98,6 @@ export class HpaPathWorker {
                 const resolve = this._graphPatchResolve;
                 this._graphPatchResolve = null;
                 resolve?.();
-                this.onGraphPatched?.();
                 return;
             }
             if (type === GRAPH_PATCH_ERROR) {
@@ -218,9 +215,6 @@ export class HpaPathWorker {
         this._pruneSeedWorldX = worldX;
         this._pruneSeedWorldY = worldY;
     }
-    getCellToRegionView() {
-        return this.graphCellToRegion;
-    }
     /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
     isRegionGraphReady(grid = this.navGraph) {
         const size = grid.cols * grid.rows;
@@ -288,9 +282,6 @@ export class HpaPathWorker {
     }
     pathRow(slot, i) {
         return this._pathRows(slot)[i];
-    }
-    inFlightCount() {
-        return MAX_HPA_REPLAN_SLOTS - this._slotFree.length;
     }
     _pathMeta(slot) {
         return hpaPathSlotMeta(this.sabPathMetaPool, slot);

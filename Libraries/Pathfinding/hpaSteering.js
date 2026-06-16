@@ -1,4 +1,3 @@
-import { computeDirectSteering } from "../Agent/steering.js";
 import { computePathSteering } from "./pathFollow.js";
 import { computeSabPathSteering } from "./hpaPathSlot.js";
 /** @typedef {import("../Agent/types.js").AgentPose} AgentPose */
@@ -24,19 +23,4 @@ export function computeHpaNavSteering(pose, navState, targetX, targetY, settings
     return useSab
         ? computeSabPathSteering(pose, worker, navState.pathSlot, navState.pathLen, targetX, targetY, { ...settings, grid }, navState)
         : computePathSteering(pose, navState.path, targetX, targetY, { ...settings, grid }, navState);
-}
-/**
- * @param {AgentPose} pose
- * @param {{ x: number, y: number }[] | null} path
- * @param {number} targetX
- * @param {number} targetY
- * @param {object} [settings]
- * @param {NavSessionState | null} [navState]
- * @param {HpaPathWorker | null} [worker]
- * @returns {SteeringResult & { offPath?: boolean }}
- */
-export function computeHpaSteering(pose, path, targetX, targetY, settings = {}, navState = null, worker = null) {
-    if (navState && navHasActivePath(navState)) return computeHpaNavSteering(pose, navState, targetX, targetY, settings, settings.grid, worker);
-    if (path && path.length >= 2) return computePathSteering(pose, path, targetX, targetY, settings, navState);
-    return computeDirectSteering(pose, targetX, targetY);
 }

@@ -35,28 +35,6 @@ export function findPathProgressIdx(x, y, path, options = {}) {
     while (idx < path.length - 1 && pathWaypointArrived(x, y, path[idx].x, path[idx].y, PATH_WAYPOINT_ARRIVAL_PX, grid)) idx++;
     return idx;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} ax @param {number} ay @param {number} bx @param {number} by */
-function cellsAreGridNeighbors(grid, ax, ay, bx, by) {
-    const a = grid.worldToGrid(ax, ay);
-    const b = grid.worldToGrid(bx, by);
-    return Math.abs(a.col - b.col) <= 1 && Math.abs(a.row - b.row) <= 1;
-}
-/**
- * @param {number} x
- * @param {number} y
- * @param {{ x: number, y: number }[] | null | undefined} path
- * @param {number} progressIdx
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null | undefined} grid
- */
-export function buildPathOverlayFromProgress(x, y, path, progressIdx, grid = null) {
-    if (!path?.length) return { pathNodes: [] };
-    const idx = Math.max(0, Math.min(progressIdx ?? 0, path.length - 1));
-    const pathNodes = path.slice(idx);
-    const first = pathNodes[0];
-    if (grid && first && Math.hypot(first.x - x, first.y - y) > 1 && cellsAreGridNeighbors(grid, x, y, first.x, first.y) && pathWaypointArrived(x, y, first.x, first.y, PATH_WAYPOINT_ARRIVAL_PX, grid))
-        pathNodes.unshift({ x, y });
-    return { pathNodes };
-}
 /**
  * @param {AgentPose} pose
  * @param {{ x: number, y: number }[]} path
