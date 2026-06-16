@@ -1,7 +1,6 @@
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import {
-    bakeHopCsr,
     copyNavSimSabRect,
     createSnapshotLocalNavView,
     createWorkerNavSnapshotView,
@@ -16,6 +15,7 @@ import {
 import { buildHpaReplanResult, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
 import { isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { gridSettings } from "../../Config/balance/grid.js";
+import { stampPassageNetworkIdsOnGrid } from "./navSimHopBake.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
@@ -379,6 +379,9 @@ export class HpaPathWorker {
             portalEdgeCount: grid.edgeStore.portalEdgeCount,
         };
     }
+    _hopSabCapacity(grid) {
+        return Math.max(grid.edgeStore.portalEdgeCount, 4);
+    }
     scheduleNavTopologySync(grid = this.navGraph) {
         const cacheKey = snapshotNavCacheKey(grid);
         if (cacheKey === this._navKey) return;
@@ -394,13 +397,11 @@ export class HpaPathWorker {
         this._navSnapshotView = null;
         this.navGraph.gridNavSnapshot = null;
         const blocked = packBlockedFromGrid(grid);
-        const hops = bakeHopCsr(grid, blocked, grid.cols, grid.rows);
-        this._ensureNavBuffers(size, hops.hopExitIdx.byteLength, hops.hopCost.byteLength, vertCount);
+        const hopCap = this._hopSabCapacity(grid);
+        this._ensureNavBuffers(size, hopCap * 4, hopCap, vertCount);
         this.navBlocked.set(blocked);
         packNavSimSabFromGrid(grid, this.navGridFill, this.navFloorKind, this.navFloorFacing, this.navEdgeSlots);
-        this.navHopOffsets.set(hops.hopOffsets);
-        this.navHopExitIdx.set(hops.hopExitIdx);
-        this.navHopCost.set(hops.hopCost);
+        stampPassageNetworkIdsOnGrid(grid);
         this._navSyncPromise = new Promise((resolve) => {
             this._navSyncResolve = resolve;
             this.host.worker.postMessage({
@@ -453,11 +454,9 @@ export class HpaPathWorker {
                 this.navGraph.gridNavSnapshot = null;
                 packBlockedIntoRect(grid, dataBounds, this.navBlocked);
                 copyNavSimSabRect(grid, simBounds, this.navGridFill, this.navFloorKind, this.navFloorFacing, this.navEdgeSlots);
-                const hops = bakeHopCsr(grid, this.navBlocked, grid.cols, grid.rows);
-                this._ensureNavBuffers(grid.cols * grid.rows, hops.hopExitIdx.byteLength, hops.hopCost.byteLength, (grid.cols + 1) * (grid.rows + 1));
-                this.navHopOffsets.set(hops.hopOffsets);
-                this.navHopExitIdx.set(hops.hopExitIdx);
-                this.navHopCost.set(hops.hopCost);
+                const hopCap = this._hopSabCapacity(grid);
+                this._ensureNavBuffers(grid.cols * grid.rows, hopCap * 4, hopCap, (grid.cols + 1) * (grid.rows + 1));
+                stampPassageNetworkIdsOnGrid(grid);
                 this._navSyncPromise = new Promise((resolve) => {
                     this._navSyncResolve = resolve;
                     this.host.worker.postMessage({

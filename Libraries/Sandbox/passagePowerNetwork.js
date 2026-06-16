@@ -6,7 +6,8 @@ import { canonicalEdgeCellKey, edgeNeighbor, forEachCellEdge } from "../Spatial/
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
-import { syncBoundaryNavIndex } from "./boundaryNavSync.js";
+import { syncBoundaryNavIndex, ensureBoundaryNavHops } from "./boundaryNavSync.js";
+import { stampPassageNetworkIdsOnGrid } from "../Pathfinding/navSimHopBake.js";
 /** @typedef {{ col: number, row: number, side: number, key: number }} PassageEdgeRef */
 /** Cardinal edge endpoints as grid vertices (cell-corner coordinates). */
 export function passageEdgeVertexCoords(col, row, side) {
@@ -237,6 +238,9 @@ export function syncPassagePowerNetwork(state) {
     const energizedSources = collectEnergizedSourceCells(grid, state);
     const poweredKeys = floodNetworkPoweredEdgeKeys(grid, energizedSources, graph);
     const networkIdByKey = computePoweredEdgeNetworkIds(graph, poweredKeys, grid.cols);
+    grid._passagePoweredKeys = poweredKeys;
+    grid._passageNetworkIdByKey = networkIdByKey;
+    stampPassageNetworkIdsOnGrid(grid);
     state.sandbox.passagePower = { poweredKeys, networkIdByKey };
     state.sandbox._passagePowerSyncKey = passagePowerSyncKey(state);
     const bounds = emptyCellBounds();
@@ -260,7 +264,10 @@ export function syncPassagePowerNetwork(state) {
         boundaryNavDirty = true;
     }
     if (!portalCount) grid.boundaryNavHops = new Map();
-    else if (boundaryNavDirty || portalCountChanged) syncBoundaryNavIndex(state);
+    else if (boundaryNavDirty || portalCountChanged) {
+        syncBoundaryNavIndex(state);
+        ensureBoundaryNavHops(state);
+    }
     grid._passagePowerNavKey = state.sandbox._passagePowerSyncKey;
     if (isEmptyCellBounds(bounds)) return;
     state.navigation.onObstaclesChanged(bounds);

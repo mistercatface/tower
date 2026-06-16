@@ -44,6 +44,7 @@ export class WorldObstacleGrid {
         this._passagePowerNavKey = "";
     }
     ensureGridNavSnapshot() {
+        this._ensureBoundaryNavHops?.();
         const cacheKey = snapshotNavCacheKey(this);
         if (this.gridNavSnapshot?.cacheKey === cacheKey) return this.gridNavSnapshot;
         this.gridNavSnapshot = buildGridNavSnapshot(this, cacheKey);
@@ -407,8 +408,12 @@ export class WorldObstacleGrid {
         return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow) || this.canBoundaryHop(currCol, currRow, nextCol, nextRow);
     }
     getBoundaryHops(col, row) {
+        this._ensureBoundaryNavHops?.();
         if (!this.boundaryNavHops) return null;
         return this.boundaryNavHops.get(colRowToIndex(col, row, this.cols)) ?? null;
+    }
+    setBoundaryNavHopEnsurer(fn) {
+        this._ensureBoundaryNavHops = fn;
     }
     canBoundaryHop(fromCol, fromRow, exitCol, exitRow) {
         const hops = this.getBoundaryHops(fromCol, fromRow);

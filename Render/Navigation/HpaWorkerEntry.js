@@ -1,5 +1,6 @@
 import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfinding/AStar.js";
 import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology, buildOctileNeighborsFromTopologyRect } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
+import { bakeHopCsrOnSim } from "../../Libraries/Pathfinding/navSimHopBake.js";
 import { createNavSimView, bindNavSimEdgePool } from "../../Libraries/Pathfinding/navSimView.js";
 import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Libraries/Spatial/grid/vertexPassability.js";
 import { registerPortalPassageStepHandler } from "../../Libraries/Sandbox/portalStep.js";
@@ -140,13 +141,17 @@ function bindNavFromBuild(data) {
         aStarVisited = new Int32Array(size);
     }
 }
+function bakeHopTopology(data, simView, blocked) {
+    bakeHopCsrOnSim(simView, blocked, data.cols, data.rows, new Int32Array(data.sabHopOffsets), new Int32Array(data.sabHopExitIdx), new Uint8Array(data.sabHopCost));
+}
 function buildNavSnapshotOnWorker(data) {
     cols = data.cols;
     rows = data.rows;
     const blocked = new Uint8Array(data.sabBlocked);
     const octileNeighbors = new Int32Array(data.sabOctileNeighbors);
-    const { cardinalOpen, vertexPassability } = bakeNavTopologyFull(data);
-    buildOctileNeighborsFromTopology(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors);
+    const baked = bakeNavTopologyFull(data);
+    buildOctileNeighborsFromTopology(blocked, baked.cardinalOpen, baked.vertexPassability, cols, rows, octileNeighbors);
+    bakeHopTopology(data, baked.simView, blocked);
     bindNavFromBuild({ ...data, sabBlocked: data.sabBlocked, sabOctileNeighbors: data.sabOctileNeighbors });
 }
 function patchNavSnapshotOnWorker(data) {
@@ -156,8 +161,9 @@ function patchNavSnapshotOnWorker(data) {
     }
     const blocked = new Uint8Array(data.sabBlocked);
     const octileNeighbors = new Int32Array(data.sabOctileNeighbors);
-    const { cardinalOpen, vertexPassability } = bakeNavTopologyPatch(data);
-    buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vertexPassability, data.cols, data.rows, octileNeighbors, data.startCol, data.endCol, data.startRow, data.endRow);
+    const baked = bakeNavTopologyPatch(data);
+    buildOctileNeighborsFromTopologyRect(blocked, baked.cardinalOpen, baked.vertexPassability, data.cols, data.rows, octileNeighbors, data.startCol, data.endCol, data.startRow, data.endRow);
+    bakeHopTopology(data, baked.simView, blocked);
     navSnapshot.blocked = blocked;
     navSnapshot.octileNeighbors = octileNeighbors;
     navSnapshot.hopOffsets = new Int32Array(data.sabHopOffsets);

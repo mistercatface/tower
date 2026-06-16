@@ -2,7 +2,7 @@ import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { clearBoundaryPrimary, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
-import { syncBoundaryNavIndex } from "./boundaryNavSync.js";
+import { syncBoundaryNavIndex, ensureBoundaryNavHops } from "./boundaryNavSync.js";
 import { unlinkPortalEdge } from "./portalLinks.js";
 export function notifyGridWallChange(state, bounds) {
     state.obstacleGrid.bumpWallGridRevision();
@@ -15,7 +15,10 @@ export function commitBoundaryEdit(state, bounds, { power = false, nav = false }
     const regions = Array.isArray(bounds) ? bounds : [bounds];
     for (let i = 0; i < regions.length; i++) notifyGridWallChange(state, regions[i]);
     if (power) syncPassagePowerNetwork(state);
-    else if (nav) syncBoundaryNavIndex(state);
+    else if (nav) {
+        syncBoundaryNavIndex(state);
+        ensureBoundaryNavHops(state);
+    }
 }
 /** Clear whichever primary boundary occupies a slot (railWall, forcefield, portal). */
 export function clearPrimaryBoundaryAt(state, col, row, side) {

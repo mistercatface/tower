@@ -8,6 +8,7 @@ import { clearFloorOverlayAt } from "./floorOccupancy.js";
 import { addButtonLink, clearButtonLinks, drawButtonWires, findButtonLinkTarget, listButtonLinkEndpoints, removeButtonLink } from "./buttonLinks.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold } from "./floorButtons.js";
+import { ensureBoundaryNavHops } from "./boundaryNavSync.js";
 import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
@@ -54,6 +55,7 @@ const MARQUEE_BOUNDS = createAabb();
  */
 export function createSandboxController(state, { getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId }) {
     registerSandboxPassageHandlers();
+    state.obstacleGrid.setBoundaryNavHopEnsurer(() => ensureBoundaryNavHops(state));
     const session = createSandboxSession(state, { defaultSpawnPropId });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";

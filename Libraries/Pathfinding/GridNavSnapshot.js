@@ -64,27 +64,24 @@ export function copyNavSimSabRect(grid, bounds, gridFill, floorKind, floorFacing
 export function snapshotNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.boundaryNavEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
 }
+import { bakeHopCsrFromHopsMap } from "./navSimHopBake.js";
+/** Main-thread CSR from grid.boundaryNavHops (lazy-built for steering/overlay). */
 export function bakeHopCsr(grid, blocked, cols, rows) {
     const size = cols * rows;
     const hopOffsets = new Int32Array(size + 1);
     const hopExitIdx = [];
     const hopCost = [];
-    let write = 0;
-    for (let idx = 0; idx < size; idx++) {
-        hopOffsets[idx] = write;
-        const col = idx % cols;
-        const row = (idx / cols) | 0;
-        const hops = grid.getBoundaryHops(col, row);
-        if (hops)
-            for (let i = 0; i < hops.length; i++) {
-                const { exitCol, exitRow, cost } = hops[i];
-                if (blocked[colRowToIndex(exitCol, exitRow, cols)]) continue;
-                hopExitIdx.push(colRowToIndex(exitCol, exitRow, cols));
-                hopCost.push(cost);
-                write++;
-            }
-    }
-    hopOffsets[size] = write;
+    const hopsByFromIdx = grid.boundaryNavHops;
+    if (hopsByFromIdx) {
+        const tempExit = new Int32Array(Math.max(grid.edgeStore.portalEdgeCount, 4));
+        const tempCost = new Uint8Array(tempExit.length);
+        bakeHopCsrFromHopsMap(hopsByFromIdx, blocked, cols, rows, hopOffsets, tempExit, tempCost);
+        const write = hopOffsets[size];
+        for (let i = 0; i < write; i++) {
+            hopExitIdx.push(tempExit[i]);
+            hopCost.push(tempCost[i]);
+        }
+    } else hopOffsets[size] = 0;
     return { hopOffsets, hopExitIdx: Int32Array.from(hopExitIdx), hopCost: Uint8Array.from(hopCost) };
 }
 function bakeOctileNeighbors(grid, cols, rows, blocked, octileNeighbors, startRow, endRow) {

@@ -52,7 +52,7 @@ export { SANDBOX_SCENE_SCHEMA_VERSION, applySandboxSceneSnapshot, collectSandbox
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
 export { evaluatePortalStepEntry } from "./portalLinks.js";
 export { tryPortalIntake, applyPortalTraverse } from "./portalTraverse.js";
-export { syncBoundaryNavIndex } from "./boundaryNavSync.js";
+export { syncBoundaryNavIndex, ensureBoundaryNavHops } from "./boundaryNavSync.js";
 export {
     bakeAnimatedSurfaceFlipbook,
     releaseAnimatedSurfaceFlipbook,
