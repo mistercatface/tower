@@ -48,6 +48,23 @@ export function createQuantizedSpriteCache({ maxItems = 2000, viewStep = 30, vie
         },
     };
 }
+function drawImageWithModifier(ctx, image, dx, dy, dw, dh, modifier) {
+    if (modifier?.clipCircle) {
+        ctx.save();
+        prepModifiedBlit(ctx, modifier);
+        ctx.drawImage(image, dx, dy, dw, dh);
+        ctx.restore();
+        return;
+    }
+    if (modifier?.alpha != null) {
+        const prevAlpha = ctx.globalAlpha;
+        ctx.globalAlpha = prevAlpha * modifier.alpha;
+        ctx.drawImage(image, dx, dy, dw, dh);
+        ctx.globalAlpha = prevAlpha;
+        return;
+    }
+    ctx.drawImage(image, dx, dy, dw, dh);
+}
 /**
  * World-anchored blit (iso props). Opacity applied at blit time, not bake time.
  * Primary entry points for cached sprite draws (iso props, kinematics bodies).
@@ -63,12 +80,7 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
     const drawX = modifier?.drawX ?? worldX;
     const drawY = modifier?.drawY ?? worldY;
     const scale = modifier?.scale ?? 1;
-    ctx.save();
-    prepModifiedBlit(ctx, modifier);
-    ctx.translate(drawX, drawY);
-    if (scale !== 1) ctx.scale(scale, scale);
-    ctx.drawImage(sprite, -anchorX, -anchorY, drawW, drawH);
-    ctx.restore();
+    drawImageWithModifier(ctx, sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale, modifier);
 }
 /**
  * Center-anchored blit (kinematics humanoids).
@@ -88,12 +100,9 @@ export function blitCenteredSprite(ctx, sprite, x, y, displayDiameter, modifier 
     const drawX = modifier?.drawX ?? x;
     const drawY = modifier?.drawY ?? y;
     const scale = modifier?.scale ?? 1;
-    ctx.save();
-    prepModifiedBlit(ctx, modifier);
-    ctx.translate(drawX, drawY);
-    if (scale !== 1) ctx.scale(scale, scale);
-    ctx.drawImage(sprite, -drawW / 2, -drawH / 2 - vShift, drawW, drawH);
-    ctx.restore();
+    const destW = drawW * scale;
+    const destH = drawH * scale;
+    drawImageWithModifier(ctx, sprite, drawX - destW / 2, drawY - destH / 2 - vShift * scale, destW, destH, modifier);
 }
 // ─── Kinematics preset ───────────────────────────────────────────────────────
 export function createKinematicsSpriteCache() {

@@ -168,6 +168,19 @@ function blitVectorSprite(ctx, sprite, x, y, { rotation = 0, modifier = null } =
     const drawX = modifier?.drawX ?? x;
     const drawY = modifier?.drawY ?? y;
     const scale = modifier?.scale ?? 1;
+    if (!rotation && !modifier?.clipCircle) {
+        const destW = sprite.width * scale;
+        const destH = sprite.height * scale;
+        if (modifier?.alpha != null) {
+            const prevAlpha = ctx.globalAlpha;
+            ctx.globalAlpha = prevAlpha * modifier.alpha;
+            ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, destW, destH);
+            ctx.globalAlpha = prevAlpha;
+            return;
+        }
+        ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, destW, destH);
+        return;
+    }
     ctx.save();
     prepModifiedBlit(ctx, modifier);
     ctx.translate(drawX, drawY);
