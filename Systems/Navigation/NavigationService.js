@@ -1,5 +1,6 @@
 import { NavigationController } from "../../Libraries/Navigation/index.js";
 import { refreshNavCrossingGrant, syncCrossingGrantToEntity } from "../../Libraries/Pathfinding/crossingGrant.js";
+import { snapshotNavCacheKey } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
 import { VIEWPORT_VISIBILITY_PAD_WIDE } from "../../Libraries/Viewport/Viewport.js";
 import { planHpaSteering } from "./HpaStrategy.js";
@@ -13,6 +14,7 @@ export class NavigationService {
         this._hpaPathWorker = hpaPathWorker;
         this._obstacleGrid = obstacleGrid;
         this._lastGridTopologyEpoch = obstacleGrid.gridTopologyEpoch;
+        this._lastPassagePowerNavKey = obstacleGrid._passagePowerNavKey ?? "";
         /** @type {((grid: import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, bounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => { x: number, y: number }) | null} */
         this._resolvePruneWorld = null;
         this._workerNavGraphSyncChain = Promise.resolve();
@@ -97,7 +99,10 @@ export class NavigationService {
         const graphEpoch = this._controller.obstacleGeneration + 1;
         const seed = this._resolvePruneSeed(grid, damageBounds);
         this._hpaPathWorker.setPruneSeed(seed.x, seed.y);
-        if (topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds)) {
+        const passagePowerNavChanged = grid._passagePowerNavKey !== this._lastPassagePowerNavKey;
+        this._lastPassagePowerNavKey = grid._passagePowerNavKey ?? "";
+        const fullNavSync = topologyChanged || passagePowerNavChanged || !damageBounds || isEmptyCellBounds(damageBounds);
+        if (fullNavSync) {
             await this._hpaPathWorker.scheduleNavTopologySyncAwait(grid);
             await this._hpaPathWorker.buildRegionGraphFull(grid, seed.x, seed.y, graphEpoch);
         } else {
@@ -105,6 +110,7 @@ export class NavigationService {
             await this._hpaPathWorker.patchRegionGraph(grid, damageBounds, graphEpoch);
         }
         grid.gridNavSnapshot = this._hpaPathWorker.getNavSnapshotView();
+        if (grid.gridNavSnapshot.cacheKey !== snapshotNavCacheKey(grid)) throw new Error("worker nav snapshot stale after sync");
         this._controller.obstacleGeneration = graphEpoch;
     }
     get obstacleGeneration() {

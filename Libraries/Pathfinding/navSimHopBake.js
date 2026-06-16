@@ -1,5 +1,5 @@
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { isPortalEdge, isPassagePowerConductorEdge } from "../Spatial/grid/CellEdge.js";
+import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import { canonicalEdgeCellKey, forEachCellEdge } from "../Spatial/grid/gridCellTopology.js";
 import { evaluatePortalHopEntry } from "../Sandbox/portalLinks.js";
 import { buildBoundaryNavHops } from "./boundaryNavHops.js";
@@ -25,21 +25,6 @@ export function createPassageNetworkPolicyView(passageNetworkKeys, passageNetwor
     const networkIdByKey = new Map();
     for (let i = 0; i < passageNetworkKeys.length; i++) networkIdByKey.set(passageNetworkKeys[i], passageNetworkIds[i]);
     return { networkIdByKey };
-}
-/** Copy last passage-power network ids onto edge pool objects (main overlay / debug only). */
-export function stampPassageNetworkIdsOnGrid(grid) {
-    const poweredKeys = grid._passagePoweredKeys;
-    const networkIdByKey = grid._passageNetworkIdByKey;
-    if (!poweredKeys || !networkIdByKey || !grid.cols) return;
-    forEachCellEdge(
-        grid,
-        (col, row, side) => {
-            const key = canonicalEdgeCellKey(grid, col, row, side);
-            const edge = grid.edgeStore.get(col, row, side, grid.cols);
-            edge.networkId = poweredKeys.has(key) ? (networkIdByKey.get(key) ?? -1) : -1;
-        },
-        { filter: isPassagePowerConductorEdge },
-    );
 }
 /** @param {import("./navSimView.js").ReturnType<typeof createNavSimView>} simView */
 export function buildPortalSlotByKey(simView) {

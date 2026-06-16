@@ -22,7 +22,7 @@ import {
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
-import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
+import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
 import { PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
 /**
@@ -192,9 +192,10 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     const grid = state.obstacleGrid;
     grid.edgeStore.recomputePassageEdgeCount();
     recomputePortalSlotIndex(grid);
-    await syncPassagePowerNetwork(state);
-    if (stampBounds) notifyGridWallChange(state, stampBounds);
-    else if (grid.cols) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
+    applyPassagePowerGridState(state);
+    const surfaceBounds = stampBounds ?? { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 };
+    await notifyGridWallChange(state, surfaceBounds, { fullNavSync: true });
+    await state.navigation.awaitWorkerNavReady();
     applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);
     syncRoomGraphBake(state);
     for (let i = 0; i < doc.props.length; i++) spawnSnapshotProp(state, doc.props[i]);

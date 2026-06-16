@@ -32,7 +32,6 @@ export class WorldObstacleGrid {
         this.patchBoundsScratch = createAabb();
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
-        this.boundaryNavEpoch = 0;
         this.floorNavEpoch = 0;
         this.portalSlotByKey = new Map();
         this.vertexPassability = new Uint8Array(0);

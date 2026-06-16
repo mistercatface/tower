@@ -1,5 +1,4 @@
+/** Invalidate main-thread nav snapshot after portal hop topology edits (worker sync follows via notify). */
 export function syncBoundaryNavIndex(state) {
-    const grid = state.obstacleGrid;
-    grid.boundaryNavEpoch = (grid.boundaryNavEpoch + 1) | 0;
-    grid.invalidateGridNavSnapshot();
+    state.obstacleGrid.invalidateGridNavSnapshot();
 }

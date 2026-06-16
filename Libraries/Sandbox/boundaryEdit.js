@@ -4,12 +4,13 @@ import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { syncBoundaryNavIndex } from "./boundaryNavSync.js";
 import { unlinkPortalEdge } from "./portalLinks.js";
-export function notifyGridWallChange(state, bounds) {
+export function notifyGridWallChange(state, bounds, { fullNavSync = false } = {}) {
     state.obstacleGrid.bumpWallGridRevision();
     state.worldSurfaces.invalidateGridBounds(bounds, state);
-    state.navigation.onObstaclesChanged(bounds);
+    const navPromise = state.navigation.onObstaclesChanged(fullNavSync ? null : bounds);
     rebuildLabMapCaches(state);
     markGridZoneSubscriptionsDirty(state);
+    return navPromise;
 }
 export function commitBoundaryEdit(state, bounds, { power = false, nav = false } = {}) {
     const regions = Array.isArray(bounds) ? bounds : [bounds];

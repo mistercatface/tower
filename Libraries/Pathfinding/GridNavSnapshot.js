@@ -62,7 +62,7 @@ export function copyNavSimSabRect(grid, bounds, gridFill, floorKind, floorFacing
     });
 }
 export function snapshotNavCacheKey(grid) {
-    return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.boundaryNavEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
+    return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
 }
 /** Stable id for worker grid frame — sent only when this changes (resize / origin shift). */
 export function gridNavFrameKey(grid) {

@@ -54,7 +54,7 @@
 // portalSlotIndex.js    — canonical portal edge key → slot lookup
 // vertexPassability.js  — vertex cache (worker rebakes from nav sim SABs)
 // boundaryNavHops.js    — worker hop build helper, path hop detection, overlay geometry
-// boundaryNavSync.js      — boundaryNavEpoch bump on portal/power topology change
+// boundaryNavSync.js      — invalidate main-thread nav snapshot on portal hop edits
 // hpaPathPlan.js        — unified HPA replan: computeCellPath → hop-expanded world path
 // GridNavSnapshot.js    — frozen walkability, octile neighbors, hop CSR; localNavView for A*
 //
