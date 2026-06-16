@@ -50,12 +50,14 @@ let labViewDirty = true;
 function markLabViewDirty() {
     labViewDirty = true;
 }
-/** Canvas input + panel toggles mark the lab view dirty while paused. Returns the same mark fn for viewport/resize hooks. */
+/** Canvas input marks the lab view dirty while paused (place preview, clicks). Camera pan/zoom goes through setCamera. */
 export function mountLabFrameRefresh(canvas) {
     canvas.addEventListener("pointerdown", markLabViewDirty);
-    canvas.addEventListener("pointermove", markLabViewDirty);
+    canvas.addEventListener("pointermove", (e) => {
+        if (e.buttons & 2) return;
+        markLabViewDirty();
+    });
     canvas.addEventListener("pointerleave", markLabViewDirty);
-    canvas.addEventListener("wheel", markLabViewDirty, { passive: true });
     document.getElementById("ui-root")?.addEventListener("change", markLabViewDirty);
     return markLabViewDirty;
 }

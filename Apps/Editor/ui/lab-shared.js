@@ -32,49 +32,22 @@ function isCameraMoveBlockedTarget(target) {
     }
     return false;
 }
-export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onUpdate }) {
+const CAMERA_MOVE_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+export function setupLabViewportNavigation(canvasId, { getCamera, setCamera }) {
     const canvases = () => {
         const idList = Array.isArray(canvasId) ? canvasId : [canvasId];
         return idList.map((id) => document.getElementById(id));
     };
     const moveKeys = new Set();
-    let moveRaf = null;
-    const MOVE_SPEED_SCALE = 1;
     const baseSpeed = 150;
-    const moveSpeed = () => (baseSpeed * MOVE_SPEED_SCALE) / (getCamera().zoom || 1);
-    const applyDelta = (dx, dy) => {
-        const cam = getCamera();
-        const len = Math.hypot(dx, dy) || 1;
-        const step = moveSpeed() * 0.016;
-        setCamera(cam.x + (dx / len) * step, cam.y + (dy / len) * step, cam.zoom);
-    };
-    const tickMove = () => {
-        let dx = 0;
-        let dy = 0;
-        if (moveKeys.has("KeyW") || moveKeys.has("ArrowUp")) dy -= 1;
-        if (moveKeys.has("KeyS") || moveKeys.has("ArrowDown")) dy += 1;
-        if (moveKeys.has("KeyA") || moveKeys.has("ArrowLeft")) dx -= 1;
-        if (moveKeys.has("KeyD") || moveKeys.has("ArrowRight")) dx += 1;
-        if (dx !== 0 || dy !== 0) {
-            applyDelta(dx, dy);
-            onUpdate?.();
-        }
-        moveRaf = requestAnimationFrame(tickMove);
-    };
     window.addEventListener("keydown", (e) => {
         if (isCameraMoveBlockedTarget(e.target)) return;
-        if (["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
-            moveKeys.add(e.code);
-            e.preventDefault();
-            if (!moveRaf) moveRaf = requestAnimationFrame(tickMove);
-        }
+        if (!CAMERA_MOVE_KEYS.includes(e.code)) return;
+        moveKeys.add(e.code);
+        e.preventDefault();
     });
     window.addEventListener("keyup", (e) => {
         moveKeys.delete(e.code);
-        if (moveKeys.size === 0 && moveRaf) {
-            cancelAnimationFrame(moveRaf);
-            moveRaf = null;
-        }
     });
     let dragState = null;
     for (const canvas of canvases()) {
@@ -85,7 +58,6 @@ export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onU
                 const cam = getCamera();
                 const nextZoom = Math.min(2.5, Math.max(0.25, (cam.zoom || 1) + (e.deltaY > 0 ? -0.05 : 0.05)));
                 setCamera(cam.x, cam.y, nextZoom);
-                onUpdate?.();
             },
             { passive: false },
         );
@@ -101,7 +73,6 @@ export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onU
             const dx = e.clientX - dragState.startX;
             const dy = e.clientY - dragState.startY;
             setCamera(dragState.camX - dx / dragState.zoom, dragState.camY - dy / dragState.zoom, dragState.zoom);
-            onUpdate?.();
         });
         const endDrag = () => {
             if (dragState?.canvas === canvas) dragState = null;
@@ -109,4 +80,17 @@ export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onU
         canvas.addEventListener("pointerup", endDrag);
         canvas.addEventListener("pointercancel", endDrag);
     }
+    return (dt) => {
+        let dx = 0;
+        let dy = 0;
+        if (moveKeys.has("KeyW") || moveKeys.has("ArrowUp")) dy -= 1;
+        if (moveKeys.has("KeyS") || moveKeys.has("ArrowDown")) dy += 1;
+        if (moveKeys.has("KeyA") || moveKeys.has("ArrowLeft")) dx -= 1;
+        if (moveKeys.has("KeyD") || moveKeys.has("ArrowRight")) dx += 1;
+        if (dx === 0 && dy === 0) return;
+        const cam = getCamera();
+        const len = Math.hypot(dx, dy) || 1;
+        const step = (baseSpeed / (cam.zoom || 1)) * (dt / 1000);
+        setCamera(cam.x + (dx / len) * step, cam.y + (dy / len) * step, cam.zoom);
+    };
 }

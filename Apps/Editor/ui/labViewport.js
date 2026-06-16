@@ -9,6 +9,12 @@ export const LAB_ZOOM_MAX = 2.5;
 let zoomControl = null;
 /** @type {import("../../../Libraries/Playback/speedControl.js").SpeedControlHandle | null} */
 let speedControl = null;
+/** @type {((dt: number) => void) | null} */
+let tickKeyboardPan = null;
+/** @param {number} dt */
+export function tickLabViewportNavigation(dt) {
+    tickKeyboardPan?.(dt);
+}
 function clampLabZoom(zoom) {
     return clampZoom(LAB_ZOOM_MIN, LAB_ZOOM_MAX, zoom);
 }
@@ -32,14 +38,14 @@ export function mountLabViewport(state, onViewChange, playbackHandlers) {
     });
     speedControl = applySpeedControl(document.getElementById("labSpeedControl"), { inject: true, playbackHandlers });
     speedControl.refresh(state);
-    setupLabViewportNavigation("gameCanvas", {
+    tickKeyboardPan = setupLabViewportNavigation("gameCanvas", {
         getCamera: () => state.viewport,
         setCamera: (x, y, zoom) => {
             state.viewport.snapTo(x, y);
             state.viewport.zoom = clampLabZoom(zoom);
             zoomControl.setZoom(state.viewport.zoom);
+            onViewChange();
         },
-        onUpdate: onViewChange,
     });
 }
 /** @param {import("../state.js").TileLabGameState} state */

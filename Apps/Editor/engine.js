@@ -17,7 +17,7 @@ import { tickFloorOccupancy } from "../../Libraries/Sandbox/floorOccupancy.js";
 import { tickGridZones } from "../../Libraries/Sandbox/gridZoneTick.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
-import { fitLabStageToView } from "./ui/labViewport.js";
+import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.js";
 import { mountEditorUi, refreshEditorUi, resizeEditorLayout } from "./ui/editorUi.js";
 import { drawLabFrame, shouldRenderLabFrame } from "./ui/preview.js";
 /** @type {object[]} */
@@ -90,6 +90,7 @@ export function createEditorApp() {
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
         state.scheduler.update(dt);
+        tickLabViewportNavigation(dt);
         tickSandboxCameraFollow(state.viewport, state, state.entityRegistry, dt);
         state.sandbox.controller?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
