@@ -219,9 +219,11 @@ export function isPassageEdgeNetworkPowered(state, grid, col, row, side) {
     return cache.poweredKeys.has(canonicalEdgeCellKey(grid, col, row, side));
 }
 export function canLinkPortalsOnNetwork(state, grid, colA, rowA, sideA, colB, rowB, sideB) {
-    const netA = getPassageEdgeNetworkId(state, grid, colA, rowA, sideA);
-    if (netA < 0) return false;
-    return netA === getPassageEdgeNetworkId(state, grid, colB, rowB, sideB);
+    const cache = state.sandbox.passagePower;
+    if (!cache) return false;
+    const netA = cache.networkIdByKey.get(canonicalEdgeCellKey(grid, colA, rowA, sideA));
+    if (netA === undefined || netA < 0) return false;
+    return netA === cache.networkIdByKey.get(canonicalEdgeCellKey(grid, colB, rowB, sideB));
 }
 export function passagePowerSyncKey(state) {
     const grid = state.obstacleGrid;
@@ -246,7 +248,7 @@ export function recomputePassagePowerNetwork(state) {
     state.sandbox._passagePowerSyncKey = passagePowerSyncKey(state);
     return { graph, poweredKeys, networkIdByKey };
 }
-export function syncPassagePowerNetwork(state) {
+export async function syncPassagePowerNetwork(state) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
     const prevPowerKey = grid._passagePowerNavKey;
@@ -277,9 +279,7 @@ export function syncPassagePowerNetwork(state) {
     grid._passagePowerNavKey = state.sandbox._passagePowerSyncKey;
     const powerKeyChanged = grid._passagePowerNavKey !== prevPowerKey;
     if (isEmptyCellBounds(bounds) && !powerKeyChanged && !boundaryNavDirty && !portalCountChanged) return;
-    if (isEmptyCellBounds(bounds)) {
-        state.navigation.onObstaclesChanged({ startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
-        return;
-    }
-    state.navigation.onObstaclesChanged(bounds);
+    if (isEmptyCellBounds(bounds)) await state.navigation.onObstaclesChanged({ startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
+    else await state.navigation.onObstaclesChanged(bounds);
+    await state.navigation.awaitWorkerNavReady();
 }

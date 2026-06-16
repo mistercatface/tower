@@ -64,6 +64,10 @@ export function copyNavSimSabRect(grid, bounds, gridFill, floorKind, floorFacing
 export function snapshotNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.boundaryNavEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
 }
+/** Stable id for worker grid frame — sent only when this changes (resize / origin shift). */
+export function gridNavFrameKey(grid) {
+    return `${grid.cols}:${grid.rows}:${grid.minX}:${grid.minY}:${grid.cellSize}`;
+}
 /** Worker/main-safe octile bake from prepacked topology (no grid.canStep). */
 export function buildOctileNeighborsFromTopology(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors) {
     buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, 0, cols - 1, 0, rows - 1);

@@ -1,6 +1,7 @@
 import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfinding/AStar.js";
 import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology, buildOctileNeighborsFromTopologyRect } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
-import { createNavSimView, bindNavSimEdgePool } from "../../Libraries/Pathfinding/navSimView.js";
+import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Libraries/Pathfinding/navSimView.js";
+import { bindNavEdgePoolFromSab } from "../../Libraries/Spatial/grid/navEdgePoolSab.js";
 import { bakeHopCsrOnSim, createPassageNetworkPolicyView } from "../../Libraries/Pathfinding/navSimHopBake.js";
 import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Libraries/Spatial/grid/vertexPassability.js";
 import { registerPortalPassageStepHandler } from "../../Libraries/Sandbox/portalStep.js";
@@ -46,6 +47,8 @@ let extEdgeCosts;
 let minX;
 let minY;
 let cellSize;
+/** @type {{ cols: number, rows: number, minX: number, minY: number, cellSize: number, key: string } | null} */
+let workerGridFrame = null;
 let damagePadding;
 let pruneSeedWorldX;
 let pruneSeedWorldY;
@@ -88,24 +91,47 @@ function persistEdgeCostsView() {
 function persistEdgeSourcesView() {
     return new Int16Array(sabPersistGraphEdgeSources, 0, maxGraphEdges);
 }
+function applyWorkerGridFrame(data) {
+    if (data.minX !== undefined) {
+        workerGridFrame = { cols: data.cols, rows: data.rows, minX: data.minX, minY: data.minY, cellSize: data.cellSize, key: data.gridFrameKey };
+        cols = data.cols;
+        rows = data.rows;
+        minX = data.minX;
+        minY = data.minY;
+        cellSize = data.cellSize;
+        if (navSimView) {
+            navSimView.cols = data.cols;
+            navSimView.rows = data.rows;
+            bindNavSimGridFrame(navSimView, data.minX, data.minY, data.cellSize);
+        }
+        return;
+    }
+    if (!workerGridFrame || data.gridFrameKey !== workerGridFrame.key) throw new Error(`nav sync missing grid frame (key=${data.gridFrameKey ?? ""})`);
+    if (data.cols !== workerGridFrame.cols || data.rows !== workerGridFrame.rows) throw new Error("nav sync grid size changed without grid frame rebinding");
+}
 function ensureNavSimView(data) {
+    applyWorkerGridFrame(data);
+    const edgePool = bindNavEdgePoolFromSab(new Uint8Array(data.sabEdgePool), data.edgePoolCount);
     const cardinalOpen = new Uint8Array(data.sabCardinalOpen);
     const vertexPassability = new Uint8Array(data.sabVertexPassability);
     if (!navSimView)
         navSimView = createNavSimView(
-            data.cols,
-            data.rows,
+            workerGridFrame.cols,
+            workerGridFrame.rows,
             new Uint8Array(data.sabGridFill),
             new Uint8Array(data.sabFloorKind),
             new Uint8Array(data.sabFloorFacing),
             new Int32Array(data.sabEdgeSlots),
-            data.edgePool,
+            edgePool,
             data.passageEdgeCount,
             data.portalEdgeCount,
             vertexPassability,
+            workerGridFrame.minX,
+            workerGridFrame.minY,
+            workerGridFrame.cellSize,
         );
     else {
-        bindNavSimEdgePool(navSimView, data.edgePool, data.passageEdgeCount, data.portalEdgeCount);
+        bindNavSimEdgePool(navSimView, edgePool, data.passageEdgeCount, data.portalEdgeCount);
         navSimView.vertexPassability = vertexPassability;
     }
     return { simView: navSimView, cardinalOpen, vertexPassability };
@@ -127,7 +153,10 @@ function bindPassageNetworkPolicy(data) {
     passageNetworkPolicy = createPassageNetworkPolicyView(new Int32Array(data.passageNetworkKeys), new Int32Array(data.passageNetworkIds));
 }
 function bakeHopTopology(data, baked, blocked) {
-    bakeHopCsrOnSim(baked.simView, passageNetworkPolicy, blocked, data.cols, data.rows, new Int32Array(data.sabHopOffsets), new Int32Array(data.sabHopExitIdx), new Uint8Array(data.sabHopCost));
+    bakeHopCsrOnSim(baked.simView, passageNetworkPolicy, blocked, data.cols, data.rows, new Int32Array(data.sabHopOffsets), new Int32Array(data.sabHopExitIdx), new Uint8Array(data.sabHopCost), {
+        portalEdgeCount: data.portalEdgeCount,
+        navCacheKey: data.navCacheKey,
+    });
 }
 function bindNavFromBuild(data) {
     cols = data.cols;

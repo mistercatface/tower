@@ -104,18 +104,6 @@ export function diagonalStepOpen(blocked, vertexPassability, cols, rows, col, ro
     for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return false;
     return true;
 }
-/** Recompute main-thread topology caches for grid.canStep (pathfinding worker bakes its own copy). */
-export function syncGridTopologyCaches(grid) {
-    const key = `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.boundaryNavEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
-    const size = grid.cols * grid.rows;
-    const vertCount = grid.cols && grid.rows ? (grid.cols + 1) * (grid.rows + 1) : 0;
-    const sizeStale = grid.navCardinalOpen.length !== size || grid.vertexPassability.length !== vertCount;
-    if (grid._vertexPassabilitySyncKey === key && !sizeStale) return;
-    recomputeVertexPassability(grid);
-    recomputeNavCardinalOpen(grid);
-    grid._vertexPassabilitySyncKey = key;
-    grid.invalidateGridNavSnapshot();
-}
 /** Boundary-only diagonal block test — shoulders + vertex half-edge mask. Caller handles destination cell + belts. */
 export function diagonalBoundaryBlockedFromVertexCache(grid, fromCol, fromRow, toCol, toRow) {
     const dc = toCol - fromCol;

@@ -36,7 +36,6 @@ export class WorldObstacleGrid {
         this.floorNavEpoch = 0;
         this.portalSlotByKey = new Map();
         this.vertexPassability = new Uint8Array(0);
-        this._vertexPassabilitySyncKey = "";
         this.gridNavSnapshot = null;
         this.navCardinalOpen = new Uint8Array(0);
         this.gridTopologyEpoch = 0;

@@ -12,10 +12,12 @@ import {
     packNavSimSabFromGrid,
     snapshotCanStep,
     snapshotNavCacheKey,
+    gridNavFrameKey,
 } from "./GridNavSnapshot.js";
 import { buildHpaReplanResult, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
 import { isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { gridSettings } from "../../Config/balance/grid.js";
+import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
@@ -35,6 +37,10 @@ export class HpaPathWorker {
         this.host = createSabSlotWorkerHost(workerUrl, MAX_HPA_REPLAN_SLOTS);
         this._navKey = "";
         this._navSize = 0;
+        this._workerGridFrameKey = "";
+        this.sabEdgePool = new SharedArrayBuffer(navEdgePoolSabByteLength(4));
+        this.navEdgePoolBytes = new Uint8Array(this.sabEdgePool);
+        this._edgePoolSabRefs = 0;
         this._navSyncPromise = null;
         this._navSnapshotView = null;
         this._lastGridTopologyEpoch = -1;
@@ -310,7 +316,19 @@ export class HpaPathWorker {
     _abstractIdx(slot) {
         return new Int16Array(this.sabAbstractIdxPool, slot * MAX_HPA_ABSTRACT_LEN * 2, MAX_HPA_ABSTRACT_LEN);
     }
-    _ensureNavBuffers(size, hopExitLen, hopCostLen, vertCount) {
+    _ensureNavEdgePoolSab(refCount) {
+        const byteLen = navEdgePoolSabByteLength(refCount);
+        if (this.sabEdgePool.byteLength >= byteLen) return;
+        this.sabEdgePool = new SharedArrayBuffer(byteLen);
+        this.navEdgePoolBytes = new Uint8Array(this.sabEdgePool);
+    }
+    _packNavEdgePoolForWorker(grid) {
+        const refCount = grid.edgeStore.pool.length;
+        this._ensureNavEdgePoolSab(refCount);
+        this._edgePoolSabRefs = packEdgePoolToSab(grid.edgeStore, this.navEdgePoolBytes);
+    }
+    _ensureNavBuffers(size, hopExitLen, hopCostLen, vertCount, edgePoolRefs = 4) {
+        this._ensureNavEdgePoolSab(edgePoolRefs);
         if (this._navSize !== size) {
             this._navSize = size;
             this.sabBlocked = new SharedArrayBuffer(size);
@@ -368,17 +386,27 @@ export class HpaPathWorker {
     }
     _navSimPayload(grid = this.navGraph) {
         const { passageNetworkKeys, passageNetworkIds } = packPassageNetworkPolicy(grid);
-        return {
+        const gridFrameKey = gridNavFrameKey(grid);
+        const payload = {
+            gridFrameKey,
+            sabEdgePool: this.sabEdgePool,
+            edgePoolCount: this._edgePoolSabRefs,
             sabGridFill: this.sabGridFill,
             sabFloorKind: this.sabFloorKind,
             sabFloorFacing: this.sabFloorFacing,
             sabEdgeSlots: this.sabEdgeSlots,
-            edgePool: grid.edgeStore.pool,
             passageEdgeCount: grid.edgeStore.passageEdgeCount,
             portalEdgeCount: grid.edgeStore.portalEdgeCount,
             passageNetworkKeys,
             passageNetworkIds,
         };
+        if (gridFrameKey !== this._workerGridFrameKey) {
+            this._workerGridFrameKey = gridFrameKey;
+            payload.minX = grid.minX;
+            payload.minY = grid.minY;
+            payload.cellSize = grid.cellSize;
+        }
+        return payload;
     }
     scheduleNavTopologySync(grid = this.navGraph) {
         const cacheKey = snapshotNavCacheKey(grid);
@@ -396,13 +424,16 @@ export class HpaPathWorker {
         this.navGraph.gridNavSnapshot = null;
         const blocked = packBlockedFromGrid(grid);
         const hopCap = Math.max(grid.edgeStore.portalEdgeCount, 4);
-        this._ensureNavBuffers(size, hopCap * 4, hopCap, vertCount);
+        const edgePoolRefs = Math.max(grid.edgeStore.pool.length, 4);
+        this._ensureNavBuffers(size, hopCap * 4, hopCap, vertCount, edgePoolRefs);
         this.navBlocked.set(blocked);
         packNavSimSabFromGrid(grid, this.navGridFill, this.navFloorKind, this.navFloorFacing, this.navEdgeSlots);
+        this._packNavEdgePoolForWorker(grid);
         this._navSyncPromise = new Promise((resolve) => {
             this._navSyncResolve = resolve;
             this.host.worker.postMessage({
                 type: "buildNavSnapshot",
+                navCacheKey: cacheKey,
                 cols: grid.cols,
                 rows: grid.rows,
                 sabBlocked: this.sabBlocked,
@@ -451,10 +482,12 @@ export class HpaPathWorker {
                 this.navGraph.gridNavSnapshot = null;
                 packBlockedIntoRect(grid, dataBounds, this.navBlocked);
                 copyNavSimSabRect(grid, simBounds, this.navGridFill, this.navFloorKind, this.navFloorFacing, this.navEdgeSlots);
+                this._packNavEdgePoolForWorker(grid);
                 this._navSyncPromise = new Promise((resolve) => {
                     this._navSyncResolve = resolve;
                     this.host.worker.postMessage({
                         type: "patchNavSnapshot",
+                        navCacheKey: cacheKey,
                         cols: grid.cols,
                         rows: grid.rows,
                         dataStartCol: dataBounds.startCol,
@@ -539,6 +572,9 @@ export class HpaPathWorker {
      */
     async requestPath(opts) {
         const { obstacleGrid, startX, startY, targetX, targetY, graphEpoch, navState, replanRequestId, onAbstractReady } = opts;
+        await this.scheduleNavTopologySyncAwait(obstacleGrid);
+        const navKey = snapshotNavCacheKey(obstacleGrid);
+        if (obstacleGrid.gridNavSnapshot?.cacheKey !== navKey) return null;
         this.releaseOwnedPathSlot(navState);
         if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;
         const { startCol, startRow, targetCol, targetRow } = resolveSnappedPathEndpoints(obstacleGrid, startX, startY, targetX, targetY);

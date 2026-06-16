@@ -15,7 +15,7 @@ export function commitBoundaryEdit(state, bounds, { power = false, nav = false }
     const regions = Array.isArray(bounds) ? bounds : [bounds];
     if (nav) syncBoundaryNavIndex(state);
     if (power) {
-        syncPassagePowerNetwork(state);
+        void syncPassagePowerNetwork(state);
         return;
     }
     for (let i = 0; i < regions.length; i++) notifyGridWallChange(state, regions[i]);

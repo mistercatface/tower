@@ -18,7 +18,7 @@
 //   Owner: boundaryOccupancy.js
 //
 // Vertex — grid corner (vx, vy); diagonal passability via half-edge bitmask cache.
-//   Queries: diagonalBoundaryBlockedFromVertexCache, syncGridTopologyCaches
+//   Queries: diagonalBoundaryBlockedFromVertexCache
 //   Owner: vertexPassability.js
 //
 // Hop — abstract jump across a boundary (portals today): mouth cell → exit cell in one nav step.
@@ -52,7 +52,7 @@
 // boundaryOccupancy.js  — boundary write/read, passage + belt reconciliation
 // portalAccess.js       — portal mouth/back/traverse geometry (not hop policy)
 // portalSlotIndex.js    — canonical portal edge key → slot lookup
-// vertexPassability.js  — vertex cache + syncGridTopologyCaches
+// vertexPassability.js  — vertex cache (worker rebakes from nav sim SABs)
 // boundaryNavHops.js    — worker hop build helper, path hop detection, overlay geometry
 // boundaryNavSync.js      — boundaryNavEpoch bump on portal/power topology change
 // hpaPathPlan.js        — unified HPA replan: computeCellPath → hop-expanded world path

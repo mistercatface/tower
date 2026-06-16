@@ -162,7 +162,6 @@ function clearSandboxSceneContent(state) {
     state.sandbox.passagePower = null;
     state.sandbox._passageEdgeDrawCache = null;
     state.obstacleGrid.portalSlotByKey.clear();
-    state.obstacleGrid._vertexPassabilitySyncKey = "";
     state.obstacleGrid.vertexPassability = new Uint8Array(0);
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string }} entry */
@@ -178,7 +177,7 @@ function spawnSnapshotProp(state, entry) {
  * @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc
  * @param {{ mode?: "replace" | "merge" }} [options]
  */
-export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {}) {
+export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {}) {
     if (mode !== "replace") throw new Error("Only replace mode is supported");
     const cellSize = doc.cellSize ?? state.obstacleGrid.cellSize;
     if (cellSize !== state.obstacleGrid.cellSize) throw new Error(`Scene cellSize ${cellSize} does not match grid ${state.obstacleGrid.cellSize}`);
@@ -193,7 +192,7 @@ export function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {})
     const grid = state.obstacleGrid;
     grid.edgeStore.recomputePassageEdgeCount();
     recomputePortalSlotIndex(grid);
-    syncPassagePowerNetwork(state);
+    await syncPassagePowerNetwork(state);
     if (stampBounds) notifyGridWallChange(state, stampBounds);
     else if (grid.cols) notifyGridWallChange(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 });
     applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);

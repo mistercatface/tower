@@ -1,10 +1,10 @@
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { isPortalEdge, isPassagePowerConductorEdge } from "../Spatial/grid/CellEdge.js";
-import { resolveCardinalStepCrossing, portalAccessInitiatorCell, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { canonicalEdgeCellKey, forEachCellEdge } from "../Spatial/grid/gridCellTopology.js";
-import { PORTAL_LINK_MODE, resolvePortalLinkRoute, resolvePortalPartner } from "../Sandbox/portalLinks.js";
+import { evaluatePortalHopEntry } from "../Sandbox/portalLinks.js";
 import { buildBoundaryNavHops } from "./boundaryNavHops.js";
 /** @typedef {{ networkIdByKey: Map<number, number> }} PassageNetworkPolicyView */
+/** @typedef {{ portalEdgeCount: number, navCacheKey?: string }} HopCsrAssertContext */
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function packPassageNetworkPolicy(grid) {
     const poweredKeys = grid._passagePoweredKeys;
@@ -54,44 +54,17 @@ export function buildPortalSlotByKey(simView) {
     );
     return index;
 }
-/** @param {PassageNetworkPolicyView} policy @param {import("./navSimView.js").ReturnType<typeof createNavSimView>} simView */
-function canLinkPortalsOnPolicy(policy, simView, colA, rowA, sideA, colB, rowB, sideB) {
-    const keyA = canonicalEdgeCellKey(simView, colA, rowA, sideA);
-    const netA = policy.networkIdByKey.get(keyA);
-    if (netA === undefined || netA < 0) return false;
-    const keyB = canonicalEdgeCellKey(simView, colB, rowB, sideB);
-    return netA === policy.networkIdByKey.get(keyB);
-}
-/**
- * Worker portal hop entry gate — uses packed passage-network policy from main (not cloned edge.powered).
- * @param {import("./navSimView.js").ReturnType<typeof createNavSimView>} simView
- * @param {PassageNetworkPolicyView} policy
- */
-export function evaluatePortalHopEntryOnSim(simView, policy, fromCol, fromRow, toCol, toRow) {
-    const crossing = resolveCardinalStepCrossing(fromCol, fromRow, toCol, toRow);
-    if (!crossing) return null;
-    const { ownerCol, ownerRow, ownerSide } = crossing;
-    const edge = simView.edgeStore.get(ownerCol, ownerRow, ownerSide, simView.cols);
-    if (!isPortalEdge(edge)) return null;
-    const ownerKey = canonicalEdgeCellKey(simView, ownerCol, ownerRow, ownerSide);
-    if (!policy.networkIdByKey.has(ownerKey)) return null;
-    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
-    if (fromCol !== allowed.col || fromRow !== allowed.row) return null;
-    const partner = resolvePortalPartner(simView, ownerCol, ownerRow, ownerSide);
-    if (!partner) return null;
-    if (!canLinkPortalsOnPolicy(policy, simView, ownerCol, ownerRow, ownerSide, partner.col, partner.row, partner.side)) return null;
-    const route = resolvePortalLinkRoute(simView, ownerCol, ownerRow, ownerSide, partner);
-    if (!route) return null;
-    if (route.linkMode === PORTAL_LINK_MODE.OneWay) {
-        const isSource = route.source.col === ownerCol && route.source.row === ownerRow && route.source.side === ownerSide;
-        if (!isSource) return null;
-    }
-    return { source: { col: ownerCol, row: ownerRow, side: ownerSide }, partner, route };
+/** @param {HopCsrAssertContext} ctx @param {number} hopWrite @param {PassageNetworkPolicyView} policy */
+export function assertHopCsrBake(ctx, hopWrite, policy) {
+    if (!ctx.portalEdgeCount) return;
+    if (policy.networkIdByKey.size === 0) return;
+    if (hopWrite > 0) return;
+    throw new Error(`hop CSR empty with ${ctx.portalEdgeCount} portal(s) and ${policy.networkIdByKey.size} powered key(s); navKey=${ctx.navCacheKey ?? ""}`);
 }
 /** @param {import("./navSimView.js").ReturnType<typeof createNavSimView>} simView @param {PassageNetworkPolicyView} policy */
 export function buildBoundaryNavHopsOnSim(simView, policy) {
     simView.portalSlotByKey = buildPortalSlotByKey(simView);
-    return buildBoundaryNavHops(simView, (g, mouthCol, mouthRow, backCol, backRow) => evaluatePortalHopEntryOnSim(g, policy, mouthCol, mouthRow, backCol, backRow));
+    return buildBoundaryNavHops(simView, (g, mouthCol, mouthRow, backCol, backRow) => evaluatePortalHopEntry(g, mouthCol, mouthRow, backCol, backRow, policy));
 }
 /**
  * @param {Map<number, import("./boundaryNavHops.js").BoundaryNavHop[]>} hopsByFromIdx
@@ -121,8 +94,10 @@ export function bakeHopCsrFromHopsMap(hopsByFromIdx, blocked, cols, rows, hopOff
     hopOffsets[size] = write;
     return write;
 }
-/** @param {import("./navSimView.js").ReturnType<typeof createNavSimView>} simView @param {PassageNetworkPolicyView} policy @param {Uint8Array} blocked */
-export function bakeHopCsrOnSim(simView, policy, blocked, cols, rows, hopOffsets, hopExitIdx, hopCost) {
+/** @param {import("./navSimView.js").ReturnType<typeof createNavSimView>} simView @param {PassageNetworkPolicyView} policy @param {Uint8Array} blocked @param {HopCsrAssertContext} [assertCtx] */
+export function bakeHopCsrOnSim(simView, policy, blocked, cols, rows, hopOffsets, hopExitIdx, hopCost, assertCtx) {
     const hopsByFromIdx = buildBoundaryNavHopsOnSim(simView, policy);
-    return bakeHopCsrFromHopsMap(hopsByFromIdx, blocked, cols, rows, hopOffsets, hopExitIdx, hopCost);
+    const hopWrite = bakeHopCsrFromHopsMap(hopsByFromIdx, blocked, cols, rows, hopOffsets, hopExitIdx, hopCost);
+    if (assertCtx) assertHopCsrBake(assertCtx, hopWrite, policy);
+    return hopWrite;
 }

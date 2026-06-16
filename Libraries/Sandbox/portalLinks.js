@@ -1,11 +1,10 @@
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import { findPortalEdgeByKey } from "../Spatial/grid/portalSlotIndex.js";
-import { resolveCardinalStepCrossing } from "../Spatial/grid/portalAccess.js";
-import { portalPassageBlocksStepFrom } from "./portalStep.js";
+import { resolveCardinalStepCrossing, portalAccessInitiatorCell, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
-import { canLinkPortalsOnNetwork } from "./passagePowerNetwork.js";
 export const PORTAL_LINK_MODE = { Shared: "shared", OneWay: "oneWay" };
+/** @typedef {{ networkIdByKey: Map<number, number> }} PortalHopPolicyView */
 /** @param {unknown} raw */
 export function parsePortalLinkMode(raw) {
     if (raw === PORTAL_LINK_MODE.OneWay) return PORTAL_LINK_MODE.OneWay;
@@ -132,6 +131,40 @@ export function linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB) {
     writePortalLinkFields(edgeB, linkMode, linkSourceKey);
     return true;
 }
+/** @param {PortalHopPolicyView} policy @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+function canLinkPortalsOnPolicy(policy, grid, colA, rowA, sideA, colB, rowB, sideB) {
+    const keyA = canonicalEdgeCellKey(grid, colA, rowA, sideA);
+    const netA = policy.networkIdByKey.get(keyA);
+    if (netA === undefined || netA < 0) return false;
+    const keyB = canonicalEdgeCellKey(grid, colB, rowB, sideB);
+    return netA === policy.networkIdByKey.get(keyB);
+}
+/**
+ * Portal hop / traverse entry gate — policy-backed (worker + main share this).
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {PortalHopPolicyView} policy
+ */
+export function evaluatePortalHopEntry(grid, fromCol, fromRow, toCol, toRow, policy) {
+    const crossing = resolveCardinalStepCrossing(fromCol, fromRow, toCol, toRow);
+    if (!crossing) return null;
+    const { ownerCol, ownerRow, ownerSide } = crossing;
+    const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
+    if (!isPortalEdge(edge)) return null;
+    const ownerKey = canonicalEdgeCellKey(grid, ownerCol, ownerRow, ownerSide);
+    if (!policy.networkIdByKey.has(ownerKey)) return null;
+    const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
+    if (fromCol !== allowed.col || fromRow !== allowed.row) return null;
+    const partner = resolvePortalPartner(grid, ownerCol, ownerRow, ownerSide);
+    if (!partner) return null;
+    if (!canLinkPortalsOnPolicy(policy, grid, ownerCol, ownerRow, ownerSide, partner.col, partner.row, partner.side)) return null;
+    const route = resolvePortalLinkRoute(grid, ownerCol, ownerRow, ownerSide, partner);
+    if (!route) return null;
+    if (route.linkMode === PORTAL_LINK_MODE.OneWay) {
+        const isSource = route.source.col === ownerCol && route.source.row === ownerRow && route.source.side === ownerSide;
+        if (!isSource) return null;
+    }
+    return { source: { col: ownerCol, row: ownerRow, side: ownerSide }, partner, route };
+}
 /**
  * Part 3 entry gate — returns traverse context when a cardinal step onto a portal is valid.
  * Does not mutate entity state or teleport.
@@ -145,21 +178,7 @@ export function linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB) {
  * @returns {{ source: { col: number, row: number, side: number }, partner: { col: number, row: number, side: number }, route: ReturnType<typeof resolvePortalLinkRoute> } | null}
  */
 export function evaluatePortalStepEntry(state, grid, fromCol, fromRow, toCol, toRow) {
-    const crossing = resolveCardinalStepCrossing(fromCol, fromRow, toCol, toRow);
-    if (!crossing) return null;
-    const { ownerCol, ownerRow, ownerSide } = crossing;
-    const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
-    if (!isPortalEdge(edge)) return null;
-    if (edge.powered !== true) return null;
-    if (portalPassageBlocksStepFrom(fromCol, fromRow, toCol, toRow, edge, ownerCol, ownerRow, ownerSide)) return null;
-    const partner = resolvePortalPartner(grid, ownerCol, ownerRow, ownerSide);
-    if (!partner) return null;
-    if (!canLinkPortalsOnNetwork(state, grid, ownerCol, ownerRow, ownerSide, partner.col, partner.row, partner.side)) return null;
-    const route = resolvePortalLinkRoute(grid, ownerCol, ownerRow, ownerSide, partner);
-    if (!route) return null;
-    if (route.linkMode === PORTAL_LINK_MODE.OneWay) {
-        const isSource = route.source.col === ownerCol && route.source.row === ownerRow && route.source.side === ownerSide;
-        if (!isSource) return null;
-    }
-    return { source: { col: ownerCol, row: ownerRow, side: ownerSide }, partner, route };
+    const cache = state.sandbox.passagePower;
+    if (!cache) return null;
+    return evaluatePortalHopEntry(grid, fromCol, fromRow, toCol, toRow, cache);
 }

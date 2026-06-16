@@ -45,6 +45,6 @@ export function buildSandboxStartSceneDoc() {
     };
 }
 /** Replace the current sandbox with the preconfigured start scene. */
-export function spawnSandboxStartScene(state) {
-    applySandboxSceneSnapshot(state, buildSandboxStartSceneDoc());
+export async function spawnSandboxStartScene(state) {
+    await applySandboxSceneSnapshot(state, buildSandboxStartSceneDoc());
 }
