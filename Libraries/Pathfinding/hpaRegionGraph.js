@@ -196,21 +196,36 @@ function repackHullRegions(
 function connectAllNodes(navGraph, blocked, cols, rows, cellToNode, nodesMap) {
     for (const node of Object.values(nodesMap)) node.edges = [];
     const adjacencies = findRegionAdjacencies(cellToNode, blocked, cols, rows, navGraph);
-    if (navGraph.forEachBoundaryHopCell)
-        navGraph.forEachBoundaryHopCell((fromCol, fromRow, hops) => {
-            const nodeA = cellToNode[colRowToIndex(fromCol, fromRow, cols)];
-            if (!nodeA) return;
-            for (let i = 0; i < hops.length; i++) {
-                const { exitCol, exitRow } = hops[i];
-                const nodeB = cellToNode[colRowToIndex(exitCol, exitRow, cols)];
-                if (nodeB && nodeA.id !== nodeB.id) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
-            }
+    const size = cols * rows;
+    for (let idx = 0; idx < size; idx++) {
+        const nodeA = cellToNode[idx];
+        if (!nodeA) continue;
+        const col = idx % cols;
+        const row = (idx / cols) | 0;
+        navGraph.forEachNavHop?.(col, row, (exitCol, exitRow) => {
+            const nodeB = cellToNode[colRowToIndex(exitCol, exitRow, cols)];
+            if (nodeB && nodeA.id !== nodeB.id) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
         });
+    }
     for (const key of adjacencies) {
         const [idA, idB] = key.split(":");
         connectRegionPair(nodesMap[idA], nodesMap[idB]);
     }
     for (const id in nodesMap) validateRegionEdges(navGraph, cols, rows, blocked, nodesMap[id], nodesMap);
+}
+/** Wire abstract region edges for every nav-hop exit in the snapshot CSR. */
+export function wireNavHopRegionEdges(navGraph, cols, rows, cellToNode, nodesMap) {
+    const size = cols * rows;
+    for (let idx = 0; idx < size; idx++) {
+        const nodeA = cellToNode[idx];
+        if (!nodeA) continue;
+        const col = idx % cols;
+        const row = (idx / cols) | 0;
+        navGraph.forEachNavHop?.(col, row, (exitCol, exitRow) => {
+            const nodeB = cellToNode[colRowToIndex(exitCol, exitRow, cols)];
+            if (nodeB && nodeA.id !== nodeB.id) connectRegionPair(nodeA, nodeB);
+        });
+    }
 }
 function findNearestOpenCell(blocked, cols, rows, col, row) {
     if (!blocked[colRowToIndex(col, row, cols)]) return { col, row };
@@ -341,6 +356,7 @@ export function rebuildDamagedRegionGraph(state, bounds) {
     const reconnectIds = new Set(repackedIds);
     for (const id of collectRegionIdsInBox(state.cellToNode, cols, box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, cols, rows, state.nodesMap[id], state.cellToNode, state.nodesMap);
+    wireNavHopRegionEdges(navGraph, cols, rows, state.cellToNode, state.nodesMap);
     for (const id in state.nodesMap) validateRegionEdges(navGraph, cols, rows, blocked, state.nodesMap[id], state.nodesMap);
     if (seedWorldX != null && seedWorldY != null) pruneUnreachableRegions(navGraph, blocked, cols, rows, minX, minY, cellSize, state.cellToNode, state.nodesMap, seedWorldX, seedWorldY);
     return state;
@@ -389,27 +405,6 @@ export function packRegionGraphFlat(nodesMap, cellToNode, cols, rows) {
         nodeIds,
         idToIdx,
     };
-}
-/** @param {Record<string, import("./VoronoiRegions.js").RegionNode>} nodesMap @param {string[]} nodeIds @param {[number, number][]} pairs */
-export function connectRegionIdxPairs(nodesMap, nodeIds, pairs) {
-    for (let i = 0; i < pairs.length; i++) {
-        const [a, b] = pairs[i];
-        connectRegionPair(nodesMap[nodeIds[a]], nodesMap[nodeIds[b]]);
-    }
-}
-/** @param {object} navGraph @param {number} cols @param {number} rows @param {Array<import("./VoronoiRegions.js").RegionNode | null>} cellToNode @param {Record<string, import("./VoronoiRegions.js").RegionNode>} nodesMap */
-export function appendBoundaryHopRegionEdges(navGraph, cols, rows, cellToNode, nodesMap) {
-    if (!navGraph.forEachBoundaryHopCell) return;
-    navGraph.forEachBoundaryHopCell((fromCol, fromRow, hops) => {
-        const nodeA = cellToNode[colRowToIndex(fromCol, fromRow, cols)];
-        if (!nodeA) return;
-        for (let i = 0; i < hops.length; i++) {
-            const { exitCol, exitRow } = hops[i];
-            const nodeB = cellToNode[colRowToIndex(exitCol, exitRow, cols)];
-            if (nodeB && nodeA.id !== nodeB.id) connectRegionPair(nodeA, nodeB);
-        }
-    });
-    for (const id in nodesMap) validateRegionEdges(navGraph, cols, rows, null, nodesMap[id], nodesMap);
 }
 /** @param {Int16Array} cellToRegion @param {Int16Array} nodeCol @param {Int16Array} nodeRow @param {number} nodeCount @param {number} cols @param {number} rows @param {number} minX @param {number} minY @param {number} cellSize */
 export function unpackRegionGraphToNodes(cellToRegion, nodeCol, nodeRow, nodeCount, cols, rows, minX, minY, cellSize) {

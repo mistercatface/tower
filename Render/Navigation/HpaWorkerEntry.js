@@ -6,7 +6,7 @@ import { registerPortalPassageStepHandler } from "../../Libraries/Sandbox/portal
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
 import { prepareHpaReplanPrep } from "../../Libraries/Pathfinding/hpaPathRequest.js";
-import { buildFullRegionGraph, connectRegionIdxPairs, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
+import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
 let maxSlots;
 let maxPathLen;
 let maxAbstractLen;
@@ -255,14 +255,6 @@ function patchRegionGraphOnWorker(data) {
     regionGraphState.seedWorldY = data.seedWorldY ?? pruneSeedWorldY;
     rebuildDamagedRegionGraph(regionGraphState, { startCol: data.startCol, endCol: data.endCol, startRow: data.startRow, endRow: data.endRow });
     return writeRegionGraphToSab(data.cols, data.rows);
-}
-function connectRegionIdxPairsOnWorker(pairs) {
-    if (!regionGraphState || !pairs.length) return writeRegionGraphToSab(cols, rows);
-    const nodeIds = Object.keys(regionGraphState.nodesMap)
-        .filter((id) => !id.startsWith("__hpa_"))
-        .sort();
-    connectRegionIdxPairs(regionGraphState.nodesMap, nodeIds, pairs);
-    return writeRegionGraphToSab(cols, rows);
 }
 function postGraphPatchDone(meta) {
     self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [] });
@@ -565,11 +557,6 @@ self.onmessage = function (e) {
     if (type === "patchRegionGraph") {
         if (e.data.sabCellToRegionIdx) sabCellToRegionIdx = e.data.sabCellToRegionIdx;
         runGraphPatch(() => patchRegionGraphOnWorker(e.data));
-        return;
-    }
-    if (type === "connectRegionIdxPairs") {
-        if (e.data.sabCellToRegionIdx) sabCellToRegionIdx = e.data.sabCellToRegionIdx;
-        runGraphPatch(() => connectRegionIdxPairsOnWorker(e.data.pairs));
         return;
     }
     if (type === "replan") {

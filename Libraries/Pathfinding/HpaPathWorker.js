@@ -15,7 +15,6 @@ import {
 } from "./GridNavSnapshot.js";
 import { buildHpaReplanResult, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
 import { isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
-import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
@@ -177,28 +176,6 @@ export class HpaPathWorker {
         this._graphPatchChain = this._graphPatchChain.then(run, run);
         return this._graphPatchChain;
     }
-    _collectHopRegionPairs(grid) {
-        const cellToRegion = this.graphCellToRegion;
-        if (!cellToRegion.length || !grid.forEachBoundaryHopCell) return [];
-        const pairs = [];
-        const seen = new Set();
-        grid.forEachBoundaryHopCell((fromCol, fromRow, hops) => {
-            const fromRegion = cellToRegion[colRowToIndex(fromCol, fromRow, grid.cols)];
-            if (fromRegion < 0) return;
-            for (let i = 0; i < hops.length; i++) {
-                const { exitCol, exitRow } = hops[i];
-                const toRegion = cellToRegion[colRowToIndex(exitCol, exitRow, grid.cols)];
-                if (toRegion < 0 || fromRegion === toRegion) continue;
-                const lo = Math.min(fromRegion, toRegion);
-                const hi = Math.max(fromRegion, toRegion);
-                const key = `${lo}:${hi}`;
-                if (seen.has(key)) continue;
-                seen.add(key);
-                pairs.push([lo, hi]);
-            }
-        });
-        return pairs;
-    }
     async buildRegionGraphFull(grid, seedWorldX = null, seedWorldY = null, graphEpoch = 0) {
         await this.scheduleNavTopologySyncAwait(grid);
         const size = grid.cols * grid.rows;
@@ -219,7 +196,6 @@ export class HpaPathWorker {
             },
             graphEpoch,
         );
-        if (grid.edgeStore.portalEdgeCount) await this.reconnectBoundaryHopRegionPairs(grid, graphEpoch);
     }
     /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds} bounds @param {number} graphEpoch */
     async patchRegionGraph(grid, bounds, graphEpoch) {
@@ -241,12 +217,6 @@ export class HpaPathWorker {
             },
             graphEpoch,
         );
-    }
-    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} [graphEpoch] */
-    async reconnectBoundaryHopRegionPairs(grid, graphEpoch = this._graphEpoch) {
-        const pairs = this._collectHopRegionPairs(grid);
-        if (!pairs.length) return;
-        await this._postGraphPatch("connectRegionIdxPairs", { pairs }, graphEpoch);
     }
     async awaitGraphReady() {
         if (this._navSyncPromise) await this._navSyncPromise;
