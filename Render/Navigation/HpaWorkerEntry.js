@@ -5,7 +5,7 @@ import { bindNavEdgePoolFromSab } from "../../Libraries/Spatial/grid/navEdgePool
 import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Libraries/Spatial/grid/vertexPassability.js";
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
-import { prepareHpaReplanPrep, buildHpaReplanResult, HPA_LOCAL_MAX_LEN } from "../../Libraries/Pathfinding/hpaPathRequest.js";
+import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Libraries/Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
 import {
     hpaCellToRegionView,
@@ -369,7 +369,8 @@ function collectReplanTempCandidates(startCol, startRow, targetCol, targetRow) {
     return { startCandidates, targetCandidates };
 }
 function buildReplanResult(slot) {
-    return buildHpaReplanResult(hpaPathSlotMeta(sabPathMetaPool, slot)[0]);
+    const pathLen = hpaPathSlotMeta(sabPathMetaPool, slot)[0];
+    return pathLen > 0 ? { pathLen } : null;
 }
 function runReplan(slot, data) {
     const { startCol, startRow, targetCol, targetRow } = data;

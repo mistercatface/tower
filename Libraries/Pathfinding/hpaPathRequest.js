@@ -67,7 +67,3 @@ export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startCol, st
     const { nodeIds, nodeCol, nodeRow } = graphMeta;
     return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN };
 }
-/** @param {number} pathLen */
-export function buildHpaReplanResult(pathLen) {
-    return pathLen > 0 ? { pathLen } : null;
-}
