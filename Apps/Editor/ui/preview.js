@@ -10,7 +10,6 @@ import { floorPropEffectPass } from "../../../Libraries/Sandbox/floorProps.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
-import { paintMapOverviewFrame } from "./mapOverview.js";
 import { ensureLabPathDebugCache, labPathDebugCacheKey } from "../../../Libraries/Render/map/labMapCaches.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 /** @type {import("../../../Render/Render.js").SimulationSceneHooks} */
@@ -134,7 +133,6 @@ export function drawLabFrame(state) {
         ctx.fill("evenodd");
         ctx.restore();
     }
-    paintMapOverviewFrame(state);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function repaintUntilBakesDone(state) {

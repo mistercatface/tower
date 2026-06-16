@@ -28,19 +28,19 @@ function mapColumnLayout(state) {
     const overviewH = state.editor.showMapOverview ? estimateMapOverviewHeight() + gap : 0;
     return { container, gap, controlsH, animH, overviewH };
 }
-function scheduleProfileRefresh(state, requestRedraw, debounceMs) {
+function scheduleProfileRefresh(state, drawAfterProfilePush, debounceMs) {
     if (profileRefreshTimer != null) clearTimeout(profileRefreshTimer);
     const run = () => {
         pushEditorProfile(state);
-        requestRedraw();
+        drawAfterProfilePush();
     };
     if (debounceMs <= 0) run();
     else profileRefreshTimer = setTimeout(run, debounceMs);
 }
-function onMapCanvasResize(state, size) {
+function onMapCanvasResize(state, size, repaintMapOverviewIfVisible) {
     state.viewport.setCanvasSize(size, size);
     fitLabStageToView(state);
-    drawLabFrame(state);
+    repaintMapOverviewIfVisible();
 }
 function resizeCanvases(state) {
     if (resizeCanvasesRaf != null) return;
@@ -55,9 +55,14 @@ function resizeCanvases(state) {
 }
 /** @param {import("../state.js").TileLabGameState} state @param {{ playbackHandlers: import("../../../Libraries/Playback/speedControl.js").PlaybackHandlers }} options */
 export function mountEditorUi(state, { playbackHandlers }) {
-    const requestRedraw = () => {
+    const drawLab = () => drawLabFrame(state);
+    const drawLabAndWaitForBakes = () => {
         drawLabFrame(state);
         repaintUntilBakesDone(state);
+    };
+    state.editor.repaintMapOverview = () => paintMapOverviewFrame(state);
+    const repaintMapOverviewIfVisible = () => {
+        if (state.editor.showMapOverview) paintMapOverviewFrame(state);
     };
     const uiRoot = document.getElementById("ui-root");
     uiRoot.innerHTML = TILELAB_UI_HTML;
@@ -69,14 +74,18 @@ export function mountEditorUi(state, { playbackHandlers }) {
     initPresetSelect(listShippedSurfaceProfileIds());
     initProfileEditor({
         onChange: (options = {}) => {
-            if (options.reloadProfile) scheduleProfileRefresh(state, requestRedraw, 0);
-            else if (options.lightweight) scheduleProfileRefresh(state, requestRedraw, 150);
-            else scheduleProfileRefresh(state, requestRedraw, 300);
+            if (options.reloadProfile) scheduleProfileRefresh(state, drawLabAndWaitForBakes, 0);
+            else if (options.lightweight) scheduleProfileRefresh(state, drawLabAndWaitForBakes, 150);
+            else scheduleProfileRefresh(state, drawLabAndWaitForBakes, 300);
         },
     });
     pushEditorProfile(state);
-    mountLabViewport(state, () => drawLabFrame(state), playbackHandlers);
-    bindViewModeControls(state, requestRedraw, () => resizeCanvases(state));
+    mountLabViewport(state, repaintMapOverviewIfVisible, playbackHandlers);
+    bindViewModeControls(
+        state,
+        () => {},
+        () => resizeCanvases(state),
+    );
     mountMapOverview(state, () => {
         paintMapOverviewFrame(state);
         refreshMapGenPanelInputs();
@@ -84,51 +93,46 @@ export function mountEditorUi(state, { playbackHandlers }) {
     mountPlayAreaToolbarControls(state);
     void initTileLabWorld(state).then(() => {
         resizeCanvases(state);
-        drawLabFrame(state);
+        drawLabAndWaitForBakes();
     });
-    mountTilelabSandbox(state, requestRedraw);
+    mountTilelabSandbox(state);
     bindToolbarControls({
         onOverlayChange: () => {
-            if (document.getElementById("showPathDebugInput").checked) void ensureLabPathDebugCache(state).then(() => drawLabFrame(state));
-            else drawLabFrame(state);
+            if (document.getElementById("showPathDebugInput").checked) void ensureLabPathDebugCache(state);
         },
         onRedraw: () => {
             commitPlayAreaFromToolbar(state);
             pushEditorProfile(state);
-            requestRedraw();
-            paintMapOverviewFrame(state);
+            drawLabAndWaitForBakes();
         },
         onStageResize: () => resizeCanvases(state),
         onRenderModeChange: (mode) => {
             state.worldRenderMode = mode;
             applyLabWorldRenderMode(state);
-            requestRedraw();
         },
     });
-    bindVectorPropsToolbar(state, requestRedraw);
+    bindVectorPropsToolbar(state, () => {});
     syncWorldRenderModeUi(state);
     const overviewViewportInput = document.getElementById("showMapOverviewViewportInput");
     overviewViewportInput.checked = state.editor.showMapOverviewViewport;
     overviewViewportInput.addEventListener("change", (e) => {
         state.editor.showMapOverviewViewport = /** @type {HTMLInputElement} */ (e.target).checked;
+        paintMapOverviewFrame(state);
     });
     const selectionRingsInput = document.getElementById("showSelectionRingsInput");
     selectionRingsInput.checked = state.sandbox.controller.getShowSelectionRings();
     selectionRingsInput.addEventListener("change", (e) => {
         state.sandbox.controller.setShowSelectionRings(/** @type {HTMLInputElement} */ (e.target).checked);
-        requestRedraw();
     });
     const propTileCellsInput = document.getElementById("showPropTileCellsInput");
     propTileCellsInput.checked = state.sandbox.controller.getShowPropTileCells();
     propTileCellsInput.addEventListener("change", (e) => {
         state.sandbox.controller.setShowPropTileCells(/** @type {HTMLInputElement} */ (e.target).checked);
-        requestRedraw();
     });
     const roomNodesAlwaysInput = document.getElementById("showRoomNodesAlwaysInput");
     roomNodesAlwaysInput.checked = state.sandbox.controller.getShowRoomNodesAlways();
     roomNodesAlwaysInput.addEventListener("change", (e) => {
         state.sandbox.controller.setShowRoomNodesAlways(/** @type {HTMLInputElement} */ (e.target).checked);
-        requestRedraw();
     });
     fitLabStageToView(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
@@ -153,11 +157,11 @@ export function mountEditorUi(state, { playbackHandlers }) {
             const rect = container.getBoundingClientRect();
             return Math.max(main.minSize, Math.floor(Math.min(rect.width, rect.height - controlsH - animH - overviewH) - 8));
         },
-        onResize: (size) => onMapCanvasResize(state, size),
+        onResize: (size) => onMapCanvasResize(state, size, repaintMapOverviewIfVisible),
     });
     initResizer("resizer", () => resizeCanvases(state));
     resizeCanvases(state);
-    drawLabFrame(state);
+    drawLab();
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function refreshEditorUi(state) {

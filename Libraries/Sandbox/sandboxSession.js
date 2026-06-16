@@ -70,8 +70,8 @@ import { portalAccessDefaultAllowedSide } from "../Spatial/grid/portalAccess.js"
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey, cellIsStaticWall, forcefieldEdgeAt, portalEdgeAt, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
 import { formatPortalConnectionLabel, PORTAL_LINK_MODE } from "./portalLinks.js";
-/** @param {object} state @param {{ requestRedraw: () => void, defaultSpawnPropId: string }} options */
-export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId }) {
+/** @param {object} state @param {{ defaultSpawnPropId: string }} options */
+export function createSandboxSession(state, { defaultSpawnPropId }) {
     let spawnPropId = defaultSpawnPropId;
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
     let selectedPropIds = new Set();
@@ -190,7 +190,6 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         return placed;
     };
     const sync = () => {
-        requestRedraw();
         uiSync?.();
     };
     const registry = () => state.entityRegistry;

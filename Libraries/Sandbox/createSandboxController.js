@@ -45,7 +45,6 @@ const MARQUEE_BOUNDS = createAabb();
 /**
  * @param {object} state
  * @param {{
- *   requestRedraw: () => void,
  *   getCanvas: () => HTMLCanvasElement,
  *   clientToWorld: (clientX: number, clientY: number) => { x: number, y: number },
  *   defaultSpawnPropId: string,
@@ -53,9 +52,9 @@ const MARQUEE_BOUNDS = createAabb();
  *   defaultBehaviorId?: string,
  * }} options
  */
-export function createSandboxController(state, { requestRedraw, getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId }) {
+export function createSandboxController(state, { getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId }) {
     registerSandboxPassageHandlers();
-    const session = createSandboxSession(state, { requestRedraw, defaultSpawnPropId });
+    const session = createSandboxSession(state, { defaultSpawnPropId });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
     /** @type {SandboxBehavior | null} */

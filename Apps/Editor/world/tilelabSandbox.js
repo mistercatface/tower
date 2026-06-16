@@ -17,15 +17,11 @@ import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flip
 import { mountSandboxToyUi, mountSceneJsonUi } from "../ui/sandboxToyUi.js";
 let unmountToyUi = null;
 let unmountSceneJsonUi = null;
-/**
- * @param {import("../state.js").TileLabGameState} state
- * @param {() => void} requestRedraw
- */
-export function mountTilelabSandbox(state, requestRedraw) {
+/** @param {import("../state.js").TileLabGameState} state */
+export function mountTilelabSandbox(state) {
     destroyTilelabSandbox(state);
     const canvas = () => state.editor.canvas;
     state.sandbox.controller = createSandboxController(state, {
-        requestRedraw,
         getCanvas: canvas,
         clientToWorld(clientX, clientY) {
             return canvasClientToWorld(canvas(), state.viewport, clientX, clientY);

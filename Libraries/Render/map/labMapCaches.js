@@ -138,6 +138,7 @@ export async function ensureLabPathDebugCache(state) {
 export function rebuildLabMapOverviewCache(state) {
     const grid = state.obstacleGrid;
     state.mapOverviewCache = bakeObstacleOverviewCache(grid, state.mapOverviewCache?.canvas);
+    state.editor?.repaintMapOverview?.();
 }
 /** @param {object} state */
 export function rebuildLabMapCaches(state) {
