@@ -1,6 +1,6 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
 import { populateCombatFrame } from "./populateCombatFrame.js";
-import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
+import { allowsPushableCollisionPair } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 /**
  * Combat/map-transition spatial frame — populates SpatialFrameCore from GameState.
  *
@@ -22,7 +22,7 @@ export class CombatSpatialFrame extends SpatialFrameCore {
         return this;
     }
     forEachPushablePair(fn) {
-        this.forEachGroupNeighborPair(this._pushables, (p1, p2) => getInteractionPairFilter("pushable").allows(p1, p2), fn);
+        this.forEachGroupNeighborPair(this._pushables, allowsPushableCollisionPair, fn);
     }
 }
 /** Shared frame for combat and map-transition ticks. Call begin() once per update. */

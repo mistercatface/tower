@@ -1,6 +1,7 @@
 import { isStandTipActive } from "../../Props/standTipMotion.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
+import { circlesOverlap } from "./overlap.js";
 import { SatCollision } from "./SatCollision.js";
 export const MOVING_SPEED_SQ = 0.25;
 /** |angularVelocity| above this counts as kinematically active (rad/s). */
@@ -86,15 +87,26 @@ export function pairShapeOverlap(a, b) {
     if (!shapeA || !shapeB) return false;
     return SatCollision.checkCollision(a, shapeA, b, shapeB) != null;
 }
+function pairRestingOverlap(a, b) {
+    const shapeA = a.getShape?.();
+    const shapeB = b.getShape?.();
+    if (shapeA?.type === "Circle" && shapeB?.type === "Circle") return circlesOverlap(a, b);
+    return pairShapeOverlap(a, b);
+}
 export function pairBroadphaseOverlap(a, b) {
     return pairBroadphaseBoundsOverlap(getBroadphaseBounds(a), getBroadphaseBounds(b));
-}
-export function isPairActive(a, b) {
-    return isKinematicallyActive(a) || isKinematicallyActive(b);
 }
 export function shouldResolvePushablePair(a, b) {
     if (!pairBroadphaseOverlap(a, b)) return false;
     if (isKinematicallyActive(a) || isKinematicallyActive(b)) return true;
     if (a.isSleeping && b.isSleeping) return false;
-    return pairShapeOverlap(a, b);
+    return pairRestingOverlap(a, b);
+}
+/** Hot-path gate for pushable–pushable collision pairs (replaces compiled PairFilter in the physics loop). */
+export function allowsPushableCollisionPair(primary, other) {
+    if (primary === other) return false;
+    if (other.isDead) return false;
+    if (!other.strategy?.isPushable) return false;
+    if (primary.id >= other.id) return false;
+    return shouldResolvePushablePair(primary, other);
 }
