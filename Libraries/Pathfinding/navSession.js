@@ -3,7 +3,6 @@
  */
 /**
  * @typedef {object} NavSessionState
- * @property {{ x: number, y: number }[] | null} path
  * @property {number} lastUpdate
  * @property {number | null} lastX
  * @property {number | null} lastY
@@ -21,12 +20,11 @@
  */
 /** @param {NavSessionState} navState */
 export function navHasPath(navState) {
-    return navState.pathLen > 0 || !!navState.path?.length;
+    return navState.pathLen > 0 && navState.pathSlot >= 0;
 }
 /** @returns {NavSessionState} */
 export function createNavState() {
     return {
-        path: null,
         lastUpdate: 0,
         lastX: null,
         lastY: null,

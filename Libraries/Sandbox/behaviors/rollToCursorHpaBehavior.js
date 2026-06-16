@@ -50,7 +50,7 @@ export function createRollToCursorHpaBehavior(state) {
             run.hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
         } else run.hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
         const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);
-        const pathTail = run.hpaNav.navState.pathLen > 0 ? run.hpaNav.navState.pathLen - 1 : (run.hpaNav.navState.path?.length ?? 0) - 1;
+        const pathTail = run.hpaNav.navState.pathLen > 0 ? run.hpaNav.navState.pathLen - 1 : -1;
         const isFinalLeg = pathTail < 0 || run.hpaNav.navState.pathProgressIdx >= pathTail;
         if (isFinalLeg && distToTarget <= config.stopRadius) {
             releaseMoveTarget(prop, run);
@@ -118,7 +118,7 @@ export function createRollToCursorHpaBehavior(state) {
             const trace =
                 run.hpaNav.navState.pathLen > 0 && run.hpaNav.navState.pathSlot >= 0
                     ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.hpaPathWorker, run.hpaNav.navState.pathSlot, run.hpaNav.navState.pathLen, progressIdx, state.obstacleGrid)
-                    : { pathNodes: run.hpaNav.navState.path?.slice(progressIdx) ?? [] };
+                    : { pathNodes: (run.hpaNav.navState.abstractPath ?? []).map((n) => ({ x: n.x, y: n.y })) };
             return {
                 mode: "hpa",
                 pathNodes: trace.pathNodes,

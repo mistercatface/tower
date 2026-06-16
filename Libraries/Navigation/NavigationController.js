@@ -53,9 +53,6 @@ export class NavigationController {
         if (!this.navStates.has(entity)) this.navStates.set(entity, createNavState());
         return this.navStates.get(entity);
     }
-    getPath(entity) {
-        return this.getNavState(entity).path;
-    }
     getDebugInfo(entity) {
         return this.debugByEntity.get(entity) ?? null;
     }
@@ -86,7 +83,6 @@ export class NavigationController {
             applySteeringResult(mobile, plan.steering);
             this._setDebug(entity, { mode: plan.mode, replanReason: plan.replanReason ?? null, pathLen: plan.pathLen, dist });
         } else {
-            navState.path = null;
             const steering = computeFlowFieldSteering(agentPose(entity), targetX, targetY, grid);
             applySteeringResult(mobile, steering ?? ARRIVED_STEERING);
             this._setDebug(entity, { mode: steering ? "flow" : "flowIdle", replanReason: null, pathLen: 0, dist });

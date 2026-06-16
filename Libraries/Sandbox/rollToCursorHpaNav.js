@@ -44,7 +44,7 @@ export function createRollToCursorHpaNav() {
             return;
         }
         const targetMovedPx = navState.lastTargetX == null || navState.lastTargetY == null ? Infinity : Math.hypot(targetX - navState.lastTargetX, targetY - navState.lastTargetY);
-        if (!navState.pathLen && !navState.path) replan(prop, targetX, targetY, state);
+        if (!navState.pathLen) replan(prop, targetX, targetY, state);
         else if (targetMovedPx >= REPLAN_TARGET_MOVE_PX) replan(prop, targetX, targetY, state);
     };
     const getSteering = (prop, targetX, targetY, settings, grid, worker) => computeHpaNavSteering(agentPose(prop), navState, targetX, targetY, settings, grid, worker);

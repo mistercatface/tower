@@ -1,4 +1,3 @@
-import { findPathProgressIdx } from "./pathFollow.js";
 import { findSabPathProgressIdx } from "./hpaPathSlot.js";
 /** @typedef {import("./navSession.js").NavSessionState} NavSessionState */
 /** @typedef {import("./HpaPathSession.js").HpaPathSession} HpaPathSession */
@@ -11,18 +10,12 @@ export function clearHpaNavPath(navState, worker) {
         navState.pathSlot = -1;
         navState.pathLen = 0;
     }
-    navState.path = null;
     navState.abstractPath = null;
     navState.pathPlanner = null;
 }
-export function applyHpaAbstractFirst(navState, result, { obstacleGrid, startX, startY, targetX, targetY, nowMs }) {
+export function applyHpaAbstractFirst(navState, result, { targetX, targetY, nowMs }) {
     const nodes = result.abstractNodes;
     if (!nodes?.length) return;
-    const gridOpts = { worldToGrid: (wx, wy) => obstacleGrid.worldToGrid(wx, wy), grid: obstacleGrid };
-    navState.path = nodes.map((node) => ({ x: node.x, y: node.y }));
-    navState.pathSlot = -1;
-    navState.pathLen = 0;
-    navState.pathProgressIdx = findPathProgressIdx(startX, startY, navState.path, gridOpts);
     navState.abstractPath = nodes;
     navState.pathPlanner = result.pathPlanner ?? "hpa";
     navState.lastTargetX = targetX;
@@ -31,11 +24,10 @@ export function applyHpaAbstractFirst(navState, result, { obstacleGrid, startX, 
 }
 export function applyHpaReplanResult(navState, result, { obstacleGrid, worker, startX, startY, targetX, targetY, nowMs }) {
     if (!result.pathLen) {
-        if (result.abstractNodes?.length) applyHpaAbstractFirst(navState, result, { obstacleGrid, startX, startY, targetX, targetY, nowMs });
+        if (result.abstractNodes?.length) applyHpaAbstractFirst(navState, result, { targetX, targetY, nowMs });
         else clearHpaNavPath(navState, worker);
         return;
     }
-    navState.path = null;
     navState.pathSlot = result.pathSlot;
     navState.pathLen = result.pathLen;
     navState.pathProgressIdx = findSabPathProgressIdx(startX, startY, worker, result.pathSlot, result.pathLen, obstacleGrid);

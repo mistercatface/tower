@@ -46,9 +46,6 @@ export class NavigationService {
     getNavState(entity) {
         return this._controller.getNavState(entity);
     }
-    getPath(entity) {
-        return this._controller.getPath(entity);
-    }
     getDebugInfo(entity) {
         return this._controller.getDebugInfo(entity);
     }

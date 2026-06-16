@@ -53,6 +53,6 @@ export function planHpaSteering(entity, targetX, targetY, hpaPathSession, navSta
         if (!steering) steering = computeDirectSteering(pose, targetX, targetY);
     }
     const hasPath = navHasPath(navState);
-    const pathLen = navState.pathLen > 0 ? navState.pathLen : (navState.path?.length ?? 0);
+    const pathLen = navState.pathLen;
     return { steering, mode: hasPath ? "hpa" : "direct", replanReason, pathLen: hasPath ? pathLen : 0 };
 }
