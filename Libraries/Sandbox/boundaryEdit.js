@@ -3,11 +3,9 @@ import { clearBoundaryPrimary, getBoundary } from "../Spatial/grid/boundaryOccup
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { syncBoundaryNavIndex } from "./boundaryNavSync.js";
-import { syncGridTopologyCaches } from "../Spatial/grid/vertexPassability.js";
 import { unlinkPortalEdge } from "./portalLinks.js";
 export function notifyGridWallChange(state, bounds) {
     state.obstacleGrid.bumpWallGridRevision();
-    syncGridTopologyCaches(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
     state.worldSurfaces.invalidateGridBounds(bounds, state);
     state.navigation.onObstaclesChanged(bounds);
     rebuildLabMapCaches(state);

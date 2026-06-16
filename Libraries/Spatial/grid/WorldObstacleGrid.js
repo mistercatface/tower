@@ -41,6 +41,7 @@ export class WorldObstacleGrid {
         this.gridNavSnapshot = null;
         this.navCardinalOpen = new Uint8Array(0);
         this.gridTopologyEpoch = 0;
+        this._passagePowerNavKey = "";
     }
     ensureGridNavSnapshot() {
         const cacheKey = snapshotNavCacheKey(this);

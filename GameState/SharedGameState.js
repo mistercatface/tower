@@ -10,7 +10,6 @@ import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { NavigationService } from "../Systems/Navigation/NavigationService.js";
 import { EntityRegistry } from "./EntityRegistry.js";
-import { syncGridTopologyCaches } from "../Libraries/Spatial/grid/vertexPassability.js";
 const navigationSettings = { arrivalDistance: 2, recenterThreshold: 400, stuckReplanFrames: 20, stuckMoveThreshold: 1.5, targetNodeLookahead: 10, pathWaypointArrival: 10 };
 export class SharedGameState {
     constructor() {
@@ -33,7 +32,6 @@ export class SharedGameState {
         this.entityRegistry = new EntityRegistry();
         this.wallResolver = new WallCollisionResolver();
         this.obstacleGrid.rebuildFixed(0, 0, gridSettings.width, gridSettings.height);
-        syncGridTopologyCaches(this.obstacleGrid, "");
         void this.navigation.onObstaclesChanged(null);
     }
 }

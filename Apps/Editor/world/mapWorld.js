@@ -8,7 +8,6 @@ import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/G
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/grid/gridCellTopology.js";
 import { cellInRect } from "../../../Libraries/Spatial/grid/GridUtils.js";
-import { syncGridTopologyCaches } from "../../../Libraries/Spatial/grid/vertexPassability.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
     MAP_GEN_KINDS,
@@ -46,7 +45,6 @@ export async function applyPlayAreaConfig(state) {
         migrateMapGenBoundsForMode(config);
     }
     ensureLabObstacleGridCoverage(state);
-    syncGridTopologyCaches(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
     await state.navigation.onObstaclesChanged(null);
     await rebuildLabMapCaches(state);
 }
@@ -122,7 +120,6 @@ export async function eraseLabWallsInBounds(state) {
     const damageBounds = eraseWallsInShape(state);
     if (!damageBounds) return;
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-    syncGridTopologyCaches(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
     await state.navigation.onObstaclesChanged(damageBounds);
     state.worldSurfaces.clearBakeCache();
     await rebuildLabMapCaches(state);
@@ -134,7 +131,6 @@ export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     required = padAabb(required, cellSize);
     const grid = state.obstacleGrid;
     const expanded = grid.expandToCoverAabb(required);
-    if (expanded) syncGridTopologyCaches(grid, state.sandbox._passagePowerSyncKey ?? "");
     return expanded;
 }
 /** @param {import("../TileLabEditorState.js").TileLabEditorState["cavernConfig"]} config @returns {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
@@ -164,7 +160,6 @@ export async function generateLabCaverns(state) {
         if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
     }
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-    syncGridTopologyCaches(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
     await state.navigation.onObstaclesChanged(damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
@@ -252,7 +247,6 @@ export async function generateLabRailCaverns(state) {
         if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
     }
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-    syncGridTopologyCaches(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
     await state.navigation.onObstaclesChanged(damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();

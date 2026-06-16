@@ -2,13 +2,14 @@ import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import {
     bakeHopCsr,
-    copyNavTopologySlicesIntoRect,
+    copyNavSimSabRect,
     createSnapshotLocalNavView,
     createWorkerNavSnapshotView,
     expandCellBoundsForNavPatch,
     NAV_TOPOLOGY_OCTILE_SHELL,
     packBlockedFromGrid,
     packBlockedIntoRect,
+    packNavSimSabFromGrid,
     snapshotCanStep,
     snapshotNavCacheKey,
 } from "./GridNavSnapshot.js";
@@ -345,6 +346,10 @@ export class HpaPathWorker {
         if (this._navSize !== size) {
             this._navSize = size;
             this.sabBlocked = new SharedArrayBuffer(size);
+            this.sabGridFill = new SharedArrayBuffer(size);
+            this.sabFloorKind = new SharedArrayBuffer(size);
+            this.sabFloorFacing = new SharedArrayBuffer(size);
+            this.sabEdgeSlots = new SharedArrayBuffer(size * 4 * 4);
             this.sabOctileNeighbors = new SharedArrayBuffer(size * 8 * 4);
             this.sabHopOffsets = new SharedArrayBuffer((size + 1) * 4);
             this.sabHopExitIdx = new SharedArrayBuffer(Math.max(hopExitLen, 4));
@@ -352,6 +357,10 @@ export class HpaPathWorker {
             this.sabCardinalOpen = new SharedArrayBuffer(size);
             this.sabVertexPassability = new SharedArrayBuffer(Math.max(vertCount, 4));
             this.navBlocked = new Uint8Array(this.sabBlocked);
+            this.navGridFill = new Uint8Array(this.sabGridFill);
+            this.navFloorKind = new Uint8Array(this.sabFloorKind);
+            this.navFloorFacing = new Uint8Array(this.sabFloorFacing);
+            this.navEdgeSlots = new Int32Array(this.sabEdgeSlots);
             this.navOctileNeighbors = new Int32Array(this.sabOctileNeighbors);
             this.navHopOffsets = new Int32Array(this.sabHopOffsets);
             this.navHopExitIdx = new Int32Array(this.sabHopExitIdx);
@@ -386,6 +395,17 @@ export class HpaPathWorker {
             if (this._navSyncPromise) await this._navSyncPromise;
         }
     }
+    _navSimPayload(grid = this.navGraph) {
+        return {
+            sabGridFill: this.sabGridFill,
+            sabFloorKind: this.sabFloorKind,
+            sabFloorFacing: this.sabFloorFacing,
+            sabEdgeSlots: this.sabEdgeSlots,
+            edgePool: grid.edgeStore.pool,
+            passageEdgeCount: grid.edgeStore.passageEdgeCount,
+            portalEdgeCount: grid.edgeStore.portalEdgeCount,
+        };
+    }
     scheduleNavTopologySync(grid = this.navGraph) {
         const cacheKey = snapshotNavCacheKey(grid);
         if (cacheKey === this._navKey) return;
@@ -395,10 +415,6 @@ export class HpaPathWorker {
         }
         const size = grid.cols * grid.rows;
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
-        if (grid.navCardinalOpen.length !== size || grid.vertexPassability.length !== vertCount)
-            throw new Error(
-                `nav topology caches size mismatch (${grid.navCardinalOpen.length}/${grid.vertexPassability.length} vs ${size}/${vertCount}) — call syncGridTopologyCaches before onObstaclesChanged`,
-            );
         this._pendingPatchBounds = null;
         this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
         this._navKey = cacheKey;
@@ -408,8 +424,7 @@ export class HpaPathWorker {
         const hops = bakeHopCsr(grid, blocked, grid.cols, grid.rows);
         this._ensureNavBuffers(size, hops.hopExitIdx.byteLength, hops.hopCost.byteLength, vertCount);
         this.navBlocked.set(blocked);
-        this.navCardinalOpen.set(grid.navCardinalOpen);
-        this.navVertexPassability.set(grid.vertexPassability);
+        packNavSimSabFromGrid(grid, this.navGridFill, this.navFloorKind, this.navFloorFacing, this.navEdgeSlots);
         this.navHopOffsets.set(hops.hopOffsets);
         this.navHopExitIdx.set(hops.hopExitIdx);
         this.navHopCost.set(hops.hopCost);
@@ -426,6 +441,7 @@ export class HpaPathWorker {
                 sabHopExitIdx: this.sabHopExitIdx,
                 sabHopCost: this.sabHopCost,
                 sabOctileNeighbors: this.sabOctileNeighbors,
+                ...this._navSimPayload(grid),
             });
         });
     }
@@ -453,6 +469,7 @@ export class HpaPathWorker {
         try {
             while (this._pendingPatchBounds) {
                 const dataBounds = expandCellBoundsForNavPatch(this._pendingPatchBounds, grid.cols, grid.rows);
+                const simBounds = expandCellBoundsForNavPatch(dataBounds, grid.cols, grid.rows, 1);
                 const octileBounds = expandCellBoundsForNavPatch(dataBounds, grid.cols, grid.rows, NAV_TOPOLOGY_OCTILE_SHELL);
                 this._pendingPatchBounds = null;
                 const cacheKey = snapshotNavCacheKey(grid);
@@ -462,7 +479,7 @@ export class HpaPathWorker {
                 this._navSnapshotView = null;
                 this.navGraph.gridNavSnapshot = null;
                 packBlockedIntoRect(grid, dataBounds, this.navBlocked);
-                copyNavTopologySlicesIntoRect(grid, dataBounds, this.navCardinalOpen, this.navVertexPassability);
+                copyNavSimSabRect(grid, simBounds, this.navGridFill, this.navFloorKind, this.navFloorFacing, this.navEdgeSlots);
                 const hops = bakeHopCsr(grid, this.navBlocked, grid.cols, grid.rows);
                 this._ensureNavBuffers(grid.cols * grid.rows, hops.hopExitIdx.byteLength, hops.hopCost.byteLength, (grid.cols + 1) * (grid.rows + 1));
                 this.navHopOffsets.set(hops.hopOffsets);
@@ -474,6 +491,10 @@ export class HpaPathWorker {
                         type: "patchNavSnapshot",
                         cols: grid.cols,
                         rows: grid.rows,
+                        dataStartCol: dataBounds.startCol,
+                        dataEndCol: dataBounds.endCol,
+                        dataStartRow: dataBounds.startRow,
+                        dataEndRow: dataBounds.endRow,
                         startCol: octileBounds.startCol,
                         endCol: octileBounds.endCol,
                         startRow: octileBounds.startRow,
@@ -485,6 +506,7 @@ export class HpaPathWorker {
                         sabHopExitIdx: this.sabHopExitIdx,
                         sabHopCost: this.sabHopCost,
                         sabOctileNeighbors: this.sabOctileNeighbors,
+                        ...this._navSimPayload(grid),
                     });
                 });
                 await this._navSyncPromise;

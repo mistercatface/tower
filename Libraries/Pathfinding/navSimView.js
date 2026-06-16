@@ -1,0 +1,46 @@
+import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
+/**
+ * Minimal grid shape for nav topology bake (main packs SABs; worker reads this view).
+ * @param {Uint8Array} gridFill
+ * @param {Uint8Array} floorKind
+ * @param {Uint8Array} floorFacing
+ * @param {Int32Array} edgeSlots
+ * @param {object[]} edgePool
+ * @param {Uint8Array} vertexPassability
+ */
+export function createNavSimView(cols, rows, gridFill, floorKind, floorFacing, edgeSlots, edgePool, passageEdgeCount, portalEdgeCount, vertexPassability) {
+    return {
+        cols,
+        rows,
+        grid: gridFill,
+        vertexPassability,
+        edgeStore: {
+            passageEdgeCount,
+            portalEdgeCount,
+            slots: edgeSlots,
+            pool: edgePool,
+            get(col, row, side, c) {
+                const ref = edgeSlots[colRowToIndex(col, row, c) * 4 + side];
+                if (ref < 0) return null;
+                return edgePool[ref];
+            },
+        },
+        floorStore: {
+            kind: floorKind,
+            facing: floorFacing,
+            isBeltKindAtIdx(idx) {
+                return isFloorBeltKind(floorKind[idx]);
+            },
+        },
+        isBlocked(col, row) {
+            return gridFill[colRowToIndex(col, row, cols)] !== 0;
+        },
+    };
+}
+/** @param {ReturnType<typeof createNavSimView>} simView @param {object[]} edgePool @param {number} passageEdgeCount @param {number} portalEdgeCount */
+export function bindNavSimEdgePool(simView, edgePool, passageEdgeCount, portalEdgeCount) {
+    simView.edgeStore.pool = edgePool;
+    simView.edgeStore.passageEdgeCount = passageEdgeCount;
+    simView.edgeStore.portalEdgeCount = portalEdgeCount;
+}

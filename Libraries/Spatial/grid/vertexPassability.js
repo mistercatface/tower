@@ -19,15 +19,16 @@ export function packVertexKey(vx, vy, cols) {
 export function getVertexPassabilityMask(grid, vx, vy) {
     return grid.vertexPassability[packVertexKey(vx, vy, grid.cols)] ?? 0;
 }
-export function recomputeVertexPassability(grid) {
-    if (!grid.cols) {
-        grid.vertexPassability = new Uint8Array(0);
-        return;
-    }
-    const vertCount = (grid.cols + 1) * (grid.rows + 1);
-    const out = new Uint8Array(vertCount);
-    for (let vy = 0; vy <= grid.rows; vy++)
-        for (let vx = 0; vx <= grid.cols; vx++) {
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | import("../../Pathfinding/navSimView.js").ReturnType<typeof import("../../Pathfinding/navSimView.js").createNavSimView>} grid @param {Uint8Array} vertexPassability @param {import("../../DataStructures/CellRect.js").CellBounds | null} [bounds] cell bounds — vertex rect is expanded by one corner */
+export function recomputeVertexPassabilityInto(grid, vertexPassability, bounds = null) {
+    if (!grid.cols) return;
+    const { cols, rows } = grid;
+    const vx0 = bounds ? Math.max(0, bounds.startCol) : 0;
+    const vx1 = bounds ? Math.min(cols, bounds.endCol + 1) : cols;
+    const vy0 = bounds ? Math.max(0, bounds.startRow) : 0;
+    const vy1 = bounds ? Math.min(rows, bounds.endRow + 1) : rows;
+    for (let vy = vy0; vy <= vy1; vy++)
+        for (let vx = vx0; vx <= vx1; vx++) {
             let mask = 0;
             for (let i = 0; i < HALF_EDGE_SPECS.length; i++) {
                 const spec = HALF_EDGE_SPECS[i];
@@ -37,11 +38,20 @@ export function recomputeVertexPassability(grid) {
                 const toRow = vy + spec.toRow;
                 const ownerCol = vx + spec.ownerCol;
                 const ownerRow = vy + spec.ownerRow;
-                if (!cellInRect(fromCol, fromRow, grid.cols, grid.rows) || !cellInRect(toCol, toRow, grid.cols, grid.rows)) continue;
+                if (!cellInRect(fromCol, fromRow, cols, rows) || !cellInRect(toCol, toRow, cols, rows)) continue;
                 if (!boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, spec.ownerSide)) mask |= spec.bit;
             }
-            out[packVertexKey(vx, vy, grid.cols)] = mask;
+            vertexPassability[packVertexKey(vx, vy, cols)] = mask;
         }
+}
+export function recomputeVertexPassability(grid) {
+    if (!grid.cols) {
+        grid.vertexPassability = new Uint8Array(0);
+        return;
+    }
+    const vertCount = (grid.cols + 1) * (grid.rows + 1);
+    const out = new Uint8Array(vertCount);
+    recomputeVertexPassabilityInto(grid, out);
     grid.vertexPassability = out;
 }
 const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
@@ -51,14 +61,20 @@ const DIAGONAL_VERTEX_BITS = {
     "1,-1": [VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.NwEast],
     "-1,1": [VERTEX_HALF_EDGE.NeWest, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.NwSouth],
 };
-/** Cardinal step bits per open cell — baked on topology sync, not on click. */
-export function recomputeNavCardinalOpen(grid) {
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | import("../../Pathfinding/navSimView.js").ReturnType<typeof import("../../Pathfinding/navSimView.js").createNavSimView>} grid @param {Uint8Array} cardinalOpen @param {import("../../DataStructures/CellRect.js").CellBounds | null} [bounds] */
+export function recomputeNavCardinalOpenInto(grid, cardinalOpen, bounds = null) {
     const { cols, rows } = grid;
-    const size = cols * rows;
-    const out = new Uint8Array(size);
-    for (let row = 0; row < rows; row++)
-        for (let col = 0; col < cols; col++) {
-            if (grid.isBlocked(col, row)) continue;
+    const c0 = bounds ? bounds.startCol : 0;
+    const c1 = bounds ? bounds.endCol : cols - 1;
+    const r0 = bounds ? bounds.startRow : 0;
+    const r1 = bounds ? bounds.endRow : rows - 1;
+    for (let row = r0; row <= r1; row++)
+        for (let col = c0; col <= c1; col++) {
+            const idx = colRowToIndex(col, row, cols);
+            if (grid.isBlocked(col, row)) {
+                cardinalOpen[idx] = 0;
+                continue;
+            }
             let mask = 0;
             for (const key in CARDINAL_BITS) {
                 const [dc, dr] = key.split(",").map(Number);
@@ -67,8 +83,15 @@ export function recomputeNavCardinalOpen(grid) {
                 if (!cellInRect(nc, nr, cols, rows)) continue;
                 if (!grid.isBlocked(nc, nr) && !boundaryBlocksStepFrom(grid, col, row, nc, nr)) mask |= CARDINAL_BITS[key];
             }
-            out[colRowToIndex(col, row, cols)] = mask;
+            cardinalOpen[idx] = mask;
         }
+}
+/** Cardinal step bits per open cell — baked on topology sync, not on click. */
+export function recomputeNavCardinalOpen(grid) {
+    const { cols, rows } = grid;
+    const size = cols * rows;
+    const out = new Uint8Array(size);
+    recomputeNavCardinalOpenInto(grid, out);
     grid.navCardinalOpen = out;
 }
 export function diagonalStepOpen(blocked, vertexPassability, cols, rows, col, row, dc, dr) {
@@ -81,9 +104,9 @@ export function diagonalStepOpen(blocked, vertexPassability, cols, rows, col, ro
     for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return false;
     return true;
 }
-/** Recompute derived grid topology caches (worker-candidate; Spatial-owned). */
-export function syncGridTopologyCaches(grid, passagePowerSyncKey) {
-    const key = `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${passagePowerSyncKey}`;
+/** Recompute main-thread topology caches for grid.canStep (pathfinding worker bakes its own copy). */
+export function syncGridTopologyCaches(grid) {
+    const key = `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.boundaryNavEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
     const size = grid.cols * grid.rows;
     const vertCount = grid.cols && grid.rows ? (grid.cols + 1) * (grid.rows + 1) : 0;
     const sizeStale = grid.navCardinalOpen.length !== size || grid.vertexPassability.length !== vertCount;

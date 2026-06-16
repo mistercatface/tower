@@ -1,6 +1,7 @@
 import { NavigationController } from "../../Libraries/Navigation/index.js";
 import { refreshNavCrossingGrant, syncCrossingGrantToEntity } from "../../Libraries/Pathfinding/crossingGrant.js";
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
+import { syncGridTopologyCaches } from "../../Libraries/Spatial/grid/vertexPassability.js";
 import { VIEWPORT_VISIBILITY_PAD_WIDE } from "../../Libraries/Viewport/Viewport.js";
 import { planHpaSteering } from "./HpaStrategy.js";
 /**
@@ -82,6 +83,7 @@ export class NavigationService {
     }
     onObstaclesChanged(damageBounds) {
         const grid = this._obstacleGrid;
+        syncGridTopologyCaches(grid);
         const topologyChanged = grid.gridTopologyEpoch !== this._lastGridTopologyEpoch;
         if (topologyChanged) this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
         this._controller.invalidateObstacleNav();
