@@ -67,39 +67,7 @@ export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startCol, st
     const { nodeIds, nodeCol, nodeRow } = graphMeta;
     return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN };
 }
-/**
- * @param {{ gridToWorld: (col: number, row: number) => { x: number, y: number } }} worldGrid
- * @param {object} prep
- * @param {number[]} abstractIdx
- * @param {number} pathLen
- */
-export function buildHpaReplanResult(worldGrid, prep, abstractIdx, pathLen) {
-    if (prep.mode === "local") {
-        if (pathLen <= 0) return null;
-        const abstractNodes = buildHpaAbstractNodes(worldGrid, prep, abstractIdx);
-        return { pathLen, abstractNodes, pathPlanner: "local" };
-    }
-    const abstractNodes = buildHpaAbstractNodes(worldGrid, prep, abstractIdx);
-    if (!abstractNodes) return null;
-    if (pathLen <= 0) return { pathLen: 0, abstractNodes, pathPlanner: "hpa" };
-    return { pathLen, abstractNodes, pathPlanner: "hpa" };
-}
-export function buildHpaAbstractNodes(worldGrid, prep, abstractIdx) {
-    if (prep.mode === "local") {
-        const startWorld = worldGrid.gridToWorld(prep.startCol, prep.startRow);
-        const targetWorld = worldGrid.gridToWorld(prep.targetCol, prep.targetRow);
-        return [
-            { x: startWorld.x, y: startWorld.y, id: "start" },
-            { x: targetWorld.x, y: targetWorld.y, id: "target" },
-        ];
-    }
-    if (!abstractIdx.length) return null;
-    const { nodeCol, nodeRow, startCol, startRow, targetCol, targetRow, nodeIds, nodeCount } = prep;
-    const startTemp = nodeCount;
-    const targetTemp = nodeCount + 1;
-    return abstractIdx.map((idx) => {
-        if (idx === startTemp) return { ...worldGrid.gridToWorld(startCol, startRow), id: "start" };
-        if (idx === targetTemp) return { ...worldGrid.gridToWorld(targetCol, targetRow), id: "target" };
-        return { ...worldGrid.gridToWorld(nodeCol[idx], nodeRow[idx]), id: nodeIds[idx] };
-    });
+/** @param {number} pathLen */
+export function buildHpaReplanResult(pathLen) {
+    return pathLen > 0 ? { pathLen } : null;
 }

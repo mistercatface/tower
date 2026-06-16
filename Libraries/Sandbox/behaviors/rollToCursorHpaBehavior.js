@@ -1,5 +1,5 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
-import { buildSabPathOverlayFromProgress } from "../../Pathfinding/hpaPathSlot.js";
+import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { getRollToCursorConfig, snapRollMoveTargetToCellCenter, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
@@ -114,18 +114,23 @@ export function createRollToCursorHpaBehavior(state) {
         getPathOverlay(prop) {
             const run = propRuns.get(prop.id);
             if (!run?.targetWorld) return null;
-            const progressIdx = run.hpaNav.navState.pathProgressIdx;
+            const nav = run.hpaNav.navState;
+            const progressIdx = nav.pathProgressIdx;
             const trace =
-                run.hpaNav.navState.pathLen > 0 && run.hpaNav.navState.pathSlot >= 0
-                    ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.hpaPathWorker, run.hpaNav.navState.pathSlot, run.hpaNav.navState.pathLen, progressIdx, state.obstacleGrid)
+                nav.pathLen > 0 && nav.pathSlot >= 0
+                    ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.hpaPathWorker, nav.pathSlot, nav.pathLen, progressIdx, state.obstacleGrid)
                     : { pathNodes: [] };
+            const abstract =
+                nav.pathLen > 0 && nav.pathSlot >= 0
+                    ? buildSabAbstractPathOverlay(state.hpaPathWorker, nav.pathSlot, nav.pathLen, state.obstacleGrid)
+                    : null;
             return {
                 mode: "hpa",
                 pathNodes: trace.pathNodes,
                 targetX: run.targetWorld.x,
                 targetY: run.targetWorld.y,
-                abstractPath: run.hpaNav.navState.abstractPath ?? undefined,
-                pathPlanner: run.hpaNav.navState.pathPlanner ?? undefined,
+                abstractPath: abstract?.abstractPath,
+                pathPlanner: abstract?.pathPlanner,
             };
         },
         reset() {

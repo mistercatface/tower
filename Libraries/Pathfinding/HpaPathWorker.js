@@ -9,6 +9,7 @@ import {
     hpaPathSlotMeta,
     hpaPathSlotCols,
     hpaPathSlotRows,
+    hpaPathSlotAbstractIdx,
     hpaPersistNodeColView,
     hpaPersistNodeRowView,
     hpaPersistEdgeOffsetsView,
@@ -266,6 +267,18 @@ export class HpaPathWorker {
     pathRow(slot, i) {
         return this._pathRows(slot)[i];
     }
+    abstractPathLen(slot) {
+        return this._pathMeta(slot)[1];
+    }
+    abstractPathIdx(slot, i) {
+        return this._abstractIdx(slot)[i];
+    }
+    graphNodeCol(idx) {
+        return hpaPersistNodeColView(this.sabPersistGraphNodeCol, this.graphNodeCount)[idx];
+    }
+    graphNodeRow(idx) {
+        return hpaPersistNodeRowView(this.sabPersistGraphNodeRow, this.graphNodeCount)[idx];
+    }
     _pathMeta(slot) {
         return hpaPathSlotMeta(this.sabPathMetaPool, slot);
     }
@@ -274,6 +287,9 @@ export class HpaPathWorker {
     }
     _pathRows(slot) {
         return hpaPathSlotRows(this.sabPathRowsPool, slot, MAX_HPA_PATH_LEN);
+    }
+    _abstractIdx(slot) {
+        return hpaPathSlotAbstractIdx(this.sabAbstractIdxPool, slot, MAX_HPA_ABSTRACT_LEN);
     }
     _ensureNavEdgePoolSab(refCount) {
         const byteLen = navEdgePoolSabByteLength(refCount);

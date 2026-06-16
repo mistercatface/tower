@@ -71,6 +71,47 @@ export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, pro
     return { pathNodes };
 }
 /**
+ * Debug overlay — maps abstract idx SAB + graph meta to world nodes. Only call from getPathOverlay.
+ * @param {import("./HpaPathWorker.js").HpaPathWorker} worker
+ * @param {number} slot
+ * @param {number} pathLen
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @returns {{ pathPlanner: "local" | "hpa", abstractPath: Array<{ x: number, y: number, id?: string }> } | null}
+ */
+export function buildSabAbstractPathOverlay(worker, slot, pathLen, grid) {
+    if (pathLen <= 0) return null;
+    const abstractLen = worker.abstractPathLen(slot);
+    if (abstractLen <= 0) {
+        const start = sabPathWorldAt(worker, slot, 0, grid);
+        const target = sabPathWorldAt(worker, slot, pathLen - 1, grid);
+        return {
+            pathPlanner: "local",
+            abstractPath: [
+                { x: start.x, y: start.y, id: "start" },
+                { x: target.x, y: target.y, id: "target" },
+            ],
+        };
+    }
+    const nodeCount = worker.graphNodeCount;
+    const startTemp = nodeCount;
+    const targetTemp = nodeCount + 1;
+    const nodeIds = worker.graphNodeIds;
+    const abstractPath = [];
+    for (let i = 0; i < abstractLen; i++) {
+        const idx = worker.abstractPathIdx(slot, i);
+        if (idx === startTemp) {
+            const w = sabPathWorldAt(worker, slot, 0, grid);
+            abstractPath.push({ x: w.x, y: w.y, id: "start" });
+        } else if (idx === targetTemp) {
+            const w = sabPathWorldAt(worker, slot, pathLen - 1, grid);
+            abstractPath.push({ x: w.x, y: w.y, id: "target" });
+        } else {
+            abstractPath.push({ ...grid.gridToWorld(worker.graphNodeCol(idx), worker.graphNodeRow(idx)), id: nodeIds[idx] });
+        }
+    }
+    return { pathPlanner: "hpa", abstractPath };
+}
+/**
  * @param {import("../Agent/types.js").AgentPose} pose
  * @param {import("./HpaPathWorker.js").HpaPathWorker} worker
  * @param {number} slot

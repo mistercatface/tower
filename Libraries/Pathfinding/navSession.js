@@ -12,11 +12,9 @@
  * @property {number | null} lastTargetX
  * @property {number | null} lastTargetY
  * @property {number} lastOffPathReplan
- * @property {Array<{ x: number, y: number, id?: string }> | null} [abstractPath]
- * @property {"local" | "hpa" | null} [pathPlanner]
  * @property {number} [hpaReplanRequestId] — 0 = idle; non-zero while worker replan in flight
  * @property {number} [pathSlot] — worker path SAB slot while following a path, -1 when idle
- * @property {number} [pathLen] — cell count in pathSlot SAB; 0 when steering from abstract path array only
+ * @property {number} [pathLen] — cell count in pathSlot SAB
  */
 /** @param {NavSessionState} navState */
 export function navHasPath(navState) {
