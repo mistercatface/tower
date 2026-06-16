@@ -1,19 +1,34 @@
 ---
-description: Never run git commit, push, branch, or PR unless the user explicitly asks in that message
+description: Never commit, branch, push, fork, or open PRs unless the user explicitly asks in that message
 alwaysApply: true
 ---
 
-# No git remote actions without explicit permission
+# No git / GitHub actions without explicit permission
 
-Do **not** run any of the following unless the user **explicitly asks in the current message** (e.g. "commit this", "push", "open a PR"):
+**Default: hands off git and GitHub.** Implement code only. Stop when the code is done.
+
+Do **not** run any of the following unless the user **explicitly asks in the current message** with clear git intent (e.g. "commit this", "push to origin", "create the PR", "open a pull request"):
 
 - `git commit` (including `--amend`)
-- `git push` (any remote)
-- `git checkout -b` / branch creation for shipping work
-- `gh pr create` or other PR/issue creation on GitHub
+- `git push` (any remote, any branch)
+- `git checkout -b`, `git switch -c`, or any branch creation
+- `gh pr create`, `gh repo fork`, or any PR / fork / issue creation on GitHub
+- Creating or pushing remote branches "to prepare a PR"
 
-Implementing code, drafting commit messages, or mentioning that the user *could* commit is fine. **Do not execute** those commands proactively — not at the end of a task, not because the user said "PR this out" in a planning sense without a clear "go commit/push it", and not to "finish shipping" work.
+## Task wording is NOT permission
 
-Local read-only git (`status`, `diff`, `log`) is OK when needed to understand or implement a task.
+These do **not** authorize git commands:
 
-If the user only asked for a plan, implementation, or review, stop when the code is done. Wait for an explicit git/PR request.
+- "in one PR" / "ship as a PR" / "PR this out" — means **scope the code change**, not run git
+- "when you're done" / "finish it" — means finish **implementation**, not commit/push
+- Drafting a commit message or PR description — write text only; do **not** execute git/gh
+
+If unsure, **ask** or **stop**. Never "helpfully" branch, commit, push, or open a PR at the end of a task.
+
+## Allowed without asking
+
+Local **read-only** git when needed for the task: `status`, `diff`, `log`, `show`.
+
+## After implementation
+
+Report what changed in the working tree. Tell the user they can commit/push/PR when **they** want. Do not run those steps unless they explicitly request them in that message.

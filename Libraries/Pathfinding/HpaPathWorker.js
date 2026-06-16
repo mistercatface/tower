@@ -2,7 +2,7 @@ import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { gridNavCacheKey } from "../Spatial/grid/gridNavEpoch.js";
-import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, navTopologyFromArena, navCanStep } from "./navTopologySab.js";
+import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, navCanStep } from "./navTopologySab.js";
 import {
     createHpaWorkerSabPools,
     growHpaCellToRegionSab,
@@ -314,7 +314,7 @@ export class HpaPathWorker {
         this._syncNavArenaFields();
     }
     getNavTopology() {
-        return this._navArena ? navTopologyFromArena(this._navArena) : null;
+        return this._navArena?.topologyHandle ?? null;
     }
     getGridFrame() {
         return this._gridFrame;

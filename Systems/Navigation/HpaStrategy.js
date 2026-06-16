@@ -35,14 +35,13 @@ export function planHpaSteering(entity, targetX, targetY, hpaPathSession, navSta
         navState.stuckFrames = 0;
     }
     const pose = agentPose(entity);
-    const steerSettings = { ...settings, grid: obstacleGrid };
-    let steering = hpaPathWorker && navHasPath(navState) ? computeSabPathSteering(pose, hpaPathWorker, navState.pathSlot, navState.pathLen, targetX, targetY, steerSettings, navState) : null;
+    let steering = hpaPathWorker && navHasPath(navState) ? computeSabPathSteering(pose, hpaPathWorker, navState.pathSlot, navState.pathLen, targetX, targetY, obstacleGrid, settings, navState) : null;
     if (!steering) steering = computeDirectSteering(pose, targetX, targetY);
     if (offPathReplanDue(steering, navState, now)) {
         replanReason = "offPath";
         navState.lastOffPathReplan = now;
         requestReplan();
-        steering = hpaPathWorker && navHasPath(navState) ? computeSabPathSteering(pose, hpaPathWorker, navState.pathSlot, navState.pathLen, targetX, targetY, steerSettings, navState) : null;
+        steering = hpaPathWorker && navHasPath(navState) ? computeSabPathSteering(pose, hpaPathWorker, navState.pathSlot, navState.pathLen, targetX, targetY, obstacleGrid, settings, navState) : null;
         if (!steering) steering = computeDirectSteering(pose, targetX, targetY);
     }
     const hasPath = navHasPath(navState);

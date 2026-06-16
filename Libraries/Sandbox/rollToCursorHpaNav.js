@@ -36,7 +36,7 @@ export function createRollToCursorHpaNav() {
     };
     const getSteering = (prop, targetX, targetY, settings, grid, worker) => {
         if (!worker || !navHasPath(navState)) return null;
-        return computeSabPathSteering(agentPose(prop), worker, navState.pathSlot, navState.pathLen, targetX, targetY, { ...settings, grid }, navState);
+        return computeSabPathSteering(agentPose(prop), worker, navState.pathSlot, navState.pathLen, targetX, targetY, grid, settings, navState);
     };
     return { navState, reset, markTargetChanged, replan, update, getSteering };
 }

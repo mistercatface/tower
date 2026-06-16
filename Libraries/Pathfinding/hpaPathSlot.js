@@ -105,9 +105,7 @@ export function buildSabAbstractPathOverlay(worker, slot, pathLen, grid) {
         } else if (idx === targetTemp) {
             const w = sabPathWorldAt(worker, slot, pathLen - 1, grid);
             abstractPath.push({ x: w.x, y: w.y, id: "target" });
-        } else {
-            abstractPath.push({ ...grid.gridToWorld(worker.graphNodeCol(idx), worker.graphNodeRow(idx)), id: nodeIds[idx] });
-        }
+        } else abstractPath.push({ ...grid.gridToWorld(worker.graphNodeCol(idx), worker.graphNodeRow(idx)), id: nodeIds[idx] });
     }
     return { pathPlanner: "hpa", abstractPath };
 }
@@ -118,13 +116,13 @@ export function buildSabAbstractPathOverlay(worker, slot, pathLen, grid) {
  * @param {number} pathLen
  * @param {number} targetX
  * @param {number} targetY
- * @param {object} settings
- * @param {import("./navSession.js").NavSessionState | null} navState
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {object} [settings]
+ * @param {import("./navSession.js").NavSessionState | null} [navState]
  */
-export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, targetY, settings = {}, navState = null) {
+export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, targetY, grid, settings = {}, navState = null) {
     const x = pose.x;
     const y = pose.y;
-    const grid = settings.grid;
     const waypointArrival = settings.pathWaypointArrival ?? PATH_WAYPOINT_ARRIVAL_PX;
     const arrivalDistance = settings.arrivalDistance ?? 2;
     const offPathDistance = settings.pathOffPathDistance ?? 64;

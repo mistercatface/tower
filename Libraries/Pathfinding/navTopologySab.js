@@ -34,10 +34,11 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {Int32Array} octileNeighbors
  * @property {Uint8Array} cardinalOpen
  * @property {Uint8Array} vertexPassability
+ * @property {NavTopology} topologyHandle
  */
 /** @param {NavTopologySabArena} arena @returns {NavTopology} */
 export function navTopologyFromArena(arena) {
-    return { blocked: arena.blocked, octileNeighbors: arena.octileNeighbors };
+    return arena.topologyHandle;
 }
 /** @param {ArrayBufferLike} sabBlocked @param {ArrayBufferLike} sabOctileNeighbors @returns {NavTopology} */
 export function navTopologyFromSab(sabBlocked, sabOctileNeighbors) {
@@ -65,6 +66,7 @@ export function createNavTopologySabArena(cellCount, vertCount) {
         octileNeighbors: undefined,
         cardinalOpen: undefined,
         vertexPassability: undefined,
+        topologyHandle: undefined,
     };
     bindNavTopologySabViews(arena);
     return arena;
@@ -79,6 +81,11 @@ export function bindNavTopologySabViews(arena) {
     arena.octileNeighbors = new Int32Array(arena.sabOctileNeighbors);
     arena.cardinalOpen = new Uint8Array(arena.sabCardinalOpen);
     arena.vertexPassability = new Uint8Array(arena.sabVertexPassability);
+    if (!arena.topologyHandle) arena.topologyHandle = { blocked: arena.blocked, octileNeighbors: arena.octileNeighbors };
+    else {
+        arena.topologyHandle.blocked = arena.blocked;
+        arena.topologyHandle.octileNeighbors = arena.octileNeighbors;
+    }
 }
 /** @param {NavTopologySabArena} arena @param {number} vertCount */
 export function growNavTopologyVertexSab(arena, vertCount) {
