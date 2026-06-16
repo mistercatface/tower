@@ -2,6 +2,7 @@ import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCo
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
+import { bakeHopCsrFromHopsMap } from "./navSimHopBake.js";
 /** Octile + diagonal vertex passability can affect neighbors up to 2 cells away. */
 export const NAV_TOPOLOGY_PATCH_MARGIN = 2;
 /** Rebake shell so cells outside the data rect drop edges into changed cells. */
@@ -64,7 +65,6 @@ export function copyNavSimSabRect(grid, bounds, gridFill, floorKind, floorFacing
 export function snapshotNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.boundaryNavEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
 }
-import { bakeHopCsrFromHopsMap } from "./navSimHopBake.js";
 /** Main-thread CSR from grid.boundaryNavHops (lazy-built for steering/overlay). */
 export function bakeHopCsr(grid, blocked, cols, rows) {
     const size = cols * rows;
