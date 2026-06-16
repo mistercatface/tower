@@ -166,8 +166,13 @@ export function mountOverviewBoundsEditors(canvas, editors, getFrame, onChange) 
         }
         return null;
     };
+    const frameReady = (frame) => frame.cache?.canvas;
     canvas.addEventListener("pointermove", (e) => {
         const frame = getFrame();
+        if (!frameReady(frame)) {
+            canvas.style.cursor = "default";
+            return;
+        }
         const { sx, sy } = pointerToScreen(e, frame);
         if (!dragMode) {
             const resolved = resolveHit(sx, sy, frame);
@@ -182,6 +187,7 @@ export function mountOverviewBoundsEditors(canvas, editors, getFrame, onChange) 
     });
     canvas.addEventListener("pointerdown", (e) => {
         const frame = getFrame();
+        if (!frameReady(frame)) return;
         const { sx, sy } = pointerToScreen(e, frame);
         const resolved = resolveHit(sx, sy, frame);
         if (!resolved) return;
