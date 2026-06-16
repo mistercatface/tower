@@ -66,7 +66,6 @@ export class HpaPathWorker {
         this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx);
         this._slotFree = [];
         for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
-        this._slotOwner = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
         /** @type {Array<{ requestId: number, onAbstractReady?: (result: object) => void, obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, startCol: number, startRow: number, targetCol: number, targetRow: number } | null>} */
         this._replanHooks = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
         /** @type {("local" | "hpa" | null)[]} */
@@ -257,14 +256,12 @@ export class HpaPathWorker {
             },
         };
     }
-    leaseSlot(owner) {
+    leaseSlot() {
         const slot = this._slotFree.pop();
         if (slot === undefined) throw new Error(`HpaPathWorker slot pool exhausted (${MAX_HPA_REPLAN_SLOTS} in flight)`);
-        this._slotOwner[slot] = owner;
         return slot;
     }
     releaseSlot(slot) {
-        this._slotOwner[slot] = null;
         this._slotFree.push(slot);
     }
     releaseOwnedPathSlot(navState) {
@@ -472,8 +469,7 @@ export class HpaPathWorker {
         this.releaseOwnedPathSlot(navState);
         if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;
         const { startCol, startRow, targetCol, targetRow } = resolveSnappedPathEndpoints(obstacleGrid, startX, startY, targetX, targetY);
-        const slot = this.leaseSlot(navState);
-        navState.hpaReplanSlot = slot;
+        const slot = this.leaseSlot();
         let workerOut = null;
         try {
             workerOut = await this.runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, obstacleGrid, graphEpoch, { replanRequestId, onAbstractReady });
@@ -481,7 +477,6 @@ export class HpaPathWorker {
             this.releaseSlot(slot);
             throw err;
         }
-        navState.hpaReplanSlot = -1;
         if (!workerOut) {
             this.releaseSlot(slot);
             return null;

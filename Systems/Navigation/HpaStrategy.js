@@ -1,18 +1,16 @@
 import { agentPose } from "../../Libraries/Agent/index.js";
 import { computeDirectSteering } from "../../Libraries/Agent/steering.js";
-import { requestHpaNavReplan } from "../../Libraries/Pathfinding/hpaPathPlan.js";
 import { computeHpaNavSteering } from "../../Libraries/Pathfinding/hpaSteering.js";
 function navHasPath(navState) {
     return navState.pathLen > 0 || !!navState.path?.length;
 }
 function replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, graphEpoch, nowMs) {
-    requestHpaNavReplan(hpaPathSession, navState, { obstacleGrid, startX: entity.x, startY: entity.y, targetX, targetY, nowMs, graphEpoch });
+    hpaPathSession.requestReplan(navState, { obstacleGrid, startX: entity.x, startY: entity.y, targetX, targetY, nowMs, graphEpoch });
 }
 /**
  * HPA replan policy + pure steering compute. Does not mutate desiredX/Y.
  * @param {{
  *   isVisible?: (entity: object) => boolean,
- *   getReplanScale?: (entity: object) => number,
  * }} hooks
  * @returns {{ steering: import("../../Libraries/Agent/types.js").SteeringResult, mode: string, replanReason: string | null, pathLen: number }}
  */

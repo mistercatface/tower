@@ -45,6 +45,3 @@ export function applyHpaReplanResult(navState, result, { obstacleGrid, worker, s
     navState.lastTargetY = targetY;
     navState.lastUpdate = nowMs;
 }
-export function requestHpaNavReplan(session, navState, { obstacleGrid, startX, startY, targetX, targetY, nowMs, graphEpoch }) {
-    session.requestReplan(navState, { obstacleGrid, startX, startY, targetX, targetY, nowMs, graphEpoch });
-}

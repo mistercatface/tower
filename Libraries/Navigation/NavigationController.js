@@ -62,7 +62,6 @@ export class NavigationController {
     clear(entity) {
         this.navStates.delete(entity);
         this.debugByEntity.delete(entity);
-        entity.hpaPath = null;
     }
     steerTo(entity, targetX, targetY, profile, flowFieldGrid = null, state = null) {
         const settings = this.settings;

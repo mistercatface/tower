@@ -35,8 +35,7 @@ export class NavigationService {
                     state?.gameTime ?? Date.now(),
                     state.hpaPathWorker,
                 ),
-            onSteerComplete: (entity, { navState, settings, plan }) => {
-                entity.hpaPath = navState.pathLen > 0 ? null : navState.path;
+            onSteerComplete: (entity, { settings, plan }) => {
                 if (entity.isMoving) {
                     entity.targetNodeX = entity.x + entity.desiredX * settings.targetNodeLookahead;
                     entity.targetNodeY = entity.y + entity.desiredY * settings.targetNodeLookahead;

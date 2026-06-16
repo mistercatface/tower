@@ -12,7 +12,7 @@
  * @property {string[]} [nodeIds]
  */
 /** @param {GridCell[]} fullPath @param {GridCell[]} leg */
-export function appendCellLeg(fullPath, leg) {
+function appendCellLeg(fullPath, leg) {
     if (!leg.length) return;
     if (!fullPath.length) {
         for (let i = 0; i < leg.length; i++) fullPath.push(leg[i]);
@@ -38,7 +38,7 @@ function abstractEndpointCells(aIdx, bIdx, prep) {
  * @param {Map<string, GridCell[]>} tempLegs
  * @param {HpaRegionLegResolver} resolveRegionLeg
  */
-export function resolveAbstractLegCells(aIdx, bIdx, prep, tempLegs, resolveRegionLeg) {
+function resolveAbstractLegCells(aIdx, bIdx, prep, tempLegs, resolveRegionLeg) {
     let leg = tempLegs.get(`${aIdx},${bIdx}`);
     if (!leg && aIdx < prep.nodeCount && bIdx < prep.nodeCount) leg = resolveRegionLeg(aIdx, bIdx);
     if (leg) return leg;
@@ -56,7 +56,7 @@ export function resolveAbstractLegCells(aIdx, bIdx, prep, tempLegs, resolveRegio
  * @param {GridCell[]} fullCellPath
  * @param {HpaRegionLegResolver} resolveRegionLeg
  */
-export function appendAbstractLeg(abstractIdx, prep, tempLegs, legIndex, fullCellPath, resolveRegionLeg) {
+function appendAbstractLeg(abstractIdx, prep, tempLegs, legIndex, fullCellPath, resolveRegionLeg) {
     const leg = resolveAbstractLegCells(abstractIdx[legIndex], abstractIdx[legIndex + 1], prep, tempLegs, resolveRegionLeg);
     appendCellLeg(fullCellPath, leg);
 }
@@ -69,7 +69,7 @@ export function appendAbstractLeg(abstractIdx, prep, tempLegs, legIndex, fullCel
  * @param {HpaRegionLegResolver} resolveRegionLeg
  * @returns {GridCell[] | null}
  */
-export function stitchAbstractLegRange(abstractIdx, prep, tempLegs, legStart, legEndExclusive, resolveRegionLeg) {
+function stitchAbstractLegRange(abstractIdx, prep, tempLegs, legStart, legEndExclusive, resolveRegionLeg) {
     if (!abstractIdx.length || legEndExclusive <= legStart) return null;
     const fullCellPath = [];
     const lastLeg = Math.min(legEndExclusive, abstractIdx.length - 1);

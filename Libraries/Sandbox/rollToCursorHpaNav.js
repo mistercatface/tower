@@ -1,6 +1,6 @@
 import { agentPose } from "../Agent/index.js";
 import { createNavState } from "../Pathfinding/navSession.js";
-import { clearHpaNavPath, requestHpaNavReplan } from "../Pathfinding/hpaPathPlan.js";
+import { clearHpaNavPath } from "../Pathfinding/hpaPathPlan.js";
 import { computeHpaNavSteering } from "../Pathfinding/hpaSteering.js";
 /** @typedef {import("../Pathfinding/navSession.js").NavSessionState} NavSessionState */
 const REPLAN_TARGET_MOVE_PX = 64;
@@ -18,7 +18,6 @@ export function createRollToCursorHpaNav() {
         navState.lastTargetY = null;
         navState.lastUpdate = 0;
         navState.hpaReplanRequestId = 0;
-        navState.hpaReplanSlot = -1;
         replanClockMs = 0;
     };
     /** New target cell — one replan when idle; keep path steering until apply. */
@@ -26,7 +25,7 @@ export function createRollToCursorHpaNav() {
         pendingTargetReplan = true;
     };
     const replan = (prop, targetX, targetY, state) => {
-        requestHpaNavReplan(state.hpaPathSession, navState, {
+        state.hpaPathSession.requestReplan(navState, {
             obstacleGrid: state.obstacleGrid,
             startX: prop.x,
             startY: prop.y,
