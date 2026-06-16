@@ -1,35 +1,17 @@
 import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStructures/CellRect.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
-import { canLinkPortalsOnPolicy } from "./portalLinks.js";
-import { getPassageEdgeNetworkId } from "./passagePowerNetwork.js";
-import { passageNetworkPolicyFromGrid } from "../Pathfinding/navPassagePolicySab.js";
 import { clearPrimaryBoundaryAt, commitBoundaryEdit, notifyGridWallChange } from "./boundaryEdit.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import {
     formatPassageModeLabel,
     isPassageLaserEdge,
-    isPortalEdge,
     isRailWallEdge,
     parsePassageMode,
-    parsePortalAccessMode,
     PASSAGE_MODE,
-    PORTAL_ACCESS_MODE,
     railWallCapLevel,
 } from "../Spatial/grid/CellEdge.js";
-import { portalAccessDefaultAllowedSide, formatPortalAccessSideLabel, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
-import { setBoundary, setPassageProfile, setPortalProfile, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
-import { canonicalEdgeCellKey, cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
-import { findPortalEdgeByKey } from "../Spatial/grid/portalSlotIndex.js";
-import {
-    formatPortalConnectionLabel,
-    linkPortalEdges,
-    parsePortalLinkMode,
-    PORTAL_LINK_MODE,
-    resolvePortalLinkRoute,
-    resolvePortalPartner,
-    setPortalLinkProfile,
-    unlinkPortalEdge,
-} from "./portalLinks.js";
+import { setBoundary, setPassageProfile, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
+import { cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
 const ENSURE_AABB = createAabb();
 const EDGE_P1 = { x: 0, y: 0 };
@@ -169,54 +151,6 @@ export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) 
     if (isEmptyCellBounds(bounds)) return null;
     return bounds;
 }
-export function applyStampedPortalsFromGlobal(state, portals, cellSize) {
-    const grid = state.obstacleGrid;
-    const half = grid.cellHalfSize;
-    const bounds = emptyCellBounds();
-    const toLocal = (globalCol, globalRow) => {
-        const x = globalCol * cellSize + half;
-        const y = globalRow * cellSize + half;
-        return grid.worldToGrid(x, y);
-    };
-    /** @type {{ col: number, row: number, side: number, partnerKey: number }[]} */
-    const pendingLinks = [];
-    for (let i = 0; i < portals.length; i++) {
-        const { col: globalCol, row: globalRow, side, accessMode, allowedSide, partnerKey, linkMode, linkSourceKey } = portals[i];
-        const { col, row } = toLocal(globalCol, globalRow);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        clearPrimaryBoundaryAt(state, col, row, side);
-        const parsedAccess = PORTAL_ACCESS_MODE.One;
-        if (
-            !setBoundary(grid, col, row, side, {
-                kind: "portal",
-                accessMode: parsedAccess,
-                allowedSide: allowedSide ?? portalAccessDefaultAllowedSide(side),
-                partnerKey: 0,
-                linkMode: parsePortalLinkMode(linkMode),
-                linkSourceKey: linkSourceKey ?? 0,
-                powered: false,
-            })
-        )
-            continue;
-        growCellBounds(bounds, col, row);
-        if (partnerKey) pendingLinks.push({ col, row, side, partnerKey });
-    }
-    for (let i = 0; i < pendingLinks.length; i++) {
-        const { col, row, side, partnerKey } = pendingLinks[i];
-        const partner = findPortalEdgeByKey(grid, partnerKey);
-        if (!partner) continue;
-        linkPortalEdges(grid, col, row, side, partner.col, partner.row, partner.side);
-    }
-    for (let i = 0; i < portals.length; i++) {
-        if (parsePortalLinkMode(portals[i].linkMode) !== PORTAL_LINK_MODE.OneWay) continue;
-        const { col: globalCol, row: globalRow, side, linkSourceKey } = portals[i];
-        const { col, row } = toLocal(globalCol, globalRow);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        setPortalLinkProfile(grid, col, row, side, PORTAL_LINK_MODE.OneWay, linkSourceKey ?? 0);
-    }
-    if (isEmptyCellBounds(bounds)) return null;
-    return bounds;
-}
 export function stampVoxelWallAt(state, col, row, heightLevel) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
@@ -293,106 +227,6 @@ export function getForcefieldInfo(grid, col, row, side) {
         modeLabel: formatPassageModeLabel(mode),
     };
 }
-export function stampPortalAt(state, col, row, side, { accessMode = PORTAL_ACCESS_MODE.One, allowedSide = portalAccessDefaultAllowedSide(side) } = {}) {
-    const grid = state.obstacleGrid;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    clearPrimaryBoundaryAt(state, col, row, side);
-    if (!setBoundary(grid, col, row, side, { kind: "portal", accessMode: parsePortalAccessMode(accessMode), allowedSide, partnerKey: 0, powered: false })) return false;
-    commitBoundaryEdit(state, cellBoundsAt(col, row), { power: true });
-    return true;
-}
-export function setPortalProfileAt(state, col, row, side, accessMode, allowedSide) {
-    const grid = state.obstacleGrid;
-    if (!setPortalProfile(grid, col, row, side, accessMode, allowedSide)) return false;
-    commitBoundaryEdit(state, cellBoundsAt(col, row));
-    return true;
-}
-export function clearPortalAt(state, col, row, side) {
-    if (clearPrimaryBoundaryAt(state, col, row, side) !== "portal") return false;
-    commitBoundaryEdit(state, cellBoundsAt(col, row), { power: true });
-    return true;
-}
-export function linkPortalsAt(state, colA, rowA, sideA, colB, rowB, sideB) {
-    const grid = state.obstacleGrid;
-    const policy = passageNetworkPolicyFromGrid(grid);
-    if (!canLinkPortalsOnPolicy(policy, grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
-    if (!linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
-    setPortalLinkProfile(grid, colA, rowA, sideA, PORTAL_LINK_MODE.Shared, 0);
-    commitBoundaryEdit(state, [cellBoundsAt(colA, rowA), cellBoundsAt(colB, rowB)]);
-    return true;
-}
-export function unlinkPortalAt(state, col, row, side) {
-    const grid = state.obstacleGrid;
-    if (!unlinkPortalEdge(grid, col, row, side)) return false;
-    commitBoundaryEdit(state, cellBoundsAt(col, row));
-    return true;
-}
-export function setPortalLinkProfileAt(state, col, row, side, linkMode, linkSourceKey = 0) {
-    const grid = state.obstacleGrid;
-    if (!setPortalLinkProfile(grid, col, row, side, linkMode, linkSourceKey)) return false;
-    /** @type {{ startCol: number, endCol: number, startRow: number, endRow: number }[]} */
-    const regions = [cellBoundsAt(col, row)];
-    const partner = resolvePortalPartner(grid, col, row, side);
-    if (partner) regions.push(cellBoundsAt(partner.col, partner.row));
-    commitBoundaryEdit(state, regions);
-    return true;
-}
-export function getPortalInfo(grid, col, row, side) {
-    const boundary = getBoundary(grid, col, row, side);
-    if (boundary.primary !== "portal") return null;
-    const edge = boundary.edge;
-    const accessMode = boundary.accessMode;
-    const partnerKey = boundary.partnerKey;
-    const partner = partnerKey ? resolvePortalPartner(grid, col, row, side) : null;
-    const linkMode = parsePortalLinkMode(edge.linkMode);
-    const route = partner ? resolvePortalLinkRoute(grid, col, row, side) : null;
-    let connection = "shared";
-    if (linkMode === PORTAL_LINK_MODE.OneWay && route) connection = route.fromSelf ? "fromSelf" : "fromPartner";
-    return {
-        col,
-        row,
-        side,
-        accessMode,
-        allowedSide: boundary.allowedSide,
-        mouthAllowedSide: portalMouthAllowedSide(edge, side),
-        partnerKey,
-        partner,
-        linked: partner != null,
-        linkMode,
-        linkSourceKey: edge.linkSourceKey ?? 0,
-        connection,
-        powered: boundary.powered,
-    };
-}
-export function isSamePortalEdge(grid, colA, rowA, sideA, colB, rowB, sideB) {
-    return canonicalEdgeCellKey(grid, colA, rowA, sideA) === canonicalEdgeCellKey(grid, colB, rowB, sideB);
-}
-export function listPlacedPortals(grid) {
-    /** @type {{ col: number, row: number, side: number, label: string }[]} */
-    const placed = [];
-    let index = 0;
-    forEachCellEdge(
-        grid,
-        (col, row, side) => {
-            const info = getPortalInfo(grid, col, row, side);
-            index++;
-            const sideLabel = formatGridWallEdgeSideLabel(side);
-            const accessTag = ` · mouth ${formatPortalAccessSideLabel(side, info.mouthAllowedSide).toLowerCase()}`;
-            const linkTag = info.linked ? ` · ${formatPortalConnectionLabel(info.linkMode, info.connection === "fromSelf")}` : " · unlinked";
-            placed.push({ col, row, side, label: `Portal #${index} · ${sideLabel}${accessTag}${linkTag}` });
-        },
-        { canonicalOnly: true, filter: isPortalEdge },
-    );
-    return placed;
-}
-export function listPortalLinkTargets(state, grid, selectedCol, selectedRow, selectedSide) {
-    const selectedNet = getPassageEdgeNetworkId(grid, selectedCol, selectedRow, selectedSide);
-    if (selectedNet < 0) return [];
-    return listPlacedPortals(grid).filter((entry) => {
-        if (isSamePortalEdge(grid, entry.col, entry.row, entry.side, selectedCol, selectedRow, selectedSide)) return false;
-        return getPassageEdgeNetworkId(grid, entry.col, entry.row, entry.side) === selectedNet;
-    });
-}
 export function listPlacedForcefields(grid) {
     /** @type {{ col: number, row: number, side: number, label: string }[]} */
     const placed = [];
@@ -466,16 +300,6 @@ export function strokeSelectedForcefieldEdge(ctx, grid, edge, lineScale) {
     cellEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
     ctx.lineWidth = 4 * lineScale;
     ctx.setLineDash([6, 4]);
-    ctx.beginPath();
-    ctx.moveTo(EDGE_P1.x, EDGE_P1.y);
-    ctx.lineTo(EDGE_P2.x, EDGE_P2.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-}
-export function strokeSelectedPortalEdge(ctx, grid, edge, lineScale) {
-    cellEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
-    ctx.lineWidth = 4 * lineScale;
-    ctx.setLineDash([4, 3, 10, 3]);
     ctx.beginPath();
     ctx.moveTo(EDGE_P1.x, EDGE_P1.y);
     ctx.lineTo(EDGE_P2.x, EDGE_P2.y);

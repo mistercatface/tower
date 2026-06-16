@@ -39,7 +39,7 @@ export function resolvePassageStepUndirected(ctx) {
     return true;
 }
 /**
- * Directional step query — from/to cells matter for modes like portal mouth rules.
+ * Directional step query — from/to cells matter for passage mode rules.
  * @param {PassageStepContext} ctx
  * @returns {boolean}
  */

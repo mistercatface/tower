@@ -1,13 +1,11 @@
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
-import { drawPortalEdgeCached } from "../Render/portalDraw.js";
 import { strokeCircle } from "../Canvas/CanvasPath.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellBoundsAtOriginInto } from "../Spatial/grid/GridCoords.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { forcefieldEdgeAt, portalEdgeAt } from "../Spatial/grid/gridCellTopology.js";
+import { forcefieldEdgeAt } from "../Spatial/grid/gridCellTopology.js";
 import { strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
-import { resolvePortalLinkRoute } from "./portalLinks.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
 const PROP_TILE_CELL_BOUNDS = createAabb();
@@ -47,17 +45,7 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
         });
     }
     if (selectedRailEdge && grid)
-        if (portalEdgeAt(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side) && camera) {
-            const { col, row, side } = selectedRailEdge;
-            const edge = grid.getCellEdge(col, row, side);
-            drawPortalEdgeCached(ctx, grid, col, row, side, edge, camera.px, camera.py, { selected: true });
-            const route = resolvePortalLinkRoute(grid, col, row, side);
-            if (route) {
-                const { col: pCol, row: pRow, side: pSide } = route.partner;
-                const partnerEdge = grid.getCellEdge(pCol, pRow, pSide);
-                drawPortalEdgeCached(ctx, grid, pCol, pRow, pSide, partnerEdge, camera.px, camera.py, { selected: true });
-            }
-        } else if (forcefieldEdgeAt(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
+        if (forcefieldEdgeAt(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side)) {
             ctx.strokeStyle = "rgba(192, 132, 252, 0.95)";
             strokeSelectedForcefieldEdge(ctx, grid, selectedRailEdge, lineScale);
         } else {

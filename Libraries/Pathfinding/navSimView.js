@@ -10,10 +10,9 @@ import { isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
  * @param {object[]} edgePool
  * @param {Uint8Array} vertexPassability
  */
-export function createNavSimView(cols, rows, gridFill, floorKind, floorFacing, edgeSlots, edgePool, passageEdgeCount, portalEdgeCount, vertexPassability, minX, minY, cellSize) {
+export function createNavSimView(cols, rows, gridFill, floorKind, floorFacing, edgeSlots, edgePool, passageEdgeCount, vertexPassability, minX, minY, cellSize) {
     const edgeStore = {
         passageEdgeCount,
-        portalEdgeCount,
         slots: edgeSlots,
         pool: edgePool,
         get(col, row, side, c) {
@@ -43,11 +42,10 @@ export function createNavSimView(cols, rows, gridFill, floorKind, floorFacing, e
         },
     };
 }
-/** @param {ReturnType<typeof createNavSimView>} simView @param {object[]} edgePool @param {number} passageEdgeCount @param {number} portalEdgeCount */
-export function bindNavSimEdgePool(simView, edgePool, passageEdgeCount, portalEdgeCount) {
+/** @param {ReturnType<typeof createNavSimView>} simView @param {object[]} edgePool @param {number} passageEdgeCount */
+export function bindNavSimEdgePool(simView, edgePool, passageEdgeCount) {
     simView.edgeStore.pool = edgePool;
     simView.edgeStore.passageEdgeCount = passageEdgeCount;
-    simView.edgeStore.portalEdgeCount = portalEdgeCount;
 }
 /** @param {ReturnType<typeof createNavSimView>} simView @param {number} minX @param {number} minY @param {number} cellSize */
 export function bindNavSimGridFrame(simView, minX, minY, cellSize) {

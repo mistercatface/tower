@@ -5,17 +5,13 @@ import { cellToGlobalColRow, isCanonicalEdgeRepresentative } from "../Spatial/gr
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
 import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";
-import { recomputePortalSlotIndex } from "../Spatial/grid/portalSlotIndex.js";
 import { notifyGridWallChange } from "./boundaryEdit.js";
 import {
     applyStampedForcefieldsFromGlobal,
     applyStampedGridWallsFromGlobal,
-    applyStampedPortalsFromGlobal,
     clearAllStampedGridWalls,
     getForcefieldInfo,
-    getPortalInfo,
     listPlacedForcefields,
-    listPlacedPortals,
     listPlacedRailWalls,
     listPlacedVoxelWalls,
 } from "./gridWallEdit.js";
@@ -24,7 +20,6 @@ import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandb
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
-import { PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
 /**
  * Sandbox scene snapshot — copy/paste JSON for props, stamped grid walls, floor belts, and forcefields.
@@ -63,22 +58,6 @@ export function collectSandboxSceneSnapshot(state) {
         if (info.mode === "oneWay") entry.allowedSide = info.allowedSide;
         forcefields.push(entry);
     }
-    const portals = [];
-    const listedPortals = listPlacedPortals(grid);
-    for (let i = 0; i < listedPortals.length; i++) {
-        const { col, row, side } = listedPortals[i];
-        if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
-        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
-        const info = getPortalInfo(grid, col, row, side);
-        if (!info) continue;
-        const entry = { col: globalCol, row: globalRow, side, accessMode: PORTAL_ACCESS_MODE.One, allowedSide: info.mouthAllowedSide };
-        if (info.partnerKey) entry.partnerKey = info.partnerKey;
-        if (info.linkMode === "oneWay") {
-            entry.linkMode = "oneWay";
-            entry.linkSourceKey = info.linkSourceKey;
-        }
-        portals.push(entry);
-    }
     return {
         schemaVersion: SANDBOX_SCENE_SCHEMA_VERSION,
         cellSize: grid.cellSize,
@@ -88,7 +67,6 @@ export function collectSandboxSceneSnapshot(state) {
         voxels,
         railWalls,
         forcefields,
-        portals,
         floorBelts: listPlacedFloorBeltsForSnapshot(grid),
         powerSources: listPlacedPassagePowerSourcesForSnapshot(grid),
         props: collectPlacedSandboxPropEntries(state),
@@ -129,10 +107,6 @@ function expandGridForSnapshot(state, doc) {
         const { col, row } = doc.forcefields[i];
         includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
     }
-    for (let i = 0; i < doc.portals.length; i++) {
-        const { col, row } = doc.portals[i];
-        includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
-    }
     for (let i = 0; i < doc.floorBelts.length; i++) {
         const { col, row } = doc.floorBelts[i];
         includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
@@ -160,7 +134,6 @@ function clearSandboxSceneContent(state) {
     clearRoomGraph(state);
     state.sandbox._passageEdgeDrawCache = null;
     setGridPassagePowerNavKey(state.obstacleGrid, "");
-    state.obstacleGrid.portalSlotByKey.clear();
     state.obstacleGrid.vertexPassability = new Uint8Array(0);
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string }} entry */
@@ -184,13 +157,11 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     expandGridForSnapshot(state, doc);
     const wallBounds = applyStampedGridWallsFromGlobal(state, doc.voxels, doc.railWalls, cellSize);
     const forcefieldBounds = applyStampedForcefieldsFromGlobal(state, doc.forcefields, cellSize);
-    const portalBounds = applyStampedPortalsFromGlobal(state, doc.portals, cellSize);
     const beltBounds = applyFloorBeltsFromGlobal(state, doc.floorBelts, cellSize);
     const powerSourceBounds = applyPassagePowerSourcesFromGlobal(state, doc.powerSources, cellSize);
-    const stampBounds = unionCellBoundsList([wallBounds, forcefieldBounds, portalBounds, beltBounds, powerSourceBounds]);
+    const stampBounds = unionCellBoundsList([wallBounds, forcefieldBounds, beltBounds, powerSourceBounds]);
     const grid = state.obstacleGrid;
     grid.edgeStore.recomputePassageEdgeCount();
-    recomputePortalSlotIndex(grid);
     applyPassagePowerGridState(state);
     const surfaceBounds = stampBounds ?? { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 };
     await notifyGridWallChange(state, surfaceBounds, { fullNavSync: true });

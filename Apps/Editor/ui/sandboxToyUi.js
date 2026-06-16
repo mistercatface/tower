@@ -18,7 +18,6 @@ import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../.
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
 import { CORRIDOR_TYPE_OPTIONS } from "../../../Libraries/RoomGraph/index.js";
-import { portalAccessDefaultAllowedSide } from "../../../Libraries/Spatial/grid/portalAccess.js";
 import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNumberField, appendNumberRangeField, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
@@ -26,17 +25,11 @@ const WALL_STAMP_OPTIONS = [
     { value: "voxel", label: "Voxel block" },
     { value: "rail", label: "Rail wall" },
     { value: "forcefield", label: "Forcefield" },
-    { value: "portal", label: "Portal" },
 ];
 const PASSAGE_MODE_OPTIONS = [
     { value: "solid", label: "Solid — wall when powered" },
     { value: "oneWay", label: "One-way — block against allowed side" },
     { value: "tripwire", label: "Tripwire — sensor, never blocks" },
-];
-const PORTAL_CONNECTION_OPTIONS = [
-    { value: "shared", label: "Shared — both ways (⇄)" },
-    { value: "fromSelf", label: "One-way — this portal → partner (→)" },
-    { value: "fromPartner", label: "One-way — partner → this portal (←)" },
 ];
 const EDGE_SIDE_OPTIONS = [
     { value: "0", label: formatGridWallEdgeSideLabel(0) },
@@ -44,15 +37,6 @@ const EDGE_SIDE_OPTIONS = [
     { value: "2", label: formatGridWallEdgeSideLabel(2) },
     { value: "3", label: formatGridWallEdgeSideLabel(3) },
 ];
-/** @param {number} ownerSide */
-function portalMouthSideOptions(ownerSide) {
-    const mirror = portalAccessDefaultAllowedSide(ownerSide);
-    const neighborLabel = ownerSide === 0 ? "North neighbor" : ownerSide === 1 ? "East neighbor" : ownerSide === 2 ? "South neighbor" : "West neighbor";
-    return [
-        { value: String(mirror), label: "Owner cell (stamped edge)" },
-        { value: String(ownerSide), label: `${neighborLabel} (across edge)` },
-    ];
-}
 /** @param {HTMLElement} body @param {NonNullable<ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController["getSelectedRoomLinkInfo"]>>} selectedRoomLink @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller */
 function appendRoomLinkCorridorInspector(body, selectedRoomLink, controller) {
     const limitHint = selectedRoomLink.maxCorridorWidth != null ? ` Max corridor width for this wall pair: ${selectedRoomLink.maxCorridorWidth}.` : "";
@@ -137,64 +121,6 @@ function appendPassageEditorFields(body, controller, selected, { stampDefaults =
             },
         });
 }
-/** @param {HTMLElement} body @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller @param {{ mouthAllowedSide?: number, side?: number, linked?: boolean, partner?: { col: number, row: number, side: number } | null, onNetwork?: boolean, connection?: string, connectionLabel?: string } | null} selected @param {{ stampDefaults?: boolean, ownerSide: number, linkTargets?: { col: number, row: number, side: number, label: string }[] }} opts */
-function appendPortalEditorFields(body, controller, selected, { stampDefaults = false, ownerSide, linkTargets = [] }) {
-    if (stampDefaults) {
-        appendSelectField(body, "Portal mouth", {
-            value: controller.getPortalStampMouthNeighbor() ? String(ownerSide) : String(portalAccessDefaultAllowedSide(ownerSide)),
-            options: portalMouthSideOptions(ownerSide),
-            onChange: (value) => {
-                controller.setPortalStampMouthNeighbor(Number(value) === ownerSide);
-            },
-        });
-        appendEditorHint(body, "One mouth cell per edge; the other side is always a solid wall. Connection direction is set after linking.");
-        return;
-    }
-    if (!selected) return;
-    appendSelectField(body, "Portal mouth", {
-        value: String(selected.mouthAllowedSide ?? portalAccessDefaultAllowedSide(ownerSide)),
-        options: portalMouthSideOptions(ownerSide),
-        onChange: (value) => {
-            controller.setSelectedPortalMouthSide(Number(value));
-        },
-    });
-    if (!selected.onNetwork) appendEditorHint(body, "Off network — extend a powered laser chain from a power source to this edge.");
-    else if (!selected.linked)
-        appendEditorHint(body, linkTargets.length > 0 ? "On network. Link to another portal on the same laser chain below." : "On network, but no other powered portal shares this chain yet.");
-    if (selected.linked) {
-        appendSelectField(body, "Connection", {
-            value: selected.connection ?? "shared",
-            options: PORTAL_CONNECTION_OPTIONS,
-            onChange: (value) => {
-                controller.setSelectedPortalConnection(value);
-            },
-        });
-        appendEditorHint(body, `${selected.connectionLabel}. Shared = green both ends; one-way = green depart, orange receive.`);
-    }
-    if (selected.onNetwork && linkTargets.length > 0)
-        appendSelectField(body, "Link partner", {
-            value: selected.linked && selected.partner ? `${selected.partner.col},${selected.partner.row},${selected.partner.side}` : "",
-            options: [{ value: "", label: "Choose portal…" }, ...linkTargets.map((t) => ({ value: `${t.col},${t.row},${t.side}`, label: t.label }))],
-            onChange: (value) => {
-                if (!value) return;
-                const [col, row, side] = value.split(",").map(Number);
-                controller.linkSelectedPortalTo(col, row, side);
-            },
-        });
-    if (selected.linked) {
-        const unlinkRow = document.createElement("div");
-        unlinkRow.className = "sandbox-add-row";
-        const unlinkBtn = document.createElement("button");
-        unlinkBtn.type = "button";
-        unlinkBtn.className = "secondary";
-        unlinkBtn.textContent = "Unlink partner";
-        unlinkBtn.addEventListener("click", () => {
-            controller.unlinkSelectedPortal();
-        });
-        unlinkRow.appendChild(unlinkBtn);
-        body.appendChild(unlinkRow);
-    }
-}
 function appendPinnedSection(parent, id, title, build) {
     const block = document.createElement("div");
     block.className = "editor-block editor-block-pinned";
@@ -203,16 +129,16 @@ function appendPinnedSection(parent, id, title, build) {
     head.className = "editor-block-title";
     head.textContent = title;
     block.appendChild(head);
-    const body = document.createElement("div");
-    build(body);
-    block.appendChild(body);
+    const sectionBody = document.createElement("div");
+    build(sectionBody);
+    block.appendChild(sectionBody);
     parent.appendChild(block);
     return block;
 }
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }
-const WALL_PALETTE_SWATCHES = { voxel: "#78716c", rail: "#57534e", forcefield: "#0891b2", portal: "#9333ea" };
+const WALL_PALETTE_SWATCHES = { voxel: "#78716c", rail: "#57534e", forcefield: "#0891b2" };
 /** @param {object | null | undefined} asset */
 function resolvePropPaletteSwatch(asset) {
     const colors = asset?.visuals?.colors;
@@ -318,10 +244,10 @@ function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
 /**
  * @param {HTMLElement} body
  * @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller
- * @param {{ wallStampMode: string, selectedRail: { col: number, row: number, side: number } | null, selectedVoxelInfo: object | null, selectedRailInfo: object | null, selectedPortalInfo: object | null }} ctx
+ * @param {{ wallStampMode: string, selectedRail: { col: number, row: number, side: number } | null, selectedVoxelInfo: object | null, selectedRailInfo: object | null }} ctx
  */
 function appendWallPlaceParams(body, controller, ctx) {
-    const { wallStampMode, selectedRail, selectedVoxelInfo, selectedRailInfo, selectedPortalInfo } = ctx;
+    const { wallStampMode, selectedVoxelInfo, selectedRailInfo } = ctx;
     appendEditorHint(body, "Click the map to place or select walls. Right-click to delete under the cursor.");
     const addRow = document.createElement("div");
     addRow.className = "sandbox-add-row";
@@ -332,7 +258,7 @@ function appendWallPlaceParams(body, controller, ctx) {
     addBtn.addEventListener("click", () => controller.stampWallAtCameraOrigin());
     addRow.appendChild(addBtn);
     body.appendChild(addRow);
-    if (wallStampMode !== "forcefield" && wallStampMode !== "portal") {
+    if (wallStampMode !== "forcefield") {
         const maxHeight = maxWallHeightLevel(controller);
         body.appendChild(
             new SliderControl("Height", 1, maxHeight, 1, controller.getWallHeightLevel(), (val) => {
@@ -350,15 +276,14 @@ function appendWallPlaceParams(body, controller, ctx) {
             }).element,
         );
     if (wallStampMode === "forcefield") appendPassageEditorFields(body, controller, null, { stampDefaults: true });
-    if (wallStampMode === "portal") appendPortalEditorFields(body, controller, null, { stampDefaults: true, ownerSide: selectedRail?.side ?? selectedPortalInfo?.side ?? 1 });
 }
 /**
  * @param {HTMLElement} body
  * @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller
- * @param {{ selectedVoxelInfo: object | null, selectedRailInfo: object | null, selectedForcefieldInfo: object | null, selectedPortalInfo: object | null, portalLinkTargets: { col: number, row: number, side: number, label: string }[] }} ctx
+ * @param {{ selectedVoxelInfo: object | null, selectedRailInfo: object | null, selectedForcefieldInfo: object | null }} ctx
  */
 function appendWallSelectedInspector(body, controller, ctx) {
-    const { selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo, selectedPortalInfo, portalLinkTargets } = ctx;
+    const { selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo } = ctx;
     if (selectedVoxelInfo) {
         appendEditorHint(body, `Voxel block · height ${selectedVoxelInfo.heightLevel}. Change height below or delete.`);
         body.appendChild(
@@ -411,22 +336,6 @@ function appendWallSelectedInspector(body, controller, ctx) {
         body.appendChild(deleteRow);
         return true;
     }
-    if (selectedPortalInfo) {
-        appendEditorHint(body, `Portal · ${selectedPortalInfo.sideLabel}. Mouth cell has the laser strip; opposite side is solid wall. Link on the same powered laser chain.`);
-        appendPortalEditorFields(body, controller, selectedPortalInfo, { ownerSide: selectedPortalInfo.side, linkTargets: portalLinkTargets });
-        const deleteRow = document.createElement("div");
-        deleteRow.className = "sandbox-add-row";
-        const deleteBtn = document.createElement("button");
-        deleteBtn.type = "button";
-        deleteBtn.className = "secondary";
-        deleteBtn.textContent = "Delete portal";
-        deleteBtn.addEventListener("click", () => {
-            controller.deleteSelectedWall();
-        });
-        deleteRow.appendChild(deleteBtn);
-        body.appendChild(deleteRow);
-        return true;
-    }
     if (selectedForcefieldInfo && controller.isWallPlaceMode()) {
         appendEditorHint(body, `${selectedForcefieldInfo.modeLabel} forcefield · ${selectedForcefieldInfo.sideLabel}. Arms when connected to an energized power source.`);
         appendPassageEditorFields(body, controller, selectedForcefieldInfo);
@@ -447,7 +356,7 @@ function appendWallSelectedInspector(body, controller, ctx) {
 }
 /** @param {HTMLElement} container @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller */
 function renderSceneJsonPanel(container, controller) {
-    appendEditorHint(container, "Copy/paste sandbox layout: props, walls, belts, power sources, forcefields, portals. Replace clears the current sandbox first.");
+    appendEditorHint(container, "Copy/paste sandbox layout: props, walls, belts, power sources, forcefields. Replace clears the current sandbox first.");
     const startDemoBtn = document.createElement("button");
     startDemoBtn.type = "button";
     startDemoBtn.className = "secondary";
@@ -534,10 +443,8 @@ export function mountSandboxToyUi(container, controller) {
         const selectedVoxelInfo = controller.getSelectedVoxelWallInfo();
         const selectedRailInfo = controller.getSelectedRailWallInfo();
         const selectedForcefieldInfo = controller.getSelectedForcefieldInfo();
-        const selectedPortalInfo = controller.getSelectedPortalInfo();
         const selectedRoomLink = controller.getSelectedRoomLinkInfo();
         const selectedRoomNode = controller.getSelectedRoomNodeInfo();
-        const portalLinkTargets = selectedPortalInfo ? controller.listPortalLinkTargets() : [];
         const wallStampMode = controller.getWallStampMode();
         const selectionCount = selectedPropIds.size;
         appendPinnedSection(container, "palette", "Props", (body) => {
@@ -550,7 +457,7 @@ export function mountSandboxToyUi(container, controller) {
             paramsHost.className = "spawn-palette-params";
             body.appendChild(paramsHost);
             if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), refreshPanel);
-            else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, controller, { wallStampMode, selectedRail, selectedVoxelInfo, selectedRailInfo, selectedPortalInfo });
+            else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, controller, { wallStampMode, selectedRail, selectedVoxelInfo, selectedRailInfo });
             else appendMapGenEditor(paramsHost, state, activeItem.genKind, refreshPanel);
         });
         appendPinnedSection(container, "selected", "Selected", (body) => {
@@ -570,7 +477,7 @@ export function mountSandboxToyUi(container, controller) {
                 return;
             }
             if (!selectedProp) {
-                if (appendWallSelectedInspector(body, controller, { selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo, selectedPortalInfo, portalLinkTargets })) return;
+                if (appendWallSelectedInspector(body, controller, { selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo })) return;
                 if (selectedForcefieldInfo) {
                     appendEditorHint(body, `${selectedForcefieldInfo.modeLabel} · ${selectedForcefieldInfo.sideLabel}. Click a laser edge on the map to re-select.`);
                     appendPassageEditorFields(body, controller, selectedForcefieldInfo);

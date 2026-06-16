@@ -1,7 +1,6 @@
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
 import { getCanvasLineScale } from "../common/viewportUtils.js";
 import { fillStrokeCircle, strokeCircle, strokeOpenPolyline, strokeSegment } from "../../Canvas/CanvasPath.js";
-import { boundaryHopDrawGeometryBetweenWorldPoints } from "../../Pathfinding/boundaryNavHops.js";
 import { decodeFlowFieldCell } from "../../Pathfinding/sampleFlowDirection.js";
 /** @typedef {import("../../Pathfinding/FlowFieldGrid.js").FlowFieldGrid} FlowFieldGrid */
 /**
@@ -16,9 +15,6 @@ import { decodeFlowFieldCell } from "../../Pathfinding/sampleFlowDirection.js";
  */
 const P1 = { x: 0, y: 0 };
 const P2 = { x: 0, y: 0 };
-function resolveBoundaryHopGeometries(grid, p1, p2) {
-    return boundaryHopDrawGeometryBetweenWorldPoints(grid, p1, p2);
-}
 function drawPathArrowhead(ctx, x, y, vx, vy, color, lineScale) {
     const headSize = 9 * lineScale;
     const headWidth = 6 * lineScale;
@@ -45,20 +41,7 @@ function strokeSubPath(ctx, points) {
 }
 function drawPathPolyline(ctx, pathNodes, lineScale, grid, color) {
     if (pathNodes.length < 2) return;
-    let currentSubPath = [pathNodes[0]];
-    for (let i = 0; i < pathNodes.length - 1; i++) {
-        const p1 = pathNodes[i];
-        const p2 = pathNodes[i + 1];
-        const hop = resolveBoundaryHopGeometries(grid, p1, p2);
-        if (hop) {
-            currentSubPath.push(hop.entryMid);
-            strokeSubPath(ctx, currentSubPath);
-            drawPathArrowhead(ctx, hop.entryMid.x, hop.entryMid.y, hop.entryCross.x, hop.entryCross.y, color, lineScale);
-            drawPathArrowhead(ctx, hop.exitMid.x, hop.exitMid.y, hop.exitVector.x, hop.exitVector.y, color, lineScale);
-            currentSubPath = [hop.exitMid, p2];
-        } else currentSubPath.push(p2);
-    }
-    strokeSubPath(ctx, currentSubPath);
+    strokeSubPath(ctx, pathNodes);
 }
 function drawNormalPathOverlay(ctx, overlay, grid) {
     const { mode, targetX, targetY, pathNodes } = overlay;

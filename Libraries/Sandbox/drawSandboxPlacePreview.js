@@ -3,7 +3,7 @@ import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewport
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canStampFloorBeltAt, canStampPassagePowerSourceAt } from "./floorOccupancy.js";
-import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, strokeSelectedForcefieldEdge, strokeSelectedPortalEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
+import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset } from "./sandboxCapabilities.js";
 import { resolveRoomNodePlacePreview } from "../RoomGraph/index.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
@@ -127,9 +127,6 @@ export function drawSandboxPlacePreview(ctx, preview, grid) {
     if (preview.edgeKind === "forcefield") {
         ctx.strokeStyle = "rgba(192, 132, 252, 0.95)";
         strokeSelectedForcefieldEdge(ctx, grid, edge, lineScale);
-    } else if (preview.edgeKind === "portal") {
-        ctx.strokeStyle = "rgba(186, 104, 255, 0.95)";
-        strokeSelectedPortalEdge(ctx, grid, edge, lineScale);
     } else {
         ctx.strokeStyle = "rgba(255, 183, 77, 0.95)";
         strokeSelectedRailWallEdge(ctx, grid, edge, lineScale);

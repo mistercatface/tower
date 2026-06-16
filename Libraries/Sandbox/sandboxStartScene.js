@@ -34,10 +34,6 @@ export function buildSandboxStartSceneDoc() {
             { col: 7, row: 3, side: 0, mode: "solid" },
             { col: 8, row: 3, side: 0, mode: "solid" },
         ],
-        portals: [
-            { col: 4, row: -2, side: 1, accessMode: "both", partnerKey: 4294967308 },
-            { col: 12, row: 0, side: 0, accessMode: "both", partnerKey: 8589803524 },
-        ],
         floorBelts: [],
         powerSources: [{ col: 0, row: 3, defaultPowered: true }],
         props: [{ type: "blue_ball", x: 0, y: 0, facing: 0, faction: "alpha" }],

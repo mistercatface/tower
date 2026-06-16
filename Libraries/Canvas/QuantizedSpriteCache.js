@@ -190,13 +190,7 @@ export function clearPropSpriteCache() {
     propSpriteCache.clear();
 }
 /** QuantizedSpriteCache render keys for grid-stamped occupancy (not WorldProp assets). */
-export const GRID_STAMP_RENDER_KEY = {
-    ForcefieldEdge: "grid_forcefield_edge",
-    PortalMouthStrip: "grid_portal_mouth",
-    PortalBackStrip: "grid_portal_back",
-    FloorBelt: "grid_floor_belt",
-    PassagePowerSource: "grid_passage_power_source",
-};
+export const GRID_STAMP_RENDER_KEY = { ForcefieldEdge: "grid_forcefield_edge", FloorBelt: "grid_floor_belt", PassagePowerSource: "grid_passage_power_source" };
 /** @typedef {import("../Render/Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 /**
  * Mandatory draw path for iso/grid stamps and world props (except 3D building walls).

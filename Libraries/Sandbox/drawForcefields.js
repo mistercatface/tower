@@ -1,8 +1,7 @@
 import { drawCachedPropSprite, GRID_STAMP_RENDER_KEY } from "../Canvas/QuantizedSpriteCache.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
-import { drawPortalEdgeCached } from "../Render/portalDraw.js";
 import { projectPropVertex } from "../Render/Props3D/propMesh.js";
-import { isForcefieldEdge, isPortalEdge, PASSAGE_MODE, resolvePassageEdge } from "../Spatial/grid/CellEdge.js";
+import { isForcefieldEdge, PASSAGE_MODE, resolvePassageEdge } from "../Spatial/grid/CellEdge.js";
 import { gridEdgeSideFacing, gridSideOutwardVector } from "../Spatial/grid/GridUtils.js";
 import { forEachCellEdge, cellEdgeEndpoints, canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
 import { passageEdgeDrawCacheKey } from "../Spatial/grid/gridNavEpoch.js";
@@ -138,7 +137,7 @@ function createForcefieldDrawProxy(midX, midY, side, cellHalf, edgeKey, { mode, 
 function syncPassageEdgeDrawCache(state, grid) {
     const revision = passageEdgeDrawCacheKey(grid);
     if (state.sandbox._passageEdgeDrawCache?.revision === revision) return;
-    /** @type {Array<{ type: "portal", col: number, row: number, side: number, edge: object, midX: number, midY: number } | { type: "forcefield", proxy: ReturnType<typeof createForcefieldDrawProxy>, edgeKey: number, midX: number, midY: number }>} */
+    /** @type {Array<{ proxy: ReturnType<typeof createForcefieldDrawProxy>, edgeKey: number, midX: number, midY: number }>} */
     const items = [];
     forEachCellEdge(
         grid,
@@ -146,13 +145,10 @@ function syncPassageEdgeDrawCache(state, grid) {
             cellEdgeEndpoints(grid, col, row, side, EDGE_P1, EDGE_P2, 0);
             const midX = (EDGE_P1.x + EDGE_P2.x) * 0.5;
             const midY = (EDGE_P1.y + EDGE_P2.y) * 0.5;
-            if (isPortalEdge(edge)) items.push({ type: "portal", col, row, side, edge, midX, midY });
-            else {
-                const { mode, allowedSide, powered } = resolvePassageEdge(edge, side);
-                const cellHalf = grid.cellHalfSize;
-                const edgeKey = canonicalEdgeCellKey(grid, col, row, side);
-                items.push({ type: "forcefield", proxy: createForcefieldDrawProxy(midX, midY, side, cellHalf, edgeKey, { mode, allowedSide, powered, tripped: false }), edgeKey, midX, midY });
-            }
+            const { mode, allowedSide, powered } = resolvePassageEdge(edge, side);
+            const cellHalf = grid.cellHalfSize;
+            const edgeKey = canonicalEdgeCellKey(grid, col, row, side);
+            items.push({ proxy: createForcefieldDrawProxy(midX, midY, side, cellHalf, edgeKey, { mode, allowedSide, powered, tripped: false }), edgeKey, midX, midY });
         },
         { canonicalOnly: true, filter: isForcefieldEdge },
     );
@@ -181,17 +177,13 @@ export function drawForcefieldEdges(ctx, state, viewport) {
         const item = cached[i];
         if (item.midX < minX || item.midX > maxX || item.midY < minY || item.midY > maxY) continue;
         const distSq = (item.midX - px) ** 2 + (item.midY - py) ** 2;
-        if (item.type === "portal") drawables.push({ type: "portal", col: item.col, row: item.row, side: item.side, edge: item.edge, distSq });
-        else {
-            const tripped = item.proxy._forcefield.powered && tripwireTriggered.has(item.edgeKey);
-            if (tripped !== item.proxy._forcefield.tripped) item.proxy._forcefield.tripped = tripped;
-            drawables.push({ type: "forcefield", proxy: item.proxy, distSq });
-        }
+        const tripped = item.proxy._forcefield.powered && tripwireTriggered.has(item.edgeKey);
+        if (tripped !== item.proxy._forcefield.tripped) item.proxy._forcefield.tripped = tripped;
+        drawables.push({ proxy: item.proxy, distSq });
     }
     drawables.sort((a, b) => b.distSq - a.distSq);
     for (let i = 0; i < drawables.length; i++) {
         const item = drawables[i];
-        if (item.type === "portal") drawPortalEdgeCached(ctx, grid, item.col, item.row, item.side, item.edge, px, py, { ageMs: state.gameTime });
-        else drawCachedPropSprite(ctx, item.proxy, px, py, GRID_STAMP_RENDER_KEY.ForcefieldEdge, forcefieldEdgeDraw);
+        drawCachedPropSprite(ctx, item.proxy, px, py, GRID_STAMP_RENDER_KEY.ForcefieldEdge, forcefieldEdgeDraw);
     }
 }

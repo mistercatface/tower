@@ -1,6 +1,5 @@
 import { packEdgeCellKey } from "../../DataStructures/CellKey.js";
-import { portalEdgeEmitsCollision } from "./portalAccess.js";
-import { isBeltRailEdge, isForcefieldEdge, isPortalEdge, isRailWallEdge, createRailWallEdge, railWallThicknessPx, passageEdgeEmitsCollision } from "./CellEdge.js";
+import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, createRailWallEdge, railWallThicknessPx, passageEdgeEmitsCollision } from "./CellEdge.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 export function edgeNeighbor(col, row, side) {
     let nc = col;
@@ -65,12 +64,7 @@ export function railWallEdgeAt(grid, col, row, side) {
 }
 export function forcefieldEdgeAt(grid, col, row, side) {
     const edge = edgeAt(grid, col, row, side);
-    if (!isForcefieldEdge(edge) || isPortalEdge(edge)) return null;
-    return edge;
-}
-export function portalEdgeAt(grid, col, row, side) {
-    const edge = edgeAt(grid, col, row, side);
-    if (!isPortalEdge(edge)) return null;
+    if (!isForcefieldEdge(edge)) return null;
     return edge;
 }
 export function railWallEdgeShouldEmit(grid, col, row, side) {
@@ -85,8 +79,6 @@ export function blockingPassageEdgeAt(grid, col, row, side) {
     if (!edgeRailEmitOwner(grid, col, row, side)) return null;
     const forcefield = forcefieldEdgeAt(grid, col, row, side);
     if (forcefield && passageEdgeEmitsCollision(forcefield)) return forcefield;
-    const portal = portalEdgeAt(grid, col, row, side);
-    if (portal && portalEdgeEmitsCollision(portal)) return portal;
     return null;
 }
 export function edgeRailCollisionShouldEmit(grid, col, row, side) {

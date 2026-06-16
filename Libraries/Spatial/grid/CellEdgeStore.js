@@ -2,15 +2,14 @@ import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { CELL_EDGE_SIDES, cellEdgeSlotBase, cellEdgeSlotOffset } from "./cellEdgeSlots.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { edgeNeighbor, edgeMirrorSide, neighborFillLevel } from "./gridCellTopology.js";
-import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isPortalEdge, isRailWallEdge, railWallHeightPx, PASSAGE_MODE, PORTAL_ACCESS_MODE } from "./CellEdge.js";
+import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isRailWallEdge, railWallHeightPx } from "./CellEdge.js";
 const EMPTY = -1;
 export class CellEdgeStore {
     constructor() {
         this.slots = new Int32Array(0);
         this.pool = [];
         this.free = [];
-        this.passageEdgeCount = 0; /** Mirrored passage edges (forcefield + portal) — one count per pooled edge. */
-        this.portalEdgeCount = 0; /** Mirrored portal edges — subset of passage edges. */
+        this.passageEdgeCount = 0;
     }
     reset(cellCount) {
         this.slots = new Int32Array(cellCount * CELL_EDGE_SIDES);
@@ -18,23 +17,19 @@ export class CellEdgeStore {
         this.pool.length = 0;
         this.free.length = 0;
         this.passageEdgeCount = 0;
-        this.portalEdgeCount = 0;
     }
-    /** Full scan — reconciles passage/portal counts after bulk grid rebuilds. */
+    /** Full scan — reconciles passage counts after bulk grid rebuilds. */
     recomputePassageEdgeCount() {
         const seen = new Set();
         let passageCount = 0;
-        let portalCount = 0;
         for (let i = 0; i < this.slots.length; i++) {
             const ref = this.slots[i];
             if (ref === EMPTY || seen.has(ref)) continue;
             seen.add(ref);
             const edge = this.pool[ref];
             if (isForcefieldEdge(edge)) passageCount++;
-            if (isPortalEdge(edge)) portalCount++;
         }
         this.passageEdgeCount = passageCount;
-        this.portalEdgeCount = portalCount;
     }
     remapSlots(oldSlots, oldCols, oldRows, colOffset, rowOffset, newCols, newRows) {
         const newSlots = new Int32Array(newCols * newRows * CELL_EDGE_SIDES);
@@ -78,27 +73,12 @@ export class CellEdgeStore {
                 pooled.powered = edge.powered;
                 delete pooled.heightDelta;
                 delete pooled.thicknessLevel;
-                if (isPortalEdge(edge)) {
-                    pooled.accessMode = edge.accessMode ?? PORTAL_ACCESS_MODE.Both;
-                    pooled.partnerKey = edge.partnerKey ?? 0;
-                    pooled.linkMode = edge.linkMode ?? "shared";
-                    pooled.linkSourceKey = edge.linkSourceKey ?? 0;
-                } else {
-                    delete pooled.accessMode;
-                    delete pooled.partnerKey;
-                    delete pooled.linkMode;
-                    delete pooled.linkSourceKey;
-                }
             } else {
                 delete pooled.heightDelta;
                 delete pooled.thicknessLevel;
                 delete pooled.mode;
                 delete pooled.allowedSide;
                 delete pooled.powered;
-                delete pooled.accessMode;
-                delete pooled.partnerKey;
-                delete pooled.linkMode;
-                delete pooled.linkSourceKey;
             }
             return ref;
         }
@@ -125,7 +105,6 @@ export class CellEdgeStore {
         const nSide = edgeMirrorSide(side);
         if (cellInRect(nc, nr, cols, rows)) this._setSlot(nc, nr, nSide, cols, ref);
         if (isForcefieldEdge(edge)) this.passageEdgeCount++;
-        if (isPortalEdge(edge)) this.portalEdgeCount++;
     }
     clearMirrored(col, row, side, cols, rows) {
         if (!cellInRect(col, row, cols, rows)) return;
@@ -133,7 +112,6 @@ export class CellEdgeStore {
         const ref = this.slots[slot];
         if (ref === EMPTY) return;
         if (isForcefieldEdge(this.pool[ref])) this.passageEdgeCount--;
-        if (isPortalEdge(this.pool[ref])) this.portalEdgeCount--;
         this.slots[slot] = EMPTY;
         const { nc, nr } = edgeNeighbor(col, row, side);
         const nSide = edgeMirrorSide(side);

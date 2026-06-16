@@ -1,5 +1,5 @@
 /** Nav / draw invalidation channels on {@link import("./WorldObstacleGrid.js").WorldObstacleGrid}. */
-export const GRID_NAV_EPOCH = { Wall: "wall", Floor: "floor", Topology: "topology", PortalLink: "portalLink" };
+export const GRID_NAV_EPOCH = { Wall: "wall", Floor: "floor", Topology: "topology" };
 /**
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {(typeof GRID_NAV_EPOCH)[keyof typeof GRID_NAV_EPOCH]} channel
@@ -18,19 +18,16 @@ export function bumpGridNavEpoch(grid, channel) {
         case GRID_NAV_EPOCH.Topology:
             grid.gridTopologyEpoch = (grid.gridTopologyEpoch + 1) | 0;
             return;
-        case GRID_NAV_EPOCH.PortalLink:
-            grid.portalLinkEpoch = (grid.portalLinkEpoch + 1) | 0;
-            return;
     }
     throw new Error(`unknown grid nav epoch channel: ${channel}`);
 }
 /** Worker/main nav snapshot cache key — all invalidation channels + passage power topology. */
 export function gridNavSnapshotCacheKey(grid) {
-    return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}:${grid.portalLinkEpoch}:${grid._passagePowerNavKey ?? ""}`;
+    return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
 }
-/** Passage edge (portal / forcefield) sprite draw cache key. */
+/** Passage edge (forcefield) sprite draw cache key. */
 export function passageEdgeDrawCacheKey(grid) {
-    return `${grid.wallGridRevision}:${grid.portalLinkEpoch}:${grid._passagePowerNavKey ?? ""}`;
+    return `${grid.wallGridRevision}:${grid._passagePowerNavKey ?? ""}`;
 }
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {string} key */
 export function setGridPassagePowerNavKey(grid, key) {

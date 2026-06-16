@@ -3,7 +3,6 @@ import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.j
 import { clearBoundaryPrimary, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
-import { unlinkPortalEdge } from "./portalLinks.js";
 export function notifyGridWallChange(state, bounds, { fullNavSync = false } = {}) {
     bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
     state.worldSurfaces.invalidateGridBounds(bounds, state);
@@ -17,12 +16,11 @@ export function commitBoundaryEdit(state, bounds, { power = false } = {}) {
     if (power) return syncPassagePowerNetwork(state);
     for (let i = 0; i < regions.length; i++) notifyGridWallChange(state, regions[i]);
 }
-/** Clear whichever primary boundary occupies a slot (railWall, forcefield, portal). */
+/** Clear whichever primary boundary occupies a slot (railWall or forcefield). */
 export function clearPrimaryBoundaryAt(state, col, row, side) {
     const grid = state.obstacleGrid;
     const boundary = getBoundary(grid, col, row, side);
     if (!boundary.primary) return false;
-    if (boundary.primary === "portal") unlinkPortalEdge(grid, col, row, side);
     clearBoundaryPrimary(grid, col, row, side);
     return boundary.primary;
 }

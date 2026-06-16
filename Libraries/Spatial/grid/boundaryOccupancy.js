@@ -1,20 +1,5 @@
-import {
-    createBeltRailEdge,
-    createForcefieldEdge,
-    createPortalEdge,
-    EDGE_KIND,
-    edgeBlocksCrossing,
-    isBeltRailEdge,
-    isForcefieldEdge,
-    isPortalEdge,
-    isRailWallEdge,
-    parsePassageMode,
-    parsePortalAccessMode,
-    PORTAL_ACCESS_MODE,
-} from "./CellEdge.js";
-import { registerPortalEdgeSlot, unregisterPortalEdgeSlot } from "./portalSlotIndex.js";
+import { createBeltRailEdge, createForcefieldEdge, EDGE_KIND, edgeBlocksCrossing, isBeltRailEdge, isForcefieldEdge, isRailWallEdge, parsePassageMode } from "./CellEdge.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
-import { portalAccessDefaultAllowedSide } from "./portalAccess.js";
 import { resolvePassageStepFrom, resolvePassageStepUndirected } from "./passageStep.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
@@ -23,8 +8,7 @@ import { neighborFillLevel } from "./gridCellTopology.js";
 import { diagonalBoundaryBlockedFromVertexCache } from "./vertexPassability.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {{ kind: "passage", mode?: string, allowedSide?: number, powered?: boolean }} PassageBoundarySpec */
-/** @typedef {{ kind: "portal", accessMode?: string, allowedSide?: number, partnerKey?: number, linkMode?: string, linkSourceKey?: number, powered?: boolean }} PortalBoundarySpec */
-/** @typedef {RailWallBoundarySpec | PassageBoundarySpec | PortalBoundarySpec} BoundaryPrimarySpec */
+/** @typedef {RailWallBoundarySpec | PassageBoundarySpec} BoundaryPrimarySpec */
 /**
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {number} col
@@ -34,18 +18,6 @@ import { diagonalBoundaryBlockedFromVertexCache } from "./vertexPassability.js";
 export function getBoundary(grid, col, row, side) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (isRailWallEdge(edge)) return { primary: "railWall", edge, beltRail: false };
-    if (isPortalEdge(edge))
-        return {
-            primary: "portal",
-            edge,
-            beltRail: false,
-            accessMode: parsePortalAccessMode(edge.accessMode),
-            allowedSide: edge.allowedSide,
-            partnerKey: edge.partnerKey ?? 0,
-            linkMode: edge.linkMode ?? "shared",
-            linkSourceKey: edge.linkSourceKey ?? 0,
-            powered: edge.powered === true,
-        };
     if (isForcefieldEdge(edge)) return { primary: "passage", edge, beltRail: false, mode: parsePassageMode(edge.mode), allowedSide: edge.allowedSide, powered: edge.powered === true };
     if (isBeltRailEdge(edge)) return { primary: null, edge: null, beltRail: true };
     return { primary: null, edge: null, beltRail: false };
@@ -65,30 +37,8 @@ export function setPassagePowered(grid, col, row, side, powered) {
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {string} mode @param {number} [allowedSide] */
 export function setPassageProfile(grid, col, row, side, mode, allowedSide) {
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
-    if (!isForcefieldEdge(edge) || isPortalEdge(edge)) return false;
+    if (!isForcefieldEdge(edge)) return false;
     return setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: edge.powered === true }, { bumpRevision: true });
-}
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side @param {string} accessMode @param {number} [allowedSide] */
-export function setPortalProfile(grid, col, row, side, accessMode, allowedSide) {
-    const edge = grid.edgeStore.get(col, row, side, grid.cols);
-    if (!isPortalEdge(edge)) return false;
-    const ownerSide = side;
-    return setBoundary(
-        grid,
-        col,
-        row,
-        side,
-        {
-            kind: "portal",
-            accessMode: PORTAL_ACCESS_MODE.One,
-            allowedSide: allowedSide ?? portalAccessDefaultAllowedSide(ownerSide),
-            partnerKey: edge.partnerKey ?? 0,
-            linkMode: edge.linkMode ?? "shared",
-            linkSourceKey: edge.linkSourceKey ?? 0,
-            powered: edge.powered === true,
-        },
-        { bumpRevision: true },
-    );
 }
 /**
  * Sole writer for primary boundary roles (railWall, passage). Derived beltRail uses reconcileBeltBoundaries.
@@ -121,29 +71,6 @@ export function setBoundary(grid, col, row, side, spec, { bumpRevision = false }
         if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
         return true;
     }
-    if (spec.kind === "portal") {
-        const edge = grid.edgeStore.get(col, row, side, grid.cols);
-        if (isRailWallEdge(edge)) return false;
-        if (isBeltRailEdge(edge)) return false;
-        grid.edgeStore.writeMirrored(
-            col,
-            row,
-            side,
-            grid.cols,
-            grid.rows,
-            createPortalEdge({
-                accessMode: spec.accessMode,
-                allowedSide: spec.allowedSide ?? side,
-                partnerKey: spec.partnerKey ?? 0,
-                linkMode: spec.linkMode,
-                linkSourceKey: spec.linkSourceKey,
-                powered: spec.powered,
-            }),
-        );
-        registerPortalEdgeSlot(grid, col, row, side);
-        if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-        return true;
-    }
     return false;
 }
 /**
@@ -158,7 +85,6 @@ export function clearBoundaryPrimary(grid, col, row, side, { bumpRevision = fals
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const edge = grid.edgeStore.get(col, row, side, grid.cols);
     if (!isRailWallEdge(edge) && !isForcefieldEdge(edge)) return false;
-    if (isPortalEdge(edge)) unregisterPortalEdgeSlot(grid, col, row, side);
     grid.edgeStore.clearMirrored(col, row, side, grid.cols, grid.rows);
     if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return true;

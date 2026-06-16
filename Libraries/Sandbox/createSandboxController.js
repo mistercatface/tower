@@ -23,7 +23,6 @@ import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVis
 import { resolveSandboxPropVisual, setSandboxPropVisual } from "./sandboxPropVisual.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "./sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-import { registerSandboxPassageHandlers } from "./portalTraverse.js";
 /**
  * @typedef {object} SandboxBehavior
  * @property {string} id
@@ -53,7 +52,6 @@ const MARQUEE_BOUNDS = createAabb();
  * }} options
  */
 export function createSandboxController(state, { getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId }) {
-    registerSandboxPassageHandlers();
     const session = createSandboxSession(state, { defaultSpawnPropId });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
@@ -607,7 +605,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         listPlacedVoxelWalls: () => session.listPlacedVoxelWalls(),
         listPlacedRailWalls: () => session.listPlacedRailWalls(),
         listPlacedForcefields: () => session.listPlacedForcefields(),
-        listPlacedPortals: () => session.listPlacedPortals(),
         listPlacedSceneItems: () => session.listPlacedSceneItems(),
         isSceneItemSelected: (item) => session.isSceneItemSelected(item),
         selectSceneItem: (item) => {
@@ -619,21 +616,13 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         },
         deleteSceneItem: (item) => session.deleteSceneItem(item),
         seedPlacementOrderFromState: () => session.seedPlacementOrderFromState(),
-        listPortalLinkTargets: () => session.listPortalLinkTargets(),
         getSelectedVoxelWallInfo: () => session.getSelectedVoxelWallInfo(),
         getSelectedRailWallInfo: () => session.getSelectedRailWallInfo(),
         getSelectedForcefieldInfo: () => session.getSelectedForcefieldInfo(),
-        getSelectedPortalInfo: () => session.getSelectedPortalInfo(),
         getForcefieldStampMode: () => session.getForcefieldStampMode(),
         setForcefieldStampMode: (mode) => session.setForcefieldStampMode(mode),
-        getPortalStampMouthNeighbor: () => session.getPortalStampMouthNeighbor(),
-        setPortalStampMouthNeighbor: (neighbor) => session.setPortalStampMouthNeighbor(neighbor),
         setSelectedForcefieldMode: (mode) => session.setSelectedForcefieldMode(mode),
         setSelectedForcefieldAllowedSide: (side) => session.setSelectedForcefieldAllowedSide(side),
-        setSelectedPortalMouthSide: (side) => session.setSelectedPortalMouthSide(side),
-        linkSelectedPortalTo: (col, row, side) => session.linkSelectedPortalTo(col, row, side),
-        unlinkSelectedPortal: () => session.unlinkSelectedPortal(),
-        setSelectedPortalConnection: (connection) => session.setSelectedPortalConnection(connection),
         stampWallAtCameraOrigin: () => session.stampWallAtCameraOrigin(),
         setSelectedVoxelWallHeight: (heightLevel) => session.setSelectedVoxelWallHeight(heightLevel),
         setSelectedRailWallProps: (heightLevel, thicknessLevel) => session.setSelectedRailWallProps(heightLevel, thicknessLevel),

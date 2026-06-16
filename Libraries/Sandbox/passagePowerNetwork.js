@@ -1,12 +1,11 @@
-import { isPassagePowerConductorEdge, isPortalEdge } from "../Spatial/grid/CellEdge.js";
+import { isPassagePowerConductorEdge } from "../Spatial/grid/CellEdge.js";
 import { isPassagePowered, setPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
 import { emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStructures/CellRect.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey, edgeNeighbor, forEachCellEdge } from "../Spatial/grid/gridCellTopology.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
-import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
-import { GRID_NAV_EPOCH, bumpGridNavEpoch, setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
+import { GRID_NAV_EPOCH, setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 /** @typedef {{ col: number, row: number, side: number, key: number }} PassageEdgeRef */
 /** Cardinal edge endpoints as grid vertices (cell-corner coordinates). */
 export function passageEdgeVertexCoords(col, row, side) {
@@ -162,26 +161,6 @@ function computePoweredEdgeNetworkIds(graph, poweredEdgeKeys, cols) {
     }
     return networkIdByKey;
 }
-function splitInvalidPortalLinks(grid, poweredEdgeKeys, networkIdByKey) {
-    let changed = false;
-    forEachCellEdge(
-        grid,
-        (col, row, side) => {
-            const partner = resolvePortalPartner(grid, col, row, side);
-            if (!partner) return;
-            const keyA = canonicalEdgeCellKey(grid, col, row, side);
-            const keyB = canonicalEdgeCellKey(grid, partner.col, partner.row, partner.side);
-            const poweredA = poweredEdgeKeys.has(keyA);
-            const poweredB = poweredEdgeKeys.has(keyB);
-            const netA = networkIdByKey.get(keyA);
-            const netB = networkIdByKey.get(keyB);
-            if (poweredA && poweredB && netA != null && netA === netB) return;
-            if (unlinkPortalEdge(grid, col, row, side)) changed = true;
-        },
-        { canonicalOnly: true, filter: isPortalEdge },
-    );
-    return changed;
-}
 export function isPassagePowerSourceEnergized(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
@@ -241,11 +220,10 @@ export function applyPassagePowerGridState(state) {
     const prevPowerKey = grid._passagePowerNavKey;
     const computed = recomputePassagePowerNetwork(state);
     if (!computed) return { bounds: empty, needsNavSync: false };
-    const { graph, poweredKeys, networkIdByKey } = computed;
+    const { graph, poweredKeys } = computed;
     const bounds = emptyCellBounds();
     for (const ref of graph.edgeByKey.values()) {
         const { col, row, side, key } = ref;
-        const edge = grid.edgeStore.get(col, row, side, grid.cols);
         const powered = poweredKeys.has(key);
         if (isPassagePowered(grid, col, row, side) === powered) continue;
         setPassagePowered(grid, col, row, side, powered);
@@ -253,7 +231,6 @@ export function applyPassagePowerGridState(state) {
         const { nc, nr } = edgeNeighbor(col, row, side);
         if (cellInRect(nc, nr, grid.cols, grid.rows)) growCellBounds(bounds, nc, nr);
     }
-    if (splitInvalidPortalLinks(grid, poweredKeys, networkIdByKey)) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     const powerKeyChanged = grid._passagePowerNavKey !== prevPowerKey;
     const needsNavSync = !isEmptyCellBounds(bounds) || powerKeyChanged;
     return { bounds, needsNavSync };

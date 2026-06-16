@@ -15,10 +15,8 @@ import {
     hpaPersistEdgeOffsetsView,
     hpaPersistEdgeTargetsView,
 } from "./hpaWorkerSab.js";
-import { assertMainNavHopSab } from "./navSimHopBake.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
-import { navPassagePolicySabByteLength, packPassagePolicyToSab } from "./navPassagePolicySab.js";
 import { buildHpaReplanResult, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
@@ -43,8 +41,6 @@ export class HpaPathWorker {
         this.sabEdgePool = new SharedArrayBuffer(navEdgePoolSabByteLength(4));
         this.navEdgePoolBytes = new Uint8Array(this.sabEdgePool);
         this._edgePoolSabRefs = 0;
-        this.sabPassagePolicy = new SharedArrayBuffer(navPassagePolicySabByteLength(0));
-        this._passagePolicyKeyCount = 0;
         this._navSyncPromise = null;
         this._navSnapshotView = null;
         this._navArena = null;
@@ -82,7 +78,6 @@ export class HpaPathWorker {
             if (type === SYNC_NAV_DONE) {
                 this._navSnapshotView = createWorkerNavSnapshotView(this.navGraph, this._navKey, this.navBlocked, this.navOctileNeighbors, this.navHopOffsets, this.navHopExitIdx, this.navHopCost);
                 this.navGraph.gridNavSnapshot = this._navSnapshotView;
-                assertMainNavHopSab(this.navGraph, this.navHopOffsets, this._navKey);
                 const resolve = this._navSyncResolve;
                 this._navSyncResolve = null;
                 this._navSyncPromise = null;
@@ -320,12 +315,6 @@ export class HpaPathWorker {
         this._ensureNavEdgePoolSab(refCount);
         this._edgePoolSabRefs = packEdgePoolToSab(grid.edgeStore, this.navEdgePoolBytes);
     }
-    _packPassagePolicyForWorker(grid) {
-        const keyCount = grid._passagePoweredKeys?.size ?? 0;
-        const byteLen = navPassagePolicySabByteLength(keyCount);
-        if (this.sabPassagePolicy.byteLength < byteLen) this.sabPassagePolicy = new SharedArrayBuffer(byteLen);
-        this._passagePolicyKeyCount = packPassagePolicyToSab(grid._passagePoweredKeys, grid._passageNetworkIdByKey, new Uint8Array(this.sabPassagePolicy));
-    }
     _syncNavArenaFields() {
         const arena = this._navArena;
         this.sabBlocked = arena.sabBlocked;
@@ -384,14 +373,11 @@ export class HpaPathWorker {
             gridFrameKey,
             sabEdgePool: this.sabEdgePool,
             edgePoolCount: this._edgePoolSabRefs,
-            sabPassagePolicy: this.sabPassagePolicy,
-            passagePolicyKeyCount: this._passagePolicyKeyCount,
             sabGridFill: this.sabGridFill,
             sabFloorKind: this.sabFloorKind,
             sabFloorFacing: this.sabFloorFacing,
             sabEdgeSlots: this.sabEdgeSlots,
             passageEdgeCount: grid.edgeStore.passageEdgeCount,
-            portalEdgeCount: grid.edgeStore.portalEdgeCount,
         };
         if (gridFrameKey !== this._workerGridFrameKey) {
             this._workerGridFrameKey = gridFrameKey;
@@ -414,13 +400,12 @@ export class HpaPathWorker {
         this._navKey = cacheKey;
         this._navSnapshotView = null;
         this.navGraph.gridNavSnapshot = null;
-        const hopCap = Math.max(grid.edgeStore.portalEdgeCount, 4);
+        const hopCap = 4;
         const edgePoolRefs = Math.max(grid.edgeStore.pool.length, 4);
         this._ensureNavBuffers(size, hopCap, vertCount, edgePoolRefs);
         this.navBlocked.set(packBlockedFromGrid(grid));
         packNavTopologyFromGrid(grid, this._navArena);
         this._packNavEdgePoolForWorker(grid);
-        this._packPassagePolicyForWorker(grid);
         this._navSyncPromise = new Promise((resolve) => {
             this._navSyncResolve = resolve;
             this.host.worker.postMessage({

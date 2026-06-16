@@ -1,4 +1,3 @@
-import { boundaryHopMouthOnSabPath, boundaryHopOnCellStep } from "./boundaryNavHops.js";
 const PATH_WAYPOINT_ARRIVAL_PX = 24;
 /** @param {import("./HpaPathWorker.js").HpaPathWorker} worker @param {number} slot @param {number} i */
 function sabPathCell(worker, slot, i) {
@@ -6,8 +5,7 @@ function sabPathCell(worker, slot, i) {
 }
 /** @param {import("./HpaPathWorker.js").HpaPathWorker} worker @param {number} slot @param {number} stepIdx @param {number} pathLen @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function sabPathHasBoundaryHopAfter(worker, slot, stepIdx, pathLen, grid) {
-    if (stepIdx < 0 || stepIdx >= pathLen - 1) return false;
-    return !!boundaryHopOnCellStep(sabPathCell(worker, slot, stepIdx), sabPathCell(worker, slot, stepIdx + 1), grid);
+    return false;
 }
 function sabWaypointArrived(bodyX, bodyY, worker, slot, i, arrivalPx, grid) {
     const wp = sabPathWorldAt(worker, slot, i, grid);
@@ -63,14 +61,6 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid) {
 }
 /** @param {import("./HpaPathWorker.js").HpaPathWorker} worker @param {number} slot @param {number} pathLen @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function boundaryHopIdxOnSabPath(worker, slot, pathLen, grid) {
-    const readCell = (i) => sabPathCell(worker, slot, i);
-    const mouth = boundaryHopMouthOnSabPath(readCell, pathLen, grid);
-    if (!mouth) return null;
-    for (let i = 0; i < pathLen; i++) if (readCell(i).col === mouth.col && readCell(i).row === mouth.row) return i;
-    for (let i = 1; i < pathLen; i++) {
-        const hop = boundaryHopOnCellStep(readCell(i - 1), readCell(i), grid);
-        if (hop) return i - 1;
-    }
     return null;
 }
 /** @param {number | null | undefined} boundaryHopIdx @param {number} progressIdx */

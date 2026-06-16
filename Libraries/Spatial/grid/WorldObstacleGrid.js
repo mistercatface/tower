@@ -34,12 +34,10 @@ export class WorldObstacleGrid {
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
         this.floorNavEpoch = 0;
-        this.portalSlotByKey = new Map();
         this.vertexPassability = new Uint8Array(0);
         this.gridNavSnapshot = null;
         this.navCardinalOpen = new Uint8Array(0);
         this.gridTopologyEpoch = 0;
-        this.portalLinkEpoch = 0;
         this._passagePowerNavKey = "";
     }
     invalidateGridNavSnapshot() {
