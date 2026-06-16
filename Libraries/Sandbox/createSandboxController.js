@@ -426,6 +426,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
                 else {
                     session.clearPropSelection();
                     session.clearFloorSelection();
+                    session.clearRoomGraphSelection();
                 }
             } else {
                 const endWorld = clientToWorld(e.clientX, e.clientY);
@@ -601,6 +602,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
                 corridorLinkWireMode = false;
                 corridorLinkWireFromNodeId = null;
                 corridorLinkWireCursor = null;
+                session.clearRoomGraphSelection();
+                session.sync();
             }
         },
         enterCorridorLinkWireMode,

@@ -10,6 +10,7 @@ export function drawPlacedRoomNodes(
     grid,
     { selectedNodeId = null, selectedLinkId = null, wireFromNodeId = null, wireCursor = null, showRoomNodesAlways = false, wireModeActive = false } = {},
 ) {
+    if (!showRoomNodesAlways && !wireModeActive) return;
     const nodes = listRoomNodes(state);
     if (!nodes.length) return;
     const links = listRoomLinks(state);
