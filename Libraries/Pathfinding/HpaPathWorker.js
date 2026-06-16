@@ -322,6 +322,9 @@ export class HpaPathWorker {
     getNavBlockedSab() {
         return this.sabBlocked;
     }
+    getNavOctileNeighborsSab() {
+        return this.sabOctileNeighbors;
+    }
     async scheduleNavTopologySyncAwait(grid = this.navGraph, damageBounds = null) {
         const targetKey = gridNavCacheKey(grid);
         while (this._navKey !== targetKey || this._navSyncPromise) {

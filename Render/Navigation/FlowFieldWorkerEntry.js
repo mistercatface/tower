@@ -1,13 +1,18 @@
 import { computeFlowField } from "../../Libraries/Pathfinding/flowFieldBfs.js";
+import { rebuildFlowNeighborGrid } from "../../Libraries/Pathfinding/flowFieldWindow.js";
 let GRID_WIDTH;
 let GRID_SIZE;
 let FlowToNavIdx;
 let NavBlocked;
+let OctileNeighbors;
+let NavCols;
+let NavRows;
 let NeighborGrid;
 let FlowPool;
 let bfsDistances;
 let bfsQueue;
 let localVectorMap;
+let navArenaBound = false;
 self.onmessage = function (e) {
     const { type, data, slot, requestId, tx, ty, range } = e.data;
     if (type === "init") {
@@ -21,11 +26,22 @@ self.onmessage = function (e) {
         bfsQueue = new Int32Array(GRID_SIZE);
         return;
     }
-    if (type === "bindNavSab") {
-        NavBlocked = new Uint8Array(data.sabNavBlocked);
+    if (type === "bindFlowNavArena") {
+        NavBlocked = new Uint8Array(data.sabBlocked);
+        OctileNeighbors = new Int32Array(data.sabOctileNeighbors);
+        NavCols = data.navCols;
+        NavRows = data.navRows;
+        navArenaBound = true;
+        return;
+    }
+    if (type === "syncFlowWindow") {
+        if (!navArenaBound) throw new Error("syncFlowWindow requires bound flow nav arena");
+        rebuildFlowNeighborGrid(FlowToNavIdx, OctileNeighbors, NeighborGrid, GRID_SIZE, NavCols, NavRows);
+        self.postMessage({ type: "flowWindowDone" });
         return;
     }
     if (type === "updateFlow") {
+        if (!navArenaBound) throw new Error("updateFlow requires bound flow nav arena");
         const offset = slot * GRID_SIZE;
         const vectorMap = FlowPool.subarray(offset, offset + GRID_SIZE);
         computeFlowField(vectorMap, {

@@ -1,12 +1,13 @@
+import { flowCellBlocked } from "./flowFieldWindow.js";
 /**
- * BFS flow-field on octile neighbor grid. Pure buffer math for worker or main thread.
+ * BFS flow-field on octile neighbor grid. Worker-only — reads nav blocked SAB + flow neighbor remap.
  *
  * @param {Uint8Array} vectorMap — output slice (length = gridSize)
  * @param {object} params
  * @param {number} params.gridWidth
  * @param {number} params.gridSize
- * @param {Int32Array} params.flowToNavIdx — flow cell → nav cell (-1 = blocked/out of nav)
- * @param {Uint8Array} params.navBlocked — worker nav blocked SAB
+ * @param {Int32Array} params.flowToNavIdx — flow cell → nav cell (-1 = out of nav window)
+ * @param {Uint8Array} params.navBlocked — HPA nav blocked SAB
  * @param {Int32Array} params.neighborGrid — 8 flow-local neighbors per cell (-1 = none)
  * @param {number} params.tx — target col
  * @param {number} params.ty — target row
@@ -16,10 +17,7 @@
  * @param {Uint8Array} params.localVectorMap — scratch, length gridSize
  */
 export function computeFlowField(vectorMap, { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, tx, ty, range, bfsDistances, bfsQueue, localVectorMap }) {
-    const isBlocked = (flowIdx) => {
-        const navIdx = flowToNavIdx[flowIdx];
-        return navIdx < 0 || navBlocked[navIdx] !== 0;
-    };
+    const isBlocked = (flowIdx) => flowCellBlocked(flowToNavIdx, navBlocked, flowIdx);
     bfsDistances.fill(-1);
     localVectorMap.fill(255);
     const startIdx = tx + ty * gridWidth;
