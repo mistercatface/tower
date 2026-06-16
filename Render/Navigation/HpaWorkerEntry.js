@@ -6,7 +6,7 @@ import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
 import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Libraries/Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
-import { buildOctileNeighborsFromTopology, createNavLocalView, navTopologyFromSab } from "../../Libraries/Pathfinding/navTopologySab.js";
+import { buildOctileNeighborsFromTopology, createNavLocalView, navTopologyFromSab, recomputeBlockedFromGridFill } from "../../Libraries/Pathfinding/navTopologySab.js";
 import {
     hpaCellToRegionView,
     hpaPathSlotAbstractIdx,
@@ -142,6 +142,7 @@ function buildNavTopologyOnWorker(data) {
     bindNavFromBuild(data);
     const frame = requireGridFrame();
     const topology = requireNavTopology();
+    recomputeBlockedFromGridFill(baked.simView.grid, topology.blocked);
     buildOctileNeighborsFromTopology(topology.blocked, baked.cardinalOpen, baked.vertexPassability, frame.cols, frame.rows, topology.octileNeighbors);
 }
 function buildPersistGraphCsr(nodeCount, edgeWrite) {

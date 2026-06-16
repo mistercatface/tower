@@ -2,7 +2,7 @@ import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { gridNavCacheKey } from "../Spatial/grid/gridNavEpoch.js";
-import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, packBlockedFromGrid, navTopologyFromArena, navCanStep } from "./navTopologySab.js";
+import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, navTopologyFromArena, navCanStep } from "./navTopologySab.js";
 import {
     createHpaWorkerSabPools,
     growHpaCellToRegionSab,
@@ -355,7 +355,6 @@ export class HpaPathWorker {
         this.navGraph.navTopology = null;
         const edgePoolRefs = Math.max(grid.edgeStore.pool.length, 4);
         this._ensureNavBuffers(size, vertCount, edgePoolRefs);
-        this._navArena.blocked.set(packBlockedFromGrid(grid));
         packNavTopologyFromGrid(grid, this._navArena);
         this._packNavEdgePoolForWorker(grid);
         const navPayload = this._navSyncPayload(grid);

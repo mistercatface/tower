@@ -94,12 +94,9 @@ export function packNavTopologyFromGrid(grid, arena) {
     arena.floorFacing.set(grid.floorStore.facing);
     arena.edgeSlots.set(grid.edgeStore.slots);
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-export function packBlockedFromGrid(grid) {
-    const size = grid.cols * grid.rows;
-    const blocked = new Uint8Array(size);
-    for (let idx = 0; idx < size; idx++) blocked[idx] = grid.grid[idx] !== 0 ? 1 : 0;
-    return blocked;
+/** @param {Uint8Array} gridFill @param {Uint8Array} blocked */
+export function recomputeBlockedFromGridFill(gridFill, blocked) {
+    for (let idx = 0; idx < gridFill.length; idx++) blocked[idx] = gridFill[idx] !== 0 ? 1 : 0;
 }
 export function buildOctileNeighborsFromTopology(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors) {
     buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, 0, cols - 1, 0, rows - 1);
