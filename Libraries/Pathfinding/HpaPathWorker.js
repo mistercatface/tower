@@ -372,9 +372,6 @@ export class HpaPathWorker {
             });
         });
     }
-    async _ensureWorkerNavReady() {
-        await this.scheduleNavTopologySyncAwait(this.navGraph);
-    }
     async _ensureWorkerGraphReady(graphEpoch) {
         await this.awaitGraphReady();
         return this._graphEpoch >= graphEpoch && this.graphNodeCount > 0;
@@ -383,9 +380,7 @@ export class HpaPathWorker {
         const requestId = this.host.post(slot, { type, ...extra });
         await this.host.waitForSlot(slot, requestId);
     }
-    async runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, graphEpoch) {
-        await this._ensureWorkerNavReady();
-        if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;
+    async runOneShotReplan(slot, startCol, startRow, targetCol, targetRow) {
         await this._dispatchAndWait(slot, "replan", { startCol, startRow, targetCol, targetRow });
         const result = this._replanResults[slot];
         this._replanResults[slot] = null;
@@ -411,7 +406,7 @@ export class HpaPathWorker {
         const slot = this.leaseSlot();
         let workerOut = null;
         try {
-            workerOut = await this.runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, graphEpoch);
+            workerOut = await this.runOneShotReplan(slot, startCol, startRow, targetCol, targetRow);
         } catch (err) {
             this.releaseSlot(slot);
             throw err;

@@ -254,8 +254,6 @@ export function buildFullRegionGraph(opts) {
  *   nodesMap: Record<string, import("./VoronoiRegions.js").RegionNode>,
  *   cellToNode: Array<import("./VoronoiRegions.js").RegionNode | null>,
  *   nodeIdCounter: number,
- *   blocked: Uint8Array,
- *   navGraph: object,
  *   maxCellsPerChunk: number,
  *   minCellsPerChunk: number,
  *   damagePadding?: number,
@@ -265,9 +263,11 @@ export function buildFullRegionGraph(opts) {
  * }} state
  * @param {import("../DataStructures/CellRect.js").CellBounds} bounds
  * @param {import("./GridNavSnapshot.js").GridFrame} frame
+ * @param {Uint8Array} blocked
+ * @param {{ canStep: (fromCol: number, fromRow: number, toCol: number, toRow: number) => boolean }} navGraph
  */
-export function rebuildDamagedRegionGraph(state, bounds, frame) {
-    const { blocked, navGraph, maxCellsPerChunk, minCellsPerChunk, damagePadding = 12, seedWorldX = null, seedWorldY = null } = state;
+export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph) {
+    const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12, seedWorldX = null, seedWorldY = null } = state;
     const { cols, rows, minX, minY, cellSize } = frame;
     if (!bounds || cols === 0 || rows === 0) return state;
     let distToWall = state.distToWall;

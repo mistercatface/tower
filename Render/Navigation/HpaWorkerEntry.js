@@ -64,8 +64,6 @@ let navSimView = null;
  *   cellToNode: Array<object | null>,
  *   nodeIdCounter: number,
  *   distToWall: Float32Array | null,
- *   blocked: Uint8Array,
- *   navGraph: object,
  *   maxCellsPerChunk: number,
  *   minCellsPerChunk: number,
  *   damagePadding: number,
@@ -203,8 +201,6 @@ function buildRegionGraphFullOnWorker(data) {
     });
     regionGraphState = {
         ...built,
-        blocked: topology.blocked,
-        navGraph: navView,
         maxCellsPerChunk,
         minCellsPerChunk: data.minCellsPerChunk ?? minCellsPerChunk,
         damagePadding: data.damagePadding,
@@ -217,11 +213,15 @@ function buildRegionGraphFullOnWorker(data) {
 function patchRegionGraphOnWorker(data) {
     if (!navTopology || !regionGraphState) throw new Error("patchRegionGraph requires nav topology and region graph");
     assertGraphFrameKey(data.gridFrameKey);
-    regionGraphState.blocked = requireNavTopology().blocked;
-    regionGraphState.navGraph = navView;
     if (data.seedWorldX != null) regionGraphState.seedWorldX = data.seedWorldX;
     if (data.seedWorldY != null) regionGraphState.seedWorldY = data.seedWorldY;
-    rebuildDamagedRegionGraph(regionGraphState, { startCol: data.startCol, endCol: data.endCol, startRow: data.startRow, endRow: data.endRow }, requireGridFrame());
+    rebuildDamagedRegionGraph(
+        regionGraphState,
+        { startCol: data.startCol, endCol: data.endCol, startRow: data.startRow, endRow: data.endRow },
+        requireGridFrame(),
+        requireNavTopology().blocked,
+        navView,
+    );
     return writeRegionGraphToSab();
 }
 function postGraphPatchDone(meta) {
