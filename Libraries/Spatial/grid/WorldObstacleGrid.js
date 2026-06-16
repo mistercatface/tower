@@ -7,7 +7,7 @@ import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToI
 import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
-import { snapshotCanStep, gridFrameFromGrid } from "../../Pathfinding/GridNavSnapshot.js";
+import { navCanStep } from "../../Pathfinding/navTopologySab.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { clearWallCells } from "./wallGridBake.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
@@ -35,15 +35,20 @@ export class WorldObstacleGrid {
         this._staticWallProxyCount = 0;
         this.floorNavEpoch = 0;
         this.vertexPassability = new Uint8Array(0);
-        this.gridNavSnapshot = null;
+        this.gridNavCacheKey = "";
+        /** @type {import("../../Pathfinding/GridNavSnapshot.js").GridFrame | null} */
+        this.navGridFrame = null;
+        /** @type {import("../../Pathfinding/navTopologySab.js").NavTopology | null} */
+        this.navTopology = null;
         this.navCardinalOpen = new Uint8Array(0);
         this.gridTopologyEpoch = 0;
         this._passagePowerNavKey = "";
     }
-    invalidateGridNavSnapshot() {
-        const snap = this.gridNavSnapshot;
-        if (snap?.octileNeighbors?.buffer instanceof SharedArrayBuffer) return;
-        this.gridNavSnapshot = null;
+    invalidateNavTopology() {
+        if (this.navTopology?.octileNeighbors?.buffer instanceof SharedArrayBuffer) return;
+        this.gridNavCacheKey = "";
+        this.navGridFrame = null;
+        this.navTopology = null;
     }
     invalidateStructureZLevelsCache() {
         this._structureZLevelsRevision = -1;
@@ -203,7 +208,7 @@ export class WorldObstacleGrid {
         this.edgeStore.reset(size);
         this.floorStore.reset(size);
         this.invalidateStructureZLevelsCache();
-        this.invalidateGridNavSnapshot();
+        this.invalidateNavTopology();
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
     }
     expandToCoverAabb(aabb) {
@@ -251,7 +256,7 @@ export class WorldObstacleGrid {
         this.floorStore.remap(oldFloorKind, oldFloorFacing, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
         this.grid = newGrid;
         this.invalidateStructureZLevelsCache();
-        this.invalidateGridNavSnapshot();
+        this.invalidateNavTopology();
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
         return true;
     }
@@ -388,8 +393,8 @@ export class WorldObstacleGrid {
         return this.isBlocked(col, row);
     }
     canStep(currCol, currRow, nextCol, nextRow) {
-        const snap = this.gridNavSnapshot;
-        if (snap?.octileNeighbors) return snapshotCanStep(gridFrameFromGrid(this), snap, currCol, currRow, nextCol, nextRow);
+        const { navGridFrame: frame, navTopology: topology } = this;
+        if (frame && topology) return navCanStep(frame, topology, currCol, currRow, nextCol, nextRow);
         return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow);
     }
     getCellBounds(col, row) {

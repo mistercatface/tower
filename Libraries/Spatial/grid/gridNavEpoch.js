@@ -9,11 +9,11 @@ export function bumpGridNavEpoch(grid, channel) {
         case GRID_NAV_EPOCH.Wall:
             grid.wallGridRevision = (grid.wallGridRevision + 1) | 0;
             grid.invalidateStructureZLevelsCache();
-            grid.invalidateGridNavSnapshot();
+            grid.invalidateNavTopology();
             return;
         case GRID_NAV_EPOCH.Floor:
             grid.floorNavEpoch = (grid.floorNavEpoch + 1) | 0;
-            grid.invalidateGridNavSnapshot();
+            grid.invalidateNavTopology();
             return;
         case GRID_NAV_EPOCH.Topology:
             grid.gridTopologyEpoch = (grid.gridTopologyEpoch + 1) | 0;
@@ -21,8 +21,8 @@ export function bumpGridNavEpoch(grid, channel) {
     }
     throw new Error(`unknown grid nav epoch channel: ${channel}`);
 }
-/** Worker/main nav snapshot cache key — all invalidation channels + passage power topology. */
-export function gridNavSnapshotCacheKey(grid) {
+/** Worker/main nav topology epoch key — all invalidation channels + passage power topology. */
+export function gridNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
 }
 /** Passage edge (forcefield) sprite draw cache key. */

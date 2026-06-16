@@ -2,7 +2,7 @@ import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
 import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
-import { gridNavSnapshotCacheKey } from "../Spatial/grid/gridNavEpoch.js";
+import { gridNavCacheKey } from "../Spatial/grid/gridNavEpoch.js";
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 const MAX_CACHE = 100;
 const FLOW_DONE = "flowDone";
@@ -54,7 +54,7 @@ export class FlowFieldGrid {
         if (!sabBlocked) return;
         this._workerHost.worker.postMessage({ type: "bindNavSab", data: { sabNavBlocked: sabBlocked } });
     }
-    rebuildLocalFlowNavMap(navSnapshot, navFrame) {
+    rebuildLocalFlowNavMap(navFrame, navTopology) {
         const size = this.cols * this.rows;
         const navCols = navFrame.cols;
         const navRows = navFrame.rows;
@@ -77,7 +77,7 @@ export class FlowFieldGrid {
                 navToFlow[navIdx] = idx;
             } else this.flowToNavIdx[idx] = -1;
         }
-        const { octileNeighbors } = navSnapshot;
+        const { octileNeighbors } = navTopology;
         for (let idx = 0; idx < size; idx++) {
             const navIdx = this.flowToNavIdx[idx];
             const base = idx * 8;
@@ -95,14 +95,14 @@ export class FlowFieldGrid {
     isFlowCellBlocked(flowIdx) {
         const navIdx = this.flowToNavIdx[flowIdx];
         if (navIdx < 0) return true;
-        const snap = this.hpaPathWorker?.getNavSnapshotView();
-        return !snap || snap.blocked[navIdx] !== 0;
+        const topology = this.hpaPathWorker?.getNavTopology();
+        return !topology || topology.blocked[navIdx] !== 0;
     }
-    ensureLocalTopology(navSnapshot, navFrame) {
-        const key = `${navSnapshot.cacheKey}:${this.centerX}:${this.centerY}`;
+    ensureLocalTopology(navCacheKey, navFrame, navTopology) {
+        const key = `${navCacheKey}:${this.centerX}:${this.centerY}`;
         if (key === this._topologyKey) return false;
         this._topologyKey = key;
-        this.rebuildLocalFlowNavMap(navSnapshot, navFrame);
+        this.rebuildLocalFlowNavMap(navFrame, navTopology);
         this.bindNavSabToWorker();
         this.invalidateFlowSlots();
         return true;
@@ -111,13 +111,13 @@ export class FlowFieldGrid {
         this.invalidateLocalTopology();
         this.invalidateFlowSlots();
     }
-    /** Nav snapshot must already be synced via NavigationService — never schedules worker nav here. */
+    /** Nav topology must already be synced via NavigationService — never schedules worker nav here. */
     syncLocalTopology() {
-        const cacheKey = gridNavSnapshotCacheKey(this.navGraph);
-        const snapshot = this.hpaPathWorker?.getNavSnapshotView();
+        const cacheKey = gridNavCacheKey(this.navGraph);
         const navFrame = this.hpaPathWorker?.getGridFrame();
-        if (!snapshot || !navFrame || snapshot.cacheKey !== cacheKey) return false;
-        return this.ensureLocalTopology(snapshot, navFrame);
+        const navTopology = this.hpaPathWorker?.getNavTopology();
+        if (!navFrame || !navTopology || this.navGraph.gridNavCacheKey !== cacheKey) return false;
+        return this.ensureLocalTopology(cacheKey, navFrame, navTopology);
     }
     refresh() {
         this.invalidateNavTopology();

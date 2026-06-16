@@ -1,5 +1,4 @@
 import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfinding/AStar.js";
-import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Libraries/Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Libraries/Spatial/grid/navEdgePoolSab.js";
 import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Libraries/Spatial/grid/vertexPassability.js";
@@ -7,6 +6,7 @@ import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
 import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Libraries/Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
+import { buildOctileNeighborsFromTopology, createNavLocalView, navTopologyFromSab } from "../../Libraries/Pathfinding/navTopologySab.js";
 import {
     hpaCellToRegionView,
     hpaPathSlotAbstractIdx,
@@ -38,7 +38,9 @@ let sabPersistGraphEdgeTargets;
 let sabPersistGraphEdgeCosts;
 let sabPersistGraphEdgeSources;
 let sabCellToRegionIdx;
-let navSnapshot;
+let navCacheKey = "";
+/** @type {import("../../Libraries/Pathfinding/navTopologySab.js").NavTopology | null} */
+let navTopology = null;
 let navView;
 let aStarGScore;
 let aStarCameFrom;
@@ -90,7 +92,13 @@ function syncGridFrame(frame) {
     if (sizeChanged) {
         navSimView = null;
         regionGraphState = null;
+        navTopology = null;
+        navCacheKey = "";
     } else if (navSimView) bindNavSimGridFrame(navSimView, frame);
+}
+function requireNavTopology() {
+    if (!navTopology) throw new Error("HPA worker missing nav topology");
+    return navTopology;
 }
 function ensureNavSimView(data) {
     syncGridFrame(data.gridFrame);
@@ -119,24 +127,24 @@ function bakeNavTopologyFull(data) {
     recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen);
     return baked;
 }
-function bindNavFromBuild(data, blocked, octileNeighbors) {
+function bindNavFromBuild(data) {
     const frame = requireGridFrame();
     const size = frame.cols * frame.rows;
-    navSnapshot = { cacheKey: data.navCacheKey, blocked, octileNeighbors, cellHalfSize: frame.cellSize * 0.5 };
-    navView = createSnapshotLocalNavView(frame, navSnapshot);
+    navCacheKey = data.navCacheKey;
+    navTopology = navTopologyFromSab(data.sabBlocked, data.sabOctileNeighbors);
+    navView = createNavLocalView(frame, navTopology);
     if (!aStarGScore || aStarGScore.length !== size) {
         aStarGScore = new Float32Array(size);
         aStarCameFrom = new Int32Array(size);
         aStarVisited = new Int32Array(size);
     }
 }
-function buildNavSnapshotOnWorker(data) {
-    const blocked = new Uint8Array(data.sabBlocked);
-    const octileNeighbors = new Int32Array(data.sabOctileNeighbors);
+function buildNavTopologyOnWorker(data) {
     const baked = bakeNavTopologyFull(data);
+    bindNavFromBuild(data);
     const frame = requireGridFrame();
-    buildOctileNeighborsFromTopology(blocked, baked.cardinalOpen, baked.vertexPassability, frame.cols, frame.rows, octileNeighbors);
-    bindNavFromBuild(data, blocked, octileNeighbors);
+    const topology = requireNavTopology();
+    buildOctileNeighborsFromTopology(topology.blocked, baked.cardinalOpen, baked.vertexPassability, frame.cols, frame.rows, topology.octileNeighbors);
 }
 function buildPersistGraphCsr(nodeCount, edgeWrite) {
     const srcSources = hpaPersistEdgeSourcesView(sabPersistGraphEdgeSources, maxGraphEdges).subarray(0, edgeWrite);
@@ -180,11 +188,12 @@ function writeRegionGraphToSab() {
     return { nodeCount: packed.nodeCount, edgeWrite: packed.edgeWrite, nodeIds: packed.nodeIds };
 }
 function buildRegionGraphFullOnWorker(data) {
-    if (!navSnapshot) throw new Error("buildRegionGraphFull requires nav snapshot");
+    if (!navTopology) throw new Error("buildRegionGraphFull requires nav topology");
     assertGraphFrameKey(data.gridFrameKey);
     const frame = requireGridFrame();
+    const topology = requireNavTopology();
     const built = buildFullRegionGraph({
-        blocked: navSnapshot.blocked,
+        blocked: topology.blocked,
         frame,
         navGraph: navView,
         maxCellsPerChunk,
@@ -194,7 +203,7 @@ function buildRegionGraphFullOnWorker(data) {
     });
     regionGraphState = {
         ...built,
-        blocked: navSnapshot.blocked,
+        blocked: topology.blocked,
         navGraph: navView,
         maxCellsPerChunk,
         minCellsPerChunk: data.minCellsPerChunk ?? minCellsPerChunk,
@@ -206,9 +215,9 @@ function buildRegionGraphFullOnWorker(data) {
     return writeRegionGraphToSab();
 }
 function patchRegionGraphOnWorker(data) {
-    if (!navSnapshot || !regionGraphState) throw new Error("patchRegionGraph requires nav snapshot and region graph");
+    if (!navTopology || !regionGraphState) throw new Error("patchRegionGraph requires nav topology and region graph");
     assertGraphFrameKey(data.gridFrameKey);
-    regionGraphState.blocked = navSnapshot.blocked;
+    regionGraphState.blocked = requireNavTopology().blocked;
     regionGraphState.navGraph = navView;
     if (data.seedWorldX != null) regionGraphState.seedWorldX = data.seedWorldX;
     if (data.seedWorldY != null) regionGraphState.seedWorldY = data.seedWorldY;
@@ -420,8 +429,8 @@ self.onmessage = function (e) {
         sabCellToRegionIdx = data.sabCellToRegionIdx;
         return;
     }
-    if (type === "buildNavSnapshot") {
-        buildNavSnapshotOnWorker(e.data);
+    if (type === "buildNavTopology") {
+        buildNavTopologyOnWorker(e.data);
         self.postMessage({ type: "syncNavDone" });
         return;
     }
