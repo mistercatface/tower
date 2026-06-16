@@ -1,4 +1,5 @@
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { findPortalEdgeByKey } from "../Spatial/grid/portalSlotIndex.js";
 import { resolveCardinalStepCrossing, portalAccessInitiatorCell, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
@@ -76,7 +77,7 @@ export function setPortalLinkProfile(grid, col, row, side, linkMode, linkSourceK
         const partnerEdge = grid.edgeStore.get(partner.col, partner.row, partner.side, grid.cols);
         writePortalLinkFields(partnerEdge, mode, sourceKey);
     }
-    grid.bumpPortalLinkEpoch();
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.PortalLink);
     return true;
 }
 /**
@@ -101,7 +102,7 @@ export function unlinkPortalEdge(grid, col, row, side) {
             writePortalLinkFields(partner.edge, PORTAL_LINK_MODE.Shared, 0);
         }
     }
-    grid.bumpPortalLinkEpoch();
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.PortalLink);
     return true;
 }
 /**
@@ -130,7 +131,7 @@ export function linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB) {
     const linkSourceKey = edgeA.linkSourceKey ?? 0;
     writePortalLinkFields(edgeA, linkMode, linkSourceKey);
     writePortalLinkFields(edgeB, linkMode, linkSourceKey);
-    grid.bumpPortalLinkEpoch();
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.PortalLink);
     return true;
 }
 /** @param {import("../Pathfinding/navPassagePolicySab.js").PassageNetworkPolicyView} policy @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */

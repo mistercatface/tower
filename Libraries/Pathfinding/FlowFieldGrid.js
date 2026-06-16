@@ -1,7 +1,8 @@
 import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
-import { snapshotWorldToGrid, snapshotNavCacheKey } from "./GridNavSnapshot.js";
+import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
+import { gridNavSnapshotCacheKey } from "../Spatial/grid/gridNavEpoch.js";
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 const MAX_CACHE = 100;
 const FLOW_DONE = "flowDone";
@@ -112,7 +113,7 @@ export class FlowFieldGrid {
     }
     /** Nav snapshot must already be synced via NavigationService — never schedules worker nav here. */
     syncLocalTopology() {
-        const cacheKey = snapshotNavCacheKey(this.navGraph);
+        const cacheKey = gridNavSnapshotCacheKey(this.navGraph);
         const snapshot = this.hpaPathWorker?.getNavSnapshotView();
         if (!snapshot || snapshot.cacheKey !== cacheKey) return false;
         return this.ensureLocalTopology(snapshot);

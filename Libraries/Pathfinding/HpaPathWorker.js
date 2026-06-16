@@ -1,6 +1,7 @@
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
-import { createWorkerNavSnapshotView, snapshotCanStep, snapshotNavCacheKey, gridNavFrameKey } from "./GridNavSnapshot.js";
+import { createWorkerNavSnapshotView, snapshotCanStep, gridNavFrameKey } from "./GridNavSnapshot.js";
+import { gridNavSnapshotCacheKey } from "../Spatial/grid/gridNavEpoch.js";
 import { createNavTopologySabArena, growNavTopologyHopSab, growNavTopologyVertexSab, packNavTopologyFromGrid, packBlockedFromGrid } from "./navTopologySab.js";
 import {
     createHpaWorkerSabPools,
@@ -370,7 +371,7 @@ export class HpaPathWorker {
         return this._navKey;
     }
     async scheduleNavTopologySyncAwait(grid = this.navGraph) {
-        const targetKey = snapshotNavCacheKey(grid);
+        const targetKey = gridNavSnapshotCacheKey(grid);
         while (this._navKey !== targetKey || this._navSyncPromise) {
             this.scheduleNavTopologySync(grid);
             if (this._navSyncPromise) await this._navSyncPromise;
@@ -400,7 +401,7 @@ export class HpaPathWorker {
         return payload;
     }
     scheduleNavTopologySync(grid = this.navGraph) {
-        const cacheKey = snapshotNavCacheKey(grid);
+        const cacheKey = gridNavSnapshotCacheKey(grid);
         if (cacheKey === this._navKey) return;
         if (this._navSyncPromise) {
             this._deferFullNavSync = true;
@@ -502,7 +503,7 @@ export class HpaPathWorker {
     async requestPath(opts) {
         const { obstacleGrid, startX, startY, targetX, targetY, graphEpoch, navState, replanRequestId, onAbstractReady } = opts;
         await this.scheduleNavTopologySyncAwait(obstacleGrid);
-        const navKey = snapshotNavCacheKey(obstacleGrid);
+        const navKey = gridNavSnapshotCacheKey(obstacleGrid);
         if (obstacleGrid.gridNavSnapshot?.cacheKey !== navKey) return null;
         this.releaseOwnedPathSlot(navState);
         if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;

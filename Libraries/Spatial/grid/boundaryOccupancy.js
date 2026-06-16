@@ -13,6 +13,7 @@ import {
     PORTAL_ACCESS_MODE,
 } from "./CellEdge.js";
 import { registerPortalEdgeSlot, unregisterPortalEdgeSlot } from "./portalSlotIndex.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { portalAccessDefaultAllowedSide } from "./portalAccess.js";
 import { resolvePassageStepFrom, resolvePassageStepUndirected } from "./passageStep.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
@@ -109,7 +110,7 @@ export function setBoundary(grid, col, row, side, spec, { bumpRevision = false }
     if (spec.kind === "railWall") {
         if (spec.capHeightLevel === 0) return setBoundary(grid, col, row, side, null, { bumpRevision });
         grid.edgeStore.writeMirrored(col, row, side, grid.cols, grid.rows, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, col, row, side)));
-        if (bumpRevision) grid.bumpWallGridRevision();
+        if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
         return true;
     }
     if (spec.kind === "passage") {
@@ -117,7 +118,7 @@ export function setBoundary(grid, col, row, side, spec, { bumpRevision = false }
         if (isRailWallEdge(edge)) return false;
         if (isBeltRailEdge(edge)) return false;
         grid.edgeStore.writeMirrored(col, row, side, grid.cols, grid.rows, createForcefieldEdge({ mode: spec.mode, allowedSide: spec.allowedSide ?? side, powered: spec.powered }));
-        if (bumpRevision) grid.bumpWallGridRevision();
+        if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
         return true;
     }
     if (spec.kind === "portal") {
@@ -140,7 +141,7 @@ export function setBoundary(grid, col, row, side, spec, { bumpRevision = false }
             }),
         );
         registerPortalEdgeSlot(grid, col, row, side);
-        if (bumpRevision) grid.bumpWallGridRevision();
+        if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
         return true;
     }
     return false;
@@ -159,7 +160,7 @@ export function clearBoundaryPrimary(grid, col, row, side, { bumpRevision = fals
     if (!isRailWallEdge(edge) && !isForcefieldEdge(edge)) return false;
     if (isPortalEdge(edge)) unregisterPortalEdgeSlot(grid, col, row, side);
     grid.edgeStore.clearMirrored(col, row, side, grid.cols, grid.rows);
-    if (bumpRevision) grid.bumpWallGridRevision();
+    if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return true;
 }
 /**
@@ -179,7 +180,7 @@ export function clearBoundaryAtSide(grid, col, row, side, { bumpRevision = false
     if (isRailWallEdge(edge) || isForcefieldEdge(edge)) return clearBoundaryPrimary(grid, col, row, side, { bumpRevision });
     if (isBeltRailEdge(edge)) {
         clearDerivedBeltRail(grid, col, row, side);
-        if (bumpRevision) grid.bumpWallGridRevision();
+        if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
         return true;
     }
     return false;
@@ -194,7 +195,7 @@ export function clearBoundaryAtSide(grid, col, row, side, { bumpRevision = false
 export function clearAllBoundariesAtCell(grid, col, row, { bumpRevision = false } = {}) {
     let changed = false;
     for (let side = 0; side < 4; side++) if (clearBoundaryAtSide(grid, col, row, side, { bumpRevision: false })) changed = true;
-    if (changed && bumpRevision) grid.bumpWallGridRevision();
+    if (changed && bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return changed;
 }
 /**

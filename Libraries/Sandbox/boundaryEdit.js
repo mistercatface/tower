@@ -1,10 +1,11 @@
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { clearBoundaryPrimary, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { unlinkPortalEdge } from "./portalLinks.js";
 export function notifyGridWallChange(state, bounds, { fullNavSync = false } = {}) {
-    state.obstacleGrid.bumpWallGridRevision();
+    bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
     state.worldSurfaces.invalidateGridBounds(bounds, state);
     const navPromise = state.navigation.onObstaclesChanged(fullNavSync ? null : bounds);
     rebuildLabMapCaches(state);

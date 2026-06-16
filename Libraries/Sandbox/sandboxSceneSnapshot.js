@@ -22,7 +22,7 @@ import {
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
-import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
+import { setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 import { PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
 /**
@@ -159,7 +159,7 @@ function clearSandboxSceneContent(state) {
     clearRoomGraph(state);
     state.sandbox.passagePower = null;
     state.sandbox._passageEdgeDrawCache = null;
-    state.obstacleGrid._passagePowerNavKey = "";
+    setGridPassagePowerNavKey(state.obstacleGrid, "");
     state.obstacleGrid.portalSlotByKey.clear();
     state.obstacleGrid.vertexPassability = new Uint8Array(0);
 }

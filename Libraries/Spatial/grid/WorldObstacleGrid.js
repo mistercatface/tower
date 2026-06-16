@@ -8,6 +8,7 @@ import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, c
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { snapshotCanBoundaryHop, snapshotCanStep, snapshotForEachNavHop } from "../../Pathfinding/GridNavSnapshot.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { clearWallCells } from "./wallGridBake.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
@@ -41,22 +42,10 @@ export class WorldObstacleGrid {
         this.portalLinkEpoch = 0;
         this._passagePowerNavKey = "";
     }
-    bumpPortalLinkEpoch() {
-        this.portalLinkEpoch = (this.portalLinkEpoch + 1) | 0;
-    }
     invalidateGridNavSnapshot() {
         const snap = this.gridNavSnapshot;
         if (snap?.octileNeighbors?.buffer instanceof SharedArrayBuffer) return;
         this.gridNavSnapshot = null;
-    }
-    bumpWallGridRevision() {
-        this.wallGridRevision = (this.wallGridRevision + 1) | 0;
-        this.invalidateStructureZLevelsCache();
-        this.invalidateGridNavSnapshot();
-    }
-    bumpFloorNavEpoch() {
-        this.floorNavEpoch = (this.floorNavEpoch + 1) | 0;
-        this.invalidateGridNavSnapshot();
     }
     invalidateStructureZLevelsCache() {
         this._structureZLevelsRevision = -1;
@@ -217,7 +206,7 @@ export class WorldObstacleGrid {
         this.floorStore.reset(size);
         this.invalidateStructureZLevelsCache();
         this.invalidateGridNavSnapshot();
-        this.gridTopologyEpoch++;
+        bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
     }
     expandToCoverAabb(aabb) {
         if (this.cols <= 0) {
@@ -265,7 +254,7 @@ export class WorldObstacleGrid {
         this.grid = newGrid;
         this.invalidateStructureZLevelsCache();
         this.invalidateGridNavSnapshot();
-        this.gridTopologyEpoch++;
+        bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
         return true;
     }
     // originCol/originRow are global cell coords; cells is row-major with 1 = blocked.
@@ -289,7 +278,7 @@ export class WorldObstacleGrid {
                 changed = true;
             }
         }
-        if (changed) this.bumpWallGridRevision();
+        if (changed) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
         return gridBounds;
     }
     writeCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
@@ -332,8 +321,8 @@ export class WorldObstacleGrid {
         if (isFloorBeltRailsKind(kind)) this.syncFloorBeltRailEdges(col, row, kind, facingIndex);
         const floorNavChanged =
             (isFloorBeltKind(prevKind) || isFloorBeltKind(kind) || isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
-        if (floorNavChanged) this.bumpFloorNavEpoch();
-        if (edgeChanged) this.bumpWallGridRevision();
+        if (floorNavChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
+        if (edgeChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
         return true;
     }
     writeFloorBelt(col, row, facingRadians) {
@@ -355,9 +344,9 @@ export class WorldObstacleGrid {
         const facingIndex = this.floorStore.facing[idx];
         if (isFloorBeltRailsKind(kind)) {
             this.clearFloorBeltRailEdges(col, row, kind, facingIndex);
-            this.bumpWallGridRevision();
+            bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
         }
-        if (isFloorBeltKind(kind) || isFloorBeltRailsKind(kind)) this.bumpFloorNavEpoch();
+        if (isFloorBeltKind(kind) || isFloorBeltRailsKind(kind)) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
         this.floorStore.clearAtIdx(idx);
         return true;
     }
@@ -371,7 +360,7 @@ export class WorldObstacleGrid {
             this.clearFloorBeltRailEdges(col, row, kind, this.floorStore.facing[idx]);
         }
         this.floorStore.reset(size);
-        this.bumpWallGridRevision();
+        bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
     }
     // Belt goal cells snap to upstream entry so HPA approaches from the belt mouth.
     snapPathTargetCell(fromCol, fromRow, targetCol, targetRow) {

@@ -5,6 +5,7 @@ import { projectPropVertex } from "../Render/Props3D/propMesh.js";
 import { isForcefieldEdge, isPortalEdge, PASSAGE_MODE, resolvePassageEdge } from "../Spatial/grid/CellEdge.js";
 import { gridEdgeSideFacing, gridSideOutwardVector } from "../Spatial/grid/GridUtils.js";
 import { forEachCellEdge, cellEdgeEndpoints, canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
+import { passageEdgeDrawCacheKey } from "../Spatial/grid/gridNavEpoch.js";
 const EDGE_P1 = { x: 0, y: 0 };
 const EDGE_P2 = { x: 0, y: 0 };
 const FORCEFIELD_HEIGHT = 10;
@@ -134,13 +135,8 @@ function createForcefieldDrawProxy(midX, midY, side, cellHalf, edgeKey, { mode, 
         },
     };
 }
-/** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-function passageEdgeDrawRevision(state, grid) {
-    return `${grid.wallGridRevision}:${grid._passagePowerNavKey ?? ""}`;
-}
-/** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 function syncPassageEdgeDrawCache(state, grid) {
-    const revision = passageEdgeDrawRevision(state, grid);
+    const revision = passageEdgeDrawCacheKey(grid);
     if (state.sandbox._passageEdgeDrawCache?.revision === revision) return;
     /** @type {Array<{ type: "portal", col: number, row: number, side: number, edge: object, midX: number, midY: number } | { type: "forcefield", proxy: ReturnType<typeof createForcefieldDrawProxy>, edgeKey: number, midX: number, midY: number }>} */
     const items = [];

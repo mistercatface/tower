@@ -8,6 +8,7 @@ import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/G
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/grid/gridCellTopology.js";
 import { cellInRect } from "../../../Libraries/Spatial/grid/GridUtils.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../../../Libraries/Spatial/grid/gridNavEpoch.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
     MAP_GEN_KINDS,
@@ -77,7 +78,7 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
         if (row > endRow) endRow = row;
     });
     if (startCol === Infinity) return null;
-    grid.bumpWallGridRevision();
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     const damageBounds = { startCol, endCol, startRow, endRow };
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     return damageBounds;
@@ -111,7 +112,7 @@ function eraseWallsInShape(state) {
         if (row > endRow) endRow = row;
     });
     if (startCol === Infinity) return null;
-    grid.bumpWallGridRevision();
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return { startCol, endCol, startRow, endRow };
 }
 /** @param {import("../state.js").TileLabGameState} state */
@@ -238,7 +239,7 @@ export async function generateLabRailCaverns(state) {
             if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, col, row, 3, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
             else if (col - 1 >= 0 && col - 1 < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, col - 1, row, 1, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
         }
-    grid.bumpWallGridRevision();
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     let damageBounds = { startCol, endCol, startRow, endRow };
     if (railConfig.boundsMode === "donut") {
         const innerR = getInnerRadiusCells(railConfig) * cellSize;

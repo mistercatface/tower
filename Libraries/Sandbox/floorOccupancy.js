@@ -1,4 +1,5 @@
 import { emptyCellBounds, growCellBounds, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
@@ -219,8 +220,8 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
         if (isFloorBeltRailsKind(kind)) grid.syncFloorBeltRailEdges(col, row, kind, facing);
         growCellBounds(bounds, col, row);
     }
-    if (edgeChanged) grid.bumpWallGridRevision();
-    if (floorNavChanged) grid.bumpFloorNavEpoch();
+    if (edgeChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
     if (isEmptyCellBounds(bounds)) return null;
     markGridZoneSubscriptionsDirty(state);
     return bounds;
