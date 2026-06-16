@@ -2,7 +2,7 @@
 
 HPA pathfinding on large maps — worker owns nav graph mutation and replan; main owns sim writes and steering.
 
-**Status:** done — north star table holds. Worker owns walkability (octile + hops), region graph, abstract replan, and flow-field blocked reads. Main packs sim slices + passage-network policy, notifies dirty bounds, applies steering. `ensureBoundaryNavHops` remains draw-only glue for hop overlay geometry.
+**Status:** done — north star table holds. Worker owns walkability (octile + hops), region graph, abstract replan, and flow-field blocked reads. Main packs sim slices + passage-network policy, notifies dirty bounds, applies steering. Hop CSR is worker-only; main reads `grid.gridNavSnapshot` SAB for `canStep`, path progress, and overlay geometry.
 
 ---
 
@@ -93,7 +93,7 @@ Walk / collision:
   grid.canStep → snapshotCanStep + snapshotCanBoundaryHop on gridNavSnapshot
 ```
 
-**Stays on main forever (OK):** passage-power compute (`syncPassagePowerNetwork`); endpoint snap; sim writes; steering; lazy `ensureBoundaryNavHops` for hop overlay draw only.
+**Stays on main forever (OK):** passage-power compute (`syncPassagePowerNetwork`); endpoint snap; sim writes; steering; hop overlay draw resolves portal geometry from live grid edges at draw time (reads worker hop CSR via `gridNavSnapshot` for step detection).
 
 ---
 

@@ -2,7 +2,6 @@ import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCo
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
-import { bakeHopCsrFromHopsMap } from "./navSimHopBake.js";
 /** Octile + diagonal vertex passability can affect neighbors up to 2 cells away. */
 export const NAV_TOPOLOGY_PATCH_MARGIN = 2;
 /** Rebake shell so cells outside the data rect drop edges into changed cells. */
@@ -65,40 +64,6 @@ export function copyNavSimSabRect(grid, bounds, gridFill, floorKind, floorFacing
 export function snapshotNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.boundaryNavEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
 }
-/** Main-thread CSR from grid.boundaryNavHops (lazy-built for steering/overlay). */
-export function bakeHopCsr(grid, blocked, cols, rows) {
-    const size = cols * rows;
-    const hopOffsets = new Int32Array(size + 1);
-    const hopExitIdx = [];
-    const hopCost = [];
-    const hopsByFromIdx = grid.boundaryNavHops;
-    if (hopsByFromIdx) {
-        const tempExit = new Int32Array(Math.max(grid.edgeStore.portalEdgeCount, 4));
-        const tempCost = new Uint8Array(tempExit.length);
-        bakeHopCsrFromHopsMap(hopsByFromIdx, blocked, cols, rows, hopOffsets, tempExit, tempCost);
-        const write = hopOffsets[size];
-        for (let i = 0; i < write; i++) {
-            hopExitIdx.push(tempExit[i]);
-            hopCost.push(tempCost[i]);
-        }
-    } else hopOffsets[size] = 0;
-    return { hopOffsets, hopExitIdx: Int32Array.from(hopExitIdx), hopCost: Uint8Array.from(hopCost) };
-}
-function bakeOctileNeighbors(grid, cols, rows, blocked, octileNeighbors, startRow, endRow) {
-    for (let row = startRow; row < endRow; row++)
-        for (let col = 0; col < cols; col++) {
-            const idx = colRowToIndex(col, row, cols);
-            if (blocked[idx]) continue;
-            const base = idx * 8;
-            for (let i = 0; i < OCTILE_OFFSETS.length; i++) {
-                const { dc, dr } = OCTILE_OFFSETS[i];
-                const nc = col + dc;
-                const nr = row + dr;
-                if (!cellInRect(nc, nr, cols, rows)) continue;
-                if (grid.canStep(col, row, nc, nr)) octileNeighbors[base + i] = colRowToIndex(nc, nr, cols);
-            }
-        }
-}
 /** Worker/main-safe octile bake from prepacked topology (no grid.canStep). */
 export function buildOctileNeighborsFromTopology(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors) {
     buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, 0, cols - 1, 0, rows - 1);
@@ -134,15 +99,6 @@ export function packBlockedFromGrid(grid) {
     const blocked = new Uint8Array(size);
     for (let idx = 0; idx < size; idx++) blocked[idx] = grid.grid[idx] !== 0 ? 1 : 0;
     return blocked;
-}
-export function buildGridNavSnapshot(grid, cacheKey) {
-    const { cols, rows, cellSize, cellHalfSize, minX, minY } = grid;
-    const size = cols * rows;
-    const blocked = packBlockedFromGrid(grid);
-    const octileNeighbors = new Int32Array(size * 8);
-    bakeOctileNeighbors(grid, cols, rows, blocked, octileNeighbors, 0, rows);
-    const hops = bakeHopCsr(grid, blocked, cols, rows);
-    return { cacheKey, cols, rows, cellSize, cellHalfSize, minX, minY, blocked, octileNeighbors, ...hops };
 }
 export function snapshotIsBlocked(snapshot, col, row) {
     if (!cellInRect(col, row, snapshot.cols, snapshot.rows)) return true;

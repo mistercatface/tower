@@ -22,8 +22,8 @@
 //   Owner: vertexPassability.js
 //
 // Hop — abstract jump across a boundary (portals today): mouth cell → exit cell in one nav step.
-//   Data: grid.boundaryNavHops (built by Pathfinding, policy from Sandbox at sync time)
-//   Owner: boundaryNavHops.js (math), boundaryNavSync.js (wiring)
+//   Data: hop CSR in worker nav snapshot SAB (baked from packed passage-network policy)
+//   Owner: navSimHopBake.js (worker bake), boundaryNavHops.js (geometry + worker hop build helper)
 //
 // Bake — 3D presentation derived from cell fill + edges (faces, rail boxes, chunk Z probes).
 //   Not part of NavGraph; Render / WorldSurface only.
@@ -53,7 +53,8 @@
 // portalAccess.js       — portal mouth/back/traverse geometry (not hop policy)
 // portalSlotIndex.js    — canonical portal edge key → slot lookup
 // vertexPassability.js  — vertex cache + syncGridTopologyCaches
-// boundaryNavHops.js    — hop build (callback for portal pairing), path expansion
+// boundaryNavHops.js    — worker hop build helper, path hop detection, overlay geometry
+// boundaryNavSync.js      — boundaryNavEpoch bump on portal/power topology change
 // hpaPathPlan.js        — unified HPA replan: computeCellPath → hop-expanded world path
 // GridNavSnapshot.js    — frozen walkability, octile neighbors, hop CSR; localNavView for A*
 //
@@ -71,9 +72,7 @@
 // @property {(currCol: number, currRow: number, nextCol: number, nextRow: number) => boolean} canStep
 //
 // @typedef {NavGraph & {
-//   getBoundaryHops: (col: number, row: number) => import("./boundaryNavHops.js").BoundaryNavHop[] | null,
-//   canBoundaryHop: (fromCol: number, fromRow: number, exitCol: number, exitRow: number) => boolean,
+//   gridNavSnapshot?: import("./GridNavSnapshot.js").GridNavSnapshot | null,
 //   forEachNavHop?: (col: number, row: number, fn: (exitCol: number, exitRow: number, cost: number) => void) => void,
-//   forEachBoundaryHopCell?: (fn: (col: number, row: number, hops: import("./boundaryNavHops.js").BoundaryNavHop[]) => void) => void,
-// }} BoundaryHopNavGraph
+// }} HopNavGraph
 //

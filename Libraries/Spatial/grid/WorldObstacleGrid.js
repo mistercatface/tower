@@ -7,7 +7,7 @@ import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToI
 import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
-import { buildGridNavSnapshot, snapshotCanBoundaryHop, snapshotCanStep, snapshotNavCacheKey } from "../../Pathfinding/GridNavSnapshot.js";
+import { snapshotCanBoundaryHop, snapshotCanStep, snapshotForEachNavHop } from "../../Pathfinding/GridNavSnapshot.js";
 import { clearWallCells } from "./wallGridBake.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
@@ -32,7 +32,6 @@ export class WorldObstacleGrid {
         this.patchBoundsScratch = createAabb();
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
-        this.boundaryNavHops = null;
         this.boundaryNavEpoch = 0;
         this.floorNavEpoch = 0;
         this.portalSlotByKey = new Map();
@@ -42,13 +41,6 @@ export class WorldObstacleGrid {
         this.navCardinalOpen = new Uint8Array(0);
         this.gridTopologyEpoch = 0;
         this._passagePowerNavKey = "";
-    }
-    ensureGridNavSnapshot() {
-        this._ensureBoundaryNavHops?.();
-        const cacheKey = snapshotNavCacheKey(this);
-        if (this.gridNavSnapshot?.cacheKey === cacheKey) return this.gridNavSnapshot;
-        this.gridNavSnapshot = buildGridNavSnapshot(this, cacheKey);
-        return this.gridNavSnapshot;
     }
     invalidateGridNavSnapshot() {
         const snap = this.gridNavSnapshot;
@@ -409,35 +401,15 @@ export class WorldObstacleGrid {
     canStep(currCol, currRow, nextCol, nextRow) {
         const snap = this.gridNavSnapshot;
         if (snap?.octileNeighbors) return snapshotCanStep(snap, currCol, currRow, nextCol, nextRow) || snapshotCanBoundaryHop(snap, currCol, currRow, nextCol, nextRow);
-        return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow) || this.canBoundaryHop(currCol, currRow, nextCol, nextRow);
-    }
-    getBoundaryHops(col, row) {
-        this._ensureBoundaryNavHops?.();
-        if (!this.boundaryNavHops) return null;
-        return this.boundaryNavHops.get(colRowToIndex(col, row, this.cols)) ?? null;
-    }
-    setBoundaryNavHopEnsurer(fn) {
-        this._ensureBoundaryNavHops = fn;
-    }
-    canBoundaryHop(fromCol, fromRow, exitCol, exitRow) {
-        const hops = this.getBoundaryHops(fromCol, fromRow);
-        if (!hops) return false;
-        for (let i = 0; i < hops.length; i++) if (hops[i].exitCol === exitCol && hops[i].exitRow === exitRow) return true;
-        return false;
+        return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow);
     }
     forEachNavHop(col, row, fn) {
-        const hops = this.getBoundaryHops(col, row);
-        if (!hops) return;
-        for (let i = 0; i < hops.length; i++) {
-            const { exitCol, exitRow, cost } = hops[i];
-            if (this.isBlocked(exitCol, exitRow)) continue;
+        const snap = this.gridNavSnapshot;
+        if (!snap?.hopOffsets) return;
+        snapshotForEachNavHop(snap, col, row, (exitCol, exitRow, cost) => {
+            if (this.isBlocked(exitCol, exitRow)) return;
             fn(exitCol, exitRow, cost);
-        }
-    }
-    forEachBoundaryHopCell(fn) {
-        const hopsByIdx = this.boundaryNavHops;
-        if (!hopsByIdx) return;
-        for (const [idx, hops] of hopsByIdx) fn(idx % this.cols, (idx / this.cols) | 0, hops);
+        });
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

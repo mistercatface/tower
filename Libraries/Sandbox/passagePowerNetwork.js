@@ -6,7 +6,7 @@ import { canonicalEdgeCellKey, edgeNeighbor, forEachCellEdge } from "../Spatial/
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive } from "./buttonInput.js";
 import { resolvePortalPartner, unlinkPortalEdge } from "./portalLinks.js";
-import { syncBoundaryNavIndex, ensureBoundaryNavHops } from "./boundaryNavSync.js";
+import { syncBoundaryNavIndex } from "./boundaryNavSync.js";
 import { stampPassageNetworkIdsOnGrid } from "../Pathfinding/navSimHopBake.js";
 /** @typedef {{ col: number, row: number, side: number, key: number }} PassageEdgeRef */
 /** Cardinal edge endpoints as grid vertices (cell-corner coordinates). */
@@ -273,11 +273,7 @@ export function syncPassagePowerNetwork(state) {
         grid.bumpWallGridRevision();
         boundaryNavDirty = true;
     }
-    if (!portalCount) grid.boundaryNavHops = new Map();
-    else if (boundaryNavDirty || portalCountChanged) {
-        syncBoundaryNavIndex(state);
-        ensureBoundaryNavHops(state);
-    }
+    if (boundaryNavDirty || portalCountChanged) syncBoundaryNavIndex(state);
     grid._passagePowerNavKey = state.sandbox._passagePowerSyncKey;
     const powerKeyChanged = grid._passagePowerNavKey !== prevPowerKey;
     if (isEmptyCellBounds(bounds) && !powerKeyChanged && !boundaryNavDirty && !portalCountChanged) return;
