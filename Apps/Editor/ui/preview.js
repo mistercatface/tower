@@ -47,8 +47,23 @@ let labRenderer = null;
 let labRendererSettings = null;
 let lastProfileBakeKey = "";
 let labViewDirty = true;
-export function requestLabFrame() {
+function markLabViewDirty() {
     labViewDirty = true;
+}
+/** Canvas input + panel toggles mark the lab view dirty while paused. Returns the same mark fn for viewport/resize hooks. */
+export function mountLabFrameRefresh(canvas) {
+    canvas.addEventListener("pointerdown", markLabViewDirty);
+    canvas.addEventListener("pointermove", markLabViewDirty);
+    canvas.addEventListener("pointerleave", markLabViewDirty);
+    canvas.addEventListener("wheel", markLabViewDirty, { passive: true });
+    document.getElementById("ui-root")?.addEventListener("change", markLabViewDirty);
+    return markLabViewDirty;
+}
+export function wrapLabUiSync(sync) {
+    return () => {
+        markLabViewDirty();
+        sync();
+    };
 }
 export function shouldRenderLabFrame(state) {
     if (!state.isPaused) return true;
@@ -145,6 +160,6 @@ export function drawLabFrame(state) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function repaintUntilBakesDone(state) {
-    requestLabFrame();
+    markLabViewDirty();
     drawLabFrame(state);
 }

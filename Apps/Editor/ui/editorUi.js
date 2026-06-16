@@ -6,7 +6,7 @@ import { initAnimationPreview, mountAnimationPreviewCanvas, setAnimationPreviewA
 import { mountMapOverview, paintMapOverviewFrame, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
-import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, requestLabFrame } from "./preview.js";
+import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, bindVectorPropsToolbar, syncWorldRenderModeUi, mountPlayAreaToolbarControls, commitPlayAreaFromToolbar } from "./toolbar.js";
 import { initTileLabWorld } from "../world/mapWorld.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
@@ -18,6 +18,8 @@ let profileRefreshTimer = null;
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let mapCanvasResize = null;
 let resizeCanvasesRaf = null;
+/** @type {{ mark: () => void, repaintMapOverview: () => void } | null} */
+let labCanvasResizeHooks = null;
 /** @param {import("../state.js").TileLabGameState} state */
 function computeMapColumnSlotMax(state) {
     const container = document.querySelector(".map-container");
@@ -44,11 +46,11 @@ function scheduleProfileRefresh(state, drawAfterProfilePush, debounceMs) {
     if (debounceMs <= 0) run();
     else profileRefreshTimer = setTimeout(run, debounceMs);
 }
-function onMapCanvasResize(state, size, repaintMapOverviewIfVisible) {
+function onMapCanvasResize(state, size) {
     state.viewport.setCanvasSize(size, size);
     fitLabStageToView(state);
-    requestLabFrame();
-    repaintMapOverviewIfVisible();
+    labCanvasResizeHooks?.mark();
+    labCanvasResizeHooks?.repaintMapOverview();
 }
 function resizeCanvases(state) {
     if (resizeCanvasesRaf != null) return;
@@ -80,6 +82,8 @@ export function mountEditorUi(state, { playbackHandlers }) {
     if (canvas.parentElement !== mapStage) mapStage.appendChild(canvas);
     state.editor.canvas = canvas;
     state.editor.ctx = canvas.getContext("2d");
+    const markLabViewDirty = mountLabFrameRefresh(canvas);
+    labCanvasResizeHooks = { mark: markLabViewDirty, repaintMapOverview: repaintMapOverviewIfVisible };
     initPresetSelect(listShippedSurfaceProfileIds());
     initProfileEditor({
         onChange: (options = {}) => {
@@ -92,7 +96,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     mountLabViewport(
         state,
         () => {
-            requestLabFrame();
+            markLabViewDirty();
             repaintMapOverviewIfVisible();
         },
         playbackHandlers,
@@ -119,7 +123,6 @@ export function mountEditorUi(state, { playbackHandlers }) {
     bindToolbarControls({
         onOverlayChange: () => {
             if (document.getElementById("showPathDebugInput").checked) void ensureLabPathDebugCache(state);
-            requestLabFrame();
         },
         onRedraw: () => {
             commitPlayAreaFromToolbar(state);
@@ -160,7 +163,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
         initialSize: main.initialSize,
         minSize: main.minSize,
         maxSize: () => computeMapColumnSlotMax(state),
-        onResize: (size) => onMapCanvasResize(state, size, repaintMapOverviewIfVisible),
+        onResize: (size) => onMapCanvasResize(state, size),
     });
     initResizer("resizer", () => resizeCanvases(state));
     resizeCanvases(state);

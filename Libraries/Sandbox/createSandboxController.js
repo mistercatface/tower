@@ -49,10 +49,9 @@ const MARQUEE_BOUNDS = createAabb();
  *   defaultSpawnPropId: string,
  *   behaviors: SandboxBehavior[],
  *   defaultBehaviorId?: string,
- *   requestFrame?: () => void,
  * }} options
  */
-export function createSandboxController(state, { getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId, requestFrame = null }) {
+export function createSandboxController(state, { getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId }) {
     const session = createSandboxSession(state, { defaultSpawnPropId });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
@@ -385,29 +384,22 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         if (!interactionBehavior && !marqueeSelect && !groundNav && !buttonWireMode && !corridorLinkWireMode && !session.isMapGenPlaceMode()) placePreviewWorld = clientToWorld(e.clientX, e.clientY);
         if (marqueeSelect) {
             marqueeSelect.currentWorld = clientToWorld(e.clientX, e.clientY);
-            requestFrame?.();
             return;
         }
         if (groundNav) {
             groundNav.behavior.updateGroundMoveTarget?.(groundNav.prop, clientToWorld(e.clientX, e.clientY));
-            requestFrame?.();
             return;
         }
-        if (!interactionBehavior) {
-            requestFrame?.();
-            return;
-        }
+        if (!interactionBehavior) return;
         const prop = session.getSelectedProp();
         if (!prop) return;
         const world = clientToWorld(e.clientX, e.clientY);
         e.stopPropagation();
         interactionBehavior.onPointerMove(prop, world, e);
-        requestFrame?.();
     };
     /** @param {PointerEvent} e */
     const onPointerLeave = () => {
         placePreviewWorld = null;
-        requestFrame?.();
     };
     /** @param {PointerEvent} e */
     const onPointerUp = (e) => {
