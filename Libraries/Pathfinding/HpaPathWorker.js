@@ -351,6 +351,9 @@ export class HpaPathWorker {
     getNavSnapshotView() {
         return this._navSnapshotView;
     }
+    getNavBlockedSab() {
+        return this.sabBlocked;
+    }
     navCacheKey() {
         return this._navKey;
     }

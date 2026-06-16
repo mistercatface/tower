@@ -127,7 +127,7 @@ function drawFlowFieldOverlay(ctx, overlay, lineScale, viewport) {
     for (let row = 0; row < rows; row += step)
         for (let col = 0; col < cols; col += step) {
             const idx = row * cols + col;
-            if (flowFieldGrid.grid[idx]) continue;
+            if (flowFieldGrid.isFlowCellBlocked(idx)) continue;
             const val = flowField[idx];
             if (val === 255) continue;
             const { x, y } = flowFieldGrid.gridToWorld(col, row);

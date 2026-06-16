@@ -1,8 +1,7 @@
 import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
-import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
-import { snapshotIsBlocked, snapshotWorldToGrid, snapshotCanStep, snapshotNavCacheKey } from "./GridNavSnapshot.js";
+import { snapshotWorldToGrid, snapshotNavCacheKey } from "./GridNavSnapshot.js";
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 const MAX_CACHE = 100;
 const FLOW_DONE = "flowDone";
@@ -16,8 +15,10 @@ export class FlowFieldGrid {
         this.cols = Math.ceil(width / cellSize);
         this.rows = Math.ceil(height / cellSize);
         const size = this.cols * this.rows;
-        this.sabObstacle = new SharedArrayBuffer(size);
-        this.grid = new Uint8Array(this.sabObstacle);
+        this.sabFlowToNav = new SharedArrayBuffer(size * 4);
+        this.flowToNavIdx = new Int32Array(this.sabFlowToNav).fill(-1);
+        this.navCols = 0;
+        this.navRows = 0;
         this.sabNeighbors = new SharedArrayBuffer(size * 8 * 4);
         this.neighborGrid = new Int32Array(this.sabNeighbors).fill(-1);
         this.sabFlowPool = new SharedArrayBuffer(size * MAX_CACHE);
@@ -31,7 +32,7 @@ export class FlowFieldGrid {
         };
         this._workerHost.worker.postMessage({
             type: "init",
-            data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabObstacle: this.sabObstacle, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool },
+            data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabFlowToNav: this.sabFlowToNav, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool },
         });
         this.offsetX = width / 2;
         this.offsetY = height / 2;
@@ -47,10 +48,18 @@ export class FlowFieldGrid {
         this.cacheCounter = 0;
         this._workerHost.invalidateSlots();
     }
-    rebuildLocalObstacles(navSnapshot) {
+    bindNavSabToWorker() {
+        const sabBlocked = this.hpaPathWorker?.getNavBlockedSab();
+        if (!sabBlocked) return;
+        this._workerHost.worker.postMessage({ type: "bindNavSab", data: { sabNavBlocked: sabBlocked } });
+    }
+    rebuildLocalFlowNavMap(navSnapshot) {
         const size = this.cols * this.rows;
         const navCols = navSnapshot.cols;
         const navRows = navSnapshot.rows;
+        this.navCols = navCols;
+        this.navRows = navRows;
+        const navToFlow = new Int32Array(navCols * navRows).fill(-1);
         const cellSize = this.cellSize;
         const half = cellSize / 2;
         const wxBase = this.centerX - this.offsetX + half;
@@ -62,41 +71,38 @@ export class FlowFieldGrid {
             const worldY = row * cellSize + wyBase;
             const worldCell = snapshotWorldToGrid(navSnapshot, worldX, worldY);
             if (worldCell.col >= 0 && worldCell.col < navCols && worldCell.row >= 0 && worldCell.row < navRows) {
-                this.grid[idx] = snapshotIsBlocked(navSnapshot, worldCell.col, worldCell.row) ? 1 : 0;
-                const base = idx * 8;
-                for (let i = 0; i < OCTILE_OFFSETS.length; i++) {
-                    const { dc, dr } = OCTILE_OFFSETS[i];
-                    const nc = col + dc;
-                    const nr = row + dr;
-                    if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) {
-                        this.neighborGrid[base + i] = -1;
-                        continue;
-                    }
-                    const nNavCol = worldCell.col + dc;
-                    const nNavRow = worldCell.row + dr;
-                    if (nNavCol < 0 || nNavCol >= navCols || nNavRow < 0 || nNavRow >= navRows) {
-                        this.neighborGrid[base + i] = -1;
-                        continue;
-                    }
-                    // Backward BFS: neighbor can enter the current cell (reverse of agent flow).
-                    if (!snapshotCanStep(navSnapshot, nNavCol, nNavRow, worldCell.col, worldCell.row)) {
-                        this.neighborGrid[base + i] = -1;
-                        continue;
-                    }
-                    this.neighborGrid[base + i] = nr * this.cols + nc;
-                }
-            } else {
-                this.grid[idx] = 1;
-                const base = idx * 8;
+                const navIdx = worldCell.row * navCols + worldCell.col;
+                this.flowToNavIdx[idx] = navIdx;
+                navToFlow[navIdx] = idx;
+            } else this.flowToNavIdx[idx] = -1;
+        }
+        const { octileNeighbors } = navSnapshot;
+        for (let idx = 0; idx < size; idx++) {
+            const navIdx = this.flowToNavIdx[idx];
+            const base = idx * 8;
+            if (navIdx < 0) {
                 for (let i = 0; i < 8; i++) this.neighborGrid[base + i] = -1;
+                continue;
+            }
+            const navBase = navIdx * 8;
+            for (let i = 0; i < 8; i++) {
+                const navNIdx = octileNeighbors[navBase + i];
+                this.neighborGrid[base + i] = navNIdx >= 0 ? navToFlow[navNIdx] : -1;
             }
         }
+    }
+    isFlowCellBlocked(flowIdx) {
+        const navIdx = this.flowToNavIdx[flowIdx];
+        if (navIdx < 0) return true;
+        const snap = this.hpaPathWorker?.getNavSnapshotView();
+        return !snap || snap.blocked[navIdx] !== 0;
     }
     ensureLocalTopology(navSnapshot) {
         const key = `${navSnapshot.cacheKey}:${this.centerX}:${this.centerY}`;
         if (key === this._topologyKey) return false;
         this._topologyKey = key;
-        this.rebuildLocalObstacles(navSnapshot);
+        this.rebuildLocalFlowNavMap(navSnapshot);
+        this.bindNavSabToWorker();
         this.invalidateFlowSlots();
         return true;
     }
@@ -152,6 +158,7 @@ export class FlowFieldGrid {
         this._workerHost.post(slot, { type: "updateFlow", tx, ty, range });
     }
     ensureFlowRequest(targetX, targetY, range = 999999) {
+        if (!this._topologyKey) return null;
         const target = this.worldToGrid(targetX, targetY);
         if (target.col < 0 || target.col >= this.cols || target.row < 0 || target.row >= this.rows) return null;
         const targetIdx = target.row * this.cols + target.col;
@@ -164,6 +171,7 @@ export class FlowFieldGrid {
         return slot;
     }
     getReadyFlowField(targetX, targetY, range = 999999) {
+        this.syncLocalTopology();
         const slot = this.ensureFlowRequest(targetX, targetY, range);
         if (slot === null || !this.isFlowSlotReady(slot)) return null;
         return this.flowFieldView(slot);
@@ -175,10 +183,11 @@ export class FlowFieldGrid {
         if (target.col < 0 || target.col >= this.cols || target.row < 0 || target.row >= this.rows) return false;
         const startIdx = start.row * this.cols + start.col;
         const targetIdx = target.row * this.cols + target.col;
-        return gridReachabilityBfs(startIdx, targetIdx, this.grid, this.neighborGrid, this.cols);
+        return gridReachabilityBfs(startIdx, targetIdx, (idx) => this.isFlowCellBlocked(idx), this.neighborGrid);
     }
     clear() {
-        this.grid.fill(0);
+        this.flowToNavIdx.fill(-1);
+        this.neighborGrid.fill(-1);
         this.invalidateLocalTopology();
         this.invalidateFlowSlots();
     }

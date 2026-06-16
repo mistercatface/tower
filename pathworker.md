@@ -2,7 +2,7 @@
 
 HPA pathfinding on large maps — worker owns nav graph mutation and replan; main owns sim writes and steering.
 
-**Status:** ~**92%** of the north star. Worker derives cardinal/vertex/octile topology from sim SABs, wires portal hop abstract edges inline on region patch/full build, and runs one-shot replan. Main still bakes hop CSR from `boundaryNavHops`, runs `syncGridTopologyCaches` for live `grid.canStep`, and mirrors persist CSR for debug overlay + waypoint assembly. Flow field still owns a separate `sabObstacle` copy.
+**Status:** ~**94%** of the north star. Worker derives cardinal/vertex/octile topology from sim SABs, wires portal hop abstract edges inline on region patch/full build, and runs one-shot replan. Flow field BFS reads worker `sabBlocked` via `flowToNavIdx` mapping (no separate obstacle bake). Main still bakes hop CSR from `boundaryNavHops`, runs `syncGridTopologyCaches` for live `grid.canStep`, and mirrors persist CSR for debug overlay + waypoint assembly.
 
 ---
 
@@ -63,6 +63,7 @@ Spatial topology decoupling before the worker cutover:
 | --- | --- |
 | **W1** | Worker derives cardinal/vertex/octile from sim SABs (`navSimView`, `recompute*Into`); main packs raw grid/floor/edge slices only. Edit spine: `onObstaclesChanged` only (no per-site `syncGridTopologyCaches`). |
 | **W2** | `wireNavHopRegionEdges` on worker after region patch/full build; deleted `_collectHopRegionPairs`, `reconnectBoundaryHopRegionPairs`, and `connectRegionIdxPairs` worker message. |
+| **W3** | Flow field reads worker `sabBlocked` via `flowToNavIdx`; octile neighbors from worker snapshot; dropped `FlowFieldGrid.sabObstacle`. |
 | **Fix** | `navSimView` `edgeStore.get` reads live `edgeStore.pool` so passage `powered` updates reach worker topology (forcefields + portal mouth rules). |
 
 ---
@@ -85,17 +86,17 @@ Replan:
   main: buildHpaReplanResult from worker replanMode + mirrored graph meta
 ```
 
-**Still on main:** `buildBoundaryNavHops` + `bakeHopCsr`; `syncGridTopologyCaches`; endpoint snap before `requestPath`; mirrored persist CSR; flow `sabObstacle` (third nav copy).
+**Still on main:** `buildBoundaryNavHops` + `bakeHopCsr`; `syncGridTopologyCaches`; endpoint snap before `requestPath`; mirrored persist CSR.
 
 ---
 
 ## Next 2 PRs
 
-### PR3 — Regression harness + flow/nav dedup
+### PR3 — Flow/nav dedup (done) + regression harness (deferred)
 
-Pathfinding behavior is now split across worker topology, worker region graph, main hop CSR, and a separate flow-field obstacle buffer — exactly the kind of setup where a small invalidation bug shows up as “paths walk through powered forcefields until refresh.” Automated fixtures are the guardrail before any further worker moves. Target cases: rail-maze single-delete (path stable vs cold load), cavern add/delete cycle (patch path matches full rebuild), edit → replan without refresh, epoch mismatch (stale replan discarded, no silent stale-graph route), and portal link/power toggles (hop CSR + abstract edge present after one sync chain).
+**Done:** Flow field BFS binds worker `sabBlocked` (`bindNavSab` message); `FlowFieldGrid` maps its rolling window to nav indices via `flowToNavIdx` and builds octile neighbors from worker `octileNeighbors` (no `sabObstacle` / `snapshotCanStep` shoulder checks). Reachability + overlay use live blocked reads through the same mapping.
 
-In the same pass, align flow field with worker nav truth: flow BFS should consume worker `sabBlocked` / nav snapshot (or a single shared blocked SAB owned by `HpaPathWorker`) and drop `FlowFieldGrid.sabObstacle` as an independent main-side bake. That removes the third copy, simplifies invalidation (one blocked grid epoch), and makes Tile Lab flow vs HPA debug overlays consistent under edits. Wire tests into whatever runner the repo already uses for grid fixtures — goal is CI signal, not a new harness framework.
+**Deferred:** Automated fixtures for rail-maze delete, cavern add/delete cycle, edit → replan without refresh, epoch mismatch, portal link/power toggles — wire when adding CI grid fixtures.
 
 ### PR4 — Worker hop CSR + boundary nav pack
 
