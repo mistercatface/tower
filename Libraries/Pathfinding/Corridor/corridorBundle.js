@@ -1,6 +1,6 @@
 import { corridorPathsToOccupiedKeysWithWidths } from "./corridorFootprint.js";
 import { addCorridorPathToOccupied, buildCorridorLanePath, createCorridorLaneRouter, removeCorridorPathFromOccupied } from "./corridorLanePath.js";
-import { listRoomWallHoleGroups, wallHoleGroupsOverlap } from "./corridorWallSlots.js";
+import { listRoomWallHoleGroups, socketSideToward, wallHoleGroupsOverlap } from "./corridorWallSlots.js";
 /** @typedef {{ c: number, r: number, side: number }} WallHole */
 /** @typedef {{ c: number, r: number }} CorridorCell */
 /** @typedef {{ c0: number, c1: number, r0: number, r1: number, centerC?: number, centerR?: number }} RoomRect */
@@ -16,6 +16,11 @@ const FULL_FOOTPRINT = { interiorOnly: false };
  * @property {CorridorCell[][]} paths
  * @property {number[]} corridorWidths
  */
+/** @param {RoomRect} roomFrom @param {RoomRect} roomTo @param {WallHoleGroup[]} groups */
+function facingWallHoleGroups(roomFrom, roomTo, groups) {
+    const side = socketSideToward(roomFrom, roomTo);
+    return groups.filter((group) => group.anchor.side === side);
+}
 /** @param {RoomRect} node @param {number} corridorWidth @param {WallHoleGroup[]} picked */
 function availableAttachments(node, corridorWidth, picked) {
     const groups = listRoomWallHoleGroups(node, corridorWidth);
@@ -95,8 +100,12 @@ export function solveCorridorBundle(params) {
                 corridorWidths: corridorWidths.slice(),
             };
         const corridorWidth = corridorWidths[lane];
-        const parentGroups = availableAttachments(roomA, corridorWidth, pickedParent);
-        const childGroups = availableAttachments(roomB, corridorWidth, pickedChild);
+        const parentAll = availableAttachments(roomA, corridorWidth, pickedParent);
+        const childAll = availableAttachments(roomB, corridorWidth, pickedChild);
+        const parentFacing = facingWallHoleGroups(roomA, roomB, parentAll);
+        const childFacing = facingWallHoleGroups(roomB, roomA, childAll);
+        const parentGroups = parentFacing.length ? parentFacing : parentAll;
+        const childGroups = childFacing.length ? childFacing : childAll;
         if (!parentGroups.length || !childGroups.length) return null;
         const pairs = orderedAttachmentPairs(parentGroups, childGroups, rng);
         for (let i = 0; i < pairs.length; i++) {

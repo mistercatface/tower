@@ -1,7 +1,7 @@
 import { gridSideNeighborCell } from "../../Spatial/grid/GridUtils.js";
 import { corridorPathHitsOccupied, corridorPathIntersectsPaths, corridorPathOccupiedCellKeys, corridorPathsToOccupiedKeysWithWidths } from "./corridorFootprint.js";
 import { createCorridorGridPathfinder } from "./corridorGridPathfinder.js";
-import { buildRoomInteriorBlockedGridLocal, corridorPathFootprintInsideAnyRoom, corridorSearchBounds } from "./corridorWalkGrid.js";
+import { buildRoomInteriorBlockedGridLocal, cellInsideAnyRoom, corridorPathFootprintInsideAnyRoom, corridorSearchBounds } from "./corridorWalkGrid.js";
 /** @typedef {{ c: number, r: number, side: number }} WallHole */
 /** @typedef {{ c: number, r: number }} CorridorCell */
 /** @typedef {{ c0: number, c1: number, r0: number, r1: number }} RoomRect */
@@ -17,15 +17,24 @@ function stepAcrossSide(cell, side) {
     const n = gridSideNeighborCell(cell.c, cell.r, side);
     return { c: n.col, r: n.row };
 }
-/** @param {CorridorCell} corridorFrom @param {number} egressCells @param {number} parentSide @param {{ c: number, r: number }[]} midPath */
-function assembleCorridorPath(corridorFrom, egressCells, parentSide, midPath) {
+/** @param {CorridorCell} from @param {number} parentSide @param {number} maxSteps @param {RoomRect[]} rooms */
+function walkEgress(from, parentSide, maxSteps, rooms) {
+    /** @type {CorridorCell[]} */
+    const cells = [];
+    let p = from;
+    for (let i = 0; i < maxSteps; i++) {
+        const next = stepAcrossSide(p, parentSide);
+        if (cellInsideAnyRoom(rooms, next.c, next.r)) break;
+        p = next;
+        cells.push(p);
+    }
+    return { end: p, cells };
+}
+/** @param {CorridorCell} corridorFrom @param {{ cells: CorridorCell[] }} egress @param {{ c: number, r: number }[]} midPath */
+function assembleCorridorPath(corridorFrom, egress, midPath) {
     /** @type {CorridorCell[]} */
     const path = [corridorFrom];
-    let p = corridorFrom;
-    for (let i = 0; i < egressCells; i++) {
-        p = stepAcrossSide(p, parentSide);
-        path.push(p);
-    }
+    for (let i = 0; i < egress.cells.length; i++) path.push(egress.cells[i]);
     for (let i = 1; i < midPath.length; i++) path.push(midPath[i]);
     return path;
 }
@@ -47,8 +56,8 @@ export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells,
     const corridorFrom = stepAcrossSide(parentHole, parentHole.side);
     const corridorTo = stepAcrossSide(childHole, childHole.side);
     const approachEnd = stepAcrossSide(corridorTo, childHole.side);
-    let egressEnd = corridorFrom;
-    for (let i = 0; i < egressCells; i++) egressEnd = stepAcrossSide(egressEnd, parentHole.side);
+    const egress = walkEgress(corridorFrom, parentHole.side, egressCells, rooms);
+    const egressEnd = egress.end;
     /** @type {Set<string>} */
     const reserved = new Set(baseOccupied);
     if (!canIntersect) {
@@ -60,7 +69,7 @@ export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells,
     const midPath = pathfinder.findPath(egressEnd.c, egressEnd.r, approachEnd.c, approachEnd.r, options.maxPathLen ?? 512);
     if (!midPath) return null;
     /** @type {CorridorCell[]} */
-    let path = assembleCorridorPath(corridorFrom, egressCells, parentHole.side, midPath);
+    let path = assembleCorridorPath(corridorFrom, egress, midPath);
     const ingressPath = pathfinder.findPath(path[path.length - 1].c, path[path.length - 1].r, corridorTo.c, corridorTo.r, options.maxPathLen ?? 512);
     if (!ingressPath || ingressPath.length < 2) return null;
     for (let i = 1; i < ingressPath.length; i++) path.push(ingressPath[i]);

@@ -1,6 +1,6 @@
 import { corridorPathOccupiedCellKeys } from "../Libraries/Pathfinding/Corridor/corridorFootprint.js";
 import { solveUniformCorridorBundle } from "../Libraries/Pathfinding/Corridor/corridorBundle.js";
-import { maxCorridorLanesBetweenNodes } from "../Libraries/Pathfinding/Corridor/corridorWallSlots.js";
+import { maxCorridorLanesBetweenNodes, socketSideToward } from "../Libraries/Pathfinding/Corridor/corridorWallSlots.js";
 import { cellInsideAnyRoom } from "../Libraries/Pathfinding/Corridor/corridorWalkGrid.js";
 import { createSeededRng } from "../Libraries/Math/SeededRng.js";
 import { buildCorridorBeltsFromPaths, collapsePathRevisits, corridorExteriorCellFromWallHole } from "../Libraries/RoomGraph/roomGraphCorridorBelts.js";
@@ -122,6 +122,30 @@ export function assertLaneReachesRoomMouths(fixture, bundle, laneIndex, label = 
     }
     assertBeltChains(corridorFootprint, beltsByCell, label, mouthExteriorKeys);
 }
+export function assertLaneUsesFacingMouths(fixture, bundle, laneIndex, label = "lane") {
+    const roomA = fixture.roomA;
+    const roomB = fixture.roomB;
+    const parent = bundle.parentAnchors[laneIndex];
+    const child = bundle.childAnchors[laneIndex];
+    const wantParent = socketSideToward(roomA, roomB);
+    const wantChild = socketSideToward(roomB, roomA);
+    if (parent.side !== wantParent) throw new Error(`${label}: parent mouth side ${parent.side}, expected facing side ${wantParent}`);
+    if (child.side !== wantChild) throw new Error(`${label}: child mouth side ${child.side}, expected facing side ${wantChild}`);
+}
+export function assertLaneExteriorStaysInLinkBand(fixture, bundle, laneIndex, label = "lane") {
+    const rooms = [fixture.roomA, fixture.roomB];
+    const path = collapsePathRevisits(bundle.paths[laneIndex]);
+    const roomA = fixture.roomA;
+    const roomB = fixture.roomB;
+    const horizontal = roomB.c0 > roomA.c1;
+    const vertical = roomB.r0 > roomA.r1;
+    for (let i = 0; i < path.length; i++) {
+        const pt = path[i];
+        if (cellInsideAnyRoom(rooms, pt.c, pt.r)) continue;
+        if (horizontal && (pt.c < roomA.c0 || pt.c > roomB.c1)) throw new Error(`${label}: exterior cell ${pt.c},${pt.r} outside horizontal link band`);
+        if (vertical && (pt.r < roomA.r0 || pt.r > roomB.r1)) throw new Error(`${label}: exterior cell ${pt.c},${pt.r} outside vertical link band`);
+    }
+}
 export function assertPathsAreCardinalConnected(paths) {
     for (let pi = 0; pi < paths.length; pi++) {
         const path = paths[pi];
@@ -143,5 +167,9 @@ export function assertPathsDoNotOverlap(paths, widths) {
 export function assertBundleLanes(fixture, bundle, canIntersect) {
     assertPathsAreCardinalConnected(bundle.paths);
     if (!canIntersect) assertPathsDoNotOverlap(bundle.paths, bundle.corridorWidths);
-    for (let li = 0; li < bundle.paths.length; li++) assertLaneReachesRoomMouths(fixture, bundle, li, `lane ${li}`);
+    for (let li = 0; li < bundle.paths.length; li++) {
+        assertLaneUsesFacingMouths(fixture, bundle, li, `lane ${li}`);
+        assertLaneExteriorStaysInLinkBand(fixture, bundle, li, `lane ${li}`);
+        assertLaneReachesRoomMouths(fixture, bundle, li, `lane ${li}`);
+    }
 }

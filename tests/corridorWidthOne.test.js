@@ -3,7 +3,13 @@ import { describe, it } from "node:test";
 import { assertBundleLanes, generateWidthOneFixtures, makeHorizontalFixture, maxLanesForFixture, solveTwoRoomBundle } from "./corridorHarness.js";
 const CORRIDOR_WIDTH = 1;
 describe("width-1 corridors reach room interiors", () => {
-    const spotFixtures = [makeHorizontalFixture(8, 8, 8, 8, 8), makeHorizontalFixture(4, 12, 2, 12, 4), makeHorizontalFixture(12, 4, 16, 4, 12)];
+    const spotFixtures = [
+        makeHorizontalFixture(8, 8, 8, 8, 8),
+        makeHorizontalFixture(4, 12, 2, 12, 4),
+        makeHorizontalFixture(12, 4, 16, 4, 12),
+        makeHorizontalFixture(8, 8, 2, 12, 8),
+        makeHorizontalFixture(8, 8, 2, 12, 12),
+    ];
     for (const fixture of spotFixtures)
         for (let laneCount = 1; laneCount <= 4; laneCount++)
             it(`${fixture.name}: ${laneCount} lane(s)`, () => {
