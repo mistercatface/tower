@@ -66,9 +66,8 @@ function applyButtonFloorPatch(prop, patch) {
  *   clearLinks: () => void,
  *   removeLink: (target: import("./buttonLinks.js").ButtonLinkTarget) => void,
  * }} wire
- * @param {() => void} onChange
  */
-export function appendButtonWireInspector(body, wire, onChange) {
+export function appendButtonWireInspector(body, wire) {
     const links = wire.listLinks();
     appendEditorHint(body, links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, gravity pads, or forcefields.");
     if (links.length)
@@ -78,7 +77,6 @@ export function appendButtonWireInspector(body, wire, onChange) {
                 label: entry.label,
                 onDelete: () => {
                     wire.removeLink(entry.target);
-                    onChange();
                 },
             })),
         );
@@ -92,7 +90,6 @@ export function appendButtonWireInspector(body, wire, onChange) {
     connectBtn.addEventListener("click", () => {
         if (wireActive) wire.cancelWire();
         else wire.startWire();
-        onChange();
     });
     wireRow.appendChild(connectBtn);
     if (links.length) {
@@ -102,7 +99,6 @@ export function appendButtonWireInspector(body, wire, onChange) {
         clearBtn.textContent = "Clear all";
         clearBtn.addEventListener("click", () => {
             wire.clearLinks();
-            onChange();
         });
         wireRow.appendChild(clearBtn);
     }
@@ -121,9 +117,8 @@ export function appendButtonWireInspector(body, wire, onChange) {
  *   selectedCorridorIndex?: () => number,
  *   selectLink?: (linkId: number, corridorIndex: number) => void,
  * }} wire
- * @param {() => void} onChange
  */
-export function appendRoomNodeWireInspector(body, wire, onChange) {
+export function appendRoomNodeWireInspector(body, wire) {
     const links = wire.listLinks();
     const selectedLinkId = wire.selectedLinkId?.() ?? null;
     const selectedCorridorIndex = wire.selectedCorridorIndex?.() ?? 0;
@@ -142,12 +137,10 @@ export function appendRoomNodeWireInspector(body, wire, onChange) {
                 onSelect: wire.selectLink
                     ? () => {
                           wire.selectLink(entry.linkId, entry.corridorIndex);
-                          onChange();
                       }
                     : undefined,
                 onDelete: () => {
                     wire.removeLink(entry.linkId);
-                    onChange();
                 },
             })),
         );
@@ -161,7 +154,6 @@ export function appendRoomNodeWireInspector(body, wire, onChange) {
     connectBtn.addEventListener("click", () => {
         if (wireActive) wire.cancelWire();
         else wire.startWire();
-        onChange();
     });
     wireRow.appendChild(connectBtn);
     if (links.length) {
@@ -171,7 +163,6 @@ export function appendRoomNodeWireInspector(body, wire, onChange) {
         clearBtn.textContent = "Clear all";
         clearBtn.addEventListener("click", () => {
             wire.clearLinks();
-            onChange();
         });
         wireRow.appendChild(clearBtn);
     }
@@ -180,12 +171,11 @@ export function appendRoomNodeWireInspector(body, wire, onChange) {
 /**
  * @param {HTMLElement} body
  * @param {object} prop
- * @param {{ state: object, sync?: () => void, onChange: () => void }} ctx
+ * @param {{ state: object, onChange: () => void }} ctx
  */
-export function appendSandboxWorldPropInspectorFields(body, prop, { state, sync, onChange }) {
+export function appendSandboxWorldPropInspectorFields(body, prop, { state, onChange }) {
     const patch = (apply) => {
         apply();
-        sync?.();
         onChange();
     };
     appendTranslateFields(body, { x: prop.x, y: prop.y, onPatch: (pos) => patch(() => applyWorldPropPosition(prop, pos)) });

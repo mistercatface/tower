@@ -164,7 +164,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         stampPropBehavior(session.getSelectedProp());
         e.preventDefault();
         e.stopPropagation();
-        session.sync();
         return true;
     };
     /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
@@ -187,7 +186,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             }
             e.preventDefault();
             e.stopPropagation();
-            session.sync();
             return true;
         }
         const grid = state.obstacleGrid;
@@ -195,20 +193,17 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         if (session.pickRoomNodeAtWorld(world.x, world.y)) {
             e.preventDefault();
             e.stopPropagation();
-            session.sync();
             return true;
         }
         if (grid.hasFloorOccupancy(col, row)) {
             session.setSelectedFloorCell(col, row);
             e.preventDefault();
             e.stopPropagation();
-            session.sync();
             return true;
         }
         if (!session.pickAnyWallAtWorld(world.x, world.y)) return false;
         e.preventDefault();
         e.stopPropagation();
-        session.sync();
         return true;
     };
     /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
@@ -335,7 +330,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
                 e.stopPropagation();
                 interactionBehavior = behavior;
                 canvas.setPointerCapture(e.pointerId);
-                session.sync();
             }
             return;
         }
@@ -436,7 +430,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             }
             e.preventDefault();
             e.stopPropagation();
-            session.sync();
             return;
         }
         if (!interactionBehavior) return;
@@ -498,17 +491,14 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         getShowSelectionRings: () => showSelectionRings,
         setShowSelectionRings: (enabled) => {
             showSelectionRings = enabled;
-            session.sync();
         },
         getShowPropTileCells: () => showPropTileCells,
         setShowPropTileCells: (enabled) => {
             showPropTileCells = enabled;
-            session.sync();
         },
         getShowRoomNodesAlways: () => showRoomNodesAlways,
         setShowRoomNodesAlways: (enabled) => {
             showRoomNodesAlways = enabled;
-            session.sync();
         },
         deleteSelectedProps: () => session.deleteSelectedProps(),
         setSelectedPropId: (id) => {
@@ -668,7 +658,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             session.seedPlacementOrderFromState();
             session.sync();
         },
-        sync: () => session.sync(),
+        sync: session.sync,
         getState: () => session.getState(),
         setUiSync: (fn) => session.setUiSync(fn),
         getSpawnBehaviorId: () => {

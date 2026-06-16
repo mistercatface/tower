@@ -2,11 +2,11 @@
 
 ## BACKLOG: BELT MAZES
 
-## Milestone log
+## REFACTOR NEEDED: sandboxToyUi.js (800+ lines)
 
-Newest first. User-visible capabilities only.
+## MILESTONE LOG
 
-| When       | Milestone                                                                  |
+| DATE       | MILESTONE                                                                  |
 | ---------- | -------------------------------------------------------------------------- |
 | 2026-06-15 | **Integrated pathfinding system to web worker**                            |
 | 2026-06-14 | **Integrated pathfinding system** - region + flow + edge + cell + boundary |

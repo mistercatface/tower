@@ -43,8 +43,8 @@ export function mountTilelabSandbox(state) {
     });
     const controller = state.sandbox.controller;
     controller.register();
-    unmountToyUi = mountSandboxToyUi(document.getElementById("sandboxToyPanel"), controller, () => controller.sync());
-    unmountSceneJsonUi = mountSceneJsonUi(document.getElementById("sceneJsonPanel"), controller, () => controller.sync());
+    unmountToyUi = mountSandboxToyUi(document.getElementById("sandboxToyPanel"), controller);
+    unmountSceneJsonUi = mountSceneJsonUi(document.getElementById("sceneJsonPanel"), controller);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function destroyTilelabSandbox(state) {
