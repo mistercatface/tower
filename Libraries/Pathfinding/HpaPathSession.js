@@ -1,4 +1,4 @@
-import { applyHpaAbstractFirst, applyHpaReplanResult, clearHpaNavPath } from "./hpaPathPlan.js";
+import { applyHpaReplanResult, clearHpaNavPath } from "./hpaPathPlan.js";
 /**
  * Async HPA replan controller — one leased worker slot per in-flight replan per navState.
  * Coalesces superseding requests; keeps last good path until apply.
@@ -29,13 +29,6 @@ export class HpaPathSession {
             while (navState.hpaReplanRequestId !== 0) {
                 const requestId = navState.hpaReplanRequestId;
                 const params = this._pendingParams.get(navState);
-                const replanCtx = {
-                    replanRequestId: requestId,
-                    onAbstractReady: (abstractResult) => {
-                        if (navState.hpaReplanRequestId !== requestId) return;
-                        applyHpaAbstractFirst(navState, abstractResult, params);
-                    },
-                };
                 let workerOut = null;
                 try {
                     workerOut = await this.worker.requestPath({
@@ -46,7 +39,7 @@ export class HpaPathSession {
                         targetY: params.targetY,
                         graphEpoch: params.graphEpoch,
                         navState,
-                        ...replanCtx,
+                        replanRequestId: requestId,
                     });
                 } catch (err) {
                     console.error("HPA replan failed", err);

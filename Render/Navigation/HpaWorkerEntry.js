@@ -260,12 +260,6 @@ function writeAbstractPath(slot, pathIdx) {
     const abstractIdx = hpaPathSlotAbstractIdx(sabAbstractIdxPool, slot, maxAbstractLen);
     for (let i = 0; i < pathIdx.length; i++) abstractIdx[i] = pathIdx[i];
 }
-function octileGridCost(fromCol, fromRow, toCol, toRow) {
-    return Math.max(Math.abs(toCol - fromCol), Math.abs(toRow - fromRow));
-}
-/**
- * @param {(fromCol: number, fromRow: number, toCol: number, toRow: number, legKey: string) => { cost: number, path?: { col: number, row: number }[] | null }} resolveLegCost
- */
 function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, resolveLegCost) {
     const startTemp = nodeCount;
     const targetTemp = nodeCount + 1;
@@ -374,7 +368,7 @@ function collectReplanTempCandidates(startCol, startRow, targetCol, targetRow) {
     });
     return { startCandidates, targetCandidates };
 }
-function runReplan(slot, data, requestId) {
+function runReplan(slot, data) {
     const { startCol, startRow, targetCol, targetRow } = data;
     const cellToRegion = hpaCellToRegionView(sabCellToRegionIdx, cols * rows);
     const nodeCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, persistNodeCount);
@@ -387,22 +381,6 @@ function runReplan(slot, data, requestId) {
         return prep.mode;
     }
     const { startCandidates, targetCandidates } = collectReplanTempCandidates(startCol, startRow, targetCol, targetRow);
-    const estimated = buildExtendedEdges(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, (fromCol, fromRow, toCol, toRow) => {
-        const cost = octileGridCost(fromCol, fromRow, toCol, toRow);
-        return { cost: cost > 0 ? cost : 0 };
-    });
-    const estimateAbstract = runAbstractAStarFlat(
-        estimated.startTemp,
-        estimated.targetTemp,
-        extNodeCol.subarray(0, estimated.extCount),
-        extNodeRow.subarray(0, estimated.extCount),
-        extEdgeOffsets.subarray(0, estimated.extCount + 1),
-        extEdgeTargets.subarray(0, estimated.edgeWrite),
-        extEdgeCosts.subarray(0, estimated.edgeWrite),
-        estimated.extCount,
-    );
-    writeAbstractPath(slot, estimateAbstract);
-    self.postMessage({ type: "abstractReady", slot, requestId });
     const extended = buildExtendedEdges(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, (fromCol, fromRow, toCol, toRow) => {
         const path = runLocalAStarFlat(fromCol, fromRow, toCol, toRow, navView, cols, rows, prep.regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
         return path ? { cost: path.length, path } : { cost: 0 };
@@ -467,7 +445,7 @@ self.onmessage = function (e) {
         return;
     }
     if (type === "replan") {
-        const replanMode = runReplan(slot, e.data, requestId);
+        const replanMode = runReplan(slot, e.data);
         self.postMessage({ type: "hpaDone", slot, requestId, replanMode });
     }
 };

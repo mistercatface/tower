@@ -1,10 +1,7 @@
 import { agentPose } from "../../Libraries/Agent/index.js";
 import { computeDirectSteering } from "../../Libraries/Agent/steering.js";
-import { computeHpaNavSteering } from "../../Libraries/Pathfinding/hpaSteering.js";
+import { computeSabPathSteering } from "../../Libraries/Pathfinding/hpaPathSlot.js";
 import { navHasPath } from "../../Libraries/Pathfinding/navSession.js";
-function replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, graphEpoch, nowMs) {
-    hpaPathSession.requestReplan(navState, { obstacleGrid, startX: entity.x, startY: entity.y, targetX, targetY, nowMs, graphEpoch });
-}
 /**
  * HPA replan policy + pure steering compute. Does not mutate desiredX/Y.
  * @param {{
@@ -26,7 +23,7 @@ export function planHpaSteering(entity, targetX, targetY, hpaPathSession, navSta
     if (obstaclesChanged) {
         navState.obstacleGeneration = obstacleGeneration;
         if (isVisible || navState.stuckFrames > settings.stuckReplanFrames) {
-            replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, obstacleGeneration, now);
+            hpaPathSession.requestReplan(navState, { obstacleGrid, startX: entity.x, startY: entity.y, targetX, targetY, nowMs: now, graphEpoch: obstacleGeneration });
             replanReason = "obstacles";
             navState.stuckFrames = 0;
             didReplanForObstacles = true;
@@ -37,19 +34,19 @@ export function planHpaSteering(entity, targetX, targetY, hpaPathSession, navSta
         if (!navHasPath(navState)) replanReason = "noPath";
         else if (navState.stuckFrames > settings.stuckReplanFrames) replanReason = "stuck";
         if (isVisible || navState.stuckFrames > settings.stuckReplanFrames) {
-            replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, obstacleGeneration, now);
+            hpaPathSession.requestReplan(navState, { obstacleGrid, startX: entity.x, startY: entity.y, targetX, targetY, nowMs: now, graphEpoch: obstacleGeneration });
             navState.stuckFrames = 0;
         }
     }
     const pose = agentPose(entity);
     const steerSettings = { ...settings, grid: obstacleGrid };
-    let steering = computeHpaNavSteering(pose, navState, targetX, targetY, steerSettings, obstacleGrid, hpaPathWorker);
+    let steering = hpaPathWorker && navHasPath(navState) ? computeSabPathSteering(pose, hpaPathWorker, navState.pathSlot, navState.pathLen, targetX, targetY, steerSettings, navState) : null;
     if (!steering) steering = computeDirectSteering(pose, targetX, targetY);
     if (navHasPath(navState) && steering.offPath && now - navState.lastOffPathReplan >= 250) {
         replanReason = "offPath";
         navState.lastOffPathReplan = now;
-        replanPath(entity, targetX, targetY, hpaPathSession, navState, obstacleGrid, obstacleGeneration, now);
-        steering = computeHpaNavSteering(pose, navState, targetX, targetY, steerSettings, obstacleGrid, hpaPathWorker);
+        hpaPathSession.requestReplan(navState, { obstacleGrid, startX: entity.x, startY: entity.y, targetX, targetY, nowMs: now, graphEpoch: obstacleGeneration });
+        steering = hpaPathWorker && navHasPath(navState) ? computeSabPathSteering(pose, hpaPathWorker, navState.pathSlot, navState.pathLen, targetX, targetY, steerSettings, navState) : null;
         if (!steering) steering = computeDirectSteering(pose, targetX, targetY);
     }
     const hasPath = navHasPath(navState);

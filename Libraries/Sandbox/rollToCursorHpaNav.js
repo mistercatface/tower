@@ -1,7 +1,8 @@
 import { agentPose } from "../Agent/index.js";
 import { createNavState } from "../Pathfinding/navSession.js";
 import { clearHpaNavPath } from "../Pathfinding/hpaPathPlan.js";
-import { computeHpaNavSteering } from "../Pathfinding/hpaSteering.js";
+import { computeSabPathSteering } from "../Pathfinding/hpaPathSlot.js";
+import { navHasPath } from "../Pathfinding/navSession.js";
 /** @typedef {import("../Pathfinding/navSession.js").NavSessionState} NavSessionState */
 const REPLAN_TARGET_MOVE_PX = 64;
 /** @returns {{ navState: NavSessionState, reset: () => void, markTargetChanged: () => void, replan: (prop: object, targetX: number, targetY: number, state: object) => void, update: (prop: object, targetX: number, targetY: number, state: object, dtMs: number) => void, getSteering: (prop: object, targetX: number, targetY: number, settings: object, grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid) => import("../Agent/types.js").SteeringResult | null }} */
@@ -11,8 +12,7 @@ export function createRollToCursorHpaNav() {
     let pendingTargetReplan = false;
     const reset = (state) => {
         pendingTargetReplan = false;
-        if (state?.hpaPathWorker) clearHpaNavPath(navState, state.hpaPathWorker);
-        else clearHpaNavPath(navState);
+        clearHpaNavPath(navState, state.hpaPathWorker);
         navState.pathProgressIdx = 0;
         navState.lastTargetX = null;
         navState.lastTargetY = null;
@@ -47,6 +47,9 @@ export function createRollToCursorHpaNav() {
         if (!navState.pathLen) replan(prop, targetX, targetY, state);
         else if (targetMovedPx >= REPLAN_TARGET_MOVE_PX) replan(prop, targetX, targetY, state);
     };
-    const getSteering = (prop, targetX, targetY, settings, grid, worker) => computeHpaNavSteering(agentPose(prop), navState, targetX, targetY, settings, grid, worker);
+    const getSteering = (prop, targetX, targetY, settings, grid, worker) => {
+        if (!worker || !navHasPath(navState)) return null;
+        return computeSabPathSteering(agentPose(prop), worker, navState.pathSlot, navState.pathLen, targetX, targetY, { ...settings, grid }, navState);
+    };
     return { navState, reset, markTargetChanged, replan, update, getSteering };
 }
