@@ -11,9 +11,4 @@ export const requirePushableOther = { inclusions: [{ target: "other", has: "stra
 export const requireWorldPropOnHit = { inclusions: [{ target: "other", hasFn: "strategy.onHit" }] };
 export const dedupPairById = { inclusions: [{ target: "pair", selfIdLessThanOther: true }] };
 export const requirePushablePairResolve = { inclusions: [{ target: "pair", pairResolve: "pushablePair" }] };
-export const sleepBlockerNeighborAny = {
-    inclusionsAny: [
-        { target: "other", has: "separation" },
-        { target: "other", has: "strategy.isPushable" },
-    ],
-};
+export const sleepBlockerNeighborAny = { inclusionsAny: [{ target: "other", has: "strategy.isPushable" }] };

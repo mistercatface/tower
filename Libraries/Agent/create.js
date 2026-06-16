@@ -1,4 +1,3 @@
-import { createSeparationState } from "../Motion/applySeparation.js";
 export function initMobileAgent(host, options = {}) {
     host.vx = options.vx ?? host.vx ?? 0;
     host.vy = options.vy ?? host.vy ?? 0;
@@ -9,7 +8,6 @@ export function initMobileAgent(host, options = {}) {
     if (options.turnSpeed !== undefined) host.turnSpeed = options.turnSpeed;
     if (options.mass !== undefined) host.mass = options.mass;
     if (options.radius !== undefined && host.radius === undefined) host.radius = options.radius;
-    host.separation = options.separation ?? host.separation ?? createSeparationState();
     host.mobile = host;
     return host;
 }

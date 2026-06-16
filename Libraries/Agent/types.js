@@ -21,7 +21,6 @@
  *   angle: number,
  *   turnSpeed?: number,
  *   mass?: number,
- *   separation?: { x: number, y: number, pushX: number, pushY: number } | null,
  * }} MobileAgent
  */
 /**

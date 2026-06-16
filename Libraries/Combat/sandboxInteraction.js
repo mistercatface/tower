@@ -1,5 +1,5 @@
 import { mergePairFilter } from "../Interaction/pairRules.js";
-import { excludeDeadOther, excludeDeadEither, excludePassiveEither, excludeSameTeam, excludeSameFaction, excludePushableOther, requireWorldPropOnHit } from "../Interaction/pairRuleClauses.js";
+import { excludeDeadOther, excludeDeadEither, excludePassiveEither, excludeSameTeam, excludeSameFaction, requireWorldPropOnHit } from "../Interaction/pairRuleClauses.js";
 import { areHostile, inferFaction } from "./sandboxTargeting.js";
 import { sandboxHostilePairs } from "./sandboxTargeting.js";
 /** @typedef {import("../Interaction/pairRules.js").PairFilterConfig} PairFilterConfig */
@@ -16,10 +16,9 @@ export const includeCrossFactionHostile = { inclusionsAny: sandboxHostilePairs.m
 export const SANDBOX_HOSTILE_PAIR = /** @type {PairFilterConfig} */ (
     mergePairFilter(withCombatResolvers, excludeDeadEither, excludePassiveEither, excludeSameTeam, excludeSameFaction, includeCrossFactionHostile)
 );
-export const SANDBOX_SEPARATION = /** @type {PairFilterConfig} */ (mergePairFilter(withCombatResolvers, excludeDeadOther, excludeUndefinedFactionOther, excludeSameTeam, excludePushableOther));
 // Hostile projectiles damage sandbox combat world props (humanoids, etc.) via faction collision.
 export const requireDamageableWorldProp = { inclusions: [{ target: "other", has: "maxHealth" }] };
 export const SANDBOX_PROJECTILE_HIT_ACTOR = /** @type {PairFilterConfig} */ (mergePairFilter(SANDBOX_HOSTILE_PAIR, requireDamageableWorldProp));
 export const excludeHostileDamageableWorldProp = { exclusions: [{ target: "pair", pairResolve: "hostileDamageableWorldProp" }] };
 export const SANDBOX_PROJECTILE_HIT_WORLD_PROP = /** @type {PairFilterConfig} */ (mergePairFilter(withCombatResolvers, excludeDeadOther, requireWorldPropOnHit, excludeHostileDamageableWorldProp));
-export const sandboxInteractionPairs = { separation: SANDBOX_SEPARATION, projectileHitActor: SANDBOX_PROJECTILE_HIT_ACTOR, projectileHitWorldProp: SANDBOX_PROJECTILE_HIT_WORLD_PROP };
+export const sandboxInteractionPairs = { projectileHitActor: SANDBOX_PROJECTILE_HIT_ACTOR, projectileHitWorldProp: SANDBOX_PROJECTILE_HIT_WORLD_PROP };

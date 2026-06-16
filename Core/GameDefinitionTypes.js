@@ -7,7 +7,6 @@
  */
 /**
  * @typedef {object} InteractionPairsPort
- * @property {PairFilterConfig} separation
  * @property {PairFilterConfig} pushable
  * @property {PairFilterConfig} pushableSleepBlocker
  * @property {PairFilterConfig} projectileHitActor

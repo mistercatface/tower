@@ -11,5 +11,5 @@ export const PUSHABLE_PAIR = /** @type {PairFilterConfig} */ (
 export const PUSHABLE_SLEEP_BLOCKER = /** @type {PairFilterConfig} */ (mergePairFilter(excludeDeadOther, sleepBlockerNeighborAny));
 /** @returns {InteractionPairsPort} */
 export function createDefaultInteractionPairs() {
-    return { separation: DENY_ALL_PAIR, pushable: PUSHABLE_PAIR, pushableSleepBlocker: PUSHABLE_SLEEP_BLOCKER, projectileHitActor: DENY_ALL_PAIR, projectileHitWorldProp: DENY_ALL_PAIR };
+    return { pushable: PUSHABLE_PAIR, pushableSleepBlocker: PUSHABLE_SLEEP_BLOCKER, projectileHitActor: DENY_ALL_PAIR, projectileHitWorldProp: DENY_ALL_PAIR };
 }

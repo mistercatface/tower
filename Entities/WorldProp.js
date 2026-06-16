@@ -175,7 +175,7 @@ export class WorldProp extends Entity {
         const asleep = this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this));
         if (!asleep)
             if (updateLocomotionWorldProp(this, dt, spatialFrame)) {
-                // separation + integrateSteering (Libraries/Motion)
+                // integrateSteering (Libraries/Motion)
             } else if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
             else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (this.usesKinematicsBody) {

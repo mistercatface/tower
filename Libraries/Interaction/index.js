@@ -1,5 +1,5 @@
 /**
- * Libraries/Interaction — declarative pair filters (separation, projectile hits, …).
+ * Libraries/Interaction — declarative pair filters (projectile hits, pushable pairs, …).
  */
 export { pairRuleMatches, pairFilterAllows, compilePairFilter, mergePairFilter } from "./pairRules.js";
 export { createFactionResolver } from "./createFactionResolver.js";

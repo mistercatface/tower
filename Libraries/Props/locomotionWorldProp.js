@@ -2,7 +2,6 @@ import { initMobileAgent } from "../Agent/create.js";
 import { applySteeringResult } from "../Agent/steering.js";
 import { applyEntityLocomotion } from "../Motion/applyEntityLocomotion.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
-
 /** @param {object} prop */
 export function usesLocomotionWorldProp(prop) {
     if (!prop?.strategy) return false;
@@ -10,27 +9,20 @@ export function usesLocomotionWorldProp(prop) {
     if (prop.strategy.locomotion === true) return true;
     return !!prop.usesKinematicsBody && !prop.strategy.rolls && !prop.strategy.standTip;
 }
-
 /** @param {object} prop @param {{ maxSpeed?: number, accel?: number } | null | undefined} config */
 function syncLocomotionParams(prop, config) {
     const rtc = prop.strategy?.rollToCursor ?? {};
     prop.speed = config?.maxSpeed ?? rtc.maxSpeed ?? 50;
     prop.accelRate = config?.accel ?? rtc.accel ?? 220;
 }
-
 /** @param {object} prop */
 export function ensureLocomotionWorldProp(prop) {
     if (!usesLocomotionWorldProp(prop)) return false;
-    if (prop.mobile === prop && prop.separation) return true;
+    if (prop.mobile === prop) return true;
     const rtc = prop.strategy?.rollToCursor ?? {};
-    initMobileAgent(prop, {
-        speed: rtc.maxSpeed ?? 50,
-        accelRate: rtc.accel ?? 220,
-        turnSpeed: 10,
-    });
+    initMobileAgent(prop, { speed: rtc.maxSpeed ?? 50, accelRate: rtc.accel ?? 220, turnSpeed: 10 });
     return true;
 }
-
 /** @param {object} prop @param {number} dirX @param {number} dirY @param {{ maxSpeed?: number, accel?: number }} config */
 export function steerLocomotionWorldProp(prop, dirX, dirY, config) {
     ensureLocomotionWorldProp(prop);
@@ -38,7 +30,6 @@ export function steerLocomotionWorldProp(prop, dirX, dirY, config) {
     applySteeringResult(prop, { desiredX: dirX, desiredY: dirY });
     wakePushableBody(prop);
 }
-
 /** @param {object} prop */
 export function stopLocomotionWorldProp(prop) {
     if (!usesLocomotionWorldProp(prop)) return false;
@@ -46,7 +37,6 @@ export function stopLocomotionWorldProp(prop) {
     wakePushableBody(prop);
     return true;
 }
-
 /**
  * @param {object} prop
  * @param {number} dt

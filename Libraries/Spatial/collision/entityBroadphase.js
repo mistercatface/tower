@@ -5,7 +5,7 @@ import { SatCollision } from "./SatCollision.js";
 export const MOVING_SPEED_SQ = 0.25;
 /** |angularVelocity| above this counts as kinematically active (rad/s). */
 export const ROTATING_ANGULAR_SQ = 0.08 * 0.08;
-/** Margin beyond combined entity extents for neighbor queries (separation, etc.). */
+/** Margin beyond combined entity extents for neighbor queries. */
 export const NEIGHBOR_QUERY_PAD = 15;
 /** @returns {{ x: number, y: number, angle: number, shapeType: string, shapeSpan: number, halfHx: number, halfHy: number }} */
 export function createBroadphaseSnapshot() {
