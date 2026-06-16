@@ -70,7 +70,7 @@ export class HpaPathWorker {
         this.host.worker.onmessage = (e) => {
             const { type, slot, requestId } = e.data;
             if (type === SYNC_NAV_DONE) {
-                this._navSnapshotView = createWorkerNavSnapshotView(this._gridFrame, this._navKey, this.navBlocked, this.navOctileNeighbors);
+                this._navSnapshotView = createWorkerNavSnapshotView(this._navKey, this.navBlocked, this.navOctileNeighbors, this._gridFrame.cellSize);
                 this.navGraph.gridNavSnapshot = this._navSnapshotView;
                 const resolve = this._navSyncResolve;
                 this._navSyncResolve = null;
@@ -211,7 +211,7 @@ export class HpaPathWorker {
         const navSnap = this.getNavSnapshotView();
         const blocked = navSnap?.blocked ?? grid.grid;
         const regionCanStep = navSnap
-            ? (fromCol, fromRow, toCol, toRow) => snapshotCanStep(navSnap, fromCol, fromRow, toCol, toRow) || snapshotCanStep(navSnap, toCol, toRow, fromCol, fromRow)
+            ? (fromCol, fromRow, toCol, toRow) => snapshotCanStep(this._gridFrame, navSnap, fromCol, fromRow, toCol, toRow) || snapshotCanStep(this._gridFrame, navSnap, toCol, toRow, fromCol, fromRow)
             : (fromCol, fromRow, toCol, toRow) => grid.canStep(fromCol, fromRow, toCol, toRow) || grid.canStep(toCol, toRow, fromCol, fromRow);
         return {
             cols: grid.cols,
@@ -320,6 +320,9 @@ export class HpaPathWorker {
     }
     getNavSnapshotView() {
         return this._navSnapshotView;
+    }
+    getGridFrame() {
+        return this._gridFrame;
     }
     getNavBlockedSab() {
         return this.sabBlocked;

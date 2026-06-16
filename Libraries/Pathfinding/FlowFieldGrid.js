@@ -54,10 +54,10 @@ export class FlowFieldGrid {
         if (!sabBlocked) return;
         this._workerHost.worker.postMessage({ type: "bindNavSab", data: { sabNavBlocked: sabBlocked } });
     }
-    rebuildLocalFlowNavMap(navSnapshot) {
+    rebuildLocalFlowNavMap(navSnapshot, navFrame) {
         const size = this.cols * this.rows;
-        const navCols = navSnapshot.frame.cols;
-        const navRows = navSnapshot.frame.rows;
+        const navCols = navFrame.cols;
+        const navRows = navFrame.rows;
         this.navCols = navCols;
         this.navRows = navRows;
         const navToFlow = new Int32Array(navCols * navRows).fill(-1);
@@ -70,7 +70,7 @@ export class FlowFieldGrid {
             const row = (idx / this.cols) | 0;
             const worldX = col * cellSize + wxBase;
             const worldY = row * cellSize + wyBase;
-            const worldCell = snapshotWorldToGrid(navSnapshot, worldX, worldY);
+            const worldCell = snapshotWorldToGrid(navFrame, worldX, worldY);
             if (worldCell.col >= 0 && worldCell.col < navCols && worldCell.row >= 0 && worldCell.row < navRows) {
                 const navIdx = worldCell.row * navCols + worldCell.col;
                 this.flowToNavIdx[idx] = navIdx;
@@ -98,11 +98,11 @@ export class FlowFieldGrid {
         const snap = this.hpaPathWorker?.getNavSnapshotView();
         return !snap || snap.blocked[navIdx] !== 0;
     }
-    ensureLocalTopology(navSnapshot) {
+    ensureLocalTopology(navSnapshot, navFrame) {
         const key = `${navSnapshot.cacheKey}:${this.centerX}:${this.centerY}`;
         if (key === this._topologyKey) return false;
         this._topologyKey = key;
-        this.rebuildLocalFlowNavMap(navSnapshot);
+        this.rebuildLocalFlowNavMap(navSnapshot, navFrame);
         this.bindNavSabToWorker();
         this.invalidateFlowSlots();
         return true;
@@ -115,8 +115,9 @@ export class FlowFieldGrid {
     syncLocalTopology() {
         const cacheKey = gridNavSnapshotCacheKey(this.navGraph);
         const snapshot = this.hpaPathWorker?.getNavSnapshotView();
-        if (!snapshot || snapshot.cacheKey !== cacheKey) return false;
-        return this.ensureLocalTopology(snapshot);
+        const navFrame = this.hpaPathWorker?.getGridFrame();
+        if (!snapshot || !navFrame || snapshot.cacheKey !== cacheKey) return false;
+        return this.ensureLocalTopology(snapshot, navFrame);
     }
     refresh() {
         this.invalidateNavTopology();

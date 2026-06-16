@@ -7,7 +7,7 @@ import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToI
 import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
-import { snapshotCanStep } from "../../Pathfinding/GridNavSnapshot.js";
+import { snapshotCanStep, gridFrameFromGrid } from "../../Pathfinding/GridNavSnapshot.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { clearWallCells } from "./wallGridBake.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
@@ -389,7 +389,7 @@ export class WorldObstacleGrid {
     }
     canStep(currCol, currRow, nextCol, nextRow) {
         const snap = this.gridNavSnapshot;
-        if (snap?.octileNeighbors) return snapshotCanStep(snap, currCol, currRow, nextCol, nextRow);
+        if (snap?.octileNeighbors) return snapshotCanStep(gridFrameFromGrid(this), snap, currCol, currRow, nextCol, nextRow);
         return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow);
     }
     getCellBounds(col, row) {
