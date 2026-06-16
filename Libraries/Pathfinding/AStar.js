@@ -93,16 +93,6 @@ export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navG
                 }
             }
         }
-        navGraph.forEachNavHop?.(currCol, currRow, (nc, nr, hopCost) => {
-            const nIdx = nr * cols + nc;
-            const tentativeG = currentG + hopCost;
-            if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
-                visited[nIdx] = runId;
-                gScore[nIdx] = tentativeG;
-                cameFrom[nIdx] = currIdx;
-                openSet.push(nIdx, tentativeG + octileDistance(nc, nr, targetCol, targetRow));
-            }
-        });
     }
     return null;
 }

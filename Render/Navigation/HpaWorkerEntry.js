@@ -121,15 +121,7 @@ function bindNavFromBuild(data) {
     cols = data.cols;
     rows = data.rows;
     const size = cols * rows;
-    navSnapshot = {
-        cols,
-        rows,
-        blocked: new Uint8Array(data.sabBlocked),
-        octileNeighbors: new Int32Array(data.sabOctileNeighbors),
-        hopOffsets: new Int32Array(data.sabHopOffsets),
-        hopExitIdx: new Int32Array(data.sabHopExitIdx),
-        hopCost: new Uint8Array(data.sabHopCost),
-    };
+    navSnapshot = { cols, rows, blocked: new Uint8Array(data.sabBlocked), octileNeighbors: new Int32Array(data.sabOctileNeighbors) };
     navView = createSnapshotLocalNavView(navSnapshot);
     if (!aStarGScore || aStarGScore.length !== size) {
         aStarGScore = new Float32Array(size);

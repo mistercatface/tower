@@ -1,6 +1,5 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { buildSabPathOverlayFromProgress } from "../../Pathfinding/hpaPathSlot.js";
-import { clearCrossingGrantOnEntity, refreshNavCrossingGrant, syncCrossingGrantToEntity } from "../../Pathfinding/crossingGrant.js";
 import { getRollToCursorConfig, snapRollMoveTargetToCellCenter, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
@@ -29,7 +28,6 @@ export function createRollToCursorHpaBehavior(state) {
     /** @param {object} prop @param {HpaPropRun} run */
     const releaseMoveTarget = (prop, run) => {
         clearRunTarget(run, state);
-        clearCrossingGrantOnEntity(prop);
         releaseRollMoveTarget(prop);
     };
     /** @param {HpaPropRun} run @param {{ x: number, y: number }} world @param {boolean} [forceReset] */
@@ -66,8 +64,6 @@ export function createRollToCursorHpaBehavior(state) {
             state.obstacleGrid,
             state.hpaPathWorker,
         );
-        refreshNavCrossingGrant(run.hpaNav.navState, state.obstacleGrid, state.hpaPathWorker);
-        syncCrossingGrantToEntity(prop, run.hpaNav.navState);
         if (!steering) return;
         if (steering.desiredX === 0 && steering.desiredY === 0) {
             if (distToTarget <= config.stopRadius) releaseMoveTarget(prop, run);
@@ -118,12 +114,10 @@ export function createRollToCursorHpaBehavior(state) {
         getPathOverlay(prop) {
             const run = propRuns.get(prop.id);
             if (!run?.targetWorld) return null;
-            const hopIdx = run.hpaNav.navState.boundaryHopIdx;
-            let progressIdx = run.hpaNav.navState.pathProgressIdx;
-            if (hopIdx != null && progressIdx > hopIdx) progressIdx = hopIdx;
+            const progressIdx = run.hpaNav.navState.pathProgressIdx;
             const trace =
                 run.hpaNav.navState.pathLen > 0 && run.hpaNav.navState.pathSlot >= 0
-                    ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.hpaPathWorker, run.hpaNav.navState.pathSlot, run.hpaNav.navState.pathLen, progressIdx, state.obstacleGrid, hopIdx)
+                    ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.hpaPathWorker, run.hpaNav.navState.pathSlot, run.hpaNav.navState.pathLen, progressIdx, state.obstacleGrid)
                     : { pathNodes: run.hpaNav.navState.path?.slice(progressIdx) ?? [] };
             return {
                 mode: "hpa",
@@ -135,11 +129,7 @@ export function createRollToCursorHpaBehavior(state) {
             };
         },
         reset() {
-            propRuns.forEach((run, propId) => {
-                const prop = state.entityRegistry.getLive(propId);
-                if (prop) clearCrossingGrantOnEntity(prop);
-                run.hpaNav.reset(state);
-            });
+            propRuns.forEach((run) => run.hpaNav.reset(state));
             propRuns.clear();
         },
     };

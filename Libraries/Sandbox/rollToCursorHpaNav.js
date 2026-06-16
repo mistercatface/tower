@@ -24,8 +24,6 @@ export function createRollToCursorHpaNav() {
     /** New target cell — one replan when idle; keep path steering until apply. */
     const markTargetChanged = () => {
         pendingTargetReplan = true;
-        navState.boundaryHopIdx = null;
-        navState.crossingGrant = null;
     };
     const replan = (prop, targetX, targetY, state) => {
         requestHpaNavReplan(state.hpaPathSession, navState, {

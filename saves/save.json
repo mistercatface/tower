@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 8,
+  "cellSize": 16,
+  "origin": {
+    "minX": -2064,
+    "minY": -2064
+  },
+  "cols": 258,
+  "rows": 258,
+  "voxels": [],
+  "railWalls": [
+    {
+      "col": 3,
+      "row": -2,
+      "side": 1,
+      "heightLevel": 4,
+      "thicknessLevel": 2
+    },
+    {
+      "col": 3,
+      "row": -1,
+      "side": 1,
+      "heightLevel": 4,
+      "thicknessLevel": 2
+    },
+    {
+      "col": 3,
+      "row": 1,
+      "side": 1,
+      "heightLevel": 4,
+      "thicknessLevel": 2
+    },
+    {
+      "col": 3,
+      "row": 2,
+      "side": 1,
+      "heightLevel": 4,
+      "thicknessLevel": 2
+    },
+    {
+      "col": 3,
+      "row": 3,
+      "side": 1,
+      "heightLevel": 4,
+      "thicknessLevel": 2
+    },
+    {
+      "col": 4,
+      "row": 4,
+      "side": 0,
+      "heightLevel": 4,
+      "thicknessLevel": 2
+    }
+  ],
+  "forcefields": [
+    {
+      "col": -3,
+      "row": -3,
+      "side": 0,
+      "mode": "oneWay",
+      "allowedSide": 2
+    },
+    {
+      "col": -2,
+      "row": -3,
+      "side": 0,
+      "mode": "oneWay",
+      "allowedSide": 2
+    },
+    {
+      "col": -1,
+      "row": -3,
+      "side": 0,
+      "mode": "oneWay",
+      "allowedSide": 2
+    },
+    {
+      "col": 0,
+      "row": -3,
+      "side": 0,
+      "mode": "oneWay",
+      "allowedSide": 2
+    },
+    {
+      "col": 1,
+      "row": -3,
+      "side": 0,
+      "mode": "oneWay",
+      "allowedSide": 2
+    },
+    {
+      "col": 2,
+      "row": -3,
+      "side": 0,
+      "mode": "oneWay",
+      "allowedSide": 2
+    },
+    {
+      "col": 3,
+      "row": -3,
+      "side": 0,
+      "mode": "oneWay",
+      "allowedSide": 0
+    },
+    {
+      "col": 4,
+      "row": -3,
+      "side": 0,
+      "mode": "oneWay",
+      "allowedSide": 2
+    },
+    {
+      "col": 5,
+      "row": -3,
+      "side": 0,
+      "mode": "oneWay",
+      "allowedSide": 2
+    },
+    {
+      "col": 6,
+      "row": -3,
+      "side": 0,
+      "mode": "oneWay",
+      "allowedSide": 2
+    }
+  ],
+  "floorBelts": [],
+  "powerSources": [
+    {
+      "col": -4,
+      "row": -3,
+      "defaultPowered": true
+    }
+  ],
+  "props": [
+    {
+      "type": "blue_ball",
+      "x": 39.05418856939972,
+      "y": 40.32384789799204,
+      "facing": 0,
+      "faction": "alpha"
+    },
+    {
+      "type": "humanoid",
+      "x": 2.533975663084071,
+      "y": 2.4399248698286353,
+      "facing": 0.793973263048121,
+      "faction": "alpha"
+    }
+  ],
+  "roomGraph": {
+    "nodes": [],
+    "links": [],
+    "nextNodeId": 0,
+    "nextLinkId": 0
+  }
+}

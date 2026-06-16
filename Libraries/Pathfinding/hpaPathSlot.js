@@ -1,12 +1,4 @@
 const PATH_WAYPOINT_ARRIVAL_PX = 24;
-/** @param {import("./HpaPathWorker.js").HpaPathWorker} worker @param {number} slot @param {number} i */
-function sabPathCell(worker, slot, i) {
-    return { col: worker.pathCol(slot, i), row: worker.pathRow(slot, i) };
-}
-/** @param {import("./HpaPathWorker.js").HpaPathWorker} worker @param {number} slot @param {number} stepIdx @param {number} pathLen @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-export function sabPathHasBoundaryHopAfter(worker, slot, stepIdx, pathLen, grid) {
-    return false;
-}
 function sabWaypointArrived(bodyX, bodyY, worker, slot, i, arrivalPx, grid) {
     const wp = sabPathWorldAt(worker, slot, i, grid);
     if (Math.hypot(wp.x - bodyX, wp.y - bodyY) > arrivalPx) return false;
@@ -42,7 +34,6 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid) {
     if (idx >= pathLen) idx = pathLen - 1;
     const waypointArrival = PATH_WAYPOINT_ARRIVAL_PX;
     while (idx < pathLen - 1) {
-        if (sabPathHasBoundaryHopAfter(worker, slot, idx, pathLen, grid)) break;
         const wp = sabPathWorldAt(worker, slot, idx, grid);
         if (Math.hypot(wp.x - x, wp.y - y) > waypointArrival) break;
         const from = grid.worldToGrid(x, y);
@@ -55,18 +46,7 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid) {
         if (!grid.canStep(from.col, from.row, to.col, to.row)) break;
         idx++;
     }
-    const hopIdx = boundaryHopIdxOnSabPath(worker, slot, pathLen, grid);
-    if (hopIdx != null && idx > hopIdx) return hopIdx;
     return idx;
-}
-/** @param {import("./HpaPathWorker.js").HpaPathWorker} worker @param {number} slot @param {number} pathLen @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-export function boundaryHopIdxOnSabPath(worker, slot, pathLen, grid) {
-    return null;
-}
-/** @param {number | null | undefined} boundaryHopIdx @param {number} progressIdx */
-export function sabPathOverlayEndExclusive(pathLen, boundaryHopIdx, progressIdx) {
-    if (boundaryHopIdx == null || progressIdx > boundaryHopIdx) return pathLen;
-    return Math.min(pathLen, boundaryHopIdx + 1);
 }
 /**
  * @param {number} x
@@ -76,14 +56,12 @@ export function sabPathOverlayEndExclusive(pathLen, boundaryHopIdx, progressIdx)
  * @param {number} pathLen
  * @param {number} progressIdx
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {number | null} [boundaryHopIdx]
  */
-export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, progressIdx, grid, boundaryHopIdx = null) {
+export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, progressIdx, grid) {
     if (pathLen <= 0) return { pathNodes: [] };
     const idx = Math.max(0, Math.min(progressIdx ?? 0, pathLen - 1));
-    const endExclusive = sabPathOverlayEndExclusive(pathLen, boundaryHopIdx, idx);
     const pathNodes = [];
-    for (let i = idx; i < endExclusive; i++) pathNodes.push(sabPathWorldAt(worker, slot, i, grid));
+    for (let i = idx; i < pathLen; i++) pathNodes.push(sabPathWorldAt(worker, slot, i, grid));
     const first = pathNodes[0];
     if (first && Math.hypot(first.x - x, first.y - y) > 1) {
         const a = grid.worldToGrid(x, y);
@@ -116,7 +94,6 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     let dy = steerTarget.y - y;
     let dist = Math.hypot(dx, dy);
     while (dist < waypointArrival && step < pathLen - 1 && sabWaypointArrived(x, y, worker, slot, step, waypointArrival, grid)) {
-        if (sabPathHasBoundaryHopAfter(worker, slot, step, pathLen, grid)) break;
         step++;
         if (navState) navState.pathProgressIdx = step;
         steerTarget = sabPathWorldAt(worker, slot, step, grid);

@@ -131,36 +131,6 @@ function floodNetworkPoweredEdgeKeys(grid, energizedSourceIdx, graph) {
     }
     return poweredEdgeKeys;
 }
-function computePoweredEdgeNetworkIds(graph, poweredEdgeKeys, cols) {
-    /** @type {Map<number, number>} */
-    const networkIdByKey = new Map();
-    let nextId = 0;
-    for (const key of poweredEdgeKeys) {
-        if (networkIdByKey.has(key)) continue;
-        const id = nextId++;
-        /** @type {number[]} */
-        const queue = [key];
-        while (queue.length) {
-            const edgeKey = queue.pop();
-            if (networkIdByKey.has(edgeKey)) continue;
-            networkIdByKey.set(edgeKey, id);
-            const ref = graph.edgeByKey.get(edgeKey);
-            if (!ref) continue;
-            const [vx0, vy0, vx1, vy1] = passageEdgeVertexCoords(ref.col, ref.row, ref.side);
-            const verts = [packVertexKey(vx0, vy0, cols), packVertexKey(vx1, vy1, cols)];
-            for (let vi = 0; vi < 2; vi++) {
-                const edges = graph.vertexEdges.get(verts[vi]);
-                if (!edges) continue;
-                for (let i = 0; i < edges.length; i++) {
-                    const next = edges[i].key;
-                    if (!poweredEdgeKeys.has(next) || networkIdByKey.has(next)) continue;
-                    queue.push(next);
-                }
-            }
-        }
-    }
-    return networkIdByKey;
-}
 export function isPassagePowerSourceEnergized(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
@@ -184,13 +154,6 @@ export function isPassagePowerSourceEnergized(state, col, row) {
     });
     return energized;
 }
-export function getPassageEdgeNetworkId(grid, col, row, side) {
-    const networkIdByKey = grid._passageNetworkIdByKey;
-    if (!networkIdByKey) return -1;
-    const key = canonicalEdgeCellKey(grid, col, row, side);
-    if (!networkIdByKey.has(key)) return -1;
-    return networkIdByKey.get(key) ?? -1;
-}
 export function passagePowerNavKey(state) {
     const grid = state.obstacleGrid;
     const energized = collectEnergizedSourceCells(grid, state);
@@ -199,18 +162,16 @@ export function passagePowerNavKey(state) {
     parts.sort((a, b) => a - b);
     return `${grid.edgeStore.passageEdgeCount}:${parts.join(",")}`;
 }
-/** Recompute passage-power keys on grid (no nav notify). Called before worker policy pack. */
+/** Recompute passage-power keys on grid (no nav notify). */
 export function recomputePassagePowerNetwork(state) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return null;
     const graph = buildPassagePowerGraph(grid);
     const energizedSources = collectEnergizedSourceCells(grid, state);
     const poweredKeys = floodNetworkPoweredEdgeKeys(grid, energizedSources, graph);
-    const networkIdByKey = computePoweredEdgeNetworkIds(graph, poweredKeys, grid.cols);
     grid._passagePoweredKeys = poweredKeys;
-    grid._passageNetworkIdByKey = networkIdByKey;
     setGridPassagePowerNavKey(grid, passagePowerNavKey(state));
-    return { graph, poweredKeys, networkIdByKey };
+    return { graph, poweredKeys };
 }
 /** @returns {{ bounds: import("../DataStructures/CellRect.js").CellBounds, needsNavSync: boolean }} */
 export function applyPassagePowerGridState(state) {

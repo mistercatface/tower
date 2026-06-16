@@ -15,9 +15,6 @@ import { octileNeighborBase, octileNeighborOffset } from "./navTopologySab.js";
  * @property {number} minY
  * @property {Uint8Array} blocked
  * @property {Int32Array} octileNeighbors
- * @property {Int32Array} hopOffsets
- * @property {Int32Array} hopExitIdx
- * @property {Uint8Array} hopCost
  */
 const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
 /** Stable id for worker grid frame — sent only when this changes (resize / origin shift). */
@@ -76,46 +73,10 @@ export function snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) {
     }
     return false;
 }
-export function snapshotCanBoundaryHop(snapshot, fromCol, fromRow, exitCol, exitRow) {
-    const { cols, hopOffsets, hopExitIdx } = snapshot;
-    if (!hopOffsets || !hopExitIdx) return false;
-    const fromIdx = colRowToIndex(fromCol, fromRow, cols);
-    const exitIdx = colRowToIndex(exitCol, exitRow, cols);
-    const start = hopOffsets[fromIdx];
-    const end = hopOffsets[fromIdx + 1];
-    for (let i = start; i < end; i++) if (hopExitIdx[i] === exitIdx) return true;
-    return false;
-}
-export function snapshotForEachNavHop(snapshot, col, row, fn) {
-    const { cols, hopOffsets, hopExitIdx, hopCost } = snapshot;
-    const idx = colRowToIndex(col, row, cols);
-    const start = hopOffsets[idx];
-    const end = hopOffsets[idx + 1];
-    for (let i = start; i < end; i++) {
-        const exitIdx = hopExitIdx[i];
-        fn(exitIdx % cols, (exitIdx / cols) | 0, hopCost[i]);
-    }
-}
 export function createSnapshotLocalNavView(snapshot) {
-    return {
-        canStep: (fromCol, fromRow, toCol, toRow) => snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) || snapshotCanBoundaryHop(snapshot, fromCol, fromRow, toCol, toRow),
-        forEachNavHop: (col, row, fn) => snapshotForEachNavHop(snapshot, col, row, fn),
-    };
+    return { canStep: (fromCol, fromRow, toCol, toRow) => snapshotCanStep(snapshot, fromCol, fromRow, toCol, toRow) };
 }
 /** Zero-copy nav snapshot view over worker SAB buffers (no main-thread octile bake). */
-export function createWorkerNavSnapshotView(grid, cacheKey, blocked, octileNeighbors, hopOffsets, hopExitIdx, hopCost) {
-    return {
-        cacheKey,
-        cols: grid.cols,
-        rows: grid.rows,
-        cellSize: grid.cellSize,
-        cellHalfSize: grid.cellHalfSize,
-        minX: grid.minX,
-        minY: grid.minY,
-        blocked,
-        octileNeighbors,
-        hopOffsets,
-        hopExitIdx,
-        hopCost,
-    };
+export function createWorkerNavSnapshotView(grid, cacheKey, blocked, octileNeighbors) {
+    return { cacheKey, cols: grid.cols, rows: grid.rows, cellSize: grid.cellSize, cellHalfSize: grid.cellHalfSize, minX: grid.minX, minY: grid.minY, blocked, octileNeighbors };
 }

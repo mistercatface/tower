@@ -19,9 +19,6 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {SharedArrayBuffer} sabFloorFacing
  * @property {SharedArrayBuffer} sabEdgeSlots
  * @property {SharedArrayBuffer} sabOctileNeighbors
- * @property {SharedArrayBuffer} sabHopOffsets
- * @property {SharedArrayBuffer} sabHopExitIdx
- * @property {SharedArrayBuffer} sabHopCost
  * @property {SharedArrayBuffer} sabCardinalOpen
  * @property {SharedArrayBuffer} sabVertexPassability
  * @property {Uint8Array} blocked
@@ -30,15 +27,11 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {Uint8Array} floorFacing
  * @property {Int32Array} edgeSlots
  * @property {Int32Array} octileNeighbors
- * @property {Int32Array} hopOffsets
- * @property {Int32Array} hopExitIdx
- * @property {Uint8Array} hopCost
  * @property {Uint8Array} cardinalOpen
  * @property {Uint8Array} vertexPassability
  */
-/** @param {number} cellCount @param {number} vertCount @param {number} hopSlotCap max hop CSR entries (exit idx + cost share write index) */
-export function createNavTopologySabArena(cellCount, vertCount, hopSlotCap) {
-    const hopSlots = Math.max(hopSlotCap, 1);
+/** @param {number} cellCount @param {number} vertCount */
+export function createNavTopologySabArena(cellCount, vertCount) {
     const vertBytes = Math.max(vertCount, 4);
     /** @type {NavTopologySabArena} */
     const arena = {
@@ -49,9 +42,6 @@ export function createNavTopologySabArena(cellCount, vertCount, hopSlotCap) {
         sabFloorFacing: new SharedArrayBuffer(cellCount),
         sabEdgeSlots: new SharedArrayBuffer(cellCount * CELL_EDGE_SLOT_BYTES),
         sabOctileNeighbors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES),
-        sabHopOffsets: new SharedArrayBuffer((cellCount + 1) * 4),
-        sabHopExitIdx: new SharedArrayBuffer(hopSlots * 4),
-        sabHopCost: new SharedArrayBuffer(hopSlots),
         sabCardinalOpen: new SharedArrayBuffer(cellCount),
         sabVertexPassability: new SharedArrayBuffer(vertBytes),
         blocked: undefined,
@@ -60,9 +50,6 @@ export function createNavTopologySabArena(cellCount, vertCount, hopSlotCap) {
         floorFacing: undefined,
         edgeSlots: undefined,
         octileNeighbors: undefined,
-        hopOffsets: undefined,
-        hopExitIdx: undefined,
-        hopCost: undefined,
         cardinalOpen: undefined,
         vertexPassability: undefined,
     };
@@ -77,20 +64,8 @@ export function bindNavTopologySabViews(arena) {
     arena.floorFacing = new Uint8Array(arena.sabFloorFacing);
     arena.edgeSlots = new Int32Array(arena.sabEdgeSlots);
     arena.octileNeighbors = new Int32Array(arena.sabOctileNeighbors);
-    arena.hopOffsets = new Int32Array(arena.sabHopOffsets);
-    arena.hopExitIdx = new Int32Array(arena.sabHopExitIdx);
-    arena.hopCost = new Uint8Array(arena.sabHopCost);
     arena.cardinalOpen = new Uint8Array(arena.sabCardinalOpen);
     arena.vertexPassability = new Uint8Array(arena.sabVertexPassability);
-}
-/** @param {NavTopologySabArena} arena @param {number} hopSlotCap */
-export function growNavTopologyHopSab(arena, hopSlotCap) {
-    const hopSlots = Math.max(hopSlotCap, 1);
-    if (arena.sabHopExitIdx.byteLength >= hopSlots * 4) return;
-    arena.sabHopExitIdx = new SharedArrayBuffer(hopSlots * 4);
-    arena.sabHopCost = new SharedArrayBuffer(hopSlots);
-    arena.hopExitIdx = new Int32Array(arena.sabHopExitIdx);
-    arena.hopCost = new Uint8Array(arena.sabHopCost);
 }
 /** @param {NavTopologySabArena} arena @param {number} vertCount */
 export function growNavTopologyVertexSab(arena, vertCount) {

@@ -44,10 +44,6 @@ function regionsSharePassableLink(navGraph, cols, rows, blocked, nodeA, nodeB, n
             if (canWalkBetween(navGraph, col, row, nc, nr)) linked = true;
         });
         if (linked) return true;
-        navGraph.forEachNavHop?.(col, row, (nc, nr) => {
-            if (targetCells.has(colRowToIndex(nc, nr, cols))) linked = true;
-        });
-        if (linked) return true;
     }
     return false;
 }
@@ -84,10 +80,6 @@ function reconnectRegionEdges(navGraph, blocked, cols, rows, node, cellToNode, n
             if (blocked[nIdx]) return;
             if (!canWalkBetween(navGraph, col, row, nc, nr)) return;
             const other = cellToNode[nIdx];
-            if (other && other.id !== node.id) neighborIds.add(other.id);
-        });
-        navGraph.forEachNavHop?.(col, row, (nc, nr) => {
-            const other = cellToNode[colRowToIndex(nc, nr, cols)];
             if (other && other.id !== node.id) neighborIds.add(other.id);
         });
     }
@@ -196,36 +188,11 @@ function repackHullRegions(
 function connectAllNodes(navGraph, blocked, cols, rows, cellToNode, nodesMap) {
     for (const node of Object.values(nodesMap)) node.edges = [];
     const adjacencies = findRegionAdjacencies(cellToNode, blocked, cols, rows, navGraph);
-    const size = cols * rows;
-    for (let idx = 0; idx < size; idx++) {
-        const nodeA = cellToNode[idx];
-        if (!nodeA) continue;
-        const col = idx % cols;
-        const row = (idx / cols) | 0;
-        navGraph.forEachNavHop?.(col, row, (exitCol, exitRow) => {
-            const nodeB = cellToNode[colRowToIndex(exitCol, exitRow, cols)];
-            if (nodeB && nodeA.id !== nodeB.id) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
-        });
-    }
     for (const key of adjacencies) {
         const [idA, idB] = key.split(":");
         connectRegionPair(nodesMap[idA], nodesMap[idB]);
     }
     for (const id in nodesMap) validateRegionEdges(navGraph, cols, rows, blocked, nodesMap[id], nodesMap);
-}
-/** Wire abstract region edges for every nav-hop exit in the snapshot CSR. */
-export function wireNavHopRegionEdges(navGraph, cols, rows, cellToNode, nodesMap) {
-    const size = cols * rows;
-    for (let idx = 0; idx < size; idx++) {
-        const nodeA = cellToNode[idx];
-        if (!nodeA) continue;
-        const col = idx % cols;
-        const row = (idx / cols) | 0;
-        navGraph.forEachNavHop?.(col, row, (exitCol, exitRow) => {
-            const nodeB = cellToNode[colRowToIndex(exitCol, exitRow, cols)];
-            if (nodeB && nodeA.id !== nodeB.id) connectRegionPair(nodeA, nodeB);
-        });
-    }
 }
 function findNearestOpenCell(blocked, cols, rows, col, row) {
     if (!blocked[colRowToIndex(col, row, cols)]) return { col, row };
@@ -253,12 +220,6 @@ function pruneUnreachableRegions(navGraph, blocked, cols, rows, minX, minY, cell
         forEachCardinalNeighbor(c, r, cols, rows, (nc, nr, nIdx) => {
             if (blocked[nIdx] || reachable[nIdx]) return;
             if (!canWalkBetween(navGraph, c, r, nc, nr)) return;
-            reachable[nIdx] = 1;
-            queue.push(nIdx);
-        });
-        navGraph.forEachNavHop?.(c, r, (nc, nr) => {
-            const nIdx = colRowToIndex(nc, nr, cols);
-            if (blocked[nIdx] || reachable[nIdx]) return;
             reachable[nIdx] = 1;
             queue.push(nIdx);
         });
@@ -298,7 +259,6 @@ export function buildFullRegionGraph(opts) {
     const distToWall = computeDistanceTransform(blocked, cols, rows);
     const result = generateVoronoiRegions({ grid: blocked, distToWall, cols, rows, minX, minY, cellSize, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
     connectAllNodes(navGraph, blocked, cols, rows, result.cellToNode, result.nodesMap);
-    wireNavHopRegionEdges(navGraph, cols, rows, result.cellToNode, result.nodesMap);
     if (seedWorldX != null && seedWorldY != null) pruneUnreachableRegions(navGraph, blocked, cols, rows, minX, minY, cellSize, result.cellToNode, result.nodesMap, seedWorldX, seedWorldY);
     return { nodesMap: result.nodesMap, cellToNode: result.cellToNode, nodeIdCounter: result.nodeIdCounter };
 }
@@ -357,7 +317,6 @@ export function rebuildDamagedRegionGraph(state, bounds) {
     const reconnectIds = new Set(repackedIds);
     for (const id of collectRegionIdsInBox(state.cellToNode, cols, box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, cols, rows, state.nodesMap[id], state.cellToNode, state.nodesMap);
-    wireNavHopRegionEdges(navGraph, cols, rows, state.cellToNode, state.nodesMap);
     for (const id in state.nodesMap) validateRegionEdges(navGraph, cols, rows, blocked, state.nodesMap[id], state.nodesMap);
     if (seedWorldX != null && seedWorldY != null) pruneUnreachableRegions(navGraph, blocked, cols, rows, minX, minY, cellSize, state.cellToNode, state.nodesMap, seedWorldX, seedWorldY);
     return state;

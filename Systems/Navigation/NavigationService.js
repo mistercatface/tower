@@ -1,5 +1,4 @@
 import { NavigationController } from "../../Libraries/Navigation/index.js";
-import { refreshNavCrossingGrant, syncCrossingGrantToEntity } from "../../Libraries/Pathfinding/crossingGrant.js";
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
 import { VIEWPORT_VISIBILITY_PAD_WIDE } from "../../Libraries/Viewport/Viewport.js";
 import { planHpaSteering } from "./HpaStrategy.js";
@@ -37,10 +36,6 @@ export class NavigationService {
                     state.hpaPathWorker,
                 ),
             onSteerComplete: (entity, { navState, settings, plan }) => {
-                if (plan.mode === "hpa") {
-                    refreshNavCrossingGrant(navState, obstacleGrid, this._hpaPathWorker);
-                    syncCrossingGrantToEntity(entity, navState);
-                }
                 entity.hpaPath = navState.pathLen > 0 ? null : navState.path;
                 if (entity.isMoving) {
                     entity.targetNodeX = entity.x + entity.desiredX * settings.targetNodeLookahead;

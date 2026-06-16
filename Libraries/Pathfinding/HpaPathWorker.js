@@ -2,7 +2,7 @@ import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import { createWorkerNavSnapshotView, snapshotCanStep, gridNavFrameKey } from "./GridNavSnapshot.js";
 import { gridNavSnapshotCacheKey } from "../Spatial/grid/gridNavEpoch.js";
-import { createNavTopologySabArena, growNavTopologyHopSab, growNavTopologyVertexSab, packNavTopologyFromGrid, packBlockedFromGrid } from "./navTopologySab.js";
+import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, packBlockedFromGrid } from "./navTopologySab.js";
 import {
     createHpaWorkerSabPools,
     growHpaCellToRegionSab,
@@ -76,7 +76,7 @@ export class HpaPathWorker {
         this.host.worker.onmessage = (e) => {
             const { type, slot, requestId } = e.data;
             if (type === SYNC_NAV_DONE) {
-                this._navSnapshotView = createWorkerNavSnapshotView(this.navGraph, this._navKey, this.navBlocked, this.navOctileNeighbors, this.navHopOffsets, this.navHopExitIdx, this.navHopCost);
+                this._navSnapshotView = createWorkerNavSnapshotView(this.navGraph, this._navKey, this.navBlocked, this.navOctileNeighbors);
                 this.navGraph.gridNavSnapshot = this._navSnapshotView;
                 const resolve = this._navSyncResolve;
                 this._navSyncResolve = null;
@@ -323,9 +323,6 @@ export class HpaPathWorker {
         this.sabFloorFacing = arena.sabFloorFacing;
         this.sabEdgeSlots = arena.sabEdgeSlots;
         this.sabOctileNeighbors = arena.sabOctileNeighbors;
-        this.sabHopOffsets = arena.sabHopOffsets;
-        this.sabHopExitIdx = arena.sabHopExitIdx;
-        this.sabHopCost = arena.sabHopCost;
         this.sabCardinalOpen = arena.sabCardinalOpen;
         this.sabVertexPassability = arena.sabVertexPassability;
         this.navBlocked = arena.blocked;
@@ -334,21 +331,15 @@ export class HpaPathWorker {
         this.navFloorFacing = arena.floorFacing;
         this.navEdgeSlots = arena.edgeSlots;
         this.navOctileNeighbors = arena.octileNeighbors;
-        this.navHopOffsets = arena.hopOffsets;
-        this.navHopExitIdx = arena.hopExitIdx;
-        this.navHopCost = arena.hopCost;
         this.navCardinalOpen = arena.cardinalOpen;
         this.navVertexPassability = arena.vertexPassability;
     }
-    _ensureNavBuffers(size, hopSlotCap, vertCount, edgePoolRefs = 4) {
+    _ensureNavBuffers(size, vertCount, edgePoolRefs = 4) {
         this._ensureNavEdgePoolSab(edgePoolRefs);
         if (this._navSize !== size) {
             this._navSize = size;
-            this._navArena = createNavTopologySabArena(size, vertCount, hopSlotCap);
-        } else {
-            growNavTopologyHopSab(this._navArena, hopSlotCap);
-            growNavTopologyVertexSab(this._navArena, vertCount);
-        }
+            this._navArena = createNavTopologySabArena(size, vertCount);
+        } else growNavTopologyVertexSab(this._navArena, vertCount);
         this._syncNavArenaFields();
     }
     getNavSnapshotView() {
@@ -400,9 +391,8 @@ export class HpaPathWorker {
         this._navKey = cacheKey;
         this._navSnapshotView = null;
         this.navGraph.gridNavSnapshot = null;
-        const hopCap = 4;
         const edgePoolRefs = Math.max(grid.edgeStore.pool.length, 4);
-        this._ensureNavBuffers(size, hopCap, vertCount, edgePoolRefs);
+        this._ensureNavBuffers(size, vertCount, edgePoolRefs);
         this.navBlocked.set(packBlockedFromGrid(grid));
         packNavTopologyFromGrid(grid, this._navArena);
         this._packNavEdgePoolForWorker(grid);
@@ -416,9 +406,6 @@ export class HpaPathWorker {
                 sabBlocked: this.sabBlocked,
                 sabCardinalOpen: this.sabCardinalOpen,
                 sabVertexPassability: this.sabVertexPassability,
-                sabHopOffsets: this.sabHopOffsets,
-                sabHopExitIdx: this.sabHopExitIdx,
-                sabHopCost: this.sabHopCost,
                 sabOctileNeighbors: this.sabOctileNeighbors,
                 ...this._navSimPayload(grid),
             });
