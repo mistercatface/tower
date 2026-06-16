@@ -127,11 +127,7 @@ export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     required = padAabb(required, cellSize);
     const grid = state.obstacleGrid;
     const expanded = grid.expandToCoverAabb(required);
-    if (expanded) {
-        const centerX = (grid.minX + grid.maxX) / 2;
-        const centerY = (grid.minY + grid.maxY) / 2;
-        state.hierarchicalNavigator.initialize(centerX, centerY);
-    }
+    if (expanded) state.navigation.onObstaclesChanged(null);
 }
 /** @param {import("../TileLabEditorState.js").TileLabEditorState["cavernConfig"]} config @returns {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
 function generateCavernOccupancy(config) {

@@ -2,12 +2,15 @@ import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfin
 import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology, buildOctileNeighborsFromTopologyRect } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
+import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { buildFullRegionGraph, connectRegionIdxPairs, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
 let maxSlots;
 let maxPathLen;
 let maxAbstractLen;
 let maxGraphNodes;
 let maxGraphEdges;
 let maxCellsPerChunk;
+let minCellsPerChunk;
 let sabPathMetaPool;
 let sabPathColsPool;
 let sabPathRowsPool;
@@ -18,6 +21,7 @@ let sabPersistGraphEdgeOffsets;
 let sabPersistGraphEdgeTargets;
 let sabPersistGraphEdgeCosts;
 let sabPersistGraphEdgeSources;
+let sabCellToRegionIdx;
 let navSnapshot;
 let navView;
 let cols;
@@ -33,6 +37,17 @@ let extNodeRow;
 let extEdgeOffsets;
 let extEdgeTargets;
 let extEdgeCosts;
+let minX;
+let minY;
+let cellSize;
+let damagePadding;
+let pruneSeedWorldX;
+let pruneSeedWorldY;
+/** @type {{ nodesMap: Record<string, object>, cellToNode: Array<object | null>, nodeIdCounter: number, distToWall: Float32Array | null, blocked: Uint8Array, cols: number, rows: number, minX: number, minY: number, cellSize: number, navGraph: object, maxCellsPerChunk: number, minCellsPerChunk: number, damagePadding: number, seedWorldX: number | null, seedWorldY: number | null } | null} */
+let regionGraphState = null;
+function cellToRegionView() {
+    return new Int16Array(sabCellToRegionIdx, 0, cols * rows);
+}
 function slotPathMeta(slot) {
     return new Int32Array(sabPathMetaPool, slot * 8, 2);
 }
@@ -131,6 +146,83 @@ function buildPersistGraphCsr(nodeCount, edgeWrite) {
 function syncPersistAbstractGraph(nodeCount, edgeWrite) {
     persistNodeCount = nodeCount;
     persistEdgeWrite = buildPersistGraphCsr(nodeCount, edgeWrite);
+}
+function writeRegionGraphToSab() {
+    if (!regionGraphState) return null;
+    const packed = packRegionGraphFlat(regionGraphState.nodesMap, regionGraphState.cellToNode, cols, rows);
+    if (packed.nodeCount > maxGraphNodes) throw new Error(`HPA region graph has ${packed.nodeCount} nodes (max ${maxGraphNodes})`);
+    const persistNodeCol = persistNodeColView();
+    const persistNodeRow = persistNodeRowView();
+    const persistEdgeSources = persistEdgeSourcesView();
+    const persistEdgeTargets = persistEdgeTargetsView();
+    const persistEdgeCosts = persistEdgeCostsView();
+    persistNodeCol.set(packed.nodeCol);
+    persistNodeRow.set(packed.nodeRow);
+    persistEdgeSources.set(packed.edgeSources);
+    persistEdgeTargets.set(packed.edgeTargets);
+    persistEdgeCosts.set(packed.edgeCosts);
+    cellToRegionView().set(packed.cellToRegion);
+    syncPersistAbstractGraph(packed.nodeCount, packed.edgeWrite);
+    return { nodeCount: packed.nodeCount, edgeWrite: packed.edgeWrite, nodeIds: packed.nodeIds };
+}
+function buildRegionGraphFullOnWorker(data) {
+    if (!navSnapshot) throw new Error("buildRegionGraphFull requires nav snapshot");
+    minX = data.minX;
+    minY = data.minY;
+    cellSize = data.cellSize;
+    damagePadding = data.damagePadding;
+    pruneSeedWorldX = data.seedWorldX;
+    pruneSeedWorldY = data.seedWorldY;
+    const built = buildFullRegionGraph({
+        blocked: navSnapshot.blocked,
+        cols,
+        rows,
+        minX,
+        minY,
+        cellSize,
+        navGraph: navView,
+        maxCellsPerChunk,
+        minCellsPerChunk: data.minCellsPerChunk ?? minCellsPerChunk,
+        seedWorldX: data.seedWorldX,
+        seedWorldY: data.seedWorldY,
+    });
+    regionGraphState = {
+        ...built,
+        blocked: navSnapshot.blocked,
+        cols,
+        rows,
+        minX,
+        minY,
+        cellSize,
+        navGraph: navView,
+        maxCellsPerChunk,
+        minCellsPerChunk: data.minCellsPerChunk ?? minCellsPerChunk,
+        damagePadding,
+        seedWorldX: data.seedWorldX,
+        seedWorldY: data.seedWorldY,
+        distToWall: null,
+    };
+    return writeRegionGraphToSab();
+}
+function patchRegionGraphOnWorker(data) {
+    if (!navSnapshot || !regionGraphState) throw new Error("patchRegionGraph requires nav snapshot and region graph");
+    regionGraphState.blocked = navSnapshot.blocked;
+    regionGraphState.navGraph = navView;
+    regionGraphState.seedWorldX = data.seedWorldX ?? pruneSeedWorldX;
+    regionGraphState.seedWorldY = data.seedWorldY ?? pruneSeedWorldY;
+    rebuildDamagedRegionGraph(regionGraphState, { startCol: data.startCol, endCol: data.endCol, startRow: data.startRow, endRow: data.endRow });
+    return writeRegionGraphToSab();
+}
+function connectRegionIdxPairsOnWorker(pairs) {
+    if (!regionGraphState || !pairs.length) return writeRegionGraphToSab();
+    const nodeIds = Object.keys(regionGraphState.nodesMap)
+        .filter((id) => !id.startsWith("__hpa_"))
+        .sort();
+    connectRegionIdxPairs(regionGraphState.nodesMap, nodeIds, pairs);
+    return writeRegionGraphToSab();
+}
+function postGraphPatchDone(meta) {
+    self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [] });
 }
 function writeCellPath(slot, path) {
     const pathMeta = slotPathMeta(slot);
@@ -385,6 +477,7 @@ self.onmessage = function (e) {
         maxGraphNodes = data.maxGraphNodes;
         maxGraphEdges = data.maxGraphEdges;
         maxCellsPerChunk = data.maxCellsPerChunk;
+        minCellsPerChunk = data.minCellsPerChunk;
         sabPathMetaPool = data.sabPathMetaPool;
         sabPathColsPool = data.sabPathColsPool;
         sabPathRowsPool = data.sabPathRowsPool;
@@ -395,6 +488,7 @@ self.onmessage = function (e) {
         sabPersistGraphEdgeTargets = data.sabPersistGraphEdgeTargets;
         sabPersistGraphEdgeCosts = data.sabPersistGraphEdgeCosts;
         sabPersistGraphEdgeSources = data.sabPersistGraphEdgeSources;
+        sabCellToRegionIdx = data.sabCellToRegionIdx;
         return;
     }
     if (type === "buildNavSnapshot") {
@@ -407,9 +501,19 @@ self.onmessage = function (e) {
         self.postMessage({ type: "syncNavDone" });
         return;
     }
-    if (type === "syncAbstractGraph") {
-        syncPersistAbstractGraph(e.data.nodeCount, e.data.edgeWrite);
-        self.postMessage({ type: "graphSyncDone" });
+    if (type === "buildRegionGraphFull") {
+        if (e.data.sabCellToRegionIdx) sabCellToRegionIdx = e.data.sabCellToRegionIdx;
+        postGraphPatchDone(buildRegionGraphFullOnWorker(e.data));
+        return;
+    }
+    if (type === "patchRegionGraph") {
+        if (e.data.sabCellToRegionIdx) sabCellToRegionIdx = e.data.sabCellToRegionIdx;
+        postGraphPatchDone(patchRegionGraphOnWorker(e.data));
+        return;
+    }
+    if (type === "connectRegionIdxPairs") {
+        if (e.data.sabCellToRegionIdx) sabCellToRegionIdx = e.data.sabCellToRegionIdx;
+        postGraphPatchDone(connectRegionIdxPairsOnWorker(e.data.pairs));
         return;
     }
     if (type === "replan") {

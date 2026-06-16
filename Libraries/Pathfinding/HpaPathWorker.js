@@ -1,5 +1,6 @@
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
-import { packHpaGraphForWorker, MAX_HPA_GRAPH_NODES } from "./hpaAbstractFlat.js";
+import { MAX_HPA_GRAPH_NODES } from "./hpaAbstractFlat.js";
+import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import {
     bakeHopCsr,
     copyNavTopologySlicesIntoRect,
@@ -12,6 +13,7 @@ import {
 } from "./GridNavSnapshot.js";
 import { buildHpaReplanResult, prepareHpaReplanPrep, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
 import { isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
+import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
@@ -20,7 +22,7 @@ const MAX_GRAPH_EDGES = MAX_HPA_GRAPH_NODES * 32;
 const HPA_DONE = "hpaDone";
 const ABSTRACT_READY = "abstractReady";
 const SYNC_NAV_DONE = "syncNavDone";
-const GRAPH_SYNC_DONE = "graphSyncDone";
+const GRAPH_PATCH_DONE = "graphPatchDone";
 /**
  * Multi-slot HPA worker — persistent nav snapshot + abstract graph on worker thread.
  */
@@ -37,13 +39,19 @@ export class HpaPathWorker {
         this._pendingPatchBounds = null;
         this._deferFullNavSync = false;
         this._graphEpoch = -1;
-        this._graphSyncTargetEpoch = -1;
-        this._graphSyncPromise = null;
+        this._graphPatchTargetEpoch = -1;
+        this._graphPatchChain = Promise.resolve();
+        this._graphSize = 0;
+        this._damagePadding = 12;
+        /** @type {(() => void) | null} */
+        this.onGraphPatched = null;
         this.graphIdToIdx = new Map();
         this.graphNodeIds = [];
         this.graphNodeCol = new Int16Array(0);
         this.graphNodeRow = new Int16Array(0);
         this.graphNodeCount = 0;
+        this.graphEdgeOffsets = new Int32Array(0);
+        this.graphCellToRegion = new Int16Array(0);
         this._slotFree = [];
         for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
         this._slotOwner = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
@@ -59,6 +67,8 @@ export class HpaPathWorker {
         this.sabPersistGraphEdgeTargets = new SharedArrayBuffer(MAX_GRAPH_EDGES * 2);
         this.sabPersistGraphEdgeCosts = new SharedArrayBuffer(MAX_GRAPH_EDGES * 2);
         this.sabPersistGraphEdgeSources = new SharedArrayBuffer(MAX_GRAPH_EDGES * 2);
+        this.sabCellToRegionIdx = new SharedArrayBuffer(4);
+        this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx);
         this.host.worker.onmessage = (e) => {
             const { type, slot, requestId } = e.data;
             if (type === SYNC_NAV_DONE) {
@@ -74,12 +84,17 @@ export class HpaPathWorker {
                 }
                 return;
             }
-            if (type === GRAPH_SYNC_DONE) {
-                this._graphEpoch = this._graphSyncTargetEpoch;
-                const resolve = this._graphSyncResolve;
-                this._graphSyncResolve = null;
-                this._graphSyncPromise = null;
-                resolve();
+            if (type === GRAPH_PATCH_DONE) {
+                this.graphNodeCount = e.data.nodeCount;
+                this.graphNodeIds = e.data.nodeIds ?? [];
+                this.graphIdToIdx = new Map();
+                for (let i = 0; i < this.graphNodeIds.length; i++) this.graphIdToIdx.set(this.graphNodeIds[i], i);
+                this._graphEpoch = this._graphPatchTargetEpoch;
+                this._mirrorGraphFromSab();
+                const resolve = this._graphPatchResolve;
+                this._graphPatchResolve = null;
+                resolve?.();
+                this.onGraphPatched?.();
                 return;
             }
             if (type === ABSTRACT_READY) {
@@ -102,6 +117,7 @@ export class HpaPathWorker {
                 maxGraphNodes: MAX_HPA_GRAPH_NODES,
                 maxGraphEdges: MAX_GRAPH_EDGES,
                 maxCellsPerChunk: gridSettings.maxCellsPerChunk,
+                minCellsPerChunk: gridSettings.minCellsPerChunk,
                 sabPathMetaPool: this.sabPathMetaPool,
                 sabPathColsPool: this.sabPathColsPool,
                 sabPathRowsPool: this.sabPathRowsPool,
@@ -112,8 +128,126 @@ export class HpaPathWorker {
                 sabPersistGraphEdgeTargets: this.sabPersistGraphEdgeTargets,
                 sabPersistGraphEdgeCosts: this.sabPersistGraphEdgeCosts,
                 sabPersistGraphEdgeSources: this.sabPersistGraphEdgeSources,
+                sabCellToRegionIdx: this.sabCellToRegionIdx,
             },
         });
+    }
+    _ensureGraphCellBuffers(size) {
+        if (this._graphSize === size) return;
+        this._graphSize = size;
+        this.sabCellToRegionIdx = new SharedArrayBuffer(Math.max(size * 2, 4));
+        this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx);
+    }
+    _mirrorGraphFromSab() {
+        const nodeCount = this.graphNodeCount;
+        this.graphNodeCol = new Int16Array(this.sabPersistGraphNodeCol, 0, nodeCount);
+        this.graphNodeRow = new Int16Array(this.sabPersistGraphNodeRow, 0, nodeCount);
+        this.graphEdgeOffsets = new Int32Array(this.sabPersistGraphEdgeOffsets, 0, nodeCount + 1);
+        this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx, 0, this._graphSize);
+    }
+    _postGraphPatch(type, payload, graphEpoch) {
+        const run = () => {
+            this._graphPatchTargetEpoch = graphEpoch;
+            return new Promise((resolve) => {
+                this._graphPatchResolve = resolve;
+                this.host.worker.postMessage({ type, sabCellToRegionIdx: this.sabCellToRegionIdx, ...payload });
+            });
+        };
+        this._graphPatchChain = this._graphPatchChain.then(run, run);
+        return this._graphPatchChain;
+    }
+    _collectHopRegionPairs(grid) {
+        const cellToRegion = this.graphCellToRegion;
+        if (!cellToRegion.length || !grid.forEachBoundaryHopCell) return [];
+        const pairs = [];
+        const seen = new Set();
+        grid.forEachBoundaryHopCell((fromCol, fromRow, hops) => {
+            const fromRegion = cellToRegion[colRowToIndex(fromCol, fromRow, grid.cols)];
+            if (fromRegion < 0) return;
+            for (let i = 0; i < hops.length; i++) {
+                const { exitCol, exitRow } = hops[i];
+                const toRegion = cellToRegion[colRowToIndex(exitCol, exitRow, grid.cols)];
+                if (toRegion < 0 || fromRegion === toRegion) continue;
+                const lo = Math.min(fromRegion, toRegion);
+                const hi = Math.max(fromRegion, toRegion);
+                const key = `${lo}:${hi}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                pairs.push([lo, hi]);
+            }
+        });
+        return pairs;
+    }
+    async buildRegionGraphFull(grid, seedWorldX = null, seedWorldY = null, graphEpoch = 0) {
+        await this._ensureWorkerNavReady();
+        const size = grid.cols * grid.rows;
+        this._ensureGraphCellBuffers(size);
+        this.setPruneSeed(seedWorldX, seedWorldY);
+        await this._postGraphPatch(
+            "buildRegionGraphFull",
+            { minX: grid.minX, minY: grid.minY, cellSize: grid.cellSize, damagePadding: this._damagePadding, minCellsPerChunk: gridSettings.minCellsPerChunk, seedWorldX, seedWorldY },
+            graphEpoch,
+        );
+        if (grid.edgeStore.portalEdgeCount) await this.reconnectBoundaryHopRegionPairs(grid, graphEpoch);
+    }
+    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds} bounds @param {number} graphEpoch */
+    async patchRegionGraph(grid, bounds, graphEpoch) {
+        await this._ensureWorkerNavReady();
+        const size = grid.cols * grid.rows;
+        this._ensureGraphCellBuffers(size);
+        const box = expandRegionDamageBounds(bounds, grid.cols, grid.rows, this._damagePadding);
+        await this._postGraphPatch(
+            "patchRegionGraph",
+            { startCol: box.startCol, endCol: box.endCol, startRow: box.startRow, endRow: box.endRow, seedWorldX: this._pruneSeedWorldX ?? null, seedWorldY: this._pruneSeedWorldY ?? null },
+            graphEpoch,
+        );
+    }
+    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} [graphEpoch] */
+    async reconnectBoundaryHopRegionPairs(grid, graphEpoch = this._graphEpoch) {
+        const pairs = this._collectHopRegionPairs(grid);
+        if (!pairs.length) return;
+        await this._postGraphPatch("connectRegionIdxPairs", { pairs }, graphEpoch);
+    }
+    async awaitGraphReady() {
+        if (this._navSyncPromise) await this._navSyncPromise;
+        await this._graphPatchChain;
+    }
+    setPruneSeed(worldX, worldY) {
+        this._pruneSeedWorldX = worldX;
+        this._pruneSeedWorldY = worldY;
+    }
+    getCellToRegionView() {
+        return this.graphCellToRegion;
+    }
+    getRegionGraphDebugView(grid) {
+        const nodeCount = this.graphNodeCount;
+        const size = grid.cols * grid.rows;
+        const nodeCol = nodeCount > 0 ? new Int16Array(this.sabPersistGraphNodeCol, 0, nodeCount) : this.graphNodeCol;
+        const nodeRow = nodeCount > 0 ? new Int16Array(this.sabPersistGraphNodeRow, 0, nodeCount) : this.graphNodeRow;
+        const edgeOffsets = nodeCount > 0 ? new Int32Array(this.sabPersistGraphEdgeOffsets, 0, nodeCount + 1) : this.graphEdgeOffsets;
+        const edgeWrite = nodeCount > 0 ? edgeOffsets[nodeCount] : 0;
+        const edgeTargets = new Int16Array(this.sabPersistGraphEdgeTargets, 0, edgeWrite);
+        const cellToRegion = size > 0 ? new Int16Array(this.sabCellToRegionIdx, 0, size) : this.graphCellToRegion;
+        const edges = [];
+        for (let i = 0; i < nodeCount; i++) for (let e = edgeOffsets[i]; e < edgeOffsets[i + 1]; e++) edges.push({ sourceIdx: i, targetIdx: edgeTargets[e] });
+        return {
+            cols: grid.cols,
+            rows: grid.rows,
+            minX: grid.minX,
+            minY: grid.minY,
+            cellSize: grid.cellSize,
+            grid: grid.grid,
+            navGraph: grid,
+            cellToRegion,
+            nodeCount,
+            nodeCol,
+            nodeRow,
+            nodeIds: this.graphNodeIds,
+            edges,
+            gridToWorld(col, row) {
+                return grid.gridToWorld(col, row);
+            },
+        };
     }
     leaseSlot(owner) {
         const slot = this._slotFree.pop();
@@ -194,6 +328,10 @@ export class HpaPathWorker {
         const size = grid.cols * grid.rows;
         return this._navSize === size && size > 0 && this._navKey !== "" && this.navBlocked;
     }
+    async scheduleNavTopologySyncAwait(grid = this.navGraph) {
+        this.scheduleNavTopologySync(grid);
+        if (this._navSyncPromise) await this._navSyncPromise;
+    }
     scheduleNavTopologySync(grid = this.navGraph) {
         const cacheKey = snapshotNavCacheKey(grid);
         if (cacheKey === this._navKey) return;
@@ -239,16 +377,17 @@ export class HpaPathWorker {
         this.scheduleNavTopologySync(grid);
     }
     /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds} bounds */
-    patchNavTopology(grid, bounds) {
+    async patchNavTopology(grid, bounds) {
         const cacheKey = snapshotNavCacheKey(grid);
         if (cacheKey === this._navKey) return;
         if (isEmptyCellBounds(bounds) || grid.gridTopologyEpoch !== this._lastGridTopologyEpoch || !this._canIncrementalPatch(grid)) {
             this._fallbackToFullNavSync(grid);
+            if (this._navSyncPromise) await this._navSyncPromise;
             return;
         }
         this._pendingPatchBounds = unionCellBounds(this._pendingPatchBounds, bounds);
-        if (this._navSyncPromise) return;
-        void this._drainNavTopologySync(grid);
+        if (this._navSyncPromise) await this._navSyncPromise;
+        await this._drainNavTopologySync(grid);
     }
     async _drainNavTopologySync(grid) {
         try {
@@ -300,37 +439,9 @@ export class HpaPathWorker {
         if (cacheKey !== this._navKey) this.scheduleNavTopologySync(grid);
         if (this._navSyncPromise) await this._navSyncPromise;
     }
-    syncAbstractGraph(navigator, graphEpoch) {
-        if (graphEpoch === this._graphEpoch && this.graphNodeCount > 0) return;
-        if (this._graphSyncPromise) return;
-        const nodeIds = Object.keys(navigator.nodesMap).filter((id) => !id.startsWith("__hpa_"));
-        if (nodeIds.length > MAX_HPA_GRAPH_NODES) throw new Error(`HPA abstract graph has ${nodeIds.length} nodes (max ${MAX_HPA_GRAPH_NODES})`);
-        const packed = packHpaGraphForWorker(navigator.nodesMap, nodeIds);
-        this.graphIdToIdx = packed.idToIdx;
-        this.graphNodeIds = packed.nodeIds;
-        this.graphNodeCol = packed.nodeCol;
-        this.graphNodeRow = packed.nodeRow;
-        this.graphNodeCount = packed.nodeCount;
-        this._graphEdgeWrite = packed.edgeWrite;
-        this._graphSyncTargetEpoch = graphEpoch;
-        const persistNodeCol = new Int16Array(this.sabPersistGraphNodeCol);
-        const persistNodeRow = new Int16Array(this.sabPersistGraphNodeRow);
-        const persistEdgeSources = new Int16Array(this.sabPersistGraphEdgeSources);
-        const persistEdgeTargets = new Int16Array(this.sabPersistGraphEdgeTargets);
-        const persistEdgeCosts = new Uint16Array(this.sabPersistGraphEdgeCosts);
-        persistNodeCol.set(packed.nodeCol);
-        persistNodeRow.set(packed.nodeRow);
-        persistEdgeSources.set(packed.edgeSources);
-        persistEdgeTargets.set(packed.edgeTargets);
-        persistEdgeCosts.set(packed.edgeCosts);
-        this._graphSyncPromise = new Promise((resolve) => {
-            this._graphSyncResolve = resolve;
-            this.host.worker.postMessage({ type: "syncAbstractGraph", nodeCount: packed.nodeCount, edgeWrite: packed.edgeWrite });
-        });
-    }
-    async _ensureWorkerGraphReady(navigator, graphEpoch) {
-        this.syncAbstractGraph(navigator, graphEpoch);
-        if (this._graphSyncPromise) await this._graphSyncPromise;
+    async _ensureWorkerGraphReady(graphEpoch) {
+        await this.awaitGraphReady();
+        return this._graphEpoch >= graphEpoch && this.graphNodeCount > 0;
     }
     async _dispatchAndWait(slot, type, extra) {
         const requestId = this.host.post(slot, { type, ...extra });
@@ -350,7 +461,7 @@ export class HpaPathWorker {
     }
     async runOneShotReplan(slot, prep, obstacleGrid, graphEpoch, replanCtx = null) {
         await this._ensureWorkerNavReady();
-        await this._ensureWorkerGraphReady(replanCtx?.navigator, graphEpoch);
+        if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;
         const payload = { mode: prep.mode, startCol: prep.startCol, startRow: prep.startRow, targetCol: prep.targetCol, targetRow: prep.targetRow, localMaxLen: 96 };
         if (prep.mode === "hpa") {
             payload.regionConnectMaxLen = prep.regionConnectMaxLen;
@@ -371,7 +482,6 @@ export class HpaPathWorker {
     /**
      * @param {{
      *   obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid,
-     *   navigator: import("./HierarchicalNavigator.js").HierarchicalNavigator,
      *   startX: number, startY: number, targetX: number, targetY: number,
      *   graphEpoch: number, navState: import("./navSession.js").NavSessionState,
      *   replanRequestId: number,
@@ -379,13 +489,14 @@ export class HpaPathWorker {
      * }} opts
      */
     async requestPath(opts) {
-        const { obstacleGrid, navigator, startX, startY, targetX, targetY, graphEpoch, navState, replanRequestId, onAbstractReady } = opts;
+        const { obstacleGrid, startX, startY, targetX, targetY, graphEpoch, navState, replanRequestId, onAbstractReady } = opts;
         this.releaseOwnedPathSlot(navState);
-        const { startCol, startRow, targetCol, targetRow } = resolveSnappedPathEndpoints(obstacleGrid, navigator, startX, startY, targetX, targetY);
-        const prep = prepareHpaReplanPrep(navigator, this.getGraphMeta(), startCol, startRow, targetCol, targetRow);
+        if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;
+        const { startCol, startRow, targetCol, targetRow } = resolveSnappedPathEndpoints(obstacleGrid, startX, startY, targetX, targetY);
+        const prep = prepareHpaReplanPrep(obstacleGrid, this.getGraphMeta(), this.graphCellToRegion, startCol, startRow, targetCol, targetRow);
         const slot = this.leaseSlot(navState);
         navState.hpaReplanSlot = slot;
-        const replanCtx = { navigator, replanRequestId, onAbstractReady, prep, obstacleGrid };
+        const replanCtx = { replanRequestId, onAbstractReady, prep, obstacleGrid };
         let workerOut = null;
         try {
             workerOut = await this.runOneShotReplan(slot, prep, obstacleGrid, graphEpoch, replanCtx);

@@ -13,13 +13,12 @@ export function findNearestOpenCell(grid, col, row) {
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {import("./HierarchicalNavigator.js").HierarchicalNavigator} navigator
  * @param {number} startX
  * @param {number} startY
  * @param {number} targetX
  * @param {number} targetY
  */
-export function resolveSnappedPathEndpoints(grid, navigator, startX, startY, targetX, targetY) {
+export function resolveSnappedPathEndpoints(grid, startX, startY, targetX, targetY) {
     const startGrid = grid.worldToGrid(startX, startY);
     const targetGrid = grid.worldToGrid(targetX, targetY);
     let startCol = Math.max(0, Math.min(grid.cols - 1, startGrid.col));
@@ -40,21 +39,22 @@ export function resolveSnappedPathEndpoints(grid, navigator, startX, startY, tar
     return { startCol, startRow, targetCol, targetRow };
 }
 /**
- * @param {import("./HierarchicalNavigator.js").HierarchicalNavigator} navigator
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {ReturnType<import("./HpaPathWorker.js").HpaPathWorker["getGraphMeta"]>} graphMeta
+ * @param {Int16Array} cellToRegion
  * @param {number} startCol
  * @param {number} startRow
  * @param {number} targetCol
  * @param {number} targetRow
  */
-export function prepareHpaReplanPrep(navigator, graphMeta, startCol, startRow, targetCol, targetRow) {
-    const cols = navigator.cols;
+export function prepareHpaReplanPrep(grid, graphMeta, cellToRegion, startCol, startRow, targetCol, targetRow) {
+    const cols = grid.cols;
     const startIdx = colRowToIndex(startCol, startRow, cols);
     const targetIdx = colRowToIndex(targetCol, targetRow, cols);
-    const startNode = navigator.cellToNode[startIdx];
-    const targetNode = navigator.cellToNode[targetIdx];
+    const startRegion = cellToRegion[startIdx];
+    const targetRegion = cellToRegion[targetIdx];
     const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);
-    if (cellDist < 32 || (startNode && targetNode && startNode.id === targetNode.id)) return { mode: "local", startCol, startRow, targetCol, targetRow };
+    if (cellDist < 32 || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", startCol, startRow, targetCol, targetRow };
     const { nodeIds, nodeCol, nodeRow } = graphMeta;
     return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: 96 };
 }

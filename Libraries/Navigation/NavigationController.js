@@ -28,16 +28,18 @@ export class NavigationController {
     /**
      * @param {{
      *   flowFieldGrid: object,
-     *   hierarchicalNavigator: object | null,
+     *   obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid,
+     *   hpaPathWorker: import("../Pathfinding/HpaPathWorker.js").HpaPathWorker | null,
      *   settings: object,
      *   planHpa: NavigationControllerHooks["planHpa"],
      *   isArrived?: NavigationControllerHooks["isArrived"],
      *   onSteerComplete?: NavigationControllerHooks["onSteerComplete"],
      * }} config
      */
-    constructor({ flowFieldGrid, hierarchicalNavigator, settings, planHpa, isArrived = null, onSteerComplete = null }) {
+    constructor({ flowFieldGrid, obstacleGrid, hpaPathWorker, settings, planHpa, isArrived = null, onSteerComplete = null }) {
         this.flowFieldGrid = flowFieldGrid;
-        this.hierarchicalNavigator = hierarchicalNavigator;
+        this.obstacleGrid = obstacleGrid;
+        this.hpaPathWorker = hpaPathWorker;
         this.settings = settings;
         this.planHpa = planHpa;
         this.isArrived = isArrived;
@@ -45,7 +47,6 @@ export class NavigationController {
         this.navStates = new WeakMap();
         this.debugByEntity = new WeakMap();
         this.obstacleGeneration = 0;
-        this._gridTopologyEpoch = 0;
     }
     /** @returns {NavSessionState} */
     getNavState(entity) {
@@ -78,7 +79,7 @@ export class NavigationController {
             this._setDebug(entity, { mode: "arrived", dist, replanReason: null, pathLen: 0 });
             return;
         }
-        const useHpa = this.hierarchicalNavigator && dist > profile.hpaThreshold;
+        const useHpa = this.hpaPathWorker && dist > profile.hpaThreshold;
         const navState = this.getNavState(entity);
         let plan;
         if (useHpa) {
@@ -101,21 +102,8 @@ export class NavigationController {
         if (distToCenter > recenterThreshold) grid.shiftCenter(playerX, playerY);
         return newGridPos;
     }
-    onObstaclesChanged(damageBounds, obstacleGrid = null) {
-        const grid = obstacleGrid ?? this.hierarchicalNavigator?.navGraph;
-        if (this.hierarchicalNavigator && grid && grid.gridTopologyEpoch !== this._gridTopologyEpoch) {
-            this._gridTopologyEpoch = grid.gridTopologyEpoch;
-            const centerX = (grid.minX + grid.maxX) / 2;
-            const centerY = (grid.minY + grid.maxY) / 2;
-            this.hierarchicalNavigator.initialize(centerX, centerY);
-        } else if (this.hierarchicalNavigator && damageBounds) this.hierarchicalNavigator.rebuildDamagedArea(damageBounds);
+    invalidateObstacleNav() {
         this.flowFieldGrid.invalidateNavTopology();
-        this.obstacleGeneration += 1;
-    }
-    rebuildNavigationGraph(playerX, playerY) {
-        if (this.hierarchicalNavigator) this.hierarchicalNavigator.rebuildRegions(playerX, playerY);
-        this.flowFieldGrid.invalidateNavTopology();
-        this.obstacleGeneration += 1;
     }
     _checkArrived(entity, targetX, targetY, settings) {
         if (this.isArrived) return this.isArrived(entity, targetX, targetY, settings);

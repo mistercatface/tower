@@ -4,9 +4,9 @@ import { applyHpaAbstractFirst, applyHpaReplanResult, clearHpaNavPath } from "./
  * Coalesces superseding requests; keeps last good path until apply.
  */
 export class HpaPathSession {
-    constructor(hpaPathWorker, hierarchicalNavigator) {
+    /** @param {import("./HpaPathWorker.js").HpaPathWorker} hpaPathWorker */
+    constructor(hpaPathWorker) {
         this.worker = hpaPathWorker;
-        this.hierarchicalNavigator = hierarchicalNavigator;
         this._nextRequestId = 1;
         /** @type {WeakMap<import("./navSession.js").NavSessionState, object>} */
         this._pendingParams = new WeakMap();
@@ -40,7 +40,6 @@ export class HpaPathSession {
                 try {
                     workerOut = await this.worker.requestPath({
                         obstacleGrid: params.obstacleGrid,
-                        navigator: this.hierarchicalNavigator,
                         startX: params.startX,
                         startY: params.startY,
                         targetX: params.targetX,

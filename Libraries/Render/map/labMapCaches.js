@@ -1,4 +1,4 @@
-import { fillCircle, strokeOpenPolyline, strokeSegment, traceSegment } from "../../Canvas/CanvasPath.js";
+import { fillCircle, strokeSegment, traceSegment } from "../../Canvas/CanvasPath.js";
 import { fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba } from "../../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 import { isRailWallEdge } from "../../Spatial/grid/CellEdge.js";
@@ -16,76 +16,69 @@ function bakeCanvas(width, height) {
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
     return createOffscreenCanvas(w, h);
 }
-function bakePathDebugLayer(hnav, minX, minY, maxX, maxY) {
+function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
     const canvas = bakeCanvas(maxX - minX, maxY - minY);
-    if (!canvas || !hnav.grid) return null;
+    if (!canvas || !debugView.grid) return null;
     const ctx = canvas.getContext("2d");
     ctx.translate(-minX, -minY);
-    const endCol = hnav.cols - 1;
-    const endRow = hnav.rows - 1;
+    const endCol = debugView.cols - 1;
+    const endRow = debugView.rows - 1;
+    const cellToRegion = debugView.cellToRegion;
     for (let row = 0; row <= endRow; row++)
         for (let col = 0; col <= endCol; col++) {
-            const isBlocked = hnav.grid[row * hnav.cols + col] !== 0;
-            const wx = hnav.minX + col * hnav.cellSize;
-            const wy = hnav.minY + row * hnav.cellSize;
+            const isBlocked = debugView.grid[row * debugView.cols + col] !== 0;
+            const wx = debugView.minX + col * debugView.cellSize;
+            const wy = debugView.minY + row * debugView.cellSize;
             if (isBlocked) {
                 ctx.fillStyle = "rgba(244, 67, 54, 0.25)";
-                ctx.fillRect(wx, wy, hnav.cellSize, hnav.cellSize);
-            } else if (!hnav.cellToNode || !hnav.cellToNode[row * hnav.cols + col]) {
+                ctx.fillRect(wx, wy, debugView.cellSize, debugView.cellSize);
+            } else if (!cellToRegion || cellToRegion[row * debugView.cols + col] < 0) {
                 ctx.fillStyle = "rgba(76, 175, 80, 0.05)";
-                ctx.fillRect(wx, wy, hnav.cellSize, hnav.cellSize);
+                ctx.fillRect(wx, wy, debugView.cellSize, debugView.cellSize);
             }
         }
-    if (hnav.cellToNode) {
+    if (cellToRegion) {
         ctx.beginPath();
         ctx.strokeStyle = "rgba(0, 229, 255, 0.5)";
         ctx.lineWidth = 1.5;
         for (let row = 0; row <= endRow; row++)
             for (let col = 0; col <= endCol; col++) {
-                const idx = row * hnav.cols + col;
-                if (hnav.grid[idx]) continue;
-                const node = hnav.cellToNode[idx];
-                if (!node) continue;
-                const wx = hnav.minX + col * hnav.cellSize;
-                const wy = hnav.minY + row * hnav.cellSize;
-                const cellSize = hnav.cellSize;
-                if (col + 1 < hnav.cols) {
+                const idx = row * debugView.cols + col;
+                if (debugView.grid[idx]) continue;
+                const region = cellToRegion[idx];
+                if (region < 0) continue;
+                const wx = debugView.minX + col * debugView.cellSize;
+                const wy = debugView.minY + row * debugView.cellSize;
+                const cellSize = debugView.cellSize;
+                if (col + 1 < debugView.cols) {
                     const rIdx = idx + 1;
-                    if (hnav.grid[rIdx] === 0) {
-                        const rightNode = hnav.cellToNode[rIdx];
-                        if (rightNode && rightNode.id !== node.id && hnav.navGraph.canStep(col, row, col + 1, row)) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
+                    if (debugView.grid[rIdx] === 0) {
+                        const rightRegion = cellToRegion[rIdx];
+                        if (rightRegion >= 0 && rightRegion !== region && debugView.navGraph.canStep(col, row, col + 1, row)) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
                     }
                 }
-                if (row + 1 < hnav.rows) {
-                    const bIdx = idx + hnav.cols;
-                    if (hnav.grid[bIdx] === 0) {
-                        const bottomNode = hnav.cellToNode[bIdx];
-                        if (bottomNode && bottomNode.id !== node.id && hnav.navGraph.canStep(col, row, col, row + 1)) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
+                if (row + 1 < debugView.rows) {
+                    const bIdx = idx + debugView.cols;
+                    if (debugView.grid[bIdx] === 0) {
+                        const bottomRegion = cellToRegion[bIdx];
+                        if (bottomRegion >= 0 && bottomRegion !== region && debugView.navGraph.canStep(col, row, col, row + 1)) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
                     }
                 }
             }
         ctx.stroke();
     }
-    for (const id in hnav.nodesMap) {
-        const node = hnav.nodesMap[id];
-        for (const edge of node.edges) {
-            const targetNode = hnav.nodesMap[edge.targetId];
-            if (!targetNode) continue;
-            if (edge.path && edge.path.length > 0) {
-                ctx.strokeStyle = "#ff9800";
-                ctx.lineWidth = 2.5;
-                strokeOpenPolyline(
-                    ctx,
-                    edge.path.map((cell) => hnav.gridToWorld(cell.col, cell.row)),
-                );
-            } else {
-                ctx.strokeStyle = "#ff9800";
-                ctx.lineWidth = 2.5;
-                strokeSegment(ctx, node.x, node.y, targetNode.x, targetNode.y);
-            }
-        }
+    const { nodeCol, nodeRow, nodeCount } = debugView;
+    for (let i = 0; i < nodeCount; i++) {
+        const world = debugView.gridToWorld(nodeCol[i], nodeRow[i]);
         ctx.fillStyle = "#00e5ff";
-        fillCircle(ctx, node.x, node.y, 4);
+        fillCircle(ctx, world.x, world.y, 4);
+    }
+    for (const edge of debugView.edges) {
+        const a = debugView.gridToWorld(nodeCol[edge.sourceIdx], nodeRow[edge.sourceIdx]);
+        const b = debugView.gridToWorld(nodeCol[edge.targetIdx], nodeRow[edge.targetIdx]);
+        ctx.strokeStyle = "#ff9800";
+        ctx.lineWidth = 2.5;
+        strokeSegment(ctx, a.x, a.y, b.x, b.y);
     }
     return { canvas, minX, minY, maxX, maxY };
 }
@@ -121,8 +114,19 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
     return { canvas, minX: obstacleGrid.minX, minY: obstacleGrid.minY, maxX: obstacleGrid.maxX, maxY: obstacleGrid.maxY };
 }
 /** @param {object} state */
-export function rebuildLabMapCaches(state) {
+export function rebuildLabMapOverviewCache(state) {
     const grid = state.obstacleGrid;
-    state.mapPathDebugCache = bakePathDebugLayer(state.hierarchicalNavigator, grid.minX, grid.minY, grid.maxX, grid.maxY);
     state.mapOverviewCache = bakeObstacleOverviewCache(grid, state.mapOverviewCache?.canvas);
+}
+/** @param {object} state */
+export async function rebuildLabPathDebugCache(state) {
+    const grid = state.obstacleGrid;
+    if (state.hpaPathWorker) await state.hpaPathWorker.awaitGraphReady();
+    const debugView = state.hpaPathWorker?.getRegionGraphDebugView(grid);
+    state.mapPathDebugCache = debugView ? bakePathDebugLayer(debugView, grid.minX, grid.minY, grid.maxX, grid.maxY) : null;
+}
+/** @param {object} state */
+export async function rebuildLabMapCaches(state) {
+    rebuildLabMapOverviewCache(state);
+    await rebuildLabPathDebugCache(state);
 }

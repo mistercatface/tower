@@ -4,7 +4,6 @@ import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js"
 import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
-import { HierarchicalNavigator } from "../Libraries/Pathfinding/HierarchicalNavigator.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
@@ -19,11 +18,9 @@ export class SharedGameState {
         this.phase = "simulation";
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.hpaPathWorker = new HpaPathWorker(HPA_WORKER_URL, this.obstacleGrid);
-        this.hierarchicalNavigator = new HierarchicalNavigator(gridSettings.cellSize, gridSettings.maxCellsPerChunk, gridSettings.minCellsPerChunk, this.obstacleGrid, { damagePadding: 12 });
-        this.hierarchicalNavigator.hpaPathWorker = this.hpaPathWorker;
-        this.hpaPathSession = new HpaPathSession(this.hpaPathWorker, this.hierarchicalNavigator);
+        this.hpaPathSession = new HpaPathSession(this.hpaPathWorker);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid, FLOW_FIELD_WORKER_URL, this.hpaPathWorker);
-        this.navigation = new NavigationService(this.flowFieldGrid, this.hierarchicalNavigator, navigationSettings, this.hpaPathWorker);
+        this.navigation = new NavigationService(this.flowFieldGrid, this.obstacleGrid, navigationSettings, this.hpaPathWorker);
         this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());
         this.viewport = null;
         this.lastTime = 0;
@@ -37,8 +34,6 @@ export class SharedGameState {
         this.wallResolver = new WallCollisionResolver();
         this.obstacleGrid.rebuildFixed(0, 0, gridSettings.width, gridSettings.height);
         syncGridTopologyCaches(this.obstacleGrid, "");
-        this.hierarchicalNavigator.initialize(0, 0);
-        this.hpaPathWorker.scheduleNavTopologySync(this.obstacleGrid);
-        this.hpaPathWorker.syncAbstractGraph(this.hierarchicalNavigator, 0);
+        void this.navigation.onObstaclesChanged(null);
     }
 }

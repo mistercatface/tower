@@ -29,7 +29,6 @@ Only for a **true package boundary** with a small, stable top-level API.
 **Canonical template:** `Libraries/Pathfinding/index.js` — four lines, entry types only:
 
 ```javascript
-export { HierarchicalNavigator } from "./HierarchicalNavigator.js";
 export { FlowFieldGrid } from "./FlowFieldGrid.js";
 export { createNavState } from "./navSession.js";
 export * as Corridor from "./Corridor/index.js";

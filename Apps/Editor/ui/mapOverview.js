@@ -1,6 +1,6 @@
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { gridSettings } from "../../../Config/Config.js";
-import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
+import { rebuildLabMapOverviewCache, rebuildLabPathDebugCache } from "../../../Libraries/Render/map/labMapCaches.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../world/mapGenBounds.js";
 import { drawMapGenBoundsPreview, mountOverviewBoundsEditors } from "./mapGenBoundsOverviewEditor.js";
@@ -31,6 +31,7 @@ export function paintMapOverviewFrame(state) {
     if (!stage || !canvas || stage.hidden) return;
     const cache = state.mapOverviewCache;
     const ctx = overviewCtx;
+    if (!cache?.canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(cache.canvas, 0, 0, canvas.width, canvas.height);
     const displayW = canvas.width;
@@ -51,7 +52,8 @@ export function mountMapOverview(state, onBoundsChange = null) {
     const { initialSize, minSize, maxSize } = EDITOR_CANVAS_DEFAULTS.overview;
     const canvas = document.getElementById("mapOverviewCanvas");
     overviewCtx = canvas.getContext("2d");
-    rebuildLabMapCaches(state);
+    rebuildLabMapOverviewCache(state);
+    void rebuildLabPathDebugCache(state);
     overviewCanvasResize = applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize, minSize, maxSize, onResize: () => paintMapOverviewFrame(state) });
     if (onBoundsChange) mountOverviewBoundsEditors(canvas, state, onBoundsChange);
     paintMapOverviewFrame(state);

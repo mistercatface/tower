@@ -10,5 +10,5 @@ export function syncBoundaryNavIndex(state) {
     }
     grid.boundaryNavHops = buildBoundaryNavHops(grid, (g, mouthCol, mouthRow, backCol, backRow) => evaluatePortalStepEntry(state, g, mouthCol, mouthRow, backCol, backRow));
     grid.invalidateGridNavSnapshot();
-    state.hierarchicalNavigator?.connectBoundaryHopRegionPairs?.();
+    void state.hpaPathWorker?.reconnectBoundaryHopRegionPairs(grid);
 }

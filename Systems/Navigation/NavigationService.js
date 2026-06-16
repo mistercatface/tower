@@ -8,15 +8,16 @@ import { planHpaSteering } from "./HpaStrategy.js";
  * into Libraries/Navigation/NavigationController.
  */
 export class NavigationService {
-    constructor(flowFieldGrid, hierarchicalNavigator, settings, hpaPathWorker = null) {
-        const obstacleGrid = hierarchicalNavigator.navGraph;
+    /** @param {import("../../Libraries/Pathfinding/FlowFieldGrid.js").FlowFieldGrid} flowFieldGrid @param {import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {object} settings @param {import("../../Libraries/Pathfinding/HpaPathWorker.js").HpaPathWorker | null} [hpaPathWorker] */
+    constructor(flowFieldGrid, obstacleGrid, settings, hpaPathWorker = null) {
         this._hpaPathWorker = hpaPathWorker;
-        this._hierarchicalNavigator = hierarchicalNavigator;
+        this._obstacleGrid = obstacleGrid;
+        this._lastGridTopologyEpoch = obstacleGrid.gridTopologyEpoch;
         this._controller = new NavigationController({
             flowFieldGrid,
-            hierarchicalNavigator,
-            settings,
+            obstacleGrid,
             hpaPathWorker,
+            settings,
             planHpa: (entity, targetX, targetY, navState, profile, controller, state) =>
                 planHpaSteering(
                     entity,
@@ -64,18 +65,35 @@ export class NavigationService {
         return this._controller.updateFlowField(opts);
     }
     onObstaclesChanged(damageBounds) {
-        this._controller.onObstaclesChanged(damageBounds, this._controller.hierarchicalNavigator?.navGraph);
-        if (this._hpaPathWorker) {
-            const grid = this._controller.hierarchicalNavigator?.navGraph;
-            if (grid && damageBounds && !isEmptyCellBounds(damageBounds)) this._hpaPathWorker.patchNavTopology(grid, damageBounds);
-            else if (grid) this._hpaPathWorker.scheduleNavTopologySync(grid);
-            this._hpaPathWorker.syncAbstractGraph(this._hierarchicalNavigator, this._controller.obstacleGeneration);
+        const grid = this._obstacleGrid;
+        const topologyChanged = grid.gridTopologyEpoch !== this._lastGridTopologyEpoch;
+        if (topologyChanged) this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
+        this._controller.invalidateObstacleNav();
+        if (!this._hpaPathWorker) return Promise.resolve();
+        return this._syncWorkerNavGraph(grid, damageBounds, topologyChanged);
+    }
+    async _syncWorkerNavGraph(grid, damageBounds, topologyChanged) {
+        const graphEpoch = this._controller.obstacleGeneration + 1;
+        if (topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds)) {
+            await this._hpaPathWorker.scheduleNavTopologySyncAwait(grid);
+            const centerX = (grid.minX + grid.maxX) / 2;
+            const centerY = (grid.minY + grid.maxY) / 2;
+            this._hpaPathWorker.setPruneSeed(centerX, centerY);
+            await this._hpaPathWorker.buildRegionGraphFull(grid, centerX, centerY, graphEpoch);
+        } else {
+            await this._hpaPathWorker.patchNavTopology(grid, damageBounds);
+            await this._hpaPathWorker.patchRegionGraph(grid, damageBounds, graphEpoch);
         }
+        this._controller.obstacleGeneration = graphEpoch;
     }
     get obstacleGeneration() {
         return this._controller.obstacleGeneration;
     }
     rebuildNavigationGraph(playerX, playerY) {
-        this._controller.rebuildNavigationGraph(playerX, playerY);
+        this._controller.invalidateObstacleNav();
+        if (this._hpaPathWorker) {
+            this._hpaPathWorker.setPruneSeed(playerX, playerY);
+            void this._syncWorkerNavGraph(this._obstacleGrid, null, true);
+        }
     }
 }

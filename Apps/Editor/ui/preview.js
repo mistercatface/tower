@@ -102,7 +102,7 @@ export function drawLabFrame(state) {
     ctx.fillStyle = "#080a0e";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
-    if (showPathDebug) {
+    if (showPathDebug && state.mapPathDebugCache) {
         ctx.save();
         viewport.apply(ctx);
         const pathCache = state.mapPathDebugCache;

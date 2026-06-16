@@ -1,6 +1,7 @@
 import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
+import { rebuildLabMapCaches, rebuildLabPathDebugCache } from "../../Libraries/Render/map/labMapCaches.js";
 import { TileLabEditorState } from "./TileLabEditorState.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
@@ -13,6 +14,8 @@ export const EDITOR_CANVAS_DEFAULTS = {
 export class TileLabGameState extends SharedGameState {
     constructor() {
         super();
+        this.hpaPathWorker.onGraphPatched = () => void rebuildLabPathDebugCache(this);
+        void rebuildLabMapCaches(this);
         const rand = Math.floor(1 + Math.random() * 1000000000);
         this.mapSeed = rand;
         this.floorSeed = rand;
