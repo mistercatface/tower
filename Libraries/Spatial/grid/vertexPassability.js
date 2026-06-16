@@ -94,8 +94,24 @@ export function recomputeNavCardinalOpen(grid) {
     recomputeNavCardinalOpenInto(grid, out);
     grid.navCardinalOpen = out;
 }
-export function diagonalStepOpen(blocked, vertexPassability, cols, rows, col, row, dc, dr) {
-    if (blocked[colRowToIndex(col + dc, row, cols)] || blocked[colRowToIndex(col, row + dr, cols)]) return false;
+function cardinalLegOpen(cardinalOpen, cols, col, row, dc, dr) {
+    return (cardinalOpen[colRowToIndex(col, row, cols)] & CARDINAL_BITS[`${dc},${dr}`]) !== 0;
+}
+/** Octile corner rule: all four cardinal legs into the diagonal dest must be open (same rule walls get via filled shoulders). */
+function diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr) {
+    const shoulderHCol = col + dc;
+    const shoulderHRow = row;
+    const shoulderVCol = col;
+    const shoulderVRow = row + dr;
+    return (
+        cardinalLegOpen(cardinalOpen, cols, col, row, dc, 0) &&
+        cardinalLegOpen(cardinalOpen, cols, col, row, 0, dr) &&
+        cardinalLegOpen(cardinalOpen, cols, shoulderHCol, shoulderHRow, 0, dr) &&
+        cardinalLegOpen(cardinalOpen, cols, shoulderVCol, shoulderVRow, dc, 0)
+    );
+}
+export function diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, col, row, dc, dr) {
+    if (!diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr)) return false;
     const cvx = dc > 0 ? col + dc : col;
     const cvy = dr > 0 ? row + dr : row;
     const mask = vertexPassability[packVertexKey(cvx, cvy, cols)] ?? 0;
@@ -104,22 +120,15 @@ export function diagonalStepOpen(blocked, vertexPassability, cols, rows, col, ro
     for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return false;
     return true;
 }
-/** Boundary-only diagonal block test — shoulders + vertex half-edge mask. Caller handles destination cell + belts. */
+/** Boundary-only diagonal block test — four cardinal legs + vertex half-edge mask. Caller handles destination cell + belts. */
 export function diagonalBoundaryBlockedFromVertexCache(grid, fromCol, fromRow, toCol, toRow) {
     const dc = toCol - fromCol;
     const dr = toRow - fromRow;
-    if (grid.isBlocked(fromCol + dc, fromRow) || grid.isBlocked(fromCol, fromRow + dr)) return true;
+    if (!diagonalCardinalLegsOpen(grid.navCardinalOpen, grid.cols, fromCol, fromRow, dc, dr)) return true;
     const cvx = dc > 0 ? toCol : fromCol;
     const cvy = dr > 0 ? toRow : fromRow;
     const mask = getVertexPassabilityMask(grid, cvx, cvy);
-    /** @type {Record<string, number[]>} */
-    const bitsByStep = {
-        "1,1": [VERTEX_HALF_EDGE.NwEast, VERTEX_HALF_EDGE.NwSouth, VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.NeSouth],
-        "-1,-1": [VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.SeNorth, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeWest],
-        "1,-1": [VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.NwEast],
-        "-1,1": [VERTEX_HALF_EDGE.NeWest, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.NwSouth],
-    };
-    const need = bitsByStep[`${dc},${dr}`];
+    const need = DIAGONAL_VERTEX_BITS[`${dc},${dr}`];
     if (!need) return true;
     for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return true;
     return false;

@@ -46,7 +46,7 @@ export function buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vert
                 octileNeighbors[octileNeighborOffset(idx, i)] = -1;
                 continue;
             }
-            const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & CARDINAL_BITS[`${dc},${dr}`]) !== 0 : diagonalStepOpen(blocked, vertexPassability, cols, rows, col, row, dc, dr);
+            const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & CARDINAL_BITS[`${dc},${dr}`]) !== 0 : diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, col, row, dc, dr);
             octileNeighbors[octileNeighborOffset(idx, i)] = open ? nIdx : -1;
         }
     });
