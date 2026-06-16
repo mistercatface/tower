@@ -1,95 +1,159 @@
 # Path worker
 
-**~70%** — HPA click-to-move on big maps. **Main requests a path; worker plans and stitches it.** Main applies waypoints and steers — no A\*, stitch, or graph surgery on the click hot path.
+**~75%** — HPA click-to-move on big maps.
 
-The click/replan pipe is largely wired. What blocks “done” is **abstract graph integrity after edits** — incremental split/assign/reconnect leaves wrong region nodes, adjacent duplicate centroids, and edges that don’t match real `canStep` connectivity. The fix is **hull cut + rebuild** (recompute assignment in the dirty patch), not merge heuristics on stale state.
+## North star — main owns sim intent, worker owns nav truth
+
+One rule, two pipes:
+
+| | Main | Worker |
+| --- | ---- | ------ |
+| **Sim** | Write `obstacleGrid` / `edgeStore` / floors (walls, rails, portals, carves) | — |
+| **Nav infra** | — | Derive walkability + regions + abstract CSR; keep correct |
+| **Replan** | Request path (start, target, epoch); apply waypoints; steer | Plan + stitch → return cell path |
+| **After edit** | Dirty bounds + epoch bump | Patch affected nav infra in expanded hull |
+
+**Paths:** main requests a path, worker returns it.
+
+**Edits:** main applies the world change, then says **where** sim state was touched. Worker reads that area and corrects navigation. Main does not repack regions, merge chunks, reconnect abstract edges, or upload the full graph.
 
 ---
 
-## Priorities (in order)
+## What main says vs what worker figures out
 
-### 1. Graph CRUD — predictable edit semantics (~40%)
+Main speaks **sim**, not **nav**. The player removes a rail; main clears the boundary slot and notifies a bounds rect. Main does **not** send “this edge is no longer closed” or “merge these regions” — that is the worker’s job after reading current sim.
 
-`HierarchicalNavigator.rebuildDamagedArea` must behave like a real CRUD layer: edit → graph matches navigable topology, no residue.
+| Layer | Main (authoritative write) | Worker (derived read + fix) |
+| ----- | -------------------------- | --------------------------- |
+| **You think** | “Removed this rail / carved this voxel” | — |
+| **Main writes** | `grid[]`, `edgeStore`, boundary occupancy, floors | — |
+| **Main notifies** | `damageBounds` around the edit + `obstacleGeneration` epoch | — |
+| **Worker reads** | — | Sim in hull (today: packed nav SAB slices; target: derive from sim) |
+| **Worker infers** | — | “This crossing is open now”, “these cells are one walk component”, region partition, abstract edges |
+| **Worker patches** | — | Octile SABs + region CSR in hull |
 
-**Broken today**
+So it is **not** “hey we removed this rail” as the worker API message. It is **“sim was updated here; reconcile nav.”** The rail removal is already in sim when the notify fires. Worker infers open crossings from current sim / walk state — today via packed nav views; target by deriving in hull from sim directly.
 
-- ~~Incremental surgery / repack threshold gate~~ — fixed: `rebuildDamagedArea` is hull cut + rebuild only.
-- **Worker still full-syncs** abstract graph after each edit; `patchRegionGraph` not landed.
-- **No automated tests** for rail maze erase / single-edge delete vs walk components.
-- **Distant latent bugs** — regions never touched by any edit hull keep prior state until an edit reaches them.
+**Dirty bounds** = minimal AABB of what main changed (one cell, edge neighborhood, erase rect). Worker expands hull (`damagePadding`, nav margin) — main does not need to know infection radius long term; tight edit rect is enough.
 
-**Target contract — hull cut + rebuild**
+Main never needs Voronoi seeds, centroids, chunk merge, or abstract edge lists. Only: **sim write**, **where**, **epoch**.
 
-Define a **dirty hull** (edit bounds + `damagePadding` + nav topology margin). Inside the hull, region assignment is **recomputed from current walk topology**, not patched.
+Paths are mostly on this model (`requestPath` → worker). Edits are not — main still runs `rebuildDamagedArea` and `syncAbstractGraph` after every change.
 
-**Mutation trigger:** `onObstaclesChanged(damageBounds)` means nav topology may have changed — always hull-repack. Do **not** gate on `openedCellCount` or voxel opens; rail deletes change `canStep` with `grid` unchanged.
+---
 
-**Post-rebuild invariants (fail loud in dev):** every region is one `canStep`(+hop) component; every assigned floor cell appears in its region’s `cells`; every abstract edge passes `_regionsSharePassableLink`.
+## Today vs target
 
-| Operation | Expectation |
-| --------- | ----------- |
-| **Add** wall/rail | Strip blocked cells; repack open cells in hull; reconnect boundary to exterior; prune unreachable from seed. |
-| **Delete** wall/rail | Same repack — no merge step. One Voronoi partition per `canStep`(+hop) component inside hull; no extra centroids; no stale edges. |
-| **Update** boundary | Same hull semantics for any touched topology. |
+| | Today | Target |
+| --- | ----- | ------ |
+| **Edit** | Main hull-repacks `nodesMap` → `patchNavTopology` → full `syncAbstractGraph` | Main: sim write + `notifySimDirty(bounds, epoch)` → Worker: `patchNavTopology` + `patchRegionGraph` |
+| **Replan** | Main reads `cellToNode` for local vs HPA; awaits worker | Main: `requestPath` only; worker decides mode + plans |
+| **Debug** | `labMapCaches` reads main `nodesMap` | Read-only mirror from worker meta (or dev-only) |
 
-“Passably connected” applies only at the **hull boundary** — which exterior region links to which new interior region across a real `canStep`/hop crossing. Inside the hull, connectivity is whatever flood fill produces.
+Main-thread hull repack (`_repackHullRegions` + `mergeSmallRegions`) is **correct** — validated on cavern add/delete. Worker migration reuses that contract; it does not re-invent it.
 
-**Work**
+---
 
-- Cut: regions touching hull + unassigned open floor in hull → remove nodes → `_createRegionFromCells`.
-- Rebuild: per walk component (distance-to-wall seeding, `maxCellsPerChunk`, `canStep`).
-- Stitch: `_reconnectRegionEdges` on repacked ids; `_validateRegionEdges`; `_assertRegionGraphIntegrity`; prune unreachable from seed.
-- Worker `patchRegionGraph` reuses same hull contract (main implementation lands first).
-- Tests: rail maze erase, single-edge delete — node count, centroids, and edges match walk components.
+## Memory model — today, target, simplify
 
-### 2. Worker-owned abstract graph (~15%)
+### Today (more copies than it looks)
 
-- `patchRegionGraph` on worker — region assignment + persist CSR patch; main drops per-edit `rebuildDamagedArea` + full `packHpaGraphForWorker`
-- Incremental hop CSR (dirty-only; today full O(cells) repack on patch)
+`obstacleGrid` is **not** a SharedArrayBuffer shared with the HPA worker. Main sim lives on the heap; worker gets **derived copies** in its own SABs.
 
-### 3. Path correctness polish
+| Data | Where today | SAB? |
+| ---- | ----------- | ---- |
+| Voxel fill | `obstacleGrid.grid` (main) | No |
+| Rails / portals / forcefields | `edgeStore` — sparse slots + pool (main) | No — not a dense “rail grid” |
+| Walk caches | `vertexPassability`, `navCardinalOpen` (main, rebuilt on edit) | No |
+| Worker nav (blocked, octile, hops) | `HpaPathWorker` `sabBlocked`, `sabOctileNeighbors`, … | Yes — worker-owned; main **packs** slices on patch |
+| Region graph | `nodesMap` / `cellToNode` (main JS) | No |
+| Worker abstract CSR | `sabPersistGraph*` | Yes — worker-owned; main **full-uploads** on each edit |
+| Flow field obstacles | separate `sabObstacle` | Yes — third blocked copy |
 
-- Portal abstract edge cost (centroid Chebyshev today, not hop cost 1)
-- Belt transfer edges (portal hop machinery)
+Rails affect nav as: **edgeStore → passability bake on main → copy into worker nav SABs**. Worker never reads `edgeStore` directly.
+
+```text
+Today (simplified)
+
+Main heap                         Worker SAB
+──────────                        ──────────
+grid[], edgeStore, floors    →    sabBlocked[], sabCardinalOpen[],
+  syncGridTopologyCaches          sabVertexPassability[], octile, hops
+                                  (pack / patch per edit)
+
+nodesMap (JS)                →    sabPersistGraph* (CSR)
+                                  (full syncAbstractGraph per edit)
+
+                                  sabObstacle (flow — another copy)
+```
+
+### Target (two worker domains, one main job)
+
+```text
+Main: sim write + notifySimDirty(bounds, epoch)
+
+Worker (one job per notify):
+  read sim in expanded hull
+  → patch nav SABs (passability, octile, hops)
+  → patch region CSR (hull repack + merge)
+```
+
+Main does not keep parallel nav caches or `nodesMap` for HPA. Two worker SAB domains — **nav** and **graph** — not five parallel models.
+
+### Simplification path
+
+| Step | What collapses | When |
+| ---- | -------------- | ---- |
+| **PR1–2** | Drop dual graph authority (`nodesMap` + full graph upload) | Worker owns persist CSR |
+| **After PR2** | Worker derives passability/octile in hull; stop copying from main `navCardinalOpen` / `vertexPassability` for HPA | One sim→nav pipe on worker |
+| **Later** | Flow field reads shared blocked view; drop third `sabObstacle` copy | After nav SAB is canonical |
+| **Optional** | Flat shared sim SAB (voxels + boundary encoding); worker reads directly, no pack step | Bigger migration; `edgeStore` can stay sparse on main for editor |
+
+**Do not simplify away:** dirty bounds, epoch, sparse `edgeStore` for editing. **Do simplify away:** main-side region graph, main-side nav cache + pack/upload, full `syncAbstractGraph` every edit.
+
+---
+
+## 3 PR plan
+
+### PR1 — Worker `patchRegionGraph` (hull contract on worker)
+
+- Port hull cut + rebuild + `mergeSmallRegions` to worker persist CSR (`HpaWorkerEntry` handler + shared `Libraries/Pathfinding/` modules).
+- Add worker message; call from `onObstaclesChanged` after sim write (dual-run: main still repacks for debug until PR2).
+- Dev assert or test: worker CSR matches main `nodesMap` after edit in dirty hull.
+
+### PR2 — Slim main edit path (worker authoritative)
+
+- Replace main edit stack with: sim write → `notifySimDirty(bounds, epoch)` → worker patches nav + regions.
+- Remove `rebuildDamagedArea` + `syncAbstractGraph` from `onObstaclesChanged` hot path.
+- Debug overlay reads worker graph meta (or thin mirror); main drops `nodesMap` ownership on edit.
+- Begin moving passability/octile derivation into worker patch (stop relying on main→worker cache copy for HPA).
+
+### PR3 — Replan cleanup + regression tests
+
+- Move local-vs-HPA prep off main `cellToNode` into worker replan (main sends endpoints + epoch only).
+- Automated tests: rail maze single-delete, cavern add/delete cycle — graph and paths match fresh load.
+- Delete dead main fallback paths (main abstract A*, stitch) where worker path is unconditional.
+
+---
+
+## Later (not blocking worker migration)
+
+- Worker derives nav from sim in hull (full collapse of main nav cache + pack path)
+- Shared sim SAB (optional) — zero-copy sim read on worker; sparse `edgeStore` can remain on main for editor
+- Consolidate flow-field blocked with worker nav blocked
+- Portal abstract edge cost (centroid Chebyshev today, not hop distance)
+- Belt transfer edges
 - Partial paths: `maxLegs` / `maxCells` on `requestPath`
-
----
-
-## Worker vs main
-
-| | Worker | Main |
-| --- | --- | --- |
-| **Replan** | Abstract A*, temp-connect, per-leg local A*, stitch | `requestPath` → await result |
-| **Nav octile** | Bakes from SABs; `navView` for A* | `patchNavTopology(dirtyBounds)`; zero-copy views |
-| **Path output** | Cell path + abstract idx in slot SABs | `applyHpaReplanResult`; steer from `hpaPathSlot.js` |
-| **Abstract graph** | CSR persist; A* at replan (target) | `nodesMap`; `rebuildDamagedArea` today (→ worker patch) |
-| **Portal traverse** | — | Crossing grant, hop mouth on path follow |
-
-**Click:** `requestPath` → nav/graph sync if stale → worker replan + stitch → main apply.
-
-**Edit (today):** `rebuildDamagedArea` + `patchNavTopology` → worker octile patch → `syncAbstractGraph`.
-
----
-
-## Done
-
-- Worker-owned stitch; main never stitches on replan hot path
-- `HpaPathWorker.requestPath` + SAB path-follow
-- Zero-copy nav views; no octile mirror-back
-- Incremental `patchNavTopology`; full sync only on init / resize / no bounds
-- Cost-only abstract edges; worker local A* at stitch
-- Portal hop mouth clamp on path follow
-- Hull repack default on every topology edit (`_repackHullRegions`); incremental split/assign/subdivide removed
-- Edit-time `canStep` on split/reconnect/prune; edge validation against real crossings
-- Editor eraser (`gen:erase`) for carve testing
 
 ---
 
 ## Rules
 
-- **No main-thread fallbacks** on click/replan — no main A*, stitch, or sync octile bake for convenience; stale epoch → await worker, don’t plan locally
-- One `patchNavTopology` entry; no scattered full-grid repacks
-- No in-memory migration shims — refresh is the migration
-- Extend `Libraries/Pathfinding/` — no parallel worker copies
-- Scene list must not enumerate bulk terrain voxels; no dual nav bake pipelines
+- **Main requests path; worker returns it.**
+- **Main writes sim and notifies where; worker reads sim and corrects nav** — one notify per edit, not scattered rebuild entry points.
+- Notify is bounds + epoch, not nav vocabulary (no region merge / edge-open messages on the wire).
+- Stale epoch → await worker; no local fallbacks for convenience.
+- One `patchNavTopology` entry; one `patchRegionGraph` entry — worker may batch both per notify.
+- No in-memory migration shims — refresh is the migration.
+- Extend `Libraries/Pathfinding/` on worker — no parallel graph copies.
+- Scene list must not enumerate bulk terrain; debug bake is not a second nav pipeline.
