@@ -50,9 +50,8 @@ export { resolveWorldPropSandboxBehavior, resolveWorldPropInputGateRules } from 
 export { spawnPoolRack } from "./spawnPoolRack.js";
 export { SANDBOX_SCENE_SCHEMA_VERSION, applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
-export { evaluatePortalHopEntry, evaluatePortalStepEntry } from "./portalLinks.js";
+export { evaluatePortalHopEntry, canLinkPortalsOnPolicy } from "./portalLinks.js";
 export { tryPortalIntake, applyPortalTraverse } from "./portalTraverse.js";
-export { syncBoundaryNavIndex } from "./boundaryNavSync.js";
 export {
     bakeAnimatedSurfaceFlipbook,
     releaseAnimatedSurfaceFlipbook,

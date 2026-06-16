@@ -14,7 +14,7 @@ import { registerPassageWallContactHandler } from "../Spatial/grid/passageWallCo
 import { invalidateWallResolveCache } from "../Motion/WallCollisionResolver.js";
 import { quantizeCardinalAngle } from "../Math/Angle.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
-import { evaluatePortalStepEntry } from "./portalLinks.js";
+import { evaluatePortalHopEntry } from "./portalLinks.js";
 import { registerPortalPassageStepHandler } from "./portalStep.js";
 const PORTAL_TRAVERSE_COOLDOWN_MS = 50;
 const PORTAL_REJECT_COOLDOWN_MS = 16;
@@ -93,7 +93,9 @@ function assemblePortalIntakeContext(state, entity, segment) {
     const { mouth, back } = portalMouthAndBackCells(gridCol, gridRow, gridSide, edge);
     if (!crossingGrantAllows(entity, mouth.col, mouth.row, cross, entity.vx, entity.vy, entity._frameDispX, entity._frameDispY)) return null;
     if (!portalBodyCrossedEntryPlane(entity.x, entity.y, mouth, back, cross, grid, bodyRadius)) return null;
-    const entry = evaluatePortalStepEntry(state, grid, mouth.col, mouth.row, back.col, back.row);
+    const policy = state.sandbox.passagePower;
+    if (!policy) return null;
+    const entry = evaluatePortalHopEntry(grid, mouth.col, mouth.row, back.col, back.row, policy);
     if (!entry) return null;
     return { grid, cross, entry, gameTime: now };
 }

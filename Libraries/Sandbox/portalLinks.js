@@ -132,7 +132,7 @@ export function linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB) {
     return true;
 }
 /** @param {PortalHopPolicyView} policy @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-function canLinkPortalsOnPolicy(policy, grid, colA, rowA, sideA, colB, rowB, sideB) {
+export function canLinkPortalsOnPolicy(policy, grid, colA, rowA, sideA, colB, rowB, sideB) {
     const keyA = canonicalEdgeCellKey(grid, colA, rowA, sideA);
     const netA = policy.networkIdByKey.get(keyA);
     if (netA === undefined || netA < 0) return false;
@@ -164,21 +164,4 @@ export function evaluatePortalHopEntry(grid, fromCol, fromRow, toCol, toRow, pol
         if (!isSource) return null;
     }
     return { source: { col: ownerCol, row: ownerRow, side: ownerSide }, partner, route };
-}
-/**
- * Part 3 entry gate — returns traverse context when a cardinal step onto a portal is valid.
- * Does not mutate entity state or teleport.
- *
- * @param {object} state
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {number} fromCol
- * @param {number} fromRow
- * @param {number} toCol
- * @param {number} toRow
- * @returns {{ source: { col: number, row: number, side: number }, partner: { col: number, row: number, side: number }, route: ReturnType<typeof resolvePortalLinkRoute> } | null}
- */
-export function evaluatePortalStepEntry(state, grid, fromCol, fromRow, toCol, toRow) {
-    const cache = state.sandbox.passagePower;
-    if (!cache) return null;
-    return evaluatePortalHopEntry(grid, fromCol, fromRow, toCol, toRow, cache);
 }

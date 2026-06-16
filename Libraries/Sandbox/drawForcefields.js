@@ -136,7 +136,7 @@ function createForcefieldDrawProxy(midX, midY, side, cellHalf, edgeKey, { mode, 
 }
 /** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 function passageEdgeDrawRevision(state, grid) {
-    return `${grid.wallGridRevision}:${state.sandbox._passagePowerSyncKey ?? ""}`;
+    return `${grid.wallGridRevision}:${grid._passagePowerNavKey ?? ""}`;
 }
 /** @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 function syncPassageEdgeDrawCache(state, grid) {

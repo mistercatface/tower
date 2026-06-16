@@ -110,19 +110,15 @@ export class FlowFieldGrid {
         this.invalidateLocalTopology();
         this.invalidateFlowSlots();
     }
-    /** Uses worker-built nav snapshot view — no sync buildGridNavSnapshot on main. */
+    /** Nav snapshot must already be synced via NavigationService — never schedules worker nav here. */
     syncLocalTopology() {
         const cacheKey = snapshotNavCacheKey(this.navGraph);
         const snapshot = this.hpaPathWorker?.getNavSnapshotView();
-        if (!snapshot || snapshot.cacheKey !== cacheKey) {
-            this.hpaPathWorker?.scheduleNavTopologySync(this.navGraph);
-            return false;
-        }
+        if (!snapshot || snapshot.cacheKey !== cacheKey) return false;
         return this.ensureLocalTopology(snapshot);
     }
     refresh() {
         this.invalidateNavTopology();
-        this.hpaPathWorker?.scheduleNavTopologySync(this.navGraph);
     }
     shiftCenter(newCenterX, newCenterY) {
         this.centerX = newCenterX;

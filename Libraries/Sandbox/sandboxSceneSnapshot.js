@@ -157,10 +157,9 @@ function clearSandboxSceneContent(state) {
     getSandboxEntityMeta(state).clear();
     unbakeRoomGraph(state);
     clearRoomGraph(state);
-    state.sandbox._passagePowerSyncKey = null;
-    state.sandbox._boundaryNavPortalCount = 0;
     state.sandbox.passagePower = null;
     state.sandbox._passageEdgeDrawCache = null;
+    state.obstacleGrid._passagePowerNavKey = "";
     state.obstacleGrid.portalSlotByKey.clear();
     state.obstacleGrid.vertexPassability = new Uint8Array(0);
 }
@@ -195,7 +194,6 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     applyPassagePowerGridState(state);
     const surfaceBounds = stampBounds ?? { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 };
     await notifyGridWallChange(state, surfaceBounds, { fullNavSync: true });
-    await state.navigation.awaitWorkerNavReady();
     applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);
     syncRoomGraphBake(state);
     for (let i = 0; i < doc.props.length; i++) spawnSnapshotProp(state, doc.props[i]);

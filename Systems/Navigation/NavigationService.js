@@ -1,6 +1,5 @@
 import { NavigationController } from "../../Libraries/Navigation/index.js";
 import { refreshNavCrossingGrant, syncCrossingGrantToEntity } from "../../Libraries/Pathfinding/crossingGrant.js";
-import { snapshotNavCacheKey } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
 import { VIEWPORT_VISIBILITY_PAD_WIDE } from "../../Libraries/Viewport/Viewport.js";
 import { planHpaSteering } from "./HpaStrategy.js";
@@ -110,7 +109,6 @@ export class NavigationService {
             await this._hpaPathWorker.patchRegionGraph(grid, damageBounds, graphEpoch);
         }
         grid.gridNavSnapshot = this._hpaPathWorker.getNavSnapshotView();
-        if (grid.gridNavSnapshot.cacheKey !== snapshotNavCacheKey(grid)) throw new Error("worker nav snapshot stale after sync");
         this._controller.obstacleGeneration = graphEpoch;
     }
     get obstacleGeneration() {

@@ -3,7 +3,6 @@ import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import { packPassageNetworkPolicy } from "./navSimHopBake.js";
 import {
     copyNavSimSabRect,
-    createSnapshotLocalNavView,
     createWorkerNavSnapshotView,
     expandCellBoundsForNavPatch,
     NAV_TOPOLOGY_OCTILE_SHELL,

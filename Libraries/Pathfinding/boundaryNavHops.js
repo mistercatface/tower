@@ -76,14 +76,10 @@ function resolvePortalHopDrawGeometry(grid, fromCol, fromRow, toCol, toRow) {
     return boundaryHopDrawGeometry(grid, match);
 }
 /** @param {{ col: number, row: number }} prev @param {{ col: number, row: number }} curr @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-function boundaryHopOnCellStep(prev, curr, grid) {
+export function boundaryHopOnCellStep(prev, curr, grid) {
     const snap = grid.gridNavSnapshot;
     if (!snap || !snapshotCanBoundaryHop(snap, prev.col, prev.row, curr.col, curr.row)) return null;
     return { mouthCol: prev.col, mouthRow: prev.row, exitCol: curr.col, exitRow: curr.row };
-}
-/** @param {{ col: number, row: number }} prev @param {{ col: number, row: number }} curr @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-export function boundaryHopOnSabCellStep(prev, curr, grid) {
-    return boundaryHopOnCellStep(prev, curr, grid);
 }
 export function boundaryHopDrawGeometry(grid, hop) {
     cellEdgeEndpoints(grid, hop.ownerCol, hop.ownerRow, hop.ownerSide, DRAW_P1, DRAW_P2, 0);
