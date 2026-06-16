@@ -39,7 +39,7 @@ body.shell-tilelab .map-viewport-column {
     --map-viewport-gap: 10px;
     display: flex;
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     gap: var(--map-viewport-gap);
     width: fit-content;
     max-width: 100%;
@@ -53,6 +53,7 @@ body.shell-tilelab .map-stage {
     min-height: 0;
     min-width: 0;
     overflow: hidden;
+    align-self: center;
 }
 
 body.shell-tilelab #gameCanvas {
@@ -66,7 +67,9 @@ body.shell-tilelab #gameCanvas {
 
 body.shell-tilelab .map-viewport-control {
     flex: 0 0 auto;
-    width: 100%;
+    align-self: stretch;
+    width: auto;
+    max-width: 100%;
     box-sizing: border-box;
 }
 

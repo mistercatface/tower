@@ -118,7 +118,7 @@ details.editor-block-motifs {
     flex-direction: column;
     align-items: center;
     flex: 0 0 auto;
-    width: 100%;
+    align-self: center;
     padding: 0;
     background: transparent;
     border: none;
@@ -149,7 +149,7 @@ details.editor-block-motifs {
     flex-direction: column;
     align-items: center;
     flex: 0 0 auto;
-    width: 100%;
+    align-self: center;
     padding: 0;
     background: transparent;
     border: none;

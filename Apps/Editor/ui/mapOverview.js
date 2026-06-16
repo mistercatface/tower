@@ -40,25 +40,25 @@ export function paintMapOverviewFrame(state) {
     const genKind = activeMapGenKind(state);
     if (genKind) paintMapGenBoundsOverlay(ctx, state, genKind, cache, displayW, displayH);
 }
-/** Vertical space for main map max-size when overview is visible. */
-export function estimateMapOverviewHeight() {
-    const stage = document.getElementById("mapOverviewStage");
-    if (!stage || stage.hidden || !overviewCanvasResize) return 0;
-    return overviewCanvasResize.getSize();
-}
-/** @param {import("../state.js").TileLabGameState} state @param {(() => void) | null} [onBoundsChange] */
-export function mountMapOverview(state, onBoundsChange = null) {
+/** @param {import("../state.js").TileLabGameState} state @param {(() => void) | null} [onBoundsChange] @param {() => number} [getSlotMax] */
+export function mountMapOverview(state, onBoundsChange = null, getSlotMax = null) {
     const { initialSize, minSize, maxSize } = EDITOR_CANVAS_DEFAULTS.overview;
     const canvas = document.getElementById("mapOverviewCanvas");
     overviewCtx = canvas.getContext("2d");
-    overviewCanvasResize = applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize, minSize, maxSize, onResize: () => paintMapOverviewFrame(state) });
+    overviewCanvasResize = applySquareCanvasResize(canvas, {
+        host: document.getElementById("mapOverviewHost"),
+        initialSize,
+        minSize,
+        maxSize: getSlotMax ?? maxSize,
+        onResize: () => paintMapOverviewFrame(state),
+    });
     if (onBoundsChange) {
         const getFrame = () => ({ cache: state.mapOverviewCache, displayW: canvas.width, displayH: canvas.height });
         mountOverviewBoundsEditors(canvas, [createMapGenBoundsOverviewEditor(state), createViewportOverviewEditor(state)], getFrame, onBoundsChange);
     }
     paintMapOverviewFrame(state);
 }
-export function syncMapOverviewCanvasSize() {
+export function syncMapOverviewCanvasSize(stackSize) {
     if (!overviewCanvasResize) return;
-    overviewCanvasResize.setSize(overviewCanvasResize.getSize());
+    overviewCanvasResize.setSize(stackSize);
 }

@@ -2,8 +2,8 @@ import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profile
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
 import { ensureLabPathDebugCache } from "../../../Libraries/Render/map/labMapCaches.js";
-import { initAnimationPreview, mountAnimationPreviewCanvas, estimateAnimationPreviewHeight, syncAnimationPreviewCanvasSize } from "./LabAnimationPreview.js";
-import { mountMapOverview, estimateMapOverviewHeight, paintMapOverviewFrame, syncMapOverviewCanvasSize } from "./mapOverview.js";
+import { initAnimationPreview, mountAnimationPreviewCanvas, syncAnimationPreviewCanvasSize } from "./LabAnimationPreview.js";
+import { mountMapOverview, paintMapOverviewFrame, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode } from "./preview.js";
@@ -19,14 +19,21 @@ let profileRefreshTimer = null;
 let mapCanvasResize = null;
 let resizeCanvasesRaf = null;
 /** @param {import("../state.js").TileLabGameState} state */
-function mapColumnLayout(state) {
+function computeMapColumnSlotMax(state) {
     const container = document.querySelector(".map-container");
     const column = document.querySelector(".map-viewport-column");
     const gap = parseFloat(getComputedStyle(column).gap) || 10;
     const controlsH = (document.getElementById("labZoomControl")?.offsetHeight ?? 0) + (document.getElementById("labSpeedControl")?.offsetHeight ?? 0) + gap * 2;
-    const animH = state.editor.showAnimationPreview ? estimateAnimationPreviewHeight() + gap : 0;
-    const overviewH = state.editor.showMapOverview ? estimateMapOverviewHeight() + gap : 0;
-    return { container, gap, controlsH, animH, overviewH };
+    const squareSlots = 1 + (state.editor.showMapOverview ? 1 : 0) + (state.editor.showAnimationPreview ? 1 : 0);
+    const rect = container.getBoundingClientRect();
+    const availableH = rect.height - controlsH - gap * squareSlots;
+    return Math.max(EDITOR_CANVAS_DEFAULTS.main.minSize, Math.floor(Math.min(rect.width - 8, availableH / squareSlots)));
+}
+function fitMapColumnCanvases(state) {
+    const stackSize = computeMapColumnSlotMax(state);
+    syncMapOverviewCanvasSize(stackSize);
+    syncAnimationPreviewCanvasSize(state, stackSize);
+    if (mapCanvasResize) mapCanvasResize.setSize(stackSize);
 }
 function scheduleProfileRefresh(state, drawAfterProfilePush, debounceMs) {
     if (profileRefreshTimer != null) clearTimeout(profileRefreshTimer);
@@ -46,12 +53,13 @@ function resizeCanvases(state) {
     if (resizeCanvasesRaf != null) return;
     resizeCanvasesRaf = requestAnimationFrame(() => {
         resizeCanvasesRaf = null;
-        syncAnimationPreviewCanvasSize(state);
-        if (mapCanvasResize) mapCanvasResize.setSize(mapCanvasResize.getSize());
-        else onMapCanvasResize(state, state.editor.canvas.width);
-        syncMapOverviewCanvasSize();
+        fitMapColumnCanvases(state);
+        if (!mapCanvasResize) onMapCanvasResize(state, state.editor.canvas.width);
         paintMapOverviewFrame(state);
     });
+}
+export function resizeEditorLayout(state) {
+    resizeCanvases(state);
 }
 /** @param {import("../state.js").TileLabGameState} state @param {{ playbackHandlers: import("../../../Libraries/Playback/speedControl.js").PlaybackHandlers }} options */
 export function mountEditorUi(state, { playbackHandlers }) {
@@ -86,10 +94,14 @@ export function mountEditorUi(state, { playbackHandlers }) {
         () => {},
         () => resizeCanvases(state),
     );
-    mountMapOverview(state, () => {
-        paintMapOverviewFrame(state);
-        refreshMapGenPanelInputs();
-    });
+    mountMapOverview(
+        state,
+        () => {
+            paintMapOverviewFrame(state);
+            refreshMapGenPanelInputs();
+        },
+        () => computeMapColumnSlotMax(state),
+    );
     mountPlayAreaToolbarControls(state);
     void initTileLabWorld(state).then(() => {
         resizeCanvases(state);
@@ -130,27 +142,14 @@ export function mountEditorUi(state, { playbackHandlers }) {
     });
     fitLabStageToView(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
-    const { animationPreview, main } = EDITOR_CANVAS_DEFAULTS;
-    mountAnimationPreviewCanvas(animCanvas, {
-        host: document.getElementById("animationPreviewHost"),
-        maxSize: () => {
-            if (!state.editor.showAnimationPreview) return animationPreview.minSize;
-            const { container, gap, controlsH, overviewH } = mapColumnLayout(state);
-            const rect = container.getBoundingClientRect();
-            const available = rect.height - controlsH - overviewH - gap * 3 - 30;
-            return Math.max(animationPreview.minSize, Math.floor(Math.min(rect.width, available) - 8));
-        },
-    });
+    const { main } = EDITOR_CANVAS_DEFAULTS;
+    mountAnimationPreviewCanvas(animCanvas, { host: document.getElementById("animationPreviewHost"), maxSize: () => computeMapColumnSlotMax(state) });
     initAnimationPreview(animCanvas, buildProfileFromEditor);
     mapCanvasResize = applySquareCanvasResize(state.editor.canvas, {
         host: document.getElementById("mapStage"),
         initialSize: main.initialSize,
         minSize: main.minSize,
-        maxSize: () => {
-            const { container, gap, controlsH, animH, overviewH } = mapColumnLayout(state);
-            const rect = container.getBoundingClientRect();
-            return Math.max(main.minSize, Math.floor(Math.min(rect.width, rect.height - controlsH - animH - overviewH) - 8));
-        },
+        maxSize: () => computeMapColumnSlotMax(state),
         onResize: (size) => onMapCanvasResize(state, size, repaintMapOverviewIfVisible),
     });
     initResizer("resizer", () => resizeCanvases(state));

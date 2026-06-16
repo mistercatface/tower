@@ -18,7 +18,7 @@ import { tickGridZones } from "../../Libraries/Sandbox/gridZoneTick.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView } from "./ui/labViewport.js";
-import { mountEditorUi, refreshEditorUi } from "./ui/editorUi.js";
+import { mountEditorUi, refreshEditorUi, resizeEditorLayout } from "./ui/editorUi.js";
 import { drawLabFrame } from "./ui/preview.js";
 /** @type {object[]} */
 const simulationEvents = [];
@@ -98,7 +98,10 @@ export function createEditorApp() {
     }
     events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);
     events.on(Events.UI_UPDATE, () => refreshEditorUi(state));
-    window.addEventListener("resize", () => state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height));
+    window.addEventListener("resize", () => {
+        resizeEditorLayout(state);
+        state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);
+    });
     mountEditorUi(state, { playbackHandlers });
     state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);
     fitLabStageToView(state);

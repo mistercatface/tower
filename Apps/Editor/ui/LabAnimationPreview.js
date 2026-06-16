@@ -42,20 +42,14 @@ function ensurePatchSurface(destW, destH) {
     resizeOffscreenCanvas(patchCanvas, destW, destH);
     if (patchCanvas.width !== prevW || patchCanvas.height !== prevH) patchCtx = patchCanvas.getContext("2d");
 }
-/** Vertical space taken by the animation preview (for map canvas max-size). */
-export function estimateAnimationPreviewHeight() {
-    const stage = document.getElementById("animationStage");
-    if (!stage || stage.hidden) return 0;
-    return animationCanvasResize.getSize();
-}
 /** @param {HTMLCanvasElement} canvas @param {{ host: HTMLElement, maxSize: () => number }} options */
 export function mountAnimationPreviewCanvas(canvas, { host, maxSize }) {
     const { initialSize, minSize } = EDITOR_CANVAS_DEFAULTS.animationPreview;
     animationCanvasResize = applySquareCanvasResize(canvas, { host, initialSize, minSize, maxSize });
 }
-/** @param {import("../state.js").TileLabGameState} state */
-export function syncAnimationPreviewCanvasSize(state) {
-    if (state.editor.showAnimationPreview) animationCanvasResize.setSize(animationCanvasResize.getSize());
+/** @param {number} stackSize */
+export function syncAnimationPreviewCanvasSize(state, stackSize) {
+    if (state.editor.showAnimationPreview) animationCanvasResize.setSize(stackSize);
 }
 export function initAnimationPreview(canvas, getProfileConfig) {
     previewCtx = canvas.getContext("2d");
