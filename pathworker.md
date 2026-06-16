@@ -38,7 +38,7 @@ So it is **not** “hey we removed this rail” as the worker API message. It is
 
 Main never needs Voronoi seeds, centroids, chunk merge, or abstract edge lists. Only: **sim write**, **where**, **epoch**.
 
-Paths are mostly on this model (`requestPath` → worker). Edits are not — main still runs `rebuildDamagedArea` and `syncAbstractGraph` after every change.
+Paths are mostly on this model (`requestPath` → worker). Edits are not — main still runs `rebuildDamagedArea` and `syncAbstractGraph` after every change. Migration is an **atomic cutover** — no dual-run.
 
 ---
 
@@ -104,8 +104,8 @@ Main does not keep parallel nav caches or `nodesMap` for HPA. Two worker SAB dom
 
 | Step | What collapses | When |
 | ---- | -------------- | ---- |
-| **PR1–2** | Drop dual graph authority (`nodesMap` + full graph upload) | Worker owns persist CSR |
-| **After PR2** | Worker derives passability/octile in hull; stop copying from main `navCardinalOpen` / `vertexPassability` for HPA | One sim→nav pipe on worker |
+| **PR1** | Drop dual graph authority (`nodesMap` + full graph upload) | Worker owns persist CSR; main path deleted same PR |
+| **PR2+** | Worker derives passability/octile in hull; stop copying from main `navCardinalOpen` / `vertexPassability` for HPA | One sim→nav pipe on worker |
 | **Later** | Flow field reads shared blocked view; drop third `sabObstacle` copy | After nav SAB is canonical |
 | **Optional** | Flat shared sim SAB (voxels + boundary encoding); worker reads directly, no pack step | Bigger migration; `edgeStore` can stay sparse on main for editor |
 
@@ -115,24 +115,29 @@ Main does not keep parallel nav caches or `nodesMap` for HPA. Two worker SAB dom
 
 ## 3 PR plan
 
-### PR1 — Worker `patchRegionGraph` (hull contract on worker)
+**No dual-run.** Never main + worker both repacking or both authoritative. Flip in one PR; delete the old path same pass.
 
-- Port hull cut + rebuild + `mergeSmallRegions` to worker persist CSR (`HpaWorkerEntry` handler + shared `Libraries/Pathfinding/` modules).
-- Add worker message; call from `onObstaclesChanged` after sim write (dual-run: main still repacks for debug until PR2).
-- Dev assert or test: worker CSR matches main `nodesMap` after edit in dirty hull.
+### PR1 — Worker owns region graph (atomic cutover)
 
-### PR2 — Slim main edit path (worker authoritative)
+Worker becomes the only graph authority on edit. Main path removed in this PR.
 
-- Replace main edit stack with: sim write → `notifySimDirty(bounds, epoch)` → worker patches nav + regions.
-- Remove `rebuildDamagedArea` + `syncAbstractGraph` from `onObstaclesChanged` hot path.
-- Debug overlay reads worker graph meta (or thin mirror); main drops `nodesMap` ownership on edit.
-- Begin moving passability/octile derivation into worker patch (stop relying on main→worker cache copy for HPA).
+- Add `sabCellToRegionIdx` on worker (hull repack needs per-cell assignment; persist CSR is centroids + edges only today).
+- Implement `patchRegionGraph(bounds)` — hull cut + rebuild + `mergeSmallRegions` → persist CSR (shared `Libraries/Pathfinding/` modules).
+- **Delete same PR:** `rebuildDamagedArea` on edit, per-edit `syncAbstractGraph`, full `packHpaGraphForWorker` on edit.
+- Edit pipe: sim write → `notifySimDirty(bounds, epoch)` → await worker `patchNavTopology` + `patchRegionGraph`.
+- Debug overlay: pack thin mirror from worker (`cellToRegion` + CSR) for `labMapCaches`; no main `nodesMap` on edit.
+- Init / resize: full worker graph build (one-shot), same pattern as nav full sync today.
 
-### PR3 — Replan cleanup + regression tests
+### PR2 — Replan + nav simplification
 
-- Move local-vs-HPA prep off main `cellToNode` into worker replan (main sends endpoints + epoch only).
-- Automated tests: rail maze single-delete, cavern add/delete cycle — graph and paths match fresh load.
-- Delete dead main fallback paths (main abstract A*, stitch) where worker path is unconditional.
+- Local-vs-HPA prep on worker (drop main `cellToNode` reads).
+- Worker derives passability/octile in hull on patch where possible.
+- Delete dead main graph code (`nodesMap` edit path, main abstract A* / stitch fallbacks).
+
+### PR3 — Regression tests
+
+- Rail maze single-delete, cavern add/delete cycle — paths match fresh load.
+- Edit → replan without refresh.
 
 ---
 
@@ -155,5 +160,6 @@ Main does not keep parallel nav caches or `nodesMap` for HPA. Two worker SAB dom
 - Stale epoch → await worker; no local fallbacks for convenience.
 - One `patchNavTopology` entry; one `patchRegionGraph` entry — worker may batch both per notify.
 - No in-memory migration shims — refresh is the migration.
+- No dual-run — flip worker authority and delete the main path in the same PR; one system per concern.
 - Extend `Libraries/Pathfinding/` on worker — no parallel graph copies.
 - Scene list must not enumerate bulk terrain; debug bake is not a second nav pipeline.
