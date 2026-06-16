@@ -15,7 +15,6 @@ export class TileLabEditorState {
         this.sidebarPanel = "sandbox";
         this.showAnimationPreview = false;
         this.showMapOverview = true;
-        this.showMapOverviewViewport = true;
         this.forceVectorPropsAll = false;
     }
 }

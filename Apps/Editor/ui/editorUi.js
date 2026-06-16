@@ -113,12 +113,6 @@ export function mountEditorUi(state, { playbackHandlers }) {
     });
     bindVectorPropsToolbar(state, () => {});
     syncWorldRenderModeUi(state);
-    const overviewViewportInput = document.getElementById("showMapOverviewViewportInput");
-    overviewViewportInput.checked = state.editor.showMapOverviewViewport;
-    overviewViewportInput.addEventListener("change", (e) => {
-        state.editor.showMapOverviewViewport = /** @type {HTMLInputElement} */ (e.target).checked;
-        paintMapOverviewFrame(state);
-    });
     const selectionRingsInput = document.getElementById("showSelectionRingsInput");
     selectionRingsInput.checked = state.sandbox.controller.getShowSelectionRings();
     selectionRingsInput.addEventListener("change", (e) => {

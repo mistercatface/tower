@@ -1,7 +1,7 @@
 import { gridSettings } from "../../../Config/Config.js";
 import { getInnerRadiusCells, getMapGenBoundsAabbCache, getMapGenBoundsCenterWorld, getMapGenBoundsConfig, migrateMapGenBoundsForMode } from "../world/mapGenBounds.js";
 import { activeMapGenKind } from "./mapOverview.js";
-import { drawWorldBoundsBox, drawWorldCircle, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
+import { drawWorldBoundsBox, drawWorldCircle, hitTestRectAabb, overviewBoundsCursor, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
 const EDGE_HIT_PX = 8;
 /** @typedef {"move" | "resize-outer" | "resize-inner" | "resize-e" | "resize-w" | "resize-n" | "resize-s" | "resize-se" | "resize-sw" | "resize-ne" | "resize-nw"} MapGenBoundsDragMode */
 /** @param {CanvasRenderingContext2D} ctx @param {import("../world/mapGenBounds.js").MapGenBoundsConfig} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @param {string} [color] */
@@ -27,31 +27,7 @@ export function drawMapGenBoundsPreview(ctx, config, cache, displayW, displayH, 
  */
 export function hitTestMapGenBounds(sx, sy, config, boundsCache, cache, displayW, displayH) {
     const cellSize = gridSettings.cellSize;
-    if (config.boundsMode === "rect") {
-        const bounds = boundsCache.aabb;
-        const tl = worldToScreen(bounds.minX, bounds.minY, cache, displayW, displayH);
-        const br = worldToScreen(bounds.maxX, bounds.maxY, cache, displayW, displayH);
-        const left = tl.x;
-        const top = tl.y;
-        const right = br.x;
-        const bottom = br.y;
-        const nearLeft = Math.abs(sx - left) <= EDGE_HIT_PX;
-        const nearRight = Math.abs(sx - right) <= EDGE_HIT_PX;
-        const nearTop = Math.abs(sy - top) <= EDGE_HIT_PX;
-        const nearBottom = Math.abs(sy - bottom) <= EDGE_HIT_PX;
-        const insideX = sx >= left && sx <= right;
-        const insideY = sy >= top && sy <= bottom;
-        if (!insideX || !insideY) return null;
-        if (nearRight && nearBottom) return "resize-se";
-        if (nearLeft && nearBottom) return "resize-sw";
-        if (nearRight && nearTop) return "resize-ne";
-        if (nearLeft && nearTop) return "resize-nw";
-        if (nearRight) return "resize-e";
-        if (nearLeft) return "resize-w";
-        if (nearBottom) return "resize-s";
-        if (nearTop) return "resize-n";
-        return "move";
-    }
+    if (config.boundsMode === "rect") return hitTestRectAabb(sx, sy, boundsCache.aabb, cache, displayW, displayH);
     const center = getMapGenBoundsCenterWorld(config, cellSize);
     const centerS = worldToScreen(center.x, center.y, cache, displayW, displayH);
     const distPx = Math.hypot(sx - centerS.x, sy - centerS.y);
@@ -134,67 +110,85 @@ export function applyMapGenBoundsDragAtPointer(mode, worldX, worldY, config) {
     } else if (mode === "resize-inner") config.donutThicknessCells = Math.max(1, Math.min(config.outerRadiusCells - 1, Math.round(config.outerRadiusCells - distCells)));
     migrateMapGenBoundsForMode(config);
 }
-/** @param {MapGenBoundsDragMode | null} mode */
-export function mapGenBoundsCursor(mode) {
-    if (!mode) return "default";
-    if (mode === "move") return "move";
-    if (mode === "resize-outer" || mode === "resize-inner") return "nwse-resize";
-    if (mode === "resize-e" || mode === "resize-w") return "ew-resize";
-    if (mode === "resize-n" || mode === "resize-s") return "ns-resize";
-    return "nwse-resize";
+/**
+ * @typedef {object} OverviewBoundsEditor
+ * @property {() => boolean} isEnabled
+ * @property {(sx: number, sy: number, frame: { cache: import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache, displayW: number, displayH: number }) => MapGenBoundsDragMode | null} hitTest
+ * @property {(mode: MapGenBoundsDragMode, dxWorld: number, dyWorld: number, worldX: number, worldY: number) => void} applyDrag
+ */
+/** @param {import("../state.js").TileLabGameState} state @returns {OverviewBoundsEditor} */
+export function createMapGenBoundsOverviewEditor(state) {
+    return {
+        isEnabled: () => activeMapGenKind(state) !== null,
+        hitTest: (sx, sy, frame) => {
+            const genKind = activeMapGenKind(state);
+            if (!genKind) return null;
+            const config = getMapGenBoundsConfig(state.editor, genKind);
+            const boundsCache = getMapGenBoundsAabbCache(state.editor, genKind);
+            return hitTestMapGenBounds(sx, sy, config, boundsCache, frame.cache, frame.displayW, frame.displayH);
+        },
+        applyDrag: (mode, dxWorld, dyWorld, worldX, worldY) => {
+            const genKind = activeMapGenKind(state);
+            if (!genKind) return;
+            const config = getMapGenBoundsConfig(state.editor, genKind);
+            if (mode === "resize-outer" || mode === "resize-inner") applyMapGenBoundsDragAtPointer(mode, worldX, worldY, config);
+            else applyMapGenBoundsDrag(mode, dxWorld, dyWorld, config);
+        },
+    };
 }
-/** @param {HTMLCanvasElement} canvas @param {import("../state.js").TileLabGameState} state @param {() => void} onChange */
-export function mountOverviewBoundsEditors(canvas, state, onChange) {
-    /** @type {"cavern" | "rail" | "erase" | null} */
-    let dragTarget = null;
+/** @param {import("../state.js").TileLabGameState} state @returns {OverviewBoundsEditor} */
+export function createViewportOverviewEditor(state) {
+    return {
+        isEnabled: () => state.editor.showMapOverview,
+        hitTest: (sx, sy, frame) => hitTestRectAabb(sx, sy, state.viewport.boundsClip, frame.cache, frame.displayW, frame.displayH, { moveOnly: true }),
+        applyDrag: (mode, dxWorld, dyWorld) => {
+            if (mode === "move") state.viewport.snapTo(state.viewport.x + dxWorld, state.viewport.y + dyWorld);
+        },
+    };
+}
+/** @param {HTMLCanvasElement} canvas @param {OverviewBoundsEditor[]} editors @param {() => { cache: import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache, displayW: number, displayH: number }} getFrame @param {() => void} onChange */
+export function mountOverviewBoundsEditors(canvas, editors, getFrame, onChange) {
+    /** @type {OverviewBoundsEditor | null} */
+    let dragEditor = null;
     /** @type {MapGenBoundsDragMode | null} */
     let dragMode = null;
     let lastWorldX = 0;
     let lastWorldY = 0;
-    const getFrame = () => {
-        const cache = state.mapOverviewCache;
-        return { cache, displayW: canvas.width, displayH: canvas.height };
+    const pointerToScreen = (e, frame) => {
+        const rect = canvas.getBoundingClientRect();
+        return { sx: ((e.clientX - rect.left) / rect.width) * frame.displayW, sy: ((e.clientY - rect.top) / rect.height) * frame.displayH };
+    };
+    const resolveHit = (sx, sy, frame) => {
+        for (const editor of editors) {
+            if (!editor.isEnabled()) continue;
+            const hit = editor.hitTest(sx, sy, frame);
+            if (hit) return { editor, hit };
+        }
+        return null;
     };
     canvas.addEventListener("pointermove", (e) => {
         const frame = getFrame();
-        const rect = canvas.getBoundingClientRect();
-        const sx = ((e.clientX - rect.left) / rect.width) * frame.displayW;
-        const sy = ((e.clientY - rect.top) / rect.height) * frame.displayH;
+        const { sx, sy } = pointerToScreen(e, frame);
         if (!dragMode) {
-            const genKind = activeMapGenKind(state);
-            if (!genKind) {
-                canvas.style.cursor = "default";
-                return;
-            }
-            const config = getMapGenBoundsConfig(state.editor, genKind);
-            const boundsCache = getMapGenBoundsAabbCache(state.editor, genKind);
-            const hit = hitTestMapGenBounds(sx, sy, config, boundsCache, frame.cache, frame.displayW, frame.displayH);
-            canvas.style.cursor = mapGenBoundsCursor(hit);
+            const resolved = resolveHit(sx, sy, frame);
+            canvas.style.cursor = overviewBoundsCursor(resolved?.hit ?? null);
             return;
         }
         const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
-        const config = getMapGenBoundsConfig(state.editor, dragTarget);
-        if (dragMode === "resize-outer" || dragMode === "resize-inner") applyMapGenBoundsDragAtPointer(dragMode, world.x, world.y, config);
-        else applyMapGenBoundsDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, config);
+        dragEditor.applyDrag(dragMode, world.x - lastWorldX, world.y - lastWorldY, world.x, world.y);
         lastWorldX = world.x;
         lastWorldY = world.y;
         onChange();
     });
     canvas.addEventListener("pointerdown", (e) => {
         const frame = getFrame();
-        const genKind = activeMapGenKind(state);
-        if (!genKind) return;
-        const rect = canvas.getBoundingClientRect();
-        const sx = ((e.clientX - rect.left) / rect.width) * frame.displayW;
-        const sy = ((e.clientY - rect.top) / rect.height) * frame.displayH;
-        const config = getMapGenBoundsConfig(state.editor, genKind);
-        const boundsCache = getMapGenBoundsAabbCache(state.editor, genKind);
-        const hit = hitTestMapGenBounds(sx, sy, config, boundsCache, frame.cache, frame.displayW, frame.displayH);
-        if (!hit) return;
+        const { sx, sy } = pointerToScreen(e, frame);
+        const resolved = resolveHit(sx, sy, frame);
+        if (!resolved) return;
         e.preventDefault();
         e.stopPropagation();
-        dragTarget = genKind;
-        dragMode = hit;
+        dragEditor = resolved.editor;
+        dragMode = resolved.hit;
         const world = screenToWorld(sx, sy, frame.cache, frame.displayW, frame.displayH);
         lastWorldX = world.x;
         lastWorldY = world.y;
@@ -203,7 +197,7 @@ export function mountOverviewBoundsEditors(canvas, state, onChange) {
     const finishDrag = (e) => {
         if (!dragMode) return;
         canvas.releasePointerCapture(e.pointerId);
-        dragTarget = null;
+        dragEditor = null;
         dragMode = null;
     };
     canvas.addEventListener("pointerup", finishDrag);

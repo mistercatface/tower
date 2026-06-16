@@ -2,7 +2,7 @@ import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { gridSettings } from "../../../Config/Config.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../world/mapGenBounds.js";
-import { drawMapGenBoundsPreview, mountOverviewBoundsEditors } from "./mapGenBoundsOverviewEditor.js";
+import { createMapGenBoundsOverviewEditor, createViewportOverviewEditor, drawMapGenBoundsPreview, mountOverviewBoundsEditors } from "./mapGenBoundsOverviewEditor.js";
 import { drawWorldBoundsBox } from "./mapOverviewDraw.js";
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let overviewCanvasResize = null;
@@ -36,7 +36,7 @@ export function paintMapOverviewFrame(state) {
     const displayW = canvas.width;
     const displayH = canvas.height;
     refreshAllMapGenBoundsPreviews(state.editor, gridSettings.cellSize);
-    if (state.editor.showMapOverviewViewport) drawWorldBoundsBox(ctx, state.viewport.boundsClip, cache, displayW, displayH, "#00e5ff");
+    drawWorldBoundsBox(ctx, state.viewport.boundsClip, cache, displayW, displayH, "#00e5ff");
     const genKind = activeMapGenKind(state);
     if (genKind) paintMapGenBoundsOverlay(ctx, state, genKind, cache, displayW, displayH);
 }
@@ -52,7 +52,10 @@ export function mountMapOverview(state, onBoundsChange = null) {
     const canvas = document.getElementById("mapOverviewCanvas");
     overviewCtx = canvas.getContext("2d");
     overviewCanvasResize = applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize, minSize, maxSize, onResize: () => paintMapOverviewFrame(state) });
-    if (onBoundsChange) mountOverviewBoundsEditors(canvas, state, onBoundsChange);
+    if (onBoundsChange) {
+        const getFrame = () => ({ cache: state.mapOverviewCache, displayW: canvas.width, displayH: canvas.height });
+        mountOverviewBoundsEditors(canvas, [createMapGenBoundsOverviewEditor(state), createViewportOverviewEditor(state)], getFrame, onBoundsChange);
+    }
     paintMapOverviewFrame(state);
 }
 export function syncMapOverviewCanvasSize() {

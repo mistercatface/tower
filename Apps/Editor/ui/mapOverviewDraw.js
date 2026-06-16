@@ -39,16 +39,53 @@ export function drawWorldCircle(ctx, cx, cy, radius, cache, displayW, displayH, 
     ctx.stroke();
     ctx.restore();
 }
+const EDGE_HIT_PX = 8;
 /**
- * @param {CanvasRenderingContext2D} ctx
+ * @param {number} sx
+ * @param {number} sy
  * @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} bounds
  * @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache
  * @param {number} displayW
  * @param {number} displayH
- * @param {string} strokeStyle
- * @param {number} [lineWidth]
- * @param {number[]} [dash]
+ * @param {{ moveOnly?: boolean }} [options]
+ * @returns {"move" | "resize-e" | "resize-w" | "resize-n" | "resize-s" | "resize-se" | "resize-sw" | "resize-ne" | "resize-nw" | null}
  */
+export function hitTestRectAabb(sx, sy, bounds, cache, displayW, displayH, options = {}) {
+    const { moveOnly = false } = options;
+    const tl = worldToScreen(bounds.minX, bounds.minY, cache, displayW, displayH);
+    const br = worldToScreen(bounds.maxX, bounds.maxY, cache, displayW, displayH);
+    const left = tl.x;
+    const top = tl.y;
+    const right = br.x;
+    const bottom = br.y;
+    const insideX = sx >= left && sx <= right;
+    const insideY = sy >= top && sy <= bottom;
+    if (!insideX || !insideY) return null;
+    if (moveOnly) return "move";
+    const nearLeft = Math.abs(sx - left) <= EDGE_HIT_PX;
+    const nearRight = Math.abs(sx - right) <= EDGE_HIT_PX;
+    const nearTop = Math.abs(sy - top) <= EDGE_HIT_PX;
+    const nearBottom = Math.abs(sy - bottom) <= EDGE_HIT_PX;
+    if (nearRight && nearBottom) return "resize-se";
+    if (nearLeft && nearBottom) return "resize-sw";
+    if (nearRight && nearTop) return "resize-ne";
+    if (nearLeft && nearTop) return "resize-nw";
+    if (nearRight) return "resize-e";
+    if (nearLeft) return "resize-w";
+    if (nearBottom) return "resize-s";
+    if (nearTop) return "resize-n";
+    return "move";
+}
+/** @param {"move" | "resize-e" | "resize-w" | "resize-n" | "resize-s" | "resize-se" | "resize-sw" | "resize-ne" | "resize-nw" | "resize-outer" | "resize-inner" | null} mode */
+export function overviewBoundsCursor(mode) {
+    if (!mode) return "default";
+    if (mode === "move") return "move";
+    if (mode === "resize-outer" || mode === "resize-inner") return "nwse-resize";
+    if (mode === "resize-e" || mode === "resize-w") return "ew-resize";
+    if (mode === "resize-n" || mode === "resize-s") return "ns-resize";
+    return "nwse-resize";
+}
+/** @param {CanvasRenderingContext2D} ctx @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} bounds @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @param {string} strokeStyle @param {number} [lineWidth] @param {number[]} [dash] */
 export function drawWorldBoundsBox(ctx, bounds, cache, displayW, displayH, strokeStyle, lineWidth = 2, dash = null) {
     const mapW = cache.maxX - cache.minX;
     const mapH = cache.maxY - cache.minY;

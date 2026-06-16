@@ -8,7 +8,6 @@ export const TILELAB_UI_HTML = `
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
         <label class="check-inline"><input id="showAnimationPreviewInput" type="checkbox"> Animation Preview</label>
         <label class="check-inline"><input id="showMapOverviewInput" type="checkbox" checked> Map Overview</label>
-        <label class="check-inline"><input id="showMapOverviewViewportInput" type="checkbox" checked> Overview Viewport</label>
         <label class="check-inline"><input id="showSelectionRingsInput" type="checkbox" checked> Selection rings</label>
         <label class="check-inline"><input id="showPropTileCellsInput" type="checkbox"> Prop tile cells</label>
         <label class="check-inline"><input id="showRoomNodesAlwaysInput" type="checkbox"> Show nodes always</label>
