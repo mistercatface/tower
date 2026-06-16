@@ -114,20 +114,32 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
     return { canvas, minX: obstacleGrid.minX, minY: obstacleGrid.minY, maxX: obstacleGrid.maxX, maxY: obstacleGrid.maxY };
 }
 /** @param {object} state */
+export function labPathDebugCacheKey(state) {
+    const grid = state.obstacleGrid;
+    return `${grid.gridTopologyEpoch}:${state.navigation.obstacleGeneration}:${grid.cols}x${grid.rows}`;
+}
+/** @param {object} state */
+export async function ensureLabPathDebugCache(state) {
+    const key = labPathDebugCacheKey(state);
+    if (state._labPathDebugKey === key && state.mapPathDebugCache) return state.mapPathDebugCache;
+    if (state._labPathDebugBake) return state._labPathDebugBake;
+    state._labPathDebugBake = (async () => {
+        const grid = state.obstacleGrid;
+        await state.navigation.awaitWorkerNavReady();
+        const debugView = state.hpaPathWorker.getRegionGraphDebugView(grid);
+        state.mapPathDebugCache = debugView ? bakePathDebugLayer(debugView, grid.minX, grid.minY, grid.maxX, grid.maxY) : null;
+        state._labPathDebugKey = key;
+        state._labPathDebugBake = null;
+        return state.mapPathDebugCache;
+    })();
+    return state._labPathDebugBake;
+}
+/** @param {object} state */
 export function rebuildLabMapOverviewCache(state) {
     const grid = state.obstacleGrid;
     state.mapOverviewCache = bakeObstacleOverviewCache(grid, state.mapOverviewCache?.canvas);
 }
 /** @param {object} state */
-export async function rebuildLabPathDebugCache(state) {
-    const grid = state.obstacleGrid;
-    if (state.navigation?.awaitWorkerNavReady) await state.navigation.awaitWorkerNavReady();
-    else if (state.hpaPathWorker) await state.hpaPathWorker.awaitGraphReady();
-    const debugView = state.hpaPathWorker?.getRegionGraphDebugView(grid);
-    state.mapPathDebugCache = debugView ? bakePathDebugLayer(debugView, grid.minX, grid.minY, grid.maxX, grid.maxY) : null;
-}
-/** @param {object} state */
-export async function rebuildLabMapCaches(state) {
+export function rebuildLabMapCaches(state) {
     rebuildLabMapOverviewCache(state);
-    await rebuildLabPathDebugCache(state);
 }

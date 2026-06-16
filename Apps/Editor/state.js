@@ -2,7 +2,6 @@ import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
-import { rebuildLabPathDebugCache } from "../../Libraries/Render/map/labMapCaches.js";
 import { TileLabEditorState } from "./TileLabEditorState.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
@@ -28,7 +27,6 @@ export class TileLabGameState extends SharedGameState {
             }
             return { x: this.viewport.x, y: this.viewport.y };
         });
-        this.hpaPathWorker.onGraphPatched = () => void rebuildLabPathDebugCache(this);
         this.sandbox = new SandboxWorldState();
         this.editor = new TileLabEditorState();
     }

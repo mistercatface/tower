@@ -39,8 +39,7 @@ Edit / init on main:
 Replan:
   HpaPathSession.requestPath → worker slot (local A* or abstract + stitch)
 
-Debug (Tile Lab):
-  labMapCaches ← getRegionGraphDebugView() (worker SAB mirror)
+Debug (Tile Lab): checkbox on → `ensureLabPathDebugCache` reads worker SAB mirror when `obstacleGeneration` / grid epoch changes; no eager bake on edit.
 ```
 
 **Region graph:** `nodesMap` / hull repack live only on the worker (`HpaWorkerEntry` `regionGraphState`). Main mirrors CSR + `cellToRegion` from SABs for debug and replan prep — not a second authoritative graph.

@@ -1,6 +1,7 @@
 import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { initResizer } from "./lab-shared.js";
+import { ensureLabPathDebugCache } from "../../../Libraries/Render/map/labMapCaches.js";
 import { initAnimationPreview, mountAnimationPreviewCanvas, estimateAnimationPreviewHeight, syncAnimationPreviewCanvasSize } from "./LabAnimationPreview.js";
 import { mountMapOverview, estimateMapOverviewHeight, paintMapOverviewFrame, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
@@ -88,7 +89,10 @@ export function mountEditorUi(state, { playbackHandlers }) {
     });
     mountTilelabSandbox(state, requestRedraw);
     bindToolbarControls({
-        onOverlayChange: () => drawLabFrame(state),
+        onOverlayChange: () => {
+            if (document.getElementById("showPathDebugInput").checked) void ensureLabPathDebugCache(state).then(() => drawLabFrame(state));
+            else drawLabFrame(state);
+        },
         onRedraw: () => {
             commitPlayAreaFromToolbar(state);
             pushEditorProfile(state);
