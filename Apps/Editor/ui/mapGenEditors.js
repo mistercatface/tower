@@ -3,6 +3,7 @@ import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay } from "../world/m
 import { applyPlayAreaConfig, eraseLabWallsInBounds, generateLabCaverns, generateLabRailCaverns } from "../world/mapWorld.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
+import { setFormFieldName } from "../../../Libraries/UI/Component.js";
 import { addNumberField } from "./mapPanelFields.js";
 /** @type {{ input: HTMLInputElement, getValue: () => number }[]} */
 let mapGenBoundInputs = [];
@@ -32,6 +33,7 @@ function appendMapGenBoundsControls(panel, config, state, overlayHint, onPreview
     const modeLabel = document.createElement("span");
     modeLabel.textContent = "Bounds shape";
     const modeSelect = document.createElement("select");
+    setFormFieldName(modeSelect, "boundsShape");
     for (const mode of ["rect", "circle", "donut"]) {
         const opt = document.createElement("option");
         opt.value = mode;

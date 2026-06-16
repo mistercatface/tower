@@ -12,21 +12,14 @@ import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
 export class CombatSpatialFrame extends SpatialFrameCore {
     constructor(cellSize = 50) {
         super(cellSize);
-        this._combatants = [];
         this._pushables = [];
         /** Registry membershipGen when this frame was last populated. */
         this.populatedMembershipGen = -1;
     }
     begin(state) {
-        populateCombatFrame(this, state, this._combatants, this._pushables);
+        populateCombatFrame(this, state, this._pushables);
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
         return this;
-    }
-    forEachCombatantPair(fn) {
-        this.forEachGroupNeighborPair(this._combatants, (a, b) => getInteractionPairFilter("combatant").allows(a, b), fn);
-    }
-    forEachActorPushablePair(fn) {
-        this.forEachGroupNeighborPair(this._combatants, (actor, prop) => getInteractionPairFilter("actorPushable").allows(actor, prop), fn);
     }
     forEachPushablePair(fn) {
         this.forEachGroupNeighborPair(this._pushables, (p1, p2) => getInteractionPairFilter("pushable").allows(p1, p2), fn);

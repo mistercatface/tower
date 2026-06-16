@@ -1,3 +1,11 @@
+export function setFormFieldName(el, key) {
+    const base = String(key)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+    el.name = base || "field";
+}
 export class Component {
     constructor(tagName = "div", className = "") {
         this.element = document.createElement(tagName);

@@ -21,6 +21,7 @@ import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWall
 import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../../../Libraries/RoomGraph/roomGraphCorridorTypes.js";
 import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
+import { setFormFieldName } from "../../../Libraries/UI/Component.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 import { SANDBOX_PALETTE_TAG_FILTERS, resolvePlacePaletteTags, sandboxPaletteMatchesFilter } from "../../../Libraries/Sandbox/sandboxPaletteTags.js";
 const WALL_STAMP_OPTIONS = [
@@ -396,6 +397,7 @@ function renderSceneJsonPanel(container, controller) {
     startDemoBtn.textContent = "Load start demo";
     const textarea = document.createElement("textarea");
     textarea.className = "editor-export-area";
+    setFormFieldName(textarea, "sceneJsonExport");
     textarea.rows = 10;
     textarea.spellcheck = false;
     startDemoBtn.addEventListener("click", () => {
@@ -569,6 +571,7 @@ export function mountSandboxToyUi(container, controller) {
                     defaultField.className = "param-field check-inline";
                     const defaultCheckbox = document.createElement("input");
                     defaultCheckbox.type = "checkbox";
+                    setFormFieldName(defaultCheckbox, "powerSourceDefaultPowered");
                     defaultCheckbox.checked = selectedPowerSource.defaultPowered;
                     defaultCheckbox.addEventListener("change", () => {
                         controller.setSelectedPassagePowerSourceDefaultPowered(defaultCheckbox.checked);
@@ -722,6 +725,7 @@ export function mountSandboxToyUi(container, controller) {
             focusField.className = "param-field check-inline";
             const focusCheckbox = document.createElement("input");
             focusCheckbox.type = "checkbox";
+            setFormFieldName(focusCheckbox, "cameraFocus");
             focusCheckbox.checked = controller.isCameraTarget(selectedProp);
             focusCheckbox.addEventListener("change", () => {
                 controller.setCameraTarget(focusCheckbox.checked, selectedProp);

@@ -25,7 +25,6 @@ export const PROP_STRATEGY_DEFAULTS = {
     tipGravity: 16,
     tipDamping: 2.8,
     tipImpulseGain: 0.035,
-    actorTipGain: 0.2,
     fallenHalfExtents: null,
     fallenRollHeight: null,
     splittable: false,

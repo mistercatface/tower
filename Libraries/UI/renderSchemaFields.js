@@ -2,6 +2,7 @@ import { getByPath, setByPath } from "../Pipeline/objectPath.js";
 import { clampFieldValue } from "../Pipeline/fieldSchema.js";
 import { SliderControl } from "./controls/SliderControl.js";
 import { SelectControl } from "./controls/SelectControl.js";
+import { setFormFieldName } from "./Component.js";
 /**
  * @param {HTMLElement} container
  * @param {Record<string, unknown>} target
@@ -16,6 +17,7 @@ export function renderSchemaFields(container, target, fields, onChange) {
             label.className = "check-inline gen-schema-boolean";
             const input = document.createElement("input");
             input.type = "checkbox";
+            setFormFieldName(input, field.path);
             input.checked = Boolean(getByPath(target, field.path));
             input.addEventListener("change", () => {
                 setByPath(target, field.path, input.checked);

@@ -1,7 +1,6 @@
 import { circlesOverlap, findFirstCircleSegmentHit } from "../../Libraries/Spatial/collision/overlap.js";
 import { runCollisionPipeline } from "../../Libraries/Spatial/collision/collisionPipeline.js";
 import { beginPassageWallContactRun, endPassageWallContactRun } from "../../Libraries/Spatial/grid/passageWallContact.js";
-import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
 /** @type {{ state: object | null, spatialFrame: object | null, events: object[] | null }} */
 const collisionRunCtx = { state: null, spatialFrame: null, events: null };
@@ -27,13 +26,6 @@ const collisionPipelineHooks = {
     resolveWalls(entity, frame) {
         collisionRunCtx.state.wallResolver.resolve(entity, frame);
     },
-    combatantRestitution(a, b) {
-        const chargeInvolved = a.attackType === "charge" || b.attackType === "charge";
-        return chargeInvolved ? 0.65 : 0.15;
-    },
-    onChargeImpact(charger, other, events) {
-        CollisionSystem.applyChargeImpact(charger, other, events);
-    },
 };
 export class CollisionSystem {
     static checkCircle(a, b) {
@@ -55,9 +47,5 @@ export class CollisionSystem {
         } finally {
             endPassageWallContactRun();
         }
-    }
-    static applyChargeImpact(charger, other, events) {
-        if (getInteractionPairFilter("chargeImpact").allows(charger, other)) events.push({ target: other, damage: getCollisionSettings().chargeImpactDamage ?? 0 });
-        charger.changeState("stunned", { timer: 1000, returnState: "charging_prepare" });
     }
 }

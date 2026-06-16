@@ -5,6 +5,7 @@ import { gunSupportsAttachment, isWorldPropAttachmentEnabled, resolveWorldPropSl
 import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout, toggleGunInLoadout, unequipSlot } from "../Combat/equipmentLoadout.js";
 import { isSandboxEquippable } from "./sandboxCapabilities.js";
 import { appendEditorSubhead } from "../UI/paramFields.js";
+import { setFormFieldName } from "../UI/Component.js";
 /**
  * @param {HTMLElement} container
  * @param {object | null} prop
@@ -36,6 +37,7 @@ export function renderSandboxEquipPanel(container, prop, onChange) {
                 laserLabel.className = "sandbox-equip-laser-toggle";
                 const laserCheckbox = document.createElement("input");
                 laserCheckbox.type = "checkbox";
+                setFormFieldName(laserCheckbox, `equipLaserSlot${index + 1}`);
                 laserCheckbox.checked = isWorldPropAttachmentEnabled(prop, index, "laserSights");
                 laserCheckbox.addEventListener("change", () => {
                     setWorldPropAttachmentEnabled(prop, index, "laserSights", laserCheckbox.checked);

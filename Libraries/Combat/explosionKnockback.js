@@ -1,9 +1,6 @@
 import { addXY, lengthXY, normalizeXY } from "../Math/Vec2.js";
 import { beginPassageWallContactRun, endPassageWallContactRun } from "../Spatial/grid/passageWallContact.js";
 export const explosionImpactKnockback = { stunMs: 500, pushMs: 500, pushSpeedMultiplier: 6 };
-function resolveKnockbackReturnState(actor) {
-    return actor.attackType === "charge" ? "charging_prepare" : "navigating";
-}
 function tryApplyExplosionKnockback(actor, pushAngle, spatialFrame, state) {
     if (actor.isDead || actor.faction === "player") return;
     if (actor.currentStateName === "knockedBack") return;
@@ -13,7 +10,7 @@ function tryApplyExplosionKnockback(actor, pushAngle, spatialFrame, state) {
         pushMs: explosionImpactKnockback.pushMs,
         stunMs: explosionImpactKnockback.stunMs,
         pushSpeedMultiplier: explosionImpactKnockback.pushSpeedMultiplier,
-        returnState: resolveKnockbackReturnState(actor),
+        returnState: "navigating",
     });
     beginPassageWallContactRun(state);
     try {

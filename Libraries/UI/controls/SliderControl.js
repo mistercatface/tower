@@ -1,4 +1,4 @@
-import { Component } from "../Component.js";
+import { Component, setFormFieldName } from "../Component.js";
 export class SliderControl extends Component {
     constructor(label, min, max, step, initialValue, onChange, formatValue = (v) => String(v)) {
         super("label", "param-field");
@@ -7,6 +7,7 @@ export class SliderControl extends Component {
         this.element.appendChild(labelSpan);
         this.input = document.createElement("input");
         this.input.type = "range";
+        setFormFieldName(this.input, label);
         this.input.min = String(min);
         this.input.max = String(max);
         this.input.step = String(step);

@@ -1,3 +1,4 @@
+import { setFormFieldName } from "../../../Libraries/UI/Component.js";
 /** @param {HTMLElement} panel @param {string} title */
 export function appendSectionTitle(panel, title) {
     const heading = document.createElement("div");
@@ -22,6 +23,7 @@ export function addNumberField(panel, label, getValue, setValue, options, onPrev
     labelSpan.textContent = label;
     const input = document.createElement("input");
     input.type = "number";
+    setFormFieldName(input, label);
     input.step = String(step);
     input.min = String(min);
     input.value = String(getValue());

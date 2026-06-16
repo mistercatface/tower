@@ -1,4 +1,4 @@
-import { Component } from "../Component.js";
+import { Component, setFormFieldName } from "../Component.js";
 export class SelectControl extends Component {
     constructor(label, options, initialValue, onChange) {
         super("label", "param-field");
@@ -6,6 +6,7 @@ export class SelectControl extends Component {
         labelSpan.textContent = label;
         this.element.appendChild(labelSpan);
         this.select = document.createElement("select");
+        setFormFieldName(this.select, label);
         for (const opt of options) {
             const o = document.createElement("option");
             if (typeof opt === "string") {

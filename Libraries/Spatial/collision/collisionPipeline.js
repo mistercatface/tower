@@ -2,28 +2,11 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { canSplittableWorldPropSplit } from "../../Props/splittable.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
-import { applyActorPushTipImpulse } from "../../Props/actorPushTip.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
-import { shouldResolveActorPushable } from "./entityBroadphase.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { resolveCirclePair } from "./circlePair.js";
 import { circlesOverlap, findFirstCircleSegmentHit } from "./overlap.js";
 import { resolveSatPair } from "./satPair.js";
-function resolveActorPushable(actor, prop, resolveWalls, spatialFrame, state) {
-    if (!shouldResolveActorPushable(actor, prop)) return;
-    const { mass, restitution } = getCollisionSettings();
-    const collisionInfo = resolveSatPair(actor, actor.getShape(), prop, prop.getShape(), {
-        massA: actor.mass !== undefined ? actor.mass : actor.radius,
-        massB: prop.mass !== undefined ? prop.mass : mass.worldPropFallback,
-        restitution: restitution.actorPushable,
-    });
-    if (!collisionInfo) return;
-    applyActorPushTipImpulse(actor, prop, collisionInfo, state);
-    invalidateWallResolveCache(actor, prop);
-    wakePushableBody(prop);
-    resolveWalls(actor, spatialFrame);
-    resolveWalls(prop, spatialFrame);
-}
 function pushablePairRestitution(p1, p2) {
     const r1 = p1.strategy?.pairRestitution;
     const r2 = p2.strategy?.pairRestitution;
@@ -81,7 +64,7 @@ function resolvePushablePair(p1, p2, state) {
     wakePushableBody(p2);
 }
 /**
- * Staged collision pass: projectiles → pushable iterations → entity pairs.
+ * Staged collision pass: projectiles → pushable iterations.
  * Game layer supplies filters and entity callbacks.
  *
  * @param {object} state
@@ -93,8 +76,6 @@ function resolvePushablePair(p1, p2, state) {
  *   onProjectileWorldPropHit: (projectile: object, prop: object, events: object[]) => boolean,
  *   onProjectileFactionCollisions: (projectile: object, events: object[]) => void,
  *   resolveWalls: (entity: object, spatialFrame: object) => void,
- *   combatantRestitution?: (a: object, b: object) => number,
- *   onChargeImpact?: (charger: object, other: object, events: object[]) => void,
  *   pushableIterations?: number,
  *   events?: object[],
  * }} hooks
@@ -110,8 +91,6 @@ export function runCollisionPipeline(
         onProjectileWorldPropHit,
         onProjectileFactionCollisions,
         resolveWalls,
-        combatantRestitution = () => getCollisionSettings().restitution.combatant,
-        onChargeImpact = null,
         pushableIterations = getCollisionSettings().pushableIterations,
         events = null,
     },
@@ -138,27 +117,22 @@ export function runCollisionPipeline(
             onProjectileFactionCollisions(p, out);
         }
     const pushables = spatialFrame._pushables;
-    const combatants = spatialFrame._combatants;
     const hasPushables = pushables && pushables.length > 0;
-    const hasCombatants = combatants && combatants.length > 0;
     if (hasPushables)
         for (let i = 0; i < pushables.length; i++) {
             const prop = pushables[i];
             prop._frameDispX = prop.x - (prop._wallDispPrevX ?? prop.x);
             prop._frameDispY = prop.y - (prop._wallDispPrevY ?? prop.y);
         }
-    if (hasPushables || hasCombatants)
+    if (hasPushables)
         for (let iter = 0; iter < pushableIterations; iter++) {
-            if (hasCombatants && spatialFrame.forEachActorPushablePair) spatialFrame.forEachActorPushablePair((actor, prop) => resolveActorPushable(actor, prop, resolveWalls, spatialFrame, state));
-            if (hasPushables) {
-                spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2, state));
-                for (let i = 0; i < pushables.length; i++) {
-                    const prop = pushables[i];
-                    if (prop.isDead || !prop.strategy?.isPushable) continue;
-                    const wallCandidates = spatialFrame.getWallCandidates(prop);
-                    if (!prop.needsWallCollision() && !pushableOverlapsWallSegment(prop, wallCandidates)) continue;
-                    resolveWalls(prop, spatialFrame);
-                }
+            spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2, state));
+            for (let i = 0; i < pushables.length; i++) {
+                const prop = pushables[i];
+                if (prop.isDead || !prop.strategy?.isPushable) continue;
+                const wallCandidates = spatialFrame.getWallCandidates(prop);
+                if (!prop.needsWallCollision() && !pushableOverlapsWallSegment(prop, wallCandidates)) continue;
+                resolveWalls(prop, spatialFrame);
             }
         }
     if (hasPushables)
@@ -167,15 +141,5 @@ export function runCollisionPipeline(
             prop._wallDispPrevX = prop.x;
             prop._wallDispPrevY = prop.y;
         }
-    if (hasCombatants && spatialFrame.forEachCombatantPair)
-        spatialFrame.forEachCombatantPair((a, b) => {
-            if (!circlesOverlap(a, b)) return;
-            const restitution = combatantRestitution(a, b);
-            if (resolveCirclePair(a, b, { restitution })) invalidateWallResolveCache(a, b);
-            if (onChargeImpact) {
-                if (a.attackType === "charge" && a.currentStateName !== "stunned") onChargeImpact(a, b, out);
-                if (b.attackType === "charge" && b.currentStateName !== "stunned") onChargeImpact(b, a, out);
-            }
-        });
     return out;
 }

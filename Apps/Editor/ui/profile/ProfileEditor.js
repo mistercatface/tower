@@ -2,6 +2,7 @@ import { getSurfaceProceduralProfile } from "../../../../Config/procedural/profi
 import { exportPipelineJsModule } from "../../../../Libraries/Pipeline/exportPipeline.js";
 import { deepClone, getByPath, movePipelineRow, pipelineRowId, remapIndexAfterSwap } from "../../../../Libraries/Pipeline/index.js";
 import { SelectControl } from "../../../../Libraries/UI/controls/SelectControl.js";
+import { setFormFieldName } from "../../../../Libraries/UI/Component.js";
 import { renderPipelineListUi } from "../../../../Libraries/UI/pipelineListUi.js";
 import { renderSchemaFields } from "../../../../Libraries/UI/renderSchemaFields.js";
 import { appendEditorSubhead } from "../../../../Libraries/UI/paramFields.js";
@@ -214,6 +215,7 @@ function renderMotifList(container) {
             if (isContextMotif(row.config.type)) return;
             const blendSel = document.createElement("select");
             blendSel.className = "motif-row-blend";
+            setFormFieldName(blendSel, `${pipelineRowId(row)}_blend`);
             for (const mode of BLEND_OPTIONS) {
                 const o = document.createElement("option");
                 o.value = mode;
@@ -363,6 +365,7 @@ function renderAnimationParams(container) {
     enableWrap.className = "check-inline animation-enable-wrap";
     const enableInput = document.createElement("input");
     enableInput.type = "checkbox";
+    setFormFieldName(enableInput, "animationEnabled");
     enableInput.checked = editorState.animation.enabled === true;
     enableInput.addEventListener("change", () => {
         editorState.animation.enabled = enableInput.checked;

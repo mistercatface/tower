@@ -1,6 +1,7 @@
 import { SURFACE_PROFILE_ID } from "../../../Config/procedural/profileIds.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_OPTIONS } from "../../../Render/WorldRenderMode.js";
 import { PLAY_AREA_CELL_OPTIONS, playAreaCellsToIndex, applyPlayAreaConfig } from "../world/mapWorld.js";
+import { setFormFieldName } from "../../../Libraries/UI/Component.js";
 /** @typedef {{ label: HTMLLabelElement, input: HTMLInputElement, value: HTMLSpanElement }} PlayAreaToolbarControl */
 /** @type {{ cols: PlayAreaToolbarControl, rows: PlayAreaToolbarControl } | null} */
 let playAreaToolbar = null;
@@ -11,6 +12,7 @@ function createPlayAreaToolbarControl(labelText, initialIndex) {
     name.textContent = labelText;
     const input = document.createElement("input");
     input.type = "range";
+    setFormFieldName(input, labelText);
     input.min = "0";
     input.max = String(PLAY_AREA_CELL_OPTIONS.length - 1);
     input.step = "1";

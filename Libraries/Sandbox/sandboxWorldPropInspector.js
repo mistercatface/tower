@@ -2,6 +2,7 @@ import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { isButtonEntity, isMassButtonInputMode } from "./buttonInput.js";
 import { appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../UI/paramFields.js";
+import { setFormFieldName } from "../UI/Component.js";
 /** @param {object} prop @param {number} degrees */
 function applyWorldPropFacing(prop, degrees) {
     prop.facing = (degrees * Math.PI) / 180;
@@ -208,6 +209,7 @@ export function appendSandboxWorldPropInspectorFields(body, prop, { state, onCha
         invertRow.className = "param-field";
         const invertCheck = document.createElement("input");
         invertCheck.type = "checkbox";
+        setFormFieldName(invertCheck, "buttonInvert");
         invertCheck.checked = prop.invert;
         invertCheck.addEventListener("change", () => patch(() => applyButtonFloorPatch(prop, { invert: invertCheck.checked })));
         invertRow.append("Invert (NOT) ", invertCheck);

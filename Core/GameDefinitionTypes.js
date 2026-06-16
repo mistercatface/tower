@@ -8,11 +8,8 @@
 /**
  * @typedef {object} InteractionPairsPort
  * @property {PairFilterConfig} separation
- * @property {PairFilterConfig} actorPushable
  * @property {PairFilterConfig} pushable
  * @property {PairFilterConfig} pushableSleepBlocker
- * @property {PairFilterConfig} combatant
- * @property {PairFilterConfig} chargeImpact
  * @property {PairFilterConfig} projectileHitActor
  * @property {PairFilterConfig} projectileHitWorldProp
  */

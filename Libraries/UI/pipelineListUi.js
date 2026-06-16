@@ -31,7 +31,7 @@ export function renderPipelineListUi(container, rows, options) {
         const label = options.getLabel(row, i);
         const meta = options.getMeta?.(row, i);
         item.innerHTML = `
-            ${showEnable ? `<label class="motif-enable"><input type="checkbox" data-action="toggle" ${getEnabled(row) ? "checked" : ""}></label>` : ""}
+            ${showEnable ? `<label class="motif-enable"><input type="checkbox" name="motif-enabled-${rowId}" data-action="toggle" ${getEnabled(row) ? "checked" : ""}></label>` : ""}
             <span class="motif-label">${label}</span>
             ${meta != null ? `<span class="motif-layer">${meta}</span>` : ""}
             <span class="motif-blend-slot"></span>

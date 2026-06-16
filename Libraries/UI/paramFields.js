@@ -1,4 +1,5 @@
 import { SelectControl } from "./controls/SelectControl.js";
+import { setFormFieldName } from "./Component.js";
 /** @param {HTMLElement} parent @param {string} text @param {{ tag?: keyof HTMLElementTagNameMap }} [opts] */
 export function appendEditorSubhead(parent, text, { tag = "div" } = {}) {
     const head = document.createElement(tag);
@@ -23,6 +24,7 @@ export function appendNumberField(parent, labelText, { value, step = 1, min, max
     label.textContent = labelText;
     const input = document.createElement("input");
     input.type = "number";
+    setFormFieldName(input, labelText);
     input.step = String(step);
     if (min != null) input.min = String(min);
     if (max != null) input.max = String(max);
@@ -55,11 +57,13 @@ export function appendNumberRangeField(parent, labelText, { minValue, maxValue, 
     between.textContent = "between";
     const minSelect = document.createElement("select");
     minSelect.className = "param-field-range-select";
+    setFormFieldName(minSelect, `${labelText}_min`);
     const and = document.createElement("span");
     and.className = "param-field-range-word";
     and.textContent = "and";
     const maxSelect = document.createElement("select");
     maxSelect.className = "param-field-range-select";
+    setFormFieldName(maxSelect, `${labelText}_max`);
     const fillSelect = (select, value) => {
         select.replaceChildren();
         for (let v = floor; v <= cap; v++) {

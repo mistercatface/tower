@@ -42,6 +42,7 @@ function buildZoomControlMarkup(options) {
     const labelClass = classNames.label ?? "viewport-zoom-control-value";
     const prefixClass = classNames.prefix ?? "viewport-zoom-control-prefix";
     const sliderId = ids.slider ? ` id="${ids.slider}"` : "";
+    const sliderName = ids.slider ? ids.slider : "viewportZoom";
     const labelId = ids.label ? ` id="${ids.label}"` : "";
     const fmt = options.formatLabel ?? ((z) => String(z));
     const initial = fmt(min);
@@ -49,7 +50,7 @@ function buildZoomControlMarkup(options) {
 <label class="viewport-zoom-control-wrap">
 <span class="${prefixClass}">${prefix} </span>
 <span data-zoom-label class="${labelClass}"${labelId}>${initial}</span>×
-<input type="range" data-zoom-slider class="${sliderClass}"${sliderId} min="${min}" max="${max}" step="${step}" value="${min}">
+<input type="range" data-zoom-slider class="${sliderClass}" name="${sliderName}"${sliderId} min="${min}" max="${max}" step="${step}" value="${min}">
 </label>
 </div>`;
 }

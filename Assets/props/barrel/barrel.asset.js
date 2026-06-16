@@ -15,7 +15,6 @@ export default {
         rollHeight: 22,
         tipPushSpeed: 6,
         tipFallAngle: 1.25,
-        actorTipGain: 0.22,
         laserTargetable: true,
         maxHealth: 3,
         wallPhysics: { restitution: 0.25, friction: 0.75 },
