@@ -31,7 +31,7 @@ export function stampCorridorBundleBelts(bundle, rooms) {
  * @param {import("./roomGraphClosedRooms.js").GraphNode[]} allRooms
  * @param {number[]} corridorWidths
  * @param {() => number} rng
- * @param {{ canIntersect?: boolean, existingPaths?: import("./roomGraphClosedRooms.js").Cell[][], existingPathWidths?: number[] }} options
+ * @param {{ existingPaths?: import("./roomGraphClosedRooms.js").Cell[][], existingPathWidths?: number[] }} options
  */
 export function solveAuthoredLinkCorridorBundle(roomA, roomB, allRooms, corridorWidths, rng, options) {
     return solveCorridorBundle({
@@ -43,6 +43,5 @@ export function solveAuthoredLinkCorridorBundle(roomA, roomB, allRooms, corridor
         existingPaths: options.existingPaths ?? [],
         existingPathWidths: options.existingPathWidths ?? [],
         rng,
-        options: { canIntersect: options.canIntersect === true },
     });
 }

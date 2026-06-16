@@ -17,10 +17,10 @@ describe("width-1 corridors reach room interiors", () => {
                 if (laneCount > maxLanes) return;
                 let solved = 0;
                 for (let seed = 0; seed < 50; seed++) {
-                    const bundle = solveTwoRoomBundle(fixture, laneCount, CORRIDOR_WIDTH, seed, false);
+                    const bundle = solveTwoRoomBundle(fixture, laneCount, CORRIDOR_WIDTH, seed);
                     if (!bundle) continue;
                     assert.equal(bundle.paths.length, laneCount);
-                    assertBundleLanes(fixture, bundle, false);
+                    assertBundleLanes(fixture, bundle);
                     solved++;
                 }
                 assert.ok(solved > 0, `no seed solved ${laneCount} lanes for ${fixture.name}`);
@@ -35,7 +35,7 @@ describe("width-1 corridors reach room interiors", () => {
                 continue;
             }
             try {
-                assertBundleLanes(fixture, bundle, false);
+                assertBundleLanes(fixture, bundle);
             } catch (err) {
                 failures.push({ seed, phase: "belts", message: err.message });
             }
@@ -57,9 +57,9 @@ describe("width-1 corridors across room sizes and gaps", () => {
             it(`${fixture.name}: ${laneCount} lane(s)`, () => {
                 let solved = 0;
                 for (let seed = 0; seed < 8; seed++) {
-                    const bundle = solveTwoRoomBundle(fixture, laneCount, CORRIDOR_WIDTH, seed, false);
+                    const bundle = solveTwoRoomBundle(fixture, laneCount, CORRIDOR_WIDTH, seed);
                     if (!bundle) continue;
-                    assertBundleLanes(fixture, bundle, false);
+                    assertBundleLanes(fixture, bundle);
                     solved++;
                 }
                 assert.ok(solved > 0, `no seed solved ${laneCount} lanes for ${fixture.name}`);

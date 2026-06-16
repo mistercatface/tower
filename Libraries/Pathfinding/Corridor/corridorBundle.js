@@ -64,15 +64,13 @@ function orderedAttachmentPairs(parentGroups, childGroups, rng) {
  * @param {CorridorCell[][]} [params.existingPaths]
  * @param {number[]} [params.existingPathWidths]
  * @param {() => number} params.rng
- * @param {{ canIntersect?: boolean, maxPathLen?: number }} [params.options]
+ * @param {{ maxPathLen?: number }} [params.options]
  * @returns {CorridorBundle | null}
  */
 export function solveCorridorBundle(params) {
     const { roomA, roomB, allRooms, corridorWidths, egressCells, existingPaths = [], existingPathWidths = [], rng, options = {} } = params;
-    const canIntersect = options.canIntersect === true;
     const pathfinder = createCorridorLaneRouter(allRooms);
-    /** @type {Set<string>} */
-    const foreignOccupied = canIntersect ? new Set() : corridorPathsToOccupiedKeysWithWidths(existingPaths, existingPathWidths, FULL_FOOTPRINT);
+    const foreignOccupied = corridorPathsToOccupiedKeysWithWidths(existingPaths, existingPathWidths, FULL_FOOTPRINT);
     /** @type {WallHoleGroup[]} */
     const pickedParent = [];
     /** @type {WallHoleGroup[]} */
@@ -102,7 +100,6 @@ export function solveCorridorBundle(params) {
         for (let i = 0; i < pairs.length; i++) {
             const { pg, cg } = pairs[i];
             const path = buildCorridorLanePath(pg.anchor, cg.anchor, allRooms, egressCells, corridorWidth, paths, bundleOccupied, pathfinder, {
-                canIntersect,
                 maxPathLen: options.maxPathLen,
                 laneWidths: pathWidths,
                 footprint: FULL_FOOTPRINT,
@@ -112,10 +109,10 @@ export function solveCorridorBundle(params) {
             pickedChild.push(cg);
             paths.push(path);
             pathWidths.push(corridorWidth);
-            if (!canIntersect) addCorridorPathToOccupied(path, bundleOccupied, corridorWidth, FULL_FOOTPRINT);
+            addCorridorPathToOccupied(path, bundleOccupied, corridorWidth, FULL_FOOTPRINT);
             const result = backtrack(lane + 1);
             if (result) return result;
-            if (!canIntersect) removeCorridorPathFromOccupied(path, bundleOccupied, corridorWidth, FULL_FOOTPRINT);
+            removeCorridorPathFromOccupied(path, bundleOccupied, corridorWidth, FULL_FOOTPRINT);
             pathWidths.pop();
             paths.pop();
             pickedChild.pop();

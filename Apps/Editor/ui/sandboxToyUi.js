@@ -51,16 +51,6 @@ function appendRoomLinkCorridorInspector(body, selectedRoomLink, controller) {
             controller.updateSelectedRoomLink({ corridorWidthMin: width, corridorWidthMax: width });
         },
     });
-    const intersectRow = document.createElement("label");
-    intersectRow.className = "param-field check-inline";
-    const intersectCheck = document.createElement("input");
-    intersectCheck.type = "checkbox";
-    intersectCheck.checked = selectedRoomLink.canIntersect === true;
-    intersectCheck.addEventListener("change", () => {
-        controller.updateSelectedRoomLink({ canIntersect: intersectCheck.checked });
-    });
-    intersectRow.append(intersectCheck, document.createTextNode(" Corridors may intersect"));
-    body.appendChild(intersectRow);
     const actionRow = document.createElement("div");
     actionRow.className = "sandbox-add-row";
     const rerollBtn = document.createElement("button");

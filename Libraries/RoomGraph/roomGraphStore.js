@@ -1,7 +1,7 @@
 import { clampLinkCorridorRanges, ensureLinkCorridorFields } from "./roomGraphLinkCorridor.js";
 import { CORRIDOR_TYPE_EMPTY, CORRIDOR_TYPE_OPEN, normalizeCorridorType, formatCorridorTypeLabel } from "./roomGraphCorridorTypes.js";
 /** @typedef {{ id: number, col: number, row: number, width: number, height: number }} RoomNode */
-/** @typedef {{ id: number, a: number, b: number, corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, canIntersect?: boolean, seed?: number }} RoomLink */
+/** @typedef {{ id: number, a: number, b: number, corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, seed?: number }} RoomLink */
 /** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[], bakedFloorBelts?: { col: number, row: number, kind: number, facingIndex: number }[] }} RoomGraphDoc */
 /** @param {object} state @returns {RoomGraphDoc} */
 export function getRoomGraph(state) {
@@ -114,13 +114,12 @@ export function addRoomLink(state, a, b, options = {}) {
         corridorCount: 1,
         corridorWidthMin: 1,
         corridorWidthMax: 1,
-        canIntersect: false,
         seed: (Math.random() * 0xffffffff) | 0,
     };
     graph.links.push(link);
     return link;
 }
-/** @param {object} state @param {number} linkId @param {{ corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, canIntersect?: boolean, seed?: number }} patch @returns {boolean} */
+/** @param {object} state @param {number} linkId @param {{ corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, seed?: number }} patch @returns {boolean} */
 export function updateRoomLink(state, linkId, patch) {
     const link = getRoomLink(state, linkId);
     if (!link) return false;
@@ -128,7 +127,6 @@ export function updateRoomLink(state, linkId, patch) {
     if (patch.corridorCount != null) link.corridorCount = Math.round(patch.corridorCount);
     if (patch.corridorWidthMin != null) link.corridorWidthMin = Math.round(patch.corridorWidthMin);
     if (patch.corridorWidthMax != null) link.corridorWidthMax = Math.round(patch.corridorWidthMax);
-    if (patch.canIntersect != null) link.canIntersect = patch.canIntersect;
     if (patch.seed != null) link.seed = patch.seed | 0;
     const nodeA = getRoomNode(state, link.a);
     const nodeB = getRoomNode(state, link.b);

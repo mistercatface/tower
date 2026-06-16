@@ -47,11 +47,10 @@ function assembleCorridorPath(corridorFrom, egress, midPath) {
  * @param {CorridorCell[][]} lanePaths
  * @param {Set<string>} baseOccupied
  * @param {import("./corridorGridPathfinder.js").CorridorGridPathfinder} pathfinder
- * @param {{ canIntersect?: boolean, maxPathLen?: number }} [options]
+ * @param {{ maxPathLen?: number, laneWidths?: number[], footprint?: { interiorOnly?: boolean } }} [options]
  * @returns {CorridorCell[] | null}
  */
 export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, options = {}) {
-    const canIntersect = options.canIntersect === true;
     const footprint = options.footprint;
     const corridorFrom = stepAcrossSide(parentHole, parentHole.side);
     const corridorTo = stepAcrossSide(childHole, childHole.side);
@@ -60,11 +59,9 @@ export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells,
     const egressEnd = egress.end;
     /** @type {Set<string>} */
     const reserved = new Set(baseOccupied);
-    if (!canIntersect) {
-        const laneWidths = options.laneWidths ?? lanePaths.map(() => corridorWidth);
-        const laneKeys = corridorPathsToOccupiedKeysWithWidths(lanePaths, laneWidths, footprint);
-        for (const key of laneKeys) reserved.add(key);
-    }
+    const laneWidths = options.laneWidths ?? lanePaths.map(() => corridorWidth);
+    const laneKeys = corridorPathsToOccupiedKeysWithWidths(lanePaths, laneWidths, footprint);
+    for (const key of laneKeys) reserved.add(key);
     pathfinder.setReservedKeys(reserved);
     const midPath = pathfinder.findPath(egressEnd.c, egressEnd.r, approachEnd.c, approachEnd.r, options.maxPathLen ?? 512);
     if (!midPath) return null;
@@ -74,10 +71,7 @@ export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells,
     if (!ingressPath || ingressPath.length < 2) return null;
     for (let i = 1; i < ingressPath.length; i++) path.push(ingressPath[i]);
     if (corridorPathFootprintInsideAnyRoom(rooms, path, corridorWidth)) return null;
-    if (!canIntersect && lanePaths.length) {
-        const laneWidths = options.laneWidths ?? lanePaths.map(() => corridorWidth);
-        if (corridorPathIntersectsPaths(path, corridorWidth, lanePaths, laneWidths, footprint)) return null;
-    }
+    if (lanePaths.length) if (corridorPathIntersectsPaths(path, corridorWidth, lanePaths, laneWidths, footprint)) return null;
     if (corridorPathHitsOccupied(path, baseOccupied, corridorWidth, footprint)) return null;
     return path;
 }

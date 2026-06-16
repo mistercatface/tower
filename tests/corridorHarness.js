@@ -34,17 +34,10 @@ export function generateWidthOneFixtures() {
             }
     return fixtures;
 }
-export function solveTwoRoomBundle(fixture, corridorCount, corridorWidth, seed, canIntersect = false) {
+export function solveTwoRoomBundle(fixture, corridorCount, corridorWidth, seed) {
     const rooms = [fixture.roomA, fixture.roomB];
     const rng = createSeededRng(seed);
-    return solveUniformCorridorBundle(corridorCount, corridorWidth, {
-        roomA: fixture.roomA,
-        roomB: fixture.roomB,
-        allRooms: rooms,
-        egressCells: DEFAULT_CORRIDOR_EGRESS_CELLS,
-        rng,
-        options: { canIntersect },
-    });
+    return solveUniformCorridorBundle(corridorCount, corridorWidth, { roomA: fixture.roomA, roomB: fixture.roomB, allRooms: rooms, egressCells: DEFAULT_CORRIDOR_EGRESS_CELLS, rng });
 }
 export function maxLanesForFixture(fixture, corridorWidth) {
     return maxCorridorLanesBetweenNodes(fixture.roomA, fixture.roomB, corridorWidth);
@@ -136,10 +129,9 @@ export function assertManySeparateLinks(fixture, linkCount, seed = 0) {
             rng,
             existingPaths: placedPaths,
             existingPathWidths: placedPathWidths,
-            options: { canIntersect: false },
         });
         if (!bundle) throw new Error(`link ${link}: solve failed with ${placedPaths.length} prior paths`);
-        assertBundleLanes(fixture, bundle, false);
+        assertBundleLanes(fixture, bundle);
         placedPaths.push(bundle.paths[0]);
         placedPathWidths.push(1);
     }
@@ -162,8 +154,8 @@ export function assertPathsDoNotOverlap(paths, widths) {
             seen.add(key);
         }
 }
-export function assertBundleLanes(fixture, bundle, canIntersect) {
+export function assertBundleLanes(fixture, bundle) {
     assertPathsAreCardinalConnected(bundle.paths);
-    if (!canIntersect) assertPathsDoNotOverlap(bundle.paths, bundle.corridorWidths);
+    assertPathsDoNotOverlap(bundle.paths, bundle.corridorWidths);
     for (let li = 0; li < bundle.paths.length; li++) assertLaneReachesRoomMouths(fixture, bundle, li, `lane ${li}`);
 }

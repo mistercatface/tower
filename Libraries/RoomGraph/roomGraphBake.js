@@ -121,12 +121,7 @@ function computeRoomGraphBake(layout) {
         const nodeB = layout.roomNodeById.get(link.b);
         const rng = createSeededRng(link.seed ?? link.id * 9973);
         const { corridorWidths } = resolveLinkCorridorRoll(link, nodeA, nodeB, rng);
-        const canIntersect = link.canIntersect === true;
-        const bundle = solveAuthoredLinkCorridorBundle(rooms[a], rooms[b], rooms, corridorWidths, rng, {
-            canIntersect,
-            existingPaths: canIntersect ? [] : placedPaths,
-            existingPathWidths: canIntersect ? [] : placedPathWidths,
-        });
+        const bundle = solveAuthoredLinkCorridorBundle(rooms[a], rooms[b], rooms, corridorWidths, rng, { existingPaths: placedPaths, existingPathWidths: placedPathWidths });
         if (!bundle) {
             restoreClosedRoomState(roomA, snapA);
             restoreClosedRoomState(roomB, snapB);
