@@ -10,22 +10,23 @@ import { isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
  * @param {Uint8Array} vertexPassability
  */
 export function createNavSimView(cols, rows, gridFill, floorKind, floorFacing, edgeSlots, edgePool, passageEdgeCount, portalEdgeCount, vertexPassability) {
+    const edgeStore = {
+        passageEdgeCount,
+        portalEdgeCount,
+        slots: edgeSlots,
+        pool: edgePool,
+        get(col, row, side, c) {
+            const ref = edgeSlots[colRowToIndex(col, row, c) * 4 + side];
+            if (ref < 0) return null;
+            return edgeStore.pool[ref];
+        },
+    };
     return {
         cols,
         rows,
         grid: gridFill,
         vertexPassability,
-        edgeStore: {
-            passageEdgeCount,
-            portalEdgeCount,
-            slots: edgeSlots,
-            pool: edgePool,
-            get(col, row, side, c) {
-                const ref = edgeSlots[colRowToIndex(col, row, c) * 4 + side];
-                if (ref < 0) return null;
-                return edgePool[ref];
-            },
-        },
+        edgeStore,
         floorStore: {
             kind: floorKind,
             facing: floorFacing,
