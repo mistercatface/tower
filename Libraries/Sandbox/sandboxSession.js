@@ -169,6 +169,26 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
         placed.sort((a, b) => placementSeq(voxelPlacementKey(a.col, a.row), 0) - placementSeq(voxelPlacementKey(b.col, b.row), 0));
         return placed;
     };
+    /** Hand-placed rails only — bulk map-gen / quiet stamps are not tracked here. */
+    const listTrackedRailWalls = () => {
+        const grid = state.obstacleGrid;
+        /** @type {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number, label: string }[]} */
+        const placed = [];
+        const prefix = "rail:";
+        for (const key of placementSeqByKey.keys()) {
+            if (!key.startsWith(prefix)) continue;
+            const parts = key.slice(prefix.length).split(",");
+            const col = Number(parts[0]);
+            const row = Number(parts[1]);
+            const side = Number(parts[2]);
+            if (!railWallEdgeAt(grid, col, row, side)) continue;
+            const info = getRailWallInfo(grid, col, row, side);
+            if (!info) continue;
+            placed.push({ col, row, side, heightLevel: info.heightLevel, thicknessLevel: info.thicknessLevel, label: `Rail · (${col},${row}) · ${info.sideLabel} · height ${info.heightLevel}` });
+        }
+        placed.sort((a, b) => placementSeq(edgePlacementKey("rail", a.col, a.row, a.side), 0) - placementSeq(edgePlacementKey("rail", b.col, b.row, b.side), 0));
+        return placed;
+    };
     const sync = () => {
         requestRedraw();
         uiSync?.();
@@ -1062,7 +1082,7 @@ export function createSandboxSession(state, { requestRedraw, defaultSpawnPropId 
                 items.push({ seq: placementSeq(floorPlacementKey(entry.col, entry.row), 2e9 + entry.col + entry.row * 1e6), kind: "powerSource", label: entry.label, col: entry.col, row: entry.row });
             for (const entry of listTrackedVoxelWalls())
                 items.push({ seq: placementSeq(voxelPlacementKey(entry.col, entry.row), 3e9 + entry.col + entry.row * 1e6), kind: "voxel", label: entry.label, col: entry.col, row: entry.row });
-            for (const entry of this.listPlacedRailWalls())
+            for (const entry of listTrackedRailWalls())
                 items.push({
                     seq: placementSeq(edgePlacementKey("rail", entry.col, entry.row, entry.side), 4e9 + entry.col + entry.row * 1e6 + entry.side),
                     kind: "rail",
