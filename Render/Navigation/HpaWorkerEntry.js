@@ -3,7 +3,7 @@ import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology } from "..
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Libraries/Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Libraries/Spatial/grid/navEdgePoolSab.js";
 import { bindPassagePolicyFromSab } from "../../Libraries/Pathfinding/navPassagePolicySab.js";
-import { bakeHopCsrOnSim } from "../../Libraries/Pathfinding/navSimHopBake.js";
+import { bakePortalHopCsrFromSab } from "../../Libraries/Pathfinding/navSimHopBake.js";
 import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Libraries/Spatial/grid/vertexPassability.js";
 import { registerPortalPassageStepHandler } from "../../Libraries/Sandbox/portalStep.js";
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
@@ -127,10 +127,17 @@ function bindPassageNetworkPolicy(data) {
     passageNetworkPolicy = bindPassagePolicyFromSab(data.sabPassagePolicy, data.passagePolicyKeyCount);
 }
 function bakeHopTopology(data, baked, blocked) {
-    bakeHopCsrOnSim(baked.simView, passageNetworkPolicy, blocked, data.cols, data.rows, new Int32Array(data.sabHopOffsets), new Int32Array(data.sabHopExitIdx), new Uint8Array(data.sabHopCost), {
-        portalEdgeCount: data.portalEdgeCount,
-        navCacheKey: data.navCacheKey,
-    });
+    bakePortalHopCsrFromSab(
+        baked.simView,
+        passageNetworkPolicy,
+        blocked,
+        data.cols,
+        data.rows,
+        new Int32Array(data.sabHopOffsets),
+        new Int32Array(data.sabHopExitIdx),
+        new Uint8Array(data.sabHopCost),
+        { portalEdgeCount: data.portalEdgeCount, navCacheKey: data.navCacheKey },
+    );
 }
 function bindNavFromBuild(data) {
     cols = data.cols;

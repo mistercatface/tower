@@ -14,7 +14,7 @@ import {
     hpaPersistEdgeOffsetsView,
     hpaPersistEdgeTargetsView,
 } from "./hpaWorkerSab.js";
-import { buildHpaReplanResult, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
+import { assertMainNavHopSab } from "./navSimHopBake.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
 import { navPassagePolicySabByteLength, packPassagePolicyToSab } from "./navPassagePolicySab.js";
@@ -80,12 +80,14 @@ export class HpaPathWorker {
             if (type === SYNC_NAV_DONE) {
                 this._navSnapshotView = createWorkerNavSnapshotView(this.navGraph, this._navKey, this.navBlocked, this.navOctileNeighbors, this.navHopOffsets, this.navHopExitIdx, this.navHopCost);
                 this.navGraph.gridNavSnapshot = this._navSnapshotView;
+                assertMainNavHopSab(this.navGraph, this.navHopOffsets, this._navKey);
                 const resolve = this._navSyncResolve;
                 this._navSyncResolve = null;
                 this._navSyncPromise = null;
                 resolve();
                 if (this._deferFullNavSync) {
                     this._deferFullNavSync = false;
+                    this._navKey = "";
                     this.scheduleNavTopologySync(this.navGraph);
                 }
                 return;
@@ -402,6 +404,7 @@ export class HpaPathWorker {
         if (cacheKey === this._navKey) return;
         if (this._navSyncPromise) {
             this._deferFullNavSync = true;
+            this._navKey = "";
             return;
         }
         const size = grid.cols * grid.rows;
@@ -456,7 +459,13 @@ export class HpaPathWorker {
     }
     getGraphMeta() {
         const nodeCount = this.graphNodeCount;
-        return { nodeCount, nodeIds: this.graphNodeIds, nodeCol: hpaPersistNodeColView(this.sabPersistGraphNodeCol, nodeCount), nodeRow: hpaPersistNodeRowView(this.sabPersistGraphNodeRow, nodeCount), idToIdx: this.graphIdToIdx };
+        return {
+            nodeCount,
+            nodeIds: this.graphNodeIds,
+            nodeCol: hpaPersistNodeColView(this.sabPersistGraphNodeCol, nodeCount),
+            nodeRow: hpaPersistNodeRowView(this.sabPersistGraphNodeRow, nodeCount),
+            idToIdx: this.graphIdToIdx,
+        };
     }
     _buildReplanResultPrep(mode, startCol, startRow, targetCol, targetRow) {
         if (mode === "local") return { mode: "local", startCol, startRow, targetCol, targetRow };

@@ -4,7 +4,6 @@ import { resolveCardinalStepCrossing, portalAccessInitiatorCell, portalMouthAllo
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
 export const PORTAL_LINK_MODE = { Shared: "shared", OneWay: "oneWay" };
-/** @typedef {{ networkIdByKey: Map<number, number> }} PortalHopPolicyView */
 /** @param {unknown} raw */
 export function parsePortalLinkMode(raw) {
     if (raw === PORTAL_LINK_MODE.OneWay) return PORTAL_LINK_MODE.OneWay;
@@ -77,6 +76,7 @@ export function setPortalLinkProfile(grid, col, row, side, linkMode, linkSourceK
         const partnerEdge = grid.edgeStore.get(partner.col, partner.row, partner.side, grid.cols);
         writePortalLinkFields(partnerEdge, mode, sourceKey);
     }
+    grid.bumpPortalLinkEpoch();
     return true;
 }
 /**
@@ -101,6 +101,7 @@ export function unlinkPortalEdge(grid, col, row, side) {
             writePortalLinkFields(partner.edge, PORTAL_LINK_MODE.Shared, 0);
         }
     }
+    grid.bumpPortalLinkEpoch();
     return true;
 }
 /**
@@ -129,9 +130,10 @@ export function linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB) {
     const linkSourceKey = edgeA.linkSourceKey ?? 0;
     writePortalLinkFields(edgeA, linkMode, linkSourceKey);
     writePortalLinkFields(edgeB, linkMode, linkSourceKey);
+    grid.bumpPortalLinkEpoch();
     return true;
 }
-/** @param {PortalHopPolicyView} policy @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+/** @param {import("../Pathfinding/navPassagePolicySab.js").PassageNetworkPolicyView} policy @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function canLinkPortalsOnPolicy(policy, grid, colA, rowA, sideA, colB, rowB, sideB) {
     const keyA = canonicalEdgeCellKey(grid, colA, rowA, sideA);
     const netA = policy.networkIdByKey.get(keyA);
@@ -142,7 +144,7 @@ export function canLinkPortalsOnPolicy(policy, grid, colA, rowA, sideA, colB, ro
 /**
  * Portal hop / traverse entry gate — policy-backed (worker + main share this).
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {PortalHopPolicyView} policy
+ * @param {import("../Pathfinding/navPassagePolicySab.js").PassageNetworkPolicyView} policy
  */
 export function evaluatePortalHopEntry(grid, fromCol, fromRow, toCol, toRow, policy) {
     const crossing = resolveCardinalStepCrossing(fromCol, fromRow, toCol, toRow);

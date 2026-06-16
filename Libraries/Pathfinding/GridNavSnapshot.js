@@ -21,7 +21,7 @@ import { octileNeighborBase, octileNeighborOffset } from "./navTopologySab.js";
  */
 const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
 export function snapshotNavCacheKey(grid) {
-    return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
+    return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}:${grid.portalLinkEpoch}:${grid._passagePowerNavKey ?? ""}`;
 }
 /** Stable id for worker grid frame — sent only when this changes (resize / origin shift). */
 export function gridNavFrameKey(grid) {

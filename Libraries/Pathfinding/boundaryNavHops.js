@@ -1,4 +1,4 @@
-import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import { portalCrossingVectorForEdge, portalMouthAndBackCells, portalTraverseExitCell, portalTraverseExitVector } from "../Spatial/grid/portalAccess.js";
 import { forEachCellEdge, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
@@ -16,46 +16,8 @@ import { snapshotCanBoundaryHop } from "./GridNavSnapshot.js";
  *   partnerRow: number,
  *   partnerSide: number,
  * }} BoundaryNavHop */
-/** @typedef {{ source: { col: number, row: number, side: number }, partner: { col: number, row: number, side: number } }} PortalHopEntry */
 const DRAW_P1 = { x: 0, y: 0 };
 const DRAW_P2 = { x: 0, y: 0 };
-export function buildBoundaryNavHops(grid, resolvePortalHopEntry) {
-    const hopsByFromIdx = new Map();
-    if (!grid.cols || !grid.edgeStore.portalEdgeCount) return hopsByFromIdx;
-    forEachCellEdge(
-        grid,
-        (ownerCol, ownerRow, ownerSide, edge) => {
-            const { mouth, back } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
-            if (grid.grid[colRowToIndex(mouth.col, mouth.row, grid.cols)] !== 0) return;
-            const entry = resolvePortalHopEntry(grid, mouth.col, mouth.row, back.col, back.row);
-            if (!entry) return;
-            const exit = portalTraverseExitCell(grid, entry.partner.col, entry.partner.row, entry.partner.side);
-            if (!cellInRect(exit.col, exit.row, grid.cols, grid.rows) || grid.grid[colRowToIndex(exit.col, exit.row, grid.cols)] !== 0) return;
-            const idx = colRowToIndex(mouth.col, mouth.row, grid.cols);
-            let list = hopsByFromIdx.get(idx);
-            if (!list) {
-                list = [];
-                hopsByFromIdx.set(idx, list);
-            }
-            if (list.some((hop) => hop.exitCol === exit.col && hop.exitRow === exit.row)) return;
-            list.push({
-                mouthCol: mouth.col,
-                mouthRow: mouth.row,
-                exitCol: exit.col,
-                exitRow: exit.row,
-                cost: 1,
-                ownerCol: entry.source.col,
-                ownerRow: entry.source.row,
-                ownerSide: entry.source.side,
-                partnerCol: entry.partner.col,
-                partnerRow: entry.partner.row,
-                partnerSide: entry.partner.side,
-            });
-        },
-        { canonicalOnly: true, filter: isPortalEdge },
-    );
-    return hopsByFromIdx;
-}
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 function resolvePortalHopDrawGeometry(grid, fromCol, fromRow, toCol, toRow) {
     let match = null;

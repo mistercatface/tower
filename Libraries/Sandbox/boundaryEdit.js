@@ -11,9 +11,8 @@ export function notifyGridWallChange(state, bounds, { fullNavSync = false } = {}
     markGridZoneSubscriptionsDirty(state);
     return navPromise;
 }
-export function commitBoundaryEdit(state, bounds, { power = false, nav = false } = {}) {
+export function commitBoundaryEdit(state, bounds, { power = false } = {}) {
     const regions = Array.isArray(bounds) ? bounds : [bounds];
-    if (nav) state.obstacleGrid.invalidateGridNavSnapshot();
     if (power) return syncPassagePowerNetwork(state);
     for (let i = 0; i < regions.length; i++) notifyGridWallChange(state, regions[i]);
 }

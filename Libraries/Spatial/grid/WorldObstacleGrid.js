@@ -38,7 +38,11 @@ export class WorldObstacleGrid {
         this.gridNavSnapshot = null;
         this.navCardinalOpen = new Uint8Array(0);
         this.gridTopologyEpoch = 0;
+        this.portalLinkEpoch = 0;
         this._passagePowerNavKey = "";
+    }
+    bumpPortalLinkEpoch() {
+        this.portalLinkEpoch = (this.portalLinkEpoch + 1) | 0;
     }
     invalidateGridNavSnapshot() {
         const snap = this.gridNavSnapshot;

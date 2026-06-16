@@ -303,7 +303,7 @@ export function stampPortalAt(state, col, row, side, { accessMode = PORTAL_ACCES
 export function setPortalProfileAt(state, col, row, side, accessMode, allowedSide) {
     const grid = state.obstacleGrid;
     if (!setPortalProfile(grid, col, row, side, accessMode, allowedSide)) return false;
-    commitBoundaryEdit(state, cellBoundsAt(col, row), { nav: true });
+    commitBoundaryEdit(state, cellBoundsAt(col, row));
     return true;
 }
 export function clearPortalAt(state, col, row, side) {
@@ -317,13 +317,13 @@ export function linkPortalsAt(state, colA, rowA, sideA, colB, rowB, sideB) {
     if (!cache || !canLinkPortalsOnPolicy(cache, grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
     if (!linkPortalEdges(grid, colA, rowA, sideA, colB, rowB, sideB)) return false;
     setPortalLinkProfile(grid, colA, rowA, sideA, PORTAL_LINK_MODE.Shared, 0);
-    commitBoundaryEdit(state, [cellBoundsAt(colA, rowA), cellBoundsAt(colB, rowB)], { nav: true });
+    commitBoundaryEdit(state, [cellBoundsAt(colA, rowA), cellBoundsAt(colB, rowB)]);
     return true;
 }
 export function unlinkPortalAt(state, col, row, side) {
     const grid = state.obstacleGrid;
     if (!unlinkPortalEdge(grid, col, row, side)) return false;
-    commitBoundaryEdit(state, cellBoundsAt(col, row), { nav: true });
+    commitBoundaryEdit(state, cellBoundsAt(col, row));
     return true;
 }
 export function setPortalLinkProfileAt(state, col, row, side, linkMode, linkSourceKey = 0) {
@@ -333,7 +333,7 @@ export function setPortalLinkProfileAt(state, col, row, side, linkMode, linkSour
     const regions = [cellBoundsAt(col, row)];
     const partner = resolvePortalPartner(grid, col, row, side);
     if (partner) regions.push(cellBoundsAt(partner.col, partner.row));
-    commitBoundaryEdit(state, regions, { nav: true });
+    commitBoundaryEdit(state, regions);
     return true;
 }
 export function getPortalInfo(grid, col, row, side) {
