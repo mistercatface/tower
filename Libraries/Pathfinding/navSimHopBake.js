@@ -1,8 +1,8 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
-import { portalMouthAndBackCells, portalTraverseExitCell } from "../Spatial/grid/portalAccess.js";
+import { portalTraverseExitCell } from "../Spatial/grid/portalAccess.js";
 import { canonicalEdgeCellKey, forEachCellEdge } from "../Spatial/grid/gridCellTopology.js";
-import { evaluatePortalHopEntry } from "../Sandbox/portalLinks.js";
+import { evaluatePortalHopFromOwnerEdge } from "../Sandbox/portalLinks.js";
 /** @typedef {{ portalEdgeCount: number, navCacheKey?: string }} HopCsrAssertContext */
 /**
  * Single hop bake entry: edge/policy SAB views on simView → hop CSR SAB.
@@ -32,12 +32,12 @@ function collectPortalHopsFromSab(simView, policy) {
     forEachCellEdge(
         simView,
         (ownerCol, ownerRow, ownerSide, edge) => {
-            const { mouth, back } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
-            if (simView.grid[colRowToIndex(mouth.col, mouth.row, simView.cols)] !== 0) return;
-            const entry = evaluatePortalHopEntry(simView, mouth.col, mouth.row, back.col, back.row, policy);
-            if (!entry) return;
-            const exit = portalTraverseExitCell(simView, entry.partner.col, entry.partner.row, entry.partner.side);
-            if (!cellInRect(exit.col, exit.row, simView.cols, simView.rows) || simView.grid[colRowToIndex(exit.col, exit.row, simView.cols)] !== 0) return;
+            const hop = evaluatePortalHopFromOwnerEdge(simView, ownerCol, ownerRow, ownerSide, policy);
+            if (!hop) return;
+            const { mouth } = hop;
+            if (blocked[colRowToIndex(mouth.col, mouth.row, simView.cols)]) return;
+            const exit = portalTraverseExitCell(simView, hop.partner.col, hop.partner.row, hop.partner.side);
+            if (!cellInRect(exit.col, exit.row, simView.cols, simView.rows) || blocked[colRowToIndex(exit.col, exit.row, simView.cols)]) return;
             const idx = colRowToIndex(mouth.col, mouth.row, simView.cols);
             let list = hopsByFromIdx.get(idx);
             if (!list) {

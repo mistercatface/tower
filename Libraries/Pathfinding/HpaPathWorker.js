@@ -19,6 +19,7 @@ import { assertMainNavHopSab } from "./navSimHopBake.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
 import { navPassagePolicySabByteLength, packPassagePolicyToSab } from "./navPassagePolicySab.js";
+import { buildHpaReplanResult, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;

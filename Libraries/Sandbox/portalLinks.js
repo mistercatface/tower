@@ -1,7 +1,7 @@
 import { isPortalEdge } from "../Spatial/grid/CellEdge.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { findPortalEdgeByKey } from "../Spatial/grid/portalSlotIndex.js";
-import { resolveCardinalStepCrossing, portalAccessInitiatorCell, portalMouthAllowedSide } from "../Spatial/grid/portalAccess.js";
+import { resolveCardinalStepCrossing, portalAccessInitiatorCell, portalMouthAllowedSide, portalMouthAndBackCells } from "../Spatial/grid/portalAccess.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
 export const PORTAL_LINK_MODE = { Shared: "shared", OneWay: "oneWay" };
@@ -143,20 +143,21 @@ export function canLinkPortalsOnPolicy(policy, grid, colA, rowA, sideA, colB, ro
     return netA === policy.networkIdByKey.get(keyB);
 }
 /**
- * Portal hop / traverse entry gate — policy-backed (worker + main share this).
+ * Policy gate for a known portal edge (hop bake / owner-edge path).
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {number} ownerCol
+ * @param {number} ownerRow
+ * @param {number} ownerSide
  * @param {import("../Pathfinding/navPassagePolicySab.js").PassageNetworkPolicyView} policy
  */
-export function evaluatePortalHopEntry(grid, fromCol, fromRow, toCol, toRow, policy) {
-    const crossing = resolveCardinalStepCrossing(fromCol, fromRow, toCol, toRow);
-    if (!crossing) return null;
-    const { ownerCol, ownerRow, ownerSide } = crossing;
+export function evaluatePortalHopFromOwnerEdge(grid, ownerCol, ownerRow, ownerSide, policy) {
     const edge = grid.edgeStore.get(ownerCol, ownerRow, ownerSide, grid.cols);
     if (!isPortalEdge(edge)) return null;
     const ownerKey = canonicalEdgeCellKey(grid, ownerCol, ownerRow, ownerSide);
     if (!policy.networkIdByKey.has(ownerKey)) return null;
+    const { mouth, back } = portalMouthAndBackCells(ownerCol, ownerRow, ownerSide, edge);
     const allowed = portalAccessInitiatorCell(ownerCol, ownerRow, ownerSide, portalMouthAllowedSide(edge, ownerSide));
-    if (fromCol !== allowed.col || fromRow !== allowed.row) return null;
+    if (mouth.col !== allowed.col || mouth.row !== allowed.row) return null;
     const partner = resolvePortalPartner(grid, ownerCol, ownerRow, ownerSide);
     if (!partner) return null;
     if (!canLinkPortalsOnPolicy(policy, grid, ownerCol, ownerRow, ownerSide, partner.col, partner.row, partner.side)) return null;
@@ -166,5 +167,18 @@ export function evaluatePortalHopEntry(grid, fromCol, fromRow, toCol, toRow, pol
         const isSource = route.source.col === ownerCol && route.source.row === ownerRow && route.source.side === ownerSide;
         if (!isSource) return null;
     }
-    return { source: { col: ownerCol, row: ownerRow, side: ownerSide }, partner, route };
+    return { source: { col: ownerCol, row: ownerRow, side: ownerSide }, partner, route, mouth, back };
+}
+/**
+ * Portal hop / traverse entry gate — policy-backed (worker + main share this).
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {import("../Pathfinding/navPassagePolicySab.js").PassageNetworkPolicyView} policy
+ */
+export function evaluatePortalHopEntry(grid, fromCol, fromRow, toCol, toRow, policy) {
+    const crossing = resolveCardinalStepCrossing(fromCol, fromRow, toCol, toRow);
+    if (!crossing) return null;
+    const hop = evaluatePortalHopFromOwnerEdge(grid, crossing.ownerCol, crossing.ownerRow, crossing.ownerSide, policy);
+    if (!hop) return null;
+    if (fromCol !== hop.mouth.col || fromRow !== hop.mouth.row || toCol !== hop.back.col || toRow !== hop.back.row) return null;
+    return { source: hop.source, partner: hop.partner, route: hop.route };
 }

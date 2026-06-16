@@ -23,6 +23,7 @@ import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
+import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
 import { PORTAL_ACCESS_MODE } from "../Spatial/grid/CellEdge.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
 /**
