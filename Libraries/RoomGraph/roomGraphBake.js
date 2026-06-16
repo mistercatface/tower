@@ -6,9 +6,11 @@ import { createSeededRng } from "../Math/SeededRng.js";
 import { buildRoomsFromNodeGraph, mergeRailWalls, omitRailWallsAtGapKeys, railWallsForClosedRooms, roomWallGapKeysWorld } from "./roomGraphClosedRooms.js";
 import { getRoomGraph, listRoomLinks, listRoomNodes } from "./roomGraphStore.js";
 import { resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
-import { normalizeCorridorType, isConveyorCorridorType } from "./roomGraphCorridorTypes.js";
+import { normalizeCorridorType, isConveyorCorridorType, isOpenCorridorType } from "./roomGraphCorridorTypes.js";
 import { clearBakedFloorBeltsQuiet, stampBakedFloorBeltsQuiet } from "./roomGraphFloorBelts.js";
 import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle, stampCorridorBundleBelts, stampCorridorBundleRails } from "./roomGraphCorridorApply.js";
+import { corridorSearchBounds } from "../Pathfinding/Corridor/corridorWalkGrid.js";
+import { DEFAULT_CORRIDOR_EGRESS_CELLS } from "./roomGraphCorridorRails.js";
 /** @typedef {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }} BakedRail */
 /** @typedef {{ id: number, c0: number, c1: number, r0: number, r1: number, centerC: number, centerR: number, width: number, height: number }} AuthoredGraphNode */
 /** @param {import("./roomGraphStore.js").RoomNode} node */
@@ -72,6 +74,19 @@ function expandGridForGraphNodes(state, graphNodes) {
     }
     if (!isEmptyAabb(bounds)) state.obstacleGrid.expandToCoverAabb(bounds);
 }
+/** @param {object} state @param {AuthoredGraphNode[]} graphNodes */
+function expandGridForCorridorSearch(state, graphNodes) {
+    if (!graphNodes.length) return;
+    const grid = state.obstacleGrid;
+    const half = grid.cellHalfSize;
+    const search = corridorSearchBounds(graphNodes, DEFAULT_CORRIDOR_EGRESS_CELLS + 6);
+    const bounds = emptyAabb();
+    const w0 = grid.gridToWorld(search.originCol, search.originRow);
+    const w1 = grid.gridToWorld(search.originCol + search.cols - 1, search.originRow + search.rows - 1);
+    growAabbFromCenterInto(bounds, w0.x, w0.y, half, half);
+    growAabbFromCenterInto(bounds, w1.x, w1.y, half, half);
+    if (!isEmptyAabb(bounds)) grid.expandToCoverAabb(bounds);
+}
 /** @param {import("./roomGraphClosedRooms.js").ClosedRoom} closedRoom */
 function snapshotClosedRoomState(closedRoom) {
     return { gaps: new Set(closedRoom.gaps), holes: closedRoom.holes.slice() };
@@ -123,7 +138,7 @@ function computeRoomGraphBake(layout) {
             placedPathWidths.push(bundle.corridorWidths[pi]);
         }
         if (isConveyorCorridorType(corridorType)) bakedBelts.push(...stampCorridorBundleBelts(bundle, rooms));
-        else corridorRailLists.push(stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow));
+        else if (!isOpenCorridorType(corridorType)) corridorRailLists.push(stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow));
     }
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
     const gapKeys = roomWallGapKeysWorld(closedRooms, originCol, originRow);
@@ -142,6 +157,7 @@ export function syncRoomGraphBake(state) {
         return;
     }
     expandGridForGraphNodes(state, layout.rooms);
+    expandGridForCorridorSearch(state, layout.rooms);
     layout = buildAuthoredBakeLayout(state);
     const bake = computeRoomGraphBake(layout);
     const { bounds: railBounds, stamped: stampedRails } = stampRailWallsQuiet(state, bake.rails);

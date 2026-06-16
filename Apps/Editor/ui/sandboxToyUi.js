@@ -7,6 +7,7 @@ import {
     isGridFloorBeltSpawnAsset,
     isGridPassagePowerSourceSpawnAsset,
     isRoomNodeSpawnAsset,
+    isRoomLinkSpawnAsset,
     isSingleWorldPropSpawnAsset,
     listFloorBeltKindOptions,
 } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
@@ -17,8 +18,7 @@ import { renderSandboxEquipPanel } from "../../../Libraries/Sandbox/sandboxEquip
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../../Libraries/Sandbox/sandboxPropVisual.js";
 import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWallEdit.js";
-import { CORRIDOR_TYPE_OPTIONS } from "../../../Libraries/RoomGraph/index.js";
-import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNumberField, appendNumberRangeField, appendSelectField } from "../../../Libraries/UI/paramFields.js";
+import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 const WALL_STAMP_OPTIONS = [
@@ -39,36 +39,15 @@ const EDGE_SIDE_OPTIONS = [
 ];
 /** @param {HTMLElement} body @param {NonNullable<ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController["getSelectedRoomLinkInfo"]>>} selectedRoomLink @param {ReturnType<import("../../../Libraries/Sandbox/createSandboxController.js").createSandboxController>} controller */
 function appendRoomLinkCorridorInspector(body, selectedRoomLink, controller) {
-    const limitHint = selectedRoomLink.maxCorridorWidth != null ? ` Max corridor width for this wall pair: ${selectedRoomLink.maxCorridorWidth}.` : "";
-    const rollHint =
-        selectedRoomLink.rolledCorridorWidths != null ? ` Current seed: ${selectedRoomLink.rolledCorridorCount} corridor(s), widths [${selectedRoomLink.rolledCorridorWidths.join(", ")}].` : "";
-    appendEditorHint(body, `${selectedRoomLink.label}. Corridor count is fixed; width range rolls per corridor on reroll.${limitHint}${rollHint}`);
-    appendSelectField(body, "Corridor type", {
-        value: selectedRoomLink.corridorType ?? "empty",
-        options: CORRIDOR_TYPE_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
-        onChange: (corridorType) => {
-            controller.updateSelectedRoomLink({ corridorType });
-        },
-    });
-    appendNumberField(body, "Corridor count", {
-        value: selectedRoomLink.corridorCount ?? 1,
+    const limitHint = selectedRoomLink.maxCorridorWidth != null ? ` Max width for this wall pair: ${selectedRoomLink.maxCorridorWidth}.` : "";
+    appendEditorHint(body, `${selectedRoomLink.label}. Change width, then Reroll to regenerate the path.${limitHint}`);
+    appendNumberField(body, "Width", {
+        value: selectedRoomLink.corridorWidthMin ?? 1,
         step: 1,
         min: 1,
-        max: selectedRoomLink.maxCorridorCount,
-        onChange: (corridorCount) => {
-            controller.updateSelectedRoomLink({ corridorCount });
-        },
-    });
-    appendNumberRangeField(body, "Corridor width", {
-        minValue: selectedRoomLink.corridorWidthMin ?? 1,
-        maxValue: selectedRoomLink.corridorWidthMax ?? 1,
-        floor: 1,
-        ceiling: selectedRoomLink.maxCorridorWidth ?? 1,
-        onMinChange: (corridorWidthMin) => {
-            controller.updateSelectedRoomLink({ corridorWidthMin });
-        },
-        onMaxChange: (corridorWidthMax) => {
-            controller.updateSelectedRoomLink({ corridorWidthMax });
+        max: selectedRoomLink.maxCorridorWidth ?? 1,
+        onChange: (width) => {
+            controller.updateSelectedRoomLink({ corridorWidthMin: width, corridorWidthMax: width });
         },
     });
     const intersectRow = document.createElement("label");
@@ -192,7 +171,7 @@ function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
     const addRow = document.createElement("div");
     addRow.className = "sandbox-add-row";
     const spawnAsset = getPropAsset(spawnId);
-    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset) && !isGridPassagePowerSourceSpawnAsset(spawnAsset) && !isRoomNodeSpawnAsset(spawnAsset))
+    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset) && !isGridPassagePowerSourceSpawnAsset(spawnAsset) && !isRoomNodeSpawnAsset(spawnAsset) && !isRoomLinkSpawnAsset(spawnAsset))
         appendFactionSelect(addRow, {
             value: controller.getSpawnFaction(),
             onChange: (faction) => {
@@ -214,8 +193,18 @@ function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
     addBtn.className = "secondary";
     addBtn.textContent = "Add at camera";
     addBtn.addEventListener("click", () => controller.spawnAtCameraOrigin());
-    addRow.appendChild(addBtn);
+    if (!isRoomLinkSpawnAsset(spawnAsset)) addRow.appendChild(addBtn);
     body.appendChild(addRow);
+    if (isRoomLinkSpawnAsset(spawnAsset)) {
+        const fromNodeId = controller.getCorridorLinkWireFromNodeId();
+        appendEditorHint(
+            body,
+            fromNodeId != null
+                ? "Source room selected — click the target room. The corridor draws immediately; pick it from Scene to adjust width or reroll."
+                : "Click the source room, then the target. One width-1 corridor is placed right away.",
+        );
+        return;
+    }
     if (isRoomNodeSpawnAsset(spawnAsset)) {
         appendAxisNumberFields(body, {
             Width: {
@@ -417,6 +406,7 @@ function maxWallHeightLevel(controller) {
  */
 export function mountSandboxToyUi(container, controller) {
     const state = controller.getState();
+    let corridorWireBootstrapped = false;
     const propIds = Object.keys(getWorldPropDefinitions())
         .filter((id) => isSandboxSpawnable(getPropAsset(id)))
         .sort((a, b) => formatSandboxSpawnLabel(a).localeCompare(formatSandboxSpawnLabel(b)));
@@ -433,6 +423,11 @@ export function mountSandboxToyUi(container, controller) {
             controller.setPlacePaletteKey(paletteKey);
         }
         const activeItem = paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0];
+        if (!corridorWireBootstrapped && activeItem.kind === "prop") {
+            const asset = getPropAsset(activeItem.key.slice(5));
+            if (isRoomLinkSpawnAsset(asset) && !controller.isCorridorLinkWireActive()) controller.enterCorridorLinkWireMode();
+        }
+        corridorWireBootstrapped = true;
         const selectedPropIds = new Set(controller.getSelectedPropIds());
         const selectedProp = controller.getSelectedProp();
         const selectedFloorCell = controller.getSelectedFloorCell();
@@ -585,17 +580,11 @@ export function mountSandboxToyUi(container, controller) {
                     );
                     appendRoomNodeWireInspector(body, {
                         listLinks: () => controller.listSelectedRoomNodeLinks(),
-                        isWireActive: () => controller.isRoomNodeWireLinkActive(),
-                        startWire: () => controller.startRoomNodeWireLink(),
-                        cancelWire: () => controller.cancelRoomNodeWireLink(),
-                        clearLinks: () => controller.clearSelectedRoomNodeLinks(),
                         removeLink: (linkId) => controller.removeRoomLinkById(linkId),
                         selectedLinkId: () => controller.getSelectedRoomLinkId(),
                         selectedCorridorIndex: () => controller.getSelectedRoomLinkCorridorIndex(),
                         selectLink: (linkId, corridorIndex) => controller.setSelectedRoomLinkId(linkId, corridorIndex),
                     });
-                    if (selectedRoomLink && (selectedRoomLink.a === selectedRoomNode.id || selectedRoomLink.b === selectedRoomNode.id))
-                        appendRoomLinkCorridorInspector(body, selectedRoomLink, controller);
                     const deleteRow = document.createElement("div");
                     deleteRow.className = "sandbox-add-row";
                     const deleteBtn = document.createElement("button");

@@ -3,7 +3,7 @@ import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLab
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
-import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset, isRoomLinkSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
 import {
     clearRoomGraph,
     DEFAULT_ROOM_NODE_COLS,
@@ -334,6 +334,7 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
             notifyUi();
             return true;
         }
+        if (isRoomLinkSpawnAsset(asset)) return false;
         const spawned = spawnPlacedSandboxProp(state, worldX, worldY, spawnPropId, spawnFaction);
         if (spawned) {
             touchPropPlacement(spawned.id);
@@ -382,6 +383,10 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
         },
         clearPropSelection: () => {
             setSinglePropSelection(null);
+        },
+        clearRoomGraphSelection: () => {
+            dropRoomGraphSelection();
+            notifyUi();
         },
         getSelectedFloorCell: () => selectedFloorCell,
         setSelectedFloorCell,
@@ -868,13 +873,10 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
             setSelectedRoomNodeId(node.id);
             return true;
         },
-        addRoomLinkBetweenNodes(a, b) {
-            const link = addRoomLink(state, a, b);
+        addRoomLinkBetweenNodes(a, b, options = {}) {
+            const link = addRoomLink(state, a, b, options);
             if (!link) return null;
             touchRoomLinkCorridors(link);
-            selectedRoomNodeId = a;
-            selectedRoomLinkId = link.id;
-            selectedRoomLinkCorridorIndex = 0;
             syncRoomGraphBake(state);
             notifyUi();
             return link;

@@ -3,7 +3,7 @@ import { solveUniformCorridorBundle } from "../Libraries/Pathfinding/Corridor/co
 import { maxCorridorLanesBetweenNodes } from "../Libraries/Pathfinding/Corridor/corridorWallSlots.js";
 import { cellInsideAnyRoom } from "../Libraries/Pathfinding/Corridor/corridorWalkGrid.js";
 import { createSeededRng } from "../Libraries/Math/SeededRng.js";
-import { buildCorridorBeltsFromPaths, collapsePathRevisits, corridorExteriorCellFromWallHole, roomInteriorCellFromWallHole } from "../Libraries/RoomGraph/roomGraphCorridorBelts.js";
+import { buildCorridorBeltsFromPaths, collapsePathRevisits, corridorExteriorCellFromWallHole } from "../Libraries/RoomGraph/roomGraphCorridorBelts.js";
 import { DEFAULT_CORRIDOR_EGRESS_CELLS } from "../Libraries/RoomGraph/roomGraphCorridorRails.js";
 import { floorBeltEntryExitSides } from "../Libraries/Spatial/grid/FloorCell.js";
 import { CARDINAL_OFFSETS } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -100,34 +100,26 @@ function assertBeltChains(footprint, beltsByCell, label, mouthExteriorKeys = new
         }
     }
 }
-function assertRoomInteriorBelts(interior, hole, beltsByCell, isSource, label) {
-    const interiorBelt = beltsByCell.get(cellKey(interior.c, interior.r));
-    if (!interiorBelt) throw new Error(`${label}: missing interior belt at ${interior.c},${interior.r}`);
-    const interiorSides = floorBeltEntryExitSides(interiorBelt.kind, interiorBelt.facingIndex);
-    if (isSource && interiorSides.exitSide !== hole.side) throw new Error(`${label}: source interior exit ${interiorSides.exitSide} != hole side ${hole.side}`);
-    if (!isSource && interiorSides.entrySide !== hole.side) throw new Error(`${label}: target interior entry ${interiorSides.entrySide} != hole side ${hole.side}`);
-}
 function corridorOnlyFootprint(path, width) {
     return footprintKeysForPath(collapsePathRevisits(path), width);
 }
-export function assertLaneReachesRoomInteriors(fixture, bundle, laneIndex, label = "lane") {
+export function assertLaneReachesRoomMouths(fixture, bundle, laneIndex, label = "lane") {
     const rooms = [fixture.roomA, fixture.roomB];
     const parentHole = bundle.parentAnchors[laneIndex];
     const childHole = bundle.childAnchors[laneIndex];
-    const interiorA = roomInteriorCellFromWallHole(parentHole);
-    const interiorB = roomInteriorCellFromWallHole(childHole);
     const exteriorA = corridorExteriorCellFromWallHole(parentHole);
     const exteriorB = corridorExteriorCellFromWallHole(childHole);
-    if (!cellInsideAnyRoom([fixture.roomA], interiorA.c, interiorA.r)) throw new Error(`${label}: source interior ${interiorA.c},${interiorA.r} is not inside room A`);
-    if (!cellInsideAnyRoom([fixture.roomB], interiorB.c, interiorB.r)) throw new Error(`${label}: target interior ${interiorB.c},${interiorB.r} is not inside room B`);
-    const belts = buildCorridorBeltsFromPaths([bundle.paths[laneIndex]], [bundle.corridorWidths[laneIndex]], rooms, { parentAnchors: [parentHole], childAnchors: [childHole] });
+    const belts = buildCorridorBeltsFromPaths([bundle.paths[laneIndex]], [bundle.corridorWidths[laneIndex]], rooms);
     const beltsByCell = beltMap(belts);
-    if (!beltsByCell.has(cellKey(interiorA.c, interiorA.r))) throw new Error(`${label}: no belt inside room A at ${interiorA.c},${interiorA.r}`);
-    if (!beltsByCell.has(cellKey(interiorB.c, interiorB.r))) throw new Error(`${label}: no belt inside room B at ${interiorB.c},${interiorB.r}`);
-    assertRoomInteriorBelts(interiorA, parentHole, beltsByCell, true, label);
-    assertRoomInteriorBelts(interiorB, childHole, beltsByCell, false, label);
     const corridorFootprint = corridorOnlyFootprint(bundle.paths[laneIndex], bundle.corridorWidths[laneIndex]);
     const mouthExteriorKeys = new Set([cellKey(exteriorA.c, exteriorA.r), cellKey(exteriorB.c, exteriorB.r)]);
+    for (const key of mouthExteriorKeys) {
+        const comma = key.indexOf(",");
+        const c = Number(key.slice(0, comma));
+        const r = Number(key.slice(comma + 1));
+        if (cellInsideAnyRoom(rooms, c, r)) continue;
+        if (!beltsByCell.has(key) && corridorFootprint.has(key)) throw new Error(`${label}: missing belt at room mouth ${key}`);
+    }
     assertBeltChains(corridorFootprint, beltsByCell, label, mouthExteriorKeys);
 }
 export function assertPathsAreCardinalConnected(paths) {
@@ -151,5 +143,5 @@ export function assertPathsDoNotOverlap(paths, widths) {
 export function assertBundleLanes(fixture, bundle, canIntersect) {
     assertPathsAreCardinalConnected(bundle.paths);
     if (!canIntersect) assertPathsDoNotOverlap(bundle.paths, bundle.corridorWidths);
-    for (let li = 0; li < bundle.paths.length; li++) assertLaneReachesRoomInteriors(fixture, bundle, li, `lane ${li}`);
+    for (let li = 0; li < bundle.paths.length; li++) assertLaneReachesRoomMouths(fixture, bundle, li, `lane ${li}`);
 }

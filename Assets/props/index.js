@@ -20,6 +20,8 @@ import floor_belt_elbow_left_rails from "./floor_belt/floor_belt_elbow_left_rail
 import floor_belt_elbow_right_rails from "./floor_belt/floor_belt_elbow_right_rails.asset.js";
 import floor_power_source from "./floor_power_source/floor_power_source.asset.js";
 import room_node from "./room_node/room_node.asset.js";
+import corridor_rail from "./corridor_rail/corridor_rail.asset.js";
+import corridor_empty from "./corridor_empty/corridor_empty.asset.js";
 import poolBalls from "./poolBalls.js";
 const catalog = {
     beach_ball,
@@ -44,6 +46,8 @@ const catalog = {
     floor_belt_elbow_right_rails,
     floor_power_source,
     room_node,
+    corridor_rail,
+    corridor_empty,
     ...poolBalls,
 };
 export default catalog;

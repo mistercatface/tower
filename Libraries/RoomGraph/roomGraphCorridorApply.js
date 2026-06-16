@@ -23,7 +23,7 @@ export function stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, 
  * @param {import("./roomGraphCorridorTypes.js").CorridorType} corridorType
  */
 export function stampCorridorBundleBelts(bundle, rooms) {
-    return buildCorridorBeltsFromPaths(bundle.paths, bundle.corridorWidths, rooms, { parentAnchors: bundle.parentAnchors, childAnchors: bundle.childAnchors });
+    return buildCorridorBeltsFromPaths(bundle.paths, bundle.corridorWidths, rooms);
 }
 /**
  * @param {import("./roomGraphClosedRooms.js").GraphNode} roomA

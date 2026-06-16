@@ -4,14 +4,19 @@ import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewport
 import { listRoomLinks, listRoomNodes, roomNodeCenterWorld } from "./roomGraphStore.js";
 const NODE_OUTLINE_BOUNDS = createAabb();
 /** @param {CanvasRenderingContext2D} ctx @param {object} state @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ selectedNodeId?: number | null, selectedLinkId?: number | null, wireFromNodeId?: number | null, wireCursor?: { x: number, y: number } | null, showRoomNodesAlways?: boolean, wireModeActive?: boolean }} [options] */
-export function drawPlacedRoomNodes(ctx, state, grid, { selectedNodeId = null, selectedLinkId = null, wireFromNodeId = null, wireCursor = null, showRoomNodesAlways = false, wireModeActive = false } = {}) {
-    if (!showRoomNodesAlways && !wireModeActive) return;
+export function drawPlacedRoomNodes(
+    ctx,
+    state,
+    grid,
+    { selectedNodeId = null, selectedLinkId = null, wireFromNodeId = null, wireCursor = null, showRoomNodesAlways = false, wireModeActive = false } = {},
+) {
     const nodes = listRoomNodes(state);
+    if (!nodes.length) return;
     const links = listRoomLinks(state);
     const lineScale = getCanvasLineScale(ctx);
     const half = grid.cellHalfSize;
     ctx.save();
-    if (showRoomNodesAlways) {
+    if (showRoomNodesAlways)
         for (let i = 0; i < links.length; i++) {
             const link = links[i];
             const nodeA = nodes.find((node) => node.id === link.a);
@@ -21,7 +26,6 @@ export function drawPlacedRoomNodes(ctx, state, grid, { selectedNodeId = null, s
             const b = roomNodeCenterWorld(grid, nodeB);
             drawWire(ctx, a.x, a.y, b.x, b.y, link.id === selectedLinkId ? "#64B5F6" : "#5C9FD6");
         }
-    }
     if (wireFromNodeId != null && wireCursor) {
         const fromNode = nodes.find((node) => node.id === wireFromNodeId);
         if (fromNode) {

@@ -61,36 +61,18 @@ function beltsForCollapsedPath(path, width, rooms) {
     }
     return byCell;
 }
-/** @param {Map<string, BakedFloorBelt>} byCell @param {WallHole} parentHole @param {WallHole} childHole @param {GraphNode[]} rooms */
-function stampRoomInteriorBelts(byCell, parentHole, childHole, rooms) {
-    const roomA = rooms[0];
-    const roomB = rooms[1];
-    const interiorA = roomInteriorCellFromWallHole(parentHole);
-    const interiorB = roomInteriorCellFromWallHole(childHole);
-    if (!cellInsideAnyRoom([roomA], interiorA.c, interiorA.r)) return;
-    if (!cellInsideAnyRoom([roomB], interiorB.c, interiorB.r)) return;
-    const exitFromA = parentHole.side;
-    const specA = resolveRailedBeltFromSides(oppositeSide(exitFromA), exitFromA);
-    byCell.set(`${interiorA.c},${interiorA.r}`, { col: interiorA.c, row: interiorA.r, kind: specA.kind, facingIndex: specA.facingIndex });
-    const entryToB = childHole.side;
-    const specB = resolveRailedBeltFromSides(entryToB, oppositeSide(entryToB));
-    byCell.set(`${interiorB.c},${interiorB.r}`, { col: interiorB.c, row: interiorB.r, kind: specB.kind, facingIndex: specB.facingIndex });
-}
 /**
  * Belt flow follows path order: link.a room → link.b room (wire pick order).
+ * Belts stamp only on corridor cells outside room footprints.
  * @param {Cell[][]} paths
  * @param {number[]} corridorWidths
  * @param {GraphNode[]} rooms
- * @param {{ parentAnchors?: WallHole[], childAnchors?: WallHole[] }} [anchors]
  */
-export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms, anchors = {}) {
+export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms) {
     const byCell = new Map();
-    const parentAnchors = anchors.parentAnchors ?? [];
-    const childAnchors = anchors.childAnchors ?? [];
     for (let pi = 0; pi < paths.length; pi++) {
         const laneBelts = beltsForCollapsedPath(paths[pi], corridorWidths[pi], rooms);
         for (const [key, belt] of laneBelts) byCell.set(key, belt);
-        if (parentAnchors[pi] && childAnchors[pi]) stampRoomInteriorBelts(byCell, parentAnchors[pi], childAnchors[pi], rooms);
     }
     return [...byCell.values()];
 }

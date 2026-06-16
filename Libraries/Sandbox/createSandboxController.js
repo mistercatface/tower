@@ -8,7 +8,7 @@ import { clearFloorOverlayAt } from "./floorOccupancy.js";
 import { addButtonLink, clearButtonLinks, drawButtonWires, findButtonLinkTarget, listButtonLinkEndpoints, removeButtonLink } from "./buttonLinks.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold } from "./floorButtons.js";
-import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
+import { resolveSandboxBehaviors, isRoomLinkSpawnAsset, corridorTypeFromSpawnAsset } from "./sandboxCapabilities.js";
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene } from "./sandboxStartScene.js";
@@ -67,9 +67,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
     let buttonWireMode = false;
     /** @type {{ x: number, y: number } | null} */
     let buttonWireCursor = null;
-    let roomNodeWireMode = false;
+    let corridorLinkWireMode = false;
+    let corridorLinkWireFromNodeId = null;
     /** @type {{ x: number, y: number } | null} */
-    let roomNodeWireCursor = null;
+    let corridorLinkWireCursor = null;
     let showSelectionRings = true;
     let showPropTileCells = false;
     let showRoomNodesAlways = false;
@@ -82,6 +83,16 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
     let placePreviewWorld = null;
     const entityMeta = () => getSandboxEntityMeta(state);
     const spawnAsset = () => getPropAsset(session.getSpawnPropId());
+    const enterCorridorLinkWireMode = () => {
+        buttonWireMode = false;
+        buttonWireCursor = null;
+        corridorLinkWireMode = true;
+        corridorLinkWireFromNodeId = null;
+        corridorLinkWireCursor = { x: state.viewport.x, y: state.viewport.y };
+        session.clearPropSelection();
+        session.clearRoomGraphSelection();
+        session.sync();
+    };
     /** @param {string} id @param {string[]} allowed */
     const clampBehaviorId = (id, allowed) => {
         if (allowed.length === 0) return id;
@@ -136,7 +147,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
     };
     /** @param {{ x: number, y: number }} world */
     const issueMassHpaGroundMove = (world) => {
-        if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || buttonWireMode || roomNodeWireMode) return false;
+        if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || buttonWireMode || corridorLinkWireMode) return false;
         const hpaBehavior = behaviorById.get(ROLL_TO_CURSOR_HPA_BEHAVIOR_ID);
         if (!hpaBehavior?.setGroundMoveTarget) return false;
         let moved = 0;
@@ -157,7 +168,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
     };
     /** @param {{ x: number, y: number }} world @param {PointerEvent} e @returns {boolean} */
     const tryPlaceSpawnAtWorld = (world, e) => {
-        if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || buttonWireMode || roomNodeWireMode) return false;
+        if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || buttonWireMode || corridorLinkWireMode) return false;
         if (!session.spawnAt(world.x, world.y)) return false;
         stampPropBehavior(session.getSelectedProp());
         e.preventDefault();
@@ -173,8 +184,9 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             if (allowed.length === 0) return false;
             buttonWireMode = false;
             buttonWireCursor = null;
-            roomNodeWireMode = false;
-            roomNodeWireCursor = null;
+            corridorLinkWireMode = false;
+            corridorLinkWireFromNodeId = null;
+            corridorLinkWireCursor = null;
             session.setPlacePaletteKey(`prop:${hit.type}`);
             session.setSelectedPropId(hit.id);
             const prop = session.getSelectedProp();
@@ -287,22 +299,20 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
                 return;
             }
         }
-        if (roomNodeWireMode) {
-            const fromNode = session.getSelectedRoomNode();
-            if (fromNode) {
-                const grid = state.obstacleGrid;
-                const { col, row } = grid.worldToGrid(world.x, world.y);
-                const target = pickRoomNodeAt(state, col, row);
-                if (target && target.id !== fromNode.id) {
-                    if (session.addRoomLinkBetweenNodes(fromNode.id, target.id)) {
-                        roomNodeWireMode = false;
-                        roomNodeWireCursor = null;
-                    }
-                } else session.sync();
-                e.preventDefault();
-                e.stopPropagation();
-                return;
-            }
+        if (corridorLinkWireMode) {
+            const grid = state.obstacleGrid;
+            const { col, row } = grid.worldToGrid(world.x, world.y);
+            const target = pickRoomNodeAt(state, col, row);
+            if (target)
+                if (corridorLinkWireFromNodeId == null) corridorLinkWireFromNodeId = target.id;
+                else if (target.id !== corridorLinkWireFromNodeId) {
+                    const corridorType = corridorTypeFromSpawnAsset(spawnAsset());
+                    if (session.addRoomLinkBetweenNodes(corridorLinkWireFromNodeId, target.id, { corridorType })) enterCorridorLinkWireMode();
+                }
+            session.sync();
+            e.preventDefault();
+            e.stopPropagation();
+            return;
         }
         const floorButton = hitTestFloorButton(state, world.x, world.y);
         if (floorButton && handleButtonPointerDown(state, floorButton, world)) {
@@ -346,10 +356,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         if (session.pickRoomNodeAtWorld(world.x, world.y)) {
             buttonWireMode = false;
             buttonWireCursor = null;
-            if (!roomNodeWireMode) {
-                roomNodeWireMode = false;
-                roomNodeWireCursor = null;
-            }
             e.preventDefault();
             e.stopPropagation();
             return;
@@ -373,8 +379,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
     /** @param {PointerEvent} e */
     const onPointerMove = (e) => {
         if (buttonWireMode) buttonWireCursor = clientToWorld(e.clientX, e.clientY);
-        if (roomNodeWireMode) roomNodeWireCursor = clientToWorld(e.clientX, e.clientY);
-        if (!interactionBehavior && !marqueeSelect && !groundNav && !buttonWireMode && !roomNodeWireMode && !session.isMapGenPlaceMode()) placePreviewWorld = clientToWorld(e.clientX, e.clientY);
+        if (corridorLinkWireMode) corridorLinkWireCursor = clientToWorld(e.clientX, e.clientY);
+        if (!interactionBehavior && !marqueeSelect && !groundNav && !buttonWireMode && !corridorLinkWireMode && !session.isMapGenPlaceMode()) placePreviewWorld = clientToWorld(e.clientX, e.clientY);
         if (marqueeSelect) {
             marqueeSelect.currentWorld = clientToWorld(e.clientX, e.clientY);
             return;
@@ -475,15 +481,17 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         setSelectedPropIds: (ids) => {
             buttonWireMode = false;
             buttonWireCursor = null;
-            roomNodeWireMode = false;
-            roomNodeWireCursor = null;
+            corridorLinkWireMode = false;
+            corridorLinkWireFromNodeId = null;
+            corridorLinkWireCursor = null;
             session.setSelectedPropIds(ids);
         },
         clearPropSelection: () => {
             buttonWireMode = false;
             buttonWireCursor = null;
-            roomNodeWireMode = false;
-            roomNodeWireCursor = null;
+            corridorLinkWireMode = false;
+            corridorLinkWireFromNodeId = null;
+            corridorLinkWireCursor = null;
             session.clearPropSelection();
         },
         getShowSelectionRings: () => showSelectionRings,
@@ -502,8 +510,9 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         setSelectedPropId: (id) => {
             buttonWireMode = false;
             buttonWireCursor = null;
-            roomNodeWireMode = false;
-            roomNodeWireCursor = null;
+            corridorLinkWireMode = false;
+            corridorLinkWireFromNodeId = null;
+            corridorLinkWireCursor = null;
             session.setSelectedPropId(id);
             const prop = session.getSelectedProp();
             if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
@@ -513,8 +522,9 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         },
         startButtonWireLink: () => {
             if (!isButtonEntity(session.getSelectedProp())) return;
-            roomNodeWireMode = false;
-            roomNodeWireCursor = null;
+            corridorLinkWireMode = false;
+            corridorLinkWireFromNodeId = null;
+            corridorLinkWireCursor = null;
             buttonWireMode = true;
             buttonWireCursor = { x: state.viewport.x, y: state.viewport.y };
             session.sync();
@@ -525,20 +535,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             session.sync();
         },
         isButtonWireLinkActive: () => buttonWireMode,
-        startRoomNodeWireLink: () => {
-            if (!session.getSelectedRoomNode()) return;
-            buttonWireMode = false;
-            buttonWireCursor = null;
-            roomNodeWireMode = true;
-            roomNodeWireCursor = { x: state.viewport.x, y: state.viewport.y };
-            session.sync();
-        },
-        cancelRoomNodeWireLink: () => {
-            roomNodeWireMode = false;
-            roomNodeWireCursor = null;
-            session.sync();
-        },
-        isRoomNodeWireLinkActive: () => roomNodeWireMode,
+        isCorridorLinkWireActive: () => corridorLinkWireMode,
+        getCorridorLinkWireFromNodeId: () => corridorLinkWireFromNodeId,
         getSelectedRoomNodeInfo: () => session.getSelectedRoomNodeInfo(),
         getSelectedRoomLinkInfo: () => session.getSelectedRoomLinkInfo(),
         getSelectedRoomLinkId: () => session.getSelectedRoomLinkId(),
@@ -588,7 +586,24 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         getSelectedPassagePowerSourceInfo: () => session.getSelectedPassagePowerSourceInfo(),
         setSelectedPassagePowerSourceDefaultPowered: (powered) => session.setSelectedPassagePowerSourceDefaultPowered(powered),
         getPlacePaletteKey: () => session.getPlacePaletteKey(),
-        setPlacePaletteKey: (key) => session.setPlacePaletteKey(key),
+        setPlacePaletteKey: (key) => {
+            const prevKey = session.getPlacePaletteKey();
+            session.setPlacePaletteKey(key);
+            if (prevKey === key) return;
+            if (key.startsWith("prop:")) {
+                const asset = getPropAsset(key.slice(5));
+                if (isRoomLinkSpawnAsset(asset)) {
+                    enterCorridorLinkWireMode();
+                    return;
+                }
+            }
+            if (corridorLinkWireMode) {
+                corridorLinkWireMode = false;
+                corridorLinkWireFromNodeId = null;
+                corridorLinkWireCursor = null;
+            }
+        },
+        enterCorridorLinkWireMode,
         isWallPlaceMode: () => session.isWallPlaceMode(),
         isMapGenPlaceMode: () => session.isMapGenPlaceMode(),
         getWallStampMode: () => session.getWallStampMode(),
@@ -610,8 +625,9 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         selectSceneItem: (item) => {
             buttonWireMode = false;
             buttonWireCursor = null;
-            roomNodeWireMode = false;
-            roomNodeWireCursor = null;
+            corridorLinkWireMode = false;
+            corridorLinkWireFromNodeId = null;
+            corridorLinkWireCursor = null;
             session.selectSceneItem(item);
         },
         deleteSceneItem: (item) => session.deleteSceneItem(item),
@@ -686,7 +702,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
                     return;
                 }
                 if (e.code !== "KeyR") return;
-                if (!placePreviewWorld || interactionBehavior || marqueeSelect || groundNav || buttonWireMode || roomNodeWireMode) return;
+                if (!placePreviewWorld || interactionBehavior || marqueeSelect || groundNav || buttonWireMode || corridorLinkWireMode) return;
                 if (session.rotateHoveredGridOccupantAtWorld(placePreviewWorld.x, placePreviewWorld.y)) e.preventDefault();
             };
             const onKeyUp = (e) => {
@@ -707,8 +723,9 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             unbindPointers = null;
             buttonWireMode = false;
             buttonWireCursor = null;
-            roomNodeWireMode = false;
-            roomNodeWireCursor = null;
+            corridorLinkWireMode = false;
+            corridorLinkWireFromNodeId = null;
+            corridorLinkWireCursor = null;
             marqueeSelect = null;
             groundNav = null;
             placePreviewWorld = null;
@@ -748,10 +765,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             drawPlacedRoomNodes(ctx, state, state.obstacleGrid, {
                 selectedNodeId: session.getSelectedRoomNodeId(),
                 selectedLinkId: session.getSelectedRoomLinkId(),
-                wireFromNodeId: roomNodeWireMode ? session.getSelectedRoomNodeId() : null,
-                wireCursor: roomNodeWireMode ? roomNodeWireCursor : null,
+                wireFromNodeId: corridorLinkWireMode ? corridorLinkWireFromNodeId : null,
+                wireCursor: corridorLinkWireMode ? corridorLinkWireCursor : null,
                 showRoomNodesAlways,
-                wireModeActive: roomNodeWireMode,
+                wireModeActive: corridorLinkWireMode,
             });
             drawForcefieldEdges(ctx, state, state.viewport);
             drawButtonWires(ctx, state, { wireFromPropId: buttonWireMode ? session.getSelectedPropId() : null, wireCursor: buttonWireMode ? buttonWireCursor : null });
@@ -777,7 +794,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             drawSandboxMarquee(ctx, { marqueeRect });
         },
         drawPlacePreview(ctx) {
-            if (!placePreviewWorld || interactionBehavior || marqueeSelect || groundNav || buttonWireMode || roomNodeWireMode || session.isMapGenPlaceMode()) return;
+            if (!placePreviewWorld || interactionBehavior || marqueeSelect || groundNav || buttonWireMode || corridorLinkWireMode || session.isMapGenPlaceMode()) return;
             const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
             drawSandboxPlacePreview(ctx, preview, state.obstacleGrid);
         },

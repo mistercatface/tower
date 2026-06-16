@@ -125,8 +125,8 @@ export function appendRoomNodeWireInspector(body, wire) {
     appendEditorHint(
         body,
         links.length
-            ? `${links.length} corridor${links.length === 1 ? "" : "s"} — pick one below for settings. Wire order sets belt direction (source → target).`
-            : "No links — connect to another room node. First pick is the belt source; second pick is the target.",
+            ? `${links.length} corridor${links.length === 1 ? "" : "s"} linked — pick one below to edit in Scene or here.`
+            : "No corridor links yet — pick Rail corridor or Empty corridor from Props, then click two room nodes.",
     );
     if (links.length)
         appendInstanceList(
@@ -144,6 +144,7 @@ export function appendRoomNodeWireInspector(body, wire) {
                 },
             })),
         );
+    if (!wire.startWire) return;
     const wireRow = document.createElement("div");
     wireRow.className = "sandbox-add-row";
     const wireActive = wire.isWireActive();
@@ -156,7 +157,7 @@ export function appendRoomNodeWireInspector(body, wire) {
         else wire.startWire();
     });
     wireRow.appendChild(connectBtn);
-    if (links.length) {
+    if (links.length && wire.clearLinks) {
         const clearBtn = document.createElement("button");
         clearBtn.type = "button";
         clearBtn.className = "secondary";
