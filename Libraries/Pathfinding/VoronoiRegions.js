@@ -75,7 +75,7 @@ export function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, no
         }
     }
 }
-function mergeSmallRegions(nodesMap, cellToNode, cols, rows, minCellsPerChunk, navGraph = null) {
+export function mergeSmallRegions(nodesMap, cellToNode, cols, rows, minCellsPerChunk, navGraph = null) {
     let merged;
     do {
         merged = false;
@@ -114,7 +114,7 @@ function mergeSmallRegions(nodesMap, cellToNode, cols, rows, minCellsPerChunk, n
         }
     } while (merged);
 }
-function repositionRegionCentroids(nodesMap, grid, cols, rows, minX, minY, cellSize, cellToNode) {
+export function repositionRegionCentroids(nodesMap, grid, cols, rows, minX, minY, cellSize, cellToNode) {
     for (const id in nodesMap) {
         const node = nodesMap[id];
         const nodeCells = node.cells;

@@ -3,7 +3,7 @@ import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin } from "../Spatial/grid/GridCoords.js";
 import { runLocalAStarFlat, runAbstractAStar } from "./AStar.js";
 import { createSnapshotLocalNavView } from "./GridNavSnapshot.js";
-import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid, floodFillRegion } from "./VoronoiRegions.js";
+import { RegionNode, computeDistanceTransform, generateVoronoiRegions, findRegionAdjacencies, repositionNodeCentroid, repositionRegionCentroids, mergeSmallRegions, floodFillRegion } from "./VoronoiRegions.js";
 export class HierarchicalNavigator {
     /** @type {import("./HpaPathWorker.js").HpaPathWorker | null} */
     hpaPathWorker = null;
@@ -325,7 +325,9 @@ export class HierarchicalNavigator {
             repositionNodeCentroid(node, this.cellToNode, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize);
             newIds.push(id);
         }
-        return newIds;
+        if (this.minCellsPerChunk > 0) mergeSmallRegions(this.nodesMap, this.cellToNode, this.cols, this.rows, this.minCellsPerChunk, this.navGraph);
+        repositionRegionCentroids(this.nodesMap, this.grid, this.cols, this.rows, this.minX, this.minY, this.cellSize, this.cellToNode);
+        return newIds.filter((id) => this.nodesMap[id]);
     }
     /** Cut hull: wipe touched regions, collect all open floor in box, rebuild via Voronoi chunking. @returns {string[]} */
     _repackHullRegions(startCol, endCol, startRow, endRow) {
@@ -374,7 +376,9 @@ export class HierarchicalNavigator {
         const box = this._expandDamageBounds(bounds);
         this._stripBlockedCellsFromRegions(box.startCol, box.endCol, box.startRow, box.endRow);
         const repackedIds = this._repackHullRegions(box.startCol, box.endCol, box.startRow, box.endRow);
-        for (const id of repackedIds) this._reconnectRegionEdges(this.nodesMap[id]);
+        const reconnectIds = new Set(repackedIds);
+        for (const id of this._collectRegionIdsInBox(box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
+        for (const id of reconnectIds) this._reconnectRegionEdges(this.nodesMap[id]);
         for (const id in this.nodesMap) this._validateRegionEdges(this.nodesMap[id]);
         this._assertRegionGraphIntegrity();
         if (this._pruneSeedX != null && this._pruneSeedY != null) this.pruneUnreachableRegions(this._pruneSeedX, this._pruneSeedY);
