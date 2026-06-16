@@ -381,27 +381,15 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     };
     /** @param {PointerEvent} e */
     const onPointerMove = (e) => {
-        if (buttonWireMode) {
-            buttonWireCursor = clientToWorld(e.clientX, e.clientY);
-            requestRedraw();
-        }
-        if (roomNodeWireMode) {
-            roomNodeWireCursor = clientToWorld(e.clientX, e.clientY);
-            requestRedraw();
-        }
-        if (!interactionBehavior && !marqueeSelect && !groundNav && !buttonWireMode && !roomNodeWireMode && !session.isMapGenPlaceMode()) {
-            placePreviewWorld = clientToWorld(e.clientX, e.clientY);
-            requestRedraw();
-        }
+        if (buttonWireMode) buttonWireCursor = clientToWorld(e.clientX, e.clientY);
+        if (roomNodeWireMode) roomNodeWireCursor = clientToWorld(e.clientX, e.clientY);
+        if (!interactionBehavior && !marqueeSelect && !groundNav && !buttonWireMode && !roomNodeWireMode && !session.isMapGenPlaceMode()) placePreviewWorld = clientToWorld(e.clientX, e.clientY);
         if (marqueeSelect) {
             marqueeSelect.currentWorld = clientToWorld(e.clientX, e.clientY);
-            requestRedraw();
             return;
         }
         if (groundNav) {
-            const world = clientToWorld(e.clientX, e.clientY);
-            groundNav.behavior.updateGroundMoveTarget?.(groundNav.prop, world);
-            requestRedraw();
+            groundNav.behavior.updateGroundMoveTarget?.(groundNav.prop, clientToWorld(e.clientX, e.clientY));
             return;
         }
         if (!interactionBehavior) return;
@@ -413,9 +401,7 @@ export function createSandboxController(state, { requestRedraw, getCanvas, clien
     };
     /** @param {PointerEvent} e */
     const onPointerLeave = () => {
-        if (!placePreviewWorld) return;
         placePreviewWorld = null;
-        requestRedraw();
     };
     /** @param {PointerEvent} e */
     const onPointerUp = (e) => {

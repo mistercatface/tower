@@ -104,7 +104,13 @@ export function drawLabFrame(state) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
     if (showPathDebug) {
-        if (state._labPathDebugKey !== labPathDebugCacheKey(state)) void ensureLabPathDebugCache(state).then(() => drawLabFrame(state));
+        if (state._labPathDebugKey !== labPathDebugCacheKey(state) && !state._labPathDebugRedrawScheduled) {
+            state._labPathDebugRedrawScheduled = true;
+            void ensureLabPathDebugCache(state).then(() => {
+                state._labPathDebugRedrawScheduled = false;
+                drawLabFrame(state);
+            });
+        }
         if (state.mapPathDebugCache) {
             ctx.save();
             viewport.apply(ctx);

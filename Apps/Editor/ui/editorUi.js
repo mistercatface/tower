@@ -58,7 +58,6 @@ export function mountEditorUi(state, { playbackHandlers }) {
     const requestRedraw = () => {
         drawLabFrame(state);
         repaintUntilBakesDone(state);
-        refreshMapGenPanelInputs();
     };
     const uiRoot = document.getElementById("ui-root");
     uiRoot.innerHTML = TILELAB_UI_HTML;
@@ -76,7 +75,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
         },
     });
     pushEditorProfile(state);
-    mountLabViewport(state, requestRedraw, playbackHandlers);
+    mountLabViewport(state, () => drawLabFrame(state), playbackHandlers);
     bindViewModeControls(state, requestRedraw, () => resizeCanvases(state));
     mountMapOverview(state, () => {
         paintMapOverviewFrame(state);
