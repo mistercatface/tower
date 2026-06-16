@@ -46,6 +46,14 @@ describe("width-1 corridors reach room interiors", () => {
         assertManySeparateLinks(makeHorizontalFixture(8, 8, 8, 8, 8), 12);
         assertManySeparateLinks(makeHorizontalFixture(8, 8, 2, 12, 8), 12);
     });
+    it("east mouth to south mouth turns elbow into target room (8x8 gap 9)", () => {
+        const fixture = makeHorizontalFixture(8, 8, 9, 8, 8);
+        const bundle = solveTwoRoomBundle(fixture, 1, 1, 6);
+        assert.ok(bundle);
+        assert.equal(bundle.parentAnchors[0].side, 1);
+        assert.equal(bundle.childAnchors[0].side, 2);
+        assertBundleLanes(fixture, bundle);
+    });
 });
 describe("width-1 corridors across room sizes and gaps", () => {
     const fixtures = generateWidthOneFixtures();

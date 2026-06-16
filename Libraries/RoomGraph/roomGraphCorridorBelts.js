@@ -32,8 +32,8 @@ export function collapsePathRevisits(path) {
     }
     return out;
 }
-/** @param {Cell[]} path @param {number} width @param {GraphNode[]} rooms @returns {Map<string, BakedFloorBelt>} */
-function beltsForCollapsedPath(path, width, rooms) {
+/** @param {Cell[]} path @param {number} width @param {GraphNode[]} rooms @param {WallHole | null} parentAnchor @param {WallHole | null} childAnchor @returns {Map<string, BakedFloorBelt>} */
+function beltsForCollapsedPath(path, width, rooms, parentAnchor, childAnchor) {
     const collapsed = collapsePathRevisits(path);
     const byCell = new Map();
     for (let i = 0; i < collapsed.length; i++) {
@@ -48,10 +48,12 @@ function beltsForCollapsedPath(path, width, rooms) {
             spec = resolveRailedBeltFromSides(entrySide, exitSide);
         } else if (next) {
             const exitSide = gridSideFromCellToNeighbor(collapsed[i].c, collapsed[i].r, next.c, next.r);
-            spec = resolveRailedBeltFromSides((exitSide + 2) % 4, exitSide);
+            const entrySide = parentAnchor ? oppositeSide(parentAnchor.side) : (exitSide + 2) % 4;
+            spec = resolveRailedBeltFromSides(entrySide, exitSide);
         } else if (prev) {
             const entrySide = gridSideFromCellToNeighbor(collapsed[i].c, collapsed[i].r, prev.c, prev.r);
-            spec = resolveRailedBeltFromSides(entrySide, (entrySide + 2) % 4);
+            const exitSide = childAnchor ? oppositeSide(childAnchor.side) : (entrySide + 2) % 4;
+            spec = resolveRailedBeltFromSides(entrySide, exitSide);
         } else spec = resolveRailedBeltFromSides(3, 1);
         for (let ci = 0; ci < cells.length; ci++) {
             const cell = cells[ci];
@@ -67,11 +69,13 @@ function beltsForCollapsedPath(path, width, rooms) {
  * @param {Cell[][]} paths
  * @param {number[]} corridorWidths
  * @param {GraphNode[]} rooms
+ * @param {WallHole[]} [parentAnchors]
+ * @param {WallHole[]} [childAnchors]
  */
-export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms) {
+export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms, parentAnchors, childAnchors) {
     const byCell = new Map();
     for (let pi = 0; pi < paths.length; pi++) {
-        const laneBelts = beltsForCollapsedPath(paths[pi], corridorWidths[pi], rooms);
+        const laneBelts = beltsForCollapsedPath(paths[pi], corridorWidths[pi], rooms, parentAnchors?.[pi] ?? null, childAnchors?.[pi] ?? null);
         for (const [key, belt] of laneBelts) byCell.set(key, belt);
     }
     return [...byCell.values()];

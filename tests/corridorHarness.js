@@ -102,7 +102,7 @@ export function assertLaneReachesRoomMouths(fixture, bundle, laneIndex, label = 
     const childHole = bundle.childAnchors[laneIndex];
     const exteriorA = corridorExteriorCellFromWallHole(parentHole);
     const exteriorB = corridorExteriorCellFromWallHole(childHole);
-    const belts = buildCorridorBeltsFromPaths([bundle.paths[laneIndex]], [bundle.corridorWidths[laneIndex]], rooms);
+    const belts = buildCorridorBeltsFromPaths([bundle.paths[laneIndex]], [bundle.corridorWidths[laneIndex]], rooms, [bundle.parentAnchors[laneIndex]], [bundle.childAnchors[laneIndex]]);
     const beltsByCell = beltMap(belts);
     const corridorFootprint = corridorOnlyFootprint(bundle.paths[laneIndex], bundle.corridorWidths[laneIndex]);
     const mouthExteriorKeys = new Set([cellKey(exteriorA.c, exteriorA.r), cellKey(exteriorB.c, exteriorB.r)]);
@@ -114,6 +114,41 @@ export function assertLaneReachesRoomMouths(fixture, bundle, laneIndex, label = 
         if (!beltsByCell.has(key) && corridorFootprint.has(key)) throw new Error(`${label}: missing belt at room mouth ${key}`);
     }
     assertBeltChains(corridorFootprint, beltsByCell, label, mouthExteriorKeys);
+}
+function beltIsElbow(kind) {
+    return kind === 5 || kind === 6;
+}
+export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label = "lane") {
+    const rooms = [fixture.roomA, fixture.roomB];
+    const parentHole = bundle.parentAnchors[laneIndex];
+    const childHole = bundle.childAnchors[laneIndex];
+    const exteriorA = corridorExteriorCellFromWallHole(parentHole);
+    const exteriorB = corridorExteriorCellFromWallHole(childHole);
+    const belts = buildCorridorBeltsFromPaths([bundle.paths[laneIndex]], [bundle.corridorWidths[laneIndex]], rooms, [parentHole], [childHole]);
+    const beltsByCell = beltMap(belts);
+    const intoRoom = (hole) => oppositeSide(hole.side);
+    for (const [hole, exterior, role, check] of [
+        [parentHole, exteriorA, "parent", "entry"],
+        [childHole, exteriorB, "child", "exit"],
+    ]) {
+        if (cellInsideAnyRoom(rooms, exterior.c, exterior.r)) continue;
+        const key = cellKey(exterior.c, exterior.r);
+        const belt = beltsByCell.get(key);
+        if (!belt) throw new Error(`${label}: missing belt at ${role} mouth ${key}`);
+        const sides = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
+        const wantIntoRoom = intoRoom(hole);
+        const actual = check === "entry" ? sides.entrySide : sides.exitSide;
+        if (actual !== wantIntoRoom) throw new Error(`${label}: ${role} mouth belt at ${key} ${check} side ${actual}, expected ${wantIntoRoom} into room`);
+    }
+    const childKey = cellKey(exteriorB.c, exteriorB.r);
+    if (!cellInsideAnyRoom(rooms, exteriorB.c, exteriorB.r)) {
+        const childBelt = beltsByCell.get(childKey);
+        const { entrySide, exitSide } = floorBeltEntryExitSides(childBelt.kind, childBelt.facingIndex);
+        const straightThrough = (entrySide + 2) % 4 === exitSide;
+        if (!straightThrough && !beltIsElbow(childBelt.kind)) {
+            throw new Error(`${label}: child mouth belt at ${childKey} turns ${entrySide}->${exitSide} but is not an elbow`);
+        }
+    }
 }
 export function assertManySeparateLinks(fixture, linkCount, seed = 0) {
     const rooms = [fixture.roomA, fixture.roomB];
@@ -157,5 +192,8 @@ export function assertPathsDoNotOverlap(paths, widths) {
 export function assertBundleLanes(fixture, bundle) {
     assertPathsAreCardinalConnected(bundle.paths);
     assertPathsDoNotOverlap(bundle.paths, bundle.corridorWidths);
-    for (let li = 0; li < bundle.paths.length; li++) assertLaneReachesRoomMouths(fixture, bundle, li, `lane ${li}`);
+    for (let li = 0; li < bundle.paths.length; li++) {
+        assertLaneMouthBeltsEnterRooms(fixture, bundle, li, `lane ${li}`);
+        assertLaneReachesRoomMouths(fixture, bundle, li, `lane ${li}`);
+    }
 }
