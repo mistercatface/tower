@@ -5,6 +5,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { FLOOR_CELL_KIND, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { syncWorldPropWeaponState } from "../Combat/worldPropWeaponState.js";
 import { normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
+import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
