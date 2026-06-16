@@ -1,4 +1,5 @@
 import { colRowToIndex, forEachCardinalNeighbor, makeAdjacencyKey } from "../Spatial/grid/GridUtils.js";
+import { findNearestOpenCellBlocked } from "./hpaPathRequest.js";
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { worldToGridAtOrigin } from "../Spatial/grid/GridCoords.js";
 import {
@@ -194,20 +195,9 @@ function connectAllNodes(navGraph, blocked, cols, rows, cellToNode, nodesMap) {
     }
     for (const id in nodesMap) validateRegionEdges(navGraph, cols, rows, blocked, nodesMap[id], nodesMap);
 }
-function findNearestOpenCell(blocked, cols, rows, col, row) {
-    if (!blocked[colRowToIndex(col, row, cols)]) return { col, row };
-    for (let r = 1; r <= 5; r++)
-        for (let dr = -r; dr <= r; dr++)
-            for (let dc = -r; dc <= r; dc++) {
-                const nc = col + dc;
-                const nr = row + dr;
-                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows && !blocked[colRowToIndex(nc, nr, cols)]) return { col: nc, row: nr };
-            }
-    return { col, row };
-}
 function pruneUnreachableRegions(navGraph, blocked, cols, rows, minX, minY, cellSize, cellToNode, nodesMap, seedWorldX, seedWorldY) {
     const { col, row } = worldToGridAtOrigin(seedWorldX, seedWorldY, minX, minY, cellSize);
-    const start = findNearestOpenCell(blocked, cols, rows, col, row);
+    const start = findNearestOpenCellBlocked(blocked, cols, rows, col, row);
     const startIdx = colRowToIndex(start.col, start.row, cols);
     const reachable = new Uint8Array(cols * rows);
     const queue = [startIdx];

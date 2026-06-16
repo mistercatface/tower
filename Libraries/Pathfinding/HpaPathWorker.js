@@ -9,7 +9,6 @@ import {
     hpaPathSlotMeta,
     hpaPathSlotCols,
     hpaPathSlotRows,
-    hpaPathSlotAbstractIdx,
     hpaPersistNodeColView,
     hpaPersistNodeRowView,
     hpaPersistEdgeOffsetsView,
@@ -17,7 +16,7 @@ import {
 } from "./hpaWorkerSab.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
-import { buildHpaReplanResult, resolveSnappedPathEndpoints, HPA_LOCAL_MAX_LEN, HPA_REGION_CONNECT_MAX_LEN } from "./hpaPathRequest.js";
+import { resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
@@ -65,8 +64,8 @@ export class HpaPathWorker {
         this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx);
         this._slotFree = [];
         for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
-        /** @type {("local" | "hpa" | null)[]} */
-        this._replanSlotMode = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
+        /** @type {(object | null)[]} */
+        this._replanResults = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
         this.host.worker.onmessage = (e) => {
             const { type, slot, requestId } = e.data;
             if (type === SYNC_NAV_DONE) {
@@ -104,7 +103,7 @@ export class HpaPathWorker {
                 return;
             }
             if (type === HPA_DONE) {
-                this._replanSlotMode[slot] = e.data.replanMode === "hpa" ? "hpa" : "local";
+                this._replanResults[slot] = e.data.replanResult ?? null;
                 this.host.markReady(slot, requestId);
                 return;
             }
@@ -276,9 +275,6 @@ export class HpaPathWorker {
     _pathRows(slot) {
         return hpaPathSlotRows(this.sabPathRowsPool, slot, MAX_HPA_PATH_LEN);
     }
-    _abstractIdx(slot) {
-        return hpaPathSlotAbstractIdx(this.sabAbstractIdxPool, slot, MAX_HPA_ABSTRACT_LEN);
-    }
     _ensureNavEdgePoolSab(refCount) {
         const byteLen = navEdgePoolSabByteLength(refCount);
         if (this.sabEdgePool.byteLength >= byteLen) return;
@@ -394,39 +390,12 @@ export class HpaPathWorker {
         const requestId = this.host.post(slot, { type, ...extra });
         await this.host.waitForSlot(slot, requestId);
     }
-    _readAbstractIdx(slot) {
-        const pathMeta = this._pathMeta(slot);
-        const len = pathMeta[1];
-        if (len <= 0) return [];
-        const abstractIdx = this._abstractIdx(slot);
-        const out = new Array(len);
-        for (let i = 0; i < len; i++) out[i] = abstractIdx[i];
-        return out;
-    }
-    getGraphMeta() {
-        const nodeCount = this.graphNodeCount;
-        return {
-            nodeCount,
-            nodeIds: this.graphNodeIds,
-            nodeCol: hpaPersistNodeColView(this.sabPersistGraphNodeCol, nodeCount),
-            nodeRow: hpaPersistNodeRowView(this.sabPersistGraphNodeRow, nodeCount),
-            idToIdx: this.graphIdToIdx,
-        };
-    }
-    _buildReplanResultPrep(mode, startCol, startRow, targetCol, targetRow) {
-        if (mode === "local") return { mode: "local", startCol, startRow, targetCol, targetRow };
-        const { nodeCount, nodeIds, nodeCol, nodeRow } = this.getGraphMeta();
-        return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN };
-    }
-    async runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, obstacleGrid, graphEpoch) {
+    async runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, graphEpoch) {
         await this._ensureWorkerNavReady();
         if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;
-        await this._dispatchAndWait(slot, "replan", { startCol, startRow, targetCol, targetRow, localMaxLen: HPA_LOCAL_MAX_LEN, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN });
-        const mode = this._replanSlotMode[slot] ?? "local";
-        const prep = this._buildReplanResultPrep(mode, startCol, startRow, targetCol, targetRow);
-        const abstractIdx = this._readAbstractIdx(slot);
-        const pathLen = this.pathLength(slot);
-        const result = buildHpaReplanResult(obstacleGrid, prep, abstractIdx, pathLen);
+        await this._dispatchAndWait(slot, "replan", { startCol, startRow, targetCol, targetRow });
+        const result = this._replanResults[slot];
+        this._replanResults[slot] = null;
         if (!result) return null;
         return { complete: true, result };
     }
@@ -449,7 +418,7 @@ export class HpaPathWorker {
         const slot = this.leaseSlot();
         let workerOut = null;
         try {
-            workerOut = await this.runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, obstacleGrid, graphEpoch);
+            workerOut = await this.runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, graphEpoch);
         } catch (err) {
             this.releaseSlot(slot);
             throw err;
@@ -459,7 +428,6 @@ export class HpaPathWorker {
             return null;
         }
         workerOut.result.pathSlot = slot;
-        workerOut.result.pathLen = this.pathLength(slot);
         return workerOut;
     }
 }

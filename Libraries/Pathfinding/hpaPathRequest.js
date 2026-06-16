@@ -2,17 +2,24 @@ import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 export const HPA_LOCAL_MAX_LEN = 96;
 export const HPA_REGION_CONNECT_MAX_LEN = 96;
 export const HPA_LOCAL_DISTANCE_THRESHOLD = 32;
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-export function findNearestOpenCell(grid, col, row) {
-    if (!grid.isBlocked(col, row)) return { col, row };
+function findNearestOpenCellCore(cols, rows, col, row, isOpen) {
+    if (isOpen(col, row)) return { col, row };
     for (let r = 1; r <= 5; r++)
         for (let dr = -r; dr <= r; dr++)
             for (let dc = -r; dc <= r; dc++) {
                 const nc = col + dc;
                 const nr = row + dr;
-                if (nc >= 0 && nc < grid.cols && nr >= 0 && nr < grid.rows && !grid.isBlocked(nc, nr)) return { col: nc, row: nr };
+                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows && isOpen(nc, nr)) return { col: nc, row: nr };
             }
     return { col, row };
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+export function findNearestOpenCell(grid, col, row) {
+    return findNearestOpenCellCore(grid.cols, grid.rows, col, row, (c, r) => !grid.isBlocked(c, r));
+}
+/** @param {Uint8Array} blocked */
+export function findNearestOpenCellBlocked(blocked, cols, rows, col, row) {
+    return findNearestOpenCellCore(cols, rows, col, row, (c, r) => !blocked[colRowToIndex(c, r, cols)]);
 }
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -61,26 +68,26 @@ export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startCol, st
     return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN };
 }
 /**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {{ gridToWorld: (col: number, row: number) => { x: number, y: number } }} worldGrid
  * @param {object} prep
  * @param {number[]} abstractIdx
  * @param {number} pathLen
  */
-export function buildHpaReplanResult(grid, prep, abstractIdx, pathLen) {
+export function buildHpaReplanResult(worldGrid, prep, abstractIdx, pathLen) {
     if (prep.mode === "local") {
         if (pathLen <= 0) return null;
-        const abstractNodes = buildHpaAbstractNodes(grid, prep, abstractIdx);
+        const abstractNodes = buildHpaAbstractNodes(worldGrid, prep, abstractIdx);
         return { pathLen, abstractNodes, pathPlanner: "local" };
     }
-    const abstractNodes = buildHpaAbstractNodes(grid, prep, abstractIdx);
+    const abstractNodes = buildHpaAbstractNodes(worldGrid, prep, abstractIdx);
     if (!abstractNodes) return null;
     if (pathLen <= 0) return { pathLen: 0, abstractNodes, pathPlanner: "hpa" };
     return { pathLen, abstractNodes, pathPlanner: "hpa" };
 }
-export function buildHpaAbstractNodes(grid, prep, abstractIdx) {
+export function buildHpaAbstractNodes(worldGrid, prep, abstractIdx) {
     if (prep.mode === "local") {
-        const startWorld = grid.gridToWorld(prep.startCol, prep.startRow);
-        const targetWorld = grid.gridToWorld(prep.targetCol, prep.targetRow);
+        const startWorld = worldGrid.gridToWorld(prep.startCol, prep.startRow);
+        const targetWorld = worldGrid.gridToWorld(prep.targetCol, prep.targetRow);
         return [
             { x: startWorld.x, y: startWorld.y, id: "start" },
             { x: targetWorld.x, y: targetWorld.y, id: "target" },
@@ -91,8 +98,8 @@ export function buildHpaAbstractNodes(grid, prep, abstractIdx) {
     const startTemp = nodeCount;
     const targetTemp = nodeCount + 1;
     return abstractIdx.map((idx) => {
-        if (idx === startTemp) return { ...grid.gridToWorld(startCol, startRow), id: "start" };
-        if (idx === targetTemp) return { ...grid.gridToWorld(targetCol, targetRow), id: "target" };
-        return { ...grid.gridToWorld(nodeCol[idx], nodeRow[idx]), id: nodeIds[idx] };
+        if (idx === startTemp) return { ...worldGrid.gridToWorld(startCol, startRow), id: "start" };
+        if (idx === targetTemp) return { ...worldGrid.gridToWorld(targetCol, targetRow), id: "target" };
+        return { ...worldGrid.gridToWorld(nodeCol[idx], nodeRow[idx]), id: nodeIds[idx] };
     });
 }
