@@ -1,8 +1,9 @@
 import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfinding/AStar.js";
-import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology, buildOctileNeighborsFromTopologyRect } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
+import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Libraries/Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Libraries/Spatial/grid/navEdgePoolSab.js";
-import { bakeHopCsrOnSim, createPassageNetworkPolicyView } from "../../Libraries/Pathfinding/navSimHopBake.js";
+import { bindPassagePolicyFromSab } from "../../Libraries/Pathfinding/navPassagePolicySab.js";
+import { bakeHopCsrOnSim } from "../../Libraries/Pathfinding/navSimHopBake.js";
 import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Libraries/Spatial/grid/vertexPassability.js";
 import { registerPortalPassageStepHandler } from "../../Libraries/Sandbox/portalStep.js";
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
@@ -55,7 +56,7 @@ let pruneSeedWorldY;
 /** @type {ReturnType<typeof createNavSimView> | null} */
 let navSimView = null;
 /** @type {import("../../Libraries/Pathfinding/navSimHopBake.js").PassageNetworkPolicyView} */
-let passageNetworkPolicy = createPassageNetworkPolicyView(new Int32Array(0), new Int32Array(0));
+let passageNetworkPolicy = bindPassagePolicyFromSab(new SharedArrayBuffer(12), 0);
 /** @type {{ nodesMap: Record<string, object>, cellToNode: Array<object | null>, nodeIdCounter: number, distToWall: Float32Array | null, blocked: Uint8Array, cols: number, rows: number, minX: number, minY: number, cellSize: number, navGraph: object, maxCellsPerChunk: number, minCellsPerChunk: number, damagePadding: number, seedWorldX: number | null, seedWorldY: number | null } | null} */
 let regionGraphState = null;
 function cellToRegionView() {
@@ -142,15 +143,8 @@ function bakeNavTopologyFull(data) {
     recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen);
     return baked;
 }
-function bakeNavTopologyPatch(data) {
-    const baked = ensureNavSimView(data);
-    const dataBounds = { startCol: data.dataStartCol, endCol: data.dataEndCol, startRow: data.dataStartRow, endRow: data.dataEndRow };
-    recomputeVertexPassabilityInto(baked.simView, baked.vertexPassability, dataBounds);
-    recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen, dataBounds);
-    return baked;
-}
 function bindPassageNetworkPolicy(data) {
-    passageNetworkPolicy = createPassageNetworkPolicyView(new Int32Array(data.passageNetworkKeys), new Int32Array(data.passageNetworkIds));
+    passageNetworkPolicy = bindPassagePolicyFromSab(data.sabPassagePolicy, data.passagePolicyKeyCount);
 }
 function bakeHopTopology(data, baked, blocked) {
     bakeHopCsrOnSim(baked.simView, passageNetworkPolicy, blocked, data.cols, data.rows, new Int32Array(data.sabHopOffsets), new Int32Array(data.sabHopExitIdx), new Uint8Array(data.sabHopCost), {
@@ -188,24 +182,6 @@ function buildNavSnapshotOnWorker(data) {
     bindPassageNetworkPolicy(data);
     bakeHopTopology(data, baked, blocked);
     bindNavFromBuild({ ...data, sabBlocked: data.sabBlocked, sabOctileNeighbors: data.sabOctileNeighbors });
-}
-function patchNavSnapshotOnWorker(data) {
-    if (!navSnapshot) {
-        buildNavSnapshotOnWorker(data);
-        return;
-    }
-    const blocked = new Uint8Array(data.sabBlocked);
-    const octileNeighbors = new Int32Array(data.sabOctileNeighbors);
-    const baked = bakeNavTopologyPatch(data);
-    buildOctileNeighborsFromTopologyRect(blocked, baked.cardinalOpen, baked.vertexPassability, data.cols, data.rows, octileNeighbors, data.startCol, data.endCol, data.startRow, data.endRow);
-    bindPassageNetworkPolicy(data);
-    bakeHopTopology(data, baked, blocked);
-    navSnapshot.blocked = blocked;
-    navSnapshot.octileNeighbors = octileNeighbors;
-    navSnapshot.hopOffsets = new Int32Array(data.sabHopOffsets);
-    navSnapshot.hopExitIdx = new Int32Array(data.sabHopExitIdx);
-    navSnapshot.hopCost = new Uint8Array(data.sabHopCost);
-    navView = createSnapshotLocalNavView(navSnapshot);
 }
 function buildPersistGraphCsr(nodeCount, edgeWrite) {
     const srcSources = persistEdgeSourcesView().subarray(0, edgeWrite);
@@ -583,11 +559,6 @@ self.onmessage = function (e) {
     }
     if (type === "buildNavSnapshot") {
         buildNavSnapshotOnWorker(e.data);
-        self.postMessage({ type: "syncNavDone" });
-        return;
-    }
-    if (type === "patchNavSnapshot") {
-        patchNavSnapshotOnWorker(e.data);
         self.postMessage({ type: "syncNavDone" });
         return;
     }

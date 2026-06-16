@@ -13,7 +13,6 @@ export class NavigationService {
         this._hpaPathWorker = hpaPathWorker;
         this._obstacleGrid = obstacleGrid;
         this._lastGridTopologyEpoch = obstacleGrid.gridTopologyEpoch;
-        this._lastPassagePowerNavKey = obstacleGrid._passagePowerNavKey ?? "";
         /** @type {((grid: import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, bounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => { x: number, y: number }) | null} */
         this._resolvePruneWorld = null;
         this._workerNavGraphSyncChain = Promise.resolve();
@@ -98,16 +97,9 @@ export class NavigationService {
         const graphEpoch = this._controller.obstacleGeneration + 1;
         const seed = this._resolvePruneSeed(grid, damageBounds);
         this._hpaPathWorker.setPruneSeed(seed.x, seed.y);
-        const passagePowerNavChanged = grid._passagePowerNavKey !== this._lastPassagePowerNavKey;
-        this._lastPassagePowerNavKey = grid._passagePowerNavKey ?? "";
-        const fullNavSync = topologyChanged || passagePowerNavChanged || !damageBounds || isEmptyCellBounds(damageBounds);
-        if (fullNavSync) {
-            await this._hpaPathWorker.scheduleNavTopologySyncAwait(grid);
-            await this._hpaPathWorker.buildRegionGraphFull(grid, seed.x, seed.y, graphEpoch);
-        } else {
-            await this._hpaPathWorker.patchNavTopology(grid, damageBounds);
-            await this._hpaPathWorker.patchRegionGraph(grid, damageBounds, graphEpoch);
-        }
+        await this._hpaPathWorker.scheduleNavTopologySyncAwait(grid);
+        if (topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds)) await this._hpaPathWorker.buildRegionGraphFull(grid, seed.x, seed.y, graphEpoch);
+        else await this._hpaPathWorker.patchRegionGraph(grid, damageBounds, graphEpoch);
         grid.gridNavSnapshot = this._hpaPathWorker.getNavSnapshotView();
         this._controller.obstacleGeneration = graphEpoch;
     }

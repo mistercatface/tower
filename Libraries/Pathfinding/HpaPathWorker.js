@@ -1,22 +1,10 @@
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
-import { packPassageNetworkPolicy } from "./navSimHopBake.js";
-import {
-    copyNavSimSabRect,
-    createWorkerNavSnapshotView,
-    expandCellBoundsForNavPatch,
-    NAV_TOPOLOGY_OCTILE_SHELL,
-    packBlockedFromGrid,
-    packBlockedIntoRect,
-    packNavSimSabFromGrid,
-    snapshotCanStep,
-    snapshotNavCacheKey,
-    gridNavFrameKey,
-} from "./GridNavSnapshot.js";
+import { createWorkerNavSnapshotView, packBlockedFromGrid, packNavSimSabFromGrid, snapshotCanStep, snapshotNavCacheKey, gridNavFrameKey } from "./GridNavSnapshot.js";
 import { buildHpaReplanResult, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
-import { isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { gridSettings } from "../../Config/balance/grid.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
+import { navPassagePolicySabByteLength, packPassagePolicyToSab } from "./navPassagePolicySab.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
@@ -40,11 +28,10 @@ export class HpaPathWorker {
         this.sabEdgePool = new SharedArrayBuffer(navEdgePoolSabByteLength(4));
         this.navEdgePoolBytes = new Uint8Array(this.sabEdgePool);
         this._edgePoolSabRefs = 0;
+        this.sabPassagePolicy = new SharedArrayBuffer(navPassagePolicySabByteLength(0));
+        this._passagePolicyKeyCount = 0;
         this._navSyncPromise = null;
         this._navSnapshotView = null;
-        this._lastGridTopologyEpoch = -1;
-        /** @type {import("../DataStructures/CellRect.js").CellBounds | null} */
-        this._pendingPatchBounds = null;
         this._deferFullNavSync = false;
         this._graphEpoch = -1;
         this._graphPatchTargetEpoch = -1;
@@ -326,6 +313,12 @@ export class HpaPathWorker {
         this._ensureNavEdgePoolSab(refCount);
         this._edgePoolSabRefs = packEdgePoolToSab(grid.edgeStore, this.navEdgePoolBytes);
     }
+    _packPassagePolicyForWorker(grid) {
+        const keyCount = grid._passagePoweredKeys?.size ?? 0;
+        const byteLen = navPassagePolicySabByteLength(keyCount);
+        if (this.sabPassagePolicy.byteLength < byteLen) this.sabPassagePolicy = new SharedArrayBuffer(byteLen);
+        this._passagePolicyKeyCount = packPassagePolicyToSab(grid._passagePoweredKeys, grid._passageNetworkIdByKey, new Uint8Array(this.sabPassagePolicy));
+    }
     _ensureNavBuffers(size, hopExitLen, hopCostLen, vertCount, edgePoolRefs = 4) {
         this._ensureNavEdgePoolSab(edgePoolRefs);
         if (this._navSize !== size) {
@@ -372,10 +365,6 @@ export class HpaPathWorker {
     navCacheKey() {
         return this._navKey;
     }
-    _canIncrementalPatch(grid) {
-        const size = grid.cols * grid.rows;
-        return this._navSize === size && size > 0 && this._navKey !== "" && this.navBlocked;
-    }
     async scheduleNavTopologySyncAwait(grid = this.navGraph) {
         const targetKey = snapshotNavCacheKey(grid);
         while (this._navKey !== targetKey || this._navSyncPromise) {
@@ -384,20 +373,19 @@ export class HpaPathWorker {
         }
     }
     _navSimPayload(grid = this.navGraph) {
-        const { passageNetworkKeys, passageNetworkIds } = packPassageNetworkPolicy(grid);
         const gridFrameKey = gridNavFrameKey(grid);
         const payload = {
             gridFrameKey,
             sabEdgePool: this.sabEdgePool,
             edgePoolCount: this._edgePoolSabRefs,
+            sabPassagePolicy: this.sabPassagePolicy,
+            passagePolicyKeyCount: this._passagePolicyKeyCount,
             sabGridFill: this.sabGridFill,
             sabFloorKind: this.sabFloorKind,
             sabFloorFacing: this.sabFloorFacing,
             sabEdgeSlots: this.sabEdgeSlots,
             passageEdgeCount: grid.edgeStore.passageEdgeCount,
             portalEdgeCount: grid.edgeStore.portalEdgeCount,
-            passageNetworkKeys,
-            passageNetworkIds,
         };
         if (gridFrameKey !== this._workerGridFrameKey) {
             this._workerGridFrameKey = gridFrameKey;
@@ -416,8 +404,6 @@ export class HpaPathWorker {
         }
         const size = grid.cols * grid.rows;
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
-        this._pendingPatchBounds = null;
-        this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
         this._navKey = cacheKey;
         this._navSnapshotView = null;
         this.navGraph.gridNavSnapshot = null;
@@ -428,6 +414,7 @@ export class HpaPathWorker {
         this.navBlocked.set(blocked);
         packNavSimSabFromGrid(grid, this.navGridFill, this.navFloorKind, this.navFloorFacing, this.navEdgeSlots);
         this._packNavEdgePoolForWorker(grid);
+        this._packPassagePolicyForWorker(grid);
         this._navSyncPromise = new Promise((resolve) => {
             this._navSyncResolve = resolve;
             this.host.worker.postMessage({
@@ -445,73 +432,6 @@ export class HpaPathWorker {
                 ...this._navSimPayload(grid),
             });
         });
-    }
-    async _ensureFullNavSync(grid = this.navGraph) {
-        this._pendingPatchBounds = null;
-        if (this._navSyncPromise) await this._navSyncPromise;
-        if (snapshotNavCacheKey(grid) !== this._navKey) {
-            this.scheduleNavTopologySync(grid);
-            if (this._navSyncPromise) await this._navSyncPromise;
-        }
-    }
-    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds} bounds */
-    async patchNavTopology(grid, bounds) {
-        const cacheKey = snapshotNavCacheKey(grid);
-        if (cacheKey === this._navKey) return;
-        if (isEmptyCellBounds(bounds) || grid.gridTopologyEpoch !== this._lastGridTopologyEpoch || !this._canIncrementalPatch(grid)) {
-            await this._ensureFullNavSync(grid);
-            return;
-        }
-        this._pendingPatchBounds = unionCellBounds(this._pendingPatchBounds, bounds);
-        if (this._navSyncPromise) await this._navSyncPromise;
-        await this._drainNavTopologySync(grid);
-    }
-    async _drainNavTopologySync(grid) {
-        try {
-            while (this._pendingPatchBounds) {
-                const dataBounds = expandCellBoundsForNavPatch(this._pendingPatchBounds, grid.cols, grid.rows);
-                const simBounds = expandCellBoundsForNavPatch(dataBounds, grid.cols, grid.rows, 1);
-                const octileBounds = expandCellBoundsForNavPatch(dataBounds, grid.cols, grid.rows, NAV_TOPOLOGY_OCTILE_SHELL);
-                this._pendingPatchBounds = null;
-                const cacheKey = snapshotNavCacheKey(grid);
-                if (cacheKey === this._navKey) continue;
-                this._navKey = cacheKey;
-                this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
-                this._navSnapshotView = null;
-                this.navGraph.gridNavSnapshot = null;
-                packBlockedIntoRect(grid, dataBounds, this.navBlocked);
-                copyNavSimSabRect(grid, simBounds, this.navGridFill, this.navFloorKind, this.navFloorFacing, this.navEdgeSlots);
-                this._packNavEdgePoolForWorker(grid);
-                this._navSyncPromise = new Promise((resolve) => {
-                    this._navSyncResolve = resolve;
-                    this.host.worker.postMessage({
-                        type: "patchNavSnapshot",
-                        navCacheKey: cacheKey,
-                        cols: grid.cols,
-                        rows: grid.rows,
-                        dataStartCol: dataBounds.startCol,
-                        dataEndCol: dataBounds.endCol,
-                        dataStartRow: dataBounds.startRow,
-                        dataEndRow: dataBounds.endRow,
-                        startCol: octileBounds.startCol,
-                        endCol: octileBounds.endCol,
-                        startRow: octileBounds.startRow,
-                        endRow: octileBounds.endRow,
-                        sabBlocked: this.sabBlocked,
-                        sabCardinalOpen: this.sabCardinalOpen,
-                        sabVertexPassability: this.sabVertexPassability,
-                        sabHopOffsets: this.sabHopOffsets,
-                        sabHopExitIdx: this.sabHopExitIdx,
-                        sabHopCost: this.sabHopCost,
-                        sabOctileNeighbors: this.sabOctileNeighbors,
-                        ...this._navSimPayload(grid),
-                    });
-                });
-                await this._navSyncPromise;
-            }
-        } finally {
-            if (this._pendingPatchBounds && snapshotNavCacheKey(grid) !== this._navKey) void this._drainNavTopologySync(grid);
-        }
     }
     async _ensureWorkerNavReady() {
         await this.scheduleNavTopologySyncAwait(this.navGraph);
