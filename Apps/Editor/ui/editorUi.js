@@ -16,6 +16,7 @@ import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 let profileRefreshTimer = null;
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let mapCanvasResize = null;
+let resizeCanvasesRaf = null;
 /** @param {import("../state.js").TileLabGameState} state */
 function mapColumnLayout(state) {
     const container = document.querySelector(".map-container");
@@ -41,11 +42,15 @@ function onMapCanvasResize(state, size) {
     drawLabFrame(state);
 }
 function resizeCanvases(state) {
-    syncAnimationPreviewCanvasSize(state);
-    if (mapCanvasResize) mapCanvasResize.setSize(mapCanvasResize.getSize());
-    else onMapCanvasResize(state, state.editor.canvas.width);
-    syncMapOverviewCanvasSize();
-    paintMapOverviewFrame(state);
+    if (resizeCanvasesRaf != null) return;
+    resizeCanvasesRaf = requestAnimationFrame(() => {
+        resizeCanvasesRaf = null;
+        syncAnimationPreviewCanvasSize(state);
+        if (mapCanvasResize) mapCanvasResize.setSize(mapCanvasResize.getSize());
+        else onMapCanvasResize(state, state.editor.canvas.width);
+        syncMapOverviewCanvasSize();
+        paintMapOverviewFrame(state);
+    });
 }
 /** @param {import("../state.js").TileLabGameState} state @param {{ playbackHandlers: import("../../../Libraries/Playback/speedControl.js").PlaybackHandlers }} options */
 export function mountEditorUi(state, { playbackHandlers }) {
@@ -72,12 +77,19 @@ export function mountEditorUi(state, { playbackHandlers }) {
     pushEditorProfile(state);
     mountLabViewport(state, requestRedraw, playbackHandlers);
     bindViewModeControls(state, requestRedraw, () => resizeCanvases(state));
-    mountMapOverview(state, () => {
-        paintMapOverviewFrame(state);
-        refreshMapGenPanelInputs();
-    });
+    mountMapOverview(
+        state,
+        () => {
+            paintMapOverviewFrame(state);
+            refreshMapGenPanelInputs();
+        },
+        { skipInitialBake: true },
+    );
     mountPlayAreaToolbarControls(state);
-    void applyPlayAreaConfig(state).then(() => requestRedraw());
+    void applyPlayAreaConfig(state).then(() => {
+        resizeCanvases(state);
+        drawLabFrame(state);
+    });
     mountTilelabSandbox(state, requestRedraw);
     bindToolbarControls({
         onOverlayChange: () => drawLabFrame(state),

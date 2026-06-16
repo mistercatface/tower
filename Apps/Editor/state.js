@@ -28,7 +28,13 @@ export class TileLabGameState extends SharedGameState {
             }
             return { x: this.viewport.x, y: this.viewport.y };
         });
-        this.hpaPathWorker.onGraphPatched = () => void rebuildLabPathDebugCache(this);
+        this.hpaPathWorker.onGraphPatched = () => {
+            if (this._pathDebugBakeRaf != null) cancelAnimationFrame(this._pathDebugBakeRaf);
+            this._pathDebugBakeRaf = requestAnimationFrame(() => {
+                this._pathDebugBakeRaf = null;
+                void rebuildLabPathDebugCache(this);
+            });
+        };
         this.sandbox = new SandboxWorldState();
         this.editor = new TileLabEditorState();
     }

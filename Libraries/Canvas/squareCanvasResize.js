@@ -39,6 +39,11 @@ export function applySquareCanvasResize(canvas, options) {
     };
     const applySize = (size) => {
         const clamped = Math.max(minSize, Math.min(resolveMax(), Math.round(size)));
+        const unchanged = host.offsetWidth === clamped && host.offsetHeight === clamped;
+        if (unchanged) {
+            if (syncCanvasPixels && canvas.width !== clamped) syncCanvas(clamped);
+            return clamped;
+        }
         host.style.width = `${clamped}px`;
         host.style.height = `${clamped}px`;
         syncCanvas(clamped);
