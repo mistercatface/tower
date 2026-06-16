@@ -2,7 +2,7 @@
 
 HPA pathfinding on large maps — worker owns nav graph mutation and replan; main owns sim writes and steering.
 
-**Status:** region graph cutover **done**. Nav topology still baked on main and packed into worker SABs. Roughly **~70%** of the north star below.
+**Status:** region graph + replan mode selection on worker. Nav topology still baked on main and packed into worker SABs. Roughly **~80%** of the north star.
 
 ---
 
@@ -12,7 +12,7 @@ HPA pathfinding on large maps — worker owns nav graph mutation and replan; mai
 | --- | ---- | ------ |
 | **Sim** | Write `obstacleGrid`, `edgeStore`, floors | — |
 | **Nav** | Notify dirty bounds + epoch only | Derive walkability, regions, abstract CSR; patch in expanded hull |
-| **Replan** | Request path; apply waypoints; steer | Local vs HPA, abstract A*, stitch → cell path |
+| **Replan** | Request path (endpoints + epoch); apply waypoints; steer | Local vs HPA, abstract A*, stitch → cell path |
 | **Debug** | Read-only mirror from worker SABs | Source of truth |
 
 **One edit message:** sim was updated in this rect — reconcile nav. Not nav vocabulary (no “merge these regions” on the wire).
@@ -37,28 +37,40 @@ Edit / init on main:
       → optional connectRegionIdxPairs for boundary hops (main scans pairs, worker connects)
 
 Replan:
-  HpaPathSession.requestPath → worker slot (local A* or abstract + stitch)
+  main: resolveSnappedPathEndpoints → requestPath(endpoints, graphEpoch)
+  worker: prepareHpaReplanPrep (local vs HPA) → plan + stitch → cell path in slot SAB
+  main: buildHpaReplanResult from worker replanMode + mirrored graph meta (waypoints only)
 
-Debug (Tile Lab): checkbox on → `ensureLabPathDebugCache` reads worker SAB mirror when `obstacleGeneration` / grid epoch changes; no eager bake on edit.
+Debug (Tile Lab): checkbox on → ensureLabPathDebugCache reads worker SAB when epoch changes.
 ```
 
-**Region graph:** `nodesMap` / hull repack live only on the worker (`HpaWorkerEntry` `regionGraphState`). Main mirrors CSR + `cellToRegion` from SABs for debug and replan prep — not a second authoritative graph.
+**Region graph:** `nodesMap` / hull repack live only on the worker. Main mirrors CSR for debug and replan **result** assembly — not mode selection.
 
-**Still on main (intentional gap):** `syncGridTopologyCaches` before every nav sync; `prepareHpaReplanPrep` local-vs-HPA gate reads worker `cellToRegion`; `_collectHopRegionPairs` on main for portal/boundary reconnect.
+**Still on main:** `syncGridTopologyCaches` before nav sync; `_collectHopRegionPairs` for portal/boundary reconnect; endpoint snap before `requestPath`.
 
-**Separate copy:** flow field still uses its own `sabObstacle`, not worker nav blocked.
+**Separate copy:** flow field still uses its own `sabObstacle`.
 
 ---
 
-## Done (region graph cutover)
+## Done
 
-- Worker-only `buildRegionGraphFull` / `patchRegionGraph` (`hpaRegionGraph.js` shared with worker entry).
-- Main path removed: no `HierarchicalNavigator`, no main `rebuildDamagedArea` / `syncAbstractGraph` / per-edit `packHpaGraphForWorker`.
+### Region graph cutover
+
+- Worker-only `buildRegionGraphFull` / `patchRegionGraph`.
+- Main path removed: no `HierarchicalNavigator`, no main graph upload on edit.
 - `NavigationService` serializes nav + graph sync on `_workerNavGraphSyncChain`.
-- Debug overlay reads worker state, not main `nodesMap`.
-- `sabCellToRegionIdx` on worker; main `getRegionGraphDebugView` / `getCellToRegionView`.
-- Tile Lab startup: `initTileLabWorld` → `onObstaclesChanged` → `rebuildLabMapCaches` (no overview bake on mount).
-- Removed dead main graph upload helpers (`packHpaGraphForWorker`, etc.); `MAX_HPA_GRAPH_NODES` lives in `HpaPathWorker.js`.
+- `sabCellToRegionIdx` on worker; debug via `getRegionGraphDebugView`.
+
+### Replan mode on worker
+
+- `prepareHpaReplanPrep` runs on worker at replan start (reads worker `cellToRegion` + persist CSR).
+- Main `requestPath` sends snapped endpoints + `graphEpoch` only; worker returns `replanMode` on `hpaDone`.
+- Main `_buildReplanResultPrep` uses mirrored meta only to assemble steering waypoints after the worker plans.
+
+### Tile Lab / cleanup
+
+- `initTileLabWorld` startup gate; lazy HPA* Grid overlay (`ensureLabPathDebugCache`).
+- Dead upload helpers removed; `MAX_HPA_GRAPH_NODES` in `HpaPathWorker.js`.
 
 ---
 
@@ -66,20 +78,11 @@ Debug (Tile Lab): checkbox on → `ensureLabPathDebugCache` reads worker SAB mir
 
 ### Nav derivation on worker
 
-Stop requiring main `navCardinalOpen` / `vertexPassability` as the pack source for HPA. Worker should derive passability + octile in the expanded hull from sim (or a shared sim view), same modules, worker thread.
-
-### Replan simplification
-
-Move local-vs-HPA mode selection to the worker (`prepareHpaReplanPrep` today runs on main with mirrored `cellToRegion`). Main should pass endpoints + epoch; worker decides mode and plans.
+Stop requiring main `navCardinalOpen` / `vertexPassability` as the pack source for HPA. Worker derives passability + octile in the expanded hull from sim, same modules, worker thread.
 
 ### Boundary hops
 
-Today main scans `forEachBoundaryHopCell` and posts pair list; worker connects. Target: worker discovers hop edges during hull patch without main posting pairs.
-
-### Cleanup (low risk)
-
-- ~~Delete unused `packHpaGraphForWorker`~~ — done; file removed.
-- ~~Tile Lab init gate (`initTileLabWorld` → nav ready → map caches → layout)~~ — done.
+Worker discovers hop edges during hull patch; drop main `_collectHopRegionPairs` / `connectRegionIdxPairs` posts.
 
 ### Regression tests (not started)
 
@@ -90,8 +93,8 @@ Today main scans `forEachBoundaryHopCell` and posts pair list; worker connects. 
 
 ## Later (not blocking)
 
-- **Shared sim SAB** — optional zero-copy sim read on worker; sparse `edgeStore` can stay on main for editor.
-- **Flow field** — read worker nav blocked (or shared blocked view); drop third `sabObstacle` copy.
+- **Shared sim SAB** — optional zero-copy sim read on worker.
+- **Flow field** — read worker nav blocked; drop third `sabObstacle` copy.
 - **Portal abstract edge cost** — centroid Chebyshev today, not hop distance.
 - **Belt transfer edges** in region adjacency.
 - **Partial paths** — `maxLegs` / `maxCells` on `requestPath`.

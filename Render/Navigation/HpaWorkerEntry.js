@@ -2,6 +2,7 @@ import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfin
 import { createSnapshotLocalNavView, buildOctileNeighborsFromTopology, buildOctileNeighborsFromTopologyRect } from "../../Libraries/Pathfinding/GridNavSnapshot.js";
 import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
+import { prepareHpaReplanPrep } from "../../Libraries/Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, connectRegionIdxPairs, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
 let maxSlots;
 let maxPathLen;
@@ -31,6 +32,8 @@ let aStarVisited;
 let replanRunId = 0;
 let persistNodeCount = 0;
 let persistEdgeWrite = 0;
+/** @type {string[]} */
+let persistNodeIds = [];
 let extNodeCol;
 let extNodeRow;
 let extEdgeOffsets;
@@ -163,6 +166,7 @@ function writeRegionGraphToSab(expectedCols, expectedRows) {
     persistEdgeCosts.set(packed.edgeCosts);
     cellToRegionView().set(packed.cellToRegion);
     syncPersistAbstractGraph(packed.nodeCount, packed.edgeWrite);
+    persistNodeIds = packed.nodeIds;
     return { nodeCount: packed.nodeCount, edgeWrite: packed.edgeWrite, nodeIds: packed.nodeIds };
 }
 function buildRegionGraphFullOnWorker(data) {
@@ -434,14 +438,17 @@ function collectReplanTempCandidates(startCol, startRow, targetCol, targetRow) {
     return { startCandidates, targetCandidates };
 }
 function runReplan(slot, data, requestId) {
-    const { mode, startCol, startRow, targetCol, targetRow, localMaxLen } = data;
-    if (mode === "local") {
+    const { startCol, startRow, targetCol, targetRow, localMaxLen, regionConnectMaxLen } = data;
+    const cellToRegion = cellToRegionView();
+    const nodeCol = persistNodeColView().subarray(0, persistNodeCount);
+    const nodeRow = persistNodeRowView().subarray(0, persistNodeCount);
+    const prep = prepareHpaReplanPrep(cols, cellToRegion, { nodeCount: persistNodeCount, nodeIds: persistNodeIds, nodeCol, nodeRow }, startCol, startRow, targetCol, targetRow);
+    if (prep.mode === "local") {
         const path = runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navView, cols, rows, localMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
         writeCellPath(slot, path);
         writeAbstractPath(slot, null);
-        return;
+        return prep.mode;
     }
-    const { regionConnectMaxLen } = data;
     const { startCandidates, targetCandidates } = collectReplanTempCandidates(startCol, startRow, targetCol, targetRow);
     const estimated = buildExtendedEdgesEstimate(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates);
     const estimateAbstract = runAbstractAStarFlat(
@@ -470,15 +477,14 @@ function runReplan(slot, data, requestId) {
     writeAbstractPath(slot, abstractPath);
     if (!abstractPath) {
         writeCellPath(slot, null);
-        return;
+        return prep.mode;
     }
-    const nodeCol = persistNodeColView().subarray(0, persistNodeCount);
-    const nodeRow = persistNodeRowView().subarray(0, persistNodeCount);
-    const prep = { startCol, startRow, targetCol, targetRow, nodeCount: persistNodeCount, nodeCol, nodeRow };
+    const stitchPrep = { startCol, startRow, targetCol, targetRow, nodeCount: persistNodeCount, nodeCol, nodeRow };
     const resolveRegionLeg = (aIdx, bIdx) =>
         runLocalAStarFlat(nodeCol[aIdx], nodeRow[aIdx], nodeCol[bIdx], nodeRow[bIdx], navView, cols, rows, regionConnectMaxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId);
-    const cellPath = stitchAbstractCellPath(abstractPath, prep, extended.tempLegs, resolveRegionLeg);
+    const cellPath = stitchAbstractCellPath(abstractPath, stitchPrep, extended.tempLegs, resolveRegionLeg);
     writeCellPath(slot, cellPath);
+    return prep.mode;
 }
 self.onmessage = function (e) {
     const { type, data, slot, requestId } = e.data;
@@ -529,7 +535,7 @@ self.onmessage = function (e) {
         return;
     }
     if (type === "replan") {
-        runReplan(slot, e.data, requestId);
-        self.postMessage({ type: "hpaDone", slot, requestId });
+        const replanMode = runReplan(slot, e.data, requestId);
+        self.postMessage({ type: "hpaDone", slot, requestId, replanMode });
     }
 };

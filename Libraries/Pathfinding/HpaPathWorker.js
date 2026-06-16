@@ -12,7 +12,7 @@ import {
     snapshotCanStep,
     snapshotNavCacheKey,
 } from "./GridNavSnapshot.js";
-import { buildHpaReplanResult, prepareHpaReplanPrep, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
+import { buildHpaReplanResult, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
 import { isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { gridSettings } from "../../Config/balance/grid.js";
@@ -58,8 +58,10 @@ export class HpaPathWorker {
         this._slotFree = [];
         for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
         this._slotOwner = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
-        /** @type {Array<{ requestId: number, onAbstractReady?: (result: object) => void, prep: object, obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid } | null>} */
+        /** @type {Array<{ requestId: number, onAbstractReady?: (result: object) => void, obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, startCol: number, startRow: number, targetCol: number, targetRow: number } | null>} */
         this._replanHooks = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
+        /** @type {("local" | "hpa" | null)[]} */
+        this._replanSlotMode = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
         this.sabPathMetaPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * 8);
         this.sabPathColsPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_HPA_PATH_LEN * 2);
         this.sabPathRowsPool = new SharedArrayBuffer(MAX_HPA_REPLAN_SLOTS * MAX_HPA_PATH_LEN * 2);
@@ -110,13 +112,18 @@ export class HpaPathWorker {
             if (type === ABSTRACT_READY) {
                 const hook = this._replanHooks[slot];
                 if (hook && hook.requestId === requestId) {
+                    const prep = this._buildReplanResultPrep("hpa", hook.startCol, hook.startRow, hook.targetCol, hook.targetRow);
                     const abstractIdx = this._readAbstractIdx(slot);
-                    const abstractResult = buildHpaReplanResult(hook.obstacleGrid, hook.prep, abstractIdx, 0);
+                    const abstractResult = buildHpaReplanResult(hook.obstacleGrid, prep, abstractIdx, 0);
                     if (abstractResult) hook.onAbstractReady?.(abstractResult);
                 }
                 return;
             }
-            if (type === HPA_DONE) this.host.markReady(slot, requestId);
+            if (type === HPA_DONE) {
+                this._replanSlotMode[slot] = e.data.replanMode === "hpa" ? "hpa" : "local";
+                this.host.markReady(slot, requestId);
+                return;
+            }
         };
         this.host.worker.onerror = (err) => console.error("HpaPathWorker error:", err.message);
         this.host.worker.postMessage({
@@ -509,20 +516,23 @@ export class HpaPathWorker {
     getGraphMeta() {
         return { nodeCount: this.graphNodeCount, nodeIds: this.graphNodeIds, nodeCol: this.graphNodeCol, nodeRow: this.graphNodeRow, idToIdx: this.graphIdToIdx };
     }
-    async runOneShotReplan(slot, prep, obstacleGrid, graphEpoch, replanCtx = null) {
+    _buildReplanResultPrep(mode, startCol, startRow, targetCol, targetRow) {
+        if (mode === "local") return { mode: "local", startCol, startRow, targetCol, targetRow };
+        const { nodeCount, nodeIds, nodeCol, nodeRow } = this.getGraphMeta();
+        return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: 96 };
+    }
+    async runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, obstacleGrid, graphEpoch, replanCtx = null) {
         await this._ensureWorkerNavReady();
         if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;
-        const payload = { mode: prep.mode, startCol: prep.startCol, startRow: prep.startRow, targetCol: prep.targetCol, targetRow: prep.targetRow, localMaxLen: 96 };
-        if (prep.mode === "hpa") {
-            payload.regionConnectMaxLen = prep.regionConnectMaxLen;
-            if (replanCtx?.onAbstractReady && replanCtx.replanRequestId != null)
-                this._replanHooks[slot] = { requestId: replanCtx.replanRequestId, onAbstractReady: replanCtx.onAbstractReady, prep, obstacleGrid };
-        }
+        if (replanCtx?.onAbstractReady && replanCtx.replanRequestId != null)
+            this._replanHooks[slot] = { requestId: replanCtx.replanRequestId, onAbstractReady: replanCtx.onAbstractReady, obstacleGrid, startCol, startRow, targetCol, targetRow };
         try {
-            await this._dispatchAndWait(slot, "replan", payload);
+            await this._dispatchAndWait(slot, "replan", { startCol, startRow, targetCol, targetRow, localMaxLen: 96, regionConnectMaxLen: 96 });
         } finally {
             this._replanHooks[slot] = null;
         }
+        const mode = this._replanSlotMode[slot] ?? "local";
+        const prep = this._buildReplanResultPrep(mode, startCol, startRow, targetCol, targetRow);
         const abstractIdx = this._readAbstractIdx(slot);
         const pathLen = this.pathLength(slot);
         const result = buildHpaReplanResult(obstacleGrid, prep, abstractIdx, pathLen);
@@ -543,13 +553,11 @@ export class HpaPathWorker {
         this.releaseOwnedPathSlot(navState);
         if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;
         const { startCol, startRow, targetCol, targetRow } = resolveSnappedPathEndpoints(obstacleGrid, startX, startY, targetX, targetY);
-        const prep = prepareHpaReplanPrep(obstacleGrid, this.getGraphMeta(), this.graphCellToRegion, startCol, startRow, targetCol, targetRow);
         const slot = this.leaseSlot(navState);
         navState.hpaReplanSlot = slot;
-        const replanCtx = { replanRequestId, onAbstractReady, prep, obstacleGrid };
         let workerOut = null;
         try {
-            workerOut = await this.runOneShotReplan(slot, prep, obstacleGrid, graphEpoch, replanCtx);
+            workerOut = await this.runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, obstacleGrid, graphEpoch, { replanRequestId, onAbstractReady });
         } catch (err) {
             this.releaseSlot(slot);
             throw err;

@@ -39,16 +39,15 @@ export function resolveSnappedPathEndpoints(grid, startX, startY, targetX, targe
     return { startCol, startRow, targetCol, targetRow };
 }
 /**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {ReturnType<import("./HpaPathWorker.js").HpaPathWorker["getGraphMeta"]>} graphMeta
+ * @param {number} cols
  * @param {Int16Array} cellToRegion
+ * @param {{ nodeCount: number, nodeIds: string[], nodeCol: Int16Array | ArrayLike<number>, nodeRow: Int16Array | ArrayLike<number> }} graphMeta
  * @param {number} startCol
  * @param {number} startRow
  * @param {number} targetCol
  * @param {number} targetRow
  */
-export function prepareHpaReplanPrep(grid, graphMeta, cellToRegion, startCol, startRow, targetCol, targetRow) {
-    const cols = grid.cols;
+export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startCol, startRow, targetCol, targetRow) {
     const startIdx = colRowToIndex(startCol, startRow, cols);
     const targetIdx = colRowToIndex(targetCol, targetRow, cols);
     const startRegion = cellToRegion[startIdx];
