@@ -21,6 +21,7 @@ import { formatGridWallEdgeSideLabel } from "../../../Libraries/Sandbox/gridWall
 import { appendAxisNumberFields, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField } from "../../../Libraries/UI/paramFields.js";
 import { SliderControl } from "../../../Libraries/UI/controls/SliderControl.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
+import { SANDBOX_PALETTE_TAG_FILTERS, resolvePlacePaletteTags, sandboxPaletteMatchesFilter } from "../../../Libraries/Sandbox/sandboxPaletteTags.js";
 const WALL_STAMP_OPTIONS = [
     { value: "voxel", label: "Voxel block" },
     { value: "rail", label: "Rail wall" },
@@ -100,13 +101,16 @@ function appendPassageEditorFields(body, controller, selected, { stampDefaults =
             },
         });
 }
-function appendPinnedSection(parent, id, title, build) {
+function appendPinnedSection(parent, id, title, build, headExtra = null) {
     const block = document.createElement("div");
     block.className = "editor-block editor-block-pinned";
     block.dataset.sandboxSection = id;
     const head = document.createElement("div");
-    head.className = "editor-block-title";
-    head.textContent = title;
+    head.className = "editor-block-title editor-block-title-row";
+    const titleEl = document.createElement("span");
+    titleEl.textContent = title;
+    head.appendChild(titleEl);
+    if (headExtra) headExtra(head);
     block.appendChild(head);
     const sectionBody = document.createElement("div");
     build(sectionBody);
@@ -130,18 +134,44 @@ const MAP_GEN_PALETTE_OPTIONS = [
 ];
 /** @param {string[]} propIds */
 function buildPlacePaletteItems(propIds) {
-    /** @type {{ key: string, kind: "prop" | "wall" | "gen", label: string, swatch: string, glyph: string, genKind?: "cavern" | "rail" | "erase" }[]} */
+    /** @type {{ key: string, kind: "prop" | "wall" | "gen", label: string, swatch: string, glyph: string, tags: string[], genKind?: "cavern" | "rail" | "erase" }[]} */
     const items = [];
     for (const id of propIds) {
         const asset = getPropAsset(id);
         const label = formatSandboxSpawnLabel(id);
-        items.push({ key: `prop:${id}`, kind: "prop", label, swatch: resolvePropPaletteSwatch(asset), glyph: label.slice(0, 2) });
+        const key = `prop:${id}`;
+        items.push({ key, kind: "prop", label, swatch: resolvePropPaletteSwatch(asset), glyph: label.slice(0, 2), tags: resolvePlacePaletteTags(key, asset) });
     }
-    for (const option of WALL_STAMP_OPTIONS)
-        items.push({ key: `wall:${option.value}`, kind: "wall", label: option.label, swatch: WALL_PALETTE_SWATCHES[option.value], glyph: option.label.slice(0, 1) });
-    for (const option of MAP_GEN_PALETTE_OPTIONS) items.push({ key: option.key, kind: "gen", genKind: option.genKind, label: option.label, swatch: option.swatch, glyph: option.glyph });
+    for (const option of WALL_STAMP_OPTIONS) {
+        const key = `wall:${option.value}`;
+        items.push({ key, kind: "wall", label: option.label, swatch: WALL_PALETTE_SWATCHES[option.value], glyph: option.label.slice(0, 1), tags: resolvePlacePaletteTags(key) });
+    }
+    for (const option of MAP_GEN_PALETTE_OPTIONS)
+        items.push({ key: option.key, kind: "gen", genKind: option.genKind, label: option.label, swatch: option.swatch, glyph: option.glyph, tags: resolvePlacePaletteTags(option.key) });
     items.sort((a, b) => a.label.localeCompare(b.label));
     return items;
+}
+/** @param {HTMLElement} head @param {string} activeFilter @param {(filter: string) => void} onChange */
+function appendPaletteTagFilters(head, activeFilter, onChange) {
+    const row = document.createElement("div");
+    row.className = "sandbox-palette-filter-group";
+    row.setAttribute("role", "radiogroup");
+    row.setAttribute("aria-label", "Prop palette filters");
+    for (const option of SANDBOX_PALETTE_TAG_FILTERS) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "sandbox-palette-filter-btn";
+        btn.textContent = option.label;
+        btn.setAttribute("role", "radio");
+        const active = activeFilter === option.id;
+        btn.setAttribute("aria-checked", String(active));
+        btn.classList.toggle("is-active", active);
+        btn.addEventListener("click", () => {
+            if (activeFilter !== option.id) onChange(option.id);
+        });
+        row.appendChild(btn);
+    }
+    head.appendChild(row);
 }
 /** @param {HTMLElement} parent @param {{ key: string, label: string, swatch: string, glyph: string }[]} items @param {string} activeKey @param {(key: string) => void} onSelect */
 function appendSpawnPaletteGrid(parent, items, activeKey, onSelect) {
@@ -407,20 +437,39 @@ function maxWallHeightLevel(controller) {
 export function mountSandboxToyUi(container, controller) {
     const state = controller.getState();
     let corridorWireBootstrapped = false;
+    let paletteTagFilter = "all";
     const propIds = Object.keys(getWorldPropDefinitions())
         .filter((id) => isSandboxSpawnable(getPropAsset(id)))
         .sort((a, b) => formatSandboxSpawnLabel(a).localeCompare(formatSandboxSpawnLabel(b)));
     function refreshPanel() {
         container.innerHTML = "";
-        const paletteItems = buildPlacePaletteItems(propIds);
-        if (paletteItems.length === 0) {
+        const allPaletteItems = buildPlacePaletteItems(propIds);
+        if (allPaletteItems.length === 0) {
             appendEditorHint(container, "No sandbox spawn options loaded");
             return;
         }
-        let paletteKey = controller.getPlacePaletteKey();
+        const paletteItems = allPaletteItems.filter((item) => sandboxPaletteMatchesFilter(paletteTagFilter, item.tags));
+        if (paletteItems.length === 0) {
+            appendPinnedSection(
+                container,
+                "palette",
+                "Props",
+                (body) => {
+                    appendEditorHint(body, "No props match this filter.");
+                },
+                (head) => {
+                    appendPaletteTagFilters(head, paletteTagFilter, (filter) => {
+                        paletteTagFilter = filter;
+                        refreshPanel();
+                    });
+                },
+            );
+            return;
+        }
+        const paletteKey = controller.getPlacePaletteKey();
         if (!paletteItems.some((item) => item.key === paletteKey)) {
-            paletteKey = paletteItems[0].key;
-            controller.setPlacePaletteKey(paletteKey);
+            controller.setPlacePaletteKey(paletteItems[0].key);
+            return;
         }
         const activeItem = paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0];
         if (!corridorWireBootstrapped && activeItem.kind === "prop") {
@@ -442,11 +491,22 @@ export function mountSandboxToyUi(container, controller) {
         const selectedRoomNode = controller.getSelectedRoomNodeInfo();
         const wallStampMode = controller.getWallStampMode();
         const selectionCount = selectedPropIds.size;
-        appendPinnedSection(container, "palette", "Props", (body) => {
-            appendSpawnPaletteGrid(body, paletteItems, paletteKey, (key) => {
-                controller.setPlacePaletteKey(key);
-            });
-        });
+        appendPinnedSection(
+            container,
+            "palette",
+            "Props",
+            (body) => {
+                appendSpawnPaletteGrid(body, paletteItems, paletteKey, (key) => {
+                    controller.setPlacePaletteKey(key);
+                });
+            },
+            (head) => {
+                appendPaletteTagFilters(head, paletteTagFilter, (filter) => {
+                    paletteTagFilter = filter;
+                    refreshPanel();
+                });
+            },
+        );
         appendPinnedSection(container, "spawn", "Spawn", (body) => {
             const paramsHost = document.createElement("div");
             paramsHost.className = "spawn-palette-params";
