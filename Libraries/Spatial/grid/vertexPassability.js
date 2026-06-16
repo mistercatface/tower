@@ -83,8 +83,11 @@ export function diagonalStepOpen(blocked, vertexPassability, cols, rows, col, ro
 }
 /** Recompute derived grid topology caches (worker-candidate; Spatial-owned). */
 export function syncGridTopologyCaches(grid, passagePowerSyncKey) {
-    const key = `${grid.wallGridRevision}:${passagePowerSyncKey}`;
-    if (grid._vertexPassabilitySyncKey === key) return;
+    const key = `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${passagePowerSyncKey}`;
+    const size = grid.cols * grid.rows;
+    const vertCount = grid.cols && grid.rows ? (grid.cols + 1) * (grid.rows + 1) : 0;
+    const sizeStale = grid.navCardinalOpen.length !== size || grid.vertexPassability.length !== vertCount;
+    if (grid._vertexPassabilitySyncKey === key && !sizeStale) return;
     recomputeVertexPassability(grid);
     recomputeNavCardinalOpen(grid);
     grid._vertexPassabilitySyncKey = key;

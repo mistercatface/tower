@@ -1,7 +1,8 @@
 import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
-import { rebuildLabMapCaches, rebuildLabPathDebugCache } from "../../Libraries/Render/map/labMapCaches.js";
+import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
+import { rebuildLabPathDebugCache } from "../../Libraries/Render/map/labMapCaches.js";
 import { TileLabEditorState } from "./TileLabEditorState.js";
 export const LAB_PREVIEW_RANGE = 160;
 export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
@@ -14,13 +15,20 @@ export const EDITOR_CANVAS_DEFAULTS = {
 export class TileLabGameState extends SharedGameState {
     constructor() {
         super();
-        this.hpaPathWorker.onGraphPatched = () => void rebuildLabPathDebugCache(this);
-        void rebuildLabMapCaches(this);
         const rand = Math.floor(1 + Math.random() * 1000000000);
         this.mapSeed = rand;
         this.floorSeed = rand;
         this.worldRenderMode = "radial";
         this.viewport = new Viewport(0, 0, 1);
+        this.navigation.setPruneSeedResolver((grid, bounds) => {
+            if (bounds && !isEmptyCellBounds(bounds)) {
+                const midCol = (bounds.startCol + bounds.endCol) >> 1;
+                const midRow = (bounds.startRow + bounds.endRow) >> 1;
+                return grid.gridToWorld(midCol, midRow);
+            }
+            return { x: this.viewport.x, y: this.viewport.y };
+        });
+        this.hpaPathWorker.onGraphPatched = () => void rebuildLabPathDebugCache(this);
         this.sandbox = new SandboxWorldState();
         this.editor = new TileLabEditorState();
     }

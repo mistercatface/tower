@@ -77,7 +77,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
         refreshMapGenPanelInputs();
     });
     mountPlayAreaToolbarControls(state);
-    applyPlayAreaConfig(state);
+    void applyPlayAreaConfig(state).then(() => requestRedraw());
     mountTilelabSandbox(state, requestRedraw);
     bindToolbarControls({
         onOverlayChange: () => drawLabFrame(state),

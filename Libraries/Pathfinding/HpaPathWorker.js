@@ -4,11 +4,13 @@ import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import {
     bakeHopCsr,
     copyNavTopologySlicesIntoRect,
+    createSnapshotLocalNavView,
     createWorkerNavSnapshotView,
     expandCellBoundsForNavPatch,
     NAV_TOPOLOGY_OCTILE_SHELL,
     packBlockedFromGrid,
     packBlockedIntoRect,
+    snapshotCanStep,
     snapshotNavCacheKey,
 } from "./GridNavSnapshot.js";
 import { buildHpaReplanResult, prepareHpaReplanPrep, resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
@@ -23,6 +25,7 @@ const HPA_DONE = "hpaDone";
 const ABSTRACT_READY = "abstractReady";
 const SYNC_NAV_DONE = "syncNavDone";
 const GRAPH_PATCH_DONE = "graphPatchDone";
+const GRAPH_PATCH_ERROR = "graphPatchError";
 /**
  * Multi-slot HPA worker — persistent nav snapshot + abstract graph on worker thread.
  */
@@ -97,6 +100,13 @@ export class HpaPathWorker {
                 this.onGraphPatched?.();
                 return;
             }
+            if (type === GRAPH_PATCH_ERROR) {
+                console.error("HPA region graph patch failed:", e.data.message);
+                const resolve = this._graphPatchResolve;
+                this._graphPatchResolve = null;
+                resolve?.();
+                return;
+            }
             if (type === ABSTRACT_READY) {
                 const hook = this._replanHooks[slot];
                 if (hook && hook.requestId === requestId) {
@@ -108,6 +118,7 @@ export class HpaPathWorker {
             }
             if (type === HPA_DONE) this.host.markReady(slot, requestId);
         };
+        this.host.worker.onerror = (err) => console.error("HpaPathWorker error:", err.message);
         this.host.worker.postMessage({
             type: "init",
             data: {
@@ -140,6 +151,8 @@ export class HpaPathWorker {
     }
     _mirrorGraphFromSab() {
         const nodeCount = this.graphNodeCount;
+        const expectedSize = this.navGraph.cols * this.navGraph.rows;
+        if (expectedSize > 0 && this._graphSize !== expectedSize) this._ensureGraphCellBuffers(expectedSize);
         this.graphNodeCol = new Int16Array(this.sabPersistGraphNodeCol, 0, nodeCount);
         this.graphNodeRow = new Int16Array(this.sabPersistGraphNodeRow, 0, nodeCount);
         this.graphEdgeOffsets = new Int32Array(this.sabPersistGraphEdgeOffsets, 0, nodeCount + 1);
@@ -179,26 +192,45 @@ export class HpaPathWorker {
         return pairs;
     }
     async buildRegionGraphFull(grid, seedWorldX = null, seedWorldY = null, graphEpoch = 0) {
-        await this._ensureWorkerNavReady();
+        await this.scheduleNavTopologySyncAwait(grid);
         const size = grid.cols * grid.rows;
         this._ensureGraphCellBuffers(size);
         this.setPruneSeed(seedWorldX, seedWorldY);
         await this._postGraphPatch(
             "buildRegionGraphFull",
-            { minX: grid.minX, minY: grid.minY, cellSize: grid.cellSize, damagePadding: this._damagePadding, minCellsPerChunk: gridSettings.minCellsPerChunk, seedWorldX, seedWorldY },
+            {
+                cols: grid.cols,
+                rows: grid.rows,
+                minX: grid.minX,
+                minY: grid.minY,
+                cellSize: grid.cellSize,
+                damagePadding: this._damagePadding,
+                minCellsPerChunk: gridSettings.minCellsPerChunk,
+                seedWorldX,
+                seedWorldY,
+            },
             graphEpoch,
         );
         if (grid.edgeStore.portalEdgeCount) await this.reconnectBoundaryHopRegionPairs(grid, graphEpoch);
     }
     /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds} bounds @param {number} graphEpoch */
     async patchRegionGraph(grid, bounds, graphEpoch) {
-        await this._ensureWorkerNavReady();
+        await this.scheduleNavTopologySyncAwait(grid);
         const size = grid.cols * grid.rows;
         this._ensureGraphCellBuffers(size);
         const box = expandRegionDamageBounds(bounds, grid.cols, grid.rows, this._damagePadding);
         await this._postGraphPatch(
             "patchRegionGraph",
-            { startCol: box.startCol, endCol: box.endCol, startRow: box.startRow, endRow: box.endRow, seedWorldX: this._pruneSeedWorldX ?? null, seedWorldY: this._pruneSeedWorldY ?? null },
+            {
+                cols: grid.cols,
+                rows: grid.rows,
+                startCol: box.startCol,
+                endCol: box.endCol,
+                startRow: box.startRow,
+                endRow: box.endRow,
+                seedWorldX: this._pruneSeedWorldX ?? null,
+                seedWorldY: this._pruneSeedWorldY ?? null,
+            },
             graphEpoch,
         );
     }
@@ -219,9 +251,16 @@ export class HpaPathWorker {
     getCellToRegionView() {
         return this.graphCellToRegion;
     }
-    getRegionGraphDebugView(grid) {
-        const nodeCount = this.graphNodeCount;
+    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+    isRegionGraphReady(grid = this.navGraph) {
         const size = grid.cols * grid.rows;
+        if (size <= 0 || this.graphNodeCount <= 0 || this._graphSize !== size) return false;
+        return this.sabCellToRegionIdx.byteLength >> 1 >= size;
+    }
+    getRegionGraphDebugView(grid) {
+        const size = grid.cols * grid.rows;
+        if (!this.isRegionGraphReady(grid)) return null;
+        const nodeCount = this.graphNodeCount;
         const nodeCol = nodeCount > 0 ? new Int16Array(this.sabPersistGraphNodeCol, 0, nodeCount) : this.graphNodeCol;
         const nodeRow = nodeCount > 0 ? new Int16Array(this.sabPersistGraphNodeRow, 0, nodeCount) : this.graphNodeRow;
         const edgeOffsets = nodeCount > 0 ? new Int32Array(this.sabPersistGraphEdgeOffsets, 0, nodeCount + 1) : this.graphEdgeOffsets;
@@ -230,14 +269,19 @@ export class HpaPathWorker {
         const cellToRegion = size > 0 ? new Int16Array(this.sabCellToRegionIdx, 0, size) : this.graphCellToRegion;
         const edges = [];
         for (let i = 0; i < nodeCount; i++) for (let e = edgeOffsets[i]; e < edgeOffsets[i + 1]; e++) edges.push({ sourceIdx: i, targetIdx: edgeTargets[e] });
+        const navSnap = this.getNavSnapshotView();
+        const blocked = navSnap?.blocked ?? grid.grid;
+        const regionCanStep = navSnap
+            ? (fromCol, fromRow, toCol, toRow) => snapshotCanStep(navSnap, fromCol, fromRow, toCol, toRow) || snapshotCanStep(navSnap, toCol, toRow, fromCol, fromRow)
+            : (fromCol, fromRow, toCol, toRow) => grid.canStep(fromCol, fromRow, toCol, toRow) || grid.canStep(toCol, toRow, fromCol, fromRow);
         return {
             cols: grid.cols,
             rows: grid.rows,
             minX: grid.minX,
             minY: grid.minY,
             cellSize: grid.cellSize,
-            grid: grid.grid,
-            navGraph: grid,
+            grid: blocked,
+            regionCanStep,
             cellToRegion,
             nodeCount,
             nodeCol,
@@ -329,20 +373,30 @@ export class HpaPathWorker {
         return this._navSize === size && size > 0 && this._navKey !== "" && this.navBlocked;
     }
     async scheduleNavTopologySyncAwait(grid = this.navGraph) {
-        this.scheduleNavTopologySync(grid);
-        if (this._navSyncPromise) await this._navSyncPromise;
+        const targetKey = snapshotNavCacheKey(grid);
+        while (this._navKey !== targetKey || this._navSyncPromise) {
+            this.scheduleNavTopologySync(grid);
+            if (this._navSyncPromise) await this._navSyncPromise;
+        }
     }
     scheduleNavTopologySync(grid = this.navGraph) {
         const cacheKey = snapshotNavCacheKey(grid);
         if (cacheKey === this._navKey) return;
-        if (this._navSyncPromise) return;
+        if (this._navSyncPromise) {
+            this._deferFullNavSync = true;
+            return;
+        }
+        const size = grid.cols * grid.rows;
+        const vertCount = (grid.cols + 1) * (grid.rows + 1);
+        if (grid.navCardinalOpen.length !== size || grid.vertexPassability.length !== vertCount)
+            throw new Error(
+                `nav topology caches size mismatch (${grid.navCardinalOpen.length}/${grid.vertexPassability.length} vs ${size}/${vertCount}) — call syncGridTopologyCaches before onObstaclesChanged`,
+            );
         this._pendingPatchBounds = null;
         this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
         this._navKey = cacheKey;
         this._navSnapshotView = null;
         this.navGraph.gridNavSnapshot = null;
-        const size = grid.cols * grid.rows;
-        const vertCount = (grid.cols + 1) * (grid.rows + 1);
         const blocked = packBlockedFromGrid(grid);
         const hops = bakeHopCsr(grid, blocked, grid.cols, grid.rows);
         this._ensureNavBuffers(size, hops.hopExitIdx.byteLength, hops.hopCost.byteLength, vertCount);
@@ -368,21 +422,20 @@ export class HpaPathWorker {
             });
         });
     }
-    _fallbackToFullNavSync(grid) {
+    async _ensureFullNavSync(grid = this.navGraph) {
         this._pendingPatchBounds = null;
-        if (this._navSyncPromise) {
-            this._deferFullNavSync = true;
-            return;
+        if (this._navSyncPromise) await this._navSyncPromise;
+        if (snapshotNavCacheKey(grid) !== this._navKey) {
+            this.scheduleNavTopologySync(grid);
+            if (this._navSyncPromise) await this._navSyncPromise;
         }
-        this.scheduleNavTopologySync(grid);
     }
     /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds} bounds */
     async patchNavTopology(grid, bounds) {
         const cacheKey = snapshotNavCacheKey(grid);
         if (cacheKey === this._navKey) return;
         if (isEmptyCellBounds(bounds) || grid.gridTopologyEpoch !== this._lastGridTopologyEpoch || !this._canIncrementalPatch(grid)) {
-            this._fallbackToFullNavSync(grid);
-            if (this._navSyncPromise) await this._navSyncPromise;
+            await this._ensureFullNavSync(grid);
             return;
         }
         this._pendingPatchBounds = unionCellBounds(this._pendingPatchBounds, bounds);
@@ -434,10 +487,7 @@ export class HpaPathWorker {
         }
     }
     async _ensureWorkerNavReady() {
-        const grid = this.navGraph;
-        const cacheKey = snapshotNavCacheKey(grid);
-        if (cacheKey !== this._navKey) this.scheduleNavTopologySync(grid);
-        if (this._navSyncPromise) await this._navSyncPromise;
+        await this.scheduleNavTopologySyncAwait(this.navGraph);
     }
     async _ensureWorkerGraphReady(graphEpoch) {
         await this.awaitGraphReady();

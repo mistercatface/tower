@@ -1,3 +1,4 @@
+import { unionCellBounds } from "../../../Libraries/DataStructures/CellRect.js";
 import { gridSettings } from "../../../Config/Config.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
@@ -30,7 +31,7 @@ export function playAreaCellsToIndex(cells) {
     return index >= 0 ? index : PLAY_AREA_CELL_OPTIONS.indexOf(256);
 }
 /** Resize obstacle grid and sync cavern/rail stamp bounds to play area — centered on the camera. */
-export function applyPlayAreaConfig(state) {
+export async function applyPlayAreaConfig(state) {
     const { viewport, editor } = state;
     const { playConfig } = editor;
     const cellSize = gridSettings.cellSize;
@@ -41,9 +42,11 @@ export function applyPlayAreaConfig(state) {
         migrateMapGenBoundsForMode(config);
     }
     ensureLabObstacleGridCoverage(state);
-    rebuildLabMapCaches(state);
+    syncGridTopologyCaches(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
+    await state.navigation.onObstaclesChanged(null);
+    await rebuildLabMapCaches(state);
 }
-/** @param {import("../state.js").TileLabGameState} state @param {number} centerWorldX @param {number} centerWorldY @param {number} radiusWorld */
+/** @param {import("../state.js").TileLabGameState} state @param {number} centerWorldX @param {number} centerWorldY @param {number} radiusWorld @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} */
 function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
     const grid = state.obstacleGrid;
     centerReachAabbInto(CLEAR_CIRCLE_BOUNDS, centerWorldX, centerWorldY, radiusWorld);
@@ -71,11 +74,11 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
         if (row < startRow) startRow = row;
         if (row > endRow) endRow = row;
     });
-    if (startCol === Infinity) return;
+    if (startCol === Infinity) return null;
     grid.bumpWallGridRevision();
     const damageBounds = { startCol, endCol, startRow, endRow };
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-    state.navigation.onObstaclesChanged(damageBounds);
+    return damageBounds;
 }
 /** @param {import("../state.js").TileLabGameState} state @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} */
 function eraseWallsInShape(state) {
@@ -110,15 +113,15 @@ function eraseWallsInShape(state) {
     return { startCol, endCol, startRow, endRow };
 }
 /** @param {import("../state.js").TileLabGameState} state */
-export function eraseLabWallsInBounds(state) {
+export async function eraseLabWallsInBounds(state) {
     ensureLabObstacleGridCoverage(state, getMapGenBoundsAabb(state.editor.eraseConfig, gridSettings.cellSize));
     const damageBounds = eraseWallsInShape(state);
     if (!damageBounds) return;
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     syncGridTopologyCaches(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
-    state.navigation.onObstaclesChanged(damageBounds);
+    await state.navigation.onObstaclesChanged(damageBounds);
     state.worldSurfaces.clearBakeCache();
-    rebuildLabMapCaches(state);
+    await rebuildLabMapCaches(state);
 }
 export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     const cellSize = gridSettings.cellSize;
@@ -127,7 +130,8 @@ export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     required = padAabb(required, cellSize);
     const grid = state.obstacleGrid;
     const expanded = grid.expandToCoverAabb(required);
-    if (expanded) state.navigation.onObstaclesChanged(null);
+    if (expanded) syncGridTopologyCaches(grid, state.sandbox._passagePowerSyncKey ?? "");
+    return expanded;
 }
 /** @param {import("../TileLabEditorState.js").TileLabEditorState["cavernConfig"]} config @returns {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
 function generateCavernOccupancy(config) {
@@ -138,7 +142,7 @@ function generateCavernOccupancy(config) {
     return { originCol, originRow, cols, rows, cells };
 }
 /** @param {import("../state.js").TileLabGameState} state */
-export function generateLabCaverns(state) {
+export async function generateLabCaverns(state) {
     const { cavernConfig } = state.editor;
     const cellSize = gridSettings.cellSize;
     /** @type {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
@@ -148,20 +152,21 @@ export function generateLabCaverns(state) {
     });
     ensureLabObstacleGridCoverage(state);
     const level = clampStampWallHeightLevel(cavernConfig.wallHeightLevel, state.worldSurfaces.settings);
-    const damageBounds = state.obstacleGrid.stampStaticWalls(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, { additive: true, heightLevel: level });
+    let damageBounds = state.obstacleGrid.stampStaticWalls(stamp.originCol, stamp.originRow, stamp.cols, stamp.rows, stamp.cells, { additive: true, heightLevel: level });
     if (cavernConfig.boundsMode === "donut") {
         const innerR = getInnerRadiusCells(cavernConfig) * cellSize;
         const center = getMapGenBoundsCenterWorld(cavernConfig, cellSize);
-        clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
+        const cleared = clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
+        if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
     }
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     syncGridTopologyCaches(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
-    state.navigation.onObstaclesChanged(damageBounds);
+    await state.navigation.onObstaclesChanged(damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
-    rebuildLabMapCaches(state);
+    await rebuildLabMapCaches(state);
 }
-export function generateLabRailCaverns(state) {
+export async function generateLabRailCaverns(state) {
     const { railConfig } = state.editor;
     const cellSize = gridSettings.cellSize;
     const stampBounds = getMapGenBoundsAabb(railConfig, cellSize);
@@ -235,16 +240,17 @@ export function generateLabRailCaverns(state) {
             else if (col - 1 >= 0 && col - 1 < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, col - 1, row, 1, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
         }
     grid.bumpWallGridRevision();
-    const damageBounds = { startCol, endCol, startRow, endRow };
+    let damageBounds = { startCol, endCol, startRow, endRow };
     if (railConfig.boundsMode === "donut") {
         const innerR = getInnerRadiusCells(railConfig) * cellSize;
         const center = getMapGenBoundsCenterWorld(railConfig, cellSize);
-        clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
+        const cleared = clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
+        if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
     }
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     syncGridTopologyCaches(state.obstacleGrid, state.sandbox._passagePowerSyncKey ?? "");
-    state.navigation.onObstaclesChanged(damageBounds);
+    await state.navigation.onObstaclesChanged(damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
-    rebuildLabMapCaches(state);
+    await rebuildLabMapCaches(state);
 }

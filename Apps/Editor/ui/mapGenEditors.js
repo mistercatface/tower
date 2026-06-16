@@ -195,8 +195,7 @@ export function buildCavernGenEditor(panel, state, onPreviewChange, onGenerated)
     genBtn.type = "button";
     genBtn.textContent = "Generate caverns";
     genBtn.addEventListener("click", () => {
-        generateLabCaverns(state);
-        onGenerated();
+        void generateLabCaverns(state).then(onGenerated);
     });
     row.append(newSeedBtn, genBtn);
     panel.appendChild(row);
@@ -237,8 +236,7 @@ export function buildRailGenEditor(panel, state, onPreviewChange, onGenerated) {
     genBtn.type = "button";
     genBtn.textContent = "Generate rail walls";
     genBtn.addEventListener("click", () => {
-        generateLabRailCaverns(state);
-        onGenerated();
+        void generateLabRailCaverns(state).then(onGenerated);
     });
     row.appendChild(genBtn);
     panel.appendChild(row);
@@ -265,8 +263,7 @@ export function buildEraseEditor(panel, state, onPreviewChange, onGenerated) {
     eraseBtn.type = "button";
     eraseBtn.textContent = "Erase walls in bounds";
     eraseBtn.addEventListener("click", () => {
-        eraseLabWallsInBounds(state);
-        onGenerated();
+        void eraseLabWallsInBounds(state).then(onGenerated);
     });
     row.appendChild(eraseBtn);
     panel.appendChild(row);

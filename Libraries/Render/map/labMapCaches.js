@@ -54,14 +54,14 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
                     const rIdx = idx + 1;
                     if (debugView.grid[rIdx] === 0) {
                         const rightRegion = cellToRegion[rIdx];
-                        if (rightRegion >= 0 && rightRegion !== region && debugView.navGraph.canStep(col, row, col + 1, row)) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
+                        if (rightRegion >= 0 && rightRegion !== region && debugView.regionCanStep(col, row, col + 1, row)) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
                     }
                 }
                 if (row + 1 < debugView.rows) {
                     const bIdx = idx + debugView.cols;
                     if (debugView.grid[bIdx] === 0) {
                         const bottomRegion = cellToRegion[bIdx];
-                        if (bottomRegion >= 0 && bottomRegion !== region && debugView.navGraph.canStep(col, row, col, row + 1)) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
+                        if (bottomRegion >= 0 && bottomRegion !== region && debugView.regionCanStep(col, row, col, row + 1)) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
                     }
                 }
             }
@@ -121,7 +121,8 @@ export function rebuildLabMapOverviewCache(state) {
 /** @param {object} state */
 export async function rebuildLabPathDebugCache(state) {
     const grid = state.obstacleGrid;
-    if (state.hpaPathWorker) await state.hpaPathWorker.awaitGraphReady();
+    if (state.navigation?.awaitWorkerNavReady) await state.navigation.awaitWorkerNavReady();
+    else if (state.hpaPathWorker) await state.hpaPathWorker.awaitGraphReady();
     const debugView = state.hpaPathWorker?.getRegionGraphDebugView(grid);
     state.mapPathDebugCache = debugView ? bakePathDebugLayer(debugView, grid.minX, grid.minY, grid.maxX, grid.maxY) : null;
 }

@@ -13,6 +13,9 @@ export class NavigationService {
         this._hpaPathWorker = hpaPathWorker;
         this._obstacleGrid = obstacleGrid;
         this._lastGridTopologyEpoch = obstacleGrid.gridTopologyEpoch;
+        /** @type {((grid: import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, bounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => { x: number, y: number }) | null} */
+        this._resolvePruneWorld = null;
+        this._workerNavGraphSyncChain = Promise.resolve();
         this._controller = new NavigationController({
             flowFieldGrid,
             obstacleGrid,
@@ -64,22 +67,39 @@ export class NavigationService {
     updateFlowField(opts) {
         return this._controller.updateFlowField(opts);
     }
+    /** @param {(grid: import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, bounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => { x: number, y: number }} fn */
+    setPruneSeedResolver(fn) {
+        this._resolvePruneWorld = fn;
+    }
+    _resolvePruneSeed(grid, damageBounds) {
+        if (this._resolvePruneWorld) return this._resolvePruneWorld(grid, damageBounds);
+        if (damageBounds && !isEmptyCellBounds(damageBounds)) {
+            const midCol = (damageBounds.startCol + damageBounds.endCol) >> 1;
+            const midRow = (damageBounds.startRow + damageBounds.endRow) >> 1;
+            return grid.gridToWorld(midCol, midRow);
+        }
+        return { x: (grid.minX + grid.maxX) / 2, y: (grid.minY + grid.maxY) / 2 };
+    }
     onObstaclesChanged(damageBounds) {
         const grid = this._obstacleGrid;
         const topologyChanged = grid.gridTopologyEpoch !== this._lastGridTopologyEpoch;
         if (topologyChanged) this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
         this._controller.invalidateObstacleNav();
         if (!this._hpaPathWorker) return Promise.resolve();
-        return this._syncWorkerNavGraph(grid, damageBounds, topologyChanged);
+        const run = () => this._syncWorkerNavGraph(grid, damageBounds, topologyChanged);
+        this._workerNavGraphSyncChain = this._workerNavGraphSyncChain.then(run, run);
+        return this._workerNavGraphSyncChain;
+    }
+    awaitWorkerNavReady() {
+        return this._workerNavGraphSyncChain;
     }
     async _syncWorkerNavGraph(grid, damageBounds, topologyChanged) {
         const graphEpoch = this._controller.obstacleGeneration + 1;
+        const seed = this._resolvePruneSeed(grid, damageBounds);
+        this._hpaPathWorker.setPruneSeed(seed.x, seed.y);
         if (topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds)) {
             await this._hpaPathWorker.scheduleNavTopologySyncAwait(grid);
-            const centerX = (grid.minX + grid.maxX) / 2;
-            const centerY = (grid.minY + grid.maxY) / 2;
-            this._hpaPathWorker.setPruneSeed(centerX, centerY);
-            await this._hpaPathWorker.buildRegionGraphFull(grid, centerX, centerY, graphEpoch);
+            await this._hpaPathWorker.buildRegionGraphFull(grid, seed.x, seed.y, graphEpoch);
         } else {
             await this._hpaPathWorker.patchNavTopology(grid, damageBounds);
             await this._hpaPathWorker.patchRegionGraph(grid, damageBounds, graphEpoch);
@@ -91,9 +111,10 @@ export class NavigationService {
     }
     rebuildNavigationGraph(playerX, playerY) {
         this._controller.invalidateObstacleNav();
-        if (this._hpaPathWorker) {
-            this._hpaPathWorker.setPruneSeed(playerX, playerY);
-            void this._syncWorkerNavGraph(this._obstacleGrid, null, true);
-        }
+        if (!this._hpaPathWorker) return Promise.resolve();
+        this._hpaPathWorker.setPruneSeed(playerX, playerY);
+        const run = () => this._syncWorkerNavGraph(this._obstacleGrid, null, true);
+        this._workerNavGraphSyncChain = this._workerNavGraphSyncChain.then(run, run);
+        return this._workerNavGraphSyncChain;
     }
 }

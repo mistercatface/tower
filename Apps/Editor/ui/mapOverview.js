@@ -1,6 +1,6 @@
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
 import { gridSettings } from "../../../Config/Config.js";
-import { rebuildLabMapOverviewCache, rebuildLabPathDebugCache } from "../../../Libraries/Render/map/labMapCaches.js";
+import { rebuildLabMapOverviewCache } from "../../../Libraries/Render/map/labMapCaches.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../world/mapGenBounds.js";
 import { drawMapGenBoundsPreview, mountOverviewBoundsEditors } from "./mapGenBoundsOverviewEditor.js";
@@ -44,7 +44,7 @@ export function paintMapOverviewFrame(state) {
 /** Vertical space for main map max-size when overview is visible. */
 export function estimateMapOverviewHeight() {
     const stage = document.getElementById("mapOverviewStage");
-    if (!stage || stage.hidden) return 0;
+    if (!stage || stage.hidden || !overviewCanvasResize) return 0;
     return overviewCanvasResize.getSize();
 }
 /** @param {import("../state.js").TileLabGameState} state @param {(() => void) | null} [onBoundsChange] */
@@ -53,11 +53,11 @@ export function mountMapOverview(state, onBoundsChange = null) {
     const canvas = document.getElementById("mapOverviewCanvas");
     overviewCtx = canvas.getContext("2d");
     rebuildLabMapOverviewCache(state);
-    void rebuildLabPathDebugCache(state);
     overviewCanvasResize = applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize, minSize, maxSize, onResize: () => paintMapOverviewFrame(state) });
     if (onBoundsChange) mountOverviewBoundsEditors(canvas, state, onBoundsChange);
     paintMapOverviewFrame(state);
 }
 export function syncMapOverviewCanvasSize() {
+    if (!overviewCanvasResize) return;
     overviewCanvasResize.setSize(overviewCanvasResize.getSize());
 }

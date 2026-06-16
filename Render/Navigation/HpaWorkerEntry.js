@@ -146,8 +146,9 @@ function syncPersistAbstractGraph(nodeCount, edgeWrite) {
     persistNodeCount = nodeCount;
     persistEdgeWrite = buildPersistGraphCsr(nodeCount, edgeWrite);
 }
-function writeRegionGraphToSab() {
+function writeRegionGraphToSab(expectedCols, expectedRows) {
     if (!regionGraphState) return null;
+    if (expectedCols !== cols || expectedRows !== rows) throw new Error(`HPA region graph size mismatch: nav ${cols}x${rows}, graph ${expectedCols}x${expectedRows}`);
     const packed = packRegionGraphFlat(regionGraphState.nodesMap, regionGraphState.cellToNode, cols, rows);
     if (packed.nodeCount > maxGraphNodes) throw new Error(`HPA region graph has ${packed.nodeCount} nodes (max ${maxGraphNodes})`);
     const persistNodeCol = persistNodeColView();
@@ -166,6 +167,7 @@ function writeRegionGraphToSab() {
 }
 function buildRegionGraphFullOnWorker(data) {
     if (!navSnapshot) throw new Error("buildRegionGraphFull requires nav snapshot");
+    if (data.cols !== cols || data.rows !== rows) throw new Error(`buildRegionGraphFull cols/rows mismatch: nav ${cols}x${rows}, request ${data.cols}x${data.rows}`);
     minX = data.minX;
     minY = data.minY;
     cellSize = data.cellSize;
@@ -201,27 +203,38 @@ function buildRegionGraphFullOnWorker(data) {
         seedWorldY: data.seedWorldY,
         distToWall: null,
     };
-    return writeRegionGraphToSab();
+    return writeRegionGraphToSab(data.cols, data.rows);
 }
 function patchRegionGraphOnWorker(data) {
     if (!navSnapshot || !regionGraphState) throw new Error("patchRegionGraph requires nav snapshot and region graph");
+    if (data.cols !== cols || data.rows !== rows) throw new Error(`patchRegionGraph cols/rows mismatch: nav ${cols}x${rows}, request ${data.cols}x${data.rows}`);
     regionGraphState.blocked = navSnapshot.blocked;
     regionGraphState.navGraph = navView;
     regionGraphState.seedWorldX = data.seedWorldX ?? pruneSeedWorldX;
     regionGraphState.seedWorldY = data.seedWorldY ?? pruneSeedWorldY;
     rebuildDamagedRegionGraph(regionGraphState, { startCol: data.startCol, endCol: data.endCol, startRow: data.startRow, endRow: data.endRow });
-    return writeRegionGraphToSab();
+    return writeRegionGraphToSab(data.cols, data.rows);
 }
 function connectRegionIdxPairsOnWorker(pairs) {
-    if (!regionGraphState || !pairs.length) return writeRegionGraphToSab();
+    if (!regionGraphState || !pairs.length) return writeRegionGraphToSab(cols, rows);
     const nodeIds = Object.keys(regionGraphState.nodesMap)
         .filter((id) => !id.startsWith("__hpa_"))
         .sort();
     connectRegionIdxPairs(regionGraphState.nodesMap, nodeIds, pairs);
-    return writeRegionGraphToSab();
+    return writeRegionGraphToSab(cols, rows);
 }
 function postGraphPatchDone(meta) {
     self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [] });
+}
+function postGraphPatchError(err) {
+    self.postMessage({ type: "graphPatchError", message: err?.message ?? String(err) });
+}
+function runGraphPatch(fn) {
+    try {
+        postGraphPatchDone(fn());
+    } catch (err) {
+        postGraphPatchError(err);
+    }
 }
 function writeCellPath(slot, path) {
     const pathMeta = slotPathMeta(slot);
@@ -502,17 +515,17 @@ self.onmessage = function (e) {
     }
     if (type === "buildRegionGraphFull") {
         if (e.data.sabCellToRegionIdx) sabCellToRegionIdx = e.data.sabCellToRegionIdx;
-        postGraphPatchDone(buildRegionGraphFullOnWorker(e.data));
+        runGraphPatch(() => buildRegionGraphFullOnWorker(e.data));
         return;
     }
     if (type === "patchRegionGraph") {
         if (e.data.sabCellToRegionIdx) sabCellToRegionIdx = e.data.sabCellToRegionIdx;
-        postGraphPatchDone(patchRegionGraphOnWorker(e.data));
+        runGraphPatch(() => patchRegionGraphOnWorker(e.data));
         return;
     }
     if (type === "connectRegionIdxPairs") {
         if (e.data.sabCellToRegionIdx) sabCellToRegionIdx = e.data.sabCellToRegionIdx;
-        postGraphPatchDone(connectRegionIdxPairsOnWorker(e.data.pairs));
+        runGraphPatch(() => connectRegionIdxPairsOnWorker(e.data.pairs));
         return;
     }
     if (type === "replan") {
