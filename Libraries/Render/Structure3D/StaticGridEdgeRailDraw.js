@@ -102,7 +102,7 @@ export function drawProjectedGridEdgeRail(ctx, box, wallCtx) {
         }
     }
     wallCtx.atlasFaceId = undefined;
-    drawProjectedRailWallCap(ctx, box, wallCtx);
+    if (!wallCtx.skipWallCaps) drawProjectedRailWallCap(ctx, box, wallCtx);
 }
 export function invalidateStaticGridEdgeRailDrawCache() {
     sBoxCache.wallGridRevision = -1;

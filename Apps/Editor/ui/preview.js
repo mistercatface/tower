@@ -11,6 +11,8 @@ import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
 import { ensureLabPathDebugCache, labPathDebugCacheKey } from "../../../Libraries/Render/map/labMapCaches.js";
+import { drawLosShadowOverlay } from "../../../Libraries/Render/Lighting/losShadowOverlay.js";
+import { LOS_SHADOW_VISION_TILES_DEFAULT } from "../../../Libraries/Render/Lighting/losShadowDefaults.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 /** @type {import("../../../Render/Render.js").SimulationSceneHooks} */
 const editorSceneHooks = {
@@ -32,6 +34,16 @@ const editorSceneHooks = {
             },
         },
         {
+            zIndex: 71.5,
+            draw(state, viewport, ctx) {
+                if (!showLabLosShadow) return;
+                drawLosShadowOverlay(ctx, viewport, state.obstacleGrid, {
+                    visionTiles: labLosShadowVisionTiles,
+                    cameraHeight: state.worldSurfaces.settings.cameraHeight,
+                });
+            },
+        },
+        {
             zIndex: 72,
             draw(_state, _viewport, ctx) {
                 const controller = getGameState().sandbox.controller;
@@ -49,20 +61,34 @@ let lastProfileBakeKey = "";
 let labViewDirty = true;
 let showLabVignette = false;
 let showLabPathDebug = false;
+let showLabLosShadow = false;
+let labLosShadowVisionTiles = LOS_SHADOW_VISION_TILES_DEFAULT;
 function markLabViewDirty() {
     labViewDirty = true;
 }
 export function mountLabDrawOptions() {
     const vignetteInput = document.getElementById("showVignetteInput");
     const pathDebugInput = document.getElementById("showPathDebugInput");
+    const losShadowInput = document.getElementById("showLosShadowInput");
+    const losVisionInput = document.getElementById("losShadowVisionTilesInput");
     showLabVignette = vignetteInput.checked;
     showLabPathDebug = pathDebugInput.checked;
+    showLabLosShadow = losShadowInput.checked;
+    labLosShadowVisionTiles = Number(losVisionInput.value) || LOS_SHADOW_VISION_TILES_DEFAULT;
     vignetteInput.addEventListener("change", () => {
         showLabVignette = vignetteInput.checked;
         markLabViewDirty();
     });
     pathDebugInput.addEventListener("change", () => {
         showLabPathDebug = pathDebugInput.checked;
+        markLabViewDirty();
+    });
+    losShadowInput.addEventListener("change", () => {
+        showLabLosShadow = losShadowInput.checked;
+        markLabViewDirty();
+    });
+    losVisionInput.addEventListener("change", () => {
+        labLosShadowVisionTiles = Number(losVisionInput.value) || LOS_SHADOW_VISION_TILES_DEFAULT;
         markLabViewDirty();
     });
 }
@@ -138,6 +164,7 @@ export function drawLabFrame(state) {
     const showPathDebug = showLabPathDebug;
     const prevProfileOverride = state.worldSurfaces.surfaceProfileOverride;
     state.worldSurfaces.surfaceProfileOverride = RUNTIME_LAB_PROFILE_ID;
+    state.editor.losShadowActive = showLabLosShadow;
     maybeClearProfileBakeCaches(state, RUNTIME_LAB_PROFILE_ID);
     getLabRenderer(canvas, ctx, state).renderSimulationScene(state, viewport);
     ctx.save();

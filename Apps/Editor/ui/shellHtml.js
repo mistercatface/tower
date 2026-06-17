@@ -6,6 +6,8 @@ export const TILELAB_UI_HTML = `
         <label class="check-inline"><input id="showPathDebugInput" type="checkbox"> HPA* Grid</label>
         <label class="check-inline"><input id="showVectorPropsAllInput" type="checkbox"> Vector props</label>
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
+        <label class="check-inline"><input id="showLosShadowInput" type="checkbox"> LOS Shadow</label>
+        <label class="toolbar-select">Vision tiles <input id="losShadowVisionTilesInput" type="number" min="1" max="64" step="1" value="16" style="width:4em"></label>
         <label class="check-inline"><input id="showAnimationPreviewInput" type="checkbox"> Animation Preview</label>
         <label class="check-inline"><input id="showMapOverviewInput" type="checkbox" checked> Map Overview</label>
         <label class="check-inline"><input id="showSelectionRingsInput" type="checkbox" checked> Selection rings</label>

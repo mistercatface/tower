@@ -105,6 +105,7 @@ export class WorldSceneRenderer {
     }
     draw3DBuildings(ctx, input, viewport, options = {}) {
         const skipWalls = options.skipWalls === true;
+        const skipWallCaps = options.skipWallCaps === true;
         const px = viewport.x;
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
@@ -122,6 +123,7 @@ export class WorldSceneRenderer {
             worldBounds: viewport.boundsDraw,
             camera: elevationCameraFromViewport(viewport, input.worldSurfaces.settings.cameraHeight),
             texelResolution,
+            skipWallCaps,
         };
         ctx.save();
         clipToViewport(ctx, viewport);
