@@ -16,6 +16,5 @@ export class TileLabEditorState {
         this.showAnimationPreview = false;
         this.showMapOverview = true;
         this.forceVectorPropsAll = false;
-        this.losShadowActive = false;
     }
 }
