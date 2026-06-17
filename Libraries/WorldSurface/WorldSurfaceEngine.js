@@ -248,8 +248,6 @@ export class WorldSurfaceEngine {
         const minChunkRow = worldToChunkRow(bounds.minY, obstacleGrid.minY, chunkSizePx);
         const maxChunkRow = worldToChunkRow(bounds.maxY - 1, obstacleGrid.minY, chunkSizePx);
         const passCamera = elevationCameraFromViewport(viewport);
-        ctx.save();
-        if (playBounds) clipToAabb(ctx, bounds);
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
                 const originX = obstacleGrid.minX + chunkCol * chunkSizePx;
@@ -301,6 +299,5 @@ export class WorldSurfaceEngine {
                     ctx.restore();
                 } else drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
             }
-        ctx.restore();
     }
 }
