@@ -22,8 +22,8 @@ export function createSandboxDeletePointerTool(state, session, { resolveGroundMo
                 return true;
             }
             if (clearFloorOverlayAt(state, col, row)) {
-                const selectedFloor = session.getSelectedFloorCell();
-                if (selectedFloor?.col === col && selectedFloor.row === row) session.clearFloorSelection();
+                const sel = session.getSelection();
+                if (sel?.kind === "floor" && sel.col === col && sel.row === row) session.clearSelection();
                 session.sync();
                 return true;
             }

@@ -12,7 +12,7 @@ export function createButtonWireTool(state, session) {
         },
         onSync: () => session.sync(),
         drawWire(ctx, cursor) {
-            drawButtonWirePreview(ctx, state, session.getSelectedPropId(), cursor);
+            drawButtonWirePreview(ctx, state, session.getSelectedProp()?.id ?? null, cursor);
         },
     });
     return {

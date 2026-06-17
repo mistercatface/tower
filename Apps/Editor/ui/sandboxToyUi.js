@@ -1,15 +1,49 @@
 import { getPropAsset, getWorldPropDefinitions, formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
 import { isSandboxSpawnable } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
-import { appendGridSelectionInspector } from "../../../Libraries/SandboxEditor/ui/sandboxSelectedInspector.js";
-import { appendWallPlaceParams } from "../../../Libraries/SandboxEditor/ui/sandboxWallInspector.js";
+import { appendFloorSelectedInspector } from "../../../Libraries/SandboxEditor/ui/sandboxFloorInspector.js";
+import { appendRoomNodeSelectedInspector } from "../../../Libraries/SandboxEditor/ui/sandboxRoomSelectedInspector.js";
+import { appendForcefieldSelectedInspector, appendRoomLinkCorridorInspector, appendWallPlaceParams, appendWallSelectedInspector } from "../../../Libraries/SandboxEditor/ui/sandboxWallInspector.js";
 import { appendPropPlaceParams } from "../../../Libraries/SandboxEditor/ui/sandboxPropSpawnInspector.js";
 import { appendSelectedPropInspector } from "../../../Libraries/SandboxEditor/ui/sandboxPropSelectedInspector.js";
-import { appendPinnedSection } from "../../../Libraries/SandboxEditor/ui/sandboxPanelSections.js";
-import { buildPlacePaletteItems, appendPaletteTagFilters, appendSpawnPaletteGrid } from "../../../Libraries/SandboxEditor/ui/sandboxPlacePalette.js";
-import { sandboxPaletteMatchesFilter } from "../../../Libraries/SandboxEditor/ui/sandboxPaletteTags.js";
+import { buildPlacePaletteItems, appendPaletteTagFilters, appendSpawnPaletteGrid, sandboxPaletteMatchesFilter } from "../../../Libraries/SandboxEditor/ui/sandboxPlacePalette.js";
 import { appendActionRow, appendEditorHint, appendInstanceList } from "../../../Libraries/UI/paramFields.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 import { wrapLabUiSync } from "./preview.js";
+function appendPinnedSection(parent, id, title, build, headExtra = null) {
+    const block = document.createElement("div");
+    block.className = "editor-block editor-block-pinned";
+    block.dataset.sandboxSection = id;
+    const head = document.createElement("div");
+    head.className = "editor-block-title editor-block-title-row";
+    const titleEl = document.createElement("span");
+    titleEl.textContent = title;
+    head.appendChild(titleEl);
+    if (headExtra) headExtra(head);
+    block.appendChild(head);
+    const sectionBody = document.createElement("div");
+    build(sectionBody);
+    block.appendChild(sectionBody);
+    parent.appendChild(block);
+    return block;
+}
+function appendGridSelectionInspector(body, state, controller, selection) {
+    const { selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo, selectedPowerSource, selectedFloorBelt, selectedRoomNode, selectedRoomLink } = selection;
+    if (appendWallSelectedInspector(body, state, controller, { selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo })) return true;
+    if (selectedForcefieldInfo) {
+        appendForcefieldSelectedInspector(body, controller, selectedForcefieldInfo, { promptReselect: true });
+        return true;
+    }
+    if (appendFloorSelectedInspector(body, controller, { selectedPowerSource, selectedFloorBelt })) return true;
+    if (selectedRoomNode) {
+        appendRoomNodeSelectedInspector(body, state, controller, selectedRoomNode);
+        return true;
+    }
+    if (selectedRoomLink) {
+        appendRoomLinkCorridorInspector(body, state, selectedRoomLink, controller);
+        return true;
+    }
+    return false;
+}
 export function mountSandboxToyUi(container, state, controller) {
     let paletteTagFilter = "all";
     const propIds = Object.keys(getWorldPropDefinitions())
@@ -52,7 +86,7 @@ export function mountSandboxToyUi(container, state, controller) {
         }
         const activeItem = paletteKey === "" ? null : (paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0]);
         const { selectedPropIds, selectedProp, selectedFloorBelt, selectedPowerSource, selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo, selectedRoomLink, selectedRoomNode } =
-            state.sandbox.session.getSelectionInspectors();
+            controller.getSelectionInspectors();
         const selectedPropIdSet = new Set(selectedPropIds);
         const wallStampMode = controller.getWallStampMode();
         const selectionCount = selectedPropIdSet.size;

@@ -7,7 +7,6 @@ import { isButtonEntity } from "../Sandbox/buttonInput.js";
 import { createButtonWireTool } from "./buttonWireTool.js";
 import { createCorridorLinkWireTool } from "./corridorLinkWireTool.js";
 import { createSandboxMarqueeTool } from "./sandboxMarqueeTool.js";
-import { createWallPlaceTool } from "./wallPlaceTool.js";
 import { createSandboxDeletePointerTool } from "./sandboxDeletePointerTool.js";
 import { createSandboxPointerGestures } from "./sandboxPointerGestures.js";
 import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js";
@@ -25,7 +24,6 @@ import { drawSandboxWeaponBars } from "../Sandbox/drawWorldPropWeaponBars.js";
 import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-import { selectionDrawCells } from "../Sandbox/sandboxSelection.js";
 /**
  * @param {object} state
  * @param {{
@@ -80,7 +78,20 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     const gestures = createSandboxPointerGestures({ getCanvas, session, clientToWorld });
     const buttonWireTool = createButtonWireTool(state, session);
     const corridorLinkWireTool = createCorridorLinkWireTool(state, session);
-    const wallPlaceTool = createWallPlaceTool(session);
+    const wallPlaceTool = {
+        isActive: () => session.isWallPlaceMode(),
+        blocksPlacement: () => session.isWallPlaceMode(),
+        onPointerDown(world, e) {
+            if (e.button === 2) {
+                session.deleteWallAtWorld(world.x, world.y);
+                return true;
+            }
+            if (e.button !== 0) return false;
+            if (session.pickWallAtWorld(world.x, world.y)) return true;
+            session.stampWallAtWorld(world.x, world.y);
+            return true;
+        },
+    };
     const blocksPlacement = () =>
         (buttonWireTool.isActive() && buttonWireTool.blocksPlacement()) ||
         (corridorLinkWireTool.isActive() && corridorLinkWireTool.blocksPlacement()) ||
@@ -191,7 +202,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     };
     /** @returns {{ selectedProps: object[] }} */
     const selectionDrawState = () => {
-        const selectedIds = session.getSelectedPropIds();
+        const sel = session.getSelection();
+        const selectedIds = sel?.kind === "prop" ? [...sel.ids] : [];
         /** @type {object[]} */
         const selectedProps = [];
         for (let i = 0; i < selectedIds.length; i++) {
@@ -220,6 +232,12 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         getSpawnCorridorSurfaceProfileId: () => session.getSpawnCorridorSurfaceProfileId(),
         setSpawnCorridorSurfaceProfileId: (profileId) => session.setSpawnCorridorSurfaceProfileId(profileId),
         deleteSelectedProps: () => session.deleteSelectedProps(),
+        getSelection: () => session.getSelection(),
+        getSelectionInspectors: () => session.getSelectionInspectors(),
+        select: (input) => {
+            exitWireModes();
+            session.select(input);
+        },
         startButtonWireLink: () => {
             corridorLinkWireTool.exit();
             buttonWireTool.startLink();
@@ -442,10 +460,13 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         drawSelectionRings(ctx) {
             const { selectedProps } = selectionDrawState();
+            const sel = session.getSelection();
             drawSandboxSelectionRings(ctx, {
                 selectedProps,
                 showRings: state.editor.showSelectionRings,
-                ...selectionDrawCells(session.getSelection()),
+                selectedFloorCell: sel?.kind === "floor" ? { col: sel.col, row: sel.row } : null,
+                selectedVoxelCell: sel?.kind === "voxel" ? { col: sel.col, row: sel.row } : null,
+                selectedRailEdge: sel?.kind === "rail" ? { col: sel.col, row: sel.row, side: sel.side } : null,
                 grid: state.obstacleGrid,
                 camera: { px: state.viewport.x, py: state.viewport.y },
             });
@@ -488,5 +509,5 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.sync();
         },
     };
-    return { controller, session };
+    return controller;
 }

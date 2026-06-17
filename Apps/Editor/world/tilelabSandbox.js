@@ -16,5 +16,4 @@ export function destroyTilelabSandbox(state) {
     document.getElementById("sceneJsonPanel").innerHTML = "";
     state.sandbox.controller?.destroy();
     state.sandbox.controller = null;
-    state.sandbox.session = null;
 }

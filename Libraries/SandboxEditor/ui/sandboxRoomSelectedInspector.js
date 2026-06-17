@@ -3,7 +3,7 @@ import { appendRailWallHeightSlider, appendRailWallThicknessSlider } from "./san
 import { resolveRailWallHeightLevel, resolveRailWallThicknessLevel } from "../../RoomGraph/roomGraphClosedRooms.js";
 import { appendSurfaceProfileField } from "../../RoomGraph/roomGraphSurfaceProfile.js";
 import { appendActionRow, appendEditorHint } from "../../UI/paramFields.js";
-export function appendRoomNodeSelectedInspector(body, state, controller, session, selectedRoomNode) {
+export function appendRoomNodeSelectedInspector(body, state, controller, selectedRoomNode) {
     appendEditorHint(
         body,
         `${selectedRoomNode.label}. Anchor (${selectedRoomNode.col}, ${selectedRoomNode.row}), size ${selectedRoomNode.width}×${selectedRoomNode.height}. Click the footprint on the map to re-select.`,
@@ -20,9 +20,15 @@ export function appendRoomNodeSelectedInspector(body, state, controller, session
     appendRoomNodeWireInspector(body, {
         listLinks: () => controller.listSelectedRoomNodeLinks(),
         removeLink: (linkId) => controller.removeRoomLinkById(linkId),
-        selectedLinkId: () => session.getSelectedRoomLinkId(),
-        selectedCorridorIndex: () => session.getSelectedRoomLinkCorridorIndex(),
-        selectLink: (linkId, corridorIndex) => session.select({ kind: "roomLink", linkId, corridorIndex, nodeId: selectedRoomNode.id }),
+        selectedLinkId: () => {
+            const sel = controller.getSelection();
+            return sel?.kind === "roomLink" ? sel.linkId : null;
+        },
+        selectedCorridorIndex: () => {
+            const sel = controller.getSelection();
+            return sel?.kind === "roomLink" ? sel.corridorIndex : 0;
+        },
+        selectLink: (linkId, corridorIndex) => controller.select({ kind: "roomLink", linkId, corridorIndex, nodeId: selectedRoomNode.id }),
     });
     appendActionRow(body, [{ label: "Delete room node", onClick: () => controller.deleteSelectedRoomNode() }]);
 }

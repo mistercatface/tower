@@ -2,10 +2,6 @@
 export function createSandboxSelection({ isLiveProp, getRoomLink }) {
     /** @type {SandboxSelection | null} */
     let selection = null;
-    const syncPrimaryPropId = (ids) => {
-        for (const id of ids) if (isLiveProp(id)) return id;
-        return null;
-    };
     /** @param {SandboxSelection | null} next */
     const assign = (next) => {
         selection = next;
@@ -76,11 +72,6 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         }
         if (paletteKey.startsWith("gen:")) if (selection?.kind === "prop" || selection?.kind === "floor" || selection?.kind === "voxel" || selection?.kind === "rail") assign(null);
     };
-    const primaryPropId = () => {
-        if (selection?.kind !== "prop") return null;
-        for (const id of selection.ids) if (isLiveProp(id)) return id;
-        return null;
-    };
     const prunePropSelection = () => {
         if (selection?.kind !== "prop") return false;
         let changed = false;
@@ -97,9 +88,6 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         if (selection?.kind !== "prop" || !selection.ids.delete(propId)) return false;
         if (selection.ids.size === 0) assign(null);
         return true;
-    };
-    const clearDeletedPropSelection = () => {
-        clearPropSelection();
     };
     const dropDeletedWallSelection = (col, row, side = null) => {
         if (selection?.kind === "voxel" && selection.col === col && selection.row === row) {
@@ -136,25 +124,11 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         clearPalettePlaceSelection,
         prunePropSelection,
         removePropFromSelection,
-        clearDeletedPropSelection,
         dropDeletedWallSelection,
         dropDeletedRoomLinkSelection,
         dropRoomGraphIfLinkMissing,
         clampRoomLinkCorridorIndex,
         clearRoomLinkAfterDelete,
-        getSelectedPropIds: () => (selection?.kind === "prop" ? [...selection.ids] : []),
-        getSelectedPropId: () => primaryPropId(),
-        getSelectedFloorCell: () => (selection?.kind === "floor" ? { col: selection.col, row: selection.row } : null),
-        getSelectedVoxelCell: () => (selection?.kind === "voxel" ? { col: selection.col, row: selection.row } : null),
-        getSelectedRailEdge: () => (selection?.kind === "rail" ? { col: selection.col, row: selection.row, side: selection.side } : null),
-        getSelectedRoomNodeId: () => {
-            if (selection?.kind === "roomNode") return selection.id;
-            if (selection?.kind === "roomLink") return selection.nodeId;
-            return null;
-        },
-        getSelectedRoomLinkId: () => (selection?.kind === "roomLink" ? selection.linkId : null),
-        getSelectedRoomLinkCorridorIndex: () => (selection?.kind === "roomLink" ? selection.corridorIndex : 0),
-        hasSelectedProp: (propId) => selection?.kind === "prop" && selection.ids.has(propId),
         matchesSceneItem(item) {
             if (item.kind === "prop") return selection?.kind === "prop" && selection.ids.has(item.propId);
             if (item.kind === "roomNode") return selection?.kind === "roomNode" && selection.id === item.roomNodeId;
@@ -163,13 +137,6 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
             if (item.kind === "voxel") return selection?.kind === "voxel" && selection.col === item.col && selection.row === item.row;
             return selection?.kind === "rail" && selection.col === item.col && selection.row === item.row && selection.side === item.side;
         },
-    };
-}
-export function selectionDrawCells(selection) {
-    return {
-        selectedFloorCell: selection?.kind === "floor" ? { col: selection.col, row: selection.row } : null,
-        selectedVoxelCell: selection?.kind === "voxel" ? { col: selection.col, row: selection.row } : null,
-        selectedRailEdge: selection?.kind === "rail" ? { col: selection.col, row: selection.row, side: selection.side } : null,
     };
 }
 /** @typedef {{ kind: 'prop', ids: Set<number> } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number } | { kind: 'roomNode', id: number } | { kind: 'roomLink', linkId: number | null, corridorIndex: number, nodeId: number | null }} SandboxSelection */
