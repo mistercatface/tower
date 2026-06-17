@@ -1,5 +1,5 @@
-import { computeFlowField } from "../../Libraries/Pathfinding/flowFieldBfs.js";
-import { rebuildFlowNeighborGrid } from "../../Libraries/Pathfinding/flowFieldWindow.js";
+import { computeFlowField } from "../../Pathfinding/flowFieldBfs.js";
+import { rebuildFlowNeighborGrid } from "../../Pathfinding/flowFieldWindow.js";
 let GRID_WIDTH;
 let GRID_SIZE;
 let FlowToNavIdx;

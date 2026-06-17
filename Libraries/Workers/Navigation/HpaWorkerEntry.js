@@ -1,12 +1,12 @@
-import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Libraries/Pathfinding/AStar.js";
-import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Libraries/Pathfinding/navSimView.js";
-import { bindNavEdgePoolFromSab } from "../../Libraries/Spatial/grid/navEdgePoolSab.js";
-import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Libraries/Spatial/grid/vertexPassability.js";
-import { stitchAbstractCellPath } from "../../Libraries/Pathfinding/hpaStitch.js";
-import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Libraries/Pathfinding/hpaReplanPrep.js";
-import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Libraries/Pathfinding/hpaPathRequest.js";
-import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Libraries/Pathfinding/hpaRegionGraph.js";
-import { clampCellBoundsToGrid } from "../../Libraries/DataStructures/CellRect.js";
+import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Pathfinding/AStar.js";
+import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
+import { bindNavEdgePoolFromSab } from "../../Spatial/grid/navEdgePoolSab.js";
+import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Spatial/grid/vertexPassability.js";
+import { stitchAbstractCellPath } from "../../Pathfinding/hpaStitch.js";
+import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Pathfinding/hpaReplanPrep.js";
+import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaPathRequest.js";
+import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Pathfinding/hpaRegionGraph.js";
+import { clampCellBoundsToGrid } from "../../DataStructures/CellRect.js";
 import {
     buildOctileNeighborsFromTopologyRect,
     buildOctilePredecessorsFromForwardGrid,
@@ -14,7 +14,7 @@ import {
     expandNavTopologyBakeBounds,
     navTopologyFromSab,
     recomputeBlockedFromGridFill,
-} from "../../Libraries/Pathfinding/navTopologySab.js";
+} from "../../Pathfinding/navTopologySab.js";
 import {
     hpaCellToRegionView,
     hpaPathSlotAbstractIdx,
@@ -27,7 +27,7 @@ import {
     hpaPersistEdgeTargetsView,
     hpaPersistNodeColView,
     hpaPersistNodeRowView,
-} from "../../Libraries/Pathfinding/hpaWorkerSab.js";
+} from "../../Pathfinding/hpaWorkerSab.js";
 let maxSlots;
 let maxPathLen;
 let maxAbstractLen;
@@ -47,7 +47,7 @@ let sabPersistGraphEdgeCosts;
 let sabPersistGraphEdgeSources;
 let sabCellToRegionIdx;
 let navCacheKey = "";
-/** @type {import("../../Libraries/Pathfinding/navTopologySab.js").NavTopology | null} */
+/** @type {import("../../Pathfinding/navTopologySab.js").NavTopology | null} */
 let navTopology = null;
 let navView;
 let aStarGScore;
@@ -63,7 +63,7 @@ let extNodeRow;
 let extEdgeOffsets;
 let extEdgeTargets;
 let extEdgeCosts;
-/** @type {import("../../Libraries/Pathfinding/GridNavSnapshot.js").GridFrame | null} */
+/** @type {import("../../Pathfinding/GridNavSnapshot.js").GridFrame | null} */
 let gridFrame = null;
 /** @type {ReturnType<typeof createNavSimView> | null} */
 let navSimView = null;
