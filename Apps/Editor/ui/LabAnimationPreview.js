@@ -106,29 +106,29 @@ function drawFrame(ctx, canvas, baseProfile, gameTime) {
     const resolvedProfile = resolveBakeProfile(baseProfile, "__labAnimPreview__", { gameTime });
     const { cellSize } = getGameWorldSurfaceSettings();
     const { bounds, play } = previewLayout;
-    const pixelsPerUnit = canvas.width / PREVIEW_RAIL_BAND.size;
+    const surfaceBakeScale = canvas.width / PREVIEW_RAIL_BAND.size;
     ctx.fillStyle = "#080a0e";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     const railBands = getPreviewRailBandBounds(previewLayout);
-    paintPreviewPatch(ctx, bounds, play, pixelsPerUnit, cellSize, resolvedProfile, 0);
-    for (let i = 0; i < railBands.length; i++) paintPreviewPatch(ctx, bounds, railBands[i], pixelsPerUnit, cellSize, resolvedProfile, PREVIEW_RAIL_BAND.railHeight);
+    paintPreviewPatch(ctx, bounds, play, surfaceBakeScale, cellSize, resolvedProfile, 0);
+    for (let i = 0; i < railBands.length; i++) paintPreviewPatch(ctx, bounds, railBands[i], surfaceBakeScale, cellSize, resolvedProfile, PREVIEW_RAIL_BAND.railHeight);
 }
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} bounds
  * @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} worldRect
- * @param {number} pixelsPerUnit
+ * @param {number} surfaceBakeScale
  * @param {number} cellSize
  * @param {object} profile
  * @param {number} zLevel
  */
-function paintPreviewPatch(ctx, bounds, worldRect, pixelsPerUnit, cellSize, profile, zLevel) {
-    const destX = Math.round((worldRect.minX - bounds.minX) * pixelsPerUnit);
-    const destY = Math.round((worldRect.minY - bounds.minY) * pixelsPerUnit);
-    const destW = Math.max(1, Math.round((worldRect.maxX - worldRect.minX) * pixelsPerUnit));
-    const destH = Math.max(1, Math.round((worldRect.maxY - worldRect.minY) * pixelsPerUnit));
+function paintPreviewPatch(ctx, bounds, worldRect, surfaceBakeScale, cellSize, profile, zLevel) {
+    const destX = Math.round((worldRect.minX - bounds.minX) * surfaceBakeScale);
+    const destY = Math.round((worldRect.minY - bounds.minY) * surfaceBakeScale);
+    const destW = Math.max(1, Math.round((worldRect.maxX - worldRect.minX) * surfaceBakeScale));
+    const destH = Math.max(1, Math.round((worldRect.maxY - worldRect.minY) * surfaceBakeScale));
     ensurePatchSurface(destW, destH);
-    const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
+    const paintOptions = zLevel > 0 ? { cellSize, surfaceBakeScale, isWall: true, roofSurface: true } : { cellSize, surfaceBakeScale };
     paintPixelArea(patchCtx, destW, destH, worldRect.minX, worldRect.minY, 42, paintOptions, profile);
     ctx.drawImage(patchCanvas, destX, destY);
 }

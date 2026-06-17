@@ -1,12 +1,12 @@
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
 /** @typedef {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} WorldSurfaceSettings */
 /** @param {WorldSurfaceSettings} settings */
-export function getTexelResolution(settings) {
-    return settings.texelResolution;
+export function getSurfaceBakeScale(settings) {
+    return settings.surfaceBakeScale;
 }
-/** @param {number} worldSpan @param {WorldSurfaceSettings} settings */
-export function bakePixelsForWorldSpan(worldSpan, settings) {
-    return Math.max(1, Math.round(worldSpan * getTexelResolution(settings)));
+/** @param {number} worldSpan @param {number} surfaceBakeScale */
+export function bakePixelsForWorldSpan(worldSpan, surfaceBakeScale) {
+    return Math.max(1, Math.round(worldSpan * surfaceBakeScale));
 }
 /** @param {WorldSurfaceSettings} [settings] */
 export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorldH, _settings) {

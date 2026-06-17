@@ -55,7 +55,7 @@ export function railBandBoundsAroundPlayfield({ bounds, play }) {
  * @param {number} frameCount
  * @param {number} bakeFrameCount
  * @param {number} sourceFrameCount
- * @param {{ cellSize: number, texelResolution: number }} settings
+ * @param {{ cellSize: number, surfaceBakeScale: number }} settings
  */
 async function bakePatch(bounds, zLevel, profileId, seed, frameCount, bakeFrameCount, sourceFrameCount, settings) {
     const { width, height } = rectWorldSize(bounds);
@@ -68,7 +68,7 @@ async function bakePatch(bounds, zLevel, profileId, seed, frameCount, bakeFrameC
         profileId,
         seed,
         cellSize: settings.cellSize,
-        texelResolution: settings.texelResolution,
+        surfaceBakeScale: settings.surfaceBakeScale,
         centerX: (bounds.minX + bounds.maxX) / 2,
         centerY: (bounds.minY + bounds.maxY) / 2,
         animationBakeFrames: bakeFrameCount,

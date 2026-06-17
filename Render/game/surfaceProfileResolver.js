@@ -25,6 +25,6 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 
         zLevel,
         cellsPerChunk,
         cellSize: settings.cellSize,
-        texelResolution: settings.texelResolution,
+        surfaceBakeScale: settings.surfaceBakeScale,
     });
 }

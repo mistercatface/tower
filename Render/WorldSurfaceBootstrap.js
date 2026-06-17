@@ -13,8 +13,7 @@ function resolveWallSurface(overrides, cellSize) {
 export function createGameWorldSurfaceSettings(overrides = {}) {
     const cameraHeight = overrides.cameraHeight ?? CAMERA_HEIGHT;
     const cellSize = overrides.cellSize ?? gridSettings.cellSize;
-    const pixelsPerCell = overrides.pixelsPerCell ?? surfaceDefaults.pixelsPerCell;
-    const texelResolution = 16 / cellSize;
+    const surfaceBakeScale = overrides.surfaceBakeScale ?? surfaceDefaults.surfaceBakeScale;
     const wallSurface = resolveWallSurface(overrides, cellSize);
     return createWorldSurfaceSettings({
         cellsPerChunk: surfaceDefaults.cellsPerChunk,
@@ -22,11 +21,10 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
         viewPaddingPx: surfaceDefaults.viewPaddingPx,
         viewQueryPadPx: surfaceDefaults.viewQueryPadPx,
         maxCachedSurfaces: surfaceDefaults.maxCachedSurfaces,
-        pixelsPerCell,
         wallHeight: wallSurface.wallHeight,
         maxWallHeightLevel: overrides.maxWallHeightLevel ?? surfaceDefaults.maxWallHeightLevel,
         wallHeightCells: wallSurface.wallHeightCells,
-        texelResolution,
+        surfaceBakeScale,
         wallTextureBleedPx: surfaceDefaults.wallTextureBleedPx,
         wallSubdivNearPx: surfaceDefaults.wallSubdivNearPx,
         wallSubdivFarPx: surfaceDefaults.wallSubdivFarPx,

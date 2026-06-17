@@ -17,7 +17,7 @@ import { railWallFootprintAabb, forEachEmittingRailWallAtZLevel } from "../World
  * @property {import("../Viewport/Viewport.js").Viewport | null} viewport
  * @property {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null} obstacleGrid
  * @property {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} settings
- * @property {number} texelResolution — pixels per world unit; read once per `drawGroundChunks` pass
+ * @property {number} surfaceBakeScale — read once per `drawGroundChunks` pass
  * @property {object | null} state
  * @property {import("../Math/Aabb2D.js").Aabb2D} chunkAabb
  * @property {import("../Spatial/iso/ElevationCamera.js").ElevationCamera} camera

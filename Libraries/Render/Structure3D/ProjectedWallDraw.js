@@ -100,7 +100,7 @@ function resolveWallFaceAtlas(p1, p2, wallCtx) {
         wallHeight: wallCapHeight,
         cacheObj,
         atlasFaceId: atlasFaceId ?? "side",
-        ppwu: wallCtx.texelResolution,
+        surfaceBakeScale: wallCtx.surfaceBakeScale,
     });
     if (!baked) return { atlas: null, solidFill: false };
     const canvas = baked.canvases[0];
@@ -128,7 +128,7 @@ function resolveWallFaceAtlas(p1, p2, wallCtx) {
  * @property {number} alphaBase
  * @property {number} alphaBandMax
  */
-function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, camera, texelResolution) {
+function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, camera, surfaceBakeScale) {
     const cellSize = settings.cellSize;
     const topZ = Math.min(wallBaseZ + bandHeight, camera.cameraHeight - 1);
     const alphaBandMax = resolveElevationAlpha(topZ, camera);
@@ -140,7 +140,7 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
     return {
         subdivX: Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale))),
         subdivY: Math.max(1, Math.ceil(visibleHeightCells * subdivScale)),
-        capPx: capHeight * texelResolution,
+        capPx: capHeight * surfaceBakeScale,
         alphaBase,
         alphaBandMax,
     };
@@ -180,7 +180,7 @@ function resolveWallFaceSubdiv(wallCtx, atlas, camera) {
     const faceId = wallCtx.atlasFaceId ?? "side";
     const subdivKey = `${faceId}|${atlas.edgeLen}|${camera.viewerX}|${camera.viewerY}|${atlas.wallBaseZ}|${atlas.bandHeight}`;
     if (cacheObj && cacheObj._faceSubdivKey === subdivKey) return cacheObj._faceSubdiv;
-    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, camera, wallCtx.texelResolution);
+    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, camera, wallCtx.surfaceBakeScale);
     if (cacheObj) {
         cacheObj._faceSubdivKey = subdivKey;
         cacheObj._faceSubdiv = subdiv;
@@ -258,7 +258,7 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
     }
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
     const uvCorners = railWallCapUvCorners(gameState.obstacleGrid, box);
-    const sample = worldSurfaces.getHorizontalCapDrawSample(uvCorners, box.wallCapHeight, gameState, profileId, wallCtx.texelResolution);
+    const sample = worldSurfaces.getHorizontalCapDrawSample(uvCorners, box.wallCapHeight, gameState, profileId, wallCtx.surfaceBakeScale);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         return;
@@ -296,7 +296,7 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
         { x: maxX, y: maxY },
         { x: minX, y: maxY },
     ];
-    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, z, gameState, profileId, wallCtx.texelResolution);
+    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, z, gameState, profileId, wallCtx.surfaceBakeScale);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         return;

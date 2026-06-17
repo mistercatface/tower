@@ -11,7 +11,7 @@ import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { drawWorldProp } from "./drawWorldProp.js";
 import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources } from "../Sandbox/floorOccupancy.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
-import { getTexelResolution } from "../WorldSurface/WorldSurfaceResolution.js";
+import { getSurfaceBakeScale } from "../WorldSurface/WorldSurfaceResolution.js";
 export class WorldSceneRenderer {
     /**
      * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
@@ -110,7 +110,7 @@ export class WorldSceneRenderer {
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
         const drawContext = { gameState: input.gameState, propRenderer: this.props, px, py, zoom };
-        const texelResolution = getTexelResolution(input.worldSurfaces.settings);
+        const surfaceBakeScale = getSurfaceBakeScale(input.worldSurfaces.settings);
         /** @type {WallDrawContext} */
         const wallCtx = {
             viewport,
@@ -122,7 +122,7 @@ export class WorldSceneRenderer {
             cacheObj: null,
             worldBounds: viewport.boundsDraw,
             camera: elevationCameraFromViewport(viewport, input.worldSurfaces.settings.cameraHeight),
-            texelResolution,
+            surfaceBakeScale,
             skipWallCaps,
         };
         ctx.save();

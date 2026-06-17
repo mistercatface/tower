@@ -14,9 +14,9 @@ export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, c
     });
     return found;
 }
-export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, texelResolution) {
-    const bakeSize = bakePixelsForWorldSpan(chunkSizePx, { texelResolution });
-    const cellBakeSize = bakePixelsForWorldSpan(obstacleGrid.cellSize, { texelResolution });
+export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, surfaceBakeScale) {
+    const bakeSize = bakePixelsForWorldSpan(chunkSizePx, surfaceBakeScale);
+    const cellBakeSize = bakePixelsForWorldSpan(obstacleGrid.cellSize, surfaceBakeScale);
     const canvas = createOffscreenCanvas(bakeSize, bakeSize);
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
@@ -24,8 +24,8 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
     forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
         if (resolveCellWallHeightAtIdx(obstacleGrid, idx) !== zLevel) return;
         const bounds = obstacleGrid.getCellBounds(col, row);
-        const x = Math.round((bounds.minX - chunkOriginX) * texelResolution);
-        const y = Math.round((bounds.minY - chunkOriginY) * texelResolution);
+        const x = Math.round((bounds.minX - chunkOriginX) * surfaceBakeScale);
+        const y = Math.round((bounds.minY - chunkOriginY) * surfaceBakeScale);
         ctx.fillRect(x, y, cellBakeSize, cellBakeSize);
         any = true;
     });

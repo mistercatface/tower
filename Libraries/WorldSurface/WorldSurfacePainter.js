@@ -3,7 +3,7 @@ import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.
 import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 import { createWallFaceAxes, fillWallFaceRows, writeFloorPixel, writeRoofPixel, writeWallCellPixel } from "./SurfaceCoordinateMapper.js";
-import { bakePixelsForWorldSpan, getTexelResolution } from "./WorldSurfaceResolution.js";
+import { bakePixelsForWorldSpan, getSurfaceBakeScale } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 import { sourceFrameIndexForBakeSlot } from "./AnimationFrameBake.js";
 /**
@@ -65,18 +65,18 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const profile = resolvePaintProfile(profileOrId);
     const cellSize = options.cellSize;
     if (cellSize == null) throw new Error("paintPixelArea requires options.cellSize");
-    const pixelsPerUnit = options.pixelsPerUnit ?? (options.settings ? getTexelResolution(options.settings) : null);
-    if (pixelsPerUnit == null) throw new Error("paintPixelArea requires options.pixelsPerUnit or options.settings");
-    const invPpwu = 1 / pixelsPerUnit;
+    const surfaceBakeScale = options.surfaceBakeScale ?? (options.settings ? getSurfaceBakeScale(options.settings) : null);
+    if (surfaceBakeScale == null) throw new Error("paintPixelArea requires options.surfaceBakeScale or options.settings");
+    const invBakeScale = 1 / surfaceBakeScale;
     let writePixel = writeFloorPixel;
-    let mapCtx = { invPpwu, startWorldX, startWorldY };
+    let mapCtx = { invBakeScale, startWorldX, startWorldY };
     /** @type {{ useWallBase: boolean, wallFace?: boolean, wallCell?: boolean }} */
     let bake = { useWallBase: false };
     if (options.isWall && options.p1 && options.p2) {
         const wf = { p1: options.p1, ...createWallFaceAxes(options.p1, options.p2) };
         if (options.wallHeight == null) throw new Error("paintPixelArea wallFace requires options.wallHeight");
         mapCtx = {
-            invPpwu,
+            invBakeScale,
             height,
             p1x: wf.p1.x,
             p1y: wf.p1.y,
@@ -91,11 +91,11 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
         bake = { useWallBase: true, wallFace: true };
     } else if (options.roofSurface) {
         writePixel = writeRoofPixel;
-        mapCtx = { invPpwu, startWorldX, startWorldY, spanU: width > 1 ? width - 1 : 1 };
+        mapCtx = { invBakeScale, startWorldX, startWorldY, spanU: width > 1 ? width - 1 : 1 };
         bake = { useWallBase: true, wallCell: true };
     } else if (options.isWall) {
         writePixel = writeWallCellPixel;
-        mapCtx = { invPpwu, startWorldX, startWorldY, cellSize, zOffset: options.zOffset ?? 0, height, spanU: width > 1 ? width - 1 : 1, invWallCellVSpan: height > 1 ? 1 / (height - 1) : 0 };
+        mapCtx = { invBakeScale, startWorldX, startWorldY, cellSize, zOffset: options.zOffset ?? 0, height, spanU: width > 1 ? width - 1 : 1, invWallCellVSpan: height > 1 ? 1 / (height - 1) : 0 };
         bake = { useWallBase: true, wallCell: true };
     }
     const imgData = ctx.createImageData(width, height);
@@ -122,12 +122,12 @@ function resolvePaintCellSize(optionsPayload) {
     if (cellSize == null) throw new Error("wall bake payload requires cellSize or wallWidth");
     return cellSize;
 }
-function wallPaintOptions(pixelsPerUnit, optionsPayload) {
+function wallPaintOptions(surfaceBakeScale, optionsPayload) {
     return {
         isWall: true,
         p1: optionsPayload?.p1,
         p2: optionsPayload?.p2,
-        pixelsPerUnit,
+        surfaceBakeScale,
         wallHeight: optionsPayload?.wallHeight,
         wallWidth: optionsPayload?.wallWidth,
         cellSize: resolvePaintCellSize(optionsPayload),
@@ -140,7 +140,7 @@ export function bakeWallAtlasCanvases(payload) {
     const baseProfile = provider.getProfile(profileId);
     const useResolver = Boolean(baseProfile.animation);
     if (useResolver) payload.frameIndex = 0;
-    const { width, height, pixelsPerUnit, seed } = payload;
+    const { width, height, surfaceBakeScale, seed } = payload;
     return [
         bakeRequestToCanvas({
             width,
@@ -148,28 +148,27 @@ export function bakeWallAtlasCanvases(payload) {
             startWorldX: 0,
             startWorldY: 0,
             seed,
-            paintOptions: wallPaintOptions(pixelsPerUnit, payload),
+            paintOptions: wallPaintOptions(surfaceBakeScale, payload),
             profileOrId: profileId,
             ...(useResolver ? { resolvePayload: payload, baseProfile, profileKey: profileId } : {}),
         }),
     ];
 }
-function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, texelResolution) {
+function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, surfaceBakeScale) {
     const startCol = chunkCol * cellsPerChunk;
     const startRow = chunkRow * cellsPerChunk;
-    return { x: minX + startCol * cellSize, y: minY + startRow * cellSize, bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk, { texelResolution }) };
+    return { x: minX + startCol * cellSize, y: minY + startRow * cellSize, bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk, surfaceBakeScale) };
 }
 /** Bake a static ground-chunk canvas (frame 0 when the profile has a timeline). */
 export function bakeGroundChunkCanvases(payload) {
     const provider = getSurfaceProfileProvider();
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
-    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk, cellSize, texelResolution } = payload;
-    if (cellsPerChunk == null || cellSize == null || texelResolution == null) throw new Error("bakeGroundChunkCanvases payload requires cellsPerChunk, cellSize, texelResolution");
-    const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, texelResolution);
-    const pixelsPerUnit = texelResolution;
+    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk, cellSize, surfaceBakeScale } = payload;
+    if (cellsPerChunk == null || cellSize == null || surfaceBakeScale == null) throw new Error("bakeGroundChunkCanvases payload requires cellsPerChunk, cellSize, surfaceBakeScale");
+    const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, surfaceBakeScale);
     const zLevel = payload.zLevel ?? 0;
-    const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
+    const paintOptions = zLevel > 0 ? { cellSize, surfaceBakeScale, isWall: true, roofSurface: true } : { cellSize, surfaceBakeScale };
     const useResolver = Boolean(baseProfile.animation);
     if (useResolver) payload.frameIndex = 0;
     const canvas = bakeRequestToCanvas({
@@ -190,14 +189,13 @@ export function bakeHorizontalPatchCanvases(payload) {
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
     const { frameStart, frameCount } = payload;
-    const { originX, originY, worldWidth, worldHeight, seed, cellSize, texelResolution } = payload;
-    if (cellSize == null || texelResolution == null) throw new Error("bakeHorizontalPatchCanvases payload requires cellSize, texelResolution");
-    const widthPx = bakePixelsForWorldSpan(worldWidth, { texelResolution });
-    const heightPx = bakePixelsForWorldSpan(worldHeight, { texelResolution });
+    const { originX, originY, worldWidth, worldHeight, seed, cellSize, surfaceBakeScale } = payload;
+    if (cellSize == null || surfaceBakeScale == null) throw new Error("bakeHorizontalPatchCanvases payload requires cellSize, surfaceBakeScale");
+    const widthPx = bakePixelsForWorldSpan(worldWidth, surfaceBakeScale);
+    const heightPx = bakePixelsForWorldSpan(worldHeight, surfaceBakeScale);
     const useResolver = Boolean(baseProfile.animation);
-    const pixelsPerUnit = texelResolution;
     const zLevel = payload.zLevel ?? 0;
-    const paintOptions = zLevel > 0 ? { cellSize, pixelsPerUnit, isWall: true, roofSurface: true } : { cellSize, pixelsPerUnit };
+    const paintOptions = zLevel > 0 ? { cellSize, surfaceBakeScale, isWall: true, roofSurface: true } : { cellSize, surfaceBakeScale };
     const canvases = [];
     const sourceTotal = getAnimationFrames(baseProfile.animation);
     const bakeTotal = payload.animationBakeFrames ?? sourceTotal;

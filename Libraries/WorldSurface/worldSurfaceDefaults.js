@@ -7,7 +7,7 @@ export const LIBRARY_WORLD_SURFACE_DEFAULTS = {
     viewPaddingPx: 128,
     viewQueryPadPx: 48,
     maxCachedSurfaces: 10000,
-    pixelsPerCell: 16,
+    surfaceBakeScale: 1,
     wallHeight: 150,
     maxWallHeightLevel: 9,
     wallTextureBleedPx: 1,

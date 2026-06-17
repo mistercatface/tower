@@ -8,12 +8,11 @@ import { applyGamePropQuantizeSettings } from "./GamePropQuantizeSettings.js";
 import { installGameSurfaceProfileProvider } from "../Config/procedural/bootstrap.js";
 import { getGameWorldSurfaceSettings, installGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
-const EDITOR_PIXELS_PER_CELL = 6;
 const EDITOR_DEFAULT_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
 let workersConfigured = false;
 /** Editor boot — one place for app constants; writes shared module globals once. */
 export function installEditorDefaults(state) {
-    const profile = { id: "editor", worldSurface: { pixelsPerCell: EDITOR_PIXELS_PER_CELL }, proceduralDesign: { surfaceProfileId: EDITOR_DEFAULT_SURFACE_PROFILE_ID } };
+    const profile = { id: "editor", proceduralDesign: { surfaceProfileId: EDITOR_DEFAULT_SURFACE_PROFILE_ID } };
     clearInteractionPairFilterCache();
     installGameSurfaceProfileProvider(profile);
     if (!workersConfigured) {
@@ -24,8 +23,7 @@ export function installEditorDefaults(state) {
     const perspective = applyGamePerspective(profile);
     installGameWorldSurfaceSettings({
         cameraHeight: perspective.cameraHeight,
-        pixelsPerCell: EDITOR_PIXELS_PER_CELL,
-        wallHeight: profile.worldSurface.wallHeight,
+        wallHeight: profile.worldSurface?.wallHeight,
         ...resolveProceduralBakeSettings(profile),
     });
     applyGameCollisionSettings(profile);
@@ -34,7 +32,7 @@ export function installEditorDefaults(state) {
     const worldSurfaces = state.worldSurfaces;
     const settings = getGameWorldSurfaceSettings();
     const prev = worldSurfaces.settings;
-    const keysToCheck = ["animationBakeMaxFrames", "pixelsPerCell", "wallHeight", "cameraHeight"];
+    const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeight", "cameraHeight"];
     const bakeSettingsChanged = keysToCheck.some((key) => prev[key] !== settings[key]) || JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
     worldSurfaces.settings = settings;
     if (bakeSettingsChanged) worldSurfaces.clear();
