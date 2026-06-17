@@ -5,7 +5,6 @@
 export { projectHorizontalSurfaceCornersInto, clipChunkToBlockedCells, clipChunkToStaticEdgeRails, clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
 import { resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
-import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
@@ -31,7 +30,4 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOrigi
         any = true;
     });
     return any ? canvas : null;
-}
-export function applyStaticRoofMaskToCanvas(roofCanvas, maskCanvas) {
-    return composeDestinationIn(roofCanvas, maskCanvas);
 }

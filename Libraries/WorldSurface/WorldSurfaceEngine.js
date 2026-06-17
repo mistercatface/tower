@@ -6,7 +6,8 @@ import { clipToAabb } from "../Canvas/CanvasPath.js";
 import { getChunkSizePx, worldBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
-import { chunkHasBlockedCells, buildStaticRoofMaskCanvas, applyStaticRoofMaskToCanvas } from "./HorizontalSurfaceDraw.js";
+import { composeDestinationIn } from "../Canvas/maskCompositor.js";
+import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSurfaceDraw.js";
 import { projectHorizontalSurfaceCornersInto, clipChunkToBlockedCells, clipChunkToStaticEdgeRails, clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
@@ -151,7 +152,7 @@ export class WorldSurfaceEngine {
         }
         let cached = this.surfaceCache.get(drawKey);
         if (cached?.[0] && !cached[0].isPlaceholder) return cached[0];
-        const masked = applyStaticRoofMaskToCanvas(roofCanvas, maskEntry[0]);
+        const masked = composeDestinationIn(roofCanvas, maskEntry[0]);
         this.surfaceCache.set(drawKey, [masked]);
         return masked;
     }
