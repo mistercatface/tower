@@ -9,9 +9,6 @@ import { getAnimationFrames } from "../ProfileBakeResolver.js";
  * @property {number} seed
  * @property {string} profileId
  * @property {number} [zLevel]
- * @property {number} [cellsPerChunk]
- * @property {number} [cellSize]
- * @property {number} surfaceBakeScale — worker-only; copied from game settings at enqueue time
  */
 /**
  * @param {object | null | undefined} profile
@@ -46,9 +43,6 @@ export function getHorizontalSurfaceZLevels(settings) {
  * @returns {GroundChunkBakePayload}
  */
 export function createGroundChunkBakePayload(payload) {
-    const { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel, cellsPerChunk, cellSize, surfaceBakeScale } = payload;
-    const result = { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel: zLevel ?? 0, surfaceBakeScale };
-    if (cellsPerChunk != null) result.cellsPerChunk = cellsPerChunk;
-    if (cellSize != null) result.cellSize = cellSize;
-    return result;
+    const { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel } = payload;
+    return { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel: zLevel ?? 0 };
 }

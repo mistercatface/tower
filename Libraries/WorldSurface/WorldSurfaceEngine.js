@@ -82,15 +82,12 @@ export class WorldSurfaceEngine {
                 height: canvasHeight,
                 p1,
                 p2,
-                surfaceBakeScale,
                 seed: proceduralSurfaceDraw.surfaceSeed,
                 profileId: bakeProfileId,
                 ...bakeFrameRange.first(),
                 centerX: wallCenterX,
                 centerY: wallCenterY,
                 wallHeight: hVal,
-                wallWidth: cellSize,
-                cellSize,
             }),
         );
     }

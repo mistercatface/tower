@@ -4,6 +4,7 @@ import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 import { createWallFaceAxes, fillWallFaceRows, writeFloorPixel, writeRoofPixel, writeWallCellPixel } from "./SurfaceCoordinateMapper.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
+import { getTileWorkerBakeConstants } from "./TileWorkerBakeConstants.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 import { sourceFrameIndexForBakeSlot } from "./AnimationFrameBake.js";
 /**
@@ -118,20 +119,13 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     memoryPool.release(pooled, numPixels);
 }
 function resolvePaintCellSize(optionsPayload) {
-    const cellSize = optionsPayload?.cellSize ?? optionsPayload?.wallWidth;
-    if (cellSize == null) throw new Error("wall bake payload requires cellSize or wallWidth");
+    const cellSize = optionsPayload?.wallWidth ?? getTileWorkerBakeConstants().cellSize;
     return cellSize;
 }
-function wallPaintOptions(surfaceBakeScale, optionsPayload) {
-    return {
-        isWall: true,
-        p1: optionsPayload?.p1,
-        p2: optionsPayload?.p2,
-        surfaceBakeScale,
-        wallHeight: optionsPayload?.wallHeight,
-        wallWidth: optionsPayload?.wallWidth,
-        cellSize: resolvePaintCellSize(optionsPayload),
-    };
+function wallPaintOptions(optionsPayload) {
+    const { surfaceBakeScale } = getTileWorkerBakeConstants();
+    const cellSize = resolvePaintCellSize(optionsPayload);
+    return { isWall: true, p1: optionsPayload?.p1, p2: optionsPayload?.p2, surfaceBakeScale, wallHeight: optionsPayload?.wallHeight, wallWidth: cellSize, cellSize };
 }
 /** @param {object} payload */
 export function bakeWallAtlasCanvases(payload) {
@@ -140,7 +134,7 @@ export function bakeWallAtlasCanvases(payload) {
     const baseProfile = provider.getProfile(profileId);
     const useResolver = Boolean(baseProfile.animation);
     if (useResolver) payload.frameIndex = 0;
-    const { width, height, surfaceBakeScale, seed } = payload;
+    const { width, height, seed } = payload;
     return [
         bakeRequestToCanvas({
             width,
@@ -148,7 +142,7 @@ export function bakeWallAtlasCanvases(payload) {
             startWorldX: 0,
             startWorldY: 0,
             seed,
-            paintOptions: wallPaintOptions(surfaceBakeScale, payload),
+            paintOptions: wallPaintOptions(payload),
             profileOrId: profileId,
             ...(useResolver ? { resolvePayload: payload, baseProfile, profileKey: profileId } : {}),
         }),
@@ -164,8 +158,8 @@ export function bakeGroundChunkCanvases(payload) {
     const provider = getSurfaceProfileProvider();
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
-    const { chunkCol, chunkRow, minX, minY, seed, cellsPerChunk, cellSize, surfaceBakeScale } = payload;
-    if (cellsPerChunk == null || cellSize == null || surfaceBakeScale == null) throw new Error("bakeGroundChunkCanvases payload requires cellsPerChunk, cellSize, surfaceBakeScale");
+    const { chunkCol, chunkRow, minX, minY, seed } = payload;
+    const { cellSize, cellsPerChunk, surfaceBakeScale } = getTileWorkerBakeConstants();
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, surfaceBakeScale);
     const zLevel = payload.zLevel ?? 0;
     const paintOptions = zLevel > 0 ? { cellSize, surfaceBakeScale, isWall: true, roofSurface: true } : { cellSize, surfaceBakeScale };
@@ -189,8 +183,8 @@ export function bakeHorizontalPatchCanvases(payload) {
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
     const { frameStart, frameCount } = payload;
-    const { originX, originY, worldWidth, worldHeight, seed, cellSize, surfaceBakeScale } = payload;
-    if (cellSize == null || surfaceBakeScale == null) throw new Error("bakeHorizontalPatchCanvases payload requires cellSize, surfaceBakeScale");
+    const { originX, originY, worldWidth, worldHeight, seed } = payload;
+    const { cellSize, surfaceBakeScale } = getTileWorkerBakeConstants();
     const widthPx = bakePixelsForWorldSpan(worldWidth, surfaceBakeScale);
     const heightPx = bakePixelsForWorldSpan(worldHeight, surfaceBakeScale);
     const useResolver = Boolean(baseProfile.animation);

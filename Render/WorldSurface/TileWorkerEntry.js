@@ -1,9 +1,14 @@
 import { surfaceProceduralProfiles } from "../../Config/procedural/profiles.js";
 import { getSurfaceProfileProvider, installSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { bakeGroundChunkCanvases, bakeHorizontalPatchCanvases, bakeWallAtlasCanvases } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
+import { installTileWorkerBakeConstants } from "../../Libraries/WorldSurface/TileWorkerBakeConstants.js";
 import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
 installSurfaceProfileProvider({ profiles: surfaceProceduralProfiles });
 const HANDLERS = {
+    configureBakeConstants(payload) {
+        installTileWorkerBakeConstants(payload);
+        return [];
+    },
     bakeGroundChunk(payload) {
         return bakeGroundChunkCanvases(payload);
     },

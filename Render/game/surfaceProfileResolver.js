@@ -15,16 +15,5 @@ export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 
     const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
     const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
     const profileId = resolveSurfaceProfileAtCoords(state, chunkCenterX, chunkCenterY);
-    return createGroundChunkBakePayload({
-        chunkCol,
-        chunkRow,
-        minX: obstacleGrid.minX,
-        minY: obstacleGrid.minY,
-        seed: state.worldSurfaces.worldSurfaceSeed ?? 0,
-        profileId,
-        zLevel,
-        cellsPerChunk,
-        cellSize: settings.cellSize,
-        surfaceBakeScale: settings.surfaceBakeScale,
-    });
+    return createGroundChunkBakePayload({ chunkCol, chunkRow, minX: obstacleGrid.minX, minY: obstacleGrid.minY, seed: state.worldSurfaces.worldSurfaceSeed ?? 0, profileId, zLevel });
 }

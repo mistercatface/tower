@@ -7,7 +7,7 @@ import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
 import { applyGamePropQuantizeSettings } from "./GamePropQuantizeSettings.js";
 import { installGameSurfaceProfileProvider } from "../Config/procedural/bootstrap.js";
 import { getGameWorldSurfaceSettings, installGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
-import { configureTileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
+import { configureTileWorkerCoordinator, TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
 const EDITOR_DEFAULT_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
 let workersConfigured = false;
 /** Editor boot — one place for app constants; writes shared module globals once. */
@@ -21,19 +21,16 @@ export function installEditorDefaults(state) {
     }
     applyGameProceduralDesign(profile);
     const perspective = applyGamePerspective(profile);
-    installGameWorldSurfaceSettings({
-        cameraHeight: perspective.cameraHeight,
-        wallHeight: profile.worldSurface?.wallHeight,
-        ...resolveProceduralBakeSettings(profile),
-    });
+    installGameWorldSurfaceSettings({ cameraHeight: perspective.cameraHeight, wallHeight: profile.worldSurface?.wallHeight, ...resolveProceduralBakeSettings(profile) });
     applyGameCollisionSettings(profile);
     applyGamePropQuantizeSettings(profile);
     applyGamePropPixelSize(profile);
     const worldSurfaces = state.worldSurfaces;
     const settings = getGameWorldSurfaceSettings();
     const prev = worldSurfaces.settings;
-    const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeight", "cameraHeight"];
+    const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeight", "cameraHeight", "cellSize", "cellsPerChunk"];
     const bakeSettingsChanged = keysToCheck.some((key) => prev[key] !== settings[key]) || JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
     worldSurfaces.settings = settings;
+    void TileWorkerCoordinator.syncBakeConstants(settings);
     if (bakeSettingsChanged) worldSurfaces.clear();
 }

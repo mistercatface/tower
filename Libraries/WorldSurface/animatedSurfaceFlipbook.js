@@ -55,9 +55,8 @@ export function railBandBoundsAroundPlayfield({ bounds, play }) {
  * @param {number} frameCount
  * @param {number} bakeFrameCount
  * @param {number} sourceFrameCount
- * @param {{ cellSize: number, surfaceBakeScale: number }} settings
  */
-async function bakePatch(bounds, zLevel, profileId, seed, frameCount, bakeFrameCount, sourceFrameCount, settings) {
+async function bakePatch(bounds, zLevel, profileId, seed, frameCount, bakeFrameCount, sourceFrameCount) {
     const { width, height } = rectWorldSize(bounds);
     const payload = {
         originX: bounds.minX,
@@ -67,8 +66,6 @@ async function bakePatch(bounds, zLevel, profileId, seed, frameCount, bakeFrameC
         zLevel,
         profileId,
         seed,
-        cellSize: settings.cellSize,
-        surfaceBakeScale: settings.surfaceBakeScale,
         centerX: (bounds.minX + bounds.maxX) / 2,
         centerY: (bounds.minY + bounds.maxY) / 2,
         animationBakeFrames: bakeFrameCount,
@@ -98,8 +95,8 @@ export async function bakeAnimatedSurfaceFlipbook({ play, bounds, railHeight = 0
     const frameCount = animated ? bakeTotal : 1;
     const railBands = railHeight > 0 ? railBandBoundsAroundPlayfield({ bounds, play }) : [];
     const [playPatch, ...railResults] = await Promise.all([
-        bakePatch(play, 0, profileId, seed, frameCount, bakeTotal, sourceTotal, settings),
-        ...railBands.map((band) => bakePatch(band, railHeight, profileId, seed, frameCount, bakeTotal, sourceTotal, settings)),
+        bakePatch(play, 0, profileId, seed, frameCount, bakeTotal, sourceTotal),
+        ...railBands.map((band) => bakePatch(band, railHeight, profileId, seed, frameCount, bakeTotal, sourceTotal)),
     ]);
     return /** @type {AnimatedSurfaceFlipbook} */ ({ profileId, animated, sourceFrameCount: sourceTotal, bakeFrameCount: frameCount, play: playPatch, railBands: railResults });
 }

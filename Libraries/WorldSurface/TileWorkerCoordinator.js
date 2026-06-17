@@ -3,6 +3,7 @@ import { bumpSurfaceProfileRevision, getSurfaceProfileRevision } from "./Surface
 import { clampBakeFrameRange, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { MinHeap } from "../DataStructures/MinHeap.js";
+import { getSurfaceBakeScale } from "./WorldSurfaceResolution.js";
 /**
  * Job tiers. The scheduler always drains lower tiers first, then sorts by
  * distance-to-focus within a tier. This is what guarantees the whole visible
@@ -224,6 +225,12 @@ export const TileWorkerCoordinator = {
         getWorkerPool();
         registeredRuntimeProfileIds.add(profileId);
         workerReady = workerReady.then(() => broadcastRequest("registerRuntimeProfile", { profileId, profile }));
+        return workerReady;
+    },
+    syncBakeConstants(settings) {
+        const constants = { cellSize: settings.cellSize, cellsPerChunk: settings.cellsPerChunk, surfaceBakeScale: getSurfaceBakeScale(settings) };
+        getWorkerPool();
+        workerReady = workerReady.then(() => broadcastRequest("configureBakeConstants", constants));
         return workerReady;
     },
 };
