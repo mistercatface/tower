@@ -30,7 +30,7 @@ export async function mountGameShell(state, launcher) {
     applyLabWorldRenderMode(state);
     setLabVignetteEnabled(true);
     mountLabFrameRefresh(canvas);
-    seedRuntimeLabProfile(SURFACE_PROFILE_ID.poolTableFelt);
+    seedRuntimeLabProfile(SURFACE_PROFILE_ID.toxicSludge);
     await pushEditorProfile(state);
     mountGameViewport(state);
     tryLockPortraitOrientation(launcher.lockPortraitOrientation);
