@@ -42,8 +42,10 @@ export function mountLabViewport(state, onViewChange, playbackHandlers) {
         getCamera: () => state.viewport,
         setCamera: (x, y, zoom) => {
             state.viewport.snapTo(x, y);
-            state.viewport.zoom = clampLabZoom(zoom);
-            zoomControl.setZoom(state.viewport.zoom);
+            const nextZoom = clampLabZoom(zoom);
+            const zoomChanged = state.viewport.zoom !== nextZoom;
+            state.viewport.zoom = nextZoom;
+            if (zoomChanged) zoomControl.setZoom(state.viewport.zoom);
             onViewChange();
         },
     });

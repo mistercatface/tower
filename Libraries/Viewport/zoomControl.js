@@ -94,15 +94,18 @@ export function applyZoomControl(host, options = {}) {
     }
     /** @param {number} zoom @param {object | undefined} ctx */
     const pushUi = (zoom, ctx) => {
-        if (elements.slider) elements.slider.value = String(zoomToSliderValue(options, zoom, ctx));
-        if (elements.label) elements.label.textContent = formatZoomLabel(options, zoom, ctx);
+        const sliderVal = String(zoomToSliderValue(options, zoom, ctx));
+        if (elements.slider && elements.slider.value !== sliderVal) elements.slider.value = sliderVal;
+        const labelText = formatZoomLabel(options, zoom, ctx);
+        if (elements.label && elements.label.textContent !== labelText) elements.label.textContent = labelText;
     };
     if (!wiredHosts.has(host)) {
         wiredHosts.add(host);
         elements.slider?.addEventListener("input", () => {
             const raw = parseFloat(elements.slider?.value ?? "0");
             const zoom = sliderToZoomValue(options, raw);
-            if (elements.label) elements.label.textContent = formatZoomLabel(options, zoom);
+            const labelText = formatZoomLabel(options, zoom);
+            if (elements.label && elements.label.textContent !== labelText) elements.label.textContent = labelText;
             setZoom?.(zoom);
         });
     }
