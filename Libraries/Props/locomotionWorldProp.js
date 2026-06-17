@@ -2,6 +2,7 @@ import { initMobileAgent } from "../Agent/create.js";
 import { applySteeringResult } from "../Agent/steering.js";
 import { applyEntityLocomotion } from "../Motion/applyEntityLocomotion.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { addXY } from "../Math/Vec2.js";
 /** @param {object} prop */
 export function usesLocomotionWorldProp(prop) {
     if (!prop?.strategy) return false;
@@ -46,6 +47,11 @@ export function stopLocomotionWorldProp(prop) {
 export function updateLocomotionWorldProp(prop, dt, spatialFrame) {
     if (!usesLocomotionWorldProp(prop) || !spatialFrame) return false;
     ensureLocomotionWorldProp(prop);
+    if (prop._hpaYieldPhysics) {
+        addXY(prop, (prop.vx ?? 0) * (dt / 1000), (prop.vy ?? 0) * (dt / 1000));
+        wakePushableBody(prop);
+        return true;
+    }
     const desiredSq = (prop.desiredX ?? 0) ** 2 + (prop.desiredY ?? 0) ** 2;
     applyEntityLocomotion(prop, dt, spatialFrame, { alignAngleWithMovement: desiredSq > 0.0001 });
     return true;
