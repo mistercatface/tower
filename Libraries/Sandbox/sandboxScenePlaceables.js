@@ -1,5 +1,18 @@
 import { formatSandboxFactionLabel } from "../Combat/sandboxTargeting.js";
+import { expandGridForRoomNodeFootprint, stampRoomNodeAt, syncRoomGraphBake } from "../RoomGraph/index.js";
+import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
+import { canStampFloorBeltAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { listPlacedForcefields } from "./gridWallEdit.js";
+import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
+import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
+import {
+    isGridFloorBeltSpawnAsset,
+    isGridPassagePowerSourceSpawnAsset,
+    isPuzzleTemplateSpawnAsset,
+    isRoomLinkSpawnAsset,
+    isRoomNodeSpawnAsset,
+    resolveFloorBeltKindFromSpawnAsset,
+} from "./sandboxCapabilities.js";
 import {
     buildFloorBeltInspectorInfo,
     buildForcefieldInspectorInfo,
@@ -37,6 +50,17 @@ function deleteWallSceneItem(session, item, pickSelection) {
 }
 const PLACEABLE = {
     prop: {
+        matchesSpawnAsset() {
+            return true;
+        },
+        spawnAt(state, worldX, worldY, asset, ctx) {
+            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, ctx.spawnPropId, ctx.spawnFaction);
+            if (spawned) {
+                ctx.placement.touchPropPlacement(spawned.id);
+                ctx.pickSelection({ kind: "prop", ids: [spawned.id] });
+            }
+            return spawned != null;
+        },
         buildFromSelection(state, sel, ctx) {
             const id = selectionPrimaryPropId(sel, ctx.getLiveProp);
             return id == null ? null : ctx.getLiveProp(id);
@@ -61,6 +85,18 @@ const PLACEABLE = {
         },
     },
     floorBelt: {
+        matchesSpawnAsset: isGridFloorBeltSpawnAsset,
+        spawnAt(state, worldX, worldY, asset, ctx) {
+            const grid = state.obstacleGrid;
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            if (!canStampFloorBeltAt(state, col, row)) return false;
+            const kind = resolveFloorBeltKindFromSpawnAsset(asset);
+            if (!grid.writeFloorCell(col, row, kind, 0)) return false;
+            markGridZoneSubscriptionsDirty(state);
+            ctx.placement.touchFloorPlacement(col, row);
+            ctx.pickSelection({ kind: "floor", col, row });
+            return true;
+        },
         buildFromSelection(state, sel) {
             return buildFloorBeltInspectorInfo(state, sel);
         },
@@ -78,6 +114,15 @@ const PLACEABLE = {
         },
     },
     powerSource: {
+        matchesSpawnAsset: isGridPassagePowerSourceSpawnAsset,
+        spawnAt(state, worldX, worldY, asset, ctx) {
+            const grid = state.obstacleGrid;
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            if (!stampPassagePowerSourceAt(state, col, row, false)) return false;
+            ctx.placement.touchFloorPlacement(col, row);
+            ctx.pickSelection({ kind: "floor", col, row });
+            return true;
+        },
         buildFromSelection(state, sel) {
             return buildPassagePowerSourceInspectorInfo(state, sel);
         },
@@ -149,6 +194,19 @@ const PLACEABLE = {
         },
     },
     roomNode: {
+        matchesSpawnAsset: isRoomNodeSpawnAsset,
+        spawnAt(state, worldX, worldY, asset, ctx) {
+            const grid = state.obstacleGrid;
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            expandGridForRoomNodeFootprint(state, col, row, ctx.spawnRoomNodeCols, ctx.spawnRoomNodeRows);
+            const node = stampRoomNodeAt(state, col, row, ctx.spawnRoomNodeCols, ctx.spawnRoomNodeRows, undefined, ctx.spawnRoomNodeSurfaceProfileId);
+            if (!node) return false;
+            ctx.placement.touchRoomNodePlacement(node.id);
+            ctx.pickSelection({ kind: "roomNode", id: node.id });
+            syncRoomGraphBake(state);
+            ctx.notifyUi();
+            return true;
+        },
         buildFromSelection(state, sel) {
             return buildRoomNodeInspectorInfo(state, sel);
         },
@@ -159,7 +217,27 @@ const PLACEABLE = {
             return items;
         },
     },
+    puzzleTemplate: {
+        matchesSpawnAsset: isPuzzleTemplateSpawnAsset,
+        spawnAt(state, worldX, worldY, asset, ctx) {
+            const grid = state.obstacleGrid;
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            const stamped = stampBeltCratePuzzleAt(state, col, row, ctx.spawnPuzzleAreaCols, ctx.spawnPuzzleAreaRows);
+            if (!stamped) return false;
+            ctx.placement.touchRoomNodePlacement(stamped.roomA.id);
+            ctx.placement.touchRoomNodePlacement(stamped.roomB.id);
+            ctx.placement.touchRoomNodePlacement(stamped.roomC.id);
+            for (let i = 0; i < stamped.links.length; i++) ctx.placement.touchRoomLinkCorridors(stamped.links[i]);
+            ctx.pickSelection({ kind: "roomNode", id: stamped.roomA.id });
+            ctx.notifyUi();
+            return true;
+        },
+    },
     roomLink: {
+        matchesSpawnAsset: isRoomLinkSpawnAsset,
+        spawnAt() {
+            return false;
+        },
         buildFromSelection(state, sel) {
             return buildRoomLinkInspectorInfo(state, sel);
         },
@@ -178,6 +256,7 @@ const PLACEABLE = {
         },
     },
 };
+const SPAWN_ROWS = [PLACEABLE.floorBelt, PLACEABLE.powerSource, PLACEABLE.roomNode, PLACEABLE.puzzleTemplate, PLACEABLE.roomLink, PLACEABLE.prop];
 const FROM_SELECTION = {
     prop(state, sel, ctx) {
         if (sel.ids.size > 1) return inspectorResult("props", PLACEABLE.props.buildFromSelection(state, sel, ctx));
@@ -228,6 +307,14 @@ const SCENE_LISTERS = [
     PLACEABLE.roomNode.listSceneItems,
     PLACEABLE.roomLink.listSceneItems,
 ];
+export function spawnPlaceableAt(state, worldX, worldY, asset, ctx) {
+    for (let i = 0; i < SPAWN_ROWS.length; i++) {
+        const row = SPAWN_ROWS[i];
+        if (!row.matchesSpawnAsset(asset)) continue;
+        return row.spawnAt(state, worldX, worldY, asset, ctx);
+    }
+    return false;
+}
 export function buildSelectionInspector(state, selection, getLiveProp, pruneSelection) {
     pruneSelection();
     const sel = selection.getSelection();
