@@ -1,6 +1,13 @@
 import { collectCorridorPathPointCells } from "../Pathfinding/Corridor/corridorFootprint.js";
 import { cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
-import { omitRailWallsAtGapKeys, roomWallGapKeysWorld } from "./roomGraphClosedRooms.js";
+import {
+    DEFAULT_RAIL_WALL_HEIGHT_LEVEL,
+    DEFAULT_RAIL_WALL_THICKNESS_LEVEL,
+    omitRailWallsAtGapKeys,
+    resolveRailWallHeightLevel,
+    resolveRailWallThicknessLevel,
+    roomWallGapKeysWorld,
+} from "./roomGraphClosedRooms.js";
 /** @typedef {import("./roomGraphClosedRooms.js").Cell} Cell */
 /** @typedef {import("./roomGraphClosedRooms.js").GraphNode} GraphNode */
 /** @typedef {import("./roomGraphClosedRooms.js").RailWall} RailWall */
@@ -42,13 +49,13 @@ function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms) {
         }
     }
 }
-/** @param {Uint8Array} mask @param {number} cols @param {number} rows @param {number} originCol @param {number} originRow */
-function railWallsFromFloorMask(mask, cols, rows, originCol, originRow) {
+/** @param {Uint8Array} mask @param {number} cols @param {number} rows @param {number} originCol @param {number} originRow @param {number} heightLevel @param {number} thicknessLevel */
+function railWallsFromFloorMask(mask, cols, rows, originCol, originRow, heightLevel, thicknessLevel) {
     /** @type {RailWall[]} */
     const walls = [];
     /** @param {number} c @param {number} r @param {number} side */
     const push = (c, r, side) => {
-        walls.push({ col: c + originCol, row: r + originRow, side, heightLevel: 1, thicknessLevel: 1 });
+        walls.push({ col: c + originCol, row: r + originRow, side, heightLevel, thicknessLevel });
     };
     for (let r = 0; r < rows; r++)
         for (let c = 0; c < cols; c++) {
@@ -60,20 +67,30 @@ function railWallsFromFloorMask(mask, cols, rows, originCol, originRow) {
         }
     return walls;
 }
-/** @param {Cell[][]} paths @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number | number[]} corridorWidths @param {Set<string>} gapKeysWorld @param {GraphNode[]} rooms */
-function corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms) {
+/** @param {Cell[][]} paths @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number | number[]} corridorWidths @param {Set<string>} gapKeysWorld @param {GraphNode[]} rooms @param {number} heightLevel @param {number} thicknessLevel */
+function corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms, heightLevel, thicknessLevel) {
     /** @type {RailWall[]} */
     const rails = [];
     for (let pi = 0; pi < paths.length; pi++) {
         const laneMask = new Uint8Array(stampBounds.cols * stampBounds.rows);
         const width = Array.isArray(corridorWidths) ? corridorWidths[pi] : corridorWidths;
         stampCorridorTubeLocal(laneMask, stampBounds, paths[pi], width, rooms);
-        rails.push(...railWallsFromFloorMask(laneMask, stampBounds.cols, stampBounds.rows, stampBounds.originCol, stampBounds.originRow));
+        rails.push(...railWallsFromFloorMask(laneMask, stampBounds.cols, stampBounds.rows, stampBounds.originCol, stampBounds.originRow, heightLevel, thicknessLevel));
     }
     return omitRailWallsAtGapKeys(dedupeRailWallsByEdge(rails), gapKeysWorld);
 }
-/** @param {Cell[][]} paths @param {number[]} corridorWidths @param {GraphNode[]} rooms @param {ClosedRoom[]} closedRooms @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number} originCol @param {number} originRow */
-export function buildCorridorRailWallsFromPaths(paths, corridorWidths, rooms, closedRooms, stampBounds, originCol, originRow) {
+/** @param {Cell[][]} paths @param {number[]} corridorWidths @param {GraphNode[]} rooms @param {ClosedRoom[]} closedRooms @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number} originCol @param {number} originRow @param {number} [railWallHeightLevel] @param {number} [railWallThicknessLevel] */
+export function buildCorridorRailWallsFromPaths(
+    paths,
+    corridorWidths,
+    rooms,
+    closedRooms,
+    stampBounds,
+    originCol,
+    originRow,
+    railWallHeightLevel = DEFAULT_RAIL_WALL_HEIGHT_LEVEL,
+    railWallThicknessLevel = DEFAULT_RAIL_WALL_THICKNESS_LEVEL,
+) {
     const gapKeysWorld = roomWallGapKeysWorld(closedRooms, originCol, originRow);
-    return corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms);
+    return corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms, resolveRailWallHeightLevel(railWallHeightLevel), resolveRailWallThicknessLevel(railWallThicknessLevel));
 }

@@ -3,7 +3,15 @@ import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.j
 import { commitBoundaryEdit } from "../Sandbox/boundaryEdit.js";
 import { clearRailWallsQuiet, stampRailWallsQuiet } from "../Sandbox/gridWallEdit.js";
 import { createSeededRng } from "../Math/SeededRng.js";
-import { buildRoomsFromNodeGraph, mergeRailWalls, omitRailWallsAtGapKeys, railWallsForClosedRooms, roomWallGapKeysWorld } from "./roomGraphClosedRooms.js";
+import {
+    buildRoomsFromNodeGraph,
+    mergeRailWalls,
+    omitRailWallsAtGapKeys,
+    railWallsForClosedRooms,
+    resolveRailWallHeightLevel,
+    resolveRailWallThicknessLevel,
+    roomWallGapKeysWorld,
+} from "./roomGraphClosedRooms.js";
 import { getRoomGraph, listRoomLinks, listRoomNodes } from "./roomGraphStore.js";
 import { resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
 import { normalizeCorridorType, isConveyorCorridorType, isOpenCorridorType, isLockedRoomCorridorType } from "./roomGraphCorridorTypes.js";
@@ -20,7 +28,19 @@ function roomNodeToGraphNode(node) {
     const r0 = node.row;
     const c1 = node.col + node.width - 1;
     const r1 = node.row + node.height - 1;
-    return { id: node.id, c0, c1, r0, r1, centerC: (c0 + (node.width - 1) / 2) | 0, centerR: (r0 + (node.height - 1) / 2) | 0, width: node.width, height: node.height };
+    return {
+        id: node.id,
+        c0,
+        c1,
+        r0,
+        r1,
+        centerC: (c0 + (node.width - 1) / 2) | 0,
+        centerR: (r0 + (node.height - 1) / 2) | 0,
+        width: node.width,
+        height: node.height,
+        railWallHeightLevel: resolveRailWallHeightLevel(node.railWallHeightLevel),
+        railWallThicknessLevel: resolveRailWallThicknessLevel(node.railWallThicknessLevel),
+    };
 }
 /** @param {object} state */
 function buildAuthoredBakeLayout(state) {
@@ -145,7 +165,8 @@ function computeRoomGraphBake(layout) {
             lockedLinkBakes.push({ linkId: link.id, parentNodeId: link.a, parentHoles });
         }
         if (isConveyorCorridorType(corridorType)) bakedBelts.push(...stampCorridorBundleBelts(bundle, rooms));
-        if (!isOpenCorridorType(corridorType) && !isConveyorCorridorType(corridorType)) corridorRailLists.push(stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow));
+        if (!isOpenCorridorType(corridorType) && !isConveyorCorridorType(corridorType))
+            corridorRailLists.push(stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow, link.railWallHeightLevel, link.railWallThicknessLevel));
     }
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
     const gapKeys = roomWallGapKeysWorld(closedRooms, originCol, originRow);

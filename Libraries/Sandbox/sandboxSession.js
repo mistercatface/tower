@@ -32,6 +32,7 @@ import {
     removeRoomNode,
     stampRoomNodeAt,
     updateRoomLink,
+    updateRoomNode,
     syncRoomGraphBake,
     unbakeRoomGraph,
     rerollRoomLinkBake,
@@ -39,6 +40,7 @@ import {
 } from "../RoomGraph/index.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { linkCorridorLimits, MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "../RoomGraph/roomGraphLinkCorridor.js";
+import { resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
 import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
 import { createSeededRng } from "../Math/SeededRng.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
@@ -78,8 +80,8 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
     let placePaletteKey = `prop:${defaultSpawnPropId}`;
     /** @type {'voxel' | 'rail' | 'forcefield'} */
     let wallStampMode = "voxel";
-    let wallHeightLevel = 4;
-    let railThicknessLevel = 2;
+    let wallHeightLevel = 1;
+    let railThicknessLevel = 4;
     let forcefieldStampMode = PASSAGE_MODE.Solid;
     let spawnRoomNodeCols = DEFAULT_ROOM_NODE_COLS;
     let spawnRoomNodeRows = DEFAULT_ROOM_NODE_ROWS;
@@ -149,6 +151,11 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
         placementSeqByKey.clear();
         nextPlacementSeq = 1;
     };
+    const clampAuthoredRailWallHeight = (level) => {
+        const max = state.worldSurfaces.settings.maxWallHeightLevel;
+        return Math.min(max, Math.max(1, Math.round(level)));
+    };
+    const clampAuthoredRailWallThickness = (level) => resolveRailWallThicknessLevel(level);
     const placementSeq = (key, fallback) => placementSeqByKey.get(key) ?? fallback;
     /** Hand-placed voxels only — bulk cavern/map-gen stamps are not tracked here. */
     const listTrackedVoxelWalls = () => {
@@ -969,14 +976,25 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
         },
         updateSelectedRoomLink(patch) {
             if (selectedRoomLinkId == null) return false;
+            if (patch.railWallHeightLevel != null) patch = { ...patch, railWallHeightLevel: clampAuthoredRailWallHeight(patch.railWallHeightLevel) };
+            if (patch.railWallThicknessLevel != null) patch = { ...patch, railWallThicknessLevel: clampAuthoredRailWallThickness(patch.railWallThicknessLevel) };
             if (!updateRoomLink(state, selectedRoomLinkId, patch)) return false;
             const link = getRoomLink(state, selectedRoomLinkId);
             if (link) {
                 selectedRoomLinkCorridorIndex = Math.min(selectedRoomLinkCorridorIndex, roomLinkCorridorLaneCount(link) - 1);
                 if (patch.corridorCount != null) touchRoomLinkCorridors(link);
             }
-            const deferBake = patch.corridorCount == null && patch.corridorWidthMin == null && patch.corridorWidthMax == null;
-            if (deferBake) syncRoomGraphBake(state);
+            const needsReroll = patch.corridorCount != null || patch.corridorWidthMin != null || patch.corridorWidthMax != null;
+            if (!needsReroll) syncRoomGraphBake(state);
+            notifyUi();
+            return true;
+        },
+        updateSelectedRoomNode(patch) {
+            if (selectedRoomNodeId == null) return false;
+            if (patch.railWallHeightLevel != null) patch = { ...patch, railWallHeightLevel: clampAuthoredRailWallHeight(patch.railWallHeightLevel) };
+            if (patch.railWallThicknessLevel != null) patch = { ...patch, railWallThicknessLevel: clampAuthoredRailWallThickness(patch.railWallThicknessLevel) };
+            if (!updateRoomNode(state, selectedRoomNodeId, patch)) return false;
+            syncRoomGraphBake(state);
             notifyUi();
             return true;
         },

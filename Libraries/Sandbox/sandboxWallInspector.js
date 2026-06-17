@@ -1,3 +1,4 @@
+import { resolveRailWallHeightLevel, resolveRailWallThicknessLevel, MAX_RAIL_WALL_THICKNESS_LEVEL } from "../RoomGraph/roomGraphClosedRooms.js";
 import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../RoomGraph/roomGraphCorridorTypes.js";
 import { formatGridWallEdgeSideLabel } from "./gridWallEdit.js";
 import { appendActionRow, appendEditorHint, appendNumberField, appendSelectField } from "../UI/paramFields.js";
@@ -15,6 +16,12 @@ const EDGE_SIDE_OPTIONS = [
 ];
 function maxWallHeightLevel(controller) {
     return controller.getState().worldSurfaces.settings.maxWallHeightLevel;
+}
+export function appendRailWallHeightSlider(body, controller, heightLevel, onChange) {
+    body.appendChild(new SliderControl("Rail height", 1, maxWallHeightLevel(controller), 1, heightLevel, onChange).element);
+}
+export function appendRailWallThicknessSlider(body, controller, thicknessLevel, onChange) {
+    body.appendChild(new SliderControl("Rail thickness", 1, MAX_RAIL_WALL_THICKNESS_LEVEL, 1, thicknessLevel, onChange).element);
 }
 export function appendPassageEditorFields(body, controller, selected, { stampDefaults = false } = {}) {
     const mode = stampDefaults ? controller.getForcefieldStampMode() : selected.mode;
@@ -63,6 +70,12 @@ export function appendRoomLinkCorridorInspector(body, selectedRoomLink, controll
         onChange: (width) => {
             controller.updateSelectedRoomLink({ corridorWidthMin: width, corridorWidthMax: width });
         },
+    });
+    appendRailWallHeightSlider(body, controller, resolveRailWallHeightLevel(selectedRoomLink.railWallHeightLevel), (val) => {
+        controller.updateSelectedRoomLink({ railWallHeightLevel: val });
+    });
+    appendRailWallThicknessSlider(body, controller, resolveRailWallThicknessLevel(selectedRoomLink.railWallThicknessLevel), (val) => {
+        controller.updateSelectedRoomLink({ railWallThicknessLevel: val });
     });
     appendActionRow(body, [
         { label: "Reroll corridor", onClick: () => controller.rerollSelectedRoomLink() },

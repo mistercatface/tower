@@ -1,6 +1,17 @@
 import { gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
 /** @typedef {{ c: number, r: number }} Cell */
-/** @typedef {{ id: number, c0: number, r0: number, c1: number, r1: number, centerC: number, centerR: number, width: number, height: number }} GraphNode */
+export const DEFAULT_RAIL_WALL_HEIGHT_LEVEL = 1;
+export const DEFAULT_RAIL_WALL_THICKNESS_LEVEL = 4;
+export const MAX_RAIL_WALL_THICKNESS_LEVEL = 8;
+/** @param {number | null | undefined} value */
+export function resolveRailWallHeightLevel(value) {
+    return Math.max(1, Math.round(value ?? DEFAULT_RAIL_WALL_HEIGHT_LEVEL));
+}
+/** @param {number | null | undefined} value */
+export function resolveRailWallThicknessLevel(value) {
+    return Math.min(MAX_RAIL_WALL_THICKNESS_LEVEL, Math.max(1, Math.round(value ?? DEFAULT_RAIL_WALL_THICKNESS_LEVEL)));
+}
+/** @typedef {{ id: number, c0: number, r0: number, c1: number, r1: number, centerC: number, centerR: number, width: number, height: number, railWallHeightLevel?: number, railWallThicknessLevel?: number }} GraphNode */
 /** @typedef {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number }} RailWall */
 /** @typedef {{ c: number, r: number, side: number }} RoomWallHole */
 /** @typedef {{ node: GraphNode, gaps: Set<string>, holes: RoomWallHole[] }} ClosedRoom */
@@ -19,7 +30,13 @@ export function railWallsForClosedRect(node, originCol, originRow, gaps = new Se
     /** @param {number} c @param {number} r @param {number} side */
     const push = (c, r, side) => {
         if (gaps.has(roomWallEdgeKey(c, r, side))) return;
-        walls.push({ col: c + originCol, row: r + originRow, side, heightLevel: 1, thicknessLevel: 1 });
+        walls.push({
+            col: c + originCol,
+            row: r + originRow,
+            side,
+            heightLevel: resolveRailWallHeightLevel(node.railWallHeightLevel),
+            thicknessLevel: resolveRailWallThicknessLevel(node.railWallThicknessLevel),
+        });
     };
     for (let c = node.c0; c <= node.c1; c++) {
         push(c, node.r0, 0);

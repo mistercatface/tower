@@ -13,9 +13,9 @@ export function applyCorridorBundleToRooms(bundle, roomA, roomB) {
  * @param {number} originCol
  * @param {number} originRow
  */
-export function stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow) {
+export function stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow, railWallHeightLevel, railWallThicknessLevel) {
     const stampBounds = corridorSearchBounds(rooms, DEFAULT_CORRIDOR_EGRESS_CELLS + 6);
-    return buildCorridorRailWallsFromPaths(bundle.paths, bundle.corridorWidths, rooms, closedRooms, stampBounds, originCol, originRow);
+    return buildCorridorRailWallsFromPaths(bundle.paths, bundle.corridorWidths, rooms, closedRooms, stampBounds, originCol, originRow, railWallHeightLevel, railWallThicknessLevel);
 }
 /**
  * @param {import("../Pathfinding/Corridor/corridorBundle.js").CorridorBundle} bundle
