@@ -1,53 +1,12 @@
-import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
-import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLabel } from "../Combat/sandboxTargeting.js";
-import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
+import { formatPropTypeLabel } from "../Props/PropCatalog.js";
+import { resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
-import {
-    isGridFloorBeltSpawnAsset,
-    isGridPassagePowerSourceSpawnAsset,
-    isRoomNodeSpawnAsset,
-    isRoomLinkSpawnAsset,
-    isPuzzleTemplateSpawnAsset,
-    resolveFloorBeltKindFromSpawnAsset,
-} from "./sandboxCapabilities.js";
-import {
-    clearRoomGraph,
-    DEFAULT_ROOM_NODE_COLS,
-    DEFAULT_ROOM_NODE_ROWS,
-    addRoomLink,
-    clearRoomLinksForNode,
-    formatRoomLinkLabel,
-    formatRoomLinkCorridorLabel,
-    formatRoomNodeLabel,
-    getRoomLink,
-    getRoomNode,
-    listRoomLinks,
-    listRoomNodes,
-    listRoomLinkCorridorSceneEntries,
-    listRoomNodeCorridorEntries,
-    roomLinkCorridorLaneCount,
-    pickRoomNodeAt,
-    removeRoomLink,
-    removeRoomNode,
-    stampRoomNodeAt,
-    updateRoomLink,
-    updateRoomNode,
-    syncRoomGraphBake,
-    unbakeRoomGraph,
-    rerollRoomLinkBake,
-    expandGridForRoomNodeFootprint,
-} from "../RoomGraph/index.js";
-import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
-import { linkCorridorLimits, MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "../RoomGraph/roomGraphLinkCorridor.js";
+import { getRoomLink, clearRoomGraph, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
-import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
-import { invalidateRoomLinkFloorSurface, invalidateRoomNodeFloorSurface, normalizeAuthoredSurfaceProfileId } from "../RoomGraph/roomGraphSurfaceProfile.js";
-import { createSeededRng } from "../Math/SeededRng.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
-import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import {
     clearForcefieldAt,
     clearRailWallAt,
@@ -55,7 +14,6 @@ import {
     ensureObstacleGridAtWorld,
     getForcefieldInfo,
     getRailWallInfo,
-    getVoxelWallInfo,
     hitTestRailWallEdgeAtWorld,
     listPlacedForcefields,
     listPlacedRailWalls,
@@ -67,232 +25,26 @@ import {
     stampVoxelWallAt,
 } from "./gridWallEdit.js";
 import { PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
-import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { cellIsStaticWall, forcefieldEdgeAt, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
 import { createSandboxSelection } from "./sandboxSelection.js";
+import { buildSelectionInspectors, selectionFloorCell, selectionPrimaryPropId, selectionPropIds, selectionRailEdge, selectionVoxelCell } from "./sandboxSelectionInspectors.js";
+import { createSandboxPlacementOrder } from "./sandboxPlacementOrder.js";
+import { createSandboxSpawnSession } from "./sandboxSpawnSession.js";
+import { createSandboxRoomGraphSession } from "./sandboxRoomGraphSession.js";
 /** @param {object} state */
 export function createSandboxSession(state) {
-    let spawnFaction = SANDBOX_DEFAULT_FACTION;
-    /** @type {string} prop:id or wall:voxel|rail|forcefield */
     let placePaletteKey = "";
-    /** @type {'voxel' | 'rail' | 'forcefield'} */
     let wallStampMode = "voxel";
     let wallHeightLevel = 1;
     let railThicknessLevel = 4;
     let forcefieldStampMode = PASSAGE_MODE.Solid;
-    let spawnRoomNodeCols = DEFAULT_ROOM_NODE_COLS;
-    let spawnRoomNodeRows = DEFAULT_ROOM_NODE_ROWS;
-    let spawnPuzzleAreaCols = BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS;
-    let spawnPuzzleAreaRows = BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS;
-    let spawnCorridorType = CORRIDOR_TYPE_EMPTY;
-    let spawnCorridorWidth = 1;
-    let spawnRoomNodeSurfaceProfileId = null;
-    let spawnCorridorSurfaceProfileId = null;
-    /** @type {(() => void) | null} */
     let uiSync = null;
-    let nextPlacementSeq = 1;
-    /** @type {Map<string, number>} */
-    const placementSeqByKey = new Map();
-    const spawnPropIdFromPalette = () => (placePaletteKey.startsWith("prop:") ? placePaletteKey.slice(5) : "");
-    const propPlacementKey = (id) => `prop:${id}`;
-    const floorPlacementKey = (col, row) => `floor:${col},${row}`;
-    const voxelPlacementKey = (col, row) => `voxel:${col},${row}`;
-    const edgePlacementKey = (kind, col, row, side) => `${kind}:${col},${row},${side}`;
-    const touchPropPlacement = (id) => {
-        const key = propPlacementKey(id);
-        if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
-    };
-    const touchFloorPlacement = (col, row) => {
-        const key = floorPlacementKey(col, row);
-        if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
-    };
-    const touchVoxelPlacement = (col, row) => {
-        const key = voxelPlacementKey(col, row);
-        if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
-    };
-    const touchEdgePlacement = (kind, col, row, side) => {
-        const key = edgePlacementKey(kind, col, row, side);
-        if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
-    };
-    const forgetPropPlacement = (id) => placementSeqByKey.delete(propPlacementKey(id));
-    const forgetFloorPlacement = (col, row) => placementSeqByKey.delete(floorPlacementKey(col, row));
-    const forgetVoxelPlacement = (col, row) => placementSeqByKey.delete(voxelPlacementKey(col, row));
-    const forgetEdgePlacement = (kind, col, row, side) => placementSeqByKey.delete(edgePlacementKey(kind, col, row, side));
-    const roomNodePlacementKey = (id) => `roomNode:${id}`;
-    const roomLinkPlacementKey = (linkId, corridorIndex) => `roomLink:${linkId}:${corridorIndex}`;
-    const touchRoomNodePlacement = (id) => {
-        const key = roomNodePlacementKey(id);
-        if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
-    };
-    const touchRoomLinkPlacement = (linkId, corridorIndex) => {
-        const key = roomLinkPlacementKey(linkId, corridorIndex);
-        if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
-    };
-    const forgetRoomNodePlacement = (id) => placementSeqByKey.delete(roomNodePlacementKey(id));
-    const forgetRoomLinkPlacement = (linkId) => {
-        const prefix = `roomLink:${linkId}:`;
-        for (const key of placementSeqByKey.keys()) if (key.startsWith(prefix)) placementSeqByKey.delete(key);
-    };
-    const touchRoomLinkCorridors = (link) => {
-        const count = roomLinkCorridorLaneCount(link);
-        for (let ci = 0; ci < count; ci++) touchRoomLinkPlacement(link.id, ci);
-    };
-    const resetPlacementOrder = () => {
-        placementSeqByKey.clear();
-        nextPlacementSeq = 1;
-    };
-    const clampAuthoredRailWallHeight = (level) => {
-        const max = state.worldSurfaces.settings.maxWallHeightLevel;
-        return Math.min(max, Math.max(1, Math.round(level)));
-    };
-    const clampAuthoredRailWallThickness = (level) => resolveRailWallThicknessLevel(level);
-    const placementSeq = (key, fallback) => placementSeqByKey.get(key) ?? fallback;
-    /** Hand-placed voxels only — bulk cavern/map-gen stamps are not tracked here. */
-    const listTrackedVoxelWalls = () => {
-        const grid = state.obstacleGrid;
-        /** @type {{ col: number, row: number, heightLevel: number, label: string }[]} */
-        const placed = [];
-        for (const key of placementSeqByKey.keys()) {
-            if (!key.startsWith("voxel:")) continue;
-            const coords = key.slice(6);
-            const comma = coords.indexOf(",");
-            const col = Number(coords.slice(0, comma));
-            const row = Number(coords.slice(comma + 1));
-            if (!cellIsStaticWall(grid, col, row)) continue;
-            const heightLevel = grid.grid[col + row * grid.cols];
-            placed.push({ col, row, heightLevel, label: `Voxel · (${col},${row}) · height ${heightLevel}` });
-        }
-        placed.sort((a, b) => placementSeq(voxelPlacementKey(a.col, a.row), 0) - placementSeq(voxelPlacementKey(b.col, b.row), 0));
-        return placed;
-    };
-    /** Hand-placed rails only — bulk map-gen / quiet stamps are not tracked here. */
-    const listTrackedRailWalls = () => {
-        const grid = state.obstacleGrid;
-        /** @type {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number, label: string }[]} */
-        const placed = [];
-        const prefix = "rail:";
-        for (const key of placementSeqByKey.keys()) {
-            if (!key.startsWith(prefix)) continue;
-            const parts = key.slice(prefix.length).split(",");
-            const col = Number(parts[0]);
-            const row = Number(parts[1]);
-            const side = Number(parts[2]);
-            if (!railWallEdgeAt(grid, col, row, side)) continue;
-            const info = getRailWallInfo(grid, col, row, side);
-            if (!info) continue;
-            placed.push({ col, row, side, heightLevel: info.heightLevel, thicknessLevel: info.thicknessLevel, label: `Rail · (${col},${row}) · ${info.sideLabel} · height ${info.heightLevel}` });
-        }
-        placed.sort((a, b) => placementSeq(edgePlacementKey("rail", a.col, a.row, a.side), 0) - placementSeq(edgePlacementKey("rail", b.col, b.row, b.side), 0));
-        return placed;
-    };
     function notifyUi() {
         uiSync?.();
     }
     const registry = () => state.entityRegistry;
-    const meta = () => getSandboxEntityMeta(state);
+    const placement = createSandboxPlacementOrder(state);
     const selection = createSandboxSelection({ isLiveProp: (id) => !!registry().getLive(id), getRoomLink: (linkId) => getRoomLink(state, linkId) });
-    const selectedFloorCell = () => {
-        const sel = selection.getSelection();
-        return sel?.kind === "floor" ? { col: sel.col, row: sel.row } : null;
-    };
-    const selectedVoxelCell = () => {
-        const sel = selection.getSelection();
-        return sel?.kind === "voxel" ? { col: sel.col, row: sel.row } : null;
-    };
-    const selectedRailEdge = () => {
-        const sel = selection.getSelection();
-        return sel?.kind === "rail" ? { col: sel.col, row: sel.row, side: sel.side } : null;
-    };
-    const selectedRoomNodeId = () => {
-        const sel = selection.getSelection();
-        if (sel?.kind === "roomNode") return sel.id;
-        if (sel?.kind === "roomLink") return sel.nodeId;
-        return null;
-    };
-    const selectedRoomLinkId = () => {
-        const sel = selection.getSelection();
-        return sel?.kind === "roomLink" ? sel.linkId : null;
-    };
-    const selectedRoomLinkCorridorIndex = () => {
-        const sel = selection.getSelection();
-        return sel?.kind === "roomLink" ? sel.corridorIndex : 0;
-    };
-    const selectedPropIds = () => {
-        const sel = selection.getSelection();
-        return sel?.kind === "prop" ? [...sel.ids] : [];
-    };
-    const primaryPropId = () => {
-        const sel = selection.getSelection();
-        if (sel?.kind !== "prop") return null;
-        for (const id of sel.ids) if (registry().getLive(id)) return id;
-        return null;
-    };
-    const selectedRoomNode = () => {
-        const id = selectedRoomNodeId();
-        return id == null ? null : (getRoomNode(state, id) ?? null);
-    };
-    const selectedRoomLink = () => {
-        const id = selectedRoomLinkId();
-        return id == null ? null : (getRoomLink(state, id) ?? null);
-    };
-    const getSelectedFloorBeltInfo = () => {
-        const cell = selectedFloorCell();
-        if (!cell) return null;
-        const grid = state.obstacleGrid;
-        const { col, row } = cell;
-        if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-        const idx = col + row * grid.cols;
-        if (!grid.floorStore.isBeltKindAtIdx(idx)) return null;
-        const kind = grid.floorStore.kind[idx];
-        const facingIndex = grid.floorStore.facing[idx];
-        return { col, row, kind, facingIndex, kindLabel: formatFloorBeltKindLabel(kind), facingLabel: formatFloorBeltFacingLabel(facingIndex) };
-    };
-    const getSelectedPassagePowerSourceInfo = () => {
-        const cell = selectedFloorCell();
-        if (!cell) return null;
-        const grid = state.obstacleGrid;
-        const { col, row } = cell;
-        if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-        const idx = col + row * grid.cols;
-        if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return null;
-        return { col, row, defaultPowered: grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx) };
-    };
-    const getSelectedVoxelWallInfo = () => {
-        const cell = selectedVoxelCell();
-        return cell ? getVoxelWallInfo(state.obstacleGrid, cell.col, cell.row) : null;
-    };
-    const getSelectedRailWallInfo = () => {
-        const edge = selectedRailEdge();
-        return edge && railWallEdgeAt(state.obstacleGrid, edge.col, edge.row, edge.side) ? getRailWallInfo(state.obstacleGrid, edge.col, edge.row, edge.side) : null;
-    };
-    const getSelectedForcefieldInfo = () => {
-        const edge = selectedRailEdge();
-        return edge && forcefieldEdgeAt(state.obstacleGrid, edge.col, edge.row, edge.side) ? getForcefieldInfo(state.obstacleGrid, edge.col, edge.row, edge.side) : null;
-    };
-    const getSelectedRoomNodeInfo = () => {
-        const node = selectedRoomNode();
-        if (!node) return null;
-        return { ...node, label: formatRoomNodeLabel(node) };
-    };
-    const getSelectedRoomLinkInfo = () => {
-        const link = selectedRoomLink();
-        if (!link) return null;
-        const corridorIndex = selectedRoomLinkCorridorIndex();
-        const nodeA = getRoomNode(state, link.a);
-        const nodeB = getRoomNode(state, link.b);
-        const limits = nodeA && nodeB ? linkCorridorLimits(nodeA, nodeB) : null;
-        const roll = nodeA && nodeB ? resolveLinkCorridorRoll(link, nodeA, nodeB, createSeededRng(link.seed ?? link.id * 9973)) : null;
-        return {
-            ...link,
-            corridorType: normalizeCorridorType(link.corridorType),
-            label: formatRoomLinkCorridorLabel(link, corridorIndex),
-            corridorIndex,
-            maxCorridorWidth: limits?.maxWidth ?? null,
-            maxCorridorCount: MAX_CORRIDOR_COUNT,
-            rolledCorridorCount: roll?.corridorCount ?? null,
-            rolledCorridorWidths: roll?.corridorWidths ?? null,
-        };
-    };
     const pickSelection = (input) => {
         selection.select(input);
         notifyUi();
@@ -306,131 +58,87 @@ export function createSandboxSession(state) {
         placePaletteKey = "";
         notifyUi();
     };
-    const removeProp = (prop) => removeSandboxWorldProp(state, prop);
     const pruneSelection = () => {
         if (!selection.prunePropSelection()) return;
         notifyUi();
     };
-    /** @returns {boolean} */
-    const spawnAt = (worldX, worldY) => {
-        const spawnPropId = spawnPropIdFromPalette();
-        const asset = getPropAsset(spawnPropId);
-        if (!asset) return false;
-        if (isGridFloorBeltSpawnAsset(asset)) {
-            const grid = state.obstacleGrid;
-            const { col, row } = grid.worldToGrid(worldX, worldY);
-            if (!canStampFloorBeltAt(state, col, row)) return false;
-            const kind = resolveFloorBeltKindFromSpawnAsset(asset);
-            if (!grid.writeFloorCell(col, row, kind, 0)) return false;
-            markGridZoneSubscriptionsDirty(state);
-            touchFloorPlacement(col, row);
-            pickSelection({ kind: "floor", col, row });
-            return true;
-        }
-        if (isGridPassagePowerSourceSpawnAsset(asset)) {
-            const grid = state.obstacleGrid;
-            const { col, row } = grid.worldToGrid(worldX, worldY);
-            if (!stampPassagePowerSourceAt(state, col, row, false)) return false;
-            touchFloorPlacement(col, row);
-            pickSelection({ kind: "floor", col, row });
-            return true;
-        }
-        if (isRoomNodeSpawnAsset(asset)) {
-            const grid = state.obstacleGrid;
-            const { col, row } = grid.worldToGrid(worldX, worldY);
-            expandGridForRoomNodeFootprint(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows);
-            const node = stampRoomNodeAt(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows, undefined, spawnRoomNodeSurfaceProfileId);
-            if (!node) return false;
-            touchRoomNodePlacement(node.id);
-            pickSelection({ kind: "roomNode", id: node.id });
-            syncRoomGraphBake(state);
-            notifyUi();
-            return true;
-        }
-        if (isPuzzleTemplateSpawnAsset(asset)) {
-            const grid = state.obstacleGrid;
-            const { col, row } = grid.worldToGrid(worldX, worldY);
-            const stamped = stampBeltCratePuzzleAt(state, col, row, spawnPuzzleAreaCols, spawnPuzzleAreaRows);
-            if (!stamped) return false;
-            touchRoomNodePlacement(stamped.roomA.id);
-            touchRoomNodePlacement(stamped.roomB.id);
-            touchRoomNodePlacement(stamped.roomC.id);
-            for (let i = 0; i < stamped.links.length; i++) touchRoomLinkCorridors(stamped.links[i]);
-            pickSelection({ kind: "roomNode", id: stamped.roomA.id });
-            notifyUi();
-            return true;
-        }
-        if (isRoomLinkSpawnAsset(asset)) return false;
-        const spawned = spawnPlacedSandboxProp(state, worldX, worldY, spawnPropId, spawnFaction);
-        if (spawned) {
-            touchPropPlacement(spawned.id);
-            pickSelection({ kind: "prop", ids: [spawned.id] });
-        }
-        return spawned != null;
+    const sel = () => selection.getSelection();
+    const spawnPropIdFromPalette = () => (placePaletteKey.startsWith("prop:") ? placePaletteKey.slice(5) : "");
+    const clampAuthoredRailWallHeight = (level) => {
+        const max = state.worldSurfaces.settings.maxWallHeightLevel;
+        return Math.min(max, Math.max(1, Math.round(level)));
     };
+    const clampAuthoredRailWallThickness = (level) => resolveRailWallThicknessLevel(level);
+    const setPlacePaletteKey = (key) => {
+        if (placePaletteKey === key) return;
+        placePaletteKey = key;
+        if (key.startsWith("wall:")) wallStampMode = /** @type {'voxel' | 'rail' | 'forcefield'} */ (key.slice(5));
+        selection.clearPalettePlaceSelection(key);
+        notifyUi();
+    };
+    const listPlacedProps = () => {
+        const counts = new Map();
+        const placed = [];
+        registry().forEachOfKind("worldProp", (prop) => {
+            if (prop.isDead) return;
+            const typeLabel = formatPropTypeLabel(prop.type);
+            const index = (counts.get(prop.type) ?? 0) + 1;
+            counts.set(prop.type, index);
+            placed.push({ id: prop.id, type: prop.type, faction: resolveSandboxFaction(prop), label: `${typeLabel} #${index}` });
+        });
+        return placed;
+    };
+    const listPlacedFloorBelts = () => {
+        const grid = state.obstacleGrid;
+        const counts = new Map();
+        const placed = [];
+        const size = grid.cols * grid.rows;
+        for (let idx = 0; idx < size; idx++) {
+            if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
+            const kind = grid.floorStore.kind[idx];
+            const col = idx % grid.cols;
+            const row = (idx / grid.cols) | 0;
+            const index = (counts.get(kind) ?? 0) + 1;
+            counts.set(kind, index);
+            const facingLabel = formatFloorBeltFacingLabel(grid.floorStore.facing[idx]);
+            placed.push({ col, row, kind, facingIndex: grid.floorStore.facing[idx], label: `${formatFloorBeltKindLabel(kind)} #${index} · ${facingLabel}` });
+        }
+        return placed;
+    };
+    const listPlacedPassagePowerSources = () => {
+        const grid = state.obstacleGrid;
+        const placed = [];
+        let index = 0;
+        const size = grid.cols * grid.rows;
+        for (let idx = 0; idx < size; idx++) {
+            if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) continue;
+            index++;
+            const col = idx % grid.cols;
+            const row = (idx / grid.cols) | 0;
+            const defaultPowered = grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx);
+            placed.push({ col, row, defaultPowered, label: `Power source #${index}${defaultPowered ? " · default on" : ""}` });
+        }
+        return placed;
+    };
+    const spawn = createSandboxSpawnSession(state, { getSpawnPropId: spawnPropIdFromPalette, pickSelection, notifyUi, placement });
+    const roomGraph = createSandboxRoomGraphSession(state, {
+        selection,
+        pickSelection,
+        notifyUi,
+        placement,
+        clampAuthoredRailWallHeight,
+        clampAuthoredRailWallThickness,
+        setPlacePaletteKey,
+        listPlacedProps,
+        listPlacedFloorBelts,
+        listPlacedPassagePowerSources,
+    });
+    const removeProp = (prop) => removeSandboxWorldProp(state, prop);
     return {
-        getSpawnPropId: spawnPropIdFromPalette,
-        getSpawnFaction: () => spawnFaction,
-        setSpawnFaction: (faction) => {
-            spawnFaction = faction;
-        },
-        getSpawnRoomNodeCols: () => spawnRoomNodeCols,
-        setSpawnRoomNodeCols: (cols) => {
-            spawnRoomNodeCols = Math.max(1, Math.min(32, Math.round(cols)));
-            notifyUi();
-        },
-        getSpawnRoomNodeRows: () => spawnRoomNodeRows,
-        setSpawnRoomNodeRows: (rows) => {
-            spawnRoomNodeRows = Math.max(1, Math.min(32, Math.round(rows)));
-            notifyUi();
-        },
-        getSpawnPuzzleAreaCols: () => spawnPuzzleAreaCols,
-        setSpawnPuzzleAreaCols: (cols) => {
-            spawnPuzzleAreaCols = Math.max(1, Math.min(96, Math.round(cols)));
-            notifyUi();
-        },
-        getSpawnPuzzleAreaRows: () => spawnPuzzleAreaRows,
-        setSpawnPuzzleAreaRows: (rows) => {
-            spawnPuzzleAreaRows = Math.max(1, Math.min(96, Math.round(rows)));
-            notifyUi();
-        },
-        getSpawnCorridorType: () => spawnCorridorType,
-        setSpawnCorridorType: (type) => {
-            spawnCorridorType = normalizeCorridorType(type);
-            notifyUi();
-        },
-        getSpawnCorridorWidth: () => spawnCorridorWidth,
-        setSpawnCorridorWidth: (width) => {
-            spawnCorridorWidth = Math.max(1, Math.min(8, Math.round(width)));
-            notifyUi();
-        },
-        getSpawnRoomNodeSurfaceProfileId: () => spawnRoomNodeSurfaceProfileId,
-        setSpawnRoomNodeSurfaceProfileId: (profileId) => {
-            spawnRoomNodeSurfaceProfileId = normalizeAuthoredSurfaceProfileId(profileId);
-            notifyUi();
-        },
-        getSpawnCorridorSurfaceProfileId: () => spawnCorridorSurfaceProfileId,
-        setSpawnCorridorSurfaceProfileId: (profileId) => {
-            spawnCorridorSurfaceProfileId = normalizeAuthoredSurfaceProfileId(profileId);
-            notifyUi();
-        },
+        ...spawn,
         getSelection: () => selection.getSelection(),
         select: pickSelection,
-        getSelectionInspectors() {
-            pruneSelection();
-            const id = primaryPropId();
-            return {
-                selectedPropIds: selectedPropIds(),
-                selectedProp: id == null ? null : registry().getLive(id),
-                selectedFloorBelt: getSelectedFloorBeltInfo(),
-                selectedPowerSource: getSelectedPassagePowerSourceInfo(),
-                selectedVoxelInfo: getSelectedVoxelWallInfo(),
-                selectedRailInfo: getSelectedRailWallInfo(),
-                selectedForcefieldInfo: getSelectedForcefieldInfo(),
-                selectedRoomLink: getSelectedRoomLinkInfo(),
-                selectedRoomNode: getSelectedRoomNodeInfo(),
-            };
-        },
+        getSelectionInspectors: () => buildSelectionInspectors(state, selection, (id) => registry().getLive(id), pruneSelection),
         clearSelection,
         clearPlaceMode,
         clearRoomGraphSelection: () => {
@@ -438,13 +146,12 @@ export function createSandboxSession(state) {
             notifyUi();
         },
         rotateSelectedFloorBelt(steps = 1) {
-            const floorCell = selectedFloorCell();
+            const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
             const { col, row } = floorCell;
             const idx = col + row * state.obstacleGrid.cols;
             if (!state.obstacleGrid.floorStore.isBeltKindAtIdx(idx)) {
-                selection.clearFloorSelection();
-                notifyUi();
+                clearSelection();
                 return false;
             }
             if (!rotateGridOccupantAt(state, { col, row, kind: GRID_ROTATABLE_OCCUPANT.FloorBelt }, steps)) return false;
@@ -459,15 +166,14 @@ export function createSandboxSession(state) {
             return true;
         },
         moveSelectedFloorBeltTo(targetCol, targetRow) {
-            const floorCell = selectedFloorCell();
+            const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
             const grid = state.obstacleGrid;
             const { col, row } = floorCell;
             if (col === targetCol && row === targetRow) return true;
             const idx = col + row * grid.cols;
             if (!grid.floorStore.isBeltKindAtIdx(idx)) {
-                selection.clearFloorSelection();
-                notifyUi();
+                clearSelection();
                 return false;
             }
             if (!canStampFloorBeltAt(state, targetCol, targetRow)) return false;
@@ -483,14 +189,13 @@ export function createSandboxSession(state) {
             return true;
         },
         setSelectedFloorBeltKind(kind) {
-            const floorCell = selectedFloorCell();
+            const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
             const grid = state.obstacleGrid;
             const { col, row } = floorCell;
             const idx = col + row * grid.cols;
             if (!grid.floorStore.isBeltKindAtIdx(idx)) {
-                selection.clearFloorSelection();
-                notifyUi();
+                clearSelection();
                 return false;
             }
             if (grid.floorStore.kind[idx] === kind) return true;
@@ -501,7 +206,7 @@ export function createSandboxSession(state) {
             return true;
         },
         deleteSelectedFloorCell() {
-            const floorCell = selectedFloorCell();
+            const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
             const grid = state.obstacleGrid;
             const { col, row } = floorCell;
@@ -510,13 +215,12 @@ export function createSandboxSession(state) {
                 if (!clearPassagePowerSourceAt(state, col, row)) return false;
             } else if (!grid.clearFloorCell(col, row)) return false;
             else markGridZoneSubscriptionsDirty(state);
-            forgetFloorPlacement(col, row);
-            selection.clearFloorSelection();
-            notifyUi();
+            placement.forgetFloorPlacement(col, row);
+            clearSelection();
             return true;
         },
         setSelectedPassagePowerSourceDefaultPowered(powered) {
-            const floorCell = selectedFloorCell();
+            const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
             const grid = state.obstacleGrid;
             const { col, row } = floorCell;
@@ -530,13 +234,7 @@ export function createSandboxSession(state) {
         getPlacePaletteKey: () => placePaletteKey,
         isWallPlaceMode: () => placePaletteKey.startsWith("wall:"),
         isMapGenPlaceMode: () => placePaletteKey.startsWith("gen:"),
-        setPlacePaletteKey(key) {
-            if (placePaletteKey === key) return;
-            placePaletteKey = key;
-            if (key.startsWith("wall:")) wallStampMode = /** @type {'voxel' | 'rail' | 'forcefield'} */ (key.slice(5));
-            selection.clearPalettePlaceSelection(key);
-            notifyUi();
-        },
+        setPlacePaletteKey,
         getWallStampMode: () => wallStampMode,
         setWallStampMode(mode) {
             wallStampMode = mode;
@@ -561,7 +259,7 @@ export function createSandboxSession(state) {
         listPlacedRailWalls: () => listPlacedRailWalls(state.obstacleGrid),
         listPlacedForcefields: () => listPlacedForcefields(state.obstacleGrid),
         setSelectedForcefieldMode(mode) {
-            const railEdge = selectedRailEdge();
+            const railEdge = selectionRailEdge(sel());
             if (!railEdge) return false;
             const { col, row, side } = railEdge;
             const info = getForcefieldInfo(state.obstacleGrid, col, row, side);
@@ -572,7 +270,7 @@ export function createSandboxSession(state) {
             return true;
         },
         setSelectedForcefieldAllowedSide(allowedSide) {
-            const railEdge = selectedRailEdge();
+            const railEdge = selectionRailEdge(sel());
             if (!railEdge) return false;
             const { col, row, side } = railEdge;
             const info = getForcefieldInfo(state.obstacleGrid, col, row, side);
@@ -592,7 +290,7 @@ export function createSandboxSession(state) {
                     return true;
                 }
                 if (!stampForcefieldAt(state, hit.col, hit.row, hit.side, { mode: forcefieldStampMode, allowedSide: hit.side })) return false;
-                touchEdgePlacement("forcefield", hit.col, hit.row, hit.side);
+                placement.touchEdgePlacement("forcefield", hit.col, hit.row, hit.side);
                 pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
                 return true;
             }
@@ -604,7 +302,7 @@ export function createSandboxSession(state) {
                     return true;
                 }
                 if (!stampRailWallAt(state, hit.col, hit.row, hit.side, wallHeightLevel, railThicknessLevel)) return false;
-                touchEdgePlacement("rail", hit.col, hit.row, hit.side);
+                placement.touchEdgePlacement("rail", hit.col, hit.row, hit.side);
                 pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
                 return true;
             }
@@ -613,7 +311,7 @@ export function createSandboxSession(state) {
                 return true;
             }
             if (!stampVoxelWallAt(state, col, row, wallHeightLevel)) return false;
-            touchVoxelPlacement(col, row);
+            placement.touchVoxelPlacement(col, row);
             pickSelection({ kind: "voxel", col, row });
             return true;
         },
@@ -622,7 +320,7 @@ export function createSandboxSession(state) {
             return this.stampWallAtWorld(origin.x, origin.y);
         },
         setSelectedVoxelWallHeight(heightLevel) {
-            const voxelCell = selectedVoxelCell();
+            const voxelCell = selectionVoxelCell(sel());
             if (!voxelCell) return false;
             const { col, row } = voxelCell;
             if (!setVoxelWallHeightAt(state, col, row, heightLevel)) return false;
@@ -630,7 +328,7 @@ export function createSandboxSession(state) {
             return true;
         },
         setSelectedRailWallProps(heightLevel, thicknessLevel) {
-            const railEdge = selectedRailEdge();
+            const railEdge = selectionRailEdge(sel());
             if (!railEdge) return false;
             const { col, row, side } = railEdge;
             if (!stampRailWallAt(state, col, row, side, heightLevel, thicknessLevel)) return false;
@@ -638,7 +336,7 @@ export function createSandboxSession(state) {
             return true;
         },
         setSelectedRailWallSide(newSide) {
-            const railEdge = selectedRailEdge();
+            const railEdge = selectionRailEdge(sel());
             if (!railEdge) return false;
             const grid = state.obstacleGrid;
             const { col, row, side } = railEdge;
@@ -651,26 +349,24 @@ export function createSandboxSession(state) {
             return true;
         },
         deleteSelectedWall() {
-            const voxelCell = selectedVoxelCell();
+            const voxelCell = selectionVoxelCell(sel());
             if (voxelCell) {
                 const { col, row } = voxelCell;
                 if (!clearVoxelWallAt(state, col, row)) return false;
-                forgetVoxelPlacement(col, row);
-                selection.clearWallSelection();
-                notifyUi();
+                placement.forgetVoxelPlacement(col, row);
+                clearSelection();
                 return true;
             }
-            const railEdge = selectedRailEdge();
+            const railEdge = selectionRailEdge(sel());
             if (railEdge) {
                 const { col, row, side } = railEdge;
                 const grid = state.obstacleGrid;
                 if (forcefieldEdgeAt(grid, col, row, side)) {
                     if (!clearForcefieldAt(state, col, row, side)) return false;
-                    forgetEdgePlacement("forcefield", col, row, side);
+                    placement.forgetEdgePlacement("forcefield", col, row, side);
                 } else if (!clearRailWallAt(state, col, row, side)) return false;
-                else forgetEdgePlacement("rail", col, row, side);
-                selection.clearWallSelection();
-                notifyUi();
+                else placement.forgetEdgePlacement("rail", col, row, side);
+                clearSelection();
                 return true;
             }
             return false;
@@ -683,11 +379,11 @@ export function createSandboxSession(state) {
                 if (wallStampMode === "forcefield") {
                     if (!forcefieldEdgeAt(grid, hit.col, hit.row, hit.side)) return false;
                     if (!clearForcefieldAt(state, hit.col, hit.row, hit.side)) return false;
-                    forgetEdgePlacement("forcefield", hit.col, hit.row, hit.side);
+                    placement.forgetEdgePlacement("forcefield", hit.col, hit.row, hit.side);
                 } else {
                     if (!railWallEdgeAt(grid, hit.col, hit.row, hit.side)) return false;
                     if (!clearRailWallAt(state, hit.col, hit.row, hit.side)) return false;
-                    forgetEdgePlacement("rail", hit.col, hit.row, hit.side);
+                    placement.forgetEdgePlacement("rail", hit.col, hit.row, hit.side);
                 }
                 selection.dropDeletedWallSelection(hit.col, hit.row, hit.side);
                 notifyUi();
@@ -695,7 +391,7 @@ export function createSandboxSession(state) {
             }
             const { col, row } = grid.worldToGrid(worldX, worldY);
             if (!clearVoxelWallAt(state, col, row)) return false;
-            forgetVoxelPlacement(col, row);
+            placement.forgetVoxelPlacement(col, row);
             selection.dropDeletedWallSelection(col, row);
             notifyUi();
             return true;
@@ -754,19 +450,14 @@ export function createSandboxSession(state) {
         },
         getSelectedProp: () => {
             pruneSelection();
-            const id = primaryPropId();
+            const id = selectionPrimaryPropId(sel(), (id) => registry().getLive(id));
             return id == null ? null : registry().getLive(id);
         },
         pruneSelection,
-        spawnAt,
-        spawnAtCameraOrigin() {
-            const origin = { x: state.viewport.x, y: state.viewport.y };
-            return spawnAt(origin.x, origin.y);
-        },
         deleteProp(prop) {
             if (!prop) return;
             selection.removePropFromSelection(prop.id);
-            forgetPropPlacement(prop.id);
+            placement.forgetPropPlacement(prop.id);
             removeProp(prop);
             notifyUi();
         },
@@ -774,261 +465,26 @@ export function createSandboxSession(state) {
             this.deleteProp(registry().get(id));
         },
         deleteSelectedProps() {
-            const ids = selectedPropIds();
+            const ids = selectionPropIds(sel());
             for (let i = 0; i < ids.length; i++) {
-                forgetPropPlacement(ids[i]);
+                placement.forgetPropPlacement(ids[i]);
                 removeProp(registry().get(ids[i]));
             }
-            selection.clearPropSelection();
+            clearSelection();
             notifyUi();
         },
-        listPlacedProps() {
-            const counts = new Map();
-            /** @type {{ id: number, type: string, faction: string, label: string }[]} */
-            const placed = [];
-            registry().forEachOfKind("worldProp", (prop) => {
-                if (prop.isDead) return;
-                const typeLabel = formatPropTypeLabel(prop.type);
-                const index = (counts.get(prop.type) ?? 0) + 1;
-                counts.set(prop.type, index);
-                placed.push({ id: prop.id, type: prop.type, faction: resolveSandboxFaction(prop), label: `${typeLabel} #${index}` });
-            });
-            return placed;
-        },
-        listPlacedFloorBelts() {
-            const grid = state.obstacleGrid;
-            const counts = new Map();
-            /** @type {{ col: number, row: number, kind: number, facingIndex: number, label: string }[]} */
-            const placed = [];
-            const size = grid.cols * grid.rows;
-            for (let idx = 0; idx < size; idx++) {
-                if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
-                const kind = grid.floorStore.kind[idx];
-                const col = idx % grid.cols;
-                const row = (idx / grid.cols) | 0;
-                const index = (counts.get(kind) ?? 0) + 1;
-                counts.set(kind, index);
-                const facingLabel = formatFloorBeltFacingLabel(grid.floorStore.facing[idx]);
-                placed.push({ col, row, kind, facingIndex: grid.floorStore.facing[idx], label: `${formatFloorBeltKindLabel(kind)} #${index} · ${facingLabel}` });
-            }
-            return placed;
-        },
+        listPlacedProps,
+        listPlacedFloorBelts,
         stampPassagePowerSourceAtWorld(worldX, worldY, defaultPowered = false) {
             const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
             if (!stampPassagePowerSourceAt(state, col, row, defaultPowered)) return false;
-            touchFloorPlacement(col, row);
+            placement.touchFloorPlacement(col, row);
             pickSelection({ kind: "floor", col, row });
             notifyUi();
             return true;
         },
-        listPlacedPassagePowerSources() {
-            const grid = state.obstacleGrid;
-            /** @type {{ col: number, row: number, defaultPowered: boolean, label: string }[]} */
-            const placed = [];
-            let index = 0;
-            const size = grid.cols * grid.rows;
-            for (let idx = 0; idx < size; idx++) {
-                if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) continue;
-                index++;
-                const col = idx % grid.cols;
-                const row = (idx / grid.cols) | 0;
-                const defaultPowered = grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx);
-                placed.push({ col, row, defaultPowered, label: `Power source #${index}${defaultPowered ? " · default on" : ""}` });
-            }
-            return placed;
-        },
-        pickRoomNodeAtWorld(worldX, worldY) {
-            const grid = state.obstacleGrid;
-            const { col, row } = grid.worldToGrid(worldX, worldY);
-            const node = pickRoomNodeAt(state, col, row);
-            if (!node) return false;
-            pickSelection({ kind: "roomNode", id: node.id });
-            return true;
-        },
-        addRoomLinkBetweenNodes(a, b, options = {}) {
-            const link = addRoomLink(state, a, b, options);
-            if (!link) return null;
-            touchRoomLinkCorridors(link);
-            syncRoomGraphBake(state);
-            notifyUi();
-            return link;
-        },
-        removeRoomLinkById(linkId) {
-            if (!removeRoomLink(state, linkId)) return false;
-            forgetRoomLinkPlacement(linkId);
-            selection.dropDeletedRoomLinkSelection(linkId);
-            syncRoomGraphBake(state);
-            notifyUi();
-            return true;
-        },
-        clearSelectedRoomNodeLinks() {
-            const node = selectedRoomNode();
-            if (!node) return;
-            const links = listRoomLinks(state).filter((link) => link.a === node.id || link.b === node.id);
-            clearRoomLinksForNode(state, node.id);
-            for (let i = 0; i < links.length; i++) forgetRoomLinkPlacement(links[i].id);
-            selection.dropRoomGraphIfLinkMissing((id) => !!getRoomLink(state, id));
-            syncRoomGraphBake(state);
-            notifyUi();
-        },
-        listSelectedRoomNodeLinks() {
-            const node = selectedRoomNode();
-            if (!node) return [];
-            return listRoomNodeCorridorEntries(state, node.id).map((entry) => ({ linkId: entry.link.id, corridorIndex: entry.corridorIndex, label: entry.label }));
-        },
-        deleteSelectedRoomNode() {
-            const roomNodeId = selectedRoomNodeId();
-            if (roomNodeId == null) return;
-            const links = listRoomLinks(state).filter((link) => link.a === roomNodeId || link.b === roomNodeId);
-            removeRoomNode(state, roomNodeId);
-            forgetRoomNodePlacement(roomNodeId);
-            for (let i = 0; i < links.length; i++) forgetRoomLinkPlacement(links[i].id);
-            selection.clearRoomGraphSelection();
-            syncRoomGraphBake(state);
-            notifyUi();
-        },
-        deleteSelectedRoomLink() {
-            const roomLinkId = selectedRoomLinkId();
-            if (roomLinkId == null) return;
-            forgetRoomLinkPlacement(roomLinkId);
-            removeRoomLink(state, roomLinkId);
-            selection.clearRoomLinkAfterDelete();
-            syncRoomGraphBake(state);
-            notifyUi();
-        },
-        updateSelectedRoomLink(patch) {
-            const roomLinkId = selectedRoomLinkId();
-            if (roomLinkId == null) return false;
-            if (patch.railWallHeightLevel != null) patch = { ...patch, railWallHeightLevel: clampAuthoredRailWallHeight(patch.railWallHeightLevel) };
-            if (patch.railWallThicknessLevel != null) patch = { ...patch, railWallThicknessLevel: clampAuthoredRailWallThickness(patch.railWallThicknessLevel) };
-            if (!updateRoomLink(state, roomLinkId, patch)) return false;
-            const link = getRoomLink(state, roomLinkId);
-            if (link) {
-                selection.clampRoomLinkCorridorIndex(roomLinkCorridorLaneCount(link));
-                if (patch.corridorCount != null) touchRoomLinkCorridors(link);
-            }
-            const needsReroll = patch.corridorCount != null || patch.corridorWidthMin != null || patch.corridorWidthMax != null;
-            const profileOnly =
-                patch.surfaceProfileId !== undefined && !needsReroll && patch.corridorType == null && patch.railWallHeightLevel == null && patch.railWallThicknessLevel == null && patch.seed == null;
-            if (!needsReroll && !profileOnly) syncRoomGraphBake(state);
-            if (profileOnly) invalidateRoomLinkFloorSurface(state, roomLinkId);
-            notifyUi();
-            return true;
-        },
-        updateSelectedRoomNode(patch) {
-            const roomNodeId = selectedRoomNodeId();
-            if (roomNodeId == null) return false;
-            if (patch.railWallHeightLevel != null) patch = { ...patch, railWallHeightLevel: clampAuthoredRailWallHeight(patch.railWallHeightLevel) };
-            if (patch.railWallThicknessLevel != null) patch = { ...patch, railWallThicknessLevel: clampAuthoredRailWallThickness(patch.railWallThicknessLevel) };
-            if (!updateRoomNode(state, roomNodeId, patch)) return false;
-            const profileOnly = patch.surfaceProfileId !== undefined && patch.railWallHeightLevel == null && patch.railWallThicknessLevel == null;
-            if (profileOnly) invalidateRoomNodeFloorSurface(state, getRoomNode(state, roomNodeId));
-            else syncRoomGraphBake(state);
-            notifyUi();
-            return true;
-        },
-        rerollSelectedRoomLink() {
-            const roomLinkId = selectedRoomLinkId();
-            if (roomLinkId == null) return;
-            rerollRoomLinkBake(state, roomLinkId);
-            notifyUi();
-        },
-        listPlacedRoomNodes() {
-            return listRoomNodes(state).map((node) => ({ id: node.id, col: node.col, row: node.row, width: node.width, height: node.height, label: formatRoomNodeLabel(node) }));
-        },
-        listPlacedRoomLinks() {
-            return listRoomLinkCorridorSceneEntries(state);
-        },
-        seedPlacementOrderFromState() {
-            resetPlacementOrder();
-            const props = this.listPlacedProps().sort((a, b) => a.id - b.id);
-            for (let i = 0; i < props.length; i++) touchPropPlacement(props[i].id);
-            for (const entry of this.listPlacedFloorBelts()) touchFloorPlacement(entry.col, entry.row);
-            for (const entry of this.listPlacedPassagePowerSources()) touchFloorPlacement(entry.col, entry.row);
-            for (const entry of this.listPlacedVoxelWalls()) touchVoxelPlacement(entry.col, entry.row);
-            for (const entry of this.listPlacedRailWalls()) touchEdgePlacement("rail", entry.col, entry.row, entry.side);
-            for (const entry of this.listPlacedForcefields()) touchEdgePlacement("forcefield", entry.col, entry.row, entry.side);
-            for (const entry of this.listPlacedRoomNodes()) touchRoomNodePlacement(entry.id);
-            for (const entry of this.listPlacedRoomLinks()) touchRoomLinkPlacement(entry.linkId, entry.corridorIndex);
-        },
-        listPlacedSceneItems() {
-            /** @type {{ seq: number, kind: string, label: string, propId?: number, propType?: string, col?: number, row?: number, side?: number }[]} */
-            const items = [];
-            for (const entry of this.listPlacedProps())
-                items.push({
-                    seq: placementSeq(propPlacementKey(entry.id), entry.id),
-                    kind: "prop",
-                    label: `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`,
-                    propId: entry.id,
-                    propType: entry.type,
-                });
-            for (const entry of this.listPlacedFloorBelts())
-                items.push({ seq: placementSeq(floorPlacementKey(entry.col, entry.row), 1e9 + entry.col + entry.row * 1e6), kind: "floorBelt", label: entry.label, col: entry.col, row: entry.row });
-            for (const entry of this.listPlacedPassagePowerSources())
-                items.push({ seq: placementSeq(floorPlacementKey(entry.col, entry.row), 2e9 + entry.col + entry.row * 1e6), kind: "powerSource", label: entry.label, col: entry.col, row: entry.row });
-            for (const entry of listTrackedVoxelWalls())
-                items.push({ seq: placementSeq(voxelPlacementKey(entry.col, entry.row), 3e9 + entry.col + entry.row * 1e6), kind: "voxel", label: entry.label, col: entry.col, row: entry.row });
-            for (const entry of listTrackedRailWalls())
-                items.push({
-                    seq: placementSeq(edgePlacementKey("rail", entry.col, entry.row, entry.side), 4e9 + entry.col + entry.row * 1e6 + entry.side),
-                    kind: "rail",
-                    label: entry.label,
-                    col: entry.col,
-                    row: entry.row,
-                    side: entry.side,
-                });
-            for (const entry of this.listPlacedForcefields())
-                items.push({
-                    seq: placementSeq(edgePlacementKey("forcefield", entry.col, entry.row, entry.side), 5e9 + entry.col + entry.row * 1e6 + entry.side),
-                    kind: "forcefield",
-                    label: entry.label,
-                    col: entry.col,
-                    row: entry.row,
-                    side: entry.side,
-                });
-            for (const entry of this.listPlacedRoomNodes())
-                items.push({ seq: placementSeq(roomNodePlacementKey(entry.id), 7e9 + entry.id), kind: "roomNode", label: entry.label, roomNodeId: entry.id });
-            for (const entry of this.listPlacedRoomLinks())
-                items.push({
-                    seq: placementSeq(roomLinkPlacementKey(entry.linkId, entry.corridorIndex), 8e9 + entry.linkId + entry.corridorIndex * 1e6),
-                    kind: "roomLink",
-                    label: entry.label,
-                    roomLinkId: entry.linkId,
-                    corridorIndex: entry.corridorIndex,
-                });
-            items.sort((a, b) => a.seq - b.seq);
-            return items;
-        },
-        isSceneItemSelected(item) {
-            return selection.matchesSceneItem(item);
-        },
-        selectSceneItem(item) {
-            if (item.kind === "prop") {
-                this.setPlacePaletteKey(`prop:${item.propType}`);
-                pickSelection({ kind: "prop", ids: [item.propId] });
-                return;
-            }
-            if (item.kind === "roomNode") {
-                pickSelection({ kind: "roomNode", id: item.roomNodeId });
-                return;
-            }
-            if (item.kind === "roomLink") {
-                pickSelection({ kind: "roomLink", linkId: item.roomLinkId, corridorIndex: item.corridorIndex ?? 0, nodeId: null });
-                return;
-            }
-            if (item.kind === "floorBelt" || item.kind === "powerSource") {
-                pickSelection({ kind: "floor", col: item.col, row: item.row });
-                return;
-            }
-            if (item.kind === "voxel") {
-                this.setPlacePaletteKey("wall:voxel");
-                pickSelection({ kind: "voxel", col: item.col, row: item.row });
-                return;
-            }
-            const wallKey = item.kind === "rail" ? "rail" : "forcefield";
-            this.setPlacePaletteKey(`wall:${wallKey}`);
-            pickSelection({ kind: "rail", col: item.col, row: item.row, side: item.side });
-        },
+        listPlacedPassagePowerSources,
+        ...roomGraph,
         deleteSceneItem(item) {
             if (item.kind === "prop") {
                 this.deletePropById(item.propId);
@@ -1063,7 +519,7 @@ export function createSandboxSession(state) {
             unbakeRoomGraph(state);
             clearRoomGraph(state);
             selection.clearSelection();
-            resetPlacementOrder();
+            placement.resetPlacementOrder();
             notifyUi();
         },
         setUiSync(fn) {
