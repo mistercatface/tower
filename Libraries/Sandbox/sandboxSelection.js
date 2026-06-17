@@ -165,5 +165,12 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         },
     };
 }
+export function selectionDrawCells(selection) {
+    return {
+        selectedFloorCell: selection?.kind === "floor" ? { col: selection.col, row: selection.row } : null,
+        selectedVoxelCell: selection?.kind === "voxel" ? { col: selection.col, row: selection.row } : null,
+        selectedRailEdge: selection?.kind === "rail" ? { col: selection.col, row: selection.row, side: selection.side } : null,
+    };
+}
 /** @typedef {{ kind: 'prop', ids: Set<number> } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number } | { kind: 'roomNode', id: number } | { kind: 'roomLink', linkId: number | null, corridorIndex: number, nodeId: number | null }} SandboxSelection */
 /** @typedef {{ kind: 'prop', ids: number[] } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number } | { kind: 'roomNode', id: number } | { kind: 'roomLink', linkId: number | null, corridorIndex?: number, nodeId?: number | null }} SandboxSelectInput */

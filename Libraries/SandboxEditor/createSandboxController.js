@@ -25,6 +25,7 @@ import { drawSandboxWeaponBars } from "../Sandbox/drawWorldPropWeaponBars.js";
 import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
+import { selectionDrawCells } from "../Sandbox/sandboxSelection.js";
 /**
  * @param {object} state
  * @param {{
@@ -96,6 +97,19 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         session.clearPlaceMode();
         session.sync();
     };
+    const selectProp = (id) => {
+        exitWireModes();
+        session.select(id == null ? null : { kind: "prop", ids: [id] });
+        const prop = session.getSelectedProp();
+        if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
+            const allowed = listSelectedBehaviors(prop);
+            if (allowed.length > 0) entityMeta().setActiveBehaviorId(prop.id, allowed[0]);
+        }
+    };
+    const selectPropIds = (ids) => {
+        exitWireModes();
+        session.select({ kind: "prop", ids });
+    };
     const resolveBehavior = () => {
         const prop = session.getSelectedProp();
         if (!prop) return null;
@@ -127,8 +141,9 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         resolveBehavior,
         resolveGroundMove,
         gestures,
+        selectProp,
     });
-    const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior });
+    const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior, selectPropIds });
     const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, buttonWireTool, corridorLinkWireTool, interactTool, gestureTool, marqueeTool], { clientToWorld });
     const enterCorridorLinkWireMode = () => {
         buttonWireTool.exit();
@@ -204,27 +219,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         setSpawnRoomNodeSurfaceProfileId: (profileId) => session.setSpawnRoomNodeSurfaceProfileId(profileId),
         getSpawnCorridorSurfaceProfileId: () => session.getSpawnCorridorSurfaceProfileId(),
         setSpawnCorridorSurfaceProfileId: (profileId) => session.setSpawnCorridorSurfaceProfileId(profileId),
-        getSelectedPropId: () => session.getSelectedPropId(),
-        getSelectedPropIds: () => session.getSelectedPropIds(),
-        getSelectedProp: () => session.getSelectedProp(),
-        setSelectedPropIds: (ids) => {
-            exitWireModes();
-            session.setSelectedPropIds(ids);
-        },
-        clearPropSelection: () => {
-            exitWireModes();
-            session.clearPropSelection();
-        },
         deleteSelectedProps: () => session.deleteSelectedProps(),
-        setSelectedPropId: (id) => {
-            exitWireModes();
-            session.setSelectedPropId(id);
-            const prop = session.getSelectedProp();
-            if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
-                const allowed = listSelectedBehaviors(prop);
-                if (allowed.length > 0) entityMeta().setActiveBehaviorId(prop.id, allowed[0]);
-            }
-        },
         startButtonWireLink: () => {
             corridorLinkWireTool.exit();
             buttonWireTool.startLink();
@@ -233,11 +228,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         isButtonWireLinkActive: () => buttonWireTool.isActive(),
         isCorridorLinkWireActive: () => corridorLinkWireTool.isActive(),
         getCorridorLinkWireFromNodeId: () => corridorLinkWireTool.getFromNodeId(),
-        getSelectedRoomNodeInfo: () => session.getSelectedRoomNodeInfo(),
-        getSelectedRoomLinkInfo: () => session.getSelectedRoomLinkInfo(),
-        getSelectedRoomLinkId: () => session.getSelectedRoomLinkId(),
-        getSelectedRoomLinkCorridorIndex: () => session.getSelectedRoomLinkCorridorIndex(),
-        setSelectedRoomLinkId: (linkId, corridorIndex) => session.setSelectedRoomLinkId(linkId, corridorIndex),
         deleteSelectedRoomNode: () => session.deleteSelectedRoomNode(),
         deleteSelectedRoomLink: () => session.deleteSelectedRoomLink(),
         updateSelectedRoomLink: (patch) => session.updateSelectedRoomLink(patch),
@@ -272,15 +262,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         listPlacedFloorBelts: () => session.listPlacedFloorBelts(),
         stampPassagePowerSourceAtWorld: (worldX, worldY, defaultPowered) => session.stampPassagePowerSourceAtWorld(worldX, worldY, defaultPowered),
         listPlacedPassagePowerSources: () => session.listPlacedPassagePowerSources(),
-        getSelectedFloorCell: () => session.getSelectedFloorCell(),
-        setSelectedFloorCell: (col, row) => session.setSelectedFloorCell(col, row),
-        clearFloorSelection: () => session.clearFloorSelection(),
         rotateSelectedFloorBelt: (steps) => session.rotateSelectedFloorBelt(steps),
         moveSelectedFloorBeltTo: (col, row) => session.moveSelectedFloorBeltTo(col, row),
         setSelectedFloorBeltKind: (kind) => session.setSelectedFloorBeltKind(kind),
         deleteSelectedFloorCell: () => session.deleteSelectedFloorCell(),
-        getSelectedFloorBeltInfo: () => session.getSelectedFloorBeltInfo(),
-        getSelectedPassagePowerSourceInfo: () => session.getSelectedPassagePowerSourceInfo(),
         setSelectedPassagePowerSourceDefaultPowered: (powered) => session.setSelectedPassagePowerSourceDefaultPowered(powered),
         getPlacePaletteKey: () => session.getPlacePaletteKey(),
         setPlacePaletteKey: (key) => {
@@ -310,11 +295,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         setWallHeightLevel: (level) => session.setWallHeightLevel(level),
         getRailThicknessLevel: () => session.getRailThicknessLevel(),
         setRailThicknessLevel: (level) => session.setRailThicknessLevel(level),
-        getSelectedVoxelCell: () => session.getSelectedVoxelCell(),
-        getSelectedRailEdge: () => session.getSelectedRailEdge(),
-        setSelectedVoxelCell: (col, row) => session.setSelectedVoxelCell(col, row),
-        setSelectedRailEdge: (col, row, side) => session.setSelectedRailEdge(col, row, side),
-        clearWallSelection: () => session.clearWallSelection(),
         listPlacedVoxelWalls: () => session.listPlacedVoxelWalls(),
         listPlacedRailWalls: () => session.listPlacedRailWalls(),
         listPlacedForcefields: () => session.listPlacedForcefields(),
@@ -326,9 +306,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         deleteSceneItem: (item) => session.deleteSceneItem(item),
         seedPlacementOrderFromState: () => session.seedPlacementOrderFromState(),
-        getSelectedVoxelWallInfo: () => session.getSelectedVoxelWallInfo(),
-        getSelectedRailWallInfo: () => session.getSelectedRailWallInfo(),
-        getSelectedForcefieldInfo: () => session.getSelectedForcefieldInfo(),
         getForcefieldStampMode: () => session.getForcefieldStampMode(),
         setForcefieldStampMode: (mode) => session.setForcefieldStampMode(mode),
         setSelectedForcefieldMode: (mode) => session.setSelectedForcefieldMode(mode),
@@ -450,9 +427,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             behavior?.drawOverlay?.(ctx, prop);
         },
         drawBehaviorOverlays(ctx) {
+            const sel = session.getSelection();
             drawPlacedRoomNodes(ctx, state, state.obstacleGrid, {
-                selectedNodeId: session.getSelectedRoomNodeId(),
-                selectedLinkId: session.getSelectedRoomLinkId(),
+                selectedNodeId: sel?.kind === "roomNode" ? sel.id : sel?.kind === "roomLink" ? sel.nodeId : null,
+                selectedLinkId: sel?.kind === "roomLink" ? sel.linkId : null,
                 wireFromNodeId: corridorLinkWireTool.getFromNodeId(),
                 wireCursor: corridorLinkWireTool.getCursor(),
                 showRoomNodesAlways: state.editor.showRoomNodesAlways,
@@ -467,9 +445,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             drawSandboxSelectionRings(ctx, {
                 selectedProps,
                 showRings: state.editor.showSelectionRings,
-                selectedFloorCell: session.getSelectedFloorCell(),
-                selectedVoxelCell: session.getSelectedVoxelCell(),
-                selectedRailEdge: session.getSelectedRailEdge(),
+                ...selectionDrawCells(session.getSelection()),
                 grid: state.obstacleGrid,
                 camera: { px: state.viewport.x, py: state.viewport.y },
             });
@@ -512,5 +488,5 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.sync();
         },
     };
-    return controller;
+    return { controller, session };
 }

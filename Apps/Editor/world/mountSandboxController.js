@@ -31,14 +31,15 @@ export function mountSandboxController(state, { playMode = false } = {}) {
         state.editor.showRoomNodesAlways = false;
     }
     const getCanvas = () => state.editor.canvas;
-    state.sandbox.controller = createSandboxController(state, {
+    const { controller, session } = createSandboxController(state, {
         getCanvas,
         clientToWorld(clientX, clientY) {
             return canvasClientToWorld(getCanvas(), state.viewport, clientX, clientY);
         },
         behaviors: createSandboxBehaviors(state),
     });
-    const controller = state.sandbox.controller;
+    state.sandbox.controller = controller;
+    state.sandbox.session = session;
     controller.register();
     return controller;
 }

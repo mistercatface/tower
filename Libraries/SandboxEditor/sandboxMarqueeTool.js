@@ -2,7 +2,7 @@ import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
 import { drawSandboxMarquee } from "../Sandbox/drawSandboxSelection.js";
-export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch, stampPropBehavior }) {
+export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch, stampPropBehavior, selectPropIds }) {
     return createMarqueeSelectTool({
         getCanvas,
         buildAabbFromDrag: (startWorld, endWorld) => aabbFromTwoPointsInto(aabbScratch, startWorld.x, startWorld.y, endWorld.x, endWorld.y),
@@ -12,7 +12,7 @@ export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratc
         },
         onBoxSelect(bounds) {
             const props = queryEntitiesInAabbStrict(state.entityRegistry, bounds, { kinds: ["worldProp"], hitTest: "center" });
-            session.setSelectedPropIds(props.map((prop) => prop.id));
+            selectPropIds(props.map((prop) => prop.id));
         },
         drawMarquee: (ctx, bounds) => drawSandboxMarquee(ctx, { marqueeRect: bounds }),
     });

@@ -51,17 +51,11 @@ export function mountSandboxToyUi(container, state, controller) {
             return;
         }
         const activeItem = paletteKey === "" ? null : (paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0]);
-        const selectedPropIds = new Set(controller.getSelectedPropIds());
-        const selectedProp = controller.getSelectedProp();
-        const selectedFloorBelt = controller.getSelectedFloorBeltInfo();
-        const selectedPowerSource = controller.getSelectedPassagePowerSourceInfo();
-        const selectedVoxelInfo = controller.getSelectedVoxelWallInfo();
-        const selectedRailInfo = controller.getSelectedRailWallInfo();
-        const selectedForcefieldInfo = controller.getSelectedForcefieldInfo();
-        const selectedRoomLink = controller.getSelectedRoomLinkInfo();
-        const selectedRoomNode = controller.getSelectedRoomNodeInfo();
+        const { selectedPropIds, selectedProp, selectedFloorBelt, selectedPowerSource, selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo, selectedRoomLink, selectedRoomNode } =
+            state.sandbox.session.getSelectionInspectors();
+        const selectedPropIdSet = new Set(selectedPropIds);
         const wallStampMode = controller.getWallStampMode();
-        const selectionCount = selectedPropIds.size;
+        const selectionCount = selectedPropIdSet.size;
         appendPinnedSection(
             container,
             "palette",

@@ -7,6 +7,8 @@ export class SandboxWorldState {
         this.animatedSurfaceZones = [];
         /** @type {object | null} */
         this.controller = null;
+        /** @type {ReturnType<import("../Libraries/Sandbox/sandboxSession.js").createSandboxSession> | null} */
+        this.session = null;
         /** @type {import("../Libraries/Spatial/zones/gridZoneMembership.js").GridZoneSubscriptions | null} */
         this.gridZoneSubscriptions = null;
         this.gridZoneSubscriptionsDirty = true;

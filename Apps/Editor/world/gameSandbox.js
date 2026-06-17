@@ -8,4 +8,5 @@ export function mountGameSandbox(state) {
 export function destroyGameSandbox(state) {
     state.sandbox.controller?.destroy();
     state.sandbox.controller = null;
+    state.sandbox.session = null;
 }

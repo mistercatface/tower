@@ -10,7 +10,7 @@ export function appendGridSelectionInspector(body, state, controller, selection)
     }
     if (appendFloorSelectedInspector(body, controller, { selectedPowerSource, selectedFloorBelt })) return true;
     if (selectedRoomNode) {
-        appendRoomNodeSelectedInspector(body, state, controller, selectedRoomNode);
+        appendRoomNodeSelectedInspector(body, state, controller, state.sandbox.session, selectedRoomNode);
         return true;
     }
     if (selectedRoomLink) {
