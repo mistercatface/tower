@@ -31,7 +31,7 @@ export {
     listRoomLinkCorridorSceneEntries,
     updateRoomLink,
 } from "./roomGraphStore.js";
-export { DEFAULT_ROOM_NODE_COLS, DEFAULT_ROOM_NODE_ROWS, canStampRoomNodeAt, resolveRoomNodePlacePreview, roomNodeCellBlocked, stampRoomNodeAt } from "./roomGraphPlacement.js";
+export { DEFAULT_ROOM_NODE_COLS, DEFAULT_ROOM_NODE_ROWS, canStampRoomNodeAt, resolveRoomNodePlacePreview, roomNodeCellBlocked, stampRoomNodeAt, stampLockedRoomNodeAt } from "./roomGraphPlacement.js";
 export { drawPlacedRoomNodes } from "./roomGraphDraw.js";
 export { collectRoomGraphForSnapshot, applyRoomGraphFromSnapshot } from "./roomGraphSnapshot.js";
 export { syncRoomGraphBake, unbakeRoomGraph, rerollRoomLinkBake, expandGridForRoomNodeFootprint } from "./roomGraphBake.js";

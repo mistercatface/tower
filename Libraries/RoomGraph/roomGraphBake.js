@@ -9,6 +9,7 @@ import { resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
 import { normalizeCorridorType, isConveyorCorridorType, isOpenCorridorType } from "./roomGraphCorridorTypes.js";
 import { clearBakedFloorBeltsQuiet, stampBakedFloorBeltsQuiet } from "./roomGraphFloorBelts.js";
 import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle, stampCorridorBundleBelts, stampCorridorBundleRails } from "./roomGraphCorridorApply.js";
+import { clearLockedRoomBakes, syncLockedRoomBakes } from "./roomGraphLockedRoom.js";
 import { corridorSearchBounds } from "../Pathfinding/Corridor/corridorWalkGrid.js";
 import { DEFAULT_CORRIDOR_EGRESS_CELLS } from "./roomGraphCorridorRails.js";
 /** @typedef {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }} BakedRail */
@@ -101,7 +102,7 @@ function computeRoomGraphBake(layout) {
     const originCol = 0;
     const originRow = 0;
     const { rooms, graphEdges, closedRooms, links } = layout;
-    if (!rooms.length) return { rails: [], belts: [] };
+    if (!rooms.length) return { rails: [], belts: [], closedRooms: [] };
     const linkById = new Map();
     for (let i = 0; i < links.length; i++) linkById.set(links[i].id, links[i]);
     const placedPaths = [];
@@ -138,7 +139,7 @@ function computeRoomGraphBake(layout) {
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
     const gapKeys = roomWallGapKeysWorld(closedRooms, originCol, originRow);
     const corridorRails = corridorRailLists.length ? omitRailWallsAtGapKeys(mergeRailWalls(corridorRailLists), gapKeys) : [];
-    return { rails: mergeRailWalls([roomRails, corridorRails]), belts: bakedBelts };
+    return { rails: mergeRailWalls([roomRails, corridorRails]), belts: bakedBelts, closedRooms };
 }
 /** Rebuild all room-graph-owned rail walls from `state.roomGraph`. */
 export function syncRoomGraphBake(state) {
@@ -148,6 +149,7 @@ export function syncRoomGraphBake(state) {
     setBakedFloorBelts(state, []);
     let layout = buildAuthoredBakeLayout(state);
     if (!layout.rooms.length) {
+        clearLockedRoomBakes(state);
         if (dirtyBounds) commitBoundaryEdit(state, dirtyBounds);
         return;
     }
@@ -162,9 +164,11 @@ export function syncRoomGraphBake(state) {
     dirtyBounds = unionCellBounds(dirtyBounds, railBounds);
     dirtyBounds = unionCellBounds(dirtyBounds, beltBounds);
     if (dirtyBounds) commitBoundaryEdit(state, dirtyBounds);
+    syncLockedRoomBakes(state, layout, bake.closedRooms);
 }
 /** @param {object} state */
 export function unbakeRoomGraph(state) {
+    clearLockedRoomBakes(state);
     let bounds = clearRailWallsQuiet(state, listBakedRails(state));
     bounds = unionCellBounds(bounds, clearBakedFloorBeltsQuiet(state, listBakedFloorBelts(state)));
     setBakedRails(state, []);

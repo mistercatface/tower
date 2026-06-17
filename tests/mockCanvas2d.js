@@ -64,6 +64,12 @@ export function createMockCanvas2d(width, height) {
         clip() {
             ops.push({ op: "clip" });
         },
+        createImageData(w, h) {
+            return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) };
+        },
+        putImageData() {
+            ops.push({ op: "putImageData" });
+        },
         rect(x, y, w, h) {
             ops.push({ op: "rect", x, y, w, h });
         },

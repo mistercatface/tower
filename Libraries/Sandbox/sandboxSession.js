@@ -3,7 +3,14 @@ import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLab
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
-import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset, isRoomLinkSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
+import {
+    isGridFloorBeltSpawnAsset,
+    isGridPassagePowerSourceSpawnAsset,
+    isLockedRoomSpawnAsset,
+    isRoomNodeSpawnAsset,
+    isRoomLinkSpawnAsset,
+    resolveFloorBeltKindFromSpawnAsset,
+} from "./sandboxCapabilities.js";
 import {
     clearRoomGraph,
     DEFAULT_ROOM_NODE_COLS,
@@ -24,6 +31,7 @@ import {
     removeRoomLink,
     removeRoomNode,
     stampRoomNodeAt,
+    stampLockedRoomNodeAt,
     updateRoomLink,
     syncRoomGraphBake,
     unbakeRoomGraph,
@@ -328,7 +336,9 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(worldX, worldY);
             expandGridForRoomNodeFootprint(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows);
-            const node = stampRoomNodeAt(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows);
+            const node = isLockedRoomSpawnAsset(asset)
+                ? stampLockedRoomNodeAt(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows)
+                : stampRoomNodeAt(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows);
             if (!node) return false;
             touchRoomNodePlacement(node.id);
             setSelectedRoomNodeId(node.id);

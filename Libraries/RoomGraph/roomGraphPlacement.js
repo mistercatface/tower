@@ -2,10 +2,9 @@ import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 import { addRoomNode, roomNodeOccupiesCell } from "./roomGraphStore.js";
-
+import { LOCKED_ROOM_KIND } from "./roomGraphLockedRoom.js";
 export const DEFAULT_ROOM_NODE_COLS = 8;
 export const DEFAULT_ROOM_NODE_ROWS = 8;
-
 /** @param {object} state @param {number} col @param {number} row */
 export function roomNodeCellBlocked(state, col, row) {
     const grid = state.obstacleGrid;
@@ -16,7 +15,6 @@ export function roomNodeCellBlocked(state, col, row) {
     if (roomNodeOccupiesCell(state, col, row)) return true;
     return false;
 }
-
 /** @param {object} state @param {number} anchorCol @param {number} anchorRow @param {number} width @param {number} height */
 export function canStampRoomNodeAt(state, anchorCol, anchorRow, width, height) {
     const grid = state.obstacleGrid;
@@ -30,7 +28,6 @@ export function canStampRoomNodeAt(state, anchorCol, anchorRow, width, height) {
     });
     return clear;
 }
-
 /**
  * @param {object} state
  * @param {number} anchorCol
@@ -42,7 +39,7 @@ export function resolveRoomNodePlacePreview(state, anchorCol, anchorRow, width, 
     /** @type {{ col: number, row: number, clear: boolean }[]} */
     const cells = [];
     let valid = true;
-    for (let dr = 0; dr < height; dr++) {
+    for (let dr = 0; dr < height; dr++)
         for (let dc = 0; dc < width; dc++) {
             const col = anchorCol + dc;
             const row = anchorRow + dr;
@@ -50,12 +47,16 @@ export function resolveRoomNodePlacePreview(state, anchorCol, anchorRow, width, 
             if (!clear) valid = false;
             cells.push({ col, row, clear });
         }
-    }
     return { kind: "cellRect", anchorCol, anchorRow, width, height, cells, valid, tint: "node" };
 }
-
-/** @param {object} state @param {number} anchorCol @param {number} anchorRow @param {number} width @param {number} height */
-export function stampRoomNodeAt(state, anchorCol, anchorRow, width, height) {
+/** @param {object} state @param {number} anchorCol @param {number} anchorRow @param {number} width @param {number} height @param {string} [kind] */
+export function stampRoomNodeAt(state, anchorCol, anchorRow, width, height, kind) {
     if (!canStampRoomNodeAt(state, anchorCol, anchorRow, width, height)) return null;
-    return addRoomNode(state, { col: anchorCol, row: anchorRow, width, height });
+    const spec = { col: anchorCol, row: anchorRow, width, height };
+    if (kind) spec.kind = kind;
+    return addRoomNode(state, spec);
+}
+/** @param {object} state @param {number} anchorCol @param {number} anchorRow @param {number} width @param {number} height */
+export function stampLockedRoomNodeAt(state, anchorCol, anchorRow, width, height) {
+    return stampRoomNodeAt(state, anchorCol, anchorRow, width, height, LOCKED_ROOM_KIND);
 }

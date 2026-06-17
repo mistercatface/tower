@@ -1,16 +1,16 @@
 import { clampLinkCorridorRanges, ensureLinkCorridorFields } from "./roomGraphLinkCorridor.js";
 import { CORRIDOR_TYPE_EMPTY, CORRIDOR_TYPE_OPEN, normalizeCorridorType, formatCorridorTypeLabel } from "./roomGraphCorridorTypes.js";
-/** @typedef {{ id: number, col: number, row: number, width: number, height: number }} RoomNode */
+/** @typedef {{ id: number, col: number, row: number, width: number, height: number, kind?: string }} RoomNode */
 /** @typedef {{ id: number, a: number, b: number, corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, seed?: number }} RoomLink */
 /** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[], bakedFloorBelts?: { col: number, row: number, kind: number, facingIndex: number }[] }} RoomGraphDoc */
 /** @param {object} state @returns {RoomGraphDoc} */
 export function getRoomGraph(state) {
-    if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [] };
+    if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [], bakedLockedRooms: [] };
     return state.roomGraph;
 }
 /** @param {object} state */
 export function clearRoomGraph(state) {
-    state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [] };
+    state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [], bakedLockedRooms: [] };
 }
 /** @param {object} state @returns {RoomNode[]} */
 export function listRoomNodes(state) {
@@ -221,7 +221,7 @@ export function replaceRoomGraph(state, doc) {
         if (nodeA && nodeB) clampLinkCorridorRanges(copy, nodeA, nodeB);
         return copy;
     });
-    state.roomGraph = { nodes: doc.nodes.map((node) => ({ ...node })), links, nextNodeId: doc.nextNodeId, nextLinkId: doc.nextLinkId, bakedRails: [], bakedFloorBelts: [] };
+    state.roomGraph = { nodes: doc.nodes.map((node) => ({ ...node })), links, nextNodeId: doc.nextNodeId, nextLinkId: doc.nextLinkId, bakedRails: [], bakedFloorBelts: [], bakedLockedRooms: [] };
 }
 /** @param {object} state @returns {RoomGraphDoc} */
 export function cloneRoomGraphDoc(state) {

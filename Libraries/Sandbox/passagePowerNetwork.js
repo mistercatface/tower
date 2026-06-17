@@ -4,7 +4,7 @@ import { emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStruc
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { canonicalEdgeCellKey, edgeNeighbor, forEachCellEdge } from "../Spatial/grid/gridCellTopology.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
-import { buttonEffectiveActive } from "./buttonInput.js";
+import { buttonEffectiveActive, isButtonActive } from "./buttonInput.js";
 import { GRID_NAV_EPOCH, setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 /** @typedef {{ col: number, row: number, side: number, key: number }} PassageEdgeRef */
 /** Cardinal edge endpoints as grid vertices (cell-corner coordinates). */
@@ -71,29 +71,38 @@ function buildPassagePowerGraph(grid) {
     );
     return { vertexEdges, edgeByKey };
 }
+function passagePowerSourceIdxForGridCellLink(grid, link) {
+    const half = grid.cellHalfSize;
+    const { col, row } = grid.worldToGrid(link.globalCol * grid.cellSize + half, link.globalRow * grid.cellSize + half);
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return -1;
+    const idx = colRowToIndex(col, row, grid.cols);
+    if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return -1;
+    return idx;
+}
 function collectEnergizedSourceCells(grid, state) {
     /** @type {Set<number>} */
     const energized = new Set();
+    /** @type {Set<number>} */
+    const suppressed = new Set();
     const size = grid.cols * grid.rows;
     for (let idx = 0; idx < size; idx++) {
         if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) continue;
         if (grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx)) energized.add(idx);
     }
-    const half = grid.cellHalfSize;
     forEachButtonEntity(state, (button) => {
         const signal = buttonEffectiveActive(state, button);
-        if (!signal) return;
+        const rawActive = isButtonActive(state, button);
         const links = getButtonLinks(button);
         for (let i = 0; i < links.length; i++) {
             const link = links[i];
             if (link.type !== "gridCell") continue;
-            const { col, row } = grid.worldToGrid(link.globalCol * grid.cellSize + half, link.globalRow * grid.cellSize + half);
-            if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-            const idx = colRowToIndex(col, row, grid.cols);
-            if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) continue;
-            energized.add(idx);
+            const idx = passagePowerSourceIdxForGridCellLink(grid, link);
+            if (idx < 0) continue;
+            if (signal) energized.add(idx);
+            else if (button.invert && rawActive) suppressed.add(idx);
         }
     });
+    for (const idx of suppressed) energized.delete(idx);
     return energized;
 }
 /** Flood from energized source corner vertices through shared-endpoint passage edges. */
@@ -136,23 +145,7 @@ export function isPassagePowerSourceEnergized(state, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const idx = colRowToIndex(col, row, grid.cols);
     if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return false;
-    if (grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx)) return true;
-    const half = grid.cellHalfSize;
-    let energized = false;
-    forEachButtonEntity(state, (button) => {
-        if (energized || !buttonEffectiveActive(state, button)) return;
-        const links = getButtonLinks(button);
-        for (let i = 0; i < links.length; i++) {
-            const link = links[i];
-            if (link.type !== "gridCell") continue;
-            const { col: linkCol, row: linkRow } = grid.worldToGrid(link.globalCol * grid.cellSize + half, link.globalRow * grid.cellSize + half);
-            if (linkCol === col && linkRow === row) {
-                energized = true;
-                return;
-            }
-        }
-    });
-    return energized;
+    return collectEnergizedSourceCells(grid, state).has(idx);
 }
 export function passagePowerNavKey(state) {
     const grid = state.obstacleGrid;
