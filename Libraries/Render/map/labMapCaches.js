@@ -134,6 +134,21 @@ export async function ensureLabPathDebugCache(state) {
     })();
     return state._labPathDebugBake;
 }
+export function drawLabPathDebugOverlay(ctx, viewport, state, onCacheReady) {
+    if (state._labPathDebugKey !== labPathDebugCacheKey(state) && !state._labPathDebugRedrawScheduled) {
+        state._labPathDebugRedrawScheduled = true;
+        void ensureLabPathDebugCache(state).then(() => {
+            state._labPathDebugRedrawScheduled = false;
+            onCacheReady?.();
+        });
+    }
+    const pathCache = state.mapPathDebugCache;
+    if (!pathCache) return;
+    ctx.save();
+    viewport.apply(ctx);
+    ctx.drawImage(pathCache.canvas, pathCache.minX, pathCache.minY);
+    ctx.restore();
+}
 /** @param {object} state */
 export function rebuildLabMapOverviewCache(state) {
     const grid = state.obstacleGrid;

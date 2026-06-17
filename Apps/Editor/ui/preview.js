@@ -10,7 +10,7 @@ import { floorPropEffectPass } from "../../../Libraries/Sandbox/floorProps.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
-import { ensureLabPathDebugCache, labPathDebugCacheKey } from "../../../Libraries/Render/map/labMapCaches.js";
+import { drawLabPathDebugOverlay } from "../../../Libraries/Render/map/labMapCaches.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 /** @type {import("../../../Render/Render.js").SimulationSceneHooks} */
 const editorSceneHooks = {
@@ -146,22 +146,7 @@ export function drawLabFrame(state) {
     ctx.fillStyle = "#080a0e";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
-    if (showPathDebug) {
-        if (state._labPathDebugKey !== labPathDebugCacheKey(state) && !state._labPathDebugRedrawScheduled) {
-            state._labPathDebugRedrawScheduled = true;
-            void ensureLabPathDebugCache(state).then(() => {
-                state._labPathDebugRedrawScheduled = false;
-                markLabViewDirty();
-            });
-        }
-        if (state.mapPathDebugCache) {
-            ctx.save();
-            viewport.apply(ctx);
-            const pathCache = state.mapPathDebugCache;
-            ctx.drawImage(pathCache.canvas, pathCache.minX, pathCache.minY);
-            ctx.restore();
-        }
-    }
+    if (showPathDebug) drawLabPathDebugOverlay(ctx, viewport, state, markLabViewDirty);
     ctx.save();
     viewport.apply(ctx);
     state.sandbox.controller?.drawOverlay(ctx);
