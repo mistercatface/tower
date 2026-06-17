@@ -1,4 +1,4 @@
-import { gridSettings } from "../Config/Config.js";
+import { gridSettings, worldSpanPx } from "../Config/world.js";
 import { FLOW_FIELD_WORKER_URL, HPA_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
@@ -18,7 +18,7 @@ export class SharedGameState {
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
         this.hpaPathWorker = new HpaPathWorker(HPA_WORKER_URL, this.obstacleGrid);
         this.hpaPathSession = new HpaPathSession(this.hpaPathWorker);
-        this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, gridSettings.width, gridSettings.height, this.obstacleGrid, FLOW_FIELD_WORKER_URL, this.hpaPathWorker);
+        this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows), this.obstacleGrid, FLOW_FIELD_WORKER_URL, this.hpaPathWorker);
         this.navigation = new NavigationService(this.flowFieldGrid, this.obstacleGrid, navigationSettings, this.hpaPathWorker);
         this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());
         this.viewport = null;
@@ -31,7 +31,7 @@ export class SharedGameState {
         this.worldProps = [];
         this.entityRegistry = new EntityRegistry();
         this.wallResolver = new WallCollisionResolver();
-        this.obstacleGrid.rebuildFixed(0, 0, gridSettings.width, gridSettings.height);
+        this.obstacleGrid.rebuildFixed(0, 0, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows));
         void this.navigation.onObstaclesChanged(null);
     }
 }

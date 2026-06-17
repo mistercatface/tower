@@ -1,4 +1,4 @@
-import { gridSettings } from "../../Config/Config.js";
+import { gridSettings } from "../../Config/world.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay } from "./mapGenBounds.js";
 import { appendActionRow, appendEditorHint, appendSelectField } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";

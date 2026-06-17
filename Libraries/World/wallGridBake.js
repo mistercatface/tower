@@ -2,7 +2,7 @@ import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { edgeNeighbor, cellEdgeEndpoints, railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdge.js";
-import { gridSettings } from "../../Config/balance/grid.js";
+import { gridSettings } from "../../Config/world.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 export function voxelWallFaceVisible(neighborCap, faceHeight) {

@@ -1,5 +1,5 @@
 import { unionCellBounds } from "../../../Libraries/DataStructures/CellRect.js";
-import { gridSettings } from "../../../Config/Config.js";
+import { gridSettings } from "../../../Config/world.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";

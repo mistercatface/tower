@@ -15,7 +15,7 @@ import {
     hpaPersistEdgeOffsetsView,
     hpaPersistEdgeTargetsView,
 } from "./hpaWorkerSab.js";
-import { gridSettings } from "../../Config/balance/grid.js";
+import { gridSettings } from "../../Config/world.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
 import { resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;

@@ -1,23 +1,23 @@
-import { gridSettings } from "../Config/Config.js";
+import { gridSettings, WORLD_SURFACE_DEFAULTS, worldSpanPx } from "../Config/world.js";
 import { CAMERA_HEIGHT } from "../Libraries/Spatial/iso/IsometricProjection.js";
-import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
 import { createWorldSurfaceSettings } from "../Libraries/WorldSurface/WorldSurfaceSettings.js";
 /** @type {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
 let gameWorldSurfaceSettings = null;
-const surfaceDefaults = LIBRARY_WORLD_SURFACE_DEFAULTS;
+const surfaceDefaults = WORLD_SURFACE_DEFAULTS;
 function resolveWallSurface(overrides, cellSize) {
-    const wallHeight = overrides.wallHeight ?? surfaceDefaults.wallHeight;
-    if (wallHeight == null) throw new Error("worldSurface.wallHeight must be set on gameDefinition.worldSurface or library defaults");
-    return { wallHeight, wallHeightCells: wallHeight / cellSize, roofZLevels: [wallHeight] };
+    const wallHeightCells = overrides.wallHeightCells ?? surfaceDefaults.wallHeightCells;
+    const wallHeight = wallHeightCells * cellSize;
+    return { wallHeight, wallHeightCells, roofZLevels: [wallHeight] };
 }
 export function createGameWorldSurfaceSettings(overrides = {}) {
     const cameraHeight = overrides.cameraHeight ?? CAMERA_HEIGHT;
     const cellSize = overrides.cellSize ?? gridSettings.cellSize;
     const surfaceBakeScale = overrides.surfaceBakeScale ?? surfaceDefaults.surfaceBakeScale;
     const wallSurface = resolveWallSurface(overrides, cellSize);
+    const chunkWorldSpanCells = overrides.chunkWorldSpanCells ?? surfaceDefaults.chunkWorldSpanCells;
     return createWorldSurfaceSettings({
         cellsPerChunk: surfaceDefaults.cellsPerChunk,
-        chunkWorldSize: surfaceDefaults.chunkWorldSize,
+        chunkWorldSize: worldSpanPx(chunkWorldSpanCells, cellSize),
         viewPaddingPx: surfaceDefaults.viewPaddingPx,
         viewQueryPadPx: surfaceDefaults.viewQueryPadPx,
         maxCachedSurfaces: surfaceDefaults.maxCachedSurfaces,

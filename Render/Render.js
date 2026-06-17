@@ -3,7 +3,7 @@ import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js";
-import { LIBRARY_WORLD_SURFACE_DEFAULTS } from "../Libraries/WorldSurface/worldSurfaceDefaults.js";
+import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
 import { createStructureDrawPass } from "./StructureDrawPass.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "./WorldRenderMode.js";
 import { combatSpatial } from "../Systems/World/CombatSpatialFrame.js";
@@ -50,7 +50,7 @@ export class Renderer {
             { zIndex: 55, fn: (state, viewport) => this.drawRagdollCorpses(state, viewport) },
             { zIndex: 70, fn: (state, viewport) => this.drawWorldSceneStructure(state, viewport) },
         ];
-        if (LIBRARY_WORLD_SURFACE_DEFAULTS.bloom.enabled) this.effectPasses.push({ zIndex: 71, fn: () => this.drawWorldSceneBloom() });
+        if (WORLD_SURFACE_DEFAULTS.bloom.enabled) this.effectPasses.push({ zIndex: 71, fn: () => this.drawWorldSceneBloom() });
     }
     /** @param {import("../GameState/GameState.js").GameState} state */
     syncWorldSceneDrawInput(state) {
@@ -91,7 +91,7 @@ export class Renderer {
     }
     /** Full-canvas bloom — zIndex 71 when enabled. */
     drawWorldSceneBloom() {
-        const { blur } = LIBRARY_WORLD_SURFACE_DEFAULTS.bloom;
+        const { blur } = WORLD_SURFACE_DEFAULTS.bloom;
         this.ctx.save();
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.ctx.globalCompositeOperation = "screen";

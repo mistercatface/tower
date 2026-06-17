@@ -1,5 +1,5 @@
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
-import { gridSettings } from "../../../Config/Config.js";
+import { gridSettings } from "../../../Config/world.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../../../Libraries/Sandbox/mapGenBounds.js";
 import { createMapGenBoundsOverviewEditor, createViewportOverviewEditor, drawMapGenBoundsPreview, mountOverviewBoundsEditors } from "./mapGenBoundsOverviewEditor.js";

@@ -8,9 +8,9 @@
  * @property {number} viewQueryPadPx
  * @property {number} maxCachedSurfaces
  * @property {number} surfaceBakeScale — bake pixels per world pixel (1 = one texel per world unit)
- * @property {number} wallHeight — segment + flat-rail default height in world px
- * @property {number} maxWallHeightLevel — static grid stamp level cap (1 … N → N × cellSize px)
- * @property {number} wallHeightCells — derived: wallHeight ÷ cellSize (draw LOD bands)
+ * @property {number} wallHeight — default segment/rail cap height in world px (derived from wallHeightCells × cellSize)
+ * @property {number} maxWallHeightLevel — static grid stamp level cap (1 … N)
+ * @property {number} wallHeightCells — default wall height in grid cells
  * @property {number} wallTextureBleedPx
  * @property {number} wallSubdivNearPx
  * @property {number} wallSubdivFarPx

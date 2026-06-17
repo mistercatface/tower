@@ -21,14 +21,14 @@ export function installEditorDefaults(state) {
     }
     applyGameProceduralDesign(profile);
     const perspective = applyGamePerspective(profile);
-    installGameWorldSurfaceSettings({ cameraHeight: perspective.cameraHeight, wallHeight: profile.worldSurface?.wallHeight, ...resolveProceduralBakeSettings(profile) });
+    installGameWorldSurfaceSettings({ cameraHeight: perspective.cameraHeight, wallHeightCells: profile.worldSurface?.wallHeightCells, ...resolveProceduralBakeSettings(profile) });
     applyGameCollisionSettings(profile);
     applyGamePropQuantizeSettings(profile);
     applyGamePropPixelSize(profile);
     const worldSurfaces = state.worldSurfaces;
     const settings = getGameWorldSurfaceSettings();
     const prev = worldSurfaces.settings;
-    const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeight", "cameraHeight", "cellSize", "cellsPerChunk"];
+    const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeightCells", "cameraHeight", "cellSize", "cellsPerChunk"];
     const bakeSettingsChanged = keysToCheck.some((key) => prev[key] !== settings[key]) || JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
     worldSurfaces.settings = settings;
     void TileWorkerCoordinator.syncBakeConstants(settings);

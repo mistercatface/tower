@@ -1,4 +1,4 @@
-import { gridSettings } from "../../../Config/Config.js";
+import { gridSettings } from "../../../Config/world.js";
 import { getInnerRadiusCells, getMapGenBoundsAabbCache, getMapGenBoundsCenterWorld, getMapGenBoundsConfig, migrateMapGenBoundsForMode } from "../../../Libraries/Sandbox/mapGenBounds.js";
 import { activeMapGenKind } from "./mapOverview.js";
 import { drawWorldBoundsBox, drawWorldCircle, hitTestRectAabb, overviewBoundsCursor, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
