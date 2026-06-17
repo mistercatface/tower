@@ -9,6 +9,7 @@ import log from "./log/log.asset.js";
 import humanoid from "./humanoid/humanoid.asset.js";
 import pipe_elbow from "./pipe_elbow/pipe_elbow.asset.js";
 import blue_ball from "./blue_ball/blue_ball.asset.js";
+import orange_ball from "./orange_ball/orange_ball.asset.js";
 import button_floor from "./button_floor/button_floor.asset.js";
 import gravity_pad from "./gravity_pad/gravity_pad.asset.js";
 import void_pit from "./void_pit/void_pit.asset.js";
@@ -35,6 +36,7 @@ const catalog = {
     humanoid,
     pipe_elbow,
     blue_ball,
+    orange_ball,
     void_pit,
     gravity_pad,
     button_floor,

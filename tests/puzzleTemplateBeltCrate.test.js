@@ -5,13 +5,13 @@ import { createSeededRng } from "../Libraries/Math/SeededRng.js";
 import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";
 import button_floor from "../Assets/props/button_floor/button_floor.asset.js";
 import blue_ball from "../Assets/props/blue_ball/blue_ball.asset.js";
-import crate from "../Assets/props/crate/crate.asset.js";
+import orange_ball from "../Assets/props/orange_ball/orange_ball.asset.js";
 import { CORRIDOR_TYPE_CONVEYOR_ONE_WAY, CORRIDOR_TYPE_LOCKED_ROOM } from "../Libraries/RoomGraph/roomGraphCorridorTypes.js";
 import { getRoomGraph, listRoomLinks, listRoomNodes } from "../Libraries/RoomGraph/roomGraphStore.js";
 import { stampBeltCratePuzzleAt } from "../Libraries/RoomGraph/puzzleTemplateBeltCrate.js";
 import { createRoomBakeTestState } from "./lockedRoomHarness.js";
 function ensurePuzzlePropCatalog() {
-    const catalog = [button_floor, blue_ball, crate];
+    const catalog = [button_floor, blue_ball, orange_ball];
     const definitions = {};
     const recipes = {};
     const assets = {};
@@ -64,18 +64,18 @@ describe("belt crate puzzle template", () => {
         assert.equal(bakes[0].linkId, linkBC.id);
         assert.equal(bakes[0].nodeId, stamped.roomB.id);
         assert.equal(countPropsOfType(state, "blue_ball"), 1);
-        assert.equal(countPropsOfType(state, "crate"), 1);
-        const ball = [];
-        const crates = [];
+        assert.equal(countPropsOfType(state, "orange_ball"), 1);
+        const blueBalls = [];
+        const orangeBalls = [];
         state.entityRegistry.forEachOfKind("worldProp", (prop) => {
             if (prop.isDead) return;
-            if (prop.type === "blue_ball") ball.push(prop);
-            if (prop.type === "crate") crates.push(prop);
+            if (prop.type === "blue_ball") blueBalls.push(prop);
+            if (prop.type === "orange_ball") orangeBalls.push(prop);
         });
-        assert.equal(ball.length, 1);
-        assert.equal(crates.length, 1);
-        assert.ok(propInsideRoom(state, ball[0], stamped.roomA));
-        assert.ok(propInsideRoom(state, crates[0], stamped.roomA));
+        assert.equal(blueBalls.length, 1);
+        assert.equal(orangeBalls.length, 1);
+        assert.ok(propInsideRoom(state, blueBalls[0], stamped.roomA));
+        assert.ok(propInsideRoom(state, orangeBalls[0], stamped.roomA));
         assert.ok((getRoomGraph(state).bakedFloorBelts ?? []).length > 0, "expected belt corridors to bake floor belts");
     });
     it("rolls different room footprints on each stamp", () => {

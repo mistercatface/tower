@@ -6,7 +6,6 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { drawAimSegment } from "../Render/contactPreviewDraw.js";
 import { fillCircle, strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
-import { wallContextFromState } from "../Spatial/query/wallContext.js";
 import { evaluateInputGates, isEntityAtRest } from "./inputGates.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
@@ -105,15 +104,9 @@ export function releaseDragLaunch(aim, config) {
  */
 export function buildDragLaunchAimLineContext(prop, state) {
     if (!state || !prop) return null;
-    const radius = prop.radius;
-    const circleTargets = [];
-    state.entityRegistry.forEachOfKind("worldProp", (p) => {
-        if (p === prop || p.isDead) return;
-        circleTargets.push({ x: p.x, y: p.y, radius: p.radius });
-    });
     const grid = state.obstacleGrid;
     const maxRayDist = resolveCueStrikeMaxRayDist({ obstacleGrid: grid });
-    return { prop, radius, circleTargets, wallCtx: wallContextFromState(state), maxRayDist };
+    return { prop, radius: prop.radius, maxRayDist };
 }
 /**
  * @param {ReturnType<typeof getDragLaunchPreview>} preview
@@ -130,8 +123,6 @@ export function getDragLaunchAimLine(preview, aimLineContext) {
         ny: preview.ny,
         maxTravelDist: travelDist,
         maxRayDist: aimLineContext.maxRayDist,
-        wallCtx: aimLineContext.wallCtx,
-        circleTargets: aimLineContext.circleTargets,
     });
 }
 /** @param {object} body @param {number} nx @param {number} ny @param {number} power */

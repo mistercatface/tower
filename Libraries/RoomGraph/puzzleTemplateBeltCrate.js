@@ -140,10 +140,10 @@ export function expandGridForPuzzleTemplateArea(state, areaCol, areaRow, areaCol
 function spawnBeltCratePuzzleProps(state, room) {
     const grid = state.obstacleGrid;
     const center = roomNodeCenterCell(room);
-    const ball = grid.gridToWorld(center.col - 1, center.row);
-    const crate = grid.gridToWorld(center.col + 1, center.row);
-    spawnPlacedSandboxProp(state, ball.x, ball.y, "blue_ball");
-    spawnPlacedSandboxProp(state, crate.x, crate.y, "crate");
+    const ballA = grid.gridToWorld(center.col - 1, center.row);
+    const ballB = grid.gridToWorld(center.col + 1, center.row);
+    spawnPlacedSandboxProp(state, ballA.x, ballA.y, "blue_ball");
+    spawnPlacedSandboxProp(state, ballB.x, ballB.y, "orange_ball");
 }
 /** @param {object} state @param {number} linkId */
 function lockedBakeForLink(state, linkId) {
