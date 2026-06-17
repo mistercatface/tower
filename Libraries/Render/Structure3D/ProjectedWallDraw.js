@@ -23,6 +23,8 @@ const sCapCorners = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },
 ];
+const sBlitQuad = { img: null, sx0: 0, sy0: 0, sx1: 0, sy1: 0, d0: sCorner0, d1: sCorner1, d2: sCorner2, d3: sCorner3 };
+const sBlitQuadOpts = { bleedPx: 1 };
 export function appendProjectedFaceBand(ctx, faceBottom, faceTop) {
     traceQuad(ctx, { x: faceBottom.proj1X, y: faceBottom.proj1Y }, { x: faceTop.proj1X, y: faceTop.proj1Y }, { x: faceTop.proj2X, y: faceTop.proj2Y }, { x: faceBottom.proj2X, y: faceBottom.proj2Y });
 }
@@ -146,7 +148,8 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wor
     const rowStep = bandHeight / subdivY;
     const cameraHeight = camera.cameraHeight;
     const visibleRows = Math.min(subdivY, Math.ceil((cameraHeight - wallBaseZ) / rowStep));
-    ctx.save();
+    sBlitQuad.img = canvas;
+    sBlitQuadOpts.bleedPx = bleedPx;
     for (let row = 0; row < visibleRows; row++) {
         const bottomZ = wallBaseZ + row * rowStep;
         let topZ = wallBaseZ + (row + 1) * rowStep;
@@ -164,10 +167,13 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wor
             computeFaceCornerElevated(sCorner2, u1, v1, faceBottom, faceTop);
             computeFaceCornerElevated(sCorner3, u0, v1, faceBottom, faceTop);
             if (!pointsAabbOverlapAabb(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) continue;
-            drawImageQuad(ctx, { img: canvas, sx0: u0 * canvas.width, sy0, sx1: u1 * canvas.width, sy1, d0: sCorner0, d1: sCorner1, d2: sCorner2, d3: sCorner3 }, { bleedPx });
+            sBlitQuad.sx0 = u0 * canvas.width;
+            sBlitQuad.sy0 = sy0;
+            sBlitQuad.sx1 = u1 * canvas.width;
+            sBlitQuad.sy1 = sy1;
+            drawImageQuad(ctx, sBlitQuad, sBlitQuadOpts);
         }
     }
-    ctx.restore();
 }
 function resolveWallFaceSubdiv(wallCtx, atlas, camera) {
     const cacheObj = wallCtx.cacheObj;
