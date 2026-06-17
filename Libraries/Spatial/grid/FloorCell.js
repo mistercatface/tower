@@ -1,16 +1,7 @@
 import { CARDINAL_FACING_STEPS, quantizeCardinalAngle } from "../../Math/Angle.js";
 import { cellInRect } from "./GridUtils.js";
 /** Floor occupancy kinds — walkable cell overlays (belts, pads); not voxelBlock or edgeStore. */
-export const FLOOR_CELL_KIND = {
-    None: 0,
-    Belt: 1,
-    BeltElbowLeft: 2,
-    BeltElbowRight: 3,
-    BeltRails: 4,
-    BeltElbowLeftRails: 5,
-    BeltElbowRightRails: 6,
-    PassagePowerSource: 7,
-};
+export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3, BeltRails: 4, BeltElbowLeftRails: 5, BeltElbowRightRails: 6, PassagePowerSource: 7 };
 /** @param {number} kind */
 export function isFloorBeltKind(kind) {
     return kind >= FLOOR_CELL_KIND.Belt && kind <= FLOOR_CELL_KIND.BeltElbowRightRails;
@@ -131,8 +122,4 @@ export function resolveFloorBeltSteerTarget(grid, worldX, worldY, fromX, fromY) 
     if (fromCol === col && fromRow === row) return { x: worldX, y: worldY };
     const { entrySide } = floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
     return floorBeltEntryEdgeWorldPoint(grid, col, row, entrySide);
-}
-export function isEntityOnFloorBelt(grid, worldX, worldY) {
-    const { col, row } = grid.worldToGrid(worldX, worldY);
-    return grid.hasFloorBelt(col, row);
 }
