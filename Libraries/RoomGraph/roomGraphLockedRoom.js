@@ -10,17 +10,13 @@ import { addButtonLink } from "../Sandbox/buttonLinks.js";
 import { clearPrimaryBoundaryAt, commitBoundaryEdit } from "../Sandbox/boundaryEdit.js";
 import { corridorExteriorCellFromWallHole, roomInteriorCellFromWallHole } from "./roomGraphCorridorBelts.js";
 import { roomWallEdgeKey } from "./roomGraphClosedRooms.js";
-import { getRoomGraph, listRoomNodes, roomNodeCenterCell, roomNodeContainsCell } from "./roomGraphStore.js";
-export const LOCKED_ROOM_KIND = "locked";
+import { getRoomGraph, roomNodeCenterCell, roomNodeContainsCell } from "./roomGraphStore.js";
 /** @typedef {{ col: number, row: number }} GridCell */
 /** @typedef {{ col: number, row: number, side: number }} ForcefieldStamp */
 /** @typedef {{ c: number, r: number, side: number }} RoomWallHole */
 /** @typedef {{ hole: RoomWallHole, mouth: GridCell, power: GridCell, forcefield: ForcefieldStamp }} LockedRoomEgressBake */
-/** @typedef {{ nodeId: number, egresses: LockedRoomEgressBake[], buttonId: number | null }} BakedLockedRoom */
-/** @param {{ kind?: string } | null | undefined} node */
-export function isLockedRoomNode(node) {
-    return node?.kind === LOCKED_ROOM_KIND;
-}
+/** @typedef {{ linkId: number, nodeId: number, egresses: LockedRoomEgressBake[], buttonId: number | null }} BakedLockedRoom */
+/** @typedef {{ linkId: number, parentNodeId: number, parentHoles: RoomWallHole[] }} LockedLinkBakeInput */
 /** @param {import("./roomGraphStore.js").RoomNode} node @param {GridCell} cell @param {number} egressSide */
 export function lockedRoomCellOnPerimeterWall(node, cell, egressSide) {
     if (egressSide === 3) return cell.col === node.col;
@@ -106,29 +102,17 @@ function uniqueEgressHoles(holes) {
 function stampLockedRoomForcefieldQuiet(grid, col, row, side) {
     setBoundary(grid, col, row, side, { kind: "passage", mode: PASSAGE_MODE.Solid, allowedSide: side, powered: false });
 }
-/**
- * @param {object} state
- * @param {{ rooms: { id: number }[], roomNodeById: Map<number, import("./roomGraphStore.js").RoomNode> }} layout
- * @param {import("./roomGraphClosedRooms.js").ClosedRoom[]} closedRooms
- */
-export function syncLockedRoomBakes(state, layout, closedRooms) {
+/** @param {object} state @param {{ roomNodeById: Map<number, import("./roomGraphStore.js").RoomNode> }} layout @param {LockedLinkBakeInput[]} lockedLinkBakes */
+export function syncLockedRoomBakes(state, layout, lockedLinkBakes) {
     clearLockedRoomBakes(state);
     const grid = state.obstacleGrid;
     /** @type {BakedLockedRoom[]} */
     const bakes = [];
     const bounds = emptyCellBounds();
-    const roomNodes = listRoomNodes(state);
-    for (let ni = 0; ni < roomNodes.length; ni++) {
-        const node = roomNodes[ni];
-        if (!isLockedRoomNode(node)) continue;
-        let roomIndex = -1;
-        for (let ri = 0; ri < layout.rooms.length; ri++)
-            if (layout.rooms[ri].id === node.id) {
-                roomIndex = ri;
-                break;
-            }
-        if (roomIndex < 0) continue;
-        const holes = uniqueEgressHoles(closedRooms[roomIndex].holes);
+    for (let li = 0; li < lockedLinkBakes.length; li++) {
+        const { linkId, parentNodeId, parentHoles } = lockedLinkBakes[li];
+        const node = layout.roomNodeById.get(parentNodeId);
+        const holes = uniqueEgressHoles(parentHoles);
         if (!holes.length) continue;
         /** @type {LockedRoomEgressBake[]} */
         const egresses = [];
@@ -155,7 +139,7 @@ export function syncLockedRoomBakes(state, layout, closedRooms) {
             const { globalCol, globalRow } = cellToGlobalColRow(grid, egresses[ei].power.col, egresses[ei].power.row);
             addButtonLink(state, button.id, { type: "gridCell", globalCol, globalRow });
         }
-        bakes.push({ nodeId: node.id, egresses, buttonId: button.id });
+        bakes.push({ linkId, nodeId: node.id, egresses, buttonId: button.id });
     }
     getRoomGraph(state).bakedLockedRooms = bakes;
     if (!bakes.length) return;

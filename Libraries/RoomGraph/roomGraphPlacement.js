@@ -2,7 +2,6 @@ import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 import { addRoomNode, roomNodeOccupiesCell } from "./roomGraphStore.js";
-import { LOCKED_ROOM_KIND } from "./roomGraphLockedRoom.js";
 export const DEFAULT_ROOM_NODE_COLS = 8;
 export const DEFAULT_ROOM_NODE_ROWS = 8;
 /** @param {object} state @param {number} col @param {number} row */
@@ -55,8 +54,4 @@ export function stampRoomNodeAt(state, anchorCol, anchorRow, width, height, kind
     const spec = { col: anchorCol, row: anchorRow, width, height };
     if (kind) spec.kind = kind;
     return addRoomNode(state, spec);
-}
-/** @param {object} state @param {number} anchorCol @param {number} anchorRow @param {number} width @param {number} height */
-export function stampLockedRoomNodeAt(state, anchorCol, anchorRow, width, height) {
-    return stampRoomNodeAt(state, anchorCol, anchorRow, width, height, LOCKED_ROOM_KIND);
 }

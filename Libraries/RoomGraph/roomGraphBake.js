@@ -6,7 +6,7 @@ import { createSeededRng } from "../Math/SeededRng.js";
 import { buildRoomsFromNodeGraph, mergeRailWalls, omitRailWallsAtGapKeys, railWallsForClosedRooms, roomWallGapKeysWorld } from "./roomGraphClosedRooms.js";
 import { getRoomGraph, listRoomLinks, listRoomNodes } from "./roomGraphStore.js";
 import { resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
-import { normalizeCorridorType, isConveyorCorridorType, isOpenCorridorType } from "./roomGraphCorridorTypes.js";
+import { normalizeCorridorType, isConveyorCorridorType, isOpenCorridorType, isLockedRoomCorridorType } from "./roomGraphCorridorTypes.js";
 import { clearBakedFloorBeltsQuiet, stampBakedFloorBeltsQuiet } from "./roomGraphFloorBelts.js";
 import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle, stampCorridorBundleBelts, stampCorridorBundleRails } from "./roomGraphCorridorApply.js";
 import { clearLockedRoomBakes, syncLockedRoomBakes } from "./roomGraphLockedRoom.js";
@@ -102,13 +102,15 @@ function computeRoomGraphBake(layout) {
     const originCol = 0;
     const originRow = 0;
     const { rooms, graphEdges, closedRooms, links } = layout;
-    if (!rooms.length) return { rails: [], belts: [], closedRooms: [] };
+    if (!rooms.length) return { rails: [], belts: [], closedRooms: [], lockedLinkBakes: [] };
     const linkById = new Map();
     for (let i = 0; i < links.length; i++) linkById.set(links[i].id, links[i]);
     const placedPaths = [];
     const placedPathWidths = [];
     const corridorRailLists = [];
     const bakedBelts = [];
+    /** @type {import("./roomGraphLockedRoom.js").LockedLinkBakeInput[]} */
+    const lockedLinkBakes = [];
     for (let edgeIndex = 0; edgeIndex < graphEdges.length; edgeIndex++) {
         const { a, b, linkId } = graphEdges[edgeIndex];
         const link = linkById.get(linkId);
@@ -133,13 +135,22 @@ function computeRoomGraphBake(layout) {
             placedPaths.push(bundle.paths[pi]);
             placedPathWidths.push(bundle.corridorWidths[pi]);
         }
+        if (isLockedRoomCorridorType(corridorType)) {
+            /** @type {import("./roomGraphClosedRooms.js").RoomWallHole[]} */
+            const parentHoles = [];
+            for (let lane = 0; lane < bundle.parentHoleGroups.length; lane++) {
+                const group = bundle.parentHoleGroups[lane];
+                for (let hi = 0; hi < group.length; hi++) parentHoles.push(group[hi]);
+            }
+            lockedLinkBakes.push({ linkId: link.id, parentNodeId: link.a, parentHoles });
+        }
         if (isConveyorCorridorType(corridorType)) bakedBelts.push(...stampCorridorBundleBelts(bundle, rooms));
         else if (!isOpenCorridorType(corridorType)) corridorRailLists.push(stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow));
     }
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
     const gapKeys = roomWallGapKeysWorld(closedRooms, originCol, originRow);
     const corridorRails = corridorRailLists.length ? omitRailWallsAtGapKeys(mergeRailWalls(corridorRailLists), gapKeys) : [];
-    return { rails: mergeRailWalls([roomRails, corridorRails]), belts: bakedBelts, closedRooms };
+    return { rails: mergeRailWalls([roomRails, corridorRails]), belts: bakedBelts, closedRooms, lockedLinkBakes };
 }
 /** Rebuild all room-graph-owned rail walls from `state.roomGraph`. */
 export function syncRoomGraphBake(state) {
@@ -164,7 +175,7 @@ export function syncRoomGraphBake(state) {
     dirtyBounds = unionCellBounds(dirtyBounds, railBounds);
     dirtyBounds = unionCellBounds(dirtyBounds, beltBounds);
     if (dirtyBounds) commitBoundaryEdit(state, dirtyBounds);
-    syncLockedRoomBakes(state, layout, bake.closedRooms);
+    syncLockedRoomBakes(state, layout, bake.lockedLinkBakes);
 }
 /** @param {object} state */
 export function unbakeRoomGraph(state) {

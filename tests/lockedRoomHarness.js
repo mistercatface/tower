@@ -11,13 +11,8 @@ import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { applyPassagePowerGridState } from "../Libraries/Sandbox/passagePowerNetwork.js";
 import { addRoomLink, addRoomNode, getRoomGraph, getRoomNode, listRoomLinks } from "../Libraries/RoomGraph/roomGraphStore.js";
 import { syncRoomGraphBake } from "../Libraries/RoomGraph/roomGraphBake.js";
-import {
-    assertLockedRoomPowerOnPerimeterRail,
-    LOCKED_ROOM_KIND,
-    lockedRoomCorridorExteriorCell,
-    lockedRoomHoleCell,
-    lockedRoomCellOnPerimeterWall,
-} from "../Libraries/RoomGraph/roomGraphLockedRoom.js";
+import { CORRIDOR_TYPE_LOCKED_ROOM } from "../Libraries/RoomGraph/roomGraphCorridorTypes.js";
+import { assertLockedRoomPowerOnPerimeterRail, lockedRoomCorridorExteriorCell, lockedRoomHoleCell, lockedRoomCellOnPerimeterWall } from "../Libraries/RoomGraph/roomGraphLockedRoom.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 function assetDefinition(asset) {
@@ -98,15 +93,9 @@ export function assertLockedRoomEgressPlacements(state, bake) {
  * @param {number} [linkSeed]
  */
 export function bakeLinkedLockedRoomFixture(state, fixture, linkSeed = 0) {
-    const locked = addRoomNode(state, {
-        col: fixture.roomA.c0,
-        row: fixture.roomA.r0,
-        width: fixture.roomA.c1 - fixture.roomA.c0 + 1,
-        height: fixture.roomA.r1 - fixture.roomA.r0 + 1,
-        kind: LOCKED_ROOM_KIND,
-    });
+    const locked = addRoomNode(state, { col: fixture.roomA.c0, row: fixture.roomA.r0, width: fixture.roomA.c1 - fixture.roomA.c0 + 1, height: fixture.roomA.r1 - fixture.roomA.r0 + 1 });
     const open = addRoomNode(state, { col: fixture.roomB.c0, row: fixture.roomB.r0, width: fixture.roomB.c1 - fixture.roomB.c0 + 1, height: fixture.roomB.r1 - fixture.roomB.r0 + 1 });
-    addRoomLink(state, locked.id, open.id, { corridorType: "empty" });
+    addRoomLink(state, locked.id, open.id, { corridorType: CORRIDOR_TYPE_LOCKED_ROOM });
     const link = listRoomLinks(state)[0];
     link.seed = linkSeed;
     syncRoomGraphBake(state);

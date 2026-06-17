@@ -57,10 +57,6 @@ export function isGridPassagePowerSourceSpawnAsset(asset) {
 export function isRoomNodeSpawnAsset(asset) {
     return asset?.sandbox?.roomNode === true;
 }
-/** Locked room node — same footprint as room node but bakes puzzle content on corridor egress. */
-export function isLockedRoomSpawnAsset(asset) {
-    return asset?.sandbox?.lockedRoom === true;
-}
 /** Spawn stamps a room-graph corridor link — not a WorldProp. */
 export function isRoomLinkSpawnAsset(asset) {
     return asset?.sandbox?.roomLink === true;
