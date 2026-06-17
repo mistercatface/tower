@@ -6,11 +6,10 @@ import { gridSettings } from "../../Config/world.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 function allocVoxelWallFace() {
-    return { staticGrid: true, gridCol: 0, gridRow: 0, gridIdx: 0, gridSide: 0, p1: { x: 0, y: 0 }, p2: { x: 0, y: 0 }, wallBaseZ: 0, wallHeight: 0, wallCapHeight: 0, cx: 0, cy: 0, outX: 0, outY: 0 };
+    return { gridCol: 0, gridRow: 0, gridIdx: 0, gridSide: 0, p1: { x: 0, y: 0 }, p2: { x: 0, y: 0 }, wallBaseZ: 0, wallHeight: 0, wallCapHeight: 0, cx: 0, cy: 0, outX: 0, outY: 0 };
 }
 function allocRailWallBox() {
     return {
-        staticGridEdgeRail: true,
         gridCol: 0,
         gridRow: 0,
         gridIdx: 0,
@@ -162,7 +161,6 @@ export function writeRailWallBoxInto(box, grid, col, row, edge) {
     const fp = railWallFootprintAabb(grid, col, row, edge);
     const inward = railWallInwardNormal(edge);
     railWallSideEndpoints(grid, col, row, edge, 0, sP1, sP2);
-    box.staticGridEdgeRail = true;
     box.gridCol = col;
     box.gridRow = row;
     box.gridIdx = idx;
@@ -314,7 +312,6 @@ export function writeVoxelWallFaceInto(face, grid, col, row, edge) {
     const ecx = (sP1.x + sP2.x) / 2;
     const ecy = (sP1.y + sP2.y) / 2;
     const wallBaseZ = voxelWallFaceBaseZ(neighborCap, faceHeight);
-    face.staticGrid = true;
     face.gridCol = col;
     face.gridRow = row;
     face.gridIdx = idx;

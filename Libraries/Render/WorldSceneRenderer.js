@@ -133,18 +133,18 @@ export class WorldSceneRenderer {
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
             if (obj.strategy || obj.usesKinematicsBody) drawWorldProp(ctx, obj, viewport, drawContext);
-            else if (!skipWalls && obj.staticGridEdgeRail) {
-                wallCtx.wallHeight = obj.wallHeight;
-                wallCtx.wallBaseZ = obj.wallBaseZ;
-                wallCtx.wallCapHeight = obj.wallCapHeight;
-                wallCtx.cacheObj = obj;
-                drawProjectedGridEdgeRail(ctx, obj, wallCtx);
-            } else if (!skipWalls && obj.staticGrid) {
+            else if (!skipWalls && obj.p1) {
                 wallCtx.wallHeight = obj.wallHeight;
                 wallCtx.wallBaseZ = obj.wallBaseZ;
                 wallCtx.wallCapHeight = obj.wallCapHeight;
                 wallCtx.cacheObj = obj;
                 drawProjectedWallFace(ctx, obj.p1, obj.p2, wallCtx);
+            } else if (!skipWalls && obj.innerP1x !== undefined) {
+                wallCtx.wallHeight = obj.wallHeight;
+                wallCtx.wallBaseZ = obj.wallBaseZ;
+                wallCtx.wallCapHeight = obj.wallCapHeight;
+                wallCtx.cacheObj = obj;
+                drawProjectedGridEdgeRail(ctx, obj, wallCtx);
             }
         }
         ctx.restore();
