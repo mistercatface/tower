@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { pointInPolygon, rectCorners, rotatePoint, rotateXY, rotateXYInto, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { assertNear, assertPointNear } from "./mathHarness.js";
-
 describe("Poly2D.rotateXY", () => {
     it("rotates with precomputed trig", () => {
         const hit = rotateXY(1, 0, 0, 1);
@@ -14,7 +13,6 @@ describe("Poly2D.rotateXY", () => {
         assertPointNear(out, 0, 1);
     });
 });
-
 describe("Poly2D.transformPoint2DInto", () => {
     it("matches rotatePoint", () => {
         const fromHelper = transformPoint2DInto({ x: 0, y: 0 }, 10, 20, 3, 4, 1, 0);
@@ -28,7 +26,6 @@ describe("Poly2D.transformPoint2DInto", () => {
         assertPointNear(hit, 5, 7);
     });
 });
-
 describe("Poly2D.rectCorners", () => {
     it("axis-aligned unit square", () => {
         const corners = rectCorners(0, 0, 1, 0);
@@ -41,7 +38,6 @@ describe("Poly2D.rectCorners", () => {
         for (const corner of corners) assertNear(Math.hypot(corner.x, corner.y), Math.SQRT2);
     });
 });
-
 describe("Poly2D.pointInPolygon", () => {
     const square = [
         { x: 0, y: 0 },
@@ -68,7 +64,13 @@ describe("Poly2D.pointInPolygon", () => {
         assert.equal(pointInPolygon(15, 5, [0, 0, 10, 0, 10, 10, 0, 10]), false);
     });
     it("rejects too few vertices", () => {
-        assert.equal(pointInPolygon(1, 1, [{ x: 0, y: 0 }, { x: 2, y: 0 }]), false);
+        assert.equal(
+            pointInPolygon(1, 1, [
+                { x: 0, y: 0 },
+                { x: 2, y: 0 },
+            ]),
+            false,
+        );
         assert.equal(pointInPolygon(1, 1, [0, 0, 2, 0]), false);
     });
 });
