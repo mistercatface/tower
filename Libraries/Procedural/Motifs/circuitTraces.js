@@ -1,14 +1,6 @@
 import { rotateXY } from "../../Math/Poly2D.js";
+import { distanceToLineSegment } from "../../Math/Segment2D.js";
 import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
-function distToSegment(px, py, x1, y1, x2, y2) {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const lenSq = dx * dx + dy * dy;
-    if (lenSq === 0) return Math.hypot(px - x1, py - y1);
-    let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
-    t = Math.max(0, Math.min(1, t));
-    return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
-}
 /**
  * Grid-aligned continuous circuit traces. When warped, they snake organically.
  */
@@ -74,35 +66,35 @@ export const circuitTracesMotif = {
         let activeCount = 0;
         // Add segments to check
         if (hasNorth) {
-            minDist = Math.min(minDist, distToSegment(lx, ly, half, half, half, 0));
+            minDist = Math.min(minDist, distanceToLineSegment(lx, ly, half, half, half, 0));
             activeCount++;
         }
         if (hasSouth) {
-            minDist = Math.min(minDist, distToSegment(lx, ly, half, half, half, gridSize));
+            minDist = Math.min(minDist, distanceToLineSegment(lx, ly, half, half, half, gridSize));
             activeCount++;
         }
         if (hasEast) {
-            minDist = Math.min(minDist, distToSegment(lx, ly, half, half, gridSize, half));
+            minDist = Math.min(minDist, distanceToLineSegment(lx, ly, half, half, gridSize, half));
             activeCount++;
         }
         if (hasWest) {
-            minDist = Math.min(minDist, distToSegment(lx, ly, half, half, 0, half));
+            minDist = Math.min(minDist, distanceToLineSegment(lx, ly, half, half, 0, half));
             activeCount++;
         }
         if (hasNorthEast) {
-            minDist = Math.min(minDist, distToSegment(lx, ly, half, half, gridSize, 0));
+            minDist = Math.min(minDist, distanceToLineSegment(lx, ly, half, half, gridSize, 0));
             activeCount++;
         }
         if (hasSouthWest) {
-            minDist = Math.min(minDist, distToSegment(lx, ly, half, half, 0, gridSize));
+            minDist = Math.min(minDist, distanceToLineSegment(lx, ly, half, half, 0, gridSize));
             activeCount++;
         }
         if (hasSouthEast) {
-            minDist = Math.min(minDist, distToSegment(lx, ly, half, half, gridSize, gridSize));
+            minDist = Math.min(minDist, distanceToLineSegment(lx, ly, half, half, gridSize, gridSize));
             activeCount++;
         }
         if (hasNorthWest) {
-            minDist = Math.min(minDist, distToSegment(lx, ly, half, half, 0, 0));
+            minDist = Math.min(minDist, distanceToLineSegment(lx, ly, half, half, 0, 0));
             activeCount++;
         }
         const lineWidth = config.lineWidth ?? 2;

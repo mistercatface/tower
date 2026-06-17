@@ -1,5 +1,7 @@
 import { getSandboxEntityMeta } from "../Libraries/Sandbox/sandboxEntityMeta.js";
 import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/Aabb2D.js";
+import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
+import { distanceSqToLineSegment } from "../Libraries/Math/Segment2D.js";
 import { hashString, mixHash4 } from "../Libraries/Math/hash.js";
 /** @typedef {import("../Libraries/Math/Aabb2D.js").Aabb2D} Aabb2D */
 /** @typedef {import("../Libraries/Math/Aabb2D.js").AabbEntityHitTest} AabbEntityHitTest */
@@ -19,6 +21,41 @@ import { hashString, mixHash4 } from "../Libraries/Math/hash.js";
  */
 const EMPTY_KINDS = ["worldProp"];
 const PICK_SEARCH_BOUNDS = createAabb();
+const PICK_WORLD_POLY = [];
+function worldPropFootprintInto(out, prop, shape) {
+    const facing = prop.facing ?? prop.angle ?? 0;
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    const verts = shape.vertices;
+    out.length = verts.length;
+    for (let i = 0; i < verts.length; i++) {
+        if (!out[i]) out[i] = { x: 0, y: 0 };
+        transformPoint2DInto(out[i], prop.x, prop.y, verts[i].x, verts[i].y, cos, sin);
+    }
+    return out;
+}
+export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
+    const shape = prop.getShape();
+    const centerDistSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
+    if (shape.type === "Circle") {
+        const r = shape.radius + padding;
+        return centerDistSq <= r * r;
+    }
+    if (shape.type === "Polygon") {
+        const worldPoly = worldPropFootprintInto(PICK_WORLD_POLY, prop, shape);
+        if (pointInPolygon(worldX, worldY, worldPoly)) return true;
+        if (padding <= 0) return false;
+        const padSq = padding * padding;
+        for (let i = 0, j = worldPoly.length - 1; i < worldPoly.length; j = i++) {
+            const a = worldPoly[j];
+            const b = worldPoly[i];
+            if (distanceSqToLineSegment(worldX, worldY, a.x, a.y, b.x, b.y) <= padSq) return true;
+        }
+        return false;
+    }
+    const r = (prop.radius ?? 0) + padding;
+    return centerDistSq <= r * r;
+}
 /** @param {QueryViewCriteria} criteria */
 function filterKey(criteria) {
     const kinds = criteria.kinds ?? EMPTY_KINDS;
@@ -283,9 +320,9 @@ function nearestWorldPropInList(worldProps, worldX, worldY, padding) {
     for (let i = 0; i < worldProps.length; i++) {
         const prop = worldProps[i];
         if (prop.isDead) continue;
-        const tapRadius = prop.radius + padding;
+        if (!worldPropContainsPoint(prop, worldX, worldY, padding)) continue;
         const distSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
-        if (distSq <= tapRadius * tapRadius && distSq < bestDistSq) {
+        if (distSq < bestDistSq) {
             best = prop;
             bestDistSq = distSq;
         }
