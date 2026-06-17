@@ -350,7 +350,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.sync();
         },
         sync: session.sync,
-        getState: () => session.getState(),
         setUiSync: (fn) => session.setUiSync(fn),
         getSpawnBehaviorId: () => spawnBehaviorId,
         setSpawnBehaviorId: (id) => {

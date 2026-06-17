@@ -3,12 +3,12 @@ import { appendRailWallHeightSlider, appendRailWallThicknessSlider } from "./san
 import { resolveRailWallHeightLevel, resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
 import { appendSurfaceProfileField } from "../RoomGraph/roomGraphSurfaceProfile.js";
 import { appendActionRow, appendEditorHint } from "../UI/paramFields.js";
-export function appendRoomNodeSelectedInspector(body, controller, selectedRoomNode) {
+export function appendRoomNodeSelectedInspector(body, state, controller, selectedRoomNode) {
     appendEditorHint(
         body,
         `${selectedRoomNode.label}. Anchor (${selectedRoomNode.col}, ${selectedRoomNode.row}), size ${selectedRoomNode.width}×${selectedRoomNode.height}. Click the footprint on the map to re-select.`,
     );
-    appendRailWallHeightSlider(body, controller, resolveRailWallHeightLevel(selectedRoomNode.railWallHeightLevel), (val) => {
+    appendRailWallHeightSlider(body, state, resolveRailWallHeightLevel(selectedRoomNode.railWallHeightLevel), (val) => {
         controller.updateSelectedRoomNode({ railWallHeightLevel: val });
     });
     appendRailWallThicknessSlider(body, controller, resolveRailWallThicknessLevel(selectedRoomNode.railWallThicknessLevel), (val) => {

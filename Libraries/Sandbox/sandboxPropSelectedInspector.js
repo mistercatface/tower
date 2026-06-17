@@ -9,7 +9,7 @@ import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandb
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "./sandboxPropMeta.js";
 import { appendCheckboxField, appendSelectField } from "../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
-export function appendSelectedPropInspector(body, controller, selectedProp, refreshPanel) {
+export function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
     const behaviorIds = controller.listSelectedBehaviors();
     appendFactionSelect(body, {
         value: resolveSandboxFaction(selectedProp),
@@ -18,7 +18,7 @@ export function appendSelectedPropInspector(body, controller, selectedProp, refr
             refreshPanel();
         },
     });
-    appendSandboxWorldPropInspectorFields(body, selectedProp, { state: controller.getState(), onChange: refreshPanel });
+    appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
     if (isButtonEntity(selectedProp))
         appendButtonWireInspector(body, {
             listLinks: () => controller.listSelectedButtonLinks(),

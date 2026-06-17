@@ -15,11 +15,11 @@ const EDGE_SIDE_OPTIONS = [
     { value: "2", label: formatGridWallEdgeSideLabel(2) },
     { value: "3", label: formatGridWallEdgeSideLabel(3) },
 ];
-function maxWallHeightLevel(controller) {
-    return controller.getState().worldSurfaces.settings.maxWallHeightLevel;
+function maxWallHeightLevel(state) {
+    return state.worldSurfaces.settings.maxWallHeightLevel;
 }
-export function appendRailWallHeightSlider(body, controller, heightLevel, onChange) {
-    body.appendChild(new SliderControl("Rail height", 1, maxWallHeightLevel(controller), 1, heightLevel, onChange).element);
+export function appendRailWallHeightSlider(body, state, heightLevel, onChange) {
+    body.appendChild(new SliderControl("Rail height", 1, maxWallHeightLevel(state), 1, heightLevel, onChange).element);
 }
 export function appendRailWallThicknessSlider(body, controller, thicknessLevel, onChange) {
     body.appendChild(new SliderControl("Rail thickness", 1, MAX_RAIL_WALL_THICKNESS_LEVEL, 1, thicknessLevel, onChange).element);
@@ -53,7 +53,7 @@ export function appendForcefieldSelectedInspector(body, controller, selectedForc
     appendPassageEditorFields(body, controller, selectedForcefieldInfo);
     appendActionRow(body, [{ label: "Delete forcefield", onClick: () => controller.deleteSelectedWall() }]);
 }
-export function appendRoomLinkCorridorInspector(body, selectedRoomLink, controller) {
+export function appendRoomLinkCorridorInspector(body, state, selectedRoomLink, controller) {
     const limitHint = selectedRoomLink.maxCorridorWidth != null ? ` Max width for this wall pair: ${selectedRoomLink.maxCorridorWidth}.` : "";
     appendEditorHint(body, `${selectedRoomLink.label}. Change type or width, then Reroll to regenerate the path.${limitHint}`);
     appendSelectField(body, "Type", {
@@ -75,7 +75,7 @@ export function appendRoomLinkCorridorInspector(body, selectedRoomLink, controll
     appendSurfaceProfileField(body, "Floor profile", selectedRoomLink.surfaceProfileId, (profileId) => {
         controller.updateSelectedRoomLink({ surfaceProfileId: profileId });
     });
-    appendRailWallHeightSlider(body, controller, resolveRailWallHeightLevel(selectedRoomLink.railWallHeightLevel), (val) => {
+    appendRailWallHeightSlider(body, state, resolveRailWallHeightLevel(selectedRoomLink.railWallHeightLevel), (val) => {
         controller.updateSelectedRoomLink({ railWallHeightLevel: val });
     });
     appendRailWallThicknessSlider(body, controller, resolveRailWallThicknessLevel(selectedRoomLink.railWallThicknessLevel), (val) => {
@@ -86,12 +86,12 @@ export function appendRoomLinkCorridorInspector(body, selectedRoomLink, controll
         { label: "Delete link", onClick: () => controller.deleteSelectedRoomLink() },
     ]);
 }
-export function appendWallPlaceParams(body, controller, ctx) {
+export function appendWallPlaceParams(body, state, controller, ctx) {
     const { wallStampMode, selectedVoxelInfo, selectedRailInfo } = ctx;
     appendEditorHint(body, "Click the map to place or select walls. Right-click to delete under the cursor.");
     appendActionRow(body, [{ label: "Add at camera", onClick: () => controller.stampWallAtCameraOrigin() }]);
     if (wallStampMode !== "forcefield") {
-        const maxHeight = maxWallHeightLevel(controller);
+        const maxHeight = maxWallHeightLevel(state);
         body.appendChild(
             new SliderControl("Height", 1, maxHeight, 1, controller.getWallHeightLevel(), (val) => {
                 controller.setWallHeightLevel(val);
@@ -109,12 +109,12 @@ export function appendWallPlaceParams(body, controller, ctx) {
         );
     if (wallStampMode === "forcefield") appendPassageEditorFields(body, controller, null, { stampDefaults: true });
 }
-export function appendWallSelectedInspector(body, controller, ctx) {
+export function appendWallSelectedInspector(body, state, controller, ctx) {
     const { selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo } = ctx;
     if (selectedVoxelInfo) {
         appendEditorHint(body, `Voxel block · height ${selectedVoxelInfo.heightLevel}. Change height below or delete.`);
         body.appendChild(
-            new SliderControl("Height", 1, maxWallHeightLevel(controller), 1, selectedVoxelInfo.heightLevel, (val) => {
+            new SliderControl("Height", 1, maxWallHeightLevel(state), 1, selectedVoxelInfo.heightLevel, (val) => {
                 controller.setSelectedVoxelWallHeight(val);
             }).element,
         );
@@ -131,7 +131,7 @@ export function appendWallSelectedInspector(body, controller, ctx) {
             },
         });
         body.appendChild(
-            new SliderControl("Height", 1, maxWallHeightLevel(controller), 1, selectedRailInfo.heightLevel, (val) => {
+            new SliderControl("Height", 1, maxWallHeightLevel(state), 1, selectedRailInfo.heightLevel, (val) => {
                 controller.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
             }).element,
         );

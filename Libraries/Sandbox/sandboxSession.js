@@ -1162,6 +1162,5 @@ export function createSandboxSession(state) {
             uiSync = fn;
         },
         sync: notifyUi,
-        getState: () => state,
     };
 }

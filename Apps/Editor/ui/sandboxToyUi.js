@@ -1,5 +1,5 @@
 import { getPropAsset, getWorldPropDefinitions, formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
-import { isSandboxSpawnable, isRoomLinkSpawnAsset } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
+import { isSandboxSpawnable } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
 import { appendGridSelectionInspector } from "../../../Libraries/Sandbox/sandboxSelectedInspector.js";
 import { appendWallPlaceParams } from "../../../Libraries/Sandbox/sandboxWallInspector.js";
 import { appendPropPlaceParams } from "../../../Libraries/Sandbox/sandboxPropSpawnInspector.js";
@@ -8,12 +8,9 @@ import { appendPinnedSection } from "../../../Libraries/Sandbox/sandboxPanelSect
 import { buildPlacePaletteItems, appendPaletteTagFilters, appendSpawnPaletteGrid } from "../../../Libraries/Sandbox/sandboxPlacePalette.js";
 import { sandboxPaletteMatchesFilter } from "../../../Libraries/Sandbox/sandboxPaletteTags.js";
 import { appendActionRow, appendEditorHint, appendInstanceList } from "../../../Libraries/UI/paramFields.js";
-import { mountSceneSnapshotPanel } from "../../../Libraries/Persistence/SceneSnapshotPanel.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 import { wrapLabUiSync } from "./preview.js";
-export function mountSandboxToyUi(container, controller) {
-    const state = controller.getState();
-    let corridorWireBootstrapped = false;
+export function mountSandboxToyUi(container, state, controller) {
     let paletteTagFilter = "all";
     const propIds = Object.keys(getWorldPropDefinitions())
         .filter((id) => isSandboxSpawnable(getPropAsset(id)))
@@ -49,11 +46,6 @@ export function mountSandboxToyUi(container, controller) {
             return;
         }
         const activeItem = paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0];
-        if (!corridorWireBootstrapped && activeItem.kind === "prop") {
-            const asset = getPropAsset(activeItem.key.slice(5));
-            if (isRoomLinkSpawnAsset(asset) && !controller.isCorridorLinkWireActive()) controller.enterCorridorLinkWireMode();
-        }
-        corridorWireBootstrapped = true;
         const selectedPropIds = new Set(controller.getSelectedPropIds());
         const selectedProp = controller.getSelectedProp();
         const selectedFloorBelt = controller.getSelectedFloorBeltInfo();
@@ -86,7 +78,7 @@ export function mountSandboxToyUi(container, controller) {
             paramsHost.className = "spawn-palette-params";
             body.appendChild(paramsHost);
             if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), refreshPanel);
-            else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, controller, { wallStampMode, selectedVoxelInfo, selectedRailInfo });
+            else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, selectedVoxelInfo, selectedRailInfo });
             else appendMapGenEditor(paramsHost, state, activeItem.genKind, refreshPanel);
         });
         appendPinnedSection(container, "selected", "Selected", (body) => {
@@ -97,7 +89,7 @@ export function mountSandboxToyUi(container, controller) {
             }
             if (!selectedProp) {
                 if (
-                    appendGridSelectionInspector(body, controller, {
+                    appendGridSelectionInspector(body, state, controller, {
                         selectedVoxelInfo,
                         selectedRailInfo,
                         selectedForcefieldInfo,
@@ -111,7 +103,7 @@ export function mountSandboxToyUi(container, controller) {
                 appendEditorHint(body, "Select an item from Scene, or pick from Props to place on the map.");
                 return;
             }
-            appendSelectedPropInspector(body, controller, selectedProp, refreshPanel);
+            appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel);
         });
         appendPinnedSection(container, "scene", "Scene", (body) => {
             appendInstanceList(
@@ -132,12 +124,6 @@ export function mountSandboxToyUi(container, controller) {
     refreshPanel();
     return () => {
         controller.setUiSync(null);
-        container.innerHTML = "";
-    };
-}
-export function mountSceneJsonUi(container, controller) {
-    mountSceneSnapshotPanel(container, controller);
-    return () => {
         container.innerHTML = "";
     };
 }
