@@ -22,7 +22,7 @@ import {
     migrateMapGenBoundsForMode,
     syncMapGenBoundsFromPlay,
     getMapGenBoundsConfig,
-} from "./mapGenBounds.js";
+} from "../../../Libraries/Sandbox/mapGenBounds.js";
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 const CLEAR_CIRCLE_BOUNDS = createAabb();
 /** @param {number} cells */

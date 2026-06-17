@@ -1,25 +1,17 @@
-import { createAabb, minCornerAabbInto } from "../../../Libraries/Math/Aabb2D.js";
-import { worldBoundsFromCellOriginInto } from "../../../Libraries/Spatial/grid/GridCoords.js";
-/** @typedef {"rect" | "circle" | "donut"} MapGenBoundsMode */
-/** @typedef {{ boundsMode: MapGenBoundsMode, boundsCol: number, boundsRow: number, boundsCols: number, boundsRows: number, centerCol: number, centerRow: number, outerRadiusCells: number, donutThicknessCells: number }} MapGenBoundsConfig */
-/** @typedef {{ aabb: import("../../../Libraries/Math/Aabb2D.js").Aabb2D, boundsMode: string, boundsCol: number, boundsRow: number, boundsCols: number, boundsRows: number, centerCol: number, centerRow: number, outerRadiusCells: number, donutThicknessCells: number }} MapGenBoundsAabbCache */
-/** @type {readonly ["cavern", "rail", "erase"]} */
+import { createAabb, minCornerAabbInto } from "../Math/Aabb2D.js";
+import { worldBoundsFromCellOriginInto } from "../Spatial/grid/GridCoords.js";
 export const MAP_GEN_KINDS = ["cavern", "rail", "erase"];
 export const MAP_GEN_OVERLAY_COLORS = { cavern: "#ff9800", rail: "#e040fb", erase: "#f44336" };
-/** @returns {MapGenBoundsConfig} */
 export function createDefaultMapGenBoundsConfig() {
     return { boundsMode: "rect", boundsCol: -8, boundsRow: -8, boundsCols: 32, boundsRows: 32, centerCol: 8, centerRow: 8, outerRadiusCells: 16, donutThicknessCells: 4 };
 }
-/** @returns {MapGenBoundsAabbCache} */
 export function createMapGenBoundsAabbCache() {
     return { aabb: createAabb(), boundsMode: "", boundsCol: NaN, boundsRow: NaN, boundsCols: NaN, boundsRows: NaN, centerCol: NaN, centerRow: NaN, outerRadiusCells: NaN, donutThicknessCells: NaN };
 }
-/** @param {MapGenBoundsConfig} config */
 export function getInnerRadiusCells(config) {
     if (config.boundsMode !== "donut") return 0;
     return Math.max(0, config.outerRadiusCells - config.donutThicknessCells);
 }
-/** @param {MapGenBoundsConfig} config @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} out @param {number} cellSize */
 export function getMapGenBoundsAabbInto(out, config, cellSize) {
     if (config.boundsMode === "rect") return worldBoundsFromCellOriginInto(out, config.boundsCol, config.boundsRow, config.boundsCols, config.boundsRows, cellSize);
     const r = Math.max(1, config.outerRadiusCells) * cellSize;
@@ -27,23 +19,19 @@ export function getMapGenBoundsAabbInto(out, config, cellSize) {
     const cy = (config.centerRow + 0.5) * cellSize;
     return minCornerAabbInto(out, cx - r, cy - r, r * 2, r * 2);
 }
-/** @param {MapGenBoundsConfig} config @param {number} cellSize */
 export function getMapGenBoundsAabb(config, cellSize) {
     return getMapGenBoundsAabbInto(createAabb(), config, cellSize);
 }
-/** @param {MapGenBoundsConfig} config @param {number} cellSize */
 export function getMapGenBoundsCenterWorld(config, cellSize) {
     if (config.boundsMode === "rect") return { x: (config.boundsCol + config.boundsCols * 0.5) * cellSize, y: (config.boundsRow + config.boundsRows * 0.5) * cellSize };
     return { x: (config.centerCol + 0.5) * cellSize, y: (config.centerRow + 0.5) * cellSize };
 }
-/** @param {MapGenBoundsConfig} config */
 export function getMapGenBoundsStampExtent(config) {
     if (config.boundsMode === "rect")
         return { originCol: config.boundsCol, originRow: config.boundsRow, cols: Math.max(1, Math.round(config.boundsCols)), rows: Math.max(1, Math.round(config.boundsRows)) };
     const r = Math.max(1, Math.round(config.outerRadiusCells));
     return { originCol: config.centerCol - r, originRow: config.centerRow - r, cols: r * 2, rows: r * 2 };
 }
-/** @param {MapGenBoundsConfig} config @param {number} globalCol @param {number} globalRow */
 export function isGlobalCellInMapGenBounds(config, globalCol, globalRow) {
     if (config.boundsMode === "rect")
         return globalCol >= config.boundsCol && globalCol < config.boundsCol + config.boundsCols && globalRow >= config.boundsRow && globalRow < config.boundsRow + config.boundsRows;
@@ -52,7 +40,6 @@ export function isGlobalCellInMapGenBounds(config, globalCol, globalRow) {
     const innerR = getInnerRadiusCells(config);
     return dist <= config.outerRadiusCells && dist >= innerR;
 }
-/** @param {MapGenBoundsConfig} config @param {(globalCol: number, globalRow: number) => void} fn */
 export function forEachGlobalCellInMapGenBounds(config, fn) {
     const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(config);
     for (let lr = 0; lr < rows; lr++)
@@ -62,7 +49,6 @@ export function forEachGlobalCellInMapGenBounds(config, fn) {
             if (isGlobalCellInMapGenBounds(config, gc, gr)) fn(gc, gr);
         }
 }
-/** @param {Uint8Array} cells @param {number} cols @param {number} rows @param {MapGenBoundsConfig} config @param {number} originCol @param {number} originRow */
 export function applyMapGenShapeMask(cells, cols, rows, config, originCol, originRow) {
     if (config.boundsMode === "rect") return;
     const outerR = Math.max(1, config.outerRadiusCells);
@@ -75,7 +61,6 @@ export function applyMapGenShapeMask(cells, cols, rows, config, originCol, origi
             if (dist > outerR || dist < innerR) cells[lr * cols + lc] = 0;
         }
 }
-/** @param {import("../state.js").TileLabGameState["viewport"]} viewport @param {MapGenBoundsConfig} config @param {number} cellSize */
 export function centerMapGenBoundsOnViewport(viewport, config, cellSize) {
     if (config.boundsMode === "rect") {
         const minX = viewport.x - (config.boundsCols * cellSize) / 2;
@@ -87,7 +72,6 @@ export function centerMapGenBoundsOnViewport(viewport, config, cellSize) {
     config.centerCol = Math.round(viewport.x / cellSize);
     config.centerRow = Math.round(viewport.y / cellSize);
 }
-/** @param {{ playAreaCols: number, playAreaRows: number }} playConfig @param {MapGenBoundsConfig} config */
 export function syncMapGenBoundsSizeFromPlayArea(playConfig, config) {
     if (config.boundsMode === "rect") {
         config.boundsCols = playConfig.playAreaCols;
@@ -96,7 +80,6 @@ export function syncMapGenBoundsSizeFromPlayArea(playConfig, config) {
     }
     config.outerRadiusCells = Math.max(1, Math.round(Math.min(playConfig.playAreaCols, playConfig.playAreaRows) / 2));
 }
-/** @param {MapGenBoundsConfig} config */
 export function migrateMapGenBoundsForMode(config) {
     if (config.boundsMode === "rect") {
         config.centerCol = config.boundsCol + Math.floor(config.boundsCols / 2);
@@ -111,7 +94,6 @@ export function migrateMapGenBoundsForMode(config) {
     config.boundsRows = r * 2;
     if (config.boundsMode === "donut") config.donutThicknessCells = Math.max(1, Math.min(config.donutThicknessCells, config.outerRadiusCells - 1));
 }
-/** @param {MapGenBoundsAabbCache} cache @param {MapGenBoundsConfig} config */
 function mapGenBoundsCacheMatches(cache, config) {
     return (
         cache.boundsMode === config.boundsMode &&
@@ -125,7 +107,6 @@ function mapGenBoundsCacheMatches(cache, config) {
         cache.donutThicknessCells === config.donutThicknessCells
     );
 }
-/** @param {MapGenBoundsAabbCache} cache @param {MapGenBoundsConfig} config @param {number} cellSize */
 export function refreshMapGenBoundsAabb(cache, config, cellSize) {
     if (mapGenBoundsCacheMatches(cache, config)) return;
     cache.boundsMode = config.boundsMode;
@@ -139,30 +120,20 @@ export function refreshMapGenBoundsAabb(cache, config, cellSize) {
     cache.donutThicknessCells = config.donutThicknessCells;
     getMapGenBoundsAabbInto(cache.aabb, config, cellSize);
 }
-/** @param {import("../TileLabEditorState.js").TileLabEditorState} editor @param {typeof MAP_GEN_KINDS[number]} kind */
 export function getMapGenBoundsConfig(editor, kind) {
     if (kind === "cavern") return editor.cavernConfig;
     if (kind === "rail") return editor.railConfig;
     return editor.eraseConfig;
 }
-/** @param {import("../TileLabEditorState.js").TileLabEditorState} editor @param {typeof MAP_GEN_KINDS[number]} kind */
 export function getMapGenBoundsAabbCache(editor, kind) {
     return editor.mapBoundsPreview[kind];
 }
-/** @param {import("../TileLabEditorState.js").TileLabEditorState} editor @param {number} cellSize */
 export function refreshAllMapGenBoundsPreviews(editor, cellSize) {
     for (let i = 0; i < MAP_GEN_KINDS.length; i++) {
         const kind = MAP_GEN_KINDS[i];
         refreshMapGenBoundsAabb(getMapGenBoundsAabbCache(editor, kind), getMapGenBoundsConfig(editor, kind), cellSize);
     }
 }
-/**
- * @param {import("../state.js").TileLabGameState["viewport"]} viewport
- * @param {{ playAreaCols: number, playAreaRows: number }} playConfig
- * @param {MapGenBoundsConfig} config
- * @param {number} cellSize
- * @param {{ center?: boolean, syncSizeFromPlay?: boolean }} [options]
- */
 export function syncMapGenBoundsFromPlay(viewport, playConfig, config, cellSize, { center = true, syncSizeFromPlay = false } = {}) {
     if (syncSizeFromPlay) syncMapGenBoundsSizeFromPlayArea(playConfig, config);
     if (center) centerMapGenBoundsOnViewport(viewport, config, cellSize);

@@ -1,10 +1,10 @@
 import { gridSettings } from "../../../Config/Config.js";
-import { getInnerRadiusCells, getMapGenBoundsAabbCache, getMapGenBoundsCenterWorld, getMapGenBoundsConfig, migrateMapGenBoundsForMode } from "../world/mapGenBounds.js";
+import { getInnerRadiusCells, getMapGenBoundsAabbCache, getMapGenBoundsCenterWorld, getMapGenBoundsConfig, migrateMapGenBoundsForMode } from "../../../Libraries/Sandbox/mapGenBounds.js";
 import { activeMapGenKind } from "./mapOverview.js";
 import { drawWorldBoundsBox, drawWorldCircle, hitTestRectAabb, overviewBoundsCursor, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
 const EDGE_HIT_PX = 8;
 /** @typedef {"move" | "resize-outer" | "resize-inner" | "resize-e" | "resize-w" | "resize-n" | "resize-s" | "resize-se" | "resize-sw" | "resize-ne" | "resize-nw"} MapGenBoundsDragMode */
-/** @param {CanvasRenderingContext2D} ctx @param {import("../world/mapGenBounds.js").MapGenBoundsConfig} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @param {string} [color] */
+/** @param {CanvasRenderingContext2D} ctx @param {import("../../../Libraries/Sandbox/mapGenBounds.js").MapGenBoundsConfig} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @param {string} [color] */
 export function drawMapGenBoundsPreview(ctx, config, cache, displayW, displayH, color = "#ff9800") {
     const cellSize = gridSettings.cellSize;
     const center = getMapGenBoundsCenterWorld(config, cellSize);
@@ -18,8 +18,8 @@ export function drawMapGenBoundsPreview(ctx, config, cache, displayW, displayH, 
 /**
  * @param {number} sx
  * @param {number} sy
- * @param {import("../world/mapGenBounds.js").MapGenBoundsConfig} config
- * @param {import("../world/mapGenBounds.js").MapGenBoundsAabbCache} boundsCache
+ * @param {import("../../../Libraries/Sandbox/mapGenBounds.js").MapGenBoundsConfig} config
+ * @param {import("../../../Libraries/Sandbox/mapGenBounds.js").MapGenBoundsAabbCache} boundsCache
  * @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache
  * @param {number} displayW
  * @param {number} displayH
@@ -39,7 +39,7 @@ export function hitTestMapGenBounds(sx, sy, config, boundsCache, cache, displayW
     if (distPx < outerPx - EDGE_HIT_PX && (config.boundsMode !== "donut" || distPx > innerPx + EDGE_HIT_PX)) return "move";
     return null;
 }
-/** @param {MapGenBoundsDragMode} mode @param {number} dxWorld @param {number} dyWorld @param {import("../world/mapGenBounds.js").MapGenBoundsConfig} config */
+/** @param {MapGenBoundsDragMode} mode @param {number} dxWorld @param {number} dyWorld @param {import("../../../Libraries/Sandbox/mapGenBounds.js").MapGenBoundsConfig} config */
 export function applyMapGenBoundsDrag(mode, dxWorld, dyWorld, config) {
     const cellSize = gridSettings.cellSize;
     const dxCells = dxWorld / cellSize;
@@ -98,7 +98,7 @@ export function applyMapGenBoundsDrag(mode, dxWorld, dyWorld, config) {
     }
     migrateMapGenBoundsForMode(config);
 }
-/** @param {MapGenBoundsDragMode} mode @param {number} worldX @param {number} worldY @param {import("../world/mapGenBounds.js").MapGenBoundsConfig} config */
+/** @param {MapGenBoundsDragMode} mode @param {number} worldX @param {number} worldY @param {import("../../../Libraries/Sandbox/mapGenBounds.js").MapGenBoundsConfig} config */
 export function applyMapGenBoundsDragAtPointer(mode, worldX, worldY, config) {
     const cellSize = gridSettings.cellSize;
     if (config.boundsMode === "rect") return;
