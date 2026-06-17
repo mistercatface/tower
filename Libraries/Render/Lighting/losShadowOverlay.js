@@ -1,20 +1,11 @@
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
+import { traceWoundFlatQuad } from "../../Canvas/CanvasPath.js";
+import { collectExposedWallEdges } from "../../Spatial/grid/gridCellTopology.js";
 import { elevationCameraFromViewport } from "../../Spatial/iso/ElevationCamera.js";
 import { LIBRARY_DEFAULT_CAMERA_HEIGHT } from "../../Spatial/iso/perspectiveDefaults.js";
-import {
-    LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT,
-    LOS_SHADOW_OVERLAY_ALPHA,
-    LOS_SHADOW_VISION_TILES_DEFAULT,
-} from "./losShadowDefaults.js";
-import { appendShadowQuadToPath } from "./losShadowMath.js";
-import { collectLosShadowEdges, forEachLosShadowQuadInRange } from "./losShadowEdges.js";
-const sEdgeCache = {
-    grid: null,
-    wallGridRevision: -1,
-    cols: 0,
-    rows: 0,
-    edges: [],
-};
+import { LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT, LOS_SHADOW_OVERLAY_ALPHA, LOS_SHADOW_VISION_TILES_DEFAULT } from "./losShadowDefaults.js";
+import { forEachLosShadowQuadInRange } from "./losShadowEdges.js";
+const sEdgeCache = { grid: null, wallGridRevision: -1, cols: 0, rows: 0, edges: [] };
 const sQuadScratch = new Float32Array(8);
 let sOverlayCanvas = null;
 let sOverlayCtx = null;
@@ -28,7 +19,7 @@ function ensureOverlayBuffer(width, height) {
 }
 function syncEdgeCache(grid) {
     if (sEdgeCache.grid === grid && sEdgeCache.wallGridRevision === grid.wallGridRevision && sEdgeCache.cols === grid.cols && sEdgeCache.rows === grid.rows) return sEdgeCache.edges;
-    collectLosShadowEdges(grid, sEdgeCache.edges);
+    collectExposedWallEdges(grid, sEdgeCache.edges);
     sEdgeCache.grid = grid;
     sEdgeCache.wallGridRevision = grid.wallGridRevision;
     sEdgeCache.cols = grid.cols;
@@ -86,7 +77,7 @@ export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obs
     overlayCtx.beginPath();
     let hasShadows = false;
     forEachLosShadowQuadInRange(edges, lightX, lightY, range, lightZ, viewport, camera, sQuadScratch, (flatVerts, vertCount) => {
-        appendShadowQuadToPath(overlayCtx, flatVerts, vertCount);
+        traceWoundFlatQuad(overlayCtx, flatVerts, vertCount);
         hasShadows = true;
     });
     if (hasShadows) overlayCtx.fill();

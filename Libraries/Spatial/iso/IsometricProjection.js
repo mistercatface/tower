@@ -55,6 +55,14 @@ export function projectWorldPointInto(out, worldX, worldY, height, camera) {
 export function projectWorldPointAtHeight(worldX, worldY, height, camera) {
     return projectWorldPointInto({ x: 0, y: 0 }, worldX, worldY, height, camera);
 }
+/** Elevation projection then viewport pan/zoom — canonical world (x, y, z) → screen pixels. */
+export function projectWorldPointToScreenInto(out, viewport, camera, worldX, worldY, height) {
+    projectWorldPointInto(out, worldX, worldY, height, camera);
+    const screen = viewport.worldToScreen(out.x, out.y);
+    out.x = screen.x;
+    out.y = screen.y;
+    return out;
+}
 /**
  * Project the four corners of a world-axis-aligned rectangle at elevation height.
  *

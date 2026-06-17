@@ -1,6 +1,6 @@
 import { packEdgeCellKey } from "../../DataStructures/CellKey.js";
 import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, createRailWallEdge, railWallThicknessPx, passageEdgeEmitsCollision } from "./CellEdge.js";
-import { cellInRect, colRowToIndex } from "./GridUtils.js";
+import { cellInRect, colRowToIndex, gridSideOutwardVector } from "./GridUtils.js";
 export function edgeNeighbor(col, row, side) {
     let nc = col;
     let nr = row;
@@ -110,6 +110,33 @@ export function cellIsStaticWall(grid, col, row) {
 export function resolveCellWallHeightPx(grid, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return 0;
     return resolveCellWallHeightAtIdx(grid, colRowToIndex(col, row, grid.cols));
+}
+const sExposedEdgeP1 = { x: 0, y: 0 };
+const sExposedEdgeP2 = { x: 0, y: 0 };
+/** Perimeter edges where a filled wall cell meets lower or empty neighbor. */
+export function collectExposedWallEdges(grid, out) {
+    out.length = 0;
+    const cols = grid.cols;
+    const rows = grid.rows;
+    const cells = grid.grid;
+    for (let row = 0; row < rows; row++) {
+        const rowOffset = row * cols;
+        for (let col = 0; col < cols; col++) {
+            const idx = rowOffset + col;
+            const level = cells[idx];
+            if (level === 0) continue;
+            const wallTopZ = resolveCellWallHeightAtIdx(grid, idx);
+            for (let side = 0; side < 4; side++) {
+                const { nc, nr } = edgeNeighbor(col, row, side);
+                let neighborLevel = 0;
+                if (cellInRect(nc, nr, cols, rows)) neighborLevel = cells[nc + nr * cols];
+                if (neighborLevel >= level) continue;
+                cellEdgeEndpoints(grid, col, row, side, sExposedEdgeP1, sExposedEdgeP2, 0);
+                const outward = gridSideOutwardVector(side);
+                out.push({ x1: sExposedEdgeP1.x, y1: sExposedEdgeP1.y, x2: sExposedEdgeP2.x, y2: sExposedEdgeP2.y, nx: outward.x, ny: outward.y, wallTopZ });
+            }
+        }
+    }
 }
 export function cellToGlobalColRow(grid, col, row) {
     const cellSize = grid.cellSize;

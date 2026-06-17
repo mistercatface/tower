@@ -51,6 +51,13 @@ export function traceQuad(ctx, p0, p1, p2, p3) {
     ctx.lineTo(p3.x, p3.y);
     ctx.closePath();
 }
+/** Flat [x0,y0, x1,y1, ...] quad with consistent winding; does not close the path. */
+export function traceWoundFlatQuad(ctx, flatVerts, vertCount) {
+    const cross = (flatVerts[2] - flatVerts[0]) * (flatVerts[5] - flatVerts[3]) - (flatVerts[3] - flatVerts[1]) * (flatVerts[4] - flatVerts[2]);
+    ctx.moveTo(flatVerts[0], flatVerts[1]);
+    if (cross >= 0) for (let p = 1; p < vertCount; p++) ctx.lineTo(flatVerts[p * 2], flatVerts[p * 2 + 1]);
+    else for (let p = vertCount - 1; p > 0; p--) ctx.lineTo(flatVerts[p * 2], flatVerts[p * 2 + 1]);
+}
 /** @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} y0 @param {{ x: number, y: number }[] | null | undefined} points @param {number} endX @param {number} endY */
 export function tracePolylineFrom(ctx, x0, y0, points, endX, endY) {
     ctx.moveTo(x0, y0);

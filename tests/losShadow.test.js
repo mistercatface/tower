@@ -1,16 +1,25 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { collectLosShadowEdges, forEachLosShadowQuadInRange } from "../Libraries/Render/Lighting/losShadowEdges.js";
+import { traceWoundFlatQuad } from "../Libraries/Canvas/CanvasPath.js";
+import { forEachLosShadowQuadInRange } from "../Libraries/Render/Lighting/losShadowEdges.js";
 import { composeLosShadowMask, drawLosShadowOverlay } from "../Libraries/Render/Lighting/losShadowOverlay.js";
 import { isLosShadowStructureMode } from "../Libraries/Render/Lighting/losShadowDefaults.js";
-import {
-    appendShadowQuadToPath,
-    edgeNormalFacesLight,
-    projectWallShadowQuadScreenInto,
-    shadowGroundContactXY,
-} from "../Libraries/Render/Lighting/losShadowMath.js";
+import { collectExposedWallEdges } from "../Libraries/Spatial/grid/gridCellTopology.js";
+import { projectWorldPointToScreenInto } from "../Libraries/Spatial/iso/IsometricProjection.js";
+import { projectWallShadowQuadScreenInto, shadowGroundContactXY } from "../Libraries/Spatial/iso/shadowProjection.js";
 import { createMockCanvas2d, makeTestCamera, makeTestObstacleGrid, makeTestViewport, stampWallRect } from "./losShadowHarness.js";
 import { assertNear } from "./mathHarness.js";
+describe("projectWorldPointToScreenInto", () => {
+    it("chains elevation projection with viewport worldToScreen", () => {
+        const viewport = makeTestViewport(128, 128, 200, 200, 1);
+        const camera = makeTestCamera(128, 128, 160, 1);
+        const out = { x: 0, y: 0 };
+        projectWorldPointToScreenInto(out, viewport, camera, 64, 64, 0);
+        const flat = viewport.worldToScreen(64, 64);
+        assertNear(out.x, flat.x);
+        assertNear(out.y, flat.y);
+    });
+});
 describe("shadowGroundContactXY", () => {
     it("extends ray from light above wall top to ground", () => {
         const tip = shadowGroundContactXY(0, 0, 32, 10, 0, 16);
@@ -23,13 +32,17 @@ describe("shadowGroundContactXY", () => {
         assertNear(shadowGroundContactXY(0, 0, 8, 10, 5, 16).x, 10);
         assertNear(shadowGroundContactXY(0, 0, 8, 10, 5, 16).y, 5);
     });
+    it("extrudes along light direction when farDistance is set", () => {
+        assertNear(shadowGroundContactXY(0, 0, 16, 10, 0, 16, 20).x, 20);
+        assertNear(shadowGroundContactXY(0, 0, 16, 10, 0, 16, 20).y, 0);
+    });
     it("matches classic ratio when light is above a flat wall", () => {
         const tip = shadowGroundContactXY(0, 0, 32, 10, 0, 0);
         assertNear(tip.x, 10);
         assertNear(tip.y, 0);
     });
 });
-describe("losShadowMath", () => {
+describe("shadowProjection", () => {
     it("projectWallShadowQuadScreenInto anchors near edge at projected roof height", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
         const camera = makeTestCamera(128, 128, 160, 1);
@@ -62,12 +75,9 @@ describe("losShadowMath", () => {
         const spreadHigh = Math.hypot(outHigh[6] - outHigh[0], outHigh[7] - outHigh[1]);
         assert.ok(spreadHigh > spreadLow, "higher light should cast a longer screen wedge");
     });
-    it("edgeNormalFacesLight rejects back-facing edges", () => {
-        assert.equal(edgeNormalFacesLight(0, 1, 8, 12, 8, 8), true);
-        assert.equal(edgeNormalFacesLight(0, -1, 8, 4, 8, 8), true);
-        assert.equal(edgeNormalFacesLight(0, 1, 8, 4, 8, 8), false);
-    });
-    it("appendShadowQuadToPath emits wound vertices", () => {
+});
+describe("CanvasPath", () => {
+    it("traceWoundFlatQuad emits wound vertices", () => {
         const ops = [];
         const ctx = {
             moveTo(x, y) {
@@ -77,33 +87,35 @@ describe("losShadowMath", () => {
                 ops.push({ x, y });
             },
         };
-        appendShadowQuadToPath(ctx, [0, 0, 2, 0, 2, 2, 0, 2], 4);
+        traceWoundFlatQuad(ctx, [0, 0, 2, 0, 2, 2, 0, 2], 4);
         assert.equal(ops.length, 4);
         assertNear(ops[0].x, 0);
         assertNear(ops[3].x, 0);
         assertNear(ops[3].y, 2);
     });
 });
-describe("losShadowEdges", () => {
+describe("collectExposedWallEdges", () => {
     it("isolates a single wall cell to four exposed edges", () => {
         const grid = makeTestObstacleGrid(8, 8);
         stampWallRect(grid, 0, 0, 1, 1);
         const edges = [];
-        collectLosShadowEdges(grid, edges);
+        collectExposedWallEdges(grid, edges);
         assert.equal(edges.length, 4);
     });
     it("merges shared edge between equal-height neighbors", () => {
         const grid = makeTestObstacleGrid(8, 8);
         stampWallRect(grid, 0, 0, 2, 1);
         const edges = [];
-        collectLosShadowEdges(grid, edges);
+        collectExposedWallEdges(grid, edges);
         assert.equal(edges.length, 6);
     });
+});
+describe("losShadowEdges", () => {
     it("emits projected roof-anchored shadow quads for all edges in range", () => {
         const grid = makeTestObstacleGrid(16, 16);
         stampWallRect(grid, 4, 4, 1, 1);
         const edges = [];
-        collectLosShadowEdges(grid, edges);
+        collectExposedWallEdges(grid, edges);
         const viewport = makeTestViewport(128, 128);
         const camera = makeTestCamera(128, 128);
         const scratch = new Float32Array(8);
@@ -127,11 +139,7 @@ describe("composeLosShadowMask", () => {
         stampWallRect(grid, 10, 10, 2, 2);
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
         const mask = createMockCanvas2d(400, 400);
-        composeLosShadowMask(mask, 400, 400, viewport, grid, {
-            visionTiles: 8,
-            lightHeightCells: 1,
-            camera: makeTestCamera(128, 128),
-        });
+        composeLosShadowMask(mask, 400, 400, viewport, grid, { visionTiles: 8, lightHeightCells: 1, camera: makeTestCamera(128, 128) });
         const gcoOps = mask.ops.filter((o) => o.op === "gco").map((o) => o.value);
         assert.ok(gcoOps.includes("destination-out"));
         assert.ok(gcoOps.includes("source-over"));
@@ -147,6 +155,9 @@ describe("drawLosShadowOverlay", () => {
         const ctx = createMockCanvas2d(400, 400);
         drawLosShadowOverlay(ctx, viewport, grid, { visionTiles: 8, camera: makeTestCamera(128, 128) });
         assert.ok(ctx.ops.some((o) => o.op === "drawImage"));
-        assert.equal(ctx.ops.some((o) => o.op === "gco" && o.value === "destination-out"), false);
+        assert.equal(
+            ctx.ops.some((o) => o.op === "gco" && o.value === "destination-out"),
+            false,
+        );
     });
 });
