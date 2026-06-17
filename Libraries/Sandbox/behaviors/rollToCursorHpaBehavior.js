@@ -1,7 +1,7 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { getRollToCursorConfig, snapRollMoveTargetToCellCenter, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
-import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
+import { isEntityOnFloorBelt, isFloorBeltCell, resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 import { stopLocomotionWorldProp } from "../../Props/locomotionWorldProp.js";
 export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
 /** @typedef {{ targetWorld: { x: number, y: number } | null, targetCellCol: number | null, targetCellRow: number | null, dragging: boolean, wasOnBelt: boolean, hpaNav: ReturnType<typeof createRollToCursorHpaNav> }} HpaPropRun */
@@ -48,6 +48,7 @@ export function createRollToCursorHpaBehavior(state) {
         const config = getRollToCursorConfig(prop, { stopRadius: 8 });
         const onBelt = isEntityOnFloorBelt(grid, prop.x, prop.y);
         const targetOnBelt = isFloorBeltCell(grid, run.targetCellCol, run.targetCellRow);
+        const steerTarget = resolveFloorBeltSteerTarget(grid, run.targetWorld.x, run.targetWorld.y, prop.x, prop.y);
         const distToTarget = Math.hypot(run.targetWorld.x - prop.x, run.targetWorld.y - prop.y);
         if (distToTarget <= config.stopRadius && (!targetOnBelt || onBelt)) {
             releaseMoveTarget(prop, run);
@@ -60,28 +61,18 @@ export function createRollToCursorHpaBehavior(state) {
         }
         if (run.wasOnBelt) {
             run.wasOnBelt = false;
-            if (!targetOnBelt) {
-                run.hpaNav.reset(state);
-                run.hpaNav.replan(prop, run.targetWorld.x, run.targetWorld.y, state);
-            }
-        }
-        if (targetOnBelt) {
-            const dx = run.targetWorld.x - prop.x;
-            const dy = run.targetWorld.y - prop.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist <= config.stopRadius) return;
-            steerRollToward(prop, dx / dist, dy / dist, dt, config);
-            return;
+            run.hpaNav.reset(state);
+            run.hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
         }
         if (prop._navPathStale) {
             prop._navPathStale = false;
             run.hpaNav.reset(state);
-            run.hpaNav.replan(prop, run.targetWorld.x, run.targetWorld.y, state);
-        } else run.hpaNav.update(prop, run.targetWorld.x, run.targetWorld.y, state, dt * 1000);
+            run.hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
+        } else run.hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
         const steering = run.hpaNav.getSteering(
             prop,
-            run.targetWorld.x,
-            run.targetWorld.y,
+            steerTarget.x,
+            steerTarget.y,
             { pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5), arrivalDistance: config.stopRadius, pathOffPathDistance: 80 },
             state.obstacleGrid,
             state.hpaPathWorker,
@@ -134,9 +125,7 @@ export function createRollToCursorHpaBehavior(state) {
             const run = propRuns.get(prop.id);
             if (!run?.targetWorld) return null;
             const grid = state.obstacleGrid;
-            const onBelt = isEntityOnFloorBelt(grid, prop.x, prop.y);
-            const targetOnBelt = isFloorBeltCell(grid, run.targetCellCol, run.targetCellRow);
-            if (onBelt || targetOnBelt)
+            if (isEntityOnFloorBelt(grid, prop.x, prop.y))
                 return {
                     mode: "direct",
                     pathNodes: [
