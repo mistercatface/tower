@@ -1,6 +1,5 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
 import { populateCombatFrame } from "./populateCombatFrame.js";
-import { allowsPushableCollisionPair, pairBroadphaseOverlap } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
 /**
  * Combat/map-transition spatial frame — populates SpatialFrameCore from GameState.
@@ -40,17 +39,6 @@ export class CombatSpatialFrame extends SpatialFrameCore {
         const active = this._activePushables;
         for (let i = 0; i < active.length; i++) if (active[i] === prop) return;
         active.push(prop);
-    }
-    forEachPushablePair(fn) {
-        const frame = this;
-        this.forEachGroupNeighborPair(
-            this._activePushables,
-            (primary, neighbor) => {
-                if (neighbor.isSleeping && pairBroadphaseOverlap(primary, neighbor)) frame.activatePushable(neighbor);
-                return allowsPushableCollisionPair(primary, neighbor);
-            },
-            fn,
-        );
     }
 }
 /** Shared frame for combat and map-transition ticks. Call begin() once per update. */

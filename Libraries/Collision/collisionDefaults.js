@@ -7,6 +7,6 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     /** Peak travel per physics substep (px) — see Libraries/Motion/motionSubsteps.js */
     motionSubsteps: { maxStepPx: 4, maxSubsteps: 8 },
     restingSpeedSq: 4,
-    restitution: { rigidBody: 0.15, pushablePair: 0.4, circlePair: 0.5 },
+    restitution: { rigidBody: 0.15, pushablePair: 0.4 },
     mass: { pushableFallback: 15, worldPropFallback: 1 },
 };

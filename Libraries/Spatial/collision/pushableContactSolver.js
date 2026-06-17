@@ -194,6 +194,3 @@ export function resolvePushableContactPass(spatialFrame, state) {
     solvePushableContactVelocities(contacts, INNER_SOLVE_ITERATIONS);
     applyPushableContactEffects(contacts, spatialFrame, state);
 }
-export function resolveActivePushablePairs(spatialFrame, state, outerIterations = getCollisionSettings().pushableIterations) {
-    for (let outer = 0; outer < outerIterations; outer++) resolvePushableContactPass(spatialFrame, state);
-}
