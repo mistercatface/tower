@@ -52,7 +52,7 @@ export function paintMapOverviewFrame(state) {
 }
 /** @param {import("../state.js").TileLabGameState} state @param {(() => void) | null} [onBoundsChange] @param {() => number} [getSlotMax] */
 export function mountMapOverview(state, onBoundsChange = null, getSlotMax = null) {
-    const { initialSize, minSize, maxSize } = EDITOR_CANVAS_DEFAULTS.overview;
+    const { initialSize, minSize, maxSize, backingScale } = EDITOR_CANVAS_DEFAULTS.overview;
     const canvas = document.getElementById("mapOverviewCanvas");
     overviewCtx = canvas.getContext("2d");
     overviewCanvasResize = applySquareCanvasResize(canvas, {
@@ -60,6 +60,7 @@ export function mountMapOverview(state, onBoundsChange = null, getSlotMax = null
         initialSize,
         minSize,
         maxSize: getSlotMax ?? maxSize,
+        backingScale,
         onResize: () => paintMapOverviewFrame(state),
     });
     if (onBoundsChange) {

@@ -8,7 +8,7 @@ export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
 /** Square canvas pixel defaults — main map, map overview, animation preview. */
 export const EDITOR_CANVAS_DEFAULTS = {
     main: { initialSize: 480, minSize: 128, maxSize: 1024 },
-    overview: { initialSize: 480, minSize: 128, maxSize: 1024 },
+    overview: { initialSize: 480, minSize: 128, maxSize: 1024, backingScale: 0.5 },
     animationPreview: { initialSize: 200, minSize: 128 },
 };
 export class TileLabGameState extends SharedGameState {

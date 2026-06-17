@@ -8,6 +8,7 @@ const HANDLE_CLASS = "square-canvas-resize-handle";
  * @property {(size: number) => void} [onResize]
  * @property {boolean} [syncCanvasPixels=true]
  * @property {HTMLElement} [host]
+ * @property {number} [backingScale=1] Display size × scale = canvas pixel buffer (CSS fills host).
  */
 /**
  * @typedef {object} SquareCanvasResizeHandle
@@ -24,24 +25,27 @@ const HANDLE_CLASS = "square-canvas-resize-handle";
  * @returns {SquareCanvasResizeHandle}
  */
 export function applySquareCanvasResize(canvas, options) {
-    const { initialSize, minSize = 64, maxSize, onResize, syncCanvasPixels = true, host: hostOption } = options;
+    const { initialSize, minSize = 64, maxSize, onResize, syncCanvasPixels = true, host: hostOption, backingScale = 1 } = options;
     const host = resolveHost(canvas, hostOption);
     const resolveMax = () => {
         const cap = typeof maxSize === "function" ? maxSize() : maxSize;
         return cap ?? 4096;
     };
-    const syncCanvas = (size) => {
+    const backingPixels = (displaySize) => Math.max(1, Math.round(displaySize * backingScale));
+    const syncCanvas = (displaySize) => {
         if (syncCanvasPixels) {
-            canvas.width = size;
-            canvas.height = size;
+            const pixels = backingPixels(displaySize);
+            canvas.width = pixels;
+            canvas.height = pixels;
             canvas.getContext("2d").imageSmoothingEnabled = false;
         }
     };
     const applySize = (size) => {
         const clamped = Math.max(minSize, Math.min(resolveMax(), Math.round(size)));
+        const pixels = backingPixels(clamped);
         const unchanged = host.offsetWidth === clamped && host.offsetHeight === clamped;
         if (unchanged) {
-            if (syncCanvasPixels && canvas.width !== clamped) syncCanvas(clamped);
+            if (syncCanvasPixels && canvas.width !== pixels) syncCanvas(clamped);
             return clamped;
         }
         host.style.width = `${clamped}px`;
