@@ -3,6 +3,7 @@ import { defaultWallCapPx } from "../../Libraries/World/wallGridBake.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
+import { drawRoomGraphFloorPatches } from "../../Libraries/RoomGraph/roomGraphFloorDraw.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     constructor(settings = getGameWorldSurfaceSettings()) {
         super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel) });
@@ -22,6 +23,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     }
     drawGround(ctx, state, viewport) {
         this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, viewport, state, zLevel: 0, playBounds: playBoundsFromObstacleGrid(state.obstacleGrid) });
+        drawRoomGraphFloorPatches(ctx, this, state, viewport);
     }
     drawRoofs(ctx, state, viewport) {
         const staticHeights = state.obstacleGrid.collectStaticFillZLevels();

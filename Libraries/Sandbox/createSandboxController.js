@@ -307,7 +307,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
                 if (corridorLinkWireFromNodeId == null) corridorLinkWireFromNodeId = target.id;
                 else if (target.id !== corridorLinkWireFromNodeId) {
                     const width = session.getSpawnCorridorWidth();
-                    if (session.addRoomLinkBetweenNodes(corridorLinkWireFromNodeId, target.id, { corridorType: session.getSpawnCorridorType(), corridorWidthMin: width, corridorWidthMax: width }))
+                    if (session.addRoomLinkBetweenNodes(corridorLinkWireFromNodeId, target.id, { corridorType: session.getSpawnCorridorType(), corridorWidthMin: width, corridorWidthMax: width, surfaceProfileId: session.getSpawnCorridorSurfaceProfileId() }))
                         enterCorridorLinkWireMode();
                 }
             session.sync();
@@ -485,6 +485,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         setSpawnCorridorType: (type) => session.setSpawnCorridorType(type),
         getSpawnCorridorWidth: () => session.getSpawnCorridorWidth(),
         setSpawnCorridorWidth: (width) => session.setSpawnCorridorWidth(width),
+        getSpawnRoomNodeSurfaceProfileId: () => session.getSpawnRoomNodeSurfaceProfileId(),
+        setSpawnRoomNodeSurfaceProfileId: (profileId) => session.setSpawnRoomNodeSurfaceProfileId(profileId),
+        getSpawnCorridorSurfaceProfileId: () => session.getSpawnCorridorSurfaceProfileId(),
+        setSpawnCorridorSurfaceProfileId: (profileId) => session.setSpawnCorridorSurfaceProfileId(profileId),
         getSelectedPropId: () => session.getSelectedPropId(),
         getSelectedPropIds: () => session.getSelectedPropIds(),
         getSelectedProp: () => session.getSelectedProp(),

@@ -1,5 +1,6 @@
 import { resolveRailWallHeightLevel, resolveRailWallThicknessLevel, MAX_RAIL_WALL_THICKNESS_LEVEL } from "../RoomGraph/roomGraphClosedRooms.js";
 import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../RoomGraph/roomGraphCorridorTypes.js";
+import { appendSurfaceProfileField } from "../RoomGraph/roomGraphSurfaceProfile.js";
 import { formatGridWallEdgeSideLabel } from "./gridWallEdit.js";
 import { appendActionRow, appendEditorHint, appendNumberField, appendSelectField } from "../UI/paramFields.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
@@ -70,6 +71,9 @@ export function appendRoomLinkCorridorInspector(body, selectedRoomLink, controll
         onChange: (width) => {
             controller.updateSelectedRoomLink({ corridorWidthMin: width, corridorWidthMax: width });
         },
+    });
+    appendSurfaceProfileField(body, "Floor profile", selectedRoomLink.surfaceProfileId, (profileId) => {
+        controller.updateSelectedRoomLink({ surfaceProfileId: profileId });
     });
     appendRailWallHeightSlider(body, controller, resolveRailWallHeightLevel(selectedRoomLink.railWallHeightLevel), (val) => {
         controller.updateSelectedRoomLink({ railWallHeightLevel: val });

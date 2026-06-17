@@ -1,17 +1,19 @@
 import { clampLinkCorridorRanges, ensureLinkCorridorFields } from "./roomGraphLinkCorridor.js";
 import { resolveRailWallHeightLevel, resolveRailWallThicknessLevel } from "./roomGraphClosedRooms.js";
 import { CORRIDOR_TYPE_EMPTY, CORRIDOR_TYPE_OPEN, CORRIDOR_TYPE_LOCKED_ROOM, normalizeCorridorType, formatCorridorTypeLabel } from "./roomGraphCorridorTypes.js";
-/** @typedef {{ id: number, col: number, row: number, width: number, height: number, kind?: string, railWallHeightLevel?: number, railWallThicknessLevel?: number }} RoomNode */
-/** @typedef {{ id: number, a: number, b: number, corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, seed?: number, railWallHeightLevel?: number, railWallThicknessLevel?: number }} RoomLink */
-/** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[], bakedFloorBelts?: { col: number, row: number, kind: number, facingIndex: number }[] }} RoomGraphDoc */
+import { normalizeAuthoredSurfaceProfileId } from "./roomGraphSurfaceProfile.js";
+/** @typedef {{ id: number, col: number, row: number, width: number, height: number, kind?: string, surfaceProfileId?: string | null, railWallHeightLevel?: number, railWallThicknessLevel?: number }} RoomNode */
+/** @typedef {{ id: number, a: number, b: number, corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, seed?: number, surfaceProfileId?: string | null, railWallHeightLevel?: number, railWallThicknessLevel?: number }} RoomLink */
+/** @typedef {{ linkId: number, cellKeys: string[] }} BakedCorridorFloorCells */
+/** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[], bakedFloorBelts?: { col: number, row: number, kind: number, facingIndex: number }[], bakedCorridorFloorCells?: BakedCorridorFloorCells[] }} RoomGraphDoc */
 /** @param {object} state @returns {RoomGraphDoc} */
 export function getRoomGraph(state) {
-    if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [], bakedLockedRooms: [] };
+    if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [], bakedLockedRooms: [], bakedCorridorFloorCells: [] };
     return state.roomGraph;
 }
 /** @param {object} state */
 export function clearRoomGraph(state) {
-    state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [], bakedLockedRooms: [] };
+    state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [], bakedLockedRooms: [], bakedCorridorFloorCells: [] };
 }
 /** @param {object} state @returns {RoomNode[]} */
 export function listRoomNodes(state) {
@@ -52,6 +54,7 @@ export function roomNodeOccupiesCell(state, col, row) {
 export function addRoomNode(state, spec) {
     const graph = getRoomGraph(state);
     const node = { id: graph.nextNodeId++, ...spec };
+    node.surfaceProfileId = normalizeAuthoredSurfaceProfileId(node.surfaceProfileId);
     node.railWallHeightLevel = resolveRailWallHeightLevel(node.railWallHeightLevel);
     node.railWallThicknessLevel = resolveRailWallThicknessLevel(node.railWallThicknessLevel);
     graph.nodes.push(node);
@@ -121,6 +124,7 @@ export function addRoomLink(state, a, b, options = {}) {
         seed: options.seed != null ? options.seed | 0 : (Math.random() * 0xffffffff) | 0,
         railWallHeightLevel: resolveRailWallHeightLevel(options.railWallHeightLevel),
         railWallThicknessLevel: resolveRailWallThicknessLevel(options.railWallThicknessLevel),
+        surfaceProfileId: normalizeAuthoredSurfaceProfileId(options.surfaceProfileId),
     };
     graph.links.push(link);
     return link;
@@ -136,6 +140,7 @@ export function updateRoomLink(state, linkId, patch) {
     if (patch.seed != null) link.seed = patch.seed | 0;
     if (patch.railWallHeightLevel != null) link.railWallHeightLevel = resolveRailWallHeightLevel(patch.railWallHeightLevel);
     if (patch.railWallThicknessLevel != null) link.railWallThicknessLevel = resolveRailWallThicknessLevel(patch.railWallThicknessLevel);
+    if (patch.surfaceProfileId !== undefined) link.surfaceProfileId = normalizeAuthoredSurfaceProfileId(patch.surfaceProfileId);
     const nodeA = getRoomNode(state, link.a);
     const nodeB = getRoomNode(state, link.b);
     if (nodeA && nodeB) clampLinkCorridorRanges(link, nodeA, nodeB);
@@ -148,6 +153,7 @@ export function updateRoomNode(state, nodeId, patch) {
     if (!node) return false;
     if (patch.railWallHeightLevel != null) node.railWallHeightLevel = resolveRailWallHeightLevel(patch.railWallHeightLevel);
     if (patch.railWallThicknessLevel != null) node.railWallThicknessLevel = resolveRailWallThicknessLevel(patch.railWallThicknessLevel);
+    if (patch.surfaceProfileId !== undefined) node.surfaceProfileId = normalizeAuthoredSurfaceProfileId(patch.surfaceProfileId);
     return true;
 }
 /** @param {object} state @param {number} linkId @returns {boolean} */
@@ -251,6 +257,7 @@ export function replaceRoomGraph(state, doc) {
         bakedRails: [],
         bakedFloorBelts: [],
         bakedLockedRooms: [],
+        bakedCorridorFloorCells: [],
     };
 }
 /** @param {object} state @returns {RoomGraphDoc} */

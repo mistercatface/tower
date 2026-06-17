@@ -42,6 +42,7 @@ import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROW
 import { linkCorridorLimits, MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "../RoomGraph/roomGraphLinkCorridor.js";
 import { resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
 import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
+import { invalidateRoomLinkFloorSurface, invalidateRoomNodeFloorSurface, normalizeAuthoredSurfaceProfileId } from "../RoomGraph/roomGraphSurfaceProfile.js";
 import { createSeededRng } from "../Math/SeededRng.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
@@ -89,6 +90,8 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
     let spawnPuzzleAreaRows = BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS;
     let spawnCorridorType = CORRIDOR_TYPE_EMPTY;
     let spawnCorridorWidth = 1;
+    let spawnRoomNodeSurfaceProfileId = null;
+    let spawnCorridorSurfaceProfileId = null;
     /** @type {{ col: number, row: number } | null} */
     let selectedVoxelCell = null;
     /** @type {{ col: number, row: number, side: number } | null} */
@@ -345,7 +348,7 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
             const grid = state.obstacleGrid;
             const { col, row } = grid.worldToGrid(worldX, worldY);
             expandGridForRoomNodeFootprint(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows);
-            const node = stampRoomNodeAt(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows);
+            const node = stampRoomNodeAt(state, col, row, spawnRoomNodeCols, spawnRoomNodeRows, undefined, spawnRoomNodeSurfaceProfileId);
             if (!node) return false;
             touchRoomNodePlacement(node.id);
             setSelectedRoomNodeId(node.id);
@@ -412,6 +415,16 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
         getSpawnCorridorWidth: () => spawnCorridorWidth,
         setSpawnCorridorWidth: (width) => {
             spawnCorridorWidth = Math.max(1, Math.min(8, Math.round(width)));
+            notifyUi();
+        },
+        getSpawnRoomNodeSurfaceProfileId: () => spawnRoomNodeSurfaceProfileId,
+        setSpawnRoomNodeSurfaceProfileId: (profileId) => {
+            spawnRoomNodeSurfaceProfileId = normalizeAuthoredSurfaceProfileId(profileId);
+            notifyUi();
+        },
+        getSpawnCorridorSurfaceProfileId: () => spawnCorridorSurfaceProfileId,
+        setSpawnCorridorSurfaceProfileId: (profileId) => {
+            spawnCorridorSurfaceProfileId = normalizeAuthoredSurfaceProfileId(profileId);
             notifyUi();
         },
         getSelectedPropId: () => selectedPropId,
@@ -985,7 +998,9 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
                 if (patch.corridorCount != null) touchRoomLinkCorridors(link);
             }
             const needsReroll = patch.corridorCount != null || patch.corridorWidthMin != null || patch.corridorWidthMax != null;
-            if (!needsReroll) syncRoomGraphBake(state);
+            const profileOnly = patch.surfaceProfileId !== undefined && !needsReroll && patch.corridorType == null && patch.railWallHeightLevel == null && patch.railWallThicknessLevel == null && patch.seed == null;
+            if (!needsReroll && !profileOnly) syncRoomGraphBake(state);
+            if (profileOnly) invalidateRoomLinkFloorSurface(state, selectedRoomLinkId);
             notifyUi();
             return true;
         },
@@ -994,7 +1009,9 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
             if (patch.railWallHeightLevel != null) patch = { ...patch, railWallHeightLevel: clampAuthoredRailWallHeight(patch.railWallHeightLevel) };
             if (patch.railWallThicknessLevel != null) patch = { ...patch, railWallThicknessLevel: clampAuthoredRailWallThickness(patch.railWallThicknessLevel) };
             if (!updateRoomNode(state, selectedRoomNodeId, patch)) return false;
-            syncRoomGraphBake(state);
+            const profileOnly = patch.surfaceProfileId !== undefined && patch.railWallHeightLevel == null && patch.railWallThicknessLevel == null;
+            if (profileOnly) invalidateRoomNodeFloorSurface(state, getRoomNode(state, selectedRoomNodeId));
+            else syncRoomGraphBake(state);
             notifyUi();
             return true;
         },
