@@ -68,7 +68,7 @@ export class WorldSurfaceEngine {
         if (cached) return cached;
         const edgeLen = createWallFaceAxes(p1, p2).edgeLen;
         if (edgeLen < 0.001 || columns.length === 0) return null;
-        const cellSize = proceduralSurfaceDraw.obstacleCellSize ?? this.settings.cellSize;
+        const cellSize = this.settings.cellSize;
         const surfaceBakeScale = getSurfaceBakeScale(this.settings);
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * surfaceBakeScale));
         const hVal = resolveWallCapHeightPx(wallHeight, this.settings);
@@ -247,7 +247,7 @@ export class WorldSurfaceEngine {
         const maxChunkCol = worldToChunkCol(bounds.maxX - 1, obstacleGrid.minX, chunkSizePx);
         const minChunkRow = worldToChunkRow(bounds.minY, obstacleGrid.minY, chunkSizePx);
         const maxChunkRow = worldToChunkRow(bounds.maxY - 1, obstacleGrid.minY, chunkSizePx);
-        const passCamera = elevationCameraFromViewport(viewport, this.settings.cameraHeight);
+        const passCamera = elevationCameraFromViewport(viewport);
         ctx.save();
         if (playBounds) clipToAabb(ctx, bounds);
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)

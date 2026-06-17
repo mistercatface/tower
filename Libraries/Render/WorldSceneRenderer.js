@@ -119,7 +119,7 @@ export class WorldSceneRenderer {
             wallHeight: 0,
             cacheObj: null,
             worldBounds: viewport.boundsDraw,
-            camera: elevationCameraFromViewport(viewport, input.worldSurfaces.settings.cameraHeight),
+            camera: elevationCameraFromViewport(viewport),
             skipWallCaps,
         };
         ctx.save();

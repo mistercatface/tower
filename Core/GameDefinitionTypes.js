@@ -62,7 +62,7 @@
  * @property {Partial<import("./GamePerspective.js").PerspectiveConfig>} [perspective]
  * @property {number} [propPixelSize]
  * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]
- * @property {Partial<import("../Config/world.js").WorldSurfaceDefaults> & { cameraHeight?: number, cellSize?: number, floorShadow?: string }} [worldSurface]
+ * @property {Partial<import("../Config/world.js").WorldSurfaceDefaults> & { cellSize?: number, floorShadow?: string }} [worldSurface]
  * @property {Partial<import("../Libraries/Collision/collisionDefaults.js").LibraryCollisionSettings>} [collisionSettings]
  * @property {Partial<import("../Libraries/Props/propRenderDefaults.js").LibraryPropQuantizeSteps>} [propQuantizeSteps]
  * @property {PlaybackConfig} [playback]

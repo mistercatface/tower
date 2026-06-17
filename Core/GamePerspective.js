@@ -1,5 +1,4 @@
 import { LIBRARY_DEFAULT_CAMERA_HEIGHT, LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH, LIBRARY_MIN_WORLD_SPAN } from "../Libraries/Spatial/iso/perspectiveDefaults.js";
-import { setCameraHeight, setPerspectiveStrength } from "../Libraries/Spatial/iso/IsometricProjection.js";
 /** @typedef {"player" | "viewport"} PerspectiveViewerSource */
 /**
  * @typedef {object} PerspectiveConfig
@@ -12,6 +11,9 @@ export const DEFAULT_PERSPECTIVE = { cameraHeight: LIBRARY_DEFAULT_CAMERA_HEIGHT
 let activePerspective = { ...DEFAULT_PERSPECTIVE };
 /** Bumped when perspective config changes so viewport strength caches invalidate. */
 let perspectiveConfigGeneration = 0;
+export function getActivePerspective() {
+    return activePerspective;
+}
 /** @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition */
 export function resolvePerspectiveConfig(definition) {
     return { ...DEFAULT_PERSPECTIVE, ...definition?.perspective };
@@ -22,8 +24,6 @@ export function resolvePerspectiveConfig(definition) {
  */
 export function applyGamePerspective(definition) {
     activePerspective = resolvePerspectiveConfig(definition);
-    setCameraHeight(activePerspective.cameraHeight);
-    setPerspectiveStrength(activePerspective.strength);
     perspectiveConfigGeneration++;
     return activePerspective;
 }
@@ -34,7 +34,7 @@ export function applyGamePerspective(definition) {
  */
 export function resolveStructurePerspectiveStrength(viewport) {
     if (viewport.structurePerspectiveStrength !== undefined && viewport._structurePerspectiveConfigGen === perspectiveConfigGeneration) return viewport.structurePerspectiveStrength;
-    const intensity = activePerspective.strength ?? LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH;
+    const intensity = activePerspective.strength;
     const worldSpan = viewport.structurePerspectiveWorldSpan ?? Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(viewport.halfW, viewport.halfH) * 2);
     const referenceSpan = viewport.structurePerspectiveReferenceSpan ?? Math.max(LIBRARY_MIN_WORLD_SPAN, viewport.getVisualRadius() * 2);
     viewport._structurePerspectiveConfigGen = perspectiveConfigGeneration;

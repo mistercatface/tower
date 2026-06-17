@@ -45,9 +45,9 @@ function resolveFlipbookFrameIndex(flipbook, gameTime) {
  * @param {number} frameIndex
  * @param {import("../../Render/WorldSurfaceBootstrap.js").WorldSurfaceSettings} settings
  * @param {number} zLevel
- * @param {import("../Viewport/Viewport.js").Viewport} viewport
+ * @param {import("../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
  */
-function drawAnimatedPatch(ctx, patch, frameIndex, settings, zLevel, viewport) {
+function drawAnimatedPatch(ctx, patch, frameIndex, settings, zLevel, camera) {
     const canvas = patch.frames[Math.min(patch.frames.length - 1, Math.max(0, frameIndex))];
     if (!canvas) return;
     const { minX, minY, maxX, maxY } = patch.bounds;
@@ -57,7 +57,7 @@ function drawAnimatedPatch(ctx, patch, frameIndex, settings, zLevel, viewport) {
         drawBakedTexture(ctx, canvas, minX, minY, worldW, worldH, settings);
         return;
     }
-    const corners = projectWorldAabbCornersInto(sPatchCorners, minX, minY, maxX, maxY, zLevel, elevationCameraFromViewport(viewport, settings.cameraHeight));
+    const corners = projectWorldAabbCornersInto(sPatchCorners, minX, minY, maxX, maxY, zLevel, camera);
     drawProjectedHorizontalChunk(ctx, canvas, corners, settings);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createAnimatedSurfaceZone>} zone @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
@@ -66,9 +66,10 @@ export function drawAnimatedSurfaceZone(ctx, zone, state, viewport) {
     if (!isAabbInView(zone, viewport)) return;
     const settings = getGameWorldSurfaceSettings();
     const frameIndex = resolveFlipbookFrameIndex(zone.flipbook, state.gameTime ?? 0);
-    drawAnimatedPatch(ctx, zone.flipbook.play, frameIndex, settings, 0, viewport);
+    const camera = elevationCameraFromViewport(viewport);
+    drawAnimatedPatch(ctx, zone.flipbook.play, frameIndex, settings, 0, camera);
     const railBands = zone.flipbook.railBands;
-    for (let i = 0; i < railBands.length; i++) drawAnimatedPatch(ctx, railBands[i], frameIndex, settings, zone.railHeight, viewport);
+    for (let i = 0; i < railBands.length; i++) drawAnimatedPatch(ctx, railBands[i], frameIndex, settings, zone.railHeight, camera);
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

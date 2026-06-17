@@ -1,4 +1,5 @@
 import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.js";
+import { defaultWallCapPx } from "../../Libraries/World/wallGridBake.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
@@ -31,7 +32,7 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     }
     drawFlatWallRails(ctx, state, viewport) {
         const zLevels = state.obstacleGrid.collectStaticStructureZLevels();
-        const fallbackZ = this.settings.wallHeight;
+        const fallbackZ = defaultWallCapPx(this.settings);
         const levels = zLevels.length ? zLevels : [fallbackZ];
         const playBounds = playBoundsFromObstacleGrid(state.obstacleGrid);
         for (let i = 0; i < levels.length; i++) this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, viewport, state, zLevel: levels[i], playBounds, flatWallRails: true });

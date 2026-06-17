@@ -319,14 +319,17 @@ export function collectRailWallBoxesInAabb(grid, bounds, out) {
     out.length = 0;
     for (let i = 0; i < merged.length; i++) out.push(merged[i]);
 }
+export function defaultWallCapPx(settings) {
+    return settings.wallHeightCells * settings.cellSize;
+}
 export function defaultWallHeightPx(settings) {
-    return settings.wallHeight;
+    return defaultWallCapPx(settings);
 }
 export function resolveSegmentWallHeightPx(segment, settings) {
-    return segment?.wallHeight ?? settings.wallHeight;
+    return segment?.wallHeight ?? defaultWallCapPx(settings);
 }
 export function resolveWallCapHeightPx(capHeight, settings) {
-    return capHeight ?? settings.wallHeight;
+    return capHeight ?? defaultWallCapPx(settings);
 }
 export function chunkHasStaticRoofAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
     let found = false;

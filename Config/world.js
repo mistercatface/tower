@@ -5,9 +5,8 @@ export function worldSpanPx(cells, cellSize = gridSettings.cellSize) {
     return cells * cellSize;
 }
 /** @typedef {typeof WORLD_SURFACE_DEFAULTS} WorldSurfaceDefaults */
-/** Baseline world-surface render/bake tuning (cell counts where applicable). Runtime px derived in `WorldSurfaceBootstrap`. */
+/** Baseline world-surface render/bake tuning (cell counts where applicable). Px derived in `WorldSurfaceBootstrap`. */
 export const WORLD_SURFACE_DEFAULTS = {
-    cellsPerChunk: gridSettings.minCellsPerChunk,
     chunkWorldSpanCells: 64,
     viewPaddingPx: 128,
     viewQueryPadPx: 48,

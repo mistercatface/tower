@@ -1,11 +1,12 @@
 import { fillCircle, traceCircle, withClip } from "../Canvas/CanvasPath.js";
-import { CAMERA_HEIGHT, PERSPECTIVE_STRENGTH } from "../Spatial/iso/IsometricProjection.js";
+import { elevationCameraFromViewer } from "../Spatial/iso/ElevationCamera.js";
 /** @param {number} defaultDepth */
 export function createVoidPitDraw(defaultDepth) {
     /** @type {import("./Props3D/PropRenderer.js").PropDrawRecipe} */
     return (ctx, prop, viewerX, viewerY) => {
         const mouthRadius = prop.radius;
         const pocketDepth = prop.sinkDepth ?? defaultDepth;
+        const { cameraHeight, strength: perspectiveStrength } = elevationCameraFromViewer(viewerX, viewerY);
         withClip(
             ctx,
             (ctx) => {
@@ -17,10 +18,10 @@ export function createVoidPitDraw(defaultDepth) {
                     const dx = prop.x - viewerX;
                     const dy = prop.y - viewerY;
                     const dist = Math.hypot(dx, dy);
-                    const alpha = (H / (CAMERA_HEIGHT - H)) * PERSPECTIVE_STRENGTH;
+                    const alpha = (H / (cameraHeight - H)) * perspectiveStrength;
                     const projX = dist === 0 ? prop.x : prop.x + dx * alpha;
                     const projY = dist === 0 ? prop.y : prop.y + dy * alpha;
-                    const layerRadius = mouthRadius * (CAMERA_HEIGHT / (CAMERA_HEIGHT - H));
+                    const layerRadius = mouthRadius * (cameraHeight / (cameraHeight - H));
                     const ratio = Math.min(1, -H / pocketDepth);
                     const lightness = Math.max(0, 100 - ratio * 100);
                     ctx.fillStyle = `hsl(0, 0%, ${lightness}%)`;

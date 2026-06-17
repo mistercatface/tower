@@ -9,7 +9,6 @@
  * @property {number} surfaceSeed
  * @property {string|null} surfaceProfileOverride
  * @property {(x: number, y: number) => string} resolveProfileAt
- * @property {number} obstacleCellSize
  */
 /**
  * @typedef {Object} WorldSceneDrawInput

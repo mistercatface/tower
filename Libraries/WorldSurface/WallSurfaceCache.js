@@ -12,7 +12,7 @@ import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
  * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
  */
 export function buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId, atlasHeight, settings) {
-    const chunkWorldSize = settings.chunkWorldSize || 128 * settings.cellSize;
+    const chunkWorldSize = settings.chunkWorldSize;
     const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
     const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
     const dx = p2.x - p1.x;

@@ -1,6 +1,6 @@
 import { SURFACE_PROFILE_ID } from "../Config/procedural/profileIds.js";
 import { clearInteractionPairFilterCache } from "./interactionPairFilters.js";
-import { applyGamePerspective } from "./GamePerspective.js";
+import { applyGamePerspective, getActivePerspective } from "./GamePerspective.js";
 import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
 import { applyGameCollisionSettings } from "./GameCollisionSettings.js";
 import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
@@ -20,16 +20,20 @@ export function installEditorDefaults(state) {
         workersConfigured = true;
     }
     applyGameProceduralDesign(profile);
-    const perspective = applyGamePerspective(profile);
-    installGameWorldSurfaceSettings({ cameraHeight: perspective.cameraHeight, wallHeightCells: profile.worldSurface?.wallHeightCells, ...resolveProceduralBakeSettings(profile) });
+    const prevCameraHeight = getActivePerspective().cameraHeight;
+    applyGamePerspective(profile);
+    installGameWorldSurfaceSettings({ wallHeightCells: profile.worldSurface?.wallHeightCells, ...resolveProceduralBakeSettings(profile) });
     applyGameCollisionSettings(profile);
     applyGamePropQuantizeSettings(profile);
     applyGamePropPixelSize(profile);
     const worldSurfaces = state.worldSurfaces;
     const settings = getGameWorldSurfaceSettings();
     const prev = worldSurfaces.settings;
-    const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeightCells", "cameraHeight", "cellSize", "cellsPerChunk"];
-    const bakeSettingsChanged = keysToCheck.some((key) => prev[key] !== settings[key]) || JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
+    const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeightCells", "cellSize", "cellsPerChunk"];
+    const bakeSettingsChanged =
+        keysToCheck.some((key) => prev[key] !== settings[key]) ||
+        prevCameraHeight !== getActivePerspective().cameraHeight ||
+        JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
     worldSurfaces.settings = settings;
     void TileWorkerCoordinator.syncBakeConstants(settings);
     if (bakeSettingsChanged) worldSurfaces.clear();

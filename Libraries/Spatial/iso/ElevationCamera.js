@@ -1,4 +1,4 @@
-import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
+import { getActivePerspective, resolveStructurePerspectiveStrength } from "../../../Core/GamePerspective.js";
 /**
  * @typedef {Object} ElevationCamera
  * @property {number} viewerX
@@ -6,7 +6,13 @@ import { resolveStructurePerspectiveStrength } from "../../../Core/GamePerspecti
  * @property {number} cameraHeight
  * @property {number} strength
  */
-/** @param {import("../../Viewport/Viewport.js").Viewport} viewport @param {number} cameraHeight @returns {ElevationCamera} */
-export function elevationCameraFromViewport(viewport, cameraHeight) {
+/** @param {import("../../Viewport/Viewport.js").Viewport} viewport @returns {ElevationCamera} */
+export function elevationCameraFromViewport(viewport) {
+    const { cameraHeight } = getActivePerspective();
     return { viewerX: viewport.x, viewerY: viewport.y, cameraHeight, strength: resolveStructurePerspectiveStrength(viewport) };
+}
+/** Session perspective at a viewer position — base strength, not zoom-scaled. */
+export function elevationCameraFromViewer(viewerX, viewerY) {
+    const { cameraHeight, strength } = getActivePerspective();
+    return { viewerX, viewerY, cameraHeight, strength };
 }

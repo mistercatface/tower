@@ -33,16 +33,12 @@ export class Renderer {
             proceduralSurfaceDraw: {
                 surfaceSeed: 0,
                 surfaceProfileOverride: null,
-                obstacleCellSize: 0,
                 boundGameState: null,
                 resolveProfileAt(x, y) {
                     return resolveSurfaceProfileAtCoords(this.boundGameState, x, y);
                 },
             },
         };
-        const surfaceSettings = getGameWorldSurfaceSettings();
-        this.surfaceDrawPadQuery = surfaceSettings.viewQueryPadPx;
-        this.surfaceDrawPadDraw = surfaceSettings.viewPaddingPx;
         this.structureDrawPass = createStructureDrawPass(WORLD_RENDER_MODE_DEFAULT, this);
         this._worldRenderMode = WORLD_RENDER_MODE_DEFAULT;
         this.effectPasses = [
@@ -66,7 +62,6 @@ export class Renderer {
         surfaceDraw.boundGameState = state;
         surfaceDraw.surfaceSeed = state.worldSurfaces.worldSurfaceSeed ?? 0;
         surfaceDraw.surfaceProfileOverride = state.worldSurfaces.surfaceProfileOverride ?? null;
-        surfaceDraw.obstacleCellSize = state.obstacleGrid.cellSize;
     }
     /** Ground tiles and debris props — zIndex -5. */
     drawWorldSceneBackdrop(state, viewport) {
@@ -109,7 +104,8 @@ export class Renderer {
     }
     renderSimulationScene(state, viewport) {
         this.syncWorldSceneDrawInput(state);
-        viewport.configureDrawBounds(this.surfaceDrawPadQuery, this.surfaceDrawPadDraw);
+        const surfaceSettings = getGameWorldSurfaceSettings();
+        viewport.configureDrawBounds(surfaceSettings.viewQueryPadPx, surfaceSettings.viewPaddingPx);
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         viewport.apply(this.ctx);
