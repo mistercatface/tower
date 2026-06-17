@@ -1,7 +1,7 @@
 {
     "type": "module",
     "scripts": {
-        "test": "node --test tests/corridorWidthOne.test.js tests/corridorMultiLane.test.js tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/maskCompositor.test.js tests/hpaBeltNav.test.js tests/lockedRoom.test.js tests/puzzleTemplateBeltCrate.test.js",
+        "test": "node --test tests/corridorWidthOne.test.js tests/corridorMultiLane.test.js tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/maskCompositor.test.js tests/hpaBeltNav.test.js tests/lockedRoom.test.js tests/puzzleTemplateBeltCrate.test.js tests/gameLaunch.test.js",
         "test:corridor": "node --test tests/corridorWidthOne.test.js",
         "test:math": "node --test tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/maskCompositor.test.js",
         "test:deprecated:losShadow": "node --test Libraries/Deprecated/LosShadow/tests/losShadow.test.js"

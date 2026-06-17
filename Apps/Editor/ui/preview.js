@@ -118,7 +118,7 @@ function maybeClearProfileBakeCaches(state, profileId) {
     state.worldSurfaces.clearBakeCache();
     labRenderer = null;
 }
-/** @param {import("../state.js").TileLabGameState} state */
+/** @param {import("../state.js").TileLabGameState} state @returns {Promise<void>} */
 export function pushEditorProfile(state) {
     invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
     invalidateWallAtlasKeyMemos(state);
@@ -126,8 +126,9 @@ export function pushEditorProfile(state) {
     lastProfileBakeKey = "";
     labRenderer = null;
     const profile = buildLabRuntimeProfile();
+    if (!profile) throw new Error("Lab runtime profile is not initialized");
     registerRuntimeSurfaceProfile(RUNTIME_LAB_PROFILE_ID, profile);
-    void TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, profile);
+    return TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, profile);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function drawLabFrame(state) {

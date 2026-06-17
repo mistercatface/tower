@@ -1,0 +1,50 @@
+/* Runtime game mode — square canvas, centered, no editor chrome (?game=...) */
+
+body.shell-game {
+    align-items: stretch;
+    justify-content: stretch;
+    background: #07070c;
+}
+
+body.shell-game #gameWrapper {
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    box-shadow: none;
+    flex-direction: column;
+}
+
+body.shell-game #ui-root {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+body.shell-game .game-stage {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
+}
+
+body.shell-game .game-stage-inner {
+    position: relative;
+    flex: 0 0 auto;
+    line-height: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55);
+}
+
+body.shell-game #gameCanvas {
+    position: static;
+    display: block;
+    touch-action: none;
+}

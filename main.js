@@ -1,6 +1,9 @@
 import("./Libraries/Props/loadPropAssets.js")
     .then(({ loadPropAssets }) => {
         loadPropAssets();
-        return import("./Apps/Editor/engine.js");
+        return Promise.all([import("./Apps/Editor/engine.js"), import("./Libraries/Game/parseGameLaunchQuery.js")]);
     })
-    .then(({ createEditorApp }) => createEditorApp());
+    .then(([{ createEditorApp }, { parseGameLaunchQuery }]) => {
+        const gameLaunchId = parseGameLaunchQuery();
+        createEditorApp({ gameLaunchId });
+    });

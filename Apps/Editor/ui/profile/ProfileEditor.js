@@ -100,6 +100,10 @@ function loadEditorFromProfileId(profileId, { silent = false } = {}) {
     if (!silent) notifyChange({ lightweight: true });
     return editorState;
 }
+/** Headless Tile Lab / game runtime — same shipped preset as editor cold start. */
+export function seedRuntimeLabProfile(profileId) {
+    return loadEditorFromProfileId(profileId, { silent: true });
+}
 function getEditorState() {
     return editorState;
 }

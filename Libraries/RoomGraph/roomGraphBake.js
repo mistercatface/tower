@@ -145,7 +145,7 @@ function computeRoomGraphBake(layout) {
             lockedLinkBakes.push({ linkId: link.id, parentNodeId: link.a, parentHoles });
         }
         if (isConveyorCorridorType(corridorType)) bakedBelts.push(...stampCorridorBundleBelts(bundle, rooms));
-        else if (!isOpenCorridorType(corridorType)) corridorRailLists.push(stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow));
+        if (!isOpenCorridorType(corridorType)) corridorRailLists.push(stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow));
     }
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
     const gapKeys = roomWallGapKeysWorld(closedRooms, originCol, originRow);

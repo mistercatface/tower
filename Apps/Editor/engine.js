@@ -18,10 +18,22 @@ import { tickGridZones } from "../../Libraries/Sandbox/gridZoneTick.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.js";
+import { tickGameViewportNavigation } from "./ui/gameViewport.js";
 import { mountEditorUi, refreshEditorUi, resizeEditorLayout, flushEditorLayoutResize } from "./ui/editorUi.js";
+import { mountGameShell, resizeGameShell } from "./ui/mountGameShell.js";
+import { getGameLauncher } from "../../Libraries/Game/gameLaunchers.js";
 import { drawLabFrame, shouldRenderLabFrame } from "./ui/preview.js";
 import { flushMapOverviewRepaint } from "./ui/mapOverview.js";
 import { tickAnimationPreview } from "./ui/LabAnimationPreview.js";
+/** @param {import("./state.js").TileLabGameState} state */
+function loadGameModeStylesheet() {
+    if (document.getElementById("game-mode-css")) return;
+    const link = document.createElement("link");
+    link.id = "game-mode-css";
+    link.rel = "stylesheet";
+    link.href = new URL("./game-mode.css", import.meta.url).href;
+    document.head.appendChild(link);
+}
 /** @type {object[]} */
 const simulationEvents = [];
 /** @param {object[]} events @param {import("./state.js").TileLabGameState} state */
@@ -49,8 +61,12 @@ function runSimulationTick(state, dt) {
     dispatchSimulationEvents(simulationEvents, state);
     FloatingText.updateAll(state, simDt);
 }
-export function createEditorApp() {
+export function createEditorApp(options = {}) {
+    const gameLaunchId = options.gameLaunchId ?? null;
+    const launcher = gameLaunchId ? getGameLauncher(gameLaunchId) : null;
+    const gameMode = launcher != null;
     const state = new TileLabGameState();
+    state.appLaunch = gameLaunchId ? { id: gameLaunchId, launcher } : null;
     state.ragdollCorpses = [];
     state.entityLayers = [];
     state.combatParticles = [];
@@ -59,8 +75,12 @@ export function createEditorApp() {
     state.floatingTexts = [];
     state.entityLayers.push({ key: "projectiles", zIndex: 20 }, { key: "floatingTexts", zIndex: 100 });
     installGameState(state);
-    document.title = "Editor";
+    document.title = gameMode ? launcher.title : "Editor";
     document.body.classList.add("shell-tilelab");
+    if (gameMode) {
+        document.body.classList.add("shell-game");
+        loadGameModeStylesheet();
+    }
     if (!document.getElementById("tilelab-css")) {
         const link = document.createElement("link");
         link.id = "tilelab-css";
@@ -91,25 +111,33 @@ export function createEditorApp() {
         let dt = timestamp - state.lastTime;
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
-        flushEditorLayoutResize(state);
+        if (gameMode) resizeGameShell(state);
+        else flushEditorLayoutResize(state);
         state.scheduler.update(dt);
-        tickLabViewportNavigation(dt);
+        if (gameMode) tickGameViewportNavigation(dt);
+        else tickLabViewportNavigation(dt);
         tickSandboxCameraFollow(state.viewport, state, state.entityRegistry, dt);
         state.sandbox.controller?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
         if (shouldRenderLabFrame(state)) drawLabFrame(state);
-        tickAnimationPreview(timestamp);
-        flushMapOverviewRepaint(state);
+        if (!gameMode) {
+            tickAnimationPreview(timestamp);
+            flushMapOverviewRepaint(state);
+        }
         requestAnimationFrame(loop);
     }
     events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);
-    events.on(Events.UI_UPDATE, () => refreshEditorUi(state));
+    if (!gameMode) events.on(Events.UI_UPDATE, () => refreshEditorUi(state));
     window.addEventListener("resize", () => {
-        resizeEditorLayout(state);
+        if (gameMode) resizeGameShell(state);
+        else resizeEditorLayout(state);
         state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);
     });
-    mountEditorUi(state, { playbackHandlers });
-    state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);
-    fitLabStageToView(state);
+    if (gameMode) void mountGameShell(state, launcher);
+    else mountEditorUi(state, { playbackHandlers });
+    if (!gameMode) {
+        state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);
+        fitLabStageToView(state);
+    }
     requestAnimationFrame(loop);
 }
