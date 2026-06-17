@@ -1,9 +1,11 @@
 import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { getRollToCursorConfig, snapRollMoveTargetToCellCenter, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
-import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
+import { resolveFloorBeltSteerTarget, isEntityOnFloorBelt } from "../../Spatial/grid/FloorCell.js";
+import { stopLocomotionWorldProp } from "../../Props/locomotionWorldProp.js";
+import { isEntityAtRest } from "../inputGates.js";
 export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
-/** @typedef {{ targetWorld: { x: number, y: number } | null, targetCellCol: number | null, targetCellRow: number | null, dragging: boolean, hpaNav: ReturnType<typeof createRollToCursorHpaNav> }} HpaPropRun */
+/** @typedef {{ targetWorld: { x: number, y: number } | null, targetCellCol: number | null, targetCellRow: number | null, dragging: boolean, beltLimp: boolean, hpaNav: ReturnType<typeof createRollToCursorHpaNav> }} HpaPropRun */
 /** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
 export function createRollToCursorHpaBehavior(state) {
     /** @type {Map<number, HpaPropRun>} */
@@ -12,7 +14,7 @@ export function createRollToCursorHpaBehavior(state) {
     const getRun = (prop) => {
         let run = propRuns.get(prop.id);
         if (!run) {
-            run = { targetWorld: null, targetCellCol: null, targetCellRow: null, dragging: false, hpaNav: createRollToCursorHpaNav() };
+            run = { targetWorld: null, targetCellCol: null, targetCellRow: null, dragging: false, beltLimp: false, hpaNav: createRollToCursorHpaNav() };
             propRuns.set(prop.id, run);
         }
         return run;
@@ -23,6 +25,7 @@ export function createRollToCursorHpaBehavior(state) {
         run.targetCellCol = null;
         run.targetCellRow = null;
         run.dragging = false;
+        run.beltLimp = false;
         run.hpaNav.reset(state);
     };
     /** @param {object} prop @param {HpaPropRun} run */
@@ -44,17 +47,24 @@ export function createRollToCursorHpaBehavior(state) {
         if (!run.targetWorld) return;
         const config = getRollToCursorConfig(prop, { stopRadius: 8 });
         const steerTarget = resolveFloorBeltSteerTarget(state.obstacleGrid, run.targetWorld.x, run.targetWorld.y, prop.x, prop.y);
+        const onBelt = isEntityOnFloorBelt(state.obstacleGrid, prop.x, prop.y);
+        if (onBelt) run.beltLimp = true;
         if (prop._navPathStale) {
             prop._navPathStale = false;
             run.hpaNav.reset(state);
             run.hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
-        } else run.hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
+        } else if (!onBelt) run.hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
         const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);
         const pathTail = run.hpaNav.navState.pathLen > 0 ? run.hpaNav.navState.pathLen - 1 : -1;
         const isFinalLeg = pathTail < 0 || run.hpaNav.navState.pathProgressIdx >= pathTail;
         if (isFinalLeg && distToTarget <= config.stopRadius) {
             releaseMoveTarget(prop, run);
             return;
+        }
+        if (run.beltLimp) {
+            if (onBelt) stopLocomotionWorldProp(prop);
+            if (!onBelt && isEntityAtRest(prop)) run.beltLimp = false;
+            else return;
         }
         const steering = run.hpaNav.getSteering(
             prop,

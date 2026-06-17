@@ -132,3 +132,7 @@ export function resolveFloorBeltSteerTarget(grid, worldX, worldY, fromX, fromY) 
     const { entrySide } = floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
     return floorBeltEntryEdgeWorldPoint(grid, col, row, entrySide);
 }
+export function isEntityOnFloorBelt(grid, worldX, worldY) {
+    const { col, row } = grid.worldToGrid(worldX, worldY);
+    return grid.hasFloorBelt(col, row);
+}
