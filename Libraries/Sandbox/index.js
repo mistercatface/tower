@@ -5,7 +5,6 @@
  * `Libraries/Combat/` (`worldPropManualFire`, `worldPropWeaponState`, `spawnProjectiles`).
  * Behaviors here only wire pointer input and tick hooks to those modules.
  */
-export { bindCanvasPointers, releasePointerCapture } from "../Input/canvasPointer.js";
 export { createSandboxSession } from "./sandboxSession.js";
 export { createCueStrikeBehavior, CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
 export { createDragLaunchFacingBehavior, DRAG_LAUNCH_FACING_BEHAVIOR_ID } from "./behaviors/dragLaunchFacingBehavior.js";

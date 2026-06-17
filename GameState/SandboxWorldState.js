@@ -5,9 +5,9 @@ export class SandboxWorldState {
         this.entityMeta = new SandboxEntityMetaStore();
         /** @type {object[]} worker-baked animated surface zones — see Libraries/WorldSurface/animatedSurfaceZone.js */
         this.animatedSurfaceZones = [];
-        /** @type {ReturnType<typeof import("../Libraries/SandboxEditor/createSandboxController.js").createSandboxController> | null} */
+        /** @type {object | null} */
         this.controller = null;
-        /** @type {import("../Libraries/Sandbox/gridZoneTick.js").GridZoneSubscriptions | null} */
+        /** @type {import("../Libraries/Spatial/zones/gridZoneMembership.js").GridZoneSubscriptions | null} */
         this.gridZoneSubscriptions = null;
         this.gridZoneSubscriptionsDirty = true;
         /** @type {Set<number>} canonical edge keys with a prop on the beam while powered */

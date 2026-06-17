@@ -1,6 +1,5 @@
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { strokeCircle } from "../Canvas/CanvasPath.js";
-import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellBoundsAtOriginInto } from "../Spatial/grid/GridCoords.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
@@ -9,9 +8,6 @@ import { strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./grid
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
 const PROP_TILE_CELL_BOUNDS = createAabb();
-export function findSandboxPropsInWorldRect(state, registry, bounds) {
-    return queryEntitiesInAabbStrict(registry, bounds, { kinds: ["worldProp"], hitTest: "center" });
-}
 function selectionRingRadius(prop, lineScale) {
     const base = prop.getBoundingRadius?.() ?? prop.radius ?? 8;
     return base + 3 * lineScale;
@@ -83,16 +79,4 @@ export function drawSandboxPropTileCells(ctx, { show, grid, worldProps }) {
         drawAabbHighlight(ctx, PROP_TILE_CELL_BOUNDS, { fill: "rgba(160, 255, 120, 0.1)", stroke: "rgba(160, 255, 120, 0.5)", lineWidth: lineScale });
     }
     ctx.restore();
-}
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {{
- *   selectedProps: object[],
- *   showRings: boolean,
- *   marqueeRect: import("../Math/Aabb2D.js").Aabb2D | null,
- * }} options
- */
-export function drawSandboxSelectionOverlay(ctx, { selectedProps, showRings, marqueeRect }) {
-    drawSandboxSelectionRings(ctx, { selectedProps, showRings });
-    drawSandboxMarquee(ctx, { marqueeRect });
 }
