@@ -233,7 +233,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         setSpawnCorridorSurfaceProfileId: (profileId) => session.setSpawnCorridorSurfaceProfileId(profileId),
         deleteSelectedProps: () => session.deleteSelectedProps(),
         getSelection: () => session.getSelection(),
-        getSelectionInspectors: () => session.getSelectionInspectors(),
+        getSelectionInspector: () => session.getSelectionInspector(),
         select: (input) => {
             exitWireModes();
             session.select(input);

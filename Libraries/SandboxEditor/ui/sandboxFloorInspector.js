@@ -42,14 +42,3 @@ export function appendFloorBeltSelectedInspector(body, controller, selectedFloor
     ]);
     appendActionRow(body, [{ label: "Delete belt", onClick: () => controller.deleteSelectedFloorCell() }]);
 }
-export function appendFloorSelectedInspector(body, controller, { selectedPowerSource, selectedFloorBelt }) {
-    if (selectedPowerSource) {
-        appendPowerSourceSelectedInspector(body, controller, selectedPowerSource);
-        return true;
-    }
-    if (selectedFloorBelt) {
-        appendFloorBeltSelectedInspector(body, controller, selectedFloorBelt);
-        return true;
-    }
-    return false;
-}

@@ -96,22 +96,6 @@ export function buildRoomLinkInspectorInfo(state, sel) {
         rolledCorridorWidths: roll?.corridorWidths ?? null,
     };
 }
-export function buildSelectionInspectors(state, selection, getLiveProp, pruneSelection) {
-    pruneSelection();
-    const sel = selection.getSelection();
-    const id = selectionPrimaryPropId(sel, getLiveProp);
-    return {
-        selectedPropIds: selectionPropIds(sel),
-        selectedProp: id == null ? null : getLiveProp(id),
-        selectedFloorBelt: buildFloorBeltInspectorInfo(state, sel),
-        selectedPowerSource: buildPassagePowerSourceInspectorInfo(state, sel),
-        selectedVoxelInfo: buildVoxelWallInspectorInfo(state, sel),
-        selectedRailInfo: buildRailWallInspectorInfo(state, sel),
-        selectedForcefieldInfo: buildForcefieldInspectorInfo(state, sel),
-        selectedRoomLink: buildRoomLinkInspectorInfo(state, sel),
-        selectedRoomNode: buildRoomNodeInspectorInfo(state, sel),
-    };
-}
 export function resolveSelectedRoomNode(state, sel) {
     const id = selectionRoomNodeId(sel);
     return id == null ? null : (getRoomNode(state, id) ?? null);

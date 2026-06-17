@@ -27,11 +27,11 @@ import {
 import { PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import { cellIsStaticWall, forcefieldEdgeAt, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
 import { createSandboxSelection } from "./sandboxSelection.js";
-import { buildSelectionInspectors, selectionFloorCell, selectionPrimaryPropId, selectionPropIds, selectionRailEdge, selectionVoxelCell } from "./sandboxSelectionInspectors.js";
+import { selectionFloorCell, selectionPrimaryPropId, selectionPropIds, selectionRailEdge, selectionVoxelCell } from "./sandboxSelectionInspectors.js";
 import { createSandboxPlacementOrder } from "./sandboxPlacementOrder.js";
 import { createSandboxSpawnSession } from "./sandboxSpawnSession.js";
 import { createSandboxRoomGraphSession } from "./sandboxRoomGraphSession.js";
-import { removeSceneItem } from "./sandboxScenePlaceables.js";
+import { buildSelectionInspector, removeSceneItem } from "./sandboxScenePlaceables.js";
 /** @param {object} state */
 export function createSandboxSession(state) {
     let placePaletteKey = "";
@@ -139,7 +139,7 @@ export function createSandboxSession(state) {
         ...spawn,
         getSelection: () => selection.getSelection(),
         select: pickSelection,
-        getSelectionInspectors: () => buildSelectionInspectors(state, selection, (id) => registry().getLive(id), pruneSelection),
+        getSelectionInspector: () => buildSelectionInspector(state, selection, (id) => registry().getLive(id), pruneSelection),
         clearSelection,
         clearPlaceMode,
         clearRoomGraphSelection: () => {

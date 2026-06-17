@@ -1,12 +1,11 @@
 import { getPropAsset, getWorldPropDefinitions, formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
 import { isSandboxSpawnable } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
-import { appendFloorSelectedInspector } from "../../../Libraries/SandboxEditor/ui/sandboxFloorInspector.js";
-import { appendRoomNodeSelectedInspector } from "../../../Libraries/SandboxEditor/ui/sandboxRoomSelectedInspector.js";
-import { appendForcefieldSelectedInspector, appendRoomLinkCorridorInspector, appendWallPlaceParams, appendWallSelectedInspector } from "../../../Libraries/SandboxEditor/ui/sandboxWallInspector.js";
+import { wallPlaceInspector } from "../../../Libraries/Sandbox/sandboxScenePlaceables.js";
+import { appendSelectionInspector } from "../../../Libraries/SandboxEditor/ui/sandboxPlaceableInspectorUi.js";
+import { appendWallPlaceParams } from "../../../Libraries/SandboxEditor/ui/sandboxWallInspector.js";
 import { appendPropPlaceParams } from "../../../Libraries/SandboxEditor/ui/sandboxPropSpawnInspector.js";
-import { appendSelectedPropInspector } from "../../../Libraries/SandboxEditor/ui/sandboxPropSelectedInspector.js";
 import { buildPlacePaletteItems, appendPaletteTagFilters, appendSpawnPaletteGrid, sandboxPaletteMatchesFilter } from "../../../Libraries/SandboxEditor/ui/sandboxPlacePalette.js";
-import { appendActionRow, appendEditorHint, appendInstanceList } from "../../../Libraries/UI/paramFields.js";
+import { appendEditorHint, appendInstanceList } from "../../../Libraries/UI/paramFields.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 import { wrapLabUiSync } from "./preview.js";
 function appendPinnedSection(parent, id, title, build, headExtra = null) {
@@ -25,24 +24,6 @@ function appendPinnedSection(parent, id, title, build, headExtra = null) {
     block.appendChild(sectionBody);
     parent.appendChild(block);
     return block;
-}
-function appendGridSelectionInspector(body, state, controller, selection) {
-    const { selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo, selectedPowerSource, selectedFloorBelt, selectedRoomNode, selectedRoomLink } = selection;
-    if (appendWallSelectedInspector(body, state, controller, { selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo })) return true;
-    if (selectedForcefieldInfo) {
-        appendForcefieldSelectedInspector(body, controller, selectedForcefieldInfo, { promptReselect: true });
-        return true;
-    }
-    if (appendFloorSelectedInspector(body, controller, { selectedPowerSource, selectedFloorBelt })) return true;
-    if (selectedRoomNode) {
-        appendRoomNodeSelectedInspector(body, state, controller, selectedRoomNode);
-        return true;
-    }
-    if (selectedRoomLink) {
-        appendRoomLinkCorridorInspector(body, state, selectedRoomLink, controller);
-        return true;
-    }
-    return false;
 }
 export function mountSandboxToyUi(container, state, controller) {
     let paletteTagFilter = "all";
@@ -85,11 +66,8 @@ export function mountSandboxToyUi(container, state, controller) {
             return;
         }
         const activeItem = paletteKey === "" ? null : (paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0]);
-        const { selectedPropIds, selectedProp, selectedFloorBelt, selectedPowerSource, selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo, selectedRoomLink, selectedRoomNode } =
-            controller.getSelectionInspectors();
-        const selectedPropIdSet = new Set(selectedPropIds);
+        const inspector = controller.getSelectionInspector();
         const wallStampMode = controller.getWallStampMode();
-        const selectionCount = selectedPropIdSet.size;
         appendPinnedSection(
             container,
             "palette",
@@ -112,32 +90,12 @@ export function mountSandboxToyUi(container, state, controller) {
             body.appendChild(paramsHost);
             if (!activeItem) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
             else if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), refreshPanel);
-            else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, selectedVoxelInfo, selectedRailInfo });
+            else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, inspector: wallPlaceInspector(inspector) });
             else appendMapGenEditor(paramsHost, state, activeItem.genKind, refreshPanel);
         });
         appendPinnedSection(container, "selected", "Selected", (body) => {
-            if (selectionCount > 1) {
-                appendEditorHint(body, `${selectionCount} props selected. Drag on empty space to box-select, or click one prop to select only that.`);
-                appendActionRow(body, [{ label: `Delete ${selectionCount} props`, onClick: () => controller.deleteSelectedProps() }]);
-                return;
-            }
-            if (!selectedProp) {
-                if (
-                    appendGridSelectionInspector(body, state, controller, {
-                        selectedVoxelInfo,
-                        selectedRailInfo,
-                        selectedForcefieldInfo,
-                        selectedPowerSource,
-                        selectedFloorBelt,
-                        selectedRoomNode,
-                        selectedRoomLink,
-                    })
-                )
-                    return;
-                appendEditorHint(body, "Select an item from Scene, or pick from Props to place on the map.");
-                return;
-            }
-            appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel);
+            if (inspector) appendSelectionInspector(body, state, controller, inspector, refreshPanel);
+            else appendEditorHint(body, "Select an item from Scene, or pick from Props to place on the map.");
         });
         appendPinnedSection(container, "scene", "Scene", (body) => {
             appendInstanceList(

@@ -86,8 +86,9 @@ export function appendRoomLinkCorridorInspector(body, state, selectedRoomLink, c
         { label: "Delete link", onClick: () => controller.deleteSelectedRoomLink() },
     ]);
 }
-export function appendWallPlaceParams(body, state, controller, ctx) {
-    const { wallStampMode, selectedVoxelInfo, selectedRailInfo } = ctx;
+export function appendWallPlaceParams(body, state, controller, { wallStampMode, inspector }) {
+    const selectedVoxelInfo = inspector?.kind === "voxel" ? inspector.data : null;
+    const selectedRailInfo = inspector?.kind === "rail" ? inspector.data : null;
     appendEditorHint(body, "Click the map to place or select walls. Right-click to delete under the cursor.");
     appendActionRow(body, [{ label: "Add at camera", onClick: () => controller.stampWallAtCameraOrigin() }]);
     if (wallStampMode !== "forcefield") {
@@ -109,8 +110,7 @@ export function appendWallPlaceParams(body, state, controller, ctx) {
         );
     if (wallStampMode === "forcefield") appendPassageEditorFields(body, controller, null, { stampDefaults: true });
 }
-export function appendWallSelectedInspector(body, state, controller, ctx) {
-    const { selectedVoxelInfo, selectedRailInfo, selectedForcefieldInfo } = ctx;
+export function appendWallSelectedInspector(body, state, controller, { voxel: selectedVoxelInfo, rail: selectedRailInfo } = {}) {
     if (selectedVoxelInfo) {
         appendEditorHint(body, `Voxel block · height ${selectedVoxelInfo.heightLevel}. Change height below or delete.`);
         body.appendChild(
@@ -141,10 +141,6 @@ export function appendWallSelectedInspector(body, state, controller, ctx) {
             }).element,
         );
         appendActionRow(body, [{ label: "Delete rail", onClick: () => controller.deleteSelectedWall() }]);
-        return true;
-    }
-    if (selectedForcefieldInfo && controller.isWallPlaceMode()) {
-        appendForcefieldSelectedInspector(body, controller, selectedForcefieldInfo);
         return true;
     }
     return false;
