@@ -1,4 +1,4 @@
-/** @param {{ isLiveProp: (id: number) => boolean, getRoomLink?: (linkId: number) => { a: number, b: number } | null }} deps */
+import { matchesScenePlaceable } from "./sandboxScenePlaceables.js";
 export function createSandboxSelection({ isLiveProp, getRoomLink }) {
     /** @type {SandboxSelection | null} */
     let selection = null;
@@ -130,12 +130,7 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         clampRoomLinkCorridorIndex,
         clearRoomLinkAfterDelete,
         matchesSceneItem(item) {
-            if (item.kind === "prop") return selection?.kind === "prop" && selection.ids.has(item.propId);
-            if (item.kind === "roomNode") return selection?.kind === "roomNode" && selection.id === item.roomNodeId;
-            if (item.kind === "roomLink") return selection?.kind === "roomLink" && selection.linkId === item.roomLinkId && selection.corridorIndex === (item.corridorIndex ?? 0);
-            if (item.kind === "floorBelt" || item.kind === "powerSource") return selection?.kind === "floor" && selection.col === item.col && selection.row === item.row;
-            if (item.kind === "voxel") return selection?.kind === "voxel" && selection.col === item.col && selection.row === item.row;
-            return selection?.kind === "rail" && selection.col === item.col && selection.row === item.row && selection.side === item.side;
+            return matchesScenePlaceable(selection, item);
         },
     };
 }

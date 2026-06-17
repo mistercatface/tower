@@ -21,6 +21,7 @@ import {
 } from "../RoomGraph/index.js";
 import { invalidateRoomLinkFloorSurface, invalidateRoomNodeFloorSurface } from "../RoomGraph/roomGraphSurfaceProfile.js";
 import { listPlacedForcefields, listPlacedRailWalls, listPlacedVoxelWalls } from "./gridWallEdit.js";
+import { selectScenePlaceable } from "./sandboxScenePlaceables.js";
 import { selectionRoomLinkId, selectionRoomNodeId, resolveSelectedRoomNode } from "./sandboxSelectionInspectors.js";
 export function createSandboxRoomGraphSession(
     state,
@@ -222,31 +223,7 @@ export function createSandboxRoomGraphSession(
             return selection.matchesSceneItem(item);
         },
         selectSceneItem(item) {
-            if (item.kind === "prop") {
-                setPlacePaletteKey(`prop:${item.propType}`);
-                pickSelection({ kind: "prop", ids: [item.propId] });
-                return;
-            }
-            if (item.kind === "roomNode") {
-                pickSelection({ kind: "roomNode", id: item.roomNodeId });
-                return;
-            }
-            if (item.kind === "roomLink") {
-                pickSelection({ kind: "roomLink", linkId: item.roomLinkId, corridorIndex: item.corridorIndex ?? 0, nodeId: null });
-                return;
-            }
-            if (item.kind === "floorBelt" || item.kind === "powerSource") {
-                pickSelection({ kind: "floor", col: item.col, row: item.row });
-                return;
-            }
-            if (item.kind === "voxel") {
-                setPlacePaletteKey("wall:voxel");
-                pickSelection({ kind: "voxel", col: item.col, row: item.row });
-                return;
-            }
-            const wallKey = item.kind === "rail" ? "rail" : "forcefield";
-            setPlacePaletteKey(`wall:${wallKey}`);
-            pickSelection({ kind: "rail", col: item.col, row: item.row, side: item.side });
+            selectScenePlaceable(item, { pickSelection, setPlacePaletteKey });
         },
     };
 }

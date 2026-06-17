@@ -31,6 +31,7 @@ import { buildSelectionInspectors, selectionFloorCell, selectionPrimaryPropId, s
 import { createSandboxPlacementOrder } from "./sandboxPlacementOrder.js";
 import { createSandboxSpawnSession } from "./sandboxSpawnSession.js";
 import { createSandboxRoomGraphSession } from "./sandboxRoomGraphSession.js";
+import { deleteScenePlaceable } from "./sandboxScenePlaceables.js";
 /** @param {object} state */
 export function createSandboxSession(state) {
     let placePaletteKey = "";
@@ -486,32 +487,7 @@ export function createSandboxSession(state) {
         listPlacedPassagePowerSources,
         ...roomGraph,
         deleteSceneItem(item) {
-            if (item.kind === "prop") {
-                this.deletePropById(item.propId);
-                return;
-            }
-            if (item.kind === "roomNode") {
-                pickSelection({ kind: "roomNode", id: item.roomNodeId });
-                this.deleteSelectedRoomNode();
-                return;
-            }
-            if (item.kind === "roomLink") {
-                pickSelection({ kind: "roomLink", linkId: item.roomLinkId, corridorIndex: item.corridorIndex ?? 0 });
-                this.deleteSelectedRoomLink();
-                return;
-            }
-            if (item.kind === "floorBelt" || item.kind === "powerSource") {
-                pickSelection({ kind: "floor", col: item.col, row: item.row });
-                this.deleteSelectedFloorCell();
-                return;
-            }
-            if (item.kind === "voxel") {
-                pickSelection({ kind: "voxel", col: item.col, row: item.row });
-                this.deleteSelectedWall();
-                return;
-            }
-            pickSelection({ kind: "rail", col: item.col, row: item.row, side: item.side });
-            this.deleteSelectedWall();
+            deleteScenePlaceable(this, item, pickSelection);
         },
         clear() {
             for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i]);
