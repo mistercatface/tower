@@ -108,6 +108,16 @@ export function floorBeltEntryNeighborCell(col, row, entrySide) {
     if (entrySide === 2) return { col, row: row + 1 };
     return { col: col - 1, row };
 }
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
+export function isFloorBeltCell(grid, col, row) {
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
+    return grid.floorStore.isBeltKindAtIdx(col + row * grid.cols);
+}
+/** Body center cell is a belt cell — same rule as tickFloorOccupancy. */
+export function isEntityOnFloorBelt(grid, x, y) {
+    const { col, row } = grid.worldToGrid(x, y);
+    return isFloorBeltCell(grid, col, row);
+}
 /**
  * Steer target when a click lands on a belt — approach from entry, not downstream through rails.
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
