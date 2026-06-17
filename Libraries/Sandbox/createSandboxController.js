@@ -1,24 +1,24 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { bindCanvasPointers, releasePointerCapture } from "../Input/canvasPointer.js";
+import { bindCanvasPointers } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
-import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { createSandboxSession } from "./sandboxSession.js";
-import { clearFloorOverlayAt } from "./floorOccupancy.js";
 import { clearButtonLinks, drawButtonWires, listButtonLinkEndpoints, removeButtonLink } from "./buttonLinks.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { createButtonWireTool } from "./buttonWireTool.js";
 import { createCorridorLinkWireTool } from "./corridorLinkWireTool.js";
 import { createSandboxMarqueeTool } from "./sandboxMarqueeTool.js";
-import { handleButtonPointerDown, hitTestFloorButton, releaseButtonPointerHold } from "./floorButtons.js";
-import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "./sandboxCapabilities.js";
-import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
+import { createWallPlaceTool } from "./wallPlaceTool.js";
+import { createSandboxDeletePointerTool } from "./sandboxDeletePointerTool.js";
+import { createSandboxPointerGestures } from "./sandboxPointerGestures.js";
+import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js";
+import { releaseButtonPointerHold } from "./floorButtons.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene } from "./sandboxStartScene.js";
 import { drawSandboxLaserSights } from "./drawLaserSights.js";
 import { drawSandboxPropTileCells, drawSandboxSelectionRings } from "./drawSandboxSelection.js";
 import { drawSandboxPlacePreview, resolveSandboxPlacePreview } from "./drawSandboxPlacePreview.js";
-import { drawPlacedRoomNodes, pickRoomNodeAt } from "../RoomGraph/index.js";
+import { drawPlacedRoomNodes } from "../RoomGraph/index.js";
+import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "./sandboxCapabilities.js";
 import { createAabb } from "../Math/Aabb2D.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { drawSandboxWeaponBars } from "./drawWorldPropWeaponBars.js";
@@ -57,8 +57,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
     const session = createSandboxSession(state, { defaultSpawnPropId });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
-    /** @type {SandboxBehavior | null} */
-    let interactionBehavior = null;
     /** @type {(() => void) | null} */
     let unbindPointers = null;
     /** @type {(() => void) | null} */
@@ -69,8 +67,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
     let showSelectionRings = true;
     let showPropTileCells = false;
     let showRoomNodesAlways = false;
-    /** @type {{ pointerId: number, prop: object, behavior: SandboxBehavior } | null} */
-    let groundNav = null;
     /** @type {{ x: number, y: number } | null} */
     let placePreviewWorld = null;
     const entityMeta = () => getSandboxEntityMeta(state);
@@ -104,13 +100,17 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
     };
     clampSpawnBehavior();
     const MARQUEE_AABB = createAabb();
+    const gestures = createSandboxPointerGestures({ getCanvas, session, clientToWorld });
     const buttonWireTool = createButtonWireTool(state, session);
     const corridorLinkWireTool = createCorridorLinkWireTool(state, session);
-    const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior });
-    const canvasTools = createCanvasToolStack([buttonWireTool, corridorLinkWireTool, marqueeTool], { clientToWorld });
-    const enterCorridorLinkWireMode = () => {
+    const wallPlaceTool = createWallPlaceTool(session);
+    const blocksPlacement = () =>
+        (buttonWireTool.isActive() && buttonWireTool.blocksPlacement()) ||
+        (corridorLinkWireTool.isActive() && corridorLinkWireTool.blocksPlacement()) ||
+        (wallPlaceTool.isActive() && wallPlaceTool.blocksPlacement());
+    const exitWireModes = () => {
         buttonWireTool.exit();
-        corridorLinkWireTool.enterLinkMode();
+        corridorLinkWireTool.exit();
     };
     const resolveBehavior = () => {
         const prop = session.getSelectedProp();
@@ -120,221 +120,49 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         if (!behavior || !allowed.includes(behavior.id)) return null;
         return behavior;
     };
-    const resetBehaviors = () => {
-        for (const behavior of behaviors) behavior.reset?.();
-        interactionBehavior = null;
-        groundNav = null;
-    };
-    /** @returns {{ prop: object, behavior: SandboxBehavior } | null} */
     const resolveGroundMove = () => {
         const prop = session.getSelectedProp();
         const behavior = resolveBehavior();
         if (!prop || !behavior?.setGroundMoveTarget) return null;
         return { prop, behavior };
     };
-    /** @param {{ prop: object, behavior: SandboxBehavior }} move @param {{ x: number, y: number }} world */
     const issueGroundMove = (move, world) => {
         move.behavior.setGroundMoveTarget(move.prop, world);
     };
-    /** @param {{ x: number, y: number }} world */
-    const issueMassHpaGroundMove = (world) => {
-        if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || canvasTools.blocksPlacement()) return false;
-        const hpaBehavior = behaviorById.get(ROLL_TO_CURSOR_HPA_BEHAVIOR_ID);
-        if (!hpaBehavior?.setGroundMoveTarget) return false;
-        let moved = 0;
-        state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-            if (prop.isDead) return;
-            const allowed = resolveSandboxBehaviors(getPropAsset(prop.type), behaviors, state, prop);
-            if (!allowed.includes(ROLL_TO_CURSOR_HPA_BEHAVIOR_ID)) return;
-            if (getPropBehaviorId(prop) !== ROLL_TO_CURSOR_HPA_BEHAVIOR_ID) return;
-            hpaBehavior.setGroundMoveTarget(prop, world);
-            moved++;
-        });
-        return moved > 0;
+    const deletePointerTool = createSandboxDeletePointerTool(state, session, { resolveGroundMove, issueGroundMove });
+    const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, behaviors, {
+        entityMeta,
+        listSelectedBehaviors,
+        getPropBehaviorId,
+        stampPropBehavior,
+        behaviorById,
+        isPHeld: () => pKeyHeld,
+        blocksPlacement,
+        exitWireModes,
+        exitButtonWire: () => buttonWireTool.exit(),
+        resolveBehavior,
+        resolveGroundMove,
+        gestures,
+    });
+    const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior });
+    const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, buttonWireTool, corridorLinkWireTool, interactTool, gestureTool, marqueeTool], { clientToWorld });
+    const enterCorridorLinkWireMode = () => {
+        buttonWireTool.exit();
+        corridorLinkWireTool.enterLinkMode();
     };
-    /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
-    const tryCanvasInput = (world, e) => {
-        for (let i = 0; i < behaviors.length; i++) if (behaviors[i].tryCanvasInput?.(world, e)) return true;
-        return false;
-    };
-    /** @param {{ x: number, y: number }} world @param {PointerEvent} e @returns {boolean} */
-    const tryPlaceSpawnAtWorld = (world, e) => {
-        if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || canvasTools.blocksPlacement()) return false;
-        if (!session.spawnAt(world.x, world.y)) return false;
-        stampPropBehavior(session.getSelectedProp());
-        e.preventDefault();
-        e.stopPropagation();
-        return true;
-    };
-    /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
-    const tryPickPlacedAtWorld = (world, e) => {
-        const registry = state.entityRegistry;
-        const hit = findWorldPropAtInView(registry, combatSpatial, world.x, world.y);
-        if (hit) {
-            const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, state, hit);
-            if (allowed.length === 0) return false;
-            buttonWireTool.exit();
-            corridorLinkWireTool.exit();
-            session.setPlacePaletteKey(`prop:${hit.type}`);
-            session.setSelectedPropId(hit.id);
-            const prop = session.getSelectedProp();
-            if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
-                const propBehaviors = listSelectedBehaviors(prop);
-                if (propBehaviors.length > 0) entityMeta().setActiveBehaviorId(prop.id, propBehaviors[0]);
-            }
-            e.preventDefault();
-            e.stopPropagation();
-            return true;
-        }
-        const grid = state.obstacleGrid;
-        const { col, row } = grid.worldToGrid(world.x, world.y);
-        if (session.pickRoomNodeAtWorld(world.x, world.y)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return true;
-        }
-        if (grid.hasFloorOccupancy(col, row)) {
-            session.setSelectedFloorCell(col, row);
-            e.preventDefault();
-            e.stopPropagation();
-            return true;
-        }
-        if (!session.pickAnyWallAtWorld(world.x, world.y)) return false;
-        e.preventDefault();
-        e.stopPropagation();
-        return true;
-    };
-    /** @param {{ x: number, y: number }} world @param {PointerEvent} e */
-    const handleWallPointerDown = (world, e) => {
-        if (e.button === 2) {
-            session.deleteWallAtWorld(world.x, world.y);
-            e.preventDefault();
-            e.stopPropagation();
-            return true;
-        }
-        if (e.button !== 0) return false;
-        if (session.pickWallAtWorld(world.x, world.y)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return true;
-        }
-        session.stampWallAtWorld(world.x, world.y);
-        e.preventDefault();
-        e.stopPropagation();
-        return true;
+    const resetBehaviors = () => {
+        for (const behavior of behaviors) behavior.reset?.();
+        gestures.reset();
     };
     /** @param {PointerEvent} e */
     const onPointerDown = (e) => {
-        const canvas = getCanvas();
         const world = clientToWorld(e.clientX, e.clientY);
-        if (e.button === 0 && (e.ctrlKey || e.metaKey) && tryPlaceSpawnAtWorld(world, e)) return;
-        if (e.button === 0 && e.shiftKey && tryPickPlacedAtWorld(world, e)) return;
-        if (session.isWallPlaceMode()) {
-            handleWallPointerDown(world, e);
-            return;
-        }
-        const registry = state.entityRegistry;
-        if (e.button === 2) {
-            const hit = findWorldPropAtInView(registry, combatSpatial, world.x, world.y);
-            if (hit) {
+        const down = canvasTools.dispatchPointerDown(world, e);
+        if (down.handled) {
+            if (down.preventDefault) {
                 e.preventDefault();
                 e.stopPropagation();
-                session.deleteProp(hit);
-                return;
             }
-            const grid = state.obstacleGrid;
-            const { col, row } = grid.worldToGrid(world.x, world.y);
-            const roomNode = pickRoomNodeAt(state, col, row);
-            if (roomNode) {
-                session.setSelectedRoomNodeId(roomNode.id);
-                session.deleteSelectedRoomNode();
-                e.preventDefault();
-                e.stopPropagation();
-                return;
-            }
-            if (clearFloorOverlayAt(state, col, row)) {
-                const selectedFloor = session.getSelectedFloorCell();
-                if (selectedFloor?.col === col && selectedFloor.row === row) session.clearFloorSelection();
-                e.preventDefault();
-                e.stopPropagation();
-                session.sync();
-                return;
-            }
-            const groundMove = resolveGroundMove();
-            if (groundMove) {
-                issueGroundMove(groundMove, world);
-                e.preventDefault();
-                e.stopPropagation();
-                session.sync();
-            }
-            return;
-        }
-        if (e.button !== 0) return;
-        if (pKeyHeld && issueMassHpaGroundMove(world)) {
-            e.preventDefault();
-            e.stopPropagation();
-            session.sync();
-            return;
-        }
-        if (canvasTools.dispatchPointerDown(world, e)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-        }
-        const floorButton = hitTestFloorButton(state, world.x, world.y);
-        if (floorButton && handleButtonPointerDown(state, floorButton, world)) {
-            e.preventDefault();
-            e.stopPropagation();
-            session.sync();
-            return;
-        }
-        if (tryCanvasInput(world, e)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-        }
-        session.pruneSelection();
-        const hit = findWorldPropAtInView(registry, combatSpatial, world.x, world.y);
-        if (hit) {
-            const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, state, hit);
-            if (allowed.length > 0) session.setSelectedPropId(hit.id);
-            const prop = session.getSelectedProp();
-            const behavior = resolveBehavior();
-            if (prop && behavior?.onPointerDown(prop, world, e)) {
-                e.preventDefault();
-                e.stopPropagation();
-                interactionBehavior = behavior;
-                canvas.setPointerCapture(e.pointerId);
-            }
-            return;
-        }
-        const groundMove = resolveGroundMove();
-        if (groundMove) {
-            issueGroundMove(groundMove, world);
-            groundNav = { pointerId: e.pointerId, prop: groundMove.prop, behavior: groundMove.behavior };
-            canvas.setPointerCapture(e.pointerId);
-            e.preventDefault();
-            e.stopPropagation();
-            session.sync();
-            return;
-        }
-        const grid = state.obstacleGrid;
-        const { col, row } = grid.worldToGrid(world.x, world.y);
-        if (session.pickRoomNodeAtWorld(world.x, world.y)) {
-            buttonWireTool.exit();
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-        }
-        if (grid.hasFloorOccupancy(col, row)) {
-            session.setSelectedFloorCell(col, row);
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-        }
-        if (session.pickForcefieldAtWorld(world.x, world.y)) {
-            e.preventDefault();
-            e.stopPropagation();
             return;
         }
         if (canvasTools.tryBeginPointerDown(world, e)) {
@@ -344,20 +172,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
     };
     /** @param {PointerEvent} e */
     const onPointerMove = (e) => {
-        canvasTools.dispatchPointerMove(clientToWorld(e.clientX, e.clientY), e);
-        if (!interactionBehavior && !canvasTools.isDragging() && !groundNav && !canvasTools.blocksPlacePreview() && !session.isMapGenPlaceMode())
-            placePreviewWorld = clientToWorld(e.clientX, e.clientY);
-        if (canvasTools.isDragging()) return;
-        if (groundNav) {
-            groundNav.behavior.updateGroundMoveTarget?.(groundNav.prop, clientToWorld(e.clientX, e.clientY));
-            return;
-        }
-        if (!interactionBehavior) return;
-        const prop = session.getSelectedProp();
-        if (!prop) return;
         const world = clientToWorld(e.clientX, e.clientY);
-        e.stopPropagation();
-        interactionBehavior.onPointerMove(prop, world, e);
+        canvasTools.dispatchPointerMove(world, e);
+        if (!canvasTools.capturesPointerMove() && !canvasTools.isDragging() && !canvasTools.blocksPlacePreview() && !session.isMapGenPlaceMode()) placePreviewWorld = world;
+        if (canvasTools.isDragging()) return;
     };
     /** @param {PointerEvent} e */
     const onPointerLeave = () => {
@@ -366,34 +184,11 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
     /** @param {PointerEvent} e */
     const onPointerUp = (e) => {
         releaseButtonPointerHold(state);
-        const canvas = getCanvas();
-        if (groundNav) {
-            const nav = groundNav;
-            groundNav = null;
-            releasePointerCapture(canvas, e);
-            const world = clientToWorld(e.clientX, e.clientY);
-            nav.behavior.updateGroundMoveTarget?.(nav.prop, world);
+        const world = clientToWorld(e.clientX, e.clientY);
+        if (canvasTools.dispatchPointerUp(world, e)) {
             e.preventDefault();
             e.stopPropagation();
-            session.sync();
-            return;
         }
-        if (canvasTools.dispatchPointerUp(clientToWorld(e.clientX, e.clientY), e)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-        }
-        if (!interactionBehavior) return;
-        const prop = session.getSelectedProp();
-        if (prop) {
-            const world = clientToWorld(e.clientX, e.clientY);
-            interactionBehavior.onPointerMove(prop, world, e);
-            interactionBehavior.onPointerUp(prop, e);
-        }
-        interactionBehavior = null;
-        releasePointerCapture(canvas, e);
-        e.stopPropagation();
-        session.sync();
     };
     /** @returns {{ selectedProps: object[] }} */
     const selectionDrawState = () => {
@@ -435,13 +230,11 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         getSelectedPropIds: () => session.getSelectedPropIds(),
         getSelectedProp: () => session.getSelectedProp(),
         setSelectedPropIds: (ids) => {
-            buttonWireTool.exit();
-            corridorLinkWireTool.exit();
+            exitWireModes();
             session.setSelectedPropIds(ids);
         },
         clearPropSelection: () => {
-            buttonWireTool.exit();
-            corridorLinkWireTool.exit();
+            exitWireModes();
             session.clearPropSelection();
         },
         getShowSelectionRings: () => showSelectionRings,
@@ -458,8 +251,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         },
         deleteSelectedProps: () => session.deleteSelectedProps(),
         setSelectedPropId: (id) => {
-            buttonWireTool.exit();
-            corridorLinkWireTool.exit();
+            exitWireModes();
             session.setSelectedPropId(id);
             const prop = session.getSelectedProp();
             if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
@@ -562,8 +354,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
         listPlacedSceneItems: () => session.listPlacedSceneItems(),
         isSceneItemSelected: (item) => session.isSceneItemSelected(item),
         selectSceneItem: (item) => {
-            buttonWireTool.exit();
-            corridorLinkWireTool.exit();
+            exitWireModes();
             session.selectSceneItem(item);
         },
         deleteSceneItem: (item) => session.deleteSceneItem(item),
@@ -638,7 +429,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
                     return;
                 }
                 if (e.code !== "KeyR") return;
-                if (!placePreviewWorld || interactionBehavior || canvasTools.isDragging() || groundNav || canvasTools.blocksPlacePreview()) return;
+                if (!placePreviewWorld || canvasTools.capturesPointerMove() || canvasTools.isDragging() || canvasTools.blocksPlacePreview()) return;
                 if (session.rotateHoveredGridOccupantAtWorld(placePreviewWorld.x, placePreviewWorld.y)) e.preventDefault();
             };
             const onKeyUp = (e) => {
@@ -657,10 +448,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             pKeyHeld = false;
             unbindPointers?.();
             unbindPointers = null;
-            buttonWireTool.exit();
-            corridorLinkWireTool.exit();
+            exitWireModes();
             marqueeTool.cancel();
-            groundNav = null;
             placePreviewWorld = null;
             resetBehaviors();
             session.setUiSync(null);
@@ -726,7 +515,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
             marqueeTool.drawOverlay(ctx);
         },
         drawPlacePreview(ctx) {
-            if (!placePreviewWorld || interactionBehavior || canvasTools.isDragging() || groundNav || canvasTools.blocksPlacePreview() || session.isMapGenPlaceMode()) return;
+            if (!placePreviewWorld || canvasTools.capturesPointerMove() || canvasTools.isDragging() || canvasTools.blocksPlacePreview() || session.isMapGenPlaceMode()) return;
             const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
             drawSandboxPlacePreview(ctx, preview, state.obstacleGrid);
         },
