@@ -1,13 +1,27 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../RoomGraph/roomGraphCorridorTypes.js";
-import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomLinkSpawnAsset, isRoomNodeSpawnAsset, isSingleWorldPropSpawnAsset } from "./sandboxCapabilities.js";
+import {
+    isGridFloorBeltSpawnAsset,
+    isGridPassagePowerSourceSpawnAsset,
+    isRoomLinkSpawnAsset,
+    isRoomNodeSpawnAsset,
+    isPuzzleTemplateSpawnAsset,
+    isSingleWorldPropSpawnAsset,
+} from "./sandboxCapabilities.js";
 import { appendAxisNumberFields, appendEditorHint, appendNumberField, appendSelectField } from "../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
 export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
     const spawnAsset = getPropAsset(spawnId);
     const addRow = document.createElement("div");
     addRow.className = "sandbox-add-row";
-    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset) && !isGridPassagePowerSourceSpawnAsset(spawnAsset) && !isRoomNodeSpawnAsset(spawnAsset) && !isRoomLinkSpawnAsset(spawnAsset))
+    if (
+        spawnAsset &&
+        !isGridFloorBeltSpawnAsset(spawnAsset) &&
+        !isGridPassagePowerSourceSpawnAsset(spawnAsset) &&
+        !isRoomNodeSpawnAsset(spawnAsset) &&
+        !isRoomLinkSpawnAsset(spawnAsset) &&
+        !isPuzzleTemplateSpawnAsset(spawnAsset)
+    )
         appendFactionSelect(addRow, {
             value: controller.getSpawnFaction(),
             onChange: (faction) => {
@@ -75,6 +89,28 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
             },
         });
         appendEditorHint(body, "Hover the map to preview the footprint. Blocked cells turn red; click only places when every cell is clear.");
+        return;
+    }
+    if (isPuzzleTemplateSpawnAsset(spawnAsset)) {
+        appendAxisNumberFields(body, {
+            Width: {
+                value: controller.getSpawnPuzzleAreaCols(),
+                step: 1,
+                min: 28,
+                onChange: (cols) => {
+                    controller.setSpawnPuzzleAreaCols(cols);
+                },
+            },
+            Height: {
+                value: controller.getSpawnPuzzleAreaRows(),
+                step: 1,
+                min: 24,
+                onChange: (rows) => {
+                    controller.setSpawnPuzzleAreaRows(rows);
+                },
+            },
+        });
+        appendEditorHint(body, "Click to stamp three rooms with random sizes and positions inside the area. Links are fixed: belt A→B, belt B→A, locked B→C. Room A gets a blue ball and crate.");
         return;
     }
     if (isGridPassagePowerSourceSpawnAsset(spawnAsset))

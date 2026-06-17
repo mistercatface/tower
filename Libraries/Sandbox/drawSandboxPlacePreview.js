@@ -4,8 +4,9 @@ import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canStampFloorBeltAt, canStampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
-import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset } from "./sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset, isPuzzleTemplateSpawnAsset } from "./sandboxCapabilities.js";
 import { resolveRoomNodePlacePreview } from "../RoomGraph/index.js";
+import { resolveBeltCratePuzzlePlacePreview } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 const PREVIEW_CELL_BOUNDS = createAabb();
 /** @param {string} propTypeId */
@@ -24,6 +25,8 @@ function resolveSpawnPreviewRadius(propTypeId) {
  *   getSpawnPropId: () => string,
  *   getSpawnRoomNodeCols: () => number,
  *   getSpawnRoomNodeRows: () => number,
+ *   getSpawnPuzzleAreaCols: () => number,
+ *   getSpawnPuzzleAreaRows: () => number,
  * }} session
  * @param {number} worldX
  * @param {number} worldY
@@ -55,6 +58,10 @@ export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
     if (isRoomNodeSpawnAsset(asset)) {
         const { col, row } = grid.worldToGrid(worldX, worldY);
         return resolveRoomNodePlacePreview(state, col, row, session.getSpawnRoomNodeCols(), session.getSpawnRoomNodeRows());
+    }
+    if (isPuzzleTemplateSpawnAsset(asset)) {
+        const { col, row } = grid.worldToGrid(worldX, worldY);
+        return resolveBeltCratePuzzlePlacePreview(state, col, row, session.getSpawnPuzzleAreaCols(), session.getSpawnPuzzleAreaRows());
     }
     return { kind: "circle", x: worldX, y: worldY, radius: resolveSpawnPreviewRadius(session.getSpawnPropId()), valid: true };
 }
@@ -116,8 +123,12 @@ export function drawSandboxPlacePreview(ctx, preview, grid) {
             const cell = preview.cells[i];
             const { x, y } = grid.gridToWorld(cell.col, cell.row);
             const clear = cell.clear;
-            const fill = clear ? "rgba(120, 180, 255, 0.14)" : "rgba(255, 96, 96, 0.16)";
-            const stroke = clear ? "rgba(120, 180, 255, 0.85)" : "rgba(255, 96, 96, 0.9)";
+            let fill = clear ? "rgba(120, 180, 255, 0.14)" : "rgba(255, 96, 96, 0.16)";
+            let stroke = clear ? "rgba(120, 180, 255, 0.85)" : "rgba(255, 96, 96, 0.9)";
+            if (preview.tint === "puzzle") {
+                fill = clear ? "rgba(167, 139, 250, 0.12)" : "rgba(255, 96, 96, 0.16)";
+                stroke = clear ? "rgba(167, 139, 250, 0.85)" : "rgba(255, 96, 96, 0.9)";
+            }
             drawAabbHighlight(ctx, centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), { fill, stroke, lineWidth: lineScale, dash: [4, 3] });
         }
         ctx.restore();

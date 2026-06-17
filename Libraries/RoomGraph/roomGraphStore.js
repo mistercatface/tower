@@ -102,7 +102,7 @@ export function findRoomLinkBetween(state, a, b) {
     }
     return null;
 }
-/** @param {object} state @param {number} a @param {number} b @param {{ corridorType?: string, corridorWidthMin?: number, corridorWidthMax?: number }} [options] @returns {RoomLink | null} */
+/** @param {object} state @param {number} a @param {number} b @param {{ corridorType?: string, corridorWidthMin?: number, corridorWidthMax?: number, seed?: number }} [options] @returns {RoomLink | null} */
 export function addRoomLink(state, a, b, options = {}) {
     if (a === b) return null;
     const graph = getRoomGraph(state);
@@ -115,7 +115,7 @@ export function addRoomLink(state, a, b, options = {}) {
         corridorCount: 1,
         corridorWidthMin: width,
         corridorWidthMax: width,
-        seed: (Math.random() * 0xffffffff) | 0,
+        seed: options.seed != null ? options.seed | 0 : (Math.random() * 0xffffffff) | 0,
     };
     graph.links.push(link);
     return link;

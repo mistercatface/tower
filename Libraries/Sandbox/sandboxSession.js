@@ -3,7 +3,14 @@ import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLab
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
-import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset, isRoomLinkSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
+import {
+    isGridFloorBeltSpawnAsset,
+    isGridPassagePowerSourceSpawnAsset,
+    isRoomNodeSpawnAsset,
+    isRoomLinkSpawnAsset,
+    isPuzzleTemplateSpawnAsset,
+    resolveFloorBeltKindFromSpawnAsset,
+} from "./sandboxCapabilities.js";
 import {
     clearRoomGraph,
     DEFAULT_ROOM_NODE_COLS,
@@ -30,6 +37,7 @@ import {
     rerollRoomLinkBake,
     expandGridForRoomNodeFootprint,
 } from "../RoomGraph/index.js";
+import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { linkCorridorLimits, MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "../RoomGraph/roomGraphLinkCorridor.js";
 import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
 import { createSeededRng } from "../Math/SeededRng.js";
@@ -75,6 +83,8 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
     let forcefieldStampMode = PASSAGE_MODE.Solid;
     let spawnRoomNodeCols = DEFAULT_ROOM_NODE_COLS;
     let spawnRoomNodeRows = DEFAULT_ROOM_NODE_ROWS;
+    let spawnPuzzleAreaCols = BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS;
+    let spawnPuzzleAreaRows = BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS;
     let spawnCorridorType = CORRIDOR_TYPE_EMPTY;
     let spawnCorridorWidth = 1;
     /** @type {{ col: number, row: number } | null} */
@@ -336,6 +346,19 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
             notifyUi();
             return true;
         }
+        if (isPuzzleTemplateSpawnAsset(asset)) {
+            const grid = state.obstacleGrid;
+            const { col, row } = grid.worldToGrid(worldX, worldY);
+            const stamped = stampBeltCratePuzzleAt(state, col, row, spawnPuzzleAreaCols, spawnPuzzleAreaRows);
+            if (!stamped) return false;
+            touchRoomNodePlacement(stamped.roomA.id);
+            touchRoomNodePlacement(stamped.roomB.id);
+            touchRoomNodePlacement(stamped.roomC.id);
+            for (let i = 0; i < stamped.links.length; i++) touchRoomLinkCorridors(stamped.links[i]);
+            setSelectedRoomNodeId(stamped.roomA.id);
+            notifyUi();
+            return true;
+        }
         if (isRoomLinkSpawnAsset(asset)) return false;
         const spawned = spawnPlacedSandboxProp(state, worldX, worldY, spawnPropId, spawnFaction);
         if (spawned) {
@@ -362,6 +385,16 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
         getSpawnRoomNodeRows: () => spawnRoomNodeRows,
         setSpawnRoomNodeRows: (rows) => {
             spawnRoomNodeRows = Math.max(1, Math.min(32, Math.round(rows)));
+            notifyUi();
+        },
+        getSpawnPuzzleAreaCols: () => spawnPuzzleAreaCols,
+        setSpawnPuzzleAreaCols: (cols) => {
+            spawnPuzzleAreaCols = Math.max(1, Math.min(96, Math.round(cols)));
+            notifyUi();
+        },
+        getSpawnPuzzleAreaRows: () => spawnPuzzleAreaRows,
+        setSpawnPuzzleAreaRows: (rows) => {
+            spawnPuzzleAreaRows = Math.max(1, Math.min(96, Math.round(rows)));
             notifyUi();
         },
         getSpawnCorridorType: () => spawnCorridorType,

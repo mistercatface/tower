@@ -61,6 +61,10 @@ export function isRoomNodeSpawnAsset(asset) {
 export function isRoomLinkSpawnAsset(asset) {
     return asset?.sandbox?.roomLink === true;
 }
+/** Puzzle template stamps a fixed room graph layout — not a WorldProp. */
+export function isPuzzleTemplateSpawnAsset(asset) {
+    return asset?.sandbox?.puzzleTemplate === true;
+}
 /** Spawn stamps a pool ball rack — not a single WorldProp. */
 export function isPoolRackSpawnAsset(asset) {
     return asset?.sandbox?.spawnRack === "8ball" || asset?.sandbox?.spawnRack === "9ball";
