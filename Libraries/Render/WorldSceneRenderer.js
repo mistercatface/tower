@@ -9,6 +9,7 @@ import { aabbOverlap } from "../Math/Aabb2D.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { drawWorldProp } from "./drawWorldProp.js";
 import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources } from "../Sandbox/floorOccupancy.js";
+import { collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/drawForcefields.js";
 import { elevationCameraFromViewportInto } from "../Spatial/iso/ElevationCamera.js";
 export class WorldSceneRenderer {
     /**
@@ -21,6 +22,7 @@ export class WorldSceneRenderer {
         this.visibleDrawables = [];
         this.staticGridDrawables = [];
         this.staticGridEdgeRailDrawables = [];
+        this.forcefieldEdgeDrawables = [];
         this.wallPassCamera = { viewerX: 0, viewerY: 0, cameraHeight: 0, strength: 0 };
         this.wallCtx = {
             viewport: null,
@@ -116,6 +118,16 @@ export class WorldSceneRenderer {
         for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
         for (let i = 0; i < this.staticGridEdgeRailDrawables.length; i++) visibleObjects.push(this.staticGridEdgeRailDrawables[i]);
     }
+    _appendVisibleForcefieldEdges(input, viewport, px, py) {
+        const grid = input.obstacleGrid;
+        const gameState = input.gameState;
+        if (!grid || !gameState) return;
+        const drawables = this.forcefieldEdgeDrawables;
+        drawables.length = 0;
+        collectForcefieldEdgeDrawables(grid, gameState, viewport, px, py, drawables);
+        const visibleObjects = this.visibleDrawables;
+        for (let i = 0; i < drawables.length; i++) visibleObjects.push(drawables[i]);
+    }
     _bindWallDrawable(wallCtx, drawable) {
         wallCtx.wallHeight = drawable.wallHeight;
         wallCtx.wallBaseZ = drawable.wallBaseZ;
@@ -149,10 +161,12 @@ export class WorldSceneRenderer {
             wallCtx.atlasFaceId = undefined;
             this._appendVisibleStaticGridWalls(input, viewport, px, py);
         }
+        this._appendVisibleForcefieldEdges(input, viewport, px, py);
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
             if (obj.strategy || obj.usesKinematicsBody) drawWorldProp(ctx, obj, viewport, drawContext);
+            else if (obj._forcefield) drawForcefieldEdgeProp(ctx, obj, px, py);
             else if (obj.p1) {
                 this._bindWallDrawable(this.wallCtx, obj);
                 drawProjectedWallFace(ctx, obj.p1, obj.p2, this.wallCtx);

@@ -154,36 +154,27 @@ function syncPassageEdgeDrawCache(state, grid) {
     );
     state.sandbox._passageEdgeDrawCache = { revision, items };
 }
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {object} state
- * @param {import("../Viewport/Viewport.js").Viewport} viewport
- */
-export function drawForcefieldEdges(ctx, state, viewport) {
-    const grid = state.obstacleGrid;
-    if (!grid.cols || !grid.edgeStore.passageEdgeCount) return;
-    syncPassageEdgeDrawCache(state, grid);
-    const cached = state.sandbox._passageEdgeDrawCache.items;
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} gameState @param {import("../Viewport/Viewport.js").Viewport} viewport @param {number} px @param {number} py @param {object[]} out */
+export function collectForcefieldEdgeDrawables(grid, gameState, viewport, px, py, out) {
+    if (!grid.cols || !grid.edgeStore.passageEdgeCount || !gameState.sandbox) return;
+    syncPassageEdgeDrawCache(gameState, grid);
+    const cached = gameState.sandbox._passageEdgeDrawCache.items;
     const bounds = viewport.boundsVisibleDefault;
     const minX = bounds.minX;
     const maxX = bounds.maxX;
     const minY = bounds.minY;
     const maxY = bounds.maxY;
-    const tripwireTriggered = state.sandbox.tripwireTriggeredKeys;
-    const px = viewport.x;
-    const py = viewport.y;
-    const drawables = [];
+    const tripwireTriggered = gameState.sandbox.tripwireTriggeredKeys;
     for (let i = 0; i < cached.length; i++) {
         const item = cached[i];
         if (item.midX < minX || item.midX > maxX || item.midY < minY || item.midY > maxY) continue;
-        const distSq = (item.midX - px) ** 2 + (item.midY - py) ** 2;
         const tripped = item.proxy._forcefield.powered && tripwireTriggered.has(item.edgeKey);
         if (tripped !== item.proxy._forcefield.tripped) item.proxy._forcefield.tripped = tripped;
-        drawables.push({ proxy: item.proxy, distSq });
+        item.proxy._distSq = (item.midX - px) ** 2 + (item.midY - py) ** 2;
+        out.push(item.proxy);
     }
-    drawables.sort((a, b) => b.distSq - a.distSq);
-    for (let i = 0; i < drawables.length; i++) {
-        const item = drawables[i];
-        drawCachedPropSprite(ctx, item.proxy, px, py, GRID_STAMP_RENDER_KEY.ForcefieldEdge, forcefieldEdgeDraw);
-    }
+}
+/** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createForcefieldDrawProxy>} proxy @param {number} px @param {number} py */
+export function drawForcefieldEdgeProp(ctx, proxy, px, py) {
+    drawCachedPropSprite(ctx, proxy, px, py, GRID_STAMP_RENDER_KEY.ForcefieldEdge, forcefieldEdgeDraw);
 }

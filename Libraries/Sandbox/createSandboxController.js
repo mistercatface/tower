@@ -1,4 +1,3 @@
-import { drawForcefieldEdges } from "./drawForcefields.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, releasePointerCapture } from "./bindCanvasPointers.js";
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
@@ -307,7 +306,14 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
                 if (corridorLinkWireFromNodeId == null) corridorLinkWireFromNodeId = target.id;
                 else if (target.id !== corridorLinkWireFromNodeId) {
                     const width = session.getSpawnCorridorWidth();
-                    if (session.addRoomLinkBetweenNodes(corridorLinkWireFromNodeId, target.id, { corridorType: session.getSpawnCorridorType(), corridorWidthMin: width, corridorWidthMax: width, surfaceProfileId: session.getSpawnCorridorSurfaceProfileId() }))
+                    if (
+                        session.addRoomLinkBetweenNodes(corridorLinkWireFromNodeId, target.id, {
+                            corridorType: session.getSpawnCorridorType(),
+                            corridorWidthMin: width,
+                            corridorWidthMax: width,
+                            surfaceProfileId: session.getSpawnCorridorSurfaceProfileId(),
+                        })
+                    )
                         enterCorridorLinkWireMode();
                 }
             session.sync();
@@ -787,7 +793,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, defau
                 showRoomNodesAlways,
                 wireModeActive: corridorLinkWireMode,
             });
-            drawForcefieldEdges(ctx, state, state.viewport);
             drawButtonWires(ctx, state, { wireFromPropId: buttonWireMode ? session.getSelectedPropId() : null, wireCursor: buttonWireMode ? buttonWireCursor : null });
             for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx);
         },
