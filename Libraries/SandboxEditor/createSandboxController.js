@@ -88,6 +88,14 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         buttonWireTool.exit();
         corridorLinkWireTool.exit();
     };
+    const dismissEditorFocus = () => {
+        exitWireModes();
+        marqueeTool.cancel();
+        placePreviewWorld = null;
+        session.clearSelection();
+        session.clearPlaceMode();
+        session.sync();
+    };
     const resolveBehavior = () => {
         const prop = session.getSelectedProp();
         if (!prop) return null;
@@ -334,18 +342,16 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         importSceneSnapshot(json) {
             applySandboxSceneSnapshot(state, parseSandboxSceneSnapshot(json));
             resetBehaviors();
-            session.clearPropSelection();
-            session.clearFloorSelection();
-            session.clearWallSelection();
+            exitWireModes();
+            session.clearSelection();
             session.seedPlacementOrderFromState();
             session.sync();
         },
         loadStartScene() {
             spawnSandboxStartScene(state);
             resetBehaviors();
-            session.clearPropSelection();
-            session.clearFloorSelection();
-            session.clearWallSelection();
+            exitWireModes();
+            session.clearSelection();
             session.seedPlacementOrderFromState();
             session.sync();
         },
@@ -379,6 +385,11 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             });
             const onKeyDown = (e) => {
                 if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches("textarea, select, input"))) return;
+                if (e.code === "Escape") {
+                    dismissEditorFocus();
+                    e.preventDefault();
+                    return;
+                }
                 if (e.code === "KeyP") {
                     pKeyHeld = true;
                     return;

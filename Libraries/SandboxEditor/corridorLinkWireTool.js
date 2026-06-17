@@ -18,8 +18,7 @@ export function createCorridorLinkWireTool(state, session) {
             });
         },
         onAfterCommit: () => {
-            session.clearPropSelection();
-            session.clearRoomGraphSelection();
+            session.clearSelection();
             tool.enter();
         },
         onSync: () => session.sync(),
@@ -34,8 +33,7 @@ export function createCorridorLinkWireTool(state, session) {
         onPointerDown: tool.onPointerDown,
         onPointerMove: tool.onPointerMove,
         enterLinkMode() {
-            session.clearPropSelection();
-            session.clearRoomGraphSelection();
+            session.clearSelection();
             tool.enter();
         },
     };

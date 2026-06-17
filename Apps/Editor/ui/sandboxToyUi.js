@@ -15,6 +15,11 @@ export function mountSandboxToyUi(container, state, controller) {
     const propIds = Object.keys(getWorldPropDefinitions())
         .filter((id) => isSandboxSpawnable(getPropAsset(id)))
         .sort((a, b) => formatSandboxSpawnLabel(a).localeCompare(formatSandboxSpawnLabel(b)));
+    const bootstrapPaletteItems = buildPlacePaletteItems(propIds);
+    if (!controller.getPlacePaletteKey() && bootstrapPaletteItems.length > 0) {
+        const firstProp = bootstrapPaletteItems.find((item) => item.kind === "prop") ?? bootstrapPaletteItems[0];
+        controller.setPlacePaletteKey(firstProp.key);
+    }
     function refreshPanel() {
         container.innerHTML = "";
         const allPaletteItems = buildPlacePaletteItems(propIds);
@@ -41,11 +46,11 @@ export function mountSandboxToyUi(container, state, controller) {
             return;
         }
         const paletteKey = controller.getPlacePaletteKey();
-        if (!paletteItems.some((item) => item.key === paletteKey)) {
+        if (paletteKey !== "" && !paletteItems.some((item) => item.key === paletteKey)) {
             controller.setPlacePaletteKey(paletteItems[0].key);
             return;
         }
-        const activeItem = paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0];
+        const activeItem = paletteKey === "" ? null : (paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0]);
         const selectedPropIds = new Set(controller.getSelectedPropIds());
         const selectedProp = controller.getSelectedProp();
         const selectedFloorBelt = controller.getSelectedFloorBeltInfo();
@@ -77,7 +82,8 @@ export function mountSandboxToyUi(container, state, controller) {
             const paramsHost = document.createElement("div");
             paramsHost.className = "spawn-palette-params";
             body.appendChild(paramsHost);
-            if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), refreshPanel);
+            if (!activeItem) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
+            else if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), refreshPanel);
             else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, selectedVoxelInfo, selectedRailInfo });
             else appendMapGenEditor(paramsHost, state, activeItem.genKind, refreshPanel);
         });

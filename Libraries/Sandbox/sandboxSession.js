@@ -230,6 +230,22 @@ export function createSandboxSession(state) {
         selectedVoxelCell = null;
         selectedRailEdge = null;
     };
+    const dropAllSelection = () => {
+        selectedPropIds.clear();
+        selectedPropId = null;
+        dropFloorSelection();
+        dropWallSelection();
+        dropRoomGraphSelection();
+    };
+    const clearSelection = () => {
+        dropAllSelection();
+        notifyUi();
+    };
+    const clearPlaceMode = () => {
+        if (placePaletteKey === "") return;
+        placePaletteKey = "";
+        notifyUi();
+    };
     const setSelectedVoxelCell = (col, row) => {
         dropFloorSelection();
         dropRoomGraphSelection();
@@ -446,6 +462,8 @@ export function createSandboxSession(state) {
         clearPropSelection: () => {
             setSinglePropSelection(null);
         },
+        clearSelection,
+        clearPlaceMode,
         clearRoomGraphSelection: () => {
             dropRoomGraphSelection();
             notifyUi();
@@ -1150,11 +1168,7 @@ export function createSandboxSession(state) {
             state.obstacleGrid.clearAllFloorCells();
             unbakeRoomGraph(state);
             clearRoomGraph(state);
-            selectedPropIds.clear();
-            selectedPropId = null;
-            dropFloorSelection();
-            dropWallSelection();
-            dropRoomGraphSelection();
+            dropAllSelection();
             resetPlacementOrder();
             notifyUi();
         },
