@@ -49,7 +49,6 @@ export class WorldSurfaceEngine {
         const maxY = obstacleGrid.minY + (bounds.endRow + 1) * cellSize;
         const range = worldBoundsToChunkRange(minX, minY, maxX, maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
         const zLevels = [0, ...(roofZLevels ?? this.settings.roofZLevels ?? []).filter((z) => z > 0)];
-        const surfaceBakeScale = getSurfaceBakeScale(this.settings);
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
                 const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
@@ -57,23 +56,23 @@ export class WorldSurfaceEngine {
                 const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
                 const rev = getSurfaceProfileRevision(profileId);
                 for (const zLevel of zLevels) {
-                    this.surfaceCache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, surfaceBakeScale, zLevel));
+                    this.surfaceCache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, zLevel));
                     if (zLevel <= 0) continue;
                     this.surfaceCache.delete(staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel));
-                    this.surfaceCache.delete(staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, rev, surfaceBakeScale, zLevel));
+                    this.surfaceCache.delete(staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, rev, zLevel));
                 }
             }
     }
-    ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null, profileId = null, surfaceBakeScale = null) {
+    ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null, profileId = null) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
         const edgeLen = createWallFaceAxes(p1, p2).edgeLen;
         if (edgeLen < 0.001 || columns.length === 0) return null;
         const cellSize = proceduralSurfaceDraw.obstacleCellSize ?? this.settings.cellSize;
-        const bakeScale = surfaceBakeScale ?? getSurfaceBakeScale(this.settings);
-        const canvasWidth = Math.max(1, Math.ceil(edgeLen * bakeScale));
+        const surfaceBakeScale = getSurfaceBakeScale(this.settings);
+        const canvasWidth = Math.max(1, Math.ceil(edgeLen * surfaceBakeScale));
         const hVal = resolveWallCapHeightPx(wallHeight, this.settings);
-        const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * bakeScale));
+        const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * surfaceBakeScale));
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
         const bakeProfileId = profileId ?? proceduralSurfaceDraw.resolveProfileAt(wallCenterX, wallCenterY);
@@ -83,7 +82,7 @@ export class WorldSurfaceEngine {
                 height: canvasHeight,
                 p1,
                 p2,
-                surfaceBakeScale: bakeScale,
+                surfaceBakeScale,
                 seed: proceduralSurfaceDraw.surfaceSeed,
                 profileId: bakeProfileId,
                 ...bakeFrameRange.first(),
@@ -118,11 +117,10 @@ export class WorldSurfaceEngine {
         });
         return placeholder;
     }
-    getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0, surfaceBakeScale = null) {
+    getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0) {
         if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         const resolvedZ = payload.zLevel ?? zLevel;
-        const bakeScale = surfaceBakeScale ?? getSurfaceBakeScale(this.settings);
-        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), bakeScale, resolvedZ);
+        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), resolvedZ);
         let canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
         const bakePayload = { ...payload, ...bakeFrameRange.first() };
@@ -135,13 +133,13 @@ export class WorldSurfaceEngine {
      */
     getStaticRoofDrawCanvas(pass, roofCanvas, payload) {
         if (roofCanvas.isPlaceholder) return roofCanvas;
-        const { chunkCol, chunkRow, zLevel, obstacleGrid, originX, originY, sizePx, surfaceBakeScale } = pass;
+        const { chunkCol, chunkRow, zLevel, obstacleGrid, originX, originY, sizePx, settings } = pass;
         const rev = getSurfaceProfileRevision(payload.profileId);
-        const drawKey = staticRoofDrawCachePrefix(chunkCol, chunkRow, payload.profileId, rev, surfaceBakeScale, zLevel);
+        const drawKey = staticRoofDrawCachePrefix(chunkCol, chunkRow, payload.profileId, rev, zLevel);
         const maskKey = staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel);
         let maskEntry = this.surfaceCache.get(maskKey);
         if (!maskEntry) {
-            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, originX, originY, sizePx, zLevel, surfaceBakeScale);
+            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, originX, originY, sizePx, zLevel, settings);
             if (!maskCanvas) {
                 this.surfaceCache.delete(drawKey);
                 return null;
@@ -165,37 +163,27 @@ export class WorldSurfaceEngine {
      *   wallHeight?: number | null,
      *   cacheObj?: object | null,
      *   atlasFaceId?: string,
-     *   surfaceBakeScale?: number,
      * }} options
      */
     getOrEnsureWallAtlas(p1, p2, options) {
-        const { profileId, proceduralSurfaceDraw, wallHeight = null, cacheObj = null, atlasFaceId = "side", surfaceBakeScale = null } = options;
-        const bakeScale = surfaceBakeScale ?? getSurfaceBakeScale(this.settings);
+        const { profileId, proceduralSurfaceDraw, wallHeight = null, cacheObj = null, atlasFaceId = "side" } = options;
         const seed = proceduralSurfaceDraw.surfaceSeed;
         const rev = getSurfaceProfileRevision(profileId);
         const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);
         if (cacheObj) {
             const stash = cacheObj._wallAtlasStashes?.[atlasFaceId];
-            if (
-                stash &&
-                stash.profileId === profileId &&
-                stash.surfaceBakeScale === bakeScale &&
-                stash.rev === rev &&
-                stash.seed === seed &&
-                stash.wallHeightKey === wallHeightKey &&
-                this.surfaceCache.get(stash.key) === stash.canvases
-            )
+            if (stash && stash.profileId === profileId && stash.rev === rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && this.surfaceCache.get(stash.key) === stash.canvases)
                 return stash;
         }
-        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, bakeScale, cacheObj, this.settings, wallHeightKey, atlasFaceId);
+        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, cacheObj, this.settings, wallHeightKey, atlasFaceId);
         let canvases = this.surfaceCache.get(key);
         if (!canvases) {
             const columns = wallFaceColumns(wrappedP1, wrappedP2, this.settings.cellSize);
             if (columns.length === 0) return null;
-            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, proceduralSurfaceDraw, wallHeight, profileId, bakeScale);
+            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, proceduralSurfaceDraw, wallHeight, profileId);
             if (!canvases || canvases.length === 0) return null;
         }
-        const resolved = { key, wrappedP1, wrappedP2, canvases, profileId, surfaceBakeScale: bakeScale, rev, seed, wallHeightKey };
+        const resolved = { key, wrappedP1, wrappedP2, canvases, profileId, rev, seed, wallHeightKey };
         if (cacheObj) {
             if (!cacheObj._wallAtlasStashes) cacheObj._wallAtlasStashes = {};
             cacheObj._wallAtlasStashes[atlasFaceId] = resolved;
@@ -208,11 +196,10 @@ export class WorldSurfaceEngine {
      * @param {number} zLevel
      * @param {object} state
      * @param {string} profileId
-     * @param {number} [surfaceBakeScale]
      * @returns {{ canvas: CanvasImageSource & { width: number, height: number }, src: [{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }] } | null}
      */
-    getHorizontalCapDrawSample(worldCorners, zLevel, state, profileId, surfaceBakeScale = null) {
-        const bakeScale = surfaceBakeScale ?? getSurfaceBakeScale(this.settings);
+    getHorizontalCapDrawSample(worldCorners, zLevel, state, profileId) {
+        const surfaceBakeScale = getSurfaceBakeScale(this.settings);
         const obstacleGrid = state.obstacleGrid;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
@@ -228,10 +215,10 @@ export class WorldSurfaceEngine {
         const originY = obstacleGrid.minY + chunkRow * chunkSizePx;
         const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         payload.profileId = profileId;
-        const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel, bakeScale);
+        const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel);
         const canvas = canvases[0];
         if (!canvas || canvas.isPlaceholder) return null;
-        const src = worldCorners.map((c) => ({ x: (c.x - originX) * bakeScale, y: (c.y - originY) * bakeScale }));
+        const src = worldCorners.map((c) => ({ x: (c.x - originX) * surfaceBakeScale, y: (c.y - originY) * surfaceBakeScale }));
         return { canvas, src };
     }
     /**
@@ -264,7 +251,6 @@ export class WorldSurfaceEngine {
         const minChunkRow = worldToChunkRow(bounds.minY, obstacleGrid.minY, chunkSizePx);
         const maxChunkRow = worldToChunkRow(bounds.maxY - 1, obstacleGrid.minY, chunkSizePx);
         const passCamera = elevationCameraFromViewport(viewport, this.settings.cameraHeight);
-        const surfaceBakeScale = getSurfaceBakeScale(this.settings);
         ctx.save();
         if (playBounds) clipToAabb(ctx, bounds);
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
@@ -280,7 +266,7 @@ export class WorldSurfaceEngine {
                     continue;
                 if (zLevel > 0 && flatWallRails && !chunkHasStaticStructureAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel)) continue;
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
-                const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel, surfaceBakeScale);
+                const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel);
                 const canvas = canvases[0];
                 if (canvas.isPlaceholder) continue;
                 /** @type {import("./ChunkDrawPass.js").ChunkDrawPass} */
@@ -294,7 +280,6 @@ export class WorldSurfaceEngine {
                     viewport,
                     obstacleGrid,
                     settings: this.settings,
-                    surfaceBakeScale,
                     state,
                     chunkAabb: chunkWorldAabbInto(createAabb(), originX, originY, chunkSizePx),
                     camera: passCamera,

@@ -5,7 +5,7 @@
 export { projectHorizontalSurfaceCornersInto, clipChunkToBlockedCells, clipChunkToStaticEdgeRails, clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
 import { resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
-import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
+import { bakePixelsForWorldSpan, getSurfaceBakeScale } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx) {
     let found = false;
@@ -14,7 +14,8 @@ export function chunkHasBlockedCells(obstacleGrid, chunkOriginX, chunkOriginY, c
     });
     return found;
 }
-export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, surfaceBakeScale) {
+export function buildStaticRoofMaskCanvas(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel, settings) {
+    const surfaceBakeScale = getSurfaceBakeScale(settings);
     const bakeSize = bakePixelsForWorldSpan(chunkSizePx, surfaceBakeScale);
     const cellBakeSize = bakePixelsForWorldSpan(obstacleGrid.cellSize, surfaceBakeScale);
     const canvas = createOffscreenCanvas(bakeSize, bakeSize);

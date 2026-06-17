@@ -7,6 +7,7 @@ import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/
 import { railWallCapUvCorners } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
+import { getSurfaceBakeScale } from "../../WorldSurface/WorldSurfaceResolution.js";
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
@@ -94,14 +95,7 @@ function resolveWallFaceAtlas(p1, p2, wallCtx) {
     const wallCx = (p1.x + p2.x) * 0.5;
     const wallCy = (p1.y + p2.y) * 0.5;
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj);
-    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, {
-        profileId,
-        proceduralSurfaceDraw,
-        wallHeight: wallCapHeight,
-        cacheObj,
-        atlasFaceId: atlasFaceId ?? "side",
-        surfaceBakeScale: wallCtx.surfaceBakeScale,
-    });
+    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight: wallCapHeight, cacheObj, atlasFaceId: atlasFaceId ?? "side" });
     if (!baked) return { atlas: null, solidFill: false };
     const canvas = baked.canvases[0];
     if (!canvas || canvas.isPlaceholder) return { atlas: null, solidFill: true };
@@ -128,7 +122,7 @@ function resolveWallFaceAtlas(p1, p2, wallCtx) {
  * @property {number} alphaBase
  * @property {number} alphaBandMax
  */
-function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, camera, surfaceBakeScale) {
+function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, camera) {
     const cellSize = settings.cellSize;
     const topZ = Math.min(wallBaseZ + bandHeight, camera.cameraHeight - 1);
     const alphaBandMax = resolveElevationAlpha(topZ, camera);
@@ -140,7 +134,7 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
     return {
         subdivX: Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale))),
         subdivY: Math.max(1, Math.ceil(visibleHeightCells * subdivScale)),
-        capPx: capHeight * surfaceBakeScale,
+        capPx: capHeight * getSurfaceBakeScale(settings),
         alphaBase,
         alphaBandMax,
     };
@@ -180,7 +174,7 @@ function resolveWallFaceSubdiv(wallCtx, atlas, camera) {
     const faceId = wallCtx.atlasFaceId ?? "side";
     const subdivKey = `${faceId}|${atlas.edgeLen}|${camera.viewerX}|${camera.viewerY}|${atlas.wallBaseZ}|${atlas.bandHeight}`;
     if (cacheObj && cacheObj._faceSubdivKey === subdivKey) return cacheObj._faceSubdiv;
-    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, camera, wallCtx.surfaceBakeScale);
+    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, camera);
     if (cacheObj) {
         cacheObj._faceSubdivKey = subdivKey;
         cacheObj._faceSubdiv = subdiv;
@@ -258,7 +252,7 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
     }
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
     const uvCorners = railWallCapUvCorners(gameState.obstacleGrid, box);
-    const sample = worldSurfaces.getHorizontalCapDrawSample(uvCorners, box.wallCapHeight, gameState, profileId, wallCtx.surfaceBakeScale);
+    const sample = worldSurfaces.getHorizontalCapDrawSample(uvCorners, box.wallCapHeight, gameState, profileId);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         return;
@@ -296,7 +290,7 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
         { x: maxX, y: maxY },
         { x: minX, y: maxY },
     ];
-    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, z, gameState, profileId, wallCtx.surfaceBakeScale);
+    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, z, gameState, profileId);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         return;

@@ -11,7 +11,7 @@ import { getAnimationFrames } from "../ProfileBakeResolver.js";
  * @property {number} [zLevel]
  * @property {number} [cellsPerChunk]
  * @property {number} [cellSize]
- * @property {number} [surfaceBakeScale]
+ * @property {number} surfaceBakeScale — worker-only; copied from game settings at enqueue time
  */
 /**
  * @param {object | null | undefined} profile
@@ -26,14 +26,14 @@ export function resolveAnimationBakeFrameCounts(profile, settings) {
 export function horizontalZCacheTag(zLevel = 0) {
     return zLevel > 0 ? `z${zLevel}roof` : `z${zLevel}`;
 }
-export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, surfaceBakeScale, zLevel = 0) {
-    return `chunk:${profileRevision}:${surfaceBakeScale}:${profileId}:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
+export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, zLevel = 0) {
+    return `chunk:${profileRevision}:${profileId}:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
 }
 export function staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel) {
     return `staticRoofMask:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
 }
-export function staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, profileRevision, surfaceBakeScale, zLevel) {
-    return `staticRoofDraw:${groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, surfaceBakeScale, zLevel)}`;
+export function staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, profileRevision, zLevel) {
+    return `staticRoofDraw:${groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, zLevel)}`;
 }
 /** @param {WorldSurfaceSettings} settings @returns {number[]} */
 export function getHorizontalSurfaceZLevels(settings) {
@@ -47,9 +47,8 @@ export function getHorizontalSurfaceZLevels(settings) {
  */
 export function createGroundChunkBakePayload(payload) {
     const { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel, cellsPerChunk, cellSize, surfaceBakeScale } = payload;
-    const result = { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel: zLevel ?? 0 };
+    const result = { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel: zLevel ?? 0, surfaceBakeScale };
     if (cellsPerChunk != null) result.cellsPerChunk = cellsPerChunk;
     if (cellSize != null) result.cellSize = cellSize;
-    if (surfaceBakeScale != null) result.surfaceBakeScale = surfaceBakeScale;
     return result;
 }

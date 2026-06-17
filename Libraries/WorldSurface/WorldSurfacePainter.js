@@ -3,7 +3,7 @@ import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.
 import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 import { createWallFaceAxes, fillWallFaceRows, writeFloorPixel, writeRoofPixel, writeWallCellPixel } from "./SurfaceCoordinateMapper.js";
-import { bakePixelsForWorldSpan, getSurfaceBakeScale } from "./WorldSurfaceResolution.js";
+import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 import { sourceFrameIndexForBakeSlot } from "./AnimationFrameBake.js";
 /**
@@ -65,8 +65,8 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const profile = resolvePaintProfile(profileOrId);
     const cellSize = options.cellSize;
     if (cellSize == null) throw new Error("paintPixelArea requires options.cellSize");
-    const surfaceBakeScale = options.surfaceBakeScale ?? (options.settings ? getSurfaceBakeScale(options.settings) : null);
-    if (surfaceBakeScale == null) throw new Error("paintPixelArea requires options.surfaceBakeScale or options.settings");
+    const surfaceBakeScale = options.surfaceBakeScale;
+    if (surfaceBakeScale == null) throw new Error("paintPixelArea requires options.surfaceBakeScale");
     const invBakeScale = 1 / surfaceBakeScale;
     let writePixel = writeFloorPixel;
     let mapCtx = { invBakeScale, startWorldX, startWorldY };
