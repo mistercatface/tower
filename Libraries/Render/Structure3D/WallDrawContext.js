@@ -11,6 +11,7 @@
  * @property {{ settings: import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings }} worldSurfaces
  * @property {ProceduralSurfaceDrawContext} proceduralSurfaceDraw
  * @property {string} fillStyle
+ * @property {number} bleedPx — wall atlas / cap texture seam bleed (from settings once per pass)
  * @property {object | null} cacheObj
  * @property {import("../../Math/Aabb2D.js").Aabb2D} worldBounds
  * @property {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera

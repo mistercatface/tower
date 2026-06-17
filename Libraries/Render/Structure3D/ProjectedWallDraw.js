@@ -77,7 +77,6 @@ function resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj) {
 /**
  * @typedef {Object} WallFaceAtlas
  * @property {CanvasImageSource & { width: number, height: number }} canvas
- * @property {number} bleedPx
  * @property {import("../../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
  * @property {number} capHeight
  * @property {number} bandHeight
@@ -101,20 +100,7 @@ function resolveWallFaceAtlas(p1, p2, wallCtx) {
     if (!baked) return { atlas: null, solidFill: false };
     const canvas = baked.canvases[0];
     if (!canvas || canvas.isPlaceholder) return { atlas: null, solidFill: true };
-    return {
-        atlas: {
-            canvas,
-            bleedPx: settings.wallTextureBleedPx ?? 1,
-            settings,
-            capHeight: wallCapHeight,
-            bandHeight: wallHeight,
-            wallBaseZ,
-            edgeLen: Math.hypot(p2.x - p1.x, p2.y - p1.y),
-            wallCx,
-            wallCy,
-        },
-        solidFill: false,
-    };
+    return { atlas: { canvas, settings, capHeight: wallCapHeight, bandHeight: wallHeight, wallBaseZ, edgeLen: Math.hypot(p2.x - p1.x, p2.y - p1.y), wallCx, wallCy }, solidFill: false };
 }
 /**
  * @typedef {Object} WallFaceSubdiv
@@ -141,8 +127,8 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
         alphaBandMax,
     };
 }
-function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, worldBounds) {
-    const { canvas, bleedPx, settings, capHeight, bandHeight, wallBaseZ } = atlas;
+function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, worldBounds, bleedPx) {
+    const { canvas, capHeight, bandHeight, wallBaseZ } = atlas;
     const { subdivX, subdivY, capPx, alphaBase, alphaBandMax } = subdiv;
     const alphaSpan = alphaBandMax - alphaBase;
     const rowStep = bandHeight / subdivY;
@@ -202,7 +188,7 @@ function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera) {
         ctx.fill();
         return;
     }
-    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wallCtx.worldBounds);
+    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wallCtx.worldBounds, wallCtx.bleedPx);
 }
 const sCapSrc0 = { x: 0, y: 0 };
 const sCapSrc1 = { x: 0, y: 0 };
@@ -230,8 +216,9 @@ function fillProjectedCapPolygon(ctx, corners, fillStyle) {
     ctx.fill();
 }
 function blitHorizontalCapSample(ctx, dest4, src4, canvas, bleedPx) {
-    drawImageTriangle(ctx, canvas, src4[0], src4[1], src4[3], dest4[0], dest4[1], dest4[3], { bleedPx });
-    drawImageTriangle(ctx, canvas, src4[1], src4[2], src4[3], dest4[1], dest4[2], dest4[3], { bleedPx });
+    sBlitQuadOpts.bleedPx = bleedPx;
+    drawImageTriangle(ctx, canvas, src4[0], src4[1], src4[3], dest4[0], dest4[1], dest4[3], sBlitQuadOpts);
+    drawImageTriangle(ctx, canvas, src4[1], src4[2], src4[3], dest4[1], dest4[2], dest4[3], sBlitQuadOpts);
 }
 function assignCapSampleSrc(sample) {
     sCapSrc0.x = sample.src[0].x;
@@ -264,7 +251,7 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
         return;
     }
     assignCapSampleSrc(sample);
-    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, worldSurfaces.settings.wallTextureBleedPx ?? 1);
+    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, wallCtx.bleedPx);
 }
 /**
  * Horizontal cap from world AABB corners (voxelBlock caps, generic quads).
@@ -302,7 +289,7 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
         return;
     }
     assignCapSampleSrc(sample);
-    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, worldSurfaces.settings.wallTextureBleedPx ?? 1);
+    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, wallCtx.bleedPx);
 }
 /**
  * Wall face draw: projectWorldPointInto band → trace → texture or solid fill → optional damage overlay.

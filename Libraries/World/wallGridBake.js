@@ -158,6 +158,7 @@ export function writeRailWallBoxInto(box, grid, col, row, edge) {
     const { neighborCap, capHeightPx: edgeHeight } = resolveRailWallNeighborContext(grid, col, row, edge);
     if (edgeHeight <= 0) return false;
     if (!voxelWallFaceVisible(neighborCap, edgeHeight)) return false;
+    clearWallGridDrawableDrawMemos(box);
     const fp = railWallFootprintAabb(grid, col, row, edge);
     const inward = railWallInwardNormal(edge);
     railWallSideEndpoints(grid, col, row, edge, 0, sP1, sP2);
@@ -193,12 +194,11 @@ export function resolveRailWallBox(grid, col, row, edge) {
     const box = allocRailWallBox();
     return writeRailWallBoxInto(box, grid, col, row, edge) ? box : null;
 }
-function clearRailWallBoxDrawMemos(box) {
-    delete box._wallAtlasStashes;
-    delete box._wkByFace;
-    delete box._cachedProfileId;
-    delete box._faceSubdiv;
-    delete box._faceSubdivKey;
+function clearWallGridDrawableDrawMemos(drawable) {
+    delete drawable._wallAtlasStashes;
+    delete drawable._cachedProfileId;
+    delete drawable._faceSubdiv;
+    delete drawable._faceSubdivKey;
 }
 function extendCollinearRailWallBox(cur, next) {
     cur.minX = Math.min(cur.minX, next.minX);
@@ -245,7 +245,7 @@ function extendCollinearRailWallBox(cur, next) {
     }
     cur.cx = (cur.minX + cur.maxX) * 0.5;
     cur.cy = (cur.minY + cur.maxY) * 0.5;
-    clearRailWallBoxDrawMemos(cur);
+    clearWallGridDrawableDrawMemos(cur);
 }
 function collinearRailWallBoxesAdjacent(a, b) {
     if (a.gridSide !== b.gridSide) return false;
@@ -306,6 +306,7 @@ export function writeVoxelWallFaceInto(face, grid, col, row, edge) {
     if (cellInRect(nc, nr, cols, grid.rows)) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nc + nr * cols);
     const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
     if (!voxelWallFaceVisible(neighborCap, faceHeight)) return false;
+    clearWallGridDrawableDrawMemos(face);
     cellEdgeEndpoints(grid, col, row, edge, sP1, sP2, 0);
     const cellBounds = grid.getCellBounds(col, row);
     const cx = (cellBounds.minX + cellBounds.maxX) / 2;

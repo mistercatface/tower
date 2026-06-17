@@ -13,7 +13,7 @@ import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallC
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
-import { getWallAtlasCacheInfo } from "./WallSurfaceCache.js";
+import { buildWallAtlasCacheKey } from "./WallSurfaceCache.js";
 import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
@@ -172,7 +172,7 @@ export class WorldSurfaceEngine {
             if (stash && stash.profileId === profileId && stash.rev === rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && this.surfaceCache.get(stash.key) === stash.canvases)
                 return stash;
         }
-        const { key, wrappedP1, wrappedP2 } = getWallAtlasCacheInfo(p1, p2, proceduralSurfaceDraw, profileId, cacheObj, this.settings, wallHeightKey, atlasFaceId);
+        const { key, wrappedP1, wrappedP2 } = buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId, wallHeightKey, this.settings);
         let canvases = this.surfaceCache.get(key);
         if (!canvases) {
             const columns = wallFaceColumns(wrappedP1, wrappedP2, this.settings.cellSize);
