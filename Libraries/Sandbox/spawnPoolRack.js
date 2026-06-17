@@ -3,7 +3,7 @@ import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
-import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 const PLAYFIELD_W = 80;
 const PLAYFIELD_H = 160;
 const APEX_U = 0.5;
@@ -67,7 +67,7 @@ function poolRackExportType(variant) {
 }
 /**
  * @param {object[]} members
- * @param {import("./sandboxEntityMeta.js").SandboxEntityMetaStore} meta
+ * @param {import("../../GameState/sandboxEntityMeta.js").SandboxEntityMetaStore} meta
  * @returns {{ type: string, x: number, y: number, facing: number, faction: string } | null}
  */
 export function tryExportPoolRackSpawnGroup(members, meta) {

@@ -1,4 +1,4 @@
-import { SandboxEntityMetaStore } from "../Libraries/Sandbox/sandboxEntityMeta.js";
+import { SandboxEntityMetaStore } from "./sandboxEntityMeta.js";
 /** Sandbox playfield data — per-entity editor metadata. */
 export class SandboxWorldState {
     constructor() {

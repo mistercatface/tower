@@ -1,4 +1,4 @@
-import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 /** @param {object} state @param {object | null | undefined} prop @param {object | null | undefined} asset @param {"cueStrike"} behaviorKey */
 export function resolveWorldPropSandboxBehavior(state, prop, asset, behaviorKey) {
     const stamped = getSandboxEntityMeta(state).getBehaviorOverrides(prop?.id)?.[behaviorKey];

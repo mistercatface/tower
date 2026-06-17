@@ -1,4 +1,4 @@
-import { getSandboxEntityMeta } from "../Libraries/Sandbox/sandboxEntityMeta.js";
+import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/Aabb2D.js";
 import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { distanceSqToLineSegment } from "../Libraries/Math/Segment2D.js";

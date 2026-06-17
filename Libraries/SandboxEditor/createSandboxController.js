@@ -25,7 +25,7 @@ import { drawSandboxWeaponBars } from "../Sandbox/drawWorldPropWeaponBars.js";
 import { resolveSandboxPathVisual, setSandboxPathVisual } from "../Sandbox/sandboxPathVisual.js";
 import { resolveSandboxPropVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropVisual.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
-import { getSandboxEntityMeta } from "../Sandbox/sandboxEntityMeta.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 /**
  * @param {object} state
  * @param {{

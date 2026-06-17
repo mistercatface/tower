@@ -1,6 +1,6 @@
 import { SANDBOX_PATH_VISUAL_OPTIONS, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_OFF } from "./sandboxPathVisual.js";
 import { SANDBOX_PROP_VISUAL_DEFAULT, SANDBOX_PROP_VISUAL_OPTIONS } from "./sandboxPropVisual.js";
-import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 /** @typedef {import("./sandboxPathVisual.js").SandboxPathVisual} SandboxPathVisual */
 /** @typedef {import("./sandboxPropVisual.js").SandboxPropVisual} SandboxPropVisual */
 /** @param {object} state @param {object} prop @returns {SandboxPathVisual} */

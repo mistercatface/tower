@@ -15,7 +15,7 @@ import {
     listPlacedRailWalls,
     listPlacedVoxelWalls,
 } from "./gridWallEdit.js";
-import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";

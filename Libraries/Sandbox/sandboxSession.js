@@ -1,6 +1,6 @@
 import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLabel } from "../Combat/sandboxTargeting.js";
-import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import {
@@ -998,7 +998,8 @@ export function createSandboxSession(state, { defaultSpawnPropId }) {
                 if (patch.corridorCount != null) touchRoomLinkCorridors(link);
             }
             const needsReroll = patch.corridorCount != null || patch.corridorWidthMin != null || patch.corridorWidthMax != null;
-            const profileOnly = patch.surfaceProfileId !== undefined && !needsReroll && patch.corridorType == null && patch.railWallHeightLevel == null && patch.railWallThicknessLevel == null && patch.seed == null;
+            const profileOnly =
+                patch.surfaceProfileId !== undefined && !needsReroll && patch.corridorType == null && patch.railWallHeightLevel == null && patch.railWallThicknessLevel == null && patch.seed == null;
             if (!needsReroll && !profileOnly) syncRoomGraphBake(state);
             if (profileOnly) invalidateRoomLinkFloorSurface(state, selectedRoomLinkId);
             notifyUi();

@@ -3,7 +3,7 @@ import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/E
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
-import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
 /** @param {object} prop */
 function serializePlacedProp(prop) {
@@ -11,7 +11,7 @@ function serializePlacedProp(prop) {
 }
 /**
  * @param {object[]} members
- * @param {import("./sandboxEntityMeta.js").SandboxEntityMetaStore} meta
+ * @param {import("../../GameState/sandboxEntityMeta.js").SandboxEntityMetaStore} meta
  * @returns {{ type: string, x: number, y: number, facing: number, faction: string } | null}
  */
 function tryExportSpawnGroup(members, meta) {

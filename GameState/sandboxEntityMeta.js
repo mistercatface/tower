@@ -76,7 +76,7 @@ export class SandboxEntityMetaStore {
     getPathVisual(entityId) {
         return this.get(entityId)?.pathVisual;
     }
-    /** @param {number} entityId @param {import("./sandboxPropVisual.js").SandboxPropVisual} visual */
+    /** @param {number} entityId @param {SandboxPropVisual} visual */
     setPropVisual(entityId, visual) {
         this.ensure(entityId).propVisual = visual;
     }

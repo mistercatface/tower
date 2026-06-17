@@ -1,5 +1,5 @@
 import { resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
-import { resolveSandboxEntityLinkValue } from "./sandboxEntityMeta.js";
+import { resolveSandboxEntityLinkValue } from "../../GameState/sandboxEntityMeta.js";
 import { isKinematicallyActive } from "../Spatial/collision/entityBroadphase.js";
 /**
  * @typedef {"self" | "groupWorldProps" | "groupPushables"} InputGateScope

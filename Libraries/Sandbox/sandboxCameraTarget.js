@@ -1,4 +1,4 @@
-import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 /** @param {object} state @param {object} prop */
 export function isSandboxCameraTarget(state, prop) {
     return getSandboxEntityMeta(state).isCameraTarget(prop.id);
