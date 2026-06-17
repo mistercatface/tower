@@ -29,7 +29,6 @@ export {
     SANDBOX_PROP_VISUAL_LABELS,
 } from "./sandboxPropMeta.js";
 export { isSandboxCameraTarget, setSandboxCameraTarget, tickSandboxCameraFollow } from "./sandboxCameraTarget.js";
-export { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 export {
     getSandboxBehaviorLabel,
     isSandboxEquippable,

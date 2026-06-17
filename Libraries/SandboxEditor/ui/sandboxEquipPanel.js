@@ -1,11 +1,11 @@
-import { getPropAsset } from "../Props/PropCatalog.js";
-import { getGunDefinition, playerEquipmentCatalog } from "../Combat/gunDefaults.js";
-import { applyWorldPropWeaponLoadout } from "../Combat/worldPropWeaponLoadout.js";
-import { gunSupportsAttachment, isWorldPropAttachmentEnabled, resolveWorldPropSlotGun, setWorldPropAttachmentEnabled } from "../Combat/worldPropWeaponState.js";
-import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout, toggleGunInLoadout, unequipSlot } from "../Combat/equipmentLoadout.js";
-import { isSandboxEquippable } from "./sandboxCapabilities.js";
-import { appendEditorSubhead } from "../UI/paramFields.js";
-import { setFormFieldName } from "../UI/Component.js";
+import { getPropAsset } from "../../Props/PropCatalog.js";
+import { getGunDefinition, playerEquipmentCatalog } from "../../Combat/gunDefaults.js";
+import { applyWorldPropWeaponLoadout } from "../../Combat/worldPropWeaponLoadout.js";
+import { gunSupportsAttachment, isWorldPropAttachmentEnabled, resolveWorldPropSlotGun, setWorldPropAttachmentEnabled } from "../../Combat/worldPropWeaponState.js";
+import { countGunInLoadout, formatHandednessLabel, getEquipmentSlotCount, getGunEquipAction, normalizeWeaponLoadout, toggleGunInLoadout, unequipSlot } from "../../Combat/equipmentLoadout.js";
+import { isSandboxEquippable } from "../../Sandbox/sandboxCapabilities.js";
+import { appendEditorSubhead } from "../../UI/paramFields.js";
+import { setFormFieldName } from "../../UI/Component.js";
 /**
  * @param {HTMLElement} container
  * @param {object | null} prop

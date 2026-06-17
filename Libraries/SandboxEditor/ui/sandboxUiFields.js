@@ -1,6 +1,6 @@
-import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../Combat/sandboxTargeting.js";
-import { getSandboxBehaviorLabel } from "./sandboxCapabilities.js";
-import { appendSelectField } from "../UI/paramFields.js";
+import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../../Combat/sandboxTargeting.js";
+import { getSandboxBehaviorLabel } from "../../Sandbox/sandboxCapabilities.js";
+import { appendSelectField } from "../../UI/paramFields.js";
 export function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }

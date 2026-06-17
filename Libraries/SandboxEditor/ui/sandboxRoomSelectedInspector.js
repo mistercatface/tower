@@ -1,8 +1,8 @@
 import { appendRoomNodeWireInspector } from "./sandboxWorldPropInspector.js";
 import { appendRailWallHeightSlider, appendRailWallThicknessSlider } from "./sandboxWallInspector.js";
-import { resolveRailWallHeightLevel, resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
-import { appendSurfaceProfileField } from "../RoomGraph/roomGraphSurfaceProfile.js";
-import { appendActionRow, appendEditorHint } from "../UI/paramFields.js";
+import { resolveRailWallHeightLevel, resolveRailWallThicknessLevel } from "../../RoomGraph/roomGraphClosedRooms.js";
+import { appendSurfaceProfileField } from "../../RoomGraph/roomGraphSurfaceProfile.js";
+import { appendActionRow, appendEditorHint } from "../../UI/paramFields.js";
 export function appendRoomNodeSelectedInspector(body, state, controller, selectedRoomNode) {
     appendEditorHint(
         body,

@@ -1,4 +1,4 @@
-import { getPropAsset, formatSandboxSpawnLabel } from "../Props/PropCatalog.js";
+import { getPropAsset, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
 import { SANDBOX_PALETTE_TAG_FILTERS, resolvePlacePaletteTags } from "./sandboxPaletteTags.js";
 const WALL_STAMP_OPTIONS = [
     { value: "voxel", label: "Voxel block" },

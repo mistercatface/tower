@@ -1,8 +1,8 @@
-import { wakePushableBody } from "../Motion/pushableSleep.js";
-import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
-import { isButtonEntity, isMassButtonInputMode } from "./buttonInput.js";
-import { appendActionRow, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../UI/paramFields.js";
-import { setFormFieldName } from "../UI/Component.js";
+import { wakePushableBody } from "../../Motion/pushableSleep.js";
+import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../../Spatial/zones/floorShapes.js";
+import { isButtonEntity, isMassButtonInputMode } from "../../Sandbox/buttonInput.js";
+import { appendActionRow, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../../UI/paramFields.js";
+import { setFormFieldName } from "../../UI/Component.js";
 /** @param {object} prop @param {number} degrees */
 function applyWorldPropFacing(prop, degrees) {
     prop.facing = (degrees * Math.PI) / 180;

@@ -1,5 +1,5 @@
-import { getPropAsset } from "../Props/PropCatalog.js";
-import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../RoomGraph/roomGraphCorridorTypes.js";
+import { getPropAsset } from "../../Props/PropCatalog.js";
+import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../../RoomGraph/roomGraphCorridorTypes.js";
 import {
     isGridFloorBeltSpawnAsset,
     isGridPassagePowerSourceSpawnAsset,
@@ -7,9 +7,9 @@ import {
     isRoomNodeSpawnAsset,
     isPuzzleTemplateSpawnAsset,
     isSingleWorldPropSpawnAsset,
-} from "./sandboxCapabilities.js";
-import { appendSurfaceProfileField } from "../RoomGraph/roomGraphSurfaceProfile.js";
-import { appendAxisNumberFields, appendEditorHint, appendNumberField, appendSelectField } from "../UI/paramFields.js";
+} from "../../Sandbox/sandboxCapabilities.js";
+import { appendSurfaceProfileField } from "../../RoomGraph/roomGraphSurfaceProfile.js";
+import { appendAxisNumberFields, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
 export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
     const spawnAsset = getPropAsset(spawnId);

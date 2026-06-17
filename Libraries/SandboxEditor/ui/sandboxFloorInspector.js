@@ -1,5 +1,5 @@
-import { listFloorBeltKindOptions } from "./sandboxCapabilities.js";
-import { appendActionRow, appendAxisNumberFields, appendCheckboxField, appendEditorHint, appendSelectField } from "../UI/paramFields.js";
+import { listFloorBeltKindOptions } from "../../Sandbox/sandboxCapabilities.js";
+import { appendActionRow, appendAxisNumberFields, appendCheckboxField, appendEditorHint, appendSelectField } from "../../UI/paramFields.js";
 export function appendPowerSourceSelectedInspector(body, controller, selectedPowerSource) {
     appendEditorHint(body, "Passage power source. Wire floor buttons to this cell; lasers arm through connected chains.");
     appendCheckboxField(body, "Default energized", {

@@ -1,4 +1,4 @@
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { getPropAsset } from "../../Props/PropCatalog.js";
 export const SANDBOX_PALETTE_TAG_FILTERS = [
     { id: "all", label: "All" },
     { id: "gen", label: "Gen" },
