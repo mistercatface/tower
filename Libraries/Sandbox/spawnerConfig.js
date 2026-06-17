@@ -15,11 +15,7 @@ export function isSpawnerWorldProp(prop) {
 }
 /** @param {object | null | undefined} prop @param {object | null | undefined} asset */
 export function resolveSpawnerPropId(prop, asset) {
-    const picked = prop?.sandboxSpawnerPropId;
-    if (picked && getPropAsset(picked)) return picked;
-    const fallback = asset?.sandbox?.spawner?.defaultPropId;
-    if (fallback && getPropAsset(fallback)) return fallback;
-    return "beach_ball";
+    return prop?.sandboxSpawnerPropId ?? asset.sandbox.spawner.defaultPropId;
 }
 /** @param {object | null | undefined} prop @param {object | null | undefined} asset */
 export function getSpawnerDragConfig(_prop, asset) {
@@ -50,7 +46,6 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
     const launchNy = ny ?? outlet.ny;
     const launchPower = power ?? config.maxPower;
     const spawnId = resolveSpawnerPropId(spawnerWorldProp, asset);
-    if (!getPropAsset(spawnId)) return null;
     const spawned = new WorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
     spawned.faction = resolveSandboxFaction(spawnerWorldProp);
     applyDragLaunchVelocity(spawned, launchNx, launchNy, launchPower);

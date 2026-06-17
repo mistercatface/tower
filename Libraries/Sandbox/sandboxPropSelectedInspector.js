@@ -5,8 +5,8 @@ import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "./
 import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector } from "./sandboxWorldPropInspector.js";
 import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { isButtonEntity } from "./buttonInput.js";
-import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPathVisual.js";
-import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "./sandboxPropVisual.js";
+import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "./sandboxPropMeta.js";
+import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "./sandboxPropMeta.js";
 import { appendCheckboxField, appendSelectField } from "../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
 export function appendSelectedPropInspector(body, controller, selectedProp, refreshPanel) {

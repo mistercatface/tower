@@ -22,8 +22,7 @@ import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandbo
 import { createAabb } from "../Math/Aabb2D.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { drawSandboxWeaponBars } from "../Sandbox/drawWorldPropWeaponBars.js";
-import { resolveSandboxPathVisual, setSandboxPathVisual } from "../Sandbox/sandboxPathVisual.js";
-import { resolveSandboxPropVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropVisual.js";
+import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 /**
@@ -182,7 +181,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         return { selectedProps };
     };
     const controller = {
-        session,
         getSpawnFaction: () => session.getSpawnFaction(),
         setSpawnFaction: (faction) => session.setSpawnFaction(faction),
         getSpawnRoomNodeCols: () => session.getSpawnRoomNodeCols(),

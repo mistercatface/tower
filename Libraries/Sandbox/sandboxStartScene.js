@@ -1,6 +1,6 @@
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "./sandboxSceneSnapshot.js";
 /** Preconfigured sandbox start scene (copy/paste snapshot). */
-export function buildSandboxStartSceneDoc() {
+function buildSandboxStartSceneDoc() {
     return {
         schemaVersion: SANDBOX_SCENE_SCHEMA_VERSION,
         cellSize: 16,

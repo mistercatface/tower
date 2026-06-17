@@ -11,7 +11,7 @@ import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { usesLongAxisCollisionShape } from "../Props/longAxisCollision.js";
 import { propFootprintHalfExtents } from "../Props/propStrategy.js";
-import { resolveSandboxPropVisual, SANDBOX_PROP_VISUAL_DEFAULT, SANDBOX_PROP_VISUAL_VECTOR } from "../Sandbox/sandboxPropVisual.js";
+import { resolveSandboxPropVisual, SANDBOX_PROP_VISUAL_DEFAULT, SANDBOX_PROP_VISUAL_VECTOR } from "../Sandbox/sandboxPropMeta.js";
 import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "./Characters/actorKinematicsRenderer.js";
 import { prepModifiedBlit, resolveSpriteDrawModifier } from "./spriteDrawModifier.js";
 /** @typedef {"muzzles"} VectorPropExtraKind */
