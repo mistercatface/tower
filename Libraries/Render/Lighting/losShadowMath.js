@@ -1,26 +1,26 @@
 import { projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
-import { LOS_SHADOW_MAX_EXTRUSION_RATIO } from "./losShadowDefaults.js";
 const sProj = { x: 0, y: 0 };
-export function shadowExtrusionRatio(lightZ, wallTopZ) {
-    if (lightZ <= wallTopZ) return LOS_SHADOW_MAX_EXTRUSION_RATIO;
-    return lightZ / (lightZ - wallTopZ);
-}
-export function shadowFloorTip(lx, ly, wx, wy, ratio) {
-    return { x: lx + (wx - lx) * ratio, y: ly + (wy - ly) * ratio };
+/**
+ * XY where a ray from the light through (wx, wy, wallTopZ) meets the ground plane z = 0.
+ * When the light is at or below wall top the ray is parallel to the floor — drop vertically to (wx, wy).
+ */
+export function shadowGroundContactXY(lx, ly, lightZ, wx, wy, wallTopZ) {
+    if (lightZ <= wallTopZ) return { x: wx, y: wy };
+    const t = lightZ / (lightZ - wallTopZ);
+    return { x: lx + (wx - lx) * t, y: ly + (wy - ly) * t };
 }
 function worldPointToScreen(viewport, camera, worldX, worldY, height) {
     projectWorldPointInto(sProj, worldX, worldY, height, camera);
     return viewport.worldToScreen(sProj.x, sProj.y);
 }
-/** Screen-space shadow quad: near edge at projected wall top, far edge at floor shadow tips. */
+/** Screen-space shadow quad: near edge at projected wall top, far edge at ray–ground contacts projected at z = 0. */
 export function projectWallShadowQuadScreenInto(out8, viewport, camera, lx, ly, lightZ, x1, y1, x2, y2, wallTopZ) {
-    const ratio = shadowExtrusionRatio(lightZ, wallTopZ);
-    const tip1 = shadowFloorTip(lx, ly, x1, y1, ratio);
-    const tip2 = shadowFloorTip(lx, ly, x2, y2, ratio);
+    const floor1xy = shadowGroundContactXY(lx, ly, lightZ, x1, y1, wallTopZ);
+    const floor2xy = shadowGroundContactXY(lx, ly, lightZ, x2, y2, wallTopZ);
     const roof1 = worldPointToScreen(viewport, camera, x1, y1, wallTopZ);
     const roof2 = worldPointToScreen(viewport, camera, x2, y2, wallTopZ);
-    const floor1 = worldPointToScreen(viewport, camera, tip1.x, tip1.y, 0);
-    const floor2 = worldPointToScreen(viewport, camera, tip2.x, tip2.y, 0);
+    const floor1 = worldPointToScreen(viewport, camera, floor1xy.x, floor1xy.y, 0);
+    const floor2 = worldPointToScreen(viewport, camera, floor2xy.x, floor2xy.y, 0);
     out8[0] = roof1.x;
     out8[1] = roof1.y;
     out8[2] = roof2.x;

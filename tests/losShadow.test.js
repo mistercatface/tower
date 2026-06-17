@@ -7,18 +7,29 @@ import {
     appendShadowQuadToPath,
     edgeNormalFacesLight,
     projectWallShadowQuadScreenInto,
-    shadowExtrusionRatio,
-    shadowFloorTip,
+    shadowGroundContactXY,
 } from "../Libraries/Render/Lighting/losShadowMath.js";
 import { createMockCanvas2d, makeTestCamera, makeTestObstacleGrid, makeTestViewport, stampWallRect } from "./losShadowHarness.js";
 import { assertNear } from "./mathHarness.js";
-describe("losShadowMath", () => {
-    it("shadowExtrusionRatio uses long extrusion when light is at or below wall top", () => {
-        assert.equal(shadowExtrusionRatio(16, 16), 100);
-        assert.equal(shadowExtrusionRatio(8, 16), 100);
-        assertNear(shadowExtrusionRatio(32, 16), 2);
-        assertNear(shadowExtrusionRatio(32, 0), 1);
+describe("shadowGroundContactXY", () => {
+    it("extends ray from light above wall top to ground", () => {
+        const tip = shadowGroundContactXY(0, 0, 32, 10, 0, 16);
+        assertNear(tip.x, 20);
+        assertNear(tip.y, 0);
     });
+    it("drops vertically when light is at or below wall top", () => {
+        assertNear(shadowGroundContactXY(0, 0, 16, 10, 5, 16).x, 10);
+        assertNear(shadowGroundContactXY(0, 0, 16, 10, 5, 16).y, 5);
+        assertNear(shadowGroundContactXY(0, 0, 8, 10, 5, 16).x, 10);
+        assertNear(shadowGroundContactXY(0, 0, 8, 10, 5, 16).y, 5);
+    });
+    it("matches classic ratio when light is above a flat wall", () => {
+        const tip = shadowGroundContactXY(0, 0, 32, 10, 0, 0);
+        assertNear(tip.x, 10);
+        assertNear(tip.y, 0);
+    });
+});
+describe("losShadowMath", () => {
     it("projectWallShadowQuadScreenInto anchors near edge at projected roof height", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
         const camera = makeTestCamera(128, 128, 160, 1);
@@ -28,10 +39,28 @@ describe("losShadowMath", () => {
         projectWallShadowQuadScreenInto(outFlat, viewport, camera, 72, 40, 16, 64, 64, 80, 64, 0);
         assert.ok(out[1] !== outFlat[1], "roof near edge should differ from flat floor edge when wall has height");
     });
-    it("shadowFloorTip extrudes from light through ground corner", () => {
-        const tip = shadowFloorTip(0, 0, 10, 0, 2);
-        assertNear(tip.x, 20);
-        assertNear(tip.y, 0);
+    it("projectWallShadowQuadScreenInto keeps floor corners under edge when light equals wall top", () => {
+        const viewport = makeTestViewport(128, 128, 200, 200, 1);
+        const camera = makeTestCamera(128, 128, 160, 1);
+        const out = new Float32Array(8);
+        projectWallShadowQuadScreenInto(out, viewport, camera, 72, 40, 16, 64, 64, 80, 64, 16);
+        const floor1 = viewport.worldToScreen(64, 64);
+        const floor2 = viewport.worldToScreen(80, 64);
+        assertNear(out[6], floor1.x);
+        assertNear(out[7], floor1.y);
+        assertNear(out[4], floor2.x);
+        assertNear(out[5], floor2.y);
+    });
+    it("projectWallShadowQuadScreenInto extrudes floor corners when light is above wall top", () => {
+        const viewport = makeTestViewport(128, 128, 200, 200, 1);
+        const camera = makeTestCamera(128, 128, 160, 1);
+        const outLow = new Float32Array(8);
+        const outHigh = new Float32Array(8);
+        projectWallShadowQuadScreenInto(outLow, viewport, camera, 72, 40, 16, 64, 64, 80, 64, 16);
+        projectWallShadowQuadScreenInto(outHigh, viewport, camera, 72, 40, 32, 64, 64, 80, 64, 16);
+        const spreadLow = Math.hypot(outLow[6] - outLow[0], outLow[7] - outLow[1]);
+        const spreadHigh = Math.hypot(outHigh[6] - outHigh[0], outHigh[7] - outHigh[1]);
+        assert.ok(spreadHigh > spreadLow, "higher light should cast a longer screen wedge");
     });
     it("edgeNormalFacesLight rejects back-facing edges", () => {
         assert.equal(edgeNormalFacesLight(0, 1, 8, 12, 8, 8), true);
