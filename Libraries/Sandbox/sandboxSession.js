@@ -31,7 +31,7 @@ import { buildSelectionInspectors, selectionFloorCell, selectionPrimaryPropId, s
 import { createSandboxPlacementOrder } from "./sandboxPlacementOrder.js";
 import { createSandboxSpawnSession } from "./sandboxSpawnSession.js";
 import { createSandboxRoomGraphSession } from "./sandboxRoomGraphSession.js";
-import { deleteScenePlaceable } from "./sandboxScenePlaceables.js";
+import { removeSceneItem } from "./sandboxScenePlaceables.js";
 /** @param {object} state */
 export function createSandboxSession(state) {
     let placePaletteKey = "";
@@ -487,7 +487,7 @@ export function createSandboxSession(state) {
         listPlacedPassagePowerSources,
         ...roomGraph,
         deleteSceneItem(item) {
-            deleteScenePlaceable(this, item, pickSelection);
+            removeSceneItem(this, item, pickSelection);
         },
         clear() {
             for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i]);

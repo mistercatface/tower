@@ -1,5 +1,3 @@
-import { formatSandboxFactionLabel, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
-import { formatPropTypeLabel } from "../Props/PropCatalog.js";
 import {
     addRoomLink,
     clearRoomLinksForNode,
@@ -21,7 +19,7 @@ import {
 } from "../RoomGraph/index.js";
 import { invalidateRoomLinkFloorSurface, invalidateRoomNodeFloorSurface } from "../RoomGraph/roomGraphSurfaceProfile.js";
 import { listPlacedForcefields, listPlacedRailWalls, listPlacedVoxelWalls } from "./gridWallEdit.js";
-import { selectScenePlaceable } from "./sandboxScenePlaceables.js";
+import { listPlacedSceneItems, matchesSceneItem, pickSceneItem } from "./sandboxScenePlaceables.js";
 import { selectionRoomLinkId, selectionRoomNodeId, resolveSelectedRoomNode } from "./sandboxSelectionInspectors.js";
 export function createSandboxRoomGraphSession(
     state,
@@ -155,75 +153,21 @@ export function createSandboxRoomGraphSession(
             for (const entry of this.listPlacedRoomLinks()) placement.touchRoomLinkPlacement(entry.linkId, entry.corridorIndex);
         },
         listPlacedSceneItems() {
-            const items = [];
-            for (const entry of listPlacedProps())
-                items.push({
-                    seq: placement.placementSeq(placement.propPlacementKey(entry.id), entry.id),
-                    kind: "prop",
-                    label: `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`,
-                    propId: entry.id,
-                    propType: entry.type,
-                });
-            for (const entry of listPlacedFloorBelts())
-                items.push({
-                    seq: placement.placementSeq(placement.floorPlacementKey(entry.col, entry.row), 1e9 + entry.col + entry.row * 1e6),
-                    kind: "floorBelt",
-                    label: entry.label,
-                    col: entry.col,
-                    row: entry.row,
-                });
-            for (const entry of listPlacedPassagePowerSources())
-                items.push({
-                    seq: placement.placementSeq(placement.floorPlacementKey(entry.col, entry.row), 2e9 + entry.col + entry.row * 1e6),
-                    kind: "powerSource",
-                    label: entry.label,
-                    col: entry.col,
-                    row: entry.row,
-                });
-            for (const entry of placement.listTrackedVoxelWalls())
-                items.push({
-                    seq: placement.placementSeq(placement.voxelPlacementKey(entry.col, entry.row), 3e9 + entry.col + entry.row * 1e6),
-                    kind: "voxel",
-                    label: entry.label,
-                    col: entry.col,
-                    row: entry.row,
-                });
-            for (const entry of placement.listTrackedRailWalls())
-                items.push({
-                    seq: placement.placementSeq(placement.edgePlacementKey("rail", entry.col, entry.row, entry.side), 4e9 + entry.col + entry.row * 1e6 + entry.side),
-                    kind: "rail",
-                    label: entry.label,
-                    col: entry.col,
-                    row: entry.row,
-                    side: entry.side,
-                });
-            for (const entry of listPlacedForcefields(state.obstacleGrid))
-                items.push({
-                    seq: placement.placementSeq(placement.edgePlacementKey("forcefield", entry.col, entry.row, entry.side), 5e9 + entry.col + entry.row * 1e6 + entry.side),
-                    kind: "forcefield",
-                    label: entry.label,
-                    col: entry.col,
-                    row: entry.row,
-                    side: entry.side,
-                });
-            for (const entry of this.listPlacedRoomNodes())
-                items.push({ seq: placement.placementSeq(placement.roomNodePlacementKey(entry.id), 7e9 + entry.id), kind: "roomNode", label: entry.label, roomNodeId: entry.id });
-            for (const entry of this.listPlacedRoomLinks())
-                items.push({
-                    seq: placement.placementSeq(placement.roomLinkPlacementKey(entry.linkId, entry.corridorIndex), 8e9 + entry.linkId + entry.corridorIndex * 1e6),
-                    kind: "roomLink",
-                    label: entry.label,
-                    roomLinkId: entry.linkId,
-                    corridorIndex: entry.corridorIndex,
-                });
-            items.sort((a, b) => a.seq - b.seq);
-            return items;
+            return listPlacedSceneItems({
+                state,
+                placement,
+                listPlacedProps,
+                listPlacedFloorBelts,
+                listPlacedPassagePowerSources,
+                listPlacedRoomNodes: () => this.listPlacedRoomNodes(),
+                listPlacedRoomLinks: () => this.listPlacedRoomLinks(),
+            });
         },
         isSceneItemSelected(item) {
-            return selection.matchesSceneItem(item);
+            return matchesSceneItem(selection.getSelection(), item);
         },
         selectSceneItem(item) {
-            selectScenePlaceable(item, { pickSelection, setPlacePaletteKey });
+            pickSceneItem(item, { pickSelection, setPlacePaletteKey });
         },
     };
 }

@@ -1,4 +1,3 @@
-import { matchesScenePlaceable } from "./sandboxScenePlaceables.js";
 export function createSandboxSelection({ isLiveProp, getRoomLink }) {
     /** @type {SandboxSelection | null} */
     let selection = null;
@@ -129,9 +128,6 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         dropRoomGraphIfLinkMissing,
         clampRoomLinkCorridorIndex,
         clearRoomLinkAfterDelete,
-        matchesSceneItem(item) {
-            return matchesScenePlaceable(selection, item);
-        },
     };
 }
 /** @typedef {{ kind: 'prop', ids: Set<number> } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number } | { kind: 'roomNode', id: number } | { kind: 'roomLink', linkId: number | null, corridorIndex: number, nodeId: number | null }} SandboxSelection */
