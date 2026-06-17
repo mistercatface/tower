@@ -30,7 +30,7 @@ export async function mountGameShell(state, launcher) {
     applyLabWorldRenderMode(state);
     setLabVignetteEnabled(true);
     mountLabFrameRefresh(canvas);
-    seedRuntimeLabProfile(SURFACE_PROFILE_ID.tomatoGarden);
+    seedRuntimeLabProfile(SURFACE_PROFILE_ID.poolTableFelt);
     await pushEditorProfile(state);
     mountGameViewport(state);
     tryLockPortraitOrientation(launcher.lockPortraitOrientation);

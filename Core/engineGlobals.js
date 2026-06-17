@@ -9,7 +9,7 @@ import { installGameSurfaceProfileProvider } from "../Config/procedural/bootstra
 import { getGameWorldSurfaceSettings, installGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
 const EDITOR_PIXELS_PER_CELL = 6;
-const EDITOR_DEFAULT_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
+const EDITOR_DEFAULT_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.poolTableFelt;
 let workersConfigured = false;
 /** Editor boot — one place for app constants; writes shared module globals once. */
 export function installEditorDefaults(state) {
