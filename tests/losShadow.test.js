@@ -5,9 +5,10 @@ import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange } from "../Librar
 import { composeLosShadowMask, drawLosShadowOverlay } from "../Libraries/Render/Lighting/losShadowOverlay.js";
 import { isLosShadowStructureMode } from "../Libraries/Render/Lighting/losShadowDefaults.js";
 import { collectExposedWallEdges, collectExposedWallEdgesInAabb } from "../Libraries/Spatial/grid/gridCellTopology.js";
+import { collectRailWallShadowEdgesInAabb } from "../Libraries/World/wallGridBake.js";
 import { projectWorldPointToScreenInto } from "../Libraries/Spatial/iso/IsometricProjection.js";
 import { projectWallShadowQuadScreenInto, shadowGroundContactXY } from "../Libraries/Spatial/iso/shadowProjection.js";
-import { createMockCanvas2d, makeTestCamera, makeTestObstacleGrid, makeTestViewport, stampWallRect } from "./losShadowHarness.js";
+import { createMockCanvas2d, makeTestCamera, makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./losShadowHarness.js";
 import { assertNear } from "./mathHarness.js";
 describe("projectWorldPointToScreenInto", () => {
     it("chains elevation projection with viewport worldToScreen", () => {
@@ -122,6 +123,28 @@ describe("collectExposedWallEdges", () => {
         assert.equal(near.length, 4);
         assert.equal(far.length, 4);
         assert.equal(empty.length, 0);
+    });
+});
+describe("collectRailWallShadowEdgesInAabb", () => {
+    it("emits four cap edges for a single rail wall segment", () => {
+        const grid = makeTestObstacleGrid(16, 16);
+        stampRailWallEdge(grid, 4, 4, 0, 1);
+        const edges = [];
+        collectRailWallShadowEdgesInAabb(grid, 0, 0, 512, 512, edges);
+        assert.equal(edges.length, 4);
+        assert.equal(edges[0].wallTopZ, grid.cellSize);
+    });
+    it("defers to rail cap edges when a voxel cell shares the same side", () => {
+        const grid = makeTestObstacleGrid(16, 16);
+        stampWallRect(grid, 4, 4, 1, 1);
+        stampRailWallEdge(grid, 4, 4, 0, 1);
+        const voxelEdges = [];
+        collectExposedWallEdges(grid, voxelEdges);
+        assert.equal(voxelEdges.length, 3);
+        const all = [];
+        collectExposedWallEdgesInAabb(grid, 0, 0, 512, 512, all);
+        collectRailWallShadowEdgesInAabb(grid, 0, 0, 512, 512, all);
+        assert.equal(all.length, 3 + 4);
     });
 });
 describe("losShadowEdges", () => {

@@ -2,6 +2,7 @@ import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offsc
 import { blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase } from "../../Canvas/maskCompositor.js";
 import { traceWoundFlatQuad } from "../../Canvas/CanvasPath.js";
 import { collectExposedWallEdgesInAabb } from "../../Spatial/grid/gridCellTopology.js";
+import { collectRailWallShadowEdgesInAabb } from "../../World/wallGridBake.js";
 import { elevationCameraFromViewport } from "../../Spatial/iso/ElevationCamera.js";
 import { LIBRARY_DEFAULT_CAMERA_HEIGHT } from "../../Spatial/iso/perspectiveDefaults.js";
 import { LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT, LOS_SHADOW_OVERLAY_ALPHA, LOS_SHADOW_VISION_TILES_DEFAULT } from "./losShadowDefaults.js";
@@ -45,6 +46,7 @@ export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obs
     const screenRange = range * (viewport.zoom ?? 1);
     const screenLight = viewport.worldToScreen(lightX, lightY);
     collectExposedWallEdgesInAabb(obstacleGrid, lightX - range, lightY - range, lightX + range, lightY + range, sEdgeScratch);
+    collectRailWallShadowEdgesInAabb(obstacleGrid, lightX - range, lightY - range, lightX + range, lightY + range, sEdgeScratch);
     fillMaskBase(overlayCtx, canvasW, canvasH, `rgba(0,0,0,${overlayAlpha})`);
     cutOutRadialSoftDisc(overlayCtx, screenLight.x, screenLight.y, screenRange);
     addMaskPathFill(overlayCtx, `rgba(0,0,0,${overlayAlpha})`, (pathCtx) => {

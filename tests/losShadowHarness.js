@@ -11,6 +11,9 @@ export function stampWallRect(grid, col0, row0, cols, rows, heightLevel = 1) {
     cells.fill(1);
     grid.stampStaticWalls(col0, row0, cols, rows, cells, { additive: true, heightLevel });
 }
+export function stampRailWallEdge(grid, col, row, side, capHeightLevel = 1, thicknessLevel = 1) {
+    grid.stampCellEdge(col, row, side, capHeightLevel, thicknessLevel);
+}
 export function createMockCanvas2d(width, height) {
     const ops = [];
     let gco = "source-over";

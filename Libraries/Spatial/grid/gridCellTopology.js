@@ -126,6 +126,7 @@ function pushExposedWallEdgesForCell(grid, col, row, out) {
         let neighborLevel = 0;
         if (cellInRect(nc, nr, cols, rows)) neighborLevel = grid.grid[nc + nr * cols];
         if (neighborLevel >= level) continue;
+        if (railWallEdgeAt(grid, col, row, side)) continue;
         cellEdgeEndpoints(grid, col, row, side, sExposedEdgeP1, sExposedEdgeP2, 0);
         const outward = gridSideOutwardVector(side);
         out.push({ x1: sExposedEdgeP1.x, y1: sExposedEdgeP1.y, x2: sExposedEdgeP2.x, y2: sExposedEdgeP2.y, nx: outward.x, ny: outward.y, wallTopZ });
