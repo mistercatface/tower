@@ -63,7 +63,7 @@ export function initPresetSelect(profileIds) {
         opt.textContent = id;
         select.appendChild(opt);
     }
-    select.value = SURFACE_PROFILE_ID.toxicSludge;
+    select.value = SURFACE_PROFILE_ID.tomatoGarden;
 }
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onChange */
 export function bindVectorPropsToolbar(state, onChange) {
