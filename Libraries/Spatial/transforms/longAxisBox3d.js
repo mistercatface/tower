@@ -5,6 +5,7 @@
  * facing: world yaw after tumble.
  */
 import { resolveBodyRadius } from "../../Motion/bodyDefaults.js";
+import { rotateXY } from "../../Math/Poly2D.js";
 /** @typedef {{ lx: number, ly: number, z: number }} Vec3 */
 /**
  * @param {number} lx
@@ -18,7 +19,8 @@ export function rotateLocalX(lx, ly, lz, angle, centerZ) {
     const z = lz - centerZ;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    return { lx, ly: y * cos - z * sin, z: y * sin + z * cos + centerZ };
+    const rolled = rotateXY(y, z, cos, sin);
+    return { lx, ly: rolled.x, z: rolled.y + centerZ };
 }
 /**
  * @param {number} lx
@@ -32,7 +34,8 @@ export function transformLongAxisVertex(lx, ly, lz, facing, height, rollAngle) {
     const rolled = rotateLocalX(lx, ly, lz, rollAngle, height * 0.5);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
-    return { lx: rolled.lx * cos - rolled.ly * sin, ly: rolled.lx * sin + rolled.ly * cos, z: rolled.z };
+    const r = rotateXY(rolled.lx, rolled.ly, cos, sin);
+    return { lx: r.x, ly: r.y, z: rolled.z };
 }
 /**
  * @param {number} hx

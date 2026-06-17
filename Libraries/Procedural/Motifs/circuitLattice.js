@@ -1,4 +1,5 @@
 import { noise2D } from "../Noise/Perlin2D.js";
+import { rotateXY } from "../../Math/Poly2D.js";
 import { sampleCoords, applyTint } from "../util/motifUtilities.js";
 function ridgedNoise(x, y, octaves) {
     return Math.abs(noise2D(x, y, octaves));
@@ -40,8 +41,9 @@ export const circuitLatticeMotif = {
         const angle = config.angle ?? 0;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
-        const ax = x * cos - y * sin;
-        const ay = x * sin + y * cos;
+        const rotated = rotateXY(x, y, cos, sin);
+        const ax = rotated.x;
+        const ay = rotated.y;
         const r1 = ridgedNoise((ax + offsetX) * freq, (ay + offsetY) * freq, octaves);
         const r2 = ridgedNoise((ay + offsetX) * freq, (ax + offsetY) * freq, octaves);
         const lattice = Math.min(r1, r2);

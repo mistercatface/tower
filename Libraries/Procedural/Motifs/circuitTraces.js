@@ -1,3 +1,4 @@
+import { rotateXY } from "../../Math/Poly2D.js";
 import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
 function distToSegment(px, py, x1, y1, x2, y2) {
     const dx = x2 - x1;
@@ -47,8 +48,9 @@ export const circuitTracesMotif = {
             const rad = (angle * Math.PI) / 180;
             const cosA = Math.cos(rad);
             const sinA = Math.sin(rad);
-            x = coords.x * cosA - coords.y * sinA;
-            y = coords.x * sinA + coords.y * cosA;
+            const rotated = rotateXY(coords.x, coords.y, cosA, sinA);
+            x = rotated.x;
+            y = rotated.y;
         }
         const gridSize = config.gridSize ?? 24;
         const col = Math.floor(x / gridSize);

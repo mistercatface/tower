@@ -1,6 +1,8 @@
 import { clamp } from "../../Math/Interpolate.js";
+import { rotateXY } from "../../Math/Poly2D.js";
 function rotateXZ(p, bCos, bSin) {
-    return { rx: p.x * bCos - p.z * bSin, rz: p.x * bSin + p.z * bCos };
+    const r = rotateXY(p.x, p.z, bCos, bSin);
+    return { rx: r.x, rz: r.y };
 }
 function clampRzVis(rz, config) {
     const boundsZ = Math.max(8, config.SIZE * config.PERSPECTIVE_Z_CLAMP);

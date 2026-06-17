@@ -1,3 +1,4 @@
+import { rotateXY } from "../../Math/Poly2D.js";
 import { getCircleSegmentPenetration, toSegmentLocal } from "./WallGeometry.js";
 /**
  * @typedef {object} CircleSegmentSweepHit
@@ -12,7 +13,7 @@ import { getCircleSegmentPenetration, toSegmentLocal } from "./WallGeometry.js";
 function worldVectorToSegmentLocal(vx, vy, angle) {
     const cos = Math.cos(-angle);
     const sin = Math.sin(-angle);
-    return { x: vx * cos - vy * sin, y: vy * cos + vx * sin };
+    return rotateXY(vx, vy, cos, sin);
 }
 /**
  * Ray vs AABB expanded by circle radius (segment-local space).

@@ -1,5 +1,6 @@
 /** Bone hit tests for ragdoll corpses (2D gameplay, rig-local space). */
 import { closestPointOnLineSegment } from "../../Math/Segment2D.js";
+import { rotateXY } from "../../Math/Poly2D.js";
 import { distance } from "../../Math/Vec3.js";
 import { getRagdollCollisionPoints, absRagdollPoint } from "./physics.js";
 function distToSegmentXZ(p, v, w) {
@@ -33,7 +34,8 @@ function worldToRigLocal(corpse, worldX, worldY) {
     const dy = worldY - corpse.y;
     const rigToWorld = (displayDiameter * 0.5) / rig.size;
     const scale = 1 / rigToWorld;
-    return { x: (dx * cos - dy * sin) * scale, z: (dx * sin + dy * cos) * scale, y: rig.groundY * 0.55, rigToWorld };
+    const r = rotateXY(dx, dy, cos, sin);
+    return { x: r.x * scale, z: r.y * scale, y: rig.groundY * 0.55, rigToWorld };
 }
 /**
  * @returns {{ part: string, offsetT: number } | null}
@@ -69,5 +71,6 @@ export function ragdollPartToWorld(corpse, partName) {
     const cos = Math.cos(rot);
     const sin = Math.sin(rot);
     const rigToWorld = (displayDiameter * 0.5) / rig.size;
-    return { x: corpse.x + (p.x * cos - p.z * sin) * rigToWorld, y: corpse.y + (p.x * sin + p.z * cos) * rigToWorld };
+    const r = rotateXY(p.x, p.z, cos, sin);
+    return { x: corpse.x + r.x * rigToWorld, y: corpse.y + r.y * rigToWorld };
 }

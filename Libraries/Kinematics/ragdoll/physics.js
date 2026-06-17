@@ -2,6 +2,7 @@ import { RAGDOLL_CONFIG, getScaledPhysics } from "./config.js";
 import { processRagdollGoreHit } from "./gore.js";
 import { PHYSICS_BONES, RAGDOLL_CONSTRAINT_EDGES, boneMapFromCharacterRig, resolvePhysicsBoneId } from "../skeleton/index.js";
 import { clamp } from "../../Math/Interpolate.js";
+import { rotateXY } from "../../Math/Poly2D.js";
 import { distance, length } from "../../Math/Vec3.js";
 function getBind(ragdoll, key) {
     return ragdoll.bindBones?.[key];
@@ -130,9 +131,8 @@ export function applyRagdollImpulse(ragdoll, forceX, forceY, forceZ, hitPart, ri
     const bRot = rotation + bodyOffset;
     const cos = Math.cos(-bRot);
     const sin = Math.sin(-bRot);
-    const localFx = forceX * cos - forceZ * sin;
-    const localFz = forceX * sin + forceZ * cos;
-    const forceVec = { x: localFx, y: forceY, z: localFz };
+    const force = rotateXY(forceX, forceZ, cos, sin);
+    const forceVec = { x: force.x, y: forceY, z: force.y };
     const phys = getScaledPhysics(rig.size);
     const velocityScaler = phys.VELOCITY_SCALER;
     const { points, prevPoints, constraints } = ragdoll;
@@ -237,15 +237,14 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
                 const worldRadius = getBodyPartRadius(key) * scale * 0.85;
                 const localX = abs.x * scale;
                 const localZ = abs.z * scale;
-                const worldOffsetX = localX * cos - localZ * sin;
-                const worldOffsetY = localX * sin + localZ * cos;
-                const wX = worldX + worldOffsetX;
-                const wY = worldY + worldOffsetY;
+                const worldOffset = rotateXY(localX, localZ, cos, sin);
+                const wX = worldX + worldOffset.x;
+                const wY = worldY + worldOffset.y;
                 if (!wallChecker(wX, wY)) continue;
                 const pushLen = worldRadius * 0.5;
-                const pushDist = Math.hypot(worldOffsetX, worldOffsetY) || 1;
-                const pushLocalX = (-worldOffsetX / pushDist) * pushLen * invScale;
-                const pushLocalZ = (-worldOffsetY / pushDist) * pushLen * invScale;
+                const pushDist = Math.hypot(worldOffset.x, worldOffset.y) || 1;
+                const pushLocalX = (-worldOffset.x / pushDist) * pushLen * invScale;
+                const pushLocalZ = (-worldOffset.y / pushDist) * pushLen * invScale;
                 setAbsXYZ(ragdoll, key, abs.x + pushLocalX, abs.y, abs.z + pushLocalZ);
                 const delta = points[key];
                 prev.x = delta.x - (delta.x - prev.x) * phys.WALL_FRICTION;
@@ -314,9 +313,8 @@ export function updateRagdoll(ragdoll, dtSec, worldX, worldY, rotation, wallChec
         }
         const localX = localShiftX * scale;
         const localZ = localShiftZ * scale;
-        const worldShiftX = localX * cos - localZ * sin;
-        const worldShiftY = localX * sin + localZ * cos;
-        return { shiftX: worldShiftX, shiftY: worldShiftY };
+        const worldShift = rotateXY(localX, localZ, cos, sin);
+        return { shiftX: worldShift.x, shiftY: worldShift.y };
     }
     return { shiftX: 0, shiftY: 0 };
 }

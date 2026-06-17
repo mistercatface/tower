@@ -1,4 +1,5 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
+import { rotateXY } from "../../Math/Poly2D.js";
 import { getFlipperSpec } from "../../Sandbox/behaviors/flipperBehavior.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
 /** @param {number} length @param {number} halfW @param {number} height @param {number} facing @param {number} extendDir */
@@ -31,7 +32,8 @@ function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, exte
     const flipX = extendDir < 0;
     const corners = local.map((v) => {
         const lx0 = flipX ? -v.lx : v.lx;
-        return { lx: lx0 * cos - v.ly * sin, ly: lx0 * sin + v.ly * cos, z: v.z };
+        const r = rotateXY(lx0, v.ly, cos, sin);
+        return { lx: r.x, ly: r.y, z: v.z };
     });
     const face = (indices, panel) => {
         const verts = indices.map((i) => corners[i]);

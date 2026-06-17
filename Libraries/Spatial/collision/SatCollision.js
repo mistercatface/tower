@@ -1,4 +1,5 @@
 import { CircleShape, PolygonShape } from "./Shapes.js";
+import { rotateXY } from "../../Math/Poly2D.js";
 import { dotXY } from "../../Math/Vec2.js";
 import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
 function entityFacing(entity) {
@@ -45,9 +46,7 @@ export class SatCollision {
             const sinA = Math.sin(angleA);
             for (let i = 0; i < polyA.normals.length; i++) {
                 const n = polyA.normals[i];
-                const rx = n.x * cosA - n.y * sinA;
-                const ry = n.x * sinA + n.y * cosA;
-                const rotatedNormal = { x: rx, y: ry };
+                const rotatedNormal = rotateXY(n.x, n.y, cosA, sinA);
                 const projA = this._projectPolygon(rotatedNormal, polyA, pA, angleA);
                 const projB = this._projectPolygon(rotatedNormal, polyB, pB, entityFacing(pB));
                 if (projA.min >= projB.max || projB.min >= projA.max) return false;
@@ -71,8 +70,9 @@ export class SatCollision {
         const sinB = Math.sin(facingB);
         for (let i = 0; i < shapeB.vertices.length; i++) {
             const v = shapeB.vertices[i];
-            const vx = posB.x + (v.x * cosB - v.y * sinB);
-            const vy = posB.y + (v.x * sinB + v.y * cosB);
+            const r = rotateXY(v.x, v.y, cosB, sinB);
+            const vx = posB.x + r.x;
+            const vy = posB.y + r.y;
             const proj = dotXY(vx, vy, minNormal.x, minNormal.y);
             if (proj < minProjB) {
                 minProjB = proj;
@@ -86,8 +86,9 @@ export class SatCollision {
         const sinA = Math.sin(facingA);
         for (let i = 0; i < shapeA.vertices.length; i++) {
             const v = shapeA.vertices[i];
-            const vx = posA.x + (v.x * cosA - v.y * sinA);
-            const vy = posA.y + (v.x * sinA + v.y * cosA);
+            const r = rotateXY(v.x, v.y, cosA, sinA);
+            const vx = posA.x + r.x;
+            const vy = posA.y + r.y;
             const proj = dotXY(vx, vy, minNormal.x, minNormal.y);
             if (proj > maxProjA) {
                 maxProjA = proj;
@@ -105,9 +106,7 @@ export class SatCollision {
         const sinP = Math.sin(polyAngle);
         for (let i = 0; i < polyShape.normals.length; i++) {
             const n = polyShape.normals[i];
-            const rx = n.x * cosP - n.y * sinP;
-            const ry = n.x * sinP + n.y * cosP;
-            const rotatedNormal = { x: rx, y: ry };
+            const rotatedNormal = rotateXY(n.x, n.y, cosP, sinP);
             const projCircle = this._projectCircle(rotatedNormal, posCircle, circleShape);
             const projPoly = this._projectPolygon(rotatedNormal, polyShape, posPoly, polyAngle);
             if (projCircle.min >= projPoly.max || projPoly.min >= projCircle.max) return null;
@@ -121,10 +120,9 @@ export class SatCollision {
         let closestVertex = null;
         for (let i = 0; i < polyShape.vertices.length; i++) {
             const v = polyShape.vertices[i];
-            const rx = v.x * cosP - v.y * sinP;
-            const ry = v.x * sinP + v.y * cosP;
-            const vx = posPoly.x + rx;
-            const vy = posPoly.y + ry;
+            const r = rotateXY(v.x, v.y, cosP, sinP);
+            const vx = posPoly.x + r.x;
+            const vy = posPoly.y + r.y;
             const dx = posCircle.x - vx;
             const dy = posCircle.y - vy;
             const distSq = dx * dx + dy * dy;
@@ -166,10 +164,9 @@ export class SatCollision {
         const sin = Math.sin(angle);
         for (let i = 0; i < shape.vertices.length; i++) {
             const v = shape.vertices[i];
-            const rx = v.x * cos - v.y * sin;
-            const ry = v.x * sin + v.y * cos;
-            const vx = pos.x + rx;
-            const vy = pos.y + ry;
+            const r = rotateXY(v.x, v.y, cos, sin);
+            const vx = pos.x + r.x;
+            const vy = pos.y + r.y;
             const projection = dotXY(vx, vy, axis.x, axis.y);
             if (projection < min) min = projection;
             if (projection > max) max = projection;

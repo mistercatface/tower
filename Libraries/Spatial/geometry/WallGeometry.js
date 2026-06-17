@@ -1,19 +1,12 @@
 import { distanceToAabb } from "../../Math/Aabb2D.js";
+import { rectCorners, rotateXY, transformPoint2DInto } from "../../Math/Poly2D.js";
 import { distanceSegmentToSegment, segmentsIntersect } from "../../Math/Segment2D.js";
 export function getWallReach(wall, padding = wall.padding) {
     return (wall.size / 2) * Math.SQRT2 + padding;
 }
 /** Ground-plane corners of a wall segment prism (rotated square). */
 export function getSegmentFootprintCorners(segment) {
-    const cos = Math.cos(segment.angle);
-    const sin = Math.sin(segment.angle);
-    const hs = segment.size / 2;
-    return [
-        { x: segment.x + -hs * cos - -hs * sin, y: segment.y + -hs * sin + -hs * cos },
-        { x: segment.x + hs * cos - -hs * sin, y: segment.y + hs * sin + -hs * cos },
-        { x: segment.x + hs * cos - hs * sin, y: segment.y + hs * sin + hs * cos },
-        { x: segment.x + -hs * cos - hs * sin, y: segment.y + -hs * sin + hs * cos },
-    ];
+    return rectCorners(segment.x, segment.y, segment.size / 2, segment.angle);
 }
 export function toSegmentLocal(segment, x, y) {
     const dx = x - segment.x;
@@ -25,7 +18,8 @@ export function toSegmentLocal(segment, x, y) {
     }
     const halfX = segment.width !== undefined ? segment.width / 2 : segment.size / 2;
     const halfY = segment.height !== undefined ? segment.height / 2 : segment.size / 2;
-    return { localX: dx * segment._cos - dy * segment._sin, localY: dx * segment._sin + dy * segment._cos, halfX, halfY };
+    const local = rotateXY(dx, dy, segment._cos, segment._sin);
+    return { localX: local.x, localY: local.y, halfX, halfY };
 }
 export function closestPointOnSegment(wall, x, y) {
     let { localX, localY, halfX, halfY } = toSegmentLocal(wall, x, y);
@@ -33,7 +27,7 @@ export function closestPointOnSegment(wall, x, y) {
     localY = Math.max(-halfY, Math.min(halfY, localY));
     const worldCos = wall._cos;
     const worldSin = -wall._sin;
-    return { x: wall.x + localX * worldCos - localY * worldSin, y: wall.y + localX * worldSin + localY * worldCos };
+    return transformPoint2DInto({ x: 0, y: 0 }, wall.x, wall.y, localX, localY, worldCos, worldSin);
 }
 export function distanceSqToSegment(segment, x, y) {
     if (segment.isDead) return Infinity;
@@ -81,11 +75,9 @@ export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
     const halfY = wall.height !== undefined ? wall.height / 2 : wall.size / 2;
     const cos = Math.cos(-wall.angle);
     const sin = Math.sin(-wall.angle);
-    const axL = (ax - wall.x) * cos - (ay - wall.y) * sin;
-    const ayL = (ax - wall.x) * sin + (ay - wall.y) * cos;
-    const bxL = (bx - wall.x) * cos - (by - wall.y) * sin;
-    const byL = (bx - wall.x) * sin + (by - wall.y) * cos;
-    return minDistanceSegmentToAabb(axL, ayL, bxL, byL, -halfX, -halfY, halfX, halfY);
+    const a = rotateXY(ax - wall.x, ay - wall.y, cos, sin);
+    const b = rotateXY(bx - wall.x, by - wall.y, cos, sin);
+    return minDistanceSegmentToAabb(a.x, a.y, b.x, b.y, -halfX, -halfY, halfX, halfY);
 }
 /** Closest point on path segment AB to wall box — used for push direction. */
 export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
@@ -214,7 +206,7 @@ export function isStrictlyInsideSegmentBox(segment, worldX, worldY) {
 function approachToSegmentLocal(segment, worldVx, worldVy) {
     const cos = Math.cos(-segment.angle);
     const sin = Math.sin(-segment.angle);
-    return { x: worldVx * cos - worldVy * sin, y: worldVx * sin + worldVy * cos };
+    return rotateXY(worldVx, worldVy, cos, sin);
 }
 /**
  * @param {object} circle
@@ -254,9 +246,8 @@ export function getCircleSegmentPenetration(circle, segment, { approachX = 0, ap
     }
     const invCos = Math.cos(segment.angle);
     const invSin = Math.sin(segment.angle);
-    const normalX = localNormX * invCos - localNormY * invSin;
-    const normalY = localNormX * invSin + localNormY * invCos;
-    return { normalX, normalY, overlap, distanceSq };
+    const worldNormal = rotateXY(localNormX, localNormY, invCos, invSin);
+    return { normalX: worldNormal.x, normalY: worldNormal.y, overlap, distanceSq };
 }
 export function pushPointFromWalls(x, y, walls, clearance) {
     let px = x;

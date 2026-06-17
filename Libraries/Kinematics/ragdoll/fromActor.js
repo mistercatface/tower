@@ -1,4 +1,5 @@
 import { normalizeAngle } from "../../Math/Angle.js";
+import { rotateXY } from "../../Math/Poly2D.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { normalizeVector } from "../../Math/Vec2.js";
 import { createImpactProfile } from "./config.js";
@@ -45,9 +46,8 @@ export function createRagdollState(rigData, rotation, impactProfile, config, rig
     const bRot = rotation + bodyOffset;
     const cos = Math.cos(-bRot);
     const sin = Math.sin(-bRot);
-    const localForceX = impactProfile.force.x * cos - impactProfile.force.z * sin;
-    const localForceZ = impactProfile.force.x * sin + impactProfile.force.z * cos;
-    const localImpact = { ...impactProfile, force: { x: localForceX, y: impactProfile.force.y, z: localForceZ } };
+    const force = rotateXY(impactProfile.force.x, impactProfile.force.z, cos, sin);
+    const localImpact = { ...impactProfile, force: { x: force.x, y: impactProfile.force.y, z: force.y } };
     const ragdoll = initializeRagdoll(rigData, normalizeAngle(rotation), localImpact, config, rig);
     ragdoll.rotation = normalizeAngle(rotation);
     applyDeathSevers(ragdoll, impactProfile.sever, rig, impactProfile.hitBone);

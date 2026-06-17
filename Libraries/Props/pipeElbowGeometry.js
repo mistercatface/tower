@@ -1,5 +1,6 @@
 import { getPropAsset } from "./PropCatalog.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
+import { transformPoint2DInto } from "../Math/Poly2D.js";
 import { quantizeAngleIndex } from "../Canvas/viewQuantize.js";
 const FACING_STEPS = 24;
 /** @param {object} prop @param {object | null | undefined} asset */
@@ -77,7 +78,8 @@ export function getPipeElbowOutletWorld(prop, asset) {
     const facing = prop.facing ?? 0;
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
-    return { x: prop.x + end.x * cos - end.y * sin, y: prop.y + end.x * sin + end.y * cos, nx: cos, ny: sin };
+    const world = transformPoint2DInto({ x: 0, y: 0 }, prop.x, prop.y, end.x, end.y, cos, sin);
+    return { x: world.x, y: world.y, nx: cos, ny: sin };
 }
 /** @param {object} prop */
 export function getPipeElbowSpriteCacheKey(prop) {

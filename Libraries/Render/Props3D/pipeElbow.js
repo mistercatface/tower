@@ -1,11 +1,13 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { buildPipeElbowCenterline3D, getPipeElbowSpec } from "../../Props/pipeElbowGeometry.js";
+import { rotateXY } from "../../Math/Poly2D.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
 /** @param {number} lx @param {number} ly @param {number} lz @param {number} facing */
 function yawLocal(lx, ly, lz, facing) {
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
-    return { lx: lx * cos - ly * sin, ly: lx * sin + ly * cos, z: lz };
+    const r = rotateXY(lx, ly, cos, sin);
+    return { lx: r.x, ly: r.y, z: lz };
 }
 /**
  * @param {{ x: number, y: number, z: number }} p
@@ -32,11 +34,7 @@ function ringAt(p, t, radius, ringIndex, ringCount) {
     const a = (ringIndex / ringCount) * Math.PI * 2;
     const ca = Math.cos(a);
     const sa = Math.sin(a);
-    return {
-        x: p.x + radius * (nx * ca + bx * sa),
-        y: p.y + radius * (ny * ca + by * sa),
-        z: p.z + radius * (nz * ca + bz * sa),
-    };
+    return { x: p.x + radius * (nx * ca + bx * sa), y: p.y + radius * (ny * ca + by * sa), z: p.z + radius * (nz * ca + bz * sa) };
 }
 /**
  * @param {{ x: number, y: number, z: number }[]} centerline
@@ -59,7 +57,7 @@ function buildTubeMesh(centerline, radius, ringSegments = 8, { capStart = true, 
     const face = (verts, panel) => ({ verts, panel, depth: verts.reduce((sum, v) => sum + v.z, 0) / verts.length });
     /** @type {ReturnType<typeof face>[]} */
     const mesh = [];
-    for (let i = 0; i < n - 1; i++) {
+    for (let i = 0; i < n - 1; i++)
         for (let j = 0; j < ringSegments; j++) {
             const jn = (j + 1) % ringSegments;
             mesh.push(
@@ -74,7 +72,6 @@ function buildTubeMesh(centerline, radius, ringSegments = 8, { capStart = true, 
                 ),
             );
         }
-    }
     const base = rings[0].map((v) => ({ lx: v.x, ly: v.y, z: v.z }));
     if (capStart) mesh.push(face([...base].reverse(), "bottom"));
     const top = rings[n - 1].map((v) => ({ lx: v.x, ly: v.y, z: v.z }));
@@ -112,10 +109,7 @@ function buildFlangeMesh(radius, height, facing, segments = 10) {
 function buildPipeElbowMesh(spec, facing) {
     const centerline = buildPipeElbowCenterline3D(spec);
     const tube = buildTubeMesh(centerline, spec.pipeRadius, 8, { capStart: true, capEnd: false });
-    const yawed = tube.map((face) => ({
-        ...face,
-        verts: face.verts.map((v) => yawLocal(v.lx, v.ly, v.z, facing)),
-    }));
+    const yawed = tube.map((face) => ({ ...face, verts: face.verts.map((v) => yawLocal(v.lx, v.ly, v.z, facing)) }));
     return [...buildFlangeMesh(spec.flangeRadius, spec.flangeHeight, facing), ...yawed];
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} prop @param {number} px @param {number} py @param {object} options */
@@ -127,11 +121,7 @@ export function drawPipeElbow(ctx, prop, px, py, options) {
     const stroke = colors.stroke ?? "#3E2723";
     const lineWidth = options.lineWidth ?? 0.9;
     const mesh = buildPipeElbowMesh(spec, facing);
-    const panelFill = {
-        bottom: colors.bottom?.mid ?? colors.side.shadow,
-        top: colors.top?.mid ?? colors.side.highlight,
-        side: colors.side.mid,
-    };
+    const panelFill = { bottom: colors.bottom?.mid ?? colors.side.shadow, top: colors.top?.mid ?? colors.side.highlight, side: colors.side.mid };
     const backFaces = [];
     const frontFaces = [];
     for (const face of mesh)
