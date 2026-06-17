@@ -18,8 +18,10 @@ import { tickGridZones } from "../../Libraries/Sandbox/gridZoneTick.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.js";
-import { mountEditorUi, refreshEditorUi, resizeEditorLayout } from "./ui/editorUi.js";
+import { mountEditorUi, refreshEditorUi, resizeEditorLayout, flushEditorLayoutResize } from "./ui/editorUi.js";
 import { drawLabFrame, shouldRenderLabFrame } from "./ui/preview.js";
+import { flushMapOverviewRepaint } from "./ui/mapOverview.js";
+import { tickAnimationPreview } from "./ui/LabAnimationPreview.js";
 /** @type {object[]} */
 const simulationEvents = [];
 /** @param {object[]} events @param {import("./state.js").TileLabGameState} state */
@@ -89,12 +91,15 @@ export function createEditorApp() {
         let dt = timestamp - state.lastTime;
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
+        flushEditorLayoutResize(state);
         state.scheduler.update(dt);
         tickLabViewportNavigation(dt);
         tickSandboxCameraFollow(state.viewport, state, state.entityRegistry, dt);
         state.sandbox.controller?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
         if (shouldRenderLabFrame(state)) drawLabFrame(state);
+        tickAnimationPreview(timestamp);
+        flushMapOverviewRepaint(state);
         requestAnimationFrame(loop);
     }
     events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);

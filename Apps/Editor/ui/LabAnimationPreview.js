@@ -24,7 +24,6 @@ function getPreviewRailBandBounds(layout) {
     if (play.maxX < bounds.maxX) bands.push(minCornerAabb(play.maxX, play.minY, bounds.maxX - play.maxX, play.maxY - play.minY));
     return bands;
 }
-let rafId = null;
 let lastGameTime = 0;
 let lastDrawTime = 0;
 let isAnimationEnabled = false;
@@ -59,25 +58,14 @@ export function syncAnimationPreviewCanvasSize(state, stackSize) {
 /** @param {boolean} active */
 export function setAnimationPreviewActive(active) {
     previewActive = active;
-    if (!active) {
-        if (rafId !== null) {
-            cancelAnimationFrame(rafId);
-            rafId = null;
-        }
-        return;
-    }
-    if (rafId === null) {
-        lastDrawTime = performance.now();
+    if (active) {
+        lastDrawTime = 0;
         lastGameTime = 0;
-        rafId = requestAnimationFrame(runAnimationPreviewTick);
     }
 }
-function runAnimationPreviewTick(timestamp) {
-    if (!previewActive) {
-        rafId = null;
-        return;
-    }
-    rafId = requestAnimationFrame(runAnimationPreviewTick);
+/** @param {number} timestamp */
+export function tickAnimationPreview(timestamp) {
+    if (!previewActive) return;
     const profile = readProfileConfig?.();
     if (!profile) return;
     let forceDraw = false;
@@ -107,8 +95,6 @@ export function initAnimationPreview(canvas, getProfileConfig) {
     previewCanvas = canvas;
     readProfileConfig = getProfileConfig;
     currentProfileStr = null;
-    if (rafId !== null) cancelAnimationFrame(rafId);
-    rafId = null;
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

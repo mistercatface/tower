@@ -7,6 +7,16 @@ import { drawWorldBoundsBox } from "./mapOverviewDraw.js";
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let overviewCanvasResize = null;
 let overviewCtx = null;
+let overviewRepaintPending = false;
+export function requestMapOverviewRepaint() {
+    overviewRepaintPending = true;
+}
+/** @param {import("../state.js").TileLabGameState} state */
+export function flushMapOverviewRepaint(state) {
+    if (!overviewRepaintPending) return;
+    overviewRepaintPending = false;
+    paintMapOverviewFrame(state);
+}
 /** @param {import("../state.js").TileLabGameState} state @returns {"cavern" | "rail" | "erase" | null} */
 export function activeMapGenKind(state) {
     const key = state.sandbox.controller?.getPlacePaletteKey();

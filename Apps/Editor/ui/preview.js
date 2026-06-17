@@ -47,8 +47,27 @@ let labRenderer = null;
 let labRendererSettings = null;
 let lastProfileBakeKey = "";
 let labViewDirty = true;
+let showLabVignette = false;
+let showLabPathDebug = false;
 function markLabViewDirty() {
     labViewDirty = true;
+}
+export function mountLabDrawOptions() {
+    const vignetteInput = document.getElementById("showVignetteInput");
+    const pathDebugInput = document.getElementById("showPathDebugInput");
+    showLabVignette = vignetteInput.checked;
+    showLabPathDebug = pathDebugInput.checked;
+    vignetteInput.addEventListener("change", () => {
+        showLabVignette = vignetteInput.checked;
+        markLabViewDirty();
+    });
+    pathDebugInput.addEventListener("change", () => {
+        showLabPathDebug = pathDebugInput.checked;
+        markLabViewDirty();
+    });
+}
+export function isShowLabPathDebug() {
+    return showLabPathDebug;
 }
 /** Canvas input marks the lab view dirty while paused (place preview, clicks). Camera pan/zoom goes through setCamera. */
 export function mountLabFrameRefresh(canvas) {
@@ -115,8 +134,8 @@ export function drawLabFrame(state) {
     const canvas = state.editor.canvas;
     const ctx = state.editor.ctx;
     const viewport = state.viewport;
-    const showVignette = document.getElementById("showVignetteInput").checked;
-    const showPathDebug = document.getElementById("showPathDebugInput").checked;
+    const showVignette = showLabVignette;
+    const showPathDebug = showLabPathDebug;
     const prevProfileOverride = state.worldSurfaces.surfaceProfileOverride;
     state.worldSurfaces.surfaceProfileOverride = RUNTIME_LAB_PROFILE_ID;
     maybeClearProfileBakeCaches(state, RUNTIME_LAB_PROFILE_ID);
@@ -132,7 +151,7 @@ export function drawLabFrame(state) {
             state._labPathDebugRedrawScheduled = true;
             void ensureLabPathDebugCache(state).then(() => {
                 state._labPathDebugRedrawScheduled = false;
-                drawLabFrame(state);
+                markLabViewDirty();
             });
         }
         if (state.mapPathDebugCache) {
