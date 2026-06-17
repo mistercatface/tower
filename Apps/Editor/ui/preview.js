@@ -12,7 +12,6 @@ import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
 import { ensureLabPathDebugCache, labPathDebugCacheKey } from "../../../Libraries/Render/map/labMapCaches.js";
 import { drawLosShadowOverlay } from "../../../Libraries/Render/Lighting/losShadowOverlay.js";
-import { drawLosShadowRoofEdgeDebug } from "../../../Libraries/Render/Lighting/losShadowRoofDebug.js";
 import { LOS_SHADOW_VISION_TILES_DEFAULT } from "../../../Libraries/Render/Lighting/losShadowDefaults.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 /** @type {import("../../../Render/Render.js").SimulationSceneHooks} */
@@ -39,10 +38,6 @@ const editorSceneHooks = {
             draw(state, viewport, ctx) {
                 if (!showLabLosShadow) return;
                 drawLosShadowOverlay(ctx, viewport, state.obstacleGrid, {
-                    visionTiles: labLosShadowVisionTiles,
-                    cameraHeight: state.worldSurfaces.settings.cameraHeight,
-                });
-                drawLosShadowRoofEdgeDebug(ctx, viewport, state.obstacleGrid, {
                     visionTiles: labLosShadowVisionTiles,
                     cameraHeight: state.worldSurfaces.settings.cameraHeight,
                 });
