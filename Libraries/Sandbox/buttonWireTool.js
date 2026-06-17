@@ -1,5 +1,5 @@
 import { createWireLinkTool } from "../Editor/wireLinkTool.js";
-import { addButtonLink, drawButtonWires, findButtonLinkTarget } from "./buttonLinks.js";
+import { addButtonLink, drawButtonWirePreview, findButtonLinkTarget } from "./buttonLinks.js";
 import { isButtonEntity } from "./buttonInput.js";
 export function createButtonWireTool(state, session) {
     const tool = createWireLinkTool({
@@ -12,7 +12,7 @@ export function createButtonWireTool(state, session) {
         },
         onSync: () => session.sync(),
         drawWire(ctx, cursor) {
-            drawButtonWires(ctx, state, { wireFromPropId: session.getSelectedPropId(), wireCursor: cursor });
+            drawButtonWirePreview(ctx, state, session.getSelectedPropId(), cursor);
         },
     });
     return {

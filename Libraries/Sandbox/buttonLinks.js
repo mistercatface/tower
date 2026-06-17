@@ -128,10 +128,15 @@ export function drawButtonWires(ctx, state, { wireFromPropId = null, wireCursor 
         const color = button.id === wireFromPropId ? "#FFB74D" : "#FF7043";
         for (let j = 0; j < endpoints.length; j++) drawWire(ctx, button.x, button.y, endpoints[j].x, endpoints[j].y, color);
     });
-    if (wireFromPropId != null && wireCursor) {
-        const from = state.entityRegistry.getLive(wireFromPropId);
-        if (from) drawWire(ctx, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D");
-    }
+    if (wireFromPropId != null && wireCursor) drawButtonWirePreview(ctx, state, wireFromPropId, wireCursor);
+    ctx.restore();
+}
+/** @param {CanvasRenderingContext2D} ctx @param {object} state @param {number} fromPropId @param {{ x: number, y: number }} wireCursor */
+export function drawButtonWirePreview(ctx, state, fromPropId, wireCursor) {
+    const from = state.entityRegistry.getLive(fromPropId);
+    if (!from) return;
+    ctx.save();
+    drawWire(ctx, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D");
     ctx.restore();
 }
 /** @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {string} color */
