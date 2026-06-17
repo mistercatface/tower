@@ -1,8 +1,8 @@
 {
     "type": "module",
     "scripts": {
-        "test": "node --test tests/corridorWidthOne.test.js tests/corridorMultiLane.test.js tests/segment2D.test.js",
+        "test": "node --test tests/corridorWidthOne.test.js tests/corridorMultiLane.test.js tests/segment2D.test.js tests/poly2D.test.js",
         "test:corridor": "node --test tests/corridorWidthOne.test.js",
-        "test:math": "node --test tests/segment2D.test.js"
+        "test:math": "node --test tests/segment2D.test.js tests/poly2D.test.js"
     }
 }
