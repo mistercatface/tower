@@ -28,6 +28,7 @@ export function fitGameCanvasToStage(state) {
     const size = Math.max(128, Math.floor(Math.min(rect.width, rect.height)));
     canvas.width = size;
     canvas.height = size;
+    canvas.getContext("2d").imageSmoothingEnabled = false;
     canvas.style.width = `${size}px`;
     canvas.style.height = `${size}px`;
     state.viewport.setCanvasSize(size, size);

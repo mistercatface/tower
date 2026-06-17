@@ -82,6 +82,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     if (canvas.parentElement !== mapStage) mapStage.appendChild(canvas);
     state.editor.canvas = canvas;
     state.editor.ctx = canvas.getContext("2d");
+    state.editor.ctx.imageSmoothingEnabled = false;
     const markLabViewDirty = mountLabFrameRefresh(canvas);
     labCanvasResizeHooks = { mark: markLabViewDirty, repaintMapOverview: scheduleMapOverviewRepaint };
     mountLabDrawOptions();

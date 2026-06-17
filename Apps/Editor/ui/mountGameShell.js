@@ -25,6 +25,7 @@ export async function mountGameShell(state, launcher) {
     stageInner.appendChild(canvas);
     state.editor.canvas = canvas;
     state.editor.ctx = canvas.getContext("2d");
+    state.editor.ctx.imageSmoothingEnabled = false;
     state.editor.showMapOverview = false;
     state.editor.showAnimationPreview = false;
     applyLabWorldRenderMode(state);
