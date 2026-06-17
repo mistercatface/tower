@@ -130,44 +130,44 @@ export class WorldSceneRenderer {
         wallCtx.cacheObj = drawable;
     }
     draw3DBuildings(ctx, input, viewport, options = {}) {
-        const skipWalls = options.skipWalls === true;
-        const skipWallCaps = options.skipWallCaps === true;
         const px = viewport.x;
         const py = viewport.y;
-        const zoom = viewport.zoom ?? 1;
-        elevationCameraFromViewportInto(this.wallPassCamera, viewport);
-        const wallCtx = this.wallCtx;
-        wallCtx.viewport = viewport;
-        wallCtx.worldSurfaces = input.worldSurfaces;
-        wallCtx.proceduralSurfaceDraw = input.proceduralSurfaceDraw;
-        wallCtx.gameState = input.gameState;
-        wallCtx.fillStyle = this.settings.floorShadow;
-        wallCtx.bleedPx = this.settings.wallTextureBleedPx;
-        wallCtx.worldBounds = viewport.boundsDraw;
-        wallCtx.skipWallCaps = skipWallCaps;
-        wallCtx.cacheObj = null;
-        wallCtx.atlasFaceId = undefined;
         const drawContext = this.propDrawContext;
         drawContext.gameState = input.gameState;
         drawContext.px = px;
         drawContext.py = py;
-        drawContext.zoom = zoom;
+        drawContext.zoom = viewport.zoom;
         ctx.save();
         clipToViewport(ctx, viewport);
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
-        if (!skipWalls) this._appendVisibleStaticGridWalls(input, viewport, px, py);
         this._appendVisible3dProps(input, viewport, px, py);
+        const skipWalls = options.skipWalls === true;
+        if (!skipWalls) {
+            elevationCameraFromViewportInto(this.wallPassCamera, viewport);
+            const wallCtx = this.wallCtx;
+            wallCtx.viewport = viewport;
+            wallCtx.worldSurfaces = input.worldSurfaces;
+            wallCtx.proceduralSurfaceDraw = input.proceduralSurfaceDraw;
+            wallCtx.gameState = input.gameState;
+            wallCtx.fillStyle = this.settings.floorShadow;
+            wallCtx.bleedPx = this.settings.wallTextureBleedPx;
+            wallCtx.worldBounds = viewport.boundsDraw;
+            wallCtx.skipWallCaps = options.skipWallCaps === true;
+            wallCtx.cacheObj = null;
+            wallCtx.atlasFaceId = undefined;
+            this._appendVisibleStaticGridWalls(input, viewport, px, py);
+        }
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
             if (obj.strategy || obj.usesKinematicsBody) drawWorldProp(ctx, obj, viewport, drawContext);
-            else if (!skipWalls && obj.p1) {
-                this._bindWallDrawable(wallCtx, obj);
-                drawProjectedWallFace(ctx, obj.p1, obj.p2, wallCtx);
-            } else if (!skipWalls && obj.innerP1x !== undefined) {
-                this._bindWallDrawable(wallCtx, obj);
-                drawProjectedGridEdgeRail(ctx, obj, wallCtx);
+            else if (obj.p1) {
+                this._bindWallDrawable(this.wallCtx, obj);
+                drawProjectedWallFace(ctx, obj.p1, obj.p2, this.wallCtx);
+            } else if (obj.innerP1x !== undefined) {
+                this._bindWallDrawable(this.wallCtx, obj);
+                drawProjectedGridEdgeRail(ctx, obj, this.wallCtx);
             }
         }
         ctx.restore();
