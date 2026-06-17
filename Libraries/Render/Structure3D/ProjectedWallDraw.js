@@ -25,6 +25,7 @@ const sCapCorners = [
 ];
 const sBlitQuad = { img: null, sx0: 0, sy0: 0, sx1: 0, sy1: 0, d0: sCorner0, d1: sCorner1, d2: sCorner2, d3: sCorner3 };
 const sBlitQuadOpts = { bleedPx: 1 };
+const sWallFaceAtlas = { canvas: null, settings: null, capHeight: 0, bandHeight: 0, wallBaseZ: 0, edgeLen: 0, wallCx: 0, wallCy: 0 };
 export function appendProjectedFaceBand(ctx, faceBottom, faceTop) {
     traceQuad(ctx, { x: faceBottom.proj1X, y: faceBottom.proj1Y }, { x: faceTop.proj1X, y: faceTop.proj1Y }, { x: faceTop.proj2X, y: faceTop.proj2Y }, { x: faceBottom.proj2X, y: faceBottom.proj2Y });
 }
@@ -85,11 +86,7 @@ function resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj) {
  * @property {number} wallCx
  * @property {number} wallCy
  */
-/**
- * @typedef {Object} WallFaceAtlasResolve
- * @property {WallFaceAtlas | null} atlas
- * @property {boolean} solidFill
- */
+/** @returns {typeof sWallFaceAtlas | null | 'solid'} */
 function resolveWallFaceAtlas(p1, p2, wallCtx) {
     const { worldSurfaces, proceduralSurfaceDraw, wallHeight, wallBaseZ, wallCapHeight, cacheObj, atlasFaceId } = wallCtx;
     const settings = worldSurfaces.settings;
@@ -97,10 +94,19 @@ function resolveWallFaceAtlas(p1, p2, wallCtx) {
     const wallCy = (p1.y + p2.y) * 0.5;
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj);
     const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight: wallCapHeight, cacheObj, atlasFaceId: atlasFaceId ?? "side" });
-    if (!baked) return { atlas: null, solidFill: false };
+    if (!baked) return null;
     const canvas = baked.canvases[0];
-    if (!canvas || canvas.isPlaceholder) return { atlas: null, solidFill: true };
-    return { atlas: { canvas, settings, capHeight: wallCapHeight, bandHeight: wallHeight, wallBaseZ, edgeLen: Math.hypot(p2.x - p1.x, p2.y - p1.y), wallCx, wallCy }, solidFill: false };
+    if (!canvas || canvas.isPlaceholder) return "solid";
+    const atlas = sWallFaceAtlas;
+    atlas.canvas = canvas;
+    atlas.settings = settings;
+    atlas.capHeight = wallCapHeight;
+    atlas.bandHeight = wallHeight;
+    atlas.wallBaseZ = wallBaseZ;
+    atlas.edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    atlas.wallCx = wallCx;
+    atlas.wallCy = wallCy;
+    return atlas;
 }
 /**
  * @typedef {Object} WallFaceSubdiv
@@ -174,12 +180,11 @@ function resolveWallFaceSubdiv(wallCtx, atlas, camera) {
     return subdiv;
 }
 function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera) {
-    const { atlas, solidFill } = resolveWallFaceAtlas(p1, p2, wallCtx);
-    if (!atlas) {
-        if (solidFill) {
-            ctx.fillStyle = wallCtx.fillStyle;
-            ctx.fill();
-        }
+    const atlas = resolveWallFaceAtlas(p1, p2, wallCtx);
+    if (atlas === null) return;
+    if (atlas === "solid") {
+        ctx.fillStyle = wallCtx.fillStyle;
+        ctx.fill();
         return;
     }
     const subdiv = resolveWallFaceSubdiv(wallCtx, atlas, camera);
