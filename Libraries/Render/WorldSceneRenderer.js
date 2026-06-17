@@ -6,7 +6,6 @@ import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 import { aabbOverlap } from "../Math/Aabb2D.js";
-import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { drawWorldProp } from "./drawWorldProp.js";
 import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources } from "../Sandbox/floorOccupancy.js";
@@ -54,14 +53,11 @@ export class WorldSceneRenderer {
         const px = viewport.x;
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
-        ctx.save();
-        clipToViewport(ctx, viewport);
         const props = input.entityRegistry.queryView(
             { bounds: viewport.boundsVisibleDefault, kinds: ["worldProp"], filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" },
             input.spatialFrame,
         );
         for (let i = 0; i < props.length; i++) drawWorldProp(ctx, props[i], viewport, { gameState: input.gameState, propRenderer: this.props, px, py, zoom });
-        ctx.restore();
     }
     /**
      * @param {CanvasRenderingContext2D} ctx
@@ -78,8 +74,6 @@ export class WorldSceneRenderer {
         drawContext.px = px;
         drawContext.py = py;
         drawContext.zoom = zoom;
-        ctx.save();
-        clipToViewport(ctx, viewport);
         drawFloorOccupancyBelts(ctx, input.gameState, viewport, { px, py });
         drawFloorOccupancyPowerSources(ctx, input.gameState, viewport, { px, py });
         const visibleObjects = this.visibleDrawables;
@@ -92,7 +86,6 @@ export class WorldSceneRenderer {
         });
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) drawWorldProp(ctx, visibleObjects[i], viewport, drawContext);
-        ctx.restore();
     }
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this.visibleDrawables;
@@ -137,8 +130,6 @@ export class WorldSceneRenderer {
         drawContext.px = px;
         drawContext.py = py;
         drawContext.zoom = viewport.zoom;
-        ctx.save();
-        clipToViewport(ctx, viewport);
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
         this._appendVisible3dProps(input, viewport, px, py);
@@ -170,18 +161,14 @@ export class WorldSceneRenderer {
                 drawProjectedGridEdgeRail(ctx, obj, this.wallCtx);
             }
         }
-        ctx.restore();
     }
     drawRagdollCorpsesOnly(ctx, input, viewport) {
         const px = viewport.x;
         const py = viewport.y;
-        ctx.save();
-        clipToViewport(ctx, viewport);
         const visibleCorpses = this.visibleDrawables;
         visibleCorpses.length = 0;
         this._appendVisibleRagdolls(input, viewport, px, py, visibleCorpses);
         visibleCorpses.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleCorpses.length; i++) visibleCorpses[i].render(ctx);
-        ctx.restore();
     }
 }
