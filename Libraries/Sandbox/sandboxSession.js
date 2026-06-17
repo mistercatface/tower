@@ -69,16 +69,16 @@ import {
 import { PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { cellIsStaticWall, forcefieldEdgeAt, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
-/** @param {object} state @param {{ defaultSpawnPropId: string }} options */
-export function createSandboxSession(state, { defaultSpawnPropId }) {
-    let spawnPropId = defaultSpawnPropId;
+/** @param {object} state */
+export function createSandboxSession(state) {
+    let spawnPropId = "";
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
     let selectedPropIds = new Set();
     let selectedPropId = null;
     /** @type {{ col: number, row: number } | null} */
     let selectedFloorCell = null;
     /** @type {string} prop:id or wall:voxel|rail|forcefield */
-    let placePaletteKey = `prop:${defaultSpawnPropId}`;
+    let placePaletteKey = "";
     /** @type {'voxel' | 'rail' | 'forcefield'} */
     let wallStampMode = "voxel";
     let wallHeightLevel = 1;

@@ -1,5 +1,4 @@
 import { canvasClientToWorld } from "../../../Libraries/Input/canvasPointer.js";
-import { TILELAB_SANDBOX_SPAWN_PROP } from "../state.js";
 import { createSandboxController } from "../../../Libraries/SandboxEditor/createSandboxController.js";
 import {
     createCueStrikeBehavior,
@@ -23,7 +22,6 @@ export function mountGameSandbox(state) {
         clientToWorld(clientX, clientY) {
             return canvasClientToWorld(canvas(), state.viewport, clientX, clientY);
         },
-        defaultSpawnPropId: TILELAB_SANDBOX_SPAWN_PROP,
         behaviors: [
             createDragLaunchBehavior(state),
             createDragLaunchWaitBehavior(state),

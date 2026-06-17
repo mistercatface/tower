@@ -3,7 +3,6 @@ import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
 import { TileLabEditorState } from "./TileLabEditorState.js";
-export const TILELAB_SANDBOX_SPAWN_PROP = "beach_ball";
 /** Square canvas pixel defaults — main map, map overview, animation preview. */
 export const EDITOR_CANVAS_DEFAULTS = {
     main: { initialSize: 480, minSize: 128, maxSize: 1024 },

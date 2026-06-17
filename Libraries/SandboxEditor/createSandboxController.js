@@ -31,13 +31,12 @@ import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
  * @param {{
  *   getCanvas: () => HTMLCanvasElement,
  *   clientToWorld: (clientX: number, clientY: number) => { x: number, y: number },
- *   defaultSpawnPropId: string,
  *   behaviors: import("../Sandbox/sandboxCapabilities.js").SandboxBehavior[],
  *   defaultBehaviorId?: string,
  * }} options
  */
-export function createSandboxController(state, { getCanvas, clientToWorld, defaultSpawnPropId, behaviors, defaultBehaviorId }) {
-    const session = createSandboxSession(state, { defaultSpawnPropId });
+export function createSandboxController(state, { getCanvas, clientToWorld, behaviors, defaultBehaviorId }) {
+    const session = createSandboxSession(state);
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
     /** @type {(() => void) | null} */
