@@ -1,7 +1,7 @@
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { isButtonEntity, isMassButtonInputMode } from "./buttonInput.js";
-import { appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../UI/paramFields.js";
+import { appendActionRow, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 /** @param {object} prop @param {number} degrees */
 function applyWorldPropFacing(prop, degrees) {
@@ -81,29 +81,18 @@ export function appendButtonWireInspector(body, wire) {
                 },
             })),
         );
-    const wireRow = document.createElement("div");
-    wireRow.className = "sandbox-add-row";
     const wireActive = wire.isWireActive();
-    const connectBtn = document.createElement("button");
-    connectBtn.type = "button";
-    connectBtn.className = wireActive ? "primary" : "secondary";
-    connectBtn.textContent = wireActive ? "Click targets to wire…" : "Connect wire";
-    connectBtn.addEventListener("click", () => {
-        if (wireActive) wire.cancelWire();
-        else wire.startWire();
-    });
-    wireRow.appendChild(connectBtn);
-    if (links.length) {
-        const clearBtn = document.createElement("button");
-        clearBtn.type = "button";
-        clearBtn.className = "secondary";
-        clearBtn.textContent = "Clear all";
-        clearBtn.addEventListener("click", () => {
-            wire.clearLinks();
-        });
-        wireRow.appendChild(clearBtn);
-    }
-    body.appendChild(wireRow);
+    appendActionRow(body, [
+        {
+            label: wireActive ? "Click targets to wire…" : "Connect wire",
+            variant: wireActive ? "primary" : "secondary",
+            onClick: () => {
+                if (wireActive) wire.cancelWire();
+                else wire.startWire();
+            },
+        },
+        ...(links.length ? [{ label: "Clear all", onClick: () => wire.clearLinks() }] : []),
+    ]);
 }
 /**
  * @param {HTMLElement} body
@@ -146,29 +135,18 @@ export function appendRoomNodeWireInspector(body, wire) {
             })),
         );
     if (!wire.startWire) return;
-    const wireRow = document.createElement("div");
-    wireRow.className = "sandbox-add-row";
     const wireActive = wire.isWireActive();
-    const connectBtn = document.createElement("button");
-    connectBtn.type = "button";
-    connectBtn.className = wireActive ? "primary" : "secondary";
-    connectBtn.textContent = wireActive ? "Click a room node to link…" : "Connect…";
-    connectBtn.addEventListener("click", () => {
-        if (wireActive) wire.cancelWire();
-        else wire.startWire();
-    });
-    wireRow.appendChild(connectBtn);
-    if (links.length && wire.clearLinks) {
-        const clearBtn = document.createElement("button");
-        clearBtn.type = "button";
-        clearBtn.className = "secondary";
-        clearBtn.textContent = "Clear all";
-        clearBtn.addEventListener("click", () => {
-            wire.clearLinks();
-        });
-        wireRow.appendChild(clearBtn);
-    }
-    body.appendChild(wireRow);
+    appendActionRow(body, [
+        {
+            label: wireActive ? "Click a room node to link…" : "Connect…",
+            variant: wireActive ? "primary" : "secondary",
+            onClick: () => {
+                if (wireActive) wire.cancelWire();
+                else wire.startWire();
+            },
+        },
+        ...(links.length && wire.clearLinks ? [{ label: "Clear all", onClick: () => wire.clearLinks() }] : []),
+    ]);
 }
 /**
  * @param {HTMLElement} body

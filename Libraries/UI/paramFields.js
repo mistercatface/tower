@@ -91,6 +91,33 @@ export function appendSelectField(parent, labelText, { value, options, onChange 
     parent.appendChild(control.element);
     return control;
 }
+export function appendActionRow(parent, buttons, { className = "sandbox-add-row" } = {}) {
+    const row = document.createElement("div");
+    row.className = className;
+    for (let i = 0; i < buttons.length; i++) {
+        const spec = buttons[i];
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = spec.variant ?? "secondary";
+        btn.textContent = spec.label;
+        btn.addEventListener("click", spec.onClick);
+        row.appendChild(btn);
+    }
+    parent.appendChild(row);
+    return row;
+}
+export function appendCheckboxField(parent, label, { name, checked, onChange, className = "param-field check-inline" }) {
+    const field = document.createElement("label");
+    field.className = className;
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    if (name) setFormFieldName(input, name);
+    input.checked = checked;
+    input.addEventListener("change", () => onChange(input.checked));
+    field.append(input, document.createTextNode(` ${label}`));
+    parent.appendChild(field);
+    return field;
+}
 /**
  * @param {HTMLElement} body
  * @param {Record<string, { value: number, step?: number, min?: number, onChange: (value: number) => void }>} axes
