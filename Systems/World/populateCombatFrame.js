@@ -1,7 +1,7 @@
 import { wallContextFromState } from "../../Libraries/Spatial/query/wallContext.js";
 /**
  * Insert world props into a spatial frame for the current tick.
- * Mutates `pushables` (reused each frame).
+ * Mutates `pushables` with every sim pushable (sleeping + awake).
  *
  * @param {import("../../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore} frame
  * @param {object} state

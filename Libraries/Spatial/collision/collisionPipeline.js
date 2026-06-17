@@ -116,28 +116,28 @@ export function runCollisionPipeline(
             if (hitWorldProp) continue;
             onProjectileFactionCollisions(p, out);
         }
-    const pushables = spatialFrame._pushables;
-    const hasPushables = pushables && pushables.length > 0;
-    if (hasPushables)
-        for (let i = 0; i < pushables.length; i++) {
-            const prop = pushables[i];
+    const activePushables = spatialFrame._activePushables;
+    const hasActivePushables = activePushables.length > 0;
+    if (hasActivePushables)
+        for (let i = 0; i < activePushables.length; i++) {
+            const prop = activePushables[i];
             prop._frameDispX = prop.x - (prop._wallDispPrevX ?? prop.x);
             prop._frameDispY = prop.y - (prop._wallDispPrevY ?? prop.y);
         }
-    if (hasPushables)
+    if (hasActivePushables)
         for (let iter = 0; iter < pushableIterations; iter++) {
             spatialFrame.forEachPushablePair((p1, p2) => resolvePushablePair(p1, p2, state));
-            for (let i = 0; i < pushables.length; i++) {
-                const prop = pushables[i];
+            for (let i = 0; i < activePushables.length; i++) {
+                const prop = activePushables[i];
                 if (prop.isDead || !prop.strategy?.isPushable) continue;
                 const wallCandidates = spatialFrame.getWallCandidates(prop);
                 if (!prop.needsWallCollision() && !pushableOverlapsWallSegment(prop, wallCandidates)) continue;
                 resolveWalls(prop, spatialFrame);
             }
         }
-    if (hasPushables)
-        for (let i = 0; i < pushables.length; i++) {
-            const prop = pushables[i];
+    if (hasActivePushables)
+        for (let i = 0; i < activePushables.length; i++) {
+            const prop = activePushables[i];
             prop._wallDispPrevX = prop.x;
             prop._wallDispPrevY = prop.y;
         }
