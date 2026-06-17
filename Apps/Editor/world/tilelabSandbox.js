@@ -1,5 +1,6 @@
 import { canvasClientToWorld } from "../../../Libraries/Input/canvasPointer.js";
 import { TILELAB_SANDBOX_SPAWN_PROP } from "../state.js";
+import { createSandboxController } from "../../../Libraries/SandboxEditor/createSandboxController.js";
 import {
     createCueStrikeBehavior,
     createDragLaunchBehavior,
@@ -10,7 +11,6 @@ import {
     createRollToCursorHpaBehavior,
     createRollToCursorFlowBehavior,
     createShootBehavior,
-    createSandboxController,
     DRAG_LAUNCH_BEHAVIOR_ID,
 } from "../../../Libraries/Sandbox/index.js";
 import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";

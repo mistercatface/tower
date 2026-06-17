@@ -5,7 +5,7 @@ import { isEntityOnFloorBelt, isFloorBeltCell, resolveFloorBeltSteerTarget } fro
 import { stopLocomotionWorldProp } from "../../Props/locomotionWorldProp.js";
 export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
 /** @typedef {{ targetWorld: { x: number, y: number } | null, targetCellCol: number | null, targetCellRow: number | null, dragging: boolean, wasOnBelt: boolean, hpaNav: ReturnType<typeof createRollToCursorHpaNav> }} HpaPropRun */
-/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createRollToCursorHpaBehavior(state) {
     /** @type {Map<number, HpaPropRun>} */
     const propRuns = new Map();

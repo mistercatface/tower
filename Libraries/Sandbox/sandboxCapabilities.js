@@ -5,6 +5,23 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { FLOOR_CELL_KIND, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { syncWorldPropWeaponState } from "../Combat/worldPropWeaponState.js";
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+/**
+ * @typedef {object} SandboxBehavior
+ * @property {string} id
+ * @property {(prop: object | null, asset: object) => boolean} [supports]
+ * @property {(world: { x: number, y: number }, e: PointerEvent) => boolean} [tryCanvasInput]
+ * @property {(prop: object, world: { x: number, y: number }, e: PointerEvent) => boolean} onPointerDown
+ * @property {(prop: object, world: { x: number, y: number }, e: PointerEvent) => void} onPointerMove
+ * @property {(prop: object, e: PointerEvent) => void} onPointerUp
+ * @property {(prop: object, dt: number) => void} [tick]
+ * @property {(dt: number) => void} [tickWorld]
+ * @property {(ctx: CanvasRenderingContext2D, prop: object) => void} [drawOverlay]
+ * @property {(ctx: CanvasRenderingContext2D) => void} [drawWorldOverlay]
+ * @property {(prop: object) => import("../Render/map/drawActivePathOverlay.js").ActivePathOverlay | null} [getPathOverlay]
+ * @property {(prop: object, world: { x: number, y: number }) => void} [setGroundMoveTarget]
+ * @property {(prop: object, world: { x: number, y: number }) => void} [updateGroundMoveTarget]
+ * @property {() => void} [reset]
+ */
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
@@ -104,7 +121,7 @@ export function listFloorBeltKindOptions() {
 }
 /**
  * @param {object | null | undefined} asset
- * @param {import("./createSandboxController.js").SandboxBehavior[]} registeredBehaviors
+ * @param {import("./sandboxCapabilities.js").SandboxBehavior[]} registeredBehaviors
  * @param {object} state
  * @param {object | null | undefined} [prop]
  * @returns {string[]}

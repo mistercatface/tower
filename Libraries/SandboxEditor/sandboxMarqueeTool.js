@@ -1,6 +1,6 @@
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
-import { drawSandboxMarquee, findSandboxPropsInWorldRect } from "./drawSandboxSelection.js";
+import { drawSandboxMarquee, findSandboxPropsInWorldRect } from "../Sandbox/drawSandboxSelection.js";
 export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch, stampPropBehavior }) {
     return createMarqueeSelectTool({
         getCanvas,

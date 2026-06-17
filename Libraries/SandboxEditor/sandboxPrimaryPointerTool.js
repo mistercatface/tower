@@ -1,9 +1,9 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
-import { handleButtonPointerDown, hitTestFloorButton } from "./floorButtons.js";
-import { resolveSandboxBehaviors } from "./sandboxCapabilities.js";
-import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
+import { handleButtonPointerDown, hitTestFloorButton } from "../Sandbox/floorButtons.js";
+import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
+import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "../Sandbox/behaviors/rollToCursorHpaBehavior.js";
 export function createSandboxPrimaryPointerTools(
     state,
     session,

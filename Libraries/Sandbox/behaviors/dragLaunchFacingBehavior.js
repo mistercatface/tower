@@ -1,7 +1,7 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { applyDragLaunchVelocity, createDragLaunchInteraction, dragLaunchAimLineContextForState, getDragLaunchConfig } from "../dragLaunch.js";
 export const DRAG_LAUNCH_FACING_BEHAVIOR_ID = "dragLaunchFacing";
-/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createDragLaunchFacingBehavior(state) {
     return createDragLaunchInteraction({
         id: DRAG_LAUNCH_FACING_BEHAVIOR_ID,

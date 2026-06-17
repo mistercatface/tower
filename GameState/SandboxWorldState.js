@@ -5,7 +5,7 @@ export class SandboxWorldState {
         this.entityMeta = new SandboxEntityMetaStore();
         /** @type {object[]} worker-baked animated surface zones — see Libraries/WorldSurface/animatedSurfaceZone.js */
         this.animatedSurfaceZones = [];
-        /** @type {ReturnType<typeof import("../Libraries/Sandbox/createSandboxController.js").createSandboxController> | null} */
+        /** @type {ReturnType<typeof import("../Libraries/SandboxEditor/createSandboxController.js").createSandboxController> | null} */
         this.controller = null;
         /** @type {import("../Libraries/Sandbox/gridZoneTick.js").GridZoneSubscriptions | null} */
         this.gridZoneSubscriptions = null;

@@ -9,7 +9,7 @@ export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
 function getCueStrikeConfig(state, prop, asset) {
     return { ...DRAG_LAUNCH_DEFAULTS, ...resolveWorldPropSandboxBehavior(state, prop, asset, "cueStrike") };
 }
-/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createCueStrikeBehavior(state) {
     return createDragLaunchInteraction({
         id: CUE_STRIKE_BEHAVIOR_ID,

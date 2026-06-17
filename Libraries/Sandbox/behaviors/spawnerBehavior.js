@@ -9,7 +9,7 @@ function aimSpawnerFacing(prop, aim) {
     prop.angularVelocity = 0;
     prop.strategy.syncCollisionShape?.(prop);
 }
-/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createSpawnerBehavior(state) {
     return {
         ...createDragLaunchInteraction({

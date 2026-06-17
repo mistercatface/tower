@@ -7,7 +7,6 @@
  */
 export { bindCanvasPointers, releasePointerCapture } from "../Input/canvasPointer.js";
 export { createSandboxSession } from "./sandboxSession.js";
-export { createSandboxController } from "./createSandboxController.js";
 export { createCueStrikeBehavior, CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
 export { createDragLaunchFacingBehavior, DRAG_LAUNCH_FACING_BEHAVIOR_ID } from "./behaviors/dragLaunchFacingBehavior.js";
 export { createSpawnerBehavior, SPAWNER_BEHAVIOR_ID } from "./behaviors/spawnerBehavior.js";

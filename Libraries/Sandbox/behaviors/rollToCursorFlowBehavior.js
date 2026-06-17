@@ -3,7 +3,7 @@ import { computeFlowFieldSteering } from "../../Pathfinding/flowSteering.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 import { getRollToCursorConfig, releaseRollMoveTarget, ROLL_TO_CURSOR_FLOW_RECENTER_THRESHOLD, snapRollMoveTargetToCellCenter, steerRollToward } from "../rollToCursorMotion.js";
 export const ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID = "rollToCursorFlow";
-/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createRollToCursorFlowBehavior(state) {
     let targetWorld = null;
     let dragging = false;

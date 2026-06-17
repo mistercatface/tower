@@ -156,7 +156,7 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
  *   buildAimLineContext?: (prop: object) => ReturnType<typeof buildDragLaunchAimLineContext>,
  *   resolveAimLine?: typeof getDragLaunchAimLine,
  * }} spec
- * @returns {import("./createSandboxController.js").SandboxBehavior}
+ * @returns {import("./sandboxCapabilities.js").SandboxBehavior}
  */
 export function createDragLaunchInteraction(spec) {
     /** @type {DragLaunchAim | null} */
@@ -206,15 +206,11 @@ function dragLaunchConfigForProp(prop) {
 export function dragLaunchAimLineContextForState(state) {
     return (prop) => buildDragLaunchAimLineContext(prop, state);
 }
-/** @param {object} state @returns {import("./createSandboxController.js").SandboxBehavior} */
+/** @param {object} state @returns {import("./sandboxCapabilities.js").SandboxBehavior} */
 export function createDragLaunchBehavior(state) {
-    return createDragLaunchInteraction({
-        id: DRAG_LAUNCH_BEHAVIOR_ID,
-        getConfig: dragLaunchConfigForProp,
-        buildAimLineContext: dragLaunchAimLineContextForState(state),
-    });
+    return createDragLaunchInteraction({ id: DRAG_LAUNCH_BEHAVIOR_ID, getConfig: dragLaunchConfigForProp, buildAimLineContext: dragLaunchAimLineContextForState(state) });
 }
-/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+/** @param {object} state @returns {import("./sandboxCapabilities.js").SandboxBehavior} */
 export function createDragLaunchWaitBehavior(state) {
     return createDragLaunchInteraction({
         id: DRAG_LAUNCH_WAIT_BEHAVIOR_ID,

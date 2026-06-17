@@ -1,9 +1,9 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
-import { createSandboxSession } from "./sandboxSession.js";
-import { clearButtonLinks, drawButtonWires, listButtonLinkEndpoints, removeButtonLink } from "./buttonLinks.js";
-import { isButtonEntity } from "./buttonInput.js";
+import { createSandboxSession } from "../Sandbox/sandboxSession.js";
+import { clearButtonLinks, drawButtonWires, listButtonLinkEndpoints, removeButtonLink } from "../Sandbox/buttonLinks.js";
+import { isButtonEntity } from "../Sandbox/buttonInput.js";
 import { createButtonWireTool } from "./buttonWireTool.js";
 import { createCorridorLinkWireTool } from "./corridorLinkWireTool.js";
 import { createSandboxMarqueeTool } from "./sandboxMarqueeTool.js";
@@ -11,45 +11,28 @@ import { createWallPlaceTool } from "./wallPlaceTool.js";
 import { createSandboxDeletePointerTool } from "./sandboxDeletePointerTool.js";
 import { createSandboxPointerGestures } from "./sandboxPointerGestures.js";
 import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js";
-import { releaseButtonPointerHold } from "./floorButtons.js";
-import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
-import { spawnSandboxStartScene } from "./sandboxStartScene.js";
-import { drawSandboxLaserSights } from "./drawLaserSights.js";
-import { drawSandboxPropTileCells, drawSandboxSelectionRings } from "./drawSandboxSelection.js";
-import { drawSandboxPlacePreview, resolveSandboxPlacePreview } from "./drawSandboxPlacePreview.js";
+import { releaseButtonPointerHold } from "../Sandbox/floorButtons.js";
+import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandboxSceneSnapshot.js";
+import { spawnSandboxStartScene } from "../Sandbox/sandboxStartScene.js";
+import { drawSandboxLaserSights } from "../Sandbox/drawLaserSights.js";
+import { drawSandboxPropTileCells, drawSandboxSelectionRings } from "../Sandbox/drawSandboxSelection.js";
+import { drawSandboxPlacePreview, resolveSandboxPlacePreview } from "../Sandbox/drawSandboxPlacePreview.js";
 import { drawPlacedRoomNodes } from "../RoomGraph/index.js";
-import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "./sandboxCapabilities.js";
+import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandboxCapabilities.js";
 import { createAabb } from "../Math/Aabb2D.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
-import { drawSandboxWeaponBars } from "./drawWorldPropWeaponBars.js";
-import { resolveSandboxPathVisual, setSandboxPathVisual } from "./sandboxPathVisual.js";
-import { resolveSandboxPropVisual, setSandboxPropVisual } from "./sandboxPropVisual.js";
-import { isSandboxCameraTarget, setSandboxCameraTarget } from "./sandboxCameraTarget.js";
-import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-/**
- * @typedef {object} SandboxBehavior
- * @property {string} id
- * @property {(prop: object | null, asset: object) => boolean} [supports]
- * @property {(world: { x: number, y: number }, e: PointerEvent) => boolean} [tryCanvasInput]
- * @property {(prop: object, world: { x: number, y: number }, e: PointerEvent) => boolean} onPointerDown
- * @property {(prop: object, world: { x: number, y: number }, e: PointerEvent) => void} onPointerMove
- * @property {(prop: object, e: PointerEvent) => void} onPointerUp
- * @property {(prop: object, dt: number) => void} [tick]
- * @property {(dt: number) => void} [tickWorld]
- * @property {(ctx: CanvasRenderingContext2D, prop: object) => void} [drawOverlay]
- * @property {(ctx: CanvasRenderingContext2D) => void} [drawWorldOverlay]
- * @property {(prop: object) => import("../../Render/map/drawActivePathOverlay.js").ActivePathOverlay | null} [getPathOverlay]
- * @property {(prop: object, world: { x: number, y: number }) => void} [setGroundMoveTarget]
- * @property {(prop: object, world: { x: number, y: number }) => void} [updateGroundMoveTarget]
- * @property {() => void} [reset]
- */
+import { drawSandboxWeaponBars } from "../Sandbox/drawWorldPropWeaponBars.js";
+import { resolveSandboxPathVisual, setSandboxPathVisual } from "../Sandbox/sandboxPathVisual.js";
+import { resolveSandboxPropVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropVisual.js";
+import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
+import { getSandboxEntityMeta } from "../Sandbox/sandboxEntityMeta.js";
 /**
  * @param {object} state
  * @param {{
  *   getCanvas: () => HTMLCanvasElement,
  *   clientToWorld: (clientX: number, clientY: number) => { x: number, y: number },
  *   defaultSpawnPropId: string,
- *   behaviors: SandboxBehavior[],
+ *   behaviors: import("../Sandbox/sandboxCapabilities.js").SandboxBehavior[],
  *   defaultBehaviorId?: string,
  * }} options
  */

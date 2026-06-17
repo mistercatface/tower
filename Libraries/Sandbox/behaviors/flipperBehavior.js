@@ -124,7 +124,7 @@ function tickAllFlippers(state, dt) {
         tickFlipperWorldProp(prop, asset, dt);
     });
 }
-/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createFlipperBehavior(state) {
     return {
         id: FLIPPER_BEHAVIOR_ID,

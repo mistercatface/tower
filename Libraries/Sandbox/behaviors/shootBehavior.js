@@ -3,7 +3,7 @@ import { normalizeWeaponLoadout } from "../../Combat/equipmentLoadout.js";
 import { manualFireWorldProp } from "../../Combat/worldPropManualFire.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
 export const SHOOT_BEHAVIOR_ID = "shoot";
-/** @param {object} state @returns {import("../createSandboxController.js").SandboxBehavior} */
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createShootBehavior(state) {
     let isShooting = false;
     let aimX = 0;

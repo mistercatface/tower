@@ -1,6 +1,6 @@
 import { decelerateRoll, getRollToCursorConfig, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 export const ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID = "rollToCursorDirect";
-/** @returns {import("../createSandboxController.js").SandboxBehavior} */
+/** @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createRollToCursorDirectBehavior() {
     let targetWorld = null;
     let unitDragActive = false;

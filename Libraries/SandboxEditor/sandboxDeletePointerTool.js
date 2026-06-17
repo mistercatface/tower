@@ -1,6 +1,6 @@
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
-import { clearFloorOverlayAt } from "./floorOccupancy.js";
+import { clearFloorOverlayAt } from "../Sandbox/floorOccupancy.js";
 import { pickRoomNodeAt } from "../RoomGraph/index.js";
 export function createSandboxDeletePointerTool(state, session, { resolveGroundMove, issueGroundMove }) {
     return {
