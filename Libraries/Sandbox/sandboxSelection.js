@@ -2,18 +2,14 @@
 export function createSandboxSelection({ isLiveProp, getRoomLink }) {
     /** @type {SandboxSelection | null} */
     let selection = null;
-
     const syncPrimaryPropId = (ids) => {
-        for (const id of ids)
-            if (isLiveProp(id)) return id;
+        for (const id of ids) if (isLiveProp(id)) return id;
         return null;
     };
-
     /** @param {SandboxSelection | null} next */
     const assign = (next) => {
         selection = next;
     };
-
     /** @param {SandboxSelectInput | null} input */
     const select = (input) => {
         if (input == null) {
@@ -51,35 +47,24 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
                 const link = getRoomLink(input.linkId);
                 if (link && link.a !== nodeId && link.b !== nodeId) nodeId = null;
             }
-            assign({
-                kind: "roomLink",
-                linkId: input.linkId,
-                corridorIndex: input.linkId == null ? 0 : (input.corridorIndex ?? 0),
-                nodeId,
-            });
+            assign({ kind: "roomLink", linkId: input.linkId, corridorIndex: input.linkId == null ? 0 : (input.corridorIndex ?? 0), nodeId });
         }
     };
-
     const clearSelection = () => {
         assign(null);
     };
-
     const clearPropSelection = () => {
         if (selection?.kind === "prop") assign(null);
     };
-
     const clearFloorSelection = () => {
         if (selection?.kind === "floor") assign(null);
     };
-
     const clearWallSelection = () => {
         if (selection?.kind === "voxel" || selection?.kind === "rail") assign(null);
     };
-
     const clearRoomGraphSelection = () => {
         if (selection?.kind === "roomNode" || selection?.kind === "roomLink") assign(null);
     };
-
     const clearPalettePlaceSelection = (paletteKey) => {
         if (paletteKey.startsWith("wall:")) {
             if (selection?.kind === "prop" || selection?.kind === "floor") assign(null);
@@ -89,18 +74,13 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
             clearWallSelection();
             return;
         }
-        if (paletteKey.startsWith("gen:")) {
-            if (selection?.kind === "prop" || selection?.kind === "floor" || selection?.kind === "voxel" || selection?.kind === "rail") assign(null);
-        }
+        if (paletteKey.startsWith("gen:")) if (selection?.kind === "prop" || selection?.kind === "floor" || selection?.kind === "voxel" || selection?.kind === "rail") assign(null);
     };
-
     const primaryPropId = () => {
         if (selection?.kind !== "prop") return null;
-        for (const id of selection.ids)
-            if (isLiveProp(id)) return id;
+        for (const id of selection.ids) if (isLiveProp(id)) return id;
         return null;
     };
-
     const prunePropSelection = () => {
         if (selection?.kind !== "prop") return false;
         let changed = false;
@@ -113,17 +93,14 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         if (selection.ids.size === 0) assign(null);
         return true;
     };
-
     const removePropFromSelection = (propId) => {
         if (selection?.kind !== "prop" || !selection.ids.delete(propId)) return false;
         if (selection.ids.size === 0) assign(null);
         return true;
     };
-
     const clearDeletedPropSelection = () => {
         clearPropSelection();
     };
-
     const dropDeletedWallSelection = (col, row, side = null) => {
         if (selection?.kind === "voxel" && selection.col === col && selection.row === row) {
             assign(null);
@@ -131,29 +108,23 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         }
         if (selection?.kind === "rail" && selection.col === col && selection.row === row && (side == null || selection.side === side)) assign(null);
     };
-
     const dropDeletedRoomLinkSelection = (linkId) => {
-        if (selection?.kind === "roomLink" && selection.linkId === linkId) {
+        if (selection?.kind === "roomLink" && selection.linkId === linkId)
             if (selection.nodeId != null) assign({ kind: "roomNode", id: selection.nodeId });
             else assign(null);
-        }
     };
-
     const dropRoomGraphIfLinkMissing = (linkExists) => {
         if (selection?.kind === "roomLink" && selection.linkId != null && !linkExists(selection.linkId)) clearRoomGraphSelection();
     };
-
     const clampRoomLinkCorridorIndex = (laneCount) => {
         if (selection?.kind !== "roomLink" || selection.linkId == null) return;
         selection.corridorIndex = Math.min(selection.corridorIndex, laneCount - 1);
     };
-
     const clearRoomLinkAfterDelete = () => {
         if (selection?.kind !== "roomLink" || selection.linkId == null) return;
         if (selection.nodeId != null) assign({ kind: "roomNode", id: selection.nodeId });
         else assign(null);
     };
-
     return {
         getSelection: () => selection,
         select,
@@ -187,16 +158,12 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         matchesSceneItem(item) {
             if (item.kind === "prop") return selection?.kind === "prop" && selection.ids.has(item.propId);
             if (item.kind === "roomNode") return selection?.kind === "roomNode" && selection.id === item.roomNodeId;
-            if (item.kind === "roomLink")
-                return selection?.kind === "roomLink" && selection.linkId === item.roomLinkId && selection.corridorIndex === (item.corridorIndex ?? 0);
-            if (item.kind === "floorBelt" || item.kind === "powerSource")
-                return selection?.kind === "floor" && selection.col === item.col && selection.row === item.row;
+            if (item.kind === "roomLink") return selection?.kind === "roomLink" && selection.linkId === item.roomLinkId && selection.corridorIndex === (item.corridorIndex ?? 0);
+            if (item.kind === "floorBelt" || item.kind === "powerSource") return selection?.kind === "floor" && selection.col === item.col && selection.row === item.row;
             if (item.kind === "voxel") return selection?.kind === "voxel" && selection.col === item.col && selection.row === item.row;
             return selection?.kind === "rail" && selection.col === item.col && selection.row === item.row && selection.side === item.side;
         },
     };
 }
-
 /** @typedef {{ kind: 'prop', ids: Set<number> } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number } | { kind: 'roomNode', id: number } | { kind: 'roomLink', linkId: number | null, corridorIndex: number, nodeId: number | null }} SandboxSelection */
-
 /** @typedef {{ kind: 'prop', ids: number[] } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number } | { kind: 'roomNode', id: number } | { kind: 'roomLink', linkId: number | null, corridorIndex?: number, nodeId?: number | null }} SandboxSelectInput */

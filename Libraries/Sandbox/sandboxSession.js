@@ -190,10 +190,7 @@ export function createSandboxSession(state) {
     }
     const registry = () => state.entityRegistry;
     const meta = () => getSandboxEntityMeta(state);
-    const selection = createSandboxSelection({
-        isLiveProp: (id) => !!registry().getLive(id),
-        getRoomLink: (linkId) => getRoomLink(state, linkId),
-    });
+    const selection = createSandboxSelection({ isLiveProp: (id) => !!registry().getLive(id), getRoomLink: (linkId) => getRoomLink(state, linkId) });
     const pickSelection = (input) => {
         selection.select(input);
         notifyUi();
