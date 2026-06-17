@@ -23,7 +23,6 @@ export function applyAcceleration(body, ax, ay, dtSec) {
 export function applyPushableAcceleration(body, ax, ay, dtSec) {
     if (!body || body.isDead || body.strategy?.gravityImmune) return;
     wakePushableBody(body);
-    if (body.isSleeping) return;
     applyAcceleration(body, ax, ay, dtSec);
 }
 /**
