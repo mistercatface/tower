@@ -10,7 +10,7 @@ import { clipToViewport } from "./common/viewportUtils.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { drawWorldProp } from "./drawWorldProp.js";
 import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources } from "../Sandbox/floorOccupancy.js";
-import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
+import { elevationCameraFromViewportInto } from "../Spatial/iso/ElevationCamera.js";
 export class WorldSceneRenderer {
     /**
      * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
@@ -22,6 +22,23 @@ export class WorldSceneRenderer {
         this.visibleDrawables = [];
         this.staticGridDrawables = [];
         this.staticGridEdgeRailDrawables = [];
+        this.wallPassCamera = { viewerX: 0, viewerY: 0, cameraHeight: 0, strength: 0 };
+        this.wallCtx = {
+            viewport: null,
+            worldSurfaces: null,
+            proceduralSurfaceDraw: null,
+            gameState: null,
+            fillStyle: "",
+            bleedPx: 0,
+            wallHeight: 0,
+            wallBaseZ: 0,
+            wallCapHeight: 0,
+            cacheObj: null,
+            worldBounds: null,
+            camera: this.wallPassCamera,
+            skipWallCaps: false,
+        };
+        this.propDrawContext = { gameState: null, propRenderer: this.props, px: 0, py: 0, zoom: 1 };
     }
     /** @param {Record<string, PropDrawRecipe>} propRecipes */
     setPropRecipes(propRecipes) {
@@ -56,7 +73,11 @@ export class WorldSceneRenderer {
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
         const bounds = viewport.boundsVisibleDefault;
-        const drawContext = { gameState: input.gameState, propRenderer: this.props, px, py, zoom };
+        const drawContext = this.propDrawContext;
+        drawContext.gameState = input.gameState;
+        drawContext.px = px;
+        drawContext.py = py;
+        drawContext.zoom = zoom;
         ctx.save();
         clipToViewport(ctx, viewport);
         drawFloorOccupancyBelts(ctx, input.gameState, viewport, { px, py });
@@ -102,27 +123,35 @@ export class WorldSceneRenderer {
         for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
         for (let i = 0; i < this.staticGridEdgeRailDrawables.length; i++) visibleObjects.push(this.staticGridEdgeRailDrawables[i]);
     }
+    _bindWallDrawable(wallCtx, drawable) {
+        wallCtx.wallHeight = drawable.wallHeight;
+        wallCtx.wallBaseZ = drawable.wallBaseZ;
+        wallCtx.wallCapHeight = drawable.wallCapHeight;
+        wallCtx.cacheObj = drawable;
+    }
     draw3DBuildings(ctx, input, viewport, options = {}) {
         const skipWalls = options.skipWalls === true;
         const skipWallCaps = options.skipWallCaps === true;
         const px = viewport.x;
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
-        const drawContext = { gameState: input.gameState, propRenderer: this.props, px, py, zoom };
-        /** @type {WallDrawContext} */
-        const wallCtx = {
-            viewport,
-            worldSurfaces: input.worldSurfaces,
-            proceduralSurfaceDraw: input.proceduralSurfaceDraw,
-            gameState: input.gameState,
-            fillStyle: this.settings.floorShadow,
-            bleedPx: this.settings.wallTextureBleedPx,
-            wallHeight: 0,
-            cacheObj: null,
-            worldBounds: viewport.boundsDraw,
-            camera: elevationCameraFromViewport(viewport),
-            skipWallCaps,
-        };
+        elevationCameraFromViewportInto(this.wallPassCamera, viewport);
+        const wallCtx = this.wallCtx;
+        wallCtx.viewport = viewport;
+        wallCtx.worldSurfaces = input.worldSurfaces;
+        wallCtx.proceduralSurfaceDraw = input.proceduralSurfaceDraw;
+        wallCtx.gameState = input.gameState;
+        wallCtx.fillStyle = this.settings.floorShadow;
+        wallCtx.bleedPx = this.settings.wallTextureBleedPx;
+        wallCtx.worldBounds = viewport.boundsDraw;
+        wallCtx.skipWallCaps = skipWallCaps;
+        wallCtx.cacheObj = null;
+        wallCtx.atlasFaceId = undefined;
+        const drawContext = this.propDrawContext;
+        drawContext.gameState = input.gameState;
+        drawContext.px = px;
+        drawContext.py = py;
+        drawContext.zoom = zoom;
         ctx.save();
         clipToViewport(ctx, viewport);
         const visibleObjects = this.visibleDrawables;
@@ -134,16 +163,10 @@ export class WorldSceneRenderer {
             const obj = visibleObjects[i];
             if (obj.strategy || obj.usesKinematicsBody) drawWorldProp(ctx, obj, viewport, drawContext);
             else if (!skipWalls && obj.p1) {
-                wallCtx.wallHeight = obj.wallHeight;
-                wallCtx.wallBaseZ = obj.wallBaseZ;
-                wallCtx.wallCapHeight = obj.wallCapHeight;
-                wallCtx.cacheObj = obj;
+                this._bindWallDrawable(wallCtx, obj);
                 drawProjectedWallFace(ctx, obj.p1, obj.p2, wallCtx);
             } else if (!skipWalls && obj.innerP1x !== undefined) {
-                wallCtx.wallHeight = obj.wallHeight;
-                wallCtx.wallBaseZ = obj.wallBaseZ;
-                wallCtx.wallCapHeight = obj.wallCapHeight;
-                wallCtx.cacheObj = obj;
+                this._bindWallDrawable(wallCtx, obj);
                 drawProjectedGridEdgeRail(ctx, obj, wallCtx);
             }
         }

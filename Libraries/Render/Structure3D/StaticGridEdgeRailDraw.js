@@ -70,10 +70,6 @@ export function drawProjectedGridEdgeRail(ctx, box, wallCtx) {
     const camera = wallCtx.camera;
     const viewerX = camera.viewerX;
     const viewerY = camera.viewerY;
-    wallCtx.wallHeight = box.wallHeight;
-    wallCtx.wallBaseZ = box.wallBaseZ;
-    wallCtx.wallCapHeight = box.wallCapHeight;
-    wallCtx.cacheObj = box;
     bindRailEdge(sRailP1, sRailP2, box.innerP1x, box.innerP1y, box.innerP2x, box.innerP2y);
     if (isOutwardFaceTowardViewer((box.innerP1x + box.innerP2x) * 0.5, (box.innerP1y + box.innerP2y) * 0.5, box.inwardX, box.inwardY, viewerX, viewerY)) {
         wallCtx.atlasFaceId = "inner";
