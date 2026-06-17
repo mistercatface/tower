@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { traceWoundFlatQuad } from "../Libraries/Canvas/CanvasPath.js";
-import { forEachLosShadowQuadInRange } from "../Libraries/Render/Lighting/losShadowEdges.js";
+import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange } from "../Libraries/Render/Lighting/losShadowEdges.js";
 import { composeLosShadowMask, drawLosShadowOverlay } from "../Libraries/Render/Lighting/losShadowOverlay.js";
 import { isLosShadowStructureMode } from "../Libraries/Render/Lighting/losShadowDefaults.js";
-import { collectExposedWallEdges } from "../Libraries/Spatial/grid/gridCellTopology.js";
+import { collectExposedWallEdges, collectExposedWallEdgesInAabb } from "../Libraries/Spatial/grid/gridCellTopology.js";
 import { projectWorldPointToScreenInto } from "../Libraries/Spatial/iso/IsometricProjection.js";
 import { projectWallShadowQuadScreenInto, shadowGroundContactXY } from "../Libraries/Spatial/iso/shadowProjection.js";
 import { createMockCanvas2d, makeTestCamera, makeTestObstacleGrid, makeTestViewport, stampWallRect } from "./losShadowHarness.js";
@@ -109,13 +109,31 @@ describe("collectExposedWallEdges", () => {
         collectExposedWallEdges(grid, edges);
         assert.equal(edges.length, 6);
     });
+    it("collectExposedWallEdgesInAabb skips wall cells outside the query box", () => {
+        const grid = makeTestObstacleGrid(32, 32);
+        stampWallRect(grid, 2, 2, 1, 1);
+        stampWallRect(grid, 28, 28, 1, 1);
+        const near = [];
+        collectExposedWallEdgesInAabb(grid, 0, 0, 128, 128, near);
+        const far = [];
+        collectExposedWallEdgesInAabb(grid, 400, 400, 512, 512, far);
+        const empty = [];
+        collectExposedWallEdgesInAabb(grid, 200, 200, 280, 280, empty);
+        assert.equal(near.length, 4);
+        assert.equal(far.length, 4);
+        assert.equal(empty.length, 0);
+    });
 });
 describe("losShadowEdges", () => {
-    it("emits projected roof-anchored shadow quads for all edges in range", () => {
+    it("edgeSegmentOutsideCircle rejects segments whose AABB misses the vision disc", () => {
+        assert.equal(edgeSegmentOutsideCircle({ x1: 0, y1: 0, x2: 10, y2: 0 }, 100, 100, 50 * 50), true);
+        assert.equal(edgeSegmentOutsideCircle({ x1: 0, y1: 0, x2: 10, y2: 0 }, 5, 0, 50 * 50), false);
+    });
+    it("emits projected roof-anchored shadow quads for edges in range", () => {
         const grid = makeTestObstacleGrid(16, 16);
         stampWallRect(grid, 4, 4, 1, 1);
         const edges = [];
-        collectExposedWallEdges(grid, edges);
+        collectExposedWallEdgesInAabb(grid, 0, 0, 256, 256, edges);
         const viewport = makeTestViewport(128, 128);
         const camera = makeTestCamera(128, 128);
         const scratch = new Float32Array(8);

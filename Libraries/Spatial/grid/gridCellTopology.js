@@ -1,5 +1,6 @@
 import { packEdgeCellKey } from "../../DataStructures/CellKey.js";
 import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, createRailWallEdge, railWallThicknessPx, passageEdgeEmitsCollision } from "./CellEdge.js";
+import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { cellInRect, colRowToIndex, gridSideOutwardVector } from "./GridUtils.js";
 export function edgeNeighbor(col, row, side) {
     let nc = col;
@@ -113,30 +114,34 @@ export function resolveCellWallHeightPx(grid, col, row) {
 }
 const sExposedEdgeP1 = { x: 0, y: 0 };
 const sExposedEdgeP2 = { x: 0, y: 0 };
+function pushExposedWallEdgesForCell(grid, col, row, out) {
+    const cols = grid.cols;
+    const rows = grid.rows;
+    const idx = row * cols + col;
+    const level = grid.grid[idx];
+    if (level === 0) return;
+    const wallTopZ = resolveCellWallHeightAtIdx(grid, idx);
+    for (let side = 0; side < 4; side++) {
+        const { nc, nr } = edgeNeighbor(col, row, side);
+        let neighborLevel = 0;
+        if (cellInRect(nc, nr, cols, rows)) neighborLevel = grid.grid[nc + nr * cols];
+        if (neighborLevel >= level) continue;
+        cellEdgeEndpoints(grid, col, row, side, sExposedEdgeP1, sExposedEdgeP2, 0);
+        const outward = gridSideOutwardVector(side);
+        out.push({ x1: sExposedEdgeP1.x, y1: sExposedEdgeP1.y, x2: sExposedEdgeP2.x, y2: sExposedEdgeP2.y, nx: outward.x, ny: outward.y, wallTopZ });
+    }
+}
 /** Perimeter edges where a filled wall cell meets lower or empty neighbor. */
 export function collectExposedWallEdges(grid, out) {
     out.length = 0;
-    const cols = grid.cols;
-    const rows = grid.rows;
-    const cells = grid.grid;
-    for (let row = 0; row < rows; row++) {
-        const rowOffset = row * cols;
-        for (let col = 0; col < cols; col++) {
-            const idx = rowOffset + col;
-            const level = cells[idx];
-            if (level === 0) continue;
-            const wallTopZ = resolveCellWallHeightAtIdx(grid, idx);
-            for (let side = 0; side < 4; side++) {
-                const { nc, nr } = edgeNeighbor(col, row, side);
-                let neighborLevel = 0;
-                if (cellInRect(nc, nr, cols, rows)) neighborLevel = cells[nc + nr * cols];
-                if (neighborLevel >= level) continue;
-                cellEdgeEndpoints(grid, col, row, side, sExposedEdgeP1, sExposedEdgeP2, 0);
-                const outward = gridSideOutwardVector(side);
-                out.push({ x1: sExposedEdgeP1.x, y1: sExposedEdgeP1.y, x2: sExposedEdgeP2.x, y2: sExposedEdgeP2.y, nx: outward.x, ny: outward.y, wallTopZ });
-            }
-        }
-    }
+    for (let row = 0; row < grid.rows; row++) for (let col = 0; col < grid.cols; col++) pushExposedWallEdgesForCell(grid, col, row, out);
+}
+/** Same as collectExposedWallEdges but only visits wall cells overlapping the world AABB. */
+export function collectExposedWallEdgesInAabb(grid, minX, minY, maxX, maxY, out) {
+    out.length = 0;
+    forEachObstacleGridCellInAabb(grid, { minX, minY, maxX, maxY }, (col, row) => {
+        pushExposedWallEdgesForCell(grid, col, row, out);
+    });
 }
 export function cellToGlobalColRow(grid, col, row) {
     const cellSize = grid.cellSize;

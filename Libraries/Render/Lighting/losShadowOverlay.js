@@ -1,12 +1,12 @@
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 import { blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase } from "../../Canvas/maskCompositor.js";
 import { traceWoundFlatQuad } from "../../Canvas/CanvasPath.js";
-import { collectExposedWallEdges } from "../../Spatial/grid/gridCellTopology.js";
+import { collectExposedWallEdgesInAabb } from "../../Spatial/grid/gridCellTopology.js";
 import { elevationCameraFromViewport } from "../../Spatial/iso/ElevationCamera.js";
 import { LIBRARY_DEFAULT_CAMERA_HEIGHT } from "../../Spatial/iso/perspectiveDefaults.js";
 import { LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT, LOS_SHADOW_OVERLAY_ALPHA, LOS_SHADOW_VISION_TILES_DEFAULT } from "./losShadowDefaults.js";
 import { forEachLosShadowQuadInRange } from "./losShadowEdges.js";
-const sEdgeCache = { grid: null, wallGridRevision: -1, cols: 0, rows: 0, edges: [] };
+const sEdgeScratch = [];
 const sQuadScratch = new Float32Array(8);
 let sOverlayCanvas = null;
 let sOverlayCtx = null;
@@ -17,19 +17,6 @@ function ensureOverlayBuffer(width, height) {
     }
     resizeOffscreenCanvas(sOverlayCanvas, width, height);
     return sOverlayCtx;
-}
-function syncEdgeCache(grid) {
-    if (sEdgeCache.grid === grid && sEdgeCache.wallGridRevision === grid.wallGridRevision && sEdgeCache.cols === grid.cols && sEdgeCache.rows === grid.rows) return sEdgeCache.edges;
-    collectExposedWallEdges(grid, sEdgeCache.edges);
-    sEdgeCache.grid = grid;
-    sEdgeCache.wallGridRevision = grid.wallGridRevision;
-    sEdgeCache.cols = grid.cols;
-    sEdgeCache.rows = grid.rows;
-    return sEdgeCache.edges;
-}
-export function invalidateLosShadowEdgeCache() {
-    sEdgeCache.wallGridRevision = -1;
-    sEdgeCache.edges.length = 0;
 }
 function resolveLightZ(obstacleGrid, options) {
     if (options.lightZ != null) return options.lightZ;
@@ -57,12 +44,12 @@ export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obs
     const range = visionTiles * obstacleGrid.cellSize;
     const screenRange = range * (viewport.zoom ?? 1);
     const screenLight = viewport.worldToScreen(lightX, lightY);
-    const edges = syncEdgeCache(obstacleGrid);
+    collectExposedWallEdgesInAabb(obstacleGrid, lightX - range, lightY - range, lightX + range, lightY + range, sEdgeScratch);
     fillMaskBase(overlayCtx, canvasW, canvasH, `rgba(0,0,0,${overlayAlpha})`);
     cutOutRadialSoftDisc(overlayCtx, screenLight.x, screenLight.y, screenRange);
     addMaskPathFill(overlayCtx, `rgba(0,0,0,${overlayAlpha})`, (pathCtx) => {
         let hasShadows = false;
-        forEachLosShadowQuadInRange(edges, lightX, lightY, range, lightZ, viewport, camera, sQuadScratch, (flatVerts, vertCount) => {
+        forEachLosShadowQuadInRange(sEdgeScratch, lightX, lightY, range, lightZ, viewport, camera, sQuadScratch, (flatVerts, vertCount) => {
             traceWoundFlatQuad(pathCtx, flatVerts, vertCount);
             hasShadows = true;
         });
