@@ -25,6 +25,11 @@ function createSandboxBehaviors(state) {
 }
 /** @param {import("../state.js").TileLabGameState} state @param {{ playMode?: boolean }} [options] */
 export function mountSandboxController(state, { playMode = false } = {}) {
+    if (playMode) {
+        state.editor.showSelectionRings = false;
+        state.editor.showPropTileCells = false;
+        state.editor.showRoomNodesAlways = false;
+    }
     const getCanvas = () => state.editor.canvas;
     state.sandbox.controller = createSandboxController(state, {
         getCanvas,
@@ -35,10 +40,5 @@ export function mountSandboxController(state, { playMode = false } = {}) {
     });
     const controller = state.sandbox.controller;
     controller.register();
-    if (playMode) {
-        controller.setShowSelectionRings(false);
-        controller.setShowPropTileCells(false);
-        controller.setShowRoomNodesAlways(false);
-    }
     return controller;
 }

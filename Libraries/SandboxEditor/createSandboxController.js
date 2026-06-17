@@ -44,9 +44,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     /** @type {(() => void) | null} */
     let unbindKeyUp = null;
     let pKeyHeld = false;
-    let showSelectionRings = true;
-    let showPropTileCells = false;
-    let showRoomNodesAlways = false;
     /** @type {{ x: number, y: number } | null} */
     let placePreviewWorld = null;
     const entityMeta = () => getSandboxEntityMeta(state);
@@ -209,18 +206,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         clearPropSelection: () => {
             exitWireModes();
             session.clearPropSelection();
-        },
-        getShowSelectionRings: () => showSelectionRings,
-        setShowSelectionRings: (enabled) => {
-            showSelectionRings = enabled;
-        },
-        getShowPropTileCells: () => showPropTileCells,
-        setShowPropTileCells: (enabled) => {
-            showPropTileCells = enabled;
-        },
-        getShowRoomNodesAlways: () => showRoomNodesAlways,
-        setShowRoomNodesAlways: (enabled) => {
-            showRoomNodesAlways = enabled;
         },
         deleteSelectedProps: () => session.deleteSelectedProps(),
         setSelectedPropId: (id) => {
@@ -460,7 +445,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
                 selectedLinkId: session.getSelectedRoomLinkId(),
                 wireFromNodeId: corridorLinkWireTool.getFromNodeId(),
                 wireCursor: corridorLinkWireTool.getCursor(),
-                showRoomNodesAlways,
+                showRoomNodesAlways: state.editor.showRoomNodesAlways,
                 wireModeActive: corridorLinkWireTool.isActive(),
             });
             drawButtonWires(ctx, state);
@@ -471,7 +456,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             const { selectedProps } = selectionDrawState();
             drawSandboxSelectionRings(ctx, {
                 selectedProps,
-                showRings: showSelectionRings,
+                showRings: state.editor.showSelectionRings,
                 selectedFloorCell: session.getSelectedFloorCell(),
                 selectedVoxelCell: session.getSelectedVoxelCell(),
                 selectedRailEdge: session.getSelectedRailEdge(),
@@ -480,7 +465,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             });
         },
         drawPropTileCells(ctx) {
-            drawSandboxPropTileCells(ctx, { show: showPropTileCells, grid: state.obstacleGrid, worldProps: state.worldProps });
+            drawSandboxPropTileCells(ctx, { show: state.editor.showPropTileCells, grid: state.obstacleGrid, worldProps: state.worldProps });
         },
         drawMarqueeOverlay(ctx) {
             marqueeTool.drawOverlay(ctx);

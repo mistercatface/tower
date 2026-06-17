@@ -139,21 +139,6 @@ export function mountEditorUi(state, { playbackHandlers }) {
     });
     bindVectorPropsToolbar(state, () => {});
     syncWorldRenderModeUi(state);
-    const selectionRingsInput = document.getElementById("showSelectionRingsInput");
-    selectionRingsInput.checked = state.sandbox.controller.getShowSelectionRings();
-    selectionRingsInput.addEventListener("change", (e) => {
-        state.sandbox.controller.setShowSelectionRings(/** @type {HTMLInputElement} */ (e.target).checked);
-    });
-    const propTileCellsInput = document.getElementById("showPropTileCellsInput");
-    propTileCellsInput.checked = state.sandbox.controller.getShowPropTileCells();
-    propTileCellsInput.addEventListener("change", (e) => {
-        state.sandbox.controller.setShowPropTileCells(/** @type {HTMLInputElement} */ (e.target).checked);
-    });
-    const roomNodesAlwaysInput = document.getElementById("showRoomNodesAlwaysInput");
-    roomNodesAlwaysInput.checked = state.sandbox.controller.getShowRoomNodesAlways();
-    roomNodesAlwaysInput.addEventListener("change", (e) => {
-        state.sandbox.controller.setShowRoomNodesAlways(/** @type {HTMLInputElement} */ (e.target).checked);
-    });
     fitLabStageToView(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");
     const { main } = EDITOR_CANVAS_DEFAULTS;
