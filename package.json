@@ -1,9 +1,9 @@
 {
     "type": "module",
     "scripts": {
-        "test": "node --test tests/corridorWidthOne.test.js tests/corridorMultiLane.test.js tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/losShadow.test.js",
+        "test": "node --test tests/corridorWidthOne.test.js tests/corridorMultiLane.test.js tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/losShadow.test.js tests/maskCompositor.test.js",
         "test:corridor": "node --test tests/corridorWidthOne.test.js",
-        "test:math": "node --test tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/losShadow.test.js",
+        "test:math": "node --test tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/losShadow.test.js tests/maskCompositor.test.js",
         "test:losShadow": "node --test tests/losShadow.test.js"
     }
 }

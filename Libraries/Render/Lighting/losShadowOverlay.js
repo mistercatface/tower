@@ -1,4 +1,5 @@
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
+import { blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase } from "../../Canvas/maskCompositor.js";
 import { traceWoundFlatQuad } from "../../Canvas/CanvasPath.js";
 import { collectExposedWallEdges } from "../../Spatial/grid/gridCellTopology.js";
 import { elevationCameraFromViewport } from "../../Spatial/iso/ElevationCamera.js";
@@ -57,30 +58,16 @@ export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obs
     const screenRange = range * (viewport.zoom ?? 1);
     const screenLight = viewport.worldToScreen(lightX, lightY);
     const edges = syncEdgeCache(obstacleGrid);
-    overlayCtx.setTransform(1, 0, 0, 1, 0, 0);
-    overlayCtx.globalCompositeOperation = "source-over";
-    overlayCtx.globalAlpha = 1;
-    overlayCtx.clearRect(0, 0, canvasW, canvasH);
-    overlayCtx.fillStyle = `rgba(0,0,0,${overlayAlpha})`;
-    overlayCtx.fillRect(0, 0, canvasW, canvasH);
-    overlayCtx.globalCompositeOperation = "destination-out";
-    const gradient = overlayCtx.createRadialGradient(screenLight.x, screenLight.y, 0, screenLight.x, screenLight.y, screenRange);
-    gradient.addColorStop(0, "rgba(255,255,255,1)");
-    gradient.addColorStop(0.92, "rgba(255,255,255,0.85)");
-    gradient.addColorStop(1, "rgba(255,255,255,0)");
-    overlayCtx.fillStyle = gradient;
-    overlayCtx.beginPath();
-    overlayCtx.arc(screenLight.x, screenLight.y, screenRange, 0, Math.PI * 2);
-    overlayCtx.fill();
-    overlayCtx.globalCompositeOperation = "source-over";
-    overlayCtx.fillStyle = `rgba(0,0,0,${overlayAlpha})`;
-    overlayCtx.beginPath();
-    let hasShadows = false;
-    forEachLosShadowQuadInRange(edges, lightX, lightY, range, lightZ, viewport, camera, sQuadScratch, (flatVerts, vertCount) => {
-        traceWoundFlatQuad(overlayCtx, flatVerts, vertCount);
-        hasShadows = true;
+    fillMaskBase(overlayCtx, canvasW, canvasH, `rgba(0,0,0,${overlayAlpha})`);
+    cutOutRadialSoftDisc(overlayCtx, screenLight.x, screenLight.y, screenRange);
+    addMaskPathFill(overlayCtx, `rgba(0,0,0,${overlayAlpha})`, (pathCtx) => {
+        let hasShadows = false;
+        forEachLosShadowQuadInRange(edges, lightX, lightY, range, lightZ, viewport, camera, sQuadScratch, (flatVerts, vertCount) => {
+            traceWoundFlatQuad(pathCtx, flatVerts, vertCount);
+            hasShadows = true;
+        });
+        return hasShadows;
     });
-    if (hasShadows) overlayCtx.fill();
 }
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -93,10 +80,5 @@ export function drawLosShadowOverlay(ctx, viewport, obstacleGrid, options = {}) 
     const canvasH = ctx.canvas.height;
     const overlayCtx = ensureOverlayBuffer(canvasW, canvasH);
     composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obstacleGrid, options);
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalCompositeOperation = "source-over";
-    ctx.globalAlpha = 1;
-    ctx.drawImage(sOverlayCanvas, 0, 0);
-    ctx.restore();
+    blitMaskOverlay(ctx, sOverlayCanvas);
 }
