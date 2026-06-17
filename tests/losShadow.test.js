@@ -99,7 +99,7 @@ describe("losShadowEdges", () => {
         collectLosShadowEdges(grid, edges);
         assert.equal(edges.length, 6);
     });
-    it("emits projected roof-anchored shadow quads for edges facing the light", () => {
+    it("emits projected roof-anchored shadow quads for all edges in range", () => {
         const grid = makeTestObstacleGrid(16, 16);
         stampWallRect(grid, 4, 4, 1, 1);
         const edges = [];
@@ -111,8 +111,7 @@ describe("losShadowEdges", () => {
         forEachLosShadowQuadInRange(edges, 72, 40, 80, 16, viewport, camera, scratch, (flat, count) => {
             quads.push(Array.from(flat.slice(0, count * 2)));
         });
-        assert.ok(quads.length >= 1);
-        assert.ok(quads.length < edges.length);
+        assert.equal(quads.length, edges.length);
     });
 });
 describe("isLosShadowStructureMode", () => {

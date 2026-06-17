@@ -26,15 +26,7 @@ export function collectLosShadowEdges(grid, out) {
                 if (neighborLevel >= level) continue;
                 cellEdgeEndpoints(grid, col, row, side, sP1, sP2, 0);
                 const outward = gridSideOutwardVector(side);
-                out.push({
-                    x1: sP1.x,
-                    y1: sP1.y,
-                    x2: sP2.x,
-                    y2: sP2.y,
-                    nx: outward.x,
-                    ny: outward.y,
-                    wallTopZ,
-                });
+                out.push({ x1: sP1.x, y1: sP1.y, x2: sP2.x, y2: sP2.y, nx: outward.x, ny: outward.y, wallTopZ });
             }
         }
     }
@@ -67,8 +59,7 @@ export function forEachLosShadowQuadInRange(edges, lightX, lightY, range, lightZ
         const dx = lightX - closestX;
         const dy = lightY - closestY;
         if (dx * dx + dy * dy > rSq) continue;
-        if (edge.nx * (midX - lightX) + edge.ny * (midY - lightY) <= 0) continue;
-        projectWallShadowQuadScreenInto(quadScratch, viewport, camera, lightX, lightY, lightZ, edge.x1, edge.y1, edge.x2, edge.y2, edge.wallTopZ);
+        projectWallShadowQuadScreenInto(quadScratch, viewport, camera, lightX, lightY, lightZ, edge.x1, edge.y1, edge.x2, edge.y2, edge.wallTopZ, range * 2);
         emitQuad(quadScratch, 4);
     }
 }
