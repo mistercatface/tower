@@ -2,10 +2,9 @@ import { SURFACE_PROFILE_ID } from "../../../Config/procedural/profileIds.js";
 import { initTileLabWorld } from "../world/mapWorld.js";
 import { mountGameSandbox } from "../world/gameSandbox.js";
 import { runGameLaunch } from "../../../Libraries/Game/runGameLaunch.js";
-import { drawLabFrame, mountLabFrameRefresh, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode } from "./preview.js";
+import { drawLabFrame, mountLabFrameRefresh, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, setLabVignetteEnabled } from "./preview.js";
 import { seedRuntimeLabProfile } from "./profile/ProfileEditor.js";
-import { fitLabStageToView } from "./labViewport.js";
-import { fitGameCanvasToStage, mountGameViewport } from "./gameViewport.js";
+import { fitGameCanvasToStage, fitGameStageToView, mountGameViewport } from "./gameViewport.js";
 const GAME_SHELL_HTML = `
 <div id="gameStage" class="game-stage">
     <div class="game-stage-inner"></div>
@@ -29,6 +28,7 @@ export async function mountGameShell(state, launcher) {
     state.editor.showMapOverview = false;
     state.editor.showAnimationPreview = false;
     applyLabWorldRenderMode(state);
+    setLabVignetteEnabled(true);
     mountLabFrameRefresh(canvas);
     seedRuntimeLabProfile(SURFACE_PROFILE_ID.tomatoGarden);
     await pushEditorProfile(state);
@@ -36,7 +36,7 @@ export async function mountGameShell(state, launcher) {
     tryLockPortraitOrientation(launcher.lockPortraitOrientation);
     const syncCanvas = () => {
         fitGameCanvasToStage(state);
-        fitLabStageToView(state);
+        fitGameStageToView(state);
         drawLabFrame(state);
     };
     syncCanvas();
@@ -49,5 +49,5 @@ export async function mountGameShell(state, launcher) {
 /** @param {import("../state.js").TileLabGameState} state */
 export function resizeGameShell(state) {
     fitGameCanvasToStage(state);
-    fitLabStageToView(state);
+    fitGameStageToView(state);
 }

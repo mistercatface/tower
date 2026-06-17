@@ -49,6 +49,10 @@ let lastProfileBakeKey = "";
 let labViewDirty = true;
 let showLabVignette = false;
 let showLabPathDebug = false;
+export function setLabVignetteEnabled(enabled) {
+    showLabVignette = enabled;
+    markLabViewDirty();
+}
 function markLabViewDirty() {
     labViewDirty = true;
 }

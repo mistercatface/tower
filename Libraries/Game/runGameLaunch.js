@@ -1,5 +1,5 @@
 import { focusBlueBallAction, refreshWorldAfterGameLaunch, snapCameraToTargetAction, stampBeltCratePuzzleAction } from "./gameLaunchActions.js";
-import { fitLabStageToView } from "../../Apps/Editor/ui/labViewport.js";
+import { fitGameStageToView } from "../../Apps/Editor/ui/gameViewport.js";
 /** @typedef {import("./gameLaunchActions.js").GameLaunchContext} GameLaunchContext */
 /** @type {Record<string, (state: object, ctx: GameLaunchContext) => void | Promise<void>>} */
 const GAME_LAUNCH_ACTIONS = {
@@ -7,7 +7,7 @@ const GAME_LAUNCH_ACTIONS = {
     focusBlueBall: focusBlueBallAction,
     snapCameraToTarget: snapCameraToTargetAction,
     fitPlayViewport: (state) => {
-        fitLabStageToView(state);
+        fitGameStageToView(state);
     },
 };
 /** @param {object} state @param {import("./gameLaunchers.js").GameLauncher} launcher */
