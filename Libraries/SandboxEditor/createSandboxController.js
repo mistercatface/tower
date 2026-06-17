@@ -32,13 +32,12 @@ import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
  *   getCanvas: () => HTMLCanvasElement,
  *   clientToWorld: (clientX: number, clientY: number) => { x: number, y: number },
  *   behaviors: import("../Sandbox/sandboxCapabilities.js").SandboxBehavior[],
- *   defaultBehaviorId?: string,
  * }} options
  */
-export function createSandboxController(state, { getCanvas, clientToWorld, behaviors, defaultBehaviorId }) {
+export function createSandboxController(state, { getCanvas, clientToWorld, behaviors }) {
     const session = createSandboxSession(state);
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
-    let spawnBehaviorId = defaultBehaviorId ?? behaviors[0]?.id ?? "";
+    let spawnBehaviorId = behaviors[0]?.id ?? "";
     /** @type {(() => void) | null} */
     let unbindPointers = null;
     /** @type {(() => void) | null} */
@@ -80,7 +79,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         if (allowed.length === 0) return;
         entityMeta().setActiveBehaviorId(prop.id, clampBehaviorId(spawnBehaviorId, allowed));
     };
-    clampSpawnBehavior();
     const MARQUEE_AABB = createAabb();
     const gestures = createSandboxPointerGestures({ getCanvas, session, clientToWorld });
     const buttonWireTool = createButtonWireTool(state, session);
@@ -185,11 +183,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     };
     const controller = {
         session,
-        getSpawnPropId: () => session.getSpawnPropId(),
-        setSpawnPropId: (id) => {
-            session.setSpawnPropId(id);
-            clampSpawnBehavior();
-        },
         getSpawnFaction: () => session.getSpawnFaction(),
         setSpawnFaction: (faction) => session.setSpawnFaction(faction),
         getSpawnRoomNodeCols: () => session.getSpawnRoomNodeCols(),
@@ -304,6 +297,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.setPlacePaletteKey(key);
             if (prevKey === key) return;
             if (key.startsWith("prop:")) {
+                clampSpawnBehavior();
                 const asset = getPropAsset(key.slice(5));
                 if (isRoomLinkSpawnAsset(asset)) {
                     enterCorridorLinkWireMode();
@@ -375,10 +369,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         sync: session.sync,
         getState: () => session.getState(),
         setUiSync: (fn) => session.setUiSync(fn),
-        getSpawnBehaviorId: () => {
-            clampSpawnBehavior();
-            return spawnBehaviorId;
-        },
+        getSpawnBehaviorId: () => spawnBehaviorId,
         setSpawnBehaviorId: (id) => {
             spawnBehaviorId = clampBehaviorId(id, listSpawnBehaviors());
             session.sync();

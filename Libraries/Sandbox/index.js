@@ -5,7 +5,6 @@
  * `Libraries/Combat/` (`worldPropManualFire`, `worldPropWeaponState`, `spawnProjectiles`).
  * Behaviors here only wire pointer input and tick hooks to those modules.
  */
-export { createSandboxSession } from "./sandboxSession.js";
 export { createCueStrikeBehavior, CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
 export { createDragLaunchFacingBehavior, DRAG_LAUNCH_FACING_BEHAVIOR_ID } from "./behaviors/dragLaunchFacingBehavior.js";
 export { createSpawnerBehavior, SPAWNER_BEHAVIOR_ID } from "./behaviors/spawnerBehavior.js";
@@ -31,7 +30,7 @@ export {
     SANDBOX_PROP_VISUAL_OPTIONS,
     SANDBOX_PROP_VISUAL_LABELS,
 } from "./sandboxPropVisual.js";
-export { isSandboxCameraTarget, setSandboxCameraTarget, findSandboxCameraTargetWorldProp, tickSandboxCameraFollow } from "./sandboxCameraTarget.js";
+export { isSandboxCameraTarget, setSandboxCameraTarget, tickSandboxCameraFollow } from "./sandboxCameraTarget.js";
 export { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 export {
     getSandboxBehaviorLabel,
@@ -47,7 +46,6 @@ export { evaluateInputGates, evaluateInputGateRule, isEntityAtRest, isEntityAsle
 export { resolveWorldPropSandboxBehavior, resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
 export { spawnPoolRack } from "./spawnPoolRack.js";
 export { SANDBOX_SCENE_SCHEMA_VERSION, applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "./sandboxSceneSnapshot.js";
-export { buildSandboxStartSceneDoc, spawnSandboxStartScene } from "./sandboxStartScene.js";
 export {
     bakeAnimatedSurfaceFlipbook,
     releaseAnimatedSurfaceFlipbook,

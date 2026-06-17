@@ -71,7 +71,6 @@ import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { cellIsStaticWall, forcefieldEdgeAt, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
 /** @param {object} state */
 export function createSandboxSession(state) {
-    let spawnPropId = "";
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
     let selectedPropIds = new Set();
     let selectedPropId = null;
@@ -107,6 +106,7 @@ export function createSandboxSession(state) {
     let nextPlacementSeq = 1;
     /** @type {Map<string, number>} */
     const placementSeqByKey = new Map();
+    const spawnPropIdFromPalette = () => (placePaletteKey.startsWith("prop:") ? placePaletteKey.slice(5) : "");
     const propPlacementKey = (id) => `prop:${id}`;
     const floorPlacementKey = (col, row) => `floor:${col},${row}`;
     const voxelPlacementKey = (col, row) => `voxel:${col},${row}`;
@@ -323,6 +323,7 @@ export function createSandboxSession(state) {
     };
     /** @returns {boolean} */
     const spawnAt = (worldX, worldY) => {
+        const spawnPropId = spawnPropIdFromPalette();
         const asset = getPropAsset(spawnPropId);
         if (!asset) return false;
         if (isGridFloorBeltSpawnAsset(asset)) {
@@ -378,11 +379,7 @@ export function createSandboxSession(state) {
         return spawned != null;
     };
     return {
-        getSpawnPropId: () => spawnPropId,
-        setSpawnPropId: (id) => {
-            spawnPropId = id;
-            if (!placePaletteKey.startsWith("wall:")) placePaletteKey = `prop:${id}`;
-        },
+        getSpawnPropId: spawnPropIdFromPalette,
         getSpawnFaction: () => spawnFaction,
         setSpawnFaction: (faction) => {
             spawnFaction = faction;
@@ -575,10 +572,8 @@ export function createSandboxSession(state) {
                 selectedPropIds.clear();
                 selectedPropId = null;
                 dropFloorSelection();
-            } else if (key.startsWith("prop:")) {
-                spawnPropId = key.slice(5);
-                dropWallSelection();
-            } else if (key.startsWith("gen:")) {
+            } else if (key.startsWith("prop:")) dropWallSelection();
+            else if (key.startsWith("gen:")) {
                 selectedPropIds.clear();
                 selectedPropId = null;
                 dropFloorSelection();
