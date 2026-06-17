@@ -14,7 +14,7 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
     const cameraHeight = overrides.cameraHeight ?? CAMERA_HEIGHT;
     const cellSize = overrides.cellSize ?? gridSettings.cellSize;
     const pixelsPerCell = overrides.pixelsPerCell ?? surfaceDefaults.pixelsPerCell;
-    const texelResolution = pixelsPerCell / cellSize;
+    const texelResolution = 16 / cellSize;
     const wallSurface = resolveWallSurface(overrides, cellSize);
     return createWorldSurfaceSettings({
         cellsPerChunk: surfaceDefaults.cellsPerChunk,
