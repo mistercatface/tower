@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { applyShardGeometryToProp, canFracturePropSplit, fracturePropOnImpact } from "../Libraries/Props/propFracture.js";
+import { applyShardGeometryToProp, canFracturePropSplit, fracturePropOnImpact, tryFractureKineticContact } from "../Libraries/Props/propFracture.js";
 import {
     GLASS_MAX_SHARDS_PER_SHATTER,
     GLASS_MAX_SLIVER_ASPECT,
@@ -16,6 +16,8 @@ import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
+import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 
 loadPropAssets();
 
@@ -58,6 +60,54 @@ function analyzeShards(shards, parentArea) {
         minThin = Math.min(minThin, metrics.thin);
     }
     return { totalArea, maxAspect, minThin, count: shards.length };
+}
+
+function createFractureTestState(initialProps) {
+    const worldProps = initialProps.slice();
+    return {
+        worldProps,
+        sandbox: { entityMeta: { delete() {} } },
+        entityRegistry: {
+            membershipGen: 0,
+            register(_kind, prop) {
+                if (!worldProps.includes(prop)) worldProps.push(prop);
+            },
+            unregister(prop) {
+                const index = worldProps.indexOf(prop);
+                if (index >= 0) worldProps.splice(index, 1);
+            },
+        },
+    };
+}
+
+function setupGlassPairFrame(props) {
+    const frame = new KineticSpatialFrame(50);
+    frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
+    for (let i = 0; i < props.length; i++) {
+        frame.insertEntity(props[i], i);
+        props[i]._physId = i;
+    }
+    frame._kineticBodies = props.slice();
+    frame._activeKineticBodies = props.slice();
+    return frame;
+}
+
+function liveGlassPropCount(state) {
+    return state.worldProps.filter((prop) => !prop.isDead).length;
+}
+
+function makeOverlappingGlassShards() {
+    const shards = shatterGlassFootprint(20, 14, 0, 0, 40, deterministicRandom);
+    const a = new WorldProp(0, 0, "glass_pane", 0);
+    const b = new WorldProp(8, 0, "glass_pane", 0);
+    applyShardGeometryToProp(a, shards[0]);
+    applyShardGeometryToProp(b, shards[1] ?? shards[0]);
+    a._glassFractureCooldown = 0;
+    b._glassFractureCooldown = 0;
+    a.vx = 120;
+    b.vx = -120;
+    assert.ok(SatCollision.checkCollision(a, a.getShape(), b, b.getShape()));
+    return { a, b };
 }
 
 describe("glass fracture", () => {
@@ -181,5 +231,41 @@ describe("glass fracture", () => {
         prop.spawnGlassShatter(state, fracture, { admitKineticProp() {}, entityGrid: { remove() {} } });
         assert.ok(spawned.length >= 2);
         for (const frag of spawned) assert.ok(frag._glassFractureCooldown > 0);
+    });
+
+    it("glass shard on glass shard does not reproduce on kinetic contact", () => {
+        const { a, b } = makeOverlappingGlassShards();
+        const state = createFractureTestState([a, b]);
+        const frame = setupGlassPairFrame([a, b]);
+        tryFractureKineticContact(state, a, b, 4, 0, 240, frame);
+        assert.equal(liveGlassPropCount(state), 2);
+        assert.equal(a.isDead, false);
+        assert.equal(b.isDead, false);
+    });
+
+    it("resolveKineticContactPass keeps glass shard count stable across substeps", () => {
+        const { a, b } = makeOverlappingGlassShards();
+        const state = createFractureTestState([a, b]);
+        const frame = setupGlassPairFrame([a, b]);
+        for (let step = 0; step < 8; step++) {
+            resolveKineticContactPass(frame, state);
+            assert.equal(liveGlassPropCount(state), 2, `reproduced on substep ${step}`);
+        }
+    });
+
+    it("glass shard still shatters against a non-glass kinetic prop", () => {
+        const shards = shatterGlassFootprint(24, 18, 0, 0, 40, deterministicRandom);
+        const glass = new WorldProp(0, 0, "glass_pane", 0);
+        const crate = new WorldProp(14, 0, "crate", 0);
+        applyShardGeometryToProp(glass, shards[0]);
+        glass._glassFractureCooldown = 0;
+        glass.vx = 120;
+        crate.vx = -40;
+        const state = createFractureTestState([glass, crate]);
+        const frame = setupGlassPairFrame([glass, crate]);
+        assert.ok(SatCollision.checkCollision(glass, glass.getShape(), crate, crate.getShape()));
+        resolveKineticContactPass(frame, state);
+        assert.ok(liveGlassPropCount(state) > 2);
+        assert.equal(glass.isDead, true);
     });
 });

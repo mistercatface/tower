@@ -123,8 +123,10 @@ export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relat
     const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
     for (let i = 0; i < 2; i++) {
         const prop = i === 0 ? bodyA : bodyB;
+        const other = i === 0 ? bodyB : bodyA;
         if (!canFracturePropSplit(prop)) continue;
         if (prop._glassFractureCooldown > 0) continue;
+        if (isGlassFracture(prop) && isGlassFracture(other)) continue;
         const threshold = isGlassFracture(prop) ? GLASS_FRACTURE_IMPACT_THRESHOLD : FRACTURE_IMPACT_THRESHOLD;
         if (force < threshold) continue;
         const fracture = fracturePropOnImpact(prop, hitX, hitY, force);
