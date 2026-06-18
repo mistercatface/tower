@@ -1,5 +1,6 @@
 import { distanceBetweenAnchors } from "../Motion/constraintAnchors.js";
 import { addDistanceConstraint, listKineticConstraints, removeKineticConstraint } from "../Motion/kineticConstraints.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { appendOverlayWireLink } from "../Render/overlays/overlayCommands.js";
@@ -93,6 +94,15 @@ export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {
     for (let i = 0; i < propIds.length; i++) if (entityMeta.isChainHead(propIds[i])) return state.entityRegistry.getLive(propIds[i]);
     for (let i = 0; i < propIds.length; i++) if (isChainSteeringTarget(state, entityMeta, propIds[i])) return state.entityRegistry.getLive(propIds[i]);
     return null;
+}
+export function findChainHeadProp(state) {
+    const meta = getSandboxEntityMeta(state);
+    let head = null;
+    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+        if (prop.isDead || !meta.isChainHead(prop.id)) return;
+        head = prop;
+    });
+    return head;
 }
 export function appendChainLinkWireOverlayCommands(out, state, { wireFromPropId = null, wireCursor = null } = {}) {
     if (wireFromPropId != null && wireCursor) {

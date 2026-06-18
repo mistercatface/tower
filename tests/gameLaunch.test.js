@@ -19,12 +19,13 @@ describe("game launchers", () => {
         assert.equal(launcher.hideEditor, true);
         assert.deepEqual(launcher.actions, ["stampBeltCratePuzzle", "focusBlueBall", "snapCameraToTarget", "fitPlayViewport"]);
     });
-    it("registers snake with expected start actions", () => {
+    it("registers snake with setup hook and fit viewport action", () => {
         const launcher = getGameLauncher("snake");
         assert.equal(launcher.title, "Snake");
         assert.equal(launcher.hideEditor, true);
         assert.equal(launcher.portraitOnly, false);
-        assert.deepEqual(launcher.actions, ["loadSnakePlayScene", "focusChainHead", "snapCameraToTarget", "fitPlayViewport"]);
+        assert.equal(typeof launcher.setup, "function");
+        assert.deepEqual(launcher.actions, ["fitPlayViewport"]);
     });
     it("throws for unknown ids", () => {
         assert.throws(() => getGameLauncher("missing"), /Unknown game launch id/);

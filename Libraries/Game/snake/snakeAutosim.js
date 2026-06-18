@@ -1,20 +1,11 @@
-import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
-import { getChainMemberIds } from "../chainLinks.js";
-import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../groundNav/groundNavIds.js";
-import { removeSandboxWorldProp } from "../sandboxPlacedSpawn.js";
-import { getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing } from "../../Game/snake/snakeGameConfig.js";
-import { growSnakeChainSegment, snakeChainOccupiedCellKeys, spawnGoalOrbOnOpenCell } from "../spawnSnakeChain.js";
-import { createGoalSeekAutosim } from "./goalSeekAutosim.js";
-export function findChainHeadProp(state) {
-    const meta = getSandboxEntityMeta(state);
-    let head = null;
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || !meta.isChainHead(prop.id)) return;
-        head = prop;
-    });
-    return head;
-}
-export function findGoalOrbProp(state) {
+import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
+import { createGoalSeekAutosim } from "../../Sandbox/autosim/goalSeekAutosim.js";
+import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Sandbox/groundNav/groundNavIds.js";
+import { linkedChainOccupiedCellKeys, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
+import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
+import { getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
+import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
+export function findSnakeGoalProp(state) {
     const goalPropId = getSnakeGameConfig().goalPropId;
     let goal = null;
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
@@ -32,7 +23,7 @@ function chainMemberProps(state, headId) {
     }
     return members;
 }
-export function createSnakeAutosim(state, { headId, goalPropId, behaviorById, eatRadius, spacing, ballType, rng = Math.random } = {}) {
+export function createSnakeAutosim(state, { headId, goalPropId, behaviorById, eatRadius, spacing, ballType, growDirX, growDirY, rng = Math.random }) {
     const config = getSnakeGameConfig();
     let tailId = null;
     let goalId = goalPropId;
@@ -44,7 +35,10 @@ export function createSnakeAutosim(state, { headId, goalPropId, behaviorById, ea
     const resolvedEatRadius = eatRadius ?? resolveSnakeEatRadius(config);
     const resolvedSpacing = spacing ?? resolveSnakeSegmentSpacing(config);
     const resolvedBallType = ballType ?? config.segmentPropId;
-    const goalSeek = createGoalSeekAutosim(state, {
+    const resolvedGrowDirX = growDirX ?? config.growDirX;
+    const resolvedGrowDirY = growDirY ?? config.growDirY;
+    const chainGrowOptions = { spacing: resolvedSpacing, ballType: resolvedBallType, growDirX: resolvedGrowDirX, growDirY: resolvedGrowDirY, exportType: SNAKE_CHAIN_EXPORT_TYPE };
+    return createGoalSeekAutosim(state, {
         getSeekerPropId: () => headId,
         getGoalPropId: () => goalId,
         navBehaviorId: HPA_GROUND_NAV_BEHAVIOR_ID,
@@ -53,12 +47,11 @@ export function createSnakeAutosim(state, { headId, goalPropId, behaviorById, ea
         onConsume({ goal }) {
             removeSandboxWorldProp(state, goal);
             const tail = state.entityRegistry.getLive(tailId);
-            const newTail = growSnakeChainSegment(state, tail, { spacing: resolvedSpacing, ballType: resolvedBallType });
+            const newTail = growChainSegment(state, tail, chainGrowOptions);
             tailId = newTail.id;
-            const occupied = snakeChainOccupiedCellKeys(chainMemberProps(state, headId), state.obstacleGrid);
+            const occupied = linkedChainOccupiedCellKeys(chainMemberProps(state, headId), state.obstacleGrid);
             const nextGoal = spawnGoalOrbOnOpenCell(state, { excludeKeys: occupied, faction: tail.faction, rng });
             goalId = nextGoal.id;
         },
     });
-    return goalSeek;
 }

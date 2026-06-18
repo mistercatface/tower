@@ -1,12 +1,10 @@
 import { fitTileLabStageZoom, GAME_MODE_ZOOM_MULTIPLIER } from "../Viewport/tileLabViewportLimits.js";
-import { focusBlueBallAction, focusChainHeadAction, loadSnakePlaySceneAction, refreshWorldAfterGameLaunch, snapCameraToTargetAction, stampBeltCratePuzzleAction } from "./gameLaunchActions.js";
+import { focusBlueBallAction, refreshWorldAfterGameLaunch, snapCameraToTargetAction, stampBeltCratePuzzleAction } from "./gameLaunchActions.js";
 /** @typedef {import("./gameLaunchActions.js").GameLaunchContext} GameLaunchContext */
 /** @type {Record<string, (state: object, ctx: GameLaunchContext) => void | Promise<void>>} */
 const GAME_LAUNCH_ACTIONS = {
     stampBeltCratePuzzle: stampBeltCratePuzzleAction,
-    loadSnakePlayScene: loadSnakePlaySceneAction,
     focusBlueBall: focusBlueBallAction,
-    focusChainHead: focusChainHeadAction,
     snapCameraToTarget: snapCameraToTargetAction,
     fitPlayViewport: (state) => {
         fitTileLabStageZoom(state.viewport, GAME_MODE_ZOOM_MULTIPLIER);
@@ -16,8 +14,13 @@ const GAME_LAUNCH_ACTIONS = {
 export async function runGameLaunch(state, launcher) {
     /** @type {GameLaunchContext} */
     const ctx = {};
-    for (let i = 0; i < launcher.actions.length; i++) {
-        const actionId = launcher.actions[i];
+    if (launcher.setup) {
+        state.appLaunch.session = await launcher.setup(state);
+        if (state.appLaunch.session?.cameraTarget) ctx.cameraTarget = state.appLaunch.session.cameraTarget;
+    }
+    const actions = launcher.actions ?? [];
+    for (let i = 0; i < actions.length; i++) {
+        const actionId = actions[i];
         const action = GAME_LAUNCH_ACTIONS[actionId];
         if (!action) throw new Error(`Unknown game launch action: ${actionId}`);
         await action(state, ctx);
