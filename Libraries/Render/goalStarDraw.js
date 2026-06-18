@@ -1,7 +1,7 @@
 import { traceClosedPolygon } from "../Canvas/CanvasPath.js";
 import { drawExtrudedConvexPolygon } from "./Props3D/SolidDraw.js";
 import { fanTriangulateFromOrigin } from "../Math/Poly2D.js";
-import { resolvePropTintedColorTree } from "../Props/propTint.js";
+import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { projectVertical, scaleAtHeight } from "../Spatial/iso/IsometricProjection.js";
 function traceProjectedFootprintRing(ctx, projection, vertices, facing, atTop) {
     const { cx, cy, topX, topY, alpha } = projection;
@@ -25,7 +25,7 @@ export function createGoalStarDraw(visuals) {
     return (ctx, prop, px, py) => {
         const shape = prop.shape ?? prop.getShape?.();
         if (shape?.type !== "Polygon") return;
-        const tinted = resolvePropTintedColorTree(prop, colors);
+        const tinted = resolveVisualOverrideColorTree(prop, colors);
         const height = world?.height ?? 3;
         const facing = prop.facing;
         const outlineWidth = lineWidth ?? 0.45;

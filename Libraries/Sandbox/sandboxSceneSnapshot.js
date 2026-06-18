@@ -16,11 +16,10 @@ import {
     listPlacedVoxelWalls,
 } from "./gridWallEdit.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
-import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
+import { hueToPickerHex } from "../Color/hex.js";
+import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setChainHead } from "./chainLinks.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
-import { setPropTint } from "../Props/propTint.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Motion/kineticConstraints.js";
 import { setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
@@ -34,7 +33,7 @@ import { SANDBOX_DEFAULT_FACTION } from "../Sandbox/sandboxFaction.js";
  * boundary until we deliberately add that.
  */
 /** Current snapshot format; bump when fields change (no vN→vN+1 migration code until then). */
-export const SANDBOX_SCENE_SCHEMA_VERSION = 10;
+export const SANDBOX_SCENE_SCHEMA_VERSION = 11;
 /** @param {object} state */
 export function collectSandboxSceneSnapshot(state) {
     const grid = state.obstacleGrid;
@@ -91,6 +90,16 @@ function normalizeSandboxSceneDoc(doc) {
     if (doc.schemaVersion === 7) {
         doc.schemaVersion = 8;
         if (!doc.roomGraph) doc.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0 };
+    }
+    if (doc.schemaVersion === 10) {
+        doc.schemaVersion = 11;
+        for (let i = 0; i < (doc.props ?? []).length; i++) {
+            const prop = doc.props[i];
+            if (prop.tint != null && !prop.visualOverride) {
+                prop.visualOverride = { tint: typeof prop.tint === "number" ? hueToPickerHex(prop.tint) : prop.tint };
+                delete prop.tint;
+            }
+        }
     }
     return doc;
 }
@@ -157,9 +166,8 @@ function spawnSnapshotProp(state, entry) {
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     if (isGridPassagePowerSourceSpawnAsset(asset)) return null;
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
-    const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents);
+    const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents, entry.visualOverride);
     if (entry.radius != null) setCirclePropRadius(prop, entry.radius);
-    if (entry.tint != null) setPropTint(prop, entry.tint);
     return prop;
 }
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */

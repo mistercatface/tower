@@ -1,4 +1,4 @@
-import { clampByte } from "./color.js";
+import { clampByte } from "../../Color/hex.js";
 /**
  * Resolves local coordinates based on the coordinate space option.
  * @param {{ evalX: number, evalY: number, lookupX: number, lookupY: number }} sample

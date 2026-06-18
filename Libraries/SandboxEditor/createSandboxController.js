@@ -1,5 +1,5 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { hexToPropTintHue, propTintHueToHex } from "../Props/propTint.js";
+import { sampleAssetBaseTintHex } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createSandboxSession } from "../Sandbox/sandboxSession.js";
@@ -256,13 +256,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         setSpawnBoxWidth: (width) => session.setSpawnBoxWidth(width),
         getSpawnBoxHeight: () => session.getSpawnBoxHeight(),
         setSpawnBoxHeight: (height) => session.setSpawnBoxHeight(height),
-        isSpawnPropTintEnabled: () => session.isSpawnPropTintEnabled(),
-        setSpawnPropTintEnabled: (enabled) => session.setSpawnPropTintEnabled(enabled),
-        getSpawnPropTintHex: (asset) => {
-            const hue = session.getSpawnPropTintHue() ?? session.resolveSpawnPropTintHue(asset);
-            return propTintHueToHex(hue ?? 0);
-        },
-        setSpawnPropTintHex: (hex) => session.setSpawnPropTintHue(hexToPropTintHue(hex)),
+        isSpawnVisualOverrideEnabled: () => session.isSpawnVisualOverrideEnabled(),
+        setSpawnVisualOverrideEnabled: (enabled) => session.setSpawnVisualOverrideEnabled(enabled),
+        getSpawnVisualOverrideTint: (asset) => session.getSpawnVisualOverrideTint() ?? asset.defaultVisualOverride?.tint ?? sampleAssetBaseTintHex(asset),
+        setSpawnVisualOverrideTint: (hex) => session.setSpawnVisualOverrideTint(hex),
         deleteSelectedProps: () => session.deleteSelectedProps(),
         getSelectionTagFilter: () => session.getSelectionTagFilter(),
         setSelectionTagFilter: (filter) => session.setSelectionTagFilter(filter),

@@ -1,4 +1,4 @@
-import { clampByte } from "../../util/color.js";
+import { clampByte } from "../../../Color/hex.js";
 import { BLEND_OPTIONS } from "../../util/blend.js";
 export const filterRGBAdjustMotif = {
     metadata: {

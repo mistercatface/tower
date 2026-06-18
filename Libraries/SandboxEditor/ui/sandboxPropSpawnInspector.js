@@ -12,7 +12,7 @@ import {
 import { appendSurfaceProfileField } from "../../RoomGraph/roomGraphSurfaceProfile.js";
 import { appendAxisNumberFields, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
-import { appendSpawnPropTintFields } from "./sandboxPropTintFields.js";
+import { appendSpawnVisualOverrideFields } from "./sandboxVisualOverrideFields.js";
 export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
     const spawnAsset = getPropAsset(spawnId);
     const addRow = document.createElement("div");
@@ -148,5 +148,5 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
     }
     if (isGridPassagePowerSourceSpawnAsset(spawnAsset))
         appendEditorHint(body, "Add at camera stamps a power source on the grid. Enable Default energized in Selected, or wire a floor button to the source cell.");
-    appendSpawnPropTintFields(body, controller, spawnId, refreshPanel);
+    appendSpawnVisualOverrideFields(body, controller, spawnId, refreshPanel);
 }

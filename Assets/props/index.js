@@ -1,3 +1,5 @@
+import ball from "./ball/ball.asset.js";
+import block from "./block/block.asset.js";
 import beach_ball from "./beach_ball/beach_ball.asset.js";
 import steel_ball from "./steel_ball/steel_ball.asset.js";
 import flipper_left from "./flipper/flipperLeft.asset.js";
@@ -26,6 +28,8 @@ import goal_orb from "./goal_orb/goal_orb.asset.js";
 import snake_head from "./snake_head/snake_head.asset.js";
 import poolBalls from "./poolBalls.js";
 const catalog = {
+    ball,
+    block,
     beach_ball,
     steel_ball,
     flipper_left,

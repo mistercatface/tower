@@ -9,8 +9,9 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { getPropTintHue, setPropTint } from "../Libraries/Props/propTint.js";
-import { pickSnakeChainTintHue } from "../Libraries/Game/snake/snakeChainColor.js";
+import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
+import { hueToPickerHex } from "../Libraries/Color/hex.js";
+import { pickSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell, spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
@@ -48,18 +49,18 @@ describe("snake multi-spawn", () => {
         assert.equal(specs[1].segmentCount, SNAKE_GAME_DEFAULTS.segmentCount);
     });
 
-    it("spawnSnakeChain tints every segment with the same propTint hue", () => {
+    it("spawnSnakeChain tints every segment with the same visualOverride tint", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
-        const tintHue = pickSnakeChainTintHue(() => 0.25);
+        const tintHex = pickSnakeChainTintHex(() => 0.25);
         const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.25 });
-        assert.equal(pack.tintHue, tintHue);
+        assert.equal(pack.tintHex, tintHex);
         const memberIds = getChainMemberIds(state, pack.chain.head.id);
         assert.equal(memberIds.length, 3);
         for (let i = 0; i < memberIds.length; i++) {
             const prop = state.entityRegistry.getLive(memberIds[i]);
-            assert.equal(getPropTintHue(prop), tintHue);
+            assert.equal(getPropVisualTint(prop), tintHex);
         }
     });
 
@@ -69,7 +70,7 @@ describe("snake multi-spawn", () => {
         const state = createSnakeSceneTestState();
         const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3, rng: () => 0.1 });
         const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, excludeKeys: first.occupiedKeys, rng: () => 0.9 });
-        assert.notEqual(first.tintHue, second.tintHue);
+        assert.notEqual(first.tintHex, second.tintHex);
         const goals = spawnSnakeGoalPool(state, 3, { excludeKeys: first.occupiedKeys, rng: () => 0.5 });
         assert.equal(goals.length, 3);
     });
@@ -94,7 +95,7 @@ describe("snake multi-spawn", () => {
         autosim.tick(1 / 60);
         const memberIds = getChainMemberIds(state, pack.chain.head.id);
         const tail = state.entityRegistry.getLive(memberIds[memberIds.length - 1]);
-        assert.equal(getPropTintHue(tail), pack.tintHue);
+        assert.equal(getPropVisualTint(tail), pack.tintHex);
     });
 });
 
@@ -108,17 +109,18 @@ describe("snake config counts", () => {
     });
 });
 
-describe("prop tint snapshot", () => {
-    it("serializes and restores tint on placed props", () => {
+describe("visualOverride snapshot", () => {
+    it("serializes and restores visualOverride on placed props", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
-        const prop = spawnPlacedSandboxProp(state, 80, 80, "blue_ball");
-        setPropTint(prop, 200);
+        const prop = spawnPlacedSandboxProp(state, 80, 80, "ball");
+        const tintHex = hueToPickerHex(200);
+        setPropVisualTint(prop, tintHex);
         const { props } = collectFlatPlacedSandboxPropEntries(state);
-        assert.equal(props[0].tint, 200);
+        assert.equal(props[0].visualOverride.tint, tintHex);
         const fresh = createSnakeSceneTestState();
-        const restored = spawnPlacedSandboxProp(fresh, props[0].x, props[0].y, props[0].type, props[0].faction, props[0].facing, undefined, props[0].tint);
-        assert.equal(getPropTintHue(restored), 200);
+        const restored = spawnPlacedSandboxProp(fresh, props[0].x, props[0].y, props[0].type, props[0].faction, props[0].facing, undefined, props[0].visualOverride);
+        assert.equal(getPropVisualTint(restored), tintHex);
     });
 });

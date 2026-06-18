@@ -335,19 +335,69 @@ Separate from runtime entity nav — used for **room-graph corridor authoring** 
 
 ---
 
-## Tier 12 — Advanced (future / out of scope for now)
+## Tier 12 — Advanced (future, planned someday)
 
-| Item | Status | % |
-|------|--------|---|
-| Polygon navmesh generation (Recast-style) | ⬜ | 0 |
-| Detour tile cache + temporary obstacles | ⬜ | 0 |
-| RVO / ORCA crowd simulation | ⬜ | 0 |
-| Off-mesh / jump links | ⬜ | 0 |
-| Per-agent radius / multiple navmeshes | ⬜ | 0 |
-| Weighted area costs / cost modifiers | ⬜ | 0 |
-| Hierarchical multi-level (3+) abstraction | ⬜ | 0 |
-| 3D / multi-floor navigation | ⬜ | 0 |
-| Deterministic replay of nav decisions | ⬜ | 0 |
+The likely long-term direction. Navmesh is the anchor item — see the migration note below for what it touches.
+
+| Item | Status | % | Notes |
+|------|--------|---|-------|
+| Polygon navmesh generation (Recast-style) | ⬜ | 0 | the anchor; reroots Tiers 0–3, keeps Tiers 4–6 |
+| **Per-agent radius / multiple navmeshes** | ⬜ | 0 | the payoff — different-sized agents route differently |
+| Detour tile cache + temporary obstacles | ⬜ | 0 | runtime obstacle carve without grid edits |
+| RVO / ORCA crowd simulation | ⬜ | 0 | pairs naturally with navmesh agents |
+| Off-mesh / jump links | ⬜ | 0 | jumps, drops, teleporters as graph edges |
+| Weighted area costs / cost modifiers | ⬜ | 0 | "avoid water," "prefer roads" |
+| Hierarchical multi-level (3+) abstraction | ⬜ | 0 | regions-of-regions for huge worlds |
+| 3D / multi-floor navigation | ⬜ | 0 | stacked nav layers + links |
+
+**Branch progress: 0%**
+
+---
+
+## Navmesh migration — what survives vs what gets replaced
+
+Adopting a navmesh is **not** a from-scratch rewrite. It swaps the **representation layer** (how walkable space is described) and leaves the **plumbing** (workers, sessions, replan, steering) intact. Roughly half the stack carries over.
+
+| Layer | Fate under navmesh | Why |
+|------|--------------------|-----|
+| `WorldObstacleGrid` + octile topology bake | **Replaced as nav source** | walkable space becomes polygons, not 16 px cells |
+| HPA* Voronoi region graph | **Replaced / redundant** | navmesh polygons *are* the abstraction — no grid clustering |
+| Flow fields (grid BFS) | **Replaced or dropped** | flow fields are cell-native; navmesh favors per-agent paths (or continuum crowds) |
+| `AStar.js` search | **Mostly survives** | A* over polygon adjacency ≈ your `runAbstractAStarFlat` — same heap, different graph |
+| SAB worker host + protocol | **Survives** | off-thread planning is representation-agnostic |
+| `NavigationService` + replan policy | **Survives** | epoch invalidation, stuck/off-path, coalescing all carry over |
+| Path follow + `kineticRollActuator` | **Survives** | following waypoints and rolling toward them is unchanged |
+| Funnel / string-pull smoothing | **Survives (transfers ~80%)** | same apex-tightening logic; only the visibility test changes (grid LOS → portal edges) |
+
+### Coexistence, not replacement: nav layer over the puzzle grid
+
+The cleanest framing is **two layers that serve different jobs**:
+
+- **Grid = the puzzle / gameplay layer.** Belts, walls, passages, power networks, room bakes, occupancy — the *rules of the world*. This stays grid-based regardless.
+- **Navmesh = the agent-movement layer.** A mesh **derived from** the grid's walkable cells, used only for how agents route and avoid each other.
+
+The grid stays the source of truth; the navmesh is a generated view that rebuilds when the grid's topology epoch bumps (you already have that signal). This is how many shipped engines work — authoritative gameplay state in one structure, an optimized nav representation derived from it. It also means the migration is *additive*: you can stand up a navmesh layer beside the grid, prove it on one agent type, and keep the grid path live until you're happy.
+
+### When it's actually worth it
+
+Pull the trigger when you want **variable agent radius** (the big one — small/large units routing differently) or **arbitrary-angle geometry**. Until then, smoothing + local avoidance get you most of the "pro feel" on the existing grid. Build those first; they're not throwaway (smoothing transfers, avoidance is representation-agnostic).
+
+---
+
+## Tier 13 — Moonshots (interesting, no commitment)
+
+Pure "wouldn't it be cool" territory — captured so the tree has a horizon.
+
+| Item | Status | % | Notes |
+|------|--------|---|-------|
+| Continuum-crowds flow on navmesh | ⬜ | 0 | density-aware flow fields → emergent lane formation |
+| Theta* / any-angle paths on the grid | ⬜ | 0 | cheaper "navmesh-smooth" feel without a mesh |
+| Hierarchical navmesh + tile streaming | ⬜ | 0 | very large / infinite worlds |
+| Formations & group movement | ⬜ | 0 | squads holding shape while pathing |
+| Influence / threat maps feeding cost | ⬜ | 0 | agents route around danger, not just walls |
+| Learned steering (policy net) hybrid | ⬜ | 0 | planner sets goal, learned local controller drives |
+| Deterministic replay of nav decisions | ⬜ | 0 | debugging + lockstep netcode foundation |
+| Navigating *moving* platforms / belts as carriers | 🟡 | 15 | belt physics exists; true "ride the platform" routing doesn't |
 
 **Branch progress: 0%**
 
@@ -371,11 +421,15 @@ Three things in this stack are at or above what most indie/hobby engines ship:
 
 ## Recommended next unlocks (short path)
 
-1. **Path smoothing (funnel / string-pull)** — biggest visual/feel win for the least work; post-process the octile cell path before follow.
-2. **Local separation steering** — first slice of Tier 7; cheap neighbor query + push-apart desired-velocity blend. Unblocks believable multi-snake / crowd movement.
+Ordered by payoff-per-effort. The first two are also the cheapest down-payments on an eventual navmesh.
+
+1. **Path smoothing (funnel / string-pull)** — biggest feel win for the least work; post-process the octile cell path before follow. **Transfers to navmesh later** (same apex logic, only the visibility test changes), so it pays off twice.
+2. **Local separation steering** — first slice of Tier 7; cheap neighbor query + push-apart blend into desired velocity. Representation-agnostic, so it survives a navmesh migration untouched. Unblocks believable multi-snake / crowd movement.
 3. **A* / region-graph / flow-field unit tests** — Tier 11 has integration gaps; the search core has no direct coverage.
 4. **Single-cell belt edit → guaranteed nav resync** — close the Tier 8 partial so editor belt placement always patches the graph.
 5. **Worker resilience** — recover from `graphPatchError` instead of log-only.
+
+> **On the navmesh question:** it's the likely long-term direction (variable agent radius is the real prize), but it's a *layer beside* the puzzle grid, not a teardown — see the migration note above. Do 1–2 first; they're not throwaway.
 
 ---
 
@@ -402,4 +456,4 @@ tests/hpaGroundNavReplan.test.js, corridor*.test.js, snake*.test.js
 
 ---
 
-*Last updated: initial pathfinding tree (mirrors `physics.md` after trilogy B). Planning core is the mature half; Tier 7 local avoidance + path smoothing are the headline gaps to a Recast/Detour-class stack. Revisit percentages when smoothing or a crowd layer lands.*
+*Last updated: pathfinding tree + navmesh migration note (mirrors `physics.md` after trilogy B). Planning core is the mature half; Tier 7 local avoidance + path smoothing are the headline gaps to a Recast/Detour-class stack. Navmesh is the long-term anchor (Tier 12) but lands as a layer beside the puzzle grid, not a rewrite. Revisit percentages when smoothing or a crowd layer lands.*

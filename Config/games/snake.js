@@ -1,6 +1,6 @@
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
-    segmentPropId: "blue_ball",
+    segmentPropId: "ball",
     headPropId: "snake_head",
     goalPropId: "goal_orb",
     snakeCount: 30,

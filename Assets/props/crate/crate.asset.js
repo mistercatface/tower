@@ -1,6 +1,8 @@
-export default {
+import { CRATE_PLANK_TS, CRATE_TOP_CROSS } from "../../../Libraries/deprecated/boxDecor.js";
+import block from "../block/block.asset.js";
+import { extendPropAlias } from "../shared/propAlias.js";
+export default extendPropAlias(block, {
     id: "crate",
-    primitive: "polygon",
     sandbox: { tags: ["shapes"], behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: {
         isKinetic: true,
@@ -15,10 +17,6 @@ export default {
         fractureMode: "chunk",
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 8, randomRange: 17 },
     },
-    visuals: {
-        colors: { side: "#8D6E63", sideShadow: "#6D4C41", top: "#A1887F", topHighlight: "#BCAAA4", bottom: "#5D4037", bodyInspect: "#8D6E63", stroke: "#3E2723" },
-        world: { height: 7 },
-        plankTs: { values: [0.33, 0.66], stroke: "rgba(62, 39, 35, 0.55)" },
-        topCross: { stroke: "rgba(62, 39, 35, 0.6)" },
-    },
-};
+    defaultVisualOverride: { tint: "#8D6E63" },
+    visuals: { colors: { ...block.visuals.colors, topHighlight: "#BCAAA4" }, world: { height: 7 }, plankTs: CRATE_PLANK_TS, topCross: CRATE_TOP_CROSS },
+});

@@ -8,7 +8,7 @@ import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRa
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
 import { tryExportLinkedBallChainSpawnGroup } from "./spawnLinkedBallChain.js";
-import { setPropTint } from "../Props/propTint.js";
+import { applyAssetDefaultVisualOverride, serializeVisualOverride, stampPropVisualOverride } from "../Color/visualOverride.js";
 function assetDefaultFootprintSpan(typeId) {
     const footprint = getPropAsset(typeId)?.physics?.localFootprint;
     if (!footprint?.length) return null;
@@ -29,7 +29,8 @@ function serializePlacedProp(prop) {
         entry.width = span.x * 2;
         entry.height = span.y * 2;
     }
-    if (prop.propTint != null) entry.tint = prop.propTint;
+    const visualOverride = serializeVisualOverride(prop);
+    if (visualOverride) entry.visualOverride = visualOverride;
     return entry;
 }
 export function collectFlatPlacedSandboxPropEntries(state) {
@@ -45,7 +46,7 @@ export function collectFlatPlacedSandboxPropEntries(state) {
 function tryExportSpawnGroup(members, meta) {
     return tryExportPoolRackSpawnGroup(members, meta) ?? tryExportLinkedBallChainSpawnGroup(members, meta);
 }
-export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction = SANDBOX_DEFAULT_FACTION, facing = 0, boxHalfExtents = undefined, tintHue = undefined) {
+export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction = SANDBOX_DEFAULT_FACTION, facing = 0, boxHalfExtents = undefined, visualOverride = undefined) {
     const asset = getPropAsset(propTypeId);
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
@@ -54,7 +55,8 @@ export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, factio
     const prop = new WorldProp(worldX, worldY, propTypeId, facing);
     if (boxHalfExtents) applyPropBoxFootprint(prop, boxHalfExtents.x, boxHalfExtents.y);
     prop.faction = faction;
-    if (tintHue != null) setPropTint(prop, tintHue);
+    if (visualOverride != null) stampPropVisualOverride(prop, visualOverride);
+    else applyAssetDefaultVisualOverride(prop, asset);
     addWorldPropToState(state, prop);
     return prop;
 }

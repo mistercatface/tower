@@ -1,15 +1,8 @@
 import { drawSphere } from "../../Libraries/Render/Props3D/sphere.js";
 import { drawSphereTexturePatch } from "../../Libraries/Render/SurfaceTexturing/drawSphereTexturePatch.js";
 import { createOffscreenCanvas } from "../../Libraries/Canvas/offscreenCanvas.js";
+import { shadeHex } from "../../Libraries/Color/hex.js";
 const POOL_BALL_COLORS = { 1: "#FFD600", 2: "#1565C0", 3: "#D32F2F", 4: "#7B1FA2", 5: "#FF6F00", 6: "#2E7D32", 7: "#8B0000", 8: "#1A1A1A" };
-/** @param {string} hex @param {number} amount */
-function shadeHex(hex, amount) {
-    const n = parseInt(hex.slice(1), 16);
-    const r = Math.max(0, ((n >> 16) & 0xff) * (1 - amount)) | 0;
-    const g = Math.max(0, ((n >> 8) & 0xff) * (1 - amount)) | 0;
-    const b = Math.max(0, (n & 0xff) * (1 - amount)) | 0;
-    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
-}
 /** @param {{ kind: "cue" | "solid" | "stripe", number?: number, color?: string }} poolBall */
 function resolvePoolBallColor(poolBall) {
     if (poolBall.kind === "cue") return "#F5F5F0";

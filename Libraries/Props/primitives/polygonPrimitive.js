@@ -1,13 +1,12 @@
 import { drawExtrudedConvexPolygon } from "../../Render/Props3D/SolidDraw.js";
 import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
-import { resolvePropTintedColorTree } from "../propTint.js";
-
+import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
 export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
     return (ctx, prop, px, py) => {
         const shape = prop.shape ?? prop.getShape?.();
         if (shape?.type !== "Polygon") return;
-        const tinted = resolvePropTintedColorTree(prop, colors);
+        const tinted = resolveVisualOverrideColorTree(prop, colors);
         const height = world?.height ?? 12;
         const drawOpts = {
             height,

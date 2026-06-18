@@ -1,4 +1,4 @@
-import { clampByte } from "../util/color.js";
+import { clampByte } from "../../Color/hex.js";
 import { noise2D } from "../Noise/Perlin2D.js";
 function structureCoords(sample, structure) {
     const freqX = structure.frequencyX ?? structure.frequency;

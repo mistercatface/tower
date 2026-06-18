@@ -1,6 +1,6 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { buildPipeElbowCenterline3D, getPipeElbowSpec } from "../../Props/pipeElbowGeometry.js";
-import { resolvePropTintedColorTree } from "../../Props/propTint.js";
+import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
 import { rotateXY } from "../../Math/Poly2D.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
 /** @param {number} lx @param {number} ly @param {number} lz @param {number} facing */
@@ -138,6 +138,6 @@ export function drawPipeElbow(ctx, prop, px, py, options) {
 /** @param {object} visuals */
 export function createPipeElbowPrimitive(visuals) {
     return (ctx, prop, px, py) => {
-        drawPipeElbow(ctx, prop, px, py, { colors: resolvePropTintedColorTree(prop, visuals.colors), lineWidth: visuals.lineWidth ?? 0.9 });
+        drawPipeElbow(ctx, prop, px, py, { colors: resolveVisualOverrideColorTree(prop, visuals.colors), lineWidth: visuals.lineWidth ?? 0.9 });
     };
 }

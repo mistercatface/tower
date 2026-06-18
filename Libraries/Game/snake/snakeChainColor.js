@@ -1,23 +1,20 @@
 import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
-import { randomPropTintHue, setPropTint } from "../../Props/propTint.js";
-
-export function applySnakeChainTint(members, hue) {
-    for (let i = 0; i < members.length; i++) setPropTint(members[i], hue);
+import { getPropVisualTint, randomVisualTintHex, setPropVisualTint } from "../../Color/visualOverride.js";
+export function applySnakeChainTint(members, tintHex) {
+    for (let i = 0; i < members.length; i++) setPropVisualTint(members[i], tintHex);
 }
-
-export function tintSnakeChain(state, headId, hue) {
+export function tintSnakeChain(state, headId, tintHex) {
     const memberIds = getChainMemberIds(state, headId);
     for (let i = 0; i < memberIds.length; i++) {
         const prop = state.entityRegistry.getLive(memberIds[i]);
-        if (prop && !prop.isDead) setPropTint(prop, hue);
+        if (prop && !prop.isDead) setPropVisualTint(prop, tintHex);
     }
 }
-
 export function copySnakeChainTintFromHead(state, headId, prop) {
     const head = state.entityRegistry.getLive(headId);
-    if (head?.propTint != null) setPropTint(prop, head.propTint);
+    const tint = getPropVisualTint(head);
+    if (tint != null) setPropVisualTint(prop, tint);
 }
-
-export function pickSnakeChainTintHue(rng = Math.random) {
-    return randomPropTintHue(rng);
+export function pickSnakeChainTintHex(rng = Math.random) {
+    return randomVisualTintHex(rng);
 }

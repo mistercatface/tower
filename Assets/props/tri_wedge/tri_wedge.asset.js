@@ -1,3 +1,4 @@
+import { NEUTRAL_BOX_COLORS, NEUTRAL_POLYGON_STROKE } from "../shared/neutralCoats.js";
 export default {
     id: "tri_wedge",
     primitive: "polygon",
@@ -12,5 +13,5 @@ export default {
             { x: 0, y: 10 },
         ],
     },
-    visuals: { colors: { side: "#78909C", sideShadow: "#546E7A", top: "#90A4AE", stroke: "#37474F" }, world: { height: 12 } },
+    visuals: { colors: { side: NEUTRAL_BOX_COLORS.side, sideShadow: NEUTRAL_BOX_COLORS.sideShadow, top: NEUTRAL_BOX_COLORS.top, stroke: NEUTRAL_POLYGON_STROKE }, world: { height: 12 } },
 };
