@@ -40,7 +40,6 @@ function propShapeFootprintKey(prop) {
     const shape = prop.getShape?.() ?? prop.shape;
     if (shape?.type === "Polygon") {
         let key = shape.vertices.map((v) => `${Math.round(v.x)},${Math.round(v.y)}`).join("_");
-        if (prop.poxels?.length) key += `_pv${prop.poxels.length}`;
         if (prop.chunks?.length) key += `_ch${prop.chunks.length}`;
         return key;
     }

@@ -2,14 +2,15 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { bakePoxelOutline, localBoxOutline } from "../Libraries/Props/poxelFracture.js";
 import {
     fracturePropOnImpact,
     impactForceFromContact,
     splitFootprintIntoComponents,
     worldHitToPropLocal,
 } from "../Libraries/Props/propFracture.js";
+import { chunkCollisionPartsArea } from "../Libraries/Props/chunkFracture.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
+import { getEntityCollisionParts } from "../Libraries/Spatial/collision/SatCollision.js";
 
 loadPropAssets();
 
@@ -46,17 +47,24 @@ describe("prop impact fracture", () => {
         for (const geom of fracture.debris) assert.ok(geom.footprintArea <= prop.footprintArea);
     });
 
-    it("bigger footprints bake more poxels", () => {
-        const small = bakePoxelOutline(localBoxOutline(8, 8));
-        const large = bakePoxelOutline(localBoxOutline(24, 16));
-        assert.ok(large.poxels.length > small.poxels.length);
-    });
-
     it("applyPropBoxFootprint rebakes chunk grid for resized custom box", () => {
         const prop = new WorldProp(0, 0, "custom_box", 0);
         applyPropBoxFootprint(prop, 20, 10);
         assert.ok(prop.chunks.length > 1);
-        assert.equal(prop.poxels, undefined);
         assert.equal(prop.shape.vertices.length, 4);
+    });
+
+    it("chunk fracture collision parts match stored material area", () => {
+        const prop = new WorldProp(0, 0, "crate", 0);
+        applyPropBoxFootprint(prop, 16, 16);
+        const fracture = fracturePropOnImpact(prop, 0, 0, 80);
+        assert.ok(fracture);
+        const parentParts = getEntityCollisionParts(prop);
+        assert.ok(parentParts.length >= 1);
+        assert.ok(Math.abs(chunkCollisionPartsArea(parentParts) - prop.footprintArea) < 1);
+        for (const geom of fracture.debris) {
+            assert.ok(geom.collisionParts.length >= 1);
+            assert.ok(Math.abs(chunkCollisionPartsArea(geom.collisionParts) - geom.footprintArea) < 1);
+        }
     });
 });

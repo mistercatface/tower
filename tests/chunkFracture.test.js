@@ -26,7 +26,6 @@ describe("chunk fracture", () => {
     it("bakes rectilinear chunk grid from a box outline", () => {
         const geom = bakeChunkOutline(localBoxOutline(8, 8));
         assert.ok(geom.chunks.length > 1);
-        assert.equal(geom.poxels, undefined);
         assert.ok(geom.footprintArea > 0);
         assert.equal(chunkCellCount(8, 8), geom.chunks.length);
     });
@@ -51,11 +50,11 @@ describe("chunk fracture", () => {
         const components = splitPoxels(geom.chunks, 0, 0, 80);
         assert.ok(components.length > 1);
     });
-    it("fracture crate init builds chunks not poxels", () => {
+    it("fracture crate init builds chunk connectivity grid", () => {
         const prop = new WorldProp(0, 0, "crate", 0);
         assert.ok(prop.strategy.fracture);
         assert.ok(prop.chunks.length > 1);
-        assert.equal(prop.poxels, undefined);
+        assert.ok(prop.collisionParts.length >= 1);
         assert.equal(prop.shape.type, "Polygon");
     });
     it("fracturePropOnImpact peels chunky debris and keeps the largest piece", () => {
@@ -66,11 +65,7 @@ describe("chunk fracture", () => {
         assert.ok(fracture);
         assert.ok(prop.chunks.length < initialChunks);
         assert.ok(fracture.debris.length > 0);
-        assert.equal(prop.poxels, undefined);
-        for (const geom of fracture.debris) {
-            assert.ok(geom.chunks.length >= 1);
-            assert.equal(geom.poxels, undefined);
-        }
+        for (const geom of fracture.debris) assert.ok(geom.chunks.length >= 1);
     });
     it("splitFootprintIntoComponents forceExplode yields one fragment per chunk", () => {
         const prop = new WorldProp(0, 0, "crate", 0);

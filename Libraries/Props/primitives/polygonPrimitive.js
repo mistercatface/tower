@@ -1,5 +1,6 @@
-import { drawExtrudedConvexPolygon, drawExtrudedPoxelMesh } from "../../Render/Props3D/SolidDraw.js";
+import { drawExtrudedConvexPolygon } from "../../Render/Props3D/SolidDraw.js";
 import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
+
 export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
     return (ctx, prop, px, py) => {
@@ -7,7 +8,6 @@ export function createPolygonPrimitive(visuals) {
         if (shape?.type !== "Polygon") return;
         const height = world?.height ?? 12;
         const drawOpts = {
-            localVerts: shape.vertices,
             height,
             facing: prop.facing,
             faceColors: { shadow: colors.sideShadow, mid: colors.side, highlight: colors.top },
@@ -20,10 +20,7 @@ export function createPolygonPrimitive(visuals) {
             plankTs,
             topCross,
         };
-        if (prop.poxels?.length) drawExtrudedPoxelMesh(ctx, prop, px, py, drawOpts);
-        else {
-            const parts = getEntityCollisionParts(prop);
-            for (let i = 0; i < parts.length; i++) drawExtrudedConvexPolygon(ctx, prop, px, py, { ...drawOpts, localVerts: parts[i].vertices });
-        }
+        const parts = getEntityCollisionParts(prop);
+        for (let i = 0; i < parts.length; i++) drawExtrudedConvexPolygon(ctx, prop, px, py, { ...drawOpts, localVerts: parts[i].vertices });
     };
 }
