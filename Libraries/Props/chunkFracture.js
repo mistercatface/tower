@@ -1,6 +1,7 @@
 import { boxLocalFootprint } from "../Math/Poly2D.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
-import { buildGeometryFromPartsAtOrigin, buildGeometryFromPoxelParts, splitPoxels } from "./poxelFracture.js";
+import { buildGeometryFromPartsAtOrigin, buildGeometryFromPoxelParts } from "./poxelFracture.js";
+// chunks = split connectivity graph; collisionParts = merged axis-aligned sim/draw rects
 export const CHUNK_MIN_CELL = 8;
 export const CHUNK_MAX_CELLS_PER_AXIS = 6;
 const RECT_MERGE_EPS = 1e-3;
@@ -188,15 +189,14 @@ export function bakeChunkOutline(flatVerts) {
     const centeredVerts = centerFlatVerts(flatVerts);
     const { hx, hy } = halfExtentsFromFlat(centeredVerts);
     const parts = rectGridParts(hx, hy, cellSizeForBoxExtents(hx, hy));
-    const geom = buildGeometryFromChunkParts(parts);
-    geom.collisionParts = [new PolygonShape(boxLocalFootprint(hx, hy))];
-    geom.footprintVertices = new Float32Array([-hx, -hy, hx, -hy, hx, hy, -hx, hy]);
-    geom.boundingRadius = Math.hypot(hx, hy);
-    geom.footprintArea = hx * hy * 4;
-    return geom;
-}
-export function splitChunks(chunks, localHitX, localHitY, impactForce) {
-    return splitPoxels(chunks, localHitX, localHitY, impactForce);
+    const mesh = buildGeometryFromPartsAtOrigin(parts.map((p) => ({ vertices: p.vertices })));
+    return {
+        chunks: mesh.poxels,
+        collisionParts: [new PolygonShape(boxLocalFootprint(hx, hy))],
+        footprintVertices: new Float32Array([-hx, -hy, hx, -hy, hx, hy, -hx, hy]),
+        boundingRadius: Math.hypot(hx, hy),
+        footprintArea: hx * hy * 4,
+    };
 }
 export function chunkCellCount(hx, hy, cellSize = cellSizeForBoxExtents(hx, hy)) {
     const cols = Math.max(1, Math.round((hx * 2) / cellSize));

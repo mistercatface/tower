@@ -49,6 +49,40 @@ function circleObbOverlap(circle, obb) {
     }
     return true;
 }
+const BROADPHASE_UNION_PROXY = {
+    type: "Polygon",
+    vertices: [
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+    ],
+};
+export function broadphaseBoundsFromCollisionPartsInto(out, parts, cx, cy, angle = 0) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let p = 0; p < parts.length; p++) {
+        const verts = parts[p].vertices;
+        for (let i = 0; i < verts.length; i++) {
+            minX = Math.min(minX, verts[i].x);
+            maxX = Math.max(maxX, verts[i].x);
+            minY = Math.min(minY, verts[i].y);
+            maxY = Math.max(maxY, verts[i].y);
+        }
+    }
+    const proxy = BROADPHASE_UNION_PROXY;
+    proxy.vertices[0].x = minX;
+    proxy.vertices[0].y = minY;
+    proxy.vertices[1].x = maxX;
+    proxy.vertices[1].y = minY;
+    proxy.vertices[2].x = maxX;
+    proxy.vertices[2].y = maxY;
+    proxy.vertices[3].x = minX;
+    proxy.vertices[3].y = maxY;
+    return broadphaseBoundsFromShapeInto(out, proxy, cx, cy, angle);
+}
 export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0) {
     if (shape.type === "Circle") {
         out.kind = "circle";

@@ -5,7 +5,7 @@ import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphas
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { bakePoxelOutline, buildGeometryFromPoxelParts, splitPoxels } from "./poxelFracture.js";
-import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts, splitChunks } from "./chunkFracture.js";
+import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts } from "./chunkFracture.js";
 import { GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon } from "./glassFracture.js";
 export const FRACTURE_MIN_PIECE_SIZE = 5;
 export const FRACTURE_IMPACT_THRESHOLD = 12;
@@ -89,23 +89,43 @@ export function applyShardGeometryToProp(prop, geometry) {
     prop.collisionParts = undefined;
     applyFractureGeometryToProp(prop, geometry);
 }
+function splitMeshComponents(cells, localHitX, localHitY, impactForce, forceExplode) {
+    if (!cells?.length) return [];
+    let components = splitPoxels(cells, localHitX, localHitY, impactForce);
+    if (forceExplode && cells.length > 1) components = cells.map((cell) => [cell]);
+    return components;
+}
+function geometryFromChunkComponent(comp, atOrigin) {
+    const parts = comp.map((chunk) => ({ vertices: chunk.vertices }));
+    return atOrigin ? buildChunkGeometryAtPropOrigin(parts) : buildGeometryFromChunkParts(parts);
+}
 export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactForce, forceExplode = false) {
-    if (isChunkFracture(prop)) {
-        if (!prop.chunks?.length) return [];
-        let components = splitChunks(prop.chunks, localHitX, localHitY, impactForce);
-        if (forceExplode && prop.chunks.length > 1) components = prop.chunks.map((chunk) => [chunk]);
-        return components.map((comp) => {
-            const parts = comp.map((chunk) => ({ vertices: chunk.vertices }));
-            return buildGeometryFromChunkParts(parts);
-        });
-    }
-    if (!prop.poxels?.length) return [];
-    let components = splitPoxels(prop.poxels, localHitX, localHitY, impactForce);
-    if (forceExplode && prop.poxels.length > 1) components = prop.poxels.map((poxel) => [poxel]);
-    return components.map((comp) => {
+    if (isChunkFracture(prop)) return splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, forceExplode).map((comp) => geometryFromChunkComponent(comp, false));
+    return splitMeshComponents(prop.poxels, localHitX, localHitY, impactForce, forceExplode).map((comp) => {
         const parts = comp.map((poxel) => ({ vertices: poxel.vertices }));
         return buildGeometryFromPoxelParts(parts);
     });
+}
+function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
+    const components = splitMeshComponents(isChunkFracture(prop) ? prop.chunks : prop.poxels, localHitX, localHitY, impactForce, false);
+    if (components.length <= 1) return null;
+    components.sort((a, b) => b.length - a.length);
+    const originX = prop.x;
+    const originY = prop.y;
+    if (isChunkFracture(prop)) {
+        const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
+        applyChunkGeometryToProp(prop, geometryFromChunkComponent(components[0], true));
+        return { debris, originX, originY, facing: prop.facing };
+    }
+    const largest = buildGeometryFromPoxelParts(components[0].map((poxel) => ({ vertices: poxel.vertices })));
+    const debris = components.slice(1).map((comp) => buildGeometryFromPoxelParts(comp.map((poxel) => ({ vertices: poxel.vertices }))));
+    const cos = Math.cos(prop.facing);
+    const sin = Math.sin(prop.facing);
+    const world = transformPoint2DInto({ x: 0, y: 0 }, originX, originY, largest.centroid.cx, largest.centroid.cy, cos, sin);
+    prop.x = world.x;
+    prop.y = world.y;
+    applyPoxelGeometryToProp(prop, largest);
+    return { debris, originX, originY, facing: prop.facing };
 }
 export function worldHitToPropLocal(prop, worldX, worldY) {
     const dx = worldX - prop.x;
@@ -128,28 +148,7 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
     if (!canFracturePropSplit(prop)) return null;
     const local = worldHitToPropLocal(prop, worldHitX, worldHitY);
-    const originX = prop.x;
-    const originY = prop.y;
-    if (isChunkFracture(prop)) {
-        let components = splitChunks(prop.chunks, local.x, local.y, impactForce);
-        if (components.length <= 1) return null;
-        components.sort((a, b) => b.length - a.length);
-        const largestParts = components[0].map((chunk) => ({ vertices: chunk.vertices }));
-        const debris = components.slice(1).map((comp) => buildGeometryFromChunkParts(comp.map((chunk) => ({ vertices: chunk.vertices }))));
-        applyChunkGeometryToProp(prop, buildChunkGeometryAtPropOrigin(largestParts));
-        return { debris, originX, originY, facing: prop.facing };
-    }
-    const components = splitFootprintIntoComponents(prop, local.x, local.y, impactForce, false);
-    if (components.length <= 1) return null;
-    const cos = Math.cos(prop.facing);
-    const sin = Math.sin(prop.facing);
-    const largest = components[0];
-    const debris = components.slice(1);
-    const world = transformPoint2DInto({ x: 0, y: 0 }, originX, originY, largest.centroid.cx, largest.centroid.cy, cos, sin);
-    prop.x = world.x;
-    prop.y = world.y;
-    applyPoxelGeometryToProp(prop, largest);
-    return { debris, originX, originY, facing: prop.facing };
+    return peelSolidFracture(prop, local.x, local.y, impactForce);
 }
 function evictFracturedProp(state, prop, spatialFrame) {
     prop.isDead = true;

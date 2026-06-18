@@ -17,6 +17,7 @@ import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
 import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
+import { getEntityCollisionParts } from "../Libraries/Spatial/collision/SatCollision.js";
 const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}), voidSink: new WorldPropVoidSinkState() });
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
@@ -63,9 +64,7 @@ export class WorldProp extends Entity {
         return this.shape;
     }
     getCollisionParts() {
-        if (this.collisionParts?.length) return this.collisionParts;
-        const shape = this.getShape();
-        return shape ? [shape] : [];
+        return getEntityCollisionParts(this);
     }
     get angle() {
         return this.facing;

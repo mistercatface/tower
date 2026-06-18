@@ -1,5 +1,5 @@
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
-import { broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
+import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
 import { circlesOverlap } from "./overlap.js";
 import { checkEntityPairCollision, getEntityCollisionParts, SatCollision } from "./SatCollision.js";
 export const MOVING_SPEED_SQ = 0.25;
@@ -27,28 +27,47 @@ function ensureBroadphaseCache(entity) {
 export function invalidateBroadphaseBounds(entity) {
     if (entity.broadphaseSnapshot) entity.broadphaseSnapshot.x = NaN;
 }
+function unionLocalHalfExtents(parts) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let p = 0; p < parts.length; p++) {
+        const verts = parts[p].vertices;
+        for (let i = 0; i < verts.length; i++) {
+            minX = Math.min(minX, verts[i].x);
+            maxX = Math.max(maxX, verts[i].x);
+            minY = Math.min(minY, verts[i].y);
+            maxY = Math.max(maxY, verts[i].y);
+        }
+    }
+    return { x: (maxX - minX) * 0.5, y: (maxY - minY) * 0.5 };
+}
 function entityCollisionSpan(entity) {
     const parts = getEntityCollisionParts(entity);
     if (parts.length <= 1) return shapeSpan(parts[0]);
-    let maxSpan = 0;
-    for (let i = 0; i < parts.length; i++) maxSpan = Math.max(maxSpan, shapeSpan(parts[i]));
-    return maxSpan;
+    const { x, y } = unionLocalHalfExtents(parts);
+    return lengthXY(x, y);
 }
 /** @param {object} entity */
 export function getBroadphaseBounds(entity) {
     ensureBroadphaseCache(entity);
     const x = entity.x;
     const y = entity.y;
+    const parts = getEntityCollisionParts(entity);
+    const multiPart = parts.length > 1;
     const shape = entity.getShape();
     const angle = entityAngle(entity);
-    const span = entity.collisionParts?.length ? entityCollisionSpan(entity) : shapeSpan(shape);
+    const span = multiPart ? entityCollisionSpan(entity) : shapeSpan(shape);
     const snapshot = entity.broadphaseSnapshot;
-    if (snapshot.x === x && snapshot.y === y && snapshot.angle === angle && snapshot.shapeType === shape.type && snapshot.shapeSpan === span) return entity.broadphaseBounds;
+    const shapeKey = multiPart ? "multi" : shape.type;
+    if (snapshot.x === x && snapshot.y === y && snapshot.angle === angle && snapshot.shapeType === shapeKey && snapshot.shapeSpan === span) return entity.broadphaseBounds;
     snapshot.x = x;
     snapshot.y = y;
     snapshot.angle = angle;
-    snapshot.shapeType = shape.type;
+    snapshot.shapeType = shapeKey;
     snapshot.shapeSpan = span;
+    if (multiPart) return broadphaseBoundsFromCollisionPartsInto(entity.broadphaseBounds, parts, x, y, angle);
     return broadphaseBoundsFromShapeInto(entity.broadphaseBounds, shape, x, y, angle);
 }
 /** Furthest collision edge from entity center (circle radius or OBB corner distance). */

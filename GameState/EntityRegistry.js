@@ -3,6 +3,7 @@ import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from 
 import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { distanceSqToLineSegment } from "../Libraries/Math/Segment2D.js";
 import { hashString, mixHash4 } from "../Libraries/Math/hash.js";
+import { getEntityCollisionParts } from "../Libraries/Spatial/collision/SatCollision.js";
 /** @typedef {import("../Libraries/Math/Aabb2D.js").Aabb2D} Aabb2D */
 /** @typedef {import("../Libraries/Math/Aabb2D.js").AabbEntityHitTest} AabbEntityHitTest */
 /** @typedef {{ kind: string, ref: object }} EntityRegistryEntry */
@@ -35,7 +36,7 @@ function worldPropFootprintInto(out, prop, shape) {
     return out;
 }
 export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
-    const parts = prop.getCollisionParts?.() ?? [prop.getShape()];
+    const parts = getEntityCollisionParts(prop);
     let sawPolygon = false;
     for (let p = 0; p < parts.length; p++) {
         const shape = parts[p];

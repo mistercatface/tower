@@ -150,7 +150,9 @@ function detectAndSeparateContact(bodyA, bodyB) {
         return null;
     }
     separateAlongNormal(bodyA, bodyB, info.nx, info.ny, info.overlap, massA, massB, pinnedA, pinnedB);
-    return { ...info, shapeA: hit.shapeA, shapeB: hit.shapeB };
+    info.shapeA = hit.shapeA;
+    info.shapeB = hit.shapeB;
+    return info;
 }
 function appendContact(contacts, bodyA, bodyB, info, preDvx, preDvy) {
     if (contacts.count >= MAX_CONTACTS) return;
