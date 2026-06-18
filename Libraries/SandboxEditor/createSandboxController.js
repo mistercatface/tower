@@ -14,7 +14,8 @@ import { createSandboxPointerGestures } from "./sandboxPointerGestures.js";
 import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js";
 import { releaseButtonPointerHold } from "../Sandbox/floorButtons.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandboxSceneSnapshot.js";
-import { spawnSandboxStartScene } from "../../Apps/Editor/world/sandboxStartScene.js";
+import { spawnSandboxStartScene, spawnSnakePlayScene } from "../../Apps/Editor/world/sandboxStartScene.js";
+import { createSnakeAutosim, findChainHeadProp, findGoalOrbProp } from "../Sandbox/autosim/snakeAutosim.js";
 import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandboxCapabilities.js";
@@ -192,7 +193,14 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         chainLinkWireTool.exit();
         corridorLinkWireTool.enterLinkMode();
     };
+    /** @type {ReturnType<typeof createSnakeAutosim> | null} */
+    let autosim = null;
+    const stopAutosim = () => {
+        autosim?.stop();
+        autosim = null;
+    };
     const resetBehaviors = () => {
+        stopAutosim();
         for (const behavior of behaviors) behavior.reset?.();
         gestures.reset();
     };
@@ -420,6 +428,39 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.seedPlacementOrderFromState();
             session.sync();
         },
+        async loadSnakePlayScene() {
+            await spawnSnakePlayScene(state);
+            resetBehaviors();
+            exitWireModes();
+            session.clearSelection();
+            session.seedPlacementOrderFromState();
+            void state.navigation.onObstaclesChanged(null);
+            controller.startSnakeAutosim();
+            session.sync();
+        },
+        startSnakeAutosim(config = {}) {
+            stopAutosim();
+            const head = config.head ?? findChainHeadProp(state);
+            const goal = config.goal ?? findGoalOrbProp(state);
+            if (!head) throw new Error("Snake autosim requires a chain head prop");
+            if (!goal) throw new Error("Snake autosim requires a goal orb prop");
+            autosim = createSnakeAutosim(state, {
+                headId: head.id,
+                goalPropId: goal.id,
+                behaviorById,
+                eatRadius: config.eatRadius,
+                spacing: config.spacing,
+                ballType: config.ballType,
+                rng: config.rng,
+            });
+            autosim.start();
+        },
+        stopSnakeAutosim() {
+            stopAutosim();
+        },
+        isSnakeAutosimActive() {
+            return autosim?.isActive() ?? false;
+        },
         sync: session.sync,
         setUiSync: (fn) => session.setUiSync(fn),
         getSpawnBehaviorId: () => spawnBehaviorId,
@@ -511,6 +552,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         tick(dt) {
             session.pruneSelection();
             for (let i = 0; i < behaviors.length; i++) behaviors[i].tickWorld?.(dt);
+            autosim?.tick(dt);
             const prop = session.getSelectedProp();
             const behavior = resolveBehavior();
             if (!prop || !behavior?.tick) return;

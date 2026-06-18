@@ -55,3 +55,18 @@ export function tryExportSnakeChainSpawnGroup(members, meta) {
     const anchor = members.find((prop) => meta.isSpawnGroupAnchor(prop.id)) ?? members[0];
     return { type: SNAKE_CHAIN_EXPORT_TYPE, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: resolveSandboxFaction(anchor), segmentCount: members.length };
 }
+
+export function growSnakeChainSegment(state, tailProp, options = {}) {
+    const spacing = options.spacing ?? DEFAULT_SNAKE_SEGMENT_SPACING;
+    const ballType = options.ballType ?? DEFAULT_SNAKE_BALL_TYPE;
+    const faction = options.faction ?? resolveSandboxFaction(tailProp);
+    const meta = getSandboxEntityMeta(state);
+    const spawnGroupId = options.spawnGroupId ?? meta.getSpawnGroupId(tailProp.id);
+    const segment = spawnPlacedSandboxProp(state, tailProp.x - spacing, tailProp.y, ballType, faction);
+    if (spawnGroupId) {
+        meta.setSpawnGroupId(segment.id, spawnGroupId);
+        meta.setSpawnGroupExportType(segment.id, SNAKE_CHAIN_EXPORT_TYPE);
+    }
+    addChainLink(state, tailProp.id, segment.id);
+    return segment;
+}

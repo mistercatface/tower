@@ -6,7 +6,7 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getChainMemberIds, isChainSteeringTarget } from "../Libraries/Sandbox/chainLinks.js";
-import { GOAL_ORB_PROP_TYPE, SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbAtCell, spawnSnakeChain, snakeChainOccupiedCellKeys, tryExportSnakeChainSpawnGroup } from "../Libraries/Sandbox/spawnSnakeChain.js";
+import { GOAL_ORB_PROP_TYPE, SNAKE_CHAIN_EXPORT_TYPE, growSnakeChainSegment, spawnGoalOrbAtCell, spawnSnakeChain, snakeChainOccupiedCellKeys, tryExportSnakeChainSpawnGroup } from "../Libraries/Sandbox/spawnSnakeChain.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import { cavernCellKey } from "../Libraries/Sandbox/cavernFloorCells.js";
 loadPropAssets();
@@ -63,5 +63,16 @@ describe("spawnSnakeChain", () => {
         assert.ok(keys.has(cavernCellKey(10, 10)));
         assert.ok(keys.has(cavernCellKey(9, 10)));
         assert.ok(keys.has(cavernCellKey(8, 10)));
+    });
+
+    it("growSnakeChainSegment links a new tail segment at spacing", () => {
+        resetKineticConstraintIds(1);
+        const state = createSnakeSpawnTestState();
+        const chain = spawnSnakeChain(state, { col: 10, row: 10 });
+        const tail = chain.tail;
+        const segment = growSnakeChainSegment(state, tail);
+        assert.equal(state.sandbox.kineticConstraints.length, 3);
+        assert.equal(segment.x, tail.x - 16);
+        assert.equal(segment.y, tail.y);
     });
 });
