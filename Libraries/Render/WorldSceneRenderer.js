@@ -101,7 +101,7 @@ export class WorldSceneRenderer {
             visibleObjects.push(p);
         }
     }
-}
+    _appendVisibleStaticGridWalls(input, viewport, px, py) {
         collectStaticGridWallDrawables(input.obstacleGrid, viewport, px, py, this.staticGridDrawables);
         collectStaticGridEdgeRailDrawables(input.obstacleGrid, viewport, px, py, this.staticGridEdgeRailDrawables);
         const visibleObjects = this.visibleDrawables;

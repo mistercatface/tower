@@ -38,6 +38,9 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     let unbindPointers = null;
     /** @type {(() => void) | null} */
     let unbindKeyDown = null;
+    /** @type {(() => void) | null} */
+    let unbindKeyUp = null;
+    let pKeyHeld = false;
     /** @type {{ x: number, y: number } | null} */
     let placePreviewWorld = null;
     const entityMeta = () => getSandboxEntityMeta(state);
@@ -124,13 +127,23 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         if (!behavior || !allowed.includes(behavior.id)) return null;
         return behavior;
     };
-    const deletePointerTool = createSandboxDeletePointerTool(state, session);
+    const resolveGroundMove = () => {
+        const prop = session.getSelectedProp();
+        const behavior = resolveBehavior();
+        if (!prop || !behavior?.setGroundMoveTarget) return null;
+        return { prop, behavior };
+    };
+    const issueGroundMove = (move, world) => {
+        move.behavior.setGroundMoveTarget(move.prop, world);
+    };
+    const deletePointerTool = createSandboxDeletePointerTool(state, session, { resolveGroundMove, issueGroundMove });
     const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, behaviors, {
         entityMeta,
         listSelectedBehaviors,
         getPropBehaviorId,
         stampPropBehavior,
         behaviorById,
+        isPHeld: () => pKeyHeld,
         blocksPlacement,
         exitWireModes,
         exitButtonWire: () => buttonWireTool.exit(),
@@ -374,16 +387,28 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
                     e.preventDefault();
                     return;
                 }
+                if (e.code === "KeyP") {
+                    pKeyHeld = true;
+                    return;
+                }
                 if (e.code !== "KeyR") return;
                 if (!placePreviewWorld || canvasTools.capturesPointerMove() || canvasTools.isDragging() || canvasTools.blocksPlacePreview()) return;
                 if (session.rotateHoveredGridOccupantAtWorld(placePreviewWorld.x, placePreviewWorld.y)) e.preventDefault();
             };
+            const onKeyUp = (e) => {
+                if (e.code === "KeyP") pKeyHeld = false;
+            };
             window.addEventListener("keydown", onKeyDown);
+            window.addEventListener("keyup", onKeyUp);
             unbindKeyDown = () => window.removeEventListener("keydown", onKeyDown);
+            unbindKeyUp = () => window.removeEventListener("keyup", onKeyUp);
         },
         destroy() {
             unbindKeyDown?.();
             unbindKeyDown = null;
+            unbindKeyUp?.();
+            unbindKeyUp = null;
+            pKeyHeld = false;
             unbindPointers?.();
             unbindPointers = null;
             exitWireModes();

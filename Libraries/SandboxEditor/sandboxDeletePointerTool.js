@@ -1,8 +1,8 @@
-import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
+﻿import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
 import { clearFloorOverlayAt } from "../Sandbox/floorOccupancy.js";
 import { pickRoomNodeAt } from "../RoomGraph/index.js";
-export function createSandboxDeletePointerTool(state, session) {
+export function createSandboxDeletePointerTool(state, session, { resolveGroundMove, issueGroundMove }) {
     return {
         isActive: () => true,
         onPointerDown(world, e) {
@@ -26,6 +26,11 @@ export function createSandboxDeletePointerTool(state, session) {
                 if (sel?.kind === "floor" && sel.col === col && sel.row === row) session.clearSelection();
                 session.sync();
                 return true;
+            }
+            const groundMove = resolveGroundMove();
+            if (groundMove) {
+                issueGroundMove(groundMove, world);
+                session.sync();
             }
             return true;
         },

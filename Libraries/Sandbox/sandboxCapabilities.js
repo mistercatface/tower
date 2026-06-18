@@ -1,7 +1,9 @@
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
+import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
+import { ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID } from "./behaviors/rollToCursorFlowBehavior.js";
 import { FLOOR_CELL_KIND, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-
+const ROLL_BEHAVIOR_IDS = new Set([ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID, ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID]);
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
@@ -9,49 +11,41 @@ export const SANDBOX_BEHAVIOR_LABELS = {
     spawner: "Spawner",
     flipper: "Flipper",
     cueStrike: "Cue strike",
+    rollToCursorDirect: "Roll to cursor (direct)",
+    rollToCursorHpa: "Roll to cursor (HPA)",
+    rollToCursorFlow: "Roll to cursor (flow)",
 };
-
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
 }
-
 export function isSandboxSpawnable(asset) {
     const sandbox = asset?.sandbox;
     if (sandbox == null || typeof sandbox !== "object") return false;
     return sandbox.spawnable !== false;
 }
-
 export function isGridFloorBeltSpawnAsset(asset) {
     return asset?.sandbox?.gridFloorBelt === true;
 }
-
 export function isGridPassagePowerSourceSpawnAsset(asset) {
     return asset?.sandbox?.gridPassagePowerSource === true;
 }
-
 export function isRoomNodeSpawnAsset(asset) {
     return asset?.sandbox?.roomNode === true;
 }
-
 export function isRoomLinkSpawnAsset(asset) {
     return asset?.sandbox?.roomLink === true;
 }
-
 export function isPuzzleTemplateSpawnAsset(asset) {
     return asset?.sandbox?.puzzleTemplate === true;
 }
-
 export function isPoolRackSpawnAsset(asset) {
     return asset?.sandbox?.spawnRack === "8ball" || asset?.sandbox?.spawnRack === "9ball";
 }
-
 export const DEFAULT_SPLITTABLE_SPAWN_WIDTH = 16;
 export const DEFAULT_SPLITTABLE_SPAWN_HEIGHT = 16;
-
 export function isSplittableBoxSpawnAsset(asset) {
     return Boolean(asset?.physics?.splittable && asset?.physics?.collisionShape === "box");
 }
-
 export function isSingleWorldPropSpawnAsset(asset) {
     return (
         Boolean(asset) &&
@@ -62,7 +56,6 @@ export function isSingleWorldPropSpawnAsset(asset) {
         !isPoolRackSpawnAsset(asset)
     );
 }
-
 export function resolveFloorBeltKindFromSpawnAsset(asset) {
     const kind = asset?.sandbox?.floorBeltKind;
     if (kind === "elbowLeft") return FLOOR_CELL_KIND.BeltElbowLeft;
@@ -72,7 +65,6 @@ export function resolveFloorBeltKindFromSpawnAsset(asset) {
     if (kind === "elbowRightRails") return FLOOR_CELL_KIND.BeltElbowRightRails;
     return FLOOR_CELL_KIND.Belt;
 }
-
 const FLOOR_BELT_KINDS = [
     FLOOR_CELL_KIND.Belt,
     FLOOR_CELL_KIND.BeltRails,
@@ -81,11 +73,9 @@ const FLOOR_BELT_KINDS = [
     FLOOR_CELL_KIND.BeltElbowLeftRails,
     FLOOR_CELL_KIND.BeltElbowRightRails,
 ];
-
 export function listFloorBeltKindOptions() {
     return FLOOR_BELT_KINDS.map((kind) => ({ kind, label: formatFloorBeltKindLabel(kind) }));
 }
-
 export function resolveSandboxBehaviors(asset, registeredBehaviors, state, prop = null) {
     const byId = new Map(registeredBehaviors.map((behavior) => [behavior.id, behavior]));
     const behaviorOverrides = prop ? getSandboxEntityMeta(state).getBehaviorOverrides(prop.id) : null;
@@ -98,7 +88,12 @@ export function resolveSandboxBehaviors(asset, registeredBehaviors, state, prop 
         if (stamped.length) return stamped;
     }
     if (Array.isArray(asset?.sandbox?.behaviors)) return asset.sandbox.behaviors.filter((id) => byId.has(id));
+    const sandbox = asset?.sandbox;
     return [...byId.values()]
-        .filter((behavior) => !behavior.supports || !asset || behavior.supports(prop, asset))
+        .filter((behavior) => {
+            if (behavior.supports && asset && !behavior.supports(prop, asset)) return false;
+            if (ROLL_BEHAVIOR_IDS.has(behavior.id) && sandbox?.rollToCursor === false) return false;
+            return true;
+        })
         .map((behavior) => behavior.id);
 }

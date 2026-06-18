@@ -3,6 +3,9 @@ import { createSandboxController } from "../../../Libraries/SandboxEditor/create
 import { createCueStrikeBehavior } from "../../../Libraries/Sandbox/behaviors/cueStrikeBehavior.js";
 import { createDragLaunchFacingBehavior } from "../../../Libraries/Sandbox/behaviors/dragLaunchFacingBehavior.js";
 import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
+import { createRollToCursorDirectBehavior } from "../../../Libraries/Sandbox/behaviors/rollToCursorDirectBehavior.js";
+import { createRollToCursorFlowBehavior } from "../../../Libraries/Sandbox/behaviors/rollToCursorFlowBehavior.js";
+import { createRollToCursorHpaBehavior } from "../../../Libraries/Sandbox/behaviors/rollToCursorHpaBehavior.js";
 import { createSpawnerBehavior } from "../../../Libraries/Sandbox/behaviors/spawnerBehavior.js";
 import { createDragLaunchBehavior, createDragLaunchWaitBehavior } from "../../../Libraries/Sandbox/dragLaunch.js";
 
@@ -14,6 +17,9 @@ function createSandboxBehaviors(state) {
         createSpawnerBehavior(state),
         createFlipperBehavior(state),
         createCueStrikeBehavior(state),
+        createRollToCursorDirectBehavior(),
+        createRollToCursorHpaBehavior(state),
+        createRollToCursorFlowBehavior(state),
     ];
 }
 
