@@ -4,7 +4,7 @@ import { createBakedSpriteCache } from "./BakedSpriteCache.js";
 import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
-import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom } from "../../Core/GamePropPixelSize.js";
+import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents } from "../Props/propStrategy.js";
 /**
@@ -137,9 +137,83 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
 }
 export function clearPropSpriteCache() {
     propSpriteCache.clear();
+    overlaySpriteCache.clear();
 }
 /** QuantizedSpriteCache render keys for grid-stamped occupancy (not WorldProp assets). */
 export const GRID_STAMP_RENDER_KEY = { ForcefieldEdge: "grid_forcefield_edge", FloorBelt: "grid_floor_belt", PassagePowerSource: "grid_passage_power_source" };
+/** Render keys for baked sandbox/editor overlay glyphs. */
+export const OVERLAY_RENDER_KEY = {
+    SelectionRing: "overlay_selection_ring",
+    PathDestination: "overlay_path_destination",
+    PathArrowHead: "overlay_path_arrow_head",
+    FlowDirectionArrow: "overlay_flow_direction_arrow",
+    WireEndpoint: "overlay_wire_endpoint",
+    GridCellHighlight: "overlay_grid_cell_highlight",
+    PathDebugNode: "overlay_path_debug_node",
+};
+const OVERLAY_STAGE_PADDING = 6;
+const overlaySpriteCache = createQuantizedSpriteCache({ maxItems: 1024 });
+/**
+ * @param {number} worldX
+ * @param {number} worldY
+ * @param {number} px
+ * @param {number} py
+ * @param {string} renderKey
+ * @param {string} customKey
+ * @param {number} [zoom]
+ */
+export function buildOverlaySpriteKey(worldX, worldY, px, py, renderKey, customKey, zoom = 1) {
+    const { keyDx, keyDy } = overlaySpriteCache.quantizeView(worldX - px, worldY - py);
+    return `${renderKey}_${customKey}_${keyDx}_${keyDy}_z${quantizePropBakeZoom(zoom)}`;
+}
+/**
+ * @param {object} spec
+ * @param {number} spec.worldX
+ * @param {number} spec.worldY
+ * @param {number} spec.px
+ * @param {number} spec.py
+ * @param {string} spec.renderKey
+ * @param {string} spec.customKey
+ * @param {number} spec.worldSpan
+ * @param {(ctx: CanvasRenderingContext2D, anchorX: number, anchorY: number) => void} spec.draw
+ * @param {number} [spec.zoom]
+ */
+export function getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom = 1 }) {
+    const key = buildOverlaySpriteKey(worldX, worldY, px, py, renderKey, customKey, zoom);
+    return overlaySpriteCache.getOrBake(key, () => {
+        const bakeScale = resolvePropBakeScale(worldSpan, undefined, false, zoom);
+        const stageSpan = Math.ceil((worldSpan + OVERLAY_STAGE_PADDING * 2) * bakeScale);
+        const anchorX = stageSpan / 2;
+        const anchorY = stageSpan / 2;
+        const canvas = createOffscreenCanvas(stageSpan, stageSpan);
+        const ctx = canvas.getContext("2d");
+        ctx.save();
+        if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
+        draw(ctx, anchorX, anchorY);
+        ctx.restore();
+        return { canvas, meta: { anchorX, anchorY, bakeScale } };
+    });
+}
+/** @typedef {(ctx: CanvasRenderingContext2D, anchorX: number, anchorY: number) => void} OverlayDrawRecipe */
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} worldX
+ * @param {number} worldY
+ * @param {number} px
+ * @param {number} py
+ * @param {string} renderKey
+ * @param {string} customKey
+ * @param {number} worldSpan
+ * @param {OverlayDrawRecipe} draw
+ * @param {{ zoom?: number }} [opts]
+ */
+export function drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, { zoom = 1 } = {}) {
+    const sprite = getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom });
+    blitAnchoredSprite(ctx, sprite, worldX, worldY);
+}
+export function clearOverlaySpriteCache() {
+    overlaySpriteCache.clear();
+}
 /** @typedef {import("../Render/Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 /**
  * Mandatory draw path for iso/grid stamps and world props (except 3D building walls).

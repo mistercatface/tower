@@ -1,5 +1,22 @@
+import { drawCachedOverlayGlyph } from "../../Canvas/QuantizedSpriteCache.js";
 import { fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, strokeSegment, traceAabbRect } from "../../Canvas/CanvasPath.js";
 import { lengthXY, normalizeXY } from "../../Math/Vec2.js";
+import { bakeOverlayCommand } from "./overlayGlyphBake.js";
+function resolveCacheAnchor(cmd) {
+    if (cmd.cache.anchorX != null && cmd.cache.anchorY != null) return { x: cmd.cache.anchorX, y: cmd.cache.anchorY };
+    if (cmd.kind === "circleStroke" || cmd.kind === "circleFillStroke") return { x: cmd.cx, y: cmd.cy };
+    if (cmd.kind === "arrowHead") return { x: cmd.x, y: cmd.y };
+    if (cmd.kind === "directionArrow") return { x: cmd.cx, y: cmd.cy };
+    if (cmd.kind === "aabb") return { x: (cmd.minX + cmd.maxX) * 0.5, y: (cmd.minY + cmd.maxY) * 0.5 };
+    return { x: 0, y: 0 };
+}
+function drawCachedOverlayCommand(ctx, cmd, px, py, zoom) {
+    const { renderKey, customKey, worldSpan } = cmd.cache;
+    const anchor = resolveCacheAnchor(cmd);
+    drawCachedOverlayGlyph(ctx, anchor.x, anchor.y, px, py, renderKey, customKey, worldSpan, (bakeCtx, bakeAnchorX, bakeAnchorY) => bakeOverlayCommand(bakeCtx, bakeAnchorX, bakeAnchorY, cmd), {
+        zoom,
+    });
+}
 function drawArrowHead(ctx, x, y, dirX, dirY, fill, headLen, headWidth) {
     const tx = -dirY;
     const ty = dirX;
@@ -47,11 +64,15 @@ function drawAimSegmentCommand(ctx, cmd) {
     }
     ctx.restore();
 }
-export function drawOverlayCommands(ctx, commands) {
+export function drawOverlayCommands(ctx, commands, { px = 0, py = 0, zoom = 1 } = {}) {
     if (!commands.length) return;
     ctx.save();
     for (let i = 0; i < commands.length; i++) {
         const cmd = commands[i];
+        if (cmd.cache) {
+            drawCachedOverlayCommand(ctx, cmd, px, py, zoom);
+            continue;
+        }
         if (cmd.kind === "aabb") {
             drawAabbCommand(ctx, cmd);
             continue;
@@ -91,6 +112,10 @@ export function drawOverlayCommands(ctx, commands) {
         }
         if (cmd.kind === "arrowHead") {
             drawArrowHead(ctx, cmd.x, cmd.y, cmd.dirX, cmd.dirY, cmd.fill, cmd.headLen ?? 9, cmd.headWidth ?? 6);
+            continue;
+        }
+        if (cmd.kind === "directionArrow") {
+            bakeOverlayCommand(ctx, cmd.cx, cmd.cy, cmd);
             continue;
         }
         if (cmd.kind === "aimSegment") drawAimSegmentCommand(ctx, cmd);

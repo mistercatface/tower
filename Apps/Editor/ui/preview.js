@@ -21,10 +21,10 @@ const editorSceneHooks = {
         floorPropEffectPass,
         {
             zIndex: 72,
-            draw(_state, _viewport, ctx) {
+            draw(_state, viewport, ctx) {
                 const controller = getGameState().sandbox.controller;
                 if (!controller) return;
-                drawOverlayCommands(ctx, controller.collectOverlayCommands());
+                drawOverlayCommands(ctx, controller.collectOverlayCommands(), { px: viewport.x, py: viewport.y, zoom: viewport.zoom });
             },
         },
     ],

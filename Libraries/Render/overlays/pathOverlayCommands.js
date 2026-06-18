@@ -1,5 +1,13 @@
 import { normalizeXY } from "../../Math/Vec2.js";
-import { overlayArrowHead, overlayCircleFillStroke, overlayCircleStroke, overlayDirectionArrow, overlayPolyline } from "./overlayCommands.js";
+import {
+    overlayCachedArrowHead,
+    overlayCachedFlowDirectionArrow,
+    overlayCachedPathDebugNode,
+    overlayCachedPathDestination,
+    overlayCachedSelectionRing,
+    overlayCircleStroke,
+    overlayPolyline,
+} from "./overlayCommands.js";
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
 /** @typedef {Object} PathOverlayData
  * @property {"direct" | "hpa" | "flow"} mode
@@ -23,7 +31,7 @@ function appendPathEndArrow(out, pathNodes, targetX, targetY, color) {
         const from = pathNodes[pathNodes.length - 1];
         const { nx, ny, len } = normalizeXY(targetX - from.x, targetY - from.y);
         if (len > 0) {
-            out.push(overlayArrowHead(targetX, targetY, nx, ny, { fill: color }));
+            out.push(overlayCachedArrowHead(targetX, targetY, nx, ny, { fill: color }));
             return;
         }
     }
@@ -31,17 +39,17 @@ function appendPathEndArrow(out, pathNodes, targetX, targetY, color) {
         const n = pathNodes.length;
         const tip = pathNodes[n - 1];
         const { nx, ny, len } = normalizeXY(tip.x - pathNodes[n - 2].x, tip.y - pathNodes[n - 2].y);
-        if (len > 0) out.push(overlayArrowHead(tip.x, tip.y, nx, ny, { fill: color }));
+        if (len > 0) out.push(overlayCachedArrowHead(tip.x, tip.y, nx, ny, { fill: color }));
     }
 }
 function appendFlowAgentArrow(out, overlay) {
     const { propX, propY, propRadius, dirX, dirY, targetX, targetY } = overlay;
     if (dirX != null && dirY != null) {
         const color = "rgba(76, 175, 80, 0.85)";
-        out.push(...overlayDirectionArrow(propX, propY, dirX, dirY, { pad: propRadius + FLOW_ARROW_PAD, len: FLOW_ARROW_LEN, stroke: color, lineWidth: PATH_STROKE_WIDTH }));
+        out.push(overlayCachedFlowDirectionArrow(propX, propY, dirX, dirY, { pad: propRadius + FLOW_ARROW_PAD, len: FLOW_ARROW_LEN, stroke: color, lineWidth: PATH_STROKE_WIDTH }));
         return;
     }
-    if (targetX != null && targetY != null) out.push(overlayCircleFillStroke(targetX, targetY, 4, { fill: "rgba(255, 193, 7, 0.85)" }));
+    if (targetX != null && targetY != null) out.push(overlayCachedPathDestination(targetX, targetY, 4, { fill: "rgba(255, 193, 7, 0.85)" }));
 }
 function appendNormalPathOverlayCommands(out, overlay) {
     const { mode, targetX, targetY, pathNodes } = overlay;
@@ -71,7 +79,7 @@ function appendAbstractPathCommands(out, abstractPath, pathPlanner = "hpa") {
     for (let i = 0; i < abstractPath.length; i++) {
         const node = abstractPath[i];
         const isEndpoint = node.id === "start" || node.id === "target";
-        out.push(overlayCircleFillStroke(node.x, node.y, isEndpoint ? 8 : 10, { fill: isEndpoint ? endpointColor : nodeColor }));
+        out.push(overlayCachedPathDebugNode(node.x, node.y, isEndpoint ? 8 : 10, { fill: isEndpoint ? endpointColor : nodeColor }));
     }
 }
 export function appendPathOverlayCommands(out, overlay, visual = "debug") {
@@ -85,7 +93,7 @@ export function appendPathOverlayCommands(out, overlay, visual = "debug") {
         if (abstractPath) appendAbstractPathCommands(out, abstractPath, pathPlanner ?? "hpa");
         if (pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#00e5ff", lineWidth: 4 }));
         if (pathNodes.length >= 1) appendPathEndArrow(out, pathNodes, targetX, targetY, "rgba(156, 39, 176, 0.9)");
-        for (let i = 0; i < pathNodes.length; i++) out.push(overlayCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }));
+        for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedPathDebugNode(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }));
         return;
     }
     if (mode === "flow") {
@@ -95,5 +103,5 @@ export function appendPathOverlayCommands(out, overlay, visual = "debug") {
     if (pathNodes.length < 2) return;
     out.push(overlayPolyline(pathNodes, { stroke: "rgba(0, 188, 212, 0.65)", lineWidth: 3, dash: [8, 6] }));
     const end = pathNodes[pathNodes.length - 1];
-    out.push(overlayCircleFillStroke(end.x, end.y, 10, { fill: "rgba(0, 188, 212, 0.85)" }));
+    out.push(overlayCachedPathDestination(end.x, end.y, 10, { fill: "rgba(0, 188, 212, 0.85)" }));
 }

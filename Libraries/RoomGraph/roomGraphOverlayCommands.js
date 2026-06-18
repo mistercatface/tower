@@ -27,7 +27,7 @@ export function appendRoomGraphOverlayCommands(
         const fromNode = nodes.find((node) => node.id === wireFromNodeId);
         if (fromNode) {
             const from = roomNodeCenterWorld(grid, fromNode);
-            appendOverlayWireLink(out, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D");
+            appendOverlayWireLink(out, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D", { live: true });
         }
     }
     for (let i = 0; i < nodes.length; i++) {

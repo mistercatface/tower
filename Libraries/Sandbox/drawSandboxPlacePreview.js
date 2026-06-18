@@ -6,7 +6,7 @@ import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, appendGridEdgeOv
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset, isPuzzleTemplateSpawnAsset } from "./sandboxCapabilities.js";
 import { resolveRoomNodePlacePreview } from "../RoomGraph/index.js";
 import { resolveBeltCratePuzzlePlacePreview } from "../RoomGraph/puzzleTemplateBeltCrate.js";
-import { overlayAabb } from "../Render/overlays/overlayCommands.js";
+import { overlayGridCellHighlight } from "../Render/overlays/overlayCommands.js";
 const PREVIEW_CELL_BOUNDS = createAabb();
 export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
     if (session.isMapGenPlaceMode()) return null;
@@ -54,7 +54,7 @@ export function appendPlacePreviewOverlayCommands(out, preview, grid) {
         const tint = preview.tint ?? "floor";
         const valid = preview.valid !== false;
         const { fill, stroke } = cellPreviewStyle(tint, valid);
-        out.push(overlayAabb(centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), { fill, stroke, lineWidth: 1, dash: [4, 3] }));
+        out.push(overlayGridCellHighlight(centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid.cellSize, `${tint}_${valid}`, { fill, stroke, lineWidth: 1, dash: [4, 3] }));
         return;
     }
     if (preview.kind === "cellRect") {
@@ -68,7 +68,8 @@ export function appendPlacePreviewOverlayCommands(out, preview, grid) {
                 fill = clear ? "rgba(167, 139, 250, 0.12)" : "rgba(255, 96, 96, 0.16)";
                 stroke = clear ? "rgba(167, 139, 250, 0.85)" : "rgba(255, 96, 96, 0.9)";
             }
-            out.push(overlayAabb(centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), { fill, stroke, lineWidth: 1, dash: [4, 3] }));
+            const tintKey = preview.tint === "puzzle" ? `puzzle_${clear}` : clear ? "room_clear" : "room_blocked";
+            out.push(overlayGridCellHighlight(centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid.cellSize, tintKey, { fill, stroke, lineWidth: 1, dash: [4, 3] }));
         }
         return;
     }

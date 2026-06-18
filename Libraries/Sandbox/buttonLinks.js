@@ -131,5 +131,5 @@ export function appendButtonWireOverlayCommands(out, state, { wireFromPropId = n
 export function appendButtonWirePreviewCommands(out, state, fromPropId, wireCursor) {
     const from = state.entityRegistry.getLive(fromPropId);
     if (!from) return;
-    appendOverlayWireLink(out, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D");
+    appendOverlayWireLink(out, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D", { live: true });
 }
