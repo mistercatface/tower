@@ -1,20 +1,28 @@
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
 import { getCanvasLineScale } from "../common/viewportUtils.js";
 import { fillStrokeCircle, strokeCircle, strokeOpenPolyline, strokeSegment } from "../../Canvas/CanvasPath.js";
-import { decodeFlowFieldCell } from "../../Pathfinding/sampleFlowDirection.js";
-/** @typedef {import("../../Pathfinding/FlowFieldGrid.js").FlowFieldGrid} FlowFieldGrid */
-/**
- * @typedef {Object} ActivePathOverlay
+/** @typedef {Object} ActivePathOverlay
  * @property {"direct" | "hpa" | "flow"} mode
+ * @property {number} [propX]
+ * @property {number} [propY]
+ * @property {number} [propRadius]
+ * @property {number} [dirX]
+ * @property {number} [dirY]
  * @property {number} [targetX]
  * @property {number} [targetY]
  * @property {Array<{ x: number, y: number }>} [pathNodes]
  * @property {Array<{ x: number, y: number, id?: string }>} [abstractPath]
  * @property {"local" | "hpa"} [pathPlanner]
- * @property {FlowFieldGrid} [flowFieldGrid]
  */
 const P1 = { x: 0, y: 0 };
 const P2 = { x: 0, y: 0 };
+function unitVector(x0, y0, x1, y1) {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const len = Math.hypot(dx, dy);
+    if (len <= 0) return null;
+    return { x: dx / len, y: dy / len };
+}
 function drawPathArrowhead(ctx, x, y, vx, vy, color, lineScale) {
     const headSize = 9 * lineScale;
     const headWidth = 6 * lineScale;
@@ -43,6 +51,22 @@ function drawPathPolyline(ctx, pathNodes, lineScale, grid, color) {
     if (pathNodes.length < 2) return;
     strokeSubPath(ctx, pathNodes);
 }
+function drawPathEndArrow(ctx, pathNodes, targetX, targetY, color, lineScale) {
+    if (targetX != null && targetY != null && pathNodes?.length >= 1) {
+        const from = pathNodes[pathNodes.length - 1];
+        const dir = unitVector(from.x, from.y, targetX, targetY);
+        if (dir) {
+            drawPathArrowhead(ctx, targetX, targetY, dir.x, dir.y, color, lineScale);
+            return;
+        }
+    }
+    if (pathNodes?.length >= 2) {
+        const n = pathNodes.length;
+        const tip = pathNodes[n - 1];
+        const dir = unitVector(pathNodes[n - 2].x, pathNodes[n - 2].y, tip.x, tip.y);
+        if (dir) drawPathArrowhead(ctx, tip.x, tip.y, dir.x, dir.y, color, lineScale);
+    }
+}
 function drawNormalPathOverlay(ctx, overlay, grid) {
     const { mode, targetX, targetY, pathNodes } = overlay;
     const lineScale = getCanvasLineScale(ctx);
@@ -62,17 +86,18 @@ function drawNormalPathOverlay(ctx, overlay, grid) {
         return;
     }
     if (mode === "flow") {
-        drawFlowFieldOverlay(ctx, overlay, lineScale, null);
+        drawFlowAgentArrow(ctx, overlay, lineScale);
         return;
     }
     ctx.save();
+    const hpaColor = "rgba(156, 39, 176, 0.9)";
     ctx.strokeStyle = "rgba(156, 39, 176, 0.65)";
     ctx.lineWidth = 2.5 * lineScale;
-    if (pathNodes?.length) drawPathPolyline(ctx, pathNodes, lineScale, grid, "rgba(156, 39, 176, 0.9)");
-    if (targetX != null && targetY != null) {
-        ctx.strokeStyle = "rgba(156, 39, 176, 0.9)";
+    if (pathNodes?.length) drawPathPolyline(ctx, pathNodes, lineScale, grid, hpaColor);
+    if (pathNodes?.length || (targetX != null && targetY != null)) {
+        ctx.strokeStyle = hpaColor;
         ctx.lineWidth = 2 * lineScale;
-        strokeCircle(ctx, targetX, targetY, 5 * lineScale);
+        drawPathEndArrow(ctx, pathNodes, targetX, targetY, hpaColor, lineScale);
     }
     ctx.restore();
 }
@@ -82,44 +107,24 @@ function drawFlowTargetMarker(ctx, x, y, lineScale, ready) {
     ctx.lineWidth = 1.5 * lineScale;
     fillStrokeCircle(ctx, x, y, 4 * lineScale);
 }
-function drawFlowCellArrow(ctx, cx, cy, dirX, dirY, halfLen, color, lineWidth) {
-    const x1 = cx - dirX * halfLen;
-    const y1 = cy - dirY * halfLen;
-    const x2 = cx + dirX * halfLen;
-    const y2 = cy + dirY * halfLen;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = lineWidth;
-    strokeSegment(ctx, x1, y1, x2, y2);
-    drawPathArrowhead(ctx, x2, y2, dirX, dirY, color, lineWidth);
-}
-/** @param {import("../../Viewport/Viewport.js").Viewport | null} [viewport] */
-function drawFlowFieldOverlay(ctx, overlay, lineScale, viewport) {
-    const { flowFieldGrid, targetX, targetY } = overlay;
-    if (!flowFieldGrid || targetX == null || targetY == null) return;
-    const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
-    const arrowHalfLen = flowFieldGrid.cellSize * 0.32;
-    const bounds = viewport?.boundsDraw;
-    if (!flowField) {
-        drawFlowTargetMarker(ctx, targetX, targetY, lineScale, false);
-        return;
-    }
-    const { cols, rows } = flowFieldGrid;
-    const step = lineScale > 2.2 ? 2 : 1;
-    const shaftColor = "rgba(76, 175, 80, 0.7)";
-    const shaftWidth = 1.25 * lineScale;
-    for (let row = 0; row < rows; row += step)
-        for (let col = 0; col < cols; col += step) {
-            const idx = row * cols + col;
-            if (flowFieldGrid.isFlowCellBlocked(idx)) continue;
-            const val = flowField[idx];
-            if (val === 255) continue;
-            const { x, y } = flowFieldGrid.gridToWorld(col, row);
-            if (bounds && (x < bounds.minX || x > bounds.maxX || y < bounds.minY || y > bounds.maxY)) continue;
-            const dir = decodeFlowFieldCell(val);
-            if (!dir) continue;
-            drawFlowCellArrow(ctx, x, y, dir.x, dir.y, arrowHalfLen, shaftColor, shaftWidth);
-        }
-    drawFlowTargetMarker(ctx, targetX, targetY, lineScale, true);
+function drawFlowAgentArrow(ctx, overlay, lineScale) {
+    const { propX, propY, propRadius, dirX, dirY, targetX, targetY } = overlay;
+    if (propX == null || propY == null) return;
+    ctx.save();
+    if (dirX != null && dirY != null) {
+        const pad = (propRadius ?? 8) + 5 * lineScale;
+        const arrowLen = 20 * lineScale;
+        const startX = propX + dirX * pad;
+        const startY = propY + dirY * pad;
+        const tipX = startX + dirX * arrowLen;
+        const tipY = startY + dirY * arrowLen;
+        const color = "rgba(76, 175, 80, 0.85)";
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2 * lineScale;
+        strokeSegment(ctx, startX, startY, tipX, tipY);
+        drawPathArrowhead(ctx, tipX, tipY, dirX, dirY, color, lineScale);
+    } else if (targetX != null && targetY != null) drawFlowTargetMarker(ctx, targetX, targetY, lineScale, false);
+    ctx.restore();
 }
 function drawPathMarker(ctx, x, y, radius, fillStyle, label, zoom) {
     ctx.fillStyle = fillStyle;
@@ -170,29 +175,25 @@ export function drawActivePathOverlay(ctx, overlay, zoom, visual = "debug", grid
     const { mode, targetX, targetY, pathNodes, abstractPath, pathPlanner } = overlay;
     if (mode === "hpa") {
         if (abstractPath) drawAbstractPath(ctx, abstractPath, zoom, pathPlanner ?? "hpa");
+        const lineScale = 1 / zoom;
         if (pathNodes?.length >= 2) {
             ctx.strokeStyle = "#00e5ff";
             ctx.lineWidth = 4 / zoom;
-            const lineScale = 1 / zoom;
             drawPathPolyline(ctx, pathNodes, lineScale, grid, "#00e5ff");
         }
+        if (pathNodes?.length >= 1) drawPathEndArrow(ctx, pathNodes, targetX, targetY, "rgba(156, 39, 176, 0.9)", lineScale);
         if (pathNodes?.length)
-            for (const wp of pathNodes) {
+            for (let i = 0; i < pathNodes.length; i++) {
+                const wp = pathNodes[i];
                 ctx.fillStyle = "#00e5ff";
                 ctx.strokeStyle = "#fff";
                 ctx.lineWidth = 1.5 / zoom;
                 fillStrokeCircle(ctx, wp.x, wp.y, 6 / zoom);
             }
-        if (targetX != null && targetY != null) {
-            ctx.fillStyle = "rgba(156, 39, 176, 0.85)";
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 2 / zoom;
-            fillStrokeCircle(ctx, targetX, targetY, 5 / zoom);
-        }
         return;
     }
     if (mode === "flow") {
-        drawFlowFieldOverlay(ctx, overlay, 1 / zoom, viewport);
+        drawFlowAgentArrow(ctx, overlay, 1 / zoom);
         return;
     }
     if (!pathNodes || pathNodes.length < 2) return;
