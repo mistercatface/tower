@@ -13,7 +13,7 @@ const CUE_BEHAVIOR_OVERRIDES = {
     inputGates: {
         cueStrike: [
             { scope: "self", until: "atRest" },
-            { scope: "groupWorldProps", link: "spawnGroupId", until: "allAtRest", excludeStates: ["voidSink"] },
+            { scope: "groupWorldProps", link: "spawnGroupId", until: "allAtRest" },
         ],
     },
 };

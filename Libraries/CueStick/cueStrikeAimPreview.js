@@ -9,14 +9,8 @@ export function postCueStrikeSpeed(strikePower) {
 export function estimateCueStrikeTravelDistance(strikePower, strategy = {}) {
     return estimateRollingTravelDistance(postCueStrikeSpeed(strikePower), strategy);
 }
-/** @param {object} body */
-function isCueStrikeAimTarget(body) {
-    if (!body) return false;
-    const state = body.currentStateName;
-    return state !== "voidSink";
-}
 /**
- * Circle targets for cue-ball aim preview — skips dead and void-sinking bodies.
+ * Circle targets for cue-ball aim preview — skips dead bodies.
  *
  * @param {object} shooter
  * @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry
@@ -26,7 +20,7 @@ export function buildCueStrikeCircleTargets(shooter, registry, defaultRadius = 8
     const shooterRadius = shooter?.radius ?? defaultRadius;
     const targets = [];
     registry.forEachOfKind("worldProp", (body) => {
-        if (body === shooter || body.isDead || !isCueStrikeAimTarget(body)) return;
+        if (body === shooter || body.isDead) return;
         targets.push({ x: body.x, y: body.y, radius: body.radius ?? shooterRadius });
     });
     return targets;

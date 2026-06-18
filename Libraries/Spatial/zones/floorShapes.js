@@ -69,8 +69,6 @@ export function initFloorTriggerProp(prop) {
     prop._occupants = new Set();
     prop._nextOccupants = new Set();
     prop.triggers = prop.strategy.floorTriggers.map((trigger) => ({ ...trigger }));
-    if (prop.strategy.sinkDepth != null) prop.sinkDepth = prop.strategy.sinkDepth;
-    if (prop.strategy.captureTolerance != null) prop.captureTolerance = prop.strategy.captureTolerance;
     prop.powered = prop.strategy.powered !== false;
     prop.aabb = createAabb();
     syncFloorPropCollisionShape(prop);

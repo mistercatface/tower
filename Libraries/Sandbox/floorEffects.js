@@ -1,6 +1,3 @@
-import { CAPTURED_SINK_DURATION_MS } from "../../Entities/worldPropVoidSinkState.js";
-import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
-import { floorCircleRadius } from "../Spatial/zones/floorShapes.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive, isSustainedFlipperButtonInputMode, isSustainedSpawnerButtonInputMode } from "./buttonInput.js";
@@ -14,29 +11,6 @@ import { fireSpawner, isSpawnerWorldProp } from "./spawnerConfig.js";
  * @property {number} [dtSec]
  * @property {{ x: number, y: number }} [world]
  */
-/** @param {object} prop @param {object} pit */
-function beginSink(prop, pit) {
-    if (prop.isDead || prop.currentStateName === "voidSink") return;
-    const mouthRadius = floorCircleRadius(pit);
-    if (!canEntityFitVoidPit(mouthRadius, prop)) return;
-    prop.voidX = pit.x;
-    prop.voidY = pit.y;
-    prop.voidRadius = mouthRadius;
-    prop.voidDepth = pit.sinkDepth;
-    prop.voidCaptureTolerance = pit.captureTolerance;
-    prop.voidCaptured = isVoidSinkCaptured(pit.x, pit.y, mouthRadius, prop, pit.captureTolerance);
-    if (prop.voidCaptured) prop.voidSinkTimer = CAPTURED_SINK_DURATION_MS;
-    else delete prop.voidSinkTimer;
-    prop.changeState("voidSink");
-}
-/** @param {object} state @param {number} entityId @param {object} pit */
-function rimOutSink(state, entityId, pit) {
-    const prop = state.entityRegistry.get(entityId);
-    if (!prop || prop.currentStateName !== "voidSink" || prop.voidCaptured) return;
-    const mouthRadius = floorCircleRadius(pit);
-    if (isInsideVoidMouth(pit.x, pit.y, mouthRadius, prop)) return;
-    prop.changeState("normal");
-}
 /** @param {object} state @param {import("./buttonLinks.js").ButtonLinkTarget} link @param {object} button */
 function runButtonWorldPropLink(state, link, button) {
     const prop = state.entityRegistry.getLive(link.id);
@@ -84,18 +58,7 @@ export function syncButtonFlipperLinks(state, button) {
     }
 }
 /** @type {Record<string, { run: (state: object, floorProp: object, trigger: FloorTriggerDef, ctx: FloorEffectContext) => void }>} */
-const FLOOR_EFFECTS = {
-    sink: {
-        run(_state, pit, _trigger, ctx) {
-            beginSink(ctx.entity, pit);
-        },
-    },
-    unsink: {
-        run(state, pit, _trigger, ctx) {
-            rimOutSink(state, ctx.entityId, pit);
-        },
-    },
-};
+const FLOOR_EFFECTS = {};
 /** @param {object} state @param {object} floorProp @param {FloorTriggerDef} trigger @param {FloorEffectContext} ctx */
 export function runFloorEffect(state, floorProp, trigger, ctx) {
     const effect = FLOOR_EFFECTS[trigger.effect];

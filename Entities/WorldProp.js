@@ -9,7 +9,6 @@ import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
-import { WorldPropVoidSinkState } from "./worldPropVoidSinkState.js";
 import { isKinematicallyActive } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
 import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
@@ -17,7 +16,7 @@ import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js"
 import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
 import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
 import { getEntityCollisionParts } from "../Libraries/Spatial/collision/SatCollision.js";
-const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}), voidSink: new WorldPropVoidSinkState() });
+const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
     if (!def) return withPropStrategyDefaults({});

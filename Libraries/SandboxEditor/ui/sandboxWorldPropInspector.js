@@ -16,16 +16,6 @@ function applyWorldPropPosition(prop, { x, y }) {
     if (prop.aabb) syncFloorTriggerAabb(prop);
     if (prop.strategy?.isKinetic) wakeKineticBody(prop);
 }
-/** @param {object} prop @param {{ radius?: number, sinkDepth?: number, captureTolerance?: number }} patch */
-function applyVoidPitPatch(prop, patch) {
-    if (patch.radius != null) {
-        prop.radius = patch.radius;
-        syncFloorPropCollisionShape(prop);
-    }
-    if (patch.sinkDepth != null) prop.sinkDepth = patch.sinkDepth;
-    if (patch.captureTolerance != null) prop.captureTolerance = patch.captureTolerance;
-    if (prop.aabb) syncFloorTriggerAabb(prop);
-}
 /** @param {object} prop @param {{ radius?: number, inputMode?: string, massThreshold?: number, invert?: boolean }} patch */
 function applyButtonFloorPatch(prop, patch) {
     if (patch.radius != null) {
@@ -144,13 +134,6 @@ export function appendSandboxWorldPropInspectorFields(body, prop, { state, onCha
         onChange();
     };
     appendTranslateFields(body, { x: prop.x, y: prop.y, onPatch: (pos) => patch(() => applyWorldPropPosition(prop, pos)) });
-    const isVoidPit = prop.triggers?.some((trigger) => trigger.effect === "sink");
-    if (isVoidPit) {
-        appendNumberField(body, "Radius", { value: prop.radius, step: 0.5, min: 0.5, onChange: (radius) => patch(() => applyVoidPitPatch(prop, { radius })) });
-        appendNumberField(body, "Depth", { value: prop.sinkDepth, step: 1, min: 1, onChange: (sinkDepth) => patch(() => applyVoidPitPatch(prop, { sinkDepth })) });
-        appendNumberField(body, "Capture", { value: prop.captureTolerance, step: 0.05, min: 0, onChange: (captureTolerance) => patch(() => applyVoidPitPatch(prop, { captureTolerance })) });
-        return;
-    }
     if (isButtonEntity(prop)) {
         appendNumberField(body, "Radius", { value: prop.radius, step: 0.5, min: 0.5, onChange: (radius) => patch(() => applyButtonFloorPatch(prop, { radius })) });
         appendSelectField(body, "Input", {

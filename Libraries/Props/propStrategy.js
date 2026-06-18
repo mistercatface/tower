@@ -68,7 +68,6 @@ export function getBaseSpriteCacheKey(prop, deps) {
     if (prop.strategy?.rolls) orientKey = buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing);
     else orientKey = `f${quantizeAngleIndex(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing)}`;
     let key = `${orientKey}_${propShapeFootprintKey(prop)}`;
-    if (prop.sinkDepth != null) key += `_d${Math.round(prop.sinkDepth)}`;
     if (prop.powered === false) key += "_off";
     if (prop._buttonDrawPressed) key += "_on";
     return key;

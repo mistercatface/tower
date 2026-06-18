@@ -12,7 +12,6 @@ import pipe_elbow from "./pipe_elbow/pipe_elbow.asset.js";
 import blue_ball from "./blue_ball/blue_ball.asset.js";
 import orange_ball from "./orange_ball/orange_ball.asset.js";
 import button_floor from "./button_floor/button_floor.asset.js";
-import void_pit from "./void_pit/void_pit.asset.js";
 import floor_belt from "./floor_belt/floor_belt.asset.js";
 import floor_belt_elbow_left from "./floor_belt/floor_belt_elbow_left.asset.js";
 import floor_belt_elbow_right from "./floor_belt/floor_belt_elbow_right.asset.js";
@@ -38,7 +37,6 @@ const catalog = {
     pipe_elbow,
     blue_ball,
     orange_ball,
-    void_pit,
     button_floor,
     floor_belt,
     floor_belt_elbow_left,
