@@ -34,13 +34,10 @@ export const SNAKE_GAME_DEFAULTS = {
     /** When no cell meets exploreMinTiles, retry with this minimum distance. */
     exploreFallbackMinTiles: 1,
     showMemoryHeatmap: true,
-    memoryHeatmap: {
-        bucketCount: 8,
-        fillRgb: "180, 100, 255",
-        fillAlphaMax: 0.28,
-        fillAlphaMin: 0.05,
-        strokeAlphaMax: 0.7,
-        strokeAlphaMin: 0.15,
-        lineWidth: 1,
-    },
+    memoryHeatmap: { bucketCount: 8, fillRgb: "180, 100, 255", fillAlphaMax: 0.28, fillAlphaMin: 0.05, strokeAlphaMax: 0.7, strokeAlphaMin: 0.15, lineWidth: 1 },
+    /** Off-screen snakes run full FOV sync every N ticks (on-screen = every tick). */
+    brainSyncOffScreenInterval: 4,
+    showKineticSolverStats: false,
+    /** Optional vision cone override for the player snake only; null uses visionCone. */
+    playerVisionCone: null,
 };

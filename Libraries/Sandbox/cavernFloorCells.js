@@ -5,6 +5,9 @@ export function cavernCellKey(col, row) {
 }
 export function collectOpenCavernCells(state, config = state.editor.cavernConfig) {
     const grid = state.obstacleGrid;
+    const epoch = state.navigation?.obstacleGeneration ?? 0;
+    const cache = state.sandbox._openCavernCellsCache;
+    if (cache && cache.epoch === epoch && cache.config === config) return cache.cells;
     const cellSize = grid.cellSize;
     const open = [];
     forEachGlobalCellInMapGenBounds(config, (globalCol, globalRow) => {
@@ -13,6 +16,7 @@ export function collectOpenCavernCells(state, config = state.editor.cavernConfig
         if (grid.isBlocked(col, row)) return;
         open.push({ col, row });
     });
+    state.sandbox._openCavernCellsCache = { epoch, config, cells: open };
     return open;
 }
 export function pickOpenCavernCell(openCells, { excludeKeys = null, rng = Math.random } = {}) {

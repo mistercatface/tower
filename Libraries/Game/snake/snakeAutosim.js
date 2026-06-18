@@ -39,7 +39,7 @@ function resolveExploreCell(state, originCol, originRow, memory, rng) {
     if (cell && cell.col === originCol && cell.row === originRow) cell = pickOpenCavernCell(openCells, { excludeKeys: new Set([cavernCellKey(originCol, originRow)]), rng });
     return cell;
 }
-export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorById, eatRadius, ballType, growDirX, growDirY, rng = Math.random }) {
+export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorById, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null }) {
     const config = getSnakeGameConfig();
     if (!behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID)) throw new Error(`Snake autosim missing behavior: ${HPA_GROUND_NAV_BEHAVIOR_ID}`);
     if (!behaviorById.get(DIRECT_GROUND_NAV_BEHAVIOR_ID)) throw new Error(`Snake autosim missing behavior: ${DIRECT_GROUND_NAV_BEHAVIOR_ID}`);
@@ -55,7 +55,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     const resolvedGrowDirY = growDirY ?? config.growDirY;
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
     const meta = getSandboxEntityMeta(state);
-    const { brain, sync } = createSnakeBrain();
+    const { brain, sync } = createSnakeBrain({ visionCone });
     const hpaBehavior = () => behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID);
     const directBehavior = () => behaviorById.get(DIRECT_GROUND_NAV_BEHAVIOR_ID);
     let active = false;

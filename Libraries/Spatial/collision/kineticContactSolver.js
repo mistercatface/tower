@@ -294,10 +294,16 @@ function applyKineticContactEffects(contacts, spatialFrame, state) {
     }
 }
 export function resolveKineticContactPass(spatialFrame, state) {
-    const active = spatialFrame._activeKineticBodies;
-    snapshotActiveBroadphaseBounds(active);
+    const pairs = gatherKineticContactPairs(spatialFrame);
+    resolveKineticContactPassWithPairs(spatialFrame, state, pairs);
+}
+export function gatherKineticContactPairs(spatialFrame) {
+    snapshotActiveBroadphaseBounds(spatialFrame._activeKineticBodies);
     const pairs = kineticPairBuffer;
     gatherKineticCandidatePairs(spatialFrame, pairs);
+    return pairs;
+}
+export function resolveKineticContactPassWithPairs(spatialFrame, state, pairs) {
     const contacts = kineticContactBuffer;
     narrowPhaseKineticContacts(pairs, contacts);
     if (contacts.count === 0) return;

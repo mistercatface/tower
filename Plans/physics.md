@@ -199,7 +199,8 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | Warm-start impulse cache | 🟡 | 65 | decay cache, not full manifold |
 | **Dedicated circle–circle impulse path** | ⬜ | 0 | narrow phase only · 🔜 trilogy 2 |
 | Manifold persistence (feature ids) | ⬜ | 0 | 🔜 trilogy 2 PR 1 |
-| Substep early-out when stable | ⬜ | 0 | 🔜 trilogy 2 PR 1 |
+| **Pair stream persistence (outer iters)** | 🟡 | 40 | `collisionPipeline.js` reuses broadphase pairs when `kineticEarlyOut.persistPairs` |
+| **Substep early-out when stable** | 🟡 | 55 | ε on constraint error + velocity; `kineticSolverStats` for debug |
 | Contact callbacks (break, sound, VFX) | 🟡 | 55 | fracture uses pre-impact speed |
 
 **Branch progress: 58%**
@@ -211,6 +212,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | Item | Status | % | Notes / modules |
 |------|--------|---|-----------------|
 | **Constraint registry (distance)** | ✅ | 70 | `kineticConstraints.js`, PR 1 |
+| **Island rebuild dirty flag** | 🟡 | 50 | `markKineticConstraintsDirty`; skip union-find when topology unchanged |
 | Local anchor frames → world | ✅ | 75 | `constraintAnchors.js` |
 | **Post-contact constraint pass** | ✅ | 70 | `kineticConstraintSolver.js` |
 | Position + velocity correction | ✅ | 65 | no compliance matrix yet |
@@ -349,7 +351,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 
 | PR | Theme | Status |
 |----|-------|--------|
-| C1 | Manifold persistence + substep early-out + circle impulse lane | 🔜 |
+| C1 | Manifold persistence + substep early-out + circle impulse lane | 🟡 partial (early-out + pair persist + dirty islands) |
 | C2 | Revolute + motor joints | 🔜 |
 | C3 | Mixed-shape / breakable chains, crate train | 🔜 |
 

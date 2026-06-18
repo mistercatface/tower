@@ -18,4 +18,6 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     material: { densityDefault: 1.5 / 256, minMass: 0.01 },
     /** Post-contact distance joints — separate from kinetic pair stream. */
     kineticConstraints: { iterations: 4, velocityBias: 0.2 },
+    /** Stop outer kinetic iterations when constraints + velocities settle. */
+    kineticEarlyOut: { enabled: true, minIterations: 1, velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3, persistPairs: true },
 };

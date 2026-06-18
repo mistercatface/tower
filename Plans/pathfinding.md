@@ -185,8 +185,9 @@ A different lens from the feature tiers below: do the **CS-textbook building blo
 | Scratch reuse + `runId` visited stamps | ✅ | 85 | no per-search alloc on worker |
 | Octile / Manhattan heuristics | ✅ | 85 | admissible, tie-aware offsets |
 | Path-length caps (`maxPathLen`) | ✅ | 80 | `HPA_LOCAL_MAX_LEN = 96`, fail-loud over cap |
+| **Per-agent memory step penalty (local A\*)** | 🟡 | 60 | `navStepPenalty.js` + worker replan; abstract edges ignore penalty (Tier-2 follow-up) |
 | Jump Point Search (JPS) | ⬜ | 0 | not implemented (HPA covers long-range instead) |
-| Weighted / area-cost search | ⬜ | 0 | uniform step cost only |
+| Weighted / area-cost search | 🟡 | 35 | memory penalty on local legs only; no general cost field |
 
 **Branch progress: 78%**
 

@@ -91,6 +91,18 @@ export function resolveKineticConstraintPass(spatialFrame, state) {
     gatherKineticConstraintBuffer(state, kineticConstraintBuffer);
     solveKineticConstraintBuffer(spatialFrame, kineticConstraintBuffer);
 }
+export function measureConstraintBufferMaxError(buffer) {
+    let max = 0;
+    for (let i = 0; i < buffer.count; i++) {
+        const bodyA = buffer.bodyA[i];
+        const bodyB = buffer.bodyB[i];
+        const wa = worldAnchorFromBody(bodyA, buffer.anchorAx[i], buffer.anchorAy[i]);
+        const wb = worldAnchorFromBody(bodyB, buffer.anchorBx[i], buffer.anchorBy[i]);
+        const error = Math.abs(Math.hypot(wb.x - wa.x, wb.y - wa.y) - buffer.restLength[i]);
+        if (error > max) max = error;
+    }
+    return max;
+}
 export function measureDistanceConstraintError(state, constraint) {
     const bodyA = state.entityRegistry.getLive(constraint.bodyAId);
     const bodyB = state.entityRegistry.getLive(constraint.bodyBId);

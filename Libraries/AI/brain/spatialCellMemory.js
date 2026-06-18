@@ -9,6 +9,9 @@ export function createSpatialCellMemory({ capacity = 64 } = {}) {
     };
     return {
         capacity,
+        get generation() {
+            return stampSeq;
+        },
         stamp,
         stampCells(cells) {
             for (let i = 0; i < cells.length; i++) {

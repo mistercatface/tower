@@ -291,7 +291,7 @@ Bridges to the future `procedural.md` / `levels.md`. Today puzzles are **geometr
 | AI personalities (aggression/skill) | ⬜ | 0 | |
 | Adaptive / dynamic difficulty | ⬜ | 0 | |
 | Behavior-tree / FSM authoring tools | ⬜ | 0 | editor support for AI graphs |
-| AI decision debug overlay | 🟡 | 45 | vision cones + spatial-memory overlays; no FSM-state/score readout |
+| AI decision debug overlay | 🟡 | 55 | vision cones + memory heatmap + optional physics iter HUD (`showKineticSolverStats`) |
 
 **Branch progress: 38%**
 
@@ -339,7 +339,7 @@ Does the codebase contain the building blocks of game AI? `[x]` implemented & wi
 
 ### Spatial reasoning for decisions
 - [x] **Frontier exploration** — fresh > fringe > stale cell preference (`pickExploreDestination`).
-- [x] **Stigmergic cost biasing** — memory → A\* step penalty (`basePenalty · falloff^rank`), discourages backtracking.
+- [x] **Stigmergic cost biasing** — memory → A\* step penalty (`basePenalty · falloff^rank`), discourages backtracking; penalty rebuild skipped when `spatial.generation` unchanged.
 - [ ] **Environment Query System** (rank spatial options by scored tests, à la UE EQS) — absent; the explore picker is a hardcoded special case of this.
 - [ ] **Influence / threat maps** — absent.
 

@@ -7,6 +7,7 @@ import { applySnakeHeadGameplay } from "./snakeHeadGameplay.js";
 import { mountSnakeHud } from "./snakeHud.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
+    const config = getSnakeGameConfig();
     const scene = await spawnSnakeCavernScene(state);
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
     const autosimsByHeadId = new Map();
@@ -14,7 +15,7 @@ export async function setupSnakeGame(state) {
     for (let i = 0; i < scene.snakes.length; i++) {
         const snake = scene.snakes[i];
         applySnakeHeadGameplay(snake.chain.head);
-        const autosim = createSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById });
+        const autosim = createSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById, visionCone: snake.cameraFollow && config.playerVisionCone ? config.playerVisionCone : null });
         autosim.start();
         autosimsByHeadId.set(snake.chain.head.id, autosim);
         if (snake.cameraFollow) {
@@ -28,9 +29,8 @@ export async function setupSnakeGame(state) {
     void state.navigation.onObstaclesChanged(null);
     const playerHeadId = playerSnake.chain.head.id;
     const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
-    const hud = mountSnakeHud(getSegmentCount);
+    const hud = mountSnakeHud(getSegmentCount, { getKineticSolverStats: config.showKineticSolverStats ? () => state.sandbox.kineticSolverStats ?? null : null });
     hud.update();
-    const config = getSnakeGameConfig();
     const snakeHeadIds = config.showAllSnakeVisionCones ? scene.snakes.map((snake) => snake.chain.head.id) : [playerHeadId];
     return {
         head: playerSnake.chain.head,
@@ -40,6 +40,7 @@ export async function setupSnakeGame(state) {
         cameraTarget: playerSnake.chain.head,
         showVisionCones: config.showVisionCones,
         showMemoryHeatmap: config.showMemoryHeatmap,
+        showKineticSolverStats: config.showKineticSolverStats,
         snakeHeadIds,
         memoryHeatmapHeadId: playerHeadId,
         getSnakeBrain(headId) {

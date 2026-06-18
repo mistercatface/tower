@@ -1,9 +1,20 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
-import { gatherKineticConstraintBuffer, solveKineticConstraintBuffer } from "../../Motion/kineticConstraintSolver.js";
-import { resolveKineticContactPass } from "./kineticContactSolver.js";
+import { gatherKineticConstraintBuffer, measureConstraintBufferMaxError, solveKineticConstraintBuffer } from "../../Motion/kineticConstraintSolver.js";
+import { gatherKineticContactPairs, resolveKineticContactPass, resolveKineticContactPassWithPairs } from "./kineticContactSolver.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
+function maxActiveKineticSpeedSq(activeBodies) {
+    let max = 0;
+    for (let i = 0; i < activeBodies.length; i++) {
+        const prop = activeBodies[i];
+        const vx = prop.vx ?? 0;
+        const vy = prop.vy ?? 0;
+        const sq = vx * vx + vy * vy;
+        if (sq > max) max = sq;
+    }
+    return max;
+}
 /** @param {object} prop @param {object[]} wallCandidates */
 function kineticOverlapsWallSegment(prop, wallCandidates) {
     const parts = getEntityCollisionParts(prop);
@@ -36,6 +47,7 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
  * }} hooks
  */
 export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations }) {
+    const earlyOut = getCollisionSettings().kineticEarlyOut;
     const activeBodies = spatialFrame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;
     if (hasActiveBodies)
@@ -44,10 +56,16 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
             prop._frameDispX = prop.x - (prop._wallDispPrevX ?? prop.x);
             prop._frameDispY = prop.y - (prop._wallDispPrevY ?? prop.y);
         }
+    let outerIterationsRun = 0;
     if (hasActiveBodies) {
         const constraintBuffer = gatherKineticConstraintBuffer(state);
+        let persistedPairs = null;
         for (let iter = 0; iter < kineticIterations; iter++) {
-            resolveKineticContactPass(spatialFrame, state);
+            outerIterationsRun = iter + 1;
+            if (earlyOut.persistPairs) {
+                if (iter === 0) persistedPairs = gatherKineticContactPairs(spatialFrame);
+                resolveKineticContactPassWithPairs(spatialFrame, state, persistedPairs);
+            } else resolveKineticContactPass(spatialFrame, state);
             solveKineticConstraintBuffer(spatialFrame, constraintBuffer);
             for (let i = 0; i < activeBodies.length; i++) {
                 const prop = activeBodies[i];
@@ -57,7 +75,13 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
                 resolveWalls(prop, spatialFrame);
             }
             spatialFrame.flushScheduledKineticActivations();
+            if (earlyOut.enabled && outerIterationsRun >= earlyOut.minIterations) {
+                const maxError = measureConstraintBufferMaxError(constraintBuffer);
+                const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
+                if (maxError <= earlyOut.constraintErrorEpsilon && maxSpeedSq <= earlyOut.velocityEpsilonSq) break;
+            }
         }
+        state.sandbox.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
     }
     if (hasActiveBodies)
         for (let i = 0; i < activeBodies.length; i++) {

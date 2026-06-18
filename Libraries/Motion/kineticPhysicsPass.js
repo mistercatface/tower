@@ -24,7 +24,10 @@ function tickKineticSleep(spatialFrame) {
 }
 /** @param {object} state @param {number} dt @param {object} spatialFrame */
 export function runKineticPhysics(state, dt, spatialFrame) {
-    buildKineticIslands(state, spatialFrame._kineticBodies);
+    if (state.sandbox.kineticConstraintsDirty !== false) {
+        buildKineticIslands(state, spatialFrame._kineticBodies);
+        state.sandbox.kineticConstraintsDirty = false;
+    }
     const activeBodies = spatialFrame._activeKineticBodies;
     const { maxStepPx, maxSubsteps } = getCollisionSettings().motionSubsteps;
     const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });
