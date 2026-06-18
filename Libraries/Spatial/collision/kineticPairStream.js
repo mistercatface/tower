@@ -1,5 +1,6 @@
-import { allowsKineticCollisionPairSnapshotted, isKinematicallyActive, pairBroadphaseOverlapSnapshotted } from "./entityBroadphase.js";
-import { classifyKineticPairTier } from "./kineticNarrowPhase.js";
+import { allowsKineticCollisionPairSnapshotted, isKinematicallyActive, pairBroadphaseOverlapSnapshotted, pairCircleCircleOverlapSnapshotted } from "./entityBroadphase.js";
+import { classifyKineticPairTier, KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
+import { shareKineticIsland } from "../../Motion/kineticIslands.js";
 const MAX_KINETIC_PAIRS = 4096;
 export const kineticPairBuffer = {
     count: 0,
@@ -20,15 +21,18 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
         const neighbors = spatialFrame.getNeighbors(primary);
         for (let j = 0; j < neighbors.length; j++) {
             const neighbor = neighbors[j];
-            if (neighbor.isSleeping && isKinematicallyActive(primary) && pairBroadphaseOverlapSnapshotted(primary, neighbor)) spatialFrame.activateKineticBody(neighbor);
-            if (!allowsKineticCollisionPairSnapshotted(primary, neighbor)) continue;
+            const tier = classifyKineticPairTier(primary, neighbor);
+            const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSnapshotted(primary, neighbor) : pairBroadphaseOverlapSnapshotted(primary, neighbor);
+            if (neighbor.isSleeping && isKinematicallyActive(primary) && overlaps) spatialFrame.activateKineticBody(neighbor);
+            if (shareKineticIsland(primary, neighbor)) continue;
+            if (!allowsKineticCollisionPairSnapshotted(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) continue;
             const idx = pairs.count++;
             pairs.bodyA[idx] = primary;
             pairs.bodyB[idx] = neighbor;
             pairs.preDvx[idx] = (neighbor.vx ?? 0) - (primary.vx ?? 0);
             pairs.preDvy[idx] = (neighbor.vy ?? 0) - (primary.vy ?? 0);
-            pairs.tier[idx] = classifyKineticPairTier(primary, neighbor);
+            pairs.tier[idx] = tier;
         }
     }
 }

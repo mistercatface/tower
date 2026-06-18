@@ -53,11 +53,22 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             if (!prop.isSleeping) active.push(prop);
         }
     }
-    activateKineticBody(prop) {
-        if (prop.isSleeping) wakeKineticBody(prop);
+    _ensureActive(prop) {
         const active = this._activeKineticBodies;
         for (let i = 0; i < active.length; i++) if (active[i] === prop) return;
         active.push(prop);
+    }
+    activateKineticBody(prop) {
+        if (prop.isSleeping) wakeKineticBody(prop);
+        this._ensureActive(prop);
+        const peers = prop._kineticIslandPeers;
+        if (!peers) return;
+        for (let i = 0; i < peers.length; i++) {
+            const peer = peers[i];
+            if (peer === prop) continue;
+            if (peer.isSleeping) wakeKineticBody(peer);
+            this._ensureActive(peer);
+        }
     }
     evictKineticProp(prop) {
         if (!prop || prop._physId === undefined) return;

@@ -134,11 +134,22 @@ export function pairBroadphaseOverlap(a, b) {
 export function snapshotActiveBroadphaseBounds(bodies) {
     for (let i = 0; i < bodies.length; i++) getBroadphaseBounds(bodies[i]);
 }
-export function pairBroadphaseOverlapSnapshotted(a, b) {
-    return pairBroadphaseBoundsOverlap(a.broadphaseBounds, b.broadphaseBounds);
+export function pairCircleCircleOverlapSnapshotted(a, b) {
+    const ba = a.broadphaseBounds;
+    const bb = b.broadphaseBounds;
+    const dx = ba.cx - bb.cx;
+    const dy = ba.cy - bb.cy;
+    const radii = ba.r + bb.r;
+    return dx * dx + dy * dy < radii * radii;
 }
-export function shouldResolveKineticPairSnapshotted(a, b) {
-    if (!pairBroadphaseOverlapSnapshotted(a, b)) return false;
+export function pairBroadphaseOverlapSnapshotted(a, b) {
+    const ba = a.broadphaseBounds;
+    const bb = b.broadphaseBounds;
+    if (ba.kind === "circle" && bb.kind === "circle") return pairCircleCircleOverlapSnapshotted(a, b);
+    return pairBroadphaseBoundsOverlap(ba, bb);
+}
+export function shouldResolveKineticPairSnapshotted(a, b, overlaps = pairBroadphaseOverlapSnapshotted(a, b)) {
+    if (!overlaps) return false;
     if (isKinematicallyActive(a) || isKinematicallyActive(b)) return true;
     if (a.isSleeping || b.isSleeping) return false;
     return false;
@@ -149,11 +160,11 @@ export function shouldResolveKineticPair(a, b) {
     if (a.isSleeping || b.isSleeping) return false;
     return false;
 }
-export function allowsKineticCollisionPairSnapshotted(primary, other) {
+export function allowsKineticCollisionPairSnapshotted(primary, other, overlaps = pairBroadphaseOverlapSnapshotted(primary, other)) {
     if (primary === other) return false;
     if (!other.strategy?.isKinetic) return false;
     if (primary.id >= other.id) return false;
-    return shouldResolveKineticPairSnapshotted(primary, other);
+    return shouldResolveKineticPairSnapshotted(primary, other, overlaps);
 }
 export function allowsKineticCollisionPair(primary, other) {
     if (primary === other) return false;
