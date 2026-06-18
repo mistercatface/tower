@@ -132,24 +132,50 @@ export function appendAxisNumberFields(body, axes) {
 export function appendTranslateFields(body, { x, y, step = 1, onPatch }) {
     appendAxisNumberFields(body, { X: { value: x, step, onChange: (next) => onPatch({ x: next }) }, Y: { value: y, step, onChange: (next) => onPatch({ y: next }) } });
 }
-/**
- * @param {HTMLElement} parent
- * @param {Array<{ label: string, selected?: boolean, onSelect?: () => void, onRemove?: () => void, onDelete?: () => void }>} entries
- * @param {string} [emptyText]
- */
+export const INSTANCE_LIST_ROW_HEIGHT_PX = 40;
+const INSTANCE_LIST_VIRTUAL_THRESHOLD = 48;
+const INSTANCE_LIST_VIRTUAL_OVERSCAN = 6;
+/** @param {HTMLElement} parent @param {Array<{ label: string, selected?: boolean, onSelect?: () => void, onRemove?: () => void, onDelete?: () => void }>} entries @param {string} [emptyText] */
 export function appendInstanceList(parent, entries, emptyText) {
-    const list = document.createElement("div");
-    list.className = "toy-instance-list";
     if (entries.length === 0) {
+        const list = document.createElement("div");
+        list.className = "toy-instance-list";
         if (emptyText) appendEditorHint(list, emptyText);
         parent.appendChild(list);
         return list;
     }
+    if (entries.length > INSTANCE_LIST_VIRTUAL_THRESHOLD) return appendVirtualInstanceList(parent, entries);
+    const list = document.createElement("div");
+    list.className = "toy-instance-list";
     for (let i = 0; i < entries.length; i++) appendInstanceListRow(list, entries[i]);
     parent.appendChild(list);
     return list;
 }
-/** @param {HTMLElement} list @param {{ label: string, selected?: boolean, onSelect?: () => void, onRemove?: () => void, onDelete?: () => void }} entry */
+function appendVirtualInstanceList(parent, entries) {
+    appendEditorHint(parent, `${entries.length.toLocaleString()} items — scroll to browse.`);
+    const viewport = document.createElement("div");
+    viewport.className = "toy-instance-list toy-instance-list-virtual";
+    const spacer = document.createElement("div");
+    spacer.className = "toy-instance-list-spacer";
+    spacer.style.height = `${entries.length * INSTANCE_LIST_ROW_HEIGHT_PX}px`;
+    const windowEl = document.createElement("div");
+    windowEl.className = "toy-instance-list-window";
+    spacer.appendChild(windowEl);
+    viewport.appendChild(spacer);
+    parent.appendChild(viewport);
+    const paint = () => {
+        const scrollTop = viewport.scrollTop;
+        const viewHeight = viewport.clientHeight || INSTANCE_LIST_ROW_HEIGHT_PX * 12;
+        const start = Math.max(0, Math.floor(scrollTop / INSTANCE_LIST_ROW_HEIGHT_PX) - INSTANCE_LIST_VIRTUAL_OVERSCAN);
+        const end = Math.min(entries.length, Math.ceil((scrollTop + viewHeight) / INSTANCE_LIST_ROW_HEIGHT_PX) + INSTANCE_LIST_VIRTUAL_OVERSCAN);
+        windowEl.style.transform = `translateY(${start * INSTANCE_LIST_ROW_HEIGHT_PX}px)`;
+        windowEl.replaceChildren();
+        for (let i = start; i < end; i++) appendInstanceListRow(windowEl, entries[i]);
+    };
+    viewport.addEventListener("scroll", paint, { passive: true });
+    paint();
+    return viewport;
+}
 function appendInstanceListRow(list, entry) {
     const row = document.createElement("div");
     row.className = `toy-instance-row${entry.selected ? " selected" : ""}`;

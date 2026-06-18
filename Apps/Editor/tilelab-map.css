@@ -226,6 +226,26 @@
     align-items: center;
     gap: 6px;
     padding: 4px;
+    min-height: 40px;
+    box-sizing: border-box;
+}
+
+.toy-instance-list-virtual {
+    position: relative;
+    overflow-y: auto;
+}
+
+.toy-instance-list-spacer {
+    position: relative;
+    width: 100%;
+}
+
+.toy-instance-list-window {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    will-change: transform;
 }
 
 .toy-instance-row.selected .toy-select-btn {

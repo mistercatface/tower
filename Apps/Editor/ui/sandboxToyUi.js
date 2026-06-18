@@ -24,7 +24,10 @@ function appendPinnedSection(parent, id, title, build, headExtra = null) {
     build(sectionBody);
     block.appendChild(sectionBody);
     parent.appendChild(block);
-    return block;
+    return { block, head, body: sectionBody };
+}
+function clearElement(el) {
+    el.replaceChildren();
 }
 export function mountSandboxToyUi(container, state, controller) {
     let paletteTagFilter = "all";
@@ -36,34 +39,86 @@ export function mountSandboxToyUi(container, state, controller) {
         const firstProp = bootstrapPaletteItems.find((item) => item.kind === "prop") ?? bootstrapPaletteItems[0];
         controller.setPlacePaletteKey(firstProp.key);
     }
+    const sections = { paletteHead: null, paletteBody: null, spawnBody: null, selectionHead: null, selectionBody: null, selectedBody: null, sceneBody: null };
+    function mountShell() {
+        container.replaceChildren();
+        const palette = appendPinnedSection(
+            container,
+            "palette",
+            "Props",
+            (body) => {
+                sections.paletteBody = body;
+            },
+            (head) => {
+                sections.paletteHead = head;
+            },
+        );
+        const spawn = appendPinnedSection(container, "spawn", "Spawn", (body) => {
+            sections.spawnBody = body;
+        });
+        const selection = appendPinnedSection(
+            container,
+            "selection",
+            "Selection",
+            (body) => {
+                sections.selectionBody = body;
+            },
+            (head) => {
+                sections.selectionHead = head;
+            },
+        );
+        const selected = appendPinnedSection(container, "selected", "Selected", (body) => {
+            sections.selectedBody = body;
+        });
+        const scene = appendPinnedSection(container, "scene", "Scene", (body) => {
+            sections.sceneBody = body;
+        });
+        return { palette, spawn, selection, selected, scene };
+    }
+    function refreshPaletteHead() {
+        clearElement(sections.paletteHead);
+        const titleEl = document.createElement("span");
+        titleEl.textContent = "Props";
+        sections.paletteHead.appendChild(titleEl);
+        appendSandboxTagFilters(
+            sections.paletteHead,
+            paletteTagFilter,
+            (filter) => {
+                paletteTagFilter = filter;
+                refreshPanel();
+            },
+            "Prop palette filters",
+        );
+    }
+    function refreshSelectionHead() {
+        clearElement(sections.selectionHead);
+        const titleEl = document.createElement("span");
+        titleEl.textContent = "Selection";
+        sections.selectionHead.appendChild(titleEl);
+        appendSandboxTagFilters(
+            sections.selectionHead,
+            controller.getSelectionTagFilter(),
+            (filter) => {
+                controller.setSelectionTagFilter(filter);
+                refreshPanel();
+            },
+            "Selection filters",
+        );
+    }
     function refreshPanel() {
-        container.innerHTML = "";
+        if (!sections.paletteBody) mountShell();
         const allPaletteItems = buildPlacePaletteItems(propIds);
         if (allPaletteItems.length === 0) {
+            container.replaceChildren();
+            sections.paletteBody = null;
             appendEditorHint(container, "No sandbox spawn options loaded");
             return;
         }
         const paletteItems = allPaletteItems.filter((item) => sandboxTagsMatchFilter(paletteTagFilter, item.tags));
         if (paletteItems.length === 0) {
-            appendPinnedSection(
-                container,
-                "palette",
-                "Props",
-                (body) => {
-                    appendEditorHint(body, "No props match this filter.");
-                },
-                (head) => {
-                    appendSandboxTagFilters(
-                        head,
-                        paletteTagFilter,
-                        (filter) => {
-                            paletteTagFilter = filter;
-                            refreshPanel();
-                        },
-                        "Prop palette filters",
-                    );
-                },
-            );
+            clearElement(sections.paletteBody);
+            refreshPaletteHead();
+            appendEditorHint(sections.paletteBody, "No props match this filter.");
             return;
         }
         const paletteKey = controller.getPlacePaletteKey();
@@ -74,78 +129,44 @@ export function mountSandboxToyUi(container, state, controller) {
         const activeItem = paletteKey === "" ? null : (paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0]);
         const inspector = controller.getSelectionInspector();
         const wallStampMode = controller.getWallStampMode();
-        appendPinnedSection(
-            container,
-            "palette",
-            "Props",
-            (body) => {
-                appendSpawnPaletteGrid(body, paletteItems, paletteKey, (key) => {
-                    controller.setPlacePaletteKey(key);
-                });
-            },
-            (head) => {
-                appendSandboxTagFilters(
-                    head,
-                    paletteTagFilter,
-                    (filter) => {
-                        paletteTagFilter = filter;
-                        refreshPanel();
-                    },
-                    "Prop palette filters",
-                );
-            },
+        refreshPaletteHead();
+        clearElement(sections.paletteBody);
+        appendSpawnPaletteGrid(sections.paletteBody, paletteItems, paletteKey, (key) => {
+            controller.setPlacePaletteKey(key);
+        });
+        clearElement(sections.spawnBody);
+        const paramsHost = document.createElement("div");
+        paramsHost.className = "spawn-palette-params";
+        sections.spawnBody.appendChild(paramsHost);
+        if (!activeItem) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
+        else if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), refreshPanel);
+        else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, inspector: wallPlaceInspector(inspector) });
+        else appendMapGenEditor(paramsHost, state, activeItem.genKind, refreshPanel);
+        refreshSelectionHead();
+        clearElement(sections.selectionBody);
+        appendSandboxSelectionPanel(sections.selectionBody, controller, refreshPanel);
+        clearElement(sections.selectedBody);
+        if (inspector) appendSelectionInspector(sections.selectedBody, state, controller, inspector, refreshPanel);
+        else appendEditorHint(sections.selectedBody, "Select an item from Scene, or pick from Props to place on the map.");
+        clearElement(sections.sceneBody);
+        appendInstanceList(
+            sections.sceneBody,
+            controller
+                .listPlacedSceneItems()
+                .map((item) => ({
+                    label: item.label,
+                    selected: controller.isSceneItemSelected(item),
+                    onSelect: () => controller.selectSceneItem(item),
+                    onDelete: () => controller.deleteSceneItem(item),
+                })),
+            "Nothing placed yet.",
         );
-        appendPinnedSection(container, "spawn", "Spawn", (body) => {
-            const paramsHost = document.createElement("div");
-            paramsHost.className = "spawn-palette-params";
-            body.appendChild(paramsHost);
-            if (!activeItem) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
-            else if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), refreshPanel);
-            else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, inspector: wallPlaceInspector(inspector) });
-            else appendMapGenEditor(paramsHost, state, activeItem.genKind, refreshPanel);
-        });
-        appendPinnedSection(
-            container,
-            "selection",
-            "Selection",
-            (body) => {
-                appendSandboxSelectionPanel(body, controller, refreshPanel);
-            },
-            (head) => {
-                appendSandboxTagFilters(
-                    head,
-                    controller.getSelectionTagFilter(),
-                    (filter) => {
-                        controller.setSelectionTagFilter(filter);
-                        refreshPanel();
-                    },
-                    "Selection filters",
-                );
-            },
-        );
-        appendPinnedSection(container, "selected", "Selected", (body) => {
-            if (inspector) appendSelectionInspector(body, state, controller, inspector, refreshPanel);
-            else appendEditorHint(body, "Select an item from Scene, or pick from Props to place on the map.");
-        });
-        appendPinnedSection(container, "scene", "Scene", (body) => {
-            appendInstanceList(
-                body,
-                controller
-                    .listPlacedSceneItems()
-                    .map((item) => ({
-                        label: item.label,
-                        selected: controller.isSceneItemSelected(item),
-                        onSelect: () => controller.selectSceneItem(item),
-                        onDelete: () => controller.deleteSceneItem(item),
-                    })),
-                "Nothing placed yet.",
-            );
-        });
     }
     controller.setUiSync(wrapLabUiSync(refreshPanel));
     refreshPanel();
     return () => {
         controller.setUiSync(null);
-        container.innerHTML = "";
+        container.replaceChildren();
+        sections.paletteBody = null;
     };
 }
