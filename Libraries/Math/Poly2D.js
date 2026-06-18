@@ -43,6 +43,23 @@ export function regularConvexPolygonFootprint(sides, radius, startAngle = -Math.
     }
     return verts;
 }
+export function regularStarFootprint(points, outerRadius, innerRadius, startAngle = -Math.PI / 2) {
+    const verts = [];
+    const step = Math.PI / points;
+    for (let i = 0; i < points * 2; i++) {
+        const angle = startAngle + i * step;
+        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        verts.push({ x: Math.round(Math.cos(angle) * radius), y: Math.round(Math.sin(angle) * radius) });
+    }
+    return verts;
+}
+export function fanTriangulateFromOrigin(vertices) {
+    const triangles = [];
+    for (let i = 0; i < vertices.length; i++) {
+        triangles.push([{ x: 0, y: 0 }, vertices[i], vertices[(i + 1) % vertices.length]]);
+    }
+    return triangles;
+}
 export function convexFootprintHalfExtents(vertices) {
     let hx = 0;
     let hy = 0;
