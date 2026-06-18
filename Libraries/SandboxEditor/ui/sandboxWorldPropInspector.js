@@ -1,7 +1,7 @@
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../../Spatial/zones/floorShapes.js";
 import { isButtonEntity, isMassButtonInputMode } from "../../Sandbox/buttonInput.js";
-import { appendActionRow, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../../UI/paramFields.js";
+import { appendActionRow, appendCheckboxField, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../../UI/paramFields.js";
 import { setFormFieldName } from "../../UI/Component.js";
 /** @param {object} prop @param {number} degrees */
 function applyWorldPropFacing(prop, degrees) {
@@ -31,6 +31,41 @@ function applyButtonFloorPatch(prop, patch) {
     }
     if (patch.massThreshold != null) prop.massThreshold = patch.massThreshold;
     if (patch.invert != null) prop.invert = patch.invert;
+}
+/**
+ * @param {HTMLElement} body
+ * @param {{
+ *   listLinks: () => { constraintId: number, targetId: number, label: string }[],
+ *   isWireActive: () => boolean,
+ *   startWire: () => void,
+ *   cancelWire: () => void,
+ *   clearLinks: () => void,
+ *   removeLink: (constraintId: number) => void,
+ *   isChainHead: () => boolean,
+ *   setChainHead: (enabled: boolean) => void,
+ * }} chain
+ */
+export function appendChainLinkInspector(body, chain) {
+    appendCheckboxField(body, "Chain head", { name: "chainHead", checked: chain.isChainHead(), onChange: (checked) => chain.setChainHead(checked) });
+    const links = chain.listLinks();
+    appendEditorHint(body, links.length ? `${links.length} chain link${links.length === 1 ? "" : "s"}` : "No links — connect consecutive balls for a chain or snake.");
+    if (links.length)
+        appendInstanceList(
+            body,
+            links.map((entry) => ({ label: entry.label, onDelete: () => chain.removeLink(entry.constraintId) })),
+        );
+    const wireActive = chain.isWireActive();
+    appendActionRow(body, [
+        {
+            label: wireActive ? "Click balls to link…" : "Connect link",
+            variant: wireActive ? "primary" : "secondary",
+            onClick: () => {
+                if (wireActive) chain.cancelWire();
+                else chain.startWire();
+            },
+        },
+        ...(links.length ? [{ label: "Clear links", onClick: () => chain.clearLinks() }] : []),
+    ]);
 }
 /**
  * @param {HTMLElement} body

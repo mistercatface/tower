@@ -5,6 +5,7 @@ import { createSandboxSession } from "../Sandbox/sandboxSession.js";
 import { clearButtonLinks, listButtonLinkEndpoints, removeButtonLink } from "../Sandbox/buttonLinks.js";
 import { isButtonEntity } from "../Sandbox/buttonInput.js";
 import { createButtonWireTool } from "./buttonWireTool.js";
+import { createChainLinkWireTool } from "./chainLinkWireTool.js";
 import { createCorridorLinkWireTool } from "./corridorLinkWireTool.js";
 import { createSandboxMarqueeTool } from "./sandboxMarqueeTool.js";
 import { createSandboxGroundNavContextMenu } from "./sandboxGroundNavContextMenu.js";
@@ -21,6 +22,8 @@ import { createAabb } from "../Math/Aabb2D.js";
 import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
+import { removeKineticConstraint } from "../Motion/kineticConstraints.js";
+import { clearChainLinksForProp, isChainLinkBall, listChainLinkEndpoints, resolveGroundNavSteeringProp, setChainHead } from "../Sandbox/chainLinks.js";
 import { countNavPropsInSelection, issueGroundNavToSelection } from "../Sandbox/groundNav/input/issueGroundNavToSelection.js";
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
 /**
@@ -75,6 +78,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     const MARQUEE_AABB = createAabb();
     const gestures = createSandboxPointerGestures({ getCanvas, session, clientToWorld });
     const buttonWireTool = createButtonWireTool(state, session);
+    const chainLinkWireTool = createChainLinkWireTool(state, session);
     const corridorLinkWireTool = createCorridorLinkWireTool(state, session);
     const wallPlaceTool = {
         isActive: () => session.isWallPlaceMode(),
@@ -92,10 +96,12 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     };
     const blocksPlacement = () =>
         (buttonWireTool.isActive() && buttonWireTool.blocksPlacement()) ||
+        (chainLinkWireTool.isActive() && chainLinkWireTool.blocksPlacement()) ||
         (corridorLinkWireTool.isActive() && corridorLinkWireTool.blocksPlacement()) ||
         (wallPlaceTool.isActive() && wallPlaceTool.blocksPlacement());
     const exitWireModes = () => {
         buttonWireTool.exit();
+        chainLinkWireTool.exit();
         corridorLinkWireTool.exit();
     };
     const dismissEditorFocus = () => {
@@ -143,9 +149,13 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         return behavior;
     };
     const resolveGroundMove = () => {
-        const prop = session.getSelectedProp();
-        const behavior = resolveBehavior();
-        if (!behavior?.setMoveTarget) return null;
+        const sel = session.getSelection();
+        if (sel?.kind !== "prop") return null;
+        const prop = resolveGroundNavSteeringProp(state, entityMeta(), selectionPropIds(sel));
+        if (!prop) return null;
+        const allowed = listSelectedBehaviors(prop);
+        const behavior = behaviorById.get(clampBehaviorId(entityMeta().getActiveBehaviorId(prop.id) ?? spawnBehaviorId, allowed)) ?? null;
+        if (!behavior?.setMoveTarget || !allowed.includes(behavior.id)) return null;
         return { prop, behavior };
     };
     const issueGroundMove = (move, world) => {
@@ -174,9 +184,12 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         togglePropInSelection,
     });
     const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior, selectPropIds });
-    const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, buttonWireTool, corridorLinkWireTool, interactTool, gestureTool, marqueeTool], { clientToWorld });
+    const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, buttonWireTool, chainLinkWireTool, corridorLinkWireTool, interactTool, gestureTool, marqueeTool], {
+        clientToWorld,
+    });
     const enterCorridorLinkWireMode = () => {
         buttonWireTool.exit();
+        chainLinkWireTool.exit();
         corridorLinkWireTool.enterLinkMode();
     };
     const resetBehaviors = () => {
@@ -251,7 +264,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         countSelectedNavProps: () => {
             const sel = session.getSelection();
             if (sel?.kind !== "prop") return 0;
-            return countNavPropsInSelection(state, selectionPropIds(sel));
+            return countNavPropsInSelection(state, selectionPropIds(sel), entityMeta());
         },
         issueGroundNavToSelection: issueGroundNavToSelected,
         getSelection: () => session.getSelection(),
@@ -262,10 +275,44 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         startButtonWireLink: () => {
             corridorLinkWireTool.exit();
+            chainLinkWireTool.exit();
             buttonWireTool.startLink();
         },
         cancelButtonWireLink: () => buttonWireTool.exit(),
         isButtonWireLinkActive: () => buttonWireTool.isActive(),
+        startChainLink: () => {
+            corridorLinkWireTool.exit();
+            buttonWireTool.exit();
+            chainLinkWireTool.startLink();
+        },
+        cancelChainLink: () => chainLinkWireTool.exit(),
+        isChainLinkActive: () => chainLinkWireTool.isActive(),
+        clearSelectedChainLinks: () => {
+            const prop = session.getSelectedProp();
+            if (!prop || !isChainLinkBall(prop)) return;
+            clearChainLinksForProp(state, prop.id);
+            session.sync();
+        },
+        removeSelectedChainLink: (constraintId) => {
+            removeKineticConstraint(state, constraintId);
+            session.sync();
+        },
+        listSelectedChainLinks: () => {
+            const prop = session.getSelectedProp();
+            if (!prop || !isChainLinkBall(prop)) return [];
+            return listChainLinkEndpoints(state, prop.id);
+        },
+        setSelectedChainHead: (enabled) => {
+            const prop = session.getSelectedProp();
+            if (!prop || !isChainLinkBall(prop)) return;
+            if (enabled) setChainHead(state, entityMeta(), prop.id);
+            else entityMeta().setChainHead(prop.id, false);
+            session.sync();
+        },
+        isSelectedChainHead: () => {
+            const prop = session.getSelectedProp();
+            return prop ? entityMeta().isChainHead(prop.id) : false;
+        },
         isCorridorLinkWireActive: () => corridorLinkWireTool.isActive(),
         getCorridorLinkWireFromNodeId: () => corridorLinkWireTool.getFromNodeId(),
         deleteSelectedRoomNode: () => session.deleteSelectedRoomNode(),
@@ -455,6 +502,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
                 behaviorById,
                 getPropBehaviorId,
                 buttonWireTool,
+                chainLinkWireTool,
                 corridorLinkWireTool,
                 resolveBehavior,
                 selectedProp: session.getSelectedProp(),

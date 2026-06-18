@@ -9,6 +9,7 @@
  * @property {string} [spawnGroupId]
  * @property {string} [spawnGroupExportType]
  * @property {boolean} [spawnGroupAnchor]
+ * @property {boolean} [chainHead]
  */
 export class SandboxEntityMetaStore {
     constructor() {
@@ -107,6 +108,15 @@ export class SandboxEntityMetaStore {
     /** @param {number} entityId @param {boolean} [anchor] */
     setSpawnGroupAnchor(entityId, anchor = true) {
         this.ensure(entityId).spawnGroupAnchor = anchor;
+    }
+    /** @param {number} entityId */
+    isChainHead(entityId) {
+        return this.get(entityId)?.chainHead === true;
+    }
+    /** @param {number} entityId @param {boolean} [head] */
+    setChainHead(entityId, head = true) {
+        if (head) this.ensure(entityId).chainHead = true;
+        else if (this.get(entityId)) this.get(entityId).chainHead = false;
     }
 }
 /** @param {object} state @param {object} entity @param {string} linkField */

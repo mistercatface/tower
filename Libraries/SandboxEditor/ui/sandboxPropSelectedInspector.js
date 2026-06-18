@@ -1,13 +1,13 @@
 import { getPropAsset, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
 import { resolveSandboxFaction } from "../../Sandbox/sandboxFaction.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../Sandbox/spawnerConfig.js";
-import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector } from "./sandboxWorldPropInspector.js";
+import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector, appendChainLinkInspector } from "./sandboxWorldPropInspector.js";
 import { isButtonEntity } from "../../Sandbox/buttonInput.js";
+import { isChainLinkBall } from "../../Sandbox/chainLinks.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../Sandbox/sandboxPropMeta.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../Sandbox/sandboxPropMeta.js";
 import { appendCheckboxField, appendSelectField } from "../../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
-
 export function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
     const behaviorIds = controller.listSelectedBehaviors();
     appendFactionSelect(body, {
@@ -26,6 +26,17 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
             cancelWire: () => controller.cancelButtonWireLink(),
             clearLinks: () => controller.clearSelectedButtonLinks(),
             removeLink: (target) => controller.removeSelectedButtonLink(target),
+        });
+    if (isChainLinkBall(selectedProp))
+        appendChainLinkInspector(body, {
+            listLinks: () => controller.listSelectedChainLinks(),
+            isWireActive: () => controller.isChainLinkActive(),
+            startWire: () => controller.startChainLink(),
+            cancelWire: () => controller.cancelChainLink(),
+            clearLinks: () => controller.clearSelectedChainLinks(),
+            removeLink: (constraintId) => controller.removeSelectedChainLink(constraintId),
+            isChainHead: () => controller.isSelectedChainHead(),
+            setChainHead: (enabled) => controller.setSelectedChainHead(enabled),
         });
     appendBehaviorModeField(body, behaviorIds, controller.getSelectedBehaviorId(), (value) => {
         controller.setSelectedBehaviorId(value);

@@ -17,7 +17,7 @@ export function createSandboxGroundNavContextMenu(state, session, { behaviorById
             if (sel?.kind !== "prop") return false;
             const propIds = selectionPropIds(sel);
             if (propIds.length === 0) return false;
-            const navCount = countNavPropsInSelection(state, propIds);
+            const navCount = countNavPropsInSelection(state, propIds, entityMeta());
             const items = buildGroundNavSelectionMenuActions({ propIds, world, navCount, issueGroundNav });
             if (items.length === 0) return false;
             menu.open(clientX, clientY, items);

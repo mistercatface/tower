@@ -1,11 +1,14 @@
 import { appendPathOverlayCommands } from "../Render/overlays/pathOverlayCommands.js";
 import { appendPlacePreviewOverlayCommands, resolveSandboxPlacePreview } from "../Sandbox/drawSandboxPlacePreview.js";
 import { appendButtonWireOverlayCommands } from "../Sandbox/buttonLinks.js";
+import { appendChainLinkWireOverlayCommands } from "../Sandbox/chainLinks.js";
 import { appendKineticConstraintOverlayCommands } from "../Sandbox/kineticConstraintOverlays.js";
 import { appendMarqueeOverlayCommands, appendPropTileCellOverlayCommands, appendSelectionOverlayCommands, queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { appendRoomGraphOverlayCommands } from "../RoomGraph/roomGraphOverlayCommands.js";
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
 import { resolveSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
+import { isChainSteeringTarget } from "../Sandbox/chainLinks.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 export function buildSandboxOverlayCommands({
     state,
     session,
@@ -15,6 +18,7 @@ export function buildSandboxOverlayCommands({
     behaviorById,
     getPropBehaviorId,
     buttonWireTool,
+    chainLinkWireTool,
     corridorLinkWireTool,
     resolveBehavior,
     selectedProp,
@@ -34,6 +38,10 @@ export function buildSandboxOverlayCommands({
         wireFromPropId: buttonWireTool.isActive() ? (session.getSelectedProp()?.id ?? null) : null,
         wireCursor: buttonWireTool.isActive() ? buttonWireTool.getCursor() : null,
     });
+    appendChainLinkWireOverlayCommands(commands, state, {
+        wireFromPropId: chainLinkWireTool.isActive() ? chainLinkWireTool.getFromPropId() : null,
+        wireCursor: chainLinkWireTool.isActive() ? chainLinkWireTool.getCursor() : null,
+    });
     appendKineticConstraintOverlayCommands(commands, state);
     if (placePreviewWorld) {
         const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
@@ -49,6 +57,7 @@ export function buildSandboxOverlayCommands({
         });
         for (let i = 0; i < visibleSelectedProps.length; i++) {
             const prop = visibleSelectedProps[i];
+            if (!isChainSteeringTarget(state, getSandboxEntityMeta(state), prop.id)) continue;
             const visual = resolveSandboxPathVisual(state, prop);
             if (visual === "off") continue;
             const behavior = behaviorById.get(getPropBehaviorId(prop));
