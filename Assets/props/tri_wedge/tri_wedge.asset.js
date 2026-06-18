@@ -2,7 +2,7 @@ import { NEUTRAL_BOX_COLORS, NEUTRAL_POLYGON_STROKE } from "../shared/neutralCoa
 export default {
     id: "tri_wedge",
     primitive: "polygon",
-    sandbox: { tags: ["shapes"], behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "tri wedge", spawnable: false },
+    sandbox: { tags: ["shapes"], behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "Tri wedge" },
     physics: {
         isKinetic: true,
         friction: 8,

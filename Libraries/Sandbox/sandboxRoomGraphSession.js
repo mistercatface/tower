@@ -167,7 +167,7 @@ export function createSandboxRoomGraphSession(
             return matchesSceneItem(selection.getSelection(), item);
         },
         selectSceneItem(item) {
-            pickSceneItem(item, { pickSelection, setPlacePaletteKey });
+            pickSceneItem(item, { pickSelection });
         },
     };
 }

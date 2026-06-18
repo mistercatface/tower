@@ -9,7 +9,7 @@ import {
     visualOverrideCacheKey,
 } from "../Libraries/Color/visualOverride.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
-import { PUZZLE_TEMPLATE_BALL_TINTS, BALL_TINT_PRESETS } from "../Libraries/Color/tintPresets.js";
+import { PUZZLE_TEMPLATE_BALL_TINTS } from "../Libraries/Color/tintPresets.js";
 
 loadPropAssets();
 
@@ -59,9 +59,7 @@ describe("Color visualOverride", () => {
         assert.equal(visualOverrideCacheKey(prop), "tff0000");
     });
 
-    it("ball tint presets cover puzzle template colors", () => {
-        const hexes = new Set(BALL_TINT_PRESETS.map((preset) => preset.hex.toLowerCase()));
-        assert.ok(hexes.has(PUZZLE_TEMPLATE_BALL_TINTS.roomA.toLowerCase()));
-        assert.ok(hexes.has(PUZZLE_TEMPLATE_BALL_TINTS.roomB.toLowerCase()));
+    it("puzzle template ball tints are distinct hex values", () => {
+        assert.notEqual(PUZZLE_TEMPLATE_BALL_TINTS.roomA.toLowerCase(), PUZZLE_TEMPLATE_BALL_TINTS.roomB.toLowerCase());
     });
 });

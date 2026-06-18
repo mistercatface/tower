@@ -60,17 +60,6 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
     const clearRoomGraphSelection = () => {
         if (selection?.kind === "roomNode" || selection?.kind === "roomLink") assign(null);
     };
-    const clearPalettePlaceSelection = (paletteKey) => {
-        if (paletteKey.startsWith("wall:")) {
-            if (selection?.kind === "prop" || selection?.kind === "floor") assign(null);
-            return;
-        }
-        if (paletteKey.startsWith("prop:")) {
-            clearWallSelection();
-            return;
-        }
-        if (paletteKey.startsWith("gen:")) if (selection?.kind === "prop" || selection?.kind === "floor" || selection?.kind === "voxel" || selection?.kind === "rail") assign(null);
-    };
     const prunePropSelection = () => {
         if (selection?.kind !== "prop") return false;
         let changed = false;
@@ -131,7 +120,6 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         clearFloorSelection,
         clearWallSelection,
         clearRoomGraphSelection,
-        clearPalettePlaceSelection,
         prunePropSelection,
         removePropFromSelection,
         togglePropInSelection,

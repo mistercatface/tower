@@ -6,7 +6,7 @@ import { normalizeAuthoredSurfaceProfileId } from "../RoomGraph/roomGraphSurface
 import { DEFAULT_ROOM_NODE_COLS, DEFAULT_ROOM_NODE_ROWS } from "../RoomGraph/index.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT, DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH } from "./sandboxCapabilities.js";
-import { assetDefaultBallRadius, isShapeFamilyAsset, resolveSpawnPropTypeId } from "./sandboxShapeFamilies.js";
+import { assetDefaultBallRadius, isShapeFamilyAsset } from "./sandboxShapeFamilies.js";
 import { spawnPlaceableAt } from "./sandboxScenePlaceables.js";
 export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection, notifyUi, placement }) {
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
@@ -21,23 +21,21 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
     let spawnBoxWidth = DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH;
     let spawnBoxHeight = DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT;
     let spawnBallRadius = null;
-    let spawnBlockPresetId = "block";
     let spawnVisualOverrideTint = null;
     let spawnVisualOverrideBrightness = 1;
     const resolveSpawnVisualOverride = (asset) => {
         if (!isShapeFamilyAsset(asset)) return null;
-        const tint = spawnVisualOverrideTint ?? asset.defaultVisualOverride?.tint ?? sampleAssetBaseTintHex(asset);
+        const tint = spawnVisualOverrideTint ?? sampleAssetBaseTintHex(asset);
         const visualOverride = { tint };
         if (spawnVisualOverrideBrightness !== 1) visualOverride.brightness = spawnVisualOverrideBrightness;
         return visualOverride;
     };
-    const resolveSpawnPropTypeIdForPlace = () => resolveSpawnPropTypeId(getSpawnPropId(), spawnBlockPresetId);
     const spawnCtx = () => ({
         spawnPropId: getSpawnPropId(),
         spawnFaction,
-        resolveSpawnPropTypeId: resolveSpawnPropTypeIdForPlace,
+        resolveSpawnPropTypeId: getSpawnPropId,
         resolveSpawnVisualOverride,
-        spawnBallRadius: spawnBallRadius ?? assetDefaultBallRadius(getPropAsset(resolveSpawnPropTypeIdForPlace())),
+        spawnBallRadius: spawnBallRadius ?? assetDefaultBallRadius(getPropAsset(getSpawnPropId())),
         spawnRoomNodeCols,
         spawnRoomNodeRows,
         spawnPuzzleAreaCols,
@@ -114,12 +112,7 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
             spawnBallRadius = Math.max(1, Math.min(32, Math.round(radius)));
             notifyUi();
         },
-        getSpawnBlockPresetId: () => spawnBlockPresetId,
-        setSpawnBlockPresetId: (presetId) => {
-            spawnBlockPresetId = presetId;
-            notifyUi();
-        },
-        getSpawnVisualOverrideTint: (asset) => spawnVisualOverrideTint ?? asset.defaultVisualOverride?.tint ?? sampleAssetBaseTintHex(asset),
+        getSpawnVisualOverrideTint: (asset) => spawnVisualOverrideTint ?? sampleAssetBaseTintHex(asset),
         setSpawnVisualOverrideTint: (hex) => {
             spawnVisualOverrideTint = hex;
         },

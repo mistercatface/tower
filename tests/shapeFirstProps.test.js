@@ -15,8 +15,9 @@ describe("shape-first props", () => {
         assert.equal(shape.vertices.length, 4);
         assert.equal(kineticFootprintArea(prop), 256);
     });
-    it("block uses a 16×8 rectangle footprint", () => {
-        const prop = new WorldProp(0, 0, "block", 0);
+    it("custom box can use a 16×8 rectangle footprint", () => {
+        const prop = new WorldProp(0, 0, "custom_box", 0);
+        applyPropBoxFootprint(prop, 8, 4);
         const shape = prop.getShape();
         assert.equal(shape.type, "Polygon");
         assert.equal(Math.abs(polygonSignedArea2D(shape.vertices)), 128);

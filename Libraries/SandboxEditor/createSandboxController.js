@@ -1,5 +1,5 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { assetDefaultBallRadius, isBallFamilyAsset, isBlockFamilyAsset, resolveBlockPresetForAsset } from "../Sandbox/sandboxShapeFamilies.js";
+import { assetDefaultBallRadius, isBallFamilyAsset } from "../Sandbox/sandboxShapeFamilies.js";
 import { bindCanvasPointers, bindCanvasContextMenu } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createSandboxSession } from "../Sandbox/sandboxSession.js";
@@ -258,8 +258,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         setSpawnBoxHeight: (height) => session.setSpawnBoxHeight(height),
         getSpawnBallRadius: (asset) => session.getSpawnBallRadius(asset),
         setSpawnBallRadius: (radius) => session.setSpawnBallRadius(radius),
-        getSpawnBlockPresetId: () => session.getSpawnBlockPresetId(),
-        setSpawnBlockPresetId: (presetId) => session.setSpawnBlockPresetId(presetId),
         getSpawnVisualOverrideTint: (asset) => session.getSpawnVisualOverrideTint(asset),
         setSpawnVisualOverrideTint: (hex) => session.setSpawnVisualOverrideTint(hex),
         getSpawnVisualOverrideBrightness: () => session.getSpawnVisualOverrideBrightness(),
@@ -373,7 +371,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
                 clampSpawnBehavior();
                 const asset = getPropAsset(key.slice(5));
                 if (isBallFamilyAsset(asset)) session.setSpawnBallRadius(assetDefaultBallRadius(asset));
-                if (isBlockFamilyAsset(asset)) session.setSpawnBlockPresetId(resolveBlockPresetForAsset(asset));
                 if (isRoomLinkSpawnAsset(asset)) {
                     enterCorridorLinkWireMode();
                     return;

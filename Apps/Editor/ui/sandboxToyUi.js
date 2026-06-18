@@ -137,7 +137,8 @@ export function mountSandboxToyUi(container, state, controller) {
         const paramsHost = document.createElement("div");
         paramsHost.className = "spawn-palette-params";
         sections.spawnBody.appendChild(paramsHost);
-        if (!activeItem) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
+        if (inspector) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
+        else if (!activeItem) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
         else if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), refreshPanel);
         else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, inspector: wallPlaceInspector(inspector) });
         else appendMapGenEditor(paramsHost, state, activeItem.genKind, refreshPanel);

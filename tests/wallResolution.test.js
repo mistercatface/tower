@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
+import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Spatial/collision/wallResolution.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
@@ -22,9 +23,14 @@ function resolveWallUntilClear(prop, segments, maxPasses = 6) {
         resolveBodyAgainstWallSegments(prop, prop.getShape(), segments, { restitution: wp?.restitution ?? 0, friction: wp?.friction ?? 0.9 });
     }
 }
+function bar16x8(x, y) {
+    const bar = new WorldProp(x, y, "custom_box", 0);
+    applyPropBoxFootprint(bar, 8, 4);
+    return bar;
+}
 describe("polygon wall resolution", () => {
-    it("block resting overlap pushes out with normal away from wall", () => {
-        const bar = new WorldProp(5, 0, "block", 0);
+    it("bar resting overlap pushes out with normal away from wall", () => {
+        const bar = bar16x8(5, 0);
         bar.vx = 0;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
@@ -48,7 +54,7 @@ describe("polygon wall resolution", () => {
         assert.ok(!shapeOverlapsWall(wedge, floor));
     });
     it("wall impulse slows polygon sliding into a segment", () => {
-        const bar = new WorldProp(5, 0, "block", 0);
+        const bar = bar16x8(5, 0);
         bar.vx = -40;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
@@ -56,7 +62,7 @@ describe("polygon wall resolution", () => {
         assert.ok(bar.vx > -40);
     });
     it("collision pipeline resolves resting polygon at zero linear speed", () => {
-        const bar = new WorldProp(5, 0, "block", 0);
+        const bar = bar16x8(5, 0);
         bar.vx = 0;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);

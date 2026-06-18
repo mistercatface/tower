@@ -1,5 +1,4 @@
 import ball from "./ball/ball.asset.js";
-import block from "./block/block.asset.js";
 import flipper_left from "./flipper/flipperLeft.asset.js";
 import flipper_right from "./flipper/flipperRight.asset.js";
 import crate from "./crate/crate.asset.js";
@@ -24,7 +23,6 @@ import snake_head from "./snake_head/snake_head.asset.js";
 import poolBalls from "./poolBalls.js";
 const catalog = {
     ball,
-    block,
     flipper_left,
     flipper_right,
     crate,

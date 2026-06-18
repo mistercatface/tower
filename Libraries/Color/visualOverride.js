@@ -22,9 +22,6 @@ export function getPropVisualTint(prop) {
 export function getPropVisualBrightness(prop) {
     return prop.visualOverride?.brightness ?? 1;
 }
-export function applyAssetDefaultVisualOverride(prop, asset) {
-    if (asset.defaultVisualOverride) stampPropVisualOverride(prop, asset.defaultVisualOverride);
-}
 export function visualOverrideCacheKey(prop) {
     const vo = prop.visualOverride;
     if (!vo) return "";
@@ -66,7 +63,7 @@ export function sampleAssetBaseTintHex(asset) {
 }
 export function resolvePickerHex(prop, asset) {
     if (prop.visualOverride?.tint) return prop.visualOverride.tint;
-    return asset.defaultVisualOverride?.tint ?? sampleAssetBaseTintHex(asset);
+    return sampleAssetBaseTintHex(asset);
 }
 export function randomVisualTintHex(rng = Math.random) {
     return hueToPickerHex(normalizeHue(rng() * 360));

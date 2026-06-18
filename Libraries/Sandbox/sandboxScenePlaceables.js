@@ -343,8 +343,7 @@ export function listPlacedSceneItems(ctx) {
 export function matchesSceneItem(selection, item) {
     return selectionMatchesSelect(selection, item.select);
 }
-export function pickSceneItem(item, { pickSelection, setPlacePaletteKey }) {
-    if (item.paletteKey != null) setPlacePaletteKey(item.paletteKey);
+export function pickSceneItem(item, { pickSelection }) {
     pickSelection(item.select);
 }
 export function removeSceneItem(session, item, pickSelection) {

@@ -1,54 +1,17 @@
-import {
-    applyAssetDefaultVisualOverride,
-    clearPropVisualOverride,
-    getPropVisualBrightness,
-    resolvePickerHex,
-    setPropVisualBrightness,
-    setPropVisualTint,
-    stampPropVisualOverride,
-} from "../../Color/visualOverride.js";
+import { clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex, setPropVisualBrightness, setPropVisualTint } from "../../Color/visualOverride.js";
 import { getCirclePropRadius, setCirclePropRadius } from "../../Props/propScale.js";
 import { applyPropBoxFootprint, propFootprintHalfExtents } from "../../Props/propStrategy.js";
-import { getPropAsset, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
-import {
-    BLOCK_SPAWN_PRESET_OPTIONS,
-    assetDefaultBallRadius,
-    blockPresetUsesResizableFootprint,
-    isBallFamilyAsset,
-    isBlockFamilyAsset,
-    resolveBlockPresetForAsset,
-} from "../../Sandbox/sandboxShapeFamilies.js";
-import { appendActionRow, appendColorField, appendEditorSubhead, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
-import { BALL_TINT_PRESETS } from "../../Color/tintPresets.js";
+import { getPropAsset } from "../../Props/PropCatalog.js";
+import { assetDefaultBallRadius, blockPresetUsesResizableFootprint, isBallFamilyAsset, isBlockFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
+import { appendActionRow, appendColorField, appendNumberField } from "../../UI/paramFields.js";
+import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
 function brightnessToPercent(brightness) {
     return Math.round(brightness * 100);
 }
 function percentToBrightness(percent) {
     return percent / 100;
 }
-import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
-
-function appendTintPresetRow(body, activeHex, onPick) {
-    const row = document.createElement("div");
-    row.className = "param-tint-presets";
-    for (let i = 0; i < BALL_TINT_PRESETS.length; i++) {
-        const preset = BALL_TINT_PRESETS[i];
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "param-tint-preset";
-        btn.style.backgroundColor = preset.hex;
-        btn.title = preset.label;
-        btn.setAttribute("aria-label", preset.label);
-        btn.addEventListener("click", () => {
-            onPick(preset.hex);
-            markLabViewDirty();
-        });
-        row.appendChild(btn);
-    }
-    body.appendChild(row);
-}
-
-function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessChange, showPresets = false }) {
+function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessChange }) {
     appendColorField(body, "Tint", {
         value: tint,
         onChange: (hex) => {
@@ -66,7 +29,6 @@ function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessCh
             markLabViewDirty();
         },
     });
-    if (showPresets) appendTintPresetRow(body, tint, onTintChange);
 }
 export function appendBallSpawnFields(body, controller, spawnAsset) {
     appendNumberField(body, "Radius", { value: controller.getSpawnBallRadius(spawnAsset), step: 1, min: 1, max: 32, onChange: (radius) => controller.setSpawnBallRadius(radius) });
@@ -75,33 +37,24 @@ export function appendBallSpawnFields(body, controller, spawnAsset) {
         brightness: controller.getSpawnVisualOverrideBrightness(),
         onTintChange: (hex) => controller.setSpawnVisualOverrideTint(hex),
         onBrightnessChange: (brightness) => controller.setSpawnVisualOverrideBrightness(brightness),
-        showPresets: true,
     });
 }
-export function appendBlockSpawnFields(body, controller) {
-    const presetId = controller.getSpawnBlockPresetId();
-    appendSelectField(body, "Preset", {
-        value: presetId,
-        options: BLOCK_SPAWN_PRESET_OPTIONS.map((option) => ({ value: option.id, label: option.label })),
-        onChange: (value) => controller.setSpawnBlockPresetId(value),
-    });
-    if (blockPresetUsesResizableFootprint(presetId)) {
+export function appendBlockSpawnFields(body, controller, spawnAsset) {
+    if (blockPresetUsesResizableFootprint(spawnAsset.id)) {
         appendNumberField(body, "Width", { value: controller.getSpawnBoxWidth(), step: 1, min: 6, max: 128, onChange: (width) => controller.setSpawnBoxWidth(width) });
         appendNumberField(body, "Height", { value: controller.getSpawnBoxHeight(), step: 1, min: 6, max: 128, onChange: (height) => controller.setSpawnBoxHeight(height) });
     }
-    const coatAsset = getPropAsset(presetId);
     appendCoatFields(body, {
-        tint: controller.getSpawnVisualOverrideTint(coatAsset),
+        tint: controller.getSpawnVisualOverrideTint(spawnAsset),
         brightness: controller.getSpawnVisualOverrideBrightness(),
         onTintChange: (hex) => controller.setSpawnVisualOverrideTint(hex),
         onBrightnessChange: (brightness) => controller.setSpawnVisualOverrideBrightness(brightness),
-        showPresets: true,
     });
 }
 export function appendShapeFamilySpawnFields(body, controller, spawnId) {
     const spawnAsset = getPropAsset(spawnId);
     if (isBallFamilyAsset(spawnAsset)) appendBallSpawnFields(body, controller, spawnAsset);
-    else if (isBlockFamilyAsset(spawnAsset)) appendBlockSpawnFields(body, controller);
+    else if (isBlockFamilyAsset(spawnAsset)) appendBlockSpawnFields(body, controller, spawnAsset);
 }
 export function appendBallSelectedFields(body, selectedProp, asset) {
     appendNumberField(body, "Radius", {
@@ -125,14 +78,12 @@ export function appendBallSelectedFields(body, selectedProp, asset) {
             label: "Reset coat",
             onClick: () => {
                 clearPropVisualOverride(selectedProp);
-                applyAssetDefaultVisualOverride(selectedProp, asset);
                 markLabViewDirty();
             },
         },
     ]);
 }
 export function appendBlockSelectedFields(body, selectedProp, asset) {
-    appendEditorSubhead(body, formatSandboxSpawnLabel(resolveBlockPresetForAsset(asset)));
     if (blockPresetUsesResizableFootprint(asset.id)) {
         const span = propFootprintHalfExtents(selectedProp);
         appendNumberField(body, "Width", {
@@ -169,7 +120,6 @@ export function appendBlockSelectedFields(body, selectedProp, asset) {
             label: "Reset coat",
             onClick: () => {
                 clearPropVisualOverride(selectedProp);
-                applyAssetDefaultVisualOverride(selectedProp, asset);
                 markLabViewDirty();
             },
         },

@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
+import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
@@ -123,8 +124,9 @@ describe("poly-poly kinetic contact", () => {
         assert.ok(info.ny > 0.9);
         assert.ok(!pairStillOverlaps(bottom, top));
     });
-    it("resolveKineticContactPass separates overlapping block and crate", () => {
-        const bar = new WorldProp(0, 0, "block", 0);
+    it("resolveKineticContactPass separates overlapping bar and crate", () => {
+        const bar = new WorldProp(0, 0, "custom_box", 0);
+        applyPropBoxFootprint(bar, 8, 4);
         const box = new WorldProp(12, 0, "crate", 0);
         box.vx = -20;
         assert.ok(pairStillOverlaps(bar, box));
@@ -155,8 +157,10 @@ describe("poly-poly kinetic contact", () => {
         assert.ok(b.vx > -20);
     });
     it("poly pair friction reduces tangential slip on block slide", () => {
-        const left = new WorldProp(0, 0, "block", 0);
-        const right = new WorldProp(12, 0, "block", 0);
+        const left = new WorldProp(0, 0, "custom_box", 0);
+        applyPropBoxFootprint(left, 8, 4);
+        const right = new WorldProp(12, 0, "custom_box", 0);
+        applyPropBoxFootprint(right, 8, 4);
         left.vx = 35;
         right.vx = 0;
         const frame = setupPairFrame(left, right);

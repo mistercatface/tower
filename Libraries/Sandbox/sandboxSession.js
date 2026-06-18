@@ -50,6 +50,7 @@ export function createSandboxSession(state) {
     const selection = createSandboxSelection({ isLiveProp: (id) => !!registry().getLive(id), getRoomLink: (linkId) => getRoomLink(state, linkId) });
     const pickSelection = (input) => {
         selection.select(input);
+        if (input != null) clearPlaceMode();
         notifyUi();
     };
     const clearSelection = () => {
@@ -73,11 +74,12 @@ export function createSandboxSession(state) {
     };
     const clampAuthoredRailWallThickness = (level) => resolveRailWallThicknessLevel(level);
     const setPlacePaletteKey = (key) => {
-        if (placePaletteKey === key) return;
+        const hadSelection = selection.getSelection() != null;
+        const changed = placePaletteKey !== key;
         placePaletteKey = key;
         if (key.startsWith("wall:")) wallStampMode = /** @type {'voxel' | 'rail' | 'forcefield'} */ (key.slice(5));
-        selection.clearPalettePlaceSelection(key);
-        notifyUi();
+        selection.clearSelection();
+        if (changed || hadSelection) notifyUi();
     };
     const listPlacedProps = () => {
         const counts = new Map();

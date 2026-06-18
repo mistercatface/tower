@@ -43,7 +43,7 @@ describe("spawn shape family defaults", () => {
         const ctx = {
             spawnPropId,
             spawnFaction: "neutral",
-            resolveSpawnPropTypeId: () => "ball",
+            resolveSpawnPropTypeId: () => spawnPropId,
             resolveSpawnVisualOverride: (a) => session.resolveSpawnVisualOverride(a),
             spawnBallRadius: session.getSpawnBallRadius(asset),
             spawnBoxHalfExtents: { x: 8, y: 8 },
@@ -58,24 +58,23 @@ describe("spawn shape family defaults", () => {
         assert.equal(getPropVisualBrightness(prop), 1.25);
     });
 
-    it("places block preset with resizable footprint and coat", () => {
+    it("places custom box with resizable footprint and coat", () => {
         const state = createSpawnTestState();
-        let spawnPropId = "block";
+        let spawnPropId = "custom_box";
         const session = createSandboxSpawnSession(state, {
             getSpawnPropId: () => spawnPropId,
             pickSelection: () => {},
             notifyUi: () => {},
             placement: { touchPropPlacement: () => {} },
         });
-        session.setSpawnBlockPresetId("custom_box");
         session.setSpawnBoxWidth(24);
         session.setSpawnBoxHeight(32);
         session.setSpawnVisualOverrideTint("#00aa88");
-        const asset = getPropAsset("block");
+        const asset = getPropAsset("custom_box");
         const ctx = {
             spawnPropId,
             spawnFaction: "neutral",
-            resolveSpawnPropTypeId: () => session.getSpawnBlockPresetId(),
+            resolveSpawnPropTypeId: () => spawnPropId,
             resolveSpawnVisualOverride: (a) => session.resolveSpawnVisualOverride(a),
             spawnBallRadius: 4,
             spawnBoxHalfExtents: { x: session.getSpawnBoxWidth() / 2, y: session.getSpawnBoxHeight() / 2 },

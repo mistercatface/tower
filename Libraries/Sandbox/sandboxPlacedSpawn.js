@@ -8,7 +8,7 @@ import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRa
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
 import { tryExportLinkedBallChainSpawnGroup } from "./spawnLinkedBallChain.js";
-import { applyAssetDefaultVisualOverride, serializeVisualOverride, stampPropVisualOverride } from "../Color/visualOverride.js";
+import { serializeVisualOverride, stampPropVisualOverride } from "../Color/visualOverride.js";
 function assetDefaultFootprintSpan(typeId) {
     const footprint = getPropAsset(typeId)?.physics?.localFootprint;
     if (!footprint?.length) return null;
@@ -56,7 +56,6 @@ export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, factio
     if (boxHalfExtents) applyPropBoxFootprint(prop, boxHalfExtents.x, boxHalfExtents.y);
     prop.faction = faction;
     if (visualOverride != null) stampPropVisualOverride(prop, visualOverride);
-    else applyAssetDefaultVisualOverride(prop, asset);
     addWorldPropToState(state, prop);
     return prop;
 }
