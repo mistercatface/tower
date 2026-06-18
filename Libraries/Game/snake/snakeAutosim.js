@@ -33,8 +33,8 @@ function resolveExploreCell(state, originCol, originRow, memory, rng) {
     const grid = state.obstacleGrid;
     const openCells = collectOpenCavernCells(state);
     const minTiles = config.exploreMinTiles;
-    let cell = pickExploreDestination(grid, originCol, originRow, { minTiles, memory, openCells, rng });
-    if (!cell && minTiles > 1) cell = pickExploreDestination(grid, originCol, originRow, { minTiles: 1, memory, openCells, rng });
+    let cell = pickExploreDestination(grid, originCol, originRow, { minTiles, memory, openCells, rng, fringeRatio: config.spatialMemoryFringeRatio });
+    if (!cell && minTiles > 1) cell = pickExploreDestination(grid, originCol, originRow, { minTiles: 1, memory, openCells, rng, fringeRatio: config.spatialMemoryFringeRatio });
     if (!cell) cell = pickOpenCavernCell(openCells, { rng });
     if (cell && cell.col === originCol && cell.row === originRow) cell = pickOpenCavernCell(openCells, { excludeKeys: new Set([cavernCellKey(originCol, originRow)]), rng });
     return cell;
@@ -62,7 +62,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     let exploreCellKey = null;
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
     const syncBrain = (seeker) => {
-        snakeBrain.syncVision(seeker, state);
+        snakeBrain.sync(seeker, state);
     };
     const clearNavTargets = (seeker) => {
         hpaBehavior()?.clearMoveTarget?.(seeker);

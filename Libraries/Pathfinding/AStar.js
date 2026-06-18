@@ -51,7 +51,7 @@ export function runCardinalAStarFlat(startCol, startRow, targetCol, targetRow, n
     }
     return null;
 }
-export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, gScore, cameFrom, visited, runId) {
+export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, gScore, cameFrom, visited, runId, stepPenaltyLookup = null) {
     const startIdx = startRow * cols + startCol;
     const targetIdx = targetRow * cols + targetCol;
     if (startIdx === targetIdx) return [{ col: startCol, row: startRow }];
@@ -84,7 +84,8 @@ export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navG
             if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
                 if (!navGraph.canStep(currCol, currRow, nc, nr)) continue;
                 const nIdx = nr * cols + nc;
-                const tentativeG = currentG + offset.cost;
+                const stepExtra = stepPenaltyLookup ? stepPenaltyLookup.extraCostForIdx(nIdx) : 0;
+                const tentativeG = currentG + offset.cost + stepExtra;
                 if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
                     visited[nIdx] = runId;
                     gScore[nIdx] = tentativeG;

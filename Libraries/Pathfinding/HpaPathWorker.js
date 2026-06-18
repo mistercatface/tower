@@ -397,8 +397,8 @@ export class HpaPathWorker {
         const requestId = this.host.post(slot, { type, ...extra });
         await this.host.waitForSlot(slot, requestId);
     }
-    async runOneShotReplan(slot, startCol, startRow, targetCol, targetRow) {
-        await this._dispatchAndWait(slot, "replan", { startCol, startRow, targetCol, targetRow });
+    async runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, stepPenalty = null) {
+        await this._dispatchAndWait(slot, "replan", { startCol, startRow, targetCol, targetRow, stepPenaltyKeys: stepPenalty?.keys ?? null, stepPenaltyCosts: stepPenalty?.costs ?? null });
         const result = this._replanResults[slot];
         this._replanResults[slot] = null;
         if (!result) return null;
@@ -413,7 +413,7 @@ export class HpaPathWorker {
      * }} opts
      */
     async requestPath(opts) {
-        const { obstacleGrid, startX, startY, targetX, targetY, graphEpoch, navState } = opts;
+        const { obstacleGrid, startX, startY, targetX, targetY, graphEpoch, navState, stepPenalty = null } = opts;
         await this.scheduleNavTopologySyncAwait(obstacleGrid, null);
         const navKey = gridNavCacheKey(obstacleGrid);
         if (obstacleGrid.gridNavCacheKey !== navKey) return null;
@@ -423,7 +423,7 @@ export class HpaPathWorker {
         const slot = this.leaseSlot();
         let workerOut = null;
         try {
-            workerOut = await this.runOneShotReplan(slot, startCol, startRow, targetCol, targetRow);
+            workerOut = await this.runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, stepPenalty);
         } catch (err) {
             this.releaseSlot(slot);
             throw err;

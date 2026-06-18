@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
 import { createBrain } from "../Libraries/AI/brain/createBrain.js";
+import { buildNavStepPenaltyFromSpatialMemory } from "../Libraries/AI/brain/navStepPenalty.js";
 
 describe("spatialCellMemory", () => {
     it("evicts oldest cells when capacity is exceeded", () => {
@@ -40,6 +41,16 @@ describe("spatialCellMemory", () => {
         memory.forEachNewestFirst((col, row) => order.push(`${col},${row}`));
         assert.deepEqual(order, ["1,1", "2,2"]);
     });
+
+    it("getRecencyRankFromNewest orders oldest last", () => {
+        const memory = createSpatialCellMemory({ capacity: 4 });
+        memory.stamp(1, 1);
+        memory.stamp(2, 2);
+        memory.stamp(3, 3);
+        assert.equal(memory.getRecencyRankFromNewest(3, 3), 0);
+        assert.equal(memory.getRecencyRankFromNewest(1, 1), 2);
+        assert.equal(memory.getRecencyRankFromNewest(9, 9), -1);
+    });
 });
 
 describe("createBrain", () => {
@@ -53,5 +64,15 @@ describe("createBrain", () => {
         assert.ok(!brain.spatial.has(5, 5));
         assert.ok(brain.spatial.has(6, 6));
         assert.ok(brain.spatial.has(7, 7));
+    });
+
+    it("buildNavStepPenaltyFromSpatialMemory assigns higher cost to newer cells", () => {
+        const brain = createBrain({ spatialMemoryCapacity: 4 });
+        brain.stampArrival(1, 1);
+        brain.stampArrival(2, 2);
+        brain.stampArrival(3, 3);
+        const penalty = buildNavStepPenaltyFromSpatialMemory(brain.spatial, { basePenalty: 10, falloff: 0.5 });
+        assert.ok(penalty);
+        assert.ok(penalty.costs[0] > penalty.costs[penalty.costs.length - 1]);
     });
 });

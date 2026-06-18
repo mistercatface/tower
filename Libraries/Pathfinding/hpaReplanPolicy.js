@@ -9,8 +9,8 @@ export const REPLAN_PRIORITY_STUCK_OFFSCREEN = 1;
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @returns {{ obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, startX: number, startY: number, targetX: number, targetY: number, graphEpoch: number }}
  */
-export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, graphEpoch) {
-    return { obstacleGrid, startX, startY, targetX, targetY, graphEpoch };
+export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, graphEpoch, stepPenalty = null) {
+    return { obstacleGrid, startX, startY, targetX, targetY, graphEpoch, stepPenalty };
 }
 /** @param {import("./navSession.js").NavSessionState} navState */
 export function trackNavStuck(navState, x, y, stuckMoveThreshold) {

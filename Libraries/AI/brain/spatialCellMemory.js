@@ -19,6 +19,16 @@ export function createSpatialCellMemory({ capacity = 64 } = {}) {
         has(col, row) {
             return entries.has(keyFor(col, row));
         },
+        getRecencyRankFromNewest(col, row) {
+            const target = keyFor(col, row);
+            if (!entries.has(target)) return -1;
+            let rankFromOldest = 0;
+            for (const key of entries.keys()) {
+                if (key === target) return entries.size - 1 - rankFromOldest;
+                rankFromOldest++;
+            }
+            return -1;
+        },
         clear() {
             entries.clear();
             stampSeq = 0;

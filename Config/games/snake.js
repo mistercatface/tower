@@ -26,4 +26,9 @@ export const SNAKE_GAME_DEFAULTS = {
     exploreMinTiles: 8,
     /** LRU grid-cell memory window per snake (vision + arrival stamps). */
     spatialMemoryCapacity: 128,
+    /** Oldest memory fraction treated as explore frontier when no fresh cells exist. */
+    spatialMemoryFringeRatio: 0.25,
+    /** Extra local/HPA step cost on recently remembered cells (newest = full penalty). */
+    navMemoryStepPenalty: 6,
+    navMemoryStepFalloff: 0.65,
 };

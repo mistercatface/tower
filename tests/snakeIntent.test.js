@@ -85,6 +85,17 @@ describe("explore steering", () => {
         assert.ok(cell);
         assert.ok(!memory.has(cell.col, cell.row));
     });
+
+    it("prefers fresh cells over recently remembered cells", () => {
+        const state = createIntentTestState();
+        const grid = state.obstacleGrid;
+        const openCells = collectOpenCavernCells(state);
+        const memory = createSpatialCellMemory({ capacity: 8 });
+        memory.stamp(12, 10);
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 1, memory, openCells, rng: () => 0 });
+        assert.ok(cell);
+        assert.ok(!memory.has(cell.col, cell.row));
+    });
 });
 
 describe("snake intent FSM", () => {

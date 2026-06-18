@@ -96,6 +96,7 @@ export class HpaPathSession {
                         targetX: params.targetX,
                         targetY: params.targetY,
                         graphEpoch: params.graphEpoch,
+                        stepPenalty: params.stepPenalty ?? null,
                         navState,
                         replanRequestId: requestId,
                     });
