@@ -11,12 +11,14 @@ describe("snakeGameConfig", () => {
         applySnakeGameConfig();
         const spacing = resolveSnakeSegmentSpacing();
         assert.equal(spacing, 4 * 2 * SNAKE_GAME_DEFAULTS.linkSlack);
+        assert.equal(resolveSnakeSegmentSpacing(getSnakeGameConfig(), 2), 2 * 2 * SNAKE_GAME_DEFAULTS.linkSlack);
     });
 
     it("derives eat radius from segment, goal prop radii, and eat margin", () => {
         applySnakeGameConfig();
         const eatRadius = resolveSnakeEatRadius();
         assert.equal(eatRadius, 4 + 5 + SNAKE_GAME_DEFAULTS.eatMargin);
+        assert.equal(resolveSnakeEatRadius(getSnakeGameConfig(), 2), 2 + 5 + SNAKE_GAME_DEFAULTS.eatMargin);
     });
 
     it("applySnakeGameConfig merges overrides onto defaults", () => {

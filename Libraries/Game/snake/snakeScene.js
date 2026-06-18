@@ -5,7 +5,7 @@ import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { SANDBOX_DEFAULT_FACTION } from "../../Sandbox/sandboxFaction.js";
 import { withSeededRandom } from "../../Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns } from "../../../Apps/Editor/world/mapWorld.js";
-import { getSnakeGameConfig, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
+import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeStartRadius } from "./snakeGameConfig.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
     const grid = state.obstacleGrid;
@@ -65,9 +65,12 @@ export async function spawnSnakeCavernScene(state) {
     withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset, () => {
         shuffleInPlace(openCells);
         const anchorCell = pickOpenCavernCell(openCells);
+        const startRadius = resolveSnakeStartRadius(config);
         chain = spawnLinkedBallChain(state, anchorCell, {
             segmentCount: config.segmentCount,
-            spacing: resolveSnakeSegmentSpacing(config),
+            spacing: resolveSnakeSegmentSpacing(config, startRadius),
+            segmentRadius: startRadius,
+            linkSlack: config.linkSlack,
             ballType: config.segmentPropId,
             headBallType: config.headPropId,
             growDirX: config.growDirX,

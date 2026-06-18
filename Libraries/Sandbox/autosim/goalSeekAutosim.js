@@ -40,7 +40,8 @@ export function createGoalSeekAutosim(state, { getSeekerPropId, getGoalPropId, n
                 return;
             }
             const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
-            if (dist <= eatRadius) {
+            const resolvedEatRadius = typeof eatRadius === "function" ? eatRadius() : eatRadius;
+            if (dist <= resolvedEatRadius) {
                 onConsume({ seeker, goal });
                 trackedGoalPropId = null;
                 refreshNavTarget();

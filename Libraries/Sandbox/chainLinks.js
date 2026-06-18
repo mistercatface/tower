@@ -1,4 +1,3 @@
-import { distanceBetweenAnchors } from "../Motion/constraintAnchors.js";
 import { addDistanceConstraint, listKineticConstraints, removeKineticConstraint } from "../Motion/kineticConstraints.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
@@ -59,15 +58,30 @@ export function hasChainLinkBetween(state, bodyAId, bodyBId) {
     }
     return false;
 }
-export function addChainLink(state, fromPropId, toPropId) {
+export function addChainLink(state, fromPropId, toPropId, linkSlack = 1) {
     if (fromPropId === toPropId) return false;
     const bodyA = state.entityRegistry.getLive(fromPropId);
     const bodyB = state.entityRegistry.getLive(toPropId);
     if (!isChainLinkBall(bodyA) || !isChainLinkBall(bodyB)) return false;
     if (hasChainLinkBetween(state, fromPropId, toPropId)) return true;
-    const restLength = distanceBetweenAnchors(bodyA, { x: 0, y: 0 }, bodyB, { x: 0, y: 0 });
+    const restLength = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
     addDistanceConstraint(state, { bodyAId: fromPropId, bodyBId: toPropId, restLength });
     return true;
+}
+export function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {
+    return (bodyA.radius + bodyB.radius) * linkSlack;
+}
+export function resyncChainLinkRestLengths(state, memberIds, linkSlack) {
+    const members = new Set(memberIds);
+    const list = listKineticConstraints(state);
+    for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (entry.type !== "distance") continue;
+        if (!members.has(entry.bodyAId) || !members.has(entry.bodyBId)) continue;
+        const bodyA = state.entityRegistry.getLive(entry.bodyAId);
+        const bodyB = state.entityRegistry.getLive(entry.bodyBId);
+        entry.restLength = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
+    }
 }
 export function listChainLinkEndpoints(state, propId) {
     const list = listKineticConstraints(state);

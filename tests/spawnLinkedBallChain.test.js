@@ -9,24 +9,13 @@ import { getChainMemberIds, isChainSteeringTarget } from "../Libraries/Sandbox/c
 import { growChainSegment, linkedChainOccupiedCellKeys, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import { cavernCellKey } from "../Libraries/Sandbox/cavernFloorCells.js";
-
 loadPropAssets();
-
-const CHAIN_OPTIONS = {
-    segmentCount: 3,
-    spacing: 16,
-    ballType: "blue_ball",
-    growDirX: -1,
-    growDirY: 0,
-    exportType: "test_chain",
-};
-
+const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "blue_ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1 };
 function createChainSpawnTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
     return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], sandbox: new SandboxWorldState() };
 }
-
 describe("spawnLinkedBallChain", () => {
     it("spawns a linked ball chain with one head and distance links", () => {
         resetKineticConstraintIds(1);
@@ -45,11 +34,8 @@ describe("spawnLinkedBallChain", () => {
             members,
             chain.members.map((prop) => prop.id).sort((a, b) => a - b),
         );
-        for (let i = 0; i < state.sandbox.kineticConstraints.length; i++) {
-            assert.ok(Math.abs(state.sandbox.kineticConstraints[i].restLength - CHAIN_OPTIONS.spacing) < 1e-6);
-        }
+        for (let i = 0; i < state.sandbox.kineticConstraints.length; i++) assert.ok(Math.abs(state.sandbox.kineticConstraints[i].restLength - 8) < 1e-6);
     });
-
     it("exports linked chain spawn groups with segment count and anchor position", () => {
         resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
@@ -62,7 +48,6 @@ describe("spawnLinkedBallChain", () => {
         assert.equal(exported.x, chain.head.x);
         assert.equal(exported.y, chain.head.y);
     });
-
     it("linkedChainOccupiedCellKeys lists unique grid cells occupied by members", () => {
         resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
@@ -75,7 +60,6 @@ describe("spawnLinkedBallChain", () => {
             assert.ok(keys.has(cavernCellKey(col, row)));
         }
     });
-
     it("growChainSegment links a new tail segment at spacing", () => {
         resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
@@ -86,12 +70,19 @@ describe("spawnLinkedBallChain", () => {
         assert.equal(segment.x, tail.x - CHAIN_OPTIONS.spacing);
         assert.equal(segment.y, tail.y);
     });
-
     it("spawnLinkedBallChain uses headBallType for the first segment only", () => {
         resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...CHAIN_OPTIONS, headBallType: "snake_head" });
         assert.equal(chain.head.type, "snake_head");
         assert.equal(chain.tail.type, CHAIN_OPTIONS.ballType);
+    });
+    it("spawnLinkedBallChain applies segmentRadius to every member", () => {
+        resetKineticConstraintIds(1);
+        const state = createChainSpawnTestState();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...CHAIN_OPTIONS, segmentRadius: 2, spacing: 4.2, linkSlack: 1.05 });
+        assert.equal(chain.head.radius, 2);
+        assert.equal(chain.tail.radius, 2);
+        assert.equal(state.sandbox.kineticConstraints[0].restLength, 4.2);
     });
 });

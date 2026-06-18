@@ -11,8 +11,9 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { createSnakeAutosim, findSnakeGoalProp } from "../Libraries/Game/snake/snakeAutosim.js";
-import { getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
+import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 
 loadPropAssets();
 
@@ -39,8 +40,11 @@ function snakeChainOptions() {
     const config = getSnakeGameConfig();
     return {
         segmentCount: config.segmentCount,
-        spacing: resolveSnakeSegmentSpacing(config),
+        spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
+        segmentRadius: config.startRadius,
+        linkSlack: config.linkSlack,
         ballType: config.segmentPropId,
+        headBallType: config.headPropId,
         growDirX: config.growDirX,
         growDirY: config.growDirY,
     };
@@ -48,6 +52,7 @@ function snakeChainOptions() {
 
 describe("snakeAutosim", () => {
     it("eating the goal adds a chain segment and respawns the goal orb", () => {
+        applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeAutosimTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
@@ -70,7 +75,30 @@ describe("snakeAutosim", () => {
         assert.notEqual(findSnakeGoalProp(state)?.id, goal.id);
     });
 
+    it("eating scales the chain before adding the new segment", () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(1);
+        const state = createSnakeAutosimTestState();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
+        const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
+        const behaviorById = new Map([[HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)]]);
+        const autosim = createSnakeAutosim(state, {
+            headId: chain.head.id,
+            goalPropId: goal.id,
+            behaviorById,
+            eatRadius: 20,
+            rng: () => 0,
+        });
+        autosim.start();
+        chain.head.x = goal.x;
+        chain.head.y = goal.y;
+        autosim.tick(1 / 60);
+        const members = getChainMemberIds(state, chain.head.id).map((id) => state.entityRegistry.getLive(id));
+        for (let i = 0; i < members.length; i++) assert.equal(getCirclePropRadius(members[i]), 2.25);
+    });
+
     it("re-issues HPA nav toward a respawned goal", () => {
+        applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeAutosimTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, snakeChainOptions());

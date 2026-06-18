@@ -19,6 +19,7 @@ import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setChainHead } from "./chainLinks.js";
+import { setCirclePropRadius } from "../Props/propScale.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Motion/kineticConstraints.js";
 import { setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
@@ -155,7 +156,9 @@ function spawnSnapshotProp(state, entry) {
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     if (isGridPassagePowerSourceSpawnAsset(asset)) return null;
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
-    return spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents);
+    const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents);
+    if (entry.radius != null) setCirclePropRadius(prop, entry.radius);
+    return prop;
 }
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
 function spawnSnapshotProps(state, doc) {

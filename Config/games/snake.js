@@ -12,5 +12,8 @@ export const SNAKE_GAME_DEFAULTS = {
     /** Optional cap on head roll speed; null uses global groundNavRoll.maxSpeed. */
     headMaxSpeed: 140,
     hudHighScoreStorageKey: "snakeHighScore",
+    startRadius: 2,
+    maxRadius: 4,
+    radiusPerMeal: 0.25,
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1 },
 };

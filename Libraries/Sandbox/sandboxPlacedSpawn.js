@@ -21,6 +21,8 @@ function footprintDiffersFromAsset(prop) {
 }
 function serializePlacedProp(prop) {
     const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: resolveSandboxFaction(prop) };
+    const assetRadius = getPropAsset(prop.type)?.physics?.radius;
+    if (prop.radius != null && assetRadius != null && prop.radius !== assetRadius) entry.radius = prop.radius;
     if (footprintDiffersFromAsset(prop)) {
         const span = convexFootprintHalfExtents(prop.shape.vertices);
         entry.width = span.x * 2;

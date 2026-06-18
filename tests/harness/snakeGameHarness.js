@@ -10,9 +10,7 @@ import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/gr
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
 import { spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
-
 loadPropAssets();
-
 export function createSnakeGameHarnessState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
@@ -36,27 +34,26 @@ export function createSnakeGameHarnessState(cols = 32, rows = 32) {
     state.sandbox.controller = { getBehaviorByIdMap: () => behaviorById };
     return { state, behaviorById, hpaBehavior };
 }
-
 export async function buildSnakeGameSession(state) {
     applySnakeGameConfig();
     resetKineticConstraintIds(1);
     const config = getSnakeGameConfig();
-    const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, {
-        segmentCount: config.segmentCount,
-        spacing: resolveSnakeSegmentSpacing(config),
-        ballType: config.segmentPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
-    });
+    const chain = spawnLinkedBallChain(
+        state,
+        { col: 10, row: 10 },
+        {
+            segmentCount: config.segmentCount,
+            spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
+            segmentRadius: config.startRadius,
+            linkSlack: config.linkSlack,
+            ballType: config.segmentPropId,
+            growDirX: config.growDirX,
+            growDirY: config.growDirY,
+        },
+    );
     const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
-    const autosim = createSnakeAutosim(state, {
-        headId: chain.head.id,
-        goalPropId: goal.id,
-        behaviorById,
-        eatRadius: 20,
-        rng: () => 0,
-    });
+    const autosim = createSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById, eatRadius: 20, rng: () => 0 });
     autosim.start();
     return {
         head: chain.head,

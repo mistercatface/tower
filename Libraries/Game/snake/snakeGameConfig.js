@@ -13,9 +13,14 @@ export function resolveSnakePropRadius(propId) {
     if (radius == null) throw new Error(`Snake config prop "${propId}" has no physics.radius`);
     return radius;
 }
-export function resolveSnakeSegmentSpacing(config = getSnakeGameConfig()) {
-    return resolveSnakePropRadius(config.segmentPropId) * 2 * config.linkSlack;
+export function resolveSnakeSegmentSpacing(config = getSnakeGameConfig(), segmentRadius = null) {
+    const radius = segmentRadius ?? resolveSnakePropRadius(config.segmentPropId);
+    return radius * 2 * config.linkSlack;
 }
-export function resolveSnakeEatRadius(config = getSnakeGameConfig()) {
-    return resolveSnakePropRadius(config.segmentPropId) + resolveSnakePropRadius(config.goalPropId) + config.eatMargin;
+export function resolveSnakeEatRadius(config = getSnakeGameConfig(), segmentRadius = null) {
+    const radius = segmentRadius ?? resolveSnakePropRadius(config.segmentPropId);
+    return radius + resolveSnakePropRadius(config.goalPropId) + config.eatMargin;
+}
+export function resolveSnakeStartRadius(config = getSnakeGameConfig()) {
+    return config.startRadius;
 }

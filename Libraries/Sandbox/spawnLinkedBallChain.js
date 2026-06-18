@@ -3,6 +3,7 @@ import { addChainLink, setChainHead } from "./chainLinks.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { resolveSandboxFaction, sandboxFactions } from "./sandboxFaction.js";
 import { cavernCellKey } from "./cavernFloorCells.js";
+import { setCirclePropRadius } from "../Props/propScale.js";
 function segmentOffset(index, spacing, growDirX, growDirY) {
     return { x: index * spacing * growDirX, y: index * spacing * growDirY };
 }
@@ -18,18 +19,21 @@ export function spawnLinkedBallChain(state, anchorCell, options) {
     const meta = getSandboxEntityMeta(state);
     const spawnGroupId = options.spawnGroupId ?? `linkedBallChain:${Date.now()}`;
     const exportType = options.exportType ?? null;
+    const linkSlack = options.linkSlack ?? 1;
+    const segmentRadius = options.segmentRadius ?? null;
     const anchorWorld = grid.gridToWorld(anchorCell.col, anchorCell.row);
     const props = [];
     for (let i = 0; i < segmentCount; i++) {
         const offset = segmentOffset(i, spacing, growDirX, growDirY);
         const segmentType = i === 0 ? headBallType : ballType;
         const prop = spawnPlacedSandboxProp(state, anchorWorld.x + offset.x, anchorWorld.y + offset.y, segmentType, faction);
+        if (segmentRadius != null) setCirclePropRadius(prop, segmentRadius);
         meta.setSpawnGroupId(prop.id, spawnGroupId);
         if (exportType) meta.setSpawnGroupExportType(prop.id, exportType);
         if (i === 0) meta.setSpawnGroupAnchor(prop.id);
         props.push(prop);
     }
-    for (let i = 0; i < props.length - 1; i++) addChainLink(state, props[i].id, props[i + 1].id);
+    for (let i = 0; i < props.length - 1; i++) addChainLink(state, props[i].id, props[i + 1].id, linkSlack);
     setChainHead(state, meta, props[0].id);
     return { head: props[0], tail: props[props.length - 1], members: props, spawnGroupId };
 }
@@ -42,13 +46,16 @@ export function growChainSegment(state, tailProp, options) {
     const exportType = options.exportType ?? null;
     const meta = getSandboxEntityMeta(state);
     const spawnGroupId = options.spawnGroupId ?? meta.getSpawnGroupId(tailProp.id);
+    const linkSlack = options.linkSlack ?? 1;
+    const segmentRadius = options.segmentRadius ?? null;
     const offset = segmentOffset(1, spacing, growDirX, growDirY);
     const segment = spawnPlacedSandboxProp(state, tailProp.x + offset.x, tailProp.y + offset.y, ballType, faction);
+    if (segmentRadius != null) setCirclePropRadius(segment, segmentRadius);
     if (spawnGroupId) {
         meta.setSpawnGroupId(segment.id, spawnGroupId);
         if (exportType) meta.setSpawnGroupExportType(segment.id, exportType);
     }
-    addChainLink(state, tailProp.id, segment.id);
+    addChainLink(state, tailProp.id, segment.id, linkSlack);
     return segment;
 }
 export function linkedChainOccupiedCellKeys(members, grid) {

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
-import { addChainLink, getChainMemberIds, hasChainMembership, isChainSteeringTarget, setChainHead } from "../Libraries/Sandbox/chainLinks.js";
+import { addChainLink, getChainMemberIds, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Sandbox/chainLinks.js";
+import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 loadPropAssets();
 class MockEntityMeta {
     constructor() {
@@ -53,14 +54,25 @@ function createState(props) {
     };
 }
 describe("chain links", () => {
-    it("addChainLink creates a distance constraint at current separation", () => {
+    it("addChainLink creates a distance constraint from linked sphere radii", () => {
         resetKineticConstraintIds(1);
         const a = mockBall(0, 0);
         const b = mockBall(30, 0);
         const state = createState([a, b]);
-        assert.ok(addChainLink(state, a.id, b.id));
+        assert.ok(addChainLink(state, a.id, b.id, 1.05));
         assert.equal(state.sandbox.kineticConstraints.length, 1);
-        assert.equal(state.sandbox.kineticConstraints[0].restLength, 30);
+        assert.equal(state.sandbox.kineticConstraints[0].restLength, resolveChainLinkRestLength(a, b, 1.05));
+    });
+    it("resyncChainLinkRestLengths updates rest lengths after prop scale", () => {
+        resetKineticConstraintIds(1);
+        const a = mockBall(0, 0);
+        const b = mockBall(8.4, 0);
+        const state = createState([a, b]);
+        addChainLink(state, a.id, b.id, 1.05);
+        setCirclePropRadius(a, 3);
+        setCirclePropRadius(b, 3);
+        resyncChainLinkRestLengths(state, [a.id, b.id], 1.05);
+        assert.equal(state.sandbox.kineticConstraints[0].restLength, resolveChainLinkRestLength(a, b, 1.05));
     });
     it("chain tail is not a steering target but head is", () => {
         resetKineticConstraintIds(1);
