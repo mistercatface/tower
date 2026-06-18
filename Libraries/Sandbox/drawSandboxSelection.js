@@ -8,19 +8,26 @@ import { strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./grid
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
 const PROP_TILE_CELL_BOUNDS = createAabb();
+const PROP_SELECTION_STROKE = "rgba(255, 252, 245, 0.32)";
+const PROP_SELECTION_DASH = [4, 4];
 function selectionRingRadius(prop, lineScale) {
     const base = prop.getBoundingRadius?.() ?? prop.radius ?? 8;
-    return base + 3 * lineScale;
+    return base + 4 * lineScale;
+}
+function strokePropSelectionRing(ctx, cx, cy, radius, lineScale) {
+    ctx.setLineDash(PROP_SELECTION_DASH.map((segment) => segment * lineScale));
+    strokeCircle(ctx, cx, cy, radius);
+    ctx.setLineDash([]);
 }
 export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selectedFloorCell = null, selectedVoxelCell = null, selectedRailEdge = null, grid = null, camera = null }) {
     if (!showRings) return;
     const lineScale = getCanvasLineScale(ctx);
     ctx.save();
-    ctx.strokeStyle = "rgba(120, 200, 255, 0.65)";
+    ctx.strokeStyle = PROP_SELECTION_STROKE;
     ctx.lineWidth = lineScale;
     for (let i = 0; i < selectedProps.length; i++) {
         const prop = selectedProps[i];
-        strokeCircle(ctx, prop.x, prop.y, selectionRingRadius(prop, lineScale));
+        strokePropSelectionRing(ctx, prop.x, prop.y, selectionRingRadius(prop, lineScale), lineScale);
     }
     if (selectedFloorCell && grid) {
         const { x, y } = grid.gridToWorld(selectedFloorCell.col, selectedFloorCell.row);
@@ -56,7 +63,7 @@ export function drawSandboxSelectionRings(ctx, { selectedProps, showRings, selec
  */
 export function drawSandboxMarquee(ctx, { marqueeRect }) {
     if (!marqueeRect) return;
-    drawAabbHighlight(ctx, marqueeRect, { fill: "rgba(120, 200, 255, 0.08)", stroke: "rgba(120, 200, 255, 0.55)", lineWidth: 1, dash: [4, 3] });
+    drawAabbHighlight(ctx, marqueeRect, { fill: "rgba(255, 252, 245, 0.05)", stroke: "rgba(255, 252, 245, 0.32)", lineWidth: 1, dash: [4, 4] });
 }
 /**
  * @param {CanvasRenderingContext2D} ctx
