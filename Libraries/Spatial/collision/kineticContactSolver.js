@@ -1,6 +1,6 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
-import { massFromBody } from "../../Motion/bodyMass.js";
+import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../Motion/bodyMass.js";
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { fractureSplittableOnImpact, impactForceFromContact } from "../../Props/splittableWorldProp.js";
 import { allowsKineticCollisionPair, pairBroadphaseOverlap } from "./entityBroadphase.js";
@@ -142,13 +142,15 @@ function detectAndSeparateContact(bodyA, bodyB) {
     const shapeB = bodyB.getShape();
     const massA = massFromBody(bodyA);
     const massB = massFromBody(bodyB);
+    const pinnedA = bodyPinnedForContact(bodyA);
+    const pinnedB = bodyPinnedForContact(bodyB);
     const info = SatCollision.checkCollision(bodyA, shapeA, bodyB, shapeB);
     if (!info) return null;
     if (info.coincident) {
-        separateCoincidentCirclePair(bodyA, bodyB, info.overlap, massA, massB);
+        separateCoincidentCirclePair(bodyA, bodyB, info.overlap, massA, massB, pinnedA, pinnedB);
         return null;
     }
-    separateAlongNormal(bodyA, bodyB, info.nx, info.ny, info.overlap, massA, massB);
+    separateAlongNormal(bodyA, bodyB, info.nx, info.ny, info.overlap, massA, massB, pinnedA, pinnedB);
     return info;
 }
 function appendContact(contacts, bodyA, bodyB, info, preDvx, preDvy) {
@@ -193,8 +195,8 @@ function precomputeKineticContacts(contacts) {
         const bodyB = contacts.bodyB[i];
         const nx = contacts.nx[i];
         const ny = contacts.ny[i];
-        const invMassA = 1 / massFromBody(bodyA);
-        const invMassB = 1 / massFromBody(bodyB);
+        const invMassA = inverseMassFromBody(bodyA);
+        const invMassB = inverseMassFromBody(bodyB);
         const invIA = invMoment(bodyA);
         const invIB = invMoment(bodyB);
         const rax = contacts.rax[i];

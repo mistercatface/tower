@@ -17,11 +17,7 @@ function polygonShapeInertiaFactor(shape) {
 export function kineticFootprintArea(body) {
     if (body.footprintArea > 0) return body.footprintArea;
     const shape = body.shape ?? body.getShape?.();
-    if (shape?.type === "Polygon") {
-        const area = polygonShapeArea(shape);
-        if (area > 0) return area;
-        if (body.halfExtents) return body.halfExtents.x * 2 * body.halfExtents.y * 2;
-    }
+    if (shape?.type === "Polygon") return polygonShapeArea(shape);
     if (shape?.type === "Circle") return Math.PI * shape.radius * shape.radius;
     const r = body.radius ?? 0;
     return Math.PI * r * r;
@@ -34,7 +30,7 @@ export function kineticMassFromFootprint(body) {
     return Math.max(minMass, kineticDensity(body) * kineticFootprintArea(body));
 }
 export function kineticInertiaFromBody(body) {
-    const m = body.mass || 1;
+    const m = massFromBody(body);
     if (isStandTipProp(body) && !body.isFallen) {
         const r = resolveBodyRadius(body);
         const h = body.strategy.rollHeight ?? body.strategy.uprightHeight ?? r * 2.5;
@@ -53,34 +49,26 @@ export function kineticInertiaFromBody(body) {
             return (m * (crossW * crossW + crossH * crossH)) / 12;
         }
         const inertiaFactor = polygonShapeInertiaFactor(shape);
-        if (inertiaFactor > 0) return m * inertiaFactor;
-        const w = body.halfExtents ? body.halfExtents.x * 2 : body.radius * 2;
-        const h = body.halfExtents ? body.halfExtents.y * 2 : body.radius * 2;
-        return (m * (w * w + h * h)) / 12;
+        return m * inertiaFactor;
     }
     const r = shape?.type === "Circle" ? shape.radius : (body.radius ?? 0);
     return (m * r * r) / 2;
 }
-function usesShapeDerivedKineticMass(body) {
-    if (body.footprintArea > 0) return true;
-    if (body.strategy?.localFootprint?.length >= 3) return true;
-    return false;
-}
 export function syncKineticRigidBody(body) {
-    if (usesShapeDerivedKineticMass(body)) {
-        body.mass = kineticMassFromFootprint(body);
-        return;
-    }
-    if (body.strategy?.mass != null) body.mass = body.strategy.mass;
-    else body.mass = kineticMassFromFootprint(body);
+    body.getShape?.();
+    body.mass = kineticMassFromFootprint(body);
+}
+export function massFromBody(body) {
+    if (body.mass == null) throw new Error("Kinetic body missing mass — call syncKineticRigidBody first");
+    return body.mass;
+}
+export function inverseMassFromBody(body) {
+    if (body.strategy?.pinned) return 0;
+    return 1 / massFromBody(body);
 }
 export function momentOfInertiaFromBody(body) {
     return kineticInertiaFromBody(body);
 }
-export function massFromBody(body, defaultMass = getCollisionSettings().mass.kineticFallback) {
-    if (body.mass != null) return body.mass;
-    return defaultMass;
-}
-export function inverseMassFromBody(body, defaultMass = getCollisionSettings().mass.kineticFallback) {
-    return 1 / massFromBody(body, defaultMass);
+export function bodyPinnedForContact(body) {
+    return Boolean(body.strategy?.pinned);
 }

@@ -111,7 +111,7 @@ const POOL_BALL_PHYSICS = {
     isKinetic: true,
     rolls: true,
     collisionShape: "circle",
-    mass: 0.0625,
+    density: 0.001243,
     pairRestitution: 0.92,
     friction: 0.5,
     lowSpeedFrictionThreshold: 2.5,

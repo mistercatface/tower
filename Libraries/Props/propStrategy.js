@@ -6,7 +6,6 @@ export const PROP_STRATEGY_DEFAULTS = {
     renderMode: "3d",
     render3DKey: null,
     inspectKey: null,
-    mass: 1,
     friction: 8,
     wallPhysics: null,
     /** @type {PropCollisionShape} */
@@ -28,6 +27,7 @@ export const PROP_STRATEGY_DEFAULTS = {
     splittable: false,
     randomFaceLabels: false,
     gravityImmune: false,
+    pinned: false,
 };
 /**
  * @param {object} prop

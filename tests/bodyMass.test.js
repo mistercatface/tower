@@ -2,7 +2,14 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
+import {
+    inverseMassFromBody,
+    kineticDensity,
+    kineticFootprintArea,
+    kineticInertiaFromBody,
+    kineticMassFromFootprint,
+    syncKineticRigidBody,
+} from "../Libraries/Motion/bodyMass.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 loadPropAssets();
 describe("bodyMass", () => {
@@ -14,10 +21,10 @@ describe("bodyMass", () => {
         assert.ok(large.mass > small.mass);
         assert.ok(Math.abs(large.mass / small.mass - 4) < 1e-6);
     });
-    it("uses authored strategy mass when no baked footprint", () => {
-        const body = { footprintArea: 0, strategy: { mass: 1.5 }, radius: 8, halfExtents: { x: 8, y: 8 } };
+    it("derives circle mass from density and radius", () => {
+        const body = { strategy: { density: 0.01 }, radius: 10, shape: { type: "Circle", radius: 10 } };
         syncKineticRigidBody(body);
-        assert.equal(body.mass, 1.5);
+        assert.ok(Math.abs(body.mass - 0.01 * Math.PI * 100) < 1e-6);
     });
     it("kineticFootprintArea uses polygon vertices when present", () => {
         const boxVerts = [
@@ -29,10 +36,6 @@ describe("bodyMass", () => {
         const body = { shape: { type: "Polygon", vertices: boxVerts } };
         assert.equal(kineticFootprintArea(body), 512);
         assert.equal(kineticMassFromFootprint(body), 3);
-    });
-    it("kineticFootprintArea falls back to half extents when polygon has no vertices", () => {
-        const body = { halfExtents: { x: 16, y: 8 }, shape: { type: "Polygon" } };
-        assert.equal(kineticFootprintArea(body), 512);
     });
     it("rectangle polygon inertia matches thin plate formula", () => {
         const w = 32;
@@ -60,11 +63,14 @@ describe("bodyMass", () => {
         assert.ok(Math.abs(prop.mass - kineticMassFromFootprint(prop)) < 1e-6);
         assert.ok(Math.abs(kineticInertiaFromBody(prop) - prop.mass * (polygonSecondMomentAboutCentroid2D(prop.shape.vertices) / triangleArea)) < 1e-6);
     });
-    it("localFootprint props ignore authored strategy mass", () => {
-        const prop = new WorldProp(0, 0, "tri_wedge", 0);
-        prop.strategy.mass = 99;
+    it("pinned bodies have zero inverse mass", () => {
+        const body = { mass: 5, strategy: { pinned: true } };
+        assert.equal(inverseMassFromBody(body), 0);
+    });
+    it("beach ball asset density preserves prior feel", () => {
+        const prop = new WorldProp(0, 0, "beach_ball", 0);
+        assert.ok(Math.abs(kineticDensity(prop) - 0.003898) < 1e-6);
         syncKineticRigidBody(prop);
-        assert.ok(prop.mass < 1);
-        assert.ok(Math.abs(prop.mass - kineticMassFromFootprint(prop)) < 1e-6);
+        assert.ok(Math.abs(prop.mass - 0.6) < 0.01);
     });
 });

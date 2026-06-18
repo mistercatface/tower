@@ -9,7 +9,7 @@ export default {
         rolls: true,
         rollAxis: "long",
         rollHeight: 3,
-        mass: 1.1,
+        density: 0.004297,
         friction: 5,
         wallPhysics: { restitution: 0.3, friction: 0.45 },
         quantizeSteps: { facing: 64, roll: 32 },

@@ -9,6 +9,7 @@ import {
     splitFootprintIntoComponents,
     worldHitToPropLocal,
 } from "../Libraries/Props/splittableWorldProp.js";
+import { syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
 function makeSplittableProp(hx = 8, hy = 8) {
     const prop = {
         halfExtents: { x: hx, y: hy },
@@ -21,13 +22,13 @@ function makeSplittableProp(hx = 8, hy = 8) {
         vx: 0,
         vy: 0,
         angularVelocity: 0,
-        mass: 1.5,
         footprintArea: 0,
         spawnSplittableFragments(_state, debris) {
             this.spawnedDebris = debris;
         },
     };
     initSplittableFootprint(prop);
+    syncKineticRigidBody(prop);
     return prop;
 }
 describe("splittable impact fracture", () => {

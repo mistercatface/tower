@@ -14,6 +14,7 @@ export default {
         rollHeight: 22,
         tipPushSpeed: 6,
         tipFallAngle: 1.25,
+        density: 0.004974,
         wallPhysics: { restitution: 0.25, friction: 0.75 },
         quantizeSteps: { facing: 64, roll: 32 },
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 4, randomRange: 8 },

@@ -13,7 +13,16 @@ export function applyPositionCorrection(body, normalX, normalY, overlap) {
  * @param {{ x: number, y: number }} a — mutated in place
  * @param {{ x: number, y: number }} b — mutated in place
  */
-export function separateAlongNormal(a, b, normalX, normalY, overlap, massA, massB) {
+export function separateAlongNormal(a, b, normalX, normalY, overlap, massA, massB, pinnedA = false, pinnedB = false) {
+    if (pinnedA && pinnedB) return;
+    if (pinnedA) {
+        addXY(b, normalX * overlap, normalY * overlap);
+        return;
+    }
+    if (pinnedB) {
+        addXY(a, -normalX * overlap, -normalY * overlap);
+        return;
+    }
     const totalMass = massA + massB;
     addXY(a, -normalX * overlap * (massB / totalMass), -normalY * overlap * (massB / totalMass));
     addXY(b, normalX * overlap * (massA / totalMass), normalY * overlap * (massA / totalMass));
@@ -25,7 +34,16 @@ export const COINCIDENT_CIRCLE_EPS = 1e-10;
  * @param {{ x: number, y: number }} a — mutated in place
  * @param {{ x: number, y: number }} b — mutated in place
  */
-export function separateCoincidentCirclePair(a, b, overlap, massA, massB) {
+export function separateCoincidentCirclePair(a, b, overlap, massA, massB, pinnedA = false, pinnedB = false) {
+    if (pinnedA && pinnedB) return;
+    if (pinnedA) {
+        addXY(b, overlap, 0);
+        return;
+    }
+    if (pinnedB) {
+        addXY(a, -overlap, 0);
+        return;
+    }
     const totalMass = massA + massB;
     addXY(a, -overlap * (massB / totalMass), 0);
     addXY(b, overlap * (massA / totalMass), 0);

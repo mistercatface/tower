@@ -16,7 +16,6 @@ export function mergePartial(base, overrides = {}, ...more) {
         if (!o) continue;
         result = { ...result, ...o };
         if (o.restitution && typeof o.restitution === "object") result.restitution = { ...(result.restitution ?? {}), ...o.restitution };
-        if (o.mass && typeof o.mass === "object") result.mass = { ...(result.mass ?? {}), ...o.mass };
         if (o.motionSubsteps && typeof o.motionSubsteps === "object") result.motionSubsteps = { ...(result.motionSubsteps ?? {}), ...o.motionSubsteps };
     }
     return result;
