@@ -1,4 +1,3 @@
-import { CircleShape, PolygonShape } from "./Shapes.js";
 import { findClosestWorldVertexInto, findExtremeVertexInto, rotateXY } from "../../Math/Poly2D.js";
 import { dotXY } from "../../Math/Vec2.js";
 import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
@@ -14,6 +13,17 @@ export function getEntityCollisionParts(entity) {
     const shape = entity.getShape?.() ?? entity.shape;
     return shape ? [shape] : [];
 }
+export function circleCircleContact(posA, shapeA, posB, shapeB) {
+    const dx = posB.x - posA.x;
+    const dy = posB.y - posA.y;
+    const distSq = dx * dx + dy * dy;
+    const radii = shapeA.radius + shapeB.radius;
+    if (distSq >= radii * radii) return null;
+    if (distSq <= COINCIDENT_CIRCLE_EPS * COINCIDENT_CIRCLE_EPS) return { overlap: radii, nx: 0, ny: 0, cx: posA.x, cy: posA.y, coincident: true };
+    const dist = Math.sqrt(distSq);
+    const overlap = radii - dist;
+    return { overlap, nx: dx / dist, ny: dy / dist, cx: posA.x + (dx / dist) * (shapeA.radius - overlap / 2), cy: posA.y + (dy / dist) * (shapeA.radius - overlap / 2) };
+}
 export function checkEntityPairCollision(bodyA, bodyB) {
     const partsA = getEntityCollisionParts(bodyA);
     const partsB = getEntityCollisionParts(bodyB);
@@ -27,15 +37,12 @@ export function checkEntityPairCollision(bodyA, bodyB) {
     return best;
 }
 export class SatCollision {
-    /**
-     * @returns {Object|null} Collision info { overlap, nx, ny } pointing from A to B, or null if no collision.
-     */
     static checkCollision(posA, shapeA, posB, shapeB) {
         if (!shapeA || !shapeB) return null;
-        if (shapeA.type === "Circle" && shapeB.type === "Circle") return this._circleCircle(posA, shapeA, posB, shapeB);
-        else if (shapeA.type === "Polygon" && shapeB.type === "Polygon") return this._polygonPolygon(posA, shapeA, posB, shapeB);
-        else if (shapeA.type === "Circle" && shapeB.type === "Polygon") return this._circlePolygon(posA, shapeA, posB, shapeB);
-        else if (shapeA.type === "Polygon" && shapeB.type === "Circle") {
+        if (shapeA.type === "Circle" && shapeB.type === "Circle") return circleCircleContact(posA, shapeA, posB, shapeB);
+        if (shapeA.type === "Polygon" && shapeB.type === "Polygon") return this._polygonPolygon(posA, shapeA, posB, shapeB);
+        if (shapeA.type === "Circle" && shapeB.type === "Polygon") return this._circlePolygon(posA, shapeA, posB, shapeB);
+        if (shapeA.type === "Polygon" && shapeB.type === "Circle") {
             const res = this._circlePolygon(posB, shapeB, posA, shapeA);
             if (res) {
                 res.nx = -res.nx;
@@ -45,17 +52,6 @@ export class SatCollision {
             return null;
         }
         return null;
-    }
-    static _circleCircle(posA, shapeA, posB, shapeB) {
-        const dx = posB.x - posA.x;
-        const dy = posB.y - posA.y;
-        const distSq = dx * dx + dy * dy;
-        const radii = shapeA.radius + shapeB.radius;
-        if (distSq >= radii * radii) return null;
-        if (distSq <= COINCIDENT_CIRCLE_EPS * COINCIDENT_CIRCLE_EPS) return { overlap: radii, nx: 0, ny: 0, cx: posA.x, cy: posA.y, coincident: true };
-        const dist = Math.sqrt(distSq);
-        const overlap = radii - dist;
-        return { overlap: overlap, nx: dx / dist, ny: dy / dist, cx: posA.x + (dx / dist) * (shapeA.radius - overlap / 2), cy: posA.y + (dy / dist) * (shapeA.radius - overlap / 2) };
     }
     static _polygonPolygon(posA, shapeA, posB, shapeB) {
         let minOverlap = Infinity;

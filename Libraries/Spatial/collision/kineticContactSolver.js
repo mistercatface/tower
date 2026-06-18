@@ -6,7 +6,8 @@ import { tryFractureKineticContact } from "../../Props/propFracture.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "./kineticPairStream.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { separateAlongNormal, separateCoincidentCirclePair } from "./penetration.js";
-import { checkEntityPairCollision } from "./SatCollision.js";
+import { checkEntityPairCollision, circleCircleContact } from "./SatCollision.js";
+import { KINETIC_PAIR_TIER, circleCirclePairShapes } from "./kineticNarrowPhase.js";
 const MAX_CONTACTS = 4096;
 const INNER_SOLVE_ITERATIONS = 4;
 const PAIR_KEY_SCALE = 1_000_000;
@@ -138,9 +139,17 @@ function contactLeverArms(bodyA, bodyB, shapeA, shapeB, info) {
     const cy = info.cy ?? bodyA.y + ny * (info.overlap / 2);
     return { rax: cx - bodyA.x, ray: cy - bodyA.y, rbx: cx - bodyB.x, rby: cy - bodyB.y };
 }
-function detectAndSeparateContact(bodyA, bodyB) {
-    const hit = checkEntityPairCollision(bodyA, bodyB);
-    if (!hit) return null;
+function detectAndSeparateContact(bodyA, bodyB, tier) {
+    let hit;
+    if (tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
+        const { shapeA, shapeB } = circleCirclePairShapes(bodyA, bodyB);
+        const info = circleCircleContact(bodyA, shapeA, bodyB, shapeB);
+        if (!info) return null;
+        hit = { info, shapeA, shapeB };
+    } else {
+        hit = checkEntityPairCollision(bodyA, bodyB);
+        if (!hit) return null;
+    }
     const massA = massFromBody(bodyA);
     const massB = massFromBody(bodyB);
     const pinnedA = bodyPinnedForContact(bodyA);
@@ -177,7 +186,7 @@ function narrowPhaseKineticContacts(pairs, contacts) {
     for (let i = 0; i < pairs.count; i++) {
         const primary = pairs.bodyA[i];
         const neighbor = pairs.bodyB[i];
-        const info = detectAndSeparateContact(primary, neighbor);
+        const info = detectAndSeparateContact(primary, neighbor, pairs.tier[i]);
         if (!info) continue;
         appendContact(contacts, primary, neighbor, info, pairs.preDvx[i], pairs.preDvy[i]);
     }

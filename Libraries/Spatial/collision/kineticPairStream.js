@@ -1,4 +1,5 @@
 import { allowsKineticCollisionPairSnapshotted, isKinematicallyActive, pairBroadphaseOverlapSnapshotted } from "./entityBroadphase.js";
+import { classifyKineticPairTier } from "./kineticNarrowPhase.js";
 const MAX_KINETIC_PAIRS = 4096;
 export const kineticPairBuffer = {
     count: 0,
@@ -6,6 +7,7 @@ export const kineticPairBuffer = {
     bodyB: new Array(MAX_KINETIC_PAIRS),
     preDvx: new Float32Array(MAX_KINETIC_PAIRS),
     preDvy: new Float32Array(MAX_KINETIC_PAIRS),
+    tier: new Uint8Array(MAX_KINETIC_PAIRS),
     reset() {
         this.count = 0;
     },
@@ -26,6 +28,7 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             pairs.bodyB[idx] = neighbor;
             pairs.preDvx[idx] = (neighbor.vx ?? 0) - (primary.vx ?? 0);
             pairs.preDvy[idx] = (neighbor.vy ?? 0) - (primary.vy ?? 0);
+            pairs.tier[idx] = classifyKineticPairTier(primary, neighbor);
         }
     }
 }
