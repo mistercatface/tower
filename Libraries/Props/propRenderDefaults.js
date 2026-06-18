@@ -1,4 +1,3 @@
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
-
-/** Library baseline — per-prop via strategy.quantizeSteps, game via gameDefinition.propQuantizeSteps. */
-export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16, roll: 16 };
+/** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
+export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16 };

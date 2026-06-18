@@ -21,18 +21,15 @@ export function mergePartial(base, overrides = {}, ...more) {
     return result;
 }
 /**
- * @param {{ facing?: number, roll?: number }} base
- * @param {...{ facing?: number, roll?: number } | null | undefined} overrides
+ * @param {{ facing?: number }} base
+ * @param {...{ facing?: number } | null | undefined} overrides
  */
 export function mergeQuantizeSteps(base, overrides = {}, ...more) {
     let facing = base.facing;
-    let roll = base.roll ?? base.facing;
     const layers = [overrides, ...more];
     for (let i = 0; i < layers.length; i++) {
         const o = layers[i];
-        if (!o) continue;
-        if (o.facing != null) facing = o.facing;
-        if (o.roll != null) roll = o.roll;
+        if (o?.facing != null) facing = o.facing;
     }
-    return { facing, roll: roll ?? facing };
+    return { facing };
 }
