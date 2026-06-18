@@ -2,7 +2,7 @@ import { CircleShape, PolygonShape } from "../collision/Shapes.js";
 import { SatCollision } from "../collision/SatCollision.js";
 import { aabbOverlap, centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { boxLocalFootprint, convexFootprintHalfExtents } from "../../Math/Poly2D.js";
-import { NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
+import { kineticNeighborQueryPad } from "../collision/entityBroadphase.js";
 import { stepCardinalFacing } from "../../Math/Angle.js";
 import { snapWorldToObstacleCellCenter } from "../grid/GridCoords.js";
 export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
@@ -40,11 +40,11 @@ export function syncFloorTriggerAabb(prop) {
     const shape = prop.shape;
     if (shape.type === "Polygon") {
         const span = convexFootprintHalfExtents(shape.vertices);
-        centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, span.x, span.y, NEIGHBOR_QUERY_PAD);
+        centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, span.x, span.y, kineticNeighborQueryPad());
         return;
     }
     const radius = shape.radius ?? prop.radius;
-    centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, radius, radius, NEIGHBOR_QUERY_PAD);
+    centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, radius, radius, kineticNeighborQueryPad());
 }
 export function floorCircleRadius(prop) {
     return prop.shape?.radius ?? prop.radius;

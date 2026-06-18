@@ -2,7 +2,7 @@ import { EntityGrid } from "../indexes/EntityGrid.js";
 import { collectWallSegmentsForEntity } from "../query/wallSegmentQuery.js";
 import { SpatialQuery } from "../query/SpatialQuery.js";
 import { centerReachAabbInto, createAabb } from "../../Math/Aabb2D.js";
-import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
+import { entityBroadphaseExtent, kineticNeighborQueryPad } from "../collision/entityBroadphase.js";
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 const NEAR_QUERY_BOUNDS = createAabb();
 /** @typedef {import("../query/wallContext.js").WallContext} WallContext */
@@ -111,7 +111,7 @@ export class SpatialFrameCore {
      * @returns {object[]}
      */
     collectEntitiesNear(anchor, exclude = null) {
-        const searchRadius = entityBroadphaseExtent(anchor) + this.entityGrid.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
+        const searchRadius = entityBroadphaseExtent(anchor) + this.entityGrid.maxInsertedExtent + kineticNeighborQueryPad();
         centerReachAabbInto(NEAR_QUERY_BOUNDS, anchor.x, anchor.y, searchRadius);
         return this.entityGrid.collectInBounds(NEAR_QUERY_BOUNDS, this.wallQuery, exclude, { expandForEntityExtents: false });
     }

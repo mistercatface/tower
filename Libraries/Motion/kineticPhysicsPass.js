@@ -20,7 +20,6 @@ function tickKineticSleep(spatialFrame) {
 }
 /** @param {object} state @param {number} dt @param {object} spatialFrame */
 export function runKineticPhysics(state, dt, spatialFrame) {
-    spatialFrame.syncActiveKineticBodies();
     const activeBodies = spatialFrame._activeKineticBodies;
     const { maxStepPx, maxSubsteps } = getCollisionSettings().motionSubsteps;
     const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });

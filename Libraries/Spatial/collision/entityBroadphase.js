@@ -1,13 +1,14 @@
+import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
-import { checkEntityPairCollision, getEntityCollisionParts } from "./SatCollision.js";
-export const MOVING_SPEED_SQ = 0.25;
-/** |angularVelocity| above this counts as kinematically active (rad/s). */
-export const ROTATING_ANGULAR_SQ = 0.08 * 0.08;
-/** Margin beyond combined entity extents for neighbor queries. */
-export const NEIGHBOR_QUERY_PAD = 15;
-/** @returns {{ x: number, y: number, angle: number, shapeType: string, shapeSpan: number }} */
+import { getEntityCollisionParts } from "./SatCollision.js";
+function kineticActivity() {
+    return getCollisionSettings().kineticActivity;
+}
+export function kineticNeighborQueryPad() {
+    return kineticActivity().neighborQueryPad;
+}
 export function createBroadphaseSnapshot() {
     return { x: NaN, y: NaN, angle: NaN, shapeType: "", shapeSpan: NaN };
 }
@@ -23,7 +24,6 @@ function ensureBroadphaseCache(entity) {
     if (!entity.broadphaseBounds) entity.broadphaseBounds = createBroadphaseBounds();
     if (!entity.broadphaseSnapshot) entity.broadphaseSnapshot = createBroadphaseSnapshot();
 }
-/** @param {object} entity */
 export function invalidateBroadphaseBounds(entity) {
     if (entity.broadphaseSnapshot) entity.broadphaseSnapshot.x = NaN;
 }
@@ -49,7 +49,6 @@ function entityCollisionSpan(entity) {
     const { x, y } = unionLocalHalfExtents(parts);
     return lengthXY(x, y);
 }
-/** @param {object} entity */
 const ENTITY_AABB_SCRATCH = createAabb();
 export function entityBroadphaseAabbInto(out, entity) {
     const bb = getBroadphaseBounds(entity);
@@ -111,7 +110,6 @@ export function getBroadphaseBounds(entity) {
     if (multiPart) return broadphaseBoundsFromCollisionPartsInto(entity.broadphaseBounds, parts, x, y, angle);
     return broadphaseBoundsFromShapeInto(entity.broadphaseBounds, shape, x, y, angle);
 }
-/** Furthest collision edge from entity center (circle radius or OBB corner distance). */
 export function entityBroadphaseExtent(entity) {
     const bounds = getBroadphaseBounds(entity);
     if (bounds.kind === "circle") return bounds.r;
@@ -120,18 +118,15 @@ export function entityBroadphaseExtent(entity) {
 export function isMovingEntity(entity) {
     const vx = entity.vx || 0;
     const vy = entity.vy || 0;
-    return speedSqXY(vx, vy) > MOVING_SPEED_SQ;
+    return speedSqXY(vx, vy) > kineticActivity().movingSpeedSq;
 }
 export function isRotatingEntity(entity) {
     const w = entity.angularVelocity ?? 0;
-    return w * w > ROTATING_ANGULAR_SQ;
+    const rotatingSpeedRad = kineticActivity().rotatingSpeedRad;
+    return w * w > rotatingSpeedRad * rotatingSpeedRad;
 }
-/** Linear or angular motion — rotating OBBs sweep volume without translation. */
 export function isKinematicallyActive(entity) {
     return isMovingEntity(entity) || isRotatingEntity(entity);
-}
-export function pairShapeOverlap(a, b) {
-    return checkEntityPairCollision(a, b) != null;
 }
 export function pairBroadphaseOverlap(a, b) {
     return pairBroadphaseBoundsOverlap(getBroadphaseBounds(a), getBroadphaseBounds(b));
@@ -142,7 +137,6 @@ export function shouldResolveKineticPair(a, b) {
     if (a.isSleeping || b.isSleeping) return false;
     return false;
 }
-/** Hot-path gate for kinetic body collision pairs in the physics loop. */
 export function allowsKineticCollisionPair(primary, other) {
     if (primary === other) return false;
     if (other.isDead) return false;

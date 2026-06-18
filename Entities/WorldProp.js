@@ -10,8 +10,7 @@ import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { WorldPropVoidSinkState } from "./worldPropVoidSinkState.js";
-import { MOVING_SPEED_SQ, isRotatingEntity } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { speedSqXY } from "../Libraries/Math/Vec2.js";
+import { isKinematicallyActive } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
 import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
@@ -77,7 +76,7 @@ export class WorldProp extends Entity {
         return this.strategy.render3DKey;
     }
     needsWallCollision() {
-        return speedSqXY(this.vx, this.vy) > MOVING_SPEED_SQ || isRotatingEntity(this);
+        return isKinematicallyActive(this);
     }
     spawnFractureFragments(state, fracture, spatialFrame) {
         const cos = Math.cos(this.facing);

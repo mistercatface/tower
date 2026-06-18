@@ -1,13 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
-import { SLEEP_FRAMES, advanceKineticSleep } from "../Libraries/Motion/kineticSleep.js";
+import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
+import { advanceKineticSleep } from "../Libraries/Motion/kineticSleep.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-
+const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 function mockKineticBody(isSleeping = false) {
     return { isSleeping, isDead: false, strategy: { isKinetic: true }, _sleepFrames: 0 };
 }
-
 function mockCircleProp(x, y, radius) {
     return {
         id: 1,
@@ -22,10 +22,8 @@ function mockCircleProp(x, y, radius) {
         },
     };
 }
-
 const mockGrid = { minX: -500, maxX: 500, minY: -500, maxY: 500 };
 const mockState = { entityRegistry: { membershipGen: 1 } };
-
 describe("active kinetic bodies", () => {
     it("syncActiveKineticBodies keeps only awake bodies", () => {
         const frame = new KineticSpatialFrame(50);
@@ -36,7 +34,6 @@ describe("active kinetic bodies", () => {
         assert.equal(frame._activeKineticBodies.length, 1);
         assert.equal(frame._activeKineticBodies[0], awake);
     });
-
     it("activateKineticBody wakes and appends once", () => {
         const frame = new KineticSpatialFrame(50);
         const prop = mockKineticBody(true);
@@ -49,7 +46,6 @@ describe("active kinetic bodies", () => {
         frame.activateKineticBody(prop);
         assert.equal(frame._activeKineticBodies.length, 1);
     });
-
     it("sleeping kinetic body drops out of active list on next sync", () => {
         const frame = new KineticSpatialFrame(50);
         const prop = mockKineticBody(false);
@@ -61,7 +57,6 @@ describe("active kinetic bodies", () => {
         frame.syncActiveKineticBodies();
         assert.equal(frame._activeKineticBodies.length, 0);
     });
-
     it("admitKineticProp makes mid-frame spawns visible to neighbor queries", () => {
         const frame = new KineticSpatialFrame(50);
         frame.resetFrame(mockGrid);
@@ -75,7 +70,6 @@ describe("active kinetic bodies", () => {
         assert.ok(neighbors.includes(fragment));
         assert.ok(frame._activeKineticBodies.includes(fragment));
     });
-
     it("admitKineticProp reindexes props after geometry or position changes", () => {
         const frame = new KineticSpatialFrame(50);
         frame.resetFrame(mockGrid);

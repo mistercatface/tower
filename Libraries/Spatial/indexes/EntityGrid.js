@@ -1,7 +1,7 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { centerReachAabbInto, createAabb, padAabbInto } from "../../Math/Aabb2D.js";
-import { entityBroadphaseExtent, NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
+import { entityBroadphaseExtent, kineticNeighborQueryPad } from "../collision/entityBroadphase.js";
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 const MAX_ENTITIES = 4096;
@@ -121,7 +121,7 @@ export class EntityGrid {
     }
     /**
      * Entities whose grid cell falls inside a world AABB. Because bodies are indexed at
-     * their center point, bounds are expanded by maxInsertedExtent + NEIGHBOR_QUERY_PAD
+     * their center point, bounds are expanded by maxInsertedExtent + neighborQueryPad
      * unless expandForEntityExtents is false.
      *
      * @param {Aabb2D} bounds
@@ -132,7 +132,7 @@ export class EntityGrid {
      */
     collectInBounds(bounds, query, exclude = null, { expandForEntityExtents = true } = {}) {
         if (expandForEntityExtents) {
-            padAabbInto(this.queryBoundsScratch, bounds, this.maxInsertedExtent + NEIGHBOR_QUERY_PAD);
+            padAabbInto(this.queryBoundsScratch, bounds, this.maxInsertedExtent + kineticNeighborQueryPad());
             return query.collectInIndex(this, this.queryBoundsScratch, exclude);
         }
         return query.collectInIndex(this, bounds, exclude);
@@ -140,7 +140,7 @@ export class EntityGrid {
     collectNearby(entity) {
         GLOBAL_QUERY_RESULT.length = 0;
         this.queryGen++;
-        const searchRadius = entityBroadphaseExtent(entity) + this.maxInsertedExtent + NEIGHBOR_QUERY_PAD;
+        const searchRadius = entityBroadphaseExtent(entity) + this.maxInsertedExtent + kineticNeighborQueryPad();
         centerReachAabbInto(this.queryBoundsScratch, entity.x, entity.y, searchRadius);
         this.forEachInBounds(this.queryBoundsScratch, entity, this.queryGen, (other) => {
             GLOBAL_QUERY_RESULT.push(other);

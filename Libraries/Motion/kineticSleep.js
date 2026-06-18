@@ -1,24 +1,22 @@
-import { isKinematicallyActive, isMovingEntity, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
-/** Consecutive still frames required before a kinetic body is treated as sleeping. */
-export const SLEEP_FRAMES = 30;
-/** Max |angularVelocity| (rad/s) while counting toward sleep. */
-export const SLEEP_ANGULAR_EPS = 0.1;
+import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
+import { isKinematicallyActive, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
+export function kineticSleepFramesRequired() {
+    return getCollisionSettings().kineticSleep.frames;
+}
 export function isKinetic(entity) {
     return Boolean(entity?.strategy?.isKinetic);
 }
 export function canSleepKinetic(entity, { blocksSleep = () => false } = {}) {
     if (!isKinetic(entity) || entity.isDead) return false;
     if (blocksSleep(entity)) return false;
-    if (isMovingEntity(entity)) return false;
-    const w = entity.angularVelocity || 0;
-    return Math.abs(w) <= SLEEP_ANGULAR_EPS;
+    return !isKinematicallyActive(entity);
 }
 export function wakeKineticBody(entity) {
     if (!isKinetic(entity)) return;
     entity._sleepFrames = 0;
     entity.isSleeping = false;
 }
-export function advanceKineticSleep(entity, eligible, requiredFrames = SLEEP_FRAMES) {
+export function advanceKineticSleep(entity, eligible, requiredFrames = kineticSleepFramesRequired()) {
     if (!isKinetic(entity)) return;
     if (!eligible) {
         entity._sleepFrames = 0;
@@ -32,7 +30,6 @@ function isKineticSleepNeighbor(other) {
     if (other.isDead) return false;
     return Boolean(other.strategy?.isKinetic);
 }
-/** Awake kinematically active kinetic neighbors block sleep; resting piles and sleeping neighbors do not. */
 export function hasSleepBlockingNeighbor(prop, neighbors, { pairOverlaps = pairBroadphaseOverlap } = {}) {
     for (let i = 0; i < neighbors.length; i++) {
         const other = neighbors[i];
