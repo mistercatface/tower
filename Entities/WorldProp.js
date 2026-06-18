@@ -10,12 +10,12 @@ import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { WorldPropDeadState } from "./worldPropCombatStates.js";
 import { WorldPropVoidSinkState } from "./worldPropVoidSinkState.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { syncLongAxisCollisionShape } from "../Libraries/Props/longAxisCollision.js";
 import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";
+import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { applyPoxelGeometryToProp, initSplittableFootprint, splitFootprintIntoComponents } from "../Libraries/Props/splittableWorldProp.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
@@ -202,22 +202,29 @@ export class WorldProp extends Entity {
         if (!asleep && resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }
-    spawnShards(gameState) {
-        if (!gameState?.worldProps) return;
-        if (!this.poxels?.length) return;
+    spawnSplittableFragments(gameState, fragments, { originX, originY, shardTypeId = "crate_shard", projectile = null } = {}) {
+        if (!gameState?.worldProps || fragments.length === 0) return;
+        const ox = originX ?? this.x;
+        const oy = originY ?? this.y;
         const parentArea = this.footprintArea || 1;
         const parentMass = this.mass || 1;
         const parentOmega = this.angularVelocity || 0;
         const cos = Math.cos(this.facing);
         const sin = Math.sin(this.facing);
-        const fragments = splitFootprintIntoComponents(this, 0, 0, 20, true);
+        let bulletKickX = 0;
+        let bulletKickY = 0;
+        if (projectile?.angle != null) {
+            const kick = 35 + Math.random() * 45;
+            bulletKickX = Math.cos(projectile.angle) * kick;
+            bulletKickY = Math.sin(projectile.angle) * kick;
+        }
         for (const geom of fragments) {
-            const world = transformPoint2DInto({ x: 0, y: 0 }, this.x, this.y, geom.centroid.cx, geom.centroid.cy, cos, sin);
-            const shard = new WorldProp(world.x, world.y, "crate_shard", this.facing);
+            const world = transformPoint2DInto({ x: 0, y: 0 }, ox, oy, geom.centroid.cx, geom.centroid.cy, cos, sin);
+            const shard = new WorldProp(world.x, world.y, shardTypeId, this.facing);
             applyPoxelGeometryToProp(shard, geom);
             shard.mass = parentMass * (geom.footprintArea / parentArea);
-            let dx = world.x - this.x;
-            let dy = world.y - this.y;
+            let dx = world.x - ox;
+            let dy = world.y - oy;
             let dist = Math.hypot(dx, dy);
             if (dist > 0) {
                 dx /= dist;
@@ -228,15 +235,20 @@ export class WorldProp extends Entity {
                 dy = Math.sin(angle);
             }
             const speed = 40 + Math.random() * 60;
-            shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15;
-            shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15;
-            const rx = world.x - this.x;
-            const ry = world.y - this.y;
+            shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15 + bulletKickX;
+            shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15 + bulletKickY;
+            const rx = world.x - ox;
+            const ry = world.y - oy;
             shard.vx += -parentOmega * ry * 0.5;
             shard.vy += parentOmega * rx * 0.5;
             shard.angularVelocity = parentOmega + (Math.random() - 0.5) * 3;
             wakePushableBody(shard);
             addWorldPropToState(gameState, shard);
         }
+    }
+    spawnShards(gameState) {
+        if (!this.poxels?.length) return;
+        const fragments = splitFootprintIntoComponents(this, 0, 0, 20, true);
+        this.spawnSplittableFragments(gameState, fragments);
     }
 }

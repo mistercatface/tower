@@ -86,6 +86,13 @@ export function isPuzzleTemplateSpawnAsset(asset) {
 export function isPoolRackSpawnAsset(asset) {
     return asset?.sandbox?.spawnRack === "8ball" || asset?.sandbox?.spawnRack === "9ball";
 }
+/** Splittable box props default to the crate footprint (16×16 px). */
+export const DEFAULT_SPLITTABLE_SPAWN_WIDTH = 16;
+export const DEFAULT_SPLITTABLE_SPAWN_HEIGHT = 16;
+/** @param {object | null | undefined} asset */
+export function isSplittableBoxSpawnAsset(asset) {
+    return Boolean(asset?.physics?.splittable && asset?.physics?.collisionShape === "box");
+}
 /** @param {object | null | undefined} asset */
 export function isSingleWorldPropSpawnAsset(asset) {
     return (

@@ -2,12 +2,18 @@ import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
+import { initSplittableFootprint } from "../Props/splittableWorldProp.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
 /** @param {object} prop */
 function serializePlacedProp(prop) {
-    return { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: resolveSandboxFaction(prop) };
+    const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: resolveSandboxFaction(prop) };
+    if (prop.strategy?.splittable && prop.halfExtents) {
+        entry.width = prop.halfExtents.x * 2;
+        entry.height = prop.halfExtents.y * 2;
+    }
+    return entry;
 }
 /**
  * @param {object[]} members
@@ -27,15 +33,21 @@ function tryExportSpawnGroup(members, meta) {
  * @param {string} propTypeId
  * @param {string} [faction]
  * @param {number} [facing]
+ * @param {{ x: number, y: number } | null | undefined} [halfExtents]
  * @returns {object | null} cue ball for pool racks, spawned prop for singles
  */
-export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction = SANDBOX_DEFAULT_FACTION, facing = 0) {
+export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction = SANDBOX_DEFAULT_FACTION, facing = 0, halfExtents = undefined) {
     const asset = getPropAsset(propTypeId);
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     if (isGridPassagePowerSourceSpawnAsset(asset)) throw new Error(`Passage power source "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     if (isPoolRackSpawnAsset(asset)) return spawnPoolRack(state, worldX, worldY, asset.sandbox.spawnRack, faction);
     const prop = new WorldProp(worldX, worldY, propTypeId, facing);
+    if (halfExtents && prop.strategy.splittable) {
+        prop.halfExtents = { x: halfExtents.x, y: halfExtents.y };
+        prop.radius = Math.max(halfExtents.x, halfExtents.y);
+        initSplittableFootprint(prop);
+    }
     prop.faction = faction;
     addWorldPropToState(state, prop);
     return prop;

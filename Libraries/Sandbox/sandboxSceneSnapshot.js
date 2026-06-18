@@ -136,13 +136,14 @@ function clearSandboxSceneContent(state) {
     setGridPassagePowerNavKey(state.obstacleGrid, "");
     state.obstacleGrid.vertexPassability = new Uint8Array(0);
 }
-/** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string }} entry */
+/** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string, width?: number, height?: number }} entry */
 function spawnSnapshotProp(state, entry) {
     const asset = getPropAsset(entry.type);
     if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
     if (isGridFloorBeltSpawnAsset(asset)) return;
     if (isGridPassagePowerSourceSpawnAsset(asset)) return;
-    spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0);
+    const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
+    spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents);
 }
 /**
  * @param {object} state

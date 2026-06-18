@@ -7,6 +7,7 @@ import {
     isRoomNodeSpawnAsset,
     isPuzzleTemplateSpawnAsset,
     isSingleWorldPropSpawnAsset,
+    isSplittableBoxSpawnAsset,
 } from "../../Sandbox/sandboxCapabilities.js";
 import { appendSurfaceProfileField } from "../../RoomGraph/roomGraphSurfaceProfile.js";
 import { appendAxisNumberFields, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
@@ -119,6 +120,29 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
         });
         appendEditorHint(body, "Click to stamp three rooms with random sizes and positions inside the area. Links are fixed: belt A→B, belt B→A, locked B→C. Room A gets a blue ball and crate.");
         return;
+    }
+    if (isSplittableBoxSpawnAsset(spawnAsset)) {
+        appendAxisNumberFields(body, {
+            Width: {
+                value: controller.getSpawnSplittableWidth(),
+                step: 1,
+                min: 6,
+                max: 128,
+                onChange: (width) => {
+                    controller.setSpawnSplittableWidth(width);
+                },
+            },
+            Height: {
+                value: controller.getSpawnSplittableHeight(),
+                step: 1,
+                min: 6,
+                max: 128,
+                onChange: (height) => {
+                    controller.setSpawnSplittableHeight(height);
+                },
+            },
+        });
+        appendEditorHint(body, "Footprint is triangulated and poxelified at spawn. Shard count scales with area.");
     }
     if (isGridPassagePowerSourceSpawnAsset(spawnAsset))
         appendEditorHint(body, "Add at camera stamps a power source on the grid. Enable Default energized in Selected, or wire a floor button to the source cell.");

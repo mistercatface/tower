@@ -1,3 +1,4 @@
+import { transformPoint2DInto } from "../Math/Poly2D.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 import { bakePoxelOutline, buildGeometryFromPoxelParts, localBoxOutline, splitPoxels } from "./poxelFracture.js";
@@ -26,4 +27,39 @@ export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactF
         const parts = comp.map((poxel) => ({ vertices: poxel.vertices }));
         return buildGeometryFromPoxelParts(parts);
     });
+}
+export function worldHitToPropLocal(prop, worldX, worldY) {
+    const dx = worldX - prop.x;
+    const dy = worldY - prop.y;
+    const cos = Math.cos(prop.facing);
+    const sin = Math.sin(prop.facing);
+    return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
+}
+export function impactForceFromProjectile(projectile) {
+    const damage = projectile?.damage ?? 1;
+    const speed = projectile?.speed ?? 0;
+    return damage * 20 + speed * 0.15;
+}
+export function fractureSplittableOnImpact(prop, projectile) {
+    if (!prop.poxels?.length || prop.poxels.length <= 1) return null;
+    const hitX = projectile?.x ?? prop.x;
+    const hitY = projectile?.y ?? prop.y;
+    const local = worldHitToPropLocal(prop, hitX, hitY);
+    const force = impactForceFromProjectile(projectile);
+    const components = splitFootprintIntoComponents(prop, local.x, local.y, force, false);
+    if (components.length <= 1) return null;
+    const originX = prop.x;
+    const originY = prop.y;
+    const parentArea = prop.footprintArea || 1;
+    const parentMass = prop.mass || 1;
+    const cos = Math.cos(prop.facing);
+    const sin = Math.sin(prop.facing);
+    const largest = components[0];
+    const debris = components.slice(1);
+    const world = transformPoint2DInto({ x: 0, y: 0 }, originX, originY, largest.centroid.cx, largest.centroid.cy, cos, sin);
+    prop.x = world.x;
+    prop.y = world.y;
+    applyPoxelGeometryToProp(prop, largest);
+    prop.mass = parentMass * (largest.footprintArea / parentArea);
+    return { debris, originX, originY, projectile };
 }
