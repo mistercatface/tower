@@ -16,7 +16,7 @@ export default {
     },
     visuals: {
         colors: { side: "#8D6E63", sideShadow: "#6D4C41", top: "#A1887F", bottom: "#5D4037", bodyInspect: "#8D6E63", stroke: "#3E2723" },
-        world: { height: 10 },
+        world: { height: 7 },
         plankTs: { values: [0.33, 0.66], stroke: "rgba(62, 39, 35, 0.55)" },
         topCross: { stroke: "rgba(62, 39, 35, 0.6)" },
     },
