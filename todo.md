@@ -20,6 +20,8 @@
 
 12:08 PM: Connected kinetics 3 part PR.
 
+1:03 PM: Snake game 3 part PR.
+
 ## MILESTONE LOG
 
 | DATE       | MILESTONE                                                                           |
