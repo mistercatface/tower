@@ -18,6 +18,8 @@
 
 11:14 AM: Physics sleep/pipeline/routing 3 part PR.
 
+12:08 PM: Connected kinetics 3 part PR.
+
 ## MILESTONE LOG
 
 | DATE       | MILESTONE                                                                           |
