@@ -255,7 +255,7 @@ export function drawExtrudedPoxelMesh(
     prop,
     px,
     py,
-    { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, lineWidth = 1.0, facing = prop.facing },
+    { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, seamStroke = "rgba(0,0,0,0.22)", lineWidth = 1.0, facing = prop.facing },
 ) {
     const poxels = prop.poxels;
     const slabHeight = poxelSlabHeight(height);
@@ -328,7 +328,7 @@ export function drawExtrudedPoxelMesh(
             if (drawnTopEdges.has(key)) continue;
             drawnTopEdges.add(key);
             const exposed = exposedEdges.has(key);
-            ctx.strokeStyle = exposed ? stroke : "rgba(0,0,0,0.22)";
+            ctx.strokeStyle = exposed ? stroke : seamStroke;
             ctx.lineWidth = exposed ? outlineWidth : seamWidth;
             ctx.beginPath();
             traceSegment(ctx, c[i].x, c[i].y, c[(i + 1) % 3].x, c[(i + 1) % 3].y);

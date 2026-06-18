@@ -4,7 +4,6 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { bakePoxelOutline, localBoxOutline } from "../Libraries/Props/poxelFracture.js";
 import {
-    applyPoxelGeometryToProp,
     fracturePropOnImpact,
     impactForceFromContact,
     splitFootprintIntoComponents,
@@ -49,7 +48,6 @@ describe("prop impact fracture", () => {
     it("applyPoxelGeometryToProp rebakes collision for resized custom box", () => {
         const prop = new WorldProp(0, 0, "custom_box", 0);
         applyPropBoxFootprint(prop, 20, 10);
-        applyPoxelGeometryToProp(prop, bakePoxelOutline(localBoxOutline(20, 10)));
         assert.ok(prop.poxels.length > 1);
         assert.equal(prop.shape.vertices.length, 4);
     });

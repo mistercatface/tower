@@ -29,12 +29,14 @@ describe("shape-first props", () => {
     });
     it("custom box footprint can be resized after spawn", () => {
         const prop = new WorldProp(10, 20, "custom_box", 0);
+        assert.ok(prop.poxels.length > 1);
         applyPropBoxFootprint(prop, 12, 5);
         const span = propFootprintHalfExtents(prop);
         assert.equal(span.x, 12);
         assert.equal(span.y, 5);
         assert.equal(prop.getShape().vertices.length, 4);
         assert.equal(kineticFootprintArea(prop), 240);
+        assert.ok(prop.poxels.length > 1);
     });
     it("hex block builds a six-vertex polygon from localFootprint", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
