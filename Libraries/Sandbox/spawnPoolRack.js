@@ -1,7 +1,7 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
-import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 const PLAYFIELD_W = 80;
@@ -95,7 +95,7 @@ export function spawnPoolRack(state, anchorX, anchorY, variant, faction) {
             meta.setActiveBehaviorId(prop.id, CUE_STRIKE_BEHAVIOR_ID);
             cueProp = prop;
         }
-        wakePushableBody(prop);
+        wakeKineticBody(prop);
         addWorldPropToState(state, prop);
     }
     return cueProp;

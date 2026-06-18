@@ -2,7 +2,7 @@ import { getDefaultPropQuantizeSteps } from "../../Core/GamePropQuantizeSettings
 /** @typedef {"circle" | "box"} PropCollisionShape */
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategy). */
 export const PROP_STRATEGY_DEFAULTS = {
-    isPushable: false,
+    isKinetic: false,
     renderMode: "3d",
     render3DKey: null,
     inspectKey: null,

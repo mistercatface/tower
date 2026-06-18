@@ -1,4 +1,4 @@
-import { wakePushableBody } from "../../Motion/pushableSleep.js";
+import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../../Spatial/zones/floorShapes.js";
 import { isButtonEntity, isMassButtonInputMode } from "../../Sandbox/buttonInput.js";
 import { appendActionRow, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../../UI/paramFields.js";
@@ -14,7 +14,7 @@ function applyWorldPropPosition(prop, { x, y }) {
     if (x != null) prop.x = x;
     if (y != null) prop.y = y;
     if (prop.aabb) syncFloorTriggerAabb(prop);
-    if (prop.strategy?.isPushable) wakePushableBody(prop);
+    if (prop.strategy?.isKinetic) wakeKineticBody(prop);
 }
 /** @param {object} prop @param {{ radius?: number, sinkDepth?: number, captureTolerance?: number }} patch */
 function applyVoidPitPatch(prop, patch) {

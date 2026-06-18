@@ -1,6 +1,6 @@
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { fillCircle, strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
-import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
+import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { isFlipperWorldProp } from "./behaviors/flipperBehavior.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { isPullPowerTarget } from "./floorEffects.js";
@@ -74,7 +74,7 @@ export function findPassagePowerSourceLinkTargetAtWorld(state, worldX, worldY) {
 export function findButtonLinkTarget(state, worldX, worldY, sourceButtonId) {
     const sourceTarget = findPassagePowerSourceLinkTargetAtWorld(state, worldX, worldY);
     if (sourceTarget) return sourceTarget;
-    const prop = findWorldPropAtInView(state.entityRegistry, combatSpatial, worldX, worldY);
+    const prop = findWorldPropAtInView(state.entityRegistry, kineticSpatial, worldX, worldY);
     if (!prop || prop.id === sourceButtonId) return null;
     if (isFlipperWorldProp(prop) || isSpawnerWorldProp(prop) || isPullPowerTarget(prop)) return { type: "worldProp", id: prop.id };
     return null;

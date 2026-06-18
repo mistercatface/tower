@@ -3,7 +3,8 @@ export default {
     id: "pipe_elbow",
     primitive: "pipeElbow",
     sandbox: { behaviors: ["spawner"], spawner: { defaultPropId: "blue_ball", dragLaunch: { minPower: 20, maxPower: 750 }, getOutletWorld: getPipeElbowOutletWorld } },
-    physics: {        isPushable: true,
+    physics: {
+        isKinetic: true,
         rolls: false,
         collisionShape: "box",
         halfExtents: { x: 16, y: 16 },

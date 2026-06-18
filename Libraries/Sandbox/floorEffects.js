@@ -1,7 +1,7 @@
 import { CAPTURED_SINK_DURATION_MS } from "../../Entities/worldPropVoidSinkState.js";
 import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
 import { floorCircleRadius } from "../Spatial/zones/floorShapes.js";
-import { applyPushableAcceleration } from "../Motion/applyAcceleration.js";
+import { applyKineticAcceleration } from "../Motion/applyAcceleration.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive, isSustainedFlipperButtonInputMode, isSustainedSpawnerButtonInputMode } from "./buttonInput.js";
@@ -131,7 +131,7 @@ const FLOOR_EFFECTS = {
             const dtSec = ctx.dtSec;
             for (const entityId of floorProp._occupants) {
                 const prop = state.entityRegistry.get(entityId);
-                applyPushableAcceleration(prop, trigger.forceX, trigger.forceY, dtSec);
+                applyKineticAcceleration(prop, trigger.forceX, trigger.forceY, dtSec);
             }
         },
     },

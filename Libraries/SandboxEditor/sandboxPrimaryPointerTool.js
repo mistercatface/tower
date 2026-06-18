@@ -1,6 +1,6 @@
-﻿import { getPropAsset } from "../Props/PropCatalog.js";
+import { getPropAsset } from "../Props/PropCatalog.js";
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
+import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { handleButtonPointerDown, hitTestFloorButton } from "../Sandbox/floorButtons.js";
 import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
 import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "../Sandbox/behaviors/rollToCursorHpaBehavior.js";
@@ -32,7 +32,7 @@ export function createSandboxPrimaryPointerTools(
     };
     const tryPickPlacedAtWorld = (world) => {
         const registry = state.entityRegistry;
-        const hit = findWorldPropAtInView(registry, combatSpatial, world.x, world.y);
+        const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
         if (hit) {
             const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, state, hit);
             if (allowed.length === 0) return false;
@@ -89,7 +89,7 @@ export function createSandboxPrimaryPointerTools(
             for (let i = 0; i < behaviors.length; i++) if (behaviors[i].tryCanvasInput?.(world, e)) return true;
             session.pruneSelection();
             const registry = state.entityRegistry;
-            const hit = findWorldPropAtInView(registry, combatSpatial, world.x, world.y);
+            const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
             if (hit) {
                 const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, state, hit);
                 if (allowed.length > 0) selectProp(hit.id);

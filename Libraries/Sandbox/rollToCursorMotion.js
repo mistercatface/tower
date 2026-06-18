@@ -1,4 +1,4 @@
-import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
@@ -40,7 +40,7 @@ export function decelerateRoll(prop, dt, config) {
         prop.vy -= (prop.vy / speed) * decel;
         applyRollSpin(prop);
     }
-    wakePushableBody(prop);
+    wakeKineticBody(prop);
     return true;
 }
 /**
@@ -67,7 +67,7 @@ export function steerRollToward(prop, dirX, dirY, dt, config) {
         }
     }
     applyRollSpin(prop);
-    wakePushableBody(prop);
+    wakeKineticBody(prop);
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

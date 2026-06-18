@@ -7,7 +7,7 @@ export default {
     physics: {
         renderMode: "floor",
         spatialRole: "trigger",
-        isPushable: false,
+        isKinetic: false,
         gravityImmune: true,
         collisionShape: "circle",
         radius: DEFAULT_PIT_RADIUS,

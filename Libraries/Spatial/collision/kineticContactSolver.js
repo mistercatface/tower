@@ -1,9 +1,9 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
-import { wakePushableBody } from "../../Motion/pushableSleep.js";
+import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { fractureSplittableOnImpact, impactForceFromContact } from "../../Props/splittableWorldProp.js";
-import { allowsPushableCollisionPair, pairBroadphaseOverlap } from "./entityBroadphase.js";
+import { allowsKineticCollisionPair, pairBroadphaseOverlap } from "./entityBroadphase.js";
 import { separateAlongNormal, separateCoincidentCirclePair } from "./penetration.js";
 import { SatCollision } from "./SatCollision.js";
 const MAX_CONTACTS = 4096;
@@ -14,7 +14,7 @@ const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1;
 const warmStartKeys = new Float64Array(WARM_START_CACHE_SIZE);
 const warmStartJn = new Float32Array(WARM_START_CACHE_SIZE);
 const warmStartJt = new Float32Array(WARM_START_CACHE_SIZE);
-const pushableContactBuffer = {
+const kineticContactBuffer = {
     count: 0,
     bodyA: new Array(MAX_CONTACTS),
     bodyB: new Array(MAX_CONTACTS),
@@ -54,13 +54,13 @@ function pairMaterialFriction(body) {
     if (pair != null) return pair;
     return body.strategy?.wallPhysics?.friction ?? null;
 }
-function pushablePairRestitution(bodyA, bodyB) {
+function kineticPairRestitution(bodyA, bodyB) {
     const r1 = bodyA.strategy?.pairRestitution;
     const r2 = bodyB.strategy?.pairRestitution;
     if (r1 != null && r2 != null) return (r1 + r2) * 0.5;
-    return r1 ?? r2 ?? getCollisionSettings().restitution.pushablePair;
+    return r1 ?? r2 ?? getCollisionSettings().restitution.kineticPair;
 }
-function pushablePairFriction(bodyA, bodyB) {
+function kineticPairFriction(bodyA, bodyB) {
     const f1 = pairMaterialFriction(bodyA);
     const f2 = pairMaterialFriction(bodyB);
     if (f1 != null && f2 != null) return Math.sqrt(f1 * f2);
@@ -97,8 +97,8 @@ function applyCachedContactImpulse(contacts, i) {
     bodyA.angularVelocity = (bodyA.angularVelocity || 0) - jn * contacts.rAn[i] * contacts.invIA[i] + jt * contacts.rAt[i] * contacts.invIA[i];
     bodyB.angularVelocity = (bodyB.angularVelocity || 0) + jn * contacts.rBn[i] * contacts.invIB[i] - jt * contacts.rBt[i] * contacts.invIB[i];
 }
-function warmStartPushableContacts(contacts) {
-    const decay = getCollisionSettings().pushableWarmStartDecay;
+function warmStartKineticContacts(contacts) {
+    const decay = getCollisionSettings().kineticWarmStartDecay;
     for (let i = 0; i < contacts.count; i++) {
         const key = contacts.pairKey[i];
         const cacheIdx = warmStartCacheLookup(key);
@@ -112,7 +112,7 @@ function warmStartPushableContacts(contacts) {
         applyCachedContactImpulse(contacts, i);
     }
 }
-function storePushableWarmStartCache(contacts) {
+function storeKineticWarmStartCache(contacts) {
     warmStartKeys.fill(0);
     for (let i = 0; i < contacts.count; i++) {
         const key = contacts.pairKey[i];
@@ -168,17 +168,17 @@ function appendContact(contacts, bodyA, bodyB, info, preDvx, preDvy) {
     contacts.preDvx[i] = preDvx;
     contacts.preDvy[i] = preDvy;
 }
-function gatherPushableContacts(spatialFrame, contacts) {
+function gatherKineticContacts(spatialFrame, contacts) {
     contacts.reset();
-    const active = spatialFrame._activePushables;
+    const active = spatialFrame._activeKineticBodies;
     for (let i = 0; i < active.length; i++) {
         const primary = active[i];
         if (primary.isDead) continue;
         const neighbors = spatialFrame.getNeighbors(primary);
         for (let j = 0; j < neighbors.length; j++) {
             const neighbor = neighbors[j];
-            if (neighbor.isSleeping && pairBroadphaseOverlap(primary, neighbor)) spatialFrame.activatePushable(neighbor);
-            if (!allowsPushableCollisionPair(primary, neighbor)) continue;
+            if (neighbor.isSleeping && pairBroadphaseOverlap(primary, neighbor)) spatialFrame.activateKineticBody(neighbor);
+            if (!allowsKineticCollisionPair(primary, neighbor)) continue;
             const preDvx = (neighbor.vx ?? 0) - (primary.vx ?? 0);
             const preDvy = (neighbor.vy ?? 0) - (primary.vy ?? 0);
             const info = detectAndSeparateContact(primary, neighbor);
@@ -187,7 +187,7 @@ function gatherPushableContacts(spatialFrame, contacts) {
         }
     }
 }
-function precomputePushableContacts(contacts) {
+function precomputeKineticContacts(contacts) {
     for (let i = 0; i < contacts.count; i++) {
         const bodyA = contacts.bodyA[i];
         const bodyB = contacts.bodyB[i];
@@ -216,12 +216,12 @@ function precomputePushableContacts(contacts) {
         contacts.rBt[i] = rBt;
         contacts.kNormal[i] = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
         contacts.kTangent[i] = invMassA + invMassB + rAt * rAt * invIA + rBt * rBt * invIB;
-        contacts.restitution[i] = pushablePairRestitution(bodyA, bodyB);
-        contacts.friction[i] = pushablePairFriction(bodyA, bodyB);
+        contacts.restitution[i] = kineticPairRestitution(bodyA, bodyB);
+        contacts.friction[i] = kineticPairFriction(bodyA, bodyB);
         contacts.pairKey[i] = pairContactKey(bodyA, bodyB);
     }
 }
-function solvePushableContactVelocities(contacts, iterations) {
+function solveKineticContactVelocities(contacts, iterations) {
     const count = contacts.count;
     for (let iter = 0; iter < iterations; iter++)
         for (let i = 0; i < count; i++) {
@@ -284,23 +284,18 @@ function trySplittableFracture(state, prop, other, hitX, hitY, relativeSpeed, im
     if (force < SPLITTABLE_MIN_IMPACT_FORCE) return;
     const fracture = fractureSplittableOnImpact(prop, hitX, hitY, force);
     if (!fracture) return;
-    prop.spawnSplittableFragments(state, fracture.debris, {
-        originX: fracture.originX,
-        originY: fracture.originY,
-        impactDirX,
-        impactDirY,
-    });
-    wakePushableBody(prop);
+    prop.spawnSplittableFragments(state, fracture.debris, { originX: fracture.originX, originY: fracture.originY, impactDirX, impactDirY });
+    wakeKineticBody(prop);
 }
-function applyPushableContactEffects(contacts, spatialFrame, state) {
+function applyKineticContactEffects(contacts, spatialFrame, state) {
     for (let i = 0; i < contacts.count; i++) {
         const bodyA = contacts.bodyA[i];
         const bodyB = contacts.bodyB[i];
         invalidateWallResolveCache(bodyA, bodyB);
-        wakePushableBody(bodyA);
-        wakePushableBody(bodyB);
-        spatialFrame.activatePushable(bodyA);
-        spatialFrame.activatePushable(bodyB);
+        wakeKineticBody(bodyA);
+        wakeKineticBody(bodyB);
+        spatialFrame.activateKineticBody(bodyA);
+        spatialFrame.activateKineticBody(bodyB);
         const relativeSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
         if (relativeSpeed <= 0) continue;
         const hitX = bodyA.x + contacts.rax[i];
@@ -309,13 +304,13 @@ function applyPushableContactEffects(contacts, spatialFrame, state) {
         trySplittableFracture(state, bodyB, bodyA, hitX, hitY, relativeSpeed, -contacts.preDvx[i], -contacts.preDvy[i]);
     }
 }
-export function resolvePushableContactPass(spatialFrame, state) {
-    const contacts = pushableContactBuffer;
-    gatherPushableContacts(spatialFrame, contacts);
+export function resolveKineticContactPass(spatialFrame, state) {
+    const contacts = kineticContactBuffer;
+    gatherKineticContacts(spatialFrame, contacts);
     if (contacts.count === 0) return;
-    precomputePushableContacts(contacts);
-    warmStartPushableContacts(contacts);
-    solvePushableContactVelocities(contacts, INNER_SOLVE_ITERATIONS);
-    storePushableWarmStartCache(contacts);
-    applyPushableContactEffects(contacts, spatialFrame, state);
+    precomputeKineticContacts(contacts);
+    warmStartKineticContacts(contacts);
+    solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS);
+    storeKineticWarmStartCache(contacts);
+    applyKineticContactEffects(contacts, spatialFrame, state);
 }

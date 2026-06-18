@@ -7,7 +7,7 @@
  */
 /**
  * @typedef {object} InteractionPairsPort
- * @property {PairFilterConfig} pushableSleepBlocker
+ * @property {PairFilterConfig} kineticSleepBlocker
  */
 /**
  * @typedef {object} SimulationEffectPass

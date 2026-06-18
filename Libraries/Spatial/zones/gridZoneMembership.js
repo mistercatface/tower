@@ -103,10 +103,10 @@ export function resolveEntityGridZoneKeys(entity, grid, subscriptions, out) {
  */
 export function tickGridZoneMembership(spatialFrame, grid, subscriptions, handlers) {
     if (!subscriptions.cells.size && !subscriptions.edges.size) return;
-    const pushables = spatialFrame._pushables;
-    if (!pushables?.length) return;
-    for (let i = 0; i < pushables.length; i++) {
-        const entity = pushables[i];
+    const kineticBodies = spatialFrame._kineticBodies;
+    if (!kineticBodies?.length) return;
+    for (let i = 0; i < kineticBodies.length; i++) {
+        const entity = kineticBodies[i];
         if (!entity._gridZoneKeys) entity._gridZoneKeys = new Set();
         if (!entity._gridZoneNextKeys) entity._gridZoneNextKeys = new Set();
         const prev = entity._gridZoneKeys;

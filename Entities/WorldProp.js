@@ -16,7 +16,7 @@ import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { applyPoxelGeometryToProp, initSplittableFootprint } from "../Libraries/Props/splittableWorldProp.js";
-import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
+import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
 import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
@@ -107,7 +107,7 @@ export class WorldProp extends Entity {
         return (m * this.radius * this.radius) / 2;
     }
     changeState(stateName, stateDataInit = null) {
-        if (this.strategy?.isPushable) wakePushableBody(this);
+        if (this.strategy?.isKinetic) wakeKineticBody(this);
         transitionEntity(this, WORLD_PROP_MODES, stateName, stateDataInit);
     }
     getShape() {
@@ -147,7 +147,7 @@ export class WorldProp extends Entity {
         if (!asleep)
             if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
             else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
-        if (!asleep && resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
+        if (!asleep && resolveWalls && this.strategy.isKinetic && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }
     spawnSplittableFragments(gameState, fragments, { originX, originY, shardTypeId = "crate_shard", impactDirX = 0, impactDirY = 0 } = {}) {
@@ -186,7 +186,7 @@ export class WorldProp extends Entity {
             shard.vx += -parentOmega * ry * 0.5;
             shard.vy += parentOmega * rx * 0.5;
             shard.angularVelocity = parentOmega + (Math.random() - 0.5) * 3;
-            wakePushableBody(shard);
+            wakeKineticBody(shard);
             addWorldPropToState(gameState, shard);
         }
     }

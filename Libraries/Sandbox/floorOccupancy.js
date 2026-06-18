@@ -11,7 +11,7 @@ import { createConveyorDraw } from "../Render/conveyorDraw.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { syncPassagePowerNetwork, isPassagePowerSourceEnergized } from "./passagePowerNetwork.js";
-import { applyPushableAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
+import { applyKineticAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 export const GRID_ROTATABLE_OCCUPANT = { FloorBelt: "floorBelt" };
 export function pickRotatableGridOccupantAtWorld(state, worldX, worldY) {
@@ -94,16 +94,16 @@ export function stampFloorBeltsInBounds(grid, minCol, maxCol, minRow, maxRow, fa
     });
     return changed;
 }
-/** Cell lookup + acceleration once per frame before pushable physics substeps. */
+/** Cell lookup + acceleration once per frame before kinetic physics substeps. */
 export function tickFloorOccupancy(state, spatialFrame, dt) {
     const grid = state.obstacleGrid;
     if (!grid.floorStore.hasAny()) return;
-    const pushables = spatialFrame._pushables;
-    if (!pushables?.length) return;
+    const kineticBodies = spatialFrame._kineticBodies;
+    if (!kineticBodies?.length) return;
     const dtSec = dt / 1000;
     const force = DEFAULT_FLOOR_BELT_FORCE;
-    for (let i = 0; i < pushables.length; i++) {
-        const entity = pushables[i];
+    for (let i = 0; i < kineticBodies.length; i++) {
+        const entity = kineticBodies[i];
         const { col, row } = grid.worldToGrid(entity.x, entity.y);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         const idx = col + row * grid.cols;
@@ -111,7 +111,7 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
         const kind = grid.floorStore.kind[idx];
         const facingIndex = grid.floorStore.facing[idx];
         const beltAngle = floorBeltFacingFromIndex(facingIndex);
-        applyPushableAccelerationAlongAngle(entity, beltAngle, force, dtSec);
+        applyKineticAccelerationAlongAngle(entity, beltAngle, force, dtSec);
     }
 }
 export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {

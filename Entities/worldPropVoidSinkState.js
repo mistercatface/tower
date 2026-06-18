@@ -1,4 +1,4 @@
-import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
+import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
 import { resolveVoidSinkDrawModifier } from "../Libraries/Render/voidSinkVisual.js";
 import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Libraries/Spatial/zones/pit.js";
 const DEFAULT_PULL = 200;
@@ -11,7 +11,7 @@ export class WorldPropVoidSinkState {
         return true;
     }
     onEnter(prop) {
-        wakePushableBody(prop);
+        wakeKineticBody(prop);
         prop.voidSinkZ = 0;
         if (prop.voidCaptured) prop.voidSinkTimer = prop.voidSinkTimer ?? CAPTURED_SINK_DURATION_MS;
         else delete prop.voidSinkTimer;

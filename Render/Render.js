@@ -5,7 +5,7 @@ import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js"
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
 import { createStructureDrawPass } from "./StructureDrawPass.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "./WorldRenderMode.js";
-import { combatSpatial } from "../Systems/World/CombatSpatialFrame.js";
+import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 /**
  * @typedef {object} SimulationSceneHooks
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D) => void} [drawGroundOverlays]
@@ -44,10 +44,10 @@ export class Renderer {
     }
     /** @param {import("../GameState/GameState.js").GameState} state */
     syncWorldSceneDrawInput(state) {
-        combatSpatial.begin(state);
+        kineticSpatial.begin(state);
         const input = this.worldSceneDrawInput;
         input.entityRegistry = state.entityRegistry;
-        input.spatialFrame = combatSpatial;
+        input.spatialFrame = kineticSpatial;
         input.worldSurfaces = state.worldSurfaces;
         input.obstacleGrid = state.obstacleGrid;
         input.gameState = state;

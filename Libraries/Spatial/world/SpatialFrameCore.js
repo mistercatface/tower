@@ -44,7 +44,7 @@ export class SpatialFrameCore {
      *
      * @param {object[]} bodies
      */
-    reindexPushables(bodies) {
+    reindexKineticBodies(bodies) {
         if (!bodies?.length) return;
         for (let i = 0; i < bodies.length; i++) {
             const entity = bodies[i];

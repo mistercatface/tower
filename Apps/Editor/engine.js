@@ -3,8 +3,8 @@ import { events, requestUiUpdate, Events } from "../../Core/EventSystem.js";
 import { PauseManager } from "../../Libraries/Pause/index.js";
 import { installEditorDefaults } from "../../Core/engineGlobals.js";
 import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController.js";
-import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
-import { runPushablePhysics } from "../../Libraries/Motion/pushablePhysicsPass.js";
+import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
+import { runKineticPhysics } from "../../Libraries/Motion/kineticPhysicsPass.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
@@ -33,10 +33,10 @@ function loadGameModeStylesheet() {
 function runSimulationTick(state, dt) {
     const simDt = dt * state.selectedSpeed;
     state.gameTime += simDt;
-    const spatialFrame = combatSpatial.begin(state);
+    const spatialFrame = kineticSpatial.begin(state);
     tickFloorProps(state, spatialFrame, simDt);
     tickFloorOccupancy(state, spatialFrame, simDt);
-    runPushablePhysics(state, simDt, spatialFrame, null);
+    runKineticPhysics(state, simDt, spatialFrame, null);
     tickGridZones(state, spatialFrame);
     FloatingText.updateAll(state, simDt);
 }

@@ -7,7 +7,7 @@ export default {
     physics: {
         renderMode: "floor",
         spatialRole: "trigger",
-        isPushable: false,
+        isKinetic: false,
         gravityImmune: true,
         collisionShape: "box",
         halfExtents: { x: DEFAULT_GRAVITY_PAD_HALF_WIDTH, y: DEFAULT_GRAVITY_PAD_HALF_HEIGHT },

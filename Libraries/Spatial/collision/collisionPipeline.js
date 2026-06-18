@@ -1,8 +1,8 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
-import { resolvePushableContactPass } from "./pushableContactSolver.js";
+import { resolveKineticContactPass } from "./kineticContactSolver.js";
 /** @param {object} prop @param {object[]} wallCandidates */
-function pushableOverlapsWallSegment(prop, wallCandidates) {
+function kineticOverlapsWallSegment(prop, wallCandidates) {
     const shape = prop.getShape();
     if (shape.type !== "Circle") return false;
     const radiusSq = prop.radius * prop.radius;
@@ -14,42 +14,42 @@ function pushableOverlapsWallSegment(prop, wallCandidates) {
     return false;
 }
 /**
- * Pushable collision substeps: contact solve + wall resolve.
+ * Kinetic collision substeps: contact solve + wall resolve.
  *
  * @param {object} state
  * @param {object} spatialFrame
  * @param {{
  *   resolveWalls: (entity: object, spatialFrame: object) => void,
- *   pushableIterations?: number,
+ *   kineticIterations?: number,
  * }} hooks
  */
-export function runCollisionPipeline(state, spatialFrame, { resolveWalls, pushableIterations = getCollisionSettings().pushableIterations }) {
-    const activePushables = spatialFrame._activePushables;
-    const hasActivePushables = activePushables.length > 0;
-    if (hasActivePushables)
-        for (let i = 0; i < activePushables.length; i++) {
-            const prop = activePushables[i];
+export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations }) {
+    const activeBodies = spatialFrame._activeKineticBodies;
+    const hasActiveBodies = activeBodies.length > 0;
+    if (hasActiveBodies)
+        for (let i = 0; i < activeBodies.length; i++) {
+            const prop = activeBodies[i];
             prop._frameDispX = prop.x - (prop._wallDispPrevX ?? prop.x);
             prop._frameDispY = prop.y - (prop._wallDispPrevY ?? prop.y);
         }
-    if (hasActivePushables)
-        for (let iter = 0; iter < pushableIterations; iter++) {
-            resolvePushableContactPass(spatialFrame, state);
-            for (let i = 0; i < activePushables.length; i++) {
-                const prop = activePushables[i];
-                if (prop.isDead || !prop.strategy?.isPushable) continue;
+    if (hasActiveBodies)
+        for (let iter = 0; iter < kineticIterations; iter++) {
+            resolveKineticContactPass(spatialFrame, state);
+            for (let i = 0; i < activeBodies.length; i++) {
+                const prop = activeBodies[i];
+                if (prop.isDead || !prop.strategy?.isKinetic) continue;
                 const wallCandidates = spatialFrame.getWallCandidates(prop);
-                if (!prop.needsWallCollision() && !pushableOverlapsWallSegment(prop, wallCandidates)) continue;
+                if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
                 resolveWalls(prop, spatialFrame);
             }
         }
-    if (hasActivePushables)
-        for (let i = 0; i < activePushables.length; i++) {
-            const prop = activePushables[i];
+    if (hasActiveBodies)
+        for (let i = 0; i < activeBodies.length; i++) {
+            const prop = activeBodies[i];
             prop._wallDispPrevX = prop.x;
             prop._wallDispPrevY = prop.y;
         }
 }
-export function runPushableContactPass(spatialFrame, state) {
-    resolvePushableContactPass(spatialFrame, state);
+export function runKineticContactPass(spatialFrame, state) {
+    resolveKineticContactPass(spatialFrame, state);
 }

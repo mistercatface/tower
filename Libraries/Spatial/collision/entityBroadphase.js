@@ -96,17 +96,17 @@ function pairRestingOverlap(a, b) {
 export function pairBroadphaseOverlap(a, b) {
     return pairBroadphaseBoundsOverlap(getBroadphaseBounds(a), getBroadphaseBounds(b));
 }
-export function shouldResolvePushablePair(a, b) {
+export function shouldResolveKineticPair(a, b) {
     if (!pairBroadphaseOverlap(a, b)) return false;
     if (isKinematicallyActive(a) || isKinematicallyActive(b)) return true;
     if (a.isSleeping && b.isSleeping) return false;
     return pairRestingOverlap(a, b);
 }
-/** Hot-path gate for pushable–pushable collision pairs (replaces compiled PairFilter in the physics loop). */
-export function allowsPushableCollisionPair(primary, other) {
+/** Hot-path gate for kinetic body collision pairs (replaces compiled PairFilter in the physics loop). */
+export function allowsKineticCollisionPair(primary, other) {
     if (primary === other) return false;
     if (other.isDead) return false;
-    if (!other.strategy?.isPushable) return false;
+    if (!other.strategy?.isKinetic) return false;
     if (primary.id >= other.id) return false;
-    return shouldResolvePushablePair(primary, other);
+    return shouldResolveKineticPair(primary, other);
 }

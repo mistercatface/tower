@@ -1,5 +1,5 @@
 import { cardinalUnitVectorFromAngle } from "../Math/Angle.js";
-import { wakePushableBody } from "./pushableSleep.js";
+import { wakeKineticBody } from "./kineticSleep.js";
 /**
  * Continuous world acceleration (units/s²) — same semantics as gravity pads and floor belts.
  * Not mass-weighted; use `applyImpulse` for instant knockback.
@@ -20,9 +20,9 @@ export function applyAcceleration(body, ax, ay, dtSec) {
  * @param {number} ay
  * @param {number} dtSec
  */
-export function applyPushableAcceleration(body, ax, ay, dtSec) {
+export function applyKineticAcceleration(body, ax, ay, dtSec) {
     if (!body || body.isDead || body.strategy?.gravityImmune) return;
-    wakePushableBody(body);
+    wakeKineticBody(body);
     applyAcceleration(body, ax, ay, dtSec);
 }
 /**
@@ -31,7 +31,7 @@ export function applyPushableAcceleration(body, ax, ay, dtSec) {
  * @param {number} magnitude — acceleration along facing (units/s²)
  * @param {number} dtSec
  */
-export function applyPushableAccelerationAlongAngle(body, angle, magnitude, dtSec) {
+export function applyKineticAccelerationAlongAngle(body, angle, magnitude, dtSec) {
     const { x, y } = cardinalUnitVectorFromAngle(angle);
-    applyPushableAcceleration(body, x * magnitude, y * magnitude, dtSec);
+    applyKineticAcceleration(body, x * magnitude, y * magnitude, dtSec);
 }

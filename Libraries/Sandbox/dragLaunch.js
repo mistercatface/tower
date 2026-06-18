@@ -1,7 +1,7 @@
 import { normalizeXY } from "../Math/Vec2.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
-import { wakePushableBody } from "../Motion/pushableSleep.js";
+import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { drawAimSegment } from "../Render/contactPreviewDraw.js";
 import { fillCircle, strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
@@ -133,7 +133,7 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
         const r = body.radius || 8;
         body.angularVelocity = (power / r) * 0.12;
     }
-    wakePushableBody(body);
+    wakeKineticBody(body);
 }
 /**
  * Shared pointer-drag aim + launch for sandbox behaviors.
@@ -158,7 +158,7 @@ export function createDragLaunchInteraction(spec) {
         id: spec.id,
         onPointerDown(prop, world, _e) {
             if (spec.canStart && !spec.canStart(prop, world)) return false;
-            wakePushableBody(prop);
+            wakeKineticBody(prop);
             aim = createDragLaunchAim(prop.x, prop.y, world.x, world.y);
             updateDragLaunchAim(aim, world.x, world.y, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
             spec.onAim?.(prop, aim);

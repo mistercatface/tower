@@ -2,7 +2,7 @@ import { resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
 import { resolveSandboxEntityLinkValue } from "../../GameState/sandboxEntityMeta.js";
 import { isKinematicallyActive } from "../Spatial/collision/entityBroadphase.js";
 /**
- * @typedef {"self" | "groupWorldProps" | "groupPushables"} InputGateScope
+ * @typedef {"self" | "groupWorldProps" | "groupKinetic"} InputGateScope
  * @typedef {"atRest" | "asleep" | "allAtRest" | "allAsleep"} InputGateUntil
  * @typedef {{
  *   scope: InputGateScope,
@@ -48,7 +48,7 @@ export function resolveInputGateScope(scope, prop, state, registry, linkField) {
     registry.forEachOfKind("worldProp", (entity) => {
         if (entity.isDead) return;
         if (resolveSandboxEntityLinkValue(state, entity, linkField) !== linkValue) return;
-        if (scope === "groupPushables" && !entity.strategy?.isPushable) return;
+        if (scope === "groupKinetic" && !entity.strategy?.isKinetic) return;
         members.push(entity);
     });
     return members;

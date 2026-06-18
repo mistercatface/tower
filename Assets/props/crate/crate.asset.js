@@ -1,13 +1,10 @@
 export default {
     id: "crate",
     primitive: "box",
-    sandbox: {
-        behaviors: ["dragLaunch"],
-        dragLaunch: { minPower: 20, maxPower: 260 },
-    },
+    sandbox: { behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: {
         radius: 8,
-        isPushable: true,
+        isKinetic: true,
         collisionShape: "box",
         splittable: true,
         randomFaceLabels: true,

@@ -1,7 +1,7 @@
 import { removeSandboxWorldProp } from "../Sandbox/sandboxPlacedSpawn.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
-import { advancePushableSleep, evaluatePushableSleepEligible } from "./pushableSleep.js";
+import { advanceKineticSleep, evaluateKineticSleepEligible } from "./kineticSleep.js";
 import { countMotionSubsteps } from "./motionSubsteps.js";
 import { integrateStandTipsAfterCollisions } from "../Props/standTipMotion.js";
 function propBlocksSleep(prop) {
@@ -9,22 +9,22 @@ function propBlocksSleep(prop) {
     if (fn) return fn.call(prop.currentState);
     return false;
 }
-function tickPushableSleep(spatialFrame) {
-    const pushables = spatialFrame._pushables;
-    if (!pushables) return;
-    for (let i = 0; i < pushables.length; i++) {
-        const prop = pushables[i];
+function tickKineticSleep(spatialFrame) {
+    const kineticBodies = spatialFrame._kineticBodies;
+    if (!kineticBodies) return;
+    for (let i = 0; i < kineticBodies.length; i++) {
+        const prop = kineticBodies[i];
         if (prop.isDead) continue;
-        const eligible = evaluatePushableSleepEligible(prop, spatialFrame.getNeighbors(prop), { blocksSleep: propBlocksSleep });
-        advancePushableSleep(prop, eligible);
+        const eligible = evaluateKineticSleepEligible(prop, spatialFrame.getNeighbors(prop), { blocksSleep: propBlocksSleep });
+        advanceKineticSleep(prop, eligible);
     }
 }
 /** @param {object} state @param {number} dt @param {object} spatialFrame */
-export function runPushablePhysics(state, dt, spatialFrame) {
-    spatialFrame.syncActivePushables();
-    const activePushables = spatialFrame._activePushables;
+export function runKineticPhysics(state, dt, spatialFrame) {
+    spatialFrame.syncActiveKineticBodies();
+    const activeBodies = spatialFrame._activeKineticBodies;
     const { maxStepPx, maxSubsteps } = getCollisionSettings().motionSubsteps;
-    const steps = countMotionSubsteps(dt, activePushables, { maxStepPx, maxSubsteps });
+    const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });
     const subDt = dt / steps;
     for (let s = 0; s < steps; s++) {
         for (let i = state.worldProps.length - 1; i >= 0; i--) {
@@ -32,12 +32,12 @@ export function runPushablePhysics(state, dt, spatialFrame) {
             p.update(subDt, state, spatialFrame);
             if (p.isDead) removeSandboxWorldProp(state, p);
         }
-        spatialFrame.reindexPushables(activePushables);
+        spatialFrame.reindexKineticBodies(activeBodies);
         CollisionSystem.run(state, spatialFrame);
     }
     integrateStandTipsAfterCollisions(state, dt);
     integrateLongAxisLogFacing(state, dt);
-    tickPushableSleep(spatialFrame);
+    tickKineticSleep(spatialFrame);
 }
 /** In-plane spin about center: collision ω_z → facing (same frame, separate from 3D tumble). */
 export function integrateLongAxisLogFacing(state, dt) {

@@ -1,13 +1,15 @@
 export default {
     id: "log",
     primitive: "rollingBox",
-    physics: {        radius: 32,
+    physics: {
+        radius: 32,
         halfExtents: { x: 32, y: 2 },
         collisionShape: "box",
-        isPushable: true,
+        isKinetic: true,
         rolls: true,
         rollAxis: "long",
-        rollHeight: 3,        mass: 1.1,
+        rollHeight: 3,
+        mass: 1.1,
         friction: 5,
         wallPhysics: { restitution: 0.3, friction: 0.45 },
         quantizeSteps: { facing: 64, roll: 32 },
