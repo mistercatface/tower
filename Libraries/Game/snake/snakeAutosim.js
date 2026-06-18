@@ -8,9 +8,7 @@ import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainPanelsFromHead } from "./snakeChainColor.js";
 import { countLiveSnakeGoals, findNearestSnakeGoal } from "./snakeGoals.js";
-
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal } from "./snakeGoals.js";
-
 function chainMemberProps(state, headId) {
     const ids = getChainMemberIds(state, headId);
     const members = [];
@@ -20,7 +18,6 @@ function chainMemberProps(state, headId) {
     }
     return members;
 }
-
 function replenishSnakeGoals(state, headId, rng) {
     const config = getSnakeGameConfig();
     const live = countLiveSnakeGoals(state);
@@ -28,7 +25,6 @@ function replenishSnakeGoals(state, headId, rng) {
     const occupied = linkedChainOccupiedCellKeys(chainMemberProps(state, headId), state.obstacleGrid);
     spawnGoalOrbOnOpenCell(state, { excludeKeys: occupied, rng });
 }
-
 export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorById, eatRadius, ballType, growDirX, growDirY, rng = Math.random }) {
     const config = getSnakeGameConfig();
     let tailId = null;
