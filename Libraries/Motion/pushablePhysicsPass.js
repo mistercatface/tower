@@ -19,8 +19,8 @@ function tickPushableSleep(spatialFrame) {
         advancePushableSleep(prop, eligible);
     }
 }
-/** World prop update → collision substeps → stand tips → roll facing → sleep. */
-export function runPushablePhysics(state, dt, spatialFrame, events) {
+/** @param {object} state @param {number} dt @param {object} spatialFrame */
+export function runPushablePhysics(state, dt, spatialFrame) {
     spatialFrame.syncActivePushables();
     const activePushables = spatialFrame._activePushables;
     const { maxStepPx, maxSubsteps } = getCollisionSettings().motionSubsteps;
@@ -33,7 +33,7 @@ export function runPushablePhysics(state, dt, spatialFrame, events) {
             if (p.isDead) removeSandboxWorldProp(state, p);
         }
         spatialFrame.reindexPushables(activePushables);
-        CollisionSystem.run(state, spatialFrame, events);
+        CollisionSystem.run(state, spatialFrame);
     }
     integrateStandTipsAfterCollisions(state, dt);
     integrateLongAxisLogFacing(state, dt);

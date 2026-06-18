@@ -1,28 +1,17 @@
 import { releasePointerCapture } from "../Input/canvasPointer.js";
 export function createSandboxPointerGestures({ getCanvas, session, clientToWorld }) {
     let interactionBehavior = null;
-    let groundNav = null;
     return {
-        hasCapture: () => interactionBehavior != null || groundNav != null,
+        hasCapture: () => interactionBehavior != null,
         reset() {
             interactionBehavior = null;
-            groundNav = null;
         },
         startPropInteraction(behavior, e) {
             interactionBehavior = behavior;
             getCanvas().setPointerCapture(e.pointerId);
         },
-        startGroundNav(move, world, e) {
-            move.behavior.setGroundMoveTarget(move.prop, world);
-            groundNav = { prop: move.prop, behavior: move.behavior };
-            getCanvas().setPointerCapture(e.pointerId);
-        },
-        capturesPointerMove: () => groundNav != null || interactionBehavior != null,
+        capturesPointerMove: () => interactionBehavior != null,
         onPointerMove(_world, e) {
-            if (groundNav) {
-                groundNav.behavior.updateGroundMoveTarget?.(groundNav.prop, clientToWorld(e.clientX, e.clientY));
-                return;
-            }
             if (!interactionBehavior) return;
             const prop = session.getSelectedProp();
             if (!prop) return;
@@ -30,14 +19,6 @@ export function createSandboxPointerGestures({ getCanvas, session, clientToWorld
             e.stopPropagation();
         },
         onPointerUp(_world, e) {
-            if (groundNav) {
-                const nav = groundNav;
-                groundNav = null;
-                releasePointerCapture(getCanvas(), e);
-                nav.behavior.updateGroundMoveTarget?.(nav.prop, clientToWorld(e.clientX, e.clientY));
-                session.sync();
-                return true;
-            }
             if (!interactionBehavior) return false;
             const prop = session.getSelectedProp();
             if (prop) {

@@ -18,8 +18,8 @@ function ensurePuzzlePropCatalog() {
     for (let i = 0; i < catalog.length; i++) {
         const asset = catalog[i];
         const { id, physics } = asset;
-        const { hitBehavior, spawn, renderMode, ...strategy } = physics;
-        definitions[id] = { render3DKey: id, renderMode: renderMode ?? "3d", hitBehavior, spawn, inspectKey: null, ...strategy };
+        const { hitBehavior: _hitBehavior, spawn, renderMode, ...strategy } = physics;
+        definitions[id] = { render3DKey: id, renderMode: renderMode ?? "3d", spawn, inspectKey: null, ...strategy };
         recipes[id] = () => {};
         assets[id] = asset;
     }

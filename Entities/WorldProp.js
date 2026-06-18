@@ -2,12 +2,10 @@ import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
-import { HIT_BEHAVIOR_HANDLERS } from "../Libraries/Props/hitBehaviors.js";
 import { initStandTipState, isStandTipActive } from "../Libraries/Props/standTipMotion.js";
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
-import { WorldPropDeadState } from "./worldPropCombatStates.js";
 import { WorldPropVoidSinkState } from "./worldPropVoidSinkState.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { syncLongAxisCollisionShape } from "../Libraries/Props/longAxisCollision.js";
@@ -19,7 +17,6 @@ import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { applyPoxelGeometryToProp, initSplittableFootprint } from "../Libraries/Props/splittableWorldProp.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
-import { ensureLocomotionWorldProp, updateLocomotionWorldProp, usesLocomotionWorldProp } from "../Libraries/Props/locomotionWorldProp.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
 import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
@@ -28,13 +25,12 @@ class WorldPropNormalState {
         return prop.strategy.render3DKey;
     }
 }
-/** Modes owned by WorldProp — not registered or mutated from app boot. */
-const WORLD_PROP_MODES = Object.freeze({ normal: new WorldPropNormalState(), dead: new WorldPropDeadState(), voidSink: new WorldPropVoidSinkState() });
+const WORLD_PROP_MODES = Object.freeze({ normal: new WorldPropNormalState(), voidSink: new WorldPropVoidSinkState() });
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
     if (!def) return withPropStrategyDefaults({});
-    const { hitBehavior, spawn, ...strategyFields } = def;
-    return withPropStrategyDefaults({ ...strategyFields, onHit: HIT_BEHAVIOR_HANDLERS[hitBehavior] ?? HIT_BEHAVIOR_HANDLERS.none });
+    const { hitBehavior: _hitBehavior, spawn, ...strategyFields } = def;
+    return withPropStrategyDefaults({ ...strategyFields });
 }
 export class WorldProp extends Entity {
     constructor(x, y, type, facing = null) {
@@ -77,18 +73,8 @@ export class WorldProp extends Entity {
             ]);
             if (this.strategy.splittable) initSplittableFootprint(this);
         }
-        if (this.strategy.maxHealth != null) {
-            this.maxHealth = this.strategy.maxHealth;
-            this.health = this.strategy.maxHealth;
-        }
         if (this.strategy.floorTriggers?.length) initFloorTriggerProp(this);
         if (this.strategy.buttonLinks != null) initFloorButtonProp(this);
-        this.usesKinematicsBody = !!this.strategy.kinematics;
-        if (usesLocomotionWorldProp(this)) ensureLocomotionWorldProp(this);
-        if (getPropAsset(type)?.sandbox?.equip) {
-            this.weaponLoadout = [];
-            this.weaponSlotState = [];
-        }
         this.ageMs = 0;
         this._sleepFrames = 0;
         this.isSleeping = false;
@@ -152,57 +138,20 @@ export class WorldProp extends Entity {
         if (this.currentState?.getRender3DKey) return this.currentState.getRender3DKey(this);
         return this.strategy.render3DKey;
     }
-    handleHit(damage, state) {
-        return this.takeDamage(damage, state);
-    }
-    takeDamage(amount, gameState) {
-        if (this.maxHealth == null || this.isDead) return false;
-        this.health -= amount;
-        if (this.health <= 0) {
-            this.health = 0;
-            this.die(gameState);
-            return true;
-        }
-        return false;
-    }
-    die(gameState) {
-        if (this.isDead || this.currentStateName === "dead") return;
-        this.changeState("dead", { gameState });
-    }
     needsWallCollision() {
         return speedSqXY(this.vx, this.vy) > MOVING_SPEED_SQ;
     }
     update(dt, state, spatialFrame, resolveWalls = false) {
         this.ageMs += dt;
         const asleep = this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this));
-        if (!asleep)
-            if (updateLocomotionWorldProp(this, dt, spatialFrame)) {
-                // integrateSteering (Libraries/Motion)
-            } else if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
+        if (!asleep) {
+            if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
             else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
-        if (this.usesKinematicsBody) {
-            if (!usesLocomotionWorldProp(this)) {
-                const speed = Math.hypot(this.vx, this.vy);
-                if (speed > 2) {
-                    const targetAngle = Math.atan2(this.vy, this.vx);
-                    let angleDiff = Math.atan2(Math.sin(targetAngle - this.facing), Math.cos(targetAngle - this.facing));
-                    const turnSpeed = 10;
-                    this.facing += angleDiff * Math.min(1, turnSpeed * (dt / 1000));
-                }
-            }
-            if (this.turrets?.length)
-                if (this.weaponLoadout?.length > 0) {
-                    const aimAngle = this.turrets[0]?.angle;
-                    if (aimAngle != null) this.facing = aimAngle;
-                } else {
-                    const facing = this.facing ?? this.angle ?? 0;
-                    for (const turret of this.turrets) turret.angle = facing;
-                }
         }
         if (!asleep && resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }
-    spawnSplittableFragments(gameState, fragments, { originX, originY, shardTypeId = "crate_shard", projectile = null } = {}) {
+    spawnSplittableFragments(gameState, fragments, { originX, originY, shardTypeId = "crate_shard", impactDirX = 0, impactDirY = 0 } = {}) {
         if (!gameState?.worldProps || fragments.length === 0) return;
         const ox = originX ?? this.x;
         const oy = originY ?? this.y;
@@ -211,13 +160,9 @@ export class WorldProp extends Entity {
         const parentOmega = this.angularVelocity || 0;
         const cos = Math.cos(this.facing);
         const sin = Math.sin(this.facing);
-        let bulletKickX = 0;
-        let bulletKickY = 0;
-        if (projectile?.angle != null) {
-            const kick = 35 + Math.random() * 45;
-            bulletKickX = Math.cos(projectile.angle) * kick;
-            bulletKickY = Math.sin(projectile.angle) * kick;
-        }
+        const kick = Math.hypot(impactDirX, impactDirY) > 0 ? 35 + Math.random() * 45 : 0;
+        const bulletKickX = kick > 0 ? (impactDirX / Math.hypot(impactDirX, impactDirY)) * kick : 0;
+        const bulletKickY = kick > 0 ? (impactDirY / Math.hypot(impactDirX, impactDirY)) * kick : 0;
         for (const geom of fragments) {
             const world = transformPoint2DInto({ x: 0, y: 0 }, ox, oy, geom.centroid.cx, geom.centroid.cy, cos, sin);
             const shard = new WorldProp(world.x, world.y, shardTypeId, this.facing);

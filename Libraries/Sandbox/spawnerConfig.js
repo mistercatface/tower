@@ -1,5 +1,5 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
-import { resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
+import { resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { applyDragLaunchVelocity } from "./dragLaunch.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { isSandboxSpawnable } from "./sandboxCapabilities.js";

@@ -1,4 +1,4 @@
-import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../../Combat/sandboxTargeting.js";
+import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../../Sandbox/sandboxFaction.js";
 import { getSandboxBehaviorLabel } from "../../Sandbox/sandboxCapabilities.js";
 import { appendSelectField } from "../../UI/paramFields.js";
 export function appendFactionSelect(parent, { value, onChange }) {

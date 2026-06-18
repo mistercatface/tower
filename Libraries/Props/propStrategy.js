@@ -6,11 +6,9 @@ export const PROP_STRATEGY_DEFAULTS = {
     renderMode: "3d",
     render3DKey: null,
     inspectKey: null,
-    laserTargetable: false,
     mass: 1,
     friction: 8,
     wallPhysics: null,
-    maxHealth: null,
     /** @type {PropCollisionShape} */
     collisionShape: "circle",
     rolls: false,

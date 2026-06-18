@@ -2,6 +2,7 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
+import { fractureSplittableOnImpact, impactForceFromContact } from "../../Props/splittableWorldProp.js";
 import { allowsPushableCollisionPair, pairBroadphaseOverlap } from "./entityBroadphase.js";
 import { separateAlongNormal, separateCoincidentCirclePair } from "./penetration.js";
 import { SatCollision } from "./SatCollision.js";
@@ -276,25 +277,36 @@ function solvePushableContactVelocities(contacts, iterations) {
             bodyB.angularVelocity = wBn - jt * contacts.rBt[i] * contacts.invIB[i];
         }
 }
-function applyPushableCollisionDamage(body, dmg, state) {
-    if (dmg <= 0 || body.maxHealth == null || !body.takeDamage) return;
-    body.takeDamage(dmg, state);
+const SPLITTABLE_MIN_IMPACT_FORCE = 25;
+function trySplittableFracture(state, prop, other, hitX, hitY, relativeSpeed, impactDirX, impactDirY) {
+    if (!prop.strategy?.splittable || prop.poxels?.length <= 1) return;
+    const force = impactForceFromContact(relativeSpeed, massFromBody(prop), massFromBody(other));
+    if (force < SPLITTABLE_MIN_IMPACT_FORCE) return;
+    const fracture = fractureSplittableOnImpact(prop, hitX, hitY, force);
+    if (!fracture) return;
+    prop.spawnSplittableFragments(state, fracture.debris, {
+        originX: fracture.originX,
+        originY: fracture.originY,
+        impactDirX,
+        impactDirY,
+    });
+    wakePushableBody(prop);
 }
 function applyPushableContactEffects(contacts, spatialFrame, state) {
     for (let i = 0; i < contacts.count; i++) {
         const bodyA = contacts.bodyA[i];
         const bodyB = contacts.bodyB[i];
-        const preSpeedSq = contacts.preDvx[i] * contacts.preDvx[i] + contacts.preDvy[i] * contacts.preDvy[i];
-        if (preSpeedSq > 8000) {
-            const dmg = Math.floor(Math.sqrt(preSpeedSq) / 60);
-            applyPushableCollisionDamage(bodyA, dmg, state);
-            applyPushableCollisionDamage(bodyB, dmg, state);
-        }
         invalidateWallResolveCache(bodyA, bodyB);
         wakePushableBody(bodyA);
         wakePushableBody(bodyB);
         spatialFrame.activatePushable(bodyA);
         spatialFrame.activatePushable(bodyB);
+        const relativeSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
+        if (relativeSpeed <= 0) continue;
+        const hitX = bodyA.x + contacts.rax[i];
+        const hitY = bodyA.y + contacts.ray[i];
+        trySplittableFracture(state, bodyA, bodyB, hitX, hitY, relativeSpeed, contacts.preDvx[i], contacts.preDvy[i]);
+        trySplittableFracture(state, bodyB, bodyA, hitX, hitY, relativeSpeed, -contacts.preDvx[i], -contacts.preDvy[i]);
     }
 }
 export function resolvePushableContactPass(spatialFrame, state) {

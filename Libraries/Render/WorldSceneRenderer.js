@@ -92,7 +92,7 @@ export class WorldSceneRenderer {
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this.visibleDrawables;
         const props = input.entityRegistry.queryView(
-            { bounds: viewport.boundsVisibleDefault, kinds: ["worldProp"], filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" || p.usesKinematicsBody },
+            { bounds: viewport.boundsVisibleDefault, kinds: ["worldProp"], filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" },
             input.spatialFrame,
         );
         for (let i = 0; i < props.length; i++) {
@@ -101,17 +101,7 @@ export class WorldSceneRenderer {
             visibleObjects.push(p);
         }
     }
-    _appendVisibleRagdolls(input, viewport, px, py, visibleObjects) {
-        if (!input.ragdollCorpses?.length) return;
-        for (let i = 0; i < input.ragdollCorpses.length; i++) {
-            const corpse = input.ragdollCorpses[i];
-            if (corpse.isDead) continue;
-            if (!corpse.isVisible(viewport)) continue;
-            corpse._distSq = (corpse.x - px) ** 2 + (corpse.y - py) ** 2;
-            visibleObjects.push(corpse);
-        }
-    }
-    _appendVisibleStaticGridWalls(input, viewport, px, py) {
+}
         collectStaticGridWallDrawables(input.obstacleGrid, viewport, px, py, this.staticGridDrawables);
         collectStaticGridEdgeRailDrawables(input.obstacleGrid, viewport, px, py, this.staticGridEdgeRailDrawables);
         const visibleObjects = this.visibleDrawables;
@@ -165,7 +155,7 @@ export class WorldSceneRenderer {
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
-            if (obj.strategy || obj.usesKinematicsBody) drawWorldProp(ctx, obj, viewport, drawContext);
+            if (obj.strategy) drawWorldProp(ctx, obj, viewport, drawContext);
             else if (obj._forcefield) drawForcefieldEdgeProp(ctx, obj, px, py);
             else if (obj.p1) {
                 this._bindWallDrawable(this.wallCtx, obj);
@@ -175,14 +165,5 @@ export class WorldSceneRenderer {
                 drawProjectedGridEdgeRail(ctx, obj, this.wallCtx);
             }
         }
-    }
-    drawRagdollCorpsesOnly(ctx, input, viewport) {
-        const px = viewport.x;
-        const py = viewport.y;
-        const visibleCorpses = this.visibleDrawables;
-        visibleCorpses.length = 0;
-        this._appendVisibleRagdolls(input, viewport, px, py, visibleCorpses);
-        visibleCorpses.sort((a, b) => b._distSq - a._distSq);
-        for (let i = 0; i < visibleCorpses.length; i++) visibleCorpses[i].render(ctx);
     }
 }

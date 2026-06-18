@@ -1,6 +1,6 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
-import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
+import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { initSplittableFootprint } from "../Props/splittableWorldProp.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";

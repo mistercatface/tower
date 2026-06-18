@@ -4,12 +4,7 @@ import { PauseManager } from "../../Libraries/Pause/index.js";
 import { installEditorDefaults } from "../../Core/engineGlobals.js";
 import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController.js";
 import { combatSpatial } from "../../Systems/World/CombatSpatialFrame.js";
-import { CombatParticles } from "../../Libraries/Render/CombatParticles.js";
-import { updateSandboxAutoCombat } from "../../Libraries/Combat/worldPropAutoCombat.js";
-import { Projectile } from "../../Entities/Projectile.js";
-import { RagdollCorpse } from "../../Entities/RagdollCorpse.js";
 import { runPushablePhysics } from "../../Libraries/Motion/pushablePhysicsPass.js";
-import { tickVisibleKinematicsAnim } from "../../Libraries/Render/Characters/actorKinematicsRenderer.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
@@ -34,31 +29,15 @@ function loadGameModeStylesheet() {
     link.href = new URL("./game-mode.css", import.meta.url).href;
     document.head.appendChild(link);
 }
-/** @type {object[]} */
-const simulationEvents = [];
-/** @param {object[]} events @param {import("./state.js").TileLabGameState} state */
-function dispatchSimulationEvents(events, state) {
-    for (const event of events)
-        if (event.target.handleHit) event.target.handleHit(event.damage, state, event.type, event);
-        else if (event.target.takeDamage) event.target.takeDamage(event.damage, state);
-}
 /** @param {import("./state.js").TileLabGameState} state @param {number} dt */
 function runSimulationTick(state, dt) {
     const simDt = dt * state.selectedSpeed;
     state.gameTime += simDt;
     const spatialFrame = combatSpatial.begin(state);
-    simulationEvents.length = 0;
-    updateSandboxAutoCombat(state, simDt);
-    Projectile.checkSpawnCollisions(state, spatialFrame, simulationEvents);
-    Projectile.updateAll(state, simDt);
-    CombatParticles.updateAll(state, simDt);
     tickFloorProps(state, spatialFrame, simDt);
     tickFloorOccupancy(state, spatialFrame, simDt);
-    runPushablePhysics(state, simDt, spatialFrame, simulationEvents);
+    runPushablePhysics(state, simDt, spatialFrame, null);
     tickGridZones(state, spatialFrame);
-    tickVisibleKinematicsAnim(state, simDt, spatialFrame);
-    RagdollCorpse.updateAll(state, simDt, spatialFrame);
-    dispatchSimulationEvents(simulationEvents, state);
     FloatingText.updateAll(state, simDt);
 }
 export function createEditorApp(options = {}) {
@@ -67,13 +46,9 @@ export function createEditorApp(options = {}) {
     const gameMode = launcher != null;
     const state = new TileLabGameState();
     state.appLaunch = gameLaunchId ? { id: gameLaunchId, launcher } : null;
-    state.ragdollCorpses = [];
     state.entityLayers = [];
-    state.combatParticles = [];
-    state.projectiles = [];
-    state.activeLasers = [];
     state.floatingTexts = [];
-    state.entityLayers.push({ key: "projectiles", zIndex: 20 }, { key: "floatingTexts", zIndex: 100 });
+    state.entityLayers.push({ key: "floatingTexts", zIndex: 100 });
     installGameState(state);
     document.title = gameMode ? launcher.title : "Editor";
     document.body.classList.add("shell-tilelab");

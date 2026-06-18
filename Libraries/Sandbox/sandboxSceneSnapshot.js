@@ -20,7 +20,7 @@ import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandb
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
-import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
+import { SANDBOX_DEFAULT_FACTION } from "../Sandbox/sandboxFaction.js";
 /**
  * Sandbox scene snapshot — copy/paste JSON for props, stamped grid walls, floor belts, and forcefields.
  *

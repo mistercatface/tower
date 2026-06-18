@@ -28,7 +28,6 @@ export class Renderer {
         this.sceneHooks = normalized.sceneHooks ?? {};
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getWorldPropRecipes());
         this.worldSceneDrawInput = {
-            ragdollCorpses: [],
             worldSurfaces: null,
             proceduralSurfaceDraw: {
                 surfaceSeed: 0,
@@ -43,7 +42,6 @@ export class Renderer {
         this._worldRenderMode = WORLD_RENDER_MODE_DEFAULT;
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => this.drawWorldSceneBackdrop(state, viewport) },
-            { zIndex: 55, fn: (state, viewport) => this.drawRagdollCorpses(state, viewport) },
             { zIndex: 70, fn: (state, viewport) => this.drawWorldSceneStructure(state, viewport) },
         ];
         if (WORLD_SURFACE_DEFAULTS.bloom.enabled) this.effectPasses.push({ zIndex: 71, fn: () => this.drawWorldSceneBloom() });
@@ -54,7 +52,6 @@ export class Renderer {
         const input = this.worldSceneDrawInput;
         input.entityRegistry = state.entityRegistry;
         input.spatialFrame = combatSpatial;
-        input.ragdollCorpses = state.ragdollCorpses ?? [];
         input.worldSurfaces = state.worldSurfaces;
         input.obstacleGrid = state.obstacleGrid;
         input.gameState = state;
@@ -68,10 +65,6 @@ export class Renderer {
         state.worldSurfaces.drawGround(this.ctx, state, viewport);
         this.sceneHooks.drawGroundOverlays?.(state, viewport, this.ctx);
         this.render3D.drawDebrisProps(this.ctx, this.worldSceneDrawInput, viewport);
-    }
-    /** Ragdoll corpses between entities and structure — zIndex 55. */
-    drawRagdollCorpses(state, viewport) {
-        this.render3D.drawRagdollCorpsesOnly(this.ctx, this.worldSceneDrawInput, viewport);
     }
     /** Walls and roofs — zIndex 70. */
     drawWorldSceneStructure(state, viewport) {

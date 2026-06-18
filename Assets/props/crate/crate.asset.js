@@ -6,13 +6,11 @@ export default {
         dragLaunch: { minPower: 20, maxPower: 260 },
     },
     physics: {
-        hitBehavior: "splittable",
         radius: 8,
         isPushable: true,
         collisionShape: "box",
         splittable: true,
         randomFaceLabels: true,
-        laserTargetable: true,
         mass: 1.5,
         wallPhysics: { restitution: 0.15, friction: 0.8 },
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 8, randomRange: 17 },

@@ -5,7 +5,6 @@ import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/Surfa
 import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { drawAnimatedSurfaceZones } from "../../../Libraries/WorldSurface/animatedSurfaceDraw.js";
-import { CombatParticles } from "../../../Libraries/Render/CombatParticles.js";
 import { floorPropEffectPass } from "../../../Libraries/Sandbox/floorProps.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
@@ -16,9 +15,6 @@ import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/Profil
 const editorSceneHooks = {
     drawGroundOverlays(state, viewport, ctx) {
         drawAnimatedSurfaceZones(ctx, state.sandbox.animatedSurfaceZones, state, viewport);
-    },
-    drawPostSimulation(state, viewport, ctx) {
-        CombatParticles.renderAll(ctx, state, viewport);
     },
     simulationEffectPasses: [
         floorPropEffectPass,

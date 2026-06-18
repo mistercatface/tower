@@ -1,6 +1,6 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
-import { resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
+import { resolveSandboxFaction } from "./sandboxFaction.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";

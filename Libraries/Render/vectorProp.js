@@ -12,22 +12,18 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { usesLongAxisCollisionShape } from "../Props/longAxisCollision.js";
 import { propFootprintHalfExtents } from "../Props/propStrategy.js";
 import { resolveSandboxPropVisual, SANDBOX_PROP_VISUAL_DEFAULT, SANDBOX_PROP_VISUAL_VECTOR } from "../Sandbox/sandboxPropMeta.js";
-import { resolveKinematicsMuzzlePosition, resolveActorKinematicsCamera } from "./Characters/actorKinematicsRenderer.js";
 import { prepModifiedBlit, resolveSpriteDrawModifier } from "./spriteDrawModifier.js";
-/** @typedef {"muzzles"} VectorPropExtraKind */
 /** @typedef {{ kind: "circle", radius: number }} VectorPropCircleBody */
 /** @typedef {{ kind: "rect", halfExtents: { x: number, y: number }, facing?: number, rollAngle?: number }} VectorPropRectBody */
-/** @typedef {{ body: VectorPropCircleBody | VectorPropRectBody, extras: VectorPropExtraKind[] }} VectorPropSpec */
+/** @typedef {{ body: VectorPropCircleBody | VectorPropRectBody, extras: [] }} VectorPropSpec */
 /** @typedef {"default" | "vector"} PropVisualMode */
 /** @typedef {import("./spriteDrawModifier.js").SpriteDrawModifier} SpriteDrawModifier */
 /** @typedef {CanvasImageSource & { width: number, height: number, anchorX?: number, anchorY?: number }} VectorSprite */
 export const PROP_VISUAL_DEFAULT = SANDBOX_PROP_VISUAL_DEFAULT;
 export const PROP_VISUAL_VECTOR = SANDBOX_PROP_VISUAL_VECTOR;
 const VECTOR_PROP_STROKE = "rgba(72, 220, 140, 0.9)";
-const VECTOR_PROP_MUZZLE_FILL = "rgba(120, 255, 180, 0.95)";
 const VECTOR_PROP_LINE_WIDTH = 1.25;
 const VECTOR_PROP_BAKE_PADDING = 3;
-const VECTOR_PROP_MUZZLE_SIZE = 4;
 const shapeCache = createBakedSpriteCache({ maxItems: 256 });
 /** @param {number} value */
 function quantizeVectorShapeSize(value) {
@@ -49,24 +45,13 @@ export function resolvePropVisualMode(prop, gameState) {
     if (!prop) return PROP_VISUAL_DEFAULT;
     return resolveSandboxPropVisual(gameState, prop);
 }
-/** @param {object} prop @returns {VectorPropExtraKind[]} */
-function vectorExtrasFromProp(prop) {
-    if ((prop.turrets?.length ?? 0) > 0) return ["muzzles"];
-    return [];
-}
-/** @param {object} prop */
 function hasCustomCollisionSync(prop) {
     return typeof prop.strategy?.syncCollisionShape === "function";
 }
-/**
- * @param {object | null | undefined} prop
- * @param {object | null | undefined} asset
- * @returns {VectorPropSpec | null}
- */
 export function resolveVectorPropSpec(prop, asset) {
     if (!prop || !asset) return null;
     if (hasCustomCollisionSync(prop)) return null;
-    const extras = vectorExtrasFromProp(prop);
+    const extras = [];
     if (usesLongAxisCollisionShape(prop)) {
         const footprint = prop._collisionHalfExtents ?? propFootprintHalfExtents(prop);
         return { body: { kind: "rect", halfExtents: { x: footprint.x, y: footprint.y }, facing: prop._collisionFacing ?? prop.facing ?? 0, rollAngle: prop.rollAngle ?? 0 }, extras };
@@ -117,24 +102,6 @@ function bakeVectorRect(halfX, halfY) {
     ctx.strokeRect(anchorX - hx, anchorY - hy, hx * 2, hy * 2);
     return { canvas, anchorX, anchorY };
 }
-/** @param {number} [size] */
-function bakeVectorMuzzleTriangle(size = VECTOR_PROP_MUZZLE_SIZE) {
-    const triSize = quantizeVectorShapeSize(size);
-    const pad = VECTOR_PROP_BAKE_PADDING;
-    const span = Math.ceil(triSize * 2 + pad * 2);
-    const anchorX = span * 0.5;
-    const anchorY = span * 0.5;
-    const canvas = createOffscreenCanvas(span, span);
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = VECTOR_PROP_MUZZLE_FILL;
-    ctx.beginPath();
-    ctx.moveTo(anchorX + triSize, anchorY);
-    ctx.lineTo(anchorX - triSize * 0.55, anchorY - triSize * 0.4);
-    ctx.lineTo(anchorX - triSize * 0.55, anchorY + triSize * 0.4);
-    ctx.closePath();
-    ctx.fill();
-    return { canvas, anchorX, anchorY };
-}
 /** @param {string} key @param {() => { canvas: OffscreenCanvas, anchorX: number, anchorY: number }} bakeFn */
 function getOrBakeVectorShape(key, bakeFn) {
     const cached = shapeCache.get(key);
@@ -152,11 +119,6 @@ function getVectorRectSprite(halfX, halfY) {
     const hx = quantizeVectorShapeSize(halfX);
     const hy = quantizeVectorShapeSize(halfY);
     return getOrBakeVectorShape(`rect:${hx}x${hy}`, () => bakeVectorRect(hx, hy));
-}
-/** @param {number} [size] */
-function getVectorMuzzleTriangleSprite(size = VECTOR_PROP_MUZZLE_SIZE) {
-    const triSize = quantizeVectorShapeSize(size);
-    return getOrBakeVectorShape(`tri:${triSize}`, () => bakeVectorMuzzleTriangle(triSize));
 }
 export function clearVectorShapeCache() {
     shapeCache.clear();
@@ -196,16 +158,9 @@ function blitVectorSprite(ctx, sprite, x, y, { rotation = 0, modifier = null } =
  * @param {{ camera?: object, gameState?: object }} [options]
  */
 export function drawVectorProp(ctx, prop, spec, options = {}) {
-    const camera = options.camera ?? (options.gameState ? options.gameState.viewport : resolveActorKinematicsCamera(prop));
+    const camera = options.camera ?? options.gameState?.viewport;
     const modifier = resolveSpriteDrawModifier(prop, camera);
     const body = spec.body;
     if (body.kind === "circle") blitVectorSprite(ctx, getVectorCircleSprite(body.radius), prop.x, prop.y, { modifier });
     else blitVectorSprite(ctx, getVectorRectSprite(body.halfExtents.x, body.halfExtents.y), prop.x, prop.y, { rotation: body.facing ?? 0, modifier });
-    if (!spec.extras.includes("muzzles")) return;
-    const turretCount = prop.turrets?.length ?? 0;
-    for (let slotIndex = 0; slotIndex < turretCount; slotIndex++) {
-        const muzzle = resolveKinematicsMuzzlePosition(prop, slotIndex, camera);
-        const aim = prop.turrets[slotIndex]?.angle ?? prop.facing ?? prop.angle ?? 0;
-        blitVectorSprite(ctx, getVectorMuzzleTriangleSprite(), muzzle.x, muzzle.y, { rotation: aim, modifier });
-    }
 }

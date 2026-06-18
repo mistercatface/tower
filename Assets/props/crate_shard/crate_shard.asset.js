@@ -3,12 +3,10 @@ export default {
     primitive: "box",
     sandbox: { behaviors: ["dragLaunch"], spawnable: false, dragLaunch: { minPower: 15, maxPower: 200 } },
     physics: {
-        hitBehavior: "splittable",
         radius: 3,
         isPushable: true,
         collisionShape: "box",
         splittable: true,
-        laserTargetable: false,
         mass: 0.05,
         pairFriction: 0.5,
         wallPhysics: { restitution: 0.45, friction: 0.5 },

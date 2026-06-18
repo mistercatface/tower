@@ -4,7 +4,7 @@ import { bakePoxelOutline, localBoxOutline } from "../Libraries/Props/poxelFract
 import {
     applyPoxelGeometryToProp,
     fractureSplittableOnImpact,
-    impactForceFromProjectile,
+    impactForceFromContact,
     initSplittableFootprint,
     splitFootprintIntoComponents,
     worldHitToPropLocal,
@@ -37,8 +37,8 @@ describe("splittable impact fracture", () => {
         assert.ok(Math.abs(local.x - 10) < 1e-6);
         assert.ok(Math.abs(local.y - 0) < 1e-6);
     });
-    it("impactForceFromProjectile scales with bullet speed and damage", () => {
-        assert.ok(impactForceFromProjectile({ damage: 1, speed: 250 }) > impactForceFromProjectile({ damage: 1, speed: 50 }));
+    it("impactForceFromContact scales with relative speed", () => {
+        assert.ok(impactForceFromContact(200) > impactForceFromContact(50));
     });
     it("splitFootprintIntoComponents localizes breaks away from center hit", () => {
         const prop = makeSplittableProp();
@@ -51,8 +51,7 @@ describe("splittable impact fracture", () => {
     it("fractureSplittableOnImpact keeps largest piece on parent and returns debris", () => {
         const prop = makeSplittableProp(12, 12);
         const initialPoxels = prop.poxels.length;
-        const projectile = { x: 100, y: 200, angle: 0, damage: 1, speed: 250 };
-        const fracture = fractureSplittableOnImpact(prop, projectile);
+        const fracture = fractureSplittableOnImpact(prop, 100, 200, 80);
         assert.ok(fracture);
         assert.ok(prop.poxels.length < initialPoxels);
         assert.ok(fracture.debris.length > 0);

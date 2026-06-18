@@ -1,4 +1,4 @@
-import { formatSandboxFactionLabel } from "../Combat/sandboxTargeting.js";
+import { formatSandboxFactionLabel } from "../Sandbox/sandboxFaction.js";
 import { expandGridForRoomNodeFootprint, stampRoomNodeAt, syncRoomGraphBake } from "../RoomGraph/index.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { canStampFloorBeltAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";

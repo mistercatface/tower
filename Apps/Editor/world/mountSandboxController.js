@@ -3,12 +3,9 @@ import { createSandboxController } from "../../../Libraries/SandboxEditor/create
 import { createCueStrikeBehavior } from "../../../Libraries/Sandbox/behaviors/cueStrikeBehavior.js";
 import { createDragLaunchFacingBehavior } from "../../../Libraries/Sandbox/behaviors/dragLaunchFacingBehavior.js";
 import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
-import { createRollToCursorDirectBehavior } from "../../../Libraries/Sandbox/behaviors/rollToCursorDirectBehavior.js";
-import { createRollToCursorFlowBehavior } from "../../../Libraries/Sandbox/behaviors/rollToCursorFlowBehavior.js";
-import { createRollToCursorHpaBehavior } from "../../../Libraries/Sandbox/behaviors/rollToCursorHpaBehavior.js";
-import { createShootBehavior } from "../../../Libraries/Sandbox/behaviors/shootBehavior.js";
 import { createSpawnerBehavior } from "../../../Libraries/Sandbox/behaviors/spawnerBehavior.js";
 import { createDragLaunchBehavior, createDragLaunchWaitBehavior } from "../../../Libraries/Sandbox/dragLaunch.js";
+
 function createSandboxBehaviors(state) {
     return [
         createDragLaunchBehavior(state),
@@ -17,12 +14,9 @@ function createSandboxBehaviors(state) {
         createSpawnerBehavior(state),
         createFlipperBehavior(state),
         createCueStrikeBehavior(state),
-        createShootBehavior(state),
-        createRollToCursorDirectBehavior(),
-        createRollToCursorHpaBehavior(state),
-        createRollToCursorFlowBehavior(state),
     ];
 }
+
 /** @param {import("../state.js").TileLabGameState} state @param {{ playMode?: boolean }} [options] */
 export function mountSandboxController(state, { playMode = false } = {}) {
     if (playMode) {

@@ -35,18 +35,13 @@ export function worldHitToPropLocal(prop, worldX, worldY) {
     const sin = Math.sin(prop.facing);
     return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
 }
-export function impactForceFromProjectile(projectile) {
-    const damage = projectile?.damage ?? 1;
-    const speed = projectile?.speed ?? 0;
-    return damage * 20 + speed * 0.15;
+export function impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
+    return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
 }
-export function fractureSplittableOnImpact(prop, projectile) {
+export function fractureSplittableOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (!prop.poxels?.length || prop.poxels.length <= 1) return null;
-    const hitX = projectile?.x ?? prop.x;
-    const hitY = projectile?.y ?? prop.y;
-    const local = worldHitToPropLocal(prop, hitX, hitY);
-    const force = impactForceFromProjectile(projectile);
-    const components = splitFootprintIntoComponents(prop, local.x, local.y, force, false);
+    const local = worldHitToPropLocal(prop, worldHitX, worldHitY);
+    const components = splitFootprintIntoComponents(prop, local.x, local.y, impactForce, false);
     if (components.length <= 1) return null;
     const originX = prop.x;
     const originY = prop.y;
@@ -61,5 +56,5 @@ export function fractureSplittableOnImpact(prop, projectile) {
     prop.y = world.y;
     applyPoxelGeometryToProp(prop, largest);
     prop.mass = parentMass * (largest.footprintArea / parentArea);
-    return { debris, originX, originY, projectile };
+    return { debris, originX, originY };
 }

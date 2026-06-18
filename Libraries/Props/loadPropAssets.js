@@ -6,8 +6,8 @@ import { PROP_PRIMITIVE_BUILDERS } from "./primitives/index.js";
  */
 function assetToDefinition(asset) {
     const { id, physics } = asset;
-    const { hitBehavior, spawn, renderMode, ...strategy } = physics;
-    return { render3DKey: id, renderMode: renderMode ?? "3d", hitBehavior, spawn, inspectKey: null, ...strategy };
+    const { hitBehavior: _hitBehavior, spawn, renderMode, ...strategy } = physics;
+    return { render3DKey: id, renderMode: renderMode ?? "3d", spawn, inspectKey: null, ...strategy };
 }
 /**
  * @param {object} asset

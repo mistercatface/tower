@@ -105,14 +105,12 @@ export function createPoolBallDraw(visuals) {
 }
 const POOL_BALL_RADIUS = 4;
 const POOL_BALL_PHYSICS = {
-    hitBehavior: "none",
     radius: POOL_BALL_RADIUS,
     /** World-diameter bake — skips global propPixelSize (32) upscaling that blew sprites to ~680px. */
     propPixelSize: POOL_BALL_RADIUS * 2,
     isPushable: true,
     rolls: true,
     collisionShape: "circle",
-    laserTargetable: false,
     mass: 0.0625,
     pairRestitution: 0.92,
     friction: 0.5,

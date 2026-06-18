@@ -13,14 +13,12 @@ import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js
 import { releaseButtonPointerHold } from "../Sandbox/floorButtons.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene } from "../Sandbox/sandboxStartScene.js";
-import { drawSandboxLaserSights } from "../Sandbox/drawLaserSights.js";
 import { drawSandboxPropTileCells, drawSandboxSelectionRings } from "../Sandbox/drawSandboxSelection.js";
 import { drawSandboxPlacePreview, resolveSandboxPlacePreview } from "../Sandbox/drawSandboxPlacePreview.js";
 import { drawPlacedRoomNodes } from "../RoomGraph/index.js";
 import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandboxCapabilities.js";
 import { createAabb } from "../Math/Aabb2D.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
-import { drawSandboxWeaponBars } from "../Sandbox/drawWorldPropWeaponBars.js";
 import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
@@ -40,9 +38,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     let unbindPointers = null;
     /** @type {(() => void) | null} */
     let unbindKeyDown = null;
-    /** @type {(() => void) | null} */
-    let unbindKeyUp = null;
-    let pKeyHeld = false;
     /** @type {{ x: number, y: number } | null} */
     let placePreviewWorld = null;
     const entityMeta = () => getSandboxEntityMeta(state);
@@ -129,23 +124,13 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         if (!behavior || !allowed.includes(behavior.id)) return null;
         return behavior;
     };
-    const resolveGroundMove = () => {
-        const prop = session.getSelectedProp();
-        const behavior = resolveBehavior();
-        if (!prop || !behavior?.setGroundMoveTarget) return null;
-        return { prop, behavior };
-    };
-    const issueGroundMove = (move, world) => {
-        move.behavior.setGroundMoveTarget(move.prop, world);
-    };
-    const deletePointerTool = createSandboxDeletePointerTool(state, session, { resolveGroundMove, issueGroundMove });
+    const deletePointerTool = createSandboxDeletePointerTool(state, session);
     const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, behaviors, {
         entityMeta,
         listSelectedBehaviors,
         getPropBehaviorId,
         stampPropBehavior,
         behaviorById,
-        isPHeld: () => pKeyHeld,
         blocksPlacement,
         exitWireModes,
         exitButtonWire: () => buttonWireTool.exit(),
@@ -389,28 +374,16 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
                     e.preventDefault();
                     return;
                 }
-                if (e.code === "KeyP") {
-                    pKeyHeld = true;
-                    return;
-                }
                 if (e.code !== "KeyR") return;
                 if (!placePreviewWorld || canvasTools.capturesPointerMove() || canvasTools.isDragging() || canvasTools.blocksPlacePreview()) return;
                 if (session.rotateHoveredGridOccupantAtWorld(placePreviewWorld.x, placePreviewWorld.y)) e.preventDefault();
             };
-            const onKeyUp = (e) => {
-                if (e.code === "KeyP") pKeyHeld = false;
-            };
             window.addEventListener("keydown", onKeyDown);
-            window.addEventListener("keyup", onKeyUp);
             unbindKeyDown = () => window.removeEventListener("keydown", onKeyDown);
-            unbindKeyUp = () => window.removeEventListener("keyup", onKeyUp);
         },
         destroy() {
             unbindKeyDown?.();
             unbindKeyDown = null;
-            unbindKeyUp?.();
-            unbindKeyUp = null;
-            pKeyHeld = false;
             unbindPointers?.();
             unbindPointers = null;
             exitWireModes();
@@ -486,10 +459,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
             drawSandboxPlacePreview(ctx, preview, state.obstacleGrid);
         },
-        drawOverlay(ctx) {
-            drawSandboxWeaponBars(ctx, state);
-            drawSandboxLaserSights(ctx, state);
-        },
+        drawOverlay(_ctx) {},
         getPathVisual(prop) {
             return resolveSandboxPathVisual(state, prop);
         },

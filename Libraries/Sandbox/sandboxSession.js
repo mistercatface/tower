@@ -1,5 +1,5 @@
 import { formatPropTypeLabel } from "../Props/PropCatalog.js";
-import { resolveSandboxFaction } from "../Combat/sandboxTargeting.js";
+import { resolveSandboxFaction } from "./sandboxFaction.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { getRoomLink, clearRoomGraph, unbakeRoomGraph } from "../RoomGraph/index.js";

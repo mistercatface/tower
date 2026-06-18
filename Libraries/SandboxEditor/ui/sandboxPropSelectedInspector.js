@@ -1,14 +1,13 @@
 import { getPropAsset, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
-import { resolveSandboxFaction } from "../../Combat/sandboxTargeting.js";
-import { isSandboxEquippable } from "../../Sandbox/sandboxCapabilities.js";
+import { resolveSandboxFaction } from "../../Sandbox/sandboxFaction.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../Sandbox/spawnerConfig.js";
 import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector } from "./sandboxWorldPropInspector.js";
-import { renderSandboxEquipPanel } from "./sandboxEquipPanel.js";
 import { isButtonEntity } from "../../Sandbox/buttonInput.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../Sandbox/sandboxPropMeta.js";
 import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../Sandbox/sandboxPropMeta.js";
 import { appendCheckboxField, appendSelectField } from "../../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
+
 export function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
     const behaviorIds = controller.listSelectedBehaviors();
     appendFactionSelect(body, {
@@ -65,10 +64,4 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
             controller.setPropVisual(value, selectedProp);
         },
     });
-    if (isSandboxEquippable(getPropAsset(selectedProp.type))) {
-        const equipPanel = document.createElement("div");
-        equipPanel.className = "sandbox-equip-panel";
-        renderSandboxEquipPanel(equipPanel, selectedProp, refreshPanel);
-        body.appendChild(equipPanel);
-    }
 }

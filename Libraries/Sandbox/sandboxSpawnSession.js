@@ -1,5 +1,5 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { SANDBOX_DEFAULT_FACTION } from "../Combat/sandboxTargeting.js";
+import { SANDBOX_DEFAULT_FACTION } from "./sandboxFaction.js";
 import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
 import { normalizeAuthoredSurfaceProfileId } from "../RoomGraph/roomGraphSurfaceProfile.js";
 import { DEFAULT_ROOM_NODE_COLS, DEFAULT_ROOM_NODE_ROWS } from "../RoomGraph/index.js";
