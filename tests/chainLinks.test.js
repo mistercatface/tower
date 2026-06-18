@@ -35,7 +35,7 @@ function mockBall(x, y) {
         id: nextId++,
         x,
         y,
-        type: "blue_ball",
+        type: "ball",
         strategy: { isKinetic: true },
         getShape() {
             return new CircleShape(4);

@@ -9,7 +9,13 @@ import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spa
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { KINETIC_PAIR_TIER, classifyKineticPairTier } from "../Libraries/Spatial/collision/kineticNarrowPhase.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 loadPropAssets();
+function largeBall(x, y) {
+    const prop = new WorldProp(x, y, "ball", 0);
+    setCirclePropRadius(prop, 7);
+    return prop;
+}
 function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
     const shape = new CircleShape(radius);
     return {
@@ -45,8 +51,8 @@ function setupPairFrame(a, b) {
 }
 describe("kinetic narrow phase tiers", () => {
     it("classifies ball pairs as circle-circle", () => {
-        const a = new WorldProp(0, 0, "blue_ball", 0);
-        const b = new WorldProp(10, 0, "steel_ball", 0);
+        const a = new WorldProp(0, 0, "ball", 0);
+        const b = largeBall(10, 0);
         assert.equal(classifyKineticPairTier(a, b), KINETIC_PAIR_TIER.CIRCLE_CIRCLE);
     });
     it("classifies crate pairs as poly-poly", () => {
@@ -55,14 +61,14 @@ describe("kinetic narrow phase tiers", () => {
         assert.equal(classifyKineticPairTier(a, b), KINETIC_PAIR_TIER.POLY_POLY);
     });
     it("classifies ball against wedge as circle-poly", () => {
-        const ball = new WorldProp(0, 0, "beach_ball", 0);
+        const ball = largeBall(0, 0);
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         assert.equal(classifyKineticPairTier(ball, wedge), KINETIC_PAIR_TIER.CIRCLE_POLY);
     });
     it("classifies multi-part fracture debris as compound", () => {
         const crate = new WorldProp(0, 0, "crate", 0);
         crate.collisionParts = [crate.getShape(), crate.getShape()];
-        const ball = new WorldProp(10, 0, "blue_ball", 0);
+        const ball = new WorldProp(10, 0, "ball", 0);
         assert.equal(classifyKineticPairTier(crate, ball), KINETIC_PAIR_TIER.COMPOUND);
     });
     it("circle-circle fast contact matches SAT dispatch", () => {
@@ -94,7 +100,7 @@ describe("kinetic narrow phase tiers", () => {
         assert.ok(b.x > 15);
     });
     it("contact pass still separates circle-poly pairs", () => {
-        const ball = new WorldProp(0, 0, "beach_ball", 0);
+        const ball = largeBall(0, 0);
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         wedge.vx = -20;
         assert.ok(SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));

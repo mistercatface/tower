@@ -18,7 +18,7 @@ const CHAIN_OPTIONS = {
     spacing: 4.2,
     segmentRadius: 2,
     linkSlack: 1.05,
-    ballType: "blue_ball",
+    ballType: "ball",
     headBallType: "snake_head",
     growDirX: 1,
     growDirY: 0,

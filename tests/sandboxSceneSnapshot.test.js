@@ -49,7 +49,7 @@ describe("sandboxSceneSnapshot physics", () => {
         spawnLinkedBallChain(state, { col: 10, row: 10 }, {
             segmentCount: 4,
             spacing: 16,
-            ballType: "blue_ball",
+            ballType: "ball",
             headBallType: "snake_head",
             growDirX: 1,
             growDirY: 0,
@@ -65,13 +65,13 @@ describe("sandboxSceneSnapshot physics", () => {
     it("round-trips physics fields through collect and apply helpers", () => {
         resetKineticConstraintIds(1);
         const state = createSnapshotTestState();
-        const tinted = spawnPlacedSandboxProp(state, 48, 48, "blue_ball");
+        const tinted = spawnPlacedSandboxProp(state, 48, 48, "ball");
         const tintHex = hueToPickerHex(135);
         setPropVisualTint(tinted, tintHex);
         spawnLinkedBallChain(state, { col: 10, row: 10 }, {
             segmentCount: 4,
             spacing: 16,
-            ballType: "blue_ball",
+            ballType: "ball",
             growDirX: 1,
             growDirY: 0,
         });

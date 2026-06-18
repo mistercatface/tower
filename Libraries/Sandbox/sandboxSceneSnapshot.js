@@ -16,7 +16,6 @@ import {
     listPlacedVoxelWalls,
 } from "./gridWallEdit.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-import { hueToPickerHex } from "../Color/hex.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setChainHead } from "./chainLinks.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
@@ -85,30 +84,10 @@ export function collectSandboxSceneSnapshot(state) {
         roomGraph: collectRoomGraphForSnapshot(state, grid),
     };
 }
-/** @param {Record<string, unknown>} doc */
-function normalizeSandboxSceneDoc(doc) {
-    if (doc.schemaVersion === 7) {
-        doc.schemaVersion = 8;
-        if (!doc.roomGraph) doc.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0 };
-    }
-    if (doc.schemaVersion === 10) {
-        doc.schemaVersion = 11;
-        for (let i = 0; i < (doc.props ?? []).length; i++) {
-            const prop = doc.props[i];
-            if (prop.tint != null && !prop.visualOverride) {
-                prop.visualOverride = { tint: typeof prop.tint === "number" ? hueToPickerHex(prop.tint) : prop.tint };
-                delete prop.tint;
-            }
-        }
-    }
-    return doc;
-}
 /** @param {unknown} raw */
 export function parseSandboxSceneSnapshot(raw) {
     const doc = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!doc || typeof doc !== "object") throw new Error("Scene JSON must be an object");
-    normalizeSandboxSceneDoc(doc);
-    // DO NOT VERIFY YET
     return doc;
 }
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */

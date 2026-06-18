@@ -9,6 +9,9 @@ function wallCtxWithSegments(segments) {
             appendStaticWallProxiesNear(_entity, out) {
                 for (let i = 0; i < segments.length; i++) out.push(segments[i]);
             },
+            appendStaticWallProxiesNearWorld(_x, _y, _queryRadius, out) {
+                for (let i = 0; i < segments.length; i++) out.push(segments[i]);
+            },
         },
     };
 }

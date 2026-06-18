@@ -26,11 +26,11 @@ const DEFAULT_STEP = 8;
  * @param {WallContext | null | undefined} wallCtx
  * @returns {object[]}
  */
-function collectCandidateWalls(startX, startY, dx, dy, maxDist, wallCtx) {
+function collectCandidateWalls(startX, startY, dx, dy, maxDist, wallCtx, queryRadius) {
     if (!wallCtx?.obstacleGrid) return [];
     const endX = startX + dx * maxDist;
     const endY = startY + dy * maxDist;
-    return collectWallSegmentsAlongLine(wallCtx, startX, startY, endX, endY);
+    return collectWallSegmentsAlongLine(wallCtx, startX, startY, endX, endY, queryRadius);
 }
 /**
  * @param {{ x: number, y: number, radius: number }} rayCircle
@@ -63,7 +63,7 @@ export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { w
     let cx = startX;
     let cy = startY;
     const rayCircle = { x: cx, y: cy, radius };
-    const candidateWalls = collectCandidateWalls(startX, startY, dx, dy, maxDist, wallCtx);
+    const candidateWalls = collectCandidateWalls(startX, startY, dx, dy, maxDist, wallCtx, radius);
     while (dist < maxDist) {
         cx += dx * step;
         cy += dy * step;

@@ -4,6 +4,7 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, resolvePropQuantizeSteps } from "../Libraries/Props/propStrategy.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
+import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { createPolygonPrimitive } from "../Libraries/Props/primitives/polygonPrimitive.js";
 import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
@@ -79,7 +80,8 @@ describe("draw shape parity", () => {
         assert.equal(spec.body.facing, 0.5);
     });
     it("resolveBodyRadius prefers CircleShape over stale radius field", () => {
-        const prop = new WorldProp(0, 0, "beach_ball", 0);
+        const prop = new WorldProp(0, 0, "ball", 0);
+        setCirclePropRadius(prop, 7);
         prop.radius = 99;
         assert.equal(prop.shape.radius, 7);
         assert.equal(resolveBodyRadius(prop), 7);

@@ -1,18 +1,13 @@
 import ball from "./ball/ball.asset.js";
 import block from "./block/block.asset.js";
-import beach_ball from "./beach_ball/beach_ball.asset.js";
-import steel_ball from "./steel_ball/steel_ball.asset.js";
 import flipper_left from "./flipper/flipperLeft.asset.js";
 import flipper_right from "./flipper/flipperRight.asset.js";
 import crate from "./crate/crate.asset.js";
-import box_2x4 from "./box_2x4/box_2x4.asset.js";
 import custom_box from "./custom_box/custom_box.asset.js";
 import glass_pane from "./glass_pane/glass_pane.asset.js";
 import tri_wedge from "./tri_wedge/tri_wedge.asset.js";
 import hex_block from "./hex_block/hex_block.asset.js";
 import pipe_elbow from "./pipe_elbow/pipe_elbow.asset.js";
-import blue_ball from "./blue_ball/blue_ball.asset.js";
-import orange_ball from "./orange_ball/orange_ball.asset.js";
 import button_floor from "./button_floor/button_floor.asset.js";
 import floor_belt from "./floor_belt/floor_belt.asset.js";
 import floor_belt_elbow_left from "./floor_belt/floor_belt_elbow_left.asset.js";
@@ -30,19 +25,14 @@ import poolBalls from "./poolBalls.js";
 const catalog = {
     ball,
     block,
-    beach_ball,
-    steel_ball,
     flipper_left,
     flipper_right,
     crate,
-    box_2x4,
     custom_box,
     glass_pane,
     tri_wedge,
     hex_block,
     pipe_elbow,
-    blue_ball,
-    orange_ball,
     button_floor,
     floor_belt,
     floor_belt_elbow_left,

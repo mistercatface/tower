@@ -1,8 +1,17 @@
 import { getPipeElbowOutletWorld, getPipeElbowSpriteCacheKey, syncPipeElbowCollisionShape } from "../../../Libraries/Props/pipeElbowGeometry.js";
+import { PIPE_SPAWNER_BALL_TINT } from "../../../Libraries/Color/tintPresets.js";
 export default {
     id: "pipe_elbow",
     primitive: "pipeElbow",
-    sandbox: { behaviors: ["spawner"], spawner: { defaultPropId: "blue_ball", dragLaunch: { minPower: 20, maxPower: 750 }, getOutletWorld: getPipeElbowOutletWorld } },
+    sandbox: {
+        behaviors: ["spawner"],
+        spawner: {
+            defaultPropId: "ball",
+            defaultVisualOverride: { tint: PIPE_SPAWNER_BALL_TINT },
+            dragLaunch: { minPower: 20, maxPower: 750 },
+            getOutletWorld: getPipeElbowOutletWorld,
+        },
+    },
     physics: {
         isKinetic: true,
         rolls: false,

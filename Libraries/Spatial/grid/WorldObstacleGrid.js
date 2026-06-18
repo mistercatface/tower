@@ -117,13 +117,10 @@ export class WorldObstacleGrid {
         if ("gridSide" in proxy) delete proxy.gridSide;
         return proxy;
     }
-    appendStaticWallProxiesNear(entity, out) {
-        // Edge-rail collision: railWall, powered passage (same segment + thickness path), or beltRail.
-        // Draw uses resolveRailWallBox; do not swap proxy math without ball regression tests.
+    appendStaticWallProxiesNearWorld(worldX, worldY, queryRadius, out) {
         this._staticWallProxyCount = 0;
-        const extent = entityBroadphaseExtent(entity);
-        const { col: ec, row: er } = this.worldToGrid(entity.x, entity.y);
-        const pad = 1 + Math.ceil(extent / this.cellSize);
+        const { col: ec, row: er } = this.worldToGrid(worldX, worldY);
+        const pad = 1 + Math.ceil(queryRadius / this.cellSize);
         const minCol = Math.max(0, ec - pad);
         const maxCol = Math.min(this.cols - 1, ec + pad);
         const minRow = Math.max(0, er - pad);
@@ -195,6 +192,9 @@ export class WorldObstacleGrid {
             }
         });
         return out;
+    }
+    appendStaticWallProxiesNear(entity, out) {
+        return this.appendStaticWallProxiesNearWorld(entity.x, entity.y, entityBroadphaseExtent(entity), out);
     }
     rebuildFixed(centerX, centerY, width, height) {
         centeredAabbInto(this.patchBoundsScratch, centerX, centerY, width, height);

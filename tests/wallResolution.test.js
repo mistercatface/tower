@@ -23,8 +23,8 @@ function resolveWallUntilClear(prop, segments, maxPasses = 6) {
     }
 }
 describe("polygon wall resolution", () => {
-    it("box_2x4 resting overlap pushes out with normal away from wall", () => {
-        const bar = new WorldProp(5, 0, "box_2x4", 0);
+    it("block resting overlap pushes out with normal away from wall", () => {
+        const bar = new WorldProp(5, 0, "block", 0);
         bar.vx = 0;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
@@ -48,7 +48,7 @@ describe("polygon wall resolution", () => {
         assert.ok(!shapeOverlapsWall(wedge, floor));
     });
     it("wall impulse slows polygon sliding into a segment", () => {
-        const bar = new WorldProp(5, 0, "box_2x4", 0);
+        const bar = new WorldProp(5, 0, "block", 0);
         bar.vx = -40;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
@@ -56,14 +56,14 @@ describe("polygon wall resolution", () => {
         assert.ok(bar.vx > -40);
     });
     it("collision pipeline resolves resting polygon at zero linear speed", () => {
-        const bar = new WorldProp(5, 0, "box_2x4", 0);
+        const bar = new WorldProp(5, 0, "block", 0);
         bar.vx = 0;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();
         const frame = { frameId: 1, _activeKineticBodies: [bar], getWallCandidates: () => [wall], getNeighbors: () => [] };
-        runCollisionPipeline({}, frame, { resolveWalls: (entity, spatialFrame) => resolver.resolve(entity, spatialFrame), kineticIterations: 1 });
+        runCollisionPipeline({ sandbox: { kineticConstraints: [] } }, frame, { resolveWalls: (entity, spatialFrame) => resolver.resolve(entity, spatialFrame), kineticIterations: 1 });
         assert.ok(!shapeOverlapsWall(bar, wall));
     });
     it("wall hit wakes a sleeping polygon", () => {

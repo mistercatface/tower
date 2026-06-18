@@ -5,6 +5,7 @@ import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { resolveVectorPropSpec } from "../Libraries/Render/vectorProp.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
+import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 loadPropAssets();
 describe("vector prop overlay", () => {
     it("polygon spec comes from live shape vertices", () => {
@@ -29,8 +30,9 @@ describe("vector prop overlay", () => {
         assert.equal(spec.body.vertices[2].y, 5);
     });
     it("circle spec uses CircleShape radius", () => {
-        const prop = new WorldProp(0, 0, "beach_ball", 0);
-        const spec = resolveVectorPropSpec(prop, getPropAsset("beach_ball"));
+        const prop = new WorldProp(0, 0, "ball", 0);
+        setCirclePropRadius(prop, 7);
+        const spec = resolveVectorPropSpec(prop, getPropAsset("ball"));
         assert.equal(spec.body.kind, "circle");
         assert.equal(spec.body.radius, 7);
     });

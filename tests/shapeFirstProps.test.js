@@ -5,6 +5,7 @@ import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint, propFootprintHalfExtents } from "../Libraries/Props/propStrategy.js";
 import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
+import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 loadPropAssets();
 describe("shape-first props", () => {
     it("crate builds a four-corner polygon from localFootprint", () => {
@@ -14,15 +15,16 @@ describe("shape-first props", () => {
         assert.equal(shape.vertices.length, 4);
         assert.equal(kineticFootprintArea(prop), 256);
     });
-    it("box_2x4 uses a 16×8 rectangle footprint", () => {
-        const prop = new WorldProp(0, 0, "box_2x4", 0);
+    it("block uses a 16×8 rectangle footprint", () => {
+        const prop = new WorldProp(0, 0, "block", 0);
         const shape = prop.getShape();
         assert.equal(shape.type, "Polygon");
         assert.equal(Math.abs(polygonSignedArea2D(shape.vertices)), 128);
         assert.equal(kineticFootprintArea(prop), 128);
     });
-    it("beach ball eager-inits CircleShape at spawn", () => {
-        const prop = new WorldProp(0, 0, "beach_ball", 0);
+    it("ball radius can be resized after spawn", () => {
+        const prop = new WorldProp(0, 0, "ball", 0);
+        setCirclePropRadius(prop, 7);
         assert.equal(prop.shape.type, "Circle");
         assert.equal(prop.getShape().type, "Circle");
         assert.equal(prop.shape.radius, 7);

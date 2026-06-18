@@ -15,7 +15,7 @@ export function collectWallSegmentsForEntity(_wallQuery, wallCtx, entity) {
  * @param {WallContext | null} wallCtx
  * @returns {object[]}
  */
-export function collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2) {
+export function collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2, queryRadius) {
     if (!wallCtx?.obstacleGrid) return [];
     const grid = wallCtx.obstacleGrid;
     const dx = x2 - x1;
@@ -27,7 +27,7 @@ export function collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2) {
     for (let step = 0; step <= steps; step++) {
         const t = step / steps;
         const batch = [];
-        grid.appendStaticWallProxiesNear({ x: x1 + dx * t, y: y1 + dy * t, radius: 0 }, batch);
+        grid.appendStaticWallProxiesNearWorld(x1 + dx * t, y1 + dy * t, queryRadius, batch);
         for (let i = 0; i < batch.length; i++) {
             const seg = batch[i];
             if (!seen.has(seg)) {

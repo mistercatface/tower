@@ -1,6 +1,7 @@
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { createSeededRng } from "../Math/SeededRng.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
+import { PUZZLE_TEMPLATE_BALL_TINTS } from "../Color/tintPresets.js";
 import { spawnPlacedSandboxProp } from "../Sandbox/sandboxPlacedSpawn.js";
 import { buildRoomsFromNodeGraph } from "./roomGraphClosedRooms.js";
 import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle } from "./roomGraphCorridorApply.js";
@@ -142,8 +143,8 @@ function spawnBeltCratePuzzleProps(state, room) {
     const center = roomNodeCenterCell(room);
     const ballA = grid.gridToWorld(center.col - 1, center.row);
     const ballB = grid.gridToWorld(center.col + 1, center.row);
-    spawnPlacedSandboxProp(state, ballA.x, ballA.y, "blue_ball");
-    spawnPlacedSandboxProp(state, ballB.x, ballB.y, "orange_ball");
+    spawnPlacedSandboxProp(state, ballA.x, ballA.y, "ball", undefined, 0, undefined, { tint: PUZZLE_TEMPLATE_BALL_TINTS.roomA });
+    spawnPlacedSandboxProp(state, ballB.x, ballB.y, "ball", undefined, 0, undefined, { tint: PUZZLE_TEMPLATE_BALL_TINTS.roomB });
 }
 /** @param {object} state @param {number} linkId */
 function lockedBakeForLink(state, linkId) {

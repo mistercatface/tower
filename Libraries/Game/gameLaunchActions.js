@@ -1,4 +1,6 @@
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
+import { getPropVisualTint } from "../Color/visualOverride.js";
+import { PUZZLE_TEMPLATE_BALL_TINTS } from "../Color/tintPresets.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 /** @typedef {{ stamped?: NonNullable<ReturnType<typeof stampBeltCratePuzzleAt>>, cameraTarget?: object }} GameLaunchContext */
@@ -16,18 +18,18 @@ export function stampBeltCratePuzzleAction(state, ctx) {
     ctx.stamped = stamped;
 }
 /** @param {object} state */
-function findBlueBallProp(state) {
+function findPuzzleBallProp(state) {
     let ball = null;
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || prop.type !== "blue_ball") return;
-        ball = prop;
+        if (prop.isDead || prop.type !== "ball") return;
+        if (getPropVisualTint(prop) === PUZZLE_TEMPLATE_BALL_TINTS.roomA) ball = prop;
     });
     return ball;
 }
 /** @param {object} state @param {GameLaunchContext} ctx */
 export function focusBlueBallAction(state, ctx) {
-    const ball = findBlueBallProp(state);
-    if (!ball) throw new Error("Belt + crate puzzle stamped but blue ball prop is missing");
+    const ball = findPuzzleBallProp(state);
+    if (!ball) throw new Error("Belt + crate puzzle stamped but room A ball prop is missing");
     setSandboxCameraTarget(state, ball, true);
     ctx.cameraTarget = ball;
 }

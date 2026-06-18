@@ -1,8 +1,9 @@
 import "./nodeCanvasSetup.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
+import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import button_floor from "../Assets/props/button_floor/button_floor.asset.js";
-import blue_ball from "../Assets/props/blue_ball/blue_ball.asset.js";
+import ball from "../Assets/props/ball/ball.asset.js";
 import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
@@ -23,7 +24,7 @@ function assetDefinition(asset) {
 let propsLoaded = false;
 function ensurePropCatalog() {
     if (propsLoaded) return;
-    const catalog = [button_floor, blue_ball];
+    const catalog = [button_floor, ball];
     const definitions = {};
     const recipes = {};
     const assets = {};
@@ -113,7 +114,7 @@ export function refreshPassagePower(state) {
 /** @param {object} state @param {number} buttonId */
 export function holdLockedRoomButton(state, buttonId) {
     const button = state.entityRegistry.getLive(buttonId);
-    const weight = new WorldProp(button.x, button.y, "blue_ball", 0);
+    const weight = new WorldProp(button.x, button.y, "ball", 0);
     addWorldPropToState(state, weight);
     button._occupants.add(weight.id);
 }

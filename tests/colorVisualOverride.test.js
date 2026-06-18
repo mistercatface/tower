@@ -9,6 +9,7 @@ import {
     visualOverrideCacheKey,
 } from "../Libraries/Color/visualOverride.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
+import { PUZZLE_TEMPLATE_BALL_TINTS, BALL_TINT_PRESETS } from "../Libraries/Color/tintPresets.js";
 
 loadPropAssets();
 
@@ -58,8 +59,9 @@ describe("Color visualOverride", () => {
         assert.equal(visualOverrideCacheKey(prop), "tff0000");
     });
 
-    it("blue_ball alias ships with a default tint on spawn", () => {
-        assert.equal(getPropAsset("blue_ball").defaultVisualOverride.tint, "#42A5F5");
-        assert.equal(getPropAsset("blue_ball").visuals.panels, getPropAsset("ball").visuals.panels);
+    it("ball tint presets cover puzzle template colors", () => {
+        const hexes = new Set(BALL_TINT_PRESETS.map((preset) => preset.hex.toLowerCase()));
+        assert.ok(hexes.has(PUZZLE_TEMPLATE_BALL_TINTS.roomA.toLowerCase()));
+        assert.ok(hexes.has(PUZZLE_TEMPLATE_BALL_TINTS.roomB.toLowerCase()));
     });
 });

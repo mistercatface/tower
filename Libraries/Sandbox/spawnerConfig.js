@@ -4,6 +4,7 @@ import { applyDragLaunchVelocity } from "./dragLaunch.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { DRAG_LAUNCH_DEFAULTS } from "./dragLaunch.js";
+import { stampPropVisualOverride } from "../Color/visualOverride.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 /** @param {object | null | undefined} asset */
 export function isSpawnerProp(asset) {
@@ -48,6 +49,8 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
     const spawnId = resolveSpawnerPropId(spawnerWorldProp, asset);
     const spawned = new WorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
     spawned.faction = resolveSandboxFaction(spawnerWorldProp);
+    const spawnVisualOverride = asset.sandbox.spawner.defaultVisualOverride;
+    if (spawnVisualOverride) stampPropVisualOverride(spawned, spawnVisualOverride);
     applyDragLaunchVelocity(spawned, launchNx, launchNy, launchPower);
     addWorldPropToState(state, spawned);
     return spawned;

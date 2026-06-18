@@ -19,14 +19,36 @@ import {
     resolveBlockPresetForAsset,
 } from "../../Sandbox/sandboxShapeFamilies.js";
 import { appendActionRow, appendColorField, appendEditorSubhead, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
-import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
+import { BALL_TINT_PRESETS } from "../../Color/tintPresets.js";
 function brightnessToPercent(brightness) {
     return Math.round(brightness * 100);
 }
 function percentToBrightness(percent) {
     return percent / 100;
 }
-function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessChange }) {
+import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
+
+function appendTintPresetRow(body, activeHex, onPick) {
+    const row = document.createElement("div");
+    row.className = "param-tint-presets";
+    for (let i = 0; i < BALL_TINT_PRESETS.length; i++) {
+        const preset = BALL_TINT_PRESETS[i];
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "param-tint-preset";
+        btn.style.backgroundColor = preset.hex;
+        btn.title = preset.label;
+        btn.setAttribute("aria-label", preset.label);
+        btn.addEventListener("click", () => {
+            onPick(preset.hex);
+            markLabViewDirty();
+        });
+        row.appendChild(btn);
+    }
+    body.appendChild(row);
+}
+
+function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessChange, showPresets = false }) {
     appendColorField(body, "Tint", {
         value: tint,
         onChange: (hex) => {
@@ -44,6 +66,7 @@ function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessCh
             markLabViewDirty();
         },
     });
+    if (showPresets) appendTintPresetRow(body, tint, onTintChange);
 }
 export function appendBallSpawnFields(body, controller, spawnAsset) {
     appendNumberField(body, "Radius", { value: controller.getSpawnBallRadius(spawnAsset), step: 1, min: 1, max: 32, onChange: (radius) => controller.setSpawnBallRadius(radius) });
@@ -52,6 +75,7 @@ export function appendBallSpawnFields(body, controller, spawnAsset) {
         brightness: controller.getSpawnVisualOverrideBrightness(),
         onTintChange: (hex) => controller.setSpawnVisualOverrideTint(hex),
         onBrightnessChange: (brightness) => controller.setSpawnVisualOverrideBrightness(brightness),
+        showPresets: true,
     });
 }
 export function appendBlockSpawnFields(body, controller) {
@@ -71,6 +95,7 @@ export function appendBlockSpawnFields(body, controller) {
         brightness: controller.getSpawnVisualOverrideBrightness(),
         onTintChange: (hex) => controller.setSpawnVisualOverrideTint(hex),
         onBrightnessChange: (brightness) => controller.setSpawnVisualOverrideBrightness(brightness),
+        showPresets: true,
     });
 }
 export function appendShapeFamilySpawnFields(body, controller, spawnId) {

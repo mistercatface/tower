@@ -3,7 +3,7 @@ import block from "../block/block.asset.js";
 import { extendPropAlias } from "../shared/propAlias.js";
 export default extendPropAlias(block, {
     id: "crate",
-    sandbox: { tags: ["shapes"], behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
+    sandbox: { tags: ["shapes"], behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnable: false },
     physics: {
         isKinetic: true,
         localFootprint: [

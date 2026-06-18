@@ -14,7 +14,7 @@ loadPropAssets();
 const CHAIN_OPTIONS = {
     segmentCount: 3,
     spacing: 8.4,
-    ballType: "blue_ball",
+    ballType: "ball",
     growDirX: 1,
     growDirY: 0,
 };

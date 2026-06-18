@@ -1,4 +1,5 @@
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../../../Libraries/Sandbox/sandboxSceneSnapshot.js";
+import { PIPE_SPAWNER_BALL_TINT } from "../../../Libraries/Color/tintPresets.js";
 import { spawnPlacedSandboxProp } from "../../../Libraries/Sandbox/sandboxPlacedSpawn.js";
 import { addDistanceConstraint } from "../../../Libraries/Motion/kineticConstraints.js";
 import { setChainHead } from "../../../Libraries/Sandbox/chainLinks.js";
@@ -8,7 +9,7 @@ import { collectOpenCavernCells } from "../../../Libraries/Sandbox/cavernFloorCe
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns } from "./mapWorld.js";
 const STRESS_CHAIN_SEGMENT_COUNT = 45;
-const STRESS_CHAIN_BALL_TYPE = "blue_ball";
+const STRESS_CHAIN_BALL_TINT = PIPE_SPAWNER_BALL_TINT;
 const STRESS_SHAPE_BATCHES = [
     { type: "hex_block", count: 100 },
     { type: "glass_pane", count: 100, randomBox: true },
@@ -87,7 +88,7 @@ function spawnCavernStressChain(state) {
         for (let i = 0; i < path.length; i++) {
             const { col, row } = path[i];
             const { x, y } = grid.gridToWorld(col, row);
-            props.push(spawnPlacedSandboxProp(state, x, y, STRESS_CHAIN_BALL_TYPE, sandboxFactions.alpha));
+            props.push(spawnPlacedSandboxProp(state, x, y, "ball", sandboxFactions.alpha, 0, undefined, { tint: STRESS_CHAIN_BALL_TINT }));
         }
         for (let i = 0; i < props.length - 1; i++) {
             const restLength = Math.hypot(props[i + 1].x - props[i].x, props[i + 1].y - props[i].y);

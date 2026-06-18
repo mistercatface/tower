@@ -10,7 +10,7 @@ import { growChainSegment, linkedChainOccupiedCellKeys, spawnLinkedBallChain, tr
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import { cavernCellKey } from "../Libraries/Sandbox/cavernFloorCells.js";
 loadPropAssets();
-const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "blue_ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1 };
+const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1 };
 function createChainSpawnTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);

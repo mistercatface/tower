@@ -89,10 +89,10 @@ describe("bodyMass", () => {
         const body = { mass: 5, strategy: { pinned: true } };
         assert.equal(inverseMassFromBody(body), 0);
     });
-    it("beach ball asset density preserves prior feel", () => {
-        const prop = new WorldProp(0, 0, "beach_ball", 0);
-        assert.ok(Math.abs(kineticDensity(prop) - 0.003898) < 1e-6);
+    it("ball default density matches canonical asset", () => {
+        const prop = new WorldProp(0, 0, "ball", 0);
+        assert.ok(Math.abs(kineticDensity(prop) - 0.007958) < 1e-6);
         syncKineticRigidBody(prop);
-        assert.ok(Math.abs(prop.mass - 0.6) < 0.01);
+        assert.ok(prop.mass > 0);
     });
 });

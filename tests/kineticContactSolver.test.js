@@ -8,6 +8,7 @@ import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
+import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 loadPropAssets();
 let nextId = 1;
 function mockCircleBody(x, y, radius, vx = 0, vy = 0, pairFriction = null) {
@@ -122,8 +123,8 @@ describe("poly-poly kinetic contact", () => {
         assert.ok(info.ny > 0.9);
         assert.ok(!pairStillOverlaps(bottom, top));
     });
-    it("resolveKineticContactPass separates overlapping box_2x4 and crate", () => {
-        const bar = new WorldProp(0, 0, "box_2x4", 0);
+    it("resolveKineticContactPass separates overlapping block and crate", () => {
+        const bar = new WorldProp(0, 0, "block", 0);
         const box = new WorldProp(12, 0, "crate", 0);
         box.vx = -20;
         assert.ok(pairStillOverlaps(bar, box));
@@ -131,8 +132,9 @@ describe("poly-poly kinetic contact", () => {
         resolveContactUntilClear(frame, {});
         assert.ok(!pairStillOverlaps(bar, box));
     });
-    it("circle-poly beach ball and tri wedge separate with normal toward polygon", () => {
-        const ball = new WorldProp(0, 0, "beach_ball", 0);
+    it("circle-poly ball and tri wedge separate with normal toward polygon", () => {
+        const ball = new WorldProp(0, 0, "ball", 0);
+        setCirclePropRadius(ball, 7);
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         const info = separatePairUntilClear(ball, wedge);
         assert.ok(info);
@@ -152,9 +154,9 @@ describe("poly-poly kinetic contact", () => {
         assert.ok(a.vx < 40);
         assert.ok(b.vx > -20);
     });
-    it("poly pair friction reduces tangential slip on box_2x4 slide", () => {
-        const left = new WorldProp(0, 0, "box_2x4", 0);
-        const right = new WorldProp(12, 0, "box_2x4", 0);
+    it("poly pair friction reduces tangential slip on block slide", () => {
+        const left = new WorldProp(0, 0, "block", 0);
+        const right = new WorldProp(12, 0, "block", 0);
         left.vx = 35;
         right.vx = 0;
         const frame = setupPairFrame(left, right);

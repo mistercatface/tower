@@ -19,7 +19,7 @@ export function hasLineOfSight(x1, y1, x2, y2, wallCtx, sourceRadius = 0, target
     if (!wallCtx) return true;
     const corridorRadius = Math.max(sourceRadius, targetRadius);
     if (!wallCtx?.obstacleGrid) return true;
-    const candidateWalls = collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2);
+    const candidateWalls = collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2, corridorRadius);
     for (let i = 0; i < candidateWalls.length; i++) {
         const seg = candidateWalls[i];
         if (minDistanceSegmentToWall(x1, y1, x2, y2, seg) <= corridorRadius) return false;
