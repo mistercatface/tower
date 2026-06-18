@@ -74,7 +74,7 @@ export class WorldProp extends Entity {
     needsWallCollision() {
         return speedSqXY(this.vx, this.vy) > MOVING_SPEED_SQ || isRotatingEntity(this);
     }
-    spawnFractureFragments(state, fracture) {
+    spawnFractureFragments(state, fracture, spatialFrame) {
         const cos = Math.cos(this.facing);
         const sin = Math.sin(this.facing);
         for (let i = 0; i < fracture.debris.length; i++) {
@@ -87,6 +87,7 @@ export class WorldProp extends Entity {
             frag.angularVelocity = this.angularVelocity;
             addWorldPropToState(state, frag);
             wakeKineticBody(frag);
+            spatialFrame.admitKineticProp(frag, state);
         }
     }
     update(dt, state, spatialFrame) {

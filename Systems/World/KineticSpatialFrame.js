@@ -21,9 +21,30 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     begin(state) {
         populateKineticFrame(this, state, this._kineticBodies);
+        this._nextPhysId = this._kineticBodies.length;
         this.syncActiveKineticBodies();
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
         return this;
+    }
+    /**
+     * Insert or re-insert a kinetic prop after mid-tick spawn or geometry change.
+     * Keeps broadphase, neighbor queries, and registry view gen in sync for the rest of the frame.
+     */
+    admitKineticProp(prop, state) {
+        if (!prop || prop.isDead || prop.strategy?.spatialRole === "trigger") return;
+        const isNew = prop._physId === undefined;
+        if (isNew) {
+            prop._physId = this._nextPhysId++;
+            this._kineticBodies.push(prop);
+        } else {
+            this.entityGrid.remove(prop);
+        }
+        this.entityGrid.insert(prop);
+        prop._neighborsFrameId = -1;
+        this.frameId = (this.frameId + 1) | 0;
+        this._wallCache.clear();
+        if (prop.strategy?.isKinetic) this.activateKineticBody(prop);
+        this.populatedMembershipGen = state.entityRegistry.membershipGen;
     }
     syncActiveKineticBodies() {
         const active = this._activeKineticBodies;

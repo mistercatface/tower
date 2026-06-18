@@ -73,7 +73,7 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     applyPoxelGeometryToProp(prop, largest);
     return { debris, originX, originY };
 }
-export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relativeSpeed) {
+export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relativeSpeed, spatialFrame) {
     const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
     if (force < FRACTURE_IMPACT_THRESHOLD) return;
     for (let i = 0; i < 2; i++) {
@@ -82,7 +82,8 @@ export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relat
         const fracture = fracturePropOnImpact(prop, hitX, hitY, force);
         if (!fracture) continue;
         wakeKineticBody(prop);
-        prop.spawnFractureFragments(state, fracture);
+        prop.spawnFractureFragments(state, fracture, spatialFrame);
+        spatialFrame.admitKineticProp(prop, state);
         return;
     }
 }

@@ -286,7 +286,7 @@ function applyKineticContactEffects(contacts, spatialFrame, state) {
         const hitX = bodyA.x + contacts.rax[i];
         const hitY = bodyA.y + contacts.ray[i];
         const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
-        tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relSpeed);
+        tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relSpeed, spatialFrame);
         invalidateWallResolveCache(bodyA, bodyB);
         wakeKineticBody(bodyA);
         wakeKineticBody(bodyB);
