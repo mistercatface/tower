@@ -4,9 +4,11 @@ Progress tracker for agent intelligence: control foundations → reactive autono
 
 **Legend:** ✅ shipped · 🟡 partial / scaffolding · ⬜ not started · 🔜 planned (`Plans/plan.md`) · 🔗 cross-doc dependency
 
-**Overall engine maturity:** ~**18%** of a full game-AI stack. This is the **youngest** subsystem in the engine, and the percentage is honest, not pessimistic: there's a solid **agent-control layer** and **one greedy goal-seek autosim** (the snake), plus **perception queries** — but they're a thin slice. Everything that reads as "classical game AI" (FSM intent, behavior/decision trees, utility scoring, squads, strategy, game theory, puzzle solvability) is **planned or absent**. The good news: the foundation (per-entity behavior dispatch + nav + perception primitives) is exactly the right base to build the rest on.
+**Overall engine maturity:** ~**30%** of a full game-AI stack. Still the **youngest** subsystem, but more capable than a first glance suggests: the snake runs a real **perception-gated intent FSM** (`seek` ↔ `explore`), backed by a **spatial working memory** (recency-ranked LRU of seen cells) that both **steers frontier exploration** *and* **biases A\* path cost** away from recently-seen cells (stigmergic anti-backtracking). What's still absent is the *breadth*: behavior trees, utility scoring, multi-state FSMs, flee/pursue, squads, strategy, game theory, and puzzle solvability. So the decision *loop* exists and is genuinely sophisticated for one agent; the decision *library* does not.
 
-> **Honest framing:** the engine today has *movement intelligence* (it knows how to **go** somewhere — see `pathfinding.md`) but almost no *decision intelligence* (it barely decides **where** or **whether** to go). This doc is the roadmap for the second half.
+> **Honest framing:** the engine has strong *movement intelligence* (`pathfinding.md`) and now a real but **narrow** *decision intelligence* — one agent (snake) perceives, remembers, and chooses seek-vs-explore. The roadmap from here is **generalizing and broadening** that loop (more states, scoring, more agent types), not building it from nothing.
+
+> **Audit correction (PR2):** an earlier draft of this doc rated AI ~18% and called perception "inert" with "no FSM/memory." That was wrong — `Libraries/AI/brain/` (spatial memory + nav step penalty) and the `snakeAutosim` intent FSM were missed. Corrected below.
 
 ---
 
@@ -17,12 +19,12 @@ The yardstick is the game-AI canon: Unreal's **Behavior Trees + EQS + AI Percept
 | Capability | This engine | Pro game AI (Unreal BT/EQS · F.E.A.R. GOAP · The Sims utility) |
 |---|---|---|
 | Agent control / dispatch | ✅ per-entity active behavior + tick | Behavior component + controller per pawn |
-| Reactive autonomy | 🟡 greedy nearest-goal seek | BT leaf tasks / steering |
-| Perception | 🟡 vision cone + LOS **(debug overlay only)** | AI Perception (sight/hearing/teams), stimuli |
-| Memory / knowledge | ⬜ none | Blackboard, perceived-target memory, last-known-pos |
-| State machines | ⬜ (non-AI stub only) | Animation + AI FSM, hierarchical states |
-| Decision-making | ⬜ none | Behavior trees, utility AI, decision trees |
-| Tactical steering | ⬜ none (🔗 pathfinding Tier 7) | Wander/flee/pursue, EQS spatial queries |
+| Reactive autonomy | ✅ vision-gated seek + frontier explore | BT leaf tasks / steering |
+| Perception | ✅ vision cone + LOS **driving decisions** | AI Perception (sight/hearing/teams), stimuli |
+| Memory / knowledge | 🟡 spatial cell memory (recency LRU) | Blackboard, perceived-target memory, last-known-pos |
+| State machines | 🟡 2-state intent FSM (seek/explore) | Animation + AI FSM, hierarchical states |
+| Decision-making | 🟡 perception-gated + memory-biased | Behavior trees, utility AI, decision trees |
+| Tactical steering | 🟡 explore/seek (no flee/pursue/flock) | Wander/flee/pursue, EQS spatial queries |
 | Teams / factions | 🟡 metadata + UI label only | Team IDs drive perception, targeting, friendly fire |
 | Squads / coordination | ⬜ none | Formations, role assignment, squad blackboard |
 | Strategy / planning | ⬜ none (nav "goal" ≠ AI objective) | GOAP / HTN planners, commander/strategic layer |
@@ -109,7 +111,7 @@ flowchart TB
 | Global `tickWorld` + per-prop run state | ✅ | 80 | nav behaviors hold per-prop `Map`s |
 | Move-target API | ✅ | 80 | `setMoveTarget` / `hasMoveTarget` |
 | Per-prop behavior overrides / input gates | 🟡 | 55 | `sandboxBehaviorConfig.js`, `inputGates.js` (gates *player* input) |
-| Generic per-entity "brain"/controller | ⬜ | 0 | behaviors are shared singletons + state bags, not agent instances |
+| Per-agent "brain" (memory store) | 🟡 | 45 | `AI/brain/createBrain.js` exists but is wired only via `snakeBrain` |
 | Behavior priority / interrupt / resume | ⬜ | 0 | one active behavior, no stack |
 | Automatic behavior selection from world state | ⬜ | 0 | only manual / editor / autosim sets it |
 
@@ -121,16 +123,16 @@ flowchart TB
 
 | Item | Status | % | Notes / modules |
 |------|--------|---|-----------------|
-| Goal-seek autosim (greedy nearest) | ✅ | 75 | `autosim/goalSeekAutosim.js` |
+| Generic goal-seek autosim | ✅ | 75 | `autosim/goalSeekAutosim.js` (greedy nearest) |
 | Snake eat → grow → replenish loop | ✅ | 80 | `snakeAutosim.js`, `snakeGoals.js` |
-| Nearest-goal target selection | ✅ | 70 | `findNearestSnakeGoal` (Euclidean, no LOS) |
-| Multi-agent population (30 snakes) | ✅ | 75 | `setupSnakeGame.js`, `Config/games/snake.js` |
+| **Vision-gated target selection** | ✅ | 75 | `findNearestVisibleSnakeGoal` — only seeks goals in the vision cone |
+| **Frontier explore when no goal visible** | ✅ | 75 | `enterExplore` → `pickExploreDestination` (`Navigation/steering/exploreSteering.js`) |
+| Multi-agent population | ✅ | 75 | `setupSnakeGame.js`, `Config/games/snake.js` (`snakeCount`) |
 | Implicit competition (shared goal pool) | 🟡 | 50 | first-to-eat wins; no awareness of rivals |
-| Patrol / wander / explore autosim | ⬜ | 0 | 🔜 `Plans/plan.md` (intent FSM) |
-| Flee / chase / interact autosim | ⬜ | 0 | |
+| Flee / chase / interact autosim | ⬜ | 0 | no threat/avoid intent yet |
 | Agent-agent avoidance during seek | ⬜ | 0 | 🔗 `pathfinding.md` Tier 7 (separation) |
 
-**Branch progress: 47%**
+**Branch progress: 60%**
 
 ---
 
@@ -138,17 +140,18 @@ flowchart TB
 
 | Item | Status | % | Notes / modules |
 |------|--------|---|-----------------|
-| Grid-cell vision cone | 🟡 | 60 | `Navigation/perception/gridCellVision.js` |
-| Line-of-sight queries | ✅ | 70 | `Spatial/query/lineOfSight.js`, `gridCellVision` LOS |
-| Heading from velocity/facing | ✅ | 65 | drives cone direction |
-| Vision debug overlays | ✅ | 70 | `snakeVisionOverlays.js`, `gridCellVisionOverlay.js` |
-| **Perception feeding decisions** | ⬜ | 0 | autosim still uses global nearest, ignores vision |
-| Agent memory / last-known-position | ⬜ | 0 | no `lastSeen`, no belief map |
-| Blackboard (shared/per-agent facts) | ⬜ | 0 | |
-| Hearing / non-visual stimuli | ⬜ | 0 | |
-| Fog of war / partial observability | ⬜ | 0 | |
+| Grid-cell vision cone | ✅ | 70 | `Navigation/perception/gridCellVision.js`, `collectVisibleGridCells` |
+| Line-of-sight queries | ✅ | 70 | `Spatial/query/lineOfSight.js`, grid LOS |
+| Heading from velocity/facing | ✅ | 70 | `resolveObserverHeading` drives cone |
+| **Perception feeding decisions** | ✅ | 70 | vision gates goal seeking + stamps memory each tick (`snakeBrain.sync`) |
+| **Spatial working memory** | ✅ | 65 | `AI/brain/spatialCellMemory.js` — recency-ranked LRU (cap 128), `getRecencyRankFromNewest` |
+| **Memory → A\* cost penalty** | ✅ | 70 | `AI/brain/navStepPenalty.js` → `basePenalty·falloff^rank`, applied in worker A\* (`createNavStepPenaltyLookup`) — stigmergic anti-backtrack |
+| Vision debug overlays | ✅ | 70 | `snakeVisionOverlays.js`, `spatialCellMemoryOverlay.js` |
+| Target memory / last-known-position | ⬜ | 0 | memory is *cells seen*, not *entities tracked* |
+| Blackboard (shared/per-agent facts) | 🟡 | 25 | the brain *is* a per-agent store; not a general typed blackboard |
+| Hearing / non-visual stimuli; fog of war | ⬜ | 0 | sight only |
 
-**Branch progress: 28%** · *Perception exists as **visualization**, not yet as decision input — closing that gap is the keystone unlock.*
+**Branch progress: 52%** · *Perception is wired into both **target choice** and **path cost** — no longer a debug overlay.*
 
 ---
 
@@ -156,14 +159,15 @@ flowchart TB
 
 | Item | Status | % | Notes / modules |
 |------|--------|---|-----------------|
-| Generic FSM transition infra | 🟡 | 40 | `Libraries/FSM/transition.js` (enter/exit hooks) |
-| WorldProp lifecycle state | 🟡 | 30 | `WorldProp.js` — single empty `normal` state |
-| **AI intent FSM** (idle/seek/flee/return) | ⬜ | 0 | 🔜 `Plans/plan.md` PR2 (seek/explore/wander) |
-| State transition conditions (perception-gated) | ⬜ | 0 | depends on Tier 2 → decisions |
+| **AI intent FSM** (`seek` ↔ `explore`) | ✅ | 65 | `snakeAutosim.js` — `mode`, `enterSeek`/`enterExplore`/`refreshIntent` |
+| **Perception-gated transitions** | ✅ | 70 | visible goal → seek; none → explore |
+| Per-state behavior binding | ✅ | 65 | each state sets active behavior + HPA move target |
+| Generic FSM transition infra | 🟡 | 40 | `Libraries/FSM/transition.js` (separate; snake FSM is hand-rolled) |
+| **Reusable / multi-agent intent FSM** | ⬜ | 0 | logic lives in `snakeAutosim`, not a generic agent FSM |
+| Richer states (idle / flee / return / regroup) | ⬜ | 0 | only seek + explore today |
 | Hierarchical / nested states | ⬜ | 0 | |
-| Per-state steering binding | ⬜ | 0 | e.g. flee→flee-steer, seek→HPA-nav |
 
-**Branch progress: 12%** · *Scaffolding exists (`transitionEntity`, prop state hook) but no AI states are defined; `transitionPhase` is unused.*
+**Branch progress: 44%** · *A real 2-state perception-gated FSM exists — but it's snake-specific, not a reusable agent FSM. WorldProp's lifecycle `normal` state is unrelated scaffolding.*
 
 ---
 
@@ -188,12 +192,13 @@ Shared with `pathfinding.md` Tier 7 — these are the *movement verbs* AI decisi
 | Item | Status | % | Notes |
 |------|--------|---|-------|
 | Seek / arrive / path-follow | ✅ | 80 | already shipped (see `pathfinding.md` Tier 6) |
-| Wander | ⬜ | 0 | jittered heading; cheap idle/ambient |
+| **Memory-aware explore (frontier pick)** | ✅ | 70 | `pickExploreDestination` (fresh > fringe > stale > far) |
+| Wander (jittered heading) | 🟡 | 30 | explore covers ambient roaming; no smooth random-heading wander |
 | Flee / evade | ⬜ | 0 | negated / predicted seek |
 | Pursue / intercept | ⬜ | 0 | seek predicted future position |
 | Separation / flocking | ⬜ | 0 | 🔗 `pathfinding.md` Tier 7 |
 
-**Branch progress: 16%**
+**Branch progress: 32%**
 
 ---
 
@@ -286,9 +291,9 @@ Bridges to the future `procedural.md` / `levels.md`. Today puzzles are **geometr
 | AI personalities (aggression/skill) | ⬜ | 0 | |
 | Adaptive / dynamic difficulty | ⬜ | 0 | |
 | Behavior-tree / FSM authoring tools | ⬜ | 0 | editor support for AI graphs |
-| AI decision debug overlay | 🟡 | 30 | vision cones only; no state/score readout |
+| AI decision debug overlay | 🟡 | 45 | vision cones + spatial-memory overlays; no FSM-state/score readout |
 
-**Branch progress: 35%**
+**Branch progress: 38%**
 
 ---
 
@@ -307,34 +312,72 @@ Bridges to the future `procedural.md` / `levels.md`. Today puzzles are **geometr
 
 ---
 
+## Fundamentals checklist — textbook AI coverage
+
+Does the codebase contain the building blocks of game AI? `[x]` implemented & wired · `[~]` present as a narrow/special case · `[ ]` absent.
+
+### Control & autonomy
+- [x] **Reactive control loop** — per-entity active behavior + per-tick `sync`/`tick` (`snakeAutosim`).
+- [x] **Perception-driven action** — vision cone gates target selection (`findNearestVisibleSnakeGoal`).
+- [~] **Multi-agent population** — N independent agents; no inter-agent coordination.
+
+### State & decision-making
+- [x] **Finite state machine** — 2-state (`seek`/`explore`), perception-gated transitions. *Snake-specific, not reusable.*
+- [ ] **Hierarchical / layered FSM** — single flat level.
+- [ ] **Behavior tree** (selector / sequence / decorator) — absent; the workhorse of pro game AI.
+- [ ] **Decision tree** — absent.
+- [ ] **Utility AI** (multi-attribute action scoring) — absent; natural next for "which of several visible goals."
+- [ ] **GOAP / HTN planning** (A\* / decomposition over an action space) — absent.
+
+### Knowledge & perception
+- [x] **Ray-cast / grid line-of-sight** — `lineOfSight.js`, `gridCellVision`.
+- [x] **Vision cone** (angular + LOS gating) — `collectVisibleGridCells`.
+- [x] **Spatial working memory** — recency-ranked LRU of seen cells (`spatialCellMemory.js`).
+- [~] **Per-agent blackboard** — the brain *is* a store, but not a general typed fact base.
+- [ ] **Entity/target tracking** (last-known-position, belief) — memory is cells, not tracked entities.
+- [ ] **Non-visual stimuli** (hearing), **fog of war** — absent.
+
+### Spatial reasoning for decisions
+- [x] **Frontier exploration** — fresh > fringe > stale cell preference (`pickExploreDestination`).
+- [x] **Stigmergic cost biasing** — memory → A\* step penalty (`basePenalty · falloff^rank`), discourages backtracking.
+- [ ] **Environment Query System** (rank spatial options by scored tests, à la UE EQS) — absent; the explore picker is a hardcoded special case of this.
+- [ ] **Influence / threat maps** — absent.
+
+### Steering verbs (🔗 `pathfinding.md` Tier 7)
+- [x] Seek · [x] Arrive · [x] Path-follow · [~] Explore/roam
+- [ ] Wander (smooth) · [ ] Flee · [ ] Pursue/intercept · [ ] Separation/flocking
+
+### Adversarial / multi-agent theory
+- [ ] Minimax / alpha-beta · [ ] MCTS · [ ] Pursuit-evasion · [ ] Opponent modeling — all absent.
+
+> **Read:** the **perception → memory → decision → cost-biased nav** loop is genuinely complete for one agent; the gaps are **generality** (reusable agent FSM, not snake-bound), **decision structures** (BT/utility/EQS instead of hardcoded if-ladders), and **breadth of states/verbs** (flee, pursue, coordinate).
+
+---
+
 ## What exists vs what's a field
 
-Three honest distinctions worth keeping straight:
+Two honest distinctions worth keeping straight:
 
 1. **`prop.strategy` is NOT AI.** It's the WorldProp capability/config pattern (collision, render, sprite keys) — same name, different concept. AI strategy (Tier 8) doesn't exist.
-2. **"Goal" in code means a nav destination**, not an AI objective. `goalSeekAutosim`, snake orbs, and HPA target cells are all *where to move*, not *what to accomplish*.
-3. **Perception and factions are real code but inert.** Vision cones render; faction is a saved field with a "Team" label — neither changes a single decision yet. They're scaffolding, correctly placed, waiting to be wired.
+2. **"Goal" in code means a nav destination**, not an AI objective. Snake orbs and HPA target cells are *where to move*, not *what to accomplish*. (The snake's `seek`/`explore` modes are intent, but still resolve to a move target.) **Factions remain inert** — a saved "Team" field with no targeting/hostility logic.
 
-## The keystone: wire perception → decisions
+## The keystone: generalize the loop beyond the snake
 
-The single highest-leverage move is closing the **Tier 2 gap**: make `gridCellVision` actually feed target selection (snake seeks the *nearest visible* goal, not the nearest global one). That one change:
-- turns perception from a debug overlay into a real input,
-- creates the first genuine *decision* in the engine,
-- and gives you a reason to add the Tier 3 FSM (seek when goal visible, wander when not).
+The decision loop **already exists and is sophisticated** — but it's hardwired inside `snakeAutosim.js`. The highest-leverage move now is **extracting a reusable agent intent system**: lift `seek`/`explore`/`refreshIntent` + the brain into a generic FSM (or a small behavior tree) that any agent type can mount, with states as data and transitions as perception predicates. That unlocks: a third **`flee`/threat** state, **utility scoring** when multiple goals are visible, and **non-snake agents** — all without re-deriving perception or memory.
 
-That trio — **perception-gated targeting → wander/seek FSM → utility pick among goals** — is the realistic "AI actually exists now" milestone.
+That progression — **generic agent FSM → utility/EQS action choice → flee/pursue states → faction-aware targeting** — is the realistic path from "one smart snake" to "an AI system."
 
 ---
 
 ## Recommended next unlocks (short path)
 
-1. **Perception-gated targeting** — snake picks nearest *visible* goal (`gridCellVision` + `lineOfSight`), not nearest global. First real decision. Cheap, high signal.
-2. **Snake intent FSM** — `seek` (goal visible) ↔ `wander` (none visible) ↔ `flee` (optional). Build on `Libraries/FSM/transition.js`; defines the first AI states (🔜 `Plans/plan.md` PR2).
-3. **Wander steering** — needed for the FSM's idle state; 🔗 also `pathfinding.md` Tier 7.
-4. **Utility scoring for goal choice** — when multiple goals are visible, score by distance/safety/contested-ness; first taste of utility AI.
+1. **Extract a reusable agent FSM** — promote `snakeAutosim`'s `seek`/`explore` + `createBrain` into a generic `agentIntent` mountable by any prop. Highest leverage; everything else builds on it.
+2. **Add a `flee`/threat state** — reuse perception + memory to react to nearby snakes/walls; first new state on the generalized FSM.
+3. **Utility scoring among visible goals** — when several goals are in view, score by distance / contested-ness / memory-freshness instead of nearest. First taste of utility AI (generalizes `pickExploreDestination`).
+4. **Generalize the explore picker into an EQS-style query** — scored spatial option ranking reusable beyond exploration.
 5. **Faction → hostility** — give the "Team" field meaning: target filtering by faction; unblocks predator-prey (Tier 9) and squads (Tier 7).
 
-> **Sequencing note:** Tiers 0–4 are the spine — get a real FSM/decision layer reading perception before reaching for squads, strategy, game theory, or puzzle solvers. The advanced tiers are exciting but rest entirely on "an agent can perceive and decide," which is the work in Tiers 2–4.
+> **Sequencing note:** the spine (Tiers 0–3) is now *built* for one agent — the work is **generalizing** it (reusable FSM, scored decisions) before reaching for squads, strategy, game theory, or puzzle solvers.
 
 ---
 
@@ -344,22 +387,25 @@ That trio — **perception-gated targeting → wander/seek FSM → utility pick 
 Apps/Editor/world/mountSandboxController.js — registers behaviors
 Libraries/SandboxEditor/createSandboxController.js — behavior registry + tick
 GameState/sandboxEntityMeta.js — per-entity active behavior id
-Libraries/Sandbox/sandboxCapabilities.js — eligible behaviors per asset
-Libraries/Sandbox/autosim/goalSeekAutosim.js — the one autonomous agent
-Libraries/Game/snake/snakeAutosim.js, snakeGoals.js, setupSnakeGame.js — snake AI
-Libraries/Navigation/perception/gridCellVision.js — vision cone + LOS (debug only)
-Libraries/Game/snake/snakeVisionOverlays.js — vision debug draw
-Libraries/Spatial/query/lineOfSight.js — wall-segment LOS
-Libraries/FSM/transition.js — FSM enter/exit infra (no AI states yet)
-Libraries/Sandbox/sandboxFaction.js — faction metadata (no gameplay logic)
+Libraries/Sandbox/autosim/goalSeekAutosim.js — generic goal-seek autosim
+Libraries/Game/snake/snakeAutosim.js — the intent FSM (seek/explore) + eat/grow loop
+Libraries/Game/snake/snakeBrain.js — wires perception → spatial memory → nav penalty
+Libraries/AI/brain/createBrain.js, spatialCellMemory.js — recency-ranked spatial working memory (LRU)
+Libraries/AI/brain/navStepPenalty.js — memory → per-cell A* cost (stigmergic)
+Libraries/Pathfinding/navStepPenalty.js — worker-side penalty lookup (applied in A*)
+Libraries/Navigation/steering/exploreSteering.js — frontier explore destination pick
+Libraries/Navigation/perception/gridCellVision.js — vision cone + LOS (drives decisions)
+Libraries/AI/brain/spatialCellMemoryOverlay.js, Game/snake/snakeMemoryOverlays.js — memory debug draw
+Libraries/Spatial/query/lineOfSight.js — LOS query
+Libraries/Sandbox/sandboxFaction.js — faction metadata (no gameplay logic yet)
 Libraries/RoomGraph/puzzleTemplateBeltCrate.js, roomGraphLockedRoom.js — puzzle stamps
-Config/games/snake.js — the only game/AI tuning config
-tests/goalSeekAutosim.test.js, snakeAutosim.test.js, snakeMulti.test.js,
+Config/games/snake.js — vision/memory/explore tuning (visionCone, spatialMemoryCapacity, navMemoryStep*)
+tests/brain.test.js, navStepPenalty.test.js, snakeIntent.test.js, snakeAutosim.test.js,
   gridCellVision.test.js, lineOfSight.test.js
 ```
 
-Cross-doc: tactical steering → `pathfinding.md` Tier 7 · puzzle solvability → future `procedural.md` / `levels.md` · vision rendering → `rendering.md`.
+Cross-doc: tactical steering → `pathfinding.md` Tier 7 · memory-biased A\* cost → `pathfinding.md` (navStepPenalty) · puzzle solvability → future `procedural.md` / `levels.md` · vision rendering → `rendering.md`.
 
 ---
 
-*Last updated: initial AI tree (mirrors `physics.md` / `pathfinding.md` / `rendering.md`). The youngest subsystem: control foundation + greedy goal-seek + perception scaffolding exist; FSM intent, decision/behavior trees, squads, strategy, game theory, and puzzle solvability are planned or absent. The keystone unlock is wiring perception into decisions (Tier 2→3). Revisit percentages when the first AI FSM ships.*
+*Last updated: PR2 audit correction (mirrors `physics.md` / `pathfinding.md` / `rendering.md` / `procedural.md`). Found and documented `Libraries/AI/brain/` (spatial memory + nav step penalty) and the `snakeAutosim` perception-gated intent FSM that the initial draft missed — AI bumped ~18% → ~30%. The decision loop exists for one agent; the keystone is now **generalizing** it into a reusable agent FSM + scored (utility/EQS) decisions. Revisit when the intent system is lifted out of `snakeAutosim`.*

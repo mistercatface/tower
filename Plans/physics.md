@@ -70,6 +70,49 @@ flowchart TB
 
 ---
 
+## Fundamentals checklist — textbook rigid-body coverage
+
+A different lens from the feature tiers below: do the **CS / numerical-methods building blocks** of a 2D rigid-body engine exist in the codebase? `[x]` = implemented and used · `[~]` = present as a narrow/special case · `[ ]` = not in the codebase.
+
+### Numerical integration
+- [x] **Semi-implicit (symplectic) Euler** — velocity-then-position update; energy-stable for games (the Box2D/most-engines default).
+- [x] **Fixed-timestep substepping** — `motionSubsteps.js` subdivides by max travel px/step (prevents large-step blow-ups).
+- [ ] **Velocity Verlet / RK4** — not used; unnecessary given symplectic Euler + substeps.
+- [ ] **Continuous collision (TOI / conservative advancement)** — absent (Tier 1); fast/small bodies can tunnel between substeps.
+
+### Broadphase
+- [x] **AABB overlap** + **uniform-grid spatial hash** — `EntityGrid` center-indexed buckets.
+- [x] **Island internal-pair skip** — `shareKineticIsland` prunes intra-chain pairs.
+- [ ] **Sweep-and-prune (SAP)** / **dynamic BVH (AABB tree)** — not present; grid is center-indexed, not swept.
+
+### Narrowphase
+- [x] **Separating Axis Theorem (SAT)** — poly/poly, circle/poly (`SatCollision.js`).
+- [x] **Circle–circle analytic** — fast lane.
+- [~] **Contact manifold generation** — mostly single-point; multi-point is partial (Tier 3).
+- [ ] **GJK + EPA** — not present (SAT covers current convex shapes).
+
+### Contact resolution (LCP)
+- [x] **Sequential-impulse PGS** — velocity-level Projected Gauss–Seidel.
+- [x] **Baumgarte position bias** — penetration push-out term.
+- [x] **Coulomb friction** + [x] **restitution** — per-pair / material defaults.
+- [~] **Warm-starting** — impulse-decay cache, not full feature-id manifold persistence.
+- [ ] **Block / 2-contact LCP solver**, [ ] **split-impulse / NGS** — Baumgarte only.
+
+### Constraints & joints
+- [x] **Distance constraint** (chain links) via PGS.
+- [ ] **Revolute / prismatic / weld / motor**, [ ] **soft (XPBD) compliance** — absent (Tier 5).
+
+### Temporal coherence
+- [x] **Per-body sleep** (velocity threshold + timer) and **active-set culling** (skip sleepers).
+- [x] **Island sleep/wake** for linked bodies (`kineticIslands.js`).
+
+### Rotational dynamics
+- [x] **2D mass + scalar moment of inertia** (`kineticInertiaFromBody`), torque/angular integration, COM-aware impulses.
+
+> **Read:** the **broadphase → SAT narrowphase → sequential-impulse PGS + Baumgarte → island sleep** spine is textbook-complete. The named gaps are exactly the "stacking stability" frontier: **multi-point manifolds + feature-id warm-starting** (Tier 3/7) and **CCD** for fast bodies (Tier 1).
+
+---
+
 ## Tier 0 — Body model & spatial indexing
 
 | Item | Status | % | Notes / modules |

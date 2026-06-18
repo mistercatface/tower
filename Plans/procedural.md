@@ -110,6 +110,41 @@ flowchart TB
 
 ---
 
+## Fundamentals checklist — textbook procgen coverage
+
+A different lens from the feature tiers below: which **CS procgen building blocks** exist in the codebase? `[x]` = implemented and used · `[~]` = present as a narrow/special case · `[ ]` = absent. (Remember the **naming trap**: `Libraries/Procedural/` noise is for *textures* — 🔗 `rendering.md`, not counted here as *geometry*.)
+
+### Randomness & noise
+- [x] **Seeded PRNG (LCG)** — `seededRandom.js`, `SeededRng.js`; `withSeededRandom(seed, fn)` scopes `Math.random`.
+- [~] **Perlin / Voronoi noise** — exists but for **surface textures only** (🔗 `rendering.md` Tier 8), not level geometry.
+- [ ] **Simplex / OpenSimplex**, [ ] **blue noise / Poisson-disk sampling** — absent; no spatial-distribution sampler for scatter/placement.
+
+### Space carving & layout
+- [x] **Cellular automata** — Moore-neighborhood majority smoothing (`cellularAutomata.js`, threshold ≥5) → caverns.
+- [ ] **Drunkard's walk / random-walk tunneling** — absent (CA only).
+- [ ] **BSP partitioning** — absent; the headline layout gap.
+- [ ] **Wave Function Collapse (constraint propagation)** — absent.
+- [ ] **Graph grammar / L-system** — absent.
+
+### Graphs & connectivity
+- [x] **Room-graph model** — rect nodes + directed links (`RoomGraph/`).
+- [x] **Distance transform (BFS)** — shared with HPA region seeding (🔗 `pathfinding.md`).
+- [~] **Voronoi partition** — used for nav regions + texture motifs, not room layout.
+- [ ] **Minimum spanning tree (MST)** / [ ] **Delaunay triangulation** — absent; the natural "connect rooms sensibly" primitives for a layout generator.
+
+### Search & solving (for the bake)
+- [x] **Cardinal A\* corridor routing** — delegated to the pathfinder (🔗 `pathfinding.md` Tier 9); this doc only *calls* it.
+- [x] **Backtracking attachment search** — room/door placement during bake.
+- [ ] **Constraint satisfaction (solvability)** — 🔗 `AI.md` Tier 10; geometric stamping only, no validator.
+
+### Reproducibility
+- [x] **Per-subsystem seeding** — map seed, per-link corridor seed.
+- [ ] **Unified root seed → derived sub-seeds** — absent; top recommended unlock (one seed ⇒ whole reproducible level).
+
+> **Read:** the **carve (CA) → author graph → bake-to-geometry → route corridors (A\*)** pipeline is real and used — strong procedural **resolution**. The empty boxes cluster in one place: **layout *authorship*** (BSP/MST/WFC/graph-grammar) and a **unified seed**. That's the difference between "renders an authored level" and "invents a level from a number."
+
+---
+
 ## Tier 0 — Generation foundations
 
 | Item | Status | % | Notes / modules |

@@ -98,6 +98,48 @@ flowchart TB
 
 ---
 
+## Fundamentals checklist — textbook real-time-rendering coverage
+
+A different lens from the feature tiers below: which **CS graphics building blocks** exist in this **Canvas-2D-only** renderer? `[x]` = implemented and used · `[~]` = present as a narrow/special case · `[ ]` = absent (sometimes **intentionally** — flagged inline).
+
+### Projection & transforms
+- [x] **Camera-relative radial elevation projection** — `IsometricProjection.js` (viewer-relative extrusion, *not* fixed iso).
+- [x] **2D affine viewport transform** — pan/zoom (`Viewport`).
+- [ ] **True perspective matrix / homogeneous w-divide** — *intentionally absent*; the radial map approximates depth without a matrix pipeline.
+
+### Visibility & depth
+- [x] **Painter's algorithm** — far→near `_distSq` ordering + per-face mesh sort.
+- [x] **Back-face culling** — `isOutwardFaceTowardViewer` (face-normal · view).
+- [x] **View-frustum / AABB culling** — off-screen drawables skipped.
+- [ ] **Z-buffer / depth buffer** — *intentionally absent* (no per-pixel depth on 2D canvas; painter's only).
+- [ ] **BSP / portal / PVS / occlusion culling** — absent (relevant only to the first-person fork).
+
+### Rasterization & texturing
+- [x] **Affine (linear) texture mapping** — `AffineTexture.js`, `drawImageQuad` (wall atlas, sphere patches).
+- [x] **Offscreen rasterization + blit** — bake to offscreen canvas, `drawImage` to screen.
+- [ ] **Perspective-correct texture mapping** — absent; affine "swim" acceptable at this scale (would matter for the Doom/Build fork).
+
+### Caching & batching
+- [x] **Memoized sprite bake** — `getOrBakePropSprite`.
+- [x] **Parameter quantization** — spatial/angular/zoom/viewer-offset buckets (`QuantizedSpriteCache.js`, `viewQuantize.js`).
+- [x] **LRU eviction** — fixed caps (props 2560, overlays 1024, vector 256).
+- [ ] **Dirty-rectangle / partial redraw** — *absent* (full clear+redraw each frame, Tier 12).
+- [ ] **Draw-call batching / instancing** — per-prop draw; no atlasing of dynamic props.
+
+### Geometry
+- [x] **Convex extrusion / silhouette** — `getRadialSilhouette`, `drawExtrudedRadial`.
+- [x] **Triangle-mesh tessellation** — sphere lat/lon, pipe elbow, flipper (`propMesh.js`, `sphereMesh.js`).
+- [ ] **Mesh LOD** — single resolution per prop.
+
+### Shading & light
+- [~] **Fake directional shading** — Lambert-ish side gradients, fixed light direction (no real normals-to-light).
+- [ ] **Planar projected shadows** — math exists (`shadowProjection.js`) but **unwired** — top recommended unlock (Tier 10).
+- [ ] **Per-pixel / normal-mapped lighting, AO, GI** — absent.
+
+> **Read:** the **projection → painter's depth → cull → bake/quantize/blit** spine is textbook-complete for an overhead 2.5D canvas renderer. The deliberate non-features (z-buffer, perspective-correct mapping, WebGL) are **design constraints**, not gaps. The real to-dos are **lighting/shadows** (wire `shadowProjection.js`) and **dirty-rect perf**.
+
+---
+
 ## Tier 0 — Canvas & frame loop
 
 | Item | Status | % | Notes / modules |
