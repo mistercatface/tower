@@ -9,12 +9,12 @@ import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { WorldPropVoidSinkState } from "./worldPropVoidSinkState.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { syncLongAxisCollisionShape } from "../Libraries/Props/longAxisCollision.js";
-import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
-import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
+import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
+import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js";
 import { applyPoxelGeometryToProp, initSplittableFootprint } from "../Libraries/Props/splittableWorldProp.js";
 import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
@@ -40,7 +40,6 @@ export class WorldProp extends Entity {
         this.vx = 0;
         this.vy = 0;
         this.angularVelocity = 0;
-        this.mass = this.strategy.mass;
         this.zIndex = 10;
         if (this.strategy.cardinalFacing) this.facing = quantizeCardinalAngle(facing ?? 0);
         else this.facing = facing ?? Math.random() * Math.PI * 2;
@@ -70,6 +69,7 @@ export class WorldProp extends Entity {
         }
         if (this.strategy.floorTriggers?.length) initFloorTriggerProp(this);
         if (this.strategy.buttonLinks != null) initFloorButtonProp(this);
+        if (this.strategy.isKinetic) syncKineticRigidBody(this);
         this.ageMs = 0;
         this._sleepFrames = 0;
         this.isSleeping = false;
@@ -78,28 +78,7 @@ export class WorldProp extends Entity {
         this.changeState("normal");
     }
     get momentOfInertia() {
-        const m = this.mass || 1.0;
-        if (isStandTipProp(this) && !this.isFallen) {
-            const r = resolveBodyRadius(this);
-            const h = this.strategy.rollHeight ?? this.strategy.uprightHeight ?? r * 2.5;
-            return m * (r * r * 0.25 + (h * h) / 3);
-        }
-        if (isStandTipProp(this) && this.isFallen && this.halfExtents) {
-            const w = this.halfExtents.x * 2;
-            const h = this.halfExtents.y * 2;
-            return (m * (w * w + h * h)) / 12;
-        }
-        if (this.shape && this.shape.type === "Polygon") {
-            if (this.strategy.rollAxis === "long" && this.halfExtents) {
-                const crossW = this.halfExtents.y * 2;
-                const crossH = this.strategy.rollHeight ?? 3;
-                return (m * (crossW * crossW + crossH * crossH)) / 12;
-            }
-            const w = this.halfExtents ? this.halfExtents.x * 2 : this.radius * 2;
-            const h = this.halfExtents ? this.halfExtents.y * 2 : this.radius * 2;
-            return (m * (w * w + h * h)) / 12;
-        }
-        return (m * this.radius * this.radius) / 2;
+        return momentOfInertiaFromBody(this);
     }
     changeState(stateName, stateDataInit = null) {
         if (this.strategy?.isKinetic) wakeKineticBody(this);
@@ -148,8 +127,6 @@ export class WorldProp extends Entity {
         if (!gameState?.worldProps || fragments.length === 0) return;
         const ox = originX ?? this.x;
         const oy = originY ?? this.y;
-        const parentArea = this.footprintArea || 1;
-        const parentMass = this.mass || 1;
         const parentOmega = this.angularVelocity || 0;
         const cos = Math.cos(this.facing);
         const sin = Math.sin(this.facing);
@@ -160,7 +137,6 @@ export class WorldProp extends Entity {
             const world = transformPoint2DInto({ x: 0, y: 0 }, ox, oy, geom.centroid.cx, geom.centroid.cy, cos, sin);
             const shard = new WorldProp(world.x, world.y, shardTypeId, this.facing);
             applyPoxelGeometryToProp(shard, geom);
-            shard.mass = parentMass * (geom.footprintArea / parentArea);
             let dx = world.x - ox;
             let dy = world.y - oy;
             let dist = Math.hypot(dx, dy);

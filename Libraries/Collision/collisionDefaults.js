@@ -13,4 +13,6 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     /** Prior-frame normal/tangent impulse decay for kinetic contact warm-start. */
     kineticWarmStartDecay: 0.8,
     mass: { kineticFallback: 15, worldPropFallback: 1 },
+    /** Area-based mass for baked splittable footprints (~1.5 mass per 16×16 px). */
+    material: { densityDefault: 1.5 / 256, minMass: 0.01 },
 };

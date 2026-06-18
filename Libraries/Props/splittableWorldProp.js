@@ -1,3 +1,4 @@
+import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { transformPoint2DInto } from "../Math/Poly2D.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
@@ -18,6 +19,7 @@ export function applyPoxelGeometryToProp(prop, geometry) {
     for (let i = 0; i < count; i++) verts.push({ x: geometry.footprintVertices[i * 2], y: geometry.footprintVertices[i * 2 + 1] });
     prop.shape = new PolygonShape(verts);
     invalidateBroadphaseBounds(prop);
+    syncKineticRigidBody(prop);
 }
 export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactForce, forceExplode = false) {
     if (!prop.poxels?.length) return [];
@@ -45,8 +47,6 @@ export function fractureSplittableOnImpact(prop, worldHitX, worldHitY, impactFor
     if (components.length <= 1) return null;
     const originX = prop.x;
     const originY = prop.y;
-    const parentArea = prop.footprintArea || 1;
-    const parentMass = prop.mass || 1;
     const cos = Math.cos(prop.facing);
     const sin = Math.sin(prop.facing);
     const largest = components[0];
@@ -55,6 +55,5 @@ export function fractureSplittableOnImpact(prop, worldHitX, worldHitY, impactFor
     prop.x = world.x;
     prop.y = world.y;
     applyPoxelGeometryToProp(prop, largest);
-    prop.mass = parentMass * (largest.footprintArea / parentArea);
     return { debris, originX, originY };
 }
