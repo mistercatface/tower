@@ -1,4 +1,3 @@
-import { steerLocomotionWorldProp, stopLocomotionWorldProp, usesLocomotionWorldProp } from "../Props/locomotionWorldProp.js";
 import { wakePushableBody } from "../Motion/pushableSleep.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
@@ -11,10 +10,7 @@ export function snapRollMoveTargetToCellCenter(grid, world) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
     return { world: grid.gridToWorld(col, row), col, row };
 }
-/** End cursor move intent — locomotion props keep walking until desired steering is cleared. */
-export function releaseRollMoveTarget(prop) {
-    stopLocomotionWorldProp(prop);
-}
+export function releaseRollMoveTarget(_prop) {}
 /** @param {object} prop @param {object} [overrides] */
 export function getRollToCursorConfig(prop, overrides = {}) {
     return { ...ROLL_TO_CURSOR_DEFAULTS, ...prop.strategy?.rollToCursor, ...overrides };
@@ -32,7 +28,6 @@ export function applyRollSpin(prop) {
  * @returns {boolean} true when the body was still moving
  */
 export function decelerateRoll(prop, dt, config) {
-    if (stopLocomotionWorldProp(prop)) return Math.hypot(prop.vx ?? 0, prop.vy ?? 0) > 0;
     const speed = Math.hypot(prop.vx, prop.vy);
     if (speed <= 0) return false;
     const decel = config.accel * dt * 2;
@@ -56,10 +51,6 @@ export function decelerateRoll(prop, dt, config) {
  * @param {{ maxSpeed: number, accel: number }} config
  */
 export function steerRollToward(prop, dirX, dirY, dt, config) {
-    if (usesLocomotionWorldProp(prop)) {
-        steerLocomotionWorldProp(prop, dirX, dirY, config);
-        return;
-    }
     const targetVx = dirX * config.maxSpeed;
     const targetVy = dirY * config.maxSpeed;
     const dvx = targetVx - prop.vx;

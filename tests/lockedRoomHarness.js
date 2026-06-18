@@ -17,7 +17,7 @@ import { WorldProp } from "../Entities/WorldProp.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 function assetDefinition(asset) {
     const { id, physics } = asset;
-    const { hitBehavior: _hitBehavior, spawn, renderMode, ...strategy } = physics;
+    const { spawn, renderMode, ...strategy } = physics;
     return { render3DKey: id, renderMode: renderMode ?? "3d", spawn, inspectKey: null, ...strategy };
 }
 let propsLoaded = false;

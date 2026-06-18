@@ -10,7 +10,7 @@ import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents } from "../Props/propStrategy.js";
 /**
  * LRU baked-sprite cache with shared viewer-offset quantization.
- * Kinematics bodies and iso props both use this; domain key/bake helpers live below.
+ * Iso props use this; domain key/bake helpers live below.
  *
  * @param {{ maxItems?: number, viewStep?: number, viewLimit?: number }} [options]
  */
@@ -66,10 +66,7 @@ function drawImageWithModifier(ctx, image, dx, dy, dw, dh, modifier) {
     ctx.drawImage(image, dx, dy, dw, dh);
 }
 /**
- * World-anchored blit (iso props). Opacity applied at blit time, not bake time.
- * Primary entry points for cached sprite draws (iso props, kinematics bodies).
- *
- * @param {import("../Render/spriteDrawModifier.js").SpriteDrawModifier | null} [modifier]
+ * World-anchored blit for iso props. Opacity applied at blit time, not bake time.
  */
 export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null) {
     const bakeScale = sprite.bakeScale ?? 1;
@@ -81,62 +78,6 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
     const drawY = modifier?.drawY ?? worldY;
     const scale = modifier?.scale ?? 1;
     drawImageWithModifier(ctx, sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale, modifier);
-}
-/**
- * Center-anchored blit (kinematics humanoids).
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {CanvasImageSource & { drawRatio?: number, verticalShift?: number, width: number, height: number }} sprite
- * @param {number} x
- * @param {number} y
- * @param {number} displayDiameter
- * @param {import("../Render/spriteDrawModifier.js").SpriteDrawModifier | null} [modifier]
- */
-export function blitCenteredSprite(ctx, sprite, x, y, displayDiameter, modifier = null) {
-    const drawRatio = sprite.drawRatio ?? 1;
-    const drawW = displayDiameter * drawRatio;
-    const drawH = drawW * (sprite.height / sprite.width);
-    const vShift = (sprite.verticalShift ?? 0) * (drawW / sprite.width);
-    const drawX = modifier?.drawX ?? x;
-    const drawY = modifier?.drawY ?? y;
-    const scale = modifier?.scale ?? 1;
-    const destW = drawW * scale;
-    const destH = drawH * scale;
-    drawImageWithModifier(ctx, sprite, drawX - destW / 2, drawY - destH / 2 - vShift * scale, destW, destH, modifier);
-}
-// ─── Kinematics preset ───────────────────────────────────────────────────────
-export function createKinematicsSpriteCache() {
-    const cache = createQuantizedSpriteCache({ maxItems: 2000 });
-    const rotationSteps = 32;
-    const animFrames = 30;
-    const tiltSteps = 5;
-    const cachePadding = 40;
-    return {
-        ...cache,
-        rotationSteps,
-        animFrames,
-        tiltSteps,
-        cachePadding,
-        getKey(id, pose, rotation, cycle, crouch, tiltFactor, weaponKey = "", aimKey = "", dx = 0, dy = 0, animFrame = 0) {
-            const qRot = quantizeAngleIndex(rotation, rotationSteps);
-            const qCyc = quantizeAngleIndex(cycle, animFrames);
-            const qCrouch = crouch > 0.5 ? 1 : 0;
-            const qTilt = Math.floor(tiltFactor * (tiltSteps - 1));
-            const { keyDx, keyDy } = cache.quantizeView(dx, dy);
-            return `${id}_${pose}_${weaponKey}_${aimKey}_${qRot}_${qCyc}_${qCrouch}_${qTilt}_${keyDx}_${keyDy}_${animFrame}`;
-        },
-        set(key, sourceCanvas) {
-            return cache.set(key, sourceCanvas, { drawRatio: sourceCanvas.drawRatio, verticalShift: sourceCanvas.verticalShift });
-        },
-        getQuantizedValues(rotation, cycle, tiltFactor, dx = 0, dy = 0) {
-            const qRot = quantizeAngle(rotation, rotationSteps);
-            const qCyc = quantizeAngle(cycle, animFrames);
-            const bucket = Math.floor(tiltFactor * (tiltSteps - 1));
-            const qTilt = bucket / (tiltSteps - 1);
-            const { dx: qDx, dy: qDy } = cache.quantizeView(dx, dy);
-            return { rotation: qRot, cycle: qCyc, tilt: qTilt, dx: qDx, dy: qDy };
-        },
-    };
 }
 // ─── Iso prop preset ─────────────────────────────────────────────────────────
 const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });

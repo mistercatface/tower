@@ -29,7 +29,7 @@ const WORLD_PROP_MODES = Object.freeze({ normal: new WorldPropNormalState(), voi
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
     if (!def) return withPropStrategyDefaults({});
-    const { hitBehavior: _hitBehavior, spawn, ...strategyFields } = def;
+    const { spawn, ...strategyFields } = def;
     return withPropStrategyDefaults({ ...strategyFields });
 }
 export class WorldProp extends Entity {
@@ -144,10 +144,9 @@ export class WorldProp extends Entity {
     update(dt, state, spatialFrame, resolveWalls = false) {
         this.ageMs += dt;
         const asleep = this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this));
-        if (!asleep) {
+        if (!asleep)
             if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
             else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
-        }
         if (!asleep && resolveWalls && this.strategy.isPushable && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }

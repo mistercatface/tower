@@ -12,25 +12,6 @@ export const TextStyles = {
         },
         getFill: (ctx, color) => color,
     },
-    blast: {
-        font: "bold 10px monospace",
-        strokeWidth: 1.0,
-        scaleFn: (ageRatio) => {
-            if (ageRatio < 0.25) {
-                const t = ageRatio / 0.25;
-                return 1.4 - (1.4 - 1.1) * t;
-            }
-            return 1.1;
-        },
-        getFill: (ctx) => {
-            const gradient = ctx.createLinearGradient(0, -5, 0, 5);
-            gradient.addColorStop(0, "#FFF9C4");
-            gradient.addColorStop(0.3, "#FFEB3B");
-            gradient.addColorStop(0.65, "#FF5722");
-            gradient.addColorStop(1, "#F44336");
-            return gradient;
-        },
-    },
 };
 export class FloatingText {
     constructor(x, y, text, color, timerId, styleName = "standard") {
@@ -63,14 +44,6 @@ export class FloatingText {
     isVisible(viewport) {
         return viewport.isVisible(this.x, this.y, 20);
     }
-    static spawnBlastDamageText(state, x, y, damage) {
-        const text = `-${Math.round(damage)} BLAST`;
-        FloatingText.spawn(state, x, y - 20, text, "#FF5722", "blast", { vx: (Math.random() - 0.5) * 80, vy: -95 - Math.random() * 40, gravity: 200, duration: 1200 });
-    }
-    static spawnStandardDamageText(state, x, y, damage) {
-        const text = `-${Math.round(damage)}`;
-        FloatingText.spawn(state, x, y - 20, text, "#F44336", "standard", { vx: (Math.random() - 0.5) * 30, vy: -40 - Math.random() * 20, gravity: 80, duration: 900 });
-    }
     static spawn(state, x, y, text, color, styleName = "standard", options = {}) {
         const offsetX = (Math.random() - 0.5) * 16;
         const offsetY = (Math.random() - 0.5) * 16;
@@ -91,19 +64,10 @@ export class FloatingText {
             if (ft.isDead) state.floatingTexts.splice(i, 1);
         }
     }
-    static handleSpawnEvent({ state, variant = "custom", x, y, text, color, style, options, damage }) {
+    static handleSpawnEvent({ state, variant = "custom", x, y, text, color, style, options }) {
         if (!state.floatingTexts) return;
-        switch (variant) {
-            case "blastDamage":
-                FloatingText.spawnBlastDamageText(state, x, y, damage);
-                break;
-            case "standardDamage":
-                FloatingText.spawnStandardDamageText(state, x, y, damage);
-                break;
-            default:
-                FloatingText.spawn(state, x, y, text, color, style ?? "standard", options ?? {});
-                break;
-        }
+        if (variant !== "custom") return;
+        FloatingText.spawn(state, x, y, text, color, style ?? "standard", options ?? {});
     }
     render(ctx, renderer, state) {
         const cacheKey = this.getCacheKey();

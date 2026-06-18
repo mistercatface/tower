@@ -2,7 +2,7 @@ import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore
 import { populateCombatFrame } from "./populateCombatFrame.js";
 import { wakePushableBody } from "../../Libraries/Motion/pushableSleep.js";
 /**
- * Combat/map-transition spatial frame — populates SpatialFrameCore from GameState.
+ * Pushable spatial frame — populates SpatialFrameCore from GameState.
  *
  * Lifecycle:
  *   const frame = combatSpatial.begin(state);

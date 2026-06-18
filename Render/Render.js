@@ -1,6 +1,5 @@
 import { getWorldPropRecipes } from "../Libraries/Props/PropCatalog.js";
 import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
-import { SpriteCache } from "../Libraries/Canvas/SpriteCache.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js";
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
@@ -15,17 +14,14 @@ import { combatSpatial } from "../Systems/World/CombatSpatialFrame.js";
  */
 /**
  * @typedef {object} RendererOptions
- * @property {{ actorCache?: SpriteCache, turretCache?: SpriteCache }} [caches]
  * @property {SimulationSceneHooks} [sceneHooks]
  */
 export class Renderer {
-    /** @param {RendererOptions | { actorCache?: SpriteCache, turretCache?: SpriteCache } | undefined} options */
-    constructor(canvas, ctx, options) {
-        const normalized = options?.sceneHooks || options?.caches ? /** @type {RendererOptions} */ (options) : { caches: options };
+    /** @param {RendererOptions | undefined} options */
+    constructor(canvas, ctx, options = {}) {
         this.canvas = canvas;
         this.ctx = ctx;
-        this.caches = normalized.caches;
-        this.sceneHooks = normalized.sceneHooks ?? {};
+        this.sceneHooks = options.sceneHooks ?? {};
         this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getWorldPropRecipes());
         this.worldSceneDrawInput = {
             worldSurfaces: null,

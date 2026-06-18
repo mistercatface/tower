@@ -2,7 +2,6 @@ import { createRollToCursorHpaNav } from "../rollToCursorHpaNav.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { getRollToCursorConfig, snapRollMoveTargetToCellCenter, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
 import { isEntityOnFloorBelt, isFloorBeltCell, resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
-import { stopLocomotionWorldProp } from "../../Props/locomotionWorldProp.js";
 export const ROLL_TO_CURSOR_HPA_BEHAVIOR_ID = "rollToCursorHpa";
 /** @typedef {{ targetWorld: { x: number, y: number } | null, targetCellCol: number | null, targetCellRow: number | null, dragging: boolean, wasOnBelt: boolean, hpaNav: ReturnType<typeof createRollToCursorHpaNav> }} HpaPropRun */
 /** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
@@ -56,7 +55,6 @@ export function createRollToCursorHpaBehavior(state) {
         }
         if (onBelt) {
             run.wasOnBelt = true;
-            stopLocomotionWorldProp(prop);
             return;
         }
         if (run.wasOnBelt) {
