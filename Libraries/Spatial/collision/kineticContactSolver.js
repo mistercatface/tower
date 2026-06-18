@@ -3,7 +3,8 @@ import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.j
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../Motion/bodyMass.js";
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
-import { allowsKineticCollisionPair, isKinematicallyActive, pairBroadphaseOverlap } from "./entityBroadphase.js";
+import { gatherKineticCandidatePairs, kineticPairBuffer } from "./kineticPairStream.js";
+import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { separateAlongNormal, separateCoincidentCirclePair } from "./penetration.js";
 import { checkEntityPairCollision } from "./SatCollision.js";
 const MAX_CONTACTS = 4096;
@@ -171,22 +172,14 @@ function appendContact(contacts, bodyA, bodyB, info, preDvx, preDvy) {
     contacts.preDvx[i] = preDvx;
     contacts.preDvy[i] = preDvy;
 }
-function gatherKineticContacts(spatialFrame, contacts) {
+function narrowPhaseKineticContacts(pairs, contacts) {
     contacts.reset();
-    const active = spatialFrame._activeKineticBodies;
-    for (let i = 0; i < active.length; i++) {
-        const primary = active[i];
-        const neighbors = spatialFrame.getNeighbors(primary);
-        for (let j = 0; j < neighbors.length; j++) {
-            const neighbor = neighbors[j];
-            if (neighbor.isSleeping && isKinematicallyActive(primary) && pairBroadphaseOverlap(primary, neighbor)) spatialFrame.activateKineticBody(neighbor);
-            if (!allowsKineticCollisionPair(primary, neighbor)) continue;
-            const preDvx = (neighbor.vx ?? 0) - (primary.vx ?? 0);
-            const preDvy = (neighbor.vy ?? 0) - (primary.vy ?? 0);
-            const info = detectAndSeparateContact(primary, neighbor);
-            if (!info) continue;
-            appendContact(contacts, primary, neighbor, info, preDvx, preDvy);
-        }
+    for (let i = 0; i < pairs.count; i++) {
+        const primary = pairs.bodyA[i];
+        const neighbor = pairs.bodyB[i];
+        const info = detectAndSeparateContact(primary, neighbor);
+        if (!info) continue;
+        appendContact(contacts, primary, neighbor, info, pairs.preDvx[i], pairs.preDvy[i]);
     }
 }
 function precomputeKineticContacts(contacts) {
@@ -295,8 +288,12 @@ function applyKineticContactEffects(contacts, spatialFrame, state) {
     }
 }
 export function resolveKineticContactPass(spatialFrame, state) {
+    const active = spatialFrame._activeKineticBodies;
+    snapshotActiveBroadphaseBounds(active);
+    const pairs = kineticPairBuffer;
+    gatherKineticCandidatePairs(spatialFrame, pairs);
     const contacts = kineticContactBuffer;
-    gatherKineticContacts(spatialFrame, contacts);
+    narrowPhaseKineticContacts(pairs, contacts);
     if (contacts.count === 0) return;
     precomputeKineticContacts(contacts);
     warmStartKineticContacts(contacts);

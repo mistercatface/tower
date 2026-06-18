@@ -131,11 +131,29 @@ export function isKinematicallyActive(entity) {
 export function pairBroadphaseOverlap(a, b) {
     return pairBroadphaseBoundsOverlap(getBroadphaseBounds(a), getBroadphaseBounds(b));
 }
+export function snapshotActiveBroadphaseBounds(bodies) {
+    for (let i = 0; i < bodies.length; i++) getBroadphaseBounds(bodies[i]);
+}
+export function pairBroadphaseOverlapSnapshotted(a, b) {
+    return pairBroadphaseBoundsOverlap(a.broadphaseBounds, b.broadphaseBounds);
+}
+export function shouldResolveKineticPairSnapshotted(a, b) {
+    if (!pairBroadphaseOverlapSnapshotted(a, b)) return false;
+    if (isKinematicallyActive(a) || isKinematicallyActive(b)) return true;
+    if (a.isSleeping || b.isSleeping) return false;
+    return false;
+}
 export function shouldResolveKineticPair(a, b) {
     if (!pairBroadphaseOverlap(a, b)) return false;
     if (isKinematicallyActive(a) || isKinematicallyActive(b)) return true;
     if (a.isSleeping || b.isSleeping) return false;
     return false;
+}
+export function allowsKineticCollisionPairSnapshotted(primary, other) {
+    if (primary === other) return false;
+    if (!other.strategy?.isKinetic) return false;
+    if (primary.id >= other.id) return false;
+    return shouldResolveKineticPairSnapshotted(primary, other);
 }
 export function allowsKineticCollisionPair(primary, other) {
     if (primary === other) return false;
