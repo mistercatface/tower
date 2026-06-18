@@ -15,6 +15,7 @@ import { releaseButtonPointerHold } from "../Sandbox/floorButtons.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene } from "../../Apps/Editor/world/sandboxStartScene.js";
 import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
+import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandboxCapabilities.js";
 import { createAabb } from "../Math/Aabb2D.js";
 import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
@@ -217,18 +218,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             e.preventDefault();
             e.stopPropagation();
         }
-    };
-    /** @returns {{ selectedProps: object[] }} */
-    const selectionDrawState = () => {
-        const sel = session.getSelection();
-        const selectedIds = sel?.kind === "prop" ? [...sel.ids] : [];
-        /** @type {object[]} */
-        const selectedProps = [];
-        for (let i = 0; i < selectedIds.length; i++) {
-            const prop = state.entityRegistry.getLive(selectedIds[i]);
-            if (prop) selectedProps.push(prop);
-        }
-        return { selectedProps };
     };
     const controller = {
         getSpawnFaction: () => session.getSpawnFaction(),
@@ -460,7 +449,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             return buildSandboxOverlayCommands({
                 state,
                 session,
-                selectionDrawState,
+                spatialFrame: kineticSpatial,
                 placePreviewWorld: showPlacePreview ? placePreviewWorld : null,
                 marqueeRect: marqueeTool.getMarqueeRect(),
                 behaviorById,

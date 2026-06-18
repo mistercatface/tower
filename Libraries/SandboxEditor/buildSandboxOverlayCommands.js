@@ -1,14 +1,14 @@
 import { appendPathOverlayCommands } from "../Render/overlays/pathOverlayCommands.js";
 import { appendPlacePreviewOverlayCommands, resolveSandboxPlacePreview } from "../Sandbox/drawSandboxPlacePreview.js";
 import { appendButtonWireOverlayCommands } from "../Sandbox/buttonLinks.js";
-import { appendMarqueeOverlayCommands, appendPropTileCellOverlayCommands, appendSelectionOverlayCommands } from "../Sandbox/sandboxOverlayCommands.js";
+import { appendMarqueeOverlayCommands, appendPropTileCellOverlayCommands, appendSelectionOverlayCommands, queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { appendRoomGraphOverlayCommands } from "../RoomGraph/roomGraphOverlayCommands.js";
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
 import { resolveSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
 export function buildSandboxOverlayCommands({
     state,
     session,
-    selectionDrawState,
+    spatialFrame,
     placePreviewWorld,
     marqueeRect,
     behaviorById,
@@ -19,6 +19,7 @@ export function buildSandboxOverlayCommands({
     selectedProp,
 }) {
     const commands = [];
+    const viewport = state.viewport;
     const sel = session.getSelection();
     appendRoomGraphOverlayCommands(commands, state, state.obstacleGrid, {
         selectedNodeId: sel?.kind === "roomNode" ? sel.id : sel?.kind === "roomLink" ? sel.nodeId : null,
@@ -36,11 +37,16 @@ export function buildSandboxOverlayCommands({
         const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
         appendPlacePreviewOverlayCommands(commands, preview, state.obstacleGrid);
     }
+    let visibleSelectedProps = [];
     if (sel?.kind === "prop") {
-        const ids = selectionPropIds(sel);
-        for (let i = 0; i < ids.length; i++) {
-            const prop = state.entityRegistry.getLive(ids[i]);
-            if (!prop) continue;
+        const selectedIds = new Set(selectionPropIds(sel));
+        visibleSelectedProps = queryPropsInView(state.entityRegistry, viewport, spatialFrame, {
+            bounds: viewport.boundsVisibleWide,
+            filterId: "selectedOverlay",
+            match: (prop) => selectedIds.has(prop.id),
+        });
+        for (let i = 0; i < visibleSelectedProps.length; i++) {
+            const prop = visibleSelectedProps[i];
             const visual = resolveSandboxPathVisual(state, prop);
             if (visual === "off") continue;
             const behavior = behaviorById.get(getPropBehaviorId(prop));
@@ -49,16 +55,15 @@ export function buildSandboxOverlayCommands({
             appendPathOverlayCommands(commands, overlay, visual);
         }
     }
-    const { selectedProps } = selectionDrawState();
     appendSelectionOverlayCommands(commands, {
-        selectedProps,
+        selectedProps: visibleSelectedProps,
         showRings: state.editor.showSelectionRings,
         selectedFloorCell: sel?.kind === "floor" ? { col: sel.col, row: sel.row } : null,
         selectedVoxelCell: sel?.kind === "voxel" ? { col: sel.col, row: sel.row } : null,
         selectedRailEdge: sel?.kind === "rail" ? { col: sel.col, row: sel.row, side: sel.side } : null,
         grid: state.obstacleGrid,
     });
-    appendPropTileCellOverlayCommands(commands, { show: state.editor.showPropTileCells, grid: state.obstacleGrid, worldProps: state.worldProps });
+    appendPropTileCellOverlayCommands(commands, { show: state.editor.showPropTileCells, grid: state.obstacleGrid, entityRegistry: state.entityRegistry, viewport, spatialFrame });
     appendMarqueeOverlayCommands(commands, { marqueeRect });
     const behavior = resolveBehavior();
     if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(commands, selectedProp);
