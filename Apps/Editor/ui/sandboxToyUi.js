@@ -1,10 +1,11 @@
 import { getPropAsset, getWorldPropDefinitions, formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
-import { isSandboxSpawnable } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
+import { isSandboxSpawnable, sandboxTagsMatchFilter } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
 import { wallPlaceInspector } from "../../../Libraries/Sandbox/sandboxScenePlaceables.js";
 import { appendSelectionInspector } from "../../../Libraries/SandboxEditor/ui/sandboxPlaceableInspectorUi.js";
 import { appendWallPlaceParams } from "../../../Libraries/SandboxEditor/ui/sandboxWallInspector.js";
 import { appendPropPlaceParams } from "../../../Libraries/SandboxEditor/ui/sandboxPropSpawnInspector.js";
-import { buildPlacePaletteItems, appendPaletteTagFilters, appendSpawnPaletteGrid, sandboxPaletteMatchesFilter } from "../../../Libraries/SandboxEditor/ui/sandboxPlacePalette.js";
+import { appendSandboxSelectionPanel } from "../../../Libraries/SandboxEditor/ui/sandboxSelectionPanelUi.js";
+import { buildPlacePaletteItems, appendSandboxTagFilters, appendSpawnPaletteGrid } from "../../../Libraries/SandboxEditor/ui/sandboxPlacePalette.js";
 import { appendEditorHint, appendInstanceList } from "../../../Libraries/UI/paramFields.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 import { wrapLabUiSync } from "./preview.js";
@@ -42,7 +43,7 @@ export function mountSandboxToyUi(container, state, controller) {
             appendEditorHint(container, "No sandbox spawn options loaded");
             return;
         }
-        const paletteItems = allPaletteItems.filter((item) => sandboxPaletteMatchesFilter(paletteTagFilter, item.tags));
+        const paletteItems = allPaletteItems.filter((item) => sandboxTagsMatchFilter(paletteTagFilter, item.tags));
         if (paletteItems.length === 0) {
             appendPinnedSection(
                 container,
@@ -52,10 +53,15 @@ export function mountSandboxToyUi(container, state, controller) {
                     appendEditorHint(body, "No props match this filter.");
                 },
                 (head) => {
-                    appendPaletteTagFilters(head, paletteTagFilter, (filter) => {
-                        paletteTagFilter = filter;
-                        refreshPanel();
-                    });
+                    appendSandboxTagFilters(
+                        head,
+                        paletteTagFilter,
+                        (filter) => {
+                            paletteTagFilter = filter;
+                            refreshPanel();
+                        },
+                        "Prop palette filters",
+                    );
                 },
             );
             return;
@@ -78,10 +84,15 @@ export function mountSandboxToyUi(container, state, controller) {
                 });
             },
             (head) => {
-                appendPaletteTagFilters(head, paletteTagFilter, (filter) => {
-                    paletteTagFilter = filter;
-                    refreshPanel();
-                });
+                appendSandboxTagFilters(
+                    head,
+                    paletteTagFilter,
+                    (filter) => {
+                        paletteTagFilter = filter;
+                        refreshPanel();
+                    },
+                    "Prop palette filters",
+                );
             },
         );
         appendPinnedSection(container, "spawn", "Spawn", (body) => {
@@ -93,6 +104,25 @@ export function mountSandboxToyUi(container, state, controller) {
             else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, inspector: wallPlaceInspector(inspector) });
             else appendMapGenEditor(paramsHost, state, activeItem.genKind, refreshPanel);
         });
+        appendPinnedSection(
+            container,
+            "selection",
+            "Selection",
+            (body) => {
+                appendSandboxSelectionPanel(body, controller, refreshPanel);
+            },
+            (head) => {
+                appendSandboxTagFilters(
+                    head,
+                    controller.getSelectionTagFilter(),
+                    (filter) => {
+                        controller.setSelectionTagFilter(filter);
+                        refreshPanel();
+                    },
+                    "Selection filters",
+                );
+            },
+        );
         appendPinnedSection(container, "selected", "Selected", (body) => {
             if (inspector) appendSelectionInspector(body, state, controller, inspector, refreshPanel);
             else appendEditorHint(body, "Select an item from Scene, or pick from Props to place on the map.");

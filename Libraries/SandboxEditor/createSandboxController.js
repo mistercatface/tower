@@ -234,6 +234,11 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         getSpawnBoxHeight: () => session.getSpawnBoxHeight(),
         setSpawnBoxHeight: (height) => session.setSpawnBoxHeight(height),
         deleteSelectedProps: () => session.deleteSelectedProps(),
+        getSelectionTagFilter: () => session.getSelectionTagFilter(),
+        setSelectionTagFilter: (filter) => session.setSelectionTagFilter(filter),
+        listSelectedPropEntries: () => session.listSelectedPropEntries(),
+        selectAllPropsWithTagFilter: (filter) => session.selectAllPropsWithTagFilter(filter),
+        filterPropSelectionToTag: (filter) => session.filterPropSelectionToTag(filter),
         getSelection: () => session.getSelection(),
         getSelectionInspector: () => session.getSelectionInspector(),
         select: (input) => {

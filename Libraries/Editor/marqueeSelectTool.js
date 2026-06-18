@@ -4,12 +4,13 @@ import { releasePointerCapture } from "../Input/canvasPointer.js";
  *   clickThresholdPx?: number,
  *   getCanvas: () => HTMLCanvasElement,
  *   buildAabbFromDrag: (startWorld: { x: number, y: number }, endWorld: { x: number, y: number }) => import("../Math/Aabb2D.js").Aabb2D,
+ *   canBegin?: (e: PointerEvent) => boolean,
  *   onClick: (world: { x: number, y: number }, e: PointerEvent) => void,
  *   onBoxSelect: (bounds: import("../Math/Aabb2D.js").Aabb2D, e: PointerEvent) => void,
  *   drawMarquee: (ctx: CanvasRenderingContext2D, bounds: import("../Math/Aabb2D.js").Aabb2D) => void,
  * }} options
  */
-export function createMarqueeSelectTool({ clickThresholdPx = 4, getCanvas, buildAabbFromDrag, onClick, onBoxSelect, drawMarquee }) {
+export function createMarqueeSelectTool({ clickThresholdPx = 4, getCanvas, buildAabbFromDrag, canBegin, onClick, onBoxSelect, drawMarquee }) {
     let drag = null;
     const getMarqueeRect = () => {
         if (!drag) return null;
@@ -22,6 +23,7 @@ export function createMarqueeSelectTool({ clickThresholdPx = 4, getCanvas, build
         getMarqueeRect,
         tryBeginPointerDown(world, e) {
             if (e.button !== 0) return false;
+            if (canBegin && !canBegin(e)) return false;
             drag = { pointerId: e.pointerId, startClientX: e.clientX, startClientY: e.clientY, startWorld: world, currentWorld: world };
             getCanvas().setPointerCapture(e.pointerId);
             return true;

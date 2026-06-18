@@ -7,7 +7,7 @@ import { appendActionRow, appendEditorHint } from "../../UI/paramFields.js";
 const INSPECTOR_UI = {
     props(body, state, controller, data) {
         const count = data.ids.length;
-        appendEditorHint(body, `${count} props selected. Drag on empty space to box-select, or click one prop to select only that.`);
+        appendEditorHint(body, `${count} props selected.`);
         appendActionRow(body, [{ label: `Delete ${count} props`, onClick: () => controller.deleteSelectedProps() }]);
     },
     prop(body, state, controller, data, refreshPanel) {

@@ -1,4 +1,5 @@
 import { getPropAsset, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
+import { sandboxAssetTags } from "../../Sandbox/sandboxCapabilities.js";
 export const SANDBOX_PALETTE_TAG_FILTERS = [
     { id: "all", label: "All" },
     { id: "shapes", label: "Shapes" },
@@ -7,22 +8,15 @@ export const SANDBOX_PALETTE_TAG_FILTERS = [
     { id: "rooms", label: "Rooms" },
 ];
 const PLACE_PALETTE_TAGS_BY_KEY = { "wall:voxel": ["gen"], "wall:rail": ["gen"], "gen:cavern": ["gen"], "gen:rail": ["gen"], "gen:erase": ["gen"] };
-/** @param {object | null | undefined} asset */
-function sandboxTagsFromAsset(asset) {
-    const tags = asset?.sandbox?.tags;
-    if (!Array.isArray(tags)) return [];
-    return tags.filter((tag) => typeof tag === "string");
-}
-/** @param {string} paletteKey @param {object | null | undefined} [asset] */
 function resolvePlacePaletteTags(paletteKey, asset = null) {
     const keyed = PLACE_PALETTE_TAGS_BY_KEY[paletteKey];
     if (keyed) return keyed;
-    if (paletteKey.startsWith("prop:")) return sandboxTagsFromAsset(asset ?? getPropAsset(paletteKey.slice(5)));
+    if (paletteKey.startsWith("prop:")) return sandboxAssetTags(asset ?? getPropAsset(paletteKey.slice(5)));
     return [];
 }
-export function sandboxPaletteMatchesFilter(filter, itemTags) {
-    if (filter === "all") return true;
-    return itemTags.includes(filter);
+export function sandboxTagFilterLabel(filterId) {
+    const option = SANDBOX_PALETTE_TAG_FILTERS.find((entry) => entry.id === filterId);
+    return option?.label.toLowerCase() ?? filterId;
 }
 const WALL_STAMP_OPTIONS = [
     { value: "voxel", label: "Voxel block" },
@@ -60,11 +54,11 @@ export function buildPlacePaletteItems(propIds) {
     items.sort((a, b) => a.label.localeCompare(b.label));
     return items;
 }
-export function appendPaletteTagFilters(head, activeFilter, onChange) {
+export function appendSandboxTagFilters(head, activeFilter, onChange, ariaLabel = "Tag filters") {
     const row = document.createElement("div");
     row.className = "sandbox-palette-filter-group";
     row.setAttribute("role", "radiogroup");
-    row.setAttribute("aria-label", "Prop palette filters");
+    row.setAttribute("aria-label", ariaLabel);
     for (let i = 0; i < SANDBOX_PALETTE_TAG_FILTERS.length; i++) {
         const option = SANDBOX_PALETTE_TAG_FILTERS[i];
         const btn = document.createElement("button");

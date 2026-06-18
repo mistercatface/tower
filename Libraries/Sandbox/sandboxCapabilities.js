@@ -20,6 +20,18 @@ export function isSandboxSpawnable(asset) {
     if (sandbox == null || typeof sandbox !== "object") return false;
     return sandbox.spawnable !== false;
 }
+export function sandboxAssetTags(asset) {
+    const tags = asset?.sandbox?.tags;
+    if (!Array.isArray(tags)) return [];
+    return tags.filter((tag) => typeof tag === "string");
+}
+export function sandboxTagsMatchFilter(filter, tags) {
+    if (filter === "all") return true;
+    return tags.includes(filter);
+}
+export function sandboxAssetMatchesTagFilter(asset, filter) {
+    return sandboxTagsMatchFilter(filter, sandboxAssetTags(asset));
+}
 export function isGridFloorBeltSpawnAsset(asset) {
     return asset?.sandbox?.gridFloorBelt === true;
 }

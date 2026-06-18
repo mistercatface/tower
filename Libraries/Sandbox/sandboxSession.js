@@ -1,4 +1,5 @@
-import { formatPropTypeLabel } from "../Props/PropCatalog.js";
+import { formatPropTypeLabel, getPropAsset } from "../Props/PropCatalog.js";
+import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
@@ -39,6 +40,7 @@ export function createSandboxSession(state) {
     let wallHeightLevel = 1;
     let railThicknessLevel = 4;
     let forcefieldStampMode = PASSAGE_MODE.Solid;
+    let selectionTagFilter = "all";
     let uiSync = null;
     function notifyUi() {
         uiSync?.();
@@ -135,6 +137,38 @@ export function createSandboxSession(state) {
         listPlacedPassagePowerSources,
     });
     const removeProp = (prop) => removeSandboxWorldProp(state, prop);
+    const listSelectedPropEntries = () => {
+        pruneSelection();
+        const ids = selectionPropIds(sel());
+        const entries = [];
+        for (let i = 0; i < ids.length; i++) {
+            const prop = registry().getLive(ids[i]);
+            if (!prop) continue;
+            entries.push({ id: prop.id, label: formatPropTypeLabel(prop.type) });
+        }
+        return entries;
+    };
+    const selectAllPropsWithTagFilter = (filter) => {
+        const ids = [];
+        registry().forEachOfKind("worldProp", (prop) => {
+            if (prop.isDead) return;
+            if (!sandboxAssetMatchesTagFilter(getPropAsset(prop.type), filter)) return;
+            ids.push(prop.id);
+        });
+        pickSelection(ids.length === 0 ? null : { kind: "prop", ids });
+    };
+    const filterPropSelectionToTag = (filter) => {
+        const current = sel();
+        if (current?.kind !== "prop") return;
+        const ids = [];
+        for (const id of current.ids) {
+            const prop = registry().getLive(id);
+            if (!prop) continue;
+            if (!sandboxAssetMatchesTagFilter(getPropAsset(prop.type), filter)) continue;
+            ids.push(id);
+        }
+        pickSelection(ids.length === 0 ? null : { kind: "prop", ids });
+    };
     return {
         ...spawn,
         getSelection: () => selection.getSelection(),
@@ -474,6 +508,15 @@ export function createSandboxSession(state) {
             clearSelection();
             notifyUi();
         },
+        getSelectionTagFilter: () => selectionTagFilter,
+        setSelectionTagFilter: (filter) => {
+            if (selectionTagFilter === filter) return;
+            selectionTagFilter = filter;
+            notifyUi();
+        },
+        listSelectedPropEntries,
+        selectAllPropsWithTagFilter,
+        filterPropSelectionToTag,
         listPlacedProps,
         listPlacedFloorBelts,
         stampPassagePowerSourceAtWorld(worldX, worldY, defaultPowered = false) {

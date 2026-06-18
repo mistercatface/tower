@@ -1,3 +1,4 @@
+import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
 import { circlesOverlap } from "./overlap.js";
@@ -50,6 +51,47 @@ function entityCollisionSpan(entity) {
     return lengthXY(x, y);
 }
 /** @param {object} entity */
+const ENTITY_AABB_SCRATCH = createAabb();
+export function entityBroadphaseAabbInto(out, entity) {
+    const bb = getBroadphaseBounds(entity);
+    if (bb.kind === "circle") {
+        out.minX = bb.cx - bb.r;
+        out.minY = bb.cy - bb.r;
+        out.maxX = bb.cx + bb.r;
+        out.maxY = bb.cy + bb.r;
+        return out;
+    }
+    const cos = bb.cos;
+    const sin = bb.sin;
+    const hx = bb.hx;
+    const hy = bb.hy;
+    const cx = bb.cx;
+    const cy = bb.cy;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (let sx = -1; sx <= 1; sx += 2)
+        for (let sy = -1; sy <= 1; sy += 2) {
+            const lx = sx * hx;
+            const ly = sy * hy;
+            const wx = cx + lx * cos - ly * sin;
+            const wy = cy + lx * sin + ly * cos;
+            if (wx < minX) minX = wx;
+            if (wx > maxX) maxX = wx;
+            if (wy < minY) minY = wy;
+            if (wy > maxY) maxY = wy;
+        }
+    out.minX = minX;
+    out.minY = minY;
+    out.maxX = maxX;
+    out.maxY = maxY;
+    return out;
+}
+export function entityContainedInAabb(entity, outer) {
+    entityBroadphaseAabbInto(ENTITY_AABB_SCRATCH, entity);
+    return aabbContains(outer, ENTITY_AABB_SCRATCH);
+}
 export function getBroadphaseBounds(entity) {
     ensureBroadphaseCache(entity);
     const x = entity.x;

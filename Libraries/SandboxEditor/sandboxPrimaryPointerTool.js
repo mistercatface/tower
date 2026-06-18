@@ -30,26 +30,6 @@ export function createSandboxPrimaryPointerTools(
         stampPropBehavior(session.getSelectedProp());
         return true;
     };
-    const tryPickPlacedAtWorld = (world) => {
-        const registry = state.entityRegistry;
-        const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
-        if (hit) {
-            const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, state, hit);
-            if (allowed.length === 0) return false;
-            exitWireModes();
-            session.setPlacePaletteKey(`prop:${hit.type}`);
-            selectProp(hit.id);
-            return true;
-        }
-        const grid = state.obstacleGrid;
-        const { col, row } = grid.worldToGrid(world.x, world.y);
-        if (session.pickRoomNodeAtWorld(world.x, world.y)) return true;
-        if (grid.hasFloorOccupancy(col, row)) {
-            session.select({ kind: "floor", col, row });
-            return true;
-        }
-        return session.pickAnyWallAtWorld(world.x, world.y);
-    };
     const issueMassHpaGroundMove = (world) => {
         if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || blocksPlacement()) return false;
         return issueMassHpaGroundNav(state, behaviorById, behaviors, world, { getPropBehaviorId });
@@ -58,7 +38,6 @@ export function createSandboxPrimaryPointerTools(
         isActive: () => true,
         onPointerDown(world, e) {
             if (e.button === 0 && (e.ctrlKey || e.metaKey) && tryPlaceSpawnAtWorld(world)) return true;
-            if (e.button === 0 && e.shiftKey && tryPickPlacedAtWorld(world)) return true;
             return false;
         },
     };
