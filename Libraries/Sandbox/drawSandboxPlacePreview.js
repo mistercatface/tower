@@ -1,26 +1,13 @@
-import { getWorldPropDefinitions } from "../Props/PropCatalog.js";
+import { getPropAsset } from "../Props/PropCatalog.js";
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
-import { convexFootprintHalfExtents } from "../Math/Poly2D.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canStampFloorBeltAt, canStampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset, isPuzzleTemplateSpawnAsset } from "./sandboxCapabilities.js";
 import { resolveRoomNodePlacePreview } from "../RoomGraph/index.js";
 import { resolveBeltCratePuzzlePlacePreview } from "../RoomGraph/puzzleTemplateBeltCrate.js";
-import { getPropAsset } from "../Props/PropCatalog.js";
 const PREVIEW_CELL_BOUNDS = createAabb();
-/** @param {string} propTypeId */
-function resolveSpawnPreviewRadius(propTypeId) {
-    const def = getWorldPropDefinitions()[propTypeId];
-    if (!def) return 8;
-    const footprint = def.localFootprint;
-    if (footprint?.length >= 3) {
-        const span = convexFootprintHalfExtents(footprint);
-        return Math.max(span.x, span.y);
-    }
-    return def.radius ?? 8;
-}
 /**
  * @param {object} state
  * @param {{
@@ -68,7 +55,7 @@ export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
         const { col, row } = grid.worldToGrid(worldX, worldY);
         return resolveBeltCratePuzzlePlacePreview(state, col, row, session.getSpawnPuzzleAreaCols(), session.getSpawnPuzzleAreaRows());
     }
-    return { kind: "circle", x: worldX, y: worldY, radius: resolveSpawnPreviewRadius(session.getSpawnPropId()), valid: true };
+    return null;
 }
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -80,18 +67,6 @@ export function drawSandboxPlacePreview(ctx, preview, grid) {
     const lineScale = getCanvasLineScale(ctx);
     const valid = preview.valid !== false;
     ctx.save();
-    if (preview.kind === "circle") {
-        ctx.strokeStyle = valid ? "rgba(100, 255, 160, 0.9)" : "rgba(255, 96, 96, 0.85)";
-        ctx.fillStyle = valid ? "rgba(100, 255, 160, 0.12)" : "rgba(255, 96, 96, 0.1)";
-        ctx.lineWidth = lineScale;
-        ctx.setLineDash([5, 4]);
-        ctx.beginPath();
-        ctx.arc(preview.x, preview.y, preview.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-        return;
-    }
     if (preview.kind === "cell") {
         const { x, y } = grid.gridToWorld(preview.col, preview.row);
         const tint = preview.tint ?? "floor";

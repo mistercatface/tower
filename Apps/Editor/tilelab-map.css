@@ -394,3 +394,38 @@
     margin: 0;
     cursor: pointer;
 }
+
+.ui-context-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+}
+
+.ui-context-menu {
+    position: fixed;
+    z-index: 2001;
+    min-width: 160px;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    background: #1e293b;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.ui-context-menu-item {
+    all: unset;
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 4px;
+    color: #e2e8f0;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.ui-context-menu-item:hover {
+    background: rgba(56, 189, 248, 0.18);
+    color: #f8fafc;
+}

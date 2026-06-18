@@ -1,5 +1,5 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { bindCanvasPointers } from "../Input/canvasPointer.js";
+import { bindCanvasPointers, bindCanvasContextMenu } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createSandboxSession } from "../Sandbox/sandboxSession.js";
 import { clearButtonLinks, drawButtonWires, listButtonLinkEndpoints, removeButtonLink } from "../Sandbox/buttonLinks.js";
@@ -7,6 +7,7 @@ import { isButtonEntity } from "../Sandbox/buttonInput.js";
 import { createButtonWireTool } from "./buttonWireTool.js";
 import { createCorridorLinkWireTool } from "./corridorLinkWireTool.js";
 import { createSandboxMarqueeTool } from "./sandboxMarqueeTool.js";
+import { createSandboxGroundNavContextMenu } from "./sandboxGroundNavContextMenu.js";
 import { createSandboxDeletePointerTool } from "./sandboxDeletePointerTool.js";
 import { createSandboxPointerGestures } from "./sandboxPointerGestures.js";
 import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js";
@@ -22,6 +23,8 @@ import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
+import { countNavPropsInSelection, issueGroundNavToSelection } from "../Sandbox/groundNav/input/issueGroundNavToSelection.js";
+import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
 /**
  * @param {object} state
  * @param {{
@@ -36,6 +39,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     let spawnBehaviorId = behaviors[0]?.id ?? "";
     /** @type {(() => void) | null} */
     let unbindPointers = null;
+    /** @type {(() => void) | null} */
+    let unbindContextMenu = null;
     /** @type {(() => void) | null} */
     let unbindKeyDown = null;
     /** @type {(() => void) | null} */
@@ -100,6 +105,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     };
     const dismissEditorFocus = () => {
         exitWireModes();
+        groundNavContextMenu.close();
         marqueeTool.cancel();
         placePreviewWorld = null;
         session.clearSelection();
@@ -136,6 +142,14 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     const issueGroundMove = (move, world) => {
         move.behavior.setMoveTarget(move.prop, world);
     };
+    const issueGroundNavToSelected = (behaviorId, world) => {
+        const sel = session.getSelection();
+        if (sel?.kind !== "prop") return 0;
+        const moved = issueGroundNavToSelection(state, { propIds: selectionPropIds(sel), behaviorId, world, behaviorById, entityMeta: entityMeta() });
+        if (moved > 0) session.sync();
+        return moved;
+    };
+    const groundNavContextMenu = createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued: () => session.sync() });
     const deletePointerTool = createSandboxDeletePointerTool(state, session, { resolveGroundMove, issueGroundMove });
     const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, behaviors, {
         entityMeta,
@@ -239,6 +253,12 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         listSelectedPropEntries: () => session.listSelectedPropEntries(),
         selectAllPropsWithTagFilter: (filter) => session.selectAllPropsWithTagFilter(filter),
         filterPropSelectionToTag: (filter) => session.filterPropSelectionToTag(filter),
+        countSelectedNavProps: () => {
+            const sel = session.getSelection();
+            if (sel?.kind !== "prop") return 0;
+            return countNavPropsInSelection(state, selectionPropIds(sel));
+        },
+        issueGroundNavToSelection: issueGroundNavToSelected,
         getSelection: () => session.getSelection(),
         getSelectionInspector: () => session.getSelectionInspector(),
         select: (input) => {
@@ -385,9 +405,21 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
                 pointercancel: onPointerUp,
                 pointerleave: onPointerLeave,
             });
+            unbindContextMenu = bindCanvasContextMenu(getCanvas(), (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (session.isWallPlaceMode()) return;
+                const world = clientToWorld(e.clientX, e.clientY);
+                groundNavContextMenu.tryOpen(e.clientX, e.clientY, world);
+            });
             const onKeyDown = (e) => {
                 if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches("textarea, select, input"))) return;
                 if (e.code === "Escape") {
+                    if (groundNavContextMenu.isOpen()) {
+                        groundNavContextMenu.close();
+                        e.preventDefault();
+                        return;
+                    }
                     dismissEditorFocus();
                     e.preventDefault();
                     return;
@@ -416,7 +448,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             pKeyHeld = false;
             unbindPointers?.();
             unbindPointers = null;
+            unbindContextMenu?.();
+            unbindContextMenu = null;
             exitWireModes();
+            groundNavContextMenu.close();
             marqueeTool.cancel();
             placePreviewWorld = null;
             resetBehaviors();

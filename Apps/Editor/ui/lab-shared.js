@@ -61,7 +61,7 @@ export function setupLabViewportNavigation(canvasId, { getCamera, setCamera }) {
             },
             { passive: false },
         );
-        canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+        canvas.addEventListener("contextmenu", (e) => e.preventDefault(), true);
         canvas.addEventListener("pointerdown", (e) => {
             if (e.button !== 2) return;
             const cam = getCamera();

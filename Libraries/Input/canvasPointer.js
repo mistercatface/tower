@@ -83,6 +83,18 @@ export function bindCanvasPointers(canvas, handlers) {
     };
 }
 /**
+ * @param {HTMLCanvasElement} canvas
+ * @param {(e: MouseEvent) => void} handler
+ * @returns {() => void}
+ */
+export function bindCanvasContextMenu(canvas, handler) {
+    const onContextMenu = (e) => {
+        handler(e);
+    };
+    canvas.addEventListener("contextmenu", onContextMenu, true);
+    return () => canvas.removeEventListener("contextmenu", onContextMenu, true);
+}
+/**
  * @param {HTMLCanvasElement | null | undefined} canvas
  * @param {PointerEvent} e
  */

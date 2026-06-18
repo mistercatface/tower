@@ -16,7 +16,7 @@ function createSandboxBehaviors(state) {
         createSpawnerBehavior(state),
         createFlipperBehavior(state),
         createCueStrikeBehavior(state),
-        createDirectGroundNavBehavior(),
+        createDirectGroundNavBehavior(state),
         createHpaGroundNavBehavior(state),
         createFlowGroundNavBehavior(state),
     ];
