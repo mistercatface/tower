@@ -1,0 +1,143 @@
+---
+description: Which rendering pipeline to use for props, grid stamps, walls, and editor overlays — no new pipelines
+alwaysApply: true
+---
+
+# Rendering pipelines — pick one, don't invent another
+
+There are **four in-world pipelines** plus two **exempt off-pipeline** areas. New features must extend one of the four. If you are about to add `drawFoo`, touch `ctx` from a grid loop, or wire a new cache — stop and read the decision tree.
+
+## Decision tree
+
+| What are you drawing? | Pipeline | Entry point |
+|----------------------|----------|-------------|
+| Placed **WorldProp** (ball, crate, button, flipper, …) | **World prop cache** | `Assets/props/*.asset.js` → `drawWorldProp` → `PropRenderer.drawProp` |
+| **Grid/floor stamp** (belt, forcefield, passage power, portal edge, …) | **Grid stamp cache** | `PropDrawRecipe` + `GRID_STAMP_RENDER_KEY` + `drawCachedPropSprite` |
+| **Voxel fill** or **rail wall edge** (building geometry) | **Wall atlas** | `WorldSceneRenderer.draw3DBuildings` only |
+| **Editor/sandbox feedback** (selection, path, wire, place preview, drag aim) | **Overlay commands** | `append*OverlayCommands` → `collectOverlayCommands` → `drawOverlayCommands` |
+| Minimap / map overview / path-debug bake | **labMapCaches** | Not main canvas — do not copy this pattern for gameplay |
+| Full-screen vignette / letterbox | **Screen HUD** | OK in `preview.js` with `setTransform(1,0,0,1,0,0)` only |
+
+**Not a new pipeline:** animated ground zones (`drawAnimatedSurfaceZones`), entity `render()` hooks, debris pass — extend existing hooks; don't fork canvas drawing for one feature.
+
+---
+
+## 1 — World prop cache (placed entities)
+
+**Path:**
+
+```text
+*.asset.js  →  loadPropAssets  →  PropDrawRecipe  →  getOrBakePropSprite  →  blitAnchoredSprite
+                                      ↑
+                              drawWorldProp / PropRenderer.drawProp
+```
+
+### Add a new placed prop
+
+1. **`Assets/props/<name>/<name>.asset.js`** — `physics`, optional `sandbox`, visuals.
+2. **Draw recipe** — pick one:
+   - **`primitive`** (`sphere`, `box`, …) in `Libraries/Props/primitives/` when a shared shape fits.
+   - **`draw: createFooDraw()`** in `Libraries/Render/` when custom (see `button_floor.asset.js`, `createConveyorDraw`).
+3. Register in **`Assets/props/index.js`**. `loadPropAssets()` wires `render3DKey` = asset `id` automatically.
+4. Recipe signature: **`(ctx, prop, px, py) => void`** — iso projection uses `px`/`py`; never iterate the world calling `drawBox`/`ctx.fill` directly from sandbox code.
+
+### Dynamic state
+
+Bucket in **`getCustomSpriteCacheKey(prop)`** or **`prop.strategy.getCustomSpriteCacheKey`** (powered, tripped, anim frame, link role). Do not read uncached sim state inside the recipe without keying it.
+
+### Vector debug silhouette (optional)
+
+If sandbox **vector** visual mode should show a physics outline: extend **`resolveVectorPropPresentation`** / `vectorProp.js`. That is still bake+blit — not a separate pipeline. Default mode keeps using the prop cache recipe above.
+
+---
+
+## 2 — Grid stamp cache (obstacleGrid / floorStore)
+
+Grid features are **not** WorldProps but use the **same cache** as props.
+
+**Path:**
+
+```text
+PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAnchoredSprite
+```
+
+### Add a new grid/floor visual
+
+1. **Recipe** colocated with the domain (`drawForcefields.js`, `floorOccupancy.js`, …) — not a one-file micro-module.
+2. **`GRID_STAMP_RENDER_KEY`** entry in `QuantizedSpriteCache.js` (only if new topology family).
+3. **Minimal prop proxy** at world anchor with **`getCustomSpriteCacheKey()`** for dynamic buckets.
+4. **Single draw call:** `drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw, { animFrame?, zoom? })`.
+
+```javascript
+// ✅
+drawCachedPropSprite(ctx, proxy, px, py, GRID_STAMP_RENDER_KEY.ForcefieldEdge, forcefieldEdgeDraw);
+
+// ❌ — new pipeline
+forEachGridEdge(grid, (col, row, side, edge) => { ctx.beginPath(); ctx.stroke(...); });
+```
+
+If the feature is **both** a grid stamp and a placeable prop, one recipe should serve both (proxy + real WorldProp asset).
+
+---
+
+## 3 — Wall atlas (building walls only)
+
+**Only** voxel wall faces and rail-wall edges:
+
+- `StaticGridWallDraw` / `drawProjectedWallFace`
+- `StaticGridEdgeRailDraw` / `drawProjectedGridEdgeRail`
+- Called from **`WorldSceneRenderer.draw3DBuildings`**
+
+Do not route belts, forcefields, buttons, or editor feedback through this path.
+
+---
+
+## 4 — Overlay commands (editor / sandbox feedback)
+
+**Not props.** Temporary UI tied to the world (scales with zoom under `viewport.apply`).
+
+**Path:**
+
+```text
+append*OverlayCommands(out, …)  →  buildSandboxOverlayCommands  →  collectOverlayCommands
+  →  drawOverlayCommands(ctx, commands, { px, py, zoom })
+```
+
+### Add new overlay feedback
+
+1. **Emit commands** from the owning module via factories in `Libraries/Render/overlays/overlayCommands.js` or a domain `append*OverlayCommands` helper — not `ctx` in the tool/controller.
+2. **Wire collection** in `buildSandboxOverlayCommands.js` (or behavior `appendOverlayCommands` for pointer-drag tools).
+3. **Never** add `controller.drawFoo(ctx)` or a second effect pass in `preview.js`.
+
+### Cached glyph vs live draw
+
+| Shape | Use |
+|-------|-----|
+| **Static-ish glyph** (ring, arrowhead, cell highlight, endpoint dot, repeated marker) | Cached factory: `overlayCachedSelectionRing`, `overlayGridCellHighlight`, … — attaches **`cache: { renderKey, customKey, worldSpan }`**. Add **`OVERLAY_RENDER_KEY`** + bucket helper in `overlayCacheKeys.js` if new family. Bake body in **`overlayGlyphBake.js`**. |
+| **Live / unique geometry** (marquee rect, in-progress wire, polylines, drag-launch band, variable AABB) | Immediate factory **without** `cache`: `overlaySegment`, `overlayPolyline`, `overlayAabb`, `overlayAimSegment`. Use **`overlayWireLink(..., { live: true })`** for previews. |
+
+```javascript
+// ✅ cached selection ring
+out.push(overlayCachedSelectionRing(prop.x, prop.y, r, { stroke, lineWidth: 1, dash }));
+
+// ✅ live marquee
+out.push(overlayAabb(marqueeRect, { fill, stroke, lineWidth: 1, dash }));
+
+// ❌
+export function drawMyFeatureOverlay(ctx, state) { ctx.strokeRect(...); }
+```
+
+**World units only** for overlay geometry — no `getCanvasLineScale`, no `/zoom` hacks, no screen-stable gameplay feedback.
+
+---
+
+## Review bar (before shipping)
+
+- [ ] Does this touch `ctx.stroke` / `ctx.fill` / `drawBox` from a **sandbox grid loop** or **new `draw*Overlay` file**? → Route through prop cache or overlay commands.
+- [ ] New **`WorldProp`**? → Asset + recipe/primitive, not ad-hoc draw in controller.
+- [ ] New **grid stamp**? → `drawCachedPropSprite` + proxy, not immediate mode.
+- [ ] New **editor feedback**? → Overlay command + `buildSandboxOverlayCommands`, not preview sprawl.
+- [ ] Repeatable **glyph**? → `overlayCached*` + `OVERLAY_RENDER_KEY`, not a one-off zoom-sensitive draw function.
+- [ ] Invented a **fifth cache** or parallel executor? → Fold into `QuantizedSpriteCache` or `drawOverlayCommands`.
+
+See also: `draw-via-cached-props.mdc` (grid/prop cache emphasis), `minimal-barrels.mdc`, `no-shims-and-guards.mdc`.
