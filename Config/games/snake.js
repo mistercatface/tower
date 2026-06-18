@@ -24,4 +24,6 @@ export const SNAKE_GAME_DEFAULTS = {
     visionCone: { halfAngle: Math.PI / 3, range: 128, stroke: "rgba(120, 220, 255, 0.85)", visibleGoalStroke: "rgba(255, 220, 80, 0.95)", lineWidth: 1 },
     /** Explore waypoints must be at least this many grid tiles away (Chebyshev). */
     exploreMinTiles: 8,
+    /** LRU grid-cell memory window per snake (vision + arrival stamps). */
+    spatialMemoryCapacity: 128,
 };

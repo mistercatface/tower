@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { cellChebyshevDistance, pickExploreDestination } from "../Libraries/Navigation/steering/exploreSteering.js";
+import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -72,6 +73,17 @@ describe("explore steering", () => {
         const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells, rng: () => 0 });
         assert.ok(cell);
         assert.ok(cellChebyshevDistance(10, 10, cell.col, cell.row) >= 8);
+    });
+
+    it("prefers destinations outside spatial memory", () => {
+        const state = createIntentTestState();
+        const grid = state.obstacleGrid;
+        const openCells = collectOpenCavernCells(state);
+        const memory = createSpatialCellMemory({ capacity: 64 });
+        memory.stamp(18, 10);
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, memory, openCells, rng: () => 0 });
+        assert.ok(cell);
+        assert.ok(!memory.has(cell.col, cell.row));
     });
 });
 
