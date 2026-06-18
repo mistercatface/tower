@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents } from "../Libraries/Props/propStrategy.js";
+import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, resolvePropQuantizeSteps } from "../Libraries/Props/propStrategy.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
 import { createPolygonPrimitive } from "../Libraries/Props/primitives/polygonPrimitive.js";
 import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
@@ -83,5 +83,12 @@ describe("draw shape parity", () => {
         prop.radius = 99;
         assert.equal(prop.shape.radius, 7);
         assert.equal(resolveBodyRadius(prop), 7);
+    });
+    it("large footprints use finer sprite facing steps than crate-sized props", () => {
+        const crate = new WorldProp(0, 0, "crate", 0);
+        const plank = new WorldProp(0, 0, "custom_box", 0);
+        applyPropBoxFootprint(plank, 64, 8);
+        assert.equal(resolvePropQuantizeSteps(crate).facing, 16);
+        assert.equal(resolvePropQuantizeSteps(plank).facing, 128);
     });
 });
