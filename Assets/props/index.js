@@ -4,7 +4,6 @@ import flipper_left from "./flipper/flipperLeft.asset.js";
 import flipper_right from "./flipper/flipperRight.asset.js";
 import crate from "./crate/crate.asset.js";
 import tri_wedge from "./tri_wedge/tri_wedge.asset.js";
-import crate_shard from "./crate_shard/crate_shard.asset.js";
 import pipe_elbow from "./pipe_elbow/pipe_elbow.asset.js";
 import blue_ball from "./blue_ball/blue_ball.asset.js";
 import orange_ball from "./orange_ball/orange_ball.asset.js";
@@ -29,7 +28,6 @@ const catalog = {
     flipper_right,
     crate,
     tri_wedge,
-    crate_shard,
     pipe_elbow,
     blue_ball,
     orange_ball,

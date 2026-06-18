@@ -2,40 +2,37 @@ import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { initSplittableFootprint } from "../Props/splittableWorldProp.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
-/** @param {object} prop */
+import { PolygonShape } from "../Spatial/collision/Shapes.js";
+import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
+import { syncKineticRigidBody } from "../Motion/bodyMass.js";
+function applySpawnBoxHalfExtents(prop, halfExtents) {
+    prop.halfExtents = { x: halfExtents.x, y: halfExtents.y };
+    prop.radius = Math.max(halfExtents.x, halfExtents.y);
+    const hx = halfExtents.x;
+    const hy = halfExtents.y;
+    prop.shape = new PolygonShape([
+        { x: -hx, y: -hy },
+        { x: hx, y: -hy },
+        { x: hx, y: hy },
+        { x: -hx, y: hy },
+    ]);
+    invalidateBroadphaseBounds(prop);
+    if (prop.strategy.isKinetic) syncKineticRigidBody(prop);
+}
 function serializePlacedProp(prop) {
     const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: resolveSandboxFaction(prop) };
-    if (prop.strategy?.splittable && prop.halfExtents) {
+    if (prop.halfExtents) {
         entry.width = prop.halfExtents.x * 2;
         entry.height = prop.halfExtents.y * 2;
     }
     return entry;
 }
-/**
- * @param {object[]} members
- * @param {import("../../GameState/sandboxEntityMeta.js").SandboxEntityMetaStore} meta
- * @returns {{ type: string, x: number, y: number, facing: number, faction: string } | null}
- */
 function tryExportSpawnGroup(members, meta) {
     return tryExportPoolRackSpawnGroup(members, meta);
 }
-/**
- * Spawn a placed sandbox prop from a catalog type id (editor picker or scene JSON).
- * Grid floor belts are stamped separately — not handled here.
- *
- * @param {object} state
- * @param {number} worldX
- * @param {number} worldY
- * @param {string} propTypeId
- * @param {string} [faction]
- * @param {number} [facing]
- * @param {{ x: number, y: number } | null | undefined} [halfExtents]
- * @returns {object | null} cue ball for pool racks, spawned prop for singles
- */
 export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction = SANDBOX_DEFAULT_FACTION, facing = 0, halfExtents = undefined) {
     const asset = getPropAsset(propTypeId);
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
@@ -43,21 +40,14 @@ export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, factio
     if (isGridPassagePowerSourceSpawnAsset(asset)) throw new Error(`Passage power source "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     if (isPoolRackSpawnAsset(asset)) return spawnPoolRack(state, worldX, worldY, asset.sandbox.spawnRack, faction);
     const prop = new WorldProp(worldX, worldY, propTypeId, facing);
-    if (halfExtents && prop.strategy.splittable) {
-        prop.halfExtents = { x: halfExtents.x, y: halfExtents.y };
-        prop.radius = Math.max(halfExtents.x, halfExtents.y);
-        initSplittableFootprint(prop);
-    }
+    if (halfExtents) applySpawnBoxHalfExtents(prop, halfExtents);
     prop.faction = faction;
     addWorldPropToState(state, prop);
     return prop;
 }
-/** @param {object} state @returns {{ type: string, x: number, y: number, facing: number, faction: string }[]} */
 export function collectPlacedSandboxPropEntries(state) {
     const meta = getSandboxEntityMeta(state);
-    /** @type {Map<string, object[]>} */
     const byGroup = new Map();
-    /** @type {{ type: string, x: number, y: number, facing: number, faction: string }[]} */
     const entries = [];
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
         if (prop.isDead) return;
@@ -80,7 +70,6 @@ export function collectPlacedSandboxPropEntries(state) {
     }
     return entries;
 }
-/** @param {object} state @param {object} prop */
 export function removeSandboxWorldProp(state, prop) {
     removeWorldPropFromState(state, prop);
 }

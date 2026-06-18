@@ -8,11 +8,8 @@ import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { WorldPropVoidSinkState } from "./worldPropVoidSinkState.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";
-import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
-import { applyPoxelGeometryToProp, initSplittableFootprint } from "../Libraries/Props/splittableWorldProp.js";
 import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
@@ -59,7 +56,6 @@ export class WorldProp extends Entity {
                 { x: hx, y: hy },
                 { x: -hx, y: hy },
             ]);
-            if (this.strategy.splittable) initSplittableFootprint(this);
         }
         if (this.strategy.floorTriggers?.length) initFloorTriggerProp(this);
         if (this.strategy.buttonLinks != null) initFloorButtonProp(this);
@@ -115,42 +111,5 @@ export class WorldProp extends Entity {
             if (this.strategy.rolls) integratePropMotion(this, dt);
             else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
-    }
-    spawnSplittableFragments(gameState, fragments, { originX, originY, shardTypeId = "crate_shard", impactDirX = 0, impactDirY = 0 } = {}) {
-        if (!gameState?.worldProps || fragments.length === 0) return;
-        const ox = originX ?? this.x;
-        const oy = originY ?? this.y;
-        const parentOmega = this.angularVelocity || 0;
-        const cos = Math.cos(this.facing);
-        const sin = Math.sin(this.facing);
-        const kick = Math.hypot(impactDirX, impactDirY) > 0 ? 35 + Math.random() * 45 : 0;
-        const impactKickX = kick > 0 ? (impactDirX / Math.hypot(impactDirX, impactDirY)) * kick : 0;
-        const impactKickY = kick > 0 ? (impactDirY / Math.hypot(impactDirX, impactDirY)) * kick : 0;
-        for (const geom of fragments) {
-            const world = transformPoint2DInto({ x: 0, y: 0 }, ox, oy, geom.centroid.cx, geom.centroid.cy, cos, sin);
-            const shard = new WorldProp(world.x, world.y, shardTypeId, this.facing);
-            applyPoxelGeometryToProp(shard, geom);
-            let dx = world.x - ox;
-            let dy = world.y - oy;
-            let dist = Math.hypot(dx, dy);
-            if (dist > 0) {
-                dx /= dist;
-                dy /= dist;
-            } else {
-                const angle = Math.random() * Math.PI * 2;
-                dx = Math.cos(angle);
-                dy = Math.sin(angle);
-            }
-            const speed = 40 + Math.random() * 60;
-            shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15 + impactKickX;
-            shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15 + impactKickY;
-            const rx = world.x - ox;
-            const ry = world.y - oy;
-            shard.vx += -parentOmega * ry * 0.5;
-            shard.vy += parentOmega * rx * 0.5;
-            shard.angularVelocity = parentOmega + (Math.random() - 0.5) * 3;
-            wakeKineticBody(shard);
-            addWorldPropToState(gameState, shard);
-        }
     }
 }

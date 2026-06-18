@@ -6,7 +6,6 @@ export default {
         radius: 8,
         isKinetic: true,
         collisionShape: "box",
-        splittable: true,
         randomFaceLabels: true,
         wallPhysics: { restitution: 0.15, friction: 0.8 },
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 8, randomRange: 17 },

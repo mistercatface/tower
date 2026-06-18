@@ -11,7 +11,6 @@ import {
     isPuzzleTemplateSpawnAsset,
     isRoomLinkSpawnAsset,
     isRoomNodeSpawnAsset,
-    isSplittableBoxSpawnAsset,
     resolveFloorBeltKindFromSpawnAsset,
 } from "./sandboxCapabilities.js";
 import {
@@ -55,8 +54,7 @@ const PLACEABLE = {
             return true;
         },
         spawnAt(state, worldX, worldY, asset, ctx) {
-            const halfExtents = isSplittableBoxSpawnAsset(asset) ? ctx.spawnSplittableHalfExtents : undefined;
-            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, ctx.spawnPropId, ctx.spawnFaction, 0, halfExtents);
+            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, ctx.spawnPropId, ctx.spawnFaction, 0);
             if (spawned) {
                 ctx.placement.touchPropPlacement(spawned.id);
                 ctx.pickSelection({ kind: "prop", ids: [spawned.id] });

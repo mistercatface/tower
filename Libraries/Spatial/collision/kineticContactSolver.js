@@ -2,7 +2,6 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../Motion/bodyMass.js";
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
-import { fractureSplittableOnImpact, impactForceFromContact } from "../../Props/splittableWorldProp.js";
 import { allowsKineticCollisionPair, pairBroadphaseOverlap } from "./entityBroadphase.js";
 import { separateAlongNormal, separateCoincidentCirclePair } from "./penetration.js";
 import { SatCollision } from "./SatCollision.js";
@@ -279,17 +278,7 @@ function solveKineticContactVelocities(contacts, iterations) {
             bodyB.angularVelocity = wBn - jt * contacts.rBt[i] * contacts.invIB[i];
         }
 }
-const SPLITTABLE_MIN_IMPACT_FORCE = 25;
-function trySplittableFracture(state, prop, other, hitX, hitY, relativeSpeed, impactDirX, impactDirY) {
-    if (!prop.strategy?.splittable || prop.poxels?.length <= 1) return;
-    const force = impactForceFromContact(relativeSpeed, massFromBody(prop), massFromBody(other));
-    if (force < SPLITTABLE_MIN_IMPACT_FORCE) return;
-    const fracture = fractureSplittableOnImpact(prop, hitX, hitY, force);
-    if (!fracture) return;
-    prop.spawnSplittableFragments(state, fracture.debris, { originX: fracture.originX, originY: fracture.originY, impactDirX, impactDirY });
-    wakeKineticBody(prop);
-}
-function applyKineticContactEffects(contacts, spatialFrame, state) {
+function applyKineticContactEffects(contacts, spatialFrame) {
     for (let i = 0; i < contacts.count; i++) {
         const bodyA = contacts.bodyA[i];
         const bodyB = contacts.bodyB[i];
@@ -298,12 +287,6 @@ function applyKineticContactEffects(contacts, spatialFrame, state) {
         wakeKineticBody(bodyB);
         spatialFrame.activateKineticBody(bodyA);
         spatialFrame.activateKineticBody(bodyB);
-        const relativeSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
-        if (relativeSpeed <= 0) continue;
-        const hitX = bodyA.x + contacts.rax[i];
-        const hitY = bodyA.y + contacts.ray[i];
-        trySplittableFracture(state, bodyA, bodyB, hitX, hitY, relativeSpeed, contacts.preDvx[i], contacts.preDvy[i]);
-        trySplittableFracture(state, bodyB, bodyA, hitX, hitY, relativeSpeed, -contacts.preDvx[i], -contacts.preDvy[i]);
     }
 }
 export function resolveKineticContactPass(spatialFrame, state) {
@@ -314,5 +297,5 @@ export function resolveKineticContactPass(spatialFrame, state) {
     warmStartKineticContacts(contacts);
     solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS);
     storeKineticWarmStartCache(contacts);
-    applyKineticContactEffects(contacts, spatialFrame, state);
+    applyKineticContactEffects(contacts, spatialFrame);
 }

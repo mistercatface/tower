@@ -38,11 +38,6 @@ export function isPuzzleTemplateSpawnAsset(asset) {
 export function isPoolRackSpawnAsset(asset) {
     return asset?.sandbox?.spawnRack === "8ball" || asset?.sandbox?.spawnRack === "9ball";
 }
-export const DEFAULT_SPLITTABLE_SPAWN_WIDTH = 16;
-export const DEFAULT_SPLITTABLE_SPAWN_HEIGHT = 16;
-export function isSplittableBoxSpawnAsset(asset) {
-    return Boolean(asset?.physics?.splittable && asset?.physics?.collisionShape === "box");
-}
 export function isSingleWorldPropSpawnAsset(asset) {
     return (
         Boolean(asset) &&

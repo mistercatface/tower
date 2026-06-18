@@ -13,7 +13,7 @@ import {
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 loadPropAssets();
 describe("bodyMass", () => {
-    it("scales splittable mass with footprint area", () => {
+    it("scales mass with footprint area override", () => {
         const small = { footprintArea: 256, strategy: {} };
         const large = { footprintArea: 1024, strategy: {} };
         syncKineticRigidBody(small);
