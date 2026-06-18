@@ -1,14 +1,18 @@
+import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
-import { createGoalSeekAutosim } from "../../Sandbox/autosim/goalSeekAutosim.js";
-import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Sandbox/groundNav/groundNavIds.js";
+import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Sandbox/groundNav/groundNavIds.js";
 import { linkedChainOccupiedCellKeys, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
+import { cavernCellKey, collectOpenCavernCells, pickOpenCavernCell } from "../../Sandbox/cavernFloorCells.js";
+import { pickExploreDestination } from "../../Navigation/steering/exploreSteering.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
-import { countLiveSnakeGoals, findNearestSnakeGoal } from "./snakeGoals.js";
-export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal } from "./snakeGoals.js";
+import { countLiveSnakeGoals, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
+
+export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
+
 function chainMemberProps(state, headId) {
     const ids = getChainMemberIds(state, headId);
     const members = [];
@@ -18,6 +22,7 @@ function chainMemberProps(state, headId) {
     }
     return members;
 }
+
 function replenishSnakeGoals(state, headId, rng) {
     const config = getSnakeGameConfig();
     const live = countLiveSnakeGoals(state);
@@ -25,6 +30,19 @@ function replenishSnakeGoals(state, headId, rng) {
     const occupied = linkedChainOccupiedCellKeys(chainMemberProps(state, headId), state.obstacleGrid);
     spawnGoalOrbOnOpenCell(state, { excludeKeys: occupied, rng });
 }
+
+function resolveExploreCell(state, originCol, originRow, visitedKeys, rng) {
+    const config = getSnakeGameConfig();
+    const grid = state.obstacleGrid;
+    const openCells = collectOpenCavernCells(state);
+    const minTiles = config.exploreMinTiles;
+    let cell = pickExploreDestination(grid, originCol, originRow, { minTiles, visitedKeys, openCells, rng });
+    if (!cell && minTiles > 1) cell = pickExploreDestination(grid, originCol, originRow, { minTiles: 1, visitedKeys, openCells, rng });
+    if (!cell) cell = pickOpenCavernCell(openCells, { rng });
+    if (cell && cell.col === originCol && cell.row === originRow) cell = pickOpenCavernCell(openCells, { excludeKeys: new Set([cavernCellKey(originCol, originRow)]), rng });
+    return cell;
+}
+
 export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorById, eatRadius, ballType, growDirX, growDirY, rng = Math.random }) {
     const config = getSnakeGameConfig();
     let tailId = null;
@@ -38,40 +56,130 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     const resolvedGrowDirX = growDirX ?? config.growDirX;
     const resolvedGrowDirY = growDirY ?? config.growDirY;
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
-    const resolveGoalId = () => {
+    const meta = getSandboxEntityMeta(state);
+    const hpaBehavior = () => behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID);
+    const directBehavior = () => behaviorById.get(DIRECT_GROUND_NAV_BEHAVIOR_ID);
+    let active = false;
+    let mode = "explore";
+    let trackedGoalId = null;
+    let exploreCellKey = null;
+    const visitedKeys = new Set();
+    const resolveSeeker = () => state.entityRegistry.getLive(headId);
+    const clearNavTargets = (seeker) => {
+        hpaBehavior()?.clearMoveTarget?.(seeker);
+        directBehavior()?.clearMoveTarget?.(seeker);
+    };
+    const resolveSeekGoal = (seeker) => {
         if (pinnedGoalId != null) {
             const pinned = state.entityRegistry.getLive(pinnedGoalId);
-            if (pinned && !pinned.isDead) return pinned.id;
-            pinnedGoalId = null;
+            if (pinned && !pinned.isDead) {
+                const vision = config.visionCone;
+                const visible = findNearestVisibleSnakeGoal(state, seeker, vision);
+                if (visible?.id === pinned.id) return pinned;
+            } else pinnedGoalId = null;
         }
-        const seeker = state.entityRegistry.getLive(headId);
-        if (!seeker || seeker.isDead) return null;
-        const goal = findNearestSnakeGoal(state, seeker.x, seeker.y);
-        return goal?.id ?? null;
+        return findNearestVisibleSnakeGoal(state, seeker, config.visionCone);
     };
-    return createGoalSeekAutosim(state, {
-        getSeekerPropId: () => headId,
-        getGoalPropId: resolveGoalId,
-        navBehaviorId: HPA_GROUND_NAV_BEHAVIOR_ID,
-        behaviorById,
-        eatRadius: resolvedEatRadius,
-        onConsume({ goal }) {
-            removeSandboxWorldProp(state, goal);
-            if (pinnedGoalId === goal.id) pinnedGoalId = null;
-            const grow = growSnakeChainAfterMeal(state, headId);
-            const tail = state.entityRegistry.getLive(tailId);
-            const newTail = growChainSegment(state, tail, {
-                spacing: grow.spacing,
-                segmentRadius: grow.segmentRadius,
-                linkSlack: grow.linkSlack,
-                ballType: resolvedBallType,
-                growDirX: resolvedGrowDirX,
-                growDirY: resolvedGrowDirY,
-                exportType: SNAKE_CHAIN_EXPORT_TYPE,
-            });
-            copySnakeChainTintFromHead(state, headId, newTail);
-            tailId = newTail.id;
-            replenishSnakeGoals(state, headId, rng);
+    const enterSeek = (seeker, goal) => {
+        const hpa = hpaBehavior();
+        if (!hpa?.setMoveTarget) throw new Error(`Ground nav behavior missing setMoveTarget: ${HPA_GROUND_NAV_BEHAVIOR_ID}`);
+        if (mode === "seek" && trackedGoalId === goal.id && hpa.hasMoveTarget?.(seeker)) return;
+        directBehavior()?.clearMoveTarget?.(seeker);
+        mode = "seek";
+        trackedGoalId = goal.id;
+        exploreCellKey = null;
+        meta.setActiveBehaviorId(seeker.id, HPA_GROUND_NAV_BEHAVIOR_ID);
+        hpa.setMoveTarget(seeker, { x: goal.x, y: goal.y });
+    };
+    const enterExplore = (seeker) => {
+        const hpa = hpaBehavior();
+        if (!hpa?.setMoveTarget) throw new Error(`Ground nav behavior missing setMoveTarget: ${HPA_GROUND_NAV_BEHAVIOR_ID}`);
+        const grid = state.obstacleGrid;
+        const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
+        visitedKeys.add(cavernCellKey(col, row));
+        const cell = resolveExploreCell(state, col, row, visitedKeys, rng);
+        if (!cell) return;
+        const key = cavernCellKey(cell.col, cell.row);
+        if (mode === "explore" && exploreCellKey === key && hpa.hasMoveTarget?.(seeker)) return;
+        directBehavior()?.clearMoveTarget?.(seeker);
+        mode = "explore";
+        trackedGoalId = null;
+        exploreCellKey = key;
+        meta.setActiveBehaviorId(seeker.id, HPA_GROUND_NAV_BEHAVIOR_ID);
+        hpa.setMoveTarget(seeker, grid.gridToWorld(cell.col, cell.row));
+    };
+    const refreshIntent = (seeker) => {
+        const goal = resolveSeekGoal(seeker);
+        if (goal) {
+            enterSeek(seeker, goal);
+            return;
+        }
+        if (mode === "seek") {
+            clearNavTargets(seeker);
+            mode = "explore";
+            trackedGoalId = null;
+            exploreCellKey = null;
+        }
+        const hpa = hpaBehavior();
+        if (!exploreCellKey || !hpa?.hasMoveTarget?.(seeker)) enterExplore(seeker);
+    };
+    return {
+        start() {
+            active = true;
+            mode = "explore";
+            trackedGoalId = null;
+            exploreCellKey = null;
+            visitedKeys.clear();
+            const seeker = resolveSeeker();
+            if (seeker) refreshIntent(seeker);
         },
-    });
+        stop() {
+            active = false;
+            trackedGoalId = null;
+            exploreCellKey = null;
+            const seeker = resolveSeeker();
+            if (seeker) clearNavTargets(seeker);
+        },
+        isActive() {
+            return active;
+        },
+        getMode() {
+            return mode;
+        },
+        tick(dt) {
+            if (!active) return;
+            const seeker = resolveSeeker();
+            if (!seeker || seeker.isDead) return;
+            const goal = resolveSeekGoal(seeker);
+            if (goal) {
+                enterSeek(seeker, goal);
+                const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
+                const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
+                if (dist <= radius) {
+                    removeSandboxWorldProp(state, goal);
+                    if (pinnedGoalId === goal.id) pinnedGoalId = null;
+                    trackedGoalId = null;
+                    clearNavTargets(seeker);
+                    const grow = growSnakeChainAfterMeal(state, headId);
+                    const tail = state.entityRegistry.getLive(tailId);
+                    const newTail = growChainSegment(state, tail, {
+                        spacing: grow.spacing,
+                        segmentRadius: grow.segmentRadius,
+                        linkSlack: grow.linkSlack,
+                        ballType: resolvedBallType,
+                        growDirX: resolvedGrowDirX,
+                        growDirY: resolvedGrowDirY,
+                        exportType: SNAKE_CHAIN_EXPORT_TYPE,
+                    });
+                    copySnakeChainTintFromHead(state, headId, newTail);
+                    tailId = newTail.id;
+                    replenishSnakeGoals(state, headId, rng);
+                    refreshIntent(seeker);
+                } else if (goal.id !== trackedGoalId) enterSeek(seeker, goal);
+                else if (!hpaBehavior()?.hasMoveTarget?.(seeker)) enterSeek(seeker, goal);
+                return;
+            }
+            refreshIntent(seeker);
+        },
+    };
 }

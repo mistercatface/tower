@@ -7,8 +7,9 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
+import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
-import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
+import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/hex.js";
 import { pickSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
@@ -35,7 +36,7 @@ function createSnakeSceneTestState(cols = 32, rows = 32) {
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
-        hpaPathWorker: { getPathSlot: () => null },
+        hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
     };
 }
 
@@ -81,7 +82,10 @@ describe("snake multi-spawn", () => {
         const state = createSnakeSceneTestState();
         const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.5 });
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
-        const behaviorById = new Map([[HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)]]);
+        const behaviorById = new Map([
+            [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
+            [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
+        ]);
         const autosim = createSnakeAutosim(state, {
             headId: pack.chain.head.id,
             goalPropId: goal.id,

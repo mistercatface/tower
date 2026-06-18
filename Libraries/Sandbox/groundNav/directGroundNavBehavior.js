@@ -61,6 +61,13 @@ export function createDirectGroundNavBehavior(state) {
             if (!run.moveTargetActive || !run.targetWorld) return;
             run.targetWorld = { x: world.x, y: world.y };
         },
+        hasMoveTarget(prop) {
+            const run = getRun(prop);
+            return run.moveTargetActive && run.targetWorld != null;
+        },
+        clearMoveTarget(prop) {
+            clearRunTarget(getRun(prop));
+        },
         tick(prop, dt) {
             tickProp(prop, getRun(prop), dt);
         },

@@ -4,7 +4,7 @@ export const SNAKE_GAME_DEFAULTS = {
     headPropId: "snake_head",
     goalPropId: "goal_orb",
     snakeCount: 30,
-    goalCount: 15,
+    goalCount: 75,
     playerSnakeIndex: 0,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
@@ -22,4 +22,6 @@ export const SNAKE_GAME_DEFAULTS = {
     showVisionCones: true,
     showAllSnakeVisionCones: false,
     visionCone: { halfAngle: Math.PI / 3, range: 128, stroke: "rgba(120, 220, 255, 0.85)", visibleGoalStroke: "rgba(255, 220, 80, 0.95)", lineWidth: 1 },
+    /** Explore waypoints must be at least this many grid tiles away (Chebyshev). */
+    exploreMinTiles: 8,
 };

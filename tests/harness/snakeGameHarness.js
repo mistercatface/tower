@@ -5,8 +5,9 @@ import { WorldObstacleGrid } from "../../Libraries/Spatial/grid/WorldObstacleGri
 import { createDefaultMapGenBoundsConfig } from "../../Libraries/Sandbox/mapGenBounds.js";
 import { resetKineticConstraintIds } from "../../Libraries/Motion/kineticConstraints.js";
 import { spawnLinkedBallChain } from "../../Libraries/Sandbox/spawnLinkedBallChain.js";
+import { createDirectGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
-import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
+import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
 import { spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
@@ -26,11 +27,15 @@ export function createSnakeGameHarnessState(cols = 32, rows = 32) {
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
-        hpaPathWorker: { getPathSlot: () => null },
+        hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
         viewport: { snapTo() {} },
     };
     const hpaBehavior = createHpaGroundNavBehavior(state);
-    const behaviorById = new Map([[HPA_GROUND_NAV_BEHAVIOR_ID, hpaBehavior]]);
+    const directBehavior = createDirectGroundNavBehavior(state);
+    const behaviorById = new Map([
+        [HPA_GROUND_NAV_BEHAVIOR_ID, hpaBehavior],
+        [DIRECT_GROUND_NAV_BEHAVIOR_ID, directBehavior],
+    ]);
     state.sandbox.controller = { getBehaviorByIdMap: () => behaviorById };
     return { state, behaviorById, hpaBehavior };
 }

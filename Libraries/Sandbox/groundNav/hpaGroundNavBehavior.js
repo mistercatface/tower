@@ -96,6 +96,9 @@ export function createHpaGroundNavBehavior(state) {
         hasMoveTarget(prop) {
             return getRun(prop).targetWorld != null;
         },
+        clearMoveTarget(prop) {
+            clearRunTarget(getRun(prop), state);
+        },
         tick(prop, dt) {
             tickProp(prop, getRun(prop), dt);
         },
