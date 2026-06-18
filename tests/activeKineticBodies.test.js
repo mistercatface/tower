@@ -44,8 +44,33 @@ describe("active kinetic bodies", () => {
         frame.activateKineticBody(prop);
         assert.equal(prop.isSleeping, false);
         assert.equal(frame._activeKineticBodies.length, 1);
+        assert.equal(prop._activeSlot, 0);
         frame.activateKineticBody(prop);
         assert.equal(frame._activeKineticBodies.length, 1);
+        assert.equal(prop._activeSlot, 0);
+    });
+    it("scheduled activation batches island peers on flush", () => {
+        const frame = new KineticSpatialFrame(50);
+        frame.resetFrame(mockGrid);
+        const head = mockCircleProp(0, 0, 10);
+        const tail = mockCircleProp(20, 0, 10);
+        frame.insertEntity(head, 0);
+        frame.insertEntity(tail, 1);
+        head._physId = 0;
+        tail._physId = 1;
+        head._kineticIslandPeers = [head, tail];
+        tail._kineticIslandPeers = [head, tail];
+        head.isSleeping = true;
+        tail.isSleeping = true;
+        frame._kineticBodies.push(head, tail);
+        frame.syncActiveKineticBodies();
+        assert.equal(frame._activeKineticBodies.length, 0);
+        frame.scheduleKineticActivation(head);
+        assert.equal(frame._activeKineticBodies.length, 0);
+        frame.flushScheduledKineticActivations();
+        assert.equal(frame._activeKineticBodies.length, 2);
+        assert.equal(head._activeSlot, 0);
+        assert.equal(tail._activeSlot, 1);
     });
     it("sleeping kinetic body drops out of active list on next sync", () => {
         const frame = new KineticSpatialFrame(50);

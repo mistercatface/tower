@@ -1,6 +1,6 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
-import { resolveKineticConstraintPass } from "../../Motion/kineticConstraintSolver.js";
+import { gatherKineticConstraintBuffer, solveKineticConstraintBuffer } from "../../Motion/kineticConstraintSolver.js";
 import { resolveKineticContactPass } from "./kineticContactSolver.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
@@ -44,10 +44,11 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
             prop._frameDispX = prop.x - (prop._wallDispPrevX ?? prop.x);
             prop._frameDispY = prop.y - (prop._wallDispPrevY ?? prop.y);
         }
-    if (hasActiveBodies)
+    if (hasActiveBodies) {
+        const constraintBuffer = gatherKineticConstraintBuffer(state);
         for (let iter = 0; iter < kineticIterations; iter++) {
             resolveKineticContactPass(spatialFrame, state);
-            resolveKineticConstraintPass(spatialFrame, state);
+            solveKineticConstraintBuffer(spatialFrame, constraintBuffer);
             for (let i = 0; i < activeBodies.length; i++) {
                 const prop = activeBodies[i];
                 if (!prop.strategy?.isKinetic) continue;
@@ -55,7 +56,9 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
                 if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
                 resolveWalls(prop, spatialFrame);
             }
+            spatialFrame.flushScheduledKineticActivations();
         }
+    }
     if (hasActiveBodies)
         for (let i = 0; i < activeBodies.length; i++) {
             const prop = activeBodies[i];

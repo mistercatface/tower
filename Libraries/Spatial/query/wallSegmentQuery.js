@@ -1,4 +1,10 @@
 /** @typedef {import("./wallContext.js").WallContext} WallContext */
+export function resolveWallSegmentQueryRadius(wallCtx, ...clearanceRadii) {
+    const clearance = Math.max(...clearanceRadii, 0);
+    const cellSize = wallCtx?.obstacleGrid?.cellSize;
+    if (!cellSize) return clearance;
+    return Math.max(clearance, cellSize + clearance);
+}
 /**
  * @param {import("./SpatialQuery.js").SpatialQuery} _wallQuery
  * @param {WallContext | null} wallCtx

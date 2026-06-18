@@ -18,6 +18,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._activeKineticBodies = [];
         /** Registry membershipGen when this frame was last populated. */
         this.populatedMembershipGen = -1;
+        this._activationScheduled = new Set();
     }
     begin(state) {
         populateKineticFrame(this, state, this._kineticBodies);
@@ -50,15 +51,54 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const all = this._kineticBodies;
         for (let i = 0; i < all.length; i++) {
             const prop = all[i];
-            if (prop._physId === undefined) continue;
-            if (!prop.isSleeping) active.push(prop);
+            if (prop._physId === undefined) {
+                prop._activeSlot = -1;
+                continue;
+            }
+            if (!prop.isSleeping) {
+                prop._activeSlot = active.length;
+                active.push(prop);
+            } else prop._activeSlot = -1;
         }
     }
     _ensureActive(prop) {
         if (prop._physId === undefined) return;
         const active = this._activeKineticBodies;
-        for (let i = 0; i < active.length; i++) if (active[i] === prop) return;
+        if (prop._activeSlot >= 0 && active[prop._activeSlot] === prop) return;
+        prop._activeSlot = active.length;
         active.push(prop);
+    }
+    _removeFromActive(prop) {
+        const slot = prop._activeSlot;
+        if (slot == null || slot < 0) return;
+        const active = this._activeKineticBodies;
+        const last = active.pop();
+        if (last !== prop) {
+            active[slot] = last;
+            last._activeSlot = slot;
+        }
+        prop._activeSlot = -1;
+    }
+    scheduleKineticActivation(prop) {
+        if (prop._physId === undefined) return;
+        wakeKineticBody(prop);
+        this._activationScheduled.add(prop);
+    }
+    flushScheduledKineticActivations() {
+        const scheduled = this._activationScheduled;
+        if (scheduled.size === 0) return;
+        for (const prop of scheduled) {
+            this._ensureActive(prop);
+            const peers = prop._kineticIslandPeers;
+            if (!peers) continue;
+            for (let i = 0; i < peers.length; i++) {
+                const peer = peers[i];
+                if (peer === prop || peer._physId === undefined) continue;
+                if (peer.isSleeping) wakeKineticBody(peer);
+                this._ensureActive(peer);
+            }
+        }
+        scheduled.clear();
     }
     activateKineticBody(prop) {
         if (prop._physId === undefined) return;
@@ -84,8 +124,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this.entityGrid.remove(prop);
         const all = this._kineticBodies;
         for (let i = all.length - 1; i >= 0; i--) if (all[i] === prop) all.splice(i, 1);
-        const active = this._activeKineticBodies;
-        for (let i = active.length - 1; i >= 0; i--) if (active[i] === prop) active.splice(i, 1);
+        this._removeFromActive(prop);
+        this._activationScheduled.delete(prop);
         delete prop._physId;
         prop._neighborsFrameId = -1;
         if (prop._neighbors) prop._neighbors.length = 0;

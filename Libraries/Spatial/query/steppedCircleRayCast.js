@@ -56,14 +56,14 @@ function rayCircleHitsWall(rayCircle, candidateWalls) {
  * }} [options]
  * @returns {SteppedCircleRayHit}
  */
-export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { wallCtx = null, circles = [], step = DEFAULT_STEP } = {}) {
+export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { wallCtx = null, circles = [], step = DEFAULT_STEP, wallQueryRadius = radius } = {}) {
     let dist = 0;
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
     let cx = startX;
     let cy = startY;
     const rayCircle = { x: cx, y: cy, radius };
-    const candidateWalls = collectCandidateWalls(startX, startY, dx, dy, maxDist, wallCtx, radius);
+    const candidateWalls = collectCandidateWalls(startX, startY, dx, dy, maxDist, wallCtx, wallQueryRadius);
     while (dist < maxDist) {
         cx += dx * step;
         cy += dy * step;

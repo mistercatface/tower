@@ -1,7 +1,6 @@
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "./bodyMass.js";
 import { distanceBetweenAnchors, worldAnchorFromBody } from "./constraintAnchors.js";
-import { wakeKineticBody } from "./kineticSleep.js";
 import { separateAlongNormal } from "../Spatial/collision/penetration.js";
 const MAX_KINETIC_CONSTRAINTS = 2048;
 const kineticConstraintBuffer = {
@@ -17,7 +16,7 @@ const kineticConstraintBuffer = {
         this.count = 0;
     },
 };
-function gatherKineticConstraints(state, buffer) {
+export function gatherKineticConstraintBuffer(state, buffer = kineticConstraintBuffer) {
     buffer.reset();
     const list = state.sandbox.kineticConstraints;
     for (let i = 0; i < list.length; i++) {
@@ -36,6 +35,7 @@ function gatherKineticConstraints(state, buffer) {
         buffer.anchorBy[idx] = entry.anchorB.y;
         buffer.restLength[idx] = entry.restLength;
     }
+    return buffer;
 }
 function solveDistanceConstraint(buffer, index, spatialFrame) {
     const bodyA = buffer.bodyA[index];
@@ -79,16 +79,17 @@ function solveDistanceConstraint(buffer, index, spatialFrame) {
     bodyB.vy = (bodyB.vy ?? 0) + lambda * ny * invMassB;
     bodyA.angularVelocity = (bodyA.angularVelocity ?? 0) - lambda * rAn * invIA;
     bodyB.angularVelocity = (bodyB.angularVelocity ?? 0) + lambda * rBn * invIB;
-    wakeKineticBody(bodyA);
-    wakeKineticBody(bodyB);
-    spatialFrame.activateKineticBody(bodyA);
-    spatialFrame.activateKineticBody(bodyB);
+    spatialFrame.scheduleKineticActivation(bodyA);
+    spatialFrame.scheduleKineticActivation(bodyB);
+}
+export function solveKineticConstraintBuffer(spatialFrame, buffer) {
+    if (buffer.count === 0) return;
+    const iterations = getCollisionSettings().kineticConstraints.iterations;
+    for (let iter = 0; iter < iterations; iter++) for (let i = 0; i < buffer.count; i++) solveDistanceConstraint(buffer, i, spatialFrame);
 }
 export function resolveKineticConstraintPass(spatialFrame, state) {
-    gatherKineticConstraints(state, kineticConstraintBuffer);
-    if (kineticConstraintBuffer.count === 0) return;
-    const iterations = getCollisionSettings().kineticConstraints.iterations;
-    for (let iter = 0; iter < iterations; iter++) for (let i = 0; i < kineticConstraintBuffer.count; i++) solveDistanceConstraint(kineticConstraintBuffer, i, spatialFrame);
+    gatherKineticConstraintBuffer(state, kineticConstraintBuffer);
+    solveKineticConstraintBuffer(spatialFrame, kineticConstraintBuffer);
 }
 export function measureDistanceConstraintError(state, constraint) {
     const bodyA = state.entityRegistry.getLive(constraint.bodyAId);

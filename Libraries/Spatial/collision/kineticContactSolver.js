@@ -1,7 +1,6 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../Motion/bodyMass.js";
-import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "./kineticPairStream.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
@@ -290,10 +289,8 @@ function applyKineticContactEffects(contacts, spatialFrame, state) {
         const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
         tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relSpeed, spatialFrame);
         invalidateWallResolveCache(bodyA, bodyB);
-        wakeKineticBody(bodyA);
-        wakeKineticBody(bodyB);
-        spatialFrame.activateKineticBody(bodyA);
-        spatialFrame.activateKineticBody(bodyB);
+        spatialFrame.scheduleKineticActivation(bodyA);
+        spatialFrame.scheduleKineticActivation(bodyB);
     }
 }
 export function resolveKineticContactPass(spatialFrame, state) {

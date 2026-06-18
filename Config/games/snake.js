@@ -19,4 +19,7 @@ export const SNAKE_GAME_DEFAULTS = {
     maxRadius: 4,
     radiusPerMeal: 0.25,
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1 },
+    showVisionCones: true,
+    showAllSnakeVisionCones: false,
+    visionCone: { halfAngle: Math.PI / 3, range: 128, stroke: "rgba(120, 220, 255, 0.85)", visibleGoalStroke: "rgba(255, 220, 80, 0.95)", lineWidth: 1 },
 };

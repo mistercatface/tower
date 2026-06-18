@@ -9,6 +9,7 @@ import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
 import { resolveSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isChainSteeringTarget } from "../Sandbox/chainLinks.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
+import { appendSnakeVisionOverlayCommands } from "../Game/snake/snakeVisionOverlays.js";
 export function buildSandboxOverlayCommands({
     state,
     session,
@@ -76,6 +77,8 @@ export function buildSandboxOverlayCommands({
     });
     appendPropTileCellOverlayCommands(commands, { show: state.editor.showPropTileCells, grid: state.obstacleGrid, entityRegistry: state.entityRegistry, viewport, spatialFrame });
     appendMarqueeOverlayCommands(commands, { marqueeRect });
+    const snakeSession = state.appLaunch?.session;
+    if (snakeSession?.showVisionCones && snakeSession.snakeHeadIds?.length) appendSnakeVisionOverlayCommands(commands, state, snakeSession.snakeHeadIds);
     const behavior = resolveBehavior();
     if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(commands, selectedProp);
     return commands;
