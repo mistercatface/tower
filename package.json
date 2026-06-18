@@ -1,7 +1,7 @@
 {
     "type": "module",
     "scripts": {
-        "test": "node --test tests/corridorWidthOne.test.js tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/maskCompositor.test.js tests/hpaBeltNav.test.js tests/hpaGroundNavReplan.test.js tests/lockedRoom.test.js tests/puzzleTemplateBeltCrate.test.js tests/gameLaunch.test.js tests/activeKineticBodies.test.js tests/kineticContactSolver.test.js tests/kineticSleepProps.test.js tests/wallResolution.test.js tests/poxelFracture.test.js tests/propFracture.test.js tests/triWedgeProp.test.js tests/shapeFirstProps.test.js tests/vectorProp.test.js tests/bodyMass.test.js tests/drawShapeParity.test.js",
+        "test": "node --test tests/corridorWidthOne.test.js tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/maskCompositor.test.js tests/hpaBeltNav.test.js tests/hpaGroundNavReplan.test.js tests/lockedRoom.test.js tests/puzzleTemplateBeltCrate.test.js tests/gameLaunch.test.js tests/activeKineticBodies.test.js tests/kineticContactSolver.test.js tests/kineticSleepProps.test.js tests/wallResolution.test.js tests/poxelFracture.test.js tests/propFracture.test.js tests/glassFracture.test.js tests/triWedgeProp.test.js tests/shapeFirstProps.test.js tests/vectorProp.test.js tests/bodyMass.test.js tests/drawShapeParity.test.js",
         "test:corridor": "node --test tests/corridorWidthOne.test.js",
         "test:corridor:multilane": "node --test tests/corridorMultiLane.test.js",
         "test:math": "node --test tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/maskCompositor.test.js",

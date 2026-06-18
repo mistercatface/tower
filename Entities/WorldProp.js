@@ -3,7 +3,7 @@ import { applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { initWorldPropShape, withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
-import { applyPoxelGeometryToProp } from "../Libraries/Props/propFracture.js";
+import { applyPoxelGeometryToProp, applyShardGeometryToProp } from "../Libraries/Props/propFracture.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
@@ -85,6 +85,31 @@ export class WorldProp extends Entity {
             frag.vx = this.vx;
             frag.vy = this.vy;
             frag.angularVelocity = this.angularVelocity;
+            addWorldPropToState(state, frag);
+            wakeKineticBody(frag);
+            spatialFrame.admitKineticProp(frag, state);
+        }
+    }
+    spawnGlassShatter(state, fracture, spatialFrame) {
+        const cos = Math.cos(fracture.facing);
+        const sin = Math.sin(fracture.facing);
+        const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
+        const burst = Math.min(35, 8 + fracture.impactForce * 0.12);
+        for (let i = 0; i < fracture.debris.length; i++) {
+            const geom = fracture.debris[i];
+            const world = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
+            const frag = new WorldProp(world.x, world.y, this.type, fracture.facing);
+            applyShardGeometryToProp(frag, geom);
+            frag.vx = this.vx ?? 0;
+            frag.vy = this.vy ?? 0;
+            const dx = world.x - impactWorld.x;
+            const dy = world.y - impactWorld.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 1e-6) {
+                frag.vx += (dx / dist) * burst;
+                frag.vy += (dy / dist) * burst;
+            }
+            frag.angularVelocity = (this.angularVelocity ?? 0) + (Math.random() - 0.5) * 0.4;
             addWorldPropToState(state, frag);
             wakeKineticBody(frag);
             spatialFrame.admitKineticProp(frag, state);

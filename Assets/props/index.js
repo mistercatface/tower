@@ -5,6 +5,7 @@ import flipper_right from "./flipper/flipperRight.asset.js";
 import crate from "./crate/crate.asset.js";
 import box_2x4 from "./box_2x4/box_2x4.asset.js";
 import custom_box from "./custom_box/custom_box.asset.js";
+import glass_pane from "./glass_pane/glass_pane.asset.js";
 import tri_wedge from "./tri_wedge/tri_wedge.asset.js";
 import hex_block from "./hex_block/hex_block.asset.js";
 import pipe_elbow from "./pipe_elbow/pipe_elbow.asset.js";
@@ -31,6 +32,7 @@ const catalog = {
     crate,
     box_2x4,
     custom_box,
+    glass_pane,
     tri_wedge,
     hex_block,
     pipe_elbow,

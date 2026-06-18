@@ -10,7 +10,7 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     prop.shape = new PolygonShape(boxLocalFootprint(hx, hy));
     prop.radius = prop.shape.getBoundingRadius();
     invalidateBroadphaseBounds(prop);
-    if (prop.strategy?.fracture) initFractureFootprint(prop);
+    if (prop.strategy?.fracture && prop.strategy.fractureMode !== "glass") initFractureFootprint(prop);
     else if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
 }
 export function initWorldPropShape(prop) {
@@ -24,7 +24,7 @@ export function initWorldPropShape(prop) {
         const verts = footprint.map((v) => ({ x: v.x, y: v.y }));
         prop.shape = new PolygonShape(verts);
         prop.radius = prop.shape.getBoundingRadius();
-        if (prop.strategy.fracture) initFractureFootprint(prop);
+        if (prop.strategy.fracture && prop.strategy.fractureMode !== "glass") initFractureFootprint(prop);
         return;
     }
     prop.radius = prop.strategy.radius ?? 0;
