@@ -36,4 +36,9 @@ describe("shape-first props", () => {
         assert.equal(prop.getShape().vertices.length, 4);
         assert.equal(kineticFootprintArea(prop), 240);
     });
+    it("hex block builds a six-vertex polygon from localFootprint", () => {
+        const prop = new WorldProp(0, 0, "hex_block", 0);
+        assert.equal(prop.getShape().type, "Polygon");
+        assert.equal(prop.getShape().vertices.length, 6);
+    });
 });

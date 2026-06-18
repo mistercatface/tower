@@ -35,6 +35,14 @@ export function boxLocalFootprint(hx, hy) {
         { x: -hx, y: hy },
     ];
 }
+export function regularConvexPolygonFootprint(sides, radius, startAngle = -Math.PI / 2) {
+    const verts = [];
+    for (let i = 0; i < sides; i++) {
+        const angle = startAngle + (i * Math.PI * 2) / sides;
+        verts.push({ x: Math.round(Math.cos(angle) * radius), y: Math.round(Math.sin(angle) * radius) });
+    }
+    return verts;
+}
 export function convexFootprintHalfExtents(vertices) {
     let hx = 0;
     let hy = 0;

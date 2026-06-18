@@ -6,6 +6,7 @@ import crate from "./crate/crate.asset.js";
 import box_2x4 from "./box_2x4/box_2x4.asset.js";
 import custom_box from "./custom_box/custom_box.asset.js";
 import tri_wedge from "./tri_wedge/tri_wedge.asset.js";
+import hex_block from "./hex_block/hex_block.asset.js";
 import pipe_elbow from "./pipe_elbow/pipe_elbow.asset.js";
 import blue_ball from "./blue_ball/blue_ball.asset.js";
 import orange_ball from "./orange_ball/orange_ball.asset.js";
@@ -31,6 +32,7 @@ const catalog = {
     box_2x4,
     custom_box,
     tri_wedge,
+    hex_block,
     pipe_elbow,
     blue_ball,
     orange_ball,
