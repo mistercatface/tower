@@ -5,8 +5,9 @@ import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefa
 import { advanceKineticSleep } from "../Libraries/Motion/kineticSleep.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
+let mockPhysId = 0;
 function mockKineticBody(isSleeping = false) {
-    return { isSleeping, isDead: false, strategy: { isKinetic: true }, _sleepFrames: 0 };
+    return { isSleeping, isDead: false, strategy: { isKinetic: true }, _sleepFrames: 0, _physId: mockPhysId++ };
 }
 function mockCircleProp(x, y, radius) {
     return {
@@ -83,5 +84,25 @@ describe("active kinetic bodies", () => {
         mover.x = 200;
         frame.admitKineticProp(mover, mockState);
         assert.ok(frame.getNeighbors(witness).includes(mover));
+    });
+    it("activateKineticBody skips island peers missing _physId", () => {
+        const frame = new KineticSpatialFrame(50);
+        frame.resetFrame(mockGrid);
+        const head = mockCircleProp(0, 0, 10);
+        const tail = mockCircleProp(20, 0, 10);
+        frame.insertEntity(head, 0);
+        frame.insertEntity(tail, 1);
+        head._kineticIslandPeers = [head, tail];
+        tail._kineticIslandPeers = [head, tail];
+        delete tail._physId;
+        frame._kineticBodies.push(head, tail);
+        frame.syncActiveKineticBodies();
+        frame.activateKineticBody(head);
+        assert.equal(frame._activeKineticBodies.length, 1);
+        assert.equal(frame._activeKineticBodies[0], head);
+        frame._activeKineticBodies.push(tail);
+        frame.reindexKineticBodies(frame._activeKineticBodies);
+        assert.equal(frame._activeKineticBodies.length, 1);
+        assert.equal(frame._activeKineticBodies[0], head);
     });
 });

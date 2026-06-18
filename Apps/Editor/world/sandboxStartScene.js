@@ -140,6 +140,10 @@ function spawnCavernStressProps(state) {
 export async function spawnSandboxStartScene(state) {
     await applyPlayAreaConfig(state);
     await applySandboxSceneSnapshot(state, buildEmptySandboxDoc(state));
+    const cavernConfig = state.editor.cavernConfig;
+    const prevWallHeightLevel = cavernConfig.wallHeightLevel;
+    cavernConfig.wallHeightLevel = 1;
     await generateLabCaverns(state);
+    cavernConfig.wallHeightLevel = prevWallHeightLevel;
     spawnCavernStressProps(state);
 }

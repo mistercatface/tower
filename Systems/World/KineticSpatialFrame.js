@@ -50,25 +50,34 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const all = this._kineticBodies;
         for (let i = 0; i < all.length; i++) {
             const prop = all[i];
+            if (prop._physId === undefined) continue;
             if (!prop.isSleeping) active.push(prop);
         }
     }
     _ensureActive(prop) {
+        if (prop._physId === undefined) return;
         const active = this._activeKineticBodies;
         for (let i = 0; i < active.length; i++) if (active[i] === prop) return;
         active.push(prop);
     }
     activateKineticBody(prop) {
+        if (prop._physId === undefined) return;
         if (prop.isSleeping) wakeKineticBody(prop);
         this._ensureActive(prop);
         const peers = prop._kineticIslandPeers;
         if (!peers) return;
         for (let i = 0; i < peers.length; i++) {
             const peer = peers[i];
-            if (peer === prop) continue;
+            if (peer === prop || peer._physId === undefined) continue;
             if (peer.isSleeping) wakeKineticBody(peer);
             this._ensureActive(peer);
         }
+    }
+    reindexKineticBodies(bodies) {
+        if (!bodies?.length) return;
+        for (let i = bodies.length - 1; i >= 0; i--) if (bodies[i]._physId === undefined) bodies.splice(i, 1);
+        if (!bodies.length) return;
+        super.reindexKineticBodies(bodies);
     }
     evictKineticProp(prop) {
         if (!prop || prop._physId === undefined) return;
