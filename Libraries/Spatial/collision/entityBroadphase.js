@@ -1,8 +1,7 @@
 import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
-import { circlesOverlap } from "./overlap.js";
-import { checkEntityPairCollision, getEntityCollisionParts, SatCollision } from "./SatCollision.js";
+import { checkEntityPairCollision, getEntityCollisionParts } from "./SatCollision.js";
 export const MOVING_SPEED_SQ = 0.25;
 /** |angularVelocity| above this counts as kinematically active (rad/s). */
 export const ROTATING_ANGULAR_SQ = 0.08 * 0.08;
@@ -134,20 +133,14 @@ export function isKinematicallyActive(entity) {
 export function pairShapeOverlap(a, b) {
     return checkEntityPairCollision(a, b) != null;
 }
-function pairRestingOverlap(a, b) {
-    const partsA = getEntityCollisionParts(a);
-    const partsB = getEntityCollisionParts(b);
-    if (partsA.length === 1 && partsB.length === 1 && partsA[0].type === "Circle" && partsB[0].type === "Circle") return circlesOverlap(a, b);
-    return pairShapeOverlap(a, b);
-}
 export function pairBroadphaseOverlap(a, b) {
     return pairBroadphaseBoundsOverlap(getBroadphaseBounds(a), getBroadphaseBounds(b));
 }
 export function shouldResolveKineticPair(a, b) {
     if (!pairBroadphaseOverlap(a, b)) return false;
     if (isKinematicallyActive(a) || isKinematicallyActive(b)) return true;
-    if (a.isSleeping && b.isSleeping) return false;
-    return pairRestingOverlap(a, b);
+    if (a.isSleeping || b.isSleeping) return false;
+    return false;
 }
 /** Hot-path gate for kinetic body collision pairs in the physics loop. */
 export function allowsKineticCollisionPair(primary, other) {

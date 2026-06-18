@@ -81,6 +81,16 @@ describe("kinetic contact solver", () => {
         resolveKineticContactPass(frame, {});
         assert.ok(Math.abs(a.vx) < 40);
     });
+    it("resting overlapping circles are left alone until one moves", () => {
+        const a = mockCircleBody(0, 0, 10, 0, 0);
+        const b = mockCircleBody(15, 0, 10, 0, 0);
+        const ax0 = a.x;
+        const bx0 = b.x;
+        const frame = setupPairFrame(a, b);
+        resolveKineticContactPass(frame, {});
+        assert.equal(a.x, ax0);
+        assert.equal(b.x, bx0);
+    });
 });
 describe("poly-poly kinetic contact", () => {
     it("axis-aligned crate pair separates with +x normal when B is to the right", () => {
@@ -115,6 +125,7 @@ describe("poly-poly kinetic contact", () => {
     it("resolveKineticContactPass separates overlapping box_2x4 and crate", () => {
         const bar = new WorldProp(0, 0, "box_2x4", 0);
         const box = new WorldProp(12, 0, "crate", 0);
+        box.vx = -20;
         assert.ok(pairStillOverlaps(bar, box));
         const frame = setupPairFrame(bar, box);
         resolveContactUntilClear(frame, {});

@@ -20,7 +20,8 @@ const editorSceneHooks = {
     simulationEffectPasses: [
         floorPropEffectPass,
         {
-            zIndex: 72,
+            // After floor stamps (10.5), before draw3DBuildings props/walls (70).
+            zIndex: 15,
             draw(_state, viewport, ctx) {
                 const controller = getGameState().sandbox.controller;
                 if (!controller) return;

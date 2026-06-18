@@ -39,4 +39,5 @@ export function runKineticPhysics(state, dt, spatialFrame) {
         });
     }
     tickKineticSleep(spatialFrame);
+    spatialFrame.syncActiveKineticBodies();
 }

@@ -4,8 +4,8 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
-import { SLEEP_FRAMES, advanceKineticSleep, evaluateKineticSleepEligible } from "../Libraries/Motion/kineticSleep.js";
-import { isRotatingEntity } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { SLEEP_FRAMES, advanceKineticSleep, evaluateKineticSleepEligible, hasSleepBlockingNeighbor } from "../Libraries/Motion/kineticSleep.js";
+import { isRotatingEntity, shouldResolveKineticPair } from "../Libraries/Spatial/collision/entityBroadphase.js";
 loadPropAssets();
 function separatePairUntilClear(a, b, maxPasses = 8) {
     for (let pass = 0; pass < maxPasses; pass++) {
@@ -21,12 +21,35 @@ describe("kinetic sleep on proof props", () => {
         for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(crate, true);
         assert.equal(crate.isSleeping, true);
     });
-    it("touching crate stack blocks sleep via broadphase overlap", () => {
+    it("resting crate stack can sleep together", () => {
         const bottom = new WorldProp(0, 0, "crate", 0);
         const top = new WorldProp(0, 14, "crate", 0);
         separatePairUntilClear(bottom, top);
-        assert.ok(!evaluateKineticSleepEligible(bottom, [top]));
-        assert.ok(!evaluateKineticSleepEligible(top, [bottom]));
+        assert.ok(evaluateKineticSleepEligible(bottom, [top]));
+        assert.ok(evaluateKineticSleepEligible(top, [bottom]));
+        for (let i = 0; i < SLEEP_FRAMES; i++) {
+            advanceKineticSleep(bottom, evaluateKineticSleepEligible(bottom, [top]));
+            advanceKineticSleep(top, evaluateKineticSleepEligible(top, [bottom]));
+        }
+        assert.equal(bottom.isSleeping, true);
+        assert.equal(top.isSleeping, true);
+    });
+    it("moving neighbor blocks sleep", () => {
+        const rest = new WorldProp(0, 0, "crate", 0);
+        const mover = new WorldProp(0, 14, "crate", 0);
+        separatePairUntilClear(rest, mover);
+        mover.vx = 5;
+        assert.ok(hasSleepBlockingNeighbor(rest, [mover]));
+        assert.ok(!evaluateKineticSleepEligible(rest, [mover]));
+    });
+    it("sleeping overlapping neighbor does not block sleep", () => {
+        const bottom = new WorldProp(0, 0, "crate", 0);
+        const top = new WorldProp(0, 14, "crate", 0);
+        separatePairUntilClear(bottom, top);
+        for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(top, true);
+        top.isSleeping = true;
+        assert.ok(!hasSleepBlockingNeighbor(bottom, [top]));
+        assert.ok(evaluateKineticSleepEligible(bottom, [top]));
     });
     it("slow spin keeps tri wedge eligible for wall collision", () => {
         const wedge = new WorldProp(0, 0, "tri_wedge", 0);
@@ -43,5 +66,13 @@ describe("kinetic sleep on proof props", () => {
         advanceKineticSleep(hex, false);
         assert.equal(hex.isSleeping, false);
         assert.equal(hex._sleepFrames, 0);
+    });
+    it("resting overlapping pair skips contact resolve until something moves", () => {
+        const a = new WorldProp(0, 0, "crate", 0);
+        const b = new WorldProp(0, 14, "crate", 0);
+        separatePairUntilClear(a, b);
+        assert.ok(shouldResolveKineticPair(a, b) === false);
+        a.vx = 10;
+        assert.ok(shouldResolveKineticPair(a, b));
     });
 });

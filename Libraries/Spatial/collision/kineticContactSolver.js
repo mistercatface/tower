@@ -3,7 +3,7 @@ import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.j
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../Motion/bodyMass.js";
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
-import { allowsKineticCollisionPair, pairBroadphaseOverlap } from "./entityBroadphase.js";
+import { allowsKineticCollisionPair, isKinematicallyActive, pairBroadphaseOverlap } from "./entityBroadphase.js";
 import { separateAlongNormal, separateCoincidentCirclePair } from "./penetration.js";
 import { checkEntityPairCollision } from "./SatCollision.js";
 const MAX_CONTACTS = 4096;
@@ -180,7 +180,7 @@ function gatherKineticContacts(spatialFrame, contacts) {
         const neighbors = spatialFrame.getNeighbors(primary);
         for (let j = 0; j < neighbors.length; j++) {
             const neighbor = neighbors[j];
-            if (neighbor.isSleeping && pairBroadphaseOverlap(primary, neighbor)) spatialFrame.activateKineticBody(neighbor);
+            if (neighbor.isSleeping && isKinematicallyActive(primary) && pairBroadphaseOverlap(primary, neighbor)) spatialFrame.activateKineticBody(neighbor);
             if (!allowsKineticCollisionPair(primary, neighbor)) continue;
             const preDvx = (neighbor.vx ?? 0) - (primary.vx ?? 0);
             const preDvy = (neighbor.vy ?? 0) - (primary.vy ?? 0);
