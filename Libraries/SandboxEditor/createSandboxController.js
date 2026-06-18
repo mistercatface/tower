@@ -43,9 +43,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     let unbindContextMenu = null;
     /** @type {(() => void) | null} */
     let unbindKeyDown = null;
-    /** @type {(() => void) | null} */
-    let unbindKeyUp = null;
-    let pKeyHeld = false;
     /** @type {{ x: number, y: number } | null} */
     let placePreviewWorld = null;
     const entityMeta = () => getSandboxEntityMeta(state);
@@ -121,6 +118,20 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             if (allowed.length > 0) entityMeta().setActiveBehaviorId(prop.id, allowed[0]);
         }
     };
+    const togglePropInSelection = (id) => {
+        exitWireModes();
+        const sel = session.getSelection();
+        const removing = sel?.kind === "prop" && sel.ids.has(id);
+        if (!session.togglePropInSelection(id)) return;
+        if (!removing) {
+            const prop = state.entityRegistry.getLive(id);
+            if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
+                const allowed = listSelectedBehaviors(prop);
+                if (allowed.length > 0) entityMeta().setActiveBehaviorId(prop.id, allowed[0]);
+            }
+        }
+        session.sync();
+    };
     const selectPropIds = (ids) => {
         exitWireModes();
         session.select({ kind: "prop", ids });
@@ -154,10 +165,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, behaviors, {
         entityMeta,
         listSelectedBehaviors,
-        getPropBehaviorId,
         stampPropBehavior,
-        behaviorById,
-        isPHeld: () => pKeyHeld,
         blocksPlacement,
         exitWireModes,
         exitButtonWire: () => buttonWireTool.exit(),
@@ -165,6 +173,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         resolveGroundMove,
         gestures,
         selectProp,
+        togglePropInSelection,
     });
     const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior, selectPropIds });
     const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, buttonWireTool, corridorLinkWireTool, interactTool, gestureTool, marqueeTool], { clientToWorld });
@@ -303,6 +312,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             stampPropBehavior(session.getSelectedProp());
         },
         deletePropById: (id) => session.deletePropById(id),
+        removePropFromSelection: (id) => session.removePropFromSelection(id),
         listPlacedProps: () => session.listPlacedProps(),
         listPlacedFloorBelts: () => session.listPlacedFloorBelts(),
         stampPassagePowerSourceAtWorld: (worldX, worldY, defaultPowered) => session.stampPassagePowerSourceAtWorld(worldX, worldY, defaultPowered),
@@ -424,28 +434,15 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
                     e.preventDefault();
                     return;
                 }
-                if (e.code === "KeyP") {
-                    pKeyHeld = true;
-                    return;
-                }
-                if (e.code !== "KeyR") return;
                 if (!placePreviewWorld || canvasTools.capturesPointerMove() || canvasTools.isDragging() || canvasTools.blocksPlacePreview()) return;
                 if (session.rotateHoveredGridOccupantAtWorld(placePreviewWorld.x, placePreviewWorld.y)) e.preventDefault();
             };
-            const onKeyUp = (e) => {
-                if (e.code === "KeyP") pKeyHeld = false;
-            };
             window.addEventListener("keydown", onKeyDown);
-            window.addEventListener("keyup", onKeyUp);
             unbindKeyDown = () => window.removeEventListener("keydown", onKeyDown);
-            unbindKeyUp = () => window.removeEventListener("keyup", onKeyUp);
         },
         destroy() {
             unbindKeyDown?.();
             unbindKeyDown = null;
-            unbindKeyUp?.();
-            unbindKeyUp = null;
-            pKeyHeld = false;
             unbindPointers?.();
             unbindPointers = null;
             unbindContextMenu?.();
@@ -472,14 +469,20 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         /** @param {CanvasRenderingContext2D} ctx */
         drawPathOverlay(ctx) {
-            const prop = session.getSelectedProp();
-            const behavior = resolveBehavior();
-            if (!prop) return;
-            const visual = resolveSandboxPathVisual(state, prop);
-            if (visual === "off" || !behavior?.getPathOverlay) return;
-            const overlay = behavior.getPathOverlay(prop);
-            if (!overlay) return;
-            drawActivePathOverlay(ctx, overlay, state.viewport.zoom, visual, state.obstacleGrid, state.viewport);
+            const sel = session.getSelection();
+            if (sel?.kind !== "prop") return;
+            const ids = selectionPropIds(sel);
+            for (let i = 0; i < ids.length; i++) {
+                const prop = state.entityRegistry.getLive(ids[i]);
+                if (!prop) continue;
+                const visual = resolveSandboxPathVisual(state, prop);
+                if (visual === "off") continue;
+                const behavior = behaviorById.get(getPropBehaviorId(prop));
+                if (!behavior?.getPathOverlay) continue;
+                const overlay = behavior.getPathOverlay(prop);
+                if (!overlay) continue;
+                drawActivePathOverlay(ctx, overlay, state.viewport.zoom, visual, state.obstacleGrid, state.viewport);
+            }
         },
         drawLaunchPreview(ctx) {
             const prop = session.getSelectedProp();

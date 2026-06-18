@@ -134,7 +134,7 @@ export function appendTranslateFields(body, { x, y, step = 1, onPatch }) {
 }
 /**
  * @param {HTMLElement} parent
- * @param {Array<{ label: string, selected?: boolean, onSelect?: () => void, onDelete?: () => void }>} entries
+ * @param {Array<{ label: string, selected?: boolean, onSelect?: () => void, onRemove?: () => void, onDelete?: () => void }>} entries
  * @param {string} [emptyText]
  */
 export function appendInstanceList(parent, entries, emptyText) {
@@ -149,7 +149,7 @@ export function appendInstanceList(parent, entries, emptyText) {
     parent.appendChild(list);
     return list;
 }
-/** @param {HTMLElement} list @param {{ label: string, selected?: boolean, onSelect?: () => void, onDelete?: () => void }} entry */
+/** @param {HTMLElement} list @param {{ label: string, selected?: boolean, onSelect?: () => void, onRemove?: () => void, onDelete?: () => void }} entry */
 function appendInstanceListRow(list, entry) {
     const row = document.createElement("div");
     row.className = `toy-instance-row${entry.selected ? " selected" : ""}`;
@@ -165,6 +165,17 @@ function appendInstanceListRow(list, entry) {
         label.className = "toy-select-btn";
         label.textContent = entry.label;
         row.appendChild(label);
+    }
+    if (entry.onRemove) {
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "toy-remove-btn secondary";
+        removeBtn.textContent = "Remove";
+        removeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            entry.onRemove();
+        });
+        row.appendChild(removeBtn);
     }
     if (entry.onDelete) {
         const deleteBtn = document.createElement("button");

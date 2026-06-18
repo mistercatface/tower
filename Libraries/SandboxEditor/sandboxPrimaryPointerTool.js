@@ -3,26 +3,11 @@ import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { handleButtonPointerDown, hitTestFloorButton } from "../Sandbox/floorButtons.js";
 import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
-import { issueMassHpaGroundNav } from "../Sandbox/groundNav/input/massHpaGroundNav.js";
 export function createSandboxPrimaryPointerTools(
     state,
     session,
     behaviors,
-    {
-        entityMeta,
-        listSelectedBehaviors,
-        getPropBehaviorId,
-        stampPropBehavior,
-        behaviorById,
-        isPHeld,
-        blocksPlacement,
-        exitWireModes,
-        exitButtonWire,
-        resolveBehavior,
-        resolveGroundMove,
-        gestures,
-        selectProp,
-    },
+    { entityMeta, listSelectedBehaviors, stampPropBehavior, blocksPlacement, exitWireModes, exitButtonWire, resolveBehavior, resolveGroundMove, gestures, selectProp, togglePropInSelection },
 ) {
     const tryPlaceSpawnAtWorld = (world) => {
         if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || blocksPlacement()) return false;
@@ -30,25 +15,19 @@ export function createSandboxPrimaryPointerTools(
         stampPropBehavior(session.getSelectedProp());
         return true;
     };
-    const issueMassHpaGroundMove = (world) => {
-        if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || blocksPlacement()) return false;
-        return issueMassHpaGroundNav(state, behaviorById, behaviors, world, { getPropBehaviorId });
-    };
     const modifierTool = {
         isActive: () => true,
         onPointerDown(world, e) {
-            if (e.button === 0 && (e.ctrlKey || e.metaKey) && tryPlaceSpawnAtWorld(world)) return true;
-            return false;
+            if (e.button !== 0 || (!e.ctrlKey && !e.metaKey)) return false;
+            const hit = findWorldPropAtInView(state.entityRegistry, kineticSpatial, world.x, world.y);
+            if (hit) return false;
+            return tryPlaceSpawnAtWorld(world);
         },
     };
     const interactTool = {
         isActive: () => true,
         onPointerDown(world, e) {
             if (e.button !== 0) return false;
-            if (isPHeld() && issueMassHpaGroundMove(world)) {
-                session.sync();
-                return true;
-            }
             const floorButton = hitTestFloorButton(state, world.x, world.y);
             if (floorButton && handleButtonPointerDown(state, floorButton, world)) {
                 session.sync();
@@ -60,7 +39,13 @@ export function createSandboxPrimaryPointerTools(
             const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
             if (hit) {
                 const allowed = resolveSandboxBehaviors(getPropAsset(hit.type), behaviors, state, hit);
-                if (allowed.length > 0) selectProp(hit.id);
+                if (allowed.length > 0) {
+                    if (e.ctrlKey || e.metaKey) {
+                        togglePropInSelection(hit.id);
+                        return "consume";
+                    }
+                    selectProp(hit.id);
+                }
                 const prop = session.getSelectedProp();
                 const behavior = resolveBehavior();
                 if (prop && behavior?.onPointerDown(prop, world, e)) {

@@ -499,6 +499,12 @@ export function createSandboxSession(state) {
         deletePropById(id) {
             this.deleteProp(registry().get(id));
         },
+        removePropFromSelection(id) {
+            if (selection.removePropFromSelection(id)) notifyUi();
+        },
+        togglePropInSelection(id) {
+            return selection.togglePropInSelection(id);
+        },
         deleteSelectedProps() {
             const ids = selectionPropIds(sel());
             for (let i = 0; i < ids.length; i++) {

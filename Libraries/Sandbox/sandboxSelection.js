@@ -88,6 +88,17 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         if (selection.ids.size === 0) assign(null);
         return true;
     };
+    const togglePropInSelection = (propId) => {
+        if (!isLiveProp(propId)) return false;
+        if (selection?.kind === "prop") {
+            if (selection.ids.has(propId)) selection.ids.delete(propId);
+            else selection.ids.add(propId);
+            if (selection.ids.size === 0) assign(null);
+            return true;
+        }
+        assign({ kind: "prop", ids: new Set([propId]) });
+        return true;
+    };
     const dropDeletedWallSelection = (col, row, side = null) => {
         if (selection?.kind === "voxel" && selection.col === col && selection.row === row) {
             assign(null);
@@ -123,6 +134,7 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         clearPalettePlaceSelection,
         prunePropSelection,
         removePropFromSelection,
+        togglePropInSelection,
         dropDeletedWallSelection,
         dropDeletedRoomLinkSelection,
         dropRoomGraphIfLinkMissing,

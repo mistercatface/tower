@@ -4,7 +4,7 @@ export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
     const selection = controller.getSelection();
     const filter = controller.getSelectionTagFilter();
     const selectedProps = controller.listSelectedPropEntries();
-    appendEditorHint(body, "Shift+drag on the map to box-select props fully inside the marquee.");
+    appendEditorHint(body, "Shift+drag to box-select. Ctrl+click a prop to add or remove it from the selection.");
     const actions = [
         {
             label: filter === "all" ? "Select all props" : `Select all ${sandboxTagFilterLabel(filter)}`,
@@ -30,6 +30,10 @@ export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
             selected: true,
             onSelect: () => {
                 controller.select({ kind: "prop", ids: [entry.id] });
+                refreshPanel();
+            },
+            onRemove: () => {
+                controller.removePropFromSelection(entry.id);
                 refreshPanel();
             },
             onDelete: () => {
