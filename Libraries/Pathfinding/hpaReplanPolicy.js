@@ -7,10 +7,10 @@ export const REPLAN_PRIORITY_NORMAL = 2;
 export const REPLAN_PRIORITY_STUCK_OFFSCREEN = 1;
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
- * @returns {{ obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, startX: number, startY: number, targetX: number, targetY: number, nowMs: number, graphEpoch: number }}
+ * @returns {{ obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, startX: number, startY: number, targetX: number, targetY: number, graphEpoch: number }}
  */
-export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, graphEpoch, nowMs) {
-    return { obstacleGrid, startX, startY, targetX, targetY, nowMs, graphEpoch };
+export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, graphEpoch) {
+    return { obstacleGrid, startX, startY, targetX, targetY, graphEpoch };
 }
 /** @param {import("./navSession.js").NavSessionState} navState */
 export function trackNavStuck(navState, x, y, stuckMoveThreshold) {
@@ -27,8 +27,8 @@ export function obstacleEpochReplanDue(navState, graphEpoch) {
     return navState.obstacleGeneration < graphEpoch;
 }
 /** @param {import("./navSession.js").NavSessionState} navState */
-export function idlePathReplanReason(navState, settings, didReplanForObstacles, inFlight) {
-    if (inFlight || didReplanForObstacles) return null;
+export function idlePathReplanReason(navState, settings, inFlight) {
+    if (inFlight) return null;
     if (!navHasPath(navState)) return "noPath";
     if (navState.stuckFrames > settings.stuckReplanFrames) return "stuck";
     return null;

@@ -26,8 +26,8 @@ describe("hpa ground nav replan policy", () => {
     });
     it("idlePathReplanReason requests noPath when idle without a route", () => {
         const nav = createNavState();
-        assert.equal(idlePathReplanReason(nav, navSettings, false, false), "noPath");
-        assert.equal(idlePathReplanReason(nav, navSettings, false, true), null);
+        assert.equal(idlePathReplanReason(nav, navSettings, false), "noPath");
+        assert.equal(idlePathReplanReason(nav, navSettings, true), null);
     });
     it("trackNavStuck accumulates when the body barely moves", () => {
         const nav = createNavState();
@@ -41,7 +41,7 @@ describe("hpa ground nav replan policy", () => {
         nav.pathLen = 4;
         nav.pathSlot = 0;
         nav.stuckFrames = navSettings.stuckReplanFrames + 1;
-        assert.equal(idlePathReplanReason(nav, navSettings, false, false), "stuck");
+        assert.equal(idlePathReplanReason(nav, navSettings, false), "stuck");
     });
     it("offPathReplanDue respects cooldown", () => {
         const nav = createNavState();

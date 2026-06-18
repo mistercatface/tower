@@ -1,4 +1,4 @@
-import { decelerateRoll, getKineticRollConfig, steerRollToward, clearMoveTarget } from "../kineticRollActuator.js";
+import { decelerateRoll, getKineticRollConfig, steerRollToward } from "../kineticRollActuator.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
 export function createDirectGroundNavBehavior() {
     let targetWorld = null;
@@ -44,7 +44,6 @@ export function createDirectGroundNavBehavior() {
                 if (moveTargetActive) {
                     moveTargetActive = false;
                     targetWorld = null;
-                    clearMoveTarget(prop);
                     return;
                 }
                 decelerateRoll(prop, dt, config);

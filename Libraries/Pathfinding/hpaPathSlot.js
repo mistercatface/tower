@@ -120,12 +120,12 @@ export function buildSabAbstractPathOverlay(worker, slot, pathLen, grid) {
  * @param {object} [settings]
  * @param {import("./navSession.js").NavSessionState | null} [navState]
  */
-export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, targetY, grid, settings = {}, navState = null) {
+export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, targetY, grid, settings, navState = null) {
     const x = pose.x;
     const y = pose.y;
-    const waypointArrival = settings.pathWaypointArrival ?? PATH_WAYPOINT_ARRIVAL_PX;
-    const arrivalDistance = settings.arrivalDistance ?? 2;
-    const offPathDistance = settings.pathOffPathDistance ?? 64;
+    const waypointArrival = settings.pathWaypointArrival;
+    const arrivalDistance = settings.arrivalDistance;
+    const offPathDistance = settings.pathOffPathDistance;
     let step = navState?.pathProgressIdx ?? 0;
     if (step >= pathLen) step = pathLen - 1;
     let steerTarget = sabPathWorldAt(worker, slot, step, grid);

@@ -89,7 +89,7 @@ export function resolveSandboxBehaviors(asset, registeredBehaviors, state, prop 
     return [...byId.values()]
         .filter((behavior) => {
             if (behavior.supports && asset && !behavior.supports(prop, asset)) return false;
-            if (GROUND_NAV_BEHAVIOR_IDS.has(behavior.id) && (sandbox?.groundNav === false || sandbox?.rollToCursor === false)) return false;
+            if (GROUND_NAV_BEHAVIOR_IDS.has(behavior.id) && sandbox?.groundNav === false) return false;
             return true;
         })
         .map((behavior) => behavior.id);

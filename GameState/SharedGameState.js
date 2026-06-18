@@ -10,7 +10,7 @@ import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { NavigationService } from "../Systems/Navigation/NavigationService.js";
 import { EntityRegistry } from "./EntityRegistry.js";
-const navigationSettings = { arrivalDistance: 2, recenterThreshold: 400, stuckReplanFrames: 20, stuckMoveThreshold: 1.5, targetNodeLookahead: 10, pathWaypointArrival: 10, pathOffPathDistance: 80 };
+const navigationSettings = { recenterThreshold: 400, stuckReplanFrames: 20, stuckMoveThreshold: 1.5, pathOffPathDistance: 80 };
 export class SharedGameState {
     constructor() {
         this.scheduler = new Scheduler();

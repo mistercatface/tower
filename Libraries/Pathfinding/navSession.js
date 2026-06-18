@@ -3,7 +3,6 @@
  */
 /**
  * @typedef {object} NavSessionState
- * @property {number} lastUpdate
  * @property {number | null} lastX
  * @property {number | null} lastY
  * @property {number} stuckFrames
@@ -23,7 +22,6 @@ export function navHasPath(navState) {
 /** @returns {NavSessionState} */
 export function createNavState() {
     return {
-        lastUpdate: 0,
         lastX: null,
         lastY: null,
         stuckFrames: 0,

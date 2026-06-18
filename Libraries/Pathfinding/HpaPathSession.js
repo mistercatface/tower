@@ -101,6 +101,8 @@ export class HpaPathSession {
                     });
                 } catch (err) {
                     console.error("HPA replan failed", err);
+                    if (navState.hpaReplanRequestId === requestId) navState.hpaReplanRequestId = 0;
+                    break;
                 } finally {
                     this._releaseWorkerSlot();
                 }

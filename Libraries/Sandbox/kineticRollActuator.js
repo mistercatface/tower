@@ -1,18 +1,13 @@
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
-import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
-import { strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 const GROUND_NAV_ROLL_DEFAULTS = { maxSpeed: 180, accel: 600, stopRadius: 6 };
-export const FLOW_GROUND_NAV_RECENTER_THRESHOLD = 400;
 export function snapMoveTargetToCellCenter(grid, world) {
     const { col, row } = grid.worldToGrid(world.x, world.y);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
     return { world: grid.gridToWorld(col, row), col, row };
 }
-export function clearMoveTarget(_prop) {}
 export function getKineticRollConfig(prop, overrides = {}) {
-    const strategyRoll = prop.strategy?.groundNav ?? prop.strategy?.rollToCursor;
-    return { ...GROUND_NAV_ROLL_DEFAULTS, ...strategyRoll, ...overrides };
+    return { ...GROUND_NAV_ROLL_DEFAULTS, ...prop.strategy.groundNav, ...overrides };
 }
 export function applyRollSpin(prop) {
     if (!prop.strategy?.rolls) return;
@@ -53,17 +48,4 @@ export function steerRollToward(prop, dirX, dirY, dt, config) {
     }
     applyRollSpin(prop);
     wakeKineticBody(prop);
-}
-export function drawGroundNavTargetOverlay(ctx, fromX, fromY, toX, toY, style) {
-    const lineScale = getCanvasLineScale(ctx);
-    ctx.save();
-    if (style.dashed) ctx.setLineDash([4 * lineScale, 4 * lineScale]);
-    ctx.strokeStyle = style.lineColor;
-    ctx.lineWidth = (style.lineWidth ?? 1.5) * lineScale;
-    strokeSegment(ctx, fromX, fromY, toX, toY);
-    ctx.setLineDash([]);
-    ctx.strokeStyle = style.markerColor;
-    ctx.lineWidth = 2 * lineScale;
-    strokeCircle(ctx, toX, toY, (style.markerRadius ?? 4) * lineScale);
-    ctx.restore();
 }

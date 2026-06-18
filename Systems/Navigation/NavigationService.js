@@ -3,8 +3,8 @@ import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
  * Obstacle-driven nav sync — HPA worker graph patches and flow-field topology invalidation.
  */
 export class NavigationService {
-    /** @param {import("../../Libraries/Pathfinding/FlowFieldGrid.js").FlowFieldGrid} flowFieldGrid @param {import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {object} settings @param {import("../../Libraries/Pathfinding/HpaPathWorker.js").HpaPathWorker | null} [hpaPathWorker] */
-    constructor(flowFieldGrid, obstacleGrid, settings, hpaPathWorker = null) {
+    /** @param {import("../../Libraries/Pathfinding/FlowFieldGrid.js").FlowFieldGrid} flowFieldGrid @param {import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {object} settings @param {import("../../Libraries/Pathfinding/HpaPathWorker.js").HpaPathWorker} hpaPathWorker */
+    constructor(flowFieldGrid, obstacleGrid, settings, hpaPathWorker) {
         this.flowFieldGrid = flowFieldGrid;
         this._obstacleGrid = obstacleGrid;
         this._hpaPathWorker = hpaPathWorker;
@@ -33,7 +33,6 @@ export class NavigationService {
         const topologyChanged = grid.gridTopologyEpoch !== this._lastGridTopologyEpoch;
         if (topologyChanged) this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
         this.flowFieldGrid.invalidateNavTopology();
-        if (!this._hpaPathWorker) return Promise.resolve();
         const run = () => this._syncWorkerNavGraph(grid, damageBounds, topologyChanged);
         this._workerNavGraphSyncChain = this._workerNavGraphSyncChain.then(run, run);
         return this._workerNavGraphSyncChain;

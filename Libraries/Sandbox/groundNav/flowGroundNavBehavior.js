@@ -1,7 +1,7 @@
 import { agentPose } from "../../Agent/index.js";
 import { computeFlowFieldSteering } from "../../Pathfinding/flowSteering.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
-import { getKineticRollConfig, clearMoveTarget, FLOW_GROUND_NAV_RECENTER_THRESHOLD, snapMoveTargetToCellCenter, steerRollToward } from "../kineticRollActuator.js";
+import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward } from "../kineticRollActuator.js";
 import { FLOW_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
 export function createFlowGroundNavBehavior(state) {
     let targetWorld = null;
@@ -12,9 +12,8 @@ export function createFlowGroundNavBehavior(state) {
         dragging = false;
         lastNavGeneration = -1;
     };
-    const releaseMoveTarget = (prop) => {
+    const releaseMoveTarget = () => {
         clearTarget();
-        clearMoveTarget(prop);
     };
     const applyMoveTarget = (world) => {
         const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
@@ -22,7 +21,7 @@ export function createFlowGroundNavBehavior(state) {
     };
     const resolveSteerTarget = (prop) => resolveFloorBeltSteerTarget(state.obstacleGrid, targetWorld.x, targetWorld.y, prop.x, prop.y);
     const syncFlowWindow = (prop, steerTarget) => {
-        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, FLOW_GROUND_NAV_RECENTER_THRESHOLD);
+        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, state.navigation.settings.recenterThreshold);
     };
     return {
         id: FLOW_GROUND_NAV_BEHAVIOR_ID,
@@ -64,7 +63,7 @@ export function createFlowGroundNavBehavior(state) {
             syncFlowWindow(prop, steerTarget);
             const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);
             if (distToTarget <= config.stopRadius) {
-                releaseMoveTarget(prop);
+                releaseMoveTarget();
                 return;
             }
             const steering = computeFlowFieldSteering(agentPose(prop), steerTarget.x, steerTarget.y, flowFieldGrid);

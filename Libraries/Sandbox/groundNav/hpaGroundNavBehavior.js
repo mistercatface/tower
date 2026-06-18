@@ -1,6 +1,6 @@
 import { createHpaGroundNavSession } from "./hpaGroundNavSession.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
-import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearMoveTarget } from "../kineticRollActuator.js";
+import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward } from "../kineticRollActuator.js";
 import { isEntityOnFloorBelt, isFloorBeltCell, resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 import { HPA_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
 export function createHpaGroundNavBehavior(state) {
@@ -23,7 +23,6 @@ export function createHpaGroundNavBehavior(state) {
     };
     const releaseMoveTarget = (prop, run) => {
         clearRunTarget(run, state);
-        clearMoveTarget(prop);
     };
     const applyMoveTarget = (run, world, forceReset = false) => {
         const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);

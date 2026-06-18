@@ -1,9 +1,8 @@
+import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../groundNavIds.js";
 import { getPropAsset } from "../../../Props/PropCatalog.js";
 import { resolveSandboxBehaviors } from "../../sandboxCapabilities.js";
-import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../groundNavIds.js";
 export function issueMassHpaGroundNav(state, behaviorById, behaviors, world, { getPropBehaviorId }) {
     const hpaBehavior = behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID);
-    if (!hpaBehavior?.setMoveTarget) return false;
     let moved = 0;
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
         if (prop.isDead) return;

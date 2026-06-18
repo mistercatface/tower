@@ -1,6 +1,5 @@
 /**
- * Cross-cutting locomotion / navigation data contracts.
- * Not a game Entity — duck-typed objects or initMobileAgent() on an existing host.
+ * Cross-cutting navigation data contracts.
  */
 /**
  * Minimal pose for planning and steering math (path follow, flow sample, direct seek).
@@ -8,20 +7,6 @@
  * @property {number} x
  * @property {number} y
  * @property {number} [radius]
- */
-/**
- * Full top-down mobile body: pose + velocity, desired direction, and integration params.
- * @typedef {AgentPose & {
- *   vx?: number,
- *   vy?: number,
- *   desiredX: number,
- *   desiredY: number,
- *   speed: number,
- *   accelRate: number,
- *   angle: number,
- *   turnSpeed?: number,
- *   mass?: number,
- * }} MobileAgent
  */
 /**
  * Output of pure nav / steering compute — consumed by sandbox roll behaviors.
