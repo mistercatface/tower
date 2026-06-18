@@ -1,6 +1,6 @@
 import { scaleColorTreeBrightness, scaleHexBrightness } from "./brightness.js";
 import { collectHexColors, shiftColorTreeToTintHex, shiftPaletteToTintHex } from "./hueShift.js";
-import { hexToHue, hueToPickerHex, normalizeHue } from "./hex.js";
+import { hueToPickerHex, normalizeHue } from "./hex.js";
 export function stampPropVisualOverride(prop, override) {
     prop.visualOverride = { ...override };
 }
@@ -19,6 +19,9 @@ export function setPropVisualBrightness(prop, brightness) {
 export function getPropVisualTint(prop) {
     return prop.visualOverride?.tint ?? null;
 }
+export function getPropVisualBrightness(prop) {
+    return prop.visualOverride?.brightness ?? 1;
+}
 export function applyAssetDefaultVisualOverride(prop, asset) {
     if (asset.defaultVisualOverride) stampPropVisualOverride(prop, asset.defaultVisualOverride);
 }
@@ -26,7 +29,7 @@ export function visualOverrideCacheKey(prop) {
     const vo = prop.visualOverride;
     if (!vo) return "";
     let key = "";
-    if (vo.tint) key += `t${Math.round(hexToHue(vo.tint))}`;
+    if (vo.tint) key += `t${vo.tint.slice(1).toLowerCase()}`;
     if (vo.brightness != null && vo.brightness !== 1) key += `b${Math.round(vo.brightness * 100)}`;
     return key;
 }

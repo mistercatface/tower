@@ -55,8 +55,27 @@ export function shiftPaletteToHue(basePanels, targetHue) {
     }
     return out;
 }
+const ACHROMATIC_SAT_THRESHOLD = 8;
 export function shiftPaletteToTintHex(basePanels, tintHex) {
-    return shiftPaletteToHue(basePanels, hexToHue(tintHex));
+    const { r, g, b } = hexToRgb(tintHex);
+    const tintHsl = rgbToHsl(r, g, b);
+    const targetHue = normalizeHue(tintHsl.h);
+    const targetSat = tintHsl.s;
+    const hsls = [];
+    let avgSat = 0;
+    for (let i = 0; i < basePanels.length; i++) {
+        const rgb = hexToRgb(basePanels[i]);
+        const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+        hsls.push(hsl);
+        avgSat += hsl.s;
+    }
+    avgSat /= hsls.length;
+    if (avgSat < ACHROMATIC_SAT_THRESHOLD) {
+        const out = [];
+        for (let i = 0; i < hsls.length; i++) out.push(hslToHex(targetHue, targetSat, hsls[i].l));
+        return out;
+    }
+    return shiftPaletteToHue(basePanels, targetHue);
 }
 export function shiftColorTreeToTintHex(colorTree, tintHex) {
     const hexes = [];

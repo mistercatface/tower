@@ -1,5 +1,5 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { sampleAssetBaseTintHex } from "../Color/visualOverride.js";
+import { assetDefaultBallRadius, isBallFamilyAsset, isBlockFamilyAsset, resolveBlockPresetForAsset } from "../Sandbox/sandboxShapeFamilies.js";
 import { bindCanvasPointers, bindCanvasContextMenu } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createSandboxSession } from "../Sandbox/sandboxSession.js";
@@ -256,10 +256,14 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         setSpawnBoxWidth: (width) => session.setSpawnBoxWidth(width),
         getSpawnBoxHeight: () => session.getSpawnBoxHeight(),
         setSpawnBoxHeight: (height) => session.setSpawnBoxHeight(height),
-        isSpawnVisualOverrideEnabled: () => session.isSpawnVisualOverrideEnabled(),
-        setSpawnVisualOverrideEnabled: (enabled) => session.setSpawnVisualOverrideEnabled(enabled),
-        getSpawnVisualOverrideTint: (asset) => session.getSpawnVisualOverrideTint() ?? asset.defaultVisualOverride?.tint ?? sampleAssetBaseTintHex(asset),
+        getSpawnBallRadius: (asset) => session.getSpawnBallRadius(asset),
+        setSpawnBallRadius: (radius) => session.setSpawnBallRadius(radius),
+        getSpawnBlockPresetId: () => session.getSpawnBlockPresetId(),
+        setSpawnBlockPresetId: (presetId) => session.setSpawnBlockPresetId(presetId),
+        getSpawnVisualOverrideTint: (asset) => session.getSpawnVisualOverrideTint(asset),
         setSpawnVisualOverrideTint: (hex) => session.setSpawnVisualOverrideTint(hex),
+        getSpawnVisualOverrideBrightness: () => session.getSpawnVisualOverrideBrightness(),
+        setSpawnVisualOverrideBrightness: (brightness) => session.setSpawnVisualOverrideBrightness(brightness),
         deleteSelectedProps: () => session.deleteSelectedProps(),
         getSelectionTagFilter: () => session.getSelectionTagFilter(),
         setSelectionTagFilter: (filter) => session.setSelectionTagFilter(filter),
@@ -368,6 +372,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             if (key.startsWith("prop:")) {
                 clampSpawnBehavior();
                 const asset = getPropAsset(key.slice(5));
+                if (isBallFamilyAsset(asset)) session.setSpawnBallRadius(assetDefaultBallRadius(asset));
+                if (isBlockFamilyAsset(asset)) session.setSpawnBlockPresetId(resolveBlockPresetForAsset(asset));
                 if (isRoomLinkSpawnAsset(asset)) {
                     enterCorridorLinkWireMode();
                     return;

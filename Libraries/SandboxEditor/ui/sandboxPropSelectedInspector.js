@@ -2,7 +2,8 @@ import { getPropAsset, formatSandboxSpawnLabel } from "../../Props/PropCatalog.j
 import { resolveSandboxFaction } from "../../Sandbox/sandboxFaction.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../Sandbox/spawnerConfig.js";
 import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector, appendChainLinkInspector } from "./sandboxWorldPropInspector.js";
-import { appendSelectedVisualOverrideFields } from "./sandboxVisualOverrideFields.js";
+import { appendShapeFamilySelectedFields } from "./sandboxShapeFamilyUi.js";
+import { isShapeFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
 import { isButtonEntity } from "../../Sandbox/buttonInput.js";
 import { isChainLinkBall } from "../../Sandbox/chainLinks.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../Sandbox/sandboxPropMeta.js";
@@ -19,7 +20,7 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
         },
     });
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
-    appendSelectedVisualOverrideFields(body, selectedProp, refreshPanel);
+    if (isShapeFamilyAsset(getPropAsset(selectedProp.type))) appendShapeFamilySelectedFields(body, selectedProp);
     if (isButtonEntity(selectedProp))
         appendButtonWireInspector(body, {
             listLinks: () => controller.listSelectedButtonLinks(),

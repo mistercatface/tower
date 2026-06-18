@@ -6,15 +6,14 @@ import {
     isRoomLinkSpawnAsset,
     isRoomNodeSpawnAsset,
     isPuzzleTemplateSpawnAsset,
-    isResizableBoxSpawnAsset,
     isSingleWorldPropSpawnAsset,
 } from "../../Sandbox/sandboxCapabilities.js";
 import { appendSurfaceProfileField } from "../../RoomGraph/roomGraphSurfaceProfile.js";
 import { appendAxisNumberFields, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
-import { appendSpawnVisualOverrideFields } from "./sandboxVisualOverrideFields.js";
-export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
-    const spawnAsset = getPropAsset(spawnId);
+import { appendShapeFamilySpawnFields } from "./sandboxShapeFamilyUi.js";
+import { isShapeFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
+function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera }) {
     const addRow = document.createElement("div");
     addRow.className = "sandbox-add-row";
     if (
@@ -37,7 +36,7 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
         appendBehaviorModeField(addRow, spawnBehaviorIds, controller.getSpawnBehaviorId(), (value) => {
             controller.setSpawnBehaviorId(value);
         });
-    if (!isRoomLinkSpawnAsset(spawnAsset)) {
+    if (showAddAtCamera) {
         const addBtn = document.createElement("button");
         addBtn.type = "button";
         addBtn.className = "secondary";
@@ -46,6 +45,9 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
         addRow.appendChild(addBtn);
     }
     body.appendChild(addRow);
+}
+export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
+    const spawnAsset = getPropAsset(spawnId);
     if (isRoomLinkSpawnAsset(spawnAsset)) {
         const fromNodeId = controller.getCorridorLinkWireFromNodeId();
         appendSelectField(body, "Type", {
@@ -73,6 +75,7 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
                 ? "Source room selected — click the target room. The corridor draws immediately; pick it from Scene to adjust type, width, or reroll."
                 : "Pick type and width, then click the source room and target room.",
         );
+        appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: false });
         return;
     }
     if (isRoomNodeSpawnAsset(spawnAsset)) {
@@ -98,6 +101,7 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
             controller.setSpawnRoomNodeSurfaceProfileId(profileId);
         });
         appendEditorHint(body, "Hover the map to preview the footprint. Blocked cells turn red; click only places when every cell is clear.");
+        appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: false });
         return;
     }
     if (isPuzzleTemplateSpawnAsset(spawnAsset)) {
@@ -120,33 +124,11 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
             },
         });
         appendEditorHint(body, "Click to stamp three rooms with random sizes and positions inside the area. Links are fixed: belt A→B, belt B→A, locked B→C. Room A gets a blue ball and crate.");
-        return;
-    }
-    if (isResizableBoxSpawnAsset(spawnAsset)) {
-        appendAxisNumberFields(body, {
-            Width: {
-                value: controller.getSpawnBoxWidth(),
-                step: 1,
-                min: 6,
-                max: 128,
-                onChange: (width) => {
-                    controller.setSpawnBoxWidth(width);
-                },
-            },
-            Height: {
-                value: controller.getSpawnBoxHeight(),
-                step: 1,
-                min: 6,
-                max: 128,
-                onChange: (height) => {
-                    controller.setSpawnBoxHeight(height);
-                },
-            },
-        });
-        appendEditorHint(body, "Footprint width and height in world pixels. Collision and draw follow the spawned rectangle.");
+        appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: false });
         return;
     }
     if (isGridPassagePowerSourceSpawnAsset(spawnAsset))
         appendEditorHint(body, "Add at camera stamps a power source on the grid. Enable Default energized in Selected, or wire a floor button to the source cell.");
-    appendSpawnVisualOverrideFields(body, controller, spawnId, refreshPanel);
+    else if (isShapeFamilyAsset(spawnAsset)) appendShapeFamilySpawnFields(body, controller, spawnId);
+    appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: true });
 }

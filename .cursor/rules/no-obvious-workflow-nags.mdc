@@ -1,0 +1,30 @@
+---
+description: Do not tell the user to refresh, restart, or other obvious dev steps
+alwaysApply: true
+---
+
+# No obvious workflow nags
+
+The user runs the app and knows how to develop. Do **not** end responses with patronizing reminders about steps they will take on their own.
+
+## Skip by default
+
+- Refresh / hard refresh the page
+- Restart the dev server
+- Clear browser cache
+- Rebuild / re-run after code changes
+- "Try placing again" / "open the editor and test"
+- Any variant of "you may need to reload to see changes"
+
+## When it is OK to mention a step
+
+Only when it is **non-obvious** and **required** for the fix to take effect — something they would not infer from normal dev workflow:
+
+- A one-time migration that runs only on cold start and is not triggered by HMR
+- A cache or version key in code that survives reload until a specific code change lands (say **what changed in code**, not "refresh to pick it up")
+- A documented manual step outside the usual edit-save-reload loop (env var, CLI bake, worker restart because the process is separate from the page)
+
+## Review bar
+
+- Would a competent dev already do this without being told? → Delete the sentence.
+- Am I explaining **why the bug happened** or nagging **what to click**? → Keep the former, drop the latter.

@@ -5,6 +5,9 @@ import { canStampFloorBeltAt, stampPassagePowerSourceAt } from "./floorOccupancy
 import { listPlacedForcefields } from "./gridWallEdit.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
+import { getPropAsset } from "../Props/PropCatalog.js";
+import { setCirclePropRadius } from "../Props/propScale.js";
+import { isBallFamilyAsset, blockPresetUsesResizableFootprint } from "./sandboxShapeFamilies.js";
 import {
     isGridFloorBeltSpawnAsset,
     isGridPassagePowerSourceSpawnAsset,
@@ -55,9 +58,11 @@ const PLACEABLE = {
             return true;
         },
         spawnAt(state, worldX, worldY, asset, ctx) {
-            const halfExtents = isResizableBoxSpawnAsset(asset) ? ctx.spawnBoxHalfExtents : undefined;
-            const spawnVisualOverride = ctx.resolveSpawnVisualOverride(asset);
-            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, ctx.spawnPropId, ctx.spawnFaction, 0, halfExtents, spawnVisualOverride ?? undefined);
+            const propTypeId = ctx.resolveSpawnPropTypeId();
+            const placedAsset = getPropAsset(propTypeId);
+            const halfExtents = blockPresetUsesResizableFootprint(propTypeId) ? ctx.spawnBoxHalfExtents : undefined;
+            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents, ctx.resolveSpawnVisualOverride(placedAsset));
+            if (spawned && isBallFamilyAsset(placedAsset)) setCirclePropRadius(spawned, ctx.spawnBallRadius);
             if (spawned) {
                 ctx.placement.touchPropPlacement(spawned.id);
                 ctx.pickSelection({ kind: "prop", ids: [spawned.id] });

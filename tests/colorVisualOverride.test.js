@@ -8,7 +8,6 @@ import {
     setPropVisualTint,
     visualOverrideCacheKey,
 } from "../Libraries/Color/visualOverride.js";
-import { hexToHue } from "../Libraries/Color/hex.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
 
 loadPropAssets();
@@ -19,6 +18,15 @@ describe("Color visualOverride", () => {
         const tinted = resolveVisualOverridePanels({ visualOverride: { tint: "#00ff00" } }, base);
         assert.equal(tinted.length, base.length);
         assert.notDeepEqual(tinted, base);
+        assert.notEqual(tinted[0].toLowerCase(), base[0].toLowerCase());
+    });
+
+    it("colorizes neutral grey panels instead of hue-shifting them", () => {
+        const base = getPropAsset("ball").visuals.panels;
+        const red = resolveVisualOverridePanels({ visualOverride: { tint: "#ff0000" } }, base);
+        const blue = resolveVisualOverridePanels({ visualOverride: { tint: "#0000ff" } }, base);
+        assert.notEqual(red[0].toLowerCase(), blue[0].toLowerCase());
+        assert.notEqual(red[0].toLowerCase(), base[0].toLowerCase());
     });
 
     it("shifts flat and nested extruded color trees", () => {
@@ -41,11 +49,13 @@ describe("Color visualOverride", () => {
         assert.deepEqual(resolveVisualOverridePanels(prop, base), base);
     });
 
-    it("visualOverrideCacheKey buckets tinted props", () => {
+    it("visualOverrideCacheKey keys tinted props by hex", () => {
         const prop = {};
         assert.equal(visualOverrideCacheKey(prop), "");
         setPropVisualTint(prop, "#2a2a2a");
-        assert.equal(visualOverrideCacheKey(prop), `t${Math.round(hexToHue("#2a2a2a"))}`);
+        assert.equal(visualOverrideCacheKey(prop), "t2a2a2a");
+        setPropVisualTint(prop, "#ff0000");
+        assert.equal(visualOverrideCacheKey(prop), "tff0000");
     });
 
     it("blue_ball alias ships with a default tint on spawn", () => {

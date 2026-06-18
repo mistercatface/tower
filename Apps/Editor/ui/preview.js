@@ -40,7 +40,7 @@ export function setLabVignetteEnabled(enabled) {
     showLabVignette = enabled;
     markLabViewDirty();
 }
-function markLabViewDirty() {
+export function markLabViewDirty() {
     labViewDirty = true;
 }
 export function mountLabDrawOptions() {

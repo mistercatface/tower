@@ -123,12 +123,39 @@ export function appendColorField(parent, labelText, { value, onChange }) {
     field.className = "param-field param-field-color";
     const label = document.createElement("span");
     label.textContent = labelText;
+    const swatch = document.createElement("button");
+    swatch.type = "button";
+    swatch.className = "param-color-swatch";
+    swatch.title = "Pick color";
+    const hexLabel = document.createElement("span");
+    hexLabel.className = "param-value param-color-hex";
     const input = document.createElement("input");
     input.type = "color";
+    input.className = "param-color-input";
     setFormFieldName(input, labelText);
-    input.value = value;
-    input.addEventListener("change", () => onChange(input.value));
-    field.append(label, input);
+    const sync = (hex) => {
+        input.value = hex;
+        swatch.style.backgroundColor = hex;
+        hexLabel.textContent = hex;
+    };
+    sync(value);
+    const apply = (hex) => {
+        sync(hex);
+        onChange(hex);
+    };
+    swatch.addEventListener("click", () => {
+        if (typeof input.showPicker === "function") input.showPicker();
+        else input.click();
+    });
+    input.addEventListener("input", () => apply(input.value));
+    input.addEventListener("change", () => {
+        apply(input.value);
+        input.blur();
+    });
+    const picker = document.createElement("div");
+    picker.className = "param-color-picker";
+    picker.append(swatch, input);
+    field.append(label, picker, hexLabel);
     parent.appendChild(field);
     return field;
 }
