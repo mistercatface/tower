@@ -1,4 +1,5 @@
 import { resolveBodyAgainstWallSegments } from "../Spatial/collision/wallResolution.js";
+import { wakeKineticBody } from "./kineticSleep.js";
 /** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
 export function invalidateWallResolveCache(...entities) {
     for (let i = 0; i < entities.length; i++) entities[i]._wallResolvedFrame = null;
@@ -19,6 +20,7 @@ export class WallCollisionResolver {
         }
         const wp = entity.strategy?.wallPhysics;
         const { collided } = resolveBodyAgainstWallSegments(entity, entity.getShape(), candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9 });
+        if (collided) wakeKineticBody(entity);
         entity._wallResolvedCollided = collided;
         return collided;
     }

@@ -141,4 +141,13 @@ describe("poly-poly kinetic contact", () => {
         assert.ok(a.vx < 40);
         assert.ok(b.vx > -20);
     });
+    it("poly pair friction reduces tangential slip on box_2x4 slide", () => {
+        const left = new WorldProp(0, 0, "box_2x4", 0);
+        const right = new WorldProp(12, 0, "box_2x4", 0);
+        left.vx = 35;
+        right.vx = 0;
+        const frame = setupPairFrame(left, right);
+        resolveKineticContactPass(frame, {});
+        assert.ok(left.vx < 35);
+    });
 });

@@ -10,6 +10,7 @@ import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellB
 import { navCanStep } from "../../Pathfinding/navTopologySab.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { clearWallCells } from "./wallGridBake.js";
+import { entityBroadphaseExtent } from "../collision/entityBroadphase.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
 export class WorldObstacleGrid {
@@ -120,9 +121,9 @@ export class WorldObstacleGrid {
         // Edge-rail collision: railWall, powered passage (same segment + thickness path), or beltRail.
         // Draw uses resolveRailWallBox; do not swap proxy math without ball regression tests.
         this._staticWallProxyCount = 0;
-        const radius = entity.radius ?? 0;
+        const extent = entityBroadphaseExtent(entity);
         const { col: ec, row: er } = this.worldToGrid(entity.x, entity.y);
-        const pad = 1 + Math.ceil(radius / this.cellSize);
+        const pad = 1 + Math.ceil(extent / this.cellSize);
         const minCol = Math.max(0, ec - pad);
         const maxCol = Math.min(this.cols - 1, ec + pad);
         const minRow = Math.max(0, er - pad);
