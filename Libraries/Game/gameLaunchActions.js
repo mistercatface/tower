@@ -1,6 +1,7 @@
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
+import { applySnakeGameConfig } from "../Game/snake/snakeGameConfig.js";
 import { findChainHeadProp } from "../Sandbox/autosim/snakeAutosim.js";
 /** @typedef {{ stamped?: NonNullable<ReturnType<typeof stampBeltCratePuzzleAt>>, cameraTarget?: object }} GameLaunchContext */
 /** @param {object} state @param {GameLaunchContext} ctx */
@@ -27,6 +28,7 @@ function findBlueBallProp(state) {
 }
 /** @param {object} state @param {GameLaunchContext} ctx */
 export async function loadSnakePlaySceneAction(state, ctx) {
+    applySnakeGameConfig();
     const controller = state.sandbox.controller;
     if (!controller?.loadSnakePlayScene) throw new Error("Snake play scene requires a mounted sandbox controller");
     await controller.loadSnakePlayScene();

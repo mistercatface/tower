@@ -17,6 +17,9 @@ export function mergePartial(base, overrides = {}, ...more) {
         result = { ...result, ...o };
         if (o.restitution && typeof o.restitution === "object") result.restitution = { ...(result.restitution ?? {}), ...o.restitution };
         if (o.motionSubsteps && typeof o.motionSubsteps === "object") result.motionSubsteps = { ...(result.motionSubsteps ?? {}), ...o.motionSubsteps };
+        if (o.groundNavRoll && typeof o.groundNavRoll === "object") result.groundNavRoll = { ...(result.groundNavRoll ?? {}), ...o.groundNavRoll };
+        if (o.groundNavHpa && typeof o.groundNavHpa === "object") result.groundNavHpa = { ...(result.groundNavHpa ?? {}), ...o.groundNavHpa };
+        if (o.cavern && typeof o.cavern === "object") result.cavern = { ...(result.cavern ?? {}), ...o.cavern };
     }
     return result;
 }

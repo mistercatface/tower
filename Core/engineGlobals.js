@@ -2,6 +2,7 @@ import { SURFACE_PROFILE_ID } from "../Config/procedural/profileIds.js";
 import { applyGamePerspective, getActivePerspective } from "./GamePerspective.js";
 import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
 import { applyGameCollisionSettings } from "./GameCollisionSettings.js";
+import { applyGamePhysicsSettings } from "./GamePhysicsSettings.js";
 import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
 import { applyGamePropQuantizeSettings } from "./GamePropQuantizeSettings.js";
 import { installGameSurfaceProfileProvider } from "../Config/procedural/bootstrap.js";
@@ -22,6 +23,7 @@ export function installEditorDefaults(state) {
     applyGamePerspective(profile);
     installGameWorldSurfaceSettings({ wallHeightCells: profile.worldSurface?.wallHeightCells, ...resolveProceduralBakeSettings(profile) });
     applyGameCollisionSettings(profile);
+    applyGamePhysicsSettings(profile);
     applyGamePropQuantizeSettings(profile);
     applyGamePropPixelSize(profile);
     const worldSurfaces = state.worldSurfaces;

@@ -16,6 +16,7 @@ import { releaseButtonPointerHold } from "../Sandbox/floorButtons.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene, spawnSnakePlayScene } from "../../Apps/Editor/world/sandboxStartScene.js";
 import { createSnakeAutosim, findChainHeadProp, findGoalOrbProp } from "../Sandbox/autosim/snakeAutosim.js";
+import { applySnakeGameConfig } from "../Game/snake/snakeGameConfig.js";
 import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandboxCapabilities.js";
@@ -429,6 +430,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.sync();
         },
         async loadSnakePlayScene() {
+            applySnakeGameConfig();
             await spawnSnakePlayScene(state);
             resetBehaviors();
             exitWireModes();

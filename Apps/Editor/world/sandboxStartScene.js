@@ -6,6 +6,7 @@ import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { SANDBOX_DEFAULT_FACTION, sandboxFactions } from "../../../Libraries/Sandbox/sandboxFaction.js";
 import { collectOpenCavernCells, pickOpenCavernCell } from "../../../Libraries/Sandbox/cavernFloorCells.js";
 import { spawnGoalOrbOnOpenCell, spawnSnakeChain, snakeChainOccupiedCellKeys } from "../../../Libraries/Sandbox/spawnSnakeChain.js";
+import { getSnakeGameConfig } from "../../../Libraries/Game/snake/snakeGameConfig.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns } from "./mapWorld.js";
 const STRESS_CHAIN_SEGMENT_COUNT = 45;
@@ -135,25 +136,25 @@ export async function spawnSandboxStartScene(state) {
     cavernConfig.wallHeightLevel = prevWallHeightLevel;
     spawnCavernStressProps(state);
 }
-
 async function spawnSnakeCavernMap(state) {
+    const cavern = getSnakeGameConfig().cavern;
     await applyPlayAreaConfig(state);
     await applySandboxSceneSnapshot(state, buildEmptySandboxDoc(state));
     const cavernConfig = state.editor.cavernConfig;
     const prevWallHeightLevel = cavernConfig.wallHeightLevel;
-    cavernConfig.wallHeightLevel = 1;
+    cavernConfig.wallHeightLevel = cavern.wallHeightLevel;
     await generateLabCaverns(state);
     cavernConfig.wallHeightLevel = prevWallHeightLevel;
 }
-
 /** Procedural cavern with a three-segment snake chain and one goal orb — snake autosim entry scene. */
 export async function spawnSnakePlayScene(state) {
+    const cavern = getSnakeGameConfig().cavern;
     await spawnSnakeCavernMap(state);
     const openCells = collectOpenCavernCells(state);
     if (!openCells.length) throw new Error("Cavern has no open floor cells for snake placement");
     let chain = null;
     let goal = null;
-    withSeededRandom(state.mapSeed + 11, () => {
+    withSeededRandom(state.mapSeed + cavern.mapSeedOffset, () => {
         shuffleInPlace(openCells);
         const anchorCell = pickOpenCavernCell(openCells);
         chain = spawnSnakeChain(state, anchorCell);

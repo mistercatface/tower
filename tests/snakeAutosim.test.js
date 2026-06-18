@@ -10,7 +10,8 @@ import { getChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { createSnakeAutosim } from "../Libraries/Sandbox/autosim/snakeAutosim.js";
-import { GOAL_ORB_PROP_TYPE, spawnGoalOrbAtCell, spawnSnakeChain } from "../Libraries/Sandbox/spawnSnakeChain.js";
+import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { spawnGoalOrbAtCell, spawnSnakeChain } from "../Libraries/Sandbox/spawnSnakeChain.js";
 
 loadPropAssets();
 
@@ -36,7 +37,7 @@ function createSnakeAutosimTestState(cols = 32, rows = 32) {
 function countLiveGoalOrbs(state) {
     let count = 0;
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || prop.type !== GOAL_ORB_PROP_TYPE) return;
+        if (prop.isDead || prop.type !== getSnakeGameConfig().goalPropId) return;
         count++;
     });
     return count;
@@ -94,7 +95,7 @@ describe("snakeAutosim", () => {
 function findLiveGoalOrb(state) {
     let goal = null;
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || prop.type !== GOAL_ORB_PROP_TYPE) return;
+        if (prop.isDead || prop.type !== getSnakeGameConfig().goalPropId) return;
         goal = prop;
     });
     return goal;

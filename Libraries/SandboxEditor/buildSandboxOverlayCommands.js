@@ -42,7 +42,7 @@ export function buildSandboxOverlayCommands({
         wireFromPropId: chainLinkWireTool.isActive() ? chainLinkWireTool.getFromPropId() : null,
         wireCursor: chainLinkWireTool.isActive() ? chainLinkWireTool.getCursor() : null,
     });
-    appendKineticConstraintOverlayCommands(commands, state);
+    if (state.editor.showRoomNodesAlways) appendKineticConstraintOverlayCommands(commands, state);
     if (placePreviewWorld) {
         const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
         appendPlacePreviewOverlayCommands(commands, preview, state.obstacleGrid);

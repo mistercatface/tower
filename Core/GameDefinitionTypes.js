@@ -41,6 +41,7 @@
  * @property {Partial<import("./GameProceduralDesign.js").ProceduralDesignConfig>} [proceduralDesign]
  * @property {Partial<import("../Config/world.js").WorldSurfaceDefaults> & { cellSize?: number, floorShadow?: string }} [worldSurface]
  * @property {Partial<import("../Libraries/Collision/collisionDefaults.js").LibraryCollisionSettings>} [collisionSettings]
+ * @property {Partial<import("../Libraries/Motion/physicsDefaults.js").LibraryPhysicsSettings>} [physicsSettings]
  * @property {Partial<import("../Libraries/Props/propRenderDefaults.js").LibraryPropQuantizeSteps>} [propQuantizeSteps]
  * @property {PlaybackConfig} [playback]
  * @property {PlaybackHandlers} playbackHandlers

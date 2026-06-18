@@ -1,3 +1,4 @@
+import { getPhysicsSettings } from "../../../Core/GamePhysicsSettings.js";
 import { agentPose } from "../../Agent/index.js";
 import { computeFlowFieldSteering } from "../../Pathfinding/flowSteering.js";
 import { sampleFlowDirectionOnGrid } from "../../Pathfinding/sampleFlowDirection.js";
@@ -29,7 +30,7 @@ export function createFlowGroundNavBehavior(state) {
     };
     const tickProp = (prop, run, dt) => {
         if (!run.targetWorld) return;
-        const config = getKineticRollConfig(prop, { stopRadius: 8 });
+        const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
         const steerTarget = resolveSteerTarget(run, prop);
         const flowFieldGrid = state.flowFieldGrid;
         const navGeneration = state.navigation.obstacleGeneration;

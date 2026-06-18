@@ -1,13 +1,13 @@
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
+import { getPhysicsSettings } from "../../Core/GamePhysicsSettings.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-const GROUND_NAV_ROLL_DEFAULTS = { maxSpeed: 180, accel: 600, stopRadius: 6 };
 export function snapMoveTargetToCellCenter(grid, world) {
     const { col, row } = grid.worldToGrid(world.x, world.y);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
     return { world: grid.gridToWorld(col, row), col, row };
 }
 export function getKineticRollConfig(prop, overrides = {}) {
-    return { ...GROUND_NAV_ROLL_DEFAULTS, ...prop.strategy.groundNav, ...overrides };
+    return { ...getPhysicsSettings().groundNavRoll, ...prop.strategy.groundNav, ...overrides };
 }
 export function applyRollSpin(prop) {
     if (!prop.strategy?.rolls) return;

@@ -3,13 +3,10 @@ import { addChainLink, setChainHead } from "./chainLinks.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, sandboxFactions } from "./sandboxFaction.js";
 import { cavernCellKey, pickRandomOpenCavernCell } from "./cavernFloorCells.js";
-export const GOAL_ORB_PROP_TYPE = "goal_orb";
+import { getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Game/snake/snakeGameConfig.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
-export const DEFAULT_SNAKE_SEGMENT_COUNT = 3;
-export const DEFAULT_SNAKE_SEGMENT_SPACING = 16;
-export const DEFAULT_SNAKE_BALL_TYPE = "blue_ball";
 export function spawnGoalOrb(state, worldX, worldY, faction = SANDBOX_DEFAULT_FACTION) {
-    return spawnPlacedSandboxProp(state, worldX, worldY, GOAL_ORB_PROP_TYPE, faction);
+    return spawnPlacedSandboxProp(state, worldX, worldY, getSnakeGameConfig().goalPropId, faction);
 }
 export function spawnGoalOrbAtCell(state, cell, faction = SANDBOX_DEFAULT_FACTION) {
     const { x, y } = state.obstacleGrid.gridToWorld(cell.col, cell.row);
@@ -20,10 +17,14 @@ export function spawnGoalOrbOnOpenCell(state, { excludeKeys = null, faction = SA
     if (!cell) throw new Error("Cavern has no open floor cell for goal orb");
     return spawnGoalOrbAtCell(state, cell, faction);
 }
+function segmentOffset(index, spacing, config) {
+    return { x: index * spacing * config.growDirX, y: index * spacing * config.growDirY };
+}
 export function spawnSnakeChain(state, anchorCell, options = {}) {
-    const segmentCount = options.segmentCount ?? DEFAULT_SNAKE_SEGMENT_COUNT;
-    const spacing = options.spacing ?? DEFAULT_SNAKE_SEGMENT_SPACING;
-    const ballType = options.ballType ?? DEFAULT_SNAKE_BALL_TYPE;
+    const config = getSnakeGameConfig();
+    const segmentCount = options.segmentCount ?? config.segmentCount;
+    const spacing = options.spacing ?? resolveSnakeSegmentSpacing(config);
+    const ballType = options.ballType ?? config.segmentPropId;
     const faction = options.faction ?? sandboxFactions.alpha;
     const grid = state.obstacleGrid;
     const meta = getSandboxEntityMeta(state);
@@ -31,7 +32,8 @@ export function spawnSnakeChain(state, anchorCell, options = {}) {
     const anchorWorld = grid.gridToWorld(anchorCell.col, anchorCell.row);
     const props = [];
     for (let i = 0; i < segmentCount; i++) {
-        const prop = spawnPlacedSandboxProp(state, anchorWorld.x - i * spacing, anchorWorld.y, ballType, faction);
+        const offset = segmentOffset(i, spacing, config);
+        const prop = spawnPlacedSandboxProp(state, anchorWorld.x + offset.x, anchorWorld.y + offset.y, ballType, faction);
         meta.setSpawnGroupId(prop.id, spawnGroupId);
         meta.setSpawnGroupExportType(prop.id, SNAKE_CHAIN_EXPORT_TYPE);
         if (i === 0) meta.setSpawnGroupAnchor(prop.id);
@@ -55,14 +57,15 @@ export function tryExportSnakeChainSpawnGroup(members, meta) {
     const anchor = members.find((prop) => meta.isSpawnGroupAnchor(prop.id)) ?? members[0];
     return { type: SNAKE_CHAIN_EXPORT_TYPE, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: resolveSandboxFaction(anchor), segmentCount: members.length };
 }
-
 export function growSnakeChainSegment(state, tailProp, options = {}) {
-    const spacing = options.spacing ?? DEFAULT_SNAKE_SEGMENT_SPACING;
-    const ballType = options.ballType ?? DEFAULT_SNAKE_BALL_TYPE;
+    const config = getSnakeGameConfig();
+    const spacing = options.spacing ?? resolveSnakeSegmentSpacing(config);
+    const ballType = options.ballType ?? config.segmentPropId;
     const faction = options.faction ?? resolveSandboxFaction(tailProp);
     const meta = getSandboxEntityMeta(state);
     const spawnGroupId = options.spawnGroupId ?? meta.getSpawnGroupId(tailProp.id);
-    const segment = spawnPlacedSandboxProp(state, tailProp.x - spacing, tailProp.y, ballType, faction);
+    const offset = segmentOffset(1, spacing, config);
+    const segment = spawnPlacedSandboxProp(state, tailProp.x + offset.x, tailProp.y + offset.y, ballType, faction);
     if (spawnGroupId) {
         meta.setSpawnGroupId(segment.id, spawnGroupId);
         meta.setSpawnGroupExportType(segment.id, SNAKE_CHAIN_EXPORT_TYPE);
