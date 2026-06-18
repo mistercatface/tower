@@ -10,7 +10,6 @@ export function buildSandboxOverlayCommands({
     session,
     selectionDrawState,
     placePreviewWorld,
-    showPlacePreview,
     marqueeRect,
     behaviorById,
     getPropBehaviorId,
@@ -33,7 +32,7 @@ export function buildSandboxOverlayCommands({
         wireFromPropId: buttonWireTool.isActive() ? (session.getSelectedProp()?.id ?? null) : null,
         wireCursor: buttonWireTool.isActive() ? buttonWireTool.getCursor() : null,
     });
-    if (showPlacePreview && placePreviewWorld) {
+    if (placePreviewWorld) {
         const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
         appendPlacePreviewOverlayCommands(commands, preview, state.obstacleGrid);
     }

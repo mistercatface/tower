@@ -1,5 +1,4 @@
-import { releasePointerCapture } from "../Input/canvasPointer.js";
-export function createWireLinkTool({ getEnterCursor, onLinkClick, onSync, appendWire }) {
+export function createWireLinkTool({ getEnterCursor, onLinkClick, onSync }) {
     let active = false;
     let cursor = null;
     const enter = () => {
@@ -28,10 +27,6 @@ export function createWireLinkTool({ getEnterCursor, onLinkClick, onSync, append
         onPointerMove(_world, e, clientToWorld) {
             if (!active) return;
             cursor = clientToWorld(e.clientX, e.clientY);
-        },
-        appendOverlayCommands(out) {
-            if (!active) return;
-            appendWire(out, cursor);
         },
     };
 }

@@ -6,9 +6,6 @@
 /** @typedef {{ kind: 'arrowHead', x: number, y: number, dirX: number, dirY: number, fill: string, headLen?: number, headWidth?: number }} OverlayArrowHeadCommand */
 /** @typedef {{ kind: 'aimSegment', x1: number, y1: number, x2: number, y2: number, color: string, lineWidth?: number, arrowhead?: boolean, glow?: boolean, glowHue?: number }} OverlayAimSegmentCommand */
 /** @typedef {OverlayAabbCommand | OverlayCircleStrokeCommand | OverlayCircleFillStrokeCommand | OverlaySegmentCommand | OverlayPolylineCommand | OverlayArrowHeadCommand | OverlayAimSegmentCommand} OverlayCommand */
-export function pushOverlayCommands(out, commands) {
-    for (let i = 0; i < commands.length; i++) out.push(commands[i]);
-}
 export function overlayAabb(aabb, { fill, stroke, lineWidth = 1, dash } = {}) {
     return { kind: "aabb", minX: aabb.minX, minY: aabb.minY, maxX: aabb.maxX, maxY: aabb.maxY, fill, stroke, lineWidth, dash };
 }
@@ -33,6 +30,12 @@ export function overlayDirectionArrow(cx, cy, dirX, dirY, { pad = 0, len = 20, s
     const tipX = startX + dirX * len;
     const tipY = startY + dirY * len;
     return [overlaySegment(startX, startY, tipX, tipY, { stroke, lineWidth }), overlayArrowHead(tipX, tipY, dirX, dirY, { fill: stroke, headLen, headWidth })];
+}
+export function overlayWireLink(x0, y0, x1, y1, color, { lineWidth = 2, dash = [6, 4], endpointRadius = 3 } = {}) {
+    return [overlaySegment(x0, y0, x1, y1, { stroke: color, lineWidth, dash }), overlayCircleFillStroke(x1, y1, endpointRadius, { fill: color, stroke: color, lineWidth: 1 })];
+}
+export function appendOverlayWireLink(out, x0, y0, x1, y1, color, style) {
+    out.push(...overlayWireLink(x0, y0, x1, y1, color, style));
 }
 export function overlayAimSegment(x1, y1, x2, y2, { color, lineWidth = 3, arrowhead = true, glow = true, glowHue = 180 } = {}) {
     return { kind: "aimSegment", x1, y1, x2, y2, color, lineWidth, arrowhead, glow, glowHue };

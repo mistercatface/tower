@@ -462,7 +462,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
                 session,
                 selectionDrawState,
                 placePreviewWorld: showPlacePreview ? placePreviewWorld : null,
-                showPlacePreview: !!showPlacePreview,
                 marqueeRect: marqueeTool.getMarqueeRect(),
                 behaviorById,
                 getPropBehaviorId,

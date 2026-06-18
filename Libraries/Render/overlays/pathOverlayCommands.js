@@ -1,4 +1,5 @@
-import { overlayArrowHead, overlayCircleStroke, overlayDirectionArrow, overlayPolyline, overlaySegment, pushOverlayCommands } from "./overlayCommands.js";
+import { normalizeXY } from "../../Math/Vec2.js";
+import { overlayArrowHead, overlayCircleFillStroke, overlayCircleStroke, overlayDirectionArrow, overlayPolyline } from "./overlayCommands.js";
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
 /** @typedef {Object} PathOverlayData
  * @property {"direct" | "hpa" | "flow"} mode
@@ -17,35 +18,27 @@ const FLOW_ARROW_LEN = 20;
 const FLOW_ARROW_PAD = 5;
 const PATH_STROKE_WIDTH = 2;
 const HPA_STROKE_WIDTH = 2.5;
-function unitVector(x0, y0, x1, y1) {
-    const dx = x1 - x0;
-    const dy = y1 - y0;
-    const len = Math.hypot(dx, dy);
-    if (len <= 0) return null;
-    return { x: dx / len, y: dy / len };
-}
 function appendPathEndArrow(out, pathNodes, targetX, targetY, color) {
-    if (targetX != null && targetY != null && pathNodes?.length >= 1) {
+    if (targetX != null && targetY != null && pathNodes.length >= 1) {
         const from = pathNodes[pathNodes.length - 1];
-        const dir = unitVector(from.x, from.y, targetX, targetY);
-        if (dir) {
-            out.push(overlayArrowHead(targetX, targetY, dir.x, dir.y, { fill: color }));
+        const { nx, ny, len } = normalizeXY(targetX - from.x, targetY - from.y);
+        if (len > 0) {
+            out.push(overlayArrowHead(targetX, targetY, nx, ny, { fill: color }));
             return;
         }
     }
-    if (pathNodes?.length >= 2) {
+    if (pathNodes.length >= 2) {
         const n = pathNodes.length;
         const tip = pathNodes[n - 1];
-        const dir = unitVector(pathNodes[n - 2].x, pathNodes[n - 2].y, tip.x, tip.y);
-        if (dir) out.push(overlayArrowHead(tip.x, tip.y, dir.x, dir.y, { fill: color }));
+        const { nx, ny, len } = normalizeXY(tip.x - pathNodes[n - 2].x, tip.y - pathNodes[n - 2].y);
+        if (len > 0) out.push(overlayArrowHead(tip.x, tip.y, nx, ny, { fill: color }));
     }
 }
 function appendFlowAgentArrow(out, overlay) {
     const { propX, propY, propRadius, dirX, dirY, targetX, targetY } = overlay;
-    if (propX == null || propY == null) return;
     if (dirX != null && dirY != null) {
         const color = "rgba(76, 175, 80, 0.85)";
-        pushOverlayCommands(out, overlayDirectionArrow(propX, propY, dirX, dirY, { pad: (propRadius ?? 8) + FLOW_ARROW_PAD, len: FLOW_ARROW_LEN, stroke: color, lineWidth: PATH_STROKE_WIDTH }));
+        out.push(...overlayDirectionArrow(propX, propY, dirX, dirY, { pad: propRadius + FLOW_ARROW_PAD, len: FLOW_ARROW_LEN, stroke: color, lineWidth: PATH_STROKE_WIDTH }));
         return;
     }
     if (targetX != null && targetY != null) out.push(overlayCircleFillStroke(targetX, targetY, 4, { fill: "rgba(255, 193, 7, 0.85)" }));
@@ -53,7 +46,7 @@ function appendFlowAgentArrow(out, overlay) {
 function appendNormalPathOverlayCommands(out, overlay) {
     const { mode, targetX, targetY, pathNodes } = overlay;
     if (mode === "direct") {
-        if (!pathNodes || pathNodes.length < 2) return;
+        if (pathNodes.length < 2) return;
         out.push(overlayPolyline(pathNodes, { stroke: "rgba(0, 188, 212, 0.55)", lineWidth: 1.5, dash: [4, 4] }));
         out.push(overlayPolyline(pathNodes, { stroke: "rgba(0, 188, 212, 0.85)", lineWidth: PATH_STROKE_WIDTH }));
         const end = pathNodes[pathNodes.length - 1];
@@ -65,11 +58,11 @@ function appendNormalPathOverlayCommands(out, overlay) {
         return;
     }
     const hpaColor = "rgba(156, 39, 176, 0.9)";
-    if (pathNodes?.length) out.push(overlayPolyline(pathNodes, { stroke: "rgba(156, 39, 176, 0.65)", lineWidth: HPA_STROKE_WIDTH }));
-    if (pathNodes?.length || (targetX != null && targetY != null)) appendPathEndArrow(out, pathNodes, targetX, targetY, hpaColor);
+    if (pathNodes.length) out.push(overlayPolyline(pathNodes, { stroke: "rgba(156, 39, 176, 0.65)", lineWidth: HPA_STROKE_WIDTH }));
+    appendPathEndArrow(out, pathNodes ?? [], targetX, targetY, hpaColor);
 }
 function appendAbstractPathCommands(out, abstractPath, pathPlanner = "hpa") {
-    if (!abstractPath || abstractPath.length < 2) return;
+    if (abstractPath.length < 2) return;
     const isLocal = pathPlanner === "local";
     const lineColor = isLocal ? "#ff9800" : "#ffeb3b";
     const nodeColor = isLocal ? "#ffb74d" : "#ffeb3b";
@@ -90,20 +83,16 @@ export function appendPathOverlayCommands(out, overlay, visual = "debug") {
     const { mode, targetX, targetY, pathNodes, abstractPath, pathPlanner } = overlay;
     if (mode === "hpa") {
         if (abstractPath) appendAbstractPathCommands(out, abstractPath, pathPlanner ?? "hpa");
-        if (pathNodes?.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#00e5ff", lineWidth: 4 }));
-        if (pathNodes?.length >= 1) appendPathEndArrow(out, pathNodes, targetX, targetY, "rgba(156, 39, 176, 0.9)");
-        if (pathNodes?.length)
-            for (let i = 0; i < pathNodes.length; i++) {
-                const wp = pathNodes[i];
-                out.push(overlayCircleFillStroke(wp.x, wp.y, 6, { fill: "#00e5ff" }));
-            }
+        if (pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#00e5ff", lineWidth: 4 }));
+        if (pathNodes.length >= 1) appendPathEndArrow(out, pathNodes, targetX, targetY, "rgba(156, 39, 176, 0.9)");
+        for (let i = 0; i < pathNodes.length; i++) out.push(overlayCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }));
         return;
     }
     if (mode === "flow") {
         appendFlowAgentArrow(out, overlay);
         return;
     }
-    if (!pathNodes || pathNodes.length < 2) return;
+    if (pathNodes.length < 2) return;
     out.push(overlayPolyline(pathNodes, { stroke: "rgba(0, 188, 212, 0.65)", lineWidth: 3, dash: [8, 6] }));
     const end = pathNodes[pathNodes.length - 1];
     out.push(overlayCircleFillStroke(end.x, end.y, 10, { fill: "rgba(0, 188, 212, 0.85)" }));

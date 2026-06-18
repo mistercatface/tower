@@ -48,7 +48,7 @@ function drawAimSegmentCommand(ctx, cmd) {
     ctx.restore();
 }
 export function drawOverlayCommands(ctx, commands) {
-    if (!commands?.length) return;
+    if (!commands.length) return;
     ctx.save();
     for (let i = 0; i < commands.length; i++) {
         const cmd = commands[i];

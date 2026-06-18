@@ -6,7 +6,7 @@ import { isSpawnerWorldProp } from "./spawnerConfig.js";
 import { formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { overlayCircleFillStroke, overlaySegment } from "../Render/overlays/overlayCommands.js";
+import { appendOverlayWireLink } from "../Render/overlays/overlayCommands.js";
 /** @typedef {{ type: "worldProp", id: number }} WorldPropButtonLinkTarget */
 /** @typedef {{ type: "gridCell", globalCol: number, globalRow: number }} GridCellButtonLinkTarget */
 /** @typedef {WorldPropButtonLinkTarget | GridCellButtonLinkTarget} ButtonLinkTarget */
@@ -123,8 +123,7 @@ export function appendButtonWireOverlayCommands(out, state, { wireFromPropId = n
         const color = button.id === wireFromPropId ? "#FFB74D" : "#FF7043";
         for (let j = 0; j < endpoints.length; j++) {
             const endpoint = endpoints[j];
-            out.push(overlaySegment(button.x, button.y, endpoint.x, endpoint.y, { stroke: color, lineWidth: 2, dash: [6, 4] }));
-            out.push(overlayCircleFillStroke(endpoint.x, endpoint.y, 3, { fill: color, stroke: color, lineWidth: 1 }));
+            appendOverlayWireLink(out, button.x, button.y, endpoint.x, endpoint.y, color);
         }
     });
     if (wireFromPropId != null && wireCursor) appendButtonWirePreviewCommands(out, state, wireFromPropId, wireCursor);
@@ -132,6 +131,5 @@ export function appendButtonWireOverlayCommands(out, state, { wireFromPropId = n
 export function appendButtonWirePreviewCommands(out, state, fromPropId, wireCursor) {
     const from = state.entityRegistry.getLive(fromPropId);
     if (!from) return;
-    out.push(overlaySegment(from.x, from.y, wireCursor.x, wireCursor.y, { stroke: "#FFB74D", lineWidth: 2, dash: [6, 4] }));
-    out.push(overlayCircleFillStroke(wireCursor.x, wireCursor.y, 3, { fill: "#FFB74D", stroke: "#FFB74D", lineWidth: 1 }));
+    appendOverlayWireLink(out, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D");
 }

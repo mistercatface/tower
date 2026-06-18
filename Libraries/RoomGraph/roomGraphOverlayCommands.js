@@ -1,11 +1,7 @@
-import { overlayAabb, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/overlays/overlayCommands.js";
+import { appendOverlayWireLink, overlayAabb } from "../Render/overlays/overlayCommands.js";
 import { createAabb, emptyAabbInto, growAabbFromCenterInto } from "../Math/Aabb2D.js";
 import { listRoomLinks, listRoomNodes, roomNodeCenterWorld } from "./roomGraphStore.js";
 const NODE_OUTLINE_BOUNDS = createAabb();
-function appendWireCommands(out, x0, y0, x1, y1, color) {
-    out.push(overlaySegment(x0, y0, x1, y1, { stroke: color, lineWidth: 2, dash: [6, 4] }));
-    out.push(overlayCircleFillStroke(x1, y1, 3, { fill: color, stroke: color, lineWidth: 1 }));
-}
 export function appendRoomGraphOverlayCommands(
     out,
     state,
@@ -25,13 +21,13 @@ export function appendRoomGraphOverlayCommands(
             if (!nodeA || !nodeB) continue;
             const a = roomNodeCenterWorld(grid, nodeA);
             const b = roomNodeCenterWorld(grid, nodeB);
-            appendWireCommands(out, a.x, a.y, b.x, b.y, link.id === selectedLinkId ? "#64B5F6" : "#5C9FD6");
+            appendOverlayWireLink(out, a.x, a.y, b.x, b.y, link.id === selectedLinkId ? "#64B5F6" : "#5C9FD6");
         }
     if (wireFromNodeId != null && wireCursor) {
         const fromNode = nodes.find((node) => node.id === wireFromNodeId);
         if (fromNode) {
             const from = roomNodeCenterWorld(grid, fromNode);
-            appendWireCommands(out, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D");
+            appendOverlayWireLink(out, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D");
         }
     }
     for (let i = 0; i < nodes.length; i++) {

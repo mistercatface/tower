@@ -6,6 +6,7 @@ import { formatPassageModeLabel, isPassageLaserEdge, isRailWallEdge, parsePassag
 import { setBoundary, setPassageProfile, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
+import { overlaySegment } from "../Render/overlays/overlayCommands.js";
 const ENSURE_AABB = createAabb();
 const EDGE_P1 = { x: 0, y: 0 };
 const EDGE_P2 = { x: 0, y: 0 };
@@ -283,5 +284,5 @@ export function getRailWallInfo(grid, col, row, side) {
 }
 export function appendGridEdgeOverlayCommand(out, grid, edge, { stroke, lineWidth = 3, dash = null }) {
     cellEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
-    out.push({ kind: "segment", x0: EDGE_P1.x, y0: EDGE_P1.y, x1: EDGE_P2.x, y1: EDGE_P2.y, stroke, lineWidth, dash: dash ?? undefined });
+    out.push(overlaySegment(EDGE_P1.x, EDGE_P1.y, EDGE_P2.x, EDGE_P2.y, { stroke, lineWidth, dash: dash ?? undefined }));
 }

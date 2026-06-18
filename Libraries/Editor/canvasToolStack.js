@@ -11,7 +11,6 @@
  * @property {(world: { x: number, y: number }, e: PointerEvent) => boolean} [tryBeginPointerDown]
  * @property {(world: { x: number, y: number }, e: PointerEvent, clientToWorld: (clientX: number, clientY: number) => { x: number, y: number }) => boolean} [onPointerUp]
  * @property {(world: { x: number, y: number }, e: PointerEvent, clientToWorld: (clientX: number, clientY: number) => { x: number, y: number }) => void} [onPointerMove]
- * @property {(ctx: CanvasRenderingContext2D) => void} [drawOverlay]
  */
 /**
  * @param {CanvasTool[]} tools
@@ -73,9 +72,6 @@ export function createCanvasToolStack(tools, { clientToWorld }) {
             for (let i = 0; i < tools.length; i++) if (tools[i].capturesPointerMove?.() && tools[i].onPointerUp?.(world, e, clientToWorld)) return true;
             for (let i = 0; i < tools.length; i++) if (tools[i].onPointerUp?.(world, e, clientToWorld)) return true;
             return false;
-        },
-        drawOverlays(ctx) {
-            for (let i = 0; i < tools.length; i++) tools[i].drawOverlay?.(ctx);
         },
     };
 }

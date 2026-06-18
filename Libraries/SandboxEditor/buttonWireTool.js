@@ -1,5 +1,5 @@
 import { createWireLinkTool } from "../Editor/wireLinkTool.js";
-import { addButtonLink, appendButtonWirePreviewCommands, findButtonLinkTarget } from "../Sandbox/buttonLinks.js";
+import { addButtonLink, findButtonLinkTarget } from "../Sandbox/buttonLinks.js";
 import { isButtonEntity } from "../Sandbox/buttonInput.js";
 export function createButtonWireTool(state, session) {
     const tool = createWireLinkTool({
@@ -11,9 +11,6 @@ export function createButtonWireTool(state, session) {
             if (target) addButtonLink(state, button.id, target);
         },
         onSync: () => session.sync(),
-        appendWire(out, cursor) {
-            appendButtonWirePreviewCommands(out, state, session.getSelectedProp()?.id ?? null, cursor);
-        },
     });
     return {
         isActive: tool.isActive,
@@ -22,7 +19,6 @@ export function createButtonWireTool(state, session) {
         exit: tool.exit,
         onPointerDown: tool.onPointerDown,
         onPointerMove: tool.onPointerMove,
-        appendOverlayCommands: tool.appendOverlayCommands,
         getCursor: tool.getCursor,
         startLink() {
             if (!isButtonEntity(session.getSelectedProp())) return;
