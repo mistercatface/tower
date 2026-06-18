@@ -1,7 +1,7 @@
 import { createAabb } from "../Math/Aabb2D.js";
 import { processFloorShapes, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { isButtonActive, isButtonEntity, isMassButtonInputMode, isMassOverThreshold, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";
-import { runButtonTapLinks, syncButtonFlipperLinks, syncSandboxButtonPower, tickButtonSpawnerLinks } from "./floorEffects.js";
+import { runButtonTapLinks, syncButtonFlipperLinks, tickButtonSpawnerLinks } from "./floorEffects.js";
 import { syncForcefieldButtonPower } from "./forcefieldPower.js";
 const POINTER_HIT_PADDING = 4;
 export function initFloorButtonProp(prop) {
@@ -70,12 +70,10 @@ export function tickFloorButtons(state, spatialFrame) {
         if (isMassButtonInputMode(prop.inputMode)) massButtons.push(prop);
     });
     if (!buttons.length) {
-        syncSandboxButtonPower(state);
         syncForcefieldButtonPower(state);
         return;
     }
     if (massButtons.length) processFloorShapes(spatialFrame, massButtons, { onEnter() {}, onExit() {} });
     for (let i = 0; i < buttons.length; i++) tickFloorButton(state, buttons[i]);
-    syncSandboxButtonPower(state);
     syncForcefieldButtonPower(state);
 }

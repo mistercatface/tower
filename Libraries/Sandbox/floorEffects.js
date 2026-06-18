@@ -1,7 +1,6 @@
 import { CAPTURED_SINK_DURATION_MS } from "../../Entities/worldPropVoidSinkState.js";
 import { canEntityFitVoidPit, isInsideVoidMouth, isVoidSinkCaptured } from "../Spatial/zones/pit.js";
 import { floorCircleRadius } from "../Spatial/zones/floorShapes.js";
-import { applyKineticAcceleration } from "../Motion/applyAcceleration.js";
 import { releaseFlipper, triggerFlipper } from "./behaviors/flipperBehavior.js";
 import { forEachButtonEntity, getButtonLinks } from "./buttonLinks.js";
 import { buttonEffectiveActive, isSustainedFlipperButtonInputMode, isSustainedSpawnerButtonInputMode } from "./buttonInput.js";
@@ -15,36 +14,6 @@ import { fireSpawner, isSpawnerWorldProp } from "./spawnerConfig.js";
  * @property {number} [dtSec]
  * @property {{ x: number, y: number }} [world]
  */
-/** @param {number} propId */
-function pullPowerKeyForProp(propId) {
-    return `prop:${propId}`;
-}
-/** @param {object} entity */
-export function isPullPowerTarget(entity) {
-    return entity?.triggers?.some((trigger) => trigger.effect === "pull") === true;
-}
-/** @param {object} state */
-export function syncSandboxButtonPower(state) {
-    /** @type {Map<string, boolean>} */
-    const poweredByTargetId = new Map();
-    forEachButtonEntity(state, (button) => {
-        const signal = buttonEffectiveActive(state, button);
-        const links = getButtonLinks(button);
-        for (let j = 0; j < links.length; j++) {
-            const link = links[j];
-            if (link.type !== "worldProp") continue;
-            const target = state.entityRegistry.getLive(link.id);
-            if (!isPullPowerTarget(target)) continue;
-            const key = pullPowerKeyForProp(link.id);
-            poweredByTargetId.set(key, (poweredByTargetId.get(key) ?? false) || signal);
-        }
-    });
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (!isPullPowerTarget(prop)) return;
-        const powered = poweredByTargetId.has(pullPowerKeyForProp(prop.id)) ? poweredByTargetId.get(pullPowerKeyForProp(prop.id)) : true;
-        prop.powered = powered;
-    });
-}
 /** @param {object} prop @param {object} pit */
 function beginSink(prop, pit) {
     if (prop.isDead || prop.currentStateName === "voidSink") return;
@@ -124,15 +93,6 @@ const FLOOR_EFFECTS = {
     unsink: {
         run(state, pit, _trigger, ctx) {
             rimOutSink(state, ctx.entityId, pit);
-        },
-    },
-    pull: {
-        run(state, floorProp, trigger, ctx) {
-            const dtSec = ctx.dtSec;
-            for (const entityId of floorProp._occupants) {
-                const prop = state.entityRegistry.get(entityId);
-                applyKineticAcceleration(prop, trigger.forceX, trigger.forceY, dtSec);
-            }
         },
     },
 };

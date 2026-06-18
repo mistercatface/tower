@@ -1,7 +1,7 @@
 import { cardinalUnitVectorFromAngle } from "../Math/Angle.js";
 import { wakeKineticBody } from "./kineticSleep.js";
 /**
- * Continuous world acceleration (units/s²) — same semantics as gravity pads and floor belts.
+ * Continuous world acceleration (units/s²) — same semantics as floor belts.
  * Not mass-weighted; instant velocity changes use direct vx/vy writes at contact sites.
  *
  * @param {{ vx?: number, vy?: number }} body

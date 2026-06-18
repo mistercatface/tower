@@ -1,5 +1,5 @@
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
-import { resizeFloorPropHalfExtents, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../../Spatial/zones/floorShapes.js";
+import { syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../../Spatial/zones/floorShapes.js";
 import { isButtonEntity, isMassButtonInputMode } from "../../Sandbox/buttonInput.js";
 import { appendActionRow, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../../UI/paramFields.js";
 import { setFormFieldName } from "../../UI/Component.js";
@@ -25,21 +25,6 @@ function applyVoidPitPatch(prop, patch) {
     if (patch.sinkDepth != null) prop.sinkDepth = patch.sinkDepth;
     if (patch.captureTolerance != null) prop.captureTolerance = patch.captureTolerance;
     if (prop.aabb) syncFloorTriggerAabb(prop);
-}
-/** @param {object} prop */
-function readGravityPullTrigger(prop) {
-    return prop.triggers?.find((trigger) => trigger.effect === "pull");
-}
-function applyGravityPadPatch(_state, prop, patch) {
-    if (patch.halfWidth != null || patch.halfHeight != null) {
-        const halfWidth = patch.halfWidth ?? prop.halfExtents.x;
-        const halfHeight = patch.halfHeight ?? prop.halfExtents.y;
-        resizeFloorPropHalfExtents(prop, halfWidth, halfHeight);
-    }
-    const pullTrigger = readGravityPullTrigger(prop);
-    if (!pullTrigger) return;
-    if (patch.forceX != null) pullTrigger.forceX = patch.forceX;
-    if (patch.forceY != null) pullTrigger.forceY = patch.forceY;
 }
 /** @param {object} prop @param {{ radius?: number, inputMode?: string, massThreshold?: number, invert?: boolean }} patch */
 function applyButtonFloorPatch(prop, patch) {
@@ -70,7 +55,7 @@ function applyButtonFloorPatch(prop, patch) {
  */
 export function appendButtonWireInspector(body, wire) {
     const links = wire.listLinks();
-    appendEditorHint(body, links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, gravity pads, or forcefields.");
+    appendEditorHint(body, links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, or forcefields.");
     if (links.length)
         appendInstanceList(
             body,
@@ -160,7 +145,6 @@ export function appendSandboxWorldPropInspectorFields(body, prop, { state, onCha
     };
     appendTranslateFields(body, { x: prop.x, y: prop.y, onPatch: (pos) => patch(() => applyWorldPropPosition(prop, pos)) });
     const isVoidPit = prop.triggers?.some((trigger) => trigger.effect === "sink");
-    const pullTrigger = readGravityPullTrigger(prop);
     if (isVoidPit) {
         appendNumberField(body, "Radius", { value: prop.radius, step: 0.5, min: 0.5, onChange: (radius) => patch(() => applyVoidPitPatch(prop, { radius })) });
         appendNumberField(body, "Depth", { value: prop.sinkDepth, step: 1, min: 1, onChange: (sinkDepth) => patch(() => applyVoidPitPatch(prop, { sinkDepth })) });
@@ -192,13 +176,6 @@ export function appendSandboxWorldPropInspectorFields(body, prop, { state, onCha
         invertCheck.addEventListener("change", () => patch(() => applyButtonFloorPatch(prop, { invert: invertCheck.checked })));
         invertRow.append("Invert (NOT) ", invertCheck);
         body.appendChild(invertRow);
-        return;
-    }
-    if (pullTrigger && prop.halfExtents && prop.aabb) {
-        appendNumberField(body, "Width", { value: prop.halfExtents.x * 2, step: 1, min: 1, onChange: (width) => patch(() => applyGravityPadPatch(state, prop, { halfWidth: width / 2 })) });
-        appendNumberField(body, "Height", { value: prop.halfExtents.y * 2, step: 1, min: 1, onChange: (height) => patch(() => applyGravityPadPatch(state, prop, { halfHeight: height / 2 })) });
-        appendNumberField(body, "Force X", { value: pullTrigger.forceX, step: 50, onChange: (forceX) => patch(() => applyGravityPadPatch(state, prop, { forceX })) });
-        appendNumberField(body, "Force Y", { value: pullTrigger.forceY, step: 50, onChange: (forceY) => patch(() => applyGravityPadPatch(state, prop, { forceY })) });
         return;
     }
     appendNumberField(body, "Facing (°)", { value: Math.round(((prop.facing ?? 0) * 180) / Math.PI), step: 5, onChange: (degrees) => patch(() => applyWorldPropFacing(prop, degrees)) });

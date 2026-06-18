@@ -3,7 +3,6 @@ import { fillCircle, strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { isFlipperWorldProp } from "./behaviors/flipperBehavior.js";
 import { isButtonEntity } from "./buttonInput.js";
-import { isPullPowerTarget } from "./floorEffects.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
 import { formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
@@ -76,7 +75,7 @@ export function findButtonLinkTarget(state, worldX, worldY, sourceButtonId) {
     if (sourceTarget) return sourceTarget;
     const prop = findWorldPropAtInView(state.entityRegistry, kineticSpatial, worldX, worldY);
     if (!prop || prop.id === sourceButtonId) return null;
-    if (isFlipperWorldProp(prop) || isSpawnerWorldProp(prop) || isPullPowerTarget(prop)) return { type: "worldProp", id: prop.id };
+    if (isFlipperWorldProp(prop) || isSpawnerWorldProp(prop)) return { type: "worldProp", id: prop.id };
     return null;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} globalCol @param {number} globalRow */
