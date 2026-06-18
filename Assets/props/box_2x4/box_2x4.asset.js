@@ -1,7 +1,7 @@
 export default {
     id: "box_2x4",
     primitive: "polygon",
-    sandbox: { behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "2×4 box" },
+    sandbox: { tags: ["shapes"], behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "2×4 box" },
     physics: {
         isKinetic: true,
         localFootprint: [

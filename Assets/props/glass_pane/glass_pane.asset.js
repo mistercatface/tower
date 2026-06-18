@@ -1,7 +1,7 @@
 export default {
     id: "glass_pane",
     primitive: "polygon",
-    sandbox: { resizableBox: true, spawnLabel: "Glass pane", behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
+    sandbox: { tags: ["shapes"], resizableBox: true, spawnLabel: "Glass pane", behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: {
         isKinetic: true,
         localFootprint: [

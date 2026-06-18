@@ -1,7 +1,7 @@
 export default {
     id: "custom_box",
     primitive: "polygon",
-    sandbox: { resizableBox: true, spawnLabel: "Custom box", behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
+    sandbox: { tags: ["shapes"], resizableBox: true, spawnLabel: "Custom box", behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: {
         isKinetic: true,
         localFootprint: [

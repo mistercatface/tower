@@ -1,7 +1,7 @@
 export default {
     id: "crate",
     primitive: "polygon",
-    sandbox: { behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
+    sandbox: { tags: ["shapes"], behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: {
         isKinetic: true,
         localFootprint: [

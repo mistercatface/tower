@@ -1,7 +1,7 @@
 export default {
     id: "tri_wedge",
     primitive: "polygon",
-    sandbox: { behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "tri wedge" },
+    sandbox: { tags: ["shapes"], behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "tri wedge" },
     physics: {
         isKinetic: true,
         friction: 8,

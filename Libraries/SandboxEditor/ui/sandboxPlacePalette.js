@@ -1,6 +1,8 @@
 import { getPropAsset, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
 export const SANDBOX_PALETTE_TAG_FILTERS = [
     { id: "all", label: "All" },
+    { id: "shapes", label: "Shapes" },
+    { id: "nav", label: "Nav" },
     { id: "gen", label: "Gen" },
     { id: "rooms", label: "Rooms" },
 ];
