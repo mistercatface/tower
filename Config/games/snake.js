@@ -33,5 +33,14 @@ export const SNAKE_GAME_DEFAULTS = {
     navMemoryStepFalloff: 0.65,
     /** When no cell meets exploreMinTiles, retry with this minimum distance. */
     exploreFallbackMinTiles: 1,
-    showMemoryHeatmap: false,
+    showMemoryHeatmap: true,
+    memoryHeatmap: {
+        bucketCount: 8,
+        fillRgb: "180, 100, 255",
+        fillAlphaMax: 0.28,
+        fillAlphaMin: 0.05,
+        strokeAlphaMax: 0.7,
+        strokeAlphaMin: 0.15,
+        lineWidth: 1,
+    },
 };

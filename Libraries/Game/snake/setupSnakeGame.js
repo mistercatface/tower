@@ -9,14 +9,14 @@ export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const scene = await spawnSnakeCavernScene(state);
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
-    const autosims = [];
+    const autosimsByHeadId = new Map();
     let playerSnake = null;
     for (let i = 0; i < scene.snakes.length; i++) {
         const snake = scene.snakes[i];
         applySnakeHeadGameplay(snake.chain.head);
         const autosim = createSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById });
         autosim.start();
-        autosims.push(autosim);
+        autosimsByHeadId.set(snake.chain.head.id, autosim);
         if (snake.cameraFollow) {
             if (playerSnake) throw new Error("Snake game config has multiple cameraFollow snakes");
             playerSnake = snake;
@@ -26,11 +26,12 @@ export async function setupSnakeGame(state) {
     }
     if (!playerSnake) throw new Error("Snake game config requires one snake with cameraFollow: true");
     void state.navigation.onObstaclesChanged(null);
-    const getSegmentCount = () => getChainMemberIds(state, playerSnake.chain.head.id).length;
+    const playerHeadId = playerSnake.chain.head.id;
+    const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
     const hud = mountSnakeHud(getSegmentCount);
     hud.update();
     const config = getSnakeGameConfig();
-    const snakeHeadIds = config.showAllSnakeVisionCones ? scene.snakes.map((snake) => snake.chain.head.id) : [playerSnake.chain.head.id];
+    const snakeHeadIds = config.showAllSnakeVisionCones ? scene.snakes.map((snake) => snake.chain.head.id) : [playerHeadId];
     return {
         head: playerSnake.chain.head,
         goal: scene.goals[0] ?? null,
@@ -40,13 +41,17 @@ export async function setupSnakeGame(state) {
         showVisionCones: config.showVisionCones,
         showMemoryHeatmap: config.showMemoryHeatmap,
         snakeHeadIds,
+        memoryHeatmapHeadId: playerHeadId,
+        getSnakeBrain(headId) {
+            return autosimsByHeadId.get(headId)?.getBrain() ?? null;
+        },
         getSegmentCount,
         tick(_dt) {
-            for (let i = 0; i < autosims.length; i++) autosims[i].tick(_dt);
+            for (const autosim of autosimsByHeadId.values()) autosim.tick(_dt);
             hud.update();
         },
         stop() {
-            for (let i = 0; i < autosims.length; i++) autosims[i].stop();
+            for (const autosim of autosimsByHeadId.values()) autosim.stop();
             hud.destroy();
         },
     };
