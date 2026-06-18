@@ -74,3 +74,15 @@ export function shadeHex(hex, amount) {
     const scale = 1 - amount;
     return rgbToHex(r * scale, g * scale, b * scale);
 }
+export function normalizePickerHex(hex) {
+    if (typeof hex !== "string") return null;
+    const trimmed = hex.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed.toLowerCase();
+    if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+        const r = trimmed[1];
+        const g = trimmed[2];
+        const b = trimmed[3];
+        return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+    }
+    return null;
+}

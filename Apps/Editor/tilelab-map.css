@@ -217,6 +217,54 @@
     height: 22px;
 }
 
+.param-color-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    min-width: 148px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.param-color-popover[hidden] {
+    display: none;
+}
+
+.param-color-popover-input {
+    width: 100%;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.param-color-hex-input {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 11px;
+    font-family: inherit;
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text);
+}
+
+.param-color-done {
+    align-self: stretch;
+    font-size: 11px;
+    padding: 4px 8px;
+}
+
 .param-color-swatch {
     display: block;
     width: 100%;
@@ -232,18 +280,6 @@
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 2px var(--accent-dim);
-}
-
-.param-color-input {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    border: 0;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
 }
 
 .param-color-hex {

@@ -1,4 +1,4 @@
-import { clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex, setPropVisualBrightness, setPropVisualTint } from "../../Color/visualOverride.js";
+import { clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint } from "../../Color/visualOverride.js";
 import { getCirclePropRadius, setCirclePropRadius } from "../../Props/propScale.js";
 import { applyPropBoxFootprint, propFootprintHalfExtents } from "../../Props/propStrategy.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
@@ -14,10 +14,7 @@ function percentToBrightness(percent) {
 function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessChange }) {
     appendColorField(body, "Tint", {
         value: tint,
-        onChange: (hex) => {
-            onTintChange(hex);
-            markLabViewDirty();
-        },
+        onChange: onTintChange,
     });
     appendNumberField(body, "Brightness %", {
         value: brightnessToPercent(brightness),
@@ -35,8 +32,14 @@ export function appendBallSpawnFields(body, controller, spawnAsset) {
     appendCoatFields(body, {
         tint: controller.getSpawnVisualOverrideTint(spawnAsset),
         brightness: controller.getSpawnVisualOverrideBrightness(),
-        onTintChange: (hex) => controller.setSpawnVisualOverrideTint(hex),
-        onBrightnessChange: (brightness) => controller.setSpawnVisualOverrideBrightness(brightness),
+        onTintChange: (hex) => {
+            controller.setSpawnVisualOverrideTint(hex);
+            markLabViewDirty();
+        },
+        onBrightnessChange: (brightness) => {
+            controller.setSpawnVisualOverrideBrightness(brightness);
+            markLabViewDirty();
+        },
     });
 }
 export function appendBlockSpawnFields(body, controller, spawnAsset) {
@@ -47,8 +50,14 @@ export function appendBlockSpawnFields(body, controller, spawnAsset) {
     appendCoatFields(body, {
         tint: controller.getSpawnVisualOverrideTint(spawnAsset),
         brightness: controller.getSpawnVisualOverrideBrightness(),
-        onTintChange: (hex) => controller.setSpawnVisualOverrideTint(hex),
-        onBrightnessChange: (brightness) => controller.setSpawnVisualOverrideBrightness(brightness),
+        onTintChange: (hex) => {
+            controller.setSpawnVisualOverrideTint(hex);
+            markLabViewDirty();
+        },
+        onBrightnessChange: (brightness) => {
+            controller.setSpawnVisualOverrideBrightness(brightness);
+            markLabViewDirty();
+        },
     });
 }
 export function appendShapeFamilySpawnFields(body, controller, spawnId) {
@@ -70,8 +79,14 @@ export function appendBallSelectedFields(body, selectedProp, asset) {
     appendCoatFields(body, {
         tint: resolvePickerHex(selectedProp, asset),
         brightness: getPropVisualBrightness(selectedProp),
-        onTintChange: (hex) => setPropVisualTint(selectedProp, hex),
-        onBrightnessChange: (brightness) => setPropVisualBrightness(selectedProp, brightness),
+        onTintChange: (hex) => {
+            setPropVisualTint(selectedProp, hex);
+            markLabViewDirty();
+        },
+        onBrightnessChange: (brightness) => {
+            setPropVisualBrightness(selectedProp, brightness);
+            markLabViewDirty();
+        },
     });
     appendActionRow(body, [
         {
@@ -112,8 +127,14 @@ export function appendBlockSelectedFields(body, selectedProp, asset) {
     appendCoatFields(body, {
         tint: resolvePickerHex(selectedProp, asset),
         brightness: getPropVisualBrightness(selectedProp),
-        onTintChange: (hex) => setPropVisualTint(selectedProp, hex),
-        onBrightnessChange: (brightness) => setPropVisualBrightness(selectedProp, brightness),
+        onTintChange: (hex) => {
+            setPropVisualTint(selectedProp, hex);
+            markLabViewDirty();
+        },
+        onBrightnessChange: (brightness) => {
+            setPropVisualBrightness(selectedProp, brightness);
+            markLabViewDirty();
+        },
     });
     appendActionRow(body, [
         {
@@ -126,6 +147,7 @@ export function appendBlockSelectedFields(body, selectedProp, asset) {
     ]);
 }
 export function appendShapeFamilySelectedFields(body, selectedProp) {
+    if (!selectedProp) return;
     const asset = getPropAsset(selectedProp.type);
     if (isBallFamilyAsset(asset)) appendBallSelectedFields(body, selectedProp, asset);
     else if (isBlockFamilyAsset(asset)) appendBlockSelectedFields(body, selectedProp, asset);

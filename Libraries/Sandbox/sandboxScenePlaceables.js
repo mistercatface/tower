@@ -65,7 +65,7 @@ const PLACEABLE = {
             if (spawned && isBallFamilyAsset(placedAsset)) setCirclePropRadius(spawned, ctx.spawnBallRadius);
             if (spawned) {
                 ctx.placement.touchPropPlacement(spawned.id);
-                ctx.pickSelection({ kind: "prop", ids: [spawned.id] });
+                if (ctx.selectSpawned !== false) ctx.pickSelection({ kind: "prop", ids: [spawned.id] });
             }
             return spawned != null;
         },

@@ -1,5 +1,6 @@
 import { SelectControl } from "./controls/SelectControl.js";
 import { setFormFieldName } from "./Component.js";
+import { normalizePickerHex } from "../Color/hex.js";
 /** @param {HTMLElement} parent @param {string} text @param {{ tag?: keyof HTMLElementTagNameMap }} [opts] */
 export function appendEditorSubhead(parent, text, { tag = "div" } = {}) {
     const head = document.createElement(tag);
@@ -129,32 +130,63 @@ export function appendColorField(parent, labelText, { value, onChange }) {
     swatch.title = "Pick color";
     const hexLabel = document.createElement("span");
     hexLabel.className = "param-value param-color-hex";
-    const input = document.createElement("input");
-    input.type = "color";
-    input.className = "param-color-input";
-    setFormFieldName(input, labelText);
-    const sync = (hex) => {
-        input.value = hex;
+    const popover = document.createElement("div");
+    popover.className = "param-color-popover";
+    popover.hidden = true;
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.className = "param-color-popover-input";
+    setFormFieldName(colorInput, `${labelText}_picker`);
+    const hexInput = document.createElement("input");
+    hexInput.type = "text";
+    hexInput.className = "param-color-hex-input";
+    hexInput.autocomplete = "off";
+    hexInput.spellcheck = false;
+    setFormFieldName(hexInput, `${labelText}_hex`);
+    const doneBtn = document.createElement("button");
+    doneBtn.type = "button";
+    doneBtn.className = "secondary param-color-done";
+    doneBtn.textContent = "Done";
+    let currentHex = normalizePickerHex(value) ?? "#888888";
+    const syncDisplay = (hex) => {
+        currentHex = hex;
+        colorInput.value = hex;
         swatch.style.backgroundColor = hex;
         hexLabel.textContent = hex;
+        hexInput.value = hex;
     };
-    sync(value);
     const apply = (hex) => {
-        sync(hex);
-        onChange(hex);
+        const normalized = normalizePickerHex(hex);
+        if (!normalized) return;
+        syncDisplay(normalized);
+        onChange(normalized);
     };
+    const closePopover = () => {
+        apply(colorInput.value);
+        popover.hidden = true;
+    };
+    syncDisplay(currentHex);
     swatch.addEventListener("click", () => {
-        if (typeof input.showPicker === "function") input.showPicker();
-        else input.click();
+        if (popover.hidden) {
+            syncDisplay(currentHex);
+            popover.hidden = false;
+        } else closePopover();
     });
-    input.addEventListener("input", () => apply(input.value));
-    input.addEventListener("change", () => {
-        apply(input.value);
-        input.blur();
+    colorInput.addEventListener("input", () => apply(colorInput.value));
+    hexInput.addEventListener("input", () => {
+        const normalized = normalizePickerHex(hexInput.value);
+        if (normalized) apply(normalized);
     });
+    hexInput.addEventListener("change", () => {
+        const normalized = normalizePickerHex(hexInput.value);
+        if (normalized) apply(normalized);
+        else hexInput.value = currentHex;
+    });
+    doneBtn.addEventListener("click", closePopover);
+    popover.append(colorInput, hexInput, doneBtn);
     const picker = document.createElement("div");
     picker.className = "param-color-picker";
-    picker.append(swatch, input);
+    picker.append(swatch, popover);
     field.append(label, picker, hexLabel);
     parent.appendChild(field);
     return field;
@@ -173,87 +205,44 @@ export function appendAxisNumberFields(body, axes) {
 export function appendTranslateFields(body, { x, y, step = 1, onPatch }) {
     appendAxisNumberFields(body, { X: { value: x, step, onChange: (next) => onPatch({ x: next }) }, Y: { value: y, step, onChange: (next) => onPatch({ y: next }) } });
 }
-export const INSTANCE_LIST_ROW_HEIGHT_PX = 40;
-const INSTANCE_LIST_VIRTUAL_THRESHOLD = 48;
-const INSTANCE_LIST_VIRTUAL_OVERSCAN = 6;
-/** @param {HTMLElement} parent @param {Array<{ label: string, selected?: boolean, onSelect?: () => void, onRemove?: () => void, onDelete?: () => void }>} entries @param {string} [emptyText] */
-export function appendInstanceList(parent, entries, emptyText) {
-    if (entries.length === 0) {
-        const list = document.createElement("div");
-        list.className = "toy-instance-list";
-        if (emptyText) appendEditorHint(list, emptyText);
-        parent.appendChild(list);
-        return list;
-    }
-    if (entries.length > INSTANCE_LIST_VIRTUAL_THRESHOLD) return appendVirtualInstanceList(parent, entries);
+/**
+ * @param {HTMLElement} parent
+ * @param {{ label: string, selected?: boolean, onSelect?: () => void, onDelete?: () => void }[]} items
+ * @param {string} [emptyLabel]
+ */
+export function appendInstanceList(parent, items, emptyLabel = "None") {
     const list = document.createElement("div");
     list.className = "toy-instance-list";
-    for (let i = 0; i < entries.length; i++) appendInstanceListRow(list, entries[i]);
+    if (items.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "toy-instance-empty";
+        empty.textContent = emptyLabel;
+        list.appendChild(empty);
+    } else {
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const row = document.createElement("div");
+            row.className = "toy-instance-row";
+            if (item.selected) row.classList.add("is-selected");
+            const labelBtn = document.createElement("button");
+            labelBtn.type = "button";
+            labelBtn.className = "toy-instance-label";
+            labelBtn.textContent = item.label;
+            if (item.onSelect) labelBtn.addEventListener("click", item.onSelect);
+            else labelBtn.disabled = true;
+            row.appendChild(labelBtn);
+            if (item.onDelete) {
+                const deleteBtn = document.createElement("button");
+                deleteBtn.type = "button";
+                deleteBtn.className = "toy-instance-delete";
+                deleteBtn.textContent = "×";
+                deleteBtn.title = "Delete";
+                deleteBtn.addEventListener("click", item.onDelete);
+                row.appendChild(deleteBtn);
+            }
+            list.appendChild(row);
+        }
+    }
     parent.appendChild(list);
     return list;
-}
-function appendVirtualInstanceList(parent, entries) {
-    appendEditorHint(parent, `${entries.length.toLocaleString()} items — scroll to browse.`);
-    const viewport = document.createElement("div");
-    viewport.className = "toy-instance-list toy-instance-list-virtual";
-    const spacer = document.createElement("div");
-    spacer.className = "toy-instance-list-spacer";
-    spacer.style.height = `${entries.length * INSTANCE_LIST_ROW_HEIGHT_PX}px`;
-    const windowEl = document.createElement("div");
-    windowEl.className = "toy-instance-list-window";
-    spacer.appendChild(windowEl);
-    viewport.appendChild(spacer);
-    parent.appendChild(viewport);
-    const paint = () => {
-        const scrollTop = viewport.scrollTop;
-        const viewHeight = viewport.clientHeight || INSTANCE_LIST_ROW_HEIGHT_PX * 12;
-        const start = Math.max(0, Math.floor(scrollTop / INSTANCE_LIST_ROW_HEIGHT_PX) - INSTANCE_LIST_VIRTUAL_OVERSCAN);
-        const end = Math.min(entries.length, Math.ceil((scrollTop + viewHeight) / INSTANCE_LIST_ROW_HEIGHT_PX) + INSTANCE_LIST_VIRTUAL_OVERSCAN);
-        windowEl.style.transform = `translateY(${start * INSTANCE_LIST_ROW_HEIGHT_PX}px)`;
-        windowEl.replaceChildren();
-        for (let i = start; i < end; i++) appendInstanceListRow(windowEl, entries[i]);
-    };
-    viewport.addEventListener("scroll", paint, { passive: true });
-    paint();
-    return viewport;
-}
-function appendInstanceListRow(list, entry) {
-    const row = document.createElement("div");
-    row.className = `toy-instance-row${entry.selected ? " selected" : ""}`;
-    if (entry.onSelect) {
-        const selectBtn = document.createElement("button");
-        selectBtn.type = "button";
-        selectBtn.className = "toy-select-btn";
-        selectBtn.textContent = entry.label;
-        selectBtn.addEventListener("click", entry.onSelect);
-        row.appendChild(selectBtn);
-    } else {
-        const label = document.createElement("span");
-        label.className = "toy-select-btn";
-        label.textContent = entry.label;
-        row.appendChild(label);
-    }
-    if (entry.onRemove) {
-        const removeBtn = document.createElement("button");
-        removeBtn.type = "button";
-        removeBtn.className = "toy-remove-btn secondary";
-        removeBtn.textContent = "Remove";
-        removeBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            entry.onRemove();
-        });
-        row.appendChild(removeBtn);
-    }
-    if (entry.onDelete) {
-        const deleteBtn = document.createElement("button");
-        deleteBtn.type = "button";
-        deleteBtn.className = "toy-delete-btn secondary";
-        deleteBtn.textContent = "Delete";
-        deleteBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            entry.onDelete();
-        });
-        row.appendChild(deleteBtn);
-    }
-    list.appendChild(row);
 }

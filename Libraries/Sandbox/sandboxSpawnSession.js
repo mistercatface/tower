@@ -30,7 +30,7 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         if (spawnVisualOverrideBrightness !== 1) visualOverride.brightness = spawnVisualOverrideBrightness;
         return visualOverride;
     };
-    const spawnCtx = () => ({
+    const spawnCtx = (options = {}) => ({
         spawnPropId: getSpawnPropId(),
         spawnFaction,
         resolveSpawnPropTypeId: getSpawnPropId,
@@ -45,11 +45,12 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         pickSelection,
         notifyUi,
         placement,
+        selectSpawned: options.selectSpawned !== false,
     });
-    const spawnAt = (worldX, worldY) => {
+    const spawnAt = (worldX, worldY, options = {}) => {
         const asset = getPropAsset(getSpawnPropId());
         if (!asset) return false;
-        return spawnPlaceableAt(state, worldX, worldY, asset, spawnCtx());
+        return spawnPlaceableAt(state, worldX, worldY, asset, spawnCtx(options));
     };
     return {
         getSpawnPropId,

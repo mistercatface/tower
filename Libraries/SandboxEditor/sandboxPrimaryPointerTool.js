@@ -9,9 +9,9 @@ export function createSandboxPrimaryPointerTools(
     behaviors,
     { entityMeta, listSelectedBehaviors, stampPropBehavior, blocksPlacement, exitWireModes, exitButtonWire, resolveBehavior, resolveGroundMove, gestures, selectProp, togglePropInSelection },
 ) {
-    const tryPlaceSpawnAtWorld = (world) => {
+    const tryPlaceSpawnAtWorld = (world, options = {}) => {
         if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || blocksPlacement()) return false;
-        if (!session.spawnAt(world.x, world.y)) return false;
+        if (!session.spawnAt(world.x, world.y, options)) return false;
         stampPropBehavior(session.getSelectedProp());
         return true;
     };
@@ -21,7 +21,7 @@ export function createSandboxPrimaryPointerTools(
             if (e.button !== 0 || (!e.ctrlKey && !e.metaKey)) return false;
             const hit = findWorldPropAtInView(state.entityRegistry, kineticSpatial, world.x, world.y);
             if (hit) return false;
-            return tryPlaceSpawnAtWorld(world);
+            return tryPlaceSpawnAtWorld(world, { selectSpawned: false });
         },
     };
     const interactTool = {

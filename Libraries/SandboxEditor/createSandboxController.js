@@ -275,6 +275,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         issueGroundNavToSelection: issueGroundNavToSelected,
         getSelection: () => session.getSelection(),
+        getSelectedProp: () => session.getSelectedProp(),
         getSelectionInspector: () => session.getSelectionInspector(),
         select: (input) => {
             exitWireModes();

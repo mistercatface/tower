@@ -68,7 +68,11 @@ export function mountLabFrameRefresh(canvas) {
         markLabViewDirty();
     });
     canvas.addEventListener("pointerleave", markLabViewDirty);
-    document.getElementById("ui-root")?.addEventListener("change", markLabViewDirty);
+    const uiRoot = document.getElementById("ui-root");
+    uiRoot?.addEventListener("change", markLabViewDirty);
+    uiRoot?.addEventListener("input", (e) => {
+        if (e.target instanceof HTMLInputElement && (e.target.type === "color" || e.target.classList.contains("param-color-hex-input"))) markLabViewDirty();
+    });
     return markLabViewDirty;
 }
 export function wrapLabUiSync(sync) {
