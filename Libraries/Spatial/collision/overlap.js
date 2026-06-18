@@ -14,7 +14,6 @@ export function findFirstCircleSegmentHit(circle, segments) {
     if (!segments || segments.length === 0) return null;
     const radius = circle.radius;
     for (const seg of segments) {
-        if (seg.isDead) continue;
         const dx = circle.x - seg.x;
         const dy = circle.y - seg.y;
         const maxDist = radius + seg.size * 0.75;

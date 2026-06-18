@@ -145,8 +145,7 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
 }
 
 function evictFracturedProp(state, prop, spatialFrame) {
-    prop.isDead = true;
-    spatialFrame.entityGrid.remove(prop);
+    spatialFrame.evictKineticProp(prop);
     removeWorldPropFromState(state, prop);
 }
 

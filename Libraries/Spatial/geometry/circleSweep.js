@@ -63,7 +63,6 @@ export function rayExpandedLocalAabbHit(ox, oy, dx, dy, half, radius) {
  * @returns {CircleSegmentSweepHit | null}
  */
 export function sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segment, maxDist = Infinity) {
-    if (segment.isDead) return null;
     const half = segment.size / 2;
     const { localX, localY } = toSegmentLocal(segment, ox, oy);
     const localDir = worldVectorToSegmentLocal(dx, dy, segment.angle);

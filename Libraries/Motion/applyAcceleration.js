@@ -21,7 +21,7 @@ export function applyAcceleration(body, ax, ay, dtSec) {
  * @param {number} dtSec
  */
 export function applyKineticAcceleration(body, ax, ay, dtSec) {
-    if (!body || body.isDead || body.strategy?.gravityImmune) return;
+    if (!body) return;
     wakeKineticBody(body);
     applyAcceleration(body, ax, ay, dtSec);
 }

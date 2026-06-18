@@ -93,7 +93,7 @@ function setupGlassPairFrame(props) {
 }
 
 function liveGlassPropCount(state) {
-    return state.worldProps.filter((prop) => !prop.isDead).length;
+    return state.worldProps.length;
 }
 
 function makeOverlappingGlassShards() {
@@ -239,8 +239,6 @@ describe("glass fracture", () => {
         const frame = setupGlassPairFrame([a, b]);
         tryFractureKineticContact(state, a, b, 4, 0, 240, frame);
         assert.equal(liveGlassPropCount(state), 2);
-        assert.equal(a.isDead, false);
-        assert.equal(b.isDead, false);
     });
 
     it("resolveKineticContactPass keeps glass shard count stable across substeps", () => {
@@ -266,6 +264,6 @@ describe("glass fracture", () => {
         assert.ok(SatCollision.checkCollision(glass, glass.getShape(), crate, crate.getShape()));
         resolveKineticContactPass(frame, state);
         assert.ok(liveGlassPropCount(state) > 2);
-        assert.equal(glass.isDead, true);
+        assert.ok(!state.worldProps.includes(glass));
     });
 });

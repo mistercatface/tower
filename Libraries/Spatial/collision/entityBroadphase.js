@@ -139,7 +139,6 @@ export function shouldResolveKineticPair(a, b) {
 }
 export function allowsKineticCollisionPair(primary, other) {
     if (primary === other) return false;
-    if (other.isDead) return false;
     if (!other.strategy?.isKinetic) return false;
     if (primary.id >= other.id) return false;
     return shouldResolveKineticPair(primary, other);

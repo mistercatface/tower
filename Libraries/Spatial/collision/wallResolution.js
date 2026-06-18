@@ -45,7 +45,6 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
     for (let pass = 0; pass < passes; pass++) {
         let best = null;
         for (const seg of segments) {
-            if (seg.isDead) continue;
             if (seg.passageEdge) {
                 const edge = seg.passageEdge;
                 const outcome = resolvePassageWallContact({

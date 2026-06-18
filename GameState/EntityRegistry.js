@@ -1,4 +1,5 @@
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/Aabb2D.js";
 import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { distanceSqToLineSegment } from "../Libraries/Math/Segment2D.js";
@@ -313,6 +314,7 @@ export function removeWorldPropFromState(state, prop) {
     if (index >= 0) state.worldProps.splice(index, 1);
     state.entityRegistry.unregister(prop);
     getSandboxEntityMeta(state)?.delete(prop.id);
+    kineticSpatial.evictKineticProp(prop);
 }
 /** @param {object} state */
 export function clearWorldPropsInState(state) {

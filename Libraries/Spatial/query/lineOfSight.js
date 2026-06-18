@@ -22,7 +22,6 @@ export function hasLineOfSight(x1, y1, x2, y2, wallCtx, sourceRadius = 0, target
     const candidateWalls = collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2);
     for (let i = 0; i < candidateWalls.length; i++) {
         const seg = candidateWalls[i];
-        if (seg.isDead) continue;
         if (minDistanceSegmentToWall(x1, y1, x2, y2, seg) <= corridorRadius) return false;
     }
     return true;

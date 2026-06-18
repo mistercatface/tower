@@ -12,14 +12,12 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
             const radiusSq = shape.radius * shape.radius;
             for (let i = 0; i < wallCandidates.length; i++) {
                 const seg = wallCandidates[i];
-                if (seg.isDead) continue;
                 if (distanceSqToSegment(seg, prop.x, prop.y) <= radiusSq) return true;
             }
             continue;
         }
         for (let i = 0; i < wallCandidates.length; i++) {
             const seg = wallCandidates[i];
-            if (seg.isDead) continue;
             const segShape = ensureWallSegmentPolygonShape(seg);
             if (SatCollision.checkCollision(prop, shape, seg, segShape)) return true;
         }
@@ -50,7 +48,7 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
             resolveKineticContactPass(spatialFrame, state);
             for (let i = 0; i < activeBodies.length; i++) {
                 const prop = activeBodies[i];
-                if (prop.isDead || !prop.strategy?.isKinetic) continue;
+                if (!prop.strategy?.isKinetic) continue;
                 const wallCandidates = spatialFrame.getWallCandidates(prop);
                 if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
                 resolveWalls(prop, spatialFrame);

@@ -8,7 +8,6 @@ export default {
     physics: {
         propPixelSize: null,
         isKinetic: true,
-        gravityImmune: true,
         rolls: false,
         pinned: true,
         pairRestitution: 0.85,

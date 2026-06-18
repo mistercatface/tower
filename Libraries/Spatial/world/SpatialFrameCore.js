@@ -48,7 +48,6 @@ export class SpatialFrameCore {
         if (!bodies?.length) return;
         for (let i = 0; i < bodies.length; i++) {
             const entity = bodies[i];
-            if (entity.isDead) continue;
             this.entityGrid.remove(entity);
             this.entityGrid.insert(entity);
             entity._neighborsFrameId = -1;
@@ -83,7 +82,6 @@ export class SpatialFrameCore {
     forEachGroupNeighborPair(group, shouldPair, fn) {
         for (let i = 0; i < group.length; i++) {
             const primary = group[i];
-            if (primary.isDead) continue;
             const neighbors = this.getNeighbors(primary);
             for (let j = 0; j < neighbors.length; j++) {
                 const neighbor = neighbors[j];

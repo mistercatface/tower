@@ -7,7 +7,7 @@ export function isKinetic(entity) {
     return Boolean(entity?.strategy?.isKinetic);
 }
 export function canSleepKinetic(entity, { blocksSleep = () => false } = {}) {
-    if (!isKinetic(entity) || entity.isDead) return false;
+    if (!isKinetic(entity)) return false;
     if (blocksSleep(entity)) return false;
     return !isKinematicallyActive(entity);
 }
@@ -27,7 +27,6 @@ export function advanceKineticSleep(entity, eligible, requiredFrames = kineticSl
     if (entity._sleepFrames >= requiredFrames) entity.isSleeping = true;
 }
 function isKineticSleepNeighbor(other) {
-    if (other.isDead) return false;
     return Boolean(other.strategy?.isKinetic);
 }
 export function hasSleepBlockingNeighbor(prop, neighbors, { pairOverlaps = pairBroadphaseOverlap } = {}) {

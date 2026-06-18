@@ -14,7 +14,7 @@ export function countMotionSubsteps(dtMs, bodies, { maxStepPx = 4, maxSubsteps =
     let maxDisp = 0;
     for (let i = 0; i < bodies.length; i++) {
         const body = bodies[i];
-        if (body.isDead || body.isSleeping) continue;
+        if (body.isSleeping) continue;
         const disp = lengthXY(body.vx ?? 0, body.vy ?? 0) * dtSec;
         if (disp > maxDisp) maxDisp = disp;
     }

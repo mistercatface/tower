@@ -31,14 +31,12 @@ export class KineticSpatialFrame extends SpatialFrameCore {
      * Keeps broadphase, neighbor queries, and registry view gen in sync for the rest of the frame.
      */
     admitKineticProp(prop, state) {
-        if (!prop || prop.isDead || prop.strategy?.spatialRole === "trigger") return;
+        if (!prop || prop.strategy?.spatialRole === "trigger") return;
         const isNew = prop._physId === undefined;
         if (isNew) {
             prop._physId = this._nextPhysId++;
             this._kineticBodies.push(prop);
-        } else {
-            this.entityGrid.remove(prop);
-        }
+        } else this.entityGrid.remove(prop);
         this.entityGrid.insert(prop);
         prop._neighborsFrameId = -1;
         this.frameId = (this.frameId + 1) | 0;
@@ -60,6 +58,19 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const active = this._activeKineticBodies;
         for (let i = 0; i < active.length; i++) if (active[i] === prop) return;
         active.push(prop);
+    }
+    evictKineticProp(prop) {
+        if (!prop || prop._physId === undefined) return;
+        this.entityGrid.remove(prop);
+        const all = this._kineticBodies;
+        for (let i = all.length - 1; i >= 0; i--) if (all[i] === prop) all.splice(i, 1);
+        const active = this._activeKineticBodies;
+        for (let i = active.length - 1; i >= 0; i--) if (active[i] === prop) active.splice(i, 1);
+        delete prop._physId;
+        prop._neighborsFrameId = -1;
+        if (prop._neighbors) prop._neighbors.length = 0;
+        this.frameId = (this.frameId + 1) | 0;
+        this._wallCache.clear();
     }
 }
 /** Shared frame for simulation ticks. Call begin() once per update. */

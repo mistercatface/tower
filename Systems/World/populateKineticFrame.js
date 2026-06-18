@@ -9,7 +9,7 @@ export function populateKineticFrame(frame, state, kineticBodies) {
     kineticBodies.length = 0;
     let physIdCounter = 0;
     state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (!prop || prop.isDead) return;
+        if (!prop) return;
         if (prop.strategy?.spatialRole === "trigger") return;
         frame.insertEntity(prop, physIdCounter++);
         if (prop.strategy?.isKinetic) kineticBodies.push(prop);

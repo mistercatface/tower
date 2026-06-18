@@ -176,7 +176,6 @@ function gatherKineticContacts(spatialFrame, contacts) {
     const active = spatialFrame._activeKineticBodies;
     for (let i = 0; i < active.length; i++) {
         const primary = active[i];
-        if (primary.isDead) continue;
         const neighbors = spatialFrame.getNeighbors(primary);
         for (let j = 0; j < neighbors.length; j++) {
             const neighbor = neighbors[j];

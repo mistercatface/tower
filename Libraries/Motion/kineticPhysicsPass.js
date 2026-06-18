@@ -1,4 +1,3 @@
-import { removeSandboxWorldProp } from "../Sandbox/sandboxPlacedSpawn.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js";
 import { advanceKineticSleep, evaluateKineticSleepEligible } from "./kineticSleep.js";
@@ -13,7 +12,6 @@ function tickKineticSleep(spatialFrame) {
     if (!kineticBodies) return;
     for (let i = 0; i < kineticBodies.length; i++) {
         const prop = kineticBodies[i];
-        if (prop.isDead) continue;
         const eligible = evaluateKineticSleepEligible(prop, spatialFrame.getNeighbors(prop), { blocksSleep: propBlocksSleep });
         advanceKineticSleep(prop, eligible);
     }
@@ -25,11 +23,7 @@ export function runKineticPhysics(state, dt, spatialFrame) {
     const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });
     const subDt = dt / steps;
     for (let s = 0; s < steps; s++) {
-        for (let i = state.worldProps.length - 1; i >= 0; i--) {
-            const p = state.worldProps[i];
-            p.update(subDt, state, spatialFrame);
-            if (p.isDead) removeSandboxWorldProp(state, p);
-        }
+        for (let i = state.worldProps.length - 1; i >= 0; i--) state.worldProps[i].update(subDt, state, spatialFrame);
         spatialFrame.reindexKineticBodies(activeBodies);
         runCollisionPipeline(state, spatialFrame, {
             resolveWalls(entity, frame) {

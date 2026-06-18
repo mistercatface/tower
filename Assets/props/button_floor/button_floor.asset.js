@@ -9,7 +9,6 @@ export default {
         renderMode: "floor",
         spatialRole: "trigger",
         isKinetic: false,
-        gravityImmune: true,
         radius: DEFAULT_BUTTON_FLOOR_RADIUS,
         buttonLinks: [],
         inputMode: DEFAULT_BUTTON_INPUT_MODE,

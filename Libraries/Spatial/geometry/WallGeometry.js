@@ -30,7 +30,6 @@ export function closestPointOnSegment(wall, x, y) {
     return transformPoint2DInto({ x: 0, y: 0 }, wall.x, wall.y, localX, localY, worldCos, worldSin);
 }
 export function distanceSqToSegment(segment, x, y) {
-    if (segment.isDead) return Infinity;
     const { localX, localY, halfX, halfY } = toSegmentLocal(segment, x, y);
     const closestX = Math.max(-halfX, Math.min(localX, halfX));
     const closestY = Math.max(-halfY, Math.min(localY, halfY));
@@ -70,7 +69,6 @@ function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
 }
 /** Minimum distance between a path segment and a wall's collision box. */
 export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
-    if (wall.isDead) return Infinity;
     const halfX = wall.width !== undefined ? wall.width / 2 : wall.size / 2;
     const halfY = wall.height !== undefined ? wall.height / 2 : wall.size / 2;
     const cos = Math.cos(-wall.angle);
@@ -116,7 +114,6 @@ export function circleIntersectsSegment(circle, segment) {
     return distanceSqToSegment(segment, circle.x, circle.y) < radiusSq;
 }
 export function pointToSegmentPaddingDistanceSq(segment, x, y) {
-    if (segment.isDead) return Infinity;
     const { localX, localY, halfX, halfY } = toSegmentLocal(segment, x, y);
     const distX = Math.max(0, Math.abs(localX) - halfX);
     const distY = Math.max(0, Math.abs(localY) - halfY);
@@ -214,7 +211,6 @@ function approachToSegmentLocal(segment, worldVx, worldVy) {
  * @param {{ approachX?: number, approachY?: number }} [options] — world-space motion hint for face selection
  */
 export function getCircleSegmentPenetration(circle, segment, { approachX = 0, approachY = 0 } = {}) {
-    if (segment.isDead) return null;
     const { localX, localY, halfX, halfY } = toSegmentLocal(segment, circle.x, circle.y);
     const localApproach = approachToSegmentLocal(segment, approachX, approachY);
     const hasApproach = Math.hypot(localApproach.x, localApproach.y) > 1e-6;
@@ -254,7 +250,6 @@ export function pushPointFromWalls(x, y, walls, clearance) {
     let py = y;
     for (let iter = 0; iter < 6; iter++)
         for (const wall of walls) {
-            if (wall.isDead) continue;
             const closest = closestPointOnSegment(wall, px, py);
             let pushX = px - closest.x;
             let pushY = py - closest.y;
