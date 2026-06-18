@@ -3,7 +3,7 @@ import { applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
-import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
+import { getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { WorldPropVoidSinkState } from "./worldPropVoidSinkState.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
@@ -37,12 +37,6 @@ export class WorldProp extends Entity {
         if (this.strategy.cardinalFacing) this.facing = quantizeCardinalAngle(facing ?? 0);
         else this.facing = facing ?? Math.random() * Math.PI * 2;
         if (this.strategy.rolls) this.rollQuat = { ...IDENTITY_ROLL_QUAT };
-        if (this.strategy.randomFaceLabels) {
-            const crateVisuals = getPropAsset("crate")?.visuals;
-            const faces = crateVisuals?.labelFaces ?? [];
-            const variants = crateVisuals?.labelVariants ?? [];
-            this.faceLabelVariants = Object.fromEntries(faces.map((face) => [face, Math.floor(Math.random() * Math.max(1, variants.length))]));
-        }
         if (this.strategy.localFootprint?.length >= 3) {
             const verts = this.strategy.localFootprint.map((v) => ({ x: v.x, y: v.y }));
             this.shape = new PolygonShape(verts);
