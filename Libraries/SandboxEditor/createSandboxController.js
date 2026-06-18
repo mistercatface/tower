@@ -150,7 +150,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         return moved;
     };
     const groundNavContextMenu = createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued: () => session.sync() });
-    const deletePointerTool = createSandboxDeletePointerTool(state, session, { resolveGroundMove, issueGroundMove });
+    const deletePointerTool = createSandboxDeletePointerTool(state, session);
     const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, behaviors, {
         entityMeta,
         listSelectedBehaviors,
