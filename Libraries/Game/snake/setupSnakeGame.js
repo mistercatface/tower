@@ -8,27 +8,43 @@ import { mountSnakeHud } from "./snakeHud.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const scene = await spawnSnakeCavernScene(state);
-    applySnakeHeadGameplay(scene.chain.head);
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
-    const autosim = createSnakeAutosim(state, { headId: scene.chain.head.id, goalPropId: scene.goal.id, behaviorById });
-    autosim.start();
-    setSandboxCameraTarget(state, scene.chain.head, true);
-    state.viewport.snapTo(scene.chain.head.x, scene.chain.head.y);
+    const autosims = [];
+    let playerSnake = null;
+    for (let i = 0; i < scene.snakes.length; i++) {
+        const snake = scene.snakes[i];
+        applySnakeHeadGameplay(snake.chain.head);
+        const autosim = createSnakeAutosim(state, {
+            headId: snake.chain.head.id,
+            behaviorById,
+        });
+        autosim.start();
+        autosims.push(autosim);
+        if (snake.cameraFollow) {
+            if (playerSnake) throw new Error("Snake game config has multiple cameraFollow snakes");
+            playerSnake = snake;
+            setSandboxCameraTarget(state, snake.chain.head, true);
+            state.viewport.snapTo(snake.chain.head.x, snake.chain.head.y);
+        }
+    }
+    if (!playerSnake) throw new Error("Snake game config requires one snake with cameraFollow: true");
     void state.navigation.onObstaclesChanged(null);
-    const getSegmentCount = () => getChainMemberIds(state, scene.chain.head.id).length;
+    const getSegmentCount = () => getChainMemberIds(state, playerSnake.chain.head.id).length;
     const hud = mountSnakeHud(getSegmentCount);
     hud.update();
     return {
-        head: scene.chain.head,
-        goal: scene.goal,
-        cameraTarget: scene.chain.head,
+        head: playerSnake.chain.head,
+        goal: scene.goals[0] ?? null,
+        goals: scene.goals,
+        snakes: scene.snakes,
+        cameraTarget: playerSnake.chain.head,
         getSegmentCount,
         tick(_dt) {
-            autosim.tick(_dt);
+            for (let i = 0; i < autosims.length; i++) autosims[i].tick(_dt);
             hud.update();
         },
         stop() {
-            autosim.stop();
+            for (let i = 0; i < autosims.length; i++) autosims[i].stop();
             hud.destroy();
         },
     };

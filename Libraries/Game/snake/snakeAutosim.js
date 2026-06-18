@@ -6,15 +6,11 @@ import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
-export function findSnakeGoalProp(state) {
-    const goalPropId = getSnakeGameConfig().goalPropId;
-    let goal = null;
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || prop.type !== goalPropId) return;
-        goal = prop;
-    });
-    return goal;
-}
+import { copySnakeChainPanelsFromHead } from "./snakeChainColor.js";
+import { countLiveSnakeGoals, findNearestSnakeGoal } from "./snakeGoals.js";
+
+export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal } from "./snakeGoals.js";
+
 function chainMemberProps(state, headId) {
     const ids = getChainMemberIds(state, headId);
     const members = [];
@@ -24,10 +20,19 @@ function chainMemberProps(state, headId) {
     }
     return members;
 }
-export function createSnakeAutosim(state, { headId, goalPropId, behaviorById, eatRadius, ballType, growDirX, growDirY, rng = Math.random }) {
+
+function replenishSnakeGoals(state, headId, rng) {
+    const config = getSnakeGameConfig();
+    const live = countLiveSnakeGoals(state);
+    if (live >= config.goalCount) return;
+    const occupied = linkedChainOccupiedCellKeys(chainMemberProps(state, headId), state.obstacleGrid);
+    spawnGoalOrbOnOpenCell(state, { excludeKeys: occupied, rng });
+}
+
+export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorById, eatRadius, ballType, growDirX, growDirY, rng = Math.random }) {
     const config = getSnakeGameConfig();
     let tailId = null;
-    let goalId = goalPropId;
+    let pinnedGoalId = goalPropId;
     const head = state.entityRegistry.getLive(headId);
     if (!head || head.isDead) throw new Error("Snake autosim requires a live chain head prop");
     const members = chainMemberProps(state, headId);
@@ -37,14 +42,26 @@ export function createSnakeAutosim(state, { headId, goalPropId, behaviorById, ea
     const resolvedGrowDirX = growDirX ?? config.growDirX;
     const resolvedGrowDirY = growDirY ?? config.growDirY;
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
+    const resolveGoalId = () => {
+        if (pinnedGoalId != null) {
+            const pinned = state.entityRegistry.getLive(pinnedGoalId);
+            if (pinned && !pinned.isDead) return pinned.id;
+            pinnedGoalId = null;
+        }
+        const seeker = state.entityRegistry.getLive(headId);
+        if (!seeker || seeker.isDead) return null;
+        const goal = findNearestSnakeGoal(state, seeker.x, seeker.y);
+        return goal?.id ?? null;
+    };
     return createGoalSeekAutosim(state, {
         getSeekerPropId: () => headId,
-        getGoalPropId: () => goalId,
+        getGoalPropId: resolveGoalId,
         navBehaviorId: HPA_GROUND_NAV_BEHAVIOR_ID,
         behaviorById,
         eatRadius: resolvedEatRadius,
         onConsume({ goal }) {
             removeSandboxWorldProp(state, goal);
+            if (pinnedGoalId === goal.id) pinnedGoalId = null;
             const grow = growSnakeChainAfterMeal(state, headId);
             const tail = state.entityRegistry.getLive(tailId);
             const newTail = growChainSegment(state, tail, {
@@ -56,10 +73,9 @@ export function createSnakeAutosim(state, { headId, goalPropId, behaviorById, ea
                 growDirY: resolvedGrowDirY,
                 exportType: SNAKE_CHAIN_EXPORT_TYPE,
             });
+            copySnakeChainPanelsFromHead(state, headId, newTail);
             tailId = newTail.id;
-            const occupied = linkedChainOccupiedCellKeys(chainMemberProps(state, headId), state.obstacleGrid);
-            const nextGoal = spawnGoalOrbOnOpenCell(state, { excludeKeys: occupied, faction: tail.faction, rng });
-            goalId = nextGoal.id;
+            replenishSnakeGoals(state, headId, rng);
         },
     });
 }

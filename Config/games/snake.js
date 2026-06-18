@@ -3,6 +3,9 @@ export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "blue_ball",
     headPropId: "snake_head",
     goalPropId: "goal_orb",
+    snakeCount: 30,
+    goalCount: 15,
+    playerSnakeIndex: 0,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,
@@ -15,5 +18,6 @@ export const SNAKE_GAME_DEFAULTS = {
     startRadius: 2,
     maxRadius: 4,
     radiusPerMeal: 0.25,
+    chainColor: { saturation: 70, panelLightness: [42, 52, 62, 36, 48, 40] },
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1 },
 };

@@ -1,11 +1,12 @@
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../../Sandbox/sandboxSceneSnapshot.js";
-import { collectOpenCavernCells, pickOpenCavernCell } from "../../Sandbox/cavernFloorCells.js";
+import { cavernCellKey, collectOpenCavernCells, pickOpenCavernCell } from "../../Sandbox/cavernFloorCells.js";
 import { linkedChainOccupiedCellKeys, spawnLinkedBallChain } from "../../Sandbox/spawnLinkedBallChain.js";
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { SANDBOX_DEFAULT_FACTION } from "../../Sandbox/sandboxFaction.js";
 import { withSeededRandom } from "../../Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns } from "../../../Apps/Editor/world/mapWorld.js";
-import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeStartRadius } from "./snakeGameConfig.js";
+import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
+import { applySnakeChainPanels, pickSnakeChainPanels } from "./snakeChainColor.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
     const grid = state.obstacleGrid;
@@ -55,30 +56,59 @@ export function spawnGoalOrbOnOpenCell(state, { excludeKeys = null, faction = SA
     if (!cell) throw new Error("Cavern has no open floor cell for goal orb");
     return spawnGoalOrbAtCell(state, cell, faction);
 }
+export function spawnSnakeChain(state, anchorCell, { excludeKeys = null, segmentCount, rng = Math.random } = {}) {
+    const config = getSnakeGameConfig();
+    const startRadius = resolveSnakeStartRadius(config);
+    const resolvedSegmentCount = segmentCount ?? config.segmentCount;
+    const panels = pickSnakeChainPanels(rng);
+    const chain = spawnLinkedBallChain(state, anchorCell, {
+        segmentCount: resolvedSegmentCount,
+        spacing: resolveSnakeSegmentSpacing(config, startRadius),
+        segmentRadius: startRadius,
+        linkSlack: config.linkSlack,
+        ballType: config.segmentPropId,
+        headBallType: config.headPropId,
+        growDirX: config.growDirX,
+        growDirY: config.growDirY,
+        exportType: SNAKE_CHAIN_EXPORT_TYPE,
+    });
+    applySnakeChainPanels(chain.members, panels);
+    const occupiedKeys = new Set(excludeKeys ?? []);
+    const occupied = linkedChainOccupiedCellKeys(chain.members, state.obstacleGrid);
+    for (const key of occupied) occupiedKeys.add(key);
+    return { chain, panels, occupiedKeys };
+}
+export function spawnSnakeGoalPool(state, goalCount, { excludeKeys = null, rng = Math.random } = {}) {
+    const keys = new Set(excludeKeys ?? []);
+    const goals = [];
+    for (let i = 0; i < goalCount; i++) {
+        const goal = spawnGoalOrbOnOpenCell(state, { excludeKeys: keys, rng });
+        goals.push(goal);
+        const cell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
+        keys.add(cavernCellKey(cell.col, cell.row));
+    }
+    return goals;
+}
 export async function spawnSnakeCavernScene(state) {
     const config = getSnakeGameConfig();
     await spawnSnakeCavernMap(state);
     const openCells = collectOpenCavernCells(state);
     if (!openCells.length) throw new Error("Cavern has no open floor cells for snake placement");
-    let chain = null;
-    let goal = null;
+    const snakes = [];
+    let goals = [];
     withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset, () => {
         shuffleInPlace(openCells);
-        const anchorCell = pickOpenCavernCell(openCells);
-        const startRadius = resolveSnakeStartRadius(config);
-        chain = spawnLinkedBallChain(state, anchorCell, {
-            segmentCount: config.segmentCount,
-            spacing: resolveSnakeSegmentSpacing(config, startRadius),
-            segmentRadius: startRadius,
-            linkSlack: config.linkSlack,
-            ballType: config.segmentPropId,
-            headBallType: config.headPropId,
-            growDirX: config.growDirX,
-            growDirY: config.growDirY,
-            exportType: SNAKE_CHAIN_EXPORT_TYPE,
-        });
-        const occupied = linkedChainOccupiedCellKeys(chain.members, state.obstacleGrid);
-        goal = spawnGoalOrbOnOpenCell(state, { excludeKeys: occupied });
+        let excludeKeys = null;
+        const specs = resolveSnakeSpawnSpecs(config);
+        for (let i = 0; i < specs.length; i++) {
+            const spec = specs[i];
+            const anchorCell = pickOpenCavernCell(openCells, { excludeKeys });
+            if (!anchorCell) throw new Error(`Cavern has no open floor cell for snake ${i + 1}`);
+            const pack = spawnSnakeChain(state, anchorCell, { excludeKeys, segmentCount: spec.segmentCount });
+            snakes.push({ ...pack, cameraFollow: spec.cameraFollow });
+            excludeKeys = pack.occupiedKeys;
+        }
+        goals = spawnSnakeGoalPool(state, config.goalCount, { excludeKeys });
     });
-    return { chain, goal };
+    return { snakes, goals };
 }
