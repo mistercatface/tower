@@ -86,4 +86,12 @@ describe("spawnLinkedBallChain", () => {
         assert.equal(segment.x, tail.x - CHAIN_OPTIONS.spacing);
         assert.equal(segment.y, tail.y);
     });
+
+    it("spawnLinkedBallChain uses headBallType for the first segment only", () => {
+        resetKineticConstraintIds(1);
+        const state = createChainSpawnTestState();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...CHAIN_OPTIONS, headBallType: "snake_head" });
+        assert.equal(chain.head.type, "snake_head");
+        assert.equal(chain.tail.type, CHAIN_OPTIONS.ballType);
+    });
 });

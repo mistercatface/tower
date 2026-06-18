@@ -10,6 +10,7 @@ export function spawnLinkedBallChain(state, anchorCell, options) {
     const segmentCount = options.segmentCount;
     const spacing = options.spacing;
     const ballType = options.ballType;
+    const headBallType = options.headBallType ?? ballType;
     const faction = options.faction ?? sandboxFactions.alpha;
     const growDirX = options.growDirX ?? -1;
     const growDirY = options.growDirY ?? 0;
@@ -21,7 +22,8 @@ export function spawnLinkedBallChain(state, anchorCell, options) {
     const props = [];
     for (let i = 0; i < segmentCount; i++) {
         const offset = segmentOffset(i, spacing, growDirX, growDirY);
-        const prop = spawnPlacedSandboxProp(state, anchorWorld.x + offset.x, anchorWorld.y + offset.y, ballType, faction);
+        const segmentType = i === 0 ? headBallType : ballType;
+        const prop = spawnPlacedSandboxProp(state, anchorWorld.x + offset.x, anchorWorld.y + offset.y, segmentType, faction);
         meta.setSpawnGroupId(prop.id, spawnGroupId);
         if (exportType) meta.setSpawnGroupExportType(prop.id, exportType);
         if (i === 0) meta.setSpawnGroupAnchor(prop.id);

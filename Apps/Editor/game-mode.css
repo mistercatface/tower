@@ -27,6 +27,7 @@ body.shell-game .game-stage {
     flex: 1;
     min-height: 0;
     width: 100%;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -47,4 +48,40 @@ body.shell-game #gameCanvas {
     position: static;
     display: block;
     touch-action: none;
+}
+
+body.shell-game .snake-hud {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    gap: 10px;
+    pointer-events: none;
+    z-index: 2;
+    font-family: system-ui, sans-serif;
+}
+
+body.shell-game .snake-hud-panel {
+    min-width: 72px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(8, 10, 16, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #f5f7fb;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+body.shell-game .snake-hud-label {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(245, 247, 251, 0.62);
+}
+
+body.shell-game .snake-hud-value {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
 }

@@ -69,6 +69,7 @@ export async function spawnSnakeCavernScene(state) {
             segmentCount: config.segmentCount,
             spacing: resolveSnakeSegmentSpacing(config),
             ballType: config.segmentPropId,
+            headBallType: config.headPropId,
             growDirX: config.growDirX,
             growDirY: config.growDirY,
             exportType: SNAKE_CHAIN_EXPORT_TYPE,

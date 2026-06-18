@@ -16,8 +16,10 @@ import {
     listPlacedVoxelWalls,
 } from "./gridWallEdit.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-import { collectPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
+import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
+import { setChainHead } from "./chainLinks.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Motion/kineticConstraints.js";
 import { setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Sandbox/sandboxFaction.js";
@@ -30,10 +32,17 @@ import { SANDBOX_DEFAULT_FACTION } from "../Sandbox/sandboxFaction.js";
  * boundary until we deliberately add that.
  */
 /** Current snapshot format; bump when fields change (no vN→vN+1 migration code until then). */
-export const SANDBOX_SCENE_SCHEMA_VERSION = 8;
+export const SANDBOX_SCENE_SCHEMA_VERSION = 9;
 /** @param {object} state */
 export function collectSandboxSceneSnapshot(state) {
     const grid = state.obstacleGrid;
+    const meta = getSandboxEntityMeta(state);
+    const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
+    let chainHeadProp = null;
+    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+        if (prop.isDead || !meta.isChainHead(prop.id)) return;
+        chainHeadProp = propIdToIndex.get(prop.id) ?? null;
+    });
     const voxels = listPlacedVoxelWalls(grid).map(({ col, row, heightLevel }) => {
         const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
         return { col: globalCol, row: globalRow, heightLevel };
@@ -69,7 +78,9 @@ export function collectSandboxSceneSnapshot(state) {
         forcefields,
         floorBelts: listPlacedFloorBeltsForSnapshot(grid),
         powerSources: listPlacedPassagePowerSourcesForSnapshot(grid),
-        props: collectPlacedSandboxPropEntries(state),
+        props,
+        kineticConstraints: collectKineticConstraintsSnapshot(state, propIdToIndex),
+        chainHeadProp,
         roomGraph: collectRoomGraphForSnapshot(state, grid),
     };
 }
@@ -127,6 +138,7 @@ function expandGridForSnapshot(state, doc) {
 /** @param {object} state */
 function clearSandboxSceneContent(state) {
     for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i]);
+    clearKineticConstraints(state);
     state.obstacleGrid.clearAllFloorCells();
     clearAllStampedGridWalls(state, { notify: false });
     getSandboxEntityMeta(state).clear();
@@ -140,10 +152,23 @@ function clearSandboxSceneContent(state) {
 function spawnSnapshotProp(state, entry) {
     const asset = getPropAsset(entry.type);
     if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
-    if (isGridFloorBeltSpawnAsset(asset)) return;
-    if (isGridPassagePowerSourceSpawnAsset(asset)) return;
+    if (isGridFloorBeltSpawnAsset(asset)) return null;
+    if (isGridPassagePowerSourceSpawnAsset(asset)) return null;
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
-    spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents);
+    return spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents);
+}
+/** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
+function spawnSnapshotProps(state, doc) {
+    const propIds = [];
+    for (let i = 0; i < doc.props.length; i++) {
+        const prop = spawnSnapshotProp(state, doc.props[i]);
+        if (prop) propIds.push(prop.id);
+    }
+    if (doc.schemaVersion >= 9 && doc.kineticConstraints?.length) applyKineticConstraintsFromSnapshot(state, doc.kineticConstraints, propIds);
+    if (doc.schemaVersion >= 9 && doc.chainHeadProp != null) {
+        const headId = propIds[doc.chainHeadProp];
+        if (headId != null) setChainHead(state, getSandboxEntityMeta(state), headId);
+    }
 }
 /**
  * @param {object} state
@@ -168,5 +193,5 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     await notifyGridWallChange(state, surfaceBounds, { fullNavSync: true });
     applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);
     syncRoomGraphBake(state);
-    for (let i = 0; i < doc.props.length; i++) spawnSnapshotProp(state, doc.props[i]);
+    spawnSnapshotProps(state, doc);
 }

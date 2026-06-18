@@ -25,3 +25,21 @@ export function pruneKineticConstraintsForBody(state, bodyId) {
 export function listKineticConstraints(state) {
     return state.sandbox.kineticConstraints;
 }
+export function collectKineticConstraintsSnapshot(state, propIdToIndex) {
+    const entries = [];
+    const list = listKineticConstraints(state);
+    for (let i = 0; i < list.length; i++) {
+        const constraint = list[i];
+        const bodyA = propIdToIndex.get(constraint.bodyAId);
+        const bodyB = propIdToIndex.get(constraint.bodyBId);
+        if (bodyA == null || bodyB == null) continue;
+        entries.push({ bodyA, bodyB, restLength: constraint.restLength, anchorA: { x: constraint.anchorA.x, y: constraint.anchorA.y }, anchorB: { x: constraint.anchorB.x, y: constraint.anchorB.y } });
+    }
+    return entries;
+}
+export function applyKineticConstraintsFromSnapshot(state, entries, propIdsByIndex) {
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        addDistanceConstraint(state, { bodyAId: propIdsByIndex[entry.bodyA], bodyBId: propIdsByIndex[entry.bodyB], restLength: entry.restLength, anchorA: entry.anchorA, anchorB: entry.anchorB });
+    }
+}

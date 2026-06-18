@@ -28,6 +28,16 @@ function serializePlacedProp(prop) {
     }
     return entry;
 }
+export function collectFlatPlacedSandboxPropEntries(state) {
+    const props = [];
+    const propIdToIndex = new Map();
+    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+        if (prop.isDead) return;
+        propIdToIndex.set(prop.id, props.length);
+        props.push(serializePlacedProp(prop));
+    });
+    return { props, propIdToIndex };
+}
 function tryExportSpawnGroup(members, meta) {
     return tryExportPoolRackSpawnGroup(members, meta) ?? tryExportLinkedBallChainSpawnGroup(members, meta);
 }

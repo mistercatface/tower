@@ -239,16 +239,16 @@ flowchart TB
 | Item | Status | % | Notes / modules |
 |------|--------|---|-----------------|
 | Collision settings per game profile | ✅ | 80 | `GameCollisionSettings.js` |
-| **`kineticConstraints` in scene snapshot** | ⬜ | 0 | runtime-only today |
-| **`chainHead` in scene snapshot** | ⬜ | 0 | `sandboxEntityMeta` only |
+| **`kineticConstraints` in scene snapshot** | ✅ | 85 | schema v9 flat props + `collectKineticConstraintsSnapshot` |
+| **`chainHead` in scene snapshot** | ✅ | 85 | `chainHeadProp` index in schema v9 |
 | Unit: pair stream / sleep / islands | ✅ | 80 | `tests/kinetic*.test.js` |
 | Unit: constraints | ✅ | 70 | `kineticConstraintSolver.test.js` |
 | Unit: chain links | ✅ | 70 | `chainLinks.test.js` |
 | Unit: wall resolution | ✅ | 75 | `wallResolution.test.js` |
-| Integration: chain vs wall overlap | ⬜ | 0 | recommended next test |
+| Integration: chain vs wall overlap | ✅ | 60 | `tests/chainVsWallGrowth.test.js` (baseline fixture) |
 | Benchmark: start demo chain | 🟡 | 50 | manual profile slot |
 
-**Branch progress: 48%**
+**Branch progress: 72%**
 
 ---
 
@@ -260,7 +260,7 @@ flowchart TB
 | **Chain head steering only** | ✅ | 80 | `chainLinks.js`, PR 3 |
 | **Link tool + inspector** | ✅ | 75 | PR 3 |
 | **Stress demo: cavern chain** | ✅ | 70 | `sandboxStartScene.js` |
-| Snake autosim (head → food → grow) | ✅ | 85 | `autosim/snakeAutosim.js`, `/?game=snake` |
+| Snake autosim (head → food → grow) | ✅ | 90 | `Libraries/Game/snake/`, `/?game=snake` |
 | Mixed-shape chain / ragdoll | ⬜ | 0 | 🔜 trilogy 2 capstone |
 | Crate train / linked props | ⬜ | 0 | 🔜 trilogy 2 capstone |
 | Pool rack spawn groups | ✅ | 80 | `spawnPoolRack.js` (reference pattern) |
@@ -320,10 +320,10 @@ flowchart TB
 
 ## Recommended next unlocks (short path)
 
-1. **Chain vs wall integration test** — no player input; documents tail clipping.
-2. **Persist constraints + `chainHead` in scene snapshot** — editor export/import parity.
+1. ~~**Chain vs wall integration test**~~ — `tests/chainVsWallGrowth.test.js` documents growth overlap baseline.
+2. ~~**Persist constraints + `chainHead` in scene snapshot**~~ — schema v9 export/import.
 3. **Trilogy C PR 1** — biggest perf/clarity win for dogpile + chain whip.
-4. **Snake autosim scene** — proves growth + repeated linking without new engine tier.
+4. **Snake polish** — HUD, head asset, optional head speed cap (`Libraries/Game/snake/`).
 
 ---
 
