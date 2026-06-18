@@ -18,14 +18,7 @@ import {
     SANDBOX_PROP_VISUAL_LABELS,
 } from "./sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget, tickSandboxCameraFollow } from "./sandboxCameraTarget.js";
-import {
-    getSandboxBehaviorLabel,
-    isSandboxSpawnable,
-    isSingleWorldPropSpawnAsset,
-    isPoolRackSpawnAsset,
-    resolveSandboxBehaviors,
-    SANDBOX_BEHAVIOR_LABELS,
-} from "./sandboxCapabilities.js";
+import { getSandboxBehaviorLabel, isSandboxSpawnable, isSingleWorldPropSpawnAsset, isPoolRackSpawnAsset, resolveSandboxBehaviors, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";
 import { evaluateInputGates, evaluateInputGateRule, isEntityAtRest, isEntityAsleep, resolveInputGateScope } from "./inputGates.js";
 import { resolveWorldPropSandboxBehavior, resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
 import { spawnPoolRack } from "./spawnPoolRack.js";
@@ -49,7 +42,7 @@ import {
     createDragLaunchBehavior,
     createDragLaunchWaitBehavior,
     createDragLaunchInteraction,
-    drawDragLaunchPreview,
+    appendDragLaunchOverlayCommands,
     getDragLaunchConfig,
     getDragLaunchPreview,
     resolveDragLaunchPullRatio,

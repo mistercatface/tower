@@ -1,28 +1,13 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canStampFloorBeltAt, canStampPassagePowerSourceAt } from "./floorOccupancy.js";
-import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
+import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, appendGridEdgeOverlayCommand } from "./gridWallEdit.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNodeSpawnAsset, isPuzzleTemplateSpawnAsset } from "./sandboxCapabilities.js";
 import { resolveRoomNodePlacePreview } from "../RoomGraph/index.js";
 import { resolveBeltCratePuzzlePlacePreview } from "../RoomGraph/puzzleTemplateBeltCrate.js";
+import { overlayAabb } from "../Render/overlays/overlayCommands.js";
 const PREVIEW_CELL_BOUNDS = createAabb();
-/**
- * @param {object} state
- * @param {{
- *   isMapGenPlaceMode: () => boolean,
- *   isWallPlaceMode: () => boolean,
- *   getWallStampMode: () => string,
- *   getSpawnPropId: () => string,
- *   getSpawnRoomNodeCols: () => number,
- *   getSpawnRoomNodeRows: () => number,
- *   getSpawnPuzzleAreaCols: () => number,
- *   getSpawnPuzzleAreaRows: () => number,
- * }} session
- * @param {number} worldX
- * @param {number} worldY
- */
 export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
     if (session.isMapGenPlaceMode()) return null;
     const grid = state.obstacleGrid;
@@ -57,45 +42,19 @@ export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
     }
     return null;
 }
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {ReturnType<typeof resolveSandboxPlacePreview>} preview
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- */
-export function drawSandboxPlacePreview(ctx, preview, grid) {
+function cellPreviewStyle(tint, valid) {
+    if (tint === "voxel") return { stroke: valid ? "rgba(255, 183, 77, 0.9)" : "rgba(255, 96, 96, 0.85)", fill: valid ? "rgba(255, 183, 77, 0.14)" : "rgba(255, 96, 96, 0.1)" };
+    if (tint === "power") return { stroke: valid ? "rgba(255, 213, 79, 0.9)" : "rgba(255, 96, 96, 0.85)", fill: valid ? "rgba(255, 213, 79, 0.14)" : "rgba(255, 96, 96, 0.1)" };
+    return { stroke: valid ? "rgba(100, 255, 160, 0.9)" : "rgba(255, 96, 96, 0.85)", fill: valid ? "rgba(100, 255, 160, 0.12)" : "rgba(255, 96, 96, 0.1)" };
+}
+export function appendPlacePreviewOverlayCommands(out, preview, grid) {
     if (!preview) return;
-    const lineScale = getCanvasLineScale(ctx);
-    const valid = preview.valid !== false;
-    ctx.save();
     if (preview.kind === "cell") {
         const { x, y } = grid.gridToWorld(preview.col, preview.row);
         const tint = preview.tint ?? "floor";
-        const stroke =
-            tint === "voxel"
-                ? valid
-                    ? "rgba(255, 183, 77, 0.9)"
-                    : "rgba(255, 96, 96, 0.85)"
-                : tint === "power"
-                  ? valid
-                      ? "rgba(255, 213, 79, 0.9)"
-                      : "rgba(255, 96, 96, 0.85)"
-                  : valid
-                    ? "rgba(100, 255, 160, 0.9)"
-                    : "rgba(255, 96, 96, 0.85)";
-        const fill =
-            tint === "voxel"
-                ? valid
-                    ? "rgba(255, 183, 77, 0.14)"
-                    : "rgba(255, 96, 96, 0.1)"
-                : tint === "power"
-                  ? valid
-                      ? "rgba(255, 213, 79, 0.14)"
-                      : "rgba(255, 96, 96, 0.1)"
-                  : valid
-                    ? "rgba(100, 255, 160, 0.12)"
-                    : "rgba(255, 96, 96, 0.1)";
-        drawAabbHighlight(ctx, centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), { fill, stroke, lineWidth: lineScale, dash: [4, 3] });
-        ctx.restore();
+        const valid = preview.valid !== false;
+        const { fill, stroke } = cellPreviewStyle(tint, valid);
+        out.push(overlayAabb(centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), { fill, stroke, lineWidth: 1, dash: [4, 3] }));
         return;
     }
     if (preview.kind === "cellRect") {
@@ -109,18 +68,11 @@ export function drawSandboxPlacePreview(ctx, preview, grid) {
                 fill = clear ? "rgba(167, 139, 250, 0.12)" : "rgba(255, 96, 96, 0.16)";
                 stroke = clear ? "rgba(167, 139, 250, 0.85)" : "rgba(255, 96, 96, 0.9)";
             }
-            drawAabbHighlight(ctx, centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), { fill, stroke, lineWidth: lineScale, dash: [4, 3] });
+            out.push(overlayAabb(centeredAabbInto(PREVIEW_CELL_BOUNDS, x, y, grid.cellSize, grid.cellSize), { fill, stroke, lineWidth: 1, dash: [4, 3] }));
         }
-        ctx.restore();
         return;
     }
     const edge = { col: preview.col, row: preview.row, side: preview.side };
-    if (preview.edgeKind === "forcefield") {
-        ctx.strokeStyle = "rgba(192, 132, 252, 0.95)";
-        strokeSelectedForcefieldEdge(ctx, grid, edge, lineScale);
-    } else {
-        ctx.strokeStyle = "rgba(255, 183, 77, 0.95)";
-        strokeSelectedRailWallEdge(ctx, grid, edge, lineScale);
-    }
-    ctx.restore();
+    if (preview.edgeKind === "forcefield") appendGridEdgeOverlayCommand(out, grid, edge, { stroke: "rgba(192, 132, 252, 0.95)", lineWidth: 4, dash: [6, 4] });
+    else appendGridEdgeOverlayCommand(out, grid, edge, { stroke: "rgba(255, 183, 77, 0.95)", lineWidth: 3 });
 }

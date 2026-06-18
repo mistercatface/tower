@@ -1,10 +1,8 @@
 import { normalizeXY } from "../Math/Vec2.js";
-import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { drawAimSegment } from "../Render/contactPreviewDraw.js";
-import { fillCircle, strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
+import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment, pushOverlayCommands } from "../Render/overlays/overlayCommands.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
 import { evaluateInputGates, isEntityAtRest } from "./inputGates.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
@@ -177,10 +175,9 @@ export function createDragLaunchInteraction(spec) {
             if (spec.onLaunch) spec.onLaunch(prop, shot);
             else applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
         },
-        drawOverlay(ctx, prop) {
+        appendOverlayCommands(commands, prop) {
             if (!aim?.active) return;
-            const config = spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop);
-            drawDragLaunchPreview(ctx, aim, config, buildCtx(prop), resolveLine);
+            appendDragLaunchOverlayCommands(commands, aim, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop), buildCtx(prop), resolveLine);
         },
         reset() {
             aim = null;
@@ -213,60 +210,27 @@ export function createDragLaunchWaitBehavior(state) {
         },
     });
 }
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {DragLaunchAim | null | undefined} aim
- * @param {DragLaunchConfig} config
- * @param {ReturnType<typeof buildDragLaunchAimLineContext>} [aimLineContext]
- * @param {(preview: ReturnType<typeof getDragLaunchPreview>, aimLineContext: ReturnType<typeof buildDragLaunchAimLineContext>) => { x1: number, y1: number, x2: number, y2: number } | null} [resolveAimLine]
- */
-export function drawDragLaunchPreview(ctx, aim, config, aimLineContext = null, resolveAimLine = getDragLaunchAimLine) {
+export function appendDragLaunchOverlayCommands(commands, aim, config, aimLineContext = null, resolveAimLine = getDragLaunchAimLine) {
     const preview = getDragLaunchPreview(aim, config);
     if (!preview) return;
     const ratio = config.maxPower > config.minPower ? Math.max(0, Math.min(1, (preview.power - config.minPower) / (config.maxPower - config.minPower))) : 0;
     const hue = 180 - ratio * 180;
-    const lineScale = getCanvasLineScale(ctx);
-    ctx.save();
-    // Draw initial click reference point indicator
     const startX = aim?.startX ?? preview.anchorX;
     const startY = aim?.startY ?? preview.anchorY;
-    // Draw max drag radius circle around start point representing where power caps out
     const maxFingerDrag = config.maxPull / config.pullScale;
-    ctx.strokeStyle = `hsla(${hue}, 90%, 55%, 0.15)`;
-    ctx.lineWidth = 1 * lineScale;
-    ctx.setLineDash([4 * lineScale, 4 * lineScale]);
-    strokeCircle(ctx, startX, startY, maxFingerDrag);
-    ctx.setLineDash([]);
+    commands.push(overlayCircleStroke(startX, startY, maxFingerDrag, { stroke: `hsla(${hue}, 90%, 55%, 0.15)`, lineWidth: 1, dash: [4, 4] }));
     if (aim && aim.pullX != null && aim.pullY != null) {
-        ctx.strokeStyle = `hsla(${hue}, 90%, 55%, 0.12)`;
-        ctx.lineWidth = 1 * lineScale;
-        ctx.setLineDash([3 * lineScale, 3 * lineScale]);
-        strokeSegment(ctx, startX, startY, aim.pullX, aim.pullY);
-        ctx.setLineDash([]);
-        ctx.fillStyle = `hsla(${hue}, 90%, 55%, 0.35)`;
-        fillCircle(ctx, aim.pullX, aim.pullY, 4 * lineScale);
-        ctx.strokeStyle = `hsla(${hue}, 90%, 55%, 0.85)`;
-        ctx.lineWidth = 1.5 * lineScale;
-        strokeCircle(ctx, aim.pullX, aim.pullY, 4 * lineScale);
+        commands.push(overlaySegment(startX, startY, aim.pullX, aim.pullY, { stroke: `hsla(${hue}, 90%, 55%, 0.12)`, lineWidth: 1, dash: [3, 3] }));
+        commands.push(overlayCircleFillStroke(aim.pullX, aim.pullY, 4, { fill: `hsla(${hue}, 90%, 55%, 0.35)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
     }
     if (Math.hypot(startX - preview.anchorX, startY - preview.anchorY) > 0.1) {
-        ctx.strokeStyle = `hsla(${hue}, 90%, 55%, 0.4)`;
-        ctx.lineWidth = 1.5 * lineScale;
-        strokeCircle(ctx, startX, startY, 5 * lineScale);
-        ctx.fillStyle = `hsla(${hue}, 90%, 55%, 0.65)`;
-        fillCircle(ctx, startX, startY, 1.5 * lineScale);
+        commands.push(overlayCircleStroke(startX, startY, 5, { stroke: `hsla(${hue}, 90%, 55%, 0.4)`, lineWidth: 1.5 }));
+        commands.push(overlayCircleFillStroke(startX, startY, 1.5, { fill: `hsla(${hue}, 90%, 55%, 0.65)`, stroke: `hsla(${hue}, 90%, 55%, 0.65)`, lineWidth: 1 }));
     }
-    ctx.strokeStyle = `hsla(${hue}, 90%, 55%, 0.4)`;
-    ctx.lineWidth = 2 * lineScale;
-    ctx.setLineDash([6 * lineScale, 4 * lineScale]);
-    strokeSegment(ctx, preview.pullX, preview.pullY, preview.anchorX, preview.anchorY);
-    ctx.setLineDash([]);
-    ctx.strokeStyle = `hsla(${hue}, 100%, 60%, 0.85)`;
-    ctx.lineWidth = 2 * lineScale;
-    strokeCircle(ctx, preview.anchorX, preview.anchorY, 7);
-    ctx.restore();
+    commands.push(overlaySegment(preview.pullX, preview.pullY, preview.anchorX, preview.anchorY, { stroke: `hsla(${hue}, 90%, 55%, 0.4)`, lineWidth: 2, dash: [6, 4] }));
+    commands.push(overlayCircleStroke(preview.anchorX, preview.anchorY, 7, { stroke: `hsla(${hue}, 100%, 60%, 0.85)`, lineWidth: 2 }));
     if (preview.power <= 0) return;
     const aimLine = resolveAimLine(preview, aimLineContext);
     if (!aimLine) return;
-    drawAimSegment(ctx, aimLine, { color: `hsl(${hue}, 100%, 50%)`, lineWidth: 3 * lineScale, glowHue: hue });
+    commands.push(overlayAimSegment(aimLine.x1, aimLine.y1, aimLine.x2, aimLine.y2, { color: `hsl(${hue}, 100%, 50%)`, lineWidth: 3, glowHue: hue }));
 }

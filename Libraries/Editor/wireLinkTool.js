@@ -1,14 +1,5 @@
-/**
- * Click-to-link canvas mode: cursor follows pointer; each primary click commits a link.
- *
- * @param {{
- *   getEnterCursor: () => { x: number, y: number },
- *   onLinkClick: (world: { x: number, y: number }) => void,
- *   onSync?: () => void,
- *   drawWire: (ctx: CanvasRenderingContext2D, cursor: { x: number, y: number } | null) => void,
- * }} options
- */
-export function createWireLinkTool({ getEnterCursor, onLinkClick, onSync, drawWire }) {
+import { releasePointerCapture } from "../Input/canvasPointer.js";
+export function createWireLinkTool({ getEnterCursor, onLinkClick, onSync, appendWire }) {
     let active = false;
     let cursor = null;
     const enter = () => {
@@ -38,9 +29,9 @@ export function createWireLinkTool({ getEnterCursor, onLinkClick, onSync, drawWi
             if (!active) return;
             cursor = clientToWorld(e.clientX, e.clientY);
         },
-        drawOverlay(ctx) {
+        appendOverlayCommands(out) {
             if (!active) return;
-            drawWire(ctx, cursor);
+            appendWire(out, cursor);
         },
     };
 }

@@ -4,7 +4,6 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { sandboxAssetMatchesTagFilter } from "../Sandbox/sandboxCapabilities.js";
 import { aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
 import { entityContainedInAabb } from "../Spatial/collision/entityBroadphase.js";
-import { drawSandboxMarquee } from "../Sandbox/drawSandboxSelection.js";
 export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch, stampPropBehavior, selectPropIds }) {
     return createMarqueeSelectTool({
         getCanvas,
@@ -23,6 +22,5 @@ export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratc
             });
             selectPropIds(props.map((prop) => prop.id));
         },
-        drawMarquee: (ctx, bounds) => drawSandboxMarquee(ctx, { marqueeRect: bounds }),
     });
 }

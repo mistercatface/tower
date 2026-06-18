@@ -10,6 +10,7 @@ import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
 import { drawLabPathDebugOverlay } from "../../../Libraries/Render/map/labMapCaches.js";
+import { drawOverlayCommands } from "../../../Libraries/Render/overlays/drawOverlayCommands.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 /** @type {import("../../../Render/Render.js").SimulationSceneHooks} */
 const editorSceneHooks = {
@@ -19,22 +20,11 @@ const editorSceneHooks = {
     simulationEffectPasses: [
         floorPropEffectPass,
         {
-            zIndex: 65,
-            draw(_state, _viewport, ctx) {
-                const controller = getGameState().sandbox.controller;
-                controller?.drawPlacePreview(ctx);
-                controller?.drawSelectionRings(ctx);
-                controller?.drawPropTileCells(ctx);
-            },
-        },
-        {
             zIndex: 72,
             draw(_state, _viewport, ctx) {
                 const controller = getGameState().sandbox.controller;
-                controller?.drawBehaviorOverlays(ctx);
-                controller?.drawMarqueeOverlay(ctx);
-                controller?.drawPathOverlay(ctx);
-                controller?.drawLaunchPreview(ctx);
+                if (!controller) return;
+                drawOverlayCommands(ctx, controller.collectOverlayCommands());
             },
         },
     ],
@@ -148,10 +138,6 @@ export function drawLabFrame(state) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
     if (showPathDebug) drawLabPathDebugOverlay(ctx, viewport, state, markLabViewDirty);
-    ctx.save();
-    viewport.apply(ctx);
-    state.sandbox.controller?.drawOverlay(ctx);
-    ctx.restore();
     state.worldSurfaces.surfaceProfileOverride = prevProfileOverride;
     labViewDirty = false;
     if (showVignette) {

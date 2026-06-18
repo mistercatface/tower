@@ -2,14 +2,7 @@ import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds } from
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { clearPrimaryBoundaryAt, commitBoundaryEdit, notifyGridWallChange } from "./boundaryEdit.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import {
-    formatPassageModeLabel,
-    isPassageLaserEdge,
-    isRailWallEdge,
-    parsePassageMode,
-    PASSAGE_MODE,
-    railWallCapLevel,
-} from "../Spatial/grid/CellEdge.js";
+import { formatPassageModeLabel, isPassageLaserEdge, isRailWallEdge, parsePassageMode, PASSAGE_MODE, railWallCapLevel } from "../Spatial/grid/CellEdge.js";
 import { setBoundary, setPassageProfile, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
@@ -288,21 +281,7 @@ export function getRailWallInfo(grid, col, row, side) {
     const heightLevel = railWallCapLevel(edge, neighborFillLevel(grid, col, row, side));
     return { col, row, side, heightLevel, thicknessLevel: edge.thicknessLevel, sideLabel: formatGridWallEdgeSideLabel(side) };
 }
-export function strokeSelectedRailWallEdge(ctx, grid, edge, lineScale) {
+export function appendGridEdgeOverlayCommand(out, grid, edge, { stroke, lineWidth = 3, dash = null }) {
     cellEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
-    ctx.lineWidth = 3 * lineScale;
-    ctx.beginPath();
-    ctx.moveTo(EDGE_P1.x, EDGE_P1.y);
-    ctx.lineTo(EDGE_P2.x, EDGE_P2.y);
-    ctx.stroke();
-}
-export function strokeSelectedForcefieldEdge(ctx, grid, edge, lineScale) {
-    cellEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
-    ctx.lineWidth = 4 * lineScale;
-    ctx.setLineDash([6, 4]);
-    ctx.beginPath();
-    ctx.moveTo(EDGE_P1.x, EDGE_P1.y);
-    ctx.lineTo(EDGE_P2.x, EDGE_P2.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    out.push({ kind: "segment", x0: EDGE_P1.x, y0: EDGE_P1.y, x1: EDGE_P2.x, y1: EDGE_P2.y, stroke, lineWidth, dash: dash ?? undefined });
 }

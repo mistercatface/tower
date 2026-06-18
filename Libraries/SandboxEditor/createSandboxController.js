@@ -2,7 +2,7 @@ import { getPropAsset } from "../Props/PropCatalog.js";
 import { bindCanvasPointers, bindCanvasContextMenu } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createSandboxSession } from "../Sandbox/sandboxSession.js";
-import { clearButtonLinks, drawButtonWires, listButtonLinkEndpoints, removeButtonLink } from "../Sandbox/buttonLinks.js";
+import { clearButtonLinks, listButtonLinkEndpoints, removeButtonLink } from "../Sandbox/buttonLinks.js";
 import { isButtonEntity } from "../Sandbox/buttonInput.js";
 import { createButtonWireTool } from "./buttonWireTool.js";
 import { createCorridorLinkWireTool } from "./corridorLinkWireTool.js";
@@ -14,12 +14,9 @@ import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js
 import { releaseButtonPointerHold } from "../Sandbox/floorButtons.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandboxSceneSnapshot.js";
 import { spawnSandboxStartScene } from "../Sandbox/sandboxStartScene.js";
-import { drawSandboxPropTileCells, drawSandboxSelectionRings } from "../Sandbox/drawSandboxSelection.js";
-import { drawSandboxPlacePreview, resolveSandboxPlacePreview } from "../Sandbox/drawSandboxPlacePreview.js";
-import { drawPlacedRoomNodes } from "../RoomGraph/index.js";
+import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
 import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandboxCapabilities.js";
 import { createAabb } from "../Math/Aabb2D.js";
-import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
@@ -458,6 +455,23 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.clear();
             resetBehaviors();
         },
+        collectOverlayCommands() {
+            const showPlacePreview = placePreviewWorld && !canvasTools.capturesPointerMove() && !canvasTools.isDragging() && !canvasTools.blocksPlacePreview() && !session.isMapGenPlaceMode();
+            return buildSandboxOverlayCommands({
+                state,
+                session,
+                selectionDrawState,
+                placePreviewWorld: showPlacePreview ? placePreviewWorld : null,
+                showPlacePreview: !!showPlacePreview,
+                marqueeRect: marqueeTool.getMarqueeRect(),
+                behaviorById,
+                getPropBehaviorId,
+                buttonWireTool,
+                corridorLinkWireTool,
+                resolveBehavior,
+                selectedProp: session.getSelectedProp(),
+            });
+        },
         tick(dt) {
             session.pruneSelection();
             for (let i = 0; i < behaviors.length; i++) behaviors[i].tickWorld?.(dt);
@@ -467,67 +481,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             if (behavior.tickWorld) return;
             behavior.tick(prop, dt);
         },
-        /** @param {CanvasRenderingContext2D} ctx */
-        drawPathOverlay(ctx) {
-            const sel = session.getSelection();
-            if (sel?.kind !== "prop") return;
-            const ids = selectionPropIds(sel);
-            for (let i = 0; i < ids.length; i++) {
-                const prop = state.entityRegistry.getLive(ids[i]);
-                if (!prop) continue;
-                const visual = resolveSandboxPathVisual(state, prop);
-                if (visual === "off") continue;
-                const behavior = behaviorById.get(getPropBehaviorId(prop));
-                if (!behavior?.getPathOverlay) continue;
-                const overlay = behavior.getPathOverlay(prop);
-                if (!overlay) continue;
-                drawActivePathOverlay(ctx, overlay, state.viewport.zoom, visual, state.obstacleGrid, state.viewport);
-            }
-        },
-        drawLaunchPreview(ctx) {
-            const prop = session.getSelectedProp();
-            const behavior = resolveBehavior();
-            behavior?.drawOverlay?.(ctx, prop);
-        },
-        drawBehaviorOverlays(ctx) {
-            const sel = session.getSelection();
-            drawPlacedRoomNodes(ctx, state, state.obstacleGrid, {
-                selectedNodeId: sel?.kind === "roomNode" ? sel.id : sel?.kind === "roomLink" ? sel.nodeId : null,
-                selectedLinkId: sel?.kind === "roomLink" ? sel.linkId : null,
-                wireFromNodeId: corridorLinkWireTool.getFromNodeId(),
-                wireCursor: corridorLinkWireTool.getCursor(),
-                showRoomNodesAlways: state.editor.showRoomNodesAlways,
-                wireModeActive: corridorLinkWireTool.isActive(),
-            });
-            drawButtonWires(ctx, state);
-            buttonWireTool.drawOverlay(ctx);
-            for (let i = 0; i < behaviors.length; i++) behaviors[i].drawWorldOverlay?.(ctx);
-        },
-        drawSelectionRings(ctx) {
-            const { selectedProps } = selectionDrawState();
-            const sel = session.getSelection();
-            drawSandboxSelectionRings(ctx, {
-                selectedProps,
-                showRings: state.editor.showSelectionRings,
-                selectedFloorCell: sel?.kind === "floor" ? { col: sel.col, row: sel.row } : null,
-                selectedVoxelCell: sel?.kind === "voxel" ? { col: sel.col, row: sel.row } : null,
-                selectedRailEdge: sel?.kind === "rail" ? { col: sel.col, row: sel.row, side: sel.side } : null,
-                grid: state.obstacleGrid,
-                camera: { px: state.viewport.x, py: state.viewport.y },
-            });
-        },
-        drawPropTileCells(ctx) {
-            drawSandboxPropTileCells(ctx, { show: state.editor.showPropTileCells, grid: state.obstacleGrid, worldProps: state.worldProps });
-        },
-        drawMarqueeOverlay(ctx) {
-            marqueeTool.drawOverlay(ctx);
-        },
-        drawPlacePreview(ctx) {
-            if (!placePreviewWorld || canvasTools.capturesPointerMove() || canvasTools.isDragging() || canvasTools.blocksPlacePreview() || session.isMapGenPlaceMode()) return;
-            const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
-            drawSandboxPlacePreview(ctx, preview, state.obstacleGrid);
-        },
-        drawOverlay(_ctx) {},
         getPathVisual(prop) {
             return resolveSandboxPathVisual(state, prop);
         },
