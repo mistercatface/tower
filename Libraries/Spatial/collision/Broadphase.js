@@ -48,16 +48,7 @@ function circleObbOverlap(circle, obb) {
     }
     return true;
 }
-/**
- * @param {BroadphaseBounds} out
- * @param {{ type: string, radius?: number, vertices?: { x: number, y: number }[], boundingRadius?: number, getBoundingRadius?: () => number }} shape
- * @param {number} cx
- * @param {number} cy
- * @param {number} [angle]
- * @param {{ x: number, y: number } | null} [halfExtents]
- * @returns {BroadphaseBounds}
- */
-export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0, halfExtents = null) {
+export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0) {
     if (shape.type === "Circle") {
         out.kind = "circle";
         out.cx = cx;
@@ -71,20 +62,15 @@ export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0, hal
         out.cy = cy;
         out.cos = Math.cos(angle);
         out.sin = Math.sin(angle);
-        if (halfExtents) {
-            out.hx = halfExtents.x;
-            out.hy = halfExtents.y;
-        } else {
-            let hx = 0;
-            let hy = 0;
-            for (let i = 0; i < shape.vertices.length; i++) {
-                const v = shape.vertices[i];
-                hx = Math.max(hx, Math.abs(v.x));
-                hy = Math.max(hy, Math.abs(v.y));
-            }
-            out.hx = hx;
-            out.hy = hy;
+        let hx = 0;
+        let hy = 0;
+        for (let i = 0; i < shape.vertices.length; i++) {
+            const v = shape.vertices[i];
+            hx = Math.max(hx, Math.abs(v.x));
+            hy = Math.max(hy, Math.abs(v.y));
         }
+        out.hx = hx;
+        out.hy = hy;
         return out;
     }
     out.kind = "circle";
@@ -93,8 +79,8 @@ export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0, hal
     out.r = shape.radius || 0;
     return out;
 }
-export function broadphaseBoundsFromShape(shape, cx, cy, angle = 0, halfExtents = null) {
-    return broadphaseBoundsFromShapeInto(createBroadphaseBounds(), shape, cx, cy, angle, halfExtents);
+export function broadphaseBoundsFromShape(shape, cx, cy, angle = 0) {
+    return broadphaseBoundsFromShapeInto(createBroadphaseBounds(), shape, cx, cy, angle);
 }
 export function pairBroadphaseBoundsOverlap(a, b) {
     if (a.kind === "circle" && b.kind === "circle") {

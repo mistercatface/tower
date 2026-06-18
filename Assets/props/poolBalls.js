@@ -110,7 +110,6 @@ const POOL_BALL_PHYSICS = {
     propPixelSize: POOL_BALL_RADIUS * 2,
     isKinetic: true,
     rolls: true,
-    collisionShape: "circle",
     density: 0.001243,
     pairRestitution: 0.92,
     friction: 0.5,

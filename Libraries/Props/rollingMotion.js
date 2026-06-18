@@ -44,7 +44,6 @@ export function transformRollVertex(lx, ly, lz, radius, rollQuat = IDENTITY_ROLL
     return { lx: rotated.x, ly: rotated.y, z: rotated.z + radius };
 }
 export function getRollRadius(body) {
-    if (body.halfExtents) return Math.max(1, Math.min(body.halfExtents.x, body.halfExtents.y));
     return Math.max(1, resolveBodyRadius(body));
 }
 function integrateGroundRoll(body, dtMs) {

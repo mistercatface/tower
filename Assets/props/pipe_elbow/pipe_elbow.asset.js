@@ -6,8 +6,6 @@ export default {
     physics: {
         isKinetic: true,
         rolls: false,
-        collisionShape: "box",
-        halfExtents: { x: 16, y: 16 },
         density: 0.007851,
         friction: 7,
         wallPhysics: { restitution: 0.12, friction: 0.85 },

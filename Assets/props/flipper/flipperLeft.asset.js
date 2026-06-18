@@ -6,13 +6,10 @@ export default {
     primitive: "flipper",
     sandbox: { behaviors: ["flipper"] },
     physics: {
-        radius: 8,
-        halfExtents: { x: 8, y: 2 },
         propPixelSize: null,
         isKinetic: true,
         gravityImmune: true,
         rolls: false,
-        collisionShape: "box",
         pinned: true,
         pairRestitution: 0.85,
         friction: 0,

@@ -27,7 +27,7 @@ export function getSpawnerOutletWorld(prop, asset) {
     const resolver = asset?.sandbox?.spawner?.getOutletWorld;
     if (typeof resolver === "function") return resolver(prop, asset);
     const facing = prop.facing ?? 0;
-    const reach = prop._collisionBoundingRadius ?? prop.radius ?? 8;
+    const reach = prop.radius ?? 8;
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     return { x: prop.x + cos * reach, y: prop.y + sin * reach, nx: cos, ny: sin };

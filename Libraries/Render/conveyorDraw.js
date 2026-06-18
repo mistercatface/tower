@@ -30,8 +30,8 @@ export function createConveyorDraw(options = {}) {
         dark: "#141414",
     };
     return (ctx, prop, px, py) => {
-        const hx = prop.halfExtents?.x ?? prop.strategy.halfExtents?.x ?? 8;
-        const hy = prop.halfExtents?.y ?? prop.strategy.halfExtents?.y ?? 8;
+        const hx = prop.halfExtents?.x ?? 8;
+        const hy = prop.halfExtents?.y ?? 8;
         const lineScale = getCanvasLineScale(ctx);
         if (!turnDirection) {
             // Straight conveyor drawing logic

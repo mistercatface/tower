@@ -65,9 +65,6 @@ export function syncPipeElbowCollisionShape(prop) {
     if (prop._pipeElbowShapeKey === key && prop.shape?.type === "Polygon") return prop.shape;
     prop.shape = new PolygonShape(footprint);
     prop._pipeElbowShapeKey = key;
-    let maxR = 0;
-    for (let i = 0; i < footprint.length; i++) maxR = Math.max(maxR, Math.hypot(footprint[i].x, footprint[i].y));
-    prop._collisionBoundingRadius = maxR;
     return prop.shape;
 }
 /** @param {object} prop @param {object | null | undefined} asset */

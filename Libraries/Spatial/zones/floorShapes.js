@@ -1,8 +1,9 @@
 import { CircleShape, PolygonShape } from "../collision/Shapes.js";
 import { SatCollision } from "../collision/SatCollision.js";
 import { aabbOverlap, centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
+import { boxLocalFootprint, convexFootprintHalfExtents } from "../../Math/Poly2D.js";
 import { NEIGHBOR_QUERY_PAD } from "../collision/entityBroadphase.js";
-import { quantizeCardinalAngle, stepCardinalFacing } from "../../Math/Angle.js";
+import { stepCardinalFacing } from "../../Math/Angle.js";
 import { snapWorldToObstacleCellCenter } from "../grid/GridCoords.js";
 export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
     if (!shapes.length) return;
@@ -27,33 +28,35 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
     }
 }
 export function syncFloorPropCollisionShape(prop) {
-    if (prop.halfExtents) {
-        const hx = prop.halfExtents.x;
-        const hy = prop.halfExtents.y;
-        prop.shape = new PolygonShape([
-            { x: -hx, y: -hy },
-            { x: hx, y: -hy },
-            { x: hx, y: hy },
-            { x: -hx, y: hy },
-        ]);
-        return;
+    const footprint = prop.strategy.localFootprint;
+    if (footprint?.length >= 3) prop.shape = new PolygonShape(footprint.map((v) => ({ x: v.x, y: v.y })));
+    else {
+        const radius = prop.radius ?? prop.strategy.radius ?? 0;
+        prop.shape = new CircleShape(radius);
     }
-    prop.shape = new CircleShape(prop.radius);
+    prop.radius = prop.shape.getBoundingRadius();
 }
 export function syncFloorTriggerAabb(prop) {
-    if (prop.halfExtents) centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, prop.halfExtents.x, prop.halfExtents.y, NEIGHBOR_QUERY_PAD);
-    else centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, prop.radius, prop.radius, NEIGHBOR_QUERY_PAD);
+    const shape = prop.shape;
+    if (shape.type === "Polygon") {
+        const span = convexFootprintHalfExtents(shape.vertices);
+        centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, span.x, span.y, NEIGHBOR_QUERY_PAD);
+        return;
+    }
+    const radius = shape.radius ?? prop.radius;
+    centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, radius, radius, NEIGHBOR_QUERY_PAD);
 }
 export function floorCircleRadius(prop) {
     return prop.shape?.radius ?? prop.radius;
 }
 export function readFloorPropHalfExtents(prop) {
-    if (prop.halfExtents) return { halfWidth: prop.halfExtents.x, halfHeight: prop.halfExtents.y };
-    if (prop.shape?.type === "Polygon") {
-        const v = prop.shape.vertices[0];
-        return { halfWidth: Math.abs(v.x), halfHeight: Math.abs(v.y) };
+    const shape = prop.shape;
+    if (shape.type === "Polygon") {
+        const span = convexFootprintHalfExtents(shape.vertices);
+        return { halfWidth: span.x, halfHeight: span.y };
     }
-    throw new Error("readFloorPropHalfExtents requires halfExtents or polygon shape");
+    if (shape.type === "Circle") return { halfWidth: shape.radius, halfHeight: shape.radius };
+    throw new Error("readFloorPropHalfExtents requires a circle or polygon shape");
 }
 export function floorShapeHasLiveOccupant(registry, floorShape) {
     for (const entityId of floorShape._occupants) {
@@ -74,9 +77,8 @@ export function initFloorTriggerProp(prop) {
     syncFloorTriggerAabb(prop);
 }
 export function resizeFloorPropHalfExtents(prop, halfWidth, halfHeight) {
-    prop.halfExtents = { x: halfWidth, y: halfHeight };
-    prop.radius = Math.max(halfWidth, halfHeight);
-    syncFloorPropCollisionShape(prop);
+    prop.shape = new PolygonShape(boxLocalFootprint(halfWidth, halfHeight));
+    prop.radius = prop.shape.getBoundingRadius();
     syncFloorTriggerAabb(prop);
 }
 export function obstacleGridCellHalfExtents(obstacleGrid) {

@@ -1,6 +1,7 @@
 import { getWorldPropDefinitions } from "../Props/PropCatalog.js";
 import { drawAabbHighlight, getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
+import { convexFootprintHalfExtents } from "../Math/Poly2D.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canStampFloorBeltAt, canStampPassagePowerSourceAt } from "./floorOccupancy.js";
 import { ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, strokeSelectedForcefieldEdge, strokeSelectedRailWallEdge } from "./gridWallEdit.js";
@@ -13,7 +14,11 @@ const PREVIEW_CELL_BOUNDS = createAabb();
 function resolveSpawnPreviewRadius(propTypeId) {
     const def = getWorldPropDefinitions()[propTypeId];
     if (!def) return 8;
-    if (def.halfExtents) return Math.max(def.halfExtents.x, def.halfExtents.y);
+    const footprint = def.localFootprint;
+    if (footprint?.length >= 3) {
+        const span = convexFootprintHalfExtents(footprint);
+        return Math.max(span.x, span.y);
+    }
     return def.radius ?? 8;
 }
 /**

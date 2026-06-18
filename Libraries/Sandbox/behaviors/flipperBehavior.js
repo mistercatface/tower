@@ -83,7 +83,6 @@ export function syncFlipperCollisionShape(prop) {
         { x: 0, y: halfW },
     ]);
     prop._collisionFacing = angle;
-    prop._collisionBoundingRadius = Math.hypot(length, halfW);
     prop._flipperShapeKey = key;
     return prop.shape;
 }

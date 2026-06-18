@@ -35,6 +35,15 @@ export function boxLocalFootprint(hx, hy) {
         { x: -hx, y: hy },
     ];
 }
+export function convexFootprintHalfExtents(vertices) {
+    let hx = 0;
+    let hy = 0;
+    for (let i = 0; i < vertices.length; i++) {
+        hx = Math.max(hx, Math.abs(vertices[i].x));
+        hy = Math.max(hy, Math.abs(vertices[i].y));
+    }
+    return { x: hx, y: hy };
+}
 function pointOnPolygonRing(px, py, count, xAt, yAt) {
     for (let i = 0, j = count - 1; i < count; j = i++) if (distanceSqToLineSegment(px, py, xAt(j), yAt(j), xAt(i), yAt(i)) <= POLYGON_EDGE_EPS_SQ) return true;
     return false;

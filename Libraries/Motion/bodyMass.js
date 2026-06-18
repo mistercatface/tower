@@ -13,7 +13,6 @@ function polygonShapeInertiaFactor(shape) {
     return polygonSecondMomentAboutCentroid2D(verts) / area;
 }
 export function kineticFootprintArea(body) {
-    if (body.footprintArea > 0) return body.footprintArea;
     const shape = body.shape ?? body.getShape?.();
     if (shape?.type === "Polygon") return polygonShapeArea(shape);
     if (shape?.type === "Circle") return Math.PI * shape.radius * shape.radius;

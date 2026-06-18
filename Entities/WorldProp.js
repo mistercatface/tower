@@ -51,7 +51,11 @@ export class WorldProp extends Entity {
         transitionEntity(this, WORLD_PROP_MODES, stateName, stateDataInit);
     }
     getShape() {
-        if (typeof this.strategy.syncCollisionShape === "function") return this.strategy.syncCollisionShape(this);
+        if (typeof this.strategy.syncCollisionShape === "function") {
+            const shape = this.strategy.syncCollisionShape(this);
+            this.radius = shape.getBoundingRadius();
+            return shape;
+        }
         return this.shape;
     }
     get angle() {

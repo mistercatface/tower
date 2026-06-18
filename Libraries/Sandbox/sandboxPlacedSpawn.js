@@ -3,28 +3,41 @@ import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/E
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { applyPropBoxFootprint } from "../Props/propStrategy.js";
+import { convexFootprintHalfExtents } from "../Math/Poly2D.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
+function assetDefaultFootprintSpan(typeId) {
+    const footprint = getPropAsset(typeId)?.physics?.localFootprint;
+    if (!footprint?.length) return null;
+    return convexFootprintHalfExtents(footprint);
+}
+function footprintDiffersFromAsset(prop) {
+    const defaultSpan = assetDefaultFootprintSpan(prop.type);
+    if (!defaultSpan || prop.shape?.type !== "Polygon") return false;
+    const span = convexFootprintHalfExtents(prop.shape.vertices);
+    return span.x !== defaultSpan.x || span.y !== defaultSpan.y;
+}
 function serializePlacedProp(prop) {
     const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: resolveSandboxFaction(prop) };
-    if (prop.halfExtents) {
-        entry.width = prop.halfExtents.x * 2;
-        entry.height = prop.halfExtents.y * 2;
+    if (footprintDiffersFromAsset(prop)) {
+        const span = convexFootprintHalfExtents(prop.shape.vertices);
+        entry.width = span.x * 2;
+        entry.height = span.y * 2;
     }
     return entry;
 }
 function tryExportSpawnGroup(members, meta) {
     return tryExportPoolRackSpawnGroup(members, meta);
 }
-export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction = SANDBOX_DEFAULT_FACTION, facing = 0, halfExtents = undefined) {
+export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction = SANDBOX_DEFAULT_FACTION, facing = 0, boxHalfExtents = undefined) {
     const asset = getPropAsset(propTypeId);
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     if (isGridPassagePowerSourceSpawnAsset(asset)) throw new Error(`Passage power source "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     if (isPoolRackSpawnAsset(asset)) return spawnPoolRack(state, worldX, worldY, asset.sandbox.spawnRack, faction);
     const prop = new WorldProp(worldX, worldY, propTypeId, facing);
-    if (halfExtents) applyPropBoxFootprint(prop, halfExtents.x, halfExtents.y);
+    if (boxHalfExtents) applyPropBoxFootprint(prop, boxHalfExtents.x, boxHalfExtents.y);
     prop.faction = faction;
     addWorldPropToState(state, prop);
     return prop;

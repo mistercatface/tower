@@ -9,7 +9,6 @@ export default {
         spatialRole: "trigger",
         isKinetic: false,
         gravityImmune: true,
-        collisionShape: "circle",
         radius: DEFAULT_PIT_RADIUS,
         sinkDepth: DEFAULT_PIT_DEPTH,
         captureTolerance: DEFAULT_VOID_CAPTURE_TOLERANCE,

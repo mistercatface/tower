@@ -7,16 +7,13 @@ export const MOVING_SPEED_SQ = 0.25;
 export const ROTATING_ANGULAR_SQ = 0.08 * 0.08;
 /** Margin beyond combined entity extents for neighbor queries. */
 export const NEIGHBOR_QUERY_PAD = 15;
-/** @returns {{ x: number, y: number, angle: number, shapeType: string, shapeSpan: number, halfHx: number, halfHy: number }} */
+/** @returns {{ x: number, y: number, angle: number, shapeType: string, shapeSpan: number }} */
 export function createBroadphaseSnapshot() {
-    return { x: NaN, y: NaN, angle: NaN, shapeType: "", shapeSpan: NaN, halfHx: NaN, halfHy: NaN };
+    return { x: NaN, y: NaN, angle: NaN, shapeType: "", shapeSpan: NaN };
 }
 function entityAngle(entity) {
     if (entity._collisionFacing != null) return entity._collisionFacing;
     return entity.facing ?? entity.angle ?? 0;
-}
-function entityHalfExtents(entity) {
-    return entity._collisionFacing != null ? null : (entity._collisionHalfExtents ?? entity.halfExtents ?? null);
 }
 function shapeSpan(shape) {
     if (shape.type === "Circle") return shape.radius;
@@ -37,29 +34,15 @@ export function getBroadphaseBounds(entity) {
     const y = entity.y;
     const shape = entity.getShape();
     const angle = entityAngle(entity);
-    const halfExtents = entityHalfExtents(entity);
     const span = shapeSpan(shape);
     const snapshot = entity.broadphaseSnapshot;
-    const halfHx = halfExtents?.x ?? NaN;
-    const halfHy = halfExtents?.y ?? NaN;
-    if (
-        snapshot.x === x &&
-        snapshot.y === y &&
-        snapshot.angle === angle &&
-        snapshot.shapeType === shape.type &&
-        snapshot.shapeSpan === span &&
-        snapshot.halfHx === halfHx &&
-        snapshot.halfHy === halfHy
-    )
-        return entity.broadphaseBounds;
+    if (snapshot.x === x && snapshot.y === y && snapshot.angle === angle && snapshot.shapeType === shape.type && snapshot.shapeSpan === span) return entity.broadphaseBounds;
     snapshot.x = x;
     snapshot.y = y;
     snapshot.angle = angle;
     snapshot.shapeType = shape.type;
     snapshot.shapeSpan = span;
-    snapshot.halfHx = halfHx;
-    snapshot.halfHy = halfHy;
-    return broadphaseBoundsFromShapeInto(entity.broadphaseBounds, shape, x, y, angle, halfExtents);
+    return broadphaseBoundsFromShapeInto(entity.broadphaseBounds, shape, x, y, angle);
 }
 /** Furthest collision edge from entity center (circle radius or OBB corner distance). */
 export function entityBroadphaseExtent(entity) {

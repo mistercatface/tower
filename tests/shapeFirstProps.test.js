@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
+import { applyPropBoxFootprint, propFootprintHalfExtents } from "../Libraries/Props/propStrategy.js";
 import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 loadPropAssets();
@@ -30,8 +30,9 @@ describe("shape-first props", () => {
     it("custom box footprint can be resized after spawn", () => {
         const prop = new WorldProp(10, 20, "custom_box", 0);
         applyPropBoxFootprint(prop, 12, 5);
-        assert.equal(prop.halfExtents.x, 12);
-        assert.equal(prop.halfExtents.y, 5);
+        const span = propFootprintHalfExtents(prop);
+        assert.equal(span.x, 12);
+        assert.equal(span.y, 5);
         assert.equal(prop.getShape().vertices.length, 4);
         assert.equal(kineticFootprintArea(prop), 240);
     });

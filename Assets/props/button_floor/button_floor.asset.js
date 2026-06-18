@@ -10,7 +10,6 @@ export default {
         spatialRole: "trigger",
         isKinetic: false,
         gravityImmune: true,
-        collisionShape: "circle",
         radius: DEFAULT_BUTTON_FLOOR_RADIUS,
         buttonLinks: [],
         inputMode: DEFAULT_BUTTON_INPUT_MODE,
