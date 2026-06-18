@@ -11,11 +11,16 @@ export function mountSceneSnapshotPanel(container, controller) {
     setFormFieldName(textarea, "sceneJsonExport");
     textarea.rows = 10;
     textarea.spellcheck = false;
-    startDemoBtn.addEventListener("click", () => {
-        if (!window.confirm("Replace the current sandbox with the start scene?")) return;
-        controller.loadStartScene();
-        textarea.value = controller.exportSceneSnapshot();
-        controller.sync();
+    startDemoBtn.addEventListener("click", async () => {
+        if (!window.confirm("Replace the current sandbox with the cavern stress demo?")) return;
+        startDemoBtn.disabled = true;
+        try {
+            await controller.loadStartScene();
+            textarea.value = controller.exportSceneSnapshot();
+            controller.sync();
+        } finally {
+            startDemoBtn.disabled = false;
+        }
     });
     container.appendChild(startDemoBtn);
     container.appendChild(textarea);

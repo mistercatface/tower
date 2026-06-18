@@ -13,7 +13,7 @@ import { createSandboxPointerGestures } from "./sandboxPointerGestures.js";
 import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js";
 import { releaseButtonPointerHold } from "../Sandbox/floorButtons.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandboxSceneSnapshot.js";
-import { spawnSandboxStartScene } from "../Sandbox/sandboxStartScene.js";
+import { spawnSandboxStartScene } from "../../Apps/Editor/world/sandboxStartScene.js";
 import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
 import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandboxCapabilities.js";
 import { createAabb } from "../Math/Aabb2D.js";
@@ -376,8 +376,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.seedPlacementOrderFromState();
             session.sync();
         },
-        loadStartScene() {
-            spawnSandboxStartScene(state);
+        async loadStartScene() {
+            await spawnSandboxStartScene(state);
             resetBehaviors();
             exitWireModes();
             session.clearSelection();
