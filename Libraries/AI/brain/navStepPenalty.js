@@ -1,5 +1,5 @@
 import { packCellKey } from "../../DataStructures/CellKey.js";
-export function buildNavStepPenaltyFromSpatialMemory(spatial, { basePenalty = 6, falloff = 0.65 } = {}) {
+export function buildNavStepPenaltyFromSpatialMemory(spatial, { basePenalty, falloff }) {
     const keys = [];
     const costs = [];
     spatial.forEachNewestFirst((col, row, _seq, rankFromNewest) => {

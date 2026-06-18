@@ -38,6 +38,7 @@ export async function setupSnakeGame(state) {
         snakes: scene.snakes,
         cameraTarget: playerSnake.chain.head,
         showVisionCones: config.showVisionCones,
+        showMemoryHeatmap: config.showMemoryHeatmap,
         snakeHeadIds,
         getSegmentCount,
         tick(_dt) {

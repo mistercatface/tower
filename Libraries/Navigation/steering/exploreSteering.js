@@ -1,19 +1,26 @@
 export function cellChebyshevDistance(col0, row0, col1, row1) {
     return Math.max(Math.abs(col1 - col0), Math.abs(row1 - row0));
 }
-export function pickExploreDestination(grid, originCol, originRow, { minTiles = 8, memory = null, openCells, rng = Math.random, fringeRatio = 0.25 } = {}) {
+export function exploreFringeMinRankFromNewest(memory, fringeRatio) {
+    return Math.max(0, Math.floor(memory.capacity * (1 - fringeRatio)) - 1);
+}
+export function pickExploreDestination(grid, originCol, originRow, { minTiles, memory, openCells, rng = Math.random, fringeRatio }) {
     const far = [];
     const fresh = [];
     const fringe = [];
     const stale = [];
-    const fringeMinRank = memory ? Math.max(0, Math.floor(memory.capacity * (1 - fringeRatio)) - 1) : 0;
+    const fringeMinRank = memory ? exploreFringeMinRankFromNewest(memory, fringeRatio) : 0;
     for (let i = 0; i < openCells.length; i++) {
         const cell = openCells[i];
         if (cell.col === originCol && cell.row === originRow) continue;
         if (cellChebyshevDistance(originCol, originRow, cell.col, cell.row) < minTiles) continue;
         if (grid.isBlocked(cell.col, cell.row)) continue;
         far.push(cell);
-        if (!memory?.has(cell.col, cell.row)) {
+        if (!memory) {
+            fresh.push(cell);
+            continue;
+        }
+        if (!memory.has(cell.col, cell.row)) {
             fresh.push(cell);
             continue;
         }

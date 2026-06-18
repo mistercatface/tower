@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { cellChebyshevDistance, pickExploreDestination } from "../Libraries/Navigation/steering/exploreSteering.js";
+import { cellChebyshevDistance, pickExploreDestination, exploreFringeMinRankFromNewest } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
@@ -66,11 +66,16 @@ function snakeChainOptions() {
 }
 
 describe("explore steering", () => {
+    it("exploreFringeMinRankFromNewest selects the oldest fringeRatio slice", () => {
+        const memory = createSpatialCellMemory({ capacity: 100 });
+        assert.equal(exploreFringeMinRankFromNewest(memory, 0.25), 74);
+    });
+
     it("pickExploreDestination respects minimum tile distance", () => {
         const state = createIntentTestState();
         const grid = state.obstacleGrid;
         const openCells = collectOpenCavernCells(state);
-        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells, rng: () => 0 });
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells, rng: () => 0, fringeRatio: 0.25 });
         assert.ok(cell);
         assert.ok(cellChebyshevDistance(10, 10, cell.col, cell.row) >= 8);
     });
@@ -81,7 +86,7 @@ describe("explore steering", () => {
         const openCells = collectOpenCavernCells(state);
         const memory = createSpatialCellMemory({ capacity: 64 });
         memory.stamp(18, 10);
-        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, memory, openCells, rng: () => 0 });
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, memory, openCells, rng: () => 0, fringeRatio: 0.25 });
         assert.ok(cell);
         assert.ok(!memory.has(cell.col, cell.row));
     });
@@ -92,7 +97,7 @@ describe("explore steering", () => {
         const openCells = collectOpenCavernCells(state);
         const memory = createSpatialCellMemory({ capacity: 8 });
         memory.stamp(12, 10);
-        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 1, memory, openCells, rng: () => 0 });
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 1, memory, openCells, rng: () => 0, fringeRatio: 0.25 });
         assert.ok(cell);
         assert.ok(!memory.has(cell.col, cell.row));
     });

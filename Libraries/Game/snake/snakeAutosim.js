@@ -32,15 +32,17 @@ function resolveExploreCell(state, originCol, originRow, memory, rng) {
     const config = getSnakeGameConfig();
     const grid = state.obstacleGrid;
     const openCells = collectOpenCavernCells(state);
-    const minTiles = config.exploreMinTiles;
-    let cell = pickExploreDestination(grid, originCol, originRow, { minTiles, memory, openCells, rng, fringeRatio: config.spatialMemoryFringeRatio });
-    if (!cell && minTiles > 1) cell = pickExploreDestination(grid, originCol, originRow, { minTiles: 1, memory, openCells, rng, fringeRatio: config.spatialMemoryFringeRatio });
+    const explorePick = { memory, openCells, rng, fringeRatio: config.spatialMemoryFringeRatio };
+    let cell = pickExploreDestination(grid, originCol, originRow, { ...explorePick, minTiles: config.exploreMinTiles });
+    if (!cell && config.exploreMinTiles > config.exploreFallbackMinTiles) cell = pickExploreDestination(grid, originCol, originRow, { ...explorePick, minTiles: config.exploreFallbackMinTiles });
     if (!cell) cell = pickOpenCavernCell(openCells, { rng });
     if (cell && cell.col === originCol && cell.row === originRow) cell = pickOpenCavernCell(openCells, { excludeKeys: new Set([cavernCellKey(originCol, originRow)]), rng });
     return cell;
 }
 export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorById, eatRadius, ballType, growDirX, growDirY, rng = Math.random }) {
     const config = getSnakeGameConfig();
+    if (!behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID)) throw new Error(`Snake autosim missing behavior: ${HPA_GROUND_NAV_BEHAVIOR_ID}`);
+    if (!behaviorById.get(DIRECT_GROUND_NAV_BEHAVIOR_ID)) throw new Error(`Snake autosim missing behavior: ${DIRECT_GROUND_NAV_BEHAVIOR_ID}`);
     let tailId = null;
     let pinnedGoalId = goalPropId;
     const head = state.entityRegistry.getLive(headId);
@@ -53,7 +55,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     const resolvedGrowDirY = growDirY ?? config.growDirY;
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
     const meta = getSandboxEntityMeta(state);
-    const snakeBrain = createSnakeBrain();
+    const { brain, sync } = createSnakeBrain();
     const hpaBehavior = () => behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID);
     const directBehavior = () => behaviorById.get(DIRECT_GROUND_NAV_BEHAVIOR_ID);
     let active = false;
@@ -61,19 +63,15 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     let trackedGoalId = null;
     let exploreCellKey = null;
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
-    const syncBrain = (seeker) => {
-        snakeBrain.sync(seeker, state);
-    };
     const clearNavTargets = (seeker) => {
-        hpaBehavior()?.clearMoveTarget?.(seeker);
-        directBehavior()?.clearMoveTarget?.(seeker);
+        hpaBehavior().clearMoveTarget(seeker);
+        directBehavior().clearMoveTarget(seeker);
     };
     const resolveSeekGoal = (seeker) => {
         if (pinnedGoalId != null) {
             const pinned = state.entityRegistry.getLive(pinnedGoalId);
             if (pinned && !pinned.isDead) {
-                const vision = config.visionCone;
-                const visible = findNearestVisibleSnakeGoal(state, seeker, vision);
+                const visible = findNearestVisibleSnakeGoal(state, seeker, config.visionCone);
                 if (visible?.id === pinned.id) return pinned;
             } else pinnedGoalId = null;
         }
@@ -81,9 +79,8 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     };
     const enterSeek = (seeker, goal) => {
         const hpa = hpaBehavior();
-        if (!hpa?.setMoveTarget) throw new Error(`Ground nav behavior missing setMoveTarget: ${HPA_GROUND_NAV_BEHAVIOR_ID}`);
-        if (mode === "seek" && trackedGoalId === goal.id && hpa.hasMoveTarget?.(seeker)) return;
-        directBehavior()?.clearMoveTarget?.(seeker);
+        if (mode === "seek" && trackedGoalId === goal.id && hpa.hasMoveTarget(seeker)) return;
+        directBehavior().clearMoveTarget(seeker);
         mode = "seek";
         trackedGoalId = goal.id;
         exploreCellKey = null;
@@ -92,15 +89,14 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     };
     const enterExplore = (seeker) => {
         const hpa = hpaBehavior();
-        if (!hpa?.setMoveTarget) throw new Error(`Ground nav behavior missing setMoveTarget: ${HPA_GROUND_NAV_BEHAVIOR_ID}`);
         const grid = state.obstacleGrid;
         const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
-        snakeBrain.brain.stampArrival(col, row);
-        const cell = resolveExploreCell(state, col, row, snakeBrain.brain.spatial, rng);
+        brain.stampArrival(col, row);
+        const cell = resolveExploreCell(state, col, row, brain.spatial, rng);
         if (!cell) return;
         const key = cavernCellKey(cell.col, cell.row);
-        if (mode === "explore" && exploreCellKey === key && hpa.hasMoveTarget?.(seeker)) return;
-        directBehavior()?.clearMoveTarget?.(seeker);
+        if (mode === "explore" && exploreCellKey === key && hpa.hasMoveTarget(seeker)) return;
+        directBehavior().clearMoveTarget(seeker);
         mode = "explore";
         trackedGoalId = null;
         exploreCellKey = key;
@@ -120,7 +116,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
             exploreCellKey = null;
         }
         const hpa = hpaBehavior();
-        if (!exploreCellKey || !hpa?.hasMoveTarget?.(seeker)) enterExplore(seeker);
+        if (!exploreCellKey || !hpa.hasMoveTarget(seeker)) enterExplore(seeker);
     };
     return {
         start() {
@@ -128,10 +124,10 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
             mode = "explore";
             trackedGoalId = null;
             exploreCellKey = null;
-            snakeBrain.brain.clearMemory();
+            brain.clearMemory();
             const seeker = resolveSeeker();
             if (seeker) {
-                syncBrain(seeker);
+                sync(seeker, state);
                 refreshIntent(seeker);
             }
         },
@@ -140,7 +136,10 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
             trackedGoalId = null;
             exploreCellKey = null;
             const seeker = resolveSeeker();
-            if (seeker) clearNavTargets(seeker);
+            if (seeker) {
+                clearNavTargets(seeker);
+                seeker.navStepPenalty = null;
+            }
         },
         isActive() {
             return active;
@@ -149,22 +148,21 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
             return mode;
         },
         getBrain() {
-            return snakeBrain.brain;
+            return brain;
         },
-        tick(dt) {
+        tick(_dt) {
             if (!active) return;
             const seeker = resolveSeeker();
             if (!seeker || seeker.isDead) return;
-            syncBrain(seeker);
+            sync(seeker, state);
             const goal = resolveSeekGoal(seeker);
             if (goal) {
                 enterSeek(seeker, goal);
                 const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
                 const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
                 if (dist <= radius) {
-                    const grid = state.obstacleGrid;
-                    const goalCell = grid.worldToGrid(goal.x, goal.y);
-                    snakeBrain.brain.stampArrival(goalCell.col, goalCell.row);
+                    const goalCell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
+                    brain.stampArrival(goalCell.col, goalCell.row);
                     removeSandboxWorldProp(state, goal);
                     if (pinnedGoalId === goal.id) pinnedGoalId = null;
                     trackedGoalId = null;
@@ -185,7 +183,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
                     replenishSnakeGoals(state, headId, rng);
                     refreshIntent(seeker);
                 } else if (goal.id !== trackedGoalId) enterSeek(seeker, goal);
-                else if (!hpaBehavior()?.hasMoveTarget?.(seeker)) enterSeek(seeker, goal);
+                else if (!hpaBehavior().hasMoveTarget(seeker)) enterSeek(seeker, goal);
                 return;
             }
             refreshIntent(seeker);

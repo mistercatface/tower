@@ -31,4 +31,7 @@ export const SNAKE_GAME_DEFAULTS = {
     /** Extra local/HPA step cost on recently remembered cells (newest = full penalty). */
     navMemoryStepPenalty: 6,
     navMemoryStepFalloff: 0.65,
+    /** When no cell meets exploreMinTiles, retry with this minimum distance. */
+    exploreFallbackMinTiles: 1,
+    showMemoryHeatmap: false,
 };
