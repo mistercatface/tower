@@ -24,6 +24,8 @@
 
 2:03 PM: Multi snakes, physics needle push.
 
+3:35 PM: Prop consolidation, tinting, UI pass.
+
 ## MILESTONE LOG
 
 | DATE       | MILESTONE                                                                           |

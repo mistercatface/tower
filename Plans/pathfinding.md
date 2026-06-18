@@ -108,6 +108,53 @@ flowchart TB
 
 ---
 
+## Fundamentals checklist — textbook algorithm coverage
+
+A different lens from the feature tiers below: do the **CS-textbook building blocks** exist in the codebase? This is the "can I teach a pathfinding course from this repo" view. `[x]` = implemented and used; `[~]` = present only as a special case / derivable; `[ ]` = not in the codebase.
+
+### Graph search
+
+- [x] **Breadth-first search (BFS)** — generic toolkit `Libraries/DataStructures/gridBfs.js` (`bfsIndices`, `bfsColRowQueue`, `bfsTypedIndices`); used by flow fields, reachability, region flood-fill.
+- [x] **A\*** — `Libraries/Pathfinding/AStar.js`: octile grid (`runLocalAStarFlat`), cardinal (`runCardinalAStarFlat`), weighted abstract graph (`runAbstractAStarFlat`). Indexed min-heap, admissible heuristics.
+- [~] **Dijkstra (uniform-cost search)** — *no standalone function*, but present as special cases: flow-field BFS is unweighted Dijkstra, the distance transform is a multi-source Dijkstra map, and `runAbstractAStarFlat` with a zero heuristic *is* Dijkstra over the weighted region graph. **To add explicitly:** a `runDijkstraFlat` (A* with `h = 0`, reuse `IdxMinHeap`) for true weighted single-source costs — ~30 lines, no new infra.
+- [ ] **Greedy best-first search** — not present. **To add:** A* variant with `f = h` only (ignore `g`); useful as a fast-but-suboptimal fallback for low-priority agents. Trivial fork of the existing A*.
+- [ ] **Depth-first search (DFS)** — not used for navigation (BFS/A* cover all current needs). **To add only if** you need maze-carving or connectivity ordering; otherwise skip.
+- [ ] **Bidirectional search** — not present. **To add:** dual-frontier A* meeting in the middle; meaningful only for very long single-agent queries that HPA* already shortcuts. Low priority.
+- [ ] **Jump Point Search (JPS)** — not present (HPA* covers long-range instead). **To add:** symmetry-breaking jump scan in `runLocalAStarFlat`; biggest win on large open grids. See Tier 1.
+
+### Grid & field algorithms
+
+- [x] **Flood fill** — `floodFillRegion` (`VoronoiRegions.js`), capped region growth.
+- [x] **Distance transform / Dijkstra map** — `computeDistanceTransform` (octile BFS from walls), feeds region seeding.
+- [x] **Reachability test** — `gridReachabilityBfs.js`, `pruneUnreachableRegions` (`hpaRegionGraph.js`).
+- [x] **Flow field (vector field from BFS)** — `flowFieldBfs.js` + `FlowFieldGrid.js`, 9-direction byte encoding.
+- [x] **Line of sight / raycast** — `Libraries/Spatial/query/lineOfSight.js`, grid + wall-proxy traversal.
+- [ ] **Path smoothing (funnel / string-pull)** — not present. **To add:** post-process octile cell paths before follow; reuse `lineOfSight.js` for the visibility test. Top recommended unlock — transfers to navmesh later.
+- [ ] **Any-angle (Theta\*)** — not present. **To add:** LOS-relaxed A* parent check; alternative "smooth feel" without a mesh (Tier 13).
+
+### Data structures
+
+- [x] **Binary min-heap / priority queue** — `Libraries/DataStructures/MinHeap.js` (`MinHeap`, `IdxMinHeap`).
+- [x] **Typed-array frontier / visited stamps** — `runId`-stamped scratch arrays reused across searches (no per-query alloc).
+- [ ] **Bucketed / radix priority queue** — not present; only needed if A* heap profiling shows it. Skip until measured.
+
+### Steering primitives (Reynolds set)
+
+- [x] **Seek** — `directGroundNavBehavior.js`, `goalSeekAutosim.js`.
+- [x] **Arrive** — `steerRollToward` with `stopRadius` + `decelerateRoll` (`kineticRollActuator.js`); waypoint arrival in `hpaPathSlot.js`.
+- [x] **Path following** — `computeSabPathSteering` (waypoint seek + advance).
+- [x] **Flow following** — `flowSteering.js` (bilinear field sample).
+- [ ] **Wander** — not present. **To add:** small per-agent steering with a jittered heading target (random walk on a projected circle); cheap idle/ambient behavior for non-seeking agents. ~20 lines feeding `steerRollToward`.
+- [ ] **Flee / Evade** — not present. **To add:** negated seek / predicted-position seek; needed for predator-prey or "scatter from threat" gameplay.
+- [ ] **Pursue / Intercept** — not present. **To add:** seek toward a target's *predicted* future position using its velocity.
+- [ ] **Separation** — not present (agents only push apart via rigid-body contact, which is physics, not steering). **To add:** neighbor query + repulsion blended into desired velocity. First slice of Tier 7; representation-agnostic, survives a navmesh migration.
+- [ ] **Cohesion / Alignment (flocking)** — not present. **To add:** group-center pull + average-heading match; builds on the same neighbor query as separation.
+- [ ] **Obstacle avoidance (steering, not grid)** — not present. **To add:** short-horizon feeler/whisker raycasts (reuse `lineOfSight.js`) that nudge desired velocity around dynamic props the grid doesn't know about.
+
+> **Reading this checklist:** the **graph-search core is essentially complete** (BFS, A*, fields, the data structures) — Dijkstra and greedy are one small file each since the infra already exists. The real gaps are **steering behaviors beyond seek/arrive/follow** (wander, flee, pursue, flocking, steering-level avoidance), which is the same Tier 7 work the rest of the roadmap flags.
+
+---
+
 ## Tier 0 — Grid model & topology
 
 | Item | Status | % | Notes / modules |
@@ -456,4 +503,4 @@ tests/hpaGroundNavReplan.test.js, corridor*.test.js, snake*.test.js
 
 ---
 
-*Last updated: pathfinding tree + navmesh migration note (mirrors `physics.md` after trilogy B). Planning core is the mature half; Tier 7 local avoidance + path smoothing are the headline gaps to a Recast/Detour-class stack. Navmesh is the long-term anchor (Tier 12) but lands as a layer beside the puzzle grid, not a rewrite. Revisit percentages when smoothing or a crowd layer lands.*
+*Last updated: pathfinding tree + fundamentals checklist + navmesh migration note (mirrors `physics.md` after trilogy B). Planning core is the mature half; Tier 7 local avoidance + path smoothing are the headline gaps to a Recast/Detour-class stack. Navmesh is the long-term anchor (Tier 12) but lands as a layer beside the puzzle grid, not a rewrite. Revisit percentages when smoothing or a crowd layer lands.*
