@@ -14,5 +14,7 @@ export class SandboxWorldState {
         this.tripwireTriggeredKeys = new Set();
         /** @type {object[]} recent belt cell zone events for future train-style consumers */
         this.beltZoneEvents = [];
+        /** @type {object[]} distance and future kinetic joint definitions */
+        this.kineticConstraints = [];
     }
 }

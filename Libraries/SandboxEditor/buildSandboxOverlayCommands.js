@@ -1,6 +1,7 @@
 import { appendPathOverlayCommands } from "../Render/overlays/pathOverlayCommands.js";
 import { appendPlacePreviewOverlayCommands, resolveSandboxPlacePreview } from "../Sandbox/drawSandboxPlacePreview.js";
 import { appendButtonWireOverlayCommands } from "../Sandbox/buttonLinks.js";
+import { appendKineticConstraintOverlayCommands } from "../Sandbox/kineticConstraintOverlays.js";
 import { appendMarqueeOverlayCommands, appendPropTileCellOverlayCommands, appendSelectionOverlayCommands, queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { appendRoomGraphOverlayCommands } from "../RoomGraph/roomGraphOverlayCommands.js";
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
@@ -33,6 +34,7 @@ export function buildSandboxOverlayCommands({
         wireFromPropId: buttonWireTool.isActive() ? (session.getSelectedProp()?.id ?? null) : null,
         wireCursor: buttonWireTool.isActive() ? buttonWireTool.getCursor() : null,
     });
+    appendKineticConstraintOverlayCommands(commands, state);
     if (placePreviewWorld) {
         const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
         appendPlacePreviewOverlayCommands(commands, preview, state.obstacleGrid);

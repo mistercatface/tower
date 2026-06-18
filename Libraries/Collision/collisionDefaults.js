@@ -16,4 +16,6 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     kineticWarmStartDecay: 0.8,
     /** Area-based kinetic mass: mass = density × collision footprint area. */
     material: { densityDefault: 1.5 / 256, minMass: 0.01 },
+    /** Post-contact distance joints — separate from kinetic pair stream. */
+    kineticConstraints: { iterations: 4, velocityBias: 0.2 },
 };

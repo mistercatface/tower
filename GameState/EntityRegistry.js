@@ -1,4 +1,5 @@
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
+import { clearKineticConstraints, pruneKineticConstraintsForBody } from "../Libraries/Motion/kineticConstraints.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/Aabb2D.js";
 import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
@@ -314,6 +315,7 @@ export function removeWorldPropFromState(state, prop) {
     if (index >= 0) state.worldProps.splice(index, 1);
     state.entityRegistry.unregister(prop);
     getSandboxEntityMeta(state)?.delete(prop.id);
+    pruneKineticConstraintsForBody(state, prop.id);
     kineticSpatial.evictKineticProp(prop);
 }
 /** @param {object} state */
@@ -322,6 +324,7 @@ export function clearWorldPropsInState(state) {
     for (let i = 0; i < state.worldProps.length; i++) meta?.delete(state.worldProps[i].id);
     state.worldProps = [];
     state.entityRegistry.clear("worldProp");
+    clearKineticConstraints(state);
 }
 /** @param {object[]} worldProps @param {number} worldX @param {number} worldY @param {number} padding */
 function nearestWorldPropInList(worldProps, worldX, worldY, padding) {

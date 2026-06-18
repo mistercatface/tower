@@ -1,5 +1,6 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
+import { resolveKineticConstraintPass } from "../../Motion/kineticConstraintSolver.js";
 import { resolveKineticContactPass } from "./kineticContactSolver.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
@@ -46,6 +47,7 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
     if (hasActiveBodies)
         for (let iter = 0; iter < kineticIterations; iter++) {
             resolveKineticContactPass(spatialFrame, state);
+            resolveKineticConstraintPass(spatialFrame, state);
             for (let i = 0; i < activeBodies.length; i++) {
                 const prop = activeBodies[i];
                 if (!prop.strategy?.isKinetic) continue;
