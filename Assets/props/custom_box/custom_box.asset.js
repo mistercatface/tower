@@ -12,6 +12,7 @@ export default {
         ],
         wallPhysics: { restitution: 0.15, friction: 0.8 },
         fracture: true,
+        fractureMode: "chunk",
     },
     visuals: {
         colors: {

@@ -1,25 +1,28 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { resolveKineticContactPass } from "./kineticContactSolver.js";
-import { SatCollision } from "./SatCollision.js";
+import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
 /** @param {object} prop @param {object[]} wallCandidates */
 function kineticOverlapsWallSegment(prop, wallCandidates) {
-    const shape = prop.getShape();
-    if (shape.type === "Circle") {
-        const radiusSq = prop.radius * prop.radius;
+    const parts = getEntityCollisionParts(prop);
+    for (let p = 0; p < parts.length; p++) {
+        const shape = parts[p];
+        if (shape.type === "Circle") {
+            const radiusSq = shape.radius * shape.radius;
+            for (let i = 0; i < wallCandidates.length; i++) {
+                const seg = wallCandidates[i];
+                if (seg.isDead) continue;
+                if (distanceSqToSegment(seg, prop.x, prop.y) <= radiusSq) return true;
+            }
+            continue;
+        }
         for (let i = 0; i < wallCandidates.length; i++) {
             const seg = wallCandidates[i];
             if (seg.isDead) continue;
-            if (distanceSqToSegment(seg, prop.x, prop.y) <= radiusSq) return true;
+            const segShape = ensureWallSegmentPolygonShape(seg);
+            if (SatCollision.checkCollision(prop, shape, seg, segShape)) return true;
         }
-        return false;
-    }
-    for (let i = 0; i < wallCandidates.length; i++) {
-        const seg = wallCandidates[i];
-        if (seg.isDead) continue;
-        const segShape = ensureWallSegmentPolygonShape(seg);
-        if (SatCollision.checkCollision(prop, shape, seg, segShape)) return true;
     }
     return false;
 }

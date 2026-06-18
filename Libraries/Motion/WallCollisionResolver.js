@@ -19,7 +19,12 @@ export class WallCollisionResolver {
             return false;
         }
         const wp = entity.strategy?.wallPhysics;
-        const { collided } = resolveBodyAgainstWallSegments(entity, entity.getShape(), candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9 });
+        const parts = entity.getCollisionParts?.() ?? [entity.getShape()];
+        let collided = false;
+        for (let i = 0; i < parts.length; i++) {
+            const result = resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9 });
+            if (result.collided) collided = true;
+        }
         if (collided) wakeKineticBody(entity);
         entity._wallResolvedCollided = collided;
         return collided;

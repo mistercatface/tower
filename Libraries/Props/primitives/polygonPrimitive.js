@@ -12,9 +12,7 @@ export function createPolygonPrimitive(visuals) {
             faceColors: { shadow: colors.sideShadow, mid: colors.side, highlight: colors.top },
             backFaceColors: { shadow: colors.sideShadow, mid: colors.sideShadow, highlight: colors.side },
             bottomColors: colors.bottom ? { light: colors.sideShadow, mid: colors.bottom, dark: colors.sideShadow } : null,
-            topColors: colors.bottom
-                ? { light: colors.topHighlight ?? colors.top, mid: colors.top, dark: colors.side }
-                : { light: colors.top, mid: colors.top, dark: colors.side },
+            topColors: colors.bottom ? { light: colors.topHighlight ?? colors.top, mid: colors.top, dark: colors.side } : { light: colors.top, mid: colors.top, dark: colors.side },
             stroke: colors.stroke,
             seamStroke: colors.seamStroke,
             lineWidth: lineWidth ?? 1.0,
@@ -22,6 +20,9 @@ export function createPolygonPrimitive(visuals) {
             topCross,
         };
         if (prop.poxels?.length) drawExtrudedPoxelMesh(ctx, prop, px, py, drawOpts);
-        else drawExtrudedConvexPolygon(ctx, prop, px, py, drawOpts);
+        else {
+            const parts = prop.collisionParts?.length ? prop.collisionParts : [shape];
+            for (let i = 0; i < parts.length; i++) drawExtrudedConvexPolygon(ctx, prop, px, py, { ...drawOpts, localVerts: parts[i].vertices });
+        }
     };
 }

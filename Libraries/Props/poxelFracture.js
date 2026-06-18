@@ -462,6 +462,14 @@ export function buildGeometryFromPoxelParts(localParts) {
     const { signedArea } = calculateCentroid(centeredVerts);
     return finalizeFootprintGeometry(centeredVerts, shiftedParts, signedArea, { cx, cy });
 }
+export function buildGeometryFromPartsAtOrigin(localParts) {
+    const parts = localParts.map((p) => ({ vertices: p.vertices }));
+    const boundaryPoints = getOuterBoundary(parts);
+    const footprintVertices = new Float32Array(boundaryPoints.length);
+    footprintVertices.set(boundaryPoints);
+    const { signedArea } = calculateCentroid(footprintVertices);
+    return finalizeFootprintGeometry(footprintVertices, parts, signedArea, { cx: 0, cy: 0 });
+}
 export function splitPoxels(poxels, localHitX, localHitY, impactForce = 5) {
     if (!poxels || poxels.length <= 1) return [poxels];
     const damageRadius = impactForce * 0.05;

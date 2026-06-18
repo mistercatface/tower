@@ -3,7 +3,7 @@ import { applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { initWorldPropShape, withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
-import { applyPoxelGeometryToProp, applyShardGeometryToProp } from "../Libraries/Props/propFracture.js";
+import { applyChunkGeometryToProp, applyPoxelGeometryToProp, applyShardGeometryToProp } from "../Libraries/Props/propFracture.js";
 import { GLASS_FRACTURE_COOLDOWN_STEPS } from "../Libraries/Props/glassFracture.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
@@ -62,6 +62,11 @@ export class WorldProp extends Entity {
         }
         return this.shape;
     }
+    getCollisionParts() {
+        if (this.collisionParts?.length) return this.collisionParts;
+        const shape = this.getShape();
+        return shape ? [shape] : [];
+    }
     get angle() {
         return this.facing;
     }
@@ -78,11 +83,12 @@ export class WorldProp extends Entity {
     spawnFractureFragments(state, fracture, spatialFrame) {
         const cos = Math.cos(this.facing);
         const sin = Math.sin(this.facing);
+        const applyGeometry = this.strategy.fractureMode === "chunk" ? applyChunkGeometryToProp : applyPoxelGeometryToProp;
         for (let i = 0; i < fracture.debris.length; i++) {
             const geom = fracture.debris[i];
             const world = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
             const frag = new WorldProp(world.x, world.y, this.type, this.facing);
-            applyPoxelGeometryToProp(frag, geom);
+            applyGeometry(frag, geom);
             frag.vx = this.vx;
             frag.vy = this.vy;
             frag.angularVelocity = this.angularVelocity;

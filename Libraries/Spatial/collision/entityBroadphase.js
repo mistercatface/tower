@@ -1,7 +1,7 @@
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
 import { circlesOverlap } from "./overlap.js";
-import { SatCollision } from "./SatCollision.js";
+import { checkEntityPairCollision, getEntityCollisionParts, SatCollision } from "./SatCollision.js";
 export const MOVING_SPEED_SQ = 0.25;
 /** |angularVelocity| above this counts as kinematically active (rad/s). */
 export const ROTATING_ANGULAR_SQ = 0.08 * 0.08;
@@ -27,6 +27,13 @@ function ensureBroadphaseCache(entity) {
 export function invalidateBroadphaseBounds(entity) {
     if (entity.broadphaseSnapshot) entity.broadphaseSnapshot.x = NaN;
 }
+function entityCollisionSpan(entity) {
+    const parts = getEntityCollisionParts(entity);
+    if (parts.length <= 1) return shapeSpan(parts[0]);
+    let maxSpan = 0;
+    for (let i = 0; i < parts.length; i++) maxSpan = Math.max(maxSpan, shapeSpan(parts[i]));
+    return maxSpan;
+}
 /** @param {object} entity */
 export function getBroadphaseBounds(entity) {
     ensureBroadphaseCache(entity);
@@ -34,7 +41,7 @@ export function getBroadphaseBounds(entity) {
     const y = entity.y;
     const shape = entity.getShape();
     const angle = entityAngle(entity);
-    const span = shapeSpan(shape);
+    const span = entity.collisionParts?.length ? entityCollisionSpan(entity) : shapeSpan(shape);
     const snapshot = entity.broadphaseSnapshot;
     if (snapshot.x === x && snapshot.y === y && snapshot.angle === angle && snapshot.shapeType === shape.type && snapshot.shapeSpan === span) return entity.broadphaseBounds;
     snapshot.x = x;
@@ -64,15 +71,12 @@ export function isKinematicallyActive(entity) {
     return isMovingEntity(entity) || isRotatingEntity(entity);
 }
 export function pairShapeOverlap(a, b) {
-    const shapeA = a.getShape?.();
-    const shapeB = b.getShape?.();
-    if (!shapeA || !shapeB) return false;
-    return SatCollision.checkCollision(a, shapeA, b, shapeB) != null;
+    return checkEntityPairCollision(a, b) != null;
 }
 function pairRestingOverlap(a, b) {
-    const shapeA = a.getShape?.();
-    const shapeB = b.getShape?.();
-    if (shapeA?.type === "Circle" && shapeB?.type === "Circle") return circlesOverlap(a, b);
+    const partsA = getEntityCollisionParts(a);
+    const partsB = getEntityCollisionParts(b);
+    if (partsA.length === 1 && partsB.length === 1 && partsA[0].type === "Circle" && partsB[0].type === "Circle") return circlesOverlap(a, b);
     return pairShapeOverlap(a, b);
 }
 export function pairBroadphaseOverlap(a, b) {

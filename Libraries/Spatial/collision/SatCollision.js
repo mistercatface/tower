@@ -9,6 +9,23 @@ function entityFacing(entity) {
     if (entity._collisionFacing != null) return entity._collisionFacing;
     return entity.facing ?? entity.angle ?? 0;
 }
+export function getEntityCollisionParts(entity) {
+    if (entity.collisionParts?.length) return entity.collisionParts;
+    const shape = entity.getShape?.() ?? entity.shape;
+    return shape ? [shape] : [];
+}
+export function checkEntityPairCollision(bodyA, bodyB) {
+    const partsA = getEntityCollisionParts(bodyA);
+    const partsB = getEntityCollisionParts(bodyB);
+    let best = null;
+    for (let i = 0; i < partsA.length; i++)
+        for (let j = 0; j < partsB.length; j++) {
+            const info = SatCollision.checkCollision(bodyA, partsA[i], bodyB, partsB[j]);
+            if (!info) continue;
+            if (!best || info.overlap > best.info.overlap) best = { info, shapeA: partsA[i], shapeB: partsB[j] };
+        }
+    return best;
+}
 export class SatCollision {
     /**
      * @returns {Object|null} Collision info { overlap, nx, ny } pointing from A to B, or null if no collision.

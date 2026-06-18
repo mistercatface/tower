@@ -2,10 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { bakePoxelOutline, buildGeometryFromPoxelParts, localBoxOutline, splitPoxels } from "../Libraries/Props/poxelFracture.js";
-import { splitFootprintIntoComponents } from "../Libraries/Props/propFracture.js";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
-import { WorldProp } from "../Entities/WorldProp.js";
-loadPropAssets();
+
 describe("poxel fracture", () => {
     it("bakes multiple poxels from a box outline", () => {
         const geom = bakePoxelOutline(localBoxOutline(8, 8));
@@ -29,21 +26,5 @@ describe("poxel fracture", () => {
         const geom = bakePoxelOutline(localBoxOutline(8, 8));
         const components = splitPoxels(geom.poxels, 0, 0, 80);
         assert.ok(components.length > 1);
-    });
-    it("splitFootprintIntoComponents forceExplode yields one fragment per poxel", () => {
-        const prop = new WorldProp(0, 0, "crate", 0);
-        assert.ok(prop.poxels.length > 1);
-        const fragments = splitFootprintIntoComponents(prop, 0, 0, 20, true);
-        assert.equal(fragments.length, prop.poxels.length);
-        for (const frag of fragments) {
-            assert.ok(frag.poxels.length >= 1);
-            assert.ok(frag.footprintArea > 0);
-        }
-    });
-    it("fracture crate init builds poxels from localFootprint", () => {
-        const prop = new WorldProp(0, 0, "crate", 0);
-        assert.ok(prop.strategy.fracture);
-        assert.ok(prop.poxels.length > 1);
-        assert.equal(prop.shape.type, "Polygon");
     });
 });

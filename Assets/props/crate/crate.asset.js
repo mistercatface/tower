@@ -12,6 +12,7 @@ export default {
         ],
         wallPhysics: { restitution: 0.15, friction: 0.8 },
         fracture: true,
+        fractureMode: "chunk",
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 8, randomRange: 17 },
     },
     visuals: {

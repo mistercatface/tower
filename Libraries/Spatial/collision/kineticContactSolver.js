@@ -5,7 +5,7 @@ import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
 import { allowsKineticCollisionPair, pairBroadphaseOverlap } from "./entityBroadphase.js";
 import { separateAlongNormal, separateCoincidentCirclePair } from "./penetration.js";
-import { SatCollision } from "./SatCollision.js";
+import { checkEntityPairCollision } from "./SatCollision.js";
 const MAX_CONTACTS = 4096;
 const INNER_SOLVE_ITERATIONS = 4;
 const PAIR_KEY_SCALE = 1_000_000;
@@ -138,25 +138,24 @@ function contactLeverArms(bodyA, bodyB, shapeA, shapeB, info) {
     return { rax: cx - bodyA.x, ray: cy - bodyA.y, rbx: cx - bodyB.x, rby: cy - bodyB.y };
 }
 function detectAndSeparateContact(bodyA, bodyB) {
-    const shapeA = bodyA.getShape();
-    const shapeB = bodyB.getShape();
+    const hit = checkEntityPairCollision(bodyA, bodyB);
+    if (!hit) return null;
     const massA = massFromBody(bodyA);
     const massB = massFromBody(bodyB);
     const pinnedA = bodyPinnedForContact(bodyA);
     const pinnedB = bodyPinnedForContact(bodyB);
-    const info = SatCollision.checkCollision(bodyA, shapeA, bodyB, shapeB);
-    if (!info) return null;
+    const info = hit.info;
     if (info.coincident) {
         separateCoincidentCirclePair(bodyA, bodyB, info.overlap, massA, massB, pinnedA, pinnedB);
         return null;
     }
     separateAlongNormal(bodyA, bodyB, info.nx, info.ny, info.overlap, massA, massB, pinnedA, pinnedB);
-    return info;
+    return { ...info, shapeA: hit.shapeA, shapeB: hit.shapeB };
 }
 function appendContact(contacts, bodyA, bodyB, info, preDvx, preDvy) {
     if (contacts.count >= MAX_CONTACTS) return;
-    const shapeA = bodyA.getShape();
-    const shapeB = bodyB.getShape();
+    const shapeA = info.shapeA ?? bodyA.getShape();
+    const shapeB = info.shapeB ?? bodyB.getShape();
     const arms = contactLeverArms(bodyA, bodyB, shapeA, shapeB, info);
     const i = contacts.count++;
     contacts.bodyA[i] = bodyA;

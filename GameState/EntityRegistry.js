@@ -35,25 +35,32 @@ function worldPropFootprintInto(out, prop, shape) {
     return out;
 }
 export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
-    const shape = prop.getShape();
-    const centerDistSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
-    if (shape.type === "Circle") {
-        const r = shape.radius + padding;
-        return centerDistSq <= r * r;
-    }
-    if (shape.type === "Polygon") {
-        const worldPoly = worldPropFootprintInto(PICK_WORLD_POLY, prop, shape);
-        if (pointInPolygon(worldX, worldY, worldPoly)) return true;
-        if (padding <= 0) return false;
-        const padSq = padding * padding;
-        for (let i = 0, j = worldPoly.length - 1; i < worldPoly.length; j = i++) {
-            const a = worldPoly[j];
-            const b = worldPoly[i];
-            if (distanceSqToLineSegment(worldX, worldY, a.x, a.y, b.x, b.y) <= padSq) return true;
+    const parts = prop.getCollisionParts?.() ?? [prop.getShape()];
+    let sawPolygon = false;
+    for (let p = 0; p < parts.length; p++) {
+        const shape = parts[p];
+        if (shape.type === "Circle") {
+            const r = shape.radius + padding;
+            const centerDistSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
+            if (centerDistSq <= r * r) return true;
+            continue;
         }
-        return false;
+        if (shape.type === "Polygon") {
+            sawPolygon = true;
+            const worldPoly = worldPropFootprintInto(PICK_WORLD_POLY, prop, shape);
+            if (pointInPolygon(worldX, worldY, worldPoly)) return true;
+            if (padding <= 0) continue;
+            const padSq = padding * padding;
+            for (let i = 0, j = worldPoly.length - 1; i < worldPoly.length; j = i++) {
+                const a = worldPoly[j];
+                const b = worldPoly[i];
+                if (distanceSqToLineSegment(worldX, worldY, a.x, a.y, b.x, b.y) <= padSq) return true;
+            }
+        }
     }
+    if (sawPolygon) return false;
     const r = (prop.radius ?? 0) + padding;
+    const centerDistSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
     return centerDistSq <= r * r;
 }
 /** @param {QueryViewCriteria} criteria */

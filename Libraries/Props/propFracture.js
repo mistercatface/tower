@@ -5,11 +5,15 @@ import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphas
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { bakePoxelOutline, buildGeometryFromPoxelParts, splitPoxels } from "./poxelFracture.js";
-import { GLASS_FRACTURE_IMPACT_THRESHOLD, GLASS_FRACTURE_COOLDOWN_STEPS, minShardAreaForPolygon, shatterGlassPolygon } from "./glassFracture.js";
+import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts, splitChunks } from "./chunkFracture.js";
+import { GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon } from "./glassFracture.js";
 export const FRACTURE_MIN_PIECE_SIZE = 5;
 export const FRACTURE_IMPACT_THRESHOLD = 12;
 function isGlassFracture(prop) {
     return prop?.strategy?.fractureMode === "glass";
+}
+function isChunkFracture(prop) {
+    return prop?.strategy?.fractureMode === "chunk";
 }
 function glassFootprintArea(prop) {
     if (prop.footprintArea != null) return prop.footprintArea;
@@ -31,6 +35,7 @@ export function canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
     const shape = prop.getShape?.() ?? prop.shape;
     const { x, y } = shape?.type === "Polygon" ? convexFootprintHalfExtents(shape.vertices) : { x: prop.radius, y: prop.radius };
     if (x * 2 < minSize * 2 || y * 2 < minSize * 2) return false;
+    if (isChunkFracture(prop)) return Boolean(prop.chunks && prop.chunks.length > 1);
     return Boolean(prop.poxels && prop.poxels.length > 1);
 }
 function flatVertsFromShape(prop) {
@@ -44,33 +49,56 @@ function flatVertsFromShape(prop) {
 }
 export function initFractureFootprint(prop) {
     if (isGlassFracture(prop)) return;
+    if (isChunkFracture(prop)) {
+        applyChunkGeometryToProp(prop, bakeChunkOutline(flatVertsFromShape(prop)));
+        return;
+    }
     applyPoxelGeometryToProp(prop, bakePoxelOutline(flatVertsFromShape(prop)));
 }
-export function applyPoxelGeometryToProp(prop, geometry) {
+function applyFractureGeometryToProp(prop, geometry) {
     prop.footprintVertices = geometry.footprintVertices;
-    prop.poxels = geometry.poxels;
     prop.footprintArea = geometry.footprintArea;
     prop.radius = geometry.boundingRadius;
     const count = geometry.footprintVertices.length / 2;
     const verts = [];
     for (let i = 0; i < count; i++) verts.push({ x: geometry.footprintVertices[i * 2], y: geometry.footprintVertices[i * 2 + 1] });
     prop.shape = new PolygonShape(verts);
+    invalidateBroadphaseBounds(prop);
+    syncKineticRigidBody(prop);
+}
+export function applyPoxelGeometryToProp(prop, geometry) {
+    prop.poxels = geometry.poxels;
+    prop.chunks = undefined;
+    prop.collisionParts = undefined;
+    applyFractureGeometryToProp(prop, geometry);
+}
+export function applyChunkGeometryToProp(prop, geometry) {
+    prop.chunks = geometry.chunks;
+    prop.poxels = undefined;
+    prop.collisionParts = geometry.collisionParts;
+    prop.footprintVertices = geometry.footprintVertices;
+    prop.footprintArea = geometry.footprintArea;
+    prop.radius = geometry.boundingRadius;
+    prop.shape = geometry.collisionParts[0];
     invalidateBroadphaseBounds(prop);
     syncKineticRigidBody(prop);
 }
 export function applyShardGeometryToProp(prop, geometry) {
-    prop.footprintVertices = geometry.footprintVertices;
     prop.poxels = undefined;
-    prop.footprintArea = geometry.footprintArea;
-    prop.radius = geometry.boundingRadius;
-    const count = geometry.footprintVertices.length / 2;
-    const verts = [];
-    for (let i = 0; i < count; i++) verts.push({ x: geometry.footprintVertices[i * 2], y: geometry.footprintVertices[i * 2 + 1] });
-    prop.shape = new PolygonShape(verts);
-    invalidateBroadphaseBounds(prop);
-    syncKineticRigidBody(prop);
+    prop.chunks = undefined;
+    prop.collisionParts = undefined;
+    applyFractureGeometryToProp(prop, geometry);
 }
 export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactForce, forceExplode = false) {
+    if (isChunkFracture(prop)) {
+        if (!prop.chunks?.length) return [];
+        let components = splitChunks(prop.chunks, localHitX, localHitY, impactForce);
+        if (forceExplode && prop.chunks.length > 1) components = prop.chunks.map((chunk) => [chunk]);
+        return components.map((comp) => {
+            const parts = comp.map((chunk) => ({ vertices: chunk.vertices }));
+            return buildGeometryFromChunkParts(parts);
+        });
+    }
     if (!prop.poxels?.length) return [];
     let components = splitPoxels(prop.poxels, localHitX, localHitY, impactForce);
     if (forceExplode && prop.poxels.length > 1) components = prop.poxels.map((poxel) => [poxel]);
@@ -100,10 +128,19 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
     if (!canFracturePropSplit(prop)) return null;
     const local = worldHitToPropLocal(prop, worldHitX, worldHitY);
-    const components = splitFootprintIntoComponents(prop, local.x, local.y, impactForce, false);
-    if (components.length <= 1) return null;
     const originX = prop.x;
     const originY = prop.y;
+    if (isChunkFracture(prop)) {
+        let components = splitChunks(prop.chunks, local.x, local.y, impactForce);
+        if (components.length <= 1) return null;
+        components.sort((a, b) => b.length - a.length);
+        const largestParts = components[0].map((chunk) => ({ vertices: chunk.vertices }));
+        const debris = components.slice(1).map((comp) => buildGeometryFromChunkParts(comp.map((chunk) => ({ vertices: chunk.vertices }))));
+        applyChunkGeometryToProp(prop, buildChunkGeometryAtPropOrigin(largestParts));
+        return { debris, originX, originY, facing: prop.facing };
+    }
+    const components = splitFootprintIntoComponents(prop, local.x, local.y, impactForce, false);
+    if (components.length <= 1) return null;
     const cos = Math.cos(prop.facing);
     const sin = Math.sin(prop.facing);
     const largest = components[0];

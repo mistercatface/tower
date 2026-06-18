@@ -26,6 +26,23 @@ describe("bodyMass", () => {
         assert.ok(large.mass > small.mass);
         assert.ok(Math.abs(large.mass / small.mass - 4) < 1e-6);
     });
+    it("kineticFootprintArea uses stored material area when collision hull is larger", () => {
+        const body = {
+            strategy: {},
+            footprintArea: 100,
+            shape: {
+                type: "Polygon",
+                vertices: [
+                    { x: -10, y: -10 },
+                    { x: 10, y: -10 },
+                    { x: 10, y: 10 },
+                    { x: -10, y: 10 },
+                ],
+            },
+        };
+        assert.equal(kineticFootprintArea(body), 100);
+    });
+
     it("derives circle mass from density and radius", () => {
         const body = { strategy: { density: 0.01 }, radius: 10, shape: { type: "Circle", radius: 10 } };
         syncKineticRigidBody(body);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { pointInPolygon, rectCorners, rotatePoint, rotateXY, rotateXYInto, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
+import { convexHull2D, pointInPolygon, rectCorners, rotatePoint, rotateXY, rotateXYInto, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { assertNear, assertPointNear } from "./mathHarness.js";
 describe("Poly2D.rotateXY", () => {
     it("rotates with precomputed trig", () => {
@@ -24,6 +24,29 @@ describe("Poly2D.transformPoint2DInto", () => {
         const sin = Math.sin(Math.PI / 2);
         const hit = transformPoint2DInto({ x: 0, y: 0 }, 5, 5, 2, 0, cos, sin);
         assertPointNear(hit, 5, 7);
+    });
+});
+describe("Poly2D.convexHull2D", () => {
+    it("wraps an L-shaped point set into a convex ring", () => {
+        const hull = convexHull2D([
+            { x: -4, y: -4 },
+            { x: 4, y: -4 },
+            { x: 4, y: 0 },
+            { x: 0, y: 0 },
+            { x: 0, y: 4 },
+            { x: -4, y: 4 },
+        ]);
+        assert.equal(hull.length, 5);
+        assert.equal(hull[0].x, -4);
+        assert.equal(hull[0].y, -4);
+        assert.equal(hull[1].x, 4);
+        assert.equal(hull[1].y, -4);
+        assert.equal(hull[2].x, 4);
+        assert.equal(hull[2].y, 0);
+        assert.equal(hull[3].x, 0);
+        assert.equal(hull[3].y, 4);
+        assert.equal(hull[4].x, -4);
+        assert.equal(hull[4].y, 4);
     });
 });
 describe("Poly2D.rectCorners", () => {
