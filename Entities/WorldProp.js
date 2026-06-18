@@ -3,6 +3,9 @@ import { applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { initWorldPropShape, withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
+import { applyPoxelGeometryToProp } from "../Libraries/Props/propFracture.js";
+import { addWorldPropToState } from "../GameState/EntityRegistry.js";
+import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { WorldPropVoidSinkState } from "./worldPropVoidSinkState.js";
@@ -70,6 +73,21 @@ export class WorldProp extends Entity {
     }
     needsWallCollision() {
         return speedSqXY(this.vx, this.vy) > MOVING_SPEED_SQ || isRotatingEntity(this);
+    }
+    spawnFractureFragments(state, fracture) {
+        const cos = Math.cos(this.facing);
+        const sin = Math.sin(this.facing);
+        for (let i = 0; i < fracture.debris.length; i++) {
+            const geom = fracture.debris[i];
+            const world = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
+            const frag = new WorldProp(world.x, world.y, this.type, this.facing);
+            applyPoxelGeometryToProp(frag, geom);
+            frag.vx = this.vx;
+            frag.vy = this.vy;
+            frag.angularVelocity = this.angularVelocity;
+            addWorldPropToState(state, frag);
+            wakeKineticBody(frag);
+        }
     }
     update(dt, state, spatialFrame) {
         this.ageMs += dt;

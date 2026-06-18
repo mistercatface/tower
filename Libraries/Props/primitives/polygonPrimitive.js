@@ -1,12 +1,13 @@
-import { drawExtrudedConvexPolygon } from "../../Render/Props3D/SolidDraw.js";
+import { drawExtrudedConvexPolygon, drawPoxelSeams } from "../../Render/Props3D/SolidDraw.js";
 export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
     return (ctx, prop, px, py) => {
         const shape = prop.shape ?? prop.getShape?.();
         if (shape?.type !== "Polygon") return;
+        const height = world?.height ?? 12;
         drawExtrudedConvexPolygon(ctx, prop, px, py, {
             localVerts: shape.vertices,
-            height: world?.height ?? 12,
+            height,
             facing: prop.facing,
             faceColors: { shadow: colors.sideShadow, mid: colors.side, highlight: colors.top },
             backFaceColors: { shadow: colors.sideShadow, mid: colors.sideShadow, highlight: colors.side },
@@ -17,5 +18,6 @@ export function createPolygonPrimitive(visuals) {
             plankTs,
             topCross,
         });
+        drawPoxelSeams(ctx, prop, px, py, height);
     };
 }

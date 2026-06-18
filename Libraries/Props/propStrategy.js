@@ -1,4 +1,5 @@
 import { getDefaultPropQuantizeSteps } from "../../Core/GamePropQuantizeSettings.js";
+import { initFractureFootprint } from "./propFracture.js";
 import { boxLocalFootprint, convexFootprintHalfExtents } from "../Math/Poly2D.js";
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
@@ -9,7 +10,8 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     prop.shape = new PolygonShape(boxLocalFootprint(hx, hy));
     prop.radius = prop.shape.getBoundingRadius();
     invalidateBroadphaseBounds(prop);
-    if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
+    if (prop.strategy?.fracture) initFractureFootprint(prop);
+    else if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
 }
 export function initWorldPropShape(prop) {
     if (typeof prop.strategy.syncCollisionShape === "function") {
@@ -22,6 +24,7 @@ export function initWorldPropShape(prop) {
         const verts = footprint.map((v) => ({ x: v.x, y: v.y }));
         prop.shape = new PolygonShape(verts);
         prop.radius = prop.shape.getBoundingRadius();
+        if (prop.strategy.fracture) initFractureFootprint(prop);
         return;
     }
     prop.radius = prop.strategy.radius ?? 0;
@@ -35,7 +38,11 @@ export function propFootprintHalfExtents(prop) {
 }
 function propShapeFootprintKey(prop) {
     const shape = prop.getShape?.() ?? prop.shape;
-    if (shape?.type === "Polygon") return shape.vertices.map((v) => `${Math.round(v.x)},${Math.round(v.y)}`).join("_");
+    if (shape?.type === "Polygon") {
+        let key = shape.vertices.map((v) => `${Math.round(v.x)},${Math.round(v.y)}`).join("_");
+        if (prop.poxels?.length) key += `_pv${prop.poxels.length}`;
+        return key;
+    }
     const radius = shape?.type === "Circle" ? shape.radius : (prop.radius ?? 0);
     return `c${Math.round(radius)}`;
 }

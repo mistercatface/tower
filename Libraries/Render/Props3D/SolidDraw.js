@@ -9,7 +9,9 @@ import {
     isFaceTowardViewer,
     createSideGradient,
     projectVertical,
+    projectWorldPointAtHeight,
 } from "../../Spatial/iso/IsometricProjection.js";
+import { elevationCameraFromViewer } from "../../Spatial/iso/ElevationCamera.js";
 import { traceClosedPolygon, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
@@ -207,4 +209,31 @@ export function drawExtrudedConvexPolygon(
         traceSegment(ctx, (body.topCorners[0].x + body.topCorners[1].x) / 2, body.topCorners[0].y, (body.topCorners[2].x + body.topCorners[3].x) / 2, body.topCorners[2].y);
         ctx.stroke();
     }
+}
+export function drawPoxelSeams(ctx, prop, px, py, height) {
+    if (!prop.poxels || prop.poxels.length <= 1) return;
+    const facing = prop.facing ?? 0;
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    const camera = elevationCameraFromViewer(px, py);
+    ctx.save();
+    ctx.strokeStyle = "rgba(0,0,0,0.28)";
+    ctx.lineWidth = 0.6;
+    ctx.lineJoin = "round";
+    for (let p = 0; p < prop.poxels.length; p++) {
+        const v = prop.poxels[p].vertices;
+        ctx.beginPath();
+        for (let j = 0; j <= 3; j++) {
+            const idx = j % 3;
+            const lx = v[idx * 2];
+            const ly = v[idx * 2 + 1];
+            const wx = prop.x + lx * cos - ly * sin;
+            const wy = prop.y + lx * sin + ly * cos;
+            const pt = projectWorldPointAtHeight(wx, wy, height, camera);
+            if (j === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+    }
+    ctx.restore();
 }
