@@ -1,6 +1,10 @@
 import { navHasPath } from "./navSession.js";
 export const REPLAN_TARGET_MOVE_PX = 64;
 export const REPLAN_OFF_PATH_COOLDOWN_MS = 250;
+export const REPLAN_PRIORITY_TARGET = 4;
+export const REPLAN_PRIORITY_VISIBLE = 3;
+export const REPLAN_PRIORITY_NORMAL = 2;
+export const REPLAN_PRIORITY_STUCK_OFFSCREEN = 1;
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @returns {{ obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, startX: number, startY: number, targetX: number, targetY: number, nowMs: number, graphEpoch: number }}
@@ -37,10 +41,23 @@ export function offPathReplanDue(steering, navState, nowMs, cooldownMs = REPLAN_
     return navHasPath(navState) && steering.offPath && nowMs - navState.lastOffPathReplan >= cooldownMs;
 }
 /** @param {import("./navSession.js").NavSessionState} navState */
-export function sandboxReplanDue(navState, pendingTargetReplan, inFlight, targetX, targetY) {
-    if (inFlight) return false;
-    if (pendingTargetReplan) return true;
-    if (!navState.pathLen) return true;
+export function sandboxReplanReason(navState, pendingTargetReplan, inFlight, targetX, targetY) {
+    if (inFlight) return null;
+    if (pendingTargetReplan) return "targetChange";
+    if (!navState.pathLen) return "noPath";
     const targetMovedPx = navState.lastTargetX == null || navState.lastTargetY == null ? Infinity : Math.hypot(targetX - navState.lastTargetX, targetY - navState.lastTargetY);
-    return targetMovedPx >= REPLAN_TARGET_MOVE_PX;
+    if (targetMovedPx >= REPLAN_TARGET_MOVE_PX) return "targetMoved";
+    return null;
+}
+export function sandboxReplanAllowed(reason, isVisible, stuckFrames, stuckReplanFrames) {
+    if (reason === "targetChange") return true;
+    if (reason === "noPath") return isVisible || stuckFrames > stuckReplanFrames;
+    if (reason === "targetMoved") return obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames);
+    return false;
+}
+export function replanPriorityFor(reason, isVisible) {
+    if (reason === "targetChange") return REPLAN_PRIORITY_TARGET;
+    if (!isVisible) return REPLAN_PRIORITY_STUCK_OFFSCREEN;
+    if (reason === "noPath" || reason === "stuck" || reason === "offPath") return REPLAN_PRIORITY_VISIBLE;
+    return REPLAN_PRIORITY_NORMAL;
 }
