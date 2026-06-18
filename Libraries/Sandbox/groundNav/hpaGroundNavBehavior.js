@@ -49,19 +49,15 @@ export function createHpaGroundNavBehavior(state) {
             run.wasOnBelt = true;
             return;
         }
+        let steering = null;
         if (run.wasOnBelt) {
             run.wasOnBelt = false;
             run.hpaNav.reset(state);
             run.hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
-        } else run.hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
-        const steering = run.hpaNav.getSteering(
-            prop,
-            steerTarget.x,
-            steerTarget.y,
-            { ...state.navigation.settings, pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5), arrivalDistance: config.stopRadius },
-            state.obstacleGrid,
-            state.hpaPathWorker,
-        );
+        } else {
+            const pathSettings = { ...state.navigation.settings, pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5), arrivalDistance: config.stopRadius };
+            steering = run.hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000, pathSettings);
+        }
         if (!steering) return;
         if (steering.desiredX === 0 && steering.desiredY === 0) return;
         steerRollToward(prop, steering.desiredX, steering.desiredY, dt, config);
