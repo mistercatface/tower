@@ -56,7 +56,11 @@ export class WorldProp extends Entity {
             const variants = crateVisuals?.labelVariants ?? [];
             this.faceLabelVariants = Object.fromEntries(faces.map((face) => [face, Math.floor(Math.random() * Math.max(1, variants.length))]));
         }
-        if (this.strategy.collisionShape === "box") {
+        if (this.strategy.localFootprint?.length >= 3) {
+            const verts = this.strategy.localFootprint.map((v) => ({ x: v.x, y: v.y }));
+            this.shape = new PolygonShape(verts);
+            this.radius = this.shape.getBoundingRadius();
+        } else if (this.strategy.collisionShape === "box") {
             const hx = this.halfExtents?.x ?? this.radius;
             const hy = this.halfExtents?.y ?? this.radius;
             this.shape = new PolygonShape([

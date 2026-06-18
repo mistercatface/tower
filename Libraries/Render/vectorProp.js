@@ -15,7 +15,8 @@ import { resolveSandboxPropVisual, SANDBOX_PROP_VISUAL_DEFAULT, SANDBOX_PROP_VIS
 import { prepModifiedBlit, resolveSpriteDrawModifier } from "./spriteDrawModifier.js";
 /** @typedef {{ kind: "circle", radius: number }} VectorPropCircleBody */
 /** @typedef {{ kind: "rect", halfExtents: { x: number, y: number }, facing?: number, rollAngle?: number }} VectorPropRectBody */
-/** @typedef {{ body: VectorPropCircleBody | VectorPropRectBody, extras: [] }} VectorPropSpec */
+/** @typedef {{ kind: "polygon", vertices: { x: number, y: number }[], facing?: number }} VectorPropPolygonBody */
+/** @typedef {{ body: VectorPropCircleBody | VectorPropRectBody | VectorPropPolygonBody, extras: [] }} VectorPropSpec */
 /** @typedef {"default" | "vector"} PropVisualMode */
 /** @typedef {import("./spriteDrawModifier.js").SpriteDrawModifier} SpriteDrawModifier */
 /** @typedef {CanvasImageSource & { width: number, height: number, anchorX?: number, anchorY?: number }} VectorSprite */
@@ -57,6 +58,8 @@ export function resolveVectorPropSpec(prop, asset) {
         return { body: { kind: "rect", halfExtents: { x: footprint.x, y: footprint.y }, facing: prop._collisionFacing ?? prop.facing ?? 0, rollAngle: prop.rollAngle ?? 0 }, extras };
     }
     const collisionShape = prop.strategy?.collisionShape ?? asset.physics?.collisionShape ?? "circle";
+    const shape = prop.shape ?? prop.getShape?.();
+    if (shape?.type === "Polygon" && prop.strategy?.localFootprint?.length >= 3) return { body: { kind: "polygon", vertices: shape.vertices, facing: prop.facing ?? 0 }, extras };
     if (collisionShape === "box") {
         const halfExtents = propFootprintHalfExtents(prop);
         return { body: { kind: "rect", halfExtents: { x: halfExtents.x, y: halfExtents.y }, facing: prop.facing ?? 0 }, extras };
@@ -86,6 +89,40 @@ function bakeVectorCircle(radius) {
     traceCircle(ctx, anchorX, anchorY, r);
     ctx.stroke();
     return { canvas, anchorX, anchorY };
+}
+/** @param {{ x: number, y: number }[]} vertices */
+function bakeVectorPolygon(vertices) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < vertices.length; i++) {
+        const vx = vertices[i].x;
+        const vy = vertices[i].y;
+        if (vx < minX) minX = vx;
+        if (vx > maxX) maxX = vx;
+        if (vy < minY) minY = vy;
+        if (vy > maxY) maxY = vy;
+    }
+    const pad = VECTOR_PROP_BAKE_PADDING + VECTOR_PROP_LINE_WIDTH;
+    const spanW = Math.ceil(maxX - minX + pad * 2);
+    const spanH = Math.ceil(maxY - minY + pad * 2);
+    const anchorX = -minX + pad;
+    const anchorY = -minY + pad;
+    const canvas = createOffscreenCanvas(spanW, spanH);
+    const ctx = canvas.getContext("2d");
+    applyVectorStrokeStyle(ctx);
+    ctx.beginPath();
+    ctx.moveTo(vertices[0].x + anchorX, vertices[0].y + anchorY);
+    for (let i = 1; i < vertices.length; i++) ctx.lineTo(vertices[i].x + anchorX, vertices[i].y + anchorY);
+    ctx.closePath();
+    ctx.stroke();
+    return { canvas, anchorX, anchorY };
+}
+/** @param {{ x: number, y: number }[]} vertices */
+function getVectorPolygonSprite(vertices) {
+    const key = "poly:" + vertices.map((v) => `${quantizeVectorShapeSize(v.x)},${quantizeVectorShapeSize(v.y)}`).join("|");
+    return getOrBakeVectorShape(key, () => bakeVectorPolygon(vertices));
 }
 /** @param {number} halfX @param {number} halfY */
 function bakeVectorRect(halfX, halfY) {
@@ -162,5 +199,6 @@ export function drawVectorProp(ctx, prop, spec, options = {}) {
     const modifier = resolveSpriteDrawModifier(prop, camera);
     const body = spec.body;
     if (body.kind === "circle") blitVectorSprite(ctx, getVectorCircleSprite(body.radius), prop.x, prop.y, { modifier });
+    else if (body.kind === "polygon") blitVectorSprite(ctx, getVectorPolygonSprite(body.vertices), prop.x, prop.y, { rotation: body.facing ?? 0, modifier });
     else blitVectorSprite(ctx, getVectorRectSprite(body.halfExtents.x, body.halfExtents.y), prop.x, prop.y, { rotation: body.facing ?? 0, modifier });
 }

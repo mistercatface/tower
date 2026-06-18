@@ -1,5 +1,6 @@
 import {
     extrudeBox,
+    extrudeConvexFootprint,
     pointOnFrustum,
     radiusAtT,
     getHeightSlice,
@@ -153,4 +154,49 @@ export function drawBox(
         traceSegment(ctx, (box.topCorners[0].x + box.topCorners[1].x) / 2, box.topCorners[0].y, (box.topCorners[2].x + box.topCorners[3].x) / 2, box.topCorners[2].y);
         ctx.stroke();
     }
+}
+export function drawExtrudedConvexPolygon(
+    ctx,
+    prop,
+    px,
+    py,
+    { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, lineWidth = 1.0, facing = prop.facing },
+) {
+    const projection = projectVertical(prop.x, prop.y, px, py, height);
+    const { cx, cy, topX, topY } = projection;
+    const body = extrudeConvexFootprint(projection, localVerts, facing);
+    const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
+    const baseColors = bottomColors ?? { light: faceColors.shadow, mid: faceColors.shadow, dark: faceColors.shadow };
+    const backFaces = [];
+    const frontFaces = [];
+    for (const face of body.faces) {
+        const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
+        const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
+        if (isFaceVisible(px, py, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
+        else backFaces.push(face);
+    }
+    const baseGrad = ctx.createLinearGradient(body.baseCorners[0].x, body.baseCorners[0].y, body.baseCorners[1].x, body.baseCorners[1].y);
+    baseGrad.addColorStop(0.0, baseColors.light);
+    baseGrad.addColorStop(0.5, baseColors.mid);
+    baseGrad.addColorStop(1.0, baseColors.dark);
+    ctx.fillStyle = baseGrad;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    traceClosedPolygon(ctx, body.baseCorners);
+    ctx.fill();
+    ctx.stroke();
+    for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, drawPlanks: false });
+    for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, drawPlanks: false });
+    const topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
+    topGrad.addColorStop(0.0, topColors.light);
+    topGrad.addColorStop(0.5, topColors.mid);
+    topGrad.addColorStop(1.0, topColors.dark);
+    ctx.fillStyle = topGrad;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    traceClosedPolygon(ctx, body.topCorners);
+    ctx.fill();
+    ctx.stroke();
 }

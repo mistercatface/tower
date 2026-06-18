@@ -146,6 +146,28 @@ export function extrudeBox(projection, halfSize, angle = 0) {
         }),
     };
 }
+export function extrudeConvexFootprint(projection, localVerts, angle = 0) {
+    const { cx, cy, topX, topY, alpha } = projection;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const count = localVerts.length;
+    const baseCorners = new Array(count);
+    const topCorners = new Array(count);
+    for (let i = 0; i < count; i++) {
+        const lx = localVerts[i].x;
+        const ly = localVerts[i].y;
+        const topLx = scaleAtHeight(lx, alpha, 1);
+        const topLy = scaleAtHeight(ly, alpha, 1);
+        baseCorners[i] = { x: cx + lx * cos - ly * sin, y: cy + lx * sin + ly * cos };
+        topCorners[i] = { x: topX + topLx * cos - topLy * sin, y: topY + topLx * sin + topLy * cos };
+    }
+    const faces = new Array(count);
+    for (let i = 0; i < count; i++) {
+        const next = (i + 1) % count;
+        faces[i] = { baseA: baseCorners[i], baseB: baseCorners[next], topA: topCorners[i], topB: topCorners[next] };
+    }
+    return { baseCorners, topCorners, faces };
+}
 export function isOutwardFaceTowardViewer(midX, midY, outwardX, outwardY, viewerX, viewerY) {
     const viewX = midX - viewerX;
     const viewY = midY - viewerY;
