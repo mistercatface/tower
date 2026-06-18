@@ -1,20 +1,19 @@
-import { decelerateRoll, getRollToCursorConfig, steerRollToward, releaseRollMoveTarget } from "../rollToCursorMotion.js";
-export const ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID = "rollToCursorDirect";
-/** @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
-export function createRollToCursorDirectBehavior() {
+import { decelerateRoll, getKineticRollConfig, steerRollToward, clearMoveTarget } from "../kineticRollActuator.js";
+import { DIRECT_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
+export function createDirectGroundNavBehavior() {
     let targetWorld = null;
     let unitDragActive = false;
-    let groundMoveActive = false;
+    let moveTargetActive = false;
     const clearTarget = () => {
         targetWorld = null;
         unitDragActive = false;
-        groundMoveActive = false;
+        moveTargetActive = false;
     };
     return {
-        id: ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID,
+        id: DIRECT_GROUND_NAV_BEHAVIOR_ID,
         onPointerDown(prop, world) {
             unitDragActive = true;
-            groundMoveActive = false;
+            moveTargetActive = false;
             targetWorld = { x: world.x, y: world.y };
             return true;
         },
@@ -24,28 +23,28 @@ export function createRollToCursorDirectBehavior() {
         },
         onPointerUp() {
             unitDragActive = false;
-            if (!groundMoveActive) targetWorld = null;
+            if (!moveTargetActive) targetWorld = null;
         },
-        setGroundMoveTarget(_prop, world) {
+        setMoveTarget(_prop, world) {
             unitDragActive = false;
-            groundMoveActive = true;
+            moveTargetActive = true;
             targetWorld = { x: world.x, y: world.y };
         },
-        updateGroundMoveTarget(_prop, world) {
-            if (!groundMoveActive || !targetWorld) return;
+        updateMoveTarget(_prop, world) {
+            if (!moveTargetActive || !targetWorld) return;
             targetWorld = { x: world.x, y: world.y };
         },
         tick(prop, dt) {
-            if (!targetWorld || (!unitDragActive && !groundMoveActive)) return;
-            const config = getRollToCursorConfig(prop);
+            if (!targetWorld || (!unitDragActive && !moveTargetActive)) return;
+            const config = getKineticRollConfig(prop);
             const dx = targetWorld.x - prop.x;
             const dy = targetWorld.y - prop.y;
             const dist = Math.hypot(dx, dy);
             if (dist < config.stopRadius) {
-                if (groundMoveActive) {
-                    groundMoveActive = false;
+                if (moveTargetActive) {
+                    moveTargetActive = false;
                     targetWorld = null;
-                    releaseRollMoveTarget(prop);
+                    clearMoveTarget(prop);
                     return;
                 }
                 decelerateRoll(prop, dt, config);
@@ -54,7 +53,7 @@ export function createRollToCursorDirectBehavior() {
             steerRollToward(prop, dx / dist, dy / dist, dt, config);
         },
         getPathOverlay(prop) {
-            if (!targetWorld || (!unitDragActive && !groundMoveActive)) return null;
+            if (!targetWorld || (!unitDragActive && !moveTargetActive)) return null;
             return {
                 mode: "direct",
                 pathNodes: [

@@ -2,31 +2,23 @@ import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { strokeCircle, strokeSegment } from "../Canvas/CanvasPath.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-const ROLL_TO_CURSOR_DEFAULTS = { maxSpeed: 180, accel: 600, stopRadius: 6 };
-export const ROLL_TO_CURSOR_FLOW_RECENTER_THRESHOLD = 400;
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {{ x: number, y: number }} world */
-export function snapRollMoveTargetToCellCenter(grid, world) {
+const GROUND_NAV_ROLL_DEFAULTS = { maxSpeed: 180, accel: 600, stopRadius: 6 };
+export const FLOW_GROUND_NAV_RECENTER_THRESHOLD = 400;
+export function snapMoveTargetToCellCenter(grid, world) {
     const { col, row } = grid.worldToGrid(world.x, world.y);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
     return { world: grid.gridToWorld(col, row), col, row };
 }
-export function releaseRollMoveTarget(_prop) {}
-/** @param {object} prop @param {object} [overrides] */
-export function getRollToCursorConfig(prop, overrides = {}) {
-    return { ...ROLL_TO_CURSOR_DEFAULTS, ...prop.strategy?.rollToCursor, ...overrides };
+export function clearMoveTarget(_prop) {}
+export function getKineticRollConfig(prop, overrides = {}) {
+    const strategyRoll = prop.strategy?.groundNav ?? prop.strategy?.rollToCursor;
+    return { ...GROUND_NAV_ROLL_DEFAULTS, ...strategyRoll, ...overrides };
 }
-/** @param {object} prop */
 export function applyRollSpin(prop) {
     if (!prop.strategy?.rolls) return;
     const speed = Math.hypot(prop.vx, prop.vy);
     prop.angularVelocity = (speed / (prop.radius || 8)) * 0.12;
 }
-/**
- * @param {object} prop
- * @param {number} dt
- * @param {{ accel: number }} config
- * @returns {boolean} true when the body was still moving
- */
 export function decelerateRoll(prop, dt, config) {
     const speed = Math.hypot(prop.vx, prop.vy);
     if (speed <= 0) return false;
@@ -43,13 +35,6 @@ export function decelerateRoll(prop, dt, config) {
     wakeKineticBody(prop);
     return true;
 }
-/**
- * @param {object} prop
- * @param {number} dirX unit direction x
- * @param {number} dirY unit direction y
- * @param {number} dt
- * @param {{ maxSpeed: number, accel: number }} config
- */
 export function steerRollToward(prop, dirX, dirY, dt, config) {
     const targetVx = dirX * config.maxSpeed;
     const targetVy = dirY * config.maxSpeed;
@@ -69,15 +54,7 @@ export function steerRollToward(prop, dirX, dirY, dt, config) {
     applyRollSpin(prop);
     wakeKineticBody(prop);
 }
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} fromX
- * @param {number} fromY
- * @param {number} toX
- * @param {number} toY
- * @param {{ lineColor: string, markerColor: string, lineWidth?: number, markerRadius?: number, dashed?: boolean }} style
- */
-export function drawRollTargetOverlay(ctx, fromX, fromY, toX, toY, style) {
+export function drawGroundNavTargetOverlay(ctx, fromX, fromY, toX, toY, style) {
     const lineScale = getCanvasLineScale(ctx);
     ctx.save();
     if (style.dashed) ctx.setLineDash([4 * lineScale, 4 * lineScale]);

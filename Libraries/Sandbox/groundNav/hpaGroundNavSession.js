@@ -1,12 +1,10 @@
-import { agentPose } from "../Agent/index.js";
-import { createNavState } from "../Pathfinding/navSession.js";
-import { clearHpaNavPath } from "../Pathfinding/hpaPathPlan.js";
-import { computeSabPathSteering } from "../Pathfinding/hpaPathSlot.js";
-import { sandboxReplanDue, buildReplanParams } from "../Pathfinding/hpaReplanPolicy.js";
-import { navHasPath } from "../Pathfinding/navSession.js";
-/** @typedef {import("../Pathfinding/navSession.js").NavSessionState} NavSessionState */
-/** @returns {{ navState: NavSessionState, reset: () => void, markTargetChanged: () => void, replan: (prop: object, targetX: number, targetY: number, state: object) => void, update: (prop: object, targetX: number, targetY: number, state: object, dtMs: number) => void, getSteering: (prop: object, targetX: number, targetY: number, settings: object, grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid) => import("../Agent/types.js").SteeringResult | null }} */
-export function createRollToCursorHpaNav() {
+import { agentPose } from "../../Agent/index.js";
+import { createNavState } from "../../Pathfinding/navSession.js";
+import { clearHpaNavPath } from "../../Pathfinding/hpaPathPlan.js";
+import { computeSabPathSteering } from "../../Pathfinding/hpaPathSlot.js";
+import { sandboxReplanDue, buildReplanParams } from "../../Pathfinding/hpaReplanPolicy.js";
+import { navHasPath } from "../../Pathfinding/navSession.js";
+export function createHpaGroundNavSession() {
     const navState = createNavState();
     let replanClockMs = 0;
     let pendingTargetReplan = false;
@@ -20,7 +18,6 @@ export function createRollToCursorHpaNav() {
         navState.hpaReplanRequestId = 0;
         replanClockMs = 0;
     };
-    /** New target cell — one replan when idle; keep path steering until apply. */
     const markTargetChanged = () => {
         pendingTargetReplan = true;
     };

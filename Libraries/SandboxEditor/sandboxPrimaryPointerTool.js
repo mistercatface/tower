@@ -3,7 +3,7 @@ import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { handleButtonPointerDown, hitTestFloorButton } from "../Sandbox/floorButtons.js";
 import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
-import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "../Sandbox/behaviors/rollToCursorHpaBehavior.js";
+import { issueMassHpaGroundNav } from "../Sandbox/groundNav/input/massHpaGroundNav.js";
 export function createSandboxPrimaryPointerTools(
     state,
     session,
@@ -52,18 +52,7 @@ export function createSandboxPrimaryPointerTools(
     };
     const issueMassHpaGroundMove = (world) => {
         if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || blocksPlacement()) return false;
-        const hpaBehavior = behaviorById.get(ROLL_TO_CURSOR_HPA_BEHAVIOR_ID);
-        if (!hpaBehavior?.setGroundMoveTarget) return false;
-        let moved = 0;
-        state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-            if (prop.isDead) return;
-            const allowed = resolveSandboxBehaviors(getPropAsset(prop.type), behaviors, state, prop);
-            if (!allowed.includes(ROLL_TO_CURSOR_HPA_BEHAVIOR_ID)) return;
-            if (getPropBehaviorId(prop) !== ROLL_TO_CURSOR_HPA_BEHAVIOR_ID) return;
-            hpaBehavior.setGroundMoveTarget(prop, world);
-            moved++;
-        });
-        return moved > 0;
+        return issueMassHpaGroundNav(state, behaviorById, behaviors, world, { getPropBehaviorId });
     };
     const modifierTool = {
         isActive: () => true,

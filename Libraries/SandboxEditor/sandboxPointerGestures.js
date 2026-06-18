@@ -1,3 +1,4 @@
+import { issueCursorGroundNavMove, updateCursorGroundNavMove } from "../Sandbox/groundNav/input/cursorGroundNav.js";
 import { releasePointerCapture } from "../Input/canvasPointer.js";
 export function createSandboxPointerGestures({ getCanvas, session, clientToWorld }) {
     let interactionBehavior = null;
@@ -13,14 +14,14 @@ export function createSandboxPointerGestures({ getCanvas, session, clientToWorld
             getCanvas().setPointerCapture(e.pointerId);
         },
         startGroundNav(move, world, e) {
-            move.behavior.setGroundMoveTarget(move.prop, world);
+            issueCursorGroundNavMove(move, world);
             groundNav = { prop: move.prop, behavior: move.behavior };
             getCanvas().setPointerCapture(e.pointerId);
         },
         capturesPointerMove: () => groundNav != null || interactionBehavior != null,
         onPointerMove(_world, e) {
             if (groundNav) {
-                groundNav.behavior.updateGroundMoveTarget?.(groundNav.prop, clientToWorld(e.clientX, e.clientY));
+                updateCursorGroundNavMove(groundNav, clientToWorld(e.clientX, e.clientY));
                 return;
             }
             if (!interactionBehavior) return;
@@ -34,7 +35,7 @@ export function createSandboxPointerGestures({ getCanvas, session, clientToWorld
                 const nav = groundNav;
                 groundNav = null;
                 releasePointerCapture(getCanvas(), e);
-                nav.behavior.updateGroundMoveTarget?.(nav.prop, clientToWorld(e.clientX, e.clientY));
+                updateCursorGroundNavMove(nav, clientToWorld(e.clientX, e.clientY));
                 session.sync();
                 return true;
             }

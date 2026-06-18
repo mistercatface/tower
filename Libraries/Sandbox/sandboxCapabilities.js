@@ -1,9 +1,6 @@
-import { ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID } from "./behaviors/rollToCursorDirectBehavior.js";
-import { ROLL_TO_CURSOR_HPA_BEHAVIOR_ID } from "./behaviors/rollToCursorHpaBehavior.js";
-import { ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID } from "./behaviors/rollToCursorFlowBehavior.js";
+import { DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, GROUND_NAV_BEHAVIOR_IDS, HPA_GROUND_NAV_BEHAVIOR_ID } from "./groundNav/groundNavIds.js";
 import { FLOOR_CELL_KIND, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-const ROLL_BEHAVIOR_IDS = new Set([ROLL_TO_CURSOR_DIRECT_BEHAVIOR_ID, ROLL_TO_CURSOR_HPA_BEHAVIOR_ID, ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID]);
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
@@ -11,9 +8,9 @@ export const SANDBOX_BEHAVIOR_LABELS = {
     spawner: "Spawner",
     flipper: "Flipper",
     cueStrike: "Cue strike",
-    rollToCursorDirect: "Roll to cursor (direct)",
-    rollToCursorHpa: "Roll to cursor (HPA)",
-    rollToCursorFlow: "Roll to cursor (flow)",
+    [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)",
+    [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)",
+    [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)",
 };
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
@@ -92,7 +89,7 @@ export function resolveSandboxBehaviors(asset, registeredBehaviors, state, prop 
     return [...byId.values()]
         .filter((behavior) => {
             if (behavior.supports && asset && !behavior.supports(prop, asset)) return false;
-            if (ROLL_BEHAVIOR_IDS.has(behavior.id) && sandbox?.rollToCursor === false) return false;
+            if (GROUND_NAV_BEHAVIOR_IDS.has(behavior.id) && (sandbox?.groundNav === false || sandbox?.rollToCursor === false)) return false;
             return true;
         })
         .map((behavior) => behavior.id);

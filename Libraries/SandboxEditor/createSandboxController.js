@@ -17,6 +17,7 @@ import { drawSandboxPropTileCells, drawSandboxSelectionRings } from "../Sandbox/
 import { drawSandboxPlacePreview, resolveSandboxPlacePreview } from "../Sandbox/drawSandboxPlacePreview.js";
 import { drawPlacedRoomNodes } from "../RoomGraph/index.js";
 import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandboxCapabilities.js";
+import { issueCursorGroundNavMove, resolveCursorGroundNavMove } from "../Sandbox/groundNav/input/cursorGroundNav.js";
 import { createAabb } from "../Math/Aabb2D.js";
 import { drawActivePathOverlay } from "../Render/map/drawActivePathOverlay.js";
 import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
@@ -127,15 +128,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         if (!behavior || !allowed.includes(behavior.id)) return null;
         return behavior;
     };
-    const resolveGroundMove = () => {
-        const prop = session.getSelectedProp();
-        const behavior = resolveBehavior();
-        if (!prop || !behavior?.setGroundMoveTarget) return null;
-        return { prop, behavior };
-    };
-    const issueGroundMove = (move, world) => {
-        move.behavior.setGroundMoveTarget(move.prop, world);
-    };
+    const resolveGroundMove = () => resolveCursorGroundNavMove(session.getSelectedProp(), resolveBehavior());
+    const issueGroundMove = issueCursorGroundNavMove;
     const deletePointerTool = createSandboxDeletePointerTool(state, session, { resolveGroundMove, issueGroundMove });
     const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, behaviors, {
         entityMeta,

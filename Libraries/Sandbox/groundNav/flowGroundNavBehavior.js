@@ -1,10 +1,9 @@
 import { agentPose } from "../../Agent/index.js";
 import { computeFlowFieldSteering } from "../../Pathfinding/flowSteering.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
-import { getRollToCursorConfig, releaseRollMoveTarget, ROLL_TO_CURSOR_FLOW_RECENTER_THRESHOLD, snapRollMoveTargetToCellCenter, steerRollToward } from "../rollToCursorMotion.js";
-export const ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID = "rollToCursorFlow";
-/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
-export function createRollToCursorFlowBehavior(state) {
+import { getKineticRollConfig, clearMoveTarget, FLOW_GROUND_NAV_RECENTER_THRESHOLD, snapMoveTargetToCellCenter, steerRollToward } from "../kineticRollActuator.js";
+import { FLOW_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
+export function createFlowGroundNavBehavior(state) {
     let targetWorld = null;
     let dragging = false;
     let lastNavGeneration = -1;
@@ -15,18 +14,18 @@ export function createRollToCursorFlowBehavior(state) {
     };
     const releaseMoveTarget = (prop) => {
         clearTarget();
-        releaseRollMoveTarget(prop);
+        clearMoveTarget(prop);
     };
     const applyMoveTarget = (world) => {
-        const snapped = snapRollMoveTargetToCellCenter(state.obstacleGrid, world);
+        const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
         targetWorld = snapped.world;
     };
     const resolveSteerTarget = (prop) => resolveFloorBeltSteerTarget(state.obstacleGrid, targetWorld.x, targetWorld.y, prop.x, prop.y);
     const syncFlowWindow = (prop, steerTarget) => {
-        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, ROLL_TO_CURSOR_FLOW_RECENTER_THRESHOLD);
+        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, FLOW_GROUND_NAV_RECENTER_THRESHOLD);
     };
     return {
-        id: ROLL_TO_CURSOR_FLOW_BEHAVIOR_ID,
+        id: FLOW_GROUND_NAV_BEHAVIOR_ID,
         onPointerDown(prop, world) {
             dragging = true;
             applyMoveTarget(world);
@@ -41,20 +40,20 @@ export function createRollToCursorFlowBehavior(state) {
         onPointerUp() {
             dragging = false;
         },
-        setGroundMoveTarget(prop, world) {
+        setMoveTarget(prop, world) {
             dragging = false;
             applyMoveTarget(world);
             if (!targetWorld) return;
             syncFlowWindow(prop, resolveSteerTarget(prop));
         },
-        updateGroundMoveTarget(prop, world) {
+        updateMoveTarget(prop, world) {
             if (!targetWorld) return;
             applyMoveTarget(world);
             syncFlowWindow(prop, resolveSteerTarget(prop));
         },
         tick(prop, dt) {
             if (!targetWorld) return;
-            const config = getRollToCursorConfig(prop, { stopRadius: 8 });
+            const config = getKineticRollConfig(prop, { stopRadius: 8 });
             const steerTarget = resolveSteerTarget(prop);
             const flowFieldGrid = state.flowFieldGrid;
             const navGeneration = state.navigation.obstacleGeneration;
