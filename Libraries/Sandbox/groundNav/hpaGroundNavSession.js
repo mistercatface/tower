@@ -2,7 +2,7 @@ import { agentPose } from "../../Agent/index.js";
 import { createNavState } from "../../Pathfinding/navSession.js";
 import { clearHpaNavPath } from "../../Pathfinding/hpaPathPlan.js";
 import { computeSabPathSteering } from "../../Pathfinding/hpaPathSlot.js";
-import { sandboxReplanDue, buildReplanParams, obstacleEpochReplanDue, idlePathReplanReason, idlePathReplanAllowed } from "../../Pathfinding/hpaReplanPolicy.js";
+import { sandboxReplanDue, buildReplanParams, obstacleEpochReplanDue } from "../../Pathfinding/hpaReplanPolicy.js";
 import { navHasPath } from "../../Pathfinding/navSession.js";
 export function createHpaGroundNavSession() {
     const navState = createNavState();
@@ -29,7 +29,6 @@ export function createHpaGroundNavSession() {
         replanClockMs += dtMs;
         const inFlight = state.hpaPathSession.isReplanInFlight(navState);
         const graphEpoch = state.navigation.obstacleGeneration;
-        const settings = state.navigation.settings;
         if (obstacleEpochReplanDue(navState, graphEpoch)) {
             if (navHasPath(navState)) clearHpaNavPath(navState, state.hpaPathWorker);
             pendingTargetReplan = false;
@@ -39,10 +38,7 @@ export function createHpaGroundNavSession() {
         if (sandboxReplanDue(navState, pendingTargetReplan, inFlight, targetX, targetY)) {
             pendingTargetReplan = false;
             replan(prop, targetX, targetY, state);
-            return;
         }
-        const idleReason = idlePathReplanReason(navState, settings, false, inFlight);
-        if (idleReason === "noPath" && idlePathReplanAllowed(navState, idleReason, true, settings.stuckReplanFrames)) replan(prop, targetX, targetY, state);
     };
     const getSteering = (prop, targetX, targetY, settings, grid, worker) => {
         if (!worker || !navHasPath(navState)) return null;

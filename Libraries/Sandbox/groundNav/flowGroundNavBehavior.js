@@ -57,8 +57,7 @@ export function createFlowGroundNavBehavior(state) {
             const steerTarget = resolveSteerTarget(prop);
             const flowFieldGrid = state.flowFieldGrid;
             const navGeneration = state.navigation.obstacleGeneration;
-            if (prop._navPathStale || navGeneration !== lastNavGeneration) {
-                prop._navPathStale = false;
+            if (navGeneration !== lastNavGeneration) {
                 lastNavGeneration = navGeneration;
                 flowFieldGrid.refresh();
             }

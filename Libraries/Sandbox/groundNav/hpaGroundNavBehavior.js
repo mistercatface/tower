@@ -58,7 +58,7 @@ export function createHpaGroundNavBehavior(state) {
             prop,
             steerTarget.x,
             steerTarget.y,
-            { pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5), arrivalDistance: config.stopRadius, pathOffPathDistance: 80 },
+            { ...state.navigation.settings, pathWaypointArrival: Math.max(12, (prop.radius ?? 6) * 1.5), arrivalDistance: config.stopRadius },
             state.obstacleGrid,
             state.hpaPathWorker,
         );
