@@ -3,7 +3,6 @@ import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js";
 import { advanceKineticSleep, evaluateKineticSleepEligible } from "./kineticSleep.js";
 import { countMotionSubsteps } from "./motionSubsteps.js";
-import { integrateStandTipsAfterCollisions } from "../Props/standTipMotion.js";
 function propBlocksSleep(prop) {
     const fn = prop.currentState.blocksSleep;
     if (fn) return fn.call(prop.currentState);
@@ -39,18 +38,5 @@ export function runKineticPhysics(state, dt, spatialFrame) {
             },
         });
     }
-    integrateStandTipsAfterCollisions(state, dt);
-    integrateLongAxisLogFacing(state, dt);
     tickKineticSleep(spatialFrame);
-}
-/** In-plane spin about center: collision ω_z → facing (same frame, separate from 3D tumble). */
-export function integrateLongAxisLogFacing(state, dt) {
-    for (let i = 0; i < state.worldProps.length; i++) {
-        const prop = state.worldProps[i];
-        if (prop.isDead || prop.isSleeping) continue;
-        if (prop.strategy.rollAxis !== "long" && !prop.strategy.standTip) continue;
-        const w = prop.angularVelocity ?? 0;
-        if (Math.abs(w) < 0.02) continue;
-        prop.facing = (prop.facing ?? 0) + w * (dt / 1000);
-    }
 }

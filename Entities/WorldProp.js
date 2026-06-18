@@ -2,19 +2,16 @@ import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Motion/index.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
-import { initStandTipState, isStandTipActive } from "../Libraries/Props/standTipMotion.js";
 import { withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
 import { getPropAsset, getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { WorldPropVoidSinkState } from "./worldPropVoidSinkState.js";
 import { CircleShape, PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { syncLongAxisCollisionShape } from "../Libraries/Props/longAxisCollision.js";
 import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
-import { isStandTipProp } from "../Libraries/Spatial/transforms/longAxisBox3d.js";
 import { applyPoxelGeometryToProp, initSplittableFootprint } from "../Libraries/Props/splittableWorldProp.js";
 import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
@@ -34,8 +31,7 @@ export class WorldProp extends Entity {
         this.strategy = buildWorldPropStrategy(type);
         if (this.strategy.halfExtents) {
             this.halfExtents = { ...this.strategy.halfExtents };
-            if (!this.strategy.standTip) this.radius = Math.max(this.halfExtents.x, this.halfExtents.y);
-            else this.radius = this.strategy.radius ?? this.halfExtents.x;
+            this.radius = Math.max(this.halfExtents.x, this.halfExtents.y);
         } else this.radius = this.strategy.radius;
         this.vx = 0;
         this.vy = 0;
@@ -43,13 +39,7 @@ export class WorldProp extends Entity {
         this.zIndex = 10;
         if (this.strategy.cardinalFacing) this.facing = quantizeCardinalAngle(facing ?? 0);
         else this.facing = facing ?? Math.random() * Math.PI * 2;
-        if (this.strategy.standTip) {
-            this._baseRadius = this.radius;
-            initStandTipState(this);
-        } else if (this.strategy.rolls) {
-            this.rollQuat = { ...IDENTITY_ROLL_QUAT };
-            this.rollAngle = 0;
-        }
+        if (this.strategy.rolls) this.rollQuat = { ...IDENTITY_ROLL_QUAT };
         if (this.strategy.randomFaceLabels) {
             const crateVisuals = getPropAsset("crate")?.visuals;
             const faces = crateVisuals?.labelFaces ?? [];
@@ -90,7 +80,6 @@ export class WorldProp extends Entity {
     }
     getShape() {
         if (this.strategy.syncCollisionShape) return this.strategy.syncCollisionShape(this);
-        if (isStandTipProp(this)) return syncLongAxisCollisionShape(this);
         if (this.shape) return this.shape;
         if (this.strategy.collisionShape === "box" && this.halfExtents) {
             const hx = this.halfExtents.x;
@@ -121,9 +110,9 @@ export class WorldProp extends Entity {
     }
     update(dt, state, spatialFrame) {
         this.ageMs += dt;
-        const asleep = this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this));
+        const asleep = this.isSleeping;
         if (!asleep)
-            if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
+            if (this.strategy.rolls) integratePropMotion(this, dt);
             else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }

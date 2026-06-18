@@ -1,7 +1,5 @@
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Math/Poly2D.js";
-import { resolveBodyRadius } from "./bodyDefaults.js";
-import { isStandTipProp } from "../Spatial/transforms/longAxisBox3d.js";
 function polygonShapeArea(shape) {
     const verts = shape.vertices;
     if (!verts || verts.length < 3) return 0;
@@ -31,23 +29,8 @@ export function kineticMassFromFootprint(body) {
 }
 export function kineticInertiaFromBody(body) {
     const m = massFromBody(body);
-    if (isStandTipProp(body) && !body.isFallen) {
-        const r = resolveBodyRadius(body);
-        const h = body.strategy.rollHeight ?? body.strategy.uprightHeight ?? r * 2.5;
-        return m * (r * r * 0.25 + (h * h) / 3);
-    }
-    if (isStandTipProp(body) && body.isFallen && body.halfExtents) {
-        const w = body.halfExtents.x * 2;
-        const h = body.halfExtents.y * 2;
-        return (m * (w * w + h * h)) / 12;
-    }
     const shape = body.shape ?? body.getShape?.();
     if (shape?.type === "Polygon") {
-        if (body.strategy?.rollAxis === "long" && body.halfExtents) {
-            const crossW = body.halfExtents.y * 2;
-            const crossH = body.strategy.rollHeight ?? 3;
-            return (m * (crossW * crossW + crossH * crossH)) / 12;
-        }
         const inertiaFactor = polygonShapeInertiaFactor(shape);
         return m * inertiaFactor;
     }

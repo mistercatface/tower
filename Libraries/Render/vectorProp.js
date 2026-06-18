@@ -9,7 +9,6 @@ import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 import { traceCircle } from "../Canvas/CanvasPath.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { usesLongAxisCollisionShape } from "../Props/longAxisCollision.js";
 import { propFootprintHalfExtents } from "../Props/propStrategy.js";
 import { resolveSandboxPropVisual, SANDBOX_PROP_VISUAL_DEFAULT, SANDBOX_PROP_VISUAL_VECTOR } from "../Sandbox/sandboxPropMeta.js";
 import { prepModifiedBlit, resolveSpriteDrawModifier } from "./spriteDrawModifier.js";
@@ -53,10 +52,6 @@ export function resolveVectorPropSpec(prop, asset) {
     if (!prop || !asset) return null;
     if (hasCustomCollisionSync(prop)) return null;
     const extras = [];
-    if (usesLongAxisCollisionShape(prop)) {
-        const footprint = prop._collisionHalfExtents ?? propFootprintHalfExtents(prop);
-        return { body: { kind: "rect", halfExtents: { x: footprint.x, y: footprint.y }, facing: prop._collisionFacing ?? prop.facing ?? 0, rollAngle: prop.rollAngle ?? 0 }, extras };
-    }
     const collisionShape = prop.strategy?.collisionShape ?? asset.physics?.collisionShape ?? "circle";
     const shape = prop.shape ?? prop.getShape?.();
     if (shape?.type === "Polygon" && prop.strategy?.localFootprint?.length >= 3) return { body: { kind: "polygon", vertices: shape.vertices, facing: prop.facing ?? 0 }, extras };

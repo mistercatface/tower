@@ -4,7 +4,6 @@ import { createBakedSpriteCache } from "./BakedSpriteCache.js";
 import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
-import { standTipStageRadius } from "../Spatial/transforms/longAxisBox3d.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom } from "../../Core/GamePropPixelSize.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents } from "../Props/propStrategy.js";
@@ -118,7 +117,7 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const dx = prop.x - px;
         const dy = prop.y - py;
         const { dx: qDx, dy: qDy } = propSpriteCache.quantizeView(dx, dy);
-        const stageR = prop.strategy?.standTip ? standTipStageRadius(prop) : resolveBodyRadius(prop);
+        const stageR = resolveBodyRadius(prop);
         const footprint = propFootprintHalfExtents(prop);
         const worldDiameter = Math.max(stageR * 2, footprint.x * 2, footprint.y * 2);
         const bakeScale = resolvePropBakeScaleForProp(prop, worldDiameter, zoom);

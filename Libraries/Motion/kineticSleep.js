@@ -1,4 +1,3 @@
-import { isStandTipActive } from "../Props/standTipMotion.js";
 import { isMovingEntity, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
 /** Consecutive still frames required before a kinetic body is treated as sleeping. */
 export const SLEEP_FRAMES = 30;
@@ -18,7 +17,6 @@ export function canSleepKinetic(entity, { blocksSleep = () => false } = {}) {
     if (!isKinetic(entity) || entity.isDead) return false;
     if (blocksSleep(entity)) return false;
     if (isMovingEntity(entity)) return false;
-    if (isStandTipActive(entity)) return false;
     const w = entity.angularVelocity || 0;
     return Math.abs(w) <= SLEEP_ANGULAR_EPS;
 }

@@ -1,4 +1,3 @@
-import { isStandTipActive } from "../../Props/standTipMotion.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
 import { circlesOverlap } from "./overlap.js";
@@ -79,7 +78,7 @@ export function isRotatingEntity(entity) {
 }
 /** Linear or angular motion — rotating OBBs sweep volume without translation. */
 export function isKinematicallyActive(entity) {
-    return isMovingEntity(entity) || isRotatingEntity(entity) || isStandTipActive(entity);
+    return isMovingEntity(entity) || isRotatingEntity(entity);
 }
 export function pairShapeOverlap(a, b) {
     const shapeA = a.getShape?.();

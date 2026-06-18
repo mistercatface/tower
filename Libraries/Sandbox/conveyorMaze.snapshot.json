@@ -4218,13 +4218,6 @@
       "faction": "alpha"
     },
     {
-      "type": "barrel",
-      "x": 328,
-      "y": -216,
-      "facing": 0,
-      "faction": "alpha"
-    },
-    {
       "type": "blue_ball",
       "x": -312,
       "y": 200,
