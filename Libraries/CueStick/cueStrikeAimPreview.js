@@ -13,10 +13,10 @@ export function estimateCueStrikeTravelDistance(strikePower, strategy = {}) {
 function isCueStrikeAimTarget(body) {
     if (!body) return false;
     const state = body.currentStateName;
-    return state !== "voidSink" && state !== "sinking";
+    return state !== "voidSink";
 }
 /**
- * Circle targets for cue-ball aim preview — skips dead and pocket-sinking bodies.
+ * Circle targets for cue-ball aim preview — skips dead and void-sinking bodies.
  *
  * @param {object} shooter
  * @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry

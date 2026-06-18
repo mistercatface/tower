@@ -36,7 +36,7 @@ function runSimulationTick(state, dt) {
     const spatialFrame = kineticSpatial.begin(state);
     tickFloorProps(state, spatialFrame, simDt);
     tickFloorOccupancy(state, spatialFrame, simDt);
-    runKineticPhysics(state, simDt, spatialFrame, null);
+    runKineticPhysics(state, simDt, spatialFrame);
     tickGridZones(state, spatialFrame);
     FloatingText.updateAll(state, simDt);
 }

@@ -24,7 +24,7 @@
  * }} MobileAgent
  */
 /**
- * Output of pure nav / steering compute — apply via applySteeringResult at the game boundary.
+ * Output of pure nav / steering compute — consumed by sandbox roll behaviors.
  * @typedef {object} SteeringResult
  * @property {number} desiredX
  * @property {number} desiredY

@@ -102,7 +102,7 @@ export function shouldResolveKineticPair(a, b) {
     if (a.isSleeping && b.isSleeping) return false;
     return pairRestingOverlap(a, b);
 }
-/** Hot-path gate for kinetic body collision pairs (replaces compiled PairFilter in the physics loop). */
+/** Hot-path gate for kinetic body collision pairs in the physics loop. */
 export function allowsKineticCollisionPair(primary, other) {
     if (primary === other) return false;
     if (other.isDead) return false;

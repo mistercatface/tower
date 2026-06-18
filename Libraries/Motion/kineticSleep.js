@@ -1,4 +1,3 @@
-import { getInteractionPairFilter } from "../../Core/interactionPairFilters.js";
 import { isStandTipActive } from "../Props/standTipMotion.js";
 import { isMovingEntity, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
 /** Consecutive still frames required before a kinetic body is treated as sleeping. */
@@ -46,28 +45,19 @@ export function advanceKineticSleep(entity, eligible, requiredFrames = SLEEP_FRA
     entity._sleepFrames++;
     if (entity._sleepFrames >= requiredFrames) entity.isSleeping = true;
 }
-/**
- * @param {object} prop
- * @param {object[]} neighbors
- * @param {{ filter?: PairFilter, pairOverlaps?: (a: object, b: object) => boolean }} [opts]
- */
-export function hasSleepBlockingOverlap(prop, neighbors, { filter = getInteractionPairFilter("kineticSleepBlocker"), pairOverlaps = pairBroadphaseOverlap } = {}) {
+function kineticSleepBlockerAllows(prop, other) {
+    if (other.isDead) return false;
+    return Boolean(other.strategy?.isKinetic);
+}
+export function hasSleepBlockingOverlap(prop, neighbors, { pairOverlaps = pairBroadphaseOverlap } = {}) {
     for (let i = 0; i < neighbors.length; i++) {
         const other = neighbors[i];
         if (other === prop) continue;
-        if (!filter.allows(prop, other)) continue;
+        if (!kineticSleepBlockerAllows(prop, other)) continue;
         if (pairOverlaps(prop, other)) return true;
     }
     return false;
 }
-/**
- * Full sleep eligibility: motion still + no blocking neighbor overlap.
- *
- * @param {object} prop
- * @param {object[]} neighbors
- * @param {{ blocksSleep?: (entity: object) => boolean, filter?: PairFilter, pairOverlaps?: (a: object, b: object) => boolean }} [opts]
- */
-export function evaluateKineticSleepEligible(prop, neighbors, opts = {}) {
-    const { blocksSleep = () => false, filter, pairOverlaps } = opts;
-    return canSleepKinetic(prop, { blocksSleep }) && !hasSleepBlockingOverlap(prop, neighbors, { filter, pairOverlaps });
+export function evaluateKineticSleepEligible(prop, neighbors, { blocksSleep = () => false, pairOverlaps } = {}) {
+    return canSleepKinetic(prop, { blocksSleep }) && !hasSleepBlockingOverlap(prop, neighbors, { pairOverlaps });
 }

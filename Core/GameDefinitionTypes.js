@@ -3,13 +3,6 @@
  * Module globals for collision, perspective, procedural design, and world surface are set at editor boot via `installEditorDefaults`.
  */
 /**
- * @typedef {import("../Libraries/Interaction/pairRules.js").PairFilterConfig} PairFilterConfig
- */
-/**
- * @typedef {object} InteractionPairsPort
- * @property {PairFilterConfig} kineticSleepBlocker
- */
-/**
  * @typedef {object} SimulationEffectPass
  * @property {number} zIndex
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer?: import("../Render/Render.js").Renderer) => void} draw
@@ -40,7 +33,6 @@
  *
  * @typedef {object} EngineProfile
  * @property {string} id
- * @property {Partial<InteractionPairsPort>} interactionPairs
  * @property {RenderPorts} render
  * @property {() => void} [onCanvasResize]
  * @property {() => void | Promise<void>} [prepare]

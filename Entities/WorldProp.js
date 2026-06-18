@@ -20,12 +20,7 @@ import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
 import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
-class WorldPropNormalState {
-    getRender3DKey(prop) {
-        return prop.strategy.render3DKey;
-    }
-}
-const WORLD_PROP_MODES = Object.freeze({ normal: new WorldPropNormalState(), voidSink: new WorldPropVoidSinkState() });
+const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}), voidSink: new WorldPropVoidSinkState() });
 function buildWorldPropStrategy(type) {
     const def = getWorldPropDefinitions()[type];
     if (!def) return withPropStrategyDefaults({});
@@ -141,13 +136,12 @@ export class WorldProp extends Entity {
     needsWallCollision() {
         return speedSqXY(this.vx, this.vy) > MOVING_SPEED_SQ;
     }
-    update(dt, state, spatialFrame, resolveWalls = false) {
+    update(dt, state, spatialFrame) {
         this.ageMs += dt;
         const asleep = this.isSleeping && (!this.strategy?.standTip || !isStandTipActive(this));
         if (!asleep)
             if (this.strategy.rolls || this.strategy.standTip) integratePropMotion(this, dt);
             else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
-        if (!asleep && resolveWalls && this.strategy.isKinetic && this.needsWallCollision()) state.wallResolver.resolve(this, spatialFrame);
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }
     spawnSplittableFragments(gameState, fragments, { originX, originY, shardTypeId = "crate_shard", impactDirX = 0, impactDirY = 0 } = {}) {
@@ -160,8 +154,8 @@ export class WorldProp extends Entity {
         const cos = Math.cos(this.facing);
         const sin = Math.sin(this.facing);
         const kick = Math.hypot(impactDirX, impactDirY) > 0 ? 35 + Math.random() * 45 : 0;
-        const bulletKickX = kick > 0 ? (impactDirX / Math.hypot(impactDirX, impactDirY)) * kick : 0;
-        const bulletKickY = kick > 0 ? (impactDirY / Math.hypot(impactDirX, impactDirY)) * kick : 0;
+        const impactKickX = kick > 0 ? (impactDirX / Math.hypot(impactDirX, impactDirY)) * kick : 0;
+        const impactKickY = kick > 0 ? (impactDirY / Math.hypot(impactDirX, impactDirY)) * kick : 0;
         for (const geom of fragments) {
             const world = transformPoint2DInto({ x: 0, y: 0 }, ox, oy, geom.centroid.cx, geom.centroid.cy, cos, sin);
             const shard = new WorldProp(world.x, world.y, shardTypeId, this.facing);
@@ -179,8 +173,8 @@ export class WorldProp extends Entity {
                 dy = Math.sin(angle);
             }
             const speed = 40 + Math.random() * 60;
-            shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15 + bulletKickX;
-            shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15 + bulletKickY;
+            shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15 + impactKickX;
+            shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15 + impactKickY;
             const rx = world.x - ox;
             const ry = world.y - oy;
             shard.vx += -parentOmega * ry * 0.5;

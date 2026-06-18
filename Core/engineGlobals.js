@@ -1,5 +1,4 @@
 import { SURFACE_PROFILE_ID } from "../Config/procedural/profileIds.js";
-import { clearInteractionPairFilterCache } from "./interactionPairFilters.js";
 import { applyGamePerspective, getActivePerspective } from "./GamePerspective.js";
 import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
 import { applyGameCollisionSettings } from "./GameCollisionSettings.js";
@@ -13,7 +12,6 @@ let workersConfigured = false;
 /** Editor boot — one place for app constants; writes shared module globals once. */
 export function installEditorDefaults(state) {
     const profile = { id: "editor", proceduralDesign: { surfaceProfileId: EDITOR_DEFAULT_SURFACE_PROFILE_ID } };
-    clearInteractionPairFilterCache();
     installGameSurfaceProfileProvider(profile);
     if (!workersConfigured) {
         configureTileWorkerCoordinator({ workerUrl: TILE_WORKER_URL });

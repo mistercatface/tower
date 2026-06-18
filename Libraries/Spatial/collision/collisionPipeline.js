@@ -50,6 +50,3 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
             prop._wallDispPrevY = prop.y;
         }
 }
-export function runKineticContactPass(spatialFrame, state) {
-    resolveKineticContactPass(spatialFrame, state);
-}

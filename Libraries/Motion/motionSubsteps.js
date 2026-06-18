@@ -1,7 +1,7 @@
 import { lengthXY } from "../Math/Vec2.js";
 /**
  * Adaptive physics substep count from peak kinetic body displacement this tick.
- * Used by {@link runKineticPhysics} — not a substitute for projectile sweep/CCD.
+ * Used by {@link runKineticPhysics}.
  *
  * @param {number} dtMs
  * @param {object[] | null | undefined} bodies

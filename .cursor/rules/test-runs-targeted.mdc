@@ -1,0 +1,20 @@
+---
+description: Run tests only when relevant — skip belt/pathfinding tests on unrelated changes
+alwaysApply: true
+---
+
+# Test runs — targeted, not routine
+
+Do **not** run `npm test` or belt/pathfinding tests as a default wrap-up after unrelated code changes.
+
+## Skip by default
+
+- No full `npm test` at the end of every task unless the user asks or the change clearly needs it.
+- Do **not** run `tests/hpaBeltNav.test.js` or `tests/puzzleTemplateBeltCrate.test.js` unless the work touches pathfinding, HPA nav, floor belts, or belt puzzle templates.
+- Do **not** mention known pre-existing belt test failures — they are expected baseline noise, not a regression signal.
+
+## When to run tests
+
+- User explicitly asks to run tests.
+- Change is in or directly wired to: `Libraries/Pathfinding/`, `Systems/Navigation/`, belt nav behavior, corridor/HPA tests, or the specific feature's own test file.
+- Prefer targeted runs (`node --test tests/foo.test.js`) over the full suite.

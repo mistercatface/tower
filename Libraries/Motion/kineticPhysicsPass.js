@@ -1,6 +1,6 @@
 import { removeSandboxWorldProp } from "../Sandbox/sandboxPlacedSpawn.js";
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
-import { CollisionSystem } from "../../Systems/Collision/CollisionSystem.js";
+import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js";
 import { advanceKineticSleep, evaluateKineticSleepEligible } from "./kineticSleep.js";
 import { countMotionSubsteps } from "./motionSubsteps.js";
 import { integrateStandTipsAfterCollisions } from "../Props/standTipMotion.js";
@@ -33,7 +33,11 @@ export function runKineticPhysics(state, dt, spatialFrame) {
             if (p.isDead) removeSandboxWorldProp(state, p);
         }
         spatialFrame.reindexKineticBodies(activeBodies);
-        CollisionSystem.run(state, spatialFrame);
+        runCollisionPipeline(state, spatialFrame, {
+            resolveWalls(entity, frame) {
+                state.wallResolver.resolve(entity, frame);
+            },
+        });
     }
     integrateStandTipsAfterCollisions(state, dt);
     integrateLongAxisLogFacing(state, dt);
