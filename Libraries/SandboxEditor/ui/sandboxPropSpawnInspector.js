@@ -6,6 +6,7 @@ import {
     isRoomLinkSpawnAsset,
     isRoomNodeSpawnAsset,
     isPuzzleTemplateSpawnAsset,
+    isResizableBoxSpawnAsset,
     isSingleWorldPropSpawnAsset,
 } from "../../Sandbox/sandboxCapabilities.js";
 import { appendSurfaceProfileField } from "../../RoomGraph/roomGraphSurfaceProfile.js";
@@ -118,6 +119,30 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
             },
         });
         appendEditorHint(body, "Click to stamp three rooms with random sizes and positions inside the area. Links are fixed: belt A→B, belt B→A, locked B→C. Room A gets a blue ball and crate.");
+        return;
+    }
+    if (isResizableBoxSpawnAsset(spawnAsset)) {
+        appendAxisNumberFields(body, {
+            Width: {
+                value: controller.getSpawnBoxWidth(),
+                step: 1,
+                min: 6,
+                max: 128,
+                onChange: (width) => {
+                    controller.setSpawnBoxWidth(width);
+                },
+            },
+            Height: {
+                value: controller.getSpawnBoxHeight(),
+                step: 1,
+                min: 6,
+                max: 128,
+                onChange: (height) => {
+                    controller.setSpawnBoxHeight(height);
+                },
+            },
+        });
+        appendEditorHint(body, "Footprint width and height in world pixels. Collision and draw follow the spawned rectangle.");
         return;
     }
     if (isGridPassagePowerSourceSpawnAsset(spawnAsset))

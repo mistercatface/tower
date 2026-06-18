@@ -11,6 +11,7 @@ import {
     isPuzzleTemplateSpawnAsset,
     isRoomLinkSpawnAsset,
     isRoomNodeSpawnAsset,
+    isResizableBoxSpawnAsset,
     resolveFloorBeltKindFromSpawnAsset,
 } from "./sandboxCapabilities.js";
 import {
@@ -54,7 +55,8 @@ const PLACEABLE = {
             return true;
         },
         spawnAt(state, worldX, worldY, asset, ctx) {
-            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, ctx.spawnPropId, ctx.spawnFaction, 0);
+            const halfExtents = isResizableBoxSpawnAsset(asset) ? ctx.spawnBoxHalfExtents : undefined;
+            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, ctx.spawnPropId, ctx.spawnFaction, 0, halfExtents);
             if (spawned) {
                 ctx.placement.touchPropPlacement(spawned.id);
                 ctx.pickSelection({ kind: "prop", ids: [spawned.id] });

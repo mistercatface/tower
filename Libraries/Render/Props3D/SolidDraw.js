@@ -160,7 +160,7 @@ export function drawExtrudedConvexPolygon(
     prop,
     px,
     py,
-    { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, lineWidth = 1.0, facing = prop.facing },
+    { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
     const projection = projectVertical(prop.x, prop.y, px, py, height);
     const { cx, cy, topX, topY } = projection;
@@ -186,8 +186,8 @@ export function drawExtrudedConvexPolygon(
     traceClosedPolygon(ctx, body.baseCorners);
     ctx.fill();
     ctx.stroke();
-    for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, drawPlanks: false });
-    for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, drawPlanks: false });
+    for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
+    for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
     const topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
     topGrad.addColorStop(0.0, topColors.light);
     topGrad.addColorStop(0.5, topColors.mid);
@@ -199,4 +199,12 @@ export function drawExtrudedConvexPolygon(
     traceClosedPolygon(ctx, body.topCorners);
     ctx.fill();
     ctx.stroke();
+    if (topCross && body.topCorners.length === 4) {
+        ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
+        ctx.lineWidth = topCross.lineWidth ?? 0.8;
+        ctx.beginPath();
+        traceSegment(ctx, body.topCorners[0].x, (body.topCorners[0].y + body.topCorners[2].y) / 2, body.topCorners[1].x, (body.topCorners[1].y + body.topCorners[3].y) / 2);
+        traceSegment(ctx, (body.topCorners[0].x + body.topCorners[1].x) / 2, body.topCorners[0].y, (body.topCorners[2].x + body.topCorners[3].x) / 2, body.topCorners[2].y);
+        ctx.stroke();
+    }
 }

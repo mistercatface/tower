@@ -1,11 +1,15 @@
 export default {
     id: "crate",
-    primitive: "box",
+    primitive: "polygon",
     sandbox: { behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: {
-        radius: 8,
         isKinetic: true,
-        collisionShape: "box",
+        localFootprint: [
+            { x: -8, y: -8 },
+            { x: 8, y: -8 },
+            { x: 8, y: 8 },
+            { x: -8, y: 8 },
+        ],
         wallPhysics: { restitution: 0.15, friction: 0.8 },
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 8, randomRange: 17 },
     },

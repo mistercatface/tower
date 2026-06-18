@@ -4,6 +4,7 @@ import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGra
 import { normalizeAuthoredSurfaceProfileId } from "../RoomGraph/roomGraphSurfaceProfile.js";
 import { DEFAULT_ROOM_NODE_COLS, DEFAULT_ROOM_NODE_ROWS } from "../RoomGraph/index.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS } from "../RoomGraph/puzzleTemplateBeltCrate.js";
+import { DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT, DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH } from "./sandboxCapabilities.js";
 import { spawnPlaceableAt } from "./sandboxScenePlaceables.js";
 export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection, notifyUi, placement }) {
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
@@ -15,6 +16,8 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
     let spawnCorridorWidth = 1;
     let spawnRoomNodeSurfaceProfileId = null;
     let spawnCorridorSurfaceProfileId = null;
+    let spawnBoxWidth = DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH;
+    let spawnBoxHeight = DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT;
     const spawnCtx = () => ({
         spawnPropId: getSpawnPropId(),
         spawnFaction,
@@ -23,6 +26,7 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         spawnPuzzleAreaCols,
         spawnPuzzleAreaRows,
         spawnRoomNodeSurfaceProfileId,
+        spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 },
         pickSelection,
         notifyUi,
         placement,
@@ -76,6 +80,16 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         getSpawnCorridorSurfaceProfileId: () => spawnCorridorSurfaceProfileId,
         setSpawnCorridorSurfaceProfileId: (profileId) => {
             spawnCorridorSurfaceProfileId = normalizeAuthoredSurfaceProfileId(profileId);
+            notifyUi();
+        },
+        getSpawnBoxWidth: () => spawnBoxWidth,
+        setSpawnBoxWidth: (width) => {
+            spawnBoxWidth = Math.max(6, Math.min(128, Math.round(width)));
+            notifyUi();
+        },
+        getSpawnBoxHeight: () => spawnBoxHeight,
+        setSpawnBoxHeight: (height) => {
+            spawnBoxHeight = Math.max(6, Math.min(128, Math.round(height)));
             notifyUi();
         },
         spawnAt,

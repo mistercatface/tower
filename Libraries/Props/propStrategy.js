@@ -1,19 +1,50 @@
 import { getDefaultPropQuantizeSteps } from "../../Core/GamePropQuantizeSettings.js";
-/** @typedef {"circle" | "box"} PropCollisionShape */
+import { boxLocalFootprint } from "../Math/Poly2D.js";
+import { syncKineticRigidBody } from "../Motion/bodyMass.js";
+import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
+import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategy). */
-export const PROP_STRATEGY_DEFAULTS = {
-    isKinetic: false,
-    renderMode: "3d",
-    render3DKey: null,
-    inspectKey: null,
-    friction: 8,
-    wallPhysics: null,
-    /** @type {PropCollisionShape} */
-    collisionShape: "circle",
-    rolls: false,
-    gravityImmune: false,
-    pinned: false,
-};
+export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, gravityImmune: false, pinned: false };
+export function applyPropBoxFootprint(prop, hx, hy) {
+    prop.halfExtents = { x: hx, y: hy };
+    prop.shape = new PolygonShape(boxLocalFootprint(hx, hy));
+    prop.radius = prop.shape.getBoundingRadius();
+    invalidateBroadphaseBounds(prop);
+    if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
+}
+export function initWorldPropShape(prop) {
+    if (typeof prop.strategy.syncCollisionShape === "function") {
+        prop.strategy.syncCollisionShape(prop);
+        return;
+    }
+    const footprint = prop.strategy.localFootprint;
+    if (footprint?.length >= 3) {
+        const verts = footprint.map((v) => ({ x: v.x, y: v.y }));
+        prop.shape = new PolygonShape(verts);
+        prop.radius = prop.shape.getBoundingRadius();
+        return;
+    }
+    if (prop.strategy.halfExtents) {
+        applyPropBoxFootprint(prop, prop.strategy.halfExtents.x, prop.strategy.halfExtents.y);
+        return;
+    }
+    prop.radius = prop.strategy.radius ?? 0;
+    prop.shape = new CircleShape(prop.radius);
+}
+function polygonFootprintHalfExtents(shape) {
+    let hx = 0;
+    let hy = 0;
+    for (const v of shape.vertices) {
+        hx = Math.max(hx, Math.abs(v.x));
+        hy = Math.max(hy, Math.abs(v.y));
+    }
+    return { x: hx, y: hy };
+}
+function propShapeFootprintKey(prop) {
+    const shape = prop.shape ?? prop.getShape?.();
+    if (shape?.type === "Polygon") return shape.vertices.map((v) => `${Math.round(v.x)},${Math.round(v.y)}`).join("_");
+    return `c${Math.round(prop.radius ?? shape?.radius ?? 0)}`;
+}
 export function resolvePropQuantizeSteps(prop) {
     const defaults = getDefaultPropQuantizeSteps();
     const override = prop.strategy?.quantizeSteps;
@@ -23,20 +54,18 @@ export function resolvePropQuantizeSteps(prop) {
     return { facing, roll };
 }
 export function propFootprintHalfExtents(prop) {
-    const radius = prop.radius;
     if (prop.halfExtents) return { x: prop.halfExtents.x, y: prop.halfExtents.y };
-    return { x: prop.strategy?.halfExtents?.x ?? radius, y: prop.strategy?.halfExtents?.y ?? radius };
+    const shape = prop.shape ?? prop.getShape?.();
+    if (shape?.type === "Polygon") return polygonFootprintHalfExtents(shape);
+    const radius = prop.radius ?? prop.strategy?.radius ?? 0;
+    return { x: radius, y: radius };
 }
 export function getBaseSpriteCacheKey(prop, deps) {
     const { quantizeAngleIndex, buildRollOrientKey } = deps;
     let orientKey = "";
     if (prop.strategy?.rolls) orientKey = buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing);
     else orientKey = `f${quantizeAngleIndex(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing)}`;
-    const radius = Math.round(prop.radius);
-    const { x: stratHx, y: stratHy } = propFootprintHalfExtents(prop);
-    const halfX = Math.round(stratHx);
-    const halfY = Math.round(stratHy);
-    let key = `${orientKey}_${radius}_${halfX}x${halfY}`;
+    let key = `${orientKey}_${propShapeFootprintKey(prop)}`;
     if (prop.sinkDepth != null) key += `_d${Math.round(prop.sinkDepth)}`;
     if (prop.powered === false) key += "_off";
     if (prop._buttonDrawPressed) key += "_on";

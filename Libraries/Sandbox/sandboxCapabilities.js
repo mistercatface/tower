@@ -38,6 +38,11 @@ export function isPuzzleTemplateSpawnAsset(asset) {
 export function isPoolRackSpawnAsset(asset) {
     return asset?.sandbox?.spawnRack === "8ball" || asset?.sandbox?.spawnRack === "9ball";
 }
+export const DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH = 16;
+export const DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT = 16;
+export function isResizableBoxSpawnAsset(asset) {
+    return Boolean(asset?.sandbox?.resizableBox);
+}
 export function isSingleWorldPropSpawnAsset(asset) {
     return (
         Boolean(asset) &&

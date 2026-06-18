@@ -2,26 +2,10 @@ import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
+import { applyPropBoxFootprint } from "../Props/propStrategy.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
-import { PolygonShape } from "../Spatial/collision/Shapes.js";
-import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
-import { syncKineticRigidBody } from "../Motion/bodyMass.js";
-function applySpawnBoxHalfExtents(prop, halfExtents) {
-    prop.halfExtents = { x: halfExtents.x, y: halfExtents.y };
-    prop.radius = Math.max(halfExtents.x, halfExtents.y);
-    const hx = halfExtents.x;
-    const hy = halfExtents.y;
-    prop.shape = new PolygonShape([
-        { x: -hx, y: -hy },
-        { x: hx, y: -hy },
-        { x: hx, y: hy },
-        { x: -hx, y: hy },
-    ]);
-    invalidateBroadphaseBounds(prop);
-    if (prop.strategy.isKinetic) syncKineticRigidBody(prop);
-}
 function serializePlacedProp(prop) {
     const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: resolveSandboxFaction(prop) };
     if (prop.halfExtents) {
@@ -40,7 +24,7 @@ export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, factio
     if (isGridPassagePowerSourceSpawnAsset(asset)) throw new Error(`Passage power source "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     if (isPoolRackSpawnAsset(asset)) return spawnPoolRack(state, worldX, worldY, asset.sandbox.spawnRack, faction);
     const prop = new WorldProp(worldX, worldY, propTypeId, facing);
-    if (halfExtents) applySpawnBoxHalfExtents(prop, halfExtents);
+    if (halfExtents) applyPropBoxFootprint(prop, halfExtents.x, halfExtents.y);
     prop.faction = faction;
     addWorldPropToState(state, prop);
     return prop;

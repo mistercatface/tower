@@ -27,6 +27,14 @@ export function rectCorners(centerX, centerY, halfSize, angle = 0) {
     const corner = (lx, ly) => transformPoint2DInto({ x: 0, y: 0 }, centerX, centerY, lx, ly, cos, sin);
     return [corner(-hx, -hy), corner(hx, -hy), corner(hx, hy), corner(-hx, hy)];
 }
+export function boxLocalFootprint(hx, hy) {
+    return [
+        { x: -hx, y: -hy },
+        { x: hx, y: -hy },
+        { x: hx, y: hy },
+        { x: -hx, y: hy },
+    ];
+}
 function pointOnPolygonRing(px, py, count, xAt, yAt) {
     for (let i = 0, j = count - 1; i < count; j = i++) if (distanceSqToLineSegment(px, py, xAt(j), yAt(j), xAt(i), yAt(i)) <= POLYGON_EDGE_EPS_SQ) return true;
     return false;
