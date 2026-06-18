@@ -260,7 +260,7 @@ flowchart TB
 | **Chain head steering only** | ✅ | 80 | `chainLinks.js`, PR 3 |
 | **Link tool + inspector** | ✅ | 75 | PR 3 |
 | **Stress demo: cavern chain** | ✅ | 70 | `sandboxStartScene.js` |
-| Snake autosim (head → food → grow) | ⬜ | 0 | sideshow idea |
+| Snake autosim (head → food → grow) | ✅ | 85 | `autosim/snakeAutosim.js`, `/?game=snake` |
 | Mixed-shape chain / ragdoll | ⬜ | 0 | 🔜 trilogy 2 capstone |
 | Crate train / linked props | ⬜ | 0 | 🔜 trilogy 2 capstone |
 | Pool rack spawn groups | ✅ | 80 | `spawnPoolRack.js` (reference pattern) |
@@ -314,7 +314,7 @@ flowchart TB
 
 | Item | Status |
 |------|--------|
-| Autonomous snake (HPA head, eat food, grow segment) | ⬜ |
+| Autonomous snake (HPA head, eat food, grow segment) | ✅ |
 
 ---
 

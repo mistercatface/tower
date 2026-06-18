@@ -1,6 +1,7 @@
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
+import { findChainHeadProp } from "../Sandbox/autosim/snakeAutosim.js";
 /** @typedef {{ stamped?: NonNullable<ReturnType<typeof stampBeltCratePuzzleAt>>, cameraTarget?: object }} GameLaunchContext */
 /** @param {object} state @param {GameLaunchContext} ctx */
 export function stampBeltCratePuzzleAction(state, ctx) {
@@ -25,6 +26,20 @@ function findBlueBallProp(state) {
     return ball;
 }
 /** @param {object} state @param {GameLaunchContext} ctx */
+export async function loadSnakePlaySceneAction(state, ctx) {
+    const controller = state.sandbox.controller;
+    if (!controller?.loadSnakePlayScene) throw new Error("Snake play scene requires a mounted sandbox controller");
+    await controller.loadSnakePlayScene();
+    ctx.snakeSceneLoaded = true;
+}
+/** @param {object} state @param {GameLaunchContext} ctx */
+export function focusChainHeadAction(state, ctx) {
+    const head = findChainHeadProp(state);
+    if (!head) throw new Error("Snake play scene loaded but chain head prop is missing");
+    setSandboxCameraTarget(state, head, true);
+    ctx.cameraTarget = head;
+}
+/** @param {object} state @param {GameLaunchContext} ctx */
 export function focusBlueBallAction(state, ctx) {
     const ball = findBlueBallProp(state);
     if (!ball) throw new Error("Belt + crate puzzle stamped but blue ball prop is missing");
@@ -34,7 +49,7 @@ export function focusBlueBallAction(state, ctx) {
 /** @param {object} state @param {GameLaunchContext} ctx */
 export function snapCameraToTargetAction(state, ctx) {
     const target = ctx.cameraTarget;
-    if (!target) throw new Error("snapCameraToTarget requires focusBlueBall first");
+    if (!target) throw new Error("snapCameraToTarget requires a camera target from a focus action");
     state.viewport.snapTo(target.x, target.y);
 }
 /** @param {object} state */

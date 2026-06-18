@@ -9,6 +9,7 @@ describe("parseGameLaunchQuery", () => {
     });
     it("returns the game id from the query string", () => {
         assert.equal(parseGameLaunchQuery("?game=puzzle"), "puzzle");
+        assert.equal(parseGameLaunchQuery("?game=snake"), "snake");
     });
 });
 describe("game launchers", () => {
@@ -18,10 +19,20 @@ describe("game launchers", () => {
         assert.equal(launcher.hideEditor, true);
         assert.deepEqual(launcher.actions, ["stampBeltCratePuzzle", "focusBlueBall", "snapCameraToTarget", "fitPlayViewport"]);
     });
+    it("registers snake with expected start actions", () => {
+        const launcher = getGameLauncher("snake");
+        assert.equal(launcher.title, "Snake");
+        assert.equal(launcher.hideEditor, true);
+        assert.equal(launcher.portraitOnly, false);
+        assert.deepEqual(launcher.actions, ["loadSnakePlayScene", "focusChainHead", "snapCameraToTarget", "fitPlayViewport"]);
+    });
     it("throws for unknown ids", () => {
         assert.throws(() => getGameLauncher("missing"), /Unknown game launch id/);
     });
     it("includes puzzle in the registry map", () => {
         assert.ok(GAME_LAUNCHERS.puzzle);
+    });
+    it("includes snake in the registry map", () => {
+        assert.ok(GAME_LAUNCHERS.snake);
     });
 });
