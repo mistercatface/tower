@@ -19,6 +19,9 @@ export function trackNavStuck(navState, x, y, stuckMoveThreshold) {
 export function obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames) {
     return isVisible || stuckFrames > stuckReplanFrames;
 }
+export function obstacleEpochReplanDue(navState, graphEpoch) {
+    return navState.obstacleGeneration < graphEpoch;
+}
 /** @param {import("./navSession.js").NavSessionState} navState */
 export function idlePathReplanReason(navState, settings, didReplanForObstacles, inFlight) {
     if (inFlight || didReplanForObstacles) return null;

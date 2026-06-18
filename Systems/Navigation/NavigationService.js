@@ -12,6 +12,7 @@ export class NavigationService {
         /** @type {((grid: import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, bounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => { x: number, y: number }) | null} */
         this._resolvePruneWorld = null;
         this._workerNavGraphSyncChain = Promise.resolve();
+        this.settings = settings;
         this.obstacleGeneration = 0;
     }
     /** @param {(grid: import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, bounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => { x: number, y: number }} fn */

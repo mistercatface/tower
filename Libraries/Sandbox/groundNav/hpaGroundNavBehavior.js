@@ -53,11 +53,6 @@ export function createHpaGroundNavBehavior(state) {
             run.wasOnBelt = false;
             run.hpaNav.reset(state);
             run.hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
-        }
-        if (prop._navPathStale) {
-            prop._navPathStale = false;
-            run.hpaNav.reset(state);
-            run.hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
         } else run.hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000);
         const steering = run.hpaNav.getSteering(
             prop,

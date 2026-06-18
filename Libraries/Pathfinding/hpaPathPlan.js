@@ -5,7 +5,8 @@ import { findSabPathProgressIdx } from "./hpaPathSlot.js";
 export function clearHpaNavPath(navState, worker) {
     worker.releaseOwnedPathSlot(navState);
 }
-export function applyHpaReplanResult(navState, result, { obstacleGrid, worker, startX, startY, targetX, targetY, nowMs }) {
+export function applyHpaReplanResult(navState, result, { obstacleGrid, worker, startX, startY, targetX, targetY, nowMs, graphEpoch }) {
+    navState.obstacleGeneration = graphEpoch;
     if (!result.pathLen) {
         clearHpaNavPath(navState, worker);
         return;
