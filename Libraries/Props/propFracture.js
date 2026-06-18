@@ -5,7 +5,7 @@ import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphas
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { bakePoxelOutline, buildGeometryFromPoxelParts, splitPoxels } from "./poxelFracture.js";
-import { GLASS_FRACTURE_IMPACT_THRESHOLD, GLASS_MIN_SHARD_AREA, shatterGlassPolygon } from "./glassFracture.js";
+import { GLASS_FRACTURE_IMPACT_THRESHOLD, GLASS_FRACTURE_COOLDOWN_STEPS, minShardAreaForPolygon, shatterGlassPolygon } from "./glassFracture.js";
 export const FRACTURE_MIN_PIECE_SIZE = 5;
 export const FRACTURE_IMPACT_THRESHOLD = 12;
 function isGlassFracture(prop) {
@@ -22,7 +22,8 @@ function canGlassFractureSplit(prop, minSize) {
     if (shape?.type !== "Polygon") return false;
     const { x, y } = convexFootprintHalfExtents(shape.vertices);
     if (Math.max(x, y) * 2 < minSize) return false;
-    return glassFootprintArea(prop) >= GLASS_MIN_SHARD_AREA * 2.5;
+    const minArea = minShardAreaForPolygon(shape.vertices) * 2;
+    return glassFootprintArea(prop) >= minArea;
 }
 export function canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
     if (!prop?.strategy?.fracture) return false;
@@ -123,6 +124,7 @@ export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relat
     for (let i = 0; i < 2; i++) {
         const prop = i === 0 ? bodyA : bodyB;
         if (!canFracturePropSplit(prop)) continue;
+        if (prop._glassFractureCooldown > 0) continue;
         const threshold = isGlassFracture(prop) ? GLASS_FRACTURE_IMPACT_THRESHOLD : FRACTURE_IMPACT_THRESHOLD;
         if (force < threshold) continue;
         const fracture = fracturePropOnImpact(prop, hitX, hitY, force);

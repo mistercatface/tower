@@ -4,6 +4,7 @@ import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { initWorldPropShape, withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
 import { applyPoxelGeometryToProp, applyShardGeometryToProp } from "../Libraries/Props/propFracture.js";
+import { GLASS_FRACTURE_COOLDOWN_STEPS } from "../Libraries/Props/glassFracture.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { getWorldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
@@ -110,6 +111,7 @@ export class WorldProp extends Entity {
                 frag.vy += (dy / dist) * burst;
             }
             frag.angularVelocity = (this.angularVelocity ?? 0) + (Math.random() - 0.5) * 0.4;
+            frag._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
             addWorldPropToState(state, frag);
             wakeKineticBody(frag);
             spatialFrame.admitKineticProp(frag, state);
@@ -117,6 +119,7 @@ export class WorldProp extends Entity {
     }
     update(dt, state, spatialFrame) {
         this.ageMs += dt;
+        if (this._glassFractureCooldown > 0) this._glassFractureCooldown--;
         const asleep = this.isSleeping;
         if (!asleep)
             if (this.strategy.rolls) integratePropMotion(this, dt);

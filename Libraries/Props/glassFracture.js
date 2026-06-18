@@ -1,6 +1,10 @@
 import { pointInPolygon } from "../Math/Poly2D.js";
 export const GLASS_FRACTURE_IMPACT_THRESHOLD = 6;
 export const GLASS_MIN_SHARD_AREA = 12;
+export const GLASS_MAX_SHARDS_PER_SHATTER = 18;
+export const GLASS_MAX_SLIVER_ASPECT = 10;
+export const GLASS_MIN_WEDGE_ANGLE = Math.PI / 12;
+export const GLASS_FRACTURE_COOLDOWN_STEPS = 8;
 function polygonSignedArea(points) {
     let area = 0;
     for (let i = 0; i < points.length; i++) {
@@ -30,6 +34,9 @@ function polygonCentroid(points) {
         cy = 0;
     }
     return { cx, cy, signedArea };
+}
+function polygonSpan(points) {
+    return Math.sqrt(Math.abs(polygonSignedArea(points)));
 }
 function flatVertsToPoints(flatVerts) {
     const count = flatVerts.length / 2;
@@ -61,11 +68,58 @@ function closestPointOnPolygonBoundary(x, y, points) {
             bestY = py;
         }
     }
-    return { x: bestX, y: bestY };
+    return { x: bestX, y: bestY, dist: Math.sqrt(bestDistSq) };
+}
+function minDistToPolygonBoundary(x, y, points) {
+    return closestPointOnPolygonBoundary(x, y, points).dist;
+}
+export function minShardAreaForPolygon(points) {
+    const area = Math.abs(polygonSignedArea(points));
+    return Math.max(GLASS_MIN_SHARD_AREA, area / GLASS_MAX_SHARDS_PER_SHATTER);
+}
+function minThinEdgeForPolygon(points) {
+    return Math.max(3, polygonSpan(points) * 0.08);
+}
+export function measureGlassShard(flatVerts) {
+    const points = flatVertsToPoints(flatVerts);
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < points.length; i++) {
+        minX = Math.min(minX, points[i].x);
+        maxX = Math.max(maxX, points[i].x);
+        minY = Math.min(minY, points[i].y);
+        maxY = Math.max(maxY, points[i].y);
+    }
+    const thick = Math.max(maxX - minX, maxY - minY);
+    const thin = Math.min(maxX - minX, maxY - minY);
+    return { area: Math.abs(polygonSignedArea(points)), thin, thick, aspect: thick / Math.max(1e-6, thin) };
 }
 function resolveShatterApex(points, hitX, hitY) {
-    if (pointInPolygon(hitX, hitY, points)) return { x: hitX, y: hitY };
-    return closestPointOnPolygonBoundary(hitX, hitY, points);
+    const { cx, cy } = polygonCentroid(points);
+    const span = polygonSpan(points);
+    let ax = hitX;
+    let ay = hitY;
+    if (!pointInPolygon(ax, ay, points)) {
+        const onEdge = closestPointOnPolygonBoundary(hitX, hitY, points);
+        ax = onEdge.x;
+        ay = onEdge.y;
+    }
+    const inset = Math.min(span * 0.18, 18);
+    const dx = cx - ax;
+    const dy = cy - ay;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 1e-6) {
+        const push = Math.min(inset, dist * 0.4);
+        ax += (dx / dist) * push;
+        ay += (dy / dist) * push;
+    }
+    if (!pointInPolygon(ax, ay, points)) {
+        ax = cx;
+        ay = cy;
+    }
+    return { x: ax, y: ay };
 }
 function clipHalfPlane(points, ax, ay, nx, ny) {
     if (points.length === 0) return points;
@@ -113,12 +167,57 @@ function boundingRadiusFromFootprint(footprintVertices) {
     }
     return Math.sqrt(maxRadiusSq);
 }
-function shardCountForPolygon(points, impactForce) {
+function acceptGlassShard(poly, parentPoints) {
+    const area = Math.abs(polygonSignedArea(poly));
+    if (area < GLASS_MIN_SHARD_AREA) return false;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < poly.length; i++) {
+        minX = Math.min(minX, poly[i].x);
+        maxX = Math.max(maxX, poly[i].x);
+        minY = Math.min(minY, poly[i].y);
+        maxY = Math.max(maxY, poly[i].y);
+    }
+    const thick = Math.max(maxX - minX, maxY - minY);
+    const thin = Math.min(maxX - minX, maxY - minY);
+    if (thin < minThinEdgeForPolygon(parentPoints)) return false;
+    if (thick / Math.max(1e-6, thin) > GLASS_MAX_SLIVER_ASPECT) return false;
+    return true;
+}
+function buildGlassShards(points, apexX, apexY, shardCount, random) {
+    const baseStep = (Math.PI * 2) / shardCount;
+    const offset = random() * Math.PI * 2;
+    const angles = [];
+    for (let i = 0; i < shardCount; i++) {
+        const jitter = (random() - 0.5) * baseStep * 0.25;
+        angles.push(offset + i * baseStep + jitter);
+    }
+    angles.sort((a, b) => a - b);
+    const shards = [];
+    for (let i = 0; i < angles.length; i++) {
+        const a0 = angles[i];
+        const a1 = i === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[i + 1];
+        const poly = wedgePolygonIntersection(points, apexX, apexY, a0, a1);
+        if (poly.length < 3) continue;
+        if (!acceptGlassShard(poly, points)) continue;
+        shards.push(buildShardGeometry(poly));
+    }
+    return shards;
+}
+function shardCountForPolygon(points, impactForce, apexX, apexY) {
     const area = Math.abs(polygonSignedArea(points));
-    const span = Math.sqrt(area);
-    let count = Math.max(4, Math.min(22, Math.round(span / 2) + Math.floor(impactForce * 0.06)));
-    const maxFromArea = Math.max(2, Math.floor(area / (GLASS_MIN_SHARD_AREA * 1.25)));
-    return Math.min(count, maxFromArea);
+    const span = polygonSpan(points);
+    const minArea = minShardAreaForPolygon(points);
+    const areaCap = Math.max(2, Math.floor(area / minArea));
+    const angleCap = Math.floor((Math.PI * 2) / GLASS_MIN_WEDGE_ANGLE);
+    let count = Math.max(4, Math.min(GLASS_MAX_SHARDS_PER_SHATTER, Math.round(span / 8) + Math.floor(impactForce * 0.04)));
+    count = Math.min(count, areaCap, angleCap);
+    const boundaryDist = minDistToPolygonBoundary(apexX, apexY, points);
+    const boundaryFactor = Math.min(1, boundaryDist / (span * 0.14));
+    count = Math.max(4, Math.round(count * (0.35 + 0.65 * boundaryFactor)));
+    return count;
 }
 export function buildShardGeometry(points) {
     const { cx, cy, signedArea } = polygonCentroid(points);
@@ -130,31 +229,23 @@ export function buildShardGeometry(points) {
     }
     return { footprintVertices: centered, footprintArea: Math.abs(signedArea), boundingRadius: boundingRadiusFromFootprint(centered), centroid: { cx, cy } };
 }
-export function shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10) {
+export function shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, random = Math.random) {
     const points = flatVertsToPoints(flatVerts);
     if (points.length < 3) return [];
+    const parentArea = Math.abs(polygonSignedArea(points));
     const { x: apexX, y: apexY } = resolveShatterApex(points, hitX, hitY);
-    const shardCount = shardCountForPolygon(points, impactForce);
-    const baseStep = (Math.PI * 2) / shardCount;
-    const offset = Math.random() * Math.PI * 2;
-    const angles = [];
-    for (let i = 0; i < shardCount; i++) {
-        const jitter = (Math.random() - 0.5) * baseStep * 0.35;
-        angles.push(offset + i * baseStep + jitter);
+    let shardCount = shardCountForPolygon(points, impactForce, apexX, apexY);
+    let shards = buildGlassShards(points, apexX, apexY, shardCount, random);
+    for (let attempt = 0; attempt < 4; attempt++) {
+        let totalArea = 0;
+        for (let i = 0; i < shards.length; i++) totalArea += shards[i].footprintArea;
+        if (shards.length >= 2 && totalArea >= parentArea * 0.92) return shards;
+        shardCount = Math.max(4, Math.floor(shardCount * 0.72));
+        shards = buildGlassShards(points, apexX, apexY, shardCount, random);
     }
-    angles.sort((a, b) => a - b);
-    const shards = [];
-    for (let i = 0; i < angles.length; i++) {
-        const a0 = angles[i];
-        const a1 = i === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[i + 1];
-        const poly = wedgePolygonIntersection(points, apexX, apexY, a0, a1);
-        if (poly.length < 3) continue;
-        if (Math.abs(polygonSignedArea(poly)) < GLASS_MIN_SHARD_AREA) continue;
-        shards.push(buildShardGeometry(poly));
-    }
-    return shards;
+    return shards.length >= 2 ? shards : [];
 }
-export function shatterGlassFootprint(hx, hy, hitX, hitY, impactForce = 10) {
+export function shatterGlassFootprint(hx, hy, hitX, hitY, impactForce = 10, random = Math.random) {
     const flat = new Float32Array([-hx, -hy, hx, -hy, hx, hy, -hx, hy]);
-    return shatterGlassPolygon(flat, hitX, hitY, impactForce);
+    return shatterGlassPolygon(flat, hitX, hitY, impactForce, random);
 }
