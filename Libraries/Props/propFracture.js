@@ -4,10 +4,8 @@ import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphas
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { bakePoxelOutline, buildGeometryFromPoxelParts, splitPoxels } from "./poxelFracture.js";
-
-export const FRACTURE_MIN_PIECE_SIZE = 3;
+export const FRACTURE_MIN_PIECE_SIZE = 5;
 export const FRACTURE_IMPACT_THRESHOLD = 12;
-
 export function canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
     if (!prop?.strategy?.fracture) return false;
     if (!prop.poxels || prop.poxels.length <= 1) return false;
@@ -15,7 +13,6 @@ export function canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
     const { x, y } = shape?.type === "Polygon" ? convexFootprintHalfExtents(shape.vertices) : { x: prop.radius, y: prop.radius };
     return x * 2 >= minSize * 2 && y * 2 >= minSize * 2;
 }
-
 function flatVertsFromShape(prop) {
     const shape = prop.getShape?.() ?? prop.shape;
     const flat = new Float32Array(shape.vertices.length * 2);
@@ -25,11 +22,9 @@ function flatVertsFromShape(prop) {
     }
     return flat;
 }
-
 export function initFractureFootprint(prop) {
     applyPoxelGeometryToProp(prop, bakePoxelOutline(flatVertsFromShape(prop)));
 }
-
 export function applyPoxelGeometryToProp(prop, geometry) {
     prop.footprintVertices = geometry.footprintVertices;
     prop.poxels = geometry.poxels;
@@ -42,7 +37,6 @@ export function applyPoxelGeometryToProp(prop, geometry) {
     invalidateBroadphaseBounds(prop);
     syncKineticRigidBody(prop);
 }
-
 export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactForce, forceExplode = false) {
     if (!prop.poxels?.length) return [];
     let components = splitPoxels(prop.poxels, localHitX, localHitY, impactForce);
@@ -52,7 +46,6 @@ export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactF
         return buildGeometryFromPoxelParts(parts);
     });
 }
-
 export function worldHitToPropLocal(prop, worldX, worldY) {
     const dx = worldX - prop.x;
     const dy = worldY - prop.y;
@@ -60,11 +53,9 @@ export function worldHitToPropLocal(prop, worldX, worldY) {
     const sin = Math.sin(prop.facing);
     return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
 }
-
 export function impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
     return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
 }
-
 export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (!canFracturePropSplit(prop)) return null;
     const local = worldHitToPropLocal(prop, worldHitX, worldHitY);
@@ -82,7 +73,6 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     applyPoxelGeometryToProp(prop, largest);
     return { debris, originX, originY };
 }
-
 export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relativeSpeed) {
     const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
     if (force < FRACTURE_IMPACT_THRESHOLD) return;
