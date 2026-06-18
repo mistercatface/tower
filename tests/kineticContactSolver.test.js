@@ -1,8 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
+import { WorldProp } from "../Entities/WorldProp.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
+import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { dotXY } from "../Libraries/Math/Vec2.js";
+loadPropAssets();
 let nextId = 1;
 function mockCircleBody(x, y, radius, vx = 0, vy = 0, pairFriction = null) {
     const strategy = { isKinetic: true };
@@ -36,6 +42,27 @@ function setupPairFrame(a, b) {
     frame._activeKineticBodies.push(a, b);
     return frame;
 }
+function pairStillOverlaps(a, b) {
+    return SatCollision.checkCollision(a, a.getShape(), b, b.getShape()) != null;
+}
+function separatePairUntilClear(a, b, maxPasses = 8) {
+    let last = null;
+    for (let pass = 0; pass < maxPasses; pass++) {
+        const info = SatCollision.checkCollision(a, a.getShape(), b, b.getShape());
+        if (!info) return last;
+        last = info;
+        if (info.coincident) break;
+        separateAlongNormal(a, b, info.nx, info.ny, info.overlap, a.mass, b.mass);
+    }
+    return last;
+}
+function resolveContactUntilClear(frame, state, maxPasses = 4) {
+    for (let pass = 0; pass < maxPasses; pass++) {
+        resolveKineticContactPass(frame, state);
+        const [a, b] = frame._activeKineticBodies;
+        if (!pairStillOverlaps(a, b)) return;
+    }
+}
 describe("kinetic contact solver", () => {
     it("separates overlapping circles and applies opposing impulses", () => {
         const a = mockCircleBody(0, 0, 10, 50, 0);
@@ -53,5 +80,65 @@ describe("kinetic contact solver", () => {
         const frame = setupPairFrame(a, b);
         resolveKineticContactPass(frame, {});
         assert.ok(Math.abs(a.vx) < 40);
+    });
+});
+describe("poly-poly kinetic contact", () => {
+    it("axis-aligned crate pair separates with +x normal when B is to the right", () => {
+        const left = new WorldProp(0, 0, "crate", 0);
+        const right = new WorldProp(10, 0, "crate", 0);
+        const info = separatePairUntilClear(left, right);
+        assert.ok(info);
+        assert.ok(info.overlap > 0);
+        assert.ok(info.nx > 0.9);
+        assert.ok(Math.abs(info.ny) < 0.1);
+        assert.ok(!pairStillOverlaps(left, right));
+    });
+    it("tri wedge and hex block separate with normal pointing B away from A", () => {
+        const wedge = new WorldProp(-2, 0, "tri_wedge", 0);
+        const hex = new WorldProp(8, 0, "hex_block", 0);
+        const info = separatePairUntilClear(wedge, hex);
+        assert.ok(info);
+        assert.ok(info.overlap > 0);
+        const centerDx = hex.x - wedge.x;
+        const centerDy = hex.y - wedge.y;
+        assert.ok(dotXY(info.nx, info.ny, centerDx, centerDy) > 0);
+        assert.ok(!pairStillOverlaps(wedge, hex));
+    });
+    it("stacked crates separate vertically with upward normal on upper body", () => {
+        const bottom = new WorldProp(0, 0, "crate", 0);
+        const top = new WorldProp(0, 10, "crate", 0);
+        const info = separatePairUntilClear(bottom, top);
+        assert.ok(info);
+        assert.ok(info.ny > 0.9);
+        assert.ok(!pairStillOverlaps(bottom, top));
+    });
+    it("resolveKineticContactPass separates overlapping box_2x4 and crate", () => {
+        const bar = new WorldProp(0, 0, "box_2x4", 0);
+        const box = new WorldProp(12, 0, "crate", 0);
+        assert.ok(pairStillOverlaps(bar, box));
+        const frame = setupPairFrame(bar, box);
+        resolveContactUntilClear(frame, {});
+        assert.ok(!pairStillOverlaps(bar, box));
+    });
+    it("circle-poly beach ball and tri wedge separate with normal toward polygon", () => {
+        const ball = new WorldProp(0, 0, "beach_ball", 0);
+        const wedge = new WorldProp(10, 0, "tri_wedge", 0);
+        const info = separatePairUntilClear(ball, wedge);
+        assert.ok(info);
+        assert.ok(info.overlap > 0);
+        const centerDx = wedge.x - ball.x;
+        assert.ok(dotXY(info.nx, info.ny, centerDx, 0) > 0);
+        assert.ok(!pairStillOverlaps(ball, wedge));
+    });
+    it("approaching poly pair slows head-on approach and separates", () => {
+        const a = new WorldProp(0, 0, "hex_block", 0);
+        const b = new WorldProp(10, 0, "hex_block", 0);
+        a.vx = 40;
+        b.vx = -20;
+        const frame = setupPairFrame(a, b);
+        resolveContactUntilClear(frame, {});
+        assert.ok(!pairStillOverlaps(a, b));
+        assert.ok(a.vx < 40);
+        assert.ok(b.vx > -20);
     });
 });

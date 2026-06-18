@@ -1,7 +1,10 @@
 import { CircleShape, PolygonShape } from "./Shapes.js";
-import { rotateXY } from "../../Math/Poly2D.js";
+import { findClosestWorldVertexInto, findExtremeVertexInto, rotateXY } from "../../Math/Poly2D.js";
 import { dotXY } from "../../Math/Vec2.js";
 import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
+const contactA = { x: 0, y: 0 };
+const contactB = { x: 0, y: 0 };
+const closestVertex = { x: 0, y: 0 };
 function entityFacing(entity) {
     if (entity._collisionFacing != null) return entity._collisionFacing;
     return entity.facing ?? entity.angle ?? 0;
@@ -63,38 +66,14 @@ export class SatCollision {
         const dx = posB.x - posA.x;
         const dy = posB.y - posA.y;
         if (dx * minNormal.x + dy * minNormal.y < 0) minNormal = { x: -minNormal.x, y: -minNormal.y };
-        let minProjB = Infinity;
-        let contactB = posB;
         const facingB = entityFacing(posB);
         const cosB = Math.cos(facingB);
         const sinB = Math.sin(facingB);
-        for (let i = 0; i < shapeB.vertices.length; i++) {
-            const v = shapeB.vertices[i];
-            const r = rotateXY(v.x, v.y, cosB, sinB);
-            const vx = posB.x + r.x;
-            const vy = posB.y + r.y;
-            const proj = dotXY(vx, vy, minNormal.x, minNormal.y);
-            if (proj < minProjB) {
-                minProjB = proj;
-                contactB = { x: vx, y: vy };
-            }
-        }
-        let maxProjA = -Infinity;
-        let contactA = posA;
+        findExtremeVertexInto(contactB, shapeB.vertices, posB, cosB, sinB, minNormal.x, minNormal.y, false);
         const facingA = entityFacing(posA);
         const cosA = Math.cos(facingA);
         const sinA = Math.sin(facingA);
-        for (let i = 0; i < shapeA.vertices.length; i++) {
-            const v = shapeA.vertices[i];
-            const r = rotateXY(v.x, v.y, cosA, sinA);
-            const vx = posA.x + r.x;
-            const vy = posA.y + r.y;
-            const proj = dotXY(vx, vy, minNormal.x, minNormal.y);
-            if (proj > maxProjA) {
-                maxProjA = proj;
-                contactA = { x: vx, y: vy };
-            }
-        }
+        findExtremeVertexInto(contactA, shapeA.vertices, posA, cosA, sinA, minNormal.x, minNormal.y, true);
         return { overlap: minOverlap, nx: minNormal.x, ny: minNormal.y, cx: (contactA.x + contactB.x) / 2, cy: (contactA.y + contactB.y) / 2 };
     }
     static _circlePolygon(posCircle, circleShape, posPoly, polyShape) {
@@ -116,22 +95,7 @@ export class SatCollision {
                 minNormal = rotatedNormal;
             }
         }
-        let closestDistSq = Infinity;
-        let closestVertex = null;
-        for (let i = 0; i < polyShape.vertices.length; i++) {
-            const v = polyShape.vertices[i];
-            const r = rotateXY(v.x, v.y, cosP, sinP);
-            const vx = posPoly.x + r.x;
-            const vy = posPoly.y + r.y;
-            const dx = posCircle.x - vx;
-            const dy = posCircle.y - vy;
-            const distSq = dx * dx + dy * dy;
-            if (distSq < closestDistSq) {
-                closestDistSq = distSq;
-                closestVertex = { x: vx, y: vy };
-            }
-        }
-        if (!closestVertex) return null;
+        findClosestWorldVertexInto(closestVertex, polyShape.vertices, posPoly, cosP, sinP, posCircle.x, posCircle.y);
         const dx = closestVertex.x - posCircle.x;
         const dy = closestVertex.y - posCircle.y;
         if (dx !== 0 || dy !== 0) {

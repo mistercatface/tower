@@ -1,4 +1,5 @@
 import { normalizeXY } from "../../Math/Vec2.js";
+import { convexFootprintHalfExtents } from "../../Math/Poly2D.js";
 /** @typedef {{ kind: "circle", cx: number, cy: number, r: number, hx: number, hy: number, cos: number, sin: number }} BroadphaseBounds */
 /** @returns {BroadphaseBounds} */
 export function createBroadphaseBounds() {
@@ -62,15 +63,9 @@ export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0) {
         out.cy = cy;
         out.cos = Math.cos(angle);
         out.sin = Math.sin(angle);
-        let hx = 0;
-        let hy = 0;
-        for (let i = 0; i < shape.vertices.length; i++) {
-            const v = shape.vertices[i];
-            hx = Math.max(hx, Math.abs(v.x));
-            hy = Math.max(hy, Math.abs(v.y));
-        }
-        out.hx = hx;
-        out.hy = hy;
+        const span = convexFootprintHalfExtents(shape.vertices);
+        out.hx = span.x;
+        out.hy = span.y;
         return out;
     }
     out.kind = "circle";

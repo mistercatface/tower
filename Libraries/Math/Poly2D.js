@@ -52,6 +52,42 @@ export function convexFootprintHalfExtents(vertices) {
     }
     return { x: hx, y: hy };
 }
+export function findExtremeVertexInto(out, vertices, pos, cos, sin, axisX, axisY, findMax = true) {
+    let bestProj = findMax ? -Infinity : Infinity;
+    out.x = pos.x;
+    out.y = pos.y;
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
+        const vx = pos.x + v.x * cos - v.y * sin;
+        const vy = pos.y + v.x * sin + v.y * cos;
+        const proj = vx * axisX + vy * axisY;
+        if (findMax ? proj > bestProj : proj < bestProj) {
+            bestProj = proj;
+            out.x = vx;
+            out.y = vy;
+        }
+    }
+    return out;
+}
+export function findClosestWorldVertexInto(out, vertices, pos, cos, sin, targetX, targetY) {
+    let bestDistSq = Infinity;
+    out.x = pos.x;
+    out.y = pos.y;
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
+        const vx = pos.x + v.x * cos - v.y * sin;
+        const vy = pos.y + v.x * sin + v.y * cos;
+        const dx = targetX - vx;
+        const dy = targetY - vy;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < bestDistSq) {
+            bestDistSq = distSq;
+            out.x = vx;
+            out.y = vy;
+        }
+    }
+    return out;
+}
 function pointOnPolygonRing(px, py, count, xAt, yAt) {
     for (let i = 0, j = count - 1; i < count; j = i++) if (distanceSqToLineSegment(px, py, xAt(j), yAt(j), xAt(i), yAt(i)) <= POLYGON_EDGE_EPS_SQ) return true;
     return false;

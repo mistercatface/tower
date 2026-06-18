@@ -6,7 +6,7 @@
  */
 import { createBakedSpriteCache } from "../Canvas/BakedSpriteCache.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
-import { traceCircle } from "../Canvas/CanvasPath.js";
+import { traceCircle, traceClosedPolygonTranslated } from "../Canvas/CanvasPath.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { resolveSandboxPropVisual, SANDBOX_PROP_VISUAL_DEFAULT, SANDBOX_PROP_VISUAL_VECTOR } from "../Sandbox/sandboxPropMeta.js";
@@ -87,9 +87,7 @@ function bakeVectorPolygon(vertices) {
     const ctx = canvas.getContext("2d");
     applyVectorStrokeStyle(ctx);
     ctx.beginPath();
-    ctx.moveTo(anchorX + vertices[0].x, anchorY + vertices[0].y);
-    for (let i = 1; i < vertices.length; i++) ctx.lineTo(anchorX + vertices[i].x, anchorY + vertices[i].y);
-    ctx.closePath();
+    traceClosedPolygonTranslated(ctx, anchorX, anchorY, vertices);
     ctx.stroke();
     return { canvas, anchorX, anchorY };
 }
