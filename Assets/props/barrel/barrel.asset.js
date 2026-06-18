@@ -3,7 +3,7 @@ export default {
     primitive: "cylinder",
     sandbox: { equip: false, behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: {
-        hitBehavior: "damage",
+        hitBehavior: "none",
         radius: 8,
         isPushable: true,
         rolls: true,
@@ -16,7 +16,6 @@ export default {
         tipPushSpeed: 6,
         tipFallAngle: 1.25,
         laserTargetable: true,
-        maxHealth: 3,
         wallPhysics: { restitution: 0.25, friction: 0.75 },
         quantizeSteps: { facing: 64, roll: 32 },
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 4, randomRange: 8 },

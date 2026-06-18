@@ -1,5 +1,4 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
-import { canSplittableWorldPropSplit } from "../../Props/splittable.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { massFromBody } from "../../Motion/bodyMass.js";
 import { wakePushableBody } from "../../Motion/pushableSleep.js";
@@ -278,8 +277,7 @@ function solvePushableContactVelocities(contacts, iterations) {
         }
 }
 function applyPushableCollisionDamage(body, dmg, state) {
-    if (dmg <= 0 || !body.takeDamage) return;
-    if (body.strategy?.splittable && !canSplittableWorldPropSplit(body)) return;
+    if (dmg <= 0 || body.maxHealth == null || !body.takeDamage) return;
     body.takeDamage(dmg, state);
 }
 function applyPushableContactEffects(contacts, spatialFrame, state) {

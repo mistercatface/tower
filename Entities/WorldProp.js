@@ -17,7 +17,7 @@ import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
-import { applyPoxelGeometryToProp, initSplittableFootprint, splitFootprintIntoComponents } from "../Libraries/Props/splittableWorldProp.js";
+import { applyPoxelGeometryToProp, initSplittableFootprint } from "../Libraries/Props/splittableWorldProp.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 import { ensureLocomotionWorldProp, updateLocomotionWorldProp, usesLocomotionWorldProp } from "../Libraries/Props/locomotionWorldProp.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
@@ -245,10 +245,5 @@ export class WorldProp extends Entity {
             wakePushableBody(shard);
             addWorldPropToState(gameState, shard);
         }
-    }
-    spawnShards(gameState) {
-        if (!this.poxels?.length) return;
-        const fragments = splitFootprintIntoComponents(this, 0, 0, 20, true);
-        this.spawnSplittableFragments(gameState, fragments);
     }
 }

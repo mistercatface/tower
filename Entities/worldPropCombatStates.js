@@ -1,6 +1,5 @@
 import { RagdollCorpse } from "./RagdollCorpse.js";
 import { clearActorKinematics } from "../Libraries/Render/Characters/actorKinematicsRenderer.js";
-import { canSplittableWorldPropSplit } from "../Libraries/Props/splittable.js";
 export class WorldPropDeadState {
     onEnter(prop) {
         prop.isDead = true;
@@ -10,6 +9,5 @@ export class WorldPropDeadState {
             RagdollCorpse.spawnFromActor(gameState, prop, null, camera);
             clearActorKinematics(prop);
         }
-        if (canSplittableWorldPropSplit(prop) && typeof prop.spawnShards === "function") prop.spawnShards(gameState);
     }
 }
