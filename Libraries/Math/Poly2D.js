@@ -67,3 +67,42 @@ export function pointInPolygon(px, py, polygon) {
         (i) => polygon[i].y,
     );
 }
+export function polygonSignedArea2D(vertices) {
+    let area = 0;
+    const count = vertices.length;
+    for (let i = 0; i < count; i++) {
+        const j = (i + 1) % count;
+        area += vertices[i].x * vertices[j].y - vertices[j].x * vertices[i].y;
+    }
+    return area * 0.5;
+}
+export function polygonSecondMomentAboutCentroid2D(vertices) {
+    const count = vertices.length;
+    if (count < 3) return 0;
+    const signedArea = polygonSignedArea2D(vertices);
+    if (Math.abs(signedArea) < 1e-10) return 0;
+    let cx = 0;
+    let cy = 0;
+    for (let i = 0; i < count; i++) {
+        const j = (i + 1) % count;
+        const cross = vertices[i].x * vertices[j].y - vertices[j].x * vertices[i].y;
+        cx += (vertices[i].x + vertices[j].x) * cross;
+        cy += (vertices[i].y + vertices[j].y) * cross;
+    }
+    cx /= 6 * signedArea;
+    cy /= 6 * signedArea;
+    let inertia = 0;
+    for (let i = 0; i < count; i++) {
+        const j = (i + 1) % count;
+        const x0 = vertices[i].x - cx;
+        const y0 = vertices[i].y - cy;
+        const x1 = vertices[j].x - cx;
+        const y1 = vertices[j].y - cy;
+        const cross = x0 * y1 - x1 * y0;
+        const dot = x0 * x1 + y0 * y1;
+        const sq0 = x0 * x0 + y0 * y0;
+        const sq1 = x1 * x1 + y1 * y1;
+        inertia += cross * (sq0 + dot + sq1);
+    }
+    return inertia / 12;
+}

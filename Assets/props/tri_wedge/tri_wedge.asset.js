@@ -4,7 +4,6 @@ export default {
     sandbox: { behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "tri wedge" },
     physics: {
         isKinetic: true,
-        mass: 0.8,
         friction: 8,
         wallPhysics: { restitution: 0.2, friction: 0.7 },
         localFootprint: [
