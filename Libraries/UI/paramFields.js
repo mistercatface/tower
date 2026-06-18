@@ -118,6 +118,20 @@ export function appendCheckboxField(parent, label, { name, checked, onChange, cl
     parent.appendChild(field);
     return field;
 }
+export function appendColorField(parent, labelText, { value, onChange }) {
+    const field = document.createElement("div");
+    field.className = "param-field param-field-color";
+    const label = document.createElement("span");
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.type = "color";
+    setFormFieldName(input, labelText);
+    input.value = value;
+    input.addEventListener("change", () => onChange(input.value));
+    field.append(label, input);
+    parent.appendChild(field);
+    return field;
+}
 /**
  * @param {HTMLElement} body
  * @param {Record<string, { value: number, step?: number, min?: number, onChange: (value: number) => void }>} axes

@@ -1,6 +1,7 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { rotateXY } from "../../Math/Poly2D.js";
 import { getFlipperSpec } from "../../Sandbox/behaviors/flipperBehavior.js";
+import { resolvePropTintedColorTree } from "../../Props/propTint.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
 /** @param {number} length @param {number} halfW @param {number} height @param {number} facing @param {number} extendDir */
 function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, extendDir) {
@@ -96,6 +97,7 @@ export function createFlipperPrimitive(visuals) {
     const { world, colors, activeColors } = visuals;
     return (ctx, prop, px, py) => {
         const active = prop._flipperTarget === "active" || prop._flipperButtonPressed;
-        drawFlipperPaddle(ctx, prop, px, py, { world, colors: active && activeColors ? activeColors : colors, lineWidth: visuals.lineWidth ?? 0.9 });
+        const base = active && activeColors ? activeColors : colors;
+        drawFlipperPaddle(ctx, prop, px, py, { world, colors: resolvePropTintedColorTree(prop, base), lineWidth: visuals.lineWidth ?? 0.9 });
     };
 }

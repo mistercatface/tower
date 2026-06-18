@@ -65,6 +65,7 @@ export function isSingleWorldPropSpawnAsset(asset) {
         !isPoolRackSpawnAsset(asset)
     );
 }
+
 export function resolveFloorBeltKindFromSpawnAsset(asset) {
     const kind = asset?.sandbox?.floorBeltKind;
     if (kind === "elbowLeft") return FLOOR_CELL_KIND.BeltElbowLeft;

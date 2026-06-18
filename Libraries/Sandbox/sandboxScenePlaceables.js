@@ -56,7 +56,8 @@ const PLACEABLE = {
         },
         spawnAt(state, worldX, worldY, asset, ctx) {
             const halfExtents = isResizableBoxSpawnAsset(asset) ? ctx.spawnBoxHalfExtents : undefined;
-            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, ctx.spawnPropId, ctx.spawnFaction, 0, halfExtents);
+            const tintHue = ctx.spawnPropTintEnabled ? ctx.resolveSpawnPropTintHue(asset) : undefined;
+            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, ctx.spawnPropId, ctx.spawnFaction, 0, halfExtents, tintHue);
             if (spawned) {
                 ctx.placement.touchPropPlacement(spawned.id);
                 ctx.pickSelection({ kind: "prop", ids: [spawned.id] });

@@ -18,6 +18,5 @@ export const SNAKE_GAME_DEFAULTS = {
     startRadius: 2,
     maxRadius: 4,
     radiusPerMeal: 0.25,
-    chainColor: { saturation: 70, panelLightness: [42, 52, 62, 36, 48, 40] },
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1 },
 };

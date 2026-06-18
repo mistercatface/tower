@@ -6,7 +6,7 @@ import { SANDBOX_DEFAULT_FACTION } from "../../Sandbox/sandboxFaction.js";
 import { withSeededRandom } from "../../Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns } from "../../../Apps/Editor/world/mapWorld.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
-import { applySnakeChainPanels, pickSnakeChainPanels } from "./snakeChainColor.js";
+import { applySnakeChainTint, pickSnakeChainTintHue } from "./snakeChainColor.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
     const grid = state.obstacleGrid;
@@ -60,7 +60,7 @@ export function spawnSnakeChain(state, anchorCell, { excludeKeys = null, segment
     const config = getSnakeGameConfig();
     const startRadius = resolveSnakeStartRadius(config);
     const resolvedSegmentCount = segmentCount ?? config.segmentCount;
-    const panels = pickSnakeChainPanels(rng);
+    const panels = pickSnakeChainTintHue(rng);
     const chain = spawnLinkedBallChain(state, anchorCell, {
         segmentCount: resolvedSegmentCount,
         spacing: resolveSnakeSegmentSpacing(config, startRadius),
@@ -72,11 +72,11 @@ export function spawnSnakeChain(state, anchorCell, { excludeKeys = null, segment
         growDirY: config.growDirY,
         exportType: SNAKE_CHAIN_EXPORT_TYPE,
     });
-    applySnakeChainPanels(chain.members, panels);
+    applySnakeChainTint(chain.members, panels);
     const occupiedKeys = new Set(excludeKeys ?? []);
     const occupied = linkedChainOccupiedCellKeys(chain.members, state.obstacleGrid);
     for (const key of occupied) occupiedKeys.add(key);
-    return { chain, panels, occupiedKeys };
+    return { chain, tintHue: panels, occupiedKeys };
 }
 export function spawnSnakeGoalPool(state, goalCount, { excludeKeys = null, rng = Math.random } = {}) {
     const keys = new Set(excludeKeys ?? []);

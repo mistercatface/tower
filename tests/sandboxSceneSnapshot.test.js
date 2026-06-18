@@ -9,6 +9,7 @@ import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKi
 import { getChainMemberIds, isChainSteeringTarget, setChainHead } from "../Libraries/Sandbox/chainLinks.js";
 import { collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../Libraries/Sandbox/sandboxSceneSnapshot.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
+import { setPropTint, getPropTintHue } from "../Libraries/Props/propTint.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 
@@ -33,7 +34,7 @@ function applyPhysicsSnapshot(state, doc) {
     const propIds = [];
     for (let i = 0; i < doc.props.length; i++) {
         const entry = doc.props[i];
-        const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction, entry.facing ?? 0);
+        const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction, entry.facing ?? 0, undefined, entry.tint);
         propIds.push(prop.id);
     }
     applyKineticConstraintsFromSnapshot(state, doc.kineticConstraints, propIds);
@@ -63,6 +64,8 @@ describe("sandboxSceneSnapshot physics", () => {
     it("round-trips physics fields through collect and apply helpers", () => {
         resetKineticConstraintIds(1);
         const state = createSnapshotTestState();
+        const tinted = spawnPlacedSandboxProp(state, 48, 48, "blue_ball");
+        setPropTint(tinted, 135);
         spawnLinkedBallChain(state, { col: 10, row: 10 }, {
             segmentCount: 4,
             spacing: 16,
@@ -85,8 +88,10 @@ describe("sandboxSceneSnapshot physics", () => {
         const fresh = createSnapshotTestState();
         applyPhysicsSnapshot(fresh, physicsDoc);
         const freshMeta = getSandboxEntityMeta(fresh);
-        assert.equal(fresh.worldProps.length, 4);
+        assert.equal(fresh.worldProps.length, 5);
         assert.equal(fresh.sandbox.kineticConstraints.length, 3);
+        const tintedProp = fresh.worldProps.find((prop) => getPropTintHue(prop) === 135);
+        assert.ok(tintedProp);
         const head = fresh.worldProps.find((prop) => freshMeta.isChainHead(prop.id));
         assert.ok(head);
         assert.equal(getChainMemberIds(fresh, head.id).length, 4);

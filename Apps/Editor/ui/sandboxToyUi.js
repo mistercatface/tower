@@ -56,6 +56,9 @@ export function mountSandboxToyUi(container, state, controller) {
         const spawn = appendPinnedSection(container, "spawn", "Spawn", (body) => {
             sections.spawnBody = body;
         });
+        const selected = appendPinnedSection(container, "selected", "Selected", (body) => {
+            sections.selectedBody = body;
+        });
         const selection = appendPinnedSection(
             container,
             "selection",
@@ -67,9 +70,6 @@ export function mountSandboxToyUi(container, state, controller) {
                 sections.selectionHead = head;
             },
         );
-        const selected = appendPinnedSection(container, "selected", "Selected", (body) => {
-            sections.selectedBody = body;
-        });
         const scene = appendPinnedSection(container, "scene", "Scene", (body) => {
             sections.sceneBody = body;
         });

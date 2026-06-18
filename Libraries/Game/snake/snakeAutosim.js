@@ -6,7 +6,7 @@ import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
-import { copySnakeChainPanelsFromHead } from "./snakeChainColor.js";
+import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { countLiveSnakeGoals, findNearestSnakeGoal } from "./snakeGoals.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal } from "./snakeGoals.js";
 function chainMemberProps(state, headId) {
@@ -69,7 +69,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
                 growDirY: resolvedGrowDirY,
                 exportType: SNAKE_CHAIN_EXPORT_TYPE,
             });
-            copySnakeChainPanelsFromHead(state, headId, newTail);
+            copySnakeChainTintFromHead(state, headId, newTail);
             tailId = newTail.id;
             replenishSnakeGoals(state, headId, rng);
         },

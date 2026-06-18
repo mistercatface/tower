@@ -20,6 +20,7 @@ import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "./s
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setChainHead } from "./chainLinks.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
+import { setPropTint } from "../Props/propTint.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Motion/kineticConstraints.js";
 import { setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
@@ -33,7 +34,7 @@ import { SANDBOX_DEFAULT_FACTION } from "../Sandbox/sandboxFaction.js";
  * boundary until we deliberately add that.
  */
 /** Current snapshot format; bump when fields change (no vN→vN+1 migration code until then). */
-export const SANDBOX_SCENE_SCHEMA_VERSION = 9;
+export const SANDBOX_SCENE_SCHEMA_VERSION = 10;
 /** @param {object} state */
 export function collectSandboxSceneSnapshot(state) {
     const grid = state.obstacleGrid;
@@ -158,6 +159,7 @@ function spawnSnapshotProp(state, entry) {
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
     const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents);
     if (entry.radius != null) setCirclePropRadius(prop, entry.radius);
+    if (entry.tint != null) setPropTint(prop, entry.tint);
     return prop;
 }
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */

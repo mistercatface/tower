@@ -4,6 +4,7 @@ import { boxLocalFootprint, convexFootprintHalfExtents } from "../Math/Poly2D.js
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
+import { propTintCacheKey } from "./propTint.js";
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategy). */
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, pinned: false };
 export function applyPropBoxFootprint(prop, hx, hy) {
@@ -70,6 +71,7 @@ export function getBaseSpriteCacheKey(prop, deps) {
     let key = `${orientKey}_${propShapeFootprintKey(prop)}`;
     if (prop.powered === false) key += "_off";
     if (prop._buttonDrawPressed) key += "_on";
+    key += propTintCacheKey(prop);
     return key;
 }
 export function getPropStageBakeState(prop, deps) {

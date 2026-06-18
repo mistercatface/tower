@@ -1,4 +1,5 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
+import { hexToPropTintHue } from "../Props/propTint.js";
 import { SANDBOX_DEFAULT_FACTION } from "./sandboxFaction.js";
 import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
 import { normalizeAuthoredSurfaceProfileId } from "../RoomGraph/roomGraphSurfaceProfile.js";
@@ -18,9 +19,20 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
     let spawnCorridorSurfaceProfileId = null;
     let spawnBoxWidth = DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH;
     let spawnBoxHeight = DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT;
+    let spawnPropTintEnabled = false;
+    let spawnPropTintHue = null;
+    const resolveSpawnPropTintHue = (asset) => {
+        if (!spawnPropTintEnabled) return null;
+        if (spawnPropTintHue != null) return spawnPropTintHue;
+        const fallback = asset?.visuals?.panels?.[0];
+        return fallback ? hexToPropTintHue(fallback) : 0;
+    };
     const spawnCtx = () => ({
         spawnPropId: getSpawnPropId(),
         spawnFaction,
+        spawnPropTintEnabled,
+        spawnPropTintHue,
+        resolveSpawnPropTintHue,
         spawnRoomNodeCols,
         spawnRoomNodeRows,
         spawnPuzzleAreaCols,
@@ -92,6 +104,16 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
             spawnBoxHeight = Math.max(6, Math.min(128, Math.round(height)));
             notifyUi();
         },
+        isSpawnPropTintEnabled: () => spawnPropTintEnabled,
+        setSpawnPropTintEnabled: (enabled) => {
+            spawnPropTintEnabled = enabled;
+            notifyUi();
+        },
+        getSpawnPropTintHue: () => spawnPropTintHue,
+        setSpawnPropTintHue: (hue) => {
+            spawnPropTintHue = hue;
+        },
+        resolveSpawnPropTintHue,
         spawnAt,
         spawnAtCameraOrigin() {
             return spawnAt(state.viewport.x, state.viewport.y);

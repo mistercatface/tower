@@ -4,7 +4,6 @@ import { getPropAsset } from "../../Props/PropCatalog.js";
 let activeSnakeGameConfig = SNAKE_GAME_DEFAULTS;
 export function applySnakeGameConfig(overrides) {
     activeSnakeGameConfig = mergePartial(SNAKE_GAME_DEFAULTS, overrides);
-    if (overrides?.chainColor && typeof overrides.chainColor === "object") activeSnakeGameConfig.chainColor = { ...SNAKE_GAME_DEFAULTS.chainColor, ...overrides.chainColor };
 }
 export function getSnakeGameConfig() {
     return activeSnakeGameConfig;
@@ -14,9 +13,6 @@ export function resolveSnakeSpawnSpecs(config = getSnakeGameConfig()) {
     const playerIndex = config.playerSnakeIndex ?? 0;
     for (let i = 0; i < config.snakeCount; i++) specs.push({ segmentCount: config.segmentCount, cameraFollow: i === playerIndex });
     return specs;
-}
-export function resolveSnakeChainColorOptions(config = getSnakeGameConfig()) {
-    return config.chainColor;
 }
 export function resolveSnakePropRadius(propId) {
     const radius = getPropAsset(propId)?.physics?.radius;
