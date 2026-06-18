@@ -17,7 +17,7 @@ import { MOVING_SPEED_SQ } from "../Libraries/Spatial/collision/entityBroadphase
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { speedSqXY } from "../Libraries/Math/Vec2.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
-import { SPLITTABLE_MIN_PIECE_SIZE } from "../Libraries/Props/splittable.js";
+import { applyPoxelGeometryToProp, initSplittableFootprint, splitFootprintIntoComponents } from "../Libraries/Props/splittableWorldProp.js";
 import { wakePushableBody } from "../Libraries/Motion/pushableSleep.js";
 import { ensureLocomotionWorldProp, updateLocomotionWorldProp, usesLocomotionWorldProp } from "../Libraries/Props/locomotionWorldProp.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
@@ -75,6 +75,7 @@ export class WorldProp extends Entity {
                 { x: hx, y: hy },
                 { x: -hx, y: hy },
             ]);
+            if (this.strategy.splittable) initSplittableFootprint(this);
         }
         if (this.strategy.maxHealth != null) {
             this.maxHealth = this.strategy.maxHealth;
@@ -202,32 +203,21 @@ export class WorldProp extends Entity {
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }
     spawnShards(gameState) {
-        if (!gameState || !gameState.worldProps) return;
-        const width = this.halfExtents ? this.halfExtents.x * 2 : this.radius * 2;
-        const height = this.halfExtents ? this.halfExtents.y * 2 : this.radius * 2;
-        const minSize = SPLITTABLE_MIN_PIECE_SIZE;
-        const localRects = partitionCrateLocal(width, height, minSize, 1);
+        if (!gameState?.worldProps) return;
+        if (!this.poxels?.length) return;
+        const parentArea = this.footprintArea || 1;
+        const parentMass = this.mass || 1;
+        const parentOmega = this.angularVelocity || 0;
         const cos = Math.cos(this.facing);
         const sin = Math.sin(this.facing);
-        for (const rect of localRects) {
-            const localCx = (rect.minX + rect.maxX) / 2;
-            const localCy = (rect.minY + rect.maxY) / 2;
-            const hx = (rect.maxX - rect.minX) / 2;
-            const hy = (rect.maxY - rect.minY) / 2;
-            const world = transformPoint2DInto({ x: 0, y: 0 }, this.x, this.y, localCx, localCy, cos, sin);
-            const worldX = world.x;
-            const worldY = world.y;
-            const shard = new WorldProp(worldX, worldY, "crate_shard", this.facing);
-            shard.halfExtents = { x: hx, y: hy };
-            shard.radius = Math.hypot(hx, hy);
-            shard.shape = new PolygonShape([
-                { x: -hx, y: -hy },
-                { x: hx, y: -hy },
-                { x: hx, y: hy },
-                { x: -hx, y: hy },
-            ]);
-            let dx = worldX - this.x;
-            let dy = worldY - this.y;
+        const fragments = splitFootprintIntoComponents(this, 0, 0, 20, true);
+        for (const geom of fragments) {
+            const world = transformPoint2DInto({ x: 0, y: 0 }, this.x, this.y, geom.centroid.cx, geom.centroid.cy, cos, sin);
+            const shard = new WorldProp(world.x, world.y, "crate_shard", this.facing);
+            applyPoxelGeometryToProp(shard, geom);
+            shard.mass = parentMass * (geom.footprintArea / parentArea);
+            let dx = world.x - this.x;
+            let dy = world.y - this.y;
             let dist = Math.hypot(dx, dy);
             if (dist > 0) {
                 dx /= dist;
@@ -240,43 +230,13 @@ export class WorldProp extends Entity {
             const speed = 40 + Math.random() * 60;
             shard.vx = this.vx + dx * speed + (Math.random() - 0.5) * 15;
             shard.vy = this.vy + dy * speed + (Math.random() - 0.5) * 15;
+            const rx = world.x - this.x;
+            const ry = world.y - this.y;
+            shard.vx += -parentOmega * ry * 0.5;
+            shard.vy += parentOmega * rx * 0.5;
+            shard.angularVelocity = parentOmega + (Math.random() - 0.5) * 3;
             wakePushableBody(shard);
             addWorldPropToState(gameState, shard);
         }
     }
-}
-function partitionCrateLocal(width, height, minSize, maxDepth = 2) {
-    const results = [];
-    function recurse(rect, depth) {
-        const w = rect.maxX - rect.minX;
-        const h = rect.maxY - rect.minY;
-        const canSplitH = h >= minSize * 2;
-        const canSplitV = w >= minSize * 2;
-        if (depth >= maxDepth || (!canSplitH && !canSplitV)) {
-            results.push(rect);
-            return;
-        }
-        let splitVertical = false;
-        if (canSplitH && canSplitV)
-            if (w > h * 1.3) splitVertical = true;
-            else if (h > w * 1.3) splitVertical = false;
-            else splitVertical = Math.random() < 0.5;
-        else if (canSplitV) splitVertical = true;
-        else splitVertical = false;
-        if (splitVertical) {
-            const minT = rect.minX + minSize;
-            const maxT = rect.maxX - minSize;
-            const t = minT + Math.random() * (maxT - minT);
-            recurse({ minX: rect.minX, minY: rect.minY, maxX: t, maxY: rect.maxY }, depth + 1);
-            recurse({ minX: t, minY: rect.minY, maxX: rect.maxX, maxY: rect.maxY }, depth + 1);
-        } else {
-            const minT = rect.minY + minSize;
-            const maxT = rect.maxY - minSize;
-            const t = minT + Math.random() * (maxT - minT);
-            recurse({ minX: rect.minX, minY: rect.minY, maxX: rect.maxX, maxY: t }, depth + 1);
-            recurse({ minX: rect.minX, minY: t, maxX: rect.maxX, maxY: rect.maxY }, depth + 1);
-        }
-    }
-    recurse({ minX: -width / 2, minY: -height / 2, maxX: width / 2, maxY: height / 2 }, 0);
-    return results;
 }
