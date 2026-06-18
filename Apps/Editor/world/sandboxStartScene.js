@@ -4,9 +4,8 @@ import { addDistanceConstraint } from "../../../Libraries/Motion/kineticConstrai
 import { setChainHead } from "../../../Libraries/Sandbox/chainLinks.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { SANDBOX_DEFAULT_FACTION, sandboxFactions } from "../../../Libraries/Sandbox/sandboxFaction.js";
-import { forEachGlobalCellInMapGenBounds } from "../../../Libraries/Sandbox/mapGenBounds.js";
+import { collectOpenCavernCells } from "../../../Libraries/Sandbox/cavernFloorCells.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
-import { cellInRect } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { applyPlayAreaConfig, generateLabCaverns } from "./mapWorld.js";
 const STRESS_CHAIN_SEGMENT_COUNT = 45;
 const STRESS_CHAIN_BALL_TYPE = "blue_ball";
@@ -44,18 +43,6 @@ function shuffleInPlace(items) {
         items[i] = items[j];
         items[j] = tmp;
     }
-}
-function collectOpenCavernCells(state) {
-    const grid = state.obstacleGrid;
-    const cellSize = grid.cellSize;
-    const open = [];
-    forEachGlobalCellInMapGenBounds(state.editor.cavernConfig, (globalCol, globalRow) => {
-        const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) return;
-        if (grid.isBlocked(col, row)) return;
-        open.push({ col, row });
-    });
-    return open;
 }
 function randomQuantizedBoxSize() {
     const steps = (STRESS_BOX_SIZE_MAX - STRESS_BOX_SIZE_MIN) / STRESS_BOX_SIZE_STEP + 1;

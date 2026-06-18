@@ -7,6 +7,7 @@ import { convexFootprintHalfExtents } from "../Math/Poly2D.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
+import { tryExportSnakeChainSpawnGroup } from "./spawnSnakeChain.js";
 function assetDefaultFootprintSpan(typeId) {
     const footprint = getPropAsset(typeId)?.physics?.localFootprint;
     if (!footprint?.length) return null;
@@ -28,7 +29,7 @@ function serializePlacedProp(prop) {
     return entry;
 }
 function tryExportSpawnGroup(members, meta) {
-    return tryExportPoolRackSpawnGroup(members, meta);
+    return tryExportPoolRackSpawnGroup(members, meta) ?? tryExportSnakeChainSpawnGroup(members, meta);
 }
 export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction = SANDBOX_DEFAULT_FACTION, facing = 0, boxHalfExtents = undefined) {
     const asset = getPropAsset(propTypeId);
