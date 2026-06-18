@@ -1,4 +1,5 @@
-import { CARDINAL_OFFSETS, OCTILE_OFFSETS, colRowToIndex, indexToColRow, makeAdjacencyKey, forEachCardinalNeighbor } from "../Spatial/grid/GridUtils.js";
+import { bfsColRowQueue, bfsIndices } from "../DataStructures/gridBfs.js";
+import { CARDINAL_OFFSETS, OCTILE_OFFSETS, makeAdjacencyKey, forEachCardinalNeighbor } from "../Spatial/grid/GridUtils.js";
 export class RegionNode {
     constructor(id, col, row, sectorCol, sectorRow, minX, minY, cellSize) {
         this.id = id;
@@ -17,7 +18,6 @@ export function computeDistanceTransform(grid, cols, rows, distToWall = null) {
     const distances = distToWall ?? new Float32Array(size);
     distances.fill(Infinity);
     const queue = [];
-    let head = 0;
     for (let i = 0; i < size; i++)
         if (grid[i]) {
             distances[i] = 0;
@@ -25,9 +25,7 @@ export function computeDistanceTransform(grid, cols, rows, distToWall = null) {
             const row = (i / cols) | 0;
             queue.push(col, row);
         }
-    while (head < queue.length) {
-        const c = queue[head++];
-        const r = queue[head++];
+    bfsColRowQueue(queue, (c, r, enqueue) => {
         const currIdx = r * cols + c;
         const currDist = distances[currIdx];
         for (const { dc, dr, cost } of OCTILE_OFFSETS) {
@@ -38,23 +36,21 @@ export function computeDistanceTransform(grid, cols, rows, distToWall = null) {
                 const nextDist = currDist + cost;
                 if (nextDist < distances[nIdx]) {
                     distances[nIdx] = nextDist;
-                    queue.push(nc, nr);
+                    enqueue(nc, nr);
                 }
             }
         }
-    }
+    });
     for (let i = 0; i < size; i++) if (distances[i] === Infinity) distances[i] = 1000;
     return distances;
 }
 export function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, nodeCells, maxCellsPerChunk, navGraph, unassigned = null) {
     let cellCount = 0;
-    const queue = [startIdx];
     cellToNode[startIdx] = node;
     nodeCells.push(startIdx);
     cellCount++;
-    let head = 0;
-    while (head < queue.length && cellCount < maxCellsPerChunk) {
-        const currIdx = queue[head++];
+    bfsIndices([startIdx], (currIdx, enqueue) => {
+        if (cellCount >= maxCellsPerChunk) return;
         const c = currIdx % cols;
         const r = (currIdx / cols) | 0;
         for (const { dc, dr } of CARDINAL_OFFSETS) {
@@ -67,13 +63,13 @@ export function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, no
                     if (unassigned) unassigned.delete(nIdx);
                     cellToNode[nIdx] = node;
                     nodeCells.push(nIdx);
-                    queue.push(nIdx);
+                    enqueue(nIdx);
                     cellCount++;
-                    if (cellCount >= maxCellsPerChunk) break;
+                    if (cellCount >= maxCellsPerChunk) return;
                 }
             }
         }
-    }
+    });
 }
 export function mergeSmallRegions(nodesMap, cellToNode, cols, rows, minCellsPerChunk, navGraph = null) {
     let merged;
@@ -92,11 +88,7 @@ export function mergeSmallRegions(nodesMap, cellToNode, cols, rows, minCellsPerC
                 forEachCardinalNeighbor(col, row, cols, rows, (nc, nr, nIdx) => {
                     if (neighborNode) return;
                     const nNode = cellToNode[nIdx];
-                    if (nNode && nNode.id !== id) {
-                        if (!navGraph || (navGraph.canStep(col, row, nc, nr) && navGraph.canStep(nc, nr, col, row))) {
-                            neighborNode = nNode;
-                        }
-                    }
+                    if (nNode && nNode.id !== id) if (!navGraph || (navGraph.canStep(col, row, nc, nr) && navGraph.canStep(nc, nr, col, row))) neighborNode = nNode;
                 });
                 if (neighborNode) break;
             }

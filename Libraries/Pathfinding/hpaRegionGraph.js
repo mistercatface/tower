@@ -1,3 +1,4 @@
+import { bfsIndices } from "../DataStructures/gridBfs.js";
 import { colRowToIndex, forEachCardinalNeighbor, makeAdjacencyKey } from "../Spatial/grid/GridUtils.js";
 import { findNearestOpenCellBlocked } from "./hpaPathRequest.js";
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
@@ -200,20 +201,17 @@ function pruneUnreachableRegions(navGraph, blocked, cols, rows, minX, minY, cell
     const start = findNearestOpenCellBlocked(blocked, cols, rows, col, row);
     const startIdx = colRowToIndex(start.col, start.row, cols);
     const reachable = new Uint8Array(cols * rows);
-    const queue = [startIdx];
     reachable[startIdx] = 1;
-    let head = 0;
-    while (head < queue.length) {
-        const idx = queue[head++];
+    bfsIndices([startIdx], (idx, enqueue) => {
         const c = idx % cols;
         const r = (idx / cols) | 0;
         forEachCardinalNeighbor(c, r, cols, rows, (nc, nr, nIdx) => {
             if (blocked[nIdx] || reachable[nIdx]) return;
             if (!canWalkBetween(navGraph, c, r, nc, nr)) return;
             reachable[nIdx] = 1;
-            queue.push(nIdx);
+            enqueue(nIdx);
         });
-    }
+    });
     for (const id in nodesMap) {
         const node = nodesMap[id];
         let hasReachableCell = false;
