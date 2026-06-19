@@ -48,7 +48,7 @@ describe("rail maze corridor belts", () => {
                 rail: config.rail,
             });
             const plan = preview.beltPlan;
-            assert.ok(plan.pathCount > 0, `seed ${seeds[i]}: no corridor paths`);
+            assert.ok(plan.pathCount >= 5, `seed ${seeds[i]}: only ${plan.pathCount} corridor paths`);
             assert.ok(plan.floorBelts.length > 20, `seed ${seeds[i]}: only ${plan.floorBelts.length} belts`);
             let elbows = 0;
             for (let bi = 0; bi < plan.floorBelts.length; bi++) {

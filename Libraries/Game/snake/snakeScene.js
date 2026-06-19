@@ -1,11 +1,13 @@
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../../Sandbox/sandboxSceneSnapshot.js";
-import { walkableCellKey, pickWalkableCell, createNavWalkableAccess } from "../../Procedural/Mazes/walkableCells.js";
+import { walkableCellKey, pickWalkableCell, createNavWalkableAccess, collectNavWalkableCells } from "../../Procedural/Mazes/walkableCells.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { linkedChainOccupiedCellKeys, spawnLinkedBallChain } from "../../Sandbox/spawnLinkedBallChain.js";
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { SANDBOX_DEFAULT_FACTION } from "../../Sandbox/sandboxFaction.js";
 import { withSeededRandom } from "../../Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns, generateLabRailDfsMaze, clearSnakeRegionPaddingStrip } from "../../../Apps/Editor/world/mapWorld.js";
+import { planRailMazeCorridorBelts } from "../../Procedural/Mazes/railMazeCorridorBelts.js";
+import { stampGlobalRailMazeBelts } from "../../Procedural/Mazes/stampGlobalRailMazeBelts.js";
 import { commitBoundaryEdit } from "../../Sandbox/boundaryEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
@@ -137,6 +139,24 @@ export async function generateSnakeSplitMap(state) {
     commitBoundaryEdit(state, paddingBounds);
     state.worldSurfaces.invalidateGridBounds(paddingBounds, state);
     await state.navigation.onObstaclesChanged(paddingBounds);
+    const playable = resolveSnakePlayableBounds(state);
+    const floodSeed = resolveSnakeNavWalkableFloodSeedBounds(state);
+    const navWalkable = collectNavWalkableCells(state, playable, floodSeed);
+    const walkableKeys = new Set();
+    for (let i = 0; i < navWalkable.length; i++) walkableKeys.add(walkableCellKey(navWalkable[i].col, navWalkable[i].row));
+    const beltPlan = planRailMazeCorridorBelts({
+        grid: state.obstacleGrid,
+        gridNavContext: state.navigation.gridNavContext,
+        railConfig,
+        northReserveRows: cavern.openBoundaryRows ?? 3,
+        walkableKeys,
+        mapSeed: state.mapSeed,
+    });
+    const { bounds: beltBounds } = stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
+    if (beltBounds) {
+        state.worldSurfaces.invalidateGridBounds(beltBounds, state);
+        await state.navigation.onObstaclesChanged(beltBounds);
+    }
     cavernConfig.wallHeightLevel = prevCavernWallHeightLevel;
     railConfig.wallHeightLevel = prevRailWallHeightLevel;
     cavernConfig.fillChance = prevCavernFillChance;

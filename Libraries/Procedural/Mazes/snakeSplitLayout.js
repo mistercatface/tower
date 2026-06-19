@@ -10,6 +10,7 @@ import { collectNavWalkableCells } from "./walkableCells.js";
 import { generateCavernOccupancy } from "./cavernOccupancy.js";
 import { bakeRailMazeDfs } from "./railMazeDfs.js";
 import { planRailMazeCorridorBelts } from "./railMazeCorridorBelts.js";
+import { stampFloorBeltsOnGrid } from "./stampGlobalRailMazeBelts.js";
 export function centerPlayAreaBounds(playAreaCols, playAreaRows) {
     return { boundsMode: "rect", boundsCol: 0, boundsRow: 0, boundsCols: playAreaCols, boundsRows: playAreaRows };
 }
@@ -152,7 +153,10 @@ export function bakeSnakeSplitLayoutPreview({ mapSeed, playAreaCols, playAreaRow
         railConfig: applied.railConfig,
         northReserveRows: layout.northReserveRows,
         walkableKeys,
+        mapSeed: layout.mapSeed,
     });
+    stampFloorBeltsOnGrid(grid, beltPlan.floorBelts);
+    syncGridNavContext(navigation.gridNavContext, grid);
     return { layout, grid, gridNavContext: navigation.gridNavContext, navWalkable, walkableKeys, beltPlan, ...applied };
 }
 export function globalCellFromGrid(grid, col, row) {
