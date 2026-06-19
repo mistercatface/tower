@@ -1,5 +1,6 @@
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../../Sandbox/sandboxSceneSnapshot.js";
 import { walkableCellKey, pickWalkableCell, createNavWalkableAccess } from "../../Procedural/Mazes/walkableCells.js";
+import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { linkedChainOccupiedCellKeys, spawnLinkedBallChain } from "../../Sandbox/spawnLinkedBallChain.js";
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { SANDBOX_DEFAULT_FACTION } from "../../Sandbox/sandboxFaction.js";
@@ -45,6 +46,22 @@ function isValidSnakeChainAnchorCell(navWalkable, grid, anchorCell, { segmentCou
         if (excludeKeys?.has(walkableCellKey(col, row))) return false;
     }
     return true;
+}
+function pickSnakeChainSpawnCellNearestTo(spawnPool, navWalkable, state, targetCol, targetRow, { segmentCount, spacing, growDirX, growDirY, excludeKeys }) {
+    const grid = state.obstacleGrid;
+    let best = null;
+    let bestDist = Infinity;
+    for (let i = 0; i < spawnPool.length; i++) {
+        const cell = spawnPool[i];
+        if (!isValidSnakeChainAnchorCell(navWalkable, grid, cell, { segmentCount, spacing, growDirX, growDirY, excludeKeys })) continue;
+        const dist = cellChebyshevDistance(targetCol, targetRow, cell.col, cell.row);
+        if (dist < bestDist) {
+            bestDist = dist;
+            best = cell;
+        }
+    }
+    if (!best) throw new Error("No walkable snake spawn cell near map center");
+    return best;
 }
 function pickSnakeChainSpawnCell(spawnPool, navWalkable, state, { segmentCount, spacing, growDirX, growDirY, excludeKeys, rng = Math.random }) {
     const grid = state.obstacleGrid;
@@ -125,19 +142,27 @@ export async function generateSnakeSplitMap(state) {
     cavernConfig.iterations = prevCavernIterations;
     railConfig.edgeThickness = prevRailEdgeThickness;
 }
-export function resolveSnakePlayerSpawnBounds(state) {
+export function resolveSnakeNavWalkableFloodSeedBounds(state) {
     const playable = resolveSnakePlayableBounds(state);
-    const spanRows = Math.max(6, Math.floor(playable.boundsRows * 0.25));
-    const spanCols = Math.max(6, Math.floor(playable.boundsCols * 0.25));
-    const midRow = playable.boundsRow + Math.floor(playable.boundsRows / 2);
-    const midCol = playable.boundsCol + Math.floor(playable.boundsCols / 2);
-    return {
-        boundsMode: "rect",
-        boundsCol: midCol - Math.floor(spanCols / 2),
-        boundsRow: midRow - Math.floor(spanRows / 2),
-        boundsCols: spanCols,
-        boundsRows: spanRows,
-    };
+    const globalCol = playable.boundsCol + Math.floor(playable.boundsCols / 2);
+    const globalRow = playable.boundsRow + Math.floor(playable.boundsRows / 2);
+    return { boundsMode: "rect", boundsCol: globalCol, boundsRow: globalRow, boundsCols: 1, boundsRows: 1 };
+}
+export function resolveSnakePlayableCenterCell(state) {
+    const seed = resolveSnakeNavWalkableFloodSeedBounds(state);
+    const cellSize = state.obstacleGrid.cellSize;
+    return state.obstacleGrid.worldToGrid(seed.boundsCol * cellSize, seed.boundsRow * cellSize);
+}
+export function resolvePlayerSnakeSpawnAnchor(state, navWalkable, { segmentCount, excludeKeys = null }) {
+    const config = getSnakeGameConfig();
+    const centerCell = resolveSnakePlayableCenterCell(state);
+    return pickSnakeChainSpawnCellNearestTo(navWalkable.cells(), navWalkable, state, centerCell.col, centerCell.row, {
+        segmentCount,
+        spacing: resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config)),
+        growDirX: config.growDirX,
+        growDirY: config.growDirY,
+        excludeKeys,
+    });
 }
 async function spawnSnakeCavernMap(state) {
     await generateSnakeSplitMap(state);
@@ -189,31 +214,41 @@ export function spawnSnakeGoalPool(state, goalCount, navWalkable, { excludeKeys 
 export async function spawnSnakeCavernScene(state) {
     const config = getSnakeGameConfig();
     await spawnSnakeCavernMap(state);
-    const navWalkable = createNavWalkableAccess(state, resolveSnakePlayableBounds(state), { floodSeedBounds: resolveSnakePlayerSpawnBounds(state) });
+    const navWalkable = createNavWalkableAccess(state, resolveSnakePlayableBounds(state), { floodSeedBounds: resolveSnakeNavWalkableFloodSeedBounds(state) });
     navWalkable.rebake();
-    const cavernCells = navWalkable.cells();
-    const playerSpawnBounds = resolveSnakePlayerSpawnBounds(state);
-    const playerCells = navWalkable.filterInBounds(playerSpawnBounds);
+    const spawnCells = navWalkable.cells();
     const snakes = [];
     let goals = [];
     const playerIndex = config.playerSnakeIndex ?? 0;
     withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset, () => {
-        shuffleInPlace(cavernCells);
-        shuffleInPlace(playerCells);
-        let excludeKeys = null;
         const specs = resolveSnakeSpawnSpecs(config);
         const segmentCount = config.segmentCount;
         const spacing = resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config));
         const growDirX = config.growDirX;
         const growDirY = config.growDirY;
+        const chainSpawnParams = { segmentCount, spacing, growDirX, growDirY };
+        let excludeKeys = null;
+        const playerSpec = specs[playerIndex];
+        const playerAnchor = resolvePlayerSnakeSpawnAnchor(state, navWalkable, { segmentCount: playerSpec.segmentCount ?? segmentCount, excludeKeys });
+        const playerPack = spawnSnakeChain(state, playerAnchor, { excludeKeys, segmentCount: playerSpec.segmentCount });
+        const snakeSlots = new Array(specs.length);
+        snakeSlots[playerIndex] = { ...playerPack, cameraFollow: playerSpec.cameraFollow };
+        excludeKeys = playerPack.occupiedKeys;
+        const shuffledSpawnCells = spawnCells.slice();
+        shuffleInPlace(shuffledSpawnCells);
         for (let i = 0; i < specs.length; i++) {
+            if (i === playerIndex) continue;
             const spec = specs[i];
-            const spawnPool = i === playerIndex ? playerCells : cavernCells;
-            const anchorCell = pickSnakeChainSpawnCell(spawnPool, navWalkable, state, { segmentCount: spec.segmentCount ?? segmentCount, spacing, growDirX, growDirY, excludeKeys });
+            const anchorCell = pickSnakeChainSpawnCell(shuffledSpawnCells, navWalkable, state, {
+                ...chainSpawnParams,
+                segmentCount: spec.segmentCount ?? segmentCount,
+                excludeKeys,
+            });
             const pack = spawnSnakeChain(state, anchorCell, { excludeKeys, segmentCount: spec.segmentCount });
-            snakes.push({ ...pack, cameraFollow: spec.cameraFollow });
+            snakeSlots[i] = { ...pack, cameraFollow: spec.cameraFollow };
             excludeKeys = pack.occupiedKeys;
         }
+        for (let i = 0; i < snakeSlots.length; i++) snakes.push(snakeSlots[i]);
         goals = spawnSnakeGoalPool(state, config.goalCount, navWalkable, { excludeKeys });
     });
     return { snakes, goals, navWalkable };

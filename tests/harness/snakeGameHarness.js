@@ -10,7 +10,7 @@ import { createHpaGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/hp
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
-import { resolveSnakePlayerSpawnBounds, spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
+import { resolveSnakeNavWalkableFloodSeedBounds, spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
 import { HpaPathSession } from "../../Libraries/Pathfinding/HpaPathSession.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
@@ -43,7 +43,7 @@ export function createSnakeNavWalkable(state) {
     ensureSnakePlayableBounds(state);
     const bounds = state.sandbox.snakePlayableBounds;
     const splitMap = state.editor.railConfig && state.editor.railConfig.boundsRow > state.editor.cavernConfig.boundsRow;
-    const floodSeedBounds = splitMap ? resolveSnakePlayerSpawnBounds(state) : null;
+    const floodSeedBounds = splitMap ? resolveSnakeNavWalkableFloodSeedBounds(state) : null;
     const navWalkable = createNavWalkableAccess(state, bounds, floodSeedBounds ? { floodSeedBounds } : {});
     navWalkable.rebake();
     return navWalkable;
