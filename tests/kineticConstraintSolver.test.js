@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { addDistanceConstraint, pruneKineticConstraintsForBody, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { distanceBetweenAnchors } from "../Libraries/Motion/constraintAnchors.js";
-import { measureDistanceConstraintError, resolveKineticConstraintPass } from "../Libraries/Motion/kineticConstraintSolver.js";
+import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
@@ -36,12 +36,12 @@ describe("kinetic constraint solver", () => {
         const bodyB = mockCircleBody(30, 0, 10);
         const restLength = 30;
         const tick = createKineticTestTick([bodyA, bodyB]);
-        const constraint = addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength });
+        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength });
         bodyB.x = 50;
-        for (let pass = 0; pass < 8; pass++) resolveKineticConstraintPass(tick);
-        const dist = distanceBetweenAnchors(bodyA, constraint.anchorA, bodyB, constraint.anchorB);
+        gatherKineticConstraintSlab(tick);
+        for (let pass = 0; pass < 8; pass++) resolveGatheredKineticConstraintSlab(tick);
+        const dist = distanceBetweenAnchors(bodyA, { x: 0, y: 0 }, bodyB, { x: 0, y: 0 });
         assert.ok(Math.abs(dist - restLength) < 0.5, `expected ~${restLength}, got ${dist}`);
-        assert.ok(measureDistanceConstraintError(constraint) < 0.5);
     });
     it("leaves unlinked bodies unchanged when contact pass runs", () => {
         const bodyA = mockCircleBody(0, 0, 10);
@@ -50,7 +50,8 @@ describe("kinetic constraint solver", () => {
         const ax = bodyA.x;
         const bx = bodyB.x;
         resolveKineticContactPass(tick);
-        resolveKineticConstraintPass(tick);
+        gatherKineticConstraintSlab(tick);
+        resolveGatheredKineticConstraintSlab(tick);
         assert.equal(bodyA.x, ax);
         assert.equal(bodyB.x, bx);
     });

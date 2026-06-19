@@ -1,6 +1,6 @@
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "./bodyMass.js";
-import { distanceBetweenAnchors, worldAnchorFromBody } from "./constraintAnchors.js";
+import { worldAnchorFromBody } from "./constraintAnchors.js";
 import { getLinkCapsuleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";
 import { getEntityCollisionParts } from "../Spatial/collision/SatCollision.js";
 import { separateAlongNormal, applyPositionCorrection } from "../Spatial/collision/penetration.js";
@@ -235,7 +235,7 @@ function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy
         spatialFrame.scheduleKineticActivation(bodyB);
     }
 }
-export function projectIslandLinkCapsulesAgainstWalls(tick) {
+function projectIslandLinkCapsulesAgainstWalls(tick) {
     const slab = kineticConstraintSlab;
     const spatialFrame = tick.frame;
     const walls = [];
@@ -317,14 +317,14 @@ function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias
     spatialFrame.scheduleKineticActivation(bodyB);
     return Math.abs(lambda);
 }
-export function projectKineticConstraintSlab() {
+function projectKineticConstraintSlab() {
     const slab = kineticConstraintSlab;
     forEachConstraintIsland(slab, (start, count) => {
         if (islandConstraintsAsleep(slab, start, count)) return;
         for (let i = start; i < start + count; i++) projectDistanceConstraint(slab, i);
     });
 }
-export function solveKineticConstraintSlab(tick) {
+function solveKineticConstraintSlab(tick) {
     const slab = kineticConstraintSlab;
     if (slab.count === 0) return;
     const spatialFrame = tick.frame;
@@ -342,8 +342,7 @@ export function solveKineticConstraintSlab(tick) {
         if (earlyOut.enabled && iter + 1 >= earlyOut.contactMinIterations && maxImpulse <= earlyOut.contactImpulseEpsilon) break;
     }
 }
-export function resolveKineticConstraintPass(tick) {
-    gatherKineticConstraintSlab(tick);
+export function resolveGatheredKineticConstraintSlab(tick) {
     projectKineticConstraintSlab();
     projectIslandLinkCapsulesAgainstWalls(tick);
     solveKineticConstraintSlab(tick);
@@ -360,10 +359,4 @@ export function measureConstraintSlabMaxError() {
         if (error > max) max = error;
     }
     return max;
-}
-export function measureDistanceConstraintError(constraint) {
-    const bodyA = constraint.bodyA;
-    const bodyB = constraint.bodyB;
-    if (bodyA.isDead || bodyB.isDead) return Infinity;
-    return Math.abs(distanceBetweenAnchors(bodyA, constraint.anchorA, bodyB, constraint.anchorB) - constraint.restLength);
 }
