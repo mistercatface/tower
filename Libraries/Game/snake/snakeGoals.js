@@ -1,14 +1,13 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { queryGridCellVision } from "../../Navigation/perception/gridCellVision.js";
+import { visitLiveWorldProps } from "../../../GameState/EntityRegistry.js";
 export function collectSnakeGoalProps(state) {
     const goalPropId = getSnakeGameConfig().goalPropId;
     const goals = [];
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || prop.type !== goalPropId) continue;
+    visitLiveWorldProps(state.worldProps, (prop) => {
+        if (prop.type !== goalPropId) return;
         goals.push(prop);
-    }
+    });
     return goals;
 }
 export function findNearestVisibleSnakeGoal(state, seeker, { halfAngle, range } = getSnakeGameConfig().visionCone) {

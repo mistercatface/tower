@@ -1,5 +1,6 @@
 import { resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
 import { resolveSandboxEntityLinkValue } from "../../GameState/sandboxEntityMeta.js";
+import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { isKinematicallyActive } from "../Spatial/collision/entityBroadphase.js";
 /**
  * @typedef {"self" | "groupWorldProps" | "groupKinetic"} InputGateScope
@@ -38,14 +39,11 @@ export function resolveInputGateScope(scope, prop, state, linkField) {
     const linkValue = linkField ? resolveSandboxEntityLinkValue(state, prop, linkField) : undefined;
     if (linkValue == null) return [];
     const members = [];
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const entity = worldProps[i];
-        if (entity.isDead) continue;
-        if (resolveSandboxEntityLinkValue(state, entity, linkField) !== linkValue) continue;
-        if (scope === "groupKinetic" && !entity.strategy?.isKinetic) continue;
+    visitLiveWorldProps(state.worldProps, (entity) => {
+        if (resolveSandboxEntityLinkValue(state, entity, linkField) !== linkValue) return;
+        if (scope === "groupKinetic" && !entity.strategy?.isKinetic) return;
         members.push(entity);
-    }
+    });
     return members;
 }
 /** @param {object[]} entities @param {InputGateUntil} until @param {string[] | undefined} excludeStates */

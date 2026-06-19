@@ -8,18 +8,17 @@ import { PUZZLE_TEMPLATE_BALL_TINTS } from "../Libraries/Color/tintPresets.js";
 import { CORRIDOR_TYPE_CONVEYOR_ONE_WAY, CORRIDOR_TYPE_LOCKED_ROOM } from "../Libraries/RoomGraph/roomGraphCorridorTypes.js";
 import { getRoomGraph, listRoomLinks, listRoomNodes } from "../Libraries/RoomGraph/roomGraphStore.js";
 import { stampBeltCratePuzzleAt } from "../Libraries/RoomGraph/puzzleTemplateBeltCrate.js";
+import { visitLiveWorldProps } from "../GameState/EntityRegistry.js";
 import { createRoomBakeTestState } from "./lockedRoomHarness.js";
 
 loadPropAssets();
 
 function countBallsWithTint(state, tint) {
     let count = 0;
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || prop.type !== "ball") continue;
+    visitLiveWorldProps(state.worldProps, (prop) => {
+        if (prop.type !== "ball") return;
         if (getPropVisualTint(prop) === tint) count++;
-    }
+    });
     return count;
 }
 function propInsideRoom(state, prop, room) {
@@ -54,12 +53,10 @@ describe("belt crate puzzle template", () => {
         assert.equal(countBallsWithTint(state, PUZZLE_TEMPLATE_BALL_TINTS.roomA), 1);
         assert.equal(countBallsWithTint(state, PUZZLE_TEMPLATE_BALL_TINTS.roomB), 1);
         const roomABalls = [];
-        const worldProps = state.worldProps;
-        for (let i = 0; i < worldProps.length; i++) {
-            const prop = worldProps[i];
-            if (prop.isDead || prop.type !== "ball") continue;
+        visitLiveWorldProps(state.worldProps, (prop) => {
+            if (prop.type !== "ball") return;
             if (propInsideRoom(state, prop, stamped.roomA)) roomABalls.push(prop);
-        }
+        });
         assert.equal(roomABalls.length, 2);
         assert.ok((getRoomGraph(state).bakedFloorBelts ?? []).length > 0, "expected belt corridors to bake floor belts");
     });

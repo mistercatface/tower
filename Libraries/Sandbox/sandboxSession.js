@@ -1,4 +1,5 @@
 import { formatPropTypeLabel, getPropAsset } from "../Props/PropCatalog.js";
+import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
@@ -84,15 +85,12 @@ export function createSandboxSession(state) {
     const listPlacedProps = () => {
         const counts = new Map();
         const placed = [];
-        const worldProps = state.worldProps;
-        for (let i = 0; i < worldProps.length; i++) {
-            const prop = worldProps[i];
-            if (prop.isDead) continue;
+        visitLiveWorldProps(state.worldProps, (prop) => {
             const typeLabel = formatPropTypeLabel(prop.type);
             const index = (counts.get(prop.type) ?? 0) + 1;
             counts.set(prop.type, index);
             placed.push({ id: prop.id, type: prop.type, faction: resolveSandboxFaction(prop), label: `${typeLabel} #${index}` });
-        }
+        });
         return placed;
     };
     const listPlacedFloorBelts = () => {
@@ -154,13 +152,10 @@ export function createSandboxSession(state) {
     };
     const selectAllPropsWithTagFilter = (filter) => {
         const ids = [];
-        const worldProps = state.worldProps;
-        for (let i = 0; i < worldProps.length; i++) {
-            const prop = worldProps[i];
-            if (prop.isDead) continue;
-            if (!sandboxAssetMatchesTagFilter(getPropAsset(prop.type), filter)) continue;
+        visitLiveWorldProps(state.worldProps, (prop) => {
+            if (!sandboxAssetMatchesTagFilter(getPropAsset(prop.type), filter)) return;
             ids.push(prop.id);
-        }
+        });
         pickSelection(ids.length === 0 ? null : { kind: "prop", ids });
     };
     const filterPropSelectionToTag = (filter) => {

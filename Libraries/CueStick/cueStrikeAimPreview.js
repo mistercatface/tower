@@ -1,4 +1,5 @@
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
+import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { CUE_BALL_RESTITUTION } from "./cueStrikeCollision.js";
 /** Post-strike cue-ball speed from striker approach speed (equal-mass impulse + restitution). */
 export function postCueStrikeSpeed(strikePower) {
@@ -11,11 +12,10 @@ export function estimateCueStrikeTravelDistance(strikePower, strategy = {}) {
 export function buildCueStrikeCircleTargets(shooter, worldProps, defaultRadius = 8) {
     const shooterRadius = shooter?.radius ?? defaultRadius;
     const targets = [];
-    for (let i = 0; i < worldProps.length; i++) {
-        const body = worldProps[i];
-        if (body === shooter || body.isDead) continue;
+    visitLiveWorldProps(worldProps, (body) => {
+        if (body === shooter) return;
         targets.push({ x: body.x, y: body.y, radius: body.radius ?? shooterRadius });
-    }
+    });
     return targets;
 }
 /**

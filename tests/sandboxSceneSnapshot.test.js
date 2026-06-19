@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
-import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { EntityRegistry, findLiveWorldProp } from "../GameState/EntityRegistry.js";
 import { KineticSession, createKineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -79,13 +79,8 @@ describe("sandboxSceneSnapshot physics", () => {
         });
         const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
         const meta = getSandboxEntityMeta(state);
-        let chainHeadProp = null;
-        const worldProps = state.worldProps;
-        for (let i = 0; i < worldProps.length; i++) {
-            const prop = worldProps[i];
-            if (prop.isDead || !meta.isChainHead(prop.id)) continue;
-            chainHeadProp = propIdToIndex.get(prop.id);
-        }
+        const headProp = findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
+        const chainHeadProp = headProp ? propIdToIndex.get(headProp.id) : null;
         const physicsDoc = {
             props,
             kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex),

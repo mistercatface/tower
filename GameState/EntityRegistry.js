@@ -326,6 +326,21 @@ export function clearWorldPropsInState(state) {
     state.entityRegistry.clear("worldProp");
     clearKineticConstraints(state.kinetic);
 }
+export function visitLiveWorldProps(worldProps, visit) {
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead) continue;
+        visit(prop);
+    }
+}
+export function findLiveWorldProp(worldProps, pred) {
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead) continue;
+        if (pred(prop)) return prop;
+    }
+    return null;
+}
 /** @param {object[]} worldProps @param {number} worldX @param {number} worldY @param {number} padding */
 function nearestWorldPropInList(worldProps, worldX, worldY, padding) {
     let best = null;

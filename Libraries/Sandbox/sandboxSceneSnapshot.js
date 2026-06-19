@@ -16,6 +16,7 @@ import {
     listPlacedVoxelWalls,
 } from "./gridWallEdit.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
+import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setChainHead } from "./chainLinks.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
@@ -38,13 +39,8 @@ export function collectSandboxSceneSnapshot(state) {
     const grid = state.obstacleGrid;
     const meta = getSandboxEntityMeta(state);
     const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
-    let chainHeadProp = null;
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || !meta.isChainHead(prop.id)) continue;
-        chainHeadProp = propIdToIndex.get(prop.id) ?? null;
-    }
+    const headProp = findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
+    const chainHeadProp = headProp ? (propIdToIndex.get(headProp.id) ?? null) : null;
     const voxels = listPlacedVoxelWalls(grid).map(({ col, row, heightLevel }) => {
         const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
         return { col: globalCol, row: globalRow, heightLevel };

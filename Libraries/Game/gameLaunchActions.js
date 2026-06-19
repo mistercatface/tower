@@ -1,6 +1,7 @@
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { getPropVisualTint } from "../Color/visualOverride.js";
 import { PUZZLE_TEMPLATE_BALL_TINTS } from "../Color/tintPresets.js";
+import { findLiveWorldProp } from "../../../GameState/EntityRegistry.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 /** @typedef {{ stamped?: NonNullable<ReturnType<typeof stampBeltCratePuzzleAt>>, cameraTarget?: object }} GameLaunchContext */
@@ -19,14 +20,7 @@ export function stampBeltCratePuzzleAction(state, ctx) {
 }
 /** @param {object} state */
 function findPuzzleBallProp(state) {
-    let ball = null;
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || prop.type !== "ball") continue;
-        if (getPropVisualTint(prop) === PUZZLE_TEMPLATE_BALL_TINTS.roomA) ball = prop;
-    }
-    return ball;
+    return findLiveWorldProp(state.worldProps, (prop) => prop.type === "ball" && getPropVisualTint(prop) === PUZZLE_TEMPLATE_BALL_TINTS.roomA);
 }
 /** @param {object} state @param {GameLaunchContext} ctx */
 export function focusBlueBallAction(state, ctx) {

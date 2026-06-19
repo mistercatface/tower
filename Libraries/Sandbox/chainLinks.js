@@ -1,3 +1,4 @@
+import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
 import { addDistanceConstraint, listKineticConstraints, removeKineticConstraint } from "../Motion/kineticConstraints.js";
 import { getConnectedBodyIds, getConnectedComponentPath } from "../Motion/kineticConstraintGraph.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
@@ -120,14 +121,7 @@ export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {
 }
 export function findChainHeadProp(state) {
     const meta = getSandboxEntityMeta(state);
-    let head = null;
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || !meta.isChainHead(prop.id)) continue;
-        head = prop;
-    }
-    return head;
+    return findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
 }
 export function appendChainLinkWireOverlayCommands(out, state, { wireFromPropId = null, wireCursor = null } = {}) {
     if (wireFromPropId != null && wireCursor) {

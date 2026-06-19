@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
-import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { EntityRegistry, visitLiveWorldProps } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -141,11 +141,9 @@ describe("snakeAutosim", () => {
 function countLiveGoalOrbs(state) {
     let count = 0;
     const goalPropId = getSnakeGameConfig().goalPropId;
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || prop.type !== goalPropId) continue;
+    visitLiveWorldProps(state.worldProps, (prop) => {
+        if (prop.type !== goalPropId) return;
         count++;
-    }
+    });
     return count;
 }

@@ -1,4 +1,5 @@
 import { createAabb } from "../Math/Aabb2D.js";
+import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { processFloorShapes, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { isButtonActive, isButtonEntity, isMassButtonInputMode, isMassOverThreshold, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";
 import { runButtonTapLinks, syncButtonFlipperLinks, tickButtonSpawnerLinks } from "./floorEffects.js";
@@ -18,12 +19,10 @@ export function initFloorButtonProp(prop) {
 }
 export function hitTestFloorButton(state, wx, wy, padding = POINTER_HIT_PADDING) {
     let hit = null;
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || !isButtonEntity(prop)) continue;
+    visitLiveWorldProps(state.worldProps, (prop) => {
+        if (!isButtonEntity(prop)) return;
         if (Math.hypot(wx - prop.x, wy - prop.y) <= prop.radius + padding) hit = prop;
-    }
+    });
     return hit;
 }
 export function handleButtonPointerDown(state, button, world) {
@@ -38,13 +37,11 @@ export function handleButtonPointerDown(state, button, world) {
     return true;
 }
 export function releaseButtonPointerHold(state) {
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const button = worldProps[i];
-        if (!isButtonEntity(button) || isMassButtonInputMode(button.inputMode) || button.inputMode === "toggle") continue;
+    visitLiveWorldProps(state.worldProps, (button) => {
+        if (!isButtonEntity(button) || isMassButtonInputMode(button.inputMode) || button.inputMode === "toggle") return;
         if (button.inputMode === "tap" && button.invert) runButtonTapLinks(state, button);
         button._pointerHeld = false;
-    }
+    });
 }
 function tickFloorButton(state, button) {
     if (button.inputMode === "massToggle") {

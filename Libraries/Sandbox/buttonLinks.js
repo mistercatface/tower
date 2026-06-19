@@ -1,4 +1,4 @@
-import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
+import { findWorldPropAtInView, visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { isFlipperWorldProp } from "./behaviors/flipperBehavior.js";
 import { isButtonEntity } from "./buttonInput.js";
@@ -112,12 +112,10 @@ export function listButtonLinkEndpoints(state, button) {
 }
 /** @param {object} state @param {(button: object) => void} visit */
 export function forEachButtonEntity(state, visit) {
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || !isButtonEntity(prop)) continue;
+    visitLiveWorldProps(state.worldProps, (prop) => {
+        if (!isButtonEntity(prop)) return;
         visit(prop);
-    }
+    });
 }
 export function appendButtonWireOverlayCommands(out, state, { wireFromPropId = null, wireCursor = null } = {}) {
     forEachButtonEntity(state, (button) => {

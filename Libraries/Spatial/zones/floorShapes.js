@@ -5,6 +5,7 @@ import { boxLocalFootprint, convexFootprintHalfExtents } from "../../Math/Poly2D
 import { kineticNeighborQueryPad } from "../collision/entityBroadphase.js";
 import { stepCardinalFacing } from "../../Math/Angle.js";
 import { snapWorldToObstacleCellCenter } from "../grid/GridCoords.js";
+import { findLiveWorldProp } from "../../../GameState/EntityRegistry.js";
 export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
     if (!shapes.length) return;
     for (let z = 0; z < shapes.length; z++) {
@@ -96,13 +97,7 @@ export function rotateCardinalFloorProp(prop, steps = 1) {
     prop.facing = stepCardinalFacing(prop.facing ?? 0, steps);
 }
 export function findGridAnchoredFloorPropAtCell(worldProps, col, row, exceptPropId = -1) {
-    let hit = null;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || !prop.strategy?.gridAnchored || prop.id === exceptPropId) continue;
-        if (prop.gridCol === col && prop.gridRow === row) hit = prop;
-    }
-    return hit;
+    return findLiveWorldProp(worldProps, (prop) => prop.strategy?.gridAnchored && prop.id !== exceptPropId && prop.gridCol === col && prop.gridRow === row);
 }
 export function isAabbInView(entity, viewport) {
     return aabbOverlap(entity.aabb, viewport.boundsClip);
