@@ -5,6 +5,10 @@ import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snak
 import { FLOOR_CELL_KIND, floorBeltElbowTurn } from "../Libraries/Spatial/grid/FloorCell.js";
 import { collectCorridorPathPolylines } from "../Libraries/Procedural/Mazes/collectCorridorPathPolylines.js";
 import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
+import { createTestNavigation, syncGridNavContext } from "../Libraries/Navigation/GridNavContext.js";
+import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
+import { gridSettings } from "../Config/world.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 
 describe("rail maze corridor belts", () => {
     it("collects corridor polylines on a T-junction fixture", () => {
@@ -33,6 +37,24 @@ describe("rail maze corridor belts", () => {
         assert.ok(paths.length >= 2);
         const armLengths = paths.map((path) => path.length);
         assert.ok(armLengths.some((len) => len >= 2));
+    });
+
+    it("rejects belt paths whose mouths are rail-blocked", () => {
+        const grid = new WorldObstacleGrid(gridSettings.cellSize);
+        grid.rebuildFixed(0, 0, 5 * gridSettings.cellSize, 5 * gridSettings.cellSize);
+        const navigation = createTestNavigation(grid);
+        for (let c = 0; c < 5; c++)
+            for (let r = 0; r < 5; r++) grid.grid[c + r * grid.cols] = 0;
+        grid.stampCellEdge(2, 0, 2, 1, 1);
+        syncGridNavContext(navigation.gridNavContext, grid);
+        const path = [
+            { c: 2, r: 1 },
+            { c: 2, r: 2 },
+        ];
+        assert.equal(validateBeltPathMouthAccess(grid, navigation.gridNavContext, path), false);
+        grid.clearCellEdges(2, 0);
+        syncGridNavContext(navigation.gridNavContext, grid);
+        assert.equal(validateBeltPathMouthAccess(grid, navigation.gridNavContext, path), true);
     });
 
     it("plans belt chains on snake split map samples", () => {

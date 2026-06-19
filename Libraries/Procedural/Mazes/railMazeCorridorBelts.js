@@ -5,6 +5,7 @@ import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { CARDINAL_OFFSETS, cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
 import { beltFootprintKeys, tryValidateBeltChains } from "./beltChainValidation.js";
+import { collectPathMouthExteriorKeys, filterNavBeltEndpointCandidates, validateBeltPathMouthAccess } from "./railMazeBeltEndpoints.js";
 import { createRailMazeNavCorridorPathfinder, findRailMazeNavCorridorPath } from "./railMazeNavCorridorPath.js";
 
 const FULL_FOOTPRINT = { interiorOnly: false };
@@ -92,14 +93,7 @@ function collectNorthSeamMouthKeys(cells, northReserveRows, footprint) {
 
 /** @param {{ c: number, r: number }[][]} paths */
 function collectPathEndpointMouthKeys(paths) {
-    const mouths = new Set();
-    for (let i = 0; i < paths.length; i++) {
-        const path = paths[i];
-        if (path.length < 1) continue;
-        mouths.add(cellKey(path[0].c, path[0].r));
-        mouths.add(cellKey(path[path.length - 1].c, path[path.length - 1].r));
-    }
-    return mouths;
+    return collectPathMouthExteriorKeys(paths);
 }
 
 function peelBrokenBelts(floorBelts, mouthExteriorKeys) {
@@ -148,7 +142,11 @@ function pickRandomFreeCell(freeCells, occupied, rng) {
 }
 
 function planRandomNavCorridorPaths({ grid, gridNavContext, railConfig, zoneCells, walkableKeys, northReserveRows, corridorCount, corridorWidth, rng }) {
-    const freeCells = zoneCells.map((cell) => ({ col: cell.col, row: cell.row }));
+    const endpointCells = filterNavBeltEndpointCandidates(
+        grid,
+        gridNavContext,
+        zoneCells.map((cell) => ({ col: cell.col, row: cell.row })),
+    );
     const pathfinder = createRailMazeNavCorridorPathfinder(grid, gridNavContext, railConfig, walkableKeys);
     /** @type {Set<string>} */
     const occupied = collectNorthReserveProtectedKeys(grid, railConfig, northReserveRows);
@@ -159,13 +157,14 @@ function planRandomNavCorridorPaths({ grid, gridNavContext, railConfig, zoneCell
     for (let placed = 0; placed < corridorCount; placed++) {
         let placedPath = null;
         for (let attempt = 0; attempt < MAX_PAIR_ATTEMPTS_PER_CORRIDOR; attempt++) {
-            const start = pickRandomFreeCell(freeCells, occupied, rng);
+            const start = pickRandomFreeCell(endpointCells, occupied, rng);
             if (!start) break;
-            const end = pickRandomFreeCell(freeCells, occupied, rng);
+            const end = pickRandomFreeCell(endpointCells, occupied, rng);
             if (!end) break;
             if (start.col === end.col && start.row === end.row) continue;
             const path = findRailMazeNavCorridorPath(pathfinder, start, end, occupied, corridorWidth);
             if (!path) continue;
+            if (!validateBeltPathMouthAccess(grid, gridNavContext, path, occupied)) continue;
             placedPath = path;
             break;
         }
