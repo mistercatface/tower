@@ -18,11 +18,11 @@ export const SNAKE_GAME_DEFAULTS = {
     startRadius: 2,
     maxRadius: 4,
     radiusPerMeal: 0.25,
-    cavern: { mapSeedOffset: 11, wallHeightLevel: 1, regionPaddingCells: 4, fillChance: 0.38, iterations: 3, openBoundaryRows: 3 },
+    cavern: { mapSeedOffset: 11, wallHeightLevel: 1, regionPaddingCells: 4, fillChance: 0.48, iterations: 4, openBoundaryRows: 3 },
     rail: { generator: "bspMaze", wallHeightLevel: 1, edgeThickness: 1, roomSizeMin: 5, roomSizeMax: 12, roomMargin: 1, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
     showVisionCones: true,
     showAllSnakeVisionCones: false,
-    visionCone: { halfAngle: Math.PI / 3, range: 128, stroke: "rgba(120, 220, 255, 0.85)", visibleGoalStroke: "rgba(255, 220, 80, 0.95)", lineWidth: 1 },
+    visionCone: { halfAngle: Math.PI / 3, range: 128, cellFill: "rgba(120, 220, 255, 0.04)", visibleGoalStroke: "rgba(255, 220, 80, 0.35)", lineWidth: 1 },
     /** Explore waypoints must be at least this many grid tiles away (Chebyshev). */
     exploreMinTiles: 8,
     /** LRU grid-cell memory window per snake (vision + arrival stamps). */
@@ -35,7 +35,7 @@ export const SNAKE_GAME_DEFAULTS = {
     /** When no cell meets exploreMinTiles, retry with this minimum distance. */
     exploreFallbackMinTiles: 1,
     showMemoryHeatmap: true,
-    memoryHeatmap: { bucketCount: 8, fillRgb: "180, 100, 255", fillAlphaMax: 0.28, fillAlphaMin: 0.05, strokeAlphaMax: 0.7, strokeAlphaMin: 0.15, lineWidth: 1 },
+    memoryHeatmap: { bucketCount: 8, fillRgb: "180, 100, 255", fillAlphaMax: 0.12, fillAlphaMin: 0.02 },
     /** Off-screen snakes run full FOV sync every N ticks (on-screen = every tick). */
     brainSyncOffScreenInterval: 4,
     /** Minimum chain segments to stay alive after split (head + 2 followers = 3). */

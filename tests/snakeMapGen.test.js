@@ -6,6 +6,7 @@ import { gridSettings } from "../Config/world.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { collectSnakeGoalProps } from "../Libraries/Game/snake/snakeGoals.js";
 import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { collectOpenCavernCells } from "../Libraries/Sandbox/cavernFloorCells.js";
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
@@ -167,5 +168,20 @@ describe("snake split map generation", () => {
         const quarterStartRow = playOriginRow + Math.floor(state.editor.playConfig.playAreaRows * 0.75);
         const headCell = state.obstacleGrid.worldToGrid(player.chain.head.x, player.chain.head.y);
         assert.ok(headCell.row >= quarterStartRow, `player row ${headCell.row} should be in lower quarter from ${quarterStartRow}`);
+    });
+
+    it("places food in the lower rail maze, not only the upper cavern", async () => {
+        applySnakeGameConfig({ snakeCount: 1, goalCount: 40, playerSnakeIndex: 0 });
+        const state = createSnakeMapGenTestState(64, 42);
+        await spawnSnakeCavernScene(state);
+        const { railConfig } = state.editor;
+        const railRow0 = railConfig.boundsRow;
+        const railRow1 = railConfig.boundsRow + railConfig.boundsRows - 1;
+        let inRail = 0;
+        for (const goal of collectSnakeGoalProps(state)) {
+            const { row } = state.obstacleGrid.worldToGrid(goal.x, goal.y);
+            if (row >= railRow0 && row <= railRow1) inRail++;
+        }
+        assert.ok(inRail >= 5, `expected food in rail zone, got ${inRail} of 40 goals`);
     });
 });

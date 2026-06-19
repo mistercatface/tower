@@ -123,7 +123,9 @@ describe("grid cell vision overlay", () => {
         assert.equal(out.length, cells.length);
         for (let i = 0; i < out.length; i++) {
             assert.equal(out[i].kind, "aabb");
-            assert.ok(out[i].cache);
+            assert.equal(out[i].maxX - out[i].minX, grid.cellSize);
+            assert.equal(out[i].maxY - out[i].minY, grid.cellSize);
+            assert.ok(!out[i].cache);
         }
     });
 });

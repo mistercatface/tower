@@ -54,6 +54,13 @@ function applySnakeSplitMapGenBounds(state, paddingCells) {
     railConfig.boundsCols = cols;
     railConfig.boundsRows = bottomRows;
     migrateMapGenBoundsForMode(railConfig);
+    state.sandbox.snakePlayableBounds = { boundsMode: "rect", boundsCol: baseCol, boundsRow: baseRow, boundsCols: cols, boundsRows: innerRows };
+}
+function resolveSnakePlayableBounds(state) {
+    return state.sandbox.snakePlayableBounds ?? state.editor.cavernConfig;
+}
+export function collectSnakePlayableOpenCells(state) {
+    return collectOpenCavernCells(state, resolveSnakePlayableBounds(state));
 }
 export async function generateSnakeSplitMap(state) {
     const config = getSnakeGameConfig();
@@ -120,9 +127,9 @@ export function spawnGoalOrbAtCell(state, cell, faction = SANDBOX_DEFAULT_FACTIO
     return spawnGoalOrb(state, x, y, faction);
 }
 export function spawnGoalOrbOnOpenCell(state, { excludeKeys = null, faction = SANDBOX_DEFAULT_FACTION, rng = Math.random } = {}) {
-    const openCells = collectOpenCavernCells(state);
+    const openCells = collectSnakePlayableOpenCells(state);
     const cell = pickOpenCavernCell(openCells, { excludeKeys, rng });
-    if (!cell) throw new Error("Cavern has no open floor cell for goal orb");
+    if (!cell) throw new Error("Play area has no open floor cell for goal orb");
     return spawnGoalOrbAtCell(state, cell, faction);
 }
 export function spawnSnakeChain(state, anchorCell, { excludeKeys = null, segmentCount, rng = Math.random } = {}) {
@@ -161,8 +168,8 @@ export function spawnSnakeGoalPool(state, goalCount, { excludeKeys = null, rng =
 export async function spawnSnakeCavernScene(state) {
     const config = getSnakeGameConfig();
     await spawnSnakeCavernMap(state);
-    const cavernCells = collectOpenCavernCells(state);
-    if (!cavernCells.length) throw new Error("Cavern has no open floor cells for snake placement");
+    const cavernCells = collectSnakePlayableOpenCells(state);
+    if (!cavernCells.length) throw new Error("Play area has no open floor cells for snake placement");
     const playerSpawnBounds = resolveSnakePlayerSpawnBounds(state);
     const playerCells = collectOpenCavernCells(state, playerSpawnBounds);
     if (!playerCells.length) throw new Error("Lower map quarter has no open floor cell for player spawn");

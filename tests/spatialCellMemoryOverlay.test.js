@@ -14,7 +14,7 @@ describe("spatial cell memory overlay", () => {
         assert.ok(newest.fill.includes("0.3"));
         assert.ok(oldest.fill.includes("0.05"));
     });
-    it("appendSpatialCellMemoryOverlayCommands emits one cached highlight per memory cell", () => {
+    it("appendSpatialCellMemoryOverlayCommands emits one fill-only tile per memory cell", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 32 * 16, 32 * 16);
         const spatial = createSpatialCellMemory({ capacity: 4 });
@@ -22,10 +22,13 @@ describe("spatial cell memory overlay", () => {
         spatial.stamp(5, 4);
         spatial.stamp(6, 4);
         const commands = [];
-        appendSpatialCellMemoryOverlayCommands(commands, { grid, spatial, tint: "testMemory" });
+        appendSpatialCellMemoryOverlayCommands(commands, { grid, spatial });
         assert.equal(commands.length, 3);
         assert.equal(commands[0].kind, "aabb");
-        assert.ok(commands[0].cache);
-        assert.ok(commands[0].cache.customKey.includes("testMemory_b"));
+        assert.equal(commands[0].maxX - commands[0].minX, grid.cellSize);
+        assert.equal(commands[0].maxY - commands[0].minY, grid.cellSize);
+        assert.ok(commands[0].fill);
+        assert.equal(commands[0].stroke, undefined);
+        assert.ok(!commands[0].cache);
     });
 });
