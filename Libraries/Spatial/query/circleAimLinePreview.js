@@ -49,13 +49,13 @@ export function estimateRollingTravelDistance(v0, strategy) {
  *   nx: number,
  *   ny: number,
  *   maxTravelDist: number,
- *   wallCtx?: import("./wallContext.js").WallContext | null,
+ *   obstacleGrid?: import("../grid/WorldObstacleGrid.js").WorldObstacleGrid | null,
  *   circleTargets?: CircleAimLineTarget[],
  *   maxRayDist?: number,
  * }} options
  * @returns {{ x1: number, y1: number, x2: number, y2: number } | null}
  */
-export function computeCircleAimLineSegment({ originX, originY, radius, nx, ny, maxTravelDist, wallCtx = null, circleTargets = [], maxRayDist = 2400 }) {
+export function computeCircleAimLineSegment({ originX, originY, radius, nx, ny, maxTravelDist, obstacleGrid = null, circleTargets = [], maxRayDist = 2400 }) {
     const len = Math.hypot(nx, ny);
     if (len < 1e-6) return null;
     const dx = nx / len;
@@ -67,7 +67,7 @@ export function computeCircleAimLineSegment({ originX, originY, radius, nx, ny, 
         const t = rayCircleHitDistance(originX, originY, dx, dy, target.x, target.y, radius + otherR);
         if (t != null && t < stopDist) stopDist = t;
     }
-    const wallHit = castSteppedCircleRay(originX, originY, angle, maxRayDist, radius, { wallCtx });
+    const wallHit = castSteppedCircleRay(originX, originY, angle, maxRayDist, radius, { obstacleGrid });
     if (wallHit.dist < stopDist) stopDist = wallHit.dist;
     const lead = circleLeadingPoint(originX, originY, radius, dx, dy);
     return { x1: lead.x, y1: lead.y, x2: originX + dx * (stopDist + radius), y2: originY + dy * (stopDist + radius) };

@@ -1,6 +1,5 @@
 import { circlesOverlap, findFirstCircleSegmentHit } from "../collision/overlap.js";
 import { collectWallSegmentsAlongLine } from "./wallSegmentQuery.js";
-/** @typedef {import("./wallContext.js").WallContext} WallContext */
 /** @typedef {"wall" | "none" | string} SteppedCircleRayHitKind */
 /**
  * @typedef {object} SteppedCircleRayHit
@@ -17,20 +16,11 @@ import { collectWallSegmentsAlongLine } from "./wallSegmentQuery.js";
  * @property {string} [hitKind] — returned as `hit` when struck (default `"circle"`)
  */
 const DEFAULT_STEP = 8;
-/**
- * @param {number} startX
- * @param {number} startY
- * @param {number} dx — unit direction
- * @param {number} dy
- * @param {number} maxDist
- * @param {WallContext | null | undefined} wallCtx
- * @returns {object[]}
- */
-function collectCandidateWalls(startX, startY, dx, dy, maxDist, wallCtx, queryRadius) {
-    if (!wallCtx?.obstacleGrid) return [];
+function collectCandidateWalls(startX, startY, dx, dy, maxDist, obstacleGrid, queryRadius) {
+    if (!obstacleGrid) return [];
     const endX = startX + dx * maxDist;
     const endY = startY + dy * maxDist;
-    return collectWallSegmentsAlongLine(wallCtx, startX, startY, endX, endY, queryRadius);
+    return collectWallSegmentsAlongLine(obstacleGrid, startX, startY, endX, endY, queryRadius);
 }
 /**
  * @param {{ x: number, y: number, radius: number }} rayCircle
@@ -50,20 +40,20 @@ function rayCircleHitsWall(rayCircle, candidateWalls) {
  * @param {number} maxDist
  * @param {number} radius
  * @param {{
- *   wallCtx?: WallContext | null,
+ *   obstacleGrid?: import("../grid/WorldObstacleGrid.js").WorldObstacleGrid | null,
  *   circles?: SteppedCircleRayCircleTarget[],
  *   step?: number,
  * }} [options]
  * @returns {SteppedCircleRayHit}
  */
-export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { wallCtx = null, circles = [], step = DEFAULT_STEP, wallQueryRadius = radius } = {}) {
+export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { obstacleGrid = null, circles = [], step = DEFAULT_STEP, wallQueryRadius = radius } = {}) {
     let dist = 0;
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
     let cx = startX;
     let cy = startY;
     const rayCircle = { x: cx, y: cy, radius };
-    const candidateWalls = collectCandidateWalls(startX, startY, dx, dy, maxDist, wallCtx, wallQueryRadius);
+    const candidateWalls = collectCandidateWalls(startX, startY, dx, dy, maxDist, obstacleGrid, wallQueryRadius);
     while (dist < maxDist) {
         cx += dx * step;
         cy += dy * step;

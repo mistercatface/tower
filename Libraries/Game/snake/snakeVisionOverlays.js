@@ -12,7 +12,7 @@ export function appendSnakeVisionOverlayCommands(out, state, snakeHeadIds) {
     const grid = state.obstacleGrid;
     for (let i = 0; i < snakeHeadIds.length; i++) {
         const head = state.entityRegistry.getLive(snakeHeadIds[i]);
-        const vision = queryGridCellVision(head, goals, { halfAngle: config.halfAngle, range: config.range, state });
+        const vision = queryGridCellVision(head, goals, { halfAngle: config.halfAngle, range: config.range, obstacleGrid: state.obstacleGrid });
         appendGridCellVisionOverlayCommands(out, { grid, cells: vision.cells, cellFill: config.cellFill });
         for (let g = 0; g < vision.visible.length; g++) {
             const goal = vision.visible[g];

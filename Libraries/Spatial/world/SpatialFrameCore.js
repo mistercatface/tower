@@ -5,18 +5,14 @@ import { centerReachAabbInto, createAabb } from "../../Math/Aabb2D.js";
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 const NEAR_QUERY_BOUNDS = createAabb();
 const EMPTY_WALL_CANDIDATES = [];
-/** @typedef {import("../query/wallContext.js").WallContext} WallContext */
 function wallBucketKey(grid, worldX, worldY, queryRadius) {
     const { col, row } = grid.worldToGrid(worldX, worldY);
     const pad = 1 + Math.ceil(queryRadius / grid.cellSize);
     return (col & 0xffff) | ((row & 0xffff) << 16) | ((pad & 0xff) << 32);
 }
-function collectWallSegmentsNearWorld(wallCtx, worldX, worldY, queryRadius, out) {
-    wallCtx.obstacleGrid.appendStaticWallProxiesNearWorld(worldX, worldY, queryRadius, out);
-}
 /**
  * Duck-typed per-tick spatial frame: entity grid, neighbor cache, wall segment cache.
- * Game adapters call resetFrame / insertEntity / setWallContext then run pair policies.
+ * Game adapters call resetFrame / insertEntity then run pair policies.
  */
 export class SpatialFrameCore {
     constructor(cellSize = 50) {
@@ -25,45 +21,35 @@ export class SpatialFrameCore {
         this.frameId = 0;
         this._wallBucketCache = new Map();
         this._wallBucketRevision = -1;
-        /** @type {WallContext | null} */
-        this._wallContext = null;
+        this._obstacleGrid = null;
     }
     /** @param {(import("../Math/Aabb2D.js").Aabb2D & { cols: number, cellSize: number, resetStaticWallProxyPool?: () => void, wallGridRevision?: number }) | null} obstacleGrid */
     resetFrame(obstacleGrid) {
         this.frameId = (this.frameId + 1) | 0;
         this._wallBucketCache.clear();
         this._wallBucketRevision = -1;
-        obstacleGrid?.resetStaticWallProxyPool?.();
+        this._obstacleGrid = obstacleGrid?.appendStaticWallProxiesNearWorld ? obstacleGrid : null;
+        if (obstacleGrid?.resetStaticWallProxyPool) obstacleGrid.resetStaticWallProxyPool();
         this.entityGrid.syncBounds(obstacleGrid);
         this.entityGrid.clear();
     }
-    /** @returns {WallContext | null} */
-    getWallContext() {
-        return this._wallContext;
-    }
     _ensureWallBucketCacheRevision(grid) {
-        const revision = grid.wallGridRevision ?? 0;
+        const revision = grid.wallGridRevision;
         if (this._wallBucketRevision === revision) return;
         this._wallBucketCache.clear();
-        grid.resetStaticWallProxyPool?.();
+        grid.resetStaticWallProxyPool();
         this._wallBucketRevision = revision;
     }
     _wallCandidatesNearWorld(worldX, worldY, queryRadius) {
-        const wallCtx = this._wallContext;
-        const grid = wallCtx?.obstacleGrid;
-        if (!grid) return EMPTY_WALL_CANDIDATES;
+        const grid = this._obstacleGrid;
         this._ensureWallBucketCacheRevision(grid);
         const key = wallBucketKey(grid, worldX, worldY, queryRadius);
         const cached = this._wallBucketCache.get(key);
         if (cached) return cached;
         const segments = [];
-        collectWallSegmentsNearWorld(wallCtx, worldX, worldY, queryRadius, segments);
+        grid.appendStaticWallProxiesNearWorld(worldX, worldY, queryRadius, segments);
         this._wallBucketCache.set(key, segments);
         return segments;
-    }
-    /** @param {WallContext | null} wallContext */
-    setWallContext(wallContext) {
-        this._wallContext = wallContext;
     }
     /**
      * @param {{ x: number, y: number, _physId?: number, _gridTileIdx?: number }} entity — mutated
@@ -90,6 +76,7 @@ export class SpatialFrameCore {
         this.frameId = (this.frameId + 1) | 0;
     }
     getWallCandidates(entity) {
+        if (!this._obstacleGrid) return EMPTY_WALL_CANDIDATES;
         return this._wallCandidatesNearWorld(entity.x, entity.y, entityBroadphaseExtent(entity));
     }
     getNeighbors(entity) {

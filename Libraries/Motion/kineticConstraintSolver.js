@@ -317,7 +317,7 @@ function solveDistanceConstraintVelocity(buffer, index, spatialFrame, velocityBi
     spatialFrame.scheduleKineticActivation(bodyB);
     return Math.abs(lambda);
 }
-export function projectKineticConstraintBuffer(_tick, buffer, groups) {
+export function projectKineticConstraintBuffer(buffer, groups) {
     for (let g = 0; g < groups.count; g++) {
         const start = groups.starts[g];
         const count = groups.counts[g];
@@ -346,7 +346,8 @@ export function solveKineticConstraintBuffer(tick, buffer, groups) {
 }
 export function resolveKineticConstraintPass(tick) {
     const { buffer, groups } = gatherKineticConstraintBuffer(tick);
-    projectKineticConstraintBuffer(tick, buffer, groups);
+    projectKineticConstraintBuffer(buffer, groups);
+    projectIslandLinkCapsulesAgainstWalls(tick, buffer, groups);
     solveKineticConstraintBuffer(tick, buffer, groups);
 }
 export function measureConstraintBufferMaxError(buffer) {

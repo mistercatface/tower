@@ -11,7 +11,7 @@ export function collectSnakeGoalProps(state) {
 }
 export function findNearestVisibleSnakeGoal(state, seeker, { halfAngle, range } = getSnakeGameConfig().visionCone) {
     const goals = collectSnakeGoalProps(state);
-    const { visible } = queryGridCellVision(seeker, goals, { halfAngle, range, state });
+    const { visible } = queryGridCellVision(seeker, goals, { halfAngle, range, obstacleGrid: state.obstacleGrid });
     let nearest = null;
     let bestDist = Infinity;
     for (let i = 0; i < visible.length; i++) {

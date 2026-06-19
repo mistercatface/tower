@@ -6,7 +6,6 @@ import {
     isWorldPointInVisionCone,
     normalizeAngleDelta,
     queryGridCellVision,
-    queryVisionCone,
     resolveObserverHeading,
 } from "../Libraries/Navigation/perception/gridCellVision.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -48,7 +47,7 @@ describe("grid cell line of sight", () => {
         const observer = { id: 1, ...cellCenter(grid, 2, 8), vx: 10, vy: 0, facing: 0 };
         const behind = { id: 2, ...cellCenter(grid, 10, 8), radius: 6, isDead: false };
         const ahead = { id: 3, ...cellCenter(grid, 4, 8), radius: 6, isDead: false };
-        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, wallCtx: { obstacleGrid: grid } });
+        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, obstacleGrid: grid });
         assert.equal(vision.visible.length, 1);
         assert.equal(vision.visible[0].id, 3);
     });
@@ -66,11 +65,10 @@ describe("grid cell vision cone", () => {
     it("queryGridCellVision hides goal behind wall and keeps open corridor goal", () => {
         const grid = createVisionGrid();
         for (let row = 0; row < grid.rows; row++) stampWall(grid, 10, row);
-        const ctx = { obstacleGrid: grid };
         const observer = { id: 1, x: cellCenter(grid, 2, 8).x, y: cellCenter(grid, 2, 8).y, vx: 10, vy: 0, facing: 0 };
         const behind = { id: 2, x: cellCenter(grid, 14, 8).x, y: cellCenter(grid, 14, 8).y, radius: 6, isDead: false };
         const ahead = { id: 3, x: cellCenter(grid, 6, 8).x, y: cellCenter(grid, 6, 8).y, radius: 6, isDead: false };
-        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, wallCtx: ctx });
+        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, obstacleGrid: grid });
         assert.equal(vision.visible.length, 1);
         assert.equal(vision.visible[0].id, 3);
         assert.ok(vision.cells.length > 0);
@@ -84,7 +82,7 @@ describe("grid cell vision cone", () => {
         const vision = queryGridCellVision({ id: 1, x: observer.x, y: observer.y, vx: 10, vy: 0, facing: 0 }, [{ id: 2, x: aroundCorner.x, y: aroundCorner.y, radius: 6, isDead: false }], {
             halfAngle: Math.PI / 2,
             range: 300,
-            wallCtx: { obstacleGrid: grid },
+            obstacleGrid: grid,
         });
         assert.equal(vision.visible.length, 0);
         assert.ok(!vision.cells.some((cell) => cell.col === 12 && cell.row === 4));
@@ -97,17 +95,17 @@ describe("grid cell vision cone", () => {
         const vision = queryGridCellVision({ id: 1, x: observer.x, y: observer.y, vx: 0, vy: -10, facing: -Math.PI / 2 }, [{ id: 2, x: offAxis.x, y: offAxis.y, radius: 6, isDead: false }], {
             halfAngle: Math.PI / 8,
             range: 200,
-            wallCtx: { obstacleGrid: grid },
+            obstacleGrid: grid,
         });
         assert.equal(vision.visible.length, 0);
     });
-    it("queryVisionCone delegates to grid cell vision", () => {
+    it("queryGridCellVision filters visible goals by wall and arc", () => {
         const grid = createVisionGrid();
         stampWall(grid, 10, 8);
         const observer = { id: 1, ...cellCenter(grid, 2, 8), vx: 10, vy: 0, facing: 0 };
         const visible = { id: 2, ...cellCenter(grid, 6, 8), radius: 6, isDead: false };
         const blocked = { id: 3, ...cellCenter(grid, 14, 8), radius: 6, isDead: false };
-        const cone = queryVisionCone(observer, [visible, blocked], { halfAngle: Math.PI / 2, range: 200, wallCtx: { obstacleGrid: grid } });
+        const cone = queryGridCellVision(observer, [visible, blocked], { halfAngle: Math.PI / 2, range: 200, obstacleGrid: grid });
         assert.equal(cone.visible.length, 1);
         assert.equal(cone.visible[0].id, 2);
         assert.ok(cone.cells.length > 0);

@@ -87,7 +87,7 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = g
                 resolveKineticContactPass(tick);
                 applyContactSideEffects(tick, kineticContactBuffer);
             }
-            projectKineticConstraintBuffer(tick, constraintBuffer, constraintGroups);
+            projectKineticConstraintBuffer(constraintBuffer, constraintGroups);
             projectIslandLinkCapsulesAgainstWalls(tick, constraintBuffer, constraintGroups);
             solveKineticConstraintBuffer(tick, constraintBuffer, constraintGroups);
             for (let i = 0; i < activeBodies.length; i++) {

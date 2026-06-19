@@ -1,7 +1,6 @@
 import { boundaryBlocksStepFrom } from "../../Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { recomputeNavCardinalOpen, recomputeVertexPassability } from "../../Spatial/grid/vertexPassability.js";
-import { wallContextFromState } from "../../Spatial/query/wallContext.js";
 
 function ensureBoundaryStepCaches(grid) {
     const cellCount = grid.cols * grid.rows;
@@ -84,31 +83,18 @@ export function collectVisibleGridCells(grid, originX, originY, heading, halfAng
         }
     return cells;
 }
-export function queryGridCellVision(observer, candidates, { halfAngle, range, wallCtx = null, state = null } = {}) {
-    const ctx = wallCtx ?? wallContextFromState(state);
-    const grid = ctx?.obstacleGrid;
+export function queryGridCellVision(observer, candidates, { halfAngle, range, obstacleGrid }) {
     const heading = resolveObserverHeading(observer);
-    const cells = grid ? collectVisibleGridCells(grid, observer.x, observer.y, heading, halfAngle, range) : [];
+    const cells = collectVisibleGridCells(obstacleGrid, observer.x, observer.y, heading, halfAngle, range);
     const visible = [];
-    if (grid) {
-        const { col: originCol, row: originRow } = grid.worldToGrid(observer.x, observer.y);
-        for (let i = 0; i < candidates.length; i++) {
-            const target = candidates[i];
-            if (target === observer || target.isDead) continue;
-            if (!isWorldPointInVisionCone(observer.x, observer.y, heading, halfAngle, range, target.x, target.y)) continue;
-            const { col, row } = grid.worldToGrid(target.x, target.y);
-            if (!hasGridCellLineOfSight(grid, originCol, originRow, col, row)) continue;
-            visible.push(target);
-        }
-    } else
-        for (let i = 0; i < candidates.length; i++) {
-            const target = candidates[i];
-            if (target === observer || target.isDead) continue;
-            if (!isWorldPointInVisionCone(observer.x, observer.y, heading, halfAngle, range, target.x, target.y)) continue;
-            visible.push(target);
-        }
+    const { col: originCol, row: originRow } = obstacleGrid.worldToGrid(observer.x, observer.y);
+    for (let i = 0; i < candidates.length; i++) {
+        const target = candidates[i];
+        if (target === observer || target.isDead) continue;
+        if (!isWorldPointInVisionCone(observer.x, observer.y, heading, halfAngle, range, target.x, target.y)) continue;
+        const { col, row } = obstacleGrid.worldToGrid(target.x, target.y);
+        if (!hasGridCellLineOfSight(obstacleGrid, originCol, originRow, col, row)) continue;
+        visible.push(target);
+    }
     return { heading, halfAngle, range, cells, visible };
-}
-export function queryVisionCone(observer, candidates, options = {}) {
-    return queryGridCellVision(observer, candidates, options);
 }

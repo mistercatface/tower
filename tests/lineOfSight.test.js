@@ -3,15 +3,15 @@ import { describe, it } from "node:test";
 import { segmentIntersectionPoint } from "../Libraries/Math/Segment2D.js";
 import { minDistanceSegmentToWall } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { hasLineOfSight } from "../Libraries/Spatial/query/lineOfSight.js";
-function wallCtxWithSegments(segments) {
+function obstacleGridWithSegments(segments) {
     return {
-        obstacleGrid: {
-            appendStaticWallProxiesNear(_entity, out) {
-                for (let i = 0; i < segments.length; i++) out.push(segments[i]);
-            },
-            appendStaticWallProxiesNearWorld(_x, _y, _queryRadius, out) {
-                for (let i = 0; i < segments.length; i++) out.push(segments[i]);
-            },
+        cellSize: 16,
+        resetStaticWallProxyPool() {},
+        appendStaticWallProxiesNear(_entity, out) {
+            for (let i = 0; i < segments.length; i++) out.push(segments[i]);
+        },
+        appendStaticWallProxiesNearWorld(_x, _y, _queryRadius, out) {
+            for (let i = 0; i < segments.length; i++) out.push(segments[i]);
         },
     };
 }
@@ -28,8 +28,8 @@ describe("lineOfSight via Segment2D wall distance", () => {
         assert.equal(hit.y, 0);
     });
     it("hasLineOfSight blocks through a wall segment", () => {
-        const wallCtx = wallCtxWithSegments([wall]);
-        assert.equal(hasLineOfSight(0, 0, 100, 0, wallCtx, 0, 0), false);
-        assert.equal(hasLineOfSight(0, 40, 100, 40, wallCtx, 0, 0), true);
+        const obstacleGrid = obstacleGridWithSegments([wall]);
+        assert.equal(hasLineOfSight(0, 0, 100, 0, obstacleGrid, 0, 0), false);
+        assert.equal(hasLineOfSight(0, 40, 100, 40, obstacleGrid, 0, 0), true);
     });
 });

@@ -1,5 +1,4 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
-import { populateKineticFrame } from "./populateKineticFrame.js";
 import { wakeKineticBody } from "../../Libraries/Motion/kineticSleep.js";
 import { islandRootByPhysId } from "../../Libraries/Motion/kineticIslands.js";
 import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticTopology.js";
@@ -23,7 +22,15 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._activationScheduled = new Set();
     }
     begin(state) {
-        populateKineticFrame(this, state, this._kineticBodies);
+        this.resetFrame(state.obstacleGrid);
+        this._kineticBodies.length = 0;
+        let physIdCounter = 0;
+        state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+            if (!prop) return;
+            if (prop.strategy?.spatialRole === "trigger") return;
+            this.insertEntity(prop, physIdCounter++);
+            if (prop.strategy?.isKinetic) this._kineticBodies.push(prop);
+        });
         this._nextPhysId = this._kineticBodies.length;
         this.syncActiveKineticBodies();
         this.populatedMembershipGen = state.entityRegistry.membershipGen;

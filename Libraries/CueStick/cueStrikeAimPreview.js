@@ -1,5 +1,4 @@
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
-import { wallContextFromState } from "../Spatial/query/wallContext.js";
 import { CUE_BALL_RESTITUTION } from "./cueStrikeCollision.js";
 /** Post-strike cue-ball speed from striker approach speed (equal-mass impulse + restitution). */
 export function postCueStrikeSpeed(strikePower) {
@@ -44,14 +43,14 @@ export function resolveCueStrikeMaxRayDist({ obstacleGrid, tableWidth, tableHeig
  *   ny: number,
  *   strikePower: number,
  *   strategy?: object,
- *   wallCtx?: import("../Spatial/query/wallContext.js").WallContext | null,
+ *   obstacleGrid?: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | null,
  *   circleTargets?: import("../Spatial/query/circleAimLinePreview.js").CircleAimLineTarget[],
  *   maxRayDist?: number,
  * }} options
  */
-export function computeCueStrikeAimLineSegment({ originX, originY, radius, nx, ny, strikePower, strategy = {}, wallCtx = null, circleTargets = [], maxRayDist = 2400 }) {
+export function computeCueStrikeAimLineSegment({ originX, originY, radius, nx, ny, strikePower, strategy = {}, obstacleGrid = null, circleTargets = [], maxRayDist = 2400 }) {
     if (strikePower <= 0) return null;
-    return computeCircleAimLineSegment({ originX, originY, radius, nx, ny, maxTravelDist: estimateCueStrikeTravelDistance(strikePower, strategy), maxRayDist, wallCtx, circleTargets });
+    return computeCircleAimLineSegment({ originX, originY, radius, nx, ny, maxTravelDist: estimateCueStrikeTravelDistance(strikePower, strategy), maxRayDist, obstacleGrid, circleTargets });
 }
 /**
  * @param {object} cueBall
@@ -65,7 +64,7 @@ export function buildCueStrikeAimLineContext(cueBall, state, { tableWidth, table
         prop: cueBall,
         radius,
         circleTargets: buildCueStrikeCircleTargets(cueBall, state.entityRegistry, radius),
-        wallCtx: wallContextFromState(state),
+        obstacleGrid: state.obstacleGrid,
         maxRayDist: resolveCueStrikeMaxRayDist({ obstacleGrid: state.obstacleGrid, tableWidth, tableHeight }),
     };
 }
@@ -84,7 +83,7 @@ export function getCueStrikeAimLine(preview, aimLineContext) {
         ny: preview.ny,
         strikePower: preview.power,
         strategy: prop?.strategy ?? {},
-        wallCtx: aimLineContext.wallCtx,
+        obstacleGrid: aimLineContext.obstacleGrid,
         circleTargets: aimLineContext.circleTargets,
         maxRayDist: aimLineContext.maxRayDist,
     });
