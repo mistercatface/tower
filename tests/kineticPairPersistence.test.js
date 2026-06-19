@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGameCollisionSettings } from "../Core/GameCollisionSettings.js";
-import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { createKineticSession } from "../GameState/KineticSession.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { persistedKineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { activeBodiesMatchKineticSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
@@ -12,6 +10,7 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
+import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
 loadPropAssets();
 
@@ -41,33 +40,6 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
     };
 }
 
-function setupFrame(bodies) {
-    const frame = new KineticSpatialFrame(50);
-    frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
-    for (let i = 0; i < bodies.length; i++) {
-        frame.insertEntity(bodies[i], i);
-        bodies[i]._physId = i;
-    }
-    frame._kineticBodies = bodies.slice();
-    frame._activeKineticBodies = bodies.slice();
-    return frame;
-}
-
-function createState(props) {
-    return {
-        worldProps: props.slice(),
-        kinetic: createKineticSession(),
-        sandbox: {},
-        entityRegistry: {
-            getLive(id) {
-                for (let i = 0; i < props.length; i++) if (props[i].id === id) return props[i];
-                return null;
-            },
-        },
-        wallResolver: { resolve() {} },
-    };
-}
-
 describe("kinetic pair persistence", () => {
     it("reuses gathered pair list across outer iterations when persistPairs is on", () => {
         applyGameCollisionSettings({
@@ -78,11 +50,10 @@ describe("kinetic pair persistence", () => {
         });
         const a = mockCircleBody(0, 0, 10, 50, 0);
         const b = mockCircleBody(14, 0, 10, -40, 0);
-        const state = createState([a, b]);
-        const frame = setupFrame([a, b]);
+        const tick = createKineticTestTick([a, b]);
         const ax0 = a.x;
-        runCollisionPipeline(state, frame, { resolveWalls: () => {} });
-        assert.equal(state.kinetic.kineticSolverStats.outerIterations, 3);
+        runCollisionPipeline(tick, { resolveWalls: () => {} });
+        assert.equal(tick.session.kineticSolverStats.outerIterations, 3);
         assert.equal(persistedKineticPairBuffer.count, 1);
         assert.ok(a.x !== ax0 || b.x !== 14);
         applyGameCollisionSettings(null);
@@ -97,14 +68,13 @@ describe("kinetic pair persistence", () => {
         });
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(20, 0, 10);
-        const state = createState([bodyA, bodyB]);
-        state.kinetic.kineticConstraints.push({ id: 1, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, anchorA: { x: 0, y: 0 }, anchorB: { x: 0, y: 0 }, restLength: 20 });
-        state.kinetic.kineticConstraintsDirty = true;
-        const frame = setupFrame([bodyA, bodyB]);
-        runCollisionPipeline(state, frame, { resolveWalls: () => {} });
-        snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
-        assert.ok(activeBodiesMatchKineticSlab(frame._activeKineticBodies));
-        assert.ok(state.kinetic.kineticSolverStats.outerIterations <= state.kinetic.kineticSolverStats.maxIterations);
+        const tick = createKineticTestTick([bodyA, bodyB]);
+        tick.session.kineticConstraints.push({ id: 1, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, anchorA: { x: 0, y: 0 }, anchorB: { x: 0, y: 0 }, restLength: 20 });
+        tick.session.kineticConstraintsDirty = true;
+        runCollisionPipeline(tick, { resolveWalls: () => {} });
+        snapshotActiveBroadphaseBounds(tick.frame._activeKineticBodies);
+        assert.ok(activeBodiesMatchKineticSlab(tick.frame._activeKineticBodies));
+        assert.ok(tick.session.kineticSolverStats.outerIterations <= tick.session.kineticSolverStats.maxIterations);
         applyGameCollisionSettings(null);
     });
 
@@ -120,11 +90,10 @@ describe("kinetic pair persistence", () => {
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         wedge.vx = -25;
         assert.ok(SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
-        const state = createState([ball, wedge]);
-        const frame = setupFrame([ball, wedge]);
-        runCollisionPipeline(state, frame, { resolveWalls: () => {} });
+        const tick = createKineticTestTick([ball, wedge]);
+        runCollisionPipeline(tick, { resolveWalls: () => {} });
         wedge.vx = -25;
-        runCollisionPipeline(state, frame, { resolveWalls: () => {} });
+        runCollisionPipeline(tick, { resolveWalls: () => {} });
         assert.ok(!SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
         applyGameCollisionSettings(null);
     });

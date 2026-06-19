@@ -1,4 +1,6 @@
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
+import { createKineticTick } from "../../GameState/KineticTick.js";
+import { worldSimFromState } from "../../GameState/WorldSim.js";
 import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js";
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible } from "./kineticSleep.js";
 import { ensureKineticIslandPlan } from "./kineticIslands.js";
@@ -26,8 +28,10 @@ function tickKineticSleep(spatialFrame) {
 }
 /** @param {object} state @param {number} dt @param {object} spatialFrame */
 export function runKineticPhysics(state, dt, spatialFrame) {
-    ensureKineticIslandPlan(state.kinetic, spatialFrame._kineticBodies);
-    state.kinetic.kineticConstraintsDirty = false;
+    const world = worldSimFromState(state);
+    const session = world.kinetic;
+    ensureKineticIslandPlan(session, spatialFrame._kineticBodies);
+    session.kineticConstraintsDirty = false;
     const kineticBodies = spatialFrame._kineticBodies;
     for (let i = 0; i < kineticBodies.length; i++) if (kineticBodies[i]._groundRollDrive) wakeKineticBody(kineticBodies[i]);
     spatialFrame.syncActiveKineticBodies();
@@ -36,14 +40,16 @@ export function runKineticPhysics(state, dt, spatialFrame) {
     const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });
     const subDt = dt / steps;
     const subDtSec = subDt / 1000;
+    const gameContext = { snakeGame: state.sandbox?.snakeGame, state };
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec);
-        for (let i = state.worldProps.length - 1; i >= 0; i--) state.worldProps[i].update(subDt, state, spatialFrame);
+        for (let i = world.worldProps.length - 1; i >= 0; i--) world.worldProps[i].update(subDt, state, spatialFrame);
         spatialFrame.reindexKineticBodies(activeBodies);
-        runCollisionPipeline(state, spatialFrame, {
+        runCollisionPipeline(createKineticTick(spatialFrame, world), {
             resolveWalls(entity, frame) {
                 state.wallResolver.resolve(entity, frame);
             },
+            gameContext,
         });
     }
     tickKineticSleep(spatialFrame);

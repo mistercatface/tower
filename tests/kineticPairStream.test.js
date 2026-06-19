@@ -15,12 +15,10 @@ import {
 } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
+import { createContactPassTick } from "../GameState/KineticTick.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
-
 loadPropAssets();
-
 let nextId = 1;
-
 function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
     return {
         id: nextId++,
@@ -41,7 +39,6 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
         },
     };
 }
-
 function setupActiveFrame(bodies) {
     const frame = new KineticSpatialFrame(50);
     frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
@@ -53,7 +50,6 @@ function setupActiveFrame(bodies) {
     frame._activeKineticBodies = bodies.slice();
     return frame;
 }
-
 function separatePairUntilClear(a, b, maxPasses = 8) {
     for (let pass = 0; pass < maxPasses; pass++) {
         const info = SatCollision.checkCollision(a, a.getShape(), b, b.getShape());
@@ -61,7 +57,6 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
         separateAlongNormal(a, b, info.nx, info.ny, info.overlap, a.mass, b.mass);
     }
 }
-
 function pairKeys(pairs, spatialFrame) {
     const keys = [];
     for (let i = 0; i < pairs.count; i++) {
@@ -74,7 +69,6 @@ function pairKeys(pairs, spatialFrame) {
     keys.sort((a, b) => a - b);
     return keys;
 }
-
 describe("kinetic pair stream", () => {
     it("snapshotted broadphase overlap matches live bounds query", () => {
         const a = mockCircleBody(0, 0, 10);
@@ -84,7 +78,6 @@ describe("kinetic pair stream", () => {
         snapshotActiveBroadphaseBounds([a, b]);
         assert.equal(pairBroadphaseOverlapSnapshotted(a, b), pairBroadphaseOverlap(a, b));
     });
-
     it("snapshotted pair policy matches live pair policy", () => {
         const rest = mockCircleBody(0, 0, 10, 0, 0);
         const mover = mockCircleBody(18, 0, 10, 20, 0);
@@ -93,7 +86,6 @@ describe("kinetic pair stream", () => {
         snapshotActiveBroadphaseBounds([rest, mover]);
         assert.equal(allowsKineticCollisionPairSnapshotted(rest, mover), allowsKineticCollisionPair(rest, mover));
     });
-
     it("resting overlapping circles emit no candidate pairs", () => {
         const a = mockCircleBody(0, 0, 10, 0, 0);
         const b = mockCircleBody(18, 0, 10, 0, 0);
@@ -102,7 +94,6 @@ describe("kinetic pair stream", () => {
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 0);
     });
-
     it("moving circle against resting neighbor emits one ordered pair", () => {
         const a = mockCircleBody(0, 0, 10, 30, 0);
         const b = mockCircleBody(18, 0, 10, 0, 0);
@@ -113,7 +104,6 @@ describe("kinetic pair stream", () => {
         assert.equal(kineticPairBodyAt(frame, kineticPairBuffer.physIdA[0]).id, a.id);
         assert.equal(kineticPairBodyAt(frame, kineticPairBuffer.physIdB[0]).id, b.id);
     });
-
     it("three-body contact emits each pair once", () => {
         const left = mockCircleBody(0, 0, 10, 0, 0);
         const center = mockCircleBody(18, 0, 10, 25, 0);
@@ -123,7 +113,6 @@ describe("kinetic pair stream", () => {
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.deepEqual(pairKeys(kineticPairBuffer, frame), [left.id * 1_000_000 + center.id, center.id * 1_000_000 + right.id]);
     });
-
     it("moving body wakes sleeping overlapping neighbor during pair gather", () => {
         const mover = mockCircleBody(0, 0, 10, 40, 0);
         const sleeper = mockCircleBody(18, 0, 10, 0, 0);
@@ -135,7 +124,6 @@ describe("kinetic pair stream", () => {
         assert.equal(kineticPairBuffer.count, 1);
     });
 });
-
 describe("kinetic pair stream on proof props", () => {
     it("resting crate stack emits no pairs until one body moves", () => {
         const bottom = new WorldProp(0, 0, "crate", 0);
@@ -150,17 +138,15 @@ describe("kinetic pair stream on proof props", () => {
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 1);
     });
-
     it("contact pass still separates moving circle pair after pair-stream refactor", () => {
         const a = mockCircleBody(0, 0, 10, 50, 0);
         const b = mockCircleBody(15, 0, 10, -30, 0);
         const frame = setupActiveFrame([a, b]);
         const session = createKineticSession();
-        resolveKineticContactPass(frame, session);
+        resolveKineticContactPass(createContactPassTick(frame, session));
         assert.ok(a.x < 0);
         assert.ok(b.x > 15);
     });
-
     it("contact pass still ignores resting overlapping circles", () => {
         const a = mockCircleBody(0, 0, 10, 0, 0);
         const b = mockCircleBody(15, 0, 10, 0, 0);
@@ -168,7 +154,7 @@ describe("kinetic pair stream on proof props", () => {
         const bx0 = b.x;
         const frame = setupActiveFrame([a, b]);
         const session = createKineticSession();
-        resolveKineticContactPass(frame, session);
+        resolveKineticContactPass(createContactPassTick(frame, session));
         assert.equal(a.x, ax0);
         assert.equal(b.x, bx0);
     });

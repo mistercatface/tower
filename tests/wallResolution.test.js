@@ -6,6 +6,7 @@ import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Spatial/collision/wallResolution.js";
 import { KineticSession } from "../GameState/KineticSession.js";
+import { createKineticTick } from "../GameState/KineticTick.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
@@ -69,8 +70,14 @@ describe("polygon wall resolution", () => {
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();
-        const frame = { frameId: 1, _activeKineticBodies: [bar], getWallCandidates: () => [wall], getNeighbors: () => [] };
-        runCollisionPipeline({ kinetic: new KineticSession() }, frame, { resolveWalls: (entity, spatialFrame) => resolver.resolve(entity, spatialFrame), kineticIterations: 1 });
+        const frame = { frameId: 1, _kineticBodies: [bar], _activeKineticBodies: [bar], getWallCandidates: () => [wall], getNeighbors: () => [], flushScheduledKineticActivations() {} };
+        const session = new KineticSession();
+        const world = {
+            worldProps: [bar],
+            entityRegistry: { getLive: (id) => (id === bar.id ? bar : null) },
+            kinetic: session,
+        };
+        runCollisionPipeline(createKineticTick(frame, world), { resolveWalls: (entity, f) => resolver.resolve(entity, f), kineticIterations: 1 });
         assert.ok(!shapeOverlapsWall(bar, wall));
     });
     it("wall hit wakes a sleeping polygon", () => {

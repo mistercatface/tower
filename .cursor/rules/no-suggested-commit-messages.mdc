@@ -1,0 +1,24 @@
+---
+description: Never suggest git commit messages at end of tasks
+alwaysApply: true
+---
+
+# No suggested commit messages
+
+Do **not** end responses with suggested commit messages, `git commit -m` blocks, HEREDOC commit templates, or "suggested commit:" sections.
+
+## Skip by default
+
+- Draft commit message prose after finishing implementation
+- "Suggested commit:" / "Commit message:" wrap-up lines
+- Shell commands whose only purpose is showing how to commit work the user did not ask to commit
+
+## When it is OK
+
+- User explicitly asks for a commit message, commit help, or to create a commit
+- User's commit/PR workflow rules apply because they requested that action
+
+## Review bar
+
+- Would a competent dev already write their own commit message? → Do not offer one.
+- Did the user ask to commit? If no → no commit message in the response.

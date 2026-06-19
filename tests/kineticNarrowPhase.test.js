@@ -9,6 +9,7 @@ import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spa
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { KINETIC_PAIR_TIER, classifyKineticPairTier } from "../Libraries/Spatial/collision/kineticNarrowPhase.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
+import { createContactPassTick } from "../GameState/KineticTick.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 loadPropAssets();
@@ -96,7 +97,7 @@ describe("kinetic narrow phase tiers", () => {
         const b = mockCircleBody(15, 0, 10, -30, 0);
         b.id = 2;
         const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(frame, createKineticSession());
+        resolveKineticContactPass(createContactPassTick(frame, createKineticSession()));
         assert.ok(a.x < 0);
         assert.ok(b.x > 15);
     });
@@ -106,7 +107,7 @@ describe("kinetic narrow phase tiers", () => {
         wedge.vx = -20;
         assert.ok(SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
         const frame = setupPairFrame(ball, wedge);
-        resolveKineticContactPass(frame, createKineticSession());
+        resolveKineticContactPass(createContactPassTick(frame, createKineticSession()));
         assert.ok(!SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
     });
     it("contact pass still separates poly-poly pairs", () => {
@@ -115,7 +116,7 @@ describe("kinetic narrow phase tiers", () => {
         right.vx = -20;
         assert.ok(checkEntityPairCollision(left, right));
         const frame = setupPairFrame(left, right);
-        resolveKineticContactPass(frame, createKineticSession());
+        resolveKineticContactPass(createContactPassTick(frame, createKineticSession()));
         assert.equal(checkEntityPairCollision(left, right), null);
     });
 });

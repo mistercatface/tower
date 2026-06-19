@@ -14,6 +14,7 @@ import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
+import { kineticTickFromState } from "../GameState/KineticTick.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
@@ -95,9 +96,9 @@ describe("snake combat min length", () => {
         predator.chain.head.y = preyHead.y;
         const props = [...predator.chain.members, ...prey.chain.members];
         const frame = setupSnakeFrame(props);
-        const pairs = gatherKineticContactPairs(frame, state.kinetic);
+        const pairs = gatherKineticContactPairs(kineticTickFromState(state, frame));
         resolveKineticContactPassWithPairs(frame, pairs);
-        applyKineticContactSideEffects(state, frame, kineticContactBuffer, { snakeGame: state.sandbox.snakeGame, state });
+        applyKineticContactSideEffects(kineticTickFromState(state, frame), kineticContactBuffer, { snakeGame: state.sandbox.snakeGame, state });
         assert.ok(kineticContactBuffer.count >= 1);
         const preyHeadId = prey.chain.head.id;
         const splitHappened = registry.inertByLeadId.size > 0;
@@ -128,9 +129,9 @@ describe("snake combat min length", () => {
         smallHead.y = bigTail.y;
         const props = [...big.chain.members, ...small.chain.members];
         const frame = setupSnakeFrame(props);
-        const pairs = gatherKineticContactPairs(frame, state.kinetic);
+        const pairs = gatherKineticContactPairs(kineticTickFromState(state, frame));
         resolveKineticContactPassWithPairs(frame, pairs);
-        applyKineticContactSideEffects(state, frame, kineticContactBuffer, { snakeGame: state.sandbox.snakeGame, state });
+        applyKineticContactSideEffects(kineticTickFromState(state, frame), kineticContactBuffer, { snakeGame: state.sandbox.snakeGame, state });
         assert.ok(kineticContactBuffer.count >= 1);
         assert.equal(registry.inertByLeadId.size, 0);
         assert.equal(registry.deadHeadIds.size, 0);

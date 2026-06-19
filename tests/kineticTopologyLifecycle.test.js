@@ -1,9 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
-import { createKineticSession } from "../GameState/KineticSession.js";
+import { createKineticTick } from "../GameState/KineticTick.js";
+import { createKineticTestWorld, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { bakeKineticIslandPlan, ensureKineticIslandPlan } from "../Libraries/Motion/kineticIslands.js";
 import { getKineticTopologyGeneration, stampKineticPairGatherTopology } from "../Libraries/Motion/kineticTopology.js";
@@ -41,63 +41,35 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
     };
 }
 
-function createState(initialProps, constraints = []) {
-    const worldProps = initialProps.slice();
-    return {
-        worldProps,
-        kinetic: createKineticSession({ constraints, constraintsDirty: false, constraintsVersion: 0, topologyGeneration: 0 }),
-        sandbox: {},
-        entityRegistry: {
-            membershipGen: 0,
-            register(_kind, prop) {
-                if (!worldProps.includes(prop)) worldProps.push(prop);
-            },
-            unregister(prop) {
-                const index = worldProps.indexOf(prop);
-                if (index >= 0) worldProps.splice(index, 1);
-            },
-            getLive(id) {
-                for (let i = 0; i < worldProps.length; i++) if (worldProps[i].id === id) return worldProps[i];
-                return null;
-            },
-        },
-    };
+function createTestWorld(initialProps, constraints = []) {
+    return createKineticTestWorld(initialProps, { constraints, constraintsDirty: false });
 }
 
-function setupActiveFrame(bodies) {
-    const frame = new KineticSpatialFrame(50);
-    frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
-    for (let i = 0; i < bodies.length; i++) {
-        frame.insertEntity(bodies[i], i);
-        bodies[i]._physId = i;
-    }
-    frame._kineticBodies = bodies.slice();
-    frame._activeKineticBodies = bodies.slice();
-    frame._nextPhysId = bodies.length;
-    return frame;
+function chainLinkState(world) {
+    return { ...world, sandbox: {} };
 }
 
 describe("kinetic topology lifecycle", () => {
     it("removeWorldPropFromState removes prop from the passed spatial frame", () => {
         const prop = mockCircleBody(0, 0, 10);
-        const state = createState([prop]);
-        const localFrame = setupActiveFrame([prop]);
+        const world = createTestWorld([prop]);
+        const localFrame = setupKineticTestFrame([prop]);
         kineticSpatial._kineticBodies.length = 0;
         kineticSpatial._activeKineticBodies.length = 0;
-        removeWorldPropFromState(state, prop, localFrame);
+        removeWorldPropFromState(world, prop, localFrame);
         assert.equal(prop._physId, undefined);
         assert.equal(localFrame._kineticBodies.length, 0);
-        assert.equal(state.worldProps.length, 0);
+        assert.equal(world.worldProps.length, 0);
     });
 
     it("stale pair gather generation rejects bodies after topology bump", () => {
         const a = mockCircleBody(0, 0, 10, 50, 0);
         const b = mockCircleBody(15, 0, 10, -30, 0);
-        const state = createState([a, b]);
-        const frame = setupActiveFrame([a, b]);
-        stampKineticPairGatherTopology(frame, state.kinetic);
+        const world = createTestWorld([a, b]);
+        const frame = setupKineticTestFrame([a, b]);
+        stampKineticPairGatherTopology(frame, world.kinetic);
         assert.ok(kineticPairBodiesAt(frame, 0, 1));
-        frame.admitKineticProp(mockCircleBody(40, 0, 10), state);
+        frame.admitKineticProp(mockCircleBody(40, 0, 10), world);
         assert.equal(kineticPairBodiesAt(frame, 0, 1), null);
     });
 
@@ -107,16 +79,17 @@ describe("kinetic topology lifecycle", () => {
         const b = mockCircleBody(18, 0, 10);
         const c = mockCircleBody(36, 0, 10);
         const bodies = [a, b, c];
-        const state = createState(bodies);
-        addDistanceConstraint(state.kinetic, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
-        addDistanceConstraint(state.kinetic, { bodyAId: b.id, bodyBId: c.id, restLength: 18 });
-        const frame = setupActiveFrame(bodies);
-        bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
+        const world = createTestWorld(bodies);
+        const state = chainLinkState(world);
+        addDistanceConstraint(world.kinetic, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
+        addDistanceConstraint(world.kinetic, { bodyAId: b.id, bodyBId: c.id, restLength: 18 });
+        const frame = setupKineticTestFrame(bodies);
+        bakeKineticIslandPlan(world.kinetic, frame._kineticBodies);
         assert.equal(a._kineticIslandPeers.length, 3);
-        const genBefore = getKineticTopologyGeneration(state.kinetic);
+        const genBefore = getKineticTopologyGeneration(world.kinetic);
         removeChainLinkBetween(state, b.id, c.id);
-        assert.ok(getKineticTopologyGeneration(state.kinetic) > genBefore);
-        ensureKineticIslandPlan(state.kinetic, frame._kineticBodies);
+        assert.ok(getKineticTopologyGeneration(world.kinetic) > genBefore);
+        ensureKineticIslandPlan(world.kinetic, frame._kineticBodies);
         assert.equal(c._kineticIslandPeers, undefined);
         assert.equal(b._kineticLinkNeighbors.length, 1);
     });
@@ -127,10 +100,10 @@ describe("kinetic topology lifecycle", () => {
         applyPropBoxFootprint(glass, 24, 18);
         ball.vx = -200;
         assert.ok(SatCollision.checkCollision(glass, glass.getShape(), ball, ball.getShape()));
-        const state = createState([glass, ball]);
-        const frame = setupActiveFrame([glass, ball]);
-        runCollisionPipeline(state, frame, { resolveWalls() {} });
-        assert.ok(state.worldProps.length > 2);
-        assert.ok(!state.worldProps.includes(glass));
+        const world = createTestWorld([glass, ball]);
+        const frame = setupKineticTestFrame([glass, ball]);
+        runCollisionPipeline(createKineticTick(frame, world), { resolveWalls() {} });
+        assert.ok(world.worldProps.length > 2);
+        assert.ok(!world.worldProps.includes(glass));
     });
 });

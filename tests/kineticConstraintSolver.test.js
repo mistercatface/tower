@@ -5,6 +5,7 @@ import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, pruneKineticConstraintsForBody, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { distanceBetweenAnchors } from "../Libraries/Motion/constraintAnchors.js";
+import { createContactPassTick } from "../GameState/KineticTick.js";
 import { measureDistanceConstraintError, resolveKineticConstraintPass } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 let nextId = 1;
@@ -74,7 +75,7 @@ describe("kinetic constraint solver", () => {
         const frame = setupActiveFrame([bodyA, bodyB]);
         const ax = bodyA.x;
         const bx = bodyB.x;
-        resolveKineticContactPass(frame, state.kinetic);
+        resolveKineticContactPass(createContactPassTick(frame, state.kinetic));
         resolveKineticConstraintPass(frame, state.kinetic, state.entityRegistry);
         assert.equal(bodyA.x, ax);
         assert.equal(bodyB.x, bx);
