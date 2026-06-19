@@ -1,3 +1,4 @@
+import { applyKineticAcceleration } from "../Motion/applyAcceleration.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getPhysicsSettings } from "../../Core/GamePhysicsSettings.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
@@ -14,10 +15,10 @@ export function applyRollSpin(prop) {
     const speed = Math.hypot(prop.vx, prop.vy);
     prop.angularVelocity = (speed / (prop.radius || 8)) * 0.12;
 }
-export function decelerateRoll(prop, dt, config) {
+function applyRollBrake(prop, dtSec, accel) {
     const speed = Math.hypot(prop.vx, prop.vy);
     if (speed <= 0) return false;
-    const decel = config.accel * dt * 2;
+    const decel = accel * dtSec * 2;
     if (speed <= decel) {
         prop.vx = 0;
         prop.vy = 0;
@@ -30,22 +31,32 @@ export function decelerateRoll(prop, dt, config) {
     wakeKineticBody(prop);
     return true;
 }
-export function steerRollToward(prop, dirX, dirY, dt, config) {
-    const targetVx = dirX * config.maxSpeed;
-    const targetVy = dirY * config.maxSpeed;
-    const dvx = targetVx - prop.vx;
-    const dvy = targetVy - prop.vy;
-    const diff = Math.hypot(dvx, dvy);
-    if (diff > 0) {
-        const step = config.accel * dt;
-        if (diff <= step) {
-            prop.vx = targetVx;
-            prop.vy = targetVy;
-        } else {
-            prop.vx += (dvx / diff) * step;
-            prop.vy += (dvy / diff) * step;
-        }
+function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
+    applyKineticAcceleration(prop, dirX * accel, dirY * accel, dtSec);
+    const speed = Math.hypot(prop.vx, prop.vy);
+    if (speed > maxSpeed) {
+        prop.vx = (prop.vx / speed) * maxSpeed;
+        prop.vy = (prop.vy / speed) * maxSpeed;
     }
     applyRollSpin(prop);
     wakeKineticBody(prop);
+}
+export function steerRollToward(prop, dirX, dirY, config) {
+    prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: config.maxSpeed };
+}
+export function decelerateRoll(prop, config) {
+    prop._groundRollDrive = { kind: "brake", accel: config.accel };
+}
+export function applyGroundRollDrive(prop, dtSec) {
+    const drive = prop._groundRollDrive;
+    if (!drive) return false;
+    if (drive.kind === "brake") return applyRollBrake(prop, dtSec, drive.accel);
+    applyRollThrust(prop, dtSec, drive.dirX, drive.dirY, drive.accel, drive.maxSpeed);
+    return true;
+}
+export function clearGroundRollDrive(prop) {
+    delete prop._groundRollDrive;
+}
+export function clearGroundRollDrives(bodies) {
+    for (let i = 0; i < bodies.length; i++) clearGroundRollDrive(bodies[i]);
 }

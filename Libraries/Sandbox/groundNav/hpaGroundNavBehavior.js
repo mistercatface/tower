@@ -67,7 +67,7 @@ export function createHpaGroundNavBehavior(state) {
         }
         if (!steering) return;
         if (steering.desiredX === 0 && steering.desiredY === 0) return;
-        steerRollToward(prop, steering.desiredX, steering.desiredY, dt, config);
+        steerRollToward(prop, steering.desiredX, steering.desiredY, config);
     };
     return {
         id: HPA_GROUND_NAV_BEHAVIOR_ID,

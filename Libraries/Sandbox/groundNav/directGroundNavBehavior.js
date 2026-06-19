@@ -26,10 +26,10 @@ export function createDirectGroundNavBehavior(state) {
                 clearRunTarget(run);
                 return;
             }
-            decelerateRoll(prop, dt, config);
+            decelerateRoll(prop, config);
             return;
         }
-        steerRollToward(prop, dx / dist, dy / dist, dt, config);
+        steerRollToward(prop, dx / dist, dy / dist, config);
     };
     return {
         id: DIRECT_GROUND_NAV_BEHAVIOR_ID,

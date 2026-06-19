@@ -46,7 +46,7 @@ export function createFlowGroundNavBehavior(state) {
         }
         const steering = computeFlowFieldSteering(agentPose(prop), steerTarget.x, steerTarget.y, flowFieldGrid);
         if (!steering) return;
-        steerRollToward(prop, steering.desiredX, steering.desiredY, dt, config);
+        steerRollToward(prop, steering.desiredX, steering.desiredY, config);
     };
     return {
         id: FLOW_GROUND_NAV_BEHAVIOR_ID,
