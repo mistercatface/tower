@@ -7,6 +7,7 @@ import { applySnakeHeadGameplay } from "./snakeHeadGameplay.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, isAliveSnakeHead } from "./snakeLifecycle.js";
 import { mountSnakeHud } from "./snakeHud.js";
 import { resolvePlayerSnakeCombatHud } from "./snakeCombatHud.js";
+import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -37,13 +38,8 @@ export async function setupSnakeGame(state) {
     const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
     const getCombatStatus = () => resolvePlayerSnakeCombatHud(playerHeadId, state, registry, autosimsByHeadId);
     const getFoodTimerFraction = () => playerAutosim.getFoodTimerFraction();
-    const getLocomotionDebug = config.showSnakeNavDebug ? () => playerAutosim.getLocomotionDebug() : null;
-    const hud = mountSnakeHud(getSegmentCount, {
-        getKineticSolverStats: config.showKineticSolverStats ? () => state.sandbox.kineticSolverStats ?? null : null,
-        getCombatStatus,
-        getFoodTimerFraction,
-        getLocomotionDebug,
-    });
+    const getFsmDebugLine = config.showSnakeFsmDebug ? () => playerAutosim.getFsmDebugLine() : null;
+    const hud = mountSnakeHud(getSegmentCount, { getCombatStatus, getFoodTimerFraction, getFsmDebugLine });
     hud.update();
     const snakeHeadIds = config.showAllSnakeVisionCones ? scene.snakes.map((snake) => snake.chain.head.id) : [playerHeadId];
     return {
@@ -52,13 +48,16 @@ export async function setupSnakeGame(state) {
         goals: scene.goals,
         snakes: scene.snakes,
         cameraTarget: playerSnake.chain.head,
-        showVisionCones: config.showVisionCones,
-        showMemoryHeatmap: config.showMemoryHeatmap,
-        showKineticSolverStats: config.showKineticSolverStats,
-        snakeHeadIds,
-        memoryHeatmapHeadId: playerHeadId,
-        getSnakeBrain(headId) {
-            return autosimsByHeadId.get(headId)?.getBrain() ?? null;
+        appendOverlayCommands(out, gameState, selection) {
+            appendSnakeGameOverlayCommands(out, gameState, selection, {
+                registry,
+                autosimsByHeadId,
+                snakeHeadIds,
+                memoryHeatmapHeadId: playerHeadId,
+                showVisionCones: config.showVisionCones,
+                showMemoryHeatmap: config.showMemoryHeatmap,
+                showSnakeFsmDebug: config.showSnakeFsmDebug,
+            });
         },
         getSegmentCount,
         tick(dtMs) {

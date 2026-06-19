@@ -52,8 +52,8 @@ export const SNAKE_GAME_DEFAULTS = {
     fleeThreatClearTicks: 20,
     /** Seconds without food before a snake sheds one tail segment and shrinks. */
     starvationIntervalSec: 30,
-    showKineticSolverStats: false,
-    showSnakeNavDebug: false,
+    /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
+    showSnakeFsmDebug: false,
     /** Optional vision cone override for the player snake only; null uses visionCone. */
     playerVisionCone: null,
 };

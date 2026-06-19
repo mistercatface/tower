@@ -3,8 +3,9 @@ import { describe, it } from "node:test";
 import { cellChebyshevDistance, pickExploreDestination, exploreFringeMinRankFromNewest } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
+import { wireSnakeGameForHead } from "./harness/snakeGameHarness.js";
 import { findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
@@ -123,6 +124,7 @@ describe("snake intent FSM", () => {
         resetKineticConstraintIds(1);
         const state = createIntentTestState();
         const chain = spawnLinkedBallChain(state, { col: 4, row: 8 }, snakeChainOptions());
+        wireSnakeGameForHead(state, chain.head.id);
         spawnGoalOrbAtCell(state, { col: 7, row: 8 });
         spawnGoalOrbAtCell(state, { col: 14, row: 8 });
         stampWall(state.obstacleGrid, 5, 8);
@@ -153,7 +155,7 @@ describe("snake intent FSM", () => {
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, small.head.id);
         registerAliveSnake(registry, large.head.id);
-        state.sandbox.snakeGame = { registry, autosimsByHeadId: new Map() };
+        wireSnakeGameRegistry(state, registry);
         small.head.facing = 0;
         large.head.x = small.head.x + 80;
         large.head.y = small.head.y;

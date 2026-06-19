@@ -25,7 +25,7 @@ export function createSnakeLocomotion(navBehavior, directBehavior, setActiveBeha
             if (!nav.hasMoveTarget(seeker)) return true;
             return nav.needsNavRetry(seeker);
         },
-        applyToNav(seeker, state) {
+        tickNav(seeker, state) {
             directBehavior().clearMoveTarget(seeker);
             const nav = navBehavior();
             if (destCol == null) {
@@ -45,7 +45,9 @@ export function createSnakeLocomotion(navBehavior, directBehavior, setActiveBeha
         },
     };
 }
-export function formatSnakeLocomotionDebug(mode, status) {
-    const dest = status.hasDest ? `${status.destCol},${status.destRow}` : "—";
-    return `${mode} | ${dest} | plen=${status.pathLen} | stuck=${status.stuckFrames}${status.replanPending ? " | replan" : ""}`;
+export function formatSnakeFsmDebug(snapshot) {
+    const dest = snapshot.destCell ? `${snapshot.destCell.col},${snapshot.destCell.row}` : "—";
+    const replan = snapshot.replanReason ?? "none";
+    const speed = Math.hypot(snapshot.vx, snapshot.vy).toFixed(1);
+    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}`;
 }

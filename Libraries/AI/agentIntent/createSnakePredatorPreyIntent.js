@@ -28,6 +28,7 @@ export function createSnakePredatorPreyIntent({
     let threatClearTicks = 0;
     let lastArrivalCol = null;
     let lastArrivalRow = null;
+    let lastTransitionReason = "init";
     const stampArrivalOnCellEnter = (seeker, grid) => {
         const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
         if (col === lastArrivalCol && row === lastArrivalRow) return;
@@ -78,40 +79,45 @@ export function createSnakePredatorPreyIntent({
         else if (mode !== "flee") threatClearTicks = 0;
         return rawMode;
     };
-    const refresh = (seeker, state) => {
+    const perceive = (seeker, state) => {
+        sync(seeker, state);
+        stampArrivalOnCellEnter(seeker, state.obstacleGrid);
+    };
+    const transition = (seeker, state) => {
         const grid = state.obstacleGrid;
-        stampArrivalOnCellEnter(seeker, grid);
         const rawChoice = pickSnakeIntentTarget(seeker, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         const nextMode = resolveEffectiveMode(rawChoice.mode);
+        const prevMode = mode;
         if (nextMode !== mode) {
             mode = nextMode;
+            if (nextMode === "flee") lastTransitionReason = "threat_entered";
+            else if (prevMode === "flee") lastTransitionReason = "threat_cleared";
+            else lastTransitionReason = `mode_${nextMode}`;
             pickDestinationForMode(seeker, state, rawChoice);
-            locomotion.applyToNav(seeker, state);
-            return { mode: nextMode, target: rawChoice.target };
-        }
-        if (destinationStillValid(seeker, grid, rawChoice)) {
-            locomotion.applyToNav(seeker, state);
             return { mode, target: rawChoice.target };
         }
         if (locomotion.getDestination() && locomotion.needsRetry(seeker)) {
-            locomotion.applyToNav(seeker, state);
+            lastTransitionReason = "route_failed_retry";
             return { mode, target: rawChoice.target };
         }
+        if (destinationStillValid(seeker, grid, rawChoice)) {
+            lastTransitionReason = "held_latch";
+            return { mode, target: rawChoice.target };
+        }
+        lastTransitionReason = hasArrivedAtDest(seeker, grid) ? "arrived" : "repick_dest";
         pickDestinationForMode(seeker, state, rawChoice);
-        locomotion.applyToNav(seeker, state);
         return { mode, target: rawChoice.target };
     };
     return {
-        sync(seeker, state) {
-            sync(seeker, state);
-        },
-        refresh,
+        perceive,
+        transition,
         clear(seeker, state) {
             threatClearTicks = 0;
             lastArrivalCol = null;
             lastArrivalRow = null;
+            lastTransitionReason = "cleared";
             locomotion.clearDestination();
-            locomotion.applyToNav(seeker, state);
+            locomotion.tickNav(seeker, state);
             seeker.navStepPenalty = null;
         },
         resetMemory() {
@@ -122,6 +128,7 @@ export function createSnakePredatorPreyIntent({
             threatClearTicks = 0;
             lastArrivalCol = null;
             lastArrivalRow = null;
+            lastTransitionReason = "reset";
             locomotion.clearDestination();
         },
         getMode() {
@@ -130,13 +137,32 @@ export function createSnakePredatorPreyIntent({
         getDestination() {
             return locomotion.getDestination();
         },
+        getLastTransitionReason() {
+            return lastTransitionReason;
+        },
         getLocomotionStatus(seeker, state) {
             return locomotion.getStatus(seeker, state);
+        },
+        getFsmSnapshot(seeker, state) {
+            const loco = locomotion.getStatus(seeker, state);
+            const dest = locomotion.getDestination();
+            let replanReason = null;
+            if (loco.replanPending) replanReason = "pending";
+            else if (dest && !loco.hasRoute) replanReason = "no_route";
+            return {
+                mode,
+                destCell: dest ? { col: dest.col, row: dest.row } : null,
+                pathLen: loco.pathLen,
+                replanReason,
+                stuckFrames: loco.stuckFrames,
+                vx: seeker.vx ?? 0,
+                vy: seeker.vy ?? 0,
+                lastTransition: lastTransitionReason,
+            };
         },
         hasMoveTarget(seeker) {
             return locomotion.getDestination() != null && navBehavior().hasMoveTarget(seeker);
         },
-        navBehavior,
         locomotion,
     };
 }

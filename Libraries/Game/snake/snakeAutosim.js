@@ -3,7 +3,7 @@ import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
 import { linkedChainOccupiedCellKeys, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createSnakePredatorPreyIntent } from "../../AI/agentIntent/createSnakePredatorPreyIntent.js";
-import { formatSnakeLocomotionDebug } from "./snakeLocomotion.js";
+import { formatSnakeFsmDebug } from "./snakeLocomotion.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
@@ -11,7 +11,7 @@ import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { countLiveSnakeGoals, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 import { createSnakeBrain } from "./snakeBrain.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake } from "./snakeLifecycle.js";
+import { requireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 function chainMemberProps(state, headId) {
@@ -30,13 +30,11 @@ function replenishSnakeGoals(state, headId, rng) {
     const occupied = linkedChainOccupiedCellKeys(chainMemberProps(state, headId), state.obstacleGrid);
     spawnGoalOrbOnOpenCell(state, { excludeKeys: occupied, rng });
 }
-function resolveSnakeGameRegistry(state, headId) {
-    const snakeGame = state.sandbox.snakeGame;
-    if (snakeGame?.registry) return snakeGame.registry;
-    const registry = createSnakeLifecycleRegistry();
-    registerAliveSnake(registry, headId);
-    state.sandbox.snakeGame = { registry, autosimsByHeadId: snakeGame?.autosimsByHeadId ?? new Map() };
-    return registry;
+function runSnakeFsmTick(intent, seeker, state) {
+    intent.perceive(seeker, state);
+    const choice = intent.transition(seeker, state);
+    intent.locomotion.tickNav(seeker, state);
+    return choice;
 }
 export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorById, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null }) {
     const config = getSnakeGameConfig();
@@ -52,7 +50,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     const resolvedGrowDirY = growDirY ?? config.growDirY;
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
     const meta = getSandboxEntityMeta(state);
-    const registry = resolveSnakeGameRegistry(state, headId);
+    const registry = requireSnakeGameRegistry(state);
     const { brain, sync } = createSnakeBrain({ visionCone });
     const resolveVisibleFood = (seeker, gameState) => {
         if (pinnedGoalId != null) {
@@ -104,19 +102,17 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         copySnakeChainTintFromHead(state, headId, newTail);
         tailId = newTail.id;
         replenishSnakeGoals(state, headId, rng);
-        intent.refresh(seeker, state);
+        runSnakeFsmTick(intent, seeker, state);
     };
     return {
+        headId,
         start() {
             active = true;
             resetSnakeFoodTimer(foodTimer, config.starvationIntervalSec);
             intent.resetMode();
             intent.resetMemory();
             const seeker = resolveSeeker();
-            if (seeker) {
-                intent.sync(seeker, state);
-                intent.refresh(seeker, state);
-            }
+            if (seeker) runSnakeFsmTick(intent, seeker, state);
         },
         stop() {
             active = false;
@@ -132,24 +128,31 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         getDestination() {
             return intent.getDestination();
         },
+        getLastTransitionReason() {
+            return intent.getLastTransitionReason();
+        },
+        getFsmSnapshot() {
+            const seeker = resolveSeeker();
+            if (!seeker) return null;
+            return intent.getFsmSnapshot(seeker, state);
+        },
         getBrain() {
             return brain;
         },
         getFoodTimerFraction() {
             return getSnakeFoodTimerFraction(foodTimer);
         },
-        getLocomotionDebug() {
-            const seeker = resolveSeeker();
-            if (!seeker) return "";
-            return formatSnakeLocomotionDebug(intent.getMode(), intent.getLocomotionStatus(seeker, state));
+        getFsmDebugLine() {
+            const snapshot = this.getFsmSnapshot();
+            if (!snapshot) return "";
+            return formatSnakeFsmDebug(snapshot);
         },
         tick(dt) {
             if (!active) return;
-            let fedThisTick = false;
             const seeker = resolveSeeker();
             if (!seeker || seeker.isDead) return;
-            intent.sync(seeker, state);
-            const choice = intent.refresh(seeker, state);
+            const choice = runSnakeFsmTick(intent, seeker, state);
+            let fedThisTick = false;
             if (choice.mode === "seek_food" && choice.target) {
                 const goal = choice.target;
                 const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);

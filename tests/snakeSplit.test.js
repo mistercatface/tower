@@ -9,7 +9,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeLifecycleRegistry, isAliveSnakeHead, registerAliveSnake } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createSnakeLifecycleRegistry, isAliveSnakeHead, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength } from "../Libraries/Game/snake/snakeCombat.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
@@ -61,6 +61,9 @@ function mockSnakeGame(state, headIds) {
     ]);
     for (let i = 0; i < headIds.length; i++) {
         registerAliveSnake(registry, headIds[i]);
+    }
+    wireSnakeGameRegistry(state, registry, autosimsByHeadId);
+    for (let i = 0; i < headIds.length; i++) {
         const autosim = createSnakeAutosim(state, { headId: headIds[i], behaviorById, rng: () => 0 });
         autosim.start();
         autosimsByHeadId.set(headIds[i], autosim);

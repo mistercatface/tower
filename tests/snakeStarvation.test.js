@@ -12,6 +12,7 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } 
 import { getSnakeChainRadius, stepSnakeChainRadius } from "../Libraries/Game/snake/snakeScale.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, tickSnakeFoodTimer } from "../Libraries/Game/snake/snakeStarvation.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
+import { wireSnakeGameForHead } from "./harness/snakeGameHarness.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
@@ -81,6 +82,7 @@ describe("snake starvation", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(4));
+        wireSnakeGameForHead(state, chain.head.id);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 8 });
         const behaviorById = new Map([
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
@@ -100,6 +102,7 @@ describe("snake starvation", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(3));
+        wireSnakeGameForHead(state, chain.head.id);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 8 });
         const behaviorById = new Map([
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],

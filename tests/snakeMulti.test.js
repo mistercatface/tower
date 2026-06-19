@@ -14,6 +14,7 @@ import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualO
 import { hueToPickerHex } from "../Libraries/Color/hex.js";
 import { pickSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
+import { wireSnakeGameForHead } from "./harness/snakeGameHarness.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell, spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
@@ -81,6 +82,7 @@ describe("snake multi-spawn", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
         const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.5 });
+        wireSnakeGameForHead(state, pack.chain.head.id);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
         const behaviorById = new Map([
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],

@@ -8,7 +8,7 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { getSnakeSizeScore } from "../Libraries/Game/snake/snakeScale.js";
 import {
     collectVisibleSnakeThreats,
@@ -157,7 +157,7 @@ describe("snake predator prey autosim", () => {
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, prey.head.id);
         registerAliveSnake(registry, predator.head.id);
-        state.sandbox.snakeGame = { registry, autosimsByHeadId: new Map() };
+        wireSnakeGameRegistry(state, registry);
         prey.head.facing = 0;
         predator.head.x = prey.head.x + 80;
         predator.head.y = prey.head.y;
@@ -179,7 +179,7 @@ describe("snake predator prey autosim", () => {
         registerAliveSnake(registry, prey.head.id);
         registerAliveSnake(registry, threatA.head.id);
         registerAliveSnake(registry, threatB.head.id);
-        state.sandbox.snakeGame = { registry, autosimsByHeadId: new Map() };
+        wireSnakeGameRegistry(state, registry);
         prey.head.facing = 0;
         threatA.head.x = prey.head.x + 80;
         threatA.head.y = prey.head.y;
@@ -210,7 +210,7 @@ describe("snake predator prey autosim", () => {
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, predator.head.id);
         registerAliveSnake(registry, prey.head.id);
-        state.sandbox.snakeGame = { registry, autosimsByHeadId: new Map() };
+        wireSnakeGameRegistry(state, registry);
         predator.head.facing = 0;
         prey.head.x = predator.head.x + 80;
         prey.head.y = predator.head.y;
@@ -232,7 +232,7 @@ describe("snake predator prey autosim", () => {
         registerAliveSnake(registry, predator.head.id);
         registerAliveSnake(registry, prey.head.id);
         const autosimsByHeadId = new Map();
-        state.sandbox.snakeGame = { registry, autosimsByHeadId };
+        wireSnakeGameRegistry(state, registry, autosimsByHeadId);
         predator.head.facing = 0;
         prey.head.facing = 0;
         prey.head.x = predator.head.x + 80;
@@ -257,7 +257,7 @@ describe("snake predator prey autosim", () => {
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, snake.head.id);
         const autosimsByHeadId = new Map();
-        state.sandbox.snakeGame = { registry, autosimsByHeadId };
+        wireSnakeGameRegistry(state, registry, autosimsByHeadId);
         const autosim = createSnakeAutosim(state, { headId: snake.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
         autosimsByHeadId.set(snake.head.id, autosim);
         autosim.start();

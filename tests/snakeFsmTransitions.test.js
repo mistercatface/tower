@@ -1,0 +1,232 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
+import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
+import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
+import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
+import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
+import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
+import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
+import { createSnakePredatorPreyIntent } from "../Libraries/AI/agentIntent/createSnakePredatorPreyIntent.js";
+import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
+import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
+import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createSnakeBrain } from "../Libraries/Game/snake/snakeBrain.js";
+import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
+import { wireSnakeGameForHead } from "./harness/snakeGameHarness.js";
+
+loadPropAssets();
+
+function createFsmTestState(cols = 32, rows = 32) {
+    const grid = new WorldObstacleGrid(16);
+    grid.rebuildFixed(0, 0, cols * 16, rows * 16);
+    const cavernConfig = createDefaultMapGenBoundsConfig();
+    cavernConfig.boundsCol = 0;
+    cavernConfig.boundsRow = 0;
+    cavernConfig.boundsCols = cols;
+    cavernConfig.boundsRows = rows;
+    return {
+        obstacleGrid: grid,
+        entityRegistry: new EntityRegistry(),
+        worldProps: [],
+        sandbox: new SandboxWorldState(),
+        editor: { cavernConfig },
+        navigation: { settings: {}, onObstaclesChanged: async () => {} },
+        hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
+    };
+}
+
+function stampWall(grid, col, row) {
+    grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
+}
+
+function snakeBehaviors(state) {
+    return new Map([
+        [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
+        [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
+    ]);
+}
+
+function chainOptions(segmentCount = getSnakeGameConfig().segmentCount) {
+    const config = getSnakeGameConfig();
+    return {
+        segmentCount,
+        spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
+        segmentRadius: config.startRadius,
+        linkSlack: config.linkSlack,
+        ballType: config.segmentPropId,
+        headBallType: config.headPropId,
+        growDirX: config.growDirX,
+        growDirY: config.growDirY,
+    };
+}
+
+function mockNavBehavior() {
+    let targetCell = null;
+    let hasRoute = true;
+    let replanPending = false;
+    return {
+        behavior: {
+            hasMoveTarget() {
+                return targetCell != null;
+            },
+            getTargetCell() {
+                return targetCell;
+            },
+            needsNavRetry() {
+                if (!targetCell) return true;
+                if (replanPending) return false;
+                return !hasRoute;
+            },
+            replanMoveTarget() {},
+            getLocomotionStatus() {
+                return { hasRoute, replanPending, stuckFrames: 0, pathLen: hasRoute ? 3 : 0 };
+            },
+            setMoveTarget(_seeker, world) {
+                targetCell = { col: Math.floor(world.x / 16), row: Math.floor(world.y / 16) };
+            },
+            clearMoveTarget() {
+                targetCell = null;
+            },
+        },
+        setHasRoute(value) {
+            hasRoute = value;
+        },
+    };
+}
+
+function createMockIntent(state, selfHeadId, registry) {
+    const nav = mockNavBehavior();
+    const { brain, sync } = createSnakeBrain();
+    const intent = createSnakePredatorPreyIntent({
+        brain,
+        sync,
+        behaviorById: new Map([
+            [HPA_GROUND_NAV_BEHAVIOR_ID, nav.behavior],
+            [DIRECT_GROUND_NAV_BEHAVIOR_ID, { clearMoveTarget() {} }],
+        ]),
+        setActiveBehaviorId() {},
+        resolveVisibleFood: () => null,
+        resolveExploreCell: resolveSnakeExploreCell,
+        selfHeadId,
+        registry,
+        rng: () => 0,
+    });
+    return { intent, nav };
+}
+
+describe("snake FSM transitions", () => {
+    it("explore transitions to seek_food when food enters vision", () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(1);
+        const state = createFsmTestState();
+        const chain = spawnLinkedBallChain(state, { col: 4, row: 8 }, chainOptions());
+        wireSnakeGameForHead(state, chain.head.id);
+        spawnGoalOrbAtCell(state, { col: 7, row: 8 });
+        spawnGoalOrbAtCell(state, { col: 14, row: 8 });
+        stampWall(state.obstacleGrid, 5, 8);
+        stampWall(state.obstacleGrid, 6, 8);
+        stampWall(state.obstacleGrid, 7, 8);
+        stampWall(state.obstacleGrid, 8, 8);
+        const autosim = createSnakeAutosim(state, { headId: chain.head.id, behaviorById: snakeBehaviors(state), eatRadius: 20, rng: () => 0 });
+        autosim.start();
+        assert.equal(autosim.getMode(), "explore");
+        chain.head.x = state.obstacleGrid.gridToWorld(10, 8).x;
+        chain.head.y = state.obstacleGrid.gridToWorld(10, 8).y;
+        autosim.tick(1 / 60);
+        assert.equal(autosim.getMode(), "seek_food");
+        assert.equal(autosim.getLastTransitionReason(), "mode_seek_food");
+        assert.ok(autosim.getDestination());
+    });
+
+    it("seek_food transitions to flee when a larger snake appears", () => {
+        applySnakeGameConfig({ fleeRange: 128 });
+        resetKineticConstraintIds(1);
+        const state = createFsmTestState();
+        const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, chainOptions(3));
+        const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, small.head.id);
+        registerAliveSnake(registry, large.head.id);
+        wireSnakeGameRegistry(state, registry);
+        spawnGoalOrbAtCell(state, { col: 8, row: 10 });
+        small.head.facing = 0;
+        large.head.x = small.head.x + 200;
+        large.head.y = small.head.y;
+        const autosim = createSnakeAutosim(state, { headId: small.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosim.start();
+        assert.equal(autosim.getMode(), "seek_food");
+        large.head.x = small.head.x + 80;
+        autosim.tick(1 / 60);
+        assert.equal(autosim.getMode(), "flee");
+        assert.equal(autosim.getLastTransitionReason(), "threat_entered");
+    });
+
+    it("flee holds latched retreat cell through 40 ticks with two oscillating threats", () => {
+        applySnakeGameConfig({ fleeRange: 256, exploreMinTiles: 4, fleeThreatClearTicks: 20 });
+        resetKineticConstraintIds(1);
+        const state = createFsmTestState();
+        const prey = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
+        const threatA = spawnLinkedBallChain(state, { col: 16, row: 10 }, chainOptions(5));
+        const threatB = spawnLinkedBallChain(state, { col: 10, row: 16 }, chainOptions(5));
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, prey.head.id);
+        registerAliveSnake(registry, threatA.head.id);
+        registerAliveSnake(registry, threatB.head.id);
+        wireSnakeGameRegistry(state, registry);
+        prey.head.facing = 0;
+        threatA.head.x = prey.head.x + 80;
+        threatA.head.y = prey.head.y;
+        threatB.head.x = prey.head.x;
+        threatB.head.y = prey.head.y + 80;
+        const autosim = createSnakeAutosim(state, { headId: prey.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosim.start();
+        autosim.tick(1 / 60);
+        const latched = autosim.getDestination();
+        assert.ok(latched);
+        for (let i = 0; i < 40; i++) {
+            threatA.head.x = prey.head.x + 80 + (i % 2 === 0 ? 16 : -16);
+            autosim.tick(1 / 60);
+            assert.equal(autosim.getMode(), "flee");
+            const dest = autosim.getDestination();
+            assert.ok(dest);
+            assert.equal(dest.col, latched.col);
+            assert.equal(dest.row, latched.row);
+        }
+    });
+
+    it("route failure retries the same latched cell", () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(1);
+        const state = createFsmTestState();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, chain.head.id);
+        wireSnakeGameRegistry(state, registry);
+        const { intent, nav } = createMockIntent(state, chain.head.id, registry);
+        const seeker = chain.head;
+        intent.perceive(seeker, state);
+        intent.transition(seeker, state);
+        intent.locomotion.tickNav(seeker, state);
+        const latched = intent.getDestination();
+        assert.ok(latched);
+        nav.setHasRoute(false);
+        intent.perceive(seeker, state);
+        intent.transition(seeker, state);
+        assert.equal(intent.getLastTransitionReason(), "route_failed_retry");
+        assert.deepEqual(intent.getDestination(), latched);
+    });
+
+    it("createSnakeAutosim requires a wired registry", () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(1);
+        const state = createFsmTestState();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
+        assert.throws(() => createSnakeAutosim(state, { headId: chain.head.id, behaviorById: snakeBehaviors(state) }), /registry required/);
+    });
+});
