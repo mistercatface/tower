@@ -33,7 +33,7 @@ export function collapsePathRevisits(path) {
     return out;
 }
 /** @param {Cell[]} path @param {number} width @param {GraphNode[]} rooms @param {WallHole | null} parentAnchor @param {WallHole | null} childAnchor @returns {Map<string, BakedFloorBelt>} */
-function beltsForCollapsedPath(path, width, rooms, parentAnchor, childAnchor) {
+export function beltsForPathPolyline(path, width, rooms, parentAnchor, childAnchor) {
     const collapsed = collapsePathRevisits(path);
     const byCell = new Map();
     for (let i = 0; i < collapsed.length; i++) {
@@ -75,7 +75,7 @@ function beltsForCollapsedPath(path, width, rooms, parentAnchor, childAnchor) {
 export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms, parentAnchors, childAnchors) {
     const byCell = new Map();
     for (let pi = 0; pi < paths.length; pi++) {
-        const laneBelts = beltsForCollapsedPath(paths[pi], corridorWidths[pi], rooms, parentAnchors?.[pi] ?? null, childAnchors?.[pi] ?? null);
+        const laneBelts = beltsForPathPolyline(paths[pi], corridorWidths[pi], rooms, parentAnchors?.[pi] ?? null, childAnchors?.[pi] ?? null);
         for (const [key, belt] of laneBelts) byCell.set(key, belt);
     }
     return [...byCell.values()];

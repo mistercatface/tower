@@ -1,6 +1,15 @@
 import { cellInRect } from "../Libraries/Spatial/grid/GridUtils.js";
+import { floorBeltEntryExitSides, floorBeltElbowTurn } from "../Libraries/Spatial/grid/FloorCell.js";
+
+const BELT_COLORS = {
+    straight: "#5ec4ff",
+    elbowLeft: "#ffb454",
+    elbowRight: "#ff7eb6",
+    invalid: "#ff4444",
+};
+
 export function drawSnakeSplitLayout(ctx, preview, options) {
-    const { grid, layout, walkableKeys, playableBounds } = preview;
+    const { grid, layout, walkableKeys, playableBounds, beltPlan } = preview;
     const { zones } = layout;
     const cellSize = grid.cellSize;
     const pxPerCell = options.pxPerCell;
@@ -19,6 +28,7 @@ export function drawSnakeSplitLayout(ctx, preview, options) {
     if (layers.walkable) drawWalkable(ctx, grid, walkableKeys, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize);
     if (layers.rails) drawRails(ctx, grid, layout.rails, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize);
     if (layers.northReserve) drawNorthReserve(ctx, zones.railConfig, layout.northReserveRows, originGlobalCol, originGlobalRow, pxPerCell);
+    if (layers.belts && beltPlan) drawBelts(ctx, grid, beltPlan, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize, options.beltInvalidKeys);
 }
 function globalToCanvas(globalCol, globalRow, originGlobalCol, originGlobalRow, pxPerCell) {
     return { x: (globalCol - originGlobalCol) * pxPerCell, y: (globalRow - originGlobalRow) * pxPerCell };
@@ -98,8 +108,122 @@ function drawRails(ctx, grid, rails, originGlobalCol, originGlobalRow, cols, row
         ctx.stroke();
     }
 }
+
+function gridCellCenterCanvas(grid, col, row, originGlobalCol, originGlobalRow, pxPerCell, cellSize) {
+    const { x, y } = grid.gridToWorld(col, row);
+    const globalCol = Math.round(x / cellSize);
+    const globalRow = Math.round(y / cellSize);
+    const topLeft = globalToCanvas(globalCol, globalRow, originGlobalCol, originGlobalRow, pxPerCell);
+    return { x: topLeft.x + pxPerCell * 0.5, y: topLeft.y + pxPerCell * 0.5 };
+}
+
+function drawBelts(ctx, grid, beltPlan, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize, invalidKeys) {
+    const belts = beltPlan.floorBelts;
+    const invalid = invalidKeys ?? new Set();
+    for (let i = 0; i < belts.length; i++) {
+        const belt = belts[i];
+        const { x, y } = gridCellCenterCanvas(grid, belt.col, belt.row, originGlobalCol, originGlobalRow, pxPerCell, cellSize);
+        const { x: wx, y: wy } = grid.gridToWorld(belt.col, belt.row);
+        const gc = Math.round(wx / cellSize);
+        const gr = Math.round(wy / cellSize);
+        if (gc < originGlobalCol || gc >= originGlobalCol + cols || gr < originGlobalRow || gr >= originGlobalRow + rows) continue;
+        const key = `${belt.col},${belt.row}`;
+        const turn = floorBeltElbowTurn(belt.kind);
+        const color = invalid.has(key) ? BELT_COLORS.invalid : turn === "left" ? BELT_COLORS.elbowLeft : turn === "right" ? BELT_COLORS.elbowRight : BELT_COLORS.straight;
+        const radius = pxPerCell * 0.34;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        if (turn) {
+            const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
+            drawBeltSideTick(ctx, x, y, entrySide, pxPerCell, radius, true);
+            drawBeltSideTick(ctx, x, y, exitSide, pxPerCell, radius, false);
+        } else {
+            const { exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
+            drawBeltArrow(ctx, x, y, exitSide, pxPerCell, radius);
+        }
+    }
+}
+
+function drawBeltSideTick(ctx, cx, cy, side, pxPerCell, radius, isEntry) {
+    const len = radius * 0.95;
+    let x0 = cx;
+    let y0 = cy;
+    let x1 = cx;
+    let y1 = cy;
+    if (side === 0) {
+        y0 = cy + (isEntry ? len : -len * 0.35);
+        y1 = cy - len;
+    } else if (side === 1) {
+        x0 = cx - (isEntry ? len : -len * 0.35);
+        x1 = cx + len;
+    } else if (side === 2) {
+        y0 = cy - (isEntry ? len : -len * 0.35);
+        y1 = cy + len;
+    } else {
+        x0 = cx + (isEntry ? len : -len * 0.35);
+        x1 = cx - len;
+    }
+    ctx.strokeStyle = "rgba(0,0,0,0.55)";
+    ctx.lineWidth = Math.max(1, pxPerCell * 0.12);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+}
+
+function drawBeltArrow(ctx, cx, cy, exitSide, pxPerCell, radius) {
+    const len = radius * 1.15;
+    let tipX = cx;
+    let tipY = cy;
+    let tailX = cx;
+    let tailY = cy;
+    if (exitSide === 0) {
+        tipY = cy - len;
+        tailY = cy + radius * 0.2;
+    } else if (exitSide === 1) {
+        tipX = cx + len;
+        tailX = cx - radius * 0.2;
+    } else if (exitSide === 2) {
+        tipY = cy + len;
+        tailY = cy - radius * 0.2;
+    } else {
+        tipX = cx - len;
+        tailX = cx + radius * 0.2;
+    }
+    ctx.strokeStyle = "rgba(0,0,0,0.65)";
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.lineWidth = Math.max(1, pxPerCell * 0.1);
+    ctx.beginPath();
+    ctx.moveTo(tailX, tailY);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    const head = pxPerCell * 0.18;
+    ctx.beginPath();
+    if (exitSide === 0) {
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(tipX - head, tipY + head * 1.4);
+        ctx.lineTo(tipX + head, tipY + head * 1.4);
+    } else if (exitSide === 1) {
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(tipX - head * 1.4, tipY - head);
+        ctx.lineTo(tipX - head * 1.4, tipY + head);
+    } else if (exitSide === 2) {
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(tipX - head, tipY - head * 1.4);
+        ctx.lineTo(tipX + head, tipY - head * 1.4);
+    } else {
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(tipX + head * 1.4, tipY - head);
+        ctx.lineTo(tipX + head * 1.4, tipY + head);
+    }
+    ctx.closePath();
+    ctx.fill();
+}
+
 export function layoutStats(preview) {
-    const { grid, layout, walkableKeys, playableBounds } = preview;
+    const { grid, layout, walkableKeys, playableBounds, beltPlan } = preview;
     const cellSize = grid.cellSize;
     let voxelCells = 0;
     let openCells = 0;
@@ -112,5 +236,27 @@ export function layoutStats(preview) {
             if (grid.isBlocked(col, row)) voxelCells++;
             else openCells++;
         }
-    return { seed: layout.mapSeed, playArea: `${boundsCols}×${boundsRows}`, voxelCells, openCells, railEdges: railCount, navWalkable: walkableKeys.size };
+    let elbowCount = 0;
+    let straightCount = 0;
+    if (beltPlan) {
+        for (let i = 0; i < beltPlan.floorBelts.length; i++) {
+            const turn = floorBeltElbowTurn(beltPlan.floorBelts[i].kind);
+            if (turn) elbowCount++;
+            else straightCount++;
+        }
+    }
+    return {
+        seed: layout.mapSeed,
+        playArea: `${boundsCols}×${boundsRows}`,
+        voxelCells,
+        openCells,
+        railEdges: railCount,
+        navWalkable: walkableKeys.size,
+        beltCells: beltPlan?.floorBelts.length ?? 0,
+        beltStraight: straightCount,
+        beltElbows: elbowCount,
+        beltPaths: beltPlan?.pathCount ?? 0,
+        beltValid: beltPlan?.validation?.ok ?? null,
+        beltError: beltPlan?.validation?.error ?? null,
+    };
 }

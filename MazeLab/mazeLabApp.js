@@ -2,7 +2,7 @@ import { SNAKE_GAME_DEFAULTS } from "../Config/games/snake.js";
 import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
 import { drawSnakeSplitLayout, layoutStats } from "./mazeRenderer.js";
 const PLAY_AREA_OPTIONS = [64, 128, 256];
-const defaultLayers = { zones: true, voxels: true, rails: true, northReserve: true, walkable: true };
+const defaultLayers = { zones: true, voxels: true, rails: true, northReserve: true, walkable: true, belts: true };
 let preview = null;
 let pxPerCell = 2;
 let generateToken = 0;
@@ -65,9 +65,14 @@ function resizeCanvas(playAreaCols, playAreaRows) {
 function render() {
     if (!preview) return;
     const ctx = els.canvas.getContext("2d");
-    drawSnakeSplitLayout(ctx, preview, { pxPerCell, layers: readLayers() });
+    const beltInvalidKeys = preview.beltPlan?.validation?.ok === false ? preview.beltPlan.validation.footprint : null;
+    drawSnakeSplitLayout(ctx, preview, { pxPerCell, layers: readLayers(), beltInvalidKeys });
     const stats = layoutStats(preview);
-    els.stats.textContent = `seed ${stats.seed} · ${stats.playArea} · voxels ${stats.voxelCells} · open ${stats.openCells} · rails ${stats.railEdges} · nav-walkable ${stats.navWalkable}`;
+    const beltPart =
+        stats.beltCells > 0
+            ? ` · belts ${stats.beltCells} (${stats.beltStraight} straight, ${stats.beltElbows} elbows, ${stats.beltPaths} paths${stats.beltValid === false ? ` · INVALID: ${stats.beltError}` : stats.beltValid ? " · chain OK" : ""})`
+            : "";
+    els.stats.textContent = `seed ${stats.seed} · ${stats.playArea} · voxels ${stats.voxelCells} · open ${stats.openCells} · rails ${stats.railEdges} · nav-walkable ${stats.navWalkable}${beltPart}`;
 }
 async function generate() {
     const token = ++generateToken;

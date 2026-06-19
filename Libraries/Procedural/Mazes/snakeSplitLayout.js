@@ -9,6 +9,7 @@ import { WORLD_SURFACE_DEFAULTS } from "../../../Config/world.js";
 import { collectNavWalkableCells } from "./walkableCells.js";
 import { generateCavernOccupancy } from "./cavernOccupancy.js";
 import { bakeRailMazeDfs } from "./railMazeDfs.js";
+import { planRailMazeCorridorBelts } from "./railMazeCorridorBelts.js";
 export function centerPlayAreaBounds(playAreaCols, playAreaRows) {
     return { boundsMode: "rect", boundsCol: 0, boundsRow: 0, boundsCols: playAreaCols, boundsRows: playAreaRows };
 }
@@ -145,7 +146,14 @@ export function bakeSnakeSplitLayoutPreview({ mapSeed, playAreaCols, playAreaRow
     const navWalkable = collectNavWalkableCells(walkableState, applied.playableBounds, applied.floodSeedBounds);
     const walkableKeys = new Set();
     for (let i = 0; i < navWalkable.length; i++) walkableKeys.add(`${navWalkable[i].col},${navWalkable[i].row}`);
-    return { layout, grid, navWalkable, walkableKeys, ...applied };
+    const beltPlan = planRailMazeCorridorBelts({
+        grid,
+        gridNavContext: navigation.gridNavContext,
+        railConfig: applied.railConfig,
+        northReserveRows: layout.northReserveRows,
+        walkableKeys,
+    });
+    return { layout, grid, gridNavContext: navigation.gridNavContext, navWalkable, walkableKeys, beltPlan, ...applied };
 }
 export function globalCellFromGrid(grid, col, row) {
     const cellSize = grid.cellSize;

@@ -4,9 +4,9 @@ import { maxCorridorLanesBetweenNodes } from "../Libraries/Pathfinding/Corridor/
 import { cellInsideAnyRoom } from "../Libraries/Pathfinding/Corridor/corridorWalkGrid.js";
 import { createSeededRng } from "../Libraries/Math/SeededRng.js";
 import { buildCorridorBeltsFromPaths, collapsePathRevisits, corridorExteriorCellFromWallHole } from "../Libraries/RoomGraph/roomGraphCorridorBelts.js";
+import { assertBeltChains, beltMapFromFloorBelts } from "../Libraries/Procedural/Mazes/beltChainValidation.js";
 import { DEFAULT_CORRIDOR_EGRESS_CELLS } from "../Libraries/RoomGraph/roomGraphCorridorRails.js";
 import { floorBeltEntryExitSides } from "../Libraries/Spatial/grid/FloorCell.js";
-import { CARDINAL_OFFSETS } from "../Libraries/Spatial/grid/GridUtils.js";
 export function makeRoomRect(c0, r0, width, height) {
     const c1 = c0 + width - 1;
     const r1 = r0 + height - 1;
@@ -45,10 +45,6 @@ export function maxLanesForFixture(fixture, corridorWidth) {
 function cellKey(c, r) {
     return `${c},${r}`;
 }
-function neighborForSide(c, r, side) {
-    const off = CARDINAL_OFFSETS[side];
-    return { c: c + off.dc, r: r + off.dr };
-}
 function oppositeSide(side) {
     return (side + 2) % 4;
 }
@@ -56,42 +52,7 @@ export function footprintKeysForPath(path, width) {
     return corridorPathOccupiedCellKeys(path, width, { interiorOnly: false });
 }
 function beltMap(belts) {
-    const map = new Map();
-    for (let i = 0; i < belts.length; i++) {
-        const belt = belts[i];
-        map.set(cellKey(belt.col, belt.row), belt);
-    }
-    return map;
-}
-function assertBeltChains(footprint, beltsByCell, label, mouthExteriorKeys = new Set()) {
-    for (const key of footprint) {
-        const belt = beltsByCell.get(key);
-        if (!belt) throw new Error(`${label}: missing belt at ${key}`);
-    }
-    for (const key of footprint) {
-        const belt = beltsByCell.get(key);
-        const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
-        const entry = neighborForSide(belt.col, belt.row, entrySide);
-        const exit = neighborForSide(belt.col, belt.row, exitSide);
-        const entryKey = cellKey(entry.c, entry.r);
-        const exitKey = cellKey(exit.c, exit.r);
-        const entryInFootprint = footprint.has(entryKey);
-        const exitInFootprint = footprint.has(exitKey);
-        if (entryInFootprint) {
-            const entryBelt = beltsByCell.get(entryKey);
-            const entryExit = floorBeltEntryExitSides(entryBelt.kind, entryBelt.facingIndex).exitSide;
-            if (entryExit !== oppositeSide(entrySide)) throw new Error(`${label}: belt chain break ${entryKey} -> ${key} (entry side ${entrySide}, upstream exit ${entryExit})`);
-        }
-        if (exitInFootprint) {
-            const exitBelt = beltsByCell.get(exitKey);
-            const exitEntry = floorBeltEntryExitSides(exitBelt.kind, exitBelt.facingIndex).entrySide;
-            if (exitEntry !== oppositeSide(exitSide)) throw new Error(`${label}: belt chain break ${key} -> ${exitKey} (exit side ${exitSide}, downstream entry ${exitEntry})`);
-        }
-        if (!entryInFootprint && !exitInFootprint) {
-            if (mouthExteriorKeys.has(key)) continue;
-            throw new Error(`${label}: dead-end belt at ${key}`);
-        }
-    }
+    return beltMapFromFloorBelts(belts);
 }
 function corridorOnlyFootprint(path, width) {
     return footprintKeysForPath(collapsePathRevisits(path), width);
