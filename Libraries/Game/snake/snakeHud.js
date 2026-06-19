@@ -1,5 +1,5 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, getCombatStatus = null, getFoodTimerFraction = null } = {}) {
+export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, getCombatStatus = null, getFoodTimerFraction = null, getLocomotionDebug = null } = {}) {
     const stage = document.querySelector("#gameStage");
     if (!stage) return { update() {}, destroy() {} };
     const showCombat = getCombatStatus != null;
@@ -14,7 +14,8 @@ export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, g
         (showCombat
             ? '<div class="snake-hud-panel snake-hud-combat"><span class="snake-hud-label">Status</span><div class="snake-hud-combat-row"><span class="snake-hud-chip snake-hud-chip-foraging" data-snake-foraging>Foraging</span><span class="snake-hud-chip snake-hud-chip-hunting" data-snake-hunting>Hunting</span><span class="snake-hud-chip snake-hud-chip-hunted" data-snake-hunted>Hunted</span></div></div>'
             : "") +
-        (getKineticSolverStats ? '<div class="snake-hud-panel"><span class="snake-hud-label">Phys iters</span><span class="snake-hud-value" data-snake-phys-iters>—</span></div>' : "");
+        (getKineticSolverStats ? '<div class="snake-hud-panel"><span class="snake-hud-label">Phys iters</span><span class="snake-hud-value" data-snake-phys-iters>—</span></div>' : "") +
+        (getLocomotionDebug ? '<div class="snake-hud-panel"><span class="snake-hud-label">Nav</span><span class="snake-hud-value" data-snake-nav-debug>—</span></div>' : "");
     stage.appendChild(root);
     const lengthEl = root.querySelector("[data-snake-length]");
     const bestEl = root.querySelector("[data-snake-best]");
@@ -23,6 +24,7 @@ export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, g
     const huntedEl = showCombat ? root.querySelector("[data-snake-hunted]") : null;
     const huntingEl = showCombat ? root.querySelector("[data-snake-hunting]") : null;
     const physItersEl = getKineticSolverStats ? root.querySelector("[data-snake-phys-iters]") : null;
+    const navDebugEl = getLocomotionDebug ? root.querySelector("[data-snake-nav-debug]") : null;
     const storageKey = getSnakeGameConfig().hudHighScoreStorageKey;
     let best = Number(sessionStorage.getItem(storageKey)) || 0;
     bestEl.textContent = String(best);
@@ -41,6 +43,7 @@ export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, g
                 const stats = getKineticSolverStats();
                 physItersEl.textContent = stats ? `${stats.outerIterations}/${stats.maxIterations}` : "—";
             }
+            if (navDebugEl) navDebugEl.textContent = getLocomotionDebug();
             if (length <= best) return;
             best = length;
             sessionStorage.setItem(storageKey, String(best));

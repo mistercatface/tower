@@ -53,6 +53,7 @@ export const SNAKE_GAME_DEFAULTS = {
     /** Seconds without food before a snake sheds one tail segment and shrinks. */
     starvationIntervalSec: 30,
     showKineticSolverStats: false,
+    showSnakeNavDebug: false,
     /** Optional vision cone override for the player snake only; null uses visionCone. */
     playerVisionCone: null,
 };

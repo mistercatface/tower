@@ -1,4 +1,6 @@
 import { getPhysicsSettings } from "../../../Core/GamePhysicsSettings.js";
+import { navHasPath } from "../../Pathfinding/navSession.js";
+import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
 import { createHpaGroundNavSession } from "./hpaGroundNavSession.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward } from "../kineticRollActuator.js";
@@ -95,6 +97,27 @@ export function createHpaGroundNavBehavior(state) {
         },
         hasMoveTarget(prop) {
             return getRun(prop).targetWorld != null;
+        },
+        getTargetCell(prop) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return null;
+            return { col: run.targetCellCol, row: run.targetCellRow };
+        },
+        needsNavRetry(prop) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return true;
+            if (run.hpaNav.isRoutePending()) return false;
+            return !navHasPath(run.hpaNav.navState);
+        },
+        replanMoveTarget(prop, state) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return;
+            run.hpaNav.replan(prop, run.targetWorld.x, run.targetWorld.y, state, REPLAN_PRIORITY_TARGET);
+        },
+        getLocomotionStatus(prop) {
+            const run = getRun(prop);
+            const nav = run.hpaNav.navState;
+            return { hasRoute: navHasPath(nav), replanPending: run.hpaNav.isRoutePending(), stuckFrames: nav.stuckFrames, pathLen: nav.pathLen };
         },
         clearMoveTarget(prop) {
             clearRunTarget(getRun(prop), state);

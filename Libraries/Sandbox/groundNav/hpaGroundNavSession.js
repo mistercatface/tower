@@ -32,6 +32,7 @@ export function createHpaGroundNavSession() {
     const markTargetChanged = () => {
         pendingTargetReplan = true;
     };
+    const isRoutePending = () => pendingTargetReplan || navState.hpaReplanRequestId !== 0;
     const replan = (prop, targetX, targetY, state, priority = REPLAN_PRIORITY_TARGET) => {
         state.hpaPathSession.requestReplan(navState, buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, state.navigation.obstacleGeneration, prop.navStepPenalty), priority);
     };
@@ -75,5 +76,5 @@ export function createHpaGroundNavSession() {
             }
         return steering;
     };
-    return { navState, reset, markTargetChanged, replan, update };
+    return { navState, reset, markTargetChanged, replan, update, isRoutePending };
 }

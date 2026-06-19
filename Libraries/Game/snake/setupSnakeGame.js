@@ -37,7 +37,13 @@ export async function setupSnakeGame(state) {
     const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
     const getCombatStatus = () => resolvePlayerSnakeCombatHud(playerHeadId, registry, autosimsByHeadId);
     const getFoodTimerFraction = () => playerAutosim.getFoodTimerFraction();
-    const hud = mountSnakeHud(getSegmentCount, { getKineticSolverStats: config.showKineticSolverStats ? () => state.sandbox.kineticSolverStats ?? null : null, getCombatStatus, getFoodTimerFraction });
+    const getLocomotionDebug = config.showSnakeNavDebug ? () => playerAutosim.getLocomotionDebug() : null;
+    const hud = mountSnakeHud(getSegmentCount, {
+        getKineticSolverStats: config.showKineticSolverStats ? () => state.sandbox.kineticSolverStats ?? null : null,
+        getCombatStatus,
+        getFoodTimerFraction,
+        getLocomotionDebug,
+    });
     hud.update();
     const snakeHeadIds = config.showAllSnakeVisionCones ? scene.snakes.map((snake) => snake.chain.head.id) : [playerHeadId];
     return {

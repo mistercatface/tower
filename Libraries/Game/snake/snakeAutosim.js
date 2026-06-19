@@ -3,6 +3,7 @@ import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
 import { linkedChainOccupiedCellKeys, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createSnakePredatorPreyIntent } from "../../AI/agentIntent/createSnakePredatorPreyIntent.js";
+import { formatSnakeLocomotionDebug } from "./snakeLocomotion.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
@@ -89,7 +90,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         removeSandboxWorldProp(state, goal);
         if (pinnedGoalId === goal.id) pinnedGoalId = null;
         intent.clearTrackedTarget();
-        intent.navBehavior().clearMoveTarget(seeker);
+        intent.locomotion.clearDestination();
         const grow = growSnakeChainAfterMeal(state, headId);
         const tail = state.entityRegistry.getLive(tailId);
         const newTail = growChainSegment(state, tail, {
@@ -121,7 +122,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         stop() {
             active = false;
             const seeker = resolveSeeker();
-            if (seeker) intent.clear(seeker);
+            if (seeker) intent.clear(seeker, state);
         },
         isActive() {
             return active;
@@ -137,6 +138,11 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         },
         getFoodTimerFraction() {
             return getSnakeFoodTimerFraction(foodTimer);
+        },
+        getLocomotionDebug() {
+            const seeker = resolveSeeker();
+            if (!seeker) return "";
+            return formatSnakeLocomotionDebug(intent.getMode(), intent.getLocomotionStatus(seeker, state));
         },
         tick(dt) {
             if (!active) return;
