@@ -14,6 +14,13 @@ export function isPassagePowerSourceKind(kind) {
 export function isFloorBeltRailsKind(kind) {
     return kind === FLOOR_CELL_KIND.BeltRails || kind === FLOOR_CELL_KIND.BeltElbowLeftRails || kind === FLOOR_CELL_KIND.BeltElbowRightRails;
 }
+/** Swap a railed belt kind to its open (no lateral rails) equivalent; other kinds pass through. */
+export function unrailedBeltKindFromRailed(kind) {
+    if (kind === FLOOR_CELL_KIND.BeltRails) return FLOOR_CELL_KIND.Belt;
+    if (kind === FLOOR_CELL_KIND.BeltElbowLeftRails) return FLOOR_CELL_KIND.BeltElbowLeft;
+    if (kind === FLOOR_CELL_KIND.BeltElbowRightRails) return FLOOR_CELL_KIND.BeltElbowRight;
+    return kind;
+}
 /** @param {number} kind @returns {"left" | "right" | null} */
 export function floorBeltElbowTurn(kind) {
     if (kind === FLOOR_CELL_KIND.BeltElbowLeft || kind === FLOOR_CELL_KIND.BeltElbowLeftRails) return "left";

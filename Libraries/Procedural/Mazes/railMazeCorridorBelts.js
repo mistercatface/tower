@@ -13,6 +13,7 @@ const DEFAULT_PATH_LENGTH_MIN = 6;
 const DEFAULT_PATH_LENGTH_MAX = 24;
 const MAX_PAIR_ATTEMPTS_PER_CORRIDOR = 96;
 const BELT_PLAN_SEED_SALT = 0xbe1a5afe;
+const DEFAULT_OPEN_BELT_CHANCE = 0.1;
 function manhattanCells(a, b) {
     return Math.abs(a.col - b.col) + Math.abs(a.row - b.row);
 }
@@ -196,6 +197,7 @@ export function planRailMazeCorridorBelts({
     corridorWidth = 1,
     pathLengthMin = DEFAULT_PATH_LENGTH_MIN,
     pathLengthMax = DEFAULT_PATH_LENGTH_MAX,
+    openBeltChance = DEFAULT_OPEN_BELT_CHANCE,
     mapSeed = 0,
     rng = null,
 }) {
@@ -216,7 +218,7 @@ export function planRailMazeCorridorBelts({
     });
     const neighborAt = (col, row) => navWalkableNeighbors(grid, gridNavContext, col, row);
     const degreeByKey = degreeInZone(zoneCells, neighborAt);
-    let floorBelts = buildCorridorBeltsFromPaths(paths, widths, [], null, null);
+    let floorBelts = buildCorridorBeltsFromPaths(paths, widths, [], null, null, { openBeltChance, rng: random });
     const protectedKeys = collectNorthReserveProtectedKeys(grid, railConfig, northReserveRows);
     if (protectedKeys.size) floorBelts = floorBelts.filter((belt) => !protectedKeys.has(cellKey(belt.col, belt.row)));
     const footprint = beltFootprintKeys(floorBelts);

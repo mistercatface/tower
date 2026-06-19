@@ -2,7 +2,8 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { FLOOR_CELL_KIND, floorBeltElbowTurn } from "../Libraries/Spatial/grid/FloorCell.js";
+import { FLOOR_CELL_KIND, floorBeltElbowTurn, isFloorBeltRailsKind } from "../Libraries/Spatial/grid/FloorCell.js";
+import { planRailMazeCorridorBelts } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { collectCorridorPathPolylines } from "../Libraries/Procedural/Mazes/collectCorridorPathPolylines.js";
 import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
 import { createTestNavigation, syncGridNavContext } from "../Libraries/Navigation/GridNavContext.js";
@@ -73,7 +74,7 @@ describe("rail maze corridor belts", () => {
             assert.ok(plan.pathCount >= 15, `seed ${seeds[i]}: only ${plan.pathCount} corridor paths`);
             for (let pi = 0; pi < plan.paths.length; pi++) {
                 const len = plan.paths[pi].length;
-                assert.ok(len >= 6 && len <= 12, `seed ${seeds[i]} path ${pi}: length ${len}`);
+                assert.ok(len >= 6 && len <= 24, `seed ${seeds[i]} path ${pi}: length ${len}`);
             }
             assert.ok(plan.floorBelts.length > 60, `seed ${seeds[i]}: only ${plan.floorBelts.length} belts`);
             let elbows = 0;
@@ -85,18 +86,32 @@ describe("rail maze corridor belts", () => {
         }
     });
 
-    it("uses railed belt kinds only", () => {
+    it("rolls open vs railed belt kind per cell", () => {
         applySnakeGameConfig();
+        const config = getSnakeGameConfig();
         const preview = bakeSnakeSplitLayoutPreview({
             mapSeed: 42,
             playAreaCols: 64,
             playAreaRows: 64,
-            cavern: getSnakeGameConfig().cavern,
-            rail: getSnakeGameConfig().rail,
+            cavern: config.cavern,
+            rail: config.rail,
         });
-        for (let i = 0; i < preview.beltPlan.floorBelts.length; i++) {
-            const kind = preview.beltPlan.floorBelts[i].kind;
-            assert.ok(kind >= FLOOR_CELL_KIND.BeltRails && kind <= FLOOR_CELL_KIND.BeltElbowRightRails);
-        }
+        const baseArgs = {
+            grid: preview.grid,
+            gridNavContext: preview.gridNavContext,
+            railConfig: preview.railConfig,
+            northReserveRows: preview.layout.northReserveRows,
+            walkableKeys: preview.walkableKeys,
+            mapSeed: preview.layout.mapSeed,
+        };
+        const allRailed = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 0 });
+        for (let i = 0; i < allRailed.floorBelts.length; i++) assert.ok(isFloorBeltRailsKind(allRailed.floorBelts[i].kind));
+        const allOpen = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 1 });
+        for (let i = 0; i < allOpen.floorBelts.length; i++) assert.ok(!isFloorBeltRailsKind(allOpen.floorBelts[i].kind));
+        const mixed = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 0.1 });
+        let openCount = 0;
+        for (let i = 0; i < mixed.floorBelts.length; i++) if (!isFloorBeltRailsKind(mixed.floorBelts[i].kind)) openCount++;
+        assert.ok(openCount > 0, "expected some open belts at 10% per cell");
+        assert.ok(openCount < mixed.floorBelts.length, "expected most belts to stay railed at 10% per cell");
     });
 });

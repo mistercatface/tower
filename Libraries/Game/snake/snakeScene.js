@@ -11,6 +11,7 @@ import { stampGlobalRailMazeBelts } from "../../Procedural/Mazes/stampGlobalRail
 import { commitBoundaryEdit } from "../../Sandbox/boundaryEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
+import { pickNavWalkableBeltCellAny } from "./snakeBeltCells.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
 import { applySnakeHeadGameplay, applySnakeSegmentGameplay } from "./snakeHeadGameplay.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
@@ -196,7 +197,10 @@ export function spawnGoalOrbAtCell(state, cell, faction = SANDBOX_DEFAULT_FACTIO
     return spawnGoalOrb(state, x, y, faction);
 }
 export function spawnGoalOrbOnOpenCell(state, navWalkable, { excludeKeys = null, faction = SANDBOX_DEFAULT_FACTION, rng = Math.random } = {}) {
-    const cell = navWalkable.pick({ excludeKeys, rng });
+    const config = getSnakeGameConfig();
+    let cell = null;
+    if ((config.beltFoodSpawnChance ?? 0) > 0 && rng() < config.beltFoodSpawnChance) cell = pickNavWalkableBeltCellAny(state.obstacleGrid, navWalkable, { excludeKeys, rng });
+    if (!cell) cell = navWalkable.pick({ excludeKeys, rng });
     return spawnGoalOrbAtCell(state, cell, faction);
 }
 export function spawnSnakeChain(state, anchorCell, { excludeKeys = null, segmentCount, rng = Math.random } = {}) {

@@ -1,6 +1,6 @@
-import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
 import { perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "../../Game/snake/snakeIntent.js";
+import { snakeHasArrivedAtDestCell } from "../../Game/snake/snakeNavArrival.js";
 export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFood, resolveExploreCell, selfHeadId, registry, navWalkable, visionCone = null, rng = Math.random }) {
     const resolvedVision = visionCone ?? getSnakeGameConfig().visionCone;
     let mode = "explore";
@@ -25,7 +25,7 @@ export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFo
         const dest = headNav.getDestination();
         if (!dest) return false;
         const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
-        return cellChebyshevDistance(col, row, dest.col, dest.row) <= 1;
+        return snakeHasArrivedAtDestCell(grid, col, row, dest.col, dest.row);
     };
     const hasReachedDest = (seeker, grid) => {
         const dest = headNav.getDestination();
