@@ -2,7 +2,7 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, getCombatStatus = null, getFoodTimerFraction = null } = {}) {
     const stage = document.querySelector("#gameStage");
     if (!stage) return { update() {}, destroy() {} };
-    const showCombat = getSnakeGameConfig().predatorPreyEnabled && getCombatStatus != null;
+    const showCombat = getCombatStatus != null;
     const root = document.createElement("div");
     root.className = "snake-hud";
     root.innerHTML =

@@ -140,12 +140,12 @@ describe("snake intent FSM", () => {
         chain.head.x = state.obstacleGrid.gridToWorld(10, 8).x;
         chain.head.y = state.obstacleGrid.gridToWorld(10, 8).y;
         autosim.tick(1 / 60);
-        assert.equal(autosim.getMode(), "seek");
+        assert.equal(autosim.getMode(), "seek_food");
         assert.ok(hpa.hasMoveTarget(chain.head));
     });
 
     it("predator-prey intent flees from a visible larger snake", () => {
-        applySnakeGameConfig({ predatorPreyEnabled: true, fleeRange: 128 });
+        applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createIntentTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });

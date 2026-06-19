@@ -67,7 +67,7 @@ function chainOptions(segmentCount) {
 
 describe("snake predator prey perception", () => {
     it("findNearestVisibleSnakePrey ignores equal or larger snakes", () => {
-        applySnakeGameConfig({ predatorPreyEnabled: true, preySizeRatio: 1 });
+        applySnakeGameConfig({ preySizeRatio: 1 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(4));
@@ -89,7 +89,7 @@ describe("snake predator prey perception", () => {
     });
 
     it("findNearestVisibleSnakeThreat detects larger visible heads", () => {
-        applySnakeGameConfig({ predatorPreyEnabled: true, fleeRange: 128 });
+        applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
@@ -106,7 +106,7 @@ describe("snake predator prey perception", () => {
     });
 
     it("pickSnakeIntentTarget prefers flee over food and prey", () => {
-        applySnakeGameConfig({ predatorPreyEnabled: true, huntPriority: 0.9, fleeRange: 128 });
+        applySnakeGameConfig({ huntPriority: 0.9, fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
@@ -136,7 +136,7 @@ describe("snake predator prey perception", () => {
 
 describe("snake predator prey autosim", () => {
     it("smaller snake flees when larger head is visible", () => {
-        applySnakeGameConfig({ predatorPreyEnabled: true, fleeRange: 128 });
+        applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const prey = spawnLinkedBallChain(state, { col: 8, row: 10 }, chainOptions(3));
@@ -155,7 +155,7 @@ describe("snake predator prey autosim", () => {
     });
 
     it("larger snake seeks prey when huntPriority beats nearby food", () => {
-        applySnakeGameConfig({ predatorPreyEnabled: true, huntPriority: 0.95, fleeRange: 128 });
+        applySnakeGameConfig({ huntPriority: 0.95, fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const predator = spawnLinkedBallChain(state, { col: 8, row: 10 }, chainOptions(5));
@@ -174,7 +174,7 @@ describe("snake predator prey autosim", () => {
     });
 
     it("resolvePlayerSnakeCombatHud reports hunting and hunted states", () => {
-        applySnakeGameConfig({ predatorPreyEnabled: true, huntPriority: 0.95, fleeRange: 128 });
+        applySnakeGameConfig({ huntPriority: 0.95, fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const predator = spawnLinkedBallChain(state, { col: 8, row: 10 }, chainOptions(5));
@@ -201,7 +201,7 @@ describe("snake predator prey autosim", () => {
     });
 
     it("resolvePlayerSnakeCombatHud shows foraging when seeking food or exploring", () => {
-        applySnakeGameConfig({ predatorPreyEnabled: true });
+        applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnLinkedBallChain(state, { col: 8, row: 10 }, chainOptions(3));

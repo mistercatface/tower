@@ -16,9 +16,7 @@ import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/di
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
-
 loadPropAssets();
-
 function createTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
@@ -37,7 +35,6 @@ function createTestState(cols = 32, rows = 32) {
         hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
     };
 }
-
 function chainOptions(segmentCount) {
     const config = getSnakeGameConfig();
     return {
@@ -51,7 +48,6 @@ function chainOptions(segmentCount) {
         growDirY: config.growDirY,
     };
 }
-
 describe("snake starvation", () => {
     it("tickSnakeFoodTimer sheds tail and shrinks radius after interval", () => {
         applySnakeGameConfig({ starvationIntervalSec: 30, minAliveSegmentCount: 3, radiusPerMeal: 0.25, startRadius: 2 });
@@ -68,7 +64,6 @@ describe("snake starvation", () => {
         assert.ok(getSnakeChainRadius(state, headId) < 2.5);
         assert.ok(timer.remainingSec > 29);
     });
-
     it("does not shrink below minAliveSegmentCount", () => {
         applySnakeGameConfig({ starvationIntervalSec: 30, minAliveSegmentCount: 3 });
         resetKineticConstraintIds(1);
@@ -81,9 +76,8 @@ describe("snake starvation", () => {
         assert.equal(getOrderedChainMemberIds(state, headId).length, 3);
         assert.equal(timer.remainingSec, 30);
     });
-
     it("eating resets food timer via autosim", () => {
-        applySnakeGameConfig({ starvationIntervalSec: 30, predatorPreyEnabled: false, minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ starvationIntervalSec: 30, minAliveSegmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(4));
@@ -101,9 +95,8 @@ describe("snake starvation", () => {
         autosim.tick(1 / 60);
         assert.ok(autosim.getFoodTimerFraction() > 0.99);
     });
-
     it("does not shed on the same frame as eating", () => {
-        applySnakeGameConfig({ starvationIntervalSec: 30, minAliveSegmentCount: 3, predatorPreyEnabled: false });
+        applySnakeGameConfig({ starvationIntervalSec: 30, minAliveSegmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(3));
@@ -121,7 +114,6 @@ describe("snake starvation", () => {
         assert.equal(getOrderedChainMemberIds(state, chain.head.id).length, 4);
         assert.ok(getSnakeChainRadius(state, chain.head.id) > radiusBefore);
     });
-
     it("getSnakeFoodTimerFraction tracks remaining time", () => {
         const timer = createSnakeFoodTimer(30);
         timer.remainingSec = 15;

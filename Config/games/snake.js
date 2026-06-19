@@ -42,8 +42,6 @@ export const SNAKE_GAME_DEFAULTS = {
     minAliveSegmentCount: 3,
     /** Relative impact speed required to split a smaller snake at the struck segment. */
     splitImpulseThreshold: 35,
-    /** When true and snakeGame registry exists, snakes hunt smaller heads and flee larger ones. */
-    predatorPreyEnabled: true,
     /** Visible prey must have size score below self × this ratio (1 = strictly smaller). */
     preySizeRatio: 1,
     /** Utility weight for prey vs food when both are visible (0–1). */
