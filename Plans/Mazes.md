@@ -68,11 +68,23 @@ This pipeline is **not** the snake autosim default. It is the right tool for **s
 
 | ID            | Technique                                                | Status | Notes                                                  |
 | ------------- | -------------------------------------------------------- | ------ | ------------------------------------------------------ |
-| **D-belt**    | Perfect maze + **one-way floor belts** on corridor cells | ⬜     | Use `floorStore` + belt facing; graph becomes directed |
+| **D-belt**    | Perfect maze + **one-way floor belts** on corridor cells | 🔜     | **Safe directed-belt post-process** — see below        |
 | **D-passage** | One-way **forcefield** edges instead of belts            | ⬜     | `PASSAGE_MODE.OneWay` on boundary graph                |
 | **D-graph**   | Strongly connected components / Eulerian trail puzzles   | ⬜     | Gameplay validation 🔗 `AI.md`                         |
 
 Belts and one-way passages belong in this doc as **maze semantics**, not just floor props.
+
+#### D-belt-safe post-process (planned PR)
+
+**Problem:** R-DFS rail mazes are undirected walkable graphs. One-way floor belts (`floorStore` + belt facing + entry/exit sides) turn corridor cells into **directed edges**. A naive stamp can **strand** regions — unlike room-graph corridor belts, which are authored on known A\* paths between rects.
+
+**CS core:** Build the **nav walkable graph** on stamped geometry (`collectNavWalkableCells` / `canStep` + `GridNavContext`). Classify cells (dead-end / corridor / junction). Propose belt candidates on **straight corridor runs** (degree-2 chains). For each `(cell, facing)`, **simulate** belt entry rules (`beltBlocksEntryFrom`), then verify the directed graph stays **strongly connected** (Tarjan/Kosaraju SCC — one component covering the playable flood) or at minimum preserves reachability from the chunk seam seed. Only **safe** candidates get stamped (`floorStore` + optional `BeltRails` lateral edges).
+
+**Snake hook:** run after `generateLabRailDfsMaze` in `generateSnakeSplitMap` (lower band only); density/seed from `mapSeed` sub-stream.
+
+**Extensibility:** First **layout post-process** in `Libraries/Procedural/Mazes/postProcess/` — input = `{ grid, bounds, gridNavContext }`, output = floor stamps + `damageBounds`. Future ops same machine: dead-end trim, loop injection, belt-safe pass. Not a texture motif stack — operates on **geometry + nav graph**, validates before mutating. Fits chunk composer recipe: `R-DFS` → `D-belt-safe` → `onObstaclesChanged`.
+
+🔗 [`ROADMAP.md`](ROADMAP.md) cross-cutting grid · [`procedural.md`](procedural.md) bake pipeline · [`pathfinding.md`](pathfinding.md) belt nav rules
 
 ---
 
@@ -126,6 +138,7 @@ world seed
 | `cavern-vent`    | Voxel    | V-CA + south/north open strip      | Vertical connectors between bands          |
 | `rail-dfs-tight` | Rail     | R-DFS, low extraLinkRatio          | Classic maze corridors                     |
 | `rail-dfs-loopy` | Rail     | R-DFS + high extraLinkRatio        | Combat / chase loops                       |
+| `rail-dfs-belts` | Rail     | R-DFS + **D-belt-safe** post-pass  | Directed corridors without stranded regions |
 | `rail-rooms`     | Rail     | G-corridor bake on mini room graph | Structured pocket (editor-quality)         |
 | `pad`            | —        | cleared strip                      | Mandatory seam between incompatible chunks |
 
@@ -139,7 +152,7 @@ Snake-specific: player bias to lower bands early; endgame fills more of the 1024
 2. **R-BSP chunk:** BSP leaves → floor mask → `railWallsFromFloorMask` (reuse room-graph rail outline).
 3. **Chunk composer module:** seeded `(cx,cy) → recipe → stampBounds` — no snake imports in generator core.
 4. **Dead-end trim utility** on logical maze before rail stamp (Tier-1 cleanup).
-5. **D-belt prototype chunk** once physics pass is stable.
+5. **D-belt-safe post-process** — SCC-validated one-way belts on R-DFS corridors (lower snake band); first layout post-process op.
 
 ---
 
@@ -150,6 +163,7 @@ Plans/Mazes.md                          — this doc
 Plans/procedural.md                     — room graph, corridor solver, world scale
 Libraries/Procedural/Mazes/
   railMazeDfs.js                        — R-DFS bake
+  postProcess/                          — 🔜 layout post-ops (D-belt-safe, …)
   walkableCells.js                      — collectWalkableCells / pickWalkableCell
   stampRailWalls.js                     — stampGlobalRailWalls
 Libraries/RoomGraph/roomGraphCorridorRails.js — R-mask / rail outline from floor

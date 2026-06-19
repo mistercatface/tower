@@ -256,8 +256,9 @@ A different lens from the feature tiers below: do the **CS-textbook building blo
 
 | Item | Status | % | Notes / modules |
 |------|--------|---|-----------------|
-| `NavigationService` obstacle sync | ✅ | 85 | `Systems/Navigation/NavigationService.js` |
-| `onObstaclesChanged(damageBounds)` | ✅ | 85 | bumps `obstacleGeneration`, invalidates flow |
+| `NavigationService` obstacle sync | ✅ | 90 | `Systems/Navigation/NavigationService.js` + `GridNavContext` |
+| `GridNavContext` (nav/perception caches) | ✅ | 85 | `Libraries/Navigation/GridNavContext.js`; unified `boundaryBlocksStepFrom`; worker skips redundant re-bake |
+| `onObstaclesChanged(damageBounds)` | ✅ | 85 | bumps `obstacleGeneration`, invalidates flow, syncs nav caches |
 | Full region graph rebuild | ✅ | 85 | on topology epoch / empty bounds |
 | Incremental localized patch | ✅ | 80 | `rebuildDamagedRegionGraph`, 12-cell pad |
 | Unreachable region prune | ✅ | 70 | BFS reachability from seed point |

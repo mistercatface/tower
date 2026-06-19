@@ -26,13 +26,13 @@ The single hub for this engine: a **2D-canvas, pseudo-3D sandbox engine** (no We
 
 | Subsystem       | Maturity | One-line state                                                           | CS core                                                                            | ▶ Next ship                                          | Doc                                |
 | --------------- | -------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------- |
-| **Physics**     | ~62%     | rigid-body core solid; sim boundary peeled; no CCD, no joints beyond distance | sequential-impulse PGS solver, SAT, uniform-grid broadphase                        | persistent contact manifolds (feature-id warm-start) | [physics.md](./physics.md)         |
-| **Pathfinding** | ~55%     | pro planning core; no local avoidance or smoothing                       | octile A\* + HPA\* Voronoi abstraction + flow-field BFS, off-thread on SAB         | funnel / string-pull path smoothing                  | [pathfinding.md](./pathfinding.md) |
+| **Physics**     | ~63%     | rigid-body core solid; **sim boundary peel complete**; no CCD, no joints beyond distance | sequential-impulse PGS solver, SAT, uniform-grid broadphase                        | persistent contact manifolds (feature-id warm-start) | [physics.md](./physics.md)         |
+| **Pathfinding** | ~56%     | pro planning core; **GridNavContext** sync; no local avoidance or smoothing              | octile A\* + HPA\* Voronoi abstraction + flow-field BFS, off-thread on SAB         | funnel / string-pull path smoothing                  | [pathfinding.md](./pathfinding.md) |
 | **Rendering**   | ~52%     | distinctive radial pseudo-3D; no lighting/shadows                        | camera-relative elevation projection + painter's sort + bake/blit LRU              | wire projected drop shadows (math exists)            | [rendering.md](./rendering.md)     |
-| **Procedural**  | ~40%     | strong _resolution_, weak _authorship_                                   | cellular-automata caves + room-graph bake + cardinal-A\* corridors                 | unified root seed → derived subsystem seeds          | [procedural.md](./procedural.md)   |
+| **Procedural**  | ~42%     | strong _resolution_, weak _authorship_; **maze post-process** starting | cellular-automata caves + room-graph bake + cardinal-A\* corridors                 | unified root seed → derived subsystem seeds          | [procedural.md](./procedural.md)   |
 | **AI**          | ~30%     | one agent with a real perception-gated FSM + memory; snake-bound, narrow | vision-gated intent FSM + recency-LRU spatial memory + stigmergic A\* cost penalty | generalize the loop into a reusable agent FSM        | [AI.md](./AI.md)                   |
 
-**Overall engine maturity: ~48%** _(unweighted mean of the five pillars; manual)_ — a genuinely capable physics/nav/render core with a distinctive projection, a young procedural layer, and a narrow-but-real decision-AI layer (one smart agent, not yet a system).
+**Overall engine maturity: ~49%** _(unweighted mean of the five pillars; manual)_ — sim boundary peel complete; nav/perception caches unified; headline work shifts to AI generality, path polish, and physics v2 when gameplay demands it.
 
 ---
 
@@ -149,10 +149,11 @@ The shared spine every spoke leans on but none should own. This is their home. E
 
 ### 4.1 Uniform spatial grid 🟡→✅ (~80%)
 
-The substrate: `WorldObstacleGrid` (16 px cells, voxel walls, edge barriers, floor store), `EntityGrid` broadphase index, `canStep` topology, `gridTopologyEpoch` invalidation channels.
+The substrate: `WorldObstacleGrid` (16 px cells, voxel walls, edge barriers, floor store), `EntityGrid` broadphase index, `canStep` topology, `gridTopologyEpoch` invalidation channels, **`GridNavContext`** (nav/perception caches synced on `NavigationService.onObstaclesChanged`).
 
-- **CS:** uniform-grid spatial hashing; cell-indexed neighbor queries; epoch-stamped cache invalidation.
-- [ ] ▶ **Next:** document the grid's three consumers (physics broadphase, nav topology bake, procedural stamp) as one contract so changes don't silently desync epochs.
+- **CS:** uniform-grid spatial hashing; cell-indexed neighbor queries; epoch-stamped cache invalidation; single bake path for nav topology + vision step caches.
+- [x] **GridNavContext** — `{ navCardinalOpen, vertexPassability, wallRevision }` on obstacle sync; worker SAB pre-bake; no lazy per-query rebuild in vision.
+- [ ] ▶ **Next:** document the grid's consumers (physics broadphase, nav topology bake, procedural stamp, **GridNavContext**) as one epoch contract so changes don't silently desync.
 - [ ] Dynamic kinetic-prop occupancy (props as transient obstacles) — currently nav ignores moving bodies.
 
 ### 4.2 Seeded determinism 🟡 (~40%)
@@ -200,25 +201,25 @@ Scene snapshot **schema v11** — flat props, kinetic constraints, chain head, r
 Collapsed tier checklists; click through to the spoke for CS detail and per-tier `▶ next`.
 
 <details>
-<summary><b>Physics</b> — ~62% · rigid-body sandbox · <a href="./physics.md">physics.md</a></summary>
+<summary><b>Physics</b> — ~63% · rigid-body sandbox · <a href="./physics.md">physics.md</a></summary>
 
 - [x] Body model + uniform-grid broadphase (SAT narrow phase)
 - [x] Semi-implicit Euler integration, fixed substeps, island sleep
 - [x] Sequential-impulse contact solve, distance constraints, chains
 - [x] Static voxel/rail walls, fracture, snake autosim payoff
-- [x] Sim boundary peel — `{ frame, world }` tick, constraint slab, frame wall cache, `worldProps`, `runKineticPhysics(tick, dt, hooks)`
-- [ ] ▶ **GridNavContext** peel (nav/perception; independent of physics) — see [physics.md](./physics.md) peel part 4
+- [x] Sim boundary peel — `{ frame, world }` tick, constraint slab, frame wall cache, `worldProps`, `runKineticPhysics(tick, dt, hooks)`, **`GridNavContext`**
 - [ ] Persistent contact manifolds (feature-id warm-start) + substep early-out polish
 - [ ] Revolute / motor joints; CCD (TOI); mixed-shape breakable chains
   </details>
 
 <details>
-<summary><b>Pathfinding</b> — ~55% · grid HPA\* + flow fields + workers · <a href="./pathfinding.md">pathfinding.md</a></summary>
+<summary><b>Pathfinding</b> — ~56% · grid HPA\* + flow fields + workers · <a href="./pathfinding.md">pathfinding.md</a></summary>
 
 - [x] Octile + cardinal + abstract A\* (binary min-heap)
 - [x] HPA\* Voronoi region abstraction (distance transform, CSR graph)
 - [x] Flow-field BFS, off-thread SAB workers, incremental replan
 - [x] Corridor routing (room authoring), snake nav payoff
+- [x] **GridNavContext** — main-thread nav caches + worker SAB pre-bake on obstacle sync
 - [ ] ▶ Funnel / string-pull path smoothing (reuses LOS; transfers to navmesh)
 - [ ] Local separation/RVO; navmesh + variable agent radius (long-term)
   </details>
@@ -377,7 +378,7 @@ flowchart LR
 **Spokes:** [physics.md](./physics.md) · [pathfinding.md](./pathfinding.md) · [rendering.md](./rendering.md) · [procedural.md](./procedural.md) · [AI.md](./AI.md)
 **Reference:** [library-audit.md](./library-audit.md) — full per-file map, naming traps, "where do I add X?"
 
-_Last updated: **PR2** — every spoke now carries a CS-grounded **Fundamentals checklist** (textbook-coverage lens) alongside its feature tiers, and the **library audit** caught a real miss: `Libraries/AI/brain/` (recency-LRU spatial memory + memory→A\* step penalty) and the `snakeAutosim` perception-gated intent FSM were undocumented — **AI re-rated ~18% → ~30%**, overall ~45% → ~47%, and the master backlog re-pointed off the now-shipped "perception → decision" / "intent FSM" items. Next: PR3 — make it living (every tier ends with a `▶ Next ship`, computed roll-ups from a data source). Revisit when any ▶ next-ship task lands._
+_Last updated: **GridNavContext** — sim boundary peel complete (parts 1–5); pathfinding + cross-cutting grid sections updated. Revisit roll-ups when agent FSM extraction or funnel smoothing lands._
 
 > **Changelog**
 >
