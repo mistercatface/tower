@@ -164,7 +164,7 @@ flowchart TB
 | Per-state behavior binding | ✅ | 65 | each state sets active behavior + HPA move target |
 | Generic FSM transition infra | 🟡 | 40 | `Libraries/FSM/transition.js` (separate; seek/explore uses dedicated intent module) |
 | **Reusable / multi-agent intent FSM** | 🟡 | 55 | `createSeekExploreIntent` — inject `resolveVisibleGoal` + `resolveExploreCell`; snake is one consumer |
-| Richer states (idle / flee / return / regroup) | ⬜ | 0 | only seek + explore today |
+| Richer states (idle / flee / return / regroup) | 🔜 | 0 | snake death trilogy PR2: `flee` + `seek_prey` on top of seek/explore |
 | Hierarchical / nested states | ⬜ | 0 | |
 
 **Branch progress: 44%** · *A real 2-state perception-gated FSM exists — but it's snake-specific, not a reusable agent FSM. WorldProp's lifecycle `normal` state is unrelated scaffolding.*
@@ -209,7 +209,7 @@ Shared with `pathfinding.md` Tier 7 — these are the *movement verbs* AI decisi
 | Faction metadata + UI ("Team") | 🟡 | 50 | `sandboxFaction.js` (alpha/bravo/charlie), inspector |
 | Faction persisted in scene snapshot | ✅ | 70 | `sandboxSceneSnapshot.js` |
 | **Faction → hostility relations** | ⬜ | 0 | no ally/enemy/neutral logic |
-| Target selection (pick whom to engage) | ⬜ | 0 | snake uses goal orbs, not agents |
+| Target selection (pick whom to engage) | 🔜 | 0 | snake death trilogy PR2: visible snake heads ranked by size delta |
 | Threat / priority scoring | ⬜ | 0 | |
 | Friendly-fire / team filtering | ⬜ | 0 | |
 | Per-snake team assignment | ⬜ | 0 | all spawn `SANDBOX_DEFAULT_FACTION` |
@@ -252,7 +252,7 @@ Shared with `pathfinding.md` Tier 7 — these are the *movement verbs* AI decisi
 
 | Item | Status | % | Notes |
 |------|--------|---|-------|
-| Pursuit-evasion (predator/prey) | ⬜ | 0 | natural first fit (multi-snake) |
+| Pursuit-evasion (predator/prey) | 🔜 | 0 | snake death trilogy PR2 — size-based hunt/flee (not minimax) |
 | Minimax / alpha-beta | ⬜ | 0 | for turn-like or discrete decisions |
 | MCTS | ⬜ | 0 | for large branching |
 | Payoff / opponent modeling | ⬜ | 0 | |
@@ -371,11 +371,11 @@ That progression — **generic agent FSM → utility/EQS action choice → flee/
 
 ## Recommended next unlocks (short path)
 
-1. **Extract a reusable agent FSM** — promote `snakeAutosim`'s `seek`/`explore` + `createBrain` into a generic `agentIntent` mountable by any prop. Highest leverage; everything else builds on it.
-2. **Add a `flee`/threat state** — reuse perception + memory to react to nearby snakes/walls; first new state on the generalized FSM.
-3. **Utility scoring among visible goals** — when several goals are in view, score by distance / contested-ness / memory-freshness instead of nearest. First taste of utility AI (generalizes `pickExploreDestination`).
+1. **Snake death trilogy (see `Plans/plan.md`)** — lifecycle FSM + split-on-impact → flee/pursue intent → inert fracture. Delivers predator–prey without waiting for full utility AI or factions.
+2. **Extract a reusable agent FSM** — promote `snakeAutosim`'s intent modes into a generic mount; PR2 of snake trilogy partially does this for flee/prey states.
+3. **Utility scoring among visible goals** — when several goals are in view, score by distance / contested-ness / memory-freshness instead of nearest.
 4. **Generalize the explore picker into an EQS-style query** — scored spatial option ranking reusable beyond exploration.
-5. **Faction → hostility** — give the "Team" field meaning: target filtering by faction; unblocks predator-prey (Tier 9) and squads (Tier 7).
+5. **Faction → hostility** — give the "Team" field meaning; optional once snake uses size-based prey/threat without factions.
 
 > **Sequencing note:** the spine (Tiers 0–3) is now *built* for one agent — the work is **generalizing** it (reusable FSM, scored decisions) before reaching for squads, strategy, game theory, or puzzle solvers.
 

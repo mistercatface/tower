@@ -26,7 +26,7 @@ Shipped for sandbox + snake autosim. Pause engine work here unless you need an i
 
 **Out of scope (future trilogy / v2)**
 
-- Revolute / motor / weld joints; breakable links; crate trains
+- Game-scoped **impact break** on snake distance links (snake death trilogy PR1/PR3) — not full editor breakable-link trilogy
 - Continuous collision detection (CCD)
 - Multi-point manifolds + feature-id persistence
 - Constraint compliance / break force tuning
@@ -394,8 +394,8 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 ## Recommended next unlocks (short path)
 
 1. ~~**Trilogy C PR 1 finish**~~ — v1 contact/coherence stack shipped (PRs 1–3).
-2. **Snake game** — HUD, head asset, gameplay polish (`Libraries/Game/snake/`).
-3. **v2 when needed** — manifold feature-ids, revolute/motor, breakable links, chain wall sweep.
+2. **Snake death rules** — lifecycle FSM, split-on-impact, predator–prey AI, inert fracture (`Plans/plan.md` snake trilogy).
+3. **v2 when needed** — manifold feature-ids, revolute/motor, editor breakable links, chain wall sweep.
 
 ---
 

@@ -471,9 +471,9 @@ Three things in this stack are at or above what most indie/hobby engines ship:
 
 Ordered by payoff-per-effort. The first two are also the cheapest down-payments on an eventual navmesh.
 
-1. **Path smoothing (funnel / string-pull)** — biggest feel win for the least work; post-process the octile cell path before follow. **Transfers to navmesh later** (same apex logic, only the visibility test changes), so it pays off twice.
-2. **Local separation steering** — first slice of Tier 7; cheap neighbor query + push-apart blend into desired velocity. Representation-agnostic, so it survives a navmesh migration untouched. Unblocks believable multi-snake / crowd movement.
-3. **A* / region-graph / flow-field unit tests** — Tier 11 has integration gaps; the search core has no direct coverage.
+1. **Flee / pursue for snake predator–prey** — snake death trilogy PR2: flee target away from larger visible heads; pursue = HPA seek on smaller heads. Reuses vision + memory penalty pattern before full Tier 7 separation/ORCA.
+2. **Path smoothing (funnel / string-pull)** — biggest feel win for the least work; post-process the octile cell path before follow.
+3. **Local separation steering** — cheap neighbor push-apart; unblocks crowd movement beyond hunt/flee.
 4. **Single-cell belt edit → guaranteed nav resync** — close the Tier 8 partial so editor belt placement always patches the graph.
 5. **Worker resilience** — recover from `graphPatchError` instead of log-only.
 
