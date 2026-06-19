@@ -38,7 +38,10 @@
                 </section>
                 <section>
                     <h2>View</h2>
-                    <label>Pixels / cell <select id="px-per-cell"></select></label>
+                    <div class="zoom-controls">
+                        <label>Zoom (<span id="zoom-val">Auto</span>) <input id="px-per-cell" type="range" min="2" max="48" step="1" value="8" /></label>
+                        <label class="row-label"><input id="zoom-auto" type="checkbox" checked /> Auto-fit screen</label>
+                    </div>
                     <fieldset class="layers">
                         <legend>Layers</legend>
                         <label><input id="layer-zones" type="checkbox" checked /> Zone bands</label>
@@ -50,9 +53,9 @@
                     </fieldset>
                     <div class="legend">
                         <b>Map key</b>
-                        ⬛ wall &nbsp; ⬜ floor &nbsp; ▬ rail bar<br />
-                        🟦 belt → &nbsp; 🟧 belt ↰ &nbsp; 🟥 belt ↱<br />
-                        Yellow strip = north reserve &nbsp;|&nbsp; Black bars = zone splits
+                        ⬛ voxel wall &nbsp; ⬜ floor &nbsp; ▬ rail wall<br />
+                        🟦 straight belt &nbsp; 🟩 turn left &nbsp; 🟪 turn right &nbsp; 🟥 invalid/dead-end<br />
+                        Yellow strip = north reserve &nbsp;|&nbsp; Dashed lines = zone splits
                     </div>
                 </section>
                 <p id="stats" class="stats"></p>

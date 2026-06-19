@@ -1,16 +1,11 @@
 import { SNAKE_GAME_DEFAULTS } from "../Config/games/snake.js";
 import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
 import { autoPxPerCell, drawSnakeSplitLayout, layoutStats } from "./mazeRenderer.js";
-
 const PLAY_AREA_OPTIONS = [64, 128, 256];
-const PX_AUTO = "auto";
 const defaultLayers = { zones: true, voxels: true, rails: true, northReserve: true, walkable: false, belts: true };
-
 let preview = null;
 let pxPerCell = 8;
-let pxMode = PX_AUTO;
 let generateToken = 0;
-
 const els = {
     canvas: document.getElementById("maze-canvas"),
     stats: document.getElementById("stats"),
@@ -25,10 +20,11 @@ const els = {
     corridorWidthMax: document.getElementById("corridor-width-max"),
     extraLinkRatio: document.getElementById("extra-link-ratio"),
     pxPerCell: document.getElementById("px-per-cell"),
+    zoomAuto: document.getElementById("zoom-auto"),
+    zoomVal: document.getElementById("zoom-val"),
     generate: document.getElementById("generate"),
     randomSeed: document.getElementById("random-seed"),
 };
-
 function readConfig() {
     const cavernDefaults = SNAKE_GAME_DEFAULTS.cavern;
     const railDefaults = SNAKE_GAME_DEFAULTS.rail;
@@ -52,7 +48,6 @@ function readConfig() {
         },
     };
 }
-
 function readLayers() {
     const layers = { ...defaultLayers };
     for (const key of Object.keys(layers)) {
@@ -61,13 +56,21 @@ function readLayers() {
     }
     return layers;
 }
-
 function resolvePx(cols, rows) {
-    if (pxMode === PX_AUTO) return autoPxPerCell(cols, rows);
-    const n = Number(pxMode);
-    return n > 0 ? n : autoPxPerCell(cols, rows);
+    const isAuto = els.zoomAuto.checked;
+    if (isAuto) {
+        const autoVal = autoPxPerCell(cols, rows);
+        els.pxPerCell.value = String(autoVal);
+        els.zoomVal.textContent = "Auto";
+        els.pxPerCell.disabled = true;
+        return autoVal;
+    } else {
+        els.pxPerCell.disabled = false;
+        const val = Number(els.pxPerCell.value);
+        els.zoomVal.textContent = `${val}px`;
+        return val;
+    }
 }
-
 function applyCanvasSize(cols, rows) {
     pxPerCell = resolvePx(cols, rows);
     els.canvas.width = cols * pxPerCell;
@@ -75,7 +78,6 @@ function applyCanvasSize(cols, rows) {
     els.canvas.style.width = `${cols * pxPerCell}px`;
     els.canvas.style.height = `${rows * pxPerCell}px`;
 }
-
 function render() {
     if (!preview) return;
     applyCanvasSize(preview.playableBounds.boundsCols, preview.playableBounds.boundsRows);
@@ -83,16 +85,13 @@ function render() {
     drawSnakeSplitLayout(ctx, preview, { pxPerCell, layers: readLayers() });
     const stats = layoutStats(preview);
     const beltPart =
-        stats.beltCells > 0
-            ? ` · belts ${stats.beltCells} (${stats.beltStraight} s / ${stats.beltElbows} elbow${stats.beltValid === false ? " INVALID" : stats.beltValid ? " OK" : ""})`
-            : "";
-    const pxLabel = pxMode === PX_AUTO ? `auto→${pxPerCell}px` : `${pxPerCell}px`;
+        stats.beltCells > 0 ? ` · belts ${stats.beltCells} (${stats.beltStraight} s / ${stats.beltElbows} elbow${stats.beltValid === false ? " INVALID" : stats.beltValid ? " OK" : ""})` : "";
+    const isAuto = els.zoomAuto.checked;
+    const pxLabel = isAuto ? `auto→${pxPerCell}px` : `${pxPerCell}px`;
     els.stats.textContent = `seed ${stats.seed} · ${stats.playArea} · ${pxLabel}/cell · walls ${stats.voxelCells} · rails ${stats.railEdges}${beltPart}`;
 }
-
 async function generate() {
     const token = ++generateToken;
-    pxMode = els.pxPerCell.value;
     const config = readConfig();
     els.timing.textContent = "generating…";
     const started = performance.now();
@@ -104,46 +103,62 @@ async function generate() {
     els.timing.textContent = `${elapsed.toFixed(1)} ms`;
     render();
 }
-
 function bindLayerToggles() {
     for (const key of Object.keys(defaultLayers)) {
         const input = document.getElementById(`layer-${key}`);
         if (input) input.addEventListener("change", render);
     }
 }
-
-function buildPxSelect() {
-    const opts = [
-        { v: PX_AUTO, label: "Auto (fill screen)" },
-        { v: "8", label: "8 px/cell" },
-        { v: "10", label: "10 px/cell" },
-        { v: "12", label: "12 px/cell" },
-        { v: "16", label: "16 px/cell" },
-        { v: "20", label: "20 px/cell" },
-    ];
-    els.pxPerCell.innerHTML = opts.map((o) => `<option value="${o.v}"${o.v === PX_AUTO ? " selected" : ""}>${o.label}</option>`).join("");
-}
-
 els.generate.addEventListener("click", () => generate());
 els.randomSeed.addEventListener("click", () => {
     els.seed.value = String((Math.random() * 0x7fffffff) | 0);
     generate();
 });
-els.pxPerCell.addEventListener("change", () => {
-    pxMode = els.pxPerCell.value;
-    render();
-});
+// Zoom sliders events
+els.pxPerCell.addEventListener("input", render);
+els.zoomAuto.addEventListener("change", render);
 window.addEventListener("resize", () => {
-    if (!preview || pxMode !== PX_AUTO) return;
+    if (!preview || !els.zoomAuto.checked) return;
     render();
 });
-
 for (const el of [els.seed, els.playArea, els.fillChance, els.iterations, els.openBoundaryRows, els.regionPadding, els.corridorWidthMin, els.corridorWidthMax, els.extraLinkRatio])
     el.addEventListener("change", () => generate());
-
+// Mouse Drag-to-Pan implementation
+const stage = document.querySelector(".stage");
+let isPanning = false;
+let startX = 0;
+let startY = 0;
+let scrollLeft = 0;
+let scrollTop = 0;
+stage.addEventListener("mousedown", (e) => {
+    // Only pan on left-click
+    if (e.button !== 0) return;
+    isPanning = true;
+    stage.classList.add("panning");
+    startX = e.pageX - stage.offsetLeft;
+    startY = e.pageY - stage.offsetTop;
+    scrollLeft = stage.scrollLeft;
+    scrollTop = stage.scrollTop;
+});
+stage.addEventListener("mouseleave", () => {
+    isPanning = false;
+    stage.classList.remove("panning");
+});
+stage.addEventListener("mouseup", () => {
+    isPanning = false;
+    stage.classList.remove("panning");
+});
+stage.addEventListener("mousemove", (e) => {
+    if (!isPanning) return;
+    e.preventDefault();
+    const x = e.pageX - stage.offsetLeft;
+    const y = e.pageY - stage.offsetTop;
+    const walkX = (x - startX) * 1.5;
+    const walkY = (y - startY) * 1.5;
+    stage.scrollLeft = scrollLeft - walkX;
+    stage.scrollTop = scrollTop - walkY;
+});
 bindLayerToggles();
-buildPxSelect();
-
 const cavern = SNAKE_GAME_DEFAULTS.cavern;
 const rail = SNAKE_GAME_DEFAULTS.rail;
 els.seed.value = "42";
@@ -155,5 +170,4 @@ els.regionPadding.value = String(cavern.regionPaddingCells);
 els.corridorWidthMin.value = String(rail.corridorWidthMin);
 els.corridorWidthMax.value = String(rail.corridorWidthMax);
 els.extraLinkRatio.value = String(rail.extraLinkRatio);
-
 generate();
