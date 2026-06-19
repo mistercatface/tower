@@ -66,33 +66,33 @@ function chainOptions(segmentCount = getSnakeGameConfig().segmentCount) {
     };
 }
 
-function mockNavBehavior() {
-    let targetCell = null;
+function mockHeadNav() {
+    let dest = null;
     let hasRoute = true;
     let replanPending = false;
     return {
-        behavior: {
-            hasMoveTarget() {
-                return targetCell != null;
-            },
-            getTargetCell() {
-                return targetCell;
-            },
-            needsNavRetry() {
-                if (!targetCell) return true;
-                if (replanPending) return false;
-                return !hasRoute;
-            },
-            replanMoveTarget() {},
-            getLocomotionStatus() {
-                return { hasRoute, replanPending, stuckFrames: 0, pathLen: hasRoute ? 3 : 0 };
-            },
-            setMoveTarget(_seeker, world) {
-                targetCell = { col: Math.floor(world.x / 16), row: Math.floor(world.y / 16) };
-            },
-            clearMoveTarget() {
-                targetCell = null;
-            },
+        setDestination(grid, col, row) {
+            dest = { col, row, world: grid.gridToWorld(col, row) };
+            return true;
+        },
+        clearDestination() {
+            dest = null;
+        },
+        clear() {
+            dest = null;
+        },
+        getDestination() {
+            return dest;
+        },
+        needsRetry() {
+            if (!dest) return true;
+            if (replanPending) return false;
+            return !hasRoute;
+        },
+        replan() {},
+        tick() {},
+        getStatus() {
+            return { hasDest: dest != null, destCol: dest?.col, destRow: dest?.row, hasRoute, replanPending, stuckFrames: 0, pathLen: hasRoute ? 3 : 0 };
         },
         setHasRoute(value) {
             hasRoute = value;
@@ -102,16 +102,12 @@ function mockNavBehavior() {
 
 function createMockIntent(state, selfHeadId, registry) {
     const navWalkable = snakeGameNavWalkable(state);
-    const nav = mockNavBehavior();
+    const headNav = mockHeadNav();
     const { brain, sync } = createSnakeBrain();
     const intent = createSnakePredatorPreyIntent({
         brain,
         sync,
-        behaviorById: new Map([
-            [HPA_GROUND_NAV_BEHAVIOR_ID, nav.behavior],
-            [DIRECT_GROUND_NAV_BEHAVIOR_ID, { clearMoveTarget() {} }],
-        ]),
-        setActiveBehaviorId() {},
+        headNav,
         resolveVisibleFood: () => null,
         resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
         selfHeadId,
@@ -119,7 +115,7 @@ function createMockIntent(state, selfHeadId, registry) {
         navWalkable,
         rng: () => 0,
     });
-    return { intent, nav };
+    return { intent, headNav };
 }
 
 describe("snake FSM transitions", () => {
@@ -210,14 +206,14 @@ describe("snake FSM transitions", () => {
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, chain.head.id);
         wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
-        const { intent, nav } = createMockIntent(state, chain.head.id, registry);
+        const { intent, headNav } = createMockIntent(state, chain.head.id, registry);
         const seeker = chain.head;
         intent.perceive(seeker, state);
         intent.transition(seeker, state);
-        intent.locomotion.tickNav(seeker, state);
+        intent.headNav.tick(seeker, 0);
         const latched = intent.getDestination();
         assert.ok(latched);
-        nav.setHasRoute(false);
+        headNav.setHasRoute(false);
         intent.perceive(seeker, state);
         intent.transition(seeker, state);
         assert.equal(intent.getLastTransitionReason(), "route_failed_retry");
@@ -230,6 +226,6 @@ describe("snake FSM transitions", () => {
         const state = createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
         const stubNavWalkable = { cells: () => [], has: () => false, pick: () => null, filterInBounds: () => [], rebake: () => {} };
-        assert.throws(() => createSnakeAutosim(state, { headId: chain.head.id, behaviorById: snakeBehaviors(state), navWalkable: stubNavWalkable }), /registry/);
+        assert.throws(() => createSnakeAutosim(state, { headId: chain.head.id, navWalkable: stubNavWalkable }), /registry/);
     });
 });

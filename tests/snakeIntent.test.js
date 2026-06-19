@@ -130,19 +130,15 @@ describe("snake intent FSM", () => {
         stampWall(state.obstacleGrid, 6, 8);
         stampWall(state.obstacleGrid, 7, 8);
         stampWall(state.obstacleGrid, 8, 8);
-        const behaviorById = snakeBehaviors(state);
-        const hpa = behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID);
-        const direct = behaviorById.get(DIRECT_GROUND_NAV_BEHAVIOR_ID);
-        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, behaviorById, eatRadius: 20, rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20, rng: () => 0 });
         autosim.start();
         assert.equal(autosim.getMode(), "explore");
-        assert.ok(hpa.hasMoveTarget(chain.head));
-        assert.ok(!direct.hasMoveTarget(chain.head));
+        assert.ok(autosim.getDestination());
         chain.head.x = state.obstacleGrid.gridToWorld(10, 8).x;
         chain.head.y = state.obstacleGrid.gridToWorld(10, 8).y;
         autosim.tick(1 / 60);
         assert.equal(autosim.getMode(), "seek_food");
-        assert.ok(hpa.hasMoveTarget(chain.head));
+        assert.ok(autosim.getDestination());
     });
 
     it("predator-prey intent flees from a visible larger snake", () => {

@@ -12,7 +12,6 @@ export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
     const scene = await spawnSnakeCavernScene(state);
-    const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
     const registry = createSnakeLifecycleRegistry();
     const autosimsByHeadId = new Map();
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
@@ -25,7 +24,6 @@ export async function setupSnakeGame(state) {
         registerAliveSnake(registry, snake.chain.head.id);
         const autosim = createSnakeAutosim(state, {
             headId: snake.chain.head.id,
-            behaviorById,
             navWalkable: scene.navWalkable,
             visionCone: snake.cameraFollow && config.playerVisionCone ? config.playerVisionCone : null,
         });

@@ -1,26 +1,7 @@
-import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Sandbox/groundNav/groundNavIds.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
-import { createSnakeLocomotion } from "../../Game/snake/snakeLocomotion.js";
 import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
 import { perceiveSnakeIntentWorld, pickRetreatDestination, pickSnakeIntentPolicy } from "../../Game/snake/snakePredatorPrey.js";
-export function createSnakePredatorPreyIntent({
-    brain,
-    sync,
-    behaviorById,
-    setActiveBehaviorId,
-    resolveVisibleFood,
-    resolveExploreCell,
-    selfHeadId,
-    registry,
-    navWalkable,
-    navBehaviorId = HPA_GROUND_NAV_BEHAVIOR_ID,
-    directBehaviorId = DIRECT_GROUND_NAV_BEHAVIOR_ID,
-    visionCone = null,
-    rng = Math.random,
-}) {
-    const navBehavior = () => behaviorById.get(navBehaviorId);
-    const directBehavior = () => behaviorById.get(directBehaviorId);
-    const locomotion = createSnakeLocomotion(navBehavior, directBehavior, setActiveBehaviorId, navBehaviorId);
+export function createSnakePredatorPreyIntent({ brain, sync, headNav, resolveVisibleFood, resolveExploreCell, selfHeadId, registry, navWalkable, visionCone = null, rng = Math.random }) {
     const resolvedVision = visionCone ?? getSnakeGameConfig().visionCone;
     const fleeThreatClearTicks = getSnakeGameConfig().fleeThreatClearTicks;
     let mode = "explore";
@@ -44,7 +25,7 @@ export function createSnakePredatorPreyIntent({
         brain.stampArrival(col, row);
     };
     const hasArrivedAtDest = (seeker, grid) => {
-        const dest = locomotion.getDestination();
+        const dest = headNav.getDestination();
         if (!dest) return false;
         const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
         return cellChebyshevDistance(col, row, dest.col, dest.row) <= 1;
@@ -53,25 +34,25 @@ export function createSnakePredatorPreyIntent({
         const grid = state.obstacleGrid;
         if (mode === "explore") {
             const cell = resolveExploreCell(seeker, state, brain.spatial, rng);
-            if (cell) locomotion.setDestination(grid, cell.col, cell.row);
+            if (cell) headNav.setDestination(grid, cell.col, cell.row);
             return;
         }
         if (mode === "flee") {
             const cell = pickRetreatDestination(seeker, state, registry, selfHeadId, brain.spatial, rng, navWalkable, resolvedVision);
-            if (cell) locomotion.setDestination(grid, cell.col, cell.row);
+            if (cell) headNav.setDestination(grid, cell.col, cell.row);
             return;
         }
         const target = resolveCommittedTarget(state);
         if (target) {
             const cell = grid.worldToGrid(target.x, target.y);
-            locomotion.setDestination(grid, cell.col, cell.row);
+            headNav.setDestination(grid, cell.col, cell.row);
         }
     };
     const commit = (seeker, state, nextMode, nextTargetId, reason) => {
         mode = nextMode;
         targetId = nextTargetId;
         lastTransitionReason = reason;
-        locomotion.clearDestination();
+        headNav.clearDestination();
         setDestinationForCommit(seeker, state);
     };
     const resolvePolicyMode = (rawMode) => {
@@ -108,11 +89,11 @@ export function createSnakePredatorPreyIntent({
             commit(seeker, state, policy.mode, policy.targetId, transitionReason(mode, policy.mode));
             return { mode, target: resolveCommittedTarget(state) };
         }
-        if (locomotion.getDestination() && locomotion.needsRetry(seeker)) {
+        if (headNav.getDestination() && headNav.needsRetry()) {
             lastTransitionReason = "route_failed_retry";
             return { mode, target: resolveCommittedTarget(state) };
         }
-        const dest = locomotion.getDestination();
+        const dest = headNav.getDestination();
         const target = resolveCommittedTarget(state);
         if (mode === "seek_food" || mode === "seek_prey") {
             if (!target) {
@@ -145,7 +126,7 @@ export function createSnakePredatorPreyIntent({
             targetId = null;
             threatClearTicks = 0;
             lastTransitionReason = "target_died";
-            locomotion.clearDestination();
+            headNav.clearDestination();
         },
         clear(seeker, state) {
             threatClearTicks = 0;
@@ -153,8 +134,7 @@ export function createSnakePredatorPreyIntent({
             lastArrivalRow = null;
             lastTransitionReason = "cleared";
             targetId = null;
-            locomotion.clearDestination();
-            locomotion.tickNav(seeker, state);
+            headNav.clear(seeker);
             seeker.navStepPenalty = null;
         },
         resetMemory() {
@@ -167,7 +147,7 @@ export function createSnakePredatorPreyIntent({
             lastArrivalCol = null;
             lastArrivalRow = null;
             lastTransitionReason = "reset";
-            locomotion.clearDestination();
+            headNav.clearDestination();
         },
         getMode() {
             return mode;
@@ -176,17 +156,17 @@ export function createSnakePredatorPreyIntent({
             return targetId;
         },
         getDestination() {
-            return locomotion.getDestination();
+            return headNav.getDestination();
         },
         getLastTransitionReason() {
             return lastTransitionReason;
         },
-        getLocomotionStatus(seeker, state) {
-            return locomotion.getStatus(seeker, state);
+        getLocomotionStatus() {
+            return headNav.getStatus();
         },
         getFsmSnapshot(seeker, state) {
-            const loco = locomotion.getStatus(seeker, state);
-            const dest = locomotion.getDestination();
+            const loco = headNav.getStatus();
+            const dest = headNav.getDestination();
             let replanReason = null;
             if (loco.replanPending) replanReason = "pending";
             else if (dest && !loco.hasRoute) replanReason = "no_route";
@@ -201,9 +181,12 @@ export function createSnakePredatorPreyIntent({
                 lastTransition: lastTransitionReason,
             };
         },
-        hasMoveTarget(seeker) {
-            return locomotion.getDestination() != null && navBehavior().hasMoveTarget(seeker);
+        hasMoveTarget() {
+            const dest = headNav.getDestination();
+            if (!dest) return false;
+            const status = headNav.getStatus();
+            return status.hasRoute || status.replanPending;
         },
-        locomotion,
+        headNav,
     };
 }

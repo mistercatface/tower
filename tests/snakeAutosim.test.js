@@ -108,19 +108,16 @@ describe("snakeAutosim", () => {
         for (let i = 0; i < members.length; i++) assert.equal(getCirclePropRadius(members[i]), 2.25);
     });
 
-    it("re-issues HPA nav toward a respawned goal", () => {
+    it("re-issues nav toward a respawned goal", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeAutosimTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, snakeChainOptions());
         wireSnakeGameForHead(state, chain.head.id);
         const goal = spawnGoalOrbAtCell(state, { col: 12, row: 8 });
-        const behaviorById = snakeBehaviorById(state);
-        const hpaBehavior = behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID);
         const autosim = createWiredSnakeAutosim(state, {
             headId: chain.head.id,
             goalPropId: goal.id,
-            behaviorById,
             eatRadius: 20,
             rng: () => 0,
         });
@@ -130,8 +127,12 @@ describe("snakeAutosim", () => {
         autosim.tick(1 / 60);
         const nextGoal = findSnakeGoalProp(state);
         autosim.tick(1 / 60);
-        hpaBehavior.setMoveTarget(chain.head, { x: nextGoal.x, y: nextGoal.y });
-        assert.ok(hpaBehavior.getPathOverlay(chain.head));
+        const dest = autosim.getDestination();
+        assert.ok(nextGoal);
+        assert.ok(dest);
+        const goalCell = state.obstacleGrid.worldToGrid(nextGoal.x, nextGoal.y);
+        assert.equal(dest.col, goalCell.col);
+        assert.equal(dest.row, goalCell.row);
     });
 });
 

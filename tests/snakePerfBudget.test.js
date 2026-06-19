@@ -90,18 +90,17 @@ function buildMultiSnakeSession(state) {
         autosims.push({ autosim, head: pack.chain.head, isPlayer: specs[i].cameraFollow });
     }
     spawnSnakeGoalPool(state, config.goalCount, navWalkable, { excludeKeys, rng: () => 0.42 });
-    return { autosims, hpaBehavior: behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID) };
+    return { autosims };
 }
 describe("snakePerfBudget", () => {
     it("30 snakes with brains stay within wall-clock and replan budget", () => {
         applySnakeGameConfig({ snakeCount: 30, goalCount: 75, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4 });
         resetKineticConstraintIds(1);
         const state = createPerfState();
-        const { autosims, hpaBehavior } = buildMultiSnakeSession(state);
+        const { autosims } = buildMultiSnakeSession(state);
         const t0 = performance.now();
         for (let tick = 0; tick < PERF_TICKS; tick++) {
             for (let i = 0; i < autosims.length; i++) autosims[i].autosim.tick(PERF_DT);
-            hpaBehavior.tickWorld(PERF_DT);
         }
         const elapsed = performance.now() - t0;
         assert.ok(elapsed < WALL_CLOCK_MS_CEILING, `wall-clock ${elapsed.toFixed(1)}ms exceeds ${WALL_CLOCK_MS_CEILING}ms`);

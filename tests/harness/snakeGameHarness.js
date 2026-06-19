@@ -12,8 +12,28 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } 
 import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
 import { spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
+import { HpaPathSession } from "../../Libraries/Pathfinding/HpaPathSession.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
 loadPropAssets();
+export function wireSnakeTestNavSession(state) {
+    if (state.hpaPathSession) return;
+    const mockWorker = {
+        getPathSlot: () => -1,
+        releaseOwnedPathSlot: () => {},
+        releaseSlot: () => {},
+        requestPath: async () => ({ result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } }),
+    };
+    if (!state.hpaPathWorker || typeof state.hpaPathWorker.requestPath !== "function") state.hpaPathWorker = mockWorker;
+    state.hpaPathSession = new HpaPathSession(state.hpaPathWorker);
+    state.viewport = state.viewport ?? { isVisible: () => true, snapTo() {} };
+    if (state.navigation.obstacleGeneration == null) state.navigation.obstacleGeneration = 0;
+    state.navigation.settings = {
+        stuckMoveThreshold: 0.5,
+        stuckReplanFrames: 30,
+        idlePathReplanMs: 5000,
+        ...state.navigation.settings,
+    };
+}
 function ensureSnakePlayableBounds(state) {
     if (state.sandbox.snakePlayableBounds) return;
     const c = state.editor.cavernConfig;
@@ -29,6 +49,7 @@ export function snakeGameNavWalkable(state) {
     return state.sandbox.snakeGame.navWalkable;
 }
 export function createWiredSnakeAutosim(state, options) {
+    wireSnakeTestNavSession(state);
     return createSnakeAutosim(state, { ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
 }
 export function createSnakeGameHarnessState(cols = 32, rows = 32) {
@@ -56,9 +77,11 @@ export function createSnakeGameHarnessState(cols = 32, rows = 32) {
         [DIRECT_GROUND_NAV_BEHAVIOR_ID, directBehavior],
     ]);
     state.sandbox.controller = { getBehaviorByIdMap: () => behaviorById };
+    wireSnakeTestNavSession(state);
     return { state, behaviorById, hpaBehavior };
 }
 export function wireSnakeGameForHead(state, headId) {
+    wireSnakeTestNavSession(state);
     const registry = createSnakeLifecycleRegistry();
     registerAliveSnake(registry, headId);
     wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));

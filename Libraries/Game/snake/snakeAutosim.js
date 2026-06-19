@@ -1,9 +1,9 @@
-import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
 import { linkedChainOccupiedCellKeys, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createSnakePredatorPreyIntent } from "../../AI/agentIntent/createSnakePredatorPreyIntent.js";
-import { formatSnakeFsmDebug } from "./snakeLocomotion.js";
+import { formatSnakeFsmDebug } from "./snakeFsmDebugOverlays.js";
+import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
@@ -26,26 +26,25 @@ function replenishSnakeGoals(state, headId, rng, navWalkable) {
     const occupied = linkedChainOccupiedCellKeys(chainMemberProps(state, headId), state.obstacleGrid);
     spawnGoalOrbOnOpenCell(state, navWalkable, { excludeKeys: occupied, rng });
 }
-function runSnakeFsmTick(intent, seeker, state) {
+function runSnakeFsmTick(intent, seeker, state, dt) {
     intent.perceive(seeker, state);
     const choice = intent.transition(seeker, state);
-    intent.locomotion.tickNav(seeker, state);
+    intent.headNav.tick(seeker, dt);
     return choice;
 }
-export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorById, navWalkable, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null }) {
+export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkable, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null }) {
     const config = getSnakeGameConfig();
     let tailId = null;
     let pinnedGoalId = goalPropId;
-    const head = state.entityRegistry.getLive(headId);
     const members = chainMemberProps(state, headId);
     tailId = members[members.length - 1].id;
     const resolvedBallType = ballType ?? config.segmentPropId;
     const resolvedGrowDirX = growDirX ?? config.growDirX;
     const resolvedGrowDirY = growDirY ?? config.growDirY;
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
-    const meta = getSandboxEntityMeta(state);
     const registry = state.sandbox.snakeGame.registry;
     const { brain, sync } = createSnakeBrain({ visionCone });
+    const headNav = createCellTargetHpaNav(state);
     const resolveVisibleFood = (seeker, gameState) => {
         if (pinnedGoalId != null) {
             const pinned = gameState.entityRegistry.getLive(pinnedGoalId);
@@ -59,8 +58,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     const intent = createSnakePredatorPreyIntent({
         brain,
         sync,
-        behaviorById,
-        setActiveBehaviorId: (propId, behaviorId) => meta.setActiveBehaviorId(propId, behaviorId),
+        headNav,
         resolveVisibleFood,
         resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
         selfHeadId: headId,
@@ -76,13 +74,13 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         tailId = liveMembers[liveMembers.length - 1].id;
     };
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
-    const eatGoal = (seeker, goal) => {
+    const eatGoal = (seeker, goal, dt) => {
         resetSnakeFoodTimer(foodTimer, config.starvationIntervalSec);
         const goalCell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
         brain.stampArrival(goalCell.col, goalCell.row);
         removeSandboxWorldProp(state, goal);
         if (pinnedGoalId === goal.id) pinnedGoalId = null;
-        intent.locomotion.clearDestination();
+        intent.headNav.clearDestination();
         const grow = growSnakeChainAfterMeal(state, headId);
         const tail = state.entityRegistry.getLive(tailId);
         const newTail = growChainSegment(state, tail, {
@@ -97,7 +95,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         copySnakeChainTintFromHead(state, headId, newTail);
         tailId = newTail.id;
         replenishSnakeGoals(state, headId, rng, navWalkable);
-        runSnakeFsmTick(intent, seeker, state);
+        runSnakeFsmTick(intent, seeker, state, dt);
     };
     return {
         headId,
@@ -106,7 +104,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
             resetSnakeFoodTimer(foodTimer, config.starvationIntervalSec);
             intent.resetMode();
             intent.resetMemory();
-            runSnakeFsmTick(intent, resolveSeeker(), state);
+            runSnakeFsmTick(intent, resolveSeeker(), state, 0);
         },
         stop() {
             active = false;
@@ -137,20 +135,23 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         getFsmDebugLine() {
             return formatSnakeFsmDebug(this.getFsmSnapshot());
         },
+        getPathOverlay() {
+            return intent.headNav.getPathOverlay(resolveSeeker());
+        },
         onSnakeDied(deadHeadId) {
             intent.onSnakeDied(deadHeadId);
         },
         tick(dt) {
             if (!active) return;
             const seeker = resolveSeeker();
-            const choice = runSnakeFsmTick(intent, seeker, state);
+            const choice = runSnakeFsmTick(intent, seeker, state, dt);
             let fedThisTick = false;
             if (choice.mode === "seek_food" && choice.target) {
                 const goal = choice.target;
                 const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
                 const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
                 if (dist <= radius) {
-                    eatGoal(seeker, goal);
+                    eatGoal(seeker, goal, dt);
                     fedThisTick = true;
                 }
             }
