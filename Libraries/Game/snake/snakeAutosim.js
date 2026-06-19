@@ -89,7 +89,6 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         brain.stampArrival(goalCell.col, goalCell.row);
         removeSandboxWorldProp(state, goal);
         if (pinnedGoalId === goal.id) pinnedGoalId = null;
-        intent.clearTrackedTarget();
         intent.locomotion.clearDestination();
         const grow = growSnakeChainAfterMeal(state, headId);
         const tail = state.entityRegistry.getLive(tailId);
@@ -130,8 +129,8 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         getMode() {
             return intent.getMode();
         },
-        getTrackedTargetId() {
-            return intent.getTrackedTargetId();
+        getDestination() {
+            return intent.getDestination();
         },
         getBrain() {
             return brain;

@@ -48,8 +48,8 @@ export const SNAKE_GAME_DEFAULTS = {
     huntPriority: 0.55,
     /** Max distance to react to a larger snake with flee (world units); null uses visionCone.range. */
     fleeRange: null,
-    /** HPA flee waypoint distance away from the threat (world units). */
-    fleeMinDistance: 96,
+    /** Ticks with no visible threat before flee mode exits to explore. */
+    fleeThreatClearTicks: 20,
     /** Seconds without food before a snake sheds one tail segment and shrinks. */
     starvationIntervalSec: 30,
     showKineticSolverStats: false,

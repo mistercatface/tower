@@ -1,4 +1,7 @@
 import { queryGridCellVision } from "../../Navigation/perception/gridCellVision.js";
+import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
+import { collectWalkableCells, pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
+import { collectSnakeWaypointCandidates } from "./snakeExplore.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { isAliveSnakeHead } from "./snakeLifecycle.js";
@@ -31,20 +34,30 @@ export function findNearestVisibleSnakePrey(state, seeker, selfHeadId, registry,
     }
     return nearest;
 }
-export function findNearestVisibleSnakeThreat(state, seeker, selfHeadId, registry, visionCone = getSnakeGameConfig().visionCone) {
+export function collectVisibleSnakeThreats(state, seeker, selfHeadId, registry, visionCone = getSnakeGameConfig().visionCone) {
     const config = getSnakeGameConfig();
     const fleeRange = config.fleeRange ?? visionCone.range;
     const candidates = collectAliveSnakeHeads(state, registry, selfHeadId);
     const { visible } = queryGridCellVision(seeker, candidates, { ...visionCone, state });
     const selfScore = getSnakeSizeScore(state, selfHeadId);
-    let nearest = null;
-    let bestDist = Infinity;
+    const threats = [];
     for (let i = 0; i < visible.length; i++) {
         const threatHead = visible[i];
         const threatScore = getSnakeSizeScore(state, threatHead.id);
         if (threatScore <= selfScore) continue;
         const dist = Math.hypot(threatHead.x - seeker.x, threatHead.y - seeker.y);
         if (dist > fleeRange) continue;
+        threats.push(threatHead);
+    }
+    return threats;
+}
+export function findNearestVisibleSnakeThreat(state, seeker, selfHeadId, registry, visionCone = getSnakeGameConfig().visionCone) {
+    const threats = collectVisibleSnakeThreats(state, seeker, selfHeadId, registry, visionCone);
+    let nearest = null;
+    let bestDist = Infinity;
+    for (let i = 0; i < threats.length; i++) {
+        const threatHead = threats[i];
+        const dist = Math.hypot(threatHead.x - seeker.x, threatHead.y - seeker.y);
         if (dist < bestDist) {
             bestDist = dist;
             nearest = threatHead;
@@ -52,20 +65,39 @@ export function findNearestVisibleSnakeThreat(state, seeker, selfHeadId, registr
     }
     return nearest;
 }
-export function resolveFleeNavTarget(seeker, threat, fleeMinDistance, state) {
-    const dx = seeker.x - threat.x;
-    const dy = seeker.y - threat.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const targetX = seeker.x + (dx / len) * fleeMinDistance;
-    const targetY = seeker.y + (dy / len) * fleeMinDistance;
+export function pickRetreatDestination(seeker, state, registry, selfHeadId, memory, rng, visionCone = getSnakeGameConfig().visionCone) {
+    const threats = collectVisibleSnakeThreats(state, seeker, selfHeadId, registry, visionCone);
+    if (!threats.length) return null;
+    const config = getSnakeGameConfig();
     const grid = state.obstacleGrid;
-    const cell = grid.worldToGrid(targetX, targetY);
-    return grid.gridToWorld(cell.col, cell.row);
+    const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
+    const openCells = collectWalkableCells(state);
+    let minTiles = config.exploreMinTiles;
+    let candidates = collectSnakeWaypointCandidates(grid, col, row, minTiles, openCells);
+    if (!candidates.length && minTiles > config.exploreFallbackMinTiles) {
+        minTiles = config.exploreFallbackMinTiles;
+        candidates = collectSnakeWaypointCandidates(grid, col, row, minTiles, openCells);
+    }
+    if (!candidates.length) return pickWalkableCell(openCells, { rng });
+    let bestScore = -1;
+    let best = [];
+    for (let i = 0; i < candidates.length; i++) {
+        const cell = candidates[i];
+        let minThreatDist = Infinity;
+        for (let j = 0; j < threats.length; j++) {
+            const threatCell = grid.worldToGrid(threats[j].x, threats[j].y);
+            minThreatDist = Math.min(minThreatDist, cellChebyshevDistance(cell.col, cell.row, threatCell.col, threatCell.row));
+        }
+        if (minThreatDist > bestScore) {
+            bestScore = minThreatDist;
+            best = [cell];
+        } else if (minThreatDist === bestScore) best.push(cell);
+    }
+    return best[Math.floor(rng() * best.length)];
 }
 export function pickSnakeIntentTarget(seeker, selfHeadId, state, registry, resolveVisibleFood, visionCone) {
     const config = getSnakeGameConfig();
-    const threat = findNearestVisibleSnakeThreat(state, seeker, selfHeadId, registry, visionCone);
-    if (threat) return { mode: "flee", target: threat };
+    if (collectVisibleSnakeThreats(state, seeker, selfHeadId, registry, visionCone).length) return { mode: "flee", target: null };
     const food = resolveVisibleFood(seeker, state);
     const prey = findNearestVisibleSnakePrey(state, seeker, selfHeadId, registry, visionCone);
     if (!food && !prey) return { mode: "explore", target: null };

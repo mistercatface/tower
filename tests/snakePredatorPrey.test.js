@@ -11,10 +11,11 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } 
 import { createSnakeLifecycleRegistry, registerAliveSnake } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { getSnakeSizeScore } from "../Libraries/Game/snake/snakeScale.js";
 import {
+    collectVisibleSnakeThreats,
     findNearestVisibleSnakePrey,
     findNearestVisibleSnakeThreat,
+    pickRetreatDestination,
     pickSnakeIntentTarget,
-    resolveFleeNavTarget,
 } from "../Libraries/Game/snake/snakePredatorPrey.js";
 import { findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
 import { resolvePlayerSnakeCombatHud } from "../Libraries/Game/snake/snakeCombatHud.js";
@@ -22,6 +23,7 @@ import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
+import { cellChebyshevDistance } from "../Libraries/Navigation/steering/exploreSteering.js";
 
 loadPropAssets();
 
@@ -120,17 +122,28 @@ describe("snake predator prey perception", () => {
         const resolveVisibleFood = () => ({ id: 999, x: self.head.x + 32, y: self.head.y });
         const choice = pickSnakeIntentTarget(self.head, self.head.id, state, registry, resolveVisibleFood);
         assert.equal(choice.mode, "flee");
-        assert.equal(choice.target.id, larger.head.id);
+        assert.equal(choice.target, null);
     });
 
-    it("resolveFleeNavTarget points away from the threat", () => {
-        applySnakeGameConfig();
+    it("pickRetreatDestination maximizes distance from visible threats", () => {
+        applySnakeGameConfig({ fleeRange: 256, exploreMinTiles: 4 });
+        resetKineticConstraintIds(1);
         const state = createTestState();
-        const seeker = { x: 100, y: 100 };
-        const threat = { x: 130, y: 100 };
-        const target = resolveFleeNavTarget(seeker, threat, 96, state);
-        assert.ok(target.x < seeker.x);
-        assert.ok(Math.abs(target.y - seeker.y) <= state.obstacleGrid.cellSize);
+        const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
+        const threat = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, self.head.id);
+        registerAliveSnake(registry, threat.head.id);
+        self.head.facing = 0;
+        threat.head.x = self.head.x + 64;
+        threat.head.y = self.head.y;
+        const threats = collectVisibleSnakeThreats(state, self.head, self.head.id, registry);
+        assert.equal(threats.length, 1);
+        const cell = pickRetreatDestination(self.head, state, registry, self.head.id, null, () => 0);
+        assert.ok(cell);
+        const grid = state.obstacleGrid;
+        const threatCell = grid.worldToGrid(threat.head.x, threat.head.y);
+        assert.ok(cellChebyshevDistance(cell.col, cell.row, threatCell.col, threatCell.row) >= 4);
     });
 });
 
@@ -152,6 +165,40 @@ describe("snake predator prey autosim", () => {
         autosim.start();
         autosim.tick(1 / 60);
         assert.equal(autosim.getMode(), "flee");
+        assert.ok(autosim.getDestination());
+    });
+
+    it("flee holds latched retreat cell while two visible threats remain", () => {
+        applySnakeGameConfig({ fleeRange: 256, exploreMinTiles: 4, fleeThreatClearTicks: 20 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const prey = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
+        const threatA = spawnLinkedBallChain(state, { col: 16, row: 10 }, chainOptions(5));
+        const threatB = spawnLinkedBallChain(state, { col: 10, row: 16 }, chainOptions(5));
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, prey.head.id);
+        registerAliveSnake(registry, threatA.head.id);
+        registerAliveSnake(registry, threatB.head.id);
+        state.sandbox.snakeGame = { registry, autosimsByHeadId: new Map() };
+        prey.head.facing = 0;
+        threatA.head.x = prey.head.x + 80;
+        threatA.head.y = prey.head.y;
+        threatB.head.x = prey.head.x;
+        threatB.head.y = prey.head.y + 80;
+        const autosim = createSnakeAutosim(state, { headId: prey.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosim.start();
+        autosim.tick(1 / 60);
+        const latched = autosim.getDestination();
+        assert.ok(latched);
+        for (let i = 0; i < 40; i++) {
+            threatA.head.x = prey.head.x + 80 + (i % 2 === 0 ? 16 : -16);
+            autosim.tick(1 / 60);
+            assert.equal(autosim.getMode(), "flee");
+            const dest = autosim.getDestination();
+            assert.ok(dest);
+            assert.equal(dest.col, latched.col);
+            assert.equal(dest.row, latched.row);
+        }
     });
 
     it("larger snake seeks prey when huntPriority beats nearby food", () => {
@@ -171,6 +218,8 @@ describe("snake predator prey autosim", () => {
         autosim.start();
         autosim.tick(1 / 60);
         assert.equal(autosim.getMode(), "seek_prey");
+        const preyCell = state.obstacleGrid.worldToGrid(prey.head.x, prey.head.y);
+        assert.deepEqual(autosim.getDestination(), { col: preyCell.col, row: preyCell.row, world: state.obstacleGrid.gridToWorld(preyCell.col, preyCell.row) });
     });
 
     it("resolvePlayerSnakeCombatHud reports hunting and hunted states", () => {
@@ -196,8 +245,8 @@ describe("snake predator prey autosim", () => {
         preyAutosim.start();
         predatorAutosim.tick(1 / 60);
         preyAutosim.tick(1 / 60);
-        assert.deepEqual(resolvePlayerSnakeCombatHud(predator.head.id, registry, autosimsByHeadId), { hunting: true, hunted: false, foraging: false });
-        assert.deepEqual(resolvePlayerSnakeCombatHud(prey.head.id, registry, autosimsByHeadId), { hunting: false, hunted: true, foraging: false });
+        assert.deepEqual(resolvePlayerSnakeCombatHud(predator.head.id, state, registry, autosimsByHeadId), { hunting: true, hunted: false, foraging: false });
+        assert.deepEqual(resolvePlayerSnakeCombatHud(prey.head.id, state, registry, autosimsByHeadId), { hunting: false, hunted: true, foraging: false });
     });
 
     it("resolvePlayerSnakeCombatHud shows foraging when seeking food or exploring", () => {
@@ -213,6 +262,6 @@ describe("snake predator prey autosim", () => {
         autosimsByHeadId.set(snake.head.id, autosim);
         autosim.start();
         autosim.tick(1 / 60);
-        assert.deepEqual(resolvePlayerSnakeCombatHud(snake.head.id, registry, autosimsByHeadId), { hunting: false, hunted: false, foraging: true });
+        assert.deepEqual(resolvePlayerSnakeCombatHud(snake.head.id, state, registry, autosimsByHeadId), { hunting: false, hunted: false, foraging: true });
     });
 });

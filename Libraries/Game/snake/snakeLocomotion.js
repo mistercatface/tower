@@ -14,14 +14,6 @@ export function createSnakeLocomotion(navBehavior, directBehavior, setActiveBeha
             destWorld = grid.gridToWorld(col, row);
             return changed;
         },
-        setDestinationFromWorld(grid, world) {
-            const cell = grid.worldToGrid(world.x, world.y);
-            const changed = destCol !== cell.col || destRow !== cell.row || destWorld?.x !== world.x || destWorld?.y !== world.y;
-            destCol = cell.col;
-            destRow = cell.row;
-            destWorld = { x: world.x, y: world.y };
-            return changed;
-        },
         clearDestination() {
             destCol = null;
             destRow = null;

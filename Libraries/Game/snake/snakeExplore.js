@@ -1,6 +1,17 @@
 import { walkableCellKey, collectWalkableCells, pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
-import { pickExploreDestination } from "../../Navigation/steering/exploreSteering.js";
+import { pickExploreDestination, cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
+export function collectSnakeWaypointCandidates(grid, originCol, originRow, minTiles, openCells) {
+    const candidates = [];
+    for (let i = 0; i < openCells.length; i++) {
+        const cell = openCells[i];
+        if (cell.col === originCol && cell.row === originRow) continue;
+        if (cellChebyshevDistance(originCol, originRow, cell.col, cell.row) < minTiles) continue;
+        if (grid.isBlocked(cell.col, cell.row)) continue;
+        candidates.push(cell);
+    }
+    return candidates;
+}
 export function resolveSnakeExploreCell(seeker, state, memory, rng) {
     const config = getSnakeGameConfig();
     const grid = state.obstacleGrid;
