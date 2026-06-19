@@ -1,5 +1,6 @@
-import { CRATE_PLANK_TS, CRATE_TOP_CROSS } from "../../../Libraries/deprecated/boxDecor.js";
 import { NEUTRAL_BOX_COLORS } from "../shared/neutralCoats.js";
+const CRATE_PLANK_TS = { values: [0.33, 0.66], stroke: "rgba(62, 39, 35, 0.55)" };
+const CRATE_TOP_CROSS = { stroke: "rgba(62, 39, 35, 0.6)" };
 export default {
     id: "crate",
     primitive: "polygon",
