@@ -13,7 +13,7 @@ import {
     pairBroadphaseOverlapSnapshotted,
     snapshotActiveBroadphaseBounds,
 } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
+import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 
 loadPropAssets();
@@ -61,11 +61,13 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
     }
 }
 
-function pairKeys(pairs) {
+function pairKeys(pairs, spatialFrame) {
     const keys = [];
     for (let i = 0; i < pairs.count; i++) {
-        const lo = Math.min(pairs.bodyA[i].id, pairs.bodyB[i].id);
-        const hi = Math.max(pairs.bodyA[i].id, pairs.bodyB[i].id);
+        const bodyA = kineticPairBodyAt(spatialFrame, pairs.physIdA[i]);
+        const bodyB = kineticPairBodyAt(spatialFrame, pairs.physIdB[i]);
+        const lo = Math.min(bodyA.id, bodyB.id);
+        const hi = Math.max(bodyA.id, bodyB.id);
         keys.push(lo * 1_000_000 + hi);
     }
     keys.sort((a, b) => a - b);
@@ -76,6 +78,8 @@ describe("kinetic pair stream", () => {
     it("snapshotted broadphase overlap matches live bounds query", () => {
         const a = mockCircleBody(0, 0, 10);
         const b = mockCircleBody(18, 0, 10);
+        a._physId = 0;
+        b._physId = 1;
         snapshotActiveBroadphaseBounds([a, b]);
         assert.equal(pairBroadphaseOverlapSnapshotted(a, b), pairBroadphaseOverlap(a, b));
     });
@@ -83,6 +87,8 @@ describe("kinetic pair stream", () => {
     it("snapshotted pair policy matches live pair policy", () => {
         const rest = mockCircleBody(0, 0, 10, 0, 0);
         const mover = mockCircleBody(18, 0, 10, 20, 0);
+        rest._physId = 0;
+        mover._physId = 1;
         snapshotActiveBroadphaseBounds([rest, mover]);
         assert.equal(allowsKineticCollisionPairSnapshotted(rest, mover), allowsKineticCollisionPair(rest, mover));
     });
@@ -103,8 +109,8 @@ describe("kinetic pair stream", () => {
         snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 1);
-        assert.equal(kineticPairBuffer.bodyA[0].id, a.id);
-        assert.equal(kineticPairBuffer.bodyB[0].id, b.id);
+        assert.equal(kineticPairBodyAt(frame, kineticPairBuffer.physIdA[0]).id, a.id);
+        assert.equal(kineticPairBodyAt(frame, kineticPairBuffer.physIdB[0]).id, b.id);
     });
 
     it("three-body contact emits each pair once", () => {
@@ -114,7 +120,7 @@ describe("kinetic pair stream", () => {
         const frame = setupActiveFrame([left, center, right]);
         snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
-        assert.deepEqual(pairKeys(kineticPairBuffer), [left.id * 1_000_000 + center.id, center.id * 1_000_000 + right.id]);
+        assert.deepEqual(pairKeys(kineticPairBuffer, frame), [left.id * 1_000_000 + center.id, center.id * 1_000_000 + right.id]);
     });
 
     it("moving body wakes sleeping overlapping neighbor during pair gather", () => {

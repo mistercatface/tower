@@ -2,7 +2,7 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../Motion/bodyMass.js";
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
-import { gatherKineticCandidatePairs, kineticPairBuffer } from "./kineticPairStream.js";
+import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "./kineticPairStream.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { separateAlongNormal, separateCoincidentCirclePair } from "./penetration.js";
 import { checkEntityPairCollision, circleCircleContact } from "./SatCollision.js";
@@ -180,11 +180,11 @@ function appendContact(contacts, bodyA, bodyB, info, preDvx, preDvy) {
     contacts.preDvx[i] = preDvx;
     contacts.preDvy[i] = preDvy;
 }
-function narrowPhaseKineticContacts(pairs, contacts) {
+function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
     contacts.reset();
     for (let i = 0; i < pairs.count; i++) {
-        const primary = pairs.bodyA[i];
-        const neighbor = pairs.bodyB[i];
+        const primary = kineticPairBodyAt(spatialFrame, pairs.physIdA[i]);
+        const neighbor = kineticPairBodyAt(spatialFrame, pairs.physIdB[i]);
         const info = detectAndSeparateContact(primary, neighbor, pairs.tier[i]);
         if (!info) continue;
         appendContact(contacts, primary, neighbor, info, pairs.preDvx[i], pairs.preDvy[i]);
@@ -311,7 +311,7 @@ export function gatherKineticContactPairs(spatialFrame) {
 }
 export function resolveKineticContactPassWithPairs(spatialFrame, state, pairs) {
     const contacts = kineticContactBuffer;
-    narrowPhaseKineticContacts(pairs, contacts);
+    narrowPhaseKineticContacts(spatialFrame, pairs, contacts);
     if (contacts.count === 0) return;
     precomputeKineticContacts(contacts);
     warmStartKineticContacts(contacts);

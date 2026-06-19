@@ -2,6 +2,7 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
+import { pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeKineticBroadphaseSlabSlot } from "./kineticBroadphaseSlab.js";
 import { getEntityCollisionParts } from "./SatCollision.js";
 function kineticActivity() {
     return getCollisionSettings().kineticActivity;
@@ -132,21 +133,16 @@ export function pairBroadphaseOverlap(a, b) {
     return pairBroadphaseBoundsOverlap(getBroadphaseBounds(a), getBroadphaseBounds(b));
 }
 export function snapshotActiveBroadphaseBounds(bodies) {
-    for (let i = 0; i < bodies.length; i++) getBroadphaseBounds(bodies[i]);
+    for (let i = 0; i < bodies.length; i++) {
+        const entity = bodies[i];
+        writeKineticBroadphaseSlabSlot(entity._physId, getBroadphaseBounds(entity));
+    }
 }
 export function pairCircleCircleOverlapSnapshotted(a, b) {
-    const ba = a.broadphaseBounds;
-    const bb = b.broadphaseBounds;
-    const dx = ba.cx - bb.cx;
-    const dy = ba.cy - bb.cy;
-    const radii = ba.r + bb.r;
-    return dx * dx + dy * dy < radii * radii;
+    return pairCircleCircleOverlapSlab(a._physId, b._physId);
 }
 export function pairBroadphaseOverlapSnapshotted(a, b) {
-    const ba = a.broadphaseBounds;
-    const bb = b.broadphaseBounds;
-    if (ba.kind === "circle" && bb.kind === "circle") return pairCircleCircleOverlapSnapshotted(a, b);
-    return pairBroadphaseBoundsOverlap(ba, bb);
+    return pairBroadphaseOverlapSlab(a._physId, b._physId);
 }
 export function shouldResolveKineticPairSnapshotted(a, b, overlaps = pairBroadphaseOverlapSnapshotted(a, b)) {
     if (!overlaps) return false;
