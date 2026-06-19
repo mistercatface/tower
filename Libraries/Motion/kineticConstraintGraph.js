@@ -7,8 +7,8 @@ function addAdjacencyEdge(adjacency, fromId, toId) {
     }
     neighbors.push(toId);
 }
-function buildAdjacency(state) {
-    const list = listKineticConstraints(state);
+function buildAdjacency(sandbox) {
+    const list = listKineticConstraints(sandbox);
     const adjacency = new Map();
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
@@ -17,28 +17,16 @@ function buildAdjacency(state) {
     }
     return adjacency;
 }
-/**
- * Undirected adjacency map of bodies connected by kinetic constraints.
- * Built once per constraint-topology change and cached on the sandbox, so the
- * many per-frame connectivity queries share a single O(E) build.
- * @returns {Map<number, number[]>}
- */
-export function getKineticConstraintGraph(state) {
-    const sandbox = state.sandbox;
-    const version = getKineticConstraintsVersion(state);
+export function getKineticConstraintGraph(sandbox) {
+    const version = getKineticConstraintsVersion(sandbox);
     const cache = sandbox._kineticConstraintGraphCache;
     if (cache && cache.version === version) return cache.adjacency;
-    const adjacency = buildAdjacency(state);
+    const adjacency = buildAdjacency(sandbox);
     sandbox._kineticConstraintGraphCache = { version, adjacency };
     return adjacency;
 }
-/**
- * Body ids in the same constraint island as `bodyId` (the connected component),
- * including `bodyId` itself. O(island size) over the cached graph.
- * @returns {number[]}
- */
-export function getConnectedBodyIds(state, bodyId) {
-    const adjacency = getKineticConstraintGraph(state);
+export function getConnectedBodyIds(sandbox, bodyId) {
+    const adjacency = getKineticConstraintGraph(sandbox);
     const members = new Set([bodyId]);
     const stack = [bodyId];
     while (stack.length > 0) {
@@ -55,15 +43,8 @@ export function getConnectedBodyIds(state, bodyId) {
     }
     return [...members];
 }
-/**
- * Ordered traversal of a path-shaped island starting from `endpointId`,
- * following unvisited neighbors one hop at a time. For acyclic chains this is
- * the endpoint-to-endpoint ordering; for branching/cyclic islands it returns
- * one valid walk. O(island size) over the cached graph.
- * @returns {number[]}
- */
-export function getConnectedComponentPath(state, endpointId) {
-    const adjacency = getKineticConstraintGraph(state);
+export function getConnectedComponentPath(sandbox, endpointId) {
+    const adjacency = getKineticConstraintGraph(sandbox);
     const ordered = [endpointId];
     const visited = new Set([endpointId]);
     let current = endpointId;
@@ -83,10 +64,9 @@ export function getConnectedComponentPath(state, endpointId) {
     }
     return ordered;
 }
-/** Whether two bodies belong to the same constraint island. */
-export function areBodiesConnected(state, bodyAId, bodyBId) {
+export function areBodiesConnected(sandbox, bodyAId, bodyBId) {
     if (bodyAId === bodyBId) return true;
-    const adjacency = getKineticConstraintGraph(state);
+    const adjacency = getKineticConstraintGraph(sandbox);
     const visited = new Set([bodyAId]);
     const stack = [bodyAId];
     while (stack.length > 0) {
@@ -104,13 +84,8 @@ export function areBodiesConnected(state, bodyAId, bodyBId) {
     }
     return false;
 }
-/**
- * All constraint islands as arrays of body ids. Bodies with no constraints are
- * omitted (they form trivial singleton islands). O(V + E) over the cached graph.
- * @returns {number[][]}
- */
-export function getConstraintIslands(state) {
-    const adjacency = getKineticConstraintGraph(state);
+export function getConstraintIslands(sandbox) {
+    const adjacency = getKineticConstraintGraph(sandbox);
     const seen = new Set();
     const islands = [];
     for (const startId of adjacency.keys()) {

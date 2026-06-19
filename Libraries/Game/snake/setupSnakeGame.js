@@ -36,7 +36,7 @@ export async function setupSnakeGame(state) {
     }
     const playerHeadId = playerSnake.chain.head.id;
     const playerAutosim = autosimsByHeadId.get(playerHeadId);
-    const getSegmentCount = () => getConnectedBodyIds(state, playerHeadId).length;
+    const getSegmentCount = () => getConnectedBodyIds(state.sandbox, playerHeadId).length;
     const getFoodTimerFraction = () => playerAutosim.getFoodTimerFraction();
     const getFsmDebugLine = config.showSnakeFsmDebug ? () => playerAutosim.getFsmDebugLine() : null;
     const hud = mountSnakeHud(getSegmentCount, { getFoodTimerFraction, getFsmDebugLine });

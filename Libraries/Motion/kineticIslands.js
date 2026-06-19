@@ -8,8 +8,8 @@ function clearBodyIslandFields(body) {
     delete body._kineticIslandPeers;
     delete body._kineticIslandRoot;
 }
-export function bakeKineticIslandPlan(state, kineticBodies) {
-    const adjacency = getKineticConstraintGraph(state);
+export function bakeKineticIslandPlan(sandbox, kineticBodies) {
+    const adjacent = getKineticConstraintGraph(sandbox);
     const bodyById = new Map();
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
@@ -20,7 +20,7 @@ export function bakeKineticIslandPlan(state, kineticBodies) {
     const bodyIdToIslandRoot = new Map();
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
-        const neighborIds = adjacency.get(body.id);
+        const neighborIds = adjacent.get(body.id);
         let linkNeighbors = null;
         if (neighborIds)
             for (let j = 0; j < neighborIds.length; j++) {
@@ -42,7 +42,7 @@ export function bakeKineticIslandPlan(state, kineticBodies) {
             const id = stack.pop();
             const body = bodyById.get(id);
             if (body) memberBodies.push(body);
-            const neighborIds = adjacency.get(id);
+            const neighborIds = adjacent.get(id);
             if (!neighborIds) continue;
             for (let k = 0; k < neighborIds.length; k++) {
                 const neighborId = neighborIds[k];
@@ -63,14 +63,14 @@ export function bakeKineticIslandPlan(state, kineticBodies) {
             if (multiBody) body._kineticIslandPeers = memberBodies;
         }
     }
-    state.sandbox._kineticIslandPlan = { version: getKineticConstraintsVersion(state), bodyIdToIslandRoot };
+    sandbox._kineticIslandPlan = { version: getKineticConstraintsVersion(sandbox), bodyIdToIslandRoot };
 }
-export function ensureKineticIslandPlan(state, kineticBodies) {
-    const version = getKineticConstraintsVersion(state);
-    const plan = state.sandbox._kineticIslandPlan;
+export function ensureKineticIslandPlan(sandbox, kineticBodies) {
+    const version = getKineticConstraintsVersion(sandbox);
+    const plan = sandbox._kineticIslandPlan;
     if (plan && plan.version === version) return plan;
-    bakeKineticIslandPlan(state, kineticBodies);
-    return state.sandbox._kineticIslandPlan;
+    bakeKineticIslandPlan(sandbox, kineticBodies);
+    return sandbox._kineticIslandPlan;
 }
 export function shareKineticIsland(bodyA, bodyB) {
     if (bodyA._kineticIslandRoot !== bodyB._kineticIslandRoot) return false;

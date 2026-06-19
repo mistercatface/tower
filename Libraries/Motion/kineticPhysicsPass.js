@@ -26,7 +26,7 @@ function tickKineticSleep(spatialFrame) {
 }
 /** @param {object} state @param {number} dt @param {object} spatialFrame */
 export function runKineticPhysics(state, dt, spatialFrame) {
-    ensureKineticIslandPlan(state, spatialFrame._kineticBodies);
+    ensureKineticIslandPlan(state.sandbox, spatialFrame._kineticBodies);
     state.sandbox.kineticConstraintsDirty = false;
     const kineticBodies = spatialFrame._kineticBodies;
     for (let i = 0; i < kineticBodies.length; i++) if (kineticBodies[i]._groundRollDrive) wakeKineticBody(kineticBodies[i]);

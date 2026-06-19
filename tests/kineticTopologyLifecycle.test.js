@@ -93,10 +93,10 @@ describe("kinetic topology lifecycle", () => {
         const b = mockCircleBody(15, 0, 10, -30, 0);
         const state = createState([a, b]);
         const frame = setupActiveFrame([a, b]);
-        stampKineticPairGatherTopology(frame, state);
-        assert.ok(kineticPairBodiesAt(frame, state, 0, 1));
+        stampKineticPairGatherTopology(frame, state.sandbox);
+        assert.ok(kineticPairBodiesAt(frame, 0, 1));
         frame.admitKineticProp(mockCircleBody(40, 0, 10), state);
-        assert.equal(kineticPairBodiesAt(frame, state, 0, 1), null);
+        assert.equal(kineticPairBodiesAt(frame, 0, 1), null);
     });
 
     it("removeChainLinkBetween bumps topology and rebuilds island plan", () => {
@@ -106,15 +106,15 @@ describe("kinetic topology lifecycle", () => {
         const c = mockCircleBody(36, 0, 10);
         const bodies = [a, b, c];
         const state = createState(bodies);
-        addDistanceConstraint(state, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
-        addDistanceConstraint(state, { bodyAId: b.id, bodyBId: c.id, restLength: 18 });
+        addDistanceConstraint(state.sandbox, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
+        addDistanceConstraint(state.sandbox, { bodyAId: b.id, bodyBId: c.id, restLength: 18 });
         const frame = setupActiveFrame(bodies);
-        bakeKineticIslandPlan(state, frame._kineticBodies);
+        bakeKineticIslandPlan(state.sandbox, frame._kineticBodies);
         assert.equal(a._kineticIslandPeers.length, 3);
-        const genBefore = getKineticTopologyGeneration(state);
+        const genBefore = getKineticTopologyGeneration(state.sandbox);
         removeChainLinkBetween(state, b.id, c.id);
-        assert.ok(getKineticTopologyGeneration(state) > genBefore);
-        ensureKineticIslandPlan(state, frame._kineticBodies);
+        assert.ok(getKineticTopologyGeneration(state.sandbox) > genBefore);
+        ensureKineticIslandPlan(state.sandbox, frame._kineticBodies);
         assert.equal(c._kineticIslandPeers, undefined);
         assert.equal(b._kineticLinkNeighbors.length, 1);
     });

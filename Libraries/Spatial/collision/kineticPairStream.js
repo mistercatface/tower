@@ -50,8 +50,8 @@ export function kineticPairBodyAt(spatialFrame, physId) {
     if (!body || body._physId !== physId) return null;
     return body;
 }
-export function kineticPairBodiesAt(spatialFrame, state, physIdA, physIdB) {
-    if (state && kineticPairTopologyStale(spatialFrame, state)) return null;
+export function kineticPairBodiesAt(spatialFrame, physIdA, physIdB) {
+    if (kineticPairTopologyStale(spatialFrame)) return null;
     const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
     const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
     if (!bodyA || !bodyB) return null;

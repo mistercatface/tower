@@ -28,7 +28,7 @@ function createSnapshotTestState(cols = 32, rows = 32) {
 }
 
 function applyPhysicsSnapshot(state, doc) {
-    clearKineticConstraints(state);
+    clearKineticConstraints(state.sandbox);
     getSandboxEntityMeta(state).clear();
     for (let i = state.worldProps.length - 1; i >= 0; i--) state.worldProps[i].isDead = true;
     state.worldProps.length = 0;
@@ -38,7 +38,7 @@ function applyPhysicsSnapshot(state, doc) {
         const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction, entry.facing ?? 0, undefined, entry.visualOverride);
         propIds.push(prop.id);
     }
-    applyKineticConstraintsFromSnapshot(state, doc.kineticConstraints, propIds);
+    applyKineticConstraintsFromSnapshot(state.sandbox, doc.kineticConstraints, propIds);
     if (doc.chainHeadProp != null) setChainHead(state, getSandboxEntityMeta(state), propIds[doc.chainHeadProp]);
 }
 
@@ -84,7 +84,7 @@ describe("sandboxSceneSnapshot physics", () => {
         });
         const physicsDoc = {
             props,
-            kineticConstraints: collectKineticConstraintsSnapshot(state, propIdToIndex),
+            kineticConstraints: collectKineticConstraintsSnapshot(state.sandbox, propIdToIndex),
             chainHeadProp,
         };
         const fresh = createSnapshotTestState();

@@ -64,7 +64,7 @@ describe("kinetic early-out", () => {
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(20, 0, 10);
         const state = createState([bodyA, bodyB]);
-        addDistanceConstraint(state, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 20 });
+        addDistanceConstraint(state.sandbox, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 20 });
         const frame = setupFrame([bodyA, bodyB]);
         runCollisionPipeline(state, frame, { resolveWalls: () => {} });
         assert.ok(state.sandbox.kineticSolverStats.outerIterations < state.sandbox.kineticSolverStats.maxIterations);

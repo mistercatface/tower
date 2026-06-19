@@ -95,7 +95,7 @@ describe("kinetic narrow phase tiers", () => {
         const b = mockCircleBody(15, 0, 10, -30, 0);
         b.id = 2;
         const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
+        resolveKineticContactPass(frame, { kineticConstraints: [], kineticTopologyGeneration: 0 });
         assert.ok(a.x < 0);
         assert.ok(b.x > 15);
     });
@@ -105,7 +105,7 @@ describe("kinetic narrow phase tiers", () => {
         wedge.vx = -20;
         assert.ok(SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
         const frame = setupPairFrame(ball, wedge);
-        resolveKineticContactPass(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
+        resolveKineticContactPass(frame, { kineticConstraints: [], kineticTopologyGeneration: 0 });
         assert.ok(!SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
     });
     it("contact pass still separates poly-poly pairs", () => {
@@ -114,7 +114,7 @@ describe("kinetic narrow phase tiers", () => {
         right.vx = -20;
         assert.ok(checkEntityPairCollision(left, right));
         const frame = setupPairFrame(left, right);
-        resolveKineticContactPass(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
+        resolveKineticContactPass(frame, { kineticConstraints: [], kineticTopologyGeneration: 0 });
         assert.equal(checkEntityPairCollision(left, right), null);
     });
 });

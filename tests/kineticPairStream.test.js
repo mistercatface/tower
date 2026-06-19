@@ -155,7 +155,7 @@ describe("kinetic pair stream on proof props", () => {
         const b = mockCircleBody(15, 0, 10, -30, 0);
         const frame = setupActiveFrame([a, b]);
         const state = { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } };
-        resolveKineticContactPass(frame, state);
+        resolveKineticContactPass(frame, state.sandbox);
         assert.ok(a.x < 0);
         assert.ok(b.x > 15);
     });
@@ -167,7 +167,7 @@ describe("kinetic pair stream on proof props", () => {
         const bx0 = b.x;
         const frame = setupActiveFrame([a, b]);
         const state = { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } };
-        resolveKineticContactPass(frame, state);
+        resolveKineticContactPass(frame, state.sandbox);
         assert.equal(a.x, ax0);
         assert.equal(b.x, bx0);
     });

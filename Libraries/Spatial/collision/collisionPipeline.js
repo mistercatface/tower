@@ -7,7 +7,8 @@ import {
     projectKineticConstraintBuffer,
     solveKineticConstraintBuffer,
 } from "../../Motion/kineticConstraintSolver.js";
-import { gatherKineticContactPairs, resolveKineticContactPass, resolveKineticContactPassWithPairs } from "./kineticContactSolver.js";
+import { gatherKineticContactPairs, resolveKineticContactPass, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
+import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { activeBodiesMatchKineticSlab } from "./kineticBodySlab.js";
 import { copyKineticPairBuffer, kineticPairBuffer, persistedKineticPairBuffer } from "./kineticPairStream.js";
@@ -53,9 +54,15 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
  * @param {{
  *   resolveWalls: (entity: object, spatialFrame: object) => void,
  *   kineticIterations?: number,
+ *   applyContactSideEffects?: (state: object, spatialFrame: object, contacts: object) => void,
  * }} hooks
  */
-export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations }) {
+export function runCollisionPipeline(
+    state,
+    spatialFrame,
+    { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations, applyContactSideEffects = applyKineticContactSideEffects } = {},
+) {
+    const sandbox = state.sandbox;
     const earlyOut = getCollisionSettings().kineticEarlyOut;
     const activeBodies = spatialFrame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;
@@ -73,12 +80,16 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
             outerIterationsRun = iter + 1;
             if (earlyOut.persistPairs) {
                 if (iter === 0) {
-                    gatherKineticContactPairs(spatialFrame, state);
+                    gatherKineticContactPairs(spatialFrame, sandbox);
                     copyKineticPairBuffer(kineticPairBuffer, persistedKineticPairBuffer);
                     persistedPairs = persistedKineticPairBuffer;
                 }
-                resolveKineticContactPassWithPairs(spatialFrame, state, persistedPairs);
-            } else resolveKineticContactPass(spatialFrame, state);
+                resolveKineticContactPassWithPairs(spatialFrame, persistedPairs);
+                applyContactSideEffects(state, spatialFrame, kineticContactBuffer);
+            } else {
+                resolveKineticContactPass(spatialFrame, sandbox);
+                applyContactSideEffects(state, spatialFrame, kineticContactBuffer);
+            }
             projectKineticConstraintBuffer(constraintBuffer, constraintGroups);
             projectIslandLinkCapsulesAgainstWalls(spatialFrame, constraintBuffer, constraintGroups);
             solveKineticConstraintBuffer(spatialFrame, constraintBuffer, constraintGroups);

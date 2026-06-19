@@ -315,7 +315,7 @@ export function removeWorldPropFromState(state, prop, spatialFrame = kineticSpat
     if (index >= 0) state.worldProps.splice(index, 1);
     state.entityRegistry.unregister(prop);
     getSandboxEntityMeta(state)?.delete(prop.id);
-    pruneKineticConstraintsForBody(state, prop.id);
+    pruneKineticConstraintsForBody(state.sandbox, prop.id);
     spatialFrame.evictKineticProp(prop, state);
 }
 /** @param {object} state */
@@ -324,7 +324,7 @@ export function clearWorldPropsInState(state) {
     for (let i = 0; i < state.worldProps.length; i++) meta?.delete(state.worldProps[i].id);
     state.worldProps = [];
     state.entityRegistry.clear("worldProp");
-    clearKineticConstraints(state);
+    clearKineticConstraints(state.sandbox);
 }
 /** @param {object[]} worldProps @param {number} worldX @param {number} worldY @param {number} padding */
 function nearestWorldPropInList(worldProps, worldX, worldY, padding) {

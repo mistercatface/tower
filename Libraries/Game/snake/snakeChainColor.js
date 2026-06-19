@@ -4,7 +4,7 @@ export function applySnakeChainTint(members, tintHex) {
     for (let i = 0; i < members.length; i++) setPropVisualTint(members[i], tintHex);
 }
 export function tintSnakeChain(state, headId, tintHex) {
-    const memberIds = getConnectedBodyIds(state, headId);
+    const memberIds = getConnectedBodyIds(state.sandbox, headId);
     for (let i = 0; i < memberIds.length; i++) {
         const prop = state.entityRegistry.getLive(memberIds[i]);
         if (prop && !prop.isDead) setPropVisualTint(prop, tintHex);

@@ -60,7 +60,7 @@ describe("kinetic contact pipeline", () => {
         assert.ok(SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
         const frame = setupPairFrame(ball, wedge);
         const state = { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } };
-        resolveKineticContactPassWithPairs(frame, state, gatherKineticContactPairs(frame, state));
+        resolveKineticContactPassWithPairs(frame, gatherKineticContactPairs(frame, state.sandbox));
         assert.equal(kineticContactBuffer.count, 1);
         assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.CIRCLE_POLY);
         assert.ok(!SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
@@ -71,7 +71,7 @@ describe("kinetic contact pipeline", () => {
         const b = mockCircleBody(15, 0, 10, -30, 0);
         const frame = setupPairFrame(a, b);
         const state = { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } };
-        resolveKineticContactPassWithPairs(frame, state, gatherKineticContactPairs(frame, state));
+        resolveKineticContactPassWithPairs(frame, gatherKineticContactPairs(frame, state.sandbox));
         assert.equal(kineticContactBuffer.count, 1);
         assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.CIRCLE_CIRCLE);
     });
@@ -83,7 +83,7 @@ describe("kinetic contact pipeline", () => {
         assert.ok(checkEntityPairCollision(left, right));
         const frame = setupPairFrame(left, right);
         const state = { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } };
-        resolveKineticContactPassWithPairs(frame, state, gatherKineticContactPairs(frame, state));
+        resolveKineticContactPassWithPairs(frame, gatherKineticContactPairs(frame, state.sandbox));
         assert.equal(kineticContactBuffer.count, 1);
         assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.POLY_POLY);
         assert.equal(checkEntityPairCollision(left, right), null);

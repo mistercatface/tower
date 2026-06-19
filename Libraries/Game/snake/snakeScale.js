@@ -7,14 +7,14 @@ export function getSnakeChainRadius(state, headId) {
     return getCirclePropRadius(head);
 }
 export function getSnakeSegmentCount(state, headId) {
-    return getConnectedComponentPath(state, headId).length;
+    return getConnectedComponentPath(state.sandbox, headId).length;
 }
 export function getSnakeSizeScore(state, headId) {
     return getSnakeSegmentCount(state, headId) * 1000 + getSnakeChainRadius(state, headId);
 }
 export function stepSnakeChainRadius(state, headId) {
     const config = getSnakeGameConfig();
-    const memberIds = getConnectedBodyIds(state, headId);
+    const memberIds = getConnectedBodyIds(state.sandbox, headId);
     const current = getSnakeChainRadius(state, headId);
     const next = Math.min(current + config.radiusPerMeal, config.maxRadius);
     if (next !== current) {
@@ -33,7 +33,7 @@ export function growSnakeChainAfterMeal(state, headId) {
 }
 export function stepSnakeChainRadiusDown(state, headId) {
     const config = getSnakeGameConfig();
-    const memberIds = getConnectedBodyIds(state, headId);
+    const memberIds = getConnectedBodyIds(state.sandbox, headId);
     const current = getSnakeChainRadius(state, headId);
     const next = Math.max(current - config.radiusPerMeal, config.startRadius);
     if (next !== current) {

@@ -17,7 +17,7 @@ import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
-import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { resolveKineticContactPassWithEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 
 loadPropAssets();
@@ -242,12 +242,12 @@ describe("glass fracture", () => {
         assert.equal(liveGlassPropCount(state), 2);
     });
 
-    it("resolveKineticContactPass keeps glass shard count stable across substeps", () => {
+    it("resolveKineticContactPassWithEffects keeps glass shard count stable across substeps", () => {
         const { a, b } = makeOverlappingGlassShards();
         const state = createFractureTestState([a, b]);
         const frame = setupGlassPairFrame([a, b]);
         for (let step = 0; step < 8; step++) {
-            resolveKineticContactPass(frame, state);
+            resolveKineticContactPassWithEffects(state, frame);
             assert.equal(liveGlassPropCount(state), 2, `reproduced on substep ${step}`);
         }
     });
@@ -263,7 +263,7 @@ describe("glass fracture", () => {
         const state = createFractureTestState([glass, crate]);
         const frame = setupGlassPairFrame([glass, crate]);
         assert.ok(SatCollision.checkCollision(glass, glass.getShape(), crate, crate.getShape()));
-        resolveKineticContactPass(frame, state);
+        resolveKineticContactPassWithEffects(state, frame);
         assert.ok(liveGlassPropCount(state) > 2);
         assert.ok(!state.worldProps.includes(glass));
     });

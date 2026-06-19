@@ -7,7 +7,7 @@ function constraintWireColor(strain) {
     return "rgba(255, 80, 80, 0.95)";
 }
 export function appendKineticConstraintOverlayCommands(out, state) {
-    const constraints = listKineticConstraints(state);
+    const constraints = listKineticConstraints(state.sandbox);
     for (let i = 0; i < constraints.length; i++) {
         const entry = constraints[i];
         if (entry.type !== "distance") continue;

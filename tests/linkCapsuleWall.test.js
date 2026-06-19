@@ -99,7 +99,7 @@ describe("link capsule wall projection", () => {
         const bodyA = mockCircleBody(50, 14, 4);
         const bodyB = mockCircleBody(66, 14, 4);
         const state = createConstraintTestState([bodyA, bodyB]);
-        addDistanceConstraint(state, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 16 });
+        addDistanceConstraint(state.sandbox, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 16 });
         const frame = setupActiveFrame([bodyA, bodyB], [wall]);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) < 4);
         const { buffer, groups } = gatherKineticConstraintBuffer(state, frame);
