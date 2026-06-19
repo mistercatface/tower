@@ -4,7 +4,7 @@ import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { getBroadphaseBounds, snapshotActiveBroadphaseBounds, snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { kineticBodySlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeKinematicBodySlabSlot } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { pairBroadphaseBoundsOverlap } from "../Libraries/Spatial/collision/Broadphase.js";
-import { circleCircleContactSlab } from "../Libraries/Spatial/collision/kineticCircleContactSolver.js";
+import { circleCircleContactSlab } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { circleCircleContact } from "../Libraries/Spatial/collision/SatCollision.js";
 
 function mockCircleBody(x, y, radius) {

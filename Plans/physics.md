@@ -197,14 +197,14 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | Normal + Coulomb friction | ✅ | 75 | pair friction defaults |
 | Restitution (pair + material) | ✅ | 70 | `collisionDefaults.js` |
 | Warm-start impulse cache | 🟡 | 65 | decay cache, not full manifold |
-| **Dedicated circle–circle impulse path** | ⬜ | 0 | narrow phase only · 🔜 trilogy 2 |
+| **Dedicated circle–circle impulse path** | ✅ | 85 | slab narrow phase + unified PGS in `kineticContactSolver.js` |
 | Manifold persistence (feature ids) | ⬜ | 0 | 🔜 trilogy 2 PR 1 |
 | **Pair stream persistence (outer iters)** | 🟡 | 40 | `collisionPipeline.js` reuses broadphase pairs when `kineticEarlyOut.persistPairs` |
 | **Substep early-out when stable** | 🟡 | 70 | outer ε on constraint error + velocity; contact inner impulse ε |
 | **Constraint-linked peer wake (1-hop)** | 🟡 | 65 | `_kineticLinkNeighbors` + narrowed activation vs full island |
 | Contact callbacks (break, sound, VFX) | 🟡 | 55 | fracture uses pre-impact speed |
 
-**Branch progress: 58%**
+**Branch progress: 65%**
 
 ---
 
@@ -273,10 +273,10 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | Worker / HPA off main thread | ✅ | 90 | nav, not physics |
 | Profile-friendly pipeline stages | ✅ | 80 | pair stream visible in traces |
 | Manifold + pair cache | ⬜ | 0 | 🔜 trilogy 2 |
-| SoA / SIMD bodies | ⬜ | 0 | AoS props today |
+| SoA / SIMD bodies | 🟡 | 45 | `kineticBodySlab.js` contact-pass mirror; props stay AoS · SIMD still ⬜ |
 | Parallel pair solve | ⬜ | 0 | |
 
-**Branch progress: 55%**
+**Branch progress: 62%**
 
 ---
 
@@ -287,7 +287,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | Collision settings per game profile | ✅ | 80 | `GameCollisionSettings.js` |
 | **`kineticConstraints` in scene snapshot** | ✅ | 85 | schema v9 flat props + `collectKineticConstraintsSnapshot` |
 | **`chainHead` in scene snapshot** | ✅ | 85 | `chainHeadProp` index in schema v9 |
-| Unit: pair stream / sleep / islands | ✅ | 80 | `tests/kinetic*.test.js` |
+| Unit: pair stream / sleep / islands | ✅ | 85 | `tests/kinetic*.test.js`, `kineticBodySlab.test.js`, `kineticContactPipeline.test.js` |
 | Unit: constraints | ✅ | 70 | `kineticConstraintSolver.test.js` |
 | Unit: chain links | ✅ | 70 | `chainLinks.test.js` |
 | Unit: wall resolution | ✅ | 75 | `wallResolution.test.js` |
@@ -352,7 +352,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 
 | PR | Theme | Status |
 |----|-------|--------|
-| C1 | Manifold persistence + substep early-out + circle impulse lane | 🟡 partial (early-out, pair persist, dirty islands, 1-hop wake) |
+| C1 | Manifold persistence + substep early-out + circle impulse lane | 🟡 partial (body slab, unified contact buffer, early-out, pair persist, dirty islands, 1-hop wake) |
 | C2 | Revolute + motor joints | 🔜 |
 | C3 | Mixed-shape / breakable chains, crate train | 🔜 |
 
@@ -368,8 +368,8 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 
 1. ~~**Chain vs wall integration test**~~ — `tests/chainVsWallGrowth.test.js` documents growth overlap baseline.
 2. ~~**Persist constraints + `chainHead` in scene snapshot**~~ — schema v9 export/import.
-3. **Trilogy C PR 1** — biggest perf/clarity win for dogpile + chain whip.
-4. **Snake polish** — HUD, head asset, optional head speed cap (`Libraries/Game/snake/`).
+3. **Trilogy C PR 1 finish** — manifold persistence across outer iters; pair cache with feature ids.
+4. **Trilogy C PR 3 / snake polish** — chain-vs-wall stance, HUD, head asset (`Libraries/Game/snake/`).
 
 ---
 
@@ -377,7 +377,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 
 ```
 Libraries/Motion/          — integration, sleep, constraints, walls
-Libraries/Spatial/collision/ — broadphase, pairs, SAT, contact, pipeline
+Libraries/Spatial/collision/ — broadphase, pairs, kineticBodySlab, SAT, contact, pipeline
 Libraries/Sandbox/chainLinks.js — chain head, link API
 Systems/World/KineticSpatialFrame.js — frame + active set
 Apps/Editor/world/sandboxStartScene.js — stress chain demo
