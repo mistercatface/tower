@@ -1,4 +1,4 @@
-import { overlayGridCellHighlight, overlayCachedSelectionRing, overlaySegment } from "../../Render/overlays/overlayCommands.js";
+import { overlayGridCellHighlight, overlayCachedSelectionRing } from "../../Render/overlays/overlayCommands.js";
 const FSM_MODE_RING = { explore: "rgba(120, 220, 255, 0.85)", seek_food: "rgba(255, 220, 80, 0.9)", seek_prey: "rgba(255, 120, 80, 0.9)", flee: "rgba(255, 80, 120, 0.9)" };
 export function formatSnakeFsmDebug(snapshot) {
     const dest = snapshot.destCell ? `${snapshot.destCell.col},${snapshot.destCell.row}` : "—";
@@ -14,7 +14,5 @@ export function appendSnakeFsmDebugOverlayCommands(out, state, seeker, snapshot)
     if (dest) {
         const bounds = grid.getCellBounds(dest.col, dest.row);
         out.push(overlayGridCellHighlight(bounds, grid.cellSize, snapshot.mode, { fill: "rgba(255, 255, 255, 0.06)", stroke: ringColor, lineWidth: 2, dash: [6, 4] }));
-        const destWorld = grid.gridToWorld(dest.col, dest.row);
-        out.push(overlaySegment(seeker.x, seeker.y, destWorld.x, destWorld.y, { stroke: ringColor, lineWidth: 2, dash: [8, 6] }));
     }
 }

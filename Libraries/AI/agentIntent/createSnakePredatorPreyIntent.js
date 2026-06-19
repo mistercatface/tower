@@ -91,6 +91,7 @@ export function createSnakePredatorPreyIntent({ brain, sync, headNav, resolveVis
         }
         if (headNav.getDestination() && headNav.needsRetry()) {
             lastTransitionReason = "route_failed_retry";
+            if (!headNav.getStatus().replanPending && (mode === "explore" || mode === "flee")) setDestinationForCommit(seeker, state);
             return { mode, target: resolveCommittedTarget(state) };
         }
         const dest = headNav.getDestination();

@@ -3,8 +3,8 @@ import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { createHpaGroundNavSession } from "./hpaGroundNavSession.js";
-import { getKineticRollConfig, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
-import { isEntityOnFloorBelt, isFloorBeltCell, resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
+import { decelerateRoll, getKineticRollConfig, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
+import { isEntityOnFloorBelt, resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 export function createCellTargetHpaNav(state) {
     let destCol = null;
     let destRow = null;
@@ -45,10 +45,7 @@ export function createCellTargetHpaNav(state) {
         const hpaNavSettings = getPhysicsSettings().groundNavHpa;
         const config = getKineticRollConfig(prop, { stopRadius: hpaNavSettings.stopRadius });
         const onBelt = isEntityOnFloorBelt(grid, prop.x, prop.y);
-        const targetOnBelt = isFloorBeltCell(grid, destCol, destRow);
         const steerTarget = resolveFloorBeltSteerTarget(grid, destWorld.x, destWorld.y, prop.x, prop.y);
-        const distToTarget = Math.hypot(destWorld.x - prop.x, destWorld.y - prop.y);
-        if (distToTarget <= config.stopRadius && (!targetOnBelt || onBelt)) return;
         if (onBelt) {
             wasOnBelt = true;
             return;
@@ -67,7 +64,10 @@ export function createCellTargetHpaNav(state) {
             steering = hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000, pathSettings);
         }
         if (!steering) return;
-        if (steering.desiredX === 0 && steering.desiredY === 0) return;
+        if (steering.desiredX === 0 && steering.desiredY === 0) {
+            decelerateRoll(prop, config);
+            return;
+        }
         steerRollToward(prop, steering.desiredX, steering.desiredY, config);
     };
     const getStatus = () => {
