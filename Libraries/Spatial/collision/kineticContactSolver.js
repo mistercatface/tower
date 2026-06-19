@@ -2,6 +2,7 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { bodyPinnedForContact, massFromBody } from "../../Motion/bodyMass.js";
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
+import { resolveSnakeCombatFromContacts } from "../../Game/snake/snakeCombat.js";
 import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer, refreshKineticPairRelativeVelocities } from "./kineticPairStream.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { kineticBodySlab, writebackKineticBodySlabPhysIds } from "./kineticBodySlab.js";
@@ -426,4 +427,5 @@ export function resolveKineticContactPassWithPairs(spatialFrame, state, pairs) {
     storeKineticWarmStartCache(contacts);
     writebackKineticBodySlabPhysIds(spatialFrame, collectContactPhysIds(contacts));
     applyKineticContactEffects(contacts, spatialFrame, state);
+    if (state.sandbox?.snakeGame) resolveSnakeCombatFromContacts(state, spatialFrame, contacts, state.sandbox.snakeGame);
 }

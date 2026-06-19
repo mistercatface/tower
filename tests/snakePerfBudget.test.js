@@ -14,15 +14,12 @@ import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
-
 loadPropAssets();
-
 /** Brain-on baseline — raise only when intentionally adding cost. */
 const PERF_TICKS = 120;
 const PERF_DT = 1 / 60;
 const WALL_CLOCK_MS_CEILING = 12_000;
 const REPLAN_REQUEST_CEILING = 800;
-
 function createPerfState(cols = 48, rows = 48) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
@@ -32,12 +29,7 @@ function createPerfState(cols = 48, rows = 48) {
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
     let replanRequests = 0;
-    const mockWorker = {
-        getPathSlot: () => -1,
-        releaseOwnedPathSlot: () => {},
-        releaseSlot: () => {},
-        requestPath: async () => ({ result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } }),
-    };
+    const mockWorker = { getPathSlot: () => -1, releaseOwnedPathSlot: () => {}, releaseSlot: () => {}, requestPath: async () => ({ result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } }) };
     const hpaPathSession = new HpaPathSession(mockWorker);
     const origReplan = hpaPathSession.requestReplan.bind(hpaPathSession);
     hpaPathSession.requestReplan = (...args) => {
@@ -75,7 +67,6 @@ function createPerfState(cols = 48, rows = 48) {
     };
     return state;
 }
-
 function buildMultiSnakeSession(state) {
     const config = getSnakeGameConfig();
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
@@ -94,15 +85,9 @@ function buildMultiSnakeSession(state) {
     spawnSnakeGoalPool(state, config.goalCount, { excludeKeys, rng: () => 0.42 });
     return { autosims, hpaBehavior: behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID) };
 }
-
 describe("snakePerfBudget", () => {
     it("30 snakes with brains stay within wall-clock and replan budget", () => {
-        applySnakeGameConfig({
-            snakeCount: 30,
-            goalCount: 75,
-            showAllSnakeVisionCones: false,
-            brainSyncOffScreenInterval: 4,
-        });
+        applySnakeGameConfig({ snakeCount: 500, goalCount: 75, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4 });
         resetKineticConstraintIds(1);
         const state = createPerfState();
         const { autosims, hpaBehavior } = buildMultiSnakeSession(state);

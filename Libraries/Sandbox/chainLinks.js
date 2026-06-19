@@ -58,6 +58,53 @@ export function hasChainLinkBetween(state, bodyAId, bodyBId) {
     }
     return false;
 }
+export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
+    const list = listKineticConstraints(state);
+    for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (entry.type !== "distance") continue;
+        if ((entry.bodyAId === bodyAId && entry.bodyBId === bodyBId) || (entry.bodyAId === bodyBId && entry.bodyBId === bodyAId)) return entry;
+    }
+    return null;
+}
+export function getOrderedChainMemberIds(state, headId) {
+    const members = new Set(getChainMemberIds(state, headId));
+    if (!members.has(headId)) return [headId];
+    const ordered = [headId];
+    const visited = new Set([headId]);
+    let current = headId;
+    while (ordered.length < members.size) {
+        let next = null;
+        const list = listKineticConstraints(state);
+        for (let i = 0; i < list.length; i++) {
+            const entry = list[i];
+            if (entry.type !== "distance") continue;
+            if (entry.bodyAId === current && !visited.has(entry.bodyBId)) next = entry.bodyBId;
+            else if (entry.bodyBId === current && !visited.has(entry.bodyAId)) next = entry.bodyAId;
+            if (next != null) break;
+        }
+        if (next == null) break;
+        ordered.push(next);
+        visited.add(next);
+        current = next;
+    }
+    return ordered;
+}
+export function removeChainLinkBetween(state, bodyAId, bodyBId) {
+    const entry = findDistanceConstraintBetween(state, bodyAId, bodyBId);
+    if (!entry) return false;
+    removeKineticConstraint(state, entry.id);
+    return true;
+}
+export function clearChainLinksForMembers(state, memberIds) {
+    const members = new Set(memberIds);
+    const list = listKineticConstraints(state);
+    for (let i = list.length - 1; i >= 0; i--) {
+        const entry = list[i];
+        if (entry.type !== "distance") continue;
+        if (members.has(entry.bodyAId) && members.has(entry.bodyBId)) removeKineticConstraint(state, entry.id);
+    }
+}
 export function addChainLink(state, fromPropId, toPropId, linkSlack = 1) {
     if (fromPropId === toPropId) return false;
     const bodyA = state.entityRegistry.getLive(fromPropId);

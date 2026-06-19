@@ -37,6 +37,10 @@ export const SNAKE_GAME_DEFAULTS = {
     memoryHeatmap: { bucketCount: 8, fillRgb: "180, 100, 255", fillAlphaMax: 0.28, fillAlphaMin: 0.05, strokeAlphaMax: 0.7, strokeAlphaMin: 0.15, lineWidth: 1 },
     /** Off-screen snakes run full FOV sync every N ticks (on-screen = every tick). */
     brainSyncOffScreenInterval: 4,
+    /** Minimum chain segments to stay alive after split (head + 2 followers = 3). */
+    minAliveSegmentCount: 3,
+    /** Relative impact speed required to split a smaller snake at the struck segment. */
+    splitImpulseThreshold: 35,
     showKineticSolverStats: false,
     /** Optional vision cone override for the player snake only; null uses visionCone. */
     playerVisionCone: null,
