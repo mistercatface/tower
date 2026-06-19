@@ -6,7 +6,6 @@ import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { applySnakeHeadGameplay } from "./snakeHeadGameplay.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { mountSnakeHud } from "./snakeHud.js";
-import { resolvePlayerSnakeCombatHud } from "./snakeCombatHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
@@ -38,10 +37,9 @@ export async function setupSnakeGame(state) {
     const playerHeadId = playerSnake.chain.head.id;
     const playerAutosim = autosimsByHeadId.get(playerHeadId);
     const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
-    const getCombatStatus = () => resolvePlayerSnakeCombatHud(playerAutosim, state, registry, autosimsByHeadId);
     const getFoodTimerFraction = () => playerAutosim.getFoodTimerFraction();
     const getFsmDebugLine = config.showSnakeFsmDebug ? () => playerAutosim.getFsmDebugLine() : null;
-    const hud = mountSnakeHud(getSegmentCount, { getCombatStatus, getFoodTimerFraction, getFsmDebugLine });
+    const hud = mountSnakeHud(getSegmentCount, { getFoodTimerFraction, getFsmDebugLine });
     hud.update();
     return {
         head: playerSnake.chain.head,

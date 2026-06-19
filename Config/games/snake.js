@@ -15,9 +15,9 @@ export const SNAKE_GAME_DEFAULTS = {
     /** Optional cap on head roll speed; null uses global groundNavRoll.maxSpeed. */
     headMaxSpeed: 250,
     /** Damping/friction applied to the head. */
-    headFriction: 1.75,
+    headFriction: 2.0,
     /** Damping/friction applied to the follower segments. */
-    segmentFriction: 2.0,
+    segmentFriction: 2.25,
     /** Density of snake follower segments (default ball is 0.007958). */
     segmentDensity: 0.001,
     /** Head acceleration override; null uses global groundNavRoll.accel. */
@@ -50,14 +50,6 @@ export const SNAKE_GAME_DEFAULTS = {
     minAliveSegmentCount: 3,
     /** Relative impact speed required to split a smaller snake at the struck segment. */
     splitImpulseThreshold: 35,
-    /** Visible prey must have size score below self × this ratio (1 = strictly smaller). */
-    preySizeRatio: 1,
-    /** Utility weight for prey vs food when both are visible (0–1). */
-    huntPriority: 0.55,
-    /** Max distance to react to a larger snake with flee (world units); null uses visionCone.range. */
-    fleeRange: null,
-    /** Ticks with no visible threat before flee mode exits to explore. */
-    fleeThreatClearTicks: 20,
     /** Seconds without food before a snake sheds one tail segment and shrinks. */
     starvationIntervalSec: 30,
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */

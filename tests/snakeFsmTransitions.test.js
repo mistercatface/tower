@@ -11,7 +11,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { createSnakePredatorPreyIntent } from "../Libraries/AI/agentIntent/createSnakePredatorPreyIntent.js";
+import { createSnakeForageIntent } from "../Libraries/AI/agentIntent/createSnakeForageIntent.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
@@ -104,15 +104,12 @@ function createMockIntent(state, selfHeadId, registry) {
     const navWalkable = snakeGameNavWalkable(state);
     const headNav = mockHeadNav();
     const { brain, sync } = createSnakeBrain();
-    const intent = createSnakePredatorPreyIntent({
+    const intent = createSnakeForageIntent({
         brain,
         sync,
         headNav,
         resolveVisibleFood: () => null,
         resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
-        selfHeadId,
-        registry,
-        navWalkable,
         rng: () => 0,
     });
     return { intent, headNav };
@@ -142,8 +139,7 @@ describe("snake FSM transitions", () => {
         assert.ok(autosim.getDestination());
     });
 
-    it("seek_food transitions to flee when a larger snake appears", () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+    it("seek_food continues when a larger snake appears", () => {
         resetKineticConstraintIds(1);
         const state = createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, chainOptions(3));
@@ -161,41 +157,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "seek_food");
         large.head.x = small.head.x + 80;
         autosim.tick(1 / 60);
-        assert.equal(autosim.getMode(), "flee");
-        assert.equal(autosim.getLastTransitionReason(), "threat_entered");
-    });
-
-    it("flee holds latched retreat cell through 40 ticks with two oscillating threats", () => {
-        applySnakeGameConfig({ fleeRange: 256, exploreMinTiles: 4, fleeThreatClearTicks: 20 });
-        resetKineticConstraintIds(1);
-        const state = createFsmTestState();
-        const prey = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
-        const threatA = spawnLinkedBallChain(state, { col: 16, row: 10 }, chainOptions(5));
-        const threatB = spawnLinkedBallChain(state, { col: 10, row: 16 }, chainOptions(5));
-        const registry = createSnakeLifecycleRegistry();
-        registerAliveSnake(registry, prey.head.id);
-        registerAliveSnake(registry, threatA.head.id);
-        registerAliveSnake(registry, threatB.head.id);
-        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
-        prey.head.facing = 0;
-        threatA.head.x = prey.head.x + 80;
-        threatA.head.y = prey.head.y;
-        threatB.head.x = prey.head.x;
-        threatB.head.y = prey.head.y + 80;
-        const autosim = createWiredSnakeAutosim(state, { headId: prey.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
-        autosim.start();
-        autosim.tick(1 / 60);
-        const latched = autosim.getDestination();
-        assert.ok(latched);
-        for (let i = 0; i < 40; i++) {
-            threatA.head.x = prey.head.x + 80 + (i % 2 === 0 ? 16 : -16);
-            autosim.tick(1 / 60);
-            assert.equal(autosim.getMode(), "flee");
-            const dest = autosim.getDestination();
-            assert.ok(dest);
-            assert.equal(dest.col, latched.col);
-            assert.equal(dest.row, latched.row);
-        }
+        assert.equal(autosim.getMode(), "seek_food");
     });
 
     it("route failure retries the same latched cell", () => {

@@ -1,5 +1,5 @@
 import { overlayGridCellHighlight, overlayCachedSelectionRing } from "../../Render/overlays/overlayCommands.js";
-const FSM_MODE_RING = { explore: "rgba(120, 220, 255, 0.85)", seek_food: "rgba(255, 220, 80, 0.9)", seek_prey: "rgba(255, 120, 80, 0.9)", flee: "rgba(255, 80, 120, 0.9)" };
+const FSM_MODE_RING = { explore: "rgba(120, 220, 255, 0.85)", seek_food: "rgba(255, 220, 80, 0.9)" };
 export function formatSnakeFsmDebug(snapshot) {
     const dest = snapshot.destCell ? `${snapshot.destCell.col},${snapshot.destCell.row}` : "—";
     const replan = snapshot.replanReason;

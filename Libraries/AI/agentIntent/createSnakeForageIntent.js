@@ -1,18 +1,13 @@
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
-import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
-import { perceiveSnakeIntentWorld, pickRetreatDestination, pickSnakeIntentPolicy } from "../../Game/snake/snakePredatorPrey.js";
-export function createSnakePredatorPreyIntent({ brain, sync, headNav, resolveVisibleFood, resolveExploreCell, selfHeadId, registry, navWalkable, visionCone = null, rng = Math.random }) {
-    const resolvedVision = visionCone ?? getSnakeGameConfig().visionCone;
-    const fleeThreatClearTicks = getSnakeGameConfig().fleeThreatClearTicks;
+import { perceiveSnakeIntentWorld, pickSnakeIntentPolicy } from "../../Game/snake/snakeIntent.js";
+export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFood, resolveExploreCell, rng = Math.random }) {
     let mode = "explore";
     let targetId = null;
-    let threatClearTicks = 0;
     let lastArrivalCol = null;
     let lastArrivalRow = null;
     let lastTransitionReason = "init";
     const resolveCommittedTarget = (state) => {
         if (targetId == null) return null;
-        if (mode === "seek_prey" && !registry.aliveByHeadId.has(targetId)) return null;
         const prop = state.entityRegistry.getLive(targetId);
         if (!prop || prop.isDead) return null;
         return prop;
@@ -37,11 +32,6 @@ export function createSnakePredatorPreyIntent({ brain, sync, headNav, resolveVis
             if (cell) headNav.setDestination(grid, cell.col, cell.row);
             return;
         }
-        if (mode === "flee") {
-            const cell = pickRetreatDestination(seeker, state, registry, selfHeadId, brain.spatial, rng, navWalkable, resolvedVision);
-            if (cell) headNav.setDestination(grid, cell.col, cell.row);
-            return;
-        }
         const target = resolveCommittedTarget(state);
         if (target) {
             const cell = grid.worldToGrid(target.x, target.y);
@@ -55,20 +45,8 @@ export function createSnakePredatorPreyIntent({ brain, sync, headNav, resolveVis
         headNav.clearDestination();
         setDestinationForCommit(seeker, state);
     };
-    const resolvePolicyMode = (rawMode) => {
-        if (mode === "flee" && rawMode !== "flee") {
-            threatClearTicks++;
-            if (threatClearTicks < fleeThreatClearTicks) return "flee";
-            return rawMode;
-        }
-        if (rawMode === "flee") threatClearTicks = 0;
-        else if (mode !== "flee") threatClearTicks = 0;
-        return rawMode;
-    };
     const transitionReason = (prevMode, nextMode) => {
-        if (nextMode === "flee") return "threat_entered";
-        if (prevMode === "flee") return "threat_cleared";
-        if ((prevMode === "seek_prey" || prevMode === "seek_food") && nextMode !== prevMode) return "target_lost";
+        if (prevMode === "seek_food" && nextMode !== prevMode) return "target_lost";
         return `mode_${nextMode}`;
     };
     const perceive = (seeker, state) => {
@@ -77,11 +55,9 @@ export function createSnakePredatorPreyIntent({ brain, sync, headNav, resolveVis
     };
     const transition = (seeker, state) => {
         const grid = state.obstacleGrid;
-        const world = perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
-        const rawPolicy = pickSnakeIntentPolicy(world, seeker);
-        const policyMode = resolvePolicyMode(rawPolicy.mode);
-        const policy = { mode: policyMode, targetId: policyMode === "flee" ? null : rawPolicy.targetId };
-        if ((mode === "seek_prey" || mode === "seek_food") && !resolveCommittedTarget(state)) {
+        const world = perceiveSnakeIntentWorld(seeker, state, resolveVisibleFood);
+        const policy = pickSnakeIntentPolicy(world);
+        if (mode === "seek_food" && !resolveCommittedTarget(state)) {
             commit(seeker, state, policy.mode, policy.targetId, "target_lost");
             return { mode, target: resolveCommittedTarget(state) };
         }
@@ -91,12 +67,12 @@ export function createSnakePredatorPreyIntent({ brain, sync, headNav, resolveVis
         }
         if (headNav.getDestination() && headNav.needsRetry()) {
             lastTransitionReason = "route_failed_retry";
-            if (!headNav.getStatus().replanPending && (mode === "explore" || mode === "flee")) setDestinationForCommit(seeker, state);
+            if (!headNav.getStatus().replanPending && mode === "explore") setDestinationForCommit(seeker, state);
             return { mode, target: resolveCommittedTarget(state) };
         }
         const dest = headNav.getDestination();
         const target = resolveCommittedTarget(state);
-        if (mode === "seek_food" || mode === "seek_prey") {
+        if (mode === "seek_food") {
             if (!target) {
                 commit(seeker, state, policy.mode, policy.targetId, "target_lost");
                 return { mode, target: null };
@@ -121,16 +97,7 @@ export function createSnakePredatorPreyIntent({ brain, sync, headNav, resolveVis
     return {
         perceive,
         transition,
-        onSnakeDied(deadHeadId) {
-            if (targetId !== deadHeadId) return;
-            mode = "explore";
-            targetId = null;
-            threatClearTicks = 0;
-            lastTransitionReason = "target_died";
-            headNav.clearDestination();
-        },
         clear(seeker, state) {
-            threatClearTicks = 0;
             lastArrivalCol = null;
             lastArrivalRow = null;
             lastTransitionReason = "cleared";
@@ -144,7 +111,6 @@ export function createSnakePredatorPreyIntent({ brain, sync, headNav, resolveVis
         resetMode() {
             mode = "explore";
             targetId = null;
-            threatClearTicks = 0;
             lastArrivalCol = null;
             lastArrivalRow = null;
             lastTransitionReason = "reset";

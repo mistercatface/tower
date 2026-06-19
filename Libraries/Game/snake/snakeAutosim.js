@@ -1,7 +1,7 @@
 import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
 import { linkedChainOccupiedCellKeys, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
-import { createSnakePredatorPreyIntent } from "../../AI/agentIntent/createSnakePredatorPreyIntent.js";
+import { createSnakeForageIntent } from "../../AI/agentIntent/createSnakeForageIntent.js";
 import { formatSnakeFsmDebug } from "./snakeFsmDebugOverlays.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
@@ -56,16 +56,12 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         }
         return findNearestVisibleSnakeGoal(gameState, seeker, config.visionCone);
     };
-    const intent = createSnakePredatorPreyIntent({
+    const intent = createSnakeForageIntent({
         brain,
         sync,
         headNav,
         resolveVisibleFood,
         resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
-        selfHeadId: headId,
-        registry,
-        navWalkable,
-        visionCone: visionCone ?? config.visionCone,
         rng,
     });
     let active = false;
@@ -139,9 +135,6 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         },
         getPathOverlay() {
             return intent.headNav.getPathOverlay(resolveSeeker());
-        },
-        onSnakeDied(deadHeadId) {
-            intent.onSnakeDied(deadHeadId);
         },
         tick(dt) {
             if (!active) return;
