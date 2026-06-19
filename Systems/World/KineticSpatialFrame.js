@@ -25,12 +25,13 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this.resetFrame(state.obstacleGrid);
         this._kineticBodies.length = 0;
         let physIdCounter = 0;
-        state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-            if (!prop) return;
-            if (prop.strategy?.spatialRole === "trigger") return;
+        const worldProps = state.worldProps;
+        for (let i = 0; i < worldProps.length; i++) {
+            const prop = worldProps[i];
+            if (prop.strategy?.spatialRole === "trigger") continue;
             this.insertEntity(prop, physIdCounter++);
             if (prop.strategy?.isKinetic) this._kineticBodies.push(prop);
-        });
+        }
         this._nextPhysId = this._kineticBodies.length;
         this.syncActiveKineticBodies();
         this.populatedMembershipGen = state.entityRegistry.membershipGen;

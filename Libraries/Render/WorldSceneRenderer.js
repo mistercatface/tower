@@ -80,12 +80,14 @@ export class WorldSceneRenderer {
         drawFloorOccupancyPowerSources(ctx, input.gameState, viewport, { px, py });
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
-        input.entityRegistry.forEachOfKind("worldProp", (prop) => {
-            if (prop.isDead || prop.strategy?.renderMode !== "floor") return;
-            if (!prop.aabb || !aabbOverlap(prop.aabb, bounds)) return;
+        const worldProps = input.gameState.worldProps;
+        for (let i = 0; i < worldProps.length; i++) {
+            const prop = worldProps[i];
+            if (prop.isDead || prop.strategy?.renderMode !== "floor") continue;
+            if (!prop.aabb || !aabbOverlap(prop.aabb, bounds)) continue;
             prop._distSq = (prop.x - px) ** 2 + (prop.y - py) ** 2;
             visibleObjects.push(prop);
-        });
+        }
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) drawWorldProp(ctx, visibleObjects[i], viewport, drawContext);
     }
