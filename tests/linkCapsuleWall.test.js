@@ -4,7 +4,7 @@ import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { kineticTickFromState } from "../GameState/KineticTick.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
-import { gatherKineticConstraintBuffer, projectIslandLinkCapsulesAgainstWalls } from "../Libraries/Motion/kineticConstraintSolver.js";
+import { gatherKineticConstraintSlab, projectIslandLinkCapsulesAgainstWalls } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Spatial/geometry/WallGeometry.js";
@@ -80,8 +80,8 @@ describe("link capsule wall projection", () => {
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
         tick.frame.getWallCandidates = () => [wall];
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) < 4);
-        const { buffer, groups } = gatherKineticConstraintBuffer(tick);
-        projectIslandLinkCapsulesAgainstWalls(tick, buffer, groups);
+        gatherKineticConstraintSlab(tick);
+        projectIslandLinkCapsulesAgainstWalls(tick);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
     });
     it("collision pipeline clears wedged head-neck link in a 1-cell corridor", () => {

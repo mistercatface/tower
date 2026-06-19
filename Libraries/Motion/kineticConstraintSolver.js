@@ -10,8 +10,10 @@ const LINK_CAPSULE_WALL_PASSES = 2;
 const MAX_KINETIC_CONSTRAINTS = 2048;
 const MAX_ISLAND_GROUPS = 256;
 const CONSTRAINT_EDGE_KEY_SCALE = 1_000_000;
-const kineticConstraintBuffer = {
+export const kineticConstraintSlab = {
     count: 0,
+    groupCount: 0,
+    groupCounts: new Int32Array(MAX_ISLAND_GROUPS),
     bodyA: new Array(MAX_KINETIC_CONSTRAINTS),
     bodyB: new Array(MAX_KINETIC_CONSTRAINTS),
     anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
@@ -30,14 +32,7 @@ const kineticConstraintBuffer = {
     capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS),
     reset() {
         this.count = 0;
-    },
-};
-const kineticConstraintGroups = {
-    count: 0,
-    starts: new Int32Array(MAX_ISLAND_GROUPS),
-    counts: new Int32Array(MAX_ISLAND_GROUPS),
-    reset() {
-        this.count = 0;
+        this.groupCount = 0;
     },
 };
 function constraintEdgeKey(bodyAId, bodyBId) {
@@ -106,38 +101,46 @@ function circleRadiusFromBody(body) {
 function linkCapsuleRadius(bodyA, bodyB) {
     return Math.max(circleRadiusFromBody(bodyA), circleRadiusFromBody(bodyB));
 }
-function appendConstraintEntry(buffer, item) {
-    const idx = buffer.count++;
+function appendConstraintEntry(slab, item) {
+    const idx = slab.count++;
     const bodyA = item.bodyA;
     const bodyB = item.bodyB;
-    buffer.bodyA[idx] = bodyA;
-    buffer.bodyB[idx] = bodyB;
-    buffer.anchorAx[idx] = item.entry.anchorA.x;
-    buffer.anchorAy[idx] = item.entry.anchorA.y;
-    buffer.anchorBx[idx] = item.entry.anchorB.x;
-    buffer.anchorBy[idx] = item.entry.anchorB.y;
-    buffer.restLength[idx] = item.entry.restLength;
-    buffer.massA[idx] = massFromBody(bodyA);
-    buffer.massB[idx] = massFromBody(bodyB);
-    buffer.invMassA[idx] = inverseMassFromBody(bodyA);
-    buffer.invMassB[idx] = inverseMassFromBody(bodyB);
-    buffer.invIA[idx] = bodyA.momentOfInertia ? 1 / bodyA.momentOfInertia : 0;
-    buffer.invIB[idx] = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
-    buffer.pinnedA[idx] = bodyPinnedForContact(bodyA) ? 1 : 0;
-    buffer.pinnedB[idx] = bodyPinnedForContact(bodyB) ? 1 : 0;
-    buffer.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
+    slab.bodyA[idx] = bodyA;
+    slab.bodyB[idx] = bodyB;
+    slab.anchorAx[idx] = item.entry.anchorA.x;
+    slab.anchorAy[idx] = item.entry.anchorA.y;
+    slab.anchorBx[idx] = item.entry.anchorB.x;
+    slab.anchorBy[idx] = item.entry.anchorB.y;
+    slab.restLength[idx] = item.entry.restLength;
+    slab.massA[idx] = massFromBody(bodyA);
+    slab.massB[idx] = massFromBody(bodyB);
+    slab.invMassA[idx] = inverseMassFromBody(bodyA);
+    slab.invMassB[idx] = inverseMassFromBody(bodyB);
+    slab.invIA[idx] = bodyA.momentOfInertia ? 1 / bodyA.momentOfInertia : 0;
+    slab.invIB[idx] = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
+    slab.pinnedA[idx] = bodyPinnedForContact(bodyA) ? 1 : 0;
+    slab.pinnedB[idx] = bodyPinnedForContact(bodyB) ? 1 : 0;
+    slab.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
 }
-function islandConstraintsAsleep(buffer, start, count) {
+function islandConstraintsAsleep(slab, start, count) {
     for (let i = start; i < start + count; i++) {
-        const bodyA = buffer.bodyA[i];
-        const bodyB = buffer.bodyB[i];
+        const bodyA = slab.bodyA[i];
+        const bodyB = slab.bodyB[i];
         if (!bodyA.isSleeping || !bodyB.isSleeping) return false;
     }
     return count > 0;
 }
-export function gatherKineticConstraintBuffer(tick, buffer = kineticConstraintBuffer, groups = kineticConstraintGroups) {
-    buffer.reset();
-    groups.reset();
+function forEachConstraintIsland(slab, fn) {
+    let start = 0;
+    for (let g = 0; g < slab.groupCount; g++) {
+        const count = slab.groupCounts[g];
+        fn(start, count);
+        start += count;
+    }
+}
+export function gatherKineticConstraintSlab(tick) {
+    const slab = kineticConstraintSlab;
+    slab.reset();
     const { frame, world } = tick;
     const session = world.kinetic;
     const plan = ensureKineticIslandPlan(session, frame._kineticBodies);
@@ -155,20 +158,18 @@ export function gatherKineticConstraintBuffer(tick, buffer = kineticConstraintBu
         buckets.get(root).push({ entry, bodyA, bodyB });
     }
     for (const items of buckets.values()) {
-        if (buffer.count >= MAX_KINETIC_CONSTRAINTS || groups.count >= MAX_ISLAND_GROUPS) break;
+        if (slab.count >= MAX_KINETIC_CONSTRAINTS || slab.groupCount >= MAX_ISLAND_GROUPS) break;
         const ordered = orderIslandConstraintItems(items);
-        const start = buffer.count;
+        const groupStart = slab.count;
         for (let i = 0; i < ordered.length; i++) {
-            if (buffer.count >= MAX_KINETIC_CONSTRAINTS) break;
-            appendConstraintEntry(buffer, ordered[i]);
+            if (slab.count >= MAX_KINETIC_CONSTRAINTS) break;
+            appendConstraintEntry(slab, ordered[i]);
         }
-        const count = buffer.count - start;
+        const count = slab.count - groupStart;
         if (count === 0) continue;
-        groups.starts[groups.count] = start;
-        groups.counts[groups.count] = count;
-        groups.count++;
+        slab.groupCounts[slab.groupCount] = count;
+        slab.groupCount++;
     }
-    return { buffer, groups };
 }
 function linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, segment) {
     const reach = capsuleRadius + segment.size * 0.75;
@@ -234,68 +235,67 @@ function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy
         spatialFrame.scheduleKineticActivation(bodyB);
     }
 }
-export function projectIslandLinkCapsulesAgainstWalls(tick, buffer, groups) {
+export function projectIslandLinkCapsulesAgainstWalls(tick) {
+    const slab = kineticConstraintSlab;
     const spatialFrame = tick.frame;
     const walls = [];
-    for (let g = 0; g < groups.count; g++) {
-        const start = groups.starts[g];
-        const count = groups.counts[g];
-        if (islandConstraintsAsleep(buffer, start, count)) continue;
+    forEachConstraintIsland(slab, (start, count) => {
+        if (islandConstraintsAsleep(slab, start, count)) return;
         for (let i = start; i < start + count; i++) {
-            const bodyA = buffer.bodyA[i];
-            const bodyB = buffer.bodyB[i];
+            const bodyA = slab.bodyA[i];
+            const bodyB = slab.bodyB[i];
             gatherLinkWallCandidates(spatialFrame, bodyA, bodyB, walls);
             projectDistanceLinkCapsuleAgainstWalls(
                 bodyA,
                 bodyB,
-                buffer.anchorAx[i],
-                buffer.anchorAy[i],
-                buffer.anchorBx[i],
-                buffer.anchorBy[i],
+                slab.anchorAx[i],
+                slab.anchorAy[i],
+                slab.anchorBx[i],
+                slab.anchorBy[i],
                 walls,
                 spatialFrame,
-                buffer.pinnedA[i],
-                buffer.pinnedB[i],
-                buffer.capsuleRadius[i],
+                slab.pinnedA[i],
+                slab.pinnedB[i],
+                slab.capsuleRadius[i],
             );
         }
-    }
+    });
 }
-function projectDistanceConstraint(buffer, index) {
-    const bodyA = buffer.bodyA[index];
-    const bodyB = buffer.bodyB[index];
-    const wa = worldAnchorFromBody(bodyA, buffer.anchorAx[index], buffer.anchorAy[index]);
-    const wb = worldAnchorFromBody(bodyB, buffer.anchorBx[index], buffer.anchorBy[index]);
+function projectDistanceConstraint(slab, index) {
+    const bodyA = slab.bodyA[index];
+    const bodyB = slab.bodyB[index];
+    const wa = worldAnchorFromBody(bodyA, slab.anchorAx[index], slab.anchorAy[index]);
+    const wb = worldAnchorFromBody(bodyB, slab.anchorBx[index], slab.anchorBy[index]);
     const dx = wb.x - wa.x;
     const dy = wb.y - wa.y;
     const dist = Math.hypot(dx, dy);
     if (dist < 1e-8) return;
     const nx = dx / dist;
     const ny = dy / dist;
-    const error = dist - buffer.restLength[index];
+    const error = dist - slab.restLength[index];
     if (Math.abs(error) < 1e-5) return;
-    separateAlongNormal(bodyA, bodyB, nx, ny, -error, buffer.massA[index], buffer.massB[index], buffer.pinnedA[index], buffer.pinnedB[index]);
+    separateAlongNormal(bodyA, bodyB, nx, ny, -error, slab.massA[index], slab.massB[index], slab.pinnedA[index], slab.pinnedB[index]);
 }
-function solveDistanceConstraintVelocity(buffer, index, spatialFrame, velocityBias) {
-    const bodyA = buffer.bodyA[index];
-    const bodyB = buffer.bodyB[index];
-    const wa = worldAnchorFromBody(bodyA, buffer.anchorAx[index], buffer.anchorAy[index]);
-    const wb = worldAnchorFromBody(bodyB, buffer.anchorBx[index], buffer.anchorBy[index]);
+function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias) {
+    const bodyA = slab.bodyA[index];
+    const bodyB = slab.bodyB[index];
+    const wa = worldAnchorFromBody(bodyA, slab.anchorAx[index], slab.anchorAy[index]);
+    const wb = worldAnchorFromBody(bodyB, slab.anchorBx[index], slab.anchorBy[index]);
     const dx = wb.x - wa.x;
     const dy = wb.y - wa.y;
     const dist = Math.hypot(dx, dy);
     if (dist < 1e-8) return 0;
     const nx = dx / dist;
     const ny = dy / dist;
-    const error = dist - buffer.restLength[index];
-    const invMassA = buffer.invMassA[index];
-    const invMassB = buffer.invMassB[index];
+    const error = dist - slab.restLength[index];
+    const invMassA = slab.invMassA[index];
+    const invMassB = slab.invMassB[index];
     const rax = wa.x - bodyA.x;
     const ray = wa.y - bodyA.y;
     const rbx = wb.x - bodyB.x;
     const rby = wb.y - bodyB.y;
-    const invIA = buffer.invIA[index];
-    const invIB = buffer.invIB[index];
+    const invIA = slab.invIA[index];
+    const invIB = slab.invIB[index];
     const rAn = rax * ny - ray * nx;
     const rBn = rbx * ny - rby * nx;
     const k = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
@@ -317,47 +317,46 @@ function solveDistanceConstraintVelocity(buffer, index, spatialFrame, velocityBi
     spatialFrame.scheduleKineticActivation(bodyB);
     return Math.abs(lambda);
 }
-export function projectKineticConstraintBuffer(buffer, groups) {
-    for (let g = 0; g < groups.count; g++) {
-        const start = groups.starts[g];
-        const count = groups.counts[g];
-        if (islandConstraintsAsleep(buffer, start, count)) continue;
-        for (let i = start; i < start + count; i++) projectDistanceConstraint(buffer, i);
-    }
+export function projectKineticConstraintSlab() {
+    const slab = kineticConstraintSlab;
+    forEachConstraintIsland(slab, (start, count) => {
+        if (islandConstraintsAsleep(slab, start, count)) return;
+        for (let i = start; i < start + count; i++) projectDistanceConstraint(slab, i);
+    });
 }
-export function solveKineticConstraintBuffer(tick, buffer, groups) {
-    if (buffer.count === 0) return;
+export function solveKineticConstraintSlab(tick) {
+    const slab = kineticConstraintSlab;
+    if (slab.count === 0) return;
     const spatialFrame = tick.frame;
     const constraintSettings = getCollisionSettings().kineticConstraints;
     const earlyOut = getCollisionSettings().kineticEarlyOut;
     for (let iter = 0; iter < constraintSettings.iterations; iter++) {
         let maxImpulse = 0;
-        for (let g = 0; g < groups.count; g++) {
-            const start = groups.starts[g];
-            const count = groups.counts[g];
-            if (islandConstraintsAsleep(buffer, start, count)) continue;
+        forEachConstraintIsland(slab, (start, count) => {
+            if (islandConstraintsAsleep(slab, start, count)) return;
             for (let i = start; i < start + count; i++) {
-                const impulse = solveDistanceConstraintVelocity(buffer, i, spatialFrame, constraintSettings.velocityBias);
+                const impulse = solveDistanceConstraintVelocity(slab, i, spatialFrame, constraintSettings.velocityBias);
                 if (impulse > maxImpulse) maxImpulse = impulse;
             }
-        }
+        });
         if (earlyOut.enabled && iter + 1 >= earlyOut.contactMinIterations && maxImpulse <= earlyOut.contactImpulseEpsilon) break;
     }
 }
 export function resolveKineticConstraintPass(tick) {
-    const { buffer, groups } = gatherKineticConstraintBuffer(tick);
-    projectKineticConstraintBuffer(buffer, groups);
-    projectIslandLinkCapsulesAgainstWalls(tick, buffer, groups);
-    solveKineticConstraintBuffer(tick, buffer, groups);
+    gatherKineticConstraintSlab(tick);
+    projectKineticConstraintSlab();
+    projectIslandLinkCapsulesAgainstWalls(tick);
+    solveKineticConstraintSlab(tick);
 }
-export function measureConstraintBufferMaxError(buffer) {
+export function measureConstraintSlabMaxError() {
+    const slab = kineticConstraintSlab;
     let max = 0;
-    for (let i = 0; i < buffer.count; i++) {
-        const bodyA = buffer.bodyA[i];
-        const bodyB = buffer.bodyB[i];
-        const wa = worldAnchorFromBody(bodyA, buffer.anchorAx[i], buffer.anchorAy[i]);
-        const wb = worldAnchorFromBody(bodyB, buffer.anchorBx[i], buffer.anchorBy[i]);
-        const error = Math.abs(Math.hypot(wb.x - wa.x, wb.y - wa.y) - buffer.restLength[i]);
+    for (let i = 0; i < slab.count; i++) {
+        const bodyA = slab.bodyA[i];
+        const bodyB = slab.bodyB[i];
+        const wa = worldAnchorFromBody(bodyA, slab.anchorAx[i], slab.anchorAy[i]);
+        const wb = worldAnchorFromBody(bodyB, slab.anchorBx[i], slab.anchorBy[i]);
+        const error = Math.abs(Math.hypot(wb.x - wa.x, wb.y - wa.y) - slab.restLength[i]);
         if (error > max) max = error;
     }
     return max;

@@ -1,11 +1,11 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import {
-    gatherKineticConstraintBuffer,
-    measureConstraintBufferMaxError,
+    gatherKineticConstraintSlab,
+    measureConstraintSlabMaxError,
     projectIslandLinkCapsulesAgainstWalls,
-    projectKineticConstraintBuffer,
-    solveKineticConstraintBuffer,
+    projectKineticConstraintSlab,
+    solveKineticConstraintSlab,
 } from "../../Motion/kineticConstraintSolver.js";
 import { gatherKineticContactPairs, resolveKineticContactPass, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
@@ -71,7 +71,7 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = g
         }
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
-        const { buffer: constraintBuffer, groups: constraintGroups } = gatherKineticConstraintBuffer(tick);
+        gatherKineticConstraintSlab(tick);
         let persistedPairs = null;
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;
@@ -87,9 +87,9 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = g
                 resolveKineticContactPass(tick);
                 applyContactSideEffects(tick, kineticContactBuffer);
             }
-            projectKineticConstraintBuffer(constraintBuffer, constraintGroups);
-            projectIslandLinkCapsulesAgainstWalls(tick, constraintBuffer, constraintGroups);
-            solveKineticConstraintBuffer(tick, constraintBuffer, constraintGroups);
+            projectKineticConstraintSlab();
+            projectIslandLinkCapsulesAgainstWalls(tick);
+            solveKineticConstraintSlab(tick);
             for (let i = 0; i < activeBodies.length; i++) {
                 const prop = activeBodies[i];
                 if (!prop.strategy?.isKinetic) continue;
@@ -101,7 +101,7 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = g
             if (earlyOut.enabled && outerIterationsRun >= earlyOut.minIterations) {
                 if (!activeBodiesMatchKineticSlab(activeBodies)) continue;
                 snapshotActiveBroadphaseBounds(activeBodies);
-                const maxError = measureConstraintBufferMaxError(constraintBuffer);
+                const maxError = measureConstraintSlabMaxError();
                 const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
                 if (maxError <= earlyOut.constraintErrorEpsilon && maxSpeedSq <= earlyOut.velocityEpsilonSq) break;
             }
