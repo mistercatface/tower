@@ -4,7 +4,8 @@ import { linkedChainOccupiedCellKeys, spawnLinkedBallChain } from "../../Sandbox
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { SANDBOX_DEFAULT_FACTION } from "../../Sandbox/sandboxFaction.js";
 import { withSeededRandom } from "../../Random/index.js";
-import { applyPlayAreaConfig, generateLabCaverns, generateLabRailCaverns } from "../../../Apps/Editor/world/mapWorld.js";
+import { applyPlayAreaConfig, generateLabCaverns, generateLabRailBspMaze, generateLabRailCaverns, clearSnakeRegionPaddingStrip } from "../../../Apps/Editor/world/mapWorld.js";
+import { commitBoundaryEdit } from "../../Sandbox/boundaryEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
@@ -67,20 +68,40 @@ export async function generateSnakeSplitMap(state) {
     const prevCavernIterations = cavernConfig.iterations;
     const prevRailFillChance = railConfig.fillChance;
     const prevRailIterations = railConfig.iterations;
+    const prevRailEdgeThickness = railConfig.edgeThickness;
     cavernConfig.wallHeightLevel = cavern.wallHeightLevel;
     railConfig.wallHeightLevel = config.rail.wallHeightLevel;
     if (cavern.fillChance != null) cavernConfig.fillChance = cavern.fillChance;
     if (cavern.iterations != null) cavernConfig.iterations = cavern.iterations;
     if (config.rail.fillChance != null) railConfig.fillChance = config.rail.fillChance;
     if (config.rail.iterations != null) railConfig.iterations = config.rail.iterations;
+    if (config.rail.edgeThickness != null) railConfig.edgeThickness = config.rail.edgeThickness;
     await generateLabCaverns(state, { openBoundarySides: { south: true }, openBoundaryRows: cavern.openBoundaryRows ?? 2 });
-    await generateLabRailCaverns(state, { openBoundarySides: { north: true } });
+    const rail = config.rail;
+    if (rail.generator === "bspMaze")
+        await generateLabRailBspMaze(state, {
+            railWallHeightLevel: rail.wallHeightLevel,
+            railWallThicknessLevel: rail.edgeThickness,
+            roomSizeMin: rail.roomSizeMin,
+            roomSizeMax: rail.roomSizeMax,
+            roomMargin: rail.roomMargin,
+            corridorWidthMin: rail.corridorWidthMin ?? 1,
+            corridorWidthMax: rail.corridorWidthMax ?? 2,
+            extraLinkRatio: rail.extraLinkRatio,
+            northReserveRows: cavern.openBoundaryRows ?? 3,
+        });
+    else await generateLabRailCaverns(state, { openBoundarySides: { north: true } });
+    const paddingBounds = clearSnakeRegionPaddingStrip(state, cavern.regionPaddingCells ?? 4);
+    commitBoundaryEdit(state, paddingBounds);
+    state.worldSurfaces.invalidateGridBounds(paddingBounds, state);
+    await state.navigation.onObstaclesChanged(paddingBounds);
     cavernConfig.wallHeightLevel = prevCavernWallHeightLevel;
     railConfig.wallHeightLevel = prevRailWallHeightLevel;
     cavernConfig.fillChance = prevCavernFillChance;
     cavernConfig.iterations = prevCavernIterations;
     railConfig.fillChance = prevRailFillChance;
     railConfig.iterations = prevRailIterations;
+    railConfig.edgeThickness = prevRailEdgeThickness;
 }
 function resolveSnakePlayerSpawnBounds(state) {
     const { cavernConfig, railConfig, playConfig } = state.editor;

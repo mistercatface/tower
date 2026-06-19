@@ -5,9 +5,9 @@ import { buildRoomInteriorBlockedGridLocal, cellInsideAnyRoom, corridorPathFootp
 /** @typedef {{ c: number, r: number, side: number }} WallHole */
 /** @typedef {{ c: number, r: number }} CorridorCell */
 /** @typedef {{ c0: number, c1: number, r0: number, r1: number }} RoomRect */
-/** @param {RoomRect[]} rooms @param {number} [pad] */
-export function createCorridorLaneRouter(rooms, pad = 12) {
-    const bounds = corridorSearchBounds(rooms, pad);
+/** @param {RoomRect[]} rooms @param {number} [pad] @param {import("./corridorWalkGrid.js").CorridorSearchBounds | null} [searchBounds] */
+export function createCorridorLaneRouter(rooms, pad = 12, searchBounds = null) {
+    const bounds = searchBounds ?? corridorSearchBounds(rooms, pad);
     const pathfinder = createCorridorGridPathfinder(bounds);
     pathfinder.setRoomBlocked(buildRoomInteriorBlockedGridLocal(bounds.originCol, bounds.originRow, bounds.cols, bounds.rows, rooms));
     return pathfinder;

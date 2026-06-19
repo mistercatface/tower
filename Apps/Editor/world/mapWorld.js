@@ -3,6 +3,9 @@ import { gridSettings } from "../../../Config/world.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
+import { bakeSnakeRailBspMaze } from "../../../Libraries/Game/snake/snakeRailBspMaze.js";
+import { commitBoundaryEdit } from "../../../Libraries/Sandbox/boundaryEdit.js";
+import { stampRailWallsBatch } from "../../../Libraries/Sandbox/gridWallEdit.js";
 import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
@@ -150,13 +153,88 @@ function clearCavernOccupancyBoundaryStrip(cells, cols, rows, side, stripRows) {
             for (let lc = 0; lc < cols; lc++) cells[strip * cols + lc] = 0;
         }
 }
-/** @param {import("../TileLabEditorState.js").TileLabEditorState["cavernConfig"]} config @returns {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
+function carveCavernSouthVent(cells, cols, rows, stripRows) {
+    const depth = Math.max(1, Math.round(stripRows));
+    const startRow = rows - depth;
+    const seen = new Uint8Array(cols * rows);
+    const queue = [];
+    for (let pass = 0; pass < 32; pass++) {
+        seen.fill(0);
+        const components = [];
+        for (let lr = 0; lr < rows; lr++)
+            for (let lc = 0; lc < cols; lc++) {
+                const idx = lr * cols + lc;
+                if (cells[idx] !== 0 || seen[idx]) continue;
+                const members = [];
+                seen[idx] = 1;
+                queue.length = 0;
+                queue.push(idx);
+                while (queue.length) {
+                    const cur = queue.pop();
+                    members.push(cur);
+                    const cr = (cur / cols) | 0;
+                    const cc = cur - cr * cols;
+                    if (cc > 0) {
+                        const left = cur - 1;
+                        if (cells[left] === 0 && !seen[left]) {
+                            seen[left] = 1;
+                            queue.push(left);
+                        }
+                    }
+                    if (cc + 1 < cols) {
+                        const right = cur + 1;
+                        if (cells[right] === 0 && !seen[right]) {
+                            seen[right] = 1;
+                            queue.push(right);
+                        }
+                    }
+                    if (cr > 0) {
+                        const up = cur - cols;
+                        if (cells[up] === 0 && !seen[up]) {
+                            seen[up] = 1;
+                            queue.push(up);
+                        }
+                    }
+                    if (cr + 1 < rows) {
+                        const down = cur + cols;
+                        if (cells[down] === 0 && !seen[down]) {
+                            seen[down] = 1;
+                            queue.push(down);
+                        }
+                    }
+                }
+                let touchesSouth = false;
+                for (let i = 0; i < members.length; i++)
+                    if ((members[i] / cols) | (0 >= startRow)) {
+                        touchesSouth = true;
+                        break;
+                    }
+                components.push({ touchesSouth, sample: members[0] });
+            }
+        let carved = false;
+        for (let ci = 0; ci < components.length; ci++) {
+            const component = components[ci];
+            if (component.touchesSouth) continue;
+            carved = true;
+            const targetRow = (component.sample / cols) | 0;
+            const targetCol = component.sample - targetRow * cols;
+            const exitCol = (cols / 2) | 0;
+            const exitRow = rows - depth;
+            for (let lc = Math.min(exitCol, targetCol); lc <= Math.max(exitCol, targetCol); lc++) cells[exitRow * cols + lc] = 0;
+            for (let lr = exitRow; lr <= targetRow; lr++) cells[lr * cols + targetCol] = 0;
+        }
+        if (!carved) return;
+    }
+}
 function generateCavernOccupancy(config, { openBoundarySides = null, openBoundaryRows = 1 } = {}) {
     const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(config);
     let cells = fillRandomGrid(cols, rows, config.fillChance);
     cells = runCellularAutomata(cols, rows, cells, { iterations: config.iterations, scratch: new Uint8Array(cols * rows) });
     applyMapGenShapeMask(cells, cols, rows, config, originCol, originRow);
-    if (openBoundarySides?.south) clearCavernOccupancyBoundaryStrip(cells, cols, rows, "south", openBoundaryRows);
+    if (openBoundarySides?.south) {
+        clearCavernOccupancyBoundaryStrip(cells, cols, rows, "south", openBoundaryRows);
+        carveCavernSouthVent(cells, cols, rows, openBoundaryRows);
+    }
     if (openBoundarySides?.north) clearCavernOccupancyBoundaryStrip(cells, cols, rows, "north", openBoundaryRows);
     return { originCol, originRow, cols, rows, cells };
 }
@@ -178,6 +256,103 @@ export async function generateLabCaverns(state, { openBoundarySides = null, open
         const cleared = clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
         if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
     }
+    state.worldSurfaces.invalidateGridBounds(damageBounds, state);
+    await state.navigation.onObstaclesChanged(damageBounds);
+    state.floorSeed = state.mapSeed;
+    state.worldSurfaces.clearBakeCache();
+    await rebuildLabMapCaches(state);
+}
+function clearRailStampCellBounds(grid, startCol, endCol, startRow, endRow) {
+    for (let r = startRow; r <= endRow; r++)
+        for (let c = startCol; c <= endCol; c++) {
+            const idx = c + r * grid.cols;
+            if (grid.grid[idx] !== 0) grid.grid[idx] = 0;
+            if (grid.edgeStore.hasAnyAtIdx(idx)) grid.clearCellEdges(c, r);
+        }
+}
+function clearMapGenRectWalkable(state, config) {
+    const grid = state.obstacleGrid;
+    const cellSize = gridSettings.cellSize;
+    const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(config);
+    const { col: baseCol, row: baseRow } = grid.worldToGrid(originCol * cellSize, originRow * cellSize);
+    const startCol = Math.max(0, baseCol);
+    const endCol = Math.min(grid.cols - 1, baseCol + cols - 1);
+    const startRow = Math.max(0, baseRow);
+    const endRow = Math.min(grid.rows - 1, baseRow + rows - 1);
+    clearRailStampCellBounds(grid, startCol, endCol, startRow, endRow);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    return { startCol, endCol, startRow, endRow };
+}
+export function clearSnakeRegionPaddingStrip(state, paddingCells) {
+    const { cavernConfig, playConfig } = state.editor;
+    const padding = Math.max(0, Math.round(paddingCells));
+    const innerRows = Math.max(2, playConfig.playAreaRows - padding);
+    const topRows = Math.floor(innerRows / 2);
+    return clearMapGenRectWalkable(state, {
+        boundsMode: "rect",
+        boundsCol: cavernConfig.boundsCol,
+        boundsRow: cavernConfig.boundsRow + topRows,
+        boundsCols: cavernConfig.boundsCols,
+        boundsRows: padding,
+    });
+}
+function clearRailZoneNorthStrip(grid, startCol, endCol, startRow, endRow, stripRows) {
+    const depth = Math.max(1, Math.round(stripRows));
+    const lastRow = Math.min(endRow, startRow + depth - 1);
+    for (let r = startRow; r <= lastRow; r++)
+        for (let c = startCol; c <= endCol; c++) {
+            grid.grid[c + r * grid.cols] = 0;
+            grid.clearCellEdges(c, r);
+        }
+    return { startCol, endCol, startRow, endRow: lastRow };
+}
+function stampGlobalRailWalls(state, rails) {
+    const grid = state.obstacleGrid;
+    const cellSize = gridSettings.cellSize;
+    const gridRails = [];
+    for (let i = 0; i < rails.length; i++) {
+        const wall = rails[i];
+        const { col, row } = grid.worldToGrid(wall.col * cellSize, wall.row * cellSize);
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
+        gridRails.push({ col, row, side: wall.side, heightLevel: wall.heightLevel, thicknessLevel: wall.thicknessLevel });
+    }
+    stampRailWallsBatch(state, gridRails);
+}
+export async function generateLabRailBspMaze(state, options = {}) {
+    const { railConfig } = state.editor;
+    const cellSize = gridSettings.cellSize;
+    const stampBoundsAabb = getMapGenBoundsAabb(railConfig, cellSize);
+    ensureLabObstacleGridCoverage(state, stampBoundsAabb);
+    const grid = state.obstacleGrid;
+    const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(railConfig);
+    const { col: baseCol, row: baseRow } = grid.worldToGrid(originCol * cellSize, originRow * cellSize);
+    const startCol = Math.max(0, baseCol);
+    const endCol = Math.min(grid.cols - 1, baseCol + cols - 1);
+    const startRow = Math.max(0, baseRow);
+    const endRow = Math.min(grid.rows - 1, baseRow + rows - 1);
+    clearRailStampCellBounds(grid, startCol, endCol, startRow, endRow);
+    const rails = bakeSnakeRailBspMaze(
+        { originCol, originRow, cols, rows },
+        {
+            railWallHeightLevel: options.railWallHeightLevel ?? railConfig.wallHeightLevel,
+            railWallThicknessLevel: options.railWallThicknessLevel ?? railConfig.edgeThickness,
+            roomSizeMin: options.roomSizeMin,
+            roomSizeMax: options.roomSizeMax,
+            roomMargin: options.roomMargin,
+            corridorWidthMin: options.corridorWidthMin,
+            corridorWidthMax: options.corridorWidthMax,
+            extraLinkRatio: options.extraLinkRatio,
+            northReserveRows: options.northReserveRows,
+        },
+        state.mapSeed,
+    );
+    stampGlobalRailWalls(state, rails);
+    const northRows = Math.max(1, Math.round(options.northReserveRows ?? 3));
+    const northBounds = clearRailZoneNorthStrip(grid, startCol, endCol, startRow, endRow, northRows);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    let damageBounds = { startCol, endCol, startRow, endRow };
+    damageBounds = unionCellBounds(damageBounds, northBounds);
+    commitBoundaryEdit(state, northBounds);
     state.worldSurfaces.invalidateGridBounds(damageBounds, state);
     await state.navigation.onObstaclesChanged(damageBounds);
     state.floorSeed = state.mapSeed;

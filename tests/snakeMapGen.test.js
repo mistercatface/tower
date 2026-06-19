@@ -110,6 +110,18 @@ function countVisitedInBounds(visited, state, config) {
     return { total, reached, ratio: total ? reached / total : 0 };
 }
 
+function pickCavernSouthOpenCell(state, openCavernCells) {
+    const { cavernConfig } = state.editor;
+    const southGlobalRow = cavernConfig.boundsRow + cavernConfig.boundsRows - 1;
+    const cellSize = state.obstacleGrid.cellSize;
+    for (let i = 0; i < openCavernCells.length; i++) {
+        const cell = openCavernCells[i];
+        const { y } = state.obstacleGrid.gridToWorld(cell.col, cell.row);
+        if (Math.round(y / cellSize) === southGlobalRow) return cell;
+    }
+    return openCavernCells[0] ?? null;
+}
+
 async function analyzeSnakeSplitMap(mapSeed, playAreaCells = 64) {
     applySnakeGameConfig();
     const state = createSnakeMapGenTestState(playAreaCells, mapSeed);
@@ -120,7 +132,7 @@ async function analyzeSnakeSplitMap(mapSeed, playAreaCells = 64) {
     const padConfig = paddingBounds(state);
     const padding = countWalkableInBounds(state, padConfig);
     const openCavernCells = collectOpenCavernCells(state);
-    const start = openCavernCells[Math.floor(openCavernCells.length / 2)] ?? openCavernCells[0];
+    const start = pickCavernSouthOpenCell(state, openCavernCells);
     const visited = start ? floodFillWalkable(state, start.col, start.row) : new Set();
     const padReach = countVisitedInBounds(visited, state, padConfig);
     const railReach = countVisitedInBounds(visited, state, railConfig);

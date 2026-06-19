@@ -68,8 +68,8 @@ function orderedAttachmentPairs(parentGroups, childGroups, rng) {
  * @returns {CorridorBundle | null}
  */
 export function solveCorridorBundle(params) {
-    const { roomA, roomB, allRooms, corridorWidths, egressCells, existingPaths = [], existingPathWidths = [], rng, options = {} } = params;
-    const pathfinder = createCorridorLaneRouter(allRooms);
+    const { roomA, roomB, allRooms, corridorWidths, egressCells, existingPaths = [], existingPathWidths = [], rng, options = {}, searchBounds = null } = params;
+    const pathfinder = createCorridorLaneRouter(allRooms, 12, searchBounds);
     const foreignOccupied = corridorPathsToOccupiedKeysWithWidths(existingPaths, existingPathWidths, FULL_FOOTPRINT);
     /** @type {WallHoleGroup[]} */
     const pickedParent = [];

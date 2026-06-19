@@ -50,7 +50,7 @@ function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms) {
     }
 }
 /** @param {Uint8Array} mask @param {number} cols @param {number} rows @param {number} originCol @param {number} originRow @param {number} heightLevel @param {number} thicknessLevel */
-function railWallsFromFloorMask(mask, cols, rows, originCol, originRow, heightLevel, thicknessLevel) {
+export function railWallsFromFloorMask(mask, cols, rows, originCol, originRow, heightLevel, thicknessLevel) {
     /** @type {RailWall[]} */
     const walls = [];
     /** @param {number} c @param {number} r @param {number} side */

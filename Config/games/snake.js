@@ -19,7 +19,7 @@ export const SNAKE_GAME_DEFAULTS = {
     maxRadius: 4,
     radiusPerMeal: 0.25,
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1, regionPaddingCells: 4, fillChance: 0.38, iterations: 3, openBoundaryRows: 3 },
-    rail: { wallHeightLevel: 1, fillChance: 0.34, iterations: 2 },
+    rail: { generator: "bspMaze", wallHeightLevel: 1, edgeThickness: 1, roomSizeMin: 5, roomSizeMax: 12, roomMargin: 1, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
     showVisionCones: true,
     showAllSnakeVisionCones: false,
     visionCone: { halfAngle: Math.PI / 3, range: 128, stroke: "rgba(120, 220, 255, 0.85)", visibleGoalStroke: "rgba(255, 220, 80, 0.95)", lineWidth: 1 },
