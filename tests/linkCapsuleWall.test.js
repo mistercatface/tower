@@ -105,7 +105,7 @@ describe("link capsule wall projection", () => {
         addDistanceConstraint(state.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 16 });
         const frame = setupActiveFrame([bodyA, bodyB], [wall]);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) < 4);
-        const { buffer, groups } = gatherKineticConstraintBuffer(state, frame);
+        const { buffer, groups } = gatherKineticConstraintBuffer(state.kinetic, state.entityRegistry, frame);
         projectIslandLinkCapsulesAgainstWalls(frame, buffer, groups);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
     });

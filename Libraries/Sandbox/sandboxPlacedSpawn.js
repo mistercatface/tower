@@ -86,5 +86,5 @@ export function collectPlacedSandboxPropEntries(state) {
     return entries;
 }
 export function removeSandboxWorldProp(state, prop, spatialFrame = kineticSpatial) {
-    removeWorldPropFromState(state, prop, spatialFrame);
+    removeWorldPropFromState(state, prop, spatialFrame, getSandboxEntityMeta(state));
 }

@@ -304,19 +304,19 @@ export class EntityRegistry {
         this._queryCache.clear();
     }
 }
-/** @param {object} state @param {object} prop */
-export function addWorldPropToState(state, prop) {
-    state.worldProps.push(prop);
-    state.entityRegistry.register("worldProp", prop);
+/** @param {object} world @param {object} prop */
+export function addWorldPropToState(world, prop) {
+    world.worldProps.push(prop);
+    world.entityRegistry.register("worldProp", prop);
 }
-/** @param {object} state @param {object} prop @param {object} [spatialFrame] */
-export function removeWorldPropFromState(state, prop, spatialFrame = kineticSpatial) {
-    const index = state.worldProps.indexOf(prop);
-    if (index >= 0) state.worldProps.splice(index, 1);
-    state.entityRegistry.unregister(prop);
-    getSandboxEntityMeta(state)?.delete(prop.id);
-    pruneKineticConstraintsForBody(state.kinetic, prop.id);
-    spatialFrame.evictKineticProp(prop, state);
+/** @param {object} world @param {object} prop @param {object} [spatialFrame] @param {object | null} [entityMeta] */
+export function removeWorldPropFromState(world, prop, spatialFrame = kineticSpatial, entityMeta = null) {
+    const index = world.worldProps.indexOf(prop);
+    if (index >= 0) world.worldProps.splice(index, 1);
+    world.entityRegistry.unregister(prop);
+    entityMeta?.delete(prop.id);
+    pruneKineticConstraintsForBody(world.kinetic, prop.id);
+    spatialFrame.evictKineticProp(prop, world.kinetic);
 }
 /** @param {object} state */
 export function clearWorldPropsInState(state) {

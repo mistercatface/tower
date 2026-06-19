@@ -97,7 +97,7 @@ describe("snake combat min length", () => {
         const frame = setupSnakeFrame(props);
         const pairs = gatherKineticContactPairs(frame, state.kinetic);
         resolveKineticContactPassWithPairs(frame, pairs);
-        applyKineticContactSideEffects(state, frame, kineticContactBuffer);
+        applyKineticContactSideEffects(state, frame, kineticContactBuffer, { snakeGame: state.sandbox.snakeGame, state });
         assert.ok(kineticContactBuffer.count >= 1);
         const preyHeadId = prey.chain.head.id;
         const splitHappened = registry.inertByLeadId.size > 0;
@@ -130,7 +130,7 @@ describe("snake combat min length", () => {
         const frame = setupSnakeFrame(props);
         const pairs = gatherKineticContactPairs(frame, state.kinetic);
         resolveKineticContactPassWithPairs(frame, pairs);
-        applyKineticContactSideEffects(state, frame, kineticContactBuffer);
+        applyKineticContactSideEffects(state, frame, kineticContactBuffer, { snakeGame: state.sandbox.snakeGame, state });
         assert.ok(kineticContactBuffer.count >= 1);
         assert.equal(registry.inertByLeadId.size, 0);
         assert.equal(registry.deadHeadIds.size, 0);

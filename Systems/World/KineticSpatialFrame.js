@@ -33,7 +33,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
      * Insert or re-insert a kinetic prop after mid-tick spawn or geometry change.
      * Keeps broadphase, neighbor queries, and registry view gen in sync for the rest of the frame.
      */
-    admitKineticProp(prop, state) {
+    admitKineticProp(prop, world) {
         if (!prop || prop.strategy?.spatialRole === "trigger") return;
         const isNew = prop._physId === undefined;
         if (isNew) {
@@ -45,8 +45,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this.frameId = (this.frameId + 1) | 0;
         this._wallCache.clear();
         if (prop.strategy?.isKinetic) this.activateKineticBody(prop);
-        this.populatedMembershipGen = state.entityRegistry.membershipGen;
-        bumpKineticTopologyGeneration(state.kinetic);
+        this.populatedMembershipGen = world.entityRegistry.membershipGen;
+        bumpKineticTopologyGeneration(world.kinetic);
     }
     syncActiveKineticBodies() {
         const active = this._activeKineticBodies;
@@ -128,7 +128,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (!bodies.length) return;
         super.reindexKineticBodies(bodies);
     }
-    evictKineticProp(prop, state) {
+    evictKineticProp(prop, session) {
         if (!prop || prop._physId === undefined) return;
         islandRootByPhysId[prop._physId] = -1;
         this.entityGrid.remove(prop);
@@ -141,7 +141,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (prop._neighbors) prop._neighbors.length = 0;
         this.frameId = (this.frameId + 1) | 0;
         this._wallCache.clear();
-        if (state) bumpKineticTopologyGeneration(state.kinetic);
+        if (session) bumpKineticTopologyGeneration(session);
     }
 }
 /** Shared frame for simulation ticks. Call begin() once per update. */

@@ -4,7 +4,7 @@ import { resolveKineticContactPass, kineticContactBuffer } from "./kineticContac
 import { kineticPairBodiesAt } from "./kineticPairStream.js";
 import { kineticBodySlab } from "./kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
-export function applyKineticContactSideEffects(state, spatialFrame, contacts) {
+export function applyKineticContactSideEffects(world, spatialFrame, contacts, { snakeGame, state } = {}) {
     if (contacts.count === 0) return;
     const slab = kineticBodySlab;
     for (let i = 0; i < contacts.count; i++) {
@@ -25,11 +25,11 @@ export function applyKineticContactSideEffects(state, spatialFrame, contacts) {
             hitY = bodyA.y + contacts.ray[i];
         }
         const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
-        tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relSpeed, spatialFrame);
+        tryFractureKineticContact(world, bodyA, bodyB, hitX, hitY, relSpeed, spatialFrame);
     }
-    if (state.sandbox?.snakeGame) resolveSnakeCombatFromContacts(state, spatialFrame, contacts, state.sandbox.snakeGame);
+    if (snakeGame && state) resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame);
 }
-export function resolveKineticContactPassWithEffects(state, spatialFrame) {
-    resolveKineticContactPass(spatialFrame, state.kinetic);
-    applyKineticContactSideEffects(state, spatialFrame, kineticContactBuffer);
+export function resolveKineticContactPassWithEffects(world, spatialFrame, gameContext = {}) {
+    resolveKineticContactPass(spatialFrame, world.kinetic);
+    applyKineticContactSideEffects(world, spatialFrame, kineticContactBuffer, gameContext);
 }

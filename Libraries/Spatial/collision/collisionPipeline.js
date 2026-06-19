@@ -1,4 +1,5 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
+import { worldSimFromState } from "../../../GameState/WorldSim.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import {
     gatherKineticConstraintBuffer,
@@ -54,15 +55,14 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
  * @param {{
  *   resolveWalls: (entity: object, spatialFrame: object) => void,
  *   kineticIterations?: number,
- *   applyContactSideEffects?: (state: object, spatialFrame: object, contacts: object) => void,
+ *   applyContactSideEffects?: (world: object, spatialFrame: object, contacts: object) => void,
  * }} hooks
  */
-export function runCollisionPipeline(
-    state,
-    spatialFrame,
-    { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations, applyContactSideEffects = applyKineticContactSideEffects } = {},
-) {
-    const session = state.kinetic;
+export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations, applyContactSideEffects } = {}) {
+    const world = worldSimFromState(state);
+    const session = world.kinetic;
+    const gameContext = { snakeGame: state.sandbox?.snakeGame, state };
+    if (!applyContactSideEffects) applyContactSideEffects = (w, frame, contacts) => applyKineticContactSideEffects(w, frame, contacts, gameContext);
     const earlyOut = getCollisionSettings().kineticEarlyOut;
     const activeBodies = spatialFrame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;
@@ -74,7 +74,7 @@ export function runCollisionPipeline(
         }
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
-        const { buffer: constraintBuffer, groups: constraintGroups } = gatherKineticConstraintBuffer(state, spatialFrame);
+        const { buffer: constraintBuffer, groups: constraintGroups } = gatherKineticConstraintBuffer(session, world.entityRegistry, spatialFrame);
         let persistedPairs = null;
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;
@@ -85,10 +85,10 @@ export function runCollisionPipeline(
                     persistedPairs = persistedKineticPairBuffer;
                 }
                 resolveKineticContactPassWithPairs(spatialFrame, persistedPairs);
-                applyContactSideEffects(state, spatialFrame, kineticContactBuffer);
+                applyContactSideEffects(world, spatialFrame, kineticContactBuffer);
             } else {
                 resolveKineticContactPass(spatialFrame, session);
-                applyContactSideEffects(state, spatialFrame, kineticContactBuffer);
+                applyContactSideEffects(world, spatialFrame, kineticContactBuffer);
             }
             projectKineticConstraintBuffer(constraintBuffer, constraintGroups);
             projectIslandLinkCapsulesAgainstWalls(spatialFrame, constraintBuffer, constraintGroups);
@@ -109,7 +109,7 @@ export function runCollisionPipeline(
                 if (maxError <= earlyOut.constraintErrorEpsilon && maxSpeedSq <= earlyOut.velocityEpsilonSq) break;
             }
         }
-        state.kinetic.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
+        session.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
     }
     if (hasActiveBodies)
         for (let i = 0; i < activeBodies.length; i++) {

@@ -124,10 +124,10 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     const local = worldHitToPropLocal(prop, worldHitX, worldHitY);
     return peelSolidFracture(prop, local.x, local.y, impactForce);
 }
-function evictFracturedProp(state, prop, spatialFrame) {
-    removeWorldPropFromState(state, prop, spatialFrame);
+function evictFracturedProp(world, prop, spatialFrame) {
+    removeWorldPropFromState(world, prop, spatialFrame);
 }
-export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relativeSpeed, spatialFrame) {
+export function tryFractureKineticContact(world, bodyA, bodyB, hitX, hitY, relativeSpeed, spatialFrame) {
     const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
     for (let i = 0; i < 2; i++) {
         const prop = i === 0 ? bodyA : bodyB;
@@ -141,12 +141,12 @@ export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relat
         const fracture = fracturePropOnImpact(prop, hitX, hitY, force);
         if (!fracture) continue;
         if (isGlassFracture(prop)) {
-            evictFracturedProp(state, prop, spatialFrame);
-            prop.spawnGlassShatter(state, fracture, spatialFrame);
+            evictFracturedProp(world, prop, spatialFrame);
+            prop.spawnGlassShatter(world, fracture, spatialFrame);
         } else {
             wakeKineticBody(prop);
-            prop.spawnFractureFragments(state, fracture, spatialFrame);
-            spatialFrame.admitKineticProp(prop, state);
+            prop.spawnFractureFragments(world, fracture, spatialFrame);
+            spatialFrame.admitKineticProp(prop, world);
         }
         return;
     }

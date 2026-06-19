@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { advanceKineticSleep } from "../Libraries/Motion/kineticSleep.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
@@ -24,7 +25,7 @@ function mockCircleProp(x, y, radius) {
     };
 }
 const mockGrid = { minX: -500, maxX: 500, minY: -500, maxY: 500 };
-const mockState = { entityRegistry: { membershipGen: 1 } };
+const mockState = { entityRegistry: { membershipGen: 1 }, kinetic: createKineticSession() };
 describe("active kinetic bodies", () => {
     it("syncActiveKineticBodies keeps only awake bodies", () => {
         const frame = new KineticSpatialFrame(50);

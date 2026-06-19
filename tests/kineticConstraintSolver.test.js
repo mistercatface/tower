@@ -62,10 +62,10 @@ describe("kinetic constraint solver", () => {
         const constraint = addDistanceConstraint(state.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength });
         bodyB.x = 50;
         const frame = setupActiveFrame([bodyA, bodyB]);
-        for (let pass = 0; pass < 8; pass++) resolveKineticConstraintPass(frame, state);
+        for (let pass = 0; pass < 8; pass++) resolveKineticConstraintPass(frame, state.kinetic, state.entityRegistry);
         const dist = distanceBetweenAnchors(bodyA, constraint.anchorA, bodyB, constraint.anchorB);
         assert.ok(Math.abs(dist - restLength) < 0.5, `expected ~${restLength}, got ${dist}`);
-        assert.ok(measureDistanceConstraintError(state, constraint) < 0.5);
+        assert.ok(measureDistanceConstraintError(state.entityRegistry, constraint) < 0.5);
     });
     it("leaves unlinked bodies unchanged when contact pass runs", () => {
         const bodyA = mockCircleBody(0, 0, 10);
@@ -75,7 +75,7 @@ describe("kinetic constraint solver", () => {
         const ax = bodyA.x;
         const bx = bodyB.x;
         resolveKineticContactPass(frame, state.kinetic);
-        resolveKineticConstraintPass(frame, state);
+        resolveKineticConstraintPass(frame, state.kinetic, state.entityRegistry);
         assert.equal(bodyA.x, ax);
         assert.equal(bodyB.x, bx);
     });

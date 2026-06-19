@@ -77,36 +77,36 @@ export class WorldProp extends Entity {
     needsWallCollision() {
         return isKinematicallyActive(this);
     }
-    spawnFractureFragments(state, fracture, spatialFrame) {
+    spawnFractureFragments(world, fracture, spatialFrame) {
         const cos = Math.cos(this.facing);
         const sin = Math.sin(this.facing);
         for (let i = 0; i < fracture.debris.length; i++) {
             const geom = fracture.debris[i];
-            const world = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
-            const frag = new WorldProp(world.x, world.y, this.type, this.facing);
+            const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
+            const frag = new WorldProp(worldPos.x, worldPos.y, this.type, this.facing);
             applyChunkGeometryToProp(frag, geom);
             frag.vx = this.vx;
             frag.vy = this.vy;
             frag.angularVelocity = this.angularVelocity;
-            addWorldPropToState(state, frag);
+            addWorldPropToState(world, frag);
             wakeKineticBody(frag);
-            spatialFrame.admitKineticProp(frag, state);
+            spatialFrame.admitKineticProp(frag, world);
         }
     }
-    spawnGlassShatter(state, fracture, spatialFrame) {
+    spawnGlassShatter(world, fracture, spatialFrame) {
         const cos = Math.cos(fracture.facing);
         const sin = Math.sin(fracture.facing);
         const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
         const burst = Math.min(35, 8 + fracture.impactForce * 0.12);
         for (let i = 0; i < fracture.debris.length; i++) {
             const geom = fracture.debris[i];
-            const world = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
-            const frag = new WorldProp(world.x, world.y, this.type, fracture.facing);
+            const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
+            const frag = new WorldProp(worldPos.x, worldPos.y, this.type, fracture.facing);
             applyShardGeometryToProp(frag, geom);
             frag.vx = this.vx ?? 0;
             frag.vy = this.vy ?? 0;
-            const dx = world.x - impactWorld.x;
-            const dy = world.y - impactWorld.y;
+            const dx = worldPos.x - impactWorld.x;
+            const dy = worldPos.y - impactWorld.y;
             const dist = Math.hypot(dx, dy);
             if (dist > 1e-6) {
                 frag.vx += (dx / dist) * burst;
@@ -114,9 +114,9 @@ export class WorldProp extends Entity {
             }
             frag.angularVelocity = (this.angularVelocity ?? 0) + (Math.random() - 0.5) * 0.4;
             frag._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
-            addWorldPropToState(state, frag);
+            addWorldPropToState(world, frag);
             wakeKineticBody(frag);
-            spatialFrame.admitKineticProp(frag, state);
+            spatialFrame.admitKineticProp(frag, world);
         }
     }
     update(dt, state, spatialFrame) {

@@ -107,17 +107,17 @@ function islandConstraintsAsleep(buffer, start, count) {
     }
     return count > 0;
 }
-export function gatherKineticConstraintBuffer(state, spatialFrame, buffer = kineticConstraintBuffer, groups = kineticConstraintGroups) {
+export function gatherKineticConstraintBuffer(session, registry, spatialFrame, buffer = kineticConstraintBuffer, groups = kineticConstraintGroups) {
     buffer.reset();
     groups.reset();
-    const plan = ensureKineticIslandPlan(state.kinetic, spatialFrame._kineticBodies);
-    const list = state.kinetic.kineticConstraints;
+    const plan = ensureKineticIslandPlan(session, spatialFrame._kineticBodies);
+    const list = session.kineticConstraints;
     const buckets = new Map();
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
         if (entry.type !== "distance") continue;
-        const bodyA = state.entityRegistry.getLive(entry.bodyAId);
-        const bodyB = state.entityRegistry.getLive(entry.bodyBId);
+        const bodyA = registry.getLive(entry.bodyAId);
+        const bodyB = registry.getLive(entry.bodyBId);
         if (!bodyA?.strategy?.isKinetic || !bodyB?.strategy?.isKinetic) continue;
         const root = plan.bodyIdToIslandRoot.get(bodyA.id) ?? bodyA.id;
         if (!buckets.has(root)) buckets.set(root, []);
@@ -307,8 +307,8 @@ export function solveKineticConstraintBuffer(spatialFrame, buffer, groups) {
         if (earlyOut.enabled && iter + 1 >= earlyOut.contactMinIterations && maxImpulse <= earlyOut.contactImpulseEpsilon) break;
     }
 }
-export function resolveKineticConstraintPass(spatialFrame, state) {
-    const { buffer, groups } = gatherKineticConstraintBuffer(state, spatialFrame);
+export function resolveKineticConstraintPass(spatialFrame, session, registry) {
+    const { buffer, groups } = gatherKineticConstraintBuffer(session, registry, spatialFrame);
     projectKineticConstraintBuffer(buffer, groups);
     solveKineticConstraintBuffer(spatialFrame, buffer, groups);
 }
@@ -324,9 +324,9 @@ export function measureConstraintBufferMaxError(buffer) {
     }
     return max;
 }
-export function measureDistanceConstraintError(state, constraint) {
-    const bodyA = state.entityRegistry.getLive(constraint.bodyAId);
-    const bodyB = state.entityRegistry.getLive(constraint.bodyBId);
+export function measureDistanceConstraintError(registry, constraint) {
+    const bodyA = registry.getLive(constraint.bodyAId);
+    const bodyB = registry.getLive(constraint.bodyBId);
     if (!bodyA || !bodyB) return Infinity;
     return Math.abs(distanceBetweenAnchors(bodyA, constraint.anchorA, bodyB, constraint.anchorB) - constraint.restLength);
 }
