@@ -48,13 +48,13 @@ describe("locked room seals and unseals", () => {
         const bake = getLockedRoomBake(state, locked.id);
         assert.ok(bake?.egresses.length >= 1);
         const grid = state.obstacleGrid;
-        assertLockedRoomSealed(grid, bake, true, "idle");
+        assertLockedRoomSealed(grid, state.navigation.gridNavContext, bake, true, "idle");
         holdLockedRoomButton(state, bake.buttonId);
         refreshPassagePower(state);
-        assertLockedRoomSealed(grid, bake, false, "held");
+        assertLockedRoomSealed(grid, state.navigation.gridNavContext, bake, false, "held");
         releaseLockedRoomButton(state, bake.buttonId);
         refreshPassagePower(state);
-        assertLockedRoomSealed(grid, bake, true, "released");
+        assertLockedRoomSealed(grid, state.navigation.gridNavContext, bake, true, "released");
     });
     it("wires the baked button to wall-adjacent power cells only", () => {
         const fixture = makeHorizontalFixture(8, 8, 8, 8, 8);
@@ -93,10 +93,10 @@ describe("passage power inverted hold suppress", () => {
         const { globalCol, globalRow } = cellToGlobalColRow(grid, layout.power.col, layout.power.row);
         addButtonLink(state, button.id, { type: "gridCell", globalCol, globalRow });
         refreshPassagePower(state);
-        assertLockedExitSealed(grid, layout, true, "idle");
+        assertLockedExitSealed(grid, state.navigation.gridNavContext, layout, true, "idle");
         holdLockedRoomButton(state, button.id);
         refreshPassagePower(state);
-        assertLockedExitSealed(grid, layout, false, "held");
+        assertLockedExitSealed(grid, state.navigation.gridNavContext, layout, false, "held");
     });
 });
 describe("locked room bake across corridor layouts", () => {
@@ -111,10 +111,10 @@ describe("locked room bake across corridor layouts", () => {
                 if (!bake?.egresses.length) continue;
                 assertLockedRoomEgressPlacements(state, bake);
                 const grid = state.obstacleGrid;
-                assertLockedRoomSealed(grid, bake, true, `seed ${seed}`);
+                assertLockedRoomSealed(grid, state.navigation.gridNavContext, bake, true, `seed ${seed}`);
                 holdLockedRoomButton(state, bake.buttonId);
                 refreshPassagePower(state);
-                assertLockedRoomSealed(grid, bake, false, `seed ${seed} held`);
+                assertLockedRoomSealed(grid, state.navigation.gridNavContext, bake, false, `seed ${seed} held`);
                 passed = true;
                 break;
             }

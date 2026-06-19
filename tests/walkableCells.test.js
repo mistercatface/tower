@@ -12,6 +12,7 @@ import {
     pickNavWalkableCell,
     pickRandomWalkableCell,
 } from "../Libraries/Procedural/Mazes/walkableCells.js";
+import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -19,7 +20,7 @@ import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 function createWalkableCellsTestState(config) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, config.boundsCols * 16, config.boundsRows * 16);
-    return { obstacleGrid: grid, editor: { cavernConfig: config }, sandbox: {}, navigation: { obstacleGeneration: 0 } };
+    return { obstacleGrid: grid, editor: { cavernConfig: config }, sandbox: {}, navigation: createTestNavigation(grid) };
 }
 
 describe("walkableCells", () => {
@@ -77,7 +78,7 @@ describe("walkableCells", () => {
         const picked = pickNavWalkableCell(state, { rng: () => 0 });
         assert.ok(picked);
         assert.ok(isNavWalkableCellAt(state, picked.col, picked.row));
-        assert.ok(isNavWalkableCell(state.obstacleGrid, picked.col, picked.row));
+        assert.ok(isNavWalkableCell(state.obstacleGrid, state.navigation.gridNavContext, picked.col, picked.row));
     });
 
     it("createNavWalkableAccess binds state and bounds for pick/has/rebake", () => {

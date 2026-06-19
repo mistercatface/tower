@@ -10,6 +10,7 @@ import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { wireSnakeGameRegistry, createSnakeLifecycleRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { walkableCellKey } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
@@ -37,7 +38,7 @@ function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
         entityRegistry: new EntityRegistry(),
         worldProps: [],
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {}, clearBakeCache: () => {} },
-        navigation: { onObstaclesChanged: async () => {}, obstacleGeneration: 0 },
+        navigation: createTestNavigation(grid),
     };
 }
 
@@ -70,7 +71,7 @@ describe("snake navWalkable session", () => {
         const grid = state.obstacleGrid;
         for (let i = 0; i < cells.length; i++) {
             const cell = cells[i];
-            assert.ok(isNavWalkableCell(grid, cell.col, cell.row), `cell ${walkableCellKey(cell.col, cell.row)} not nav-walkable`);
+            assert.ok(isNavWalkableCell(grid, state.navigation.gridNavContext, cell.col, cell.row), `cell ${walkableCellKey(cell.col, cell.row)} not nav-walkable`);
         }
     });
 
@@ -87,7 +88,7 @@ describe("snake navWalkable session", () => {
         const cellSize = grid.cellSize;
         forEachGlobalCellInMapGenBounds(playable, (globalCol, globalRow) => {
             const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
-            if (isNavWalkableCell(grid, col, row)) localPassCount++;
+            if (isNavWalkableCell(grid, state.navigation.gridNavContext, col, row)) localPassCount++;
         });
         assert.ok(scene.navWalkable.cells().length < localPassCount);
     });

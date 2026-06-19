@@ -2,7 +2,6 @@ import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Pathfinding/AStar
 import { createNavStepPenaltyLookup } from "../../Pathfinding/navStepPenalty.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/grid/navEdgePoolSab.js";
-import { recomputeVertexPassabilityInto, recomputeNavCardinalOpenInto } from "../../Spatial/grid/vertexPassability.js";
 import { stitchAbstractCellPath } from "../../Pathfinding/hpaStitch.js";
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Pathfinding/hpaReplanPrep.js";
 import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaPathRequest.js";
@@ -150,8 +149,6 @@ function bakeNavTopology(damageBounds) {
     const { cols, rows } = frame;
     const copyBounds = damageBounds ? clampCellBoundsToGrid(damageBounds, cols, rows) : null;
     const bakeBounds = copyBounds ? expandNavTopologyBakeBounds(copyBounds, cols, rows) : null;
-    recomputeVertexPassabilityInto(baked.simView, baked.vertexPassability, bakeBounds);
-    recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen, bakeBounds);
     const topology = requireNavTopology();
     recomputeBlockedFromGridFill(baked.simView.grid, topology.blocked, cols, copyBounds);
     const octCol0 = bakeBounds ? bakeBounds.startCol : 0;

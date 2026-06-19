@@ -214,9 +214,10 @@ export class HpaPathWorker {
         for (let i = 0; i < nodeCount; i++) for (let e = edgeOffsets[i]; e < edgeOffsets[i + 1]; e++) edges.push({ sourceIdx: i, targetIdx: edgeTargets[e] });
         const topology = this.getNavTopology();
         const blocked = topology?.blocked ?? grid.grid;
+        const navCaches = { navCardinalOpen: this._navArena.cardinalOpen, vertexPassability: this._navArena.vertexPassability };
         const regionCanStep = topology
             ? (fromCol, fromRow, toCol, toRow) => navCanStep(this._gridFrame, topology, fromCol, fromRow, toCol, toRow) || navCanStep(this._gridFrame, topology, toCol, toRow, fromCol, fromRow)
-            : (fromCol, fromRow, toCol, toRow) => grid.canStep(fromCol, fromRow, toCol, toRow) || grid.canStep(toCol, toRow, fromCol, fromRow);
+            : (fromCol, fromRow, toCol, toRow) => grid.canStep(fromCol, fromRow, toCol, toRow, navCaches) || grid.canStep(toCol, toRow, fromCol, fromRow, navCaches);
         return {
             cols: grid.cols,
             rows: grid.rows,

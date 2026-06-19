@@ -11,6 +11,7 @@ import { collectSnakeGoalProps } from "../Libraries/Game/snake/snakeGoals.js";
 import { generateSnakeSplitMap, resolveCenterSnakeSpawnAnchor, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
+import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
 import { boundaryBlocksStepFrom } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -37,7 +38,7 @@ function createSnakeMapGenTestState(playAreaCells, mapSeed) {
         entityRegistry: new EntityRegistry(),
         worldProps: [],
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {}, clearBakeCache: () => {} },
-        navigation: { onObstaclesChanged: async () => {}, obstacleGeneration: 0 },
+        navigation: createTestNavigation(grid),
     };
 }
 
@@ -75,6 +76,7 @@ function paddingBounds(state) {
 
 function floodFillWalkable(state, startCol, startRow) {
     const grid = state.obstacleGrid;
+    const { navCardinalOpen, vertexPassability } = state.navigation.gridNavContext;
     const visited = new Set();
     const queue = [{ col: startCol, row: startRow }];
     const cardinals = [
@@ -92,7 +94,7 @@ function floodFillWalkable(state, startCol, startRow) {
         for (let i = 0; i < cardinals.length; i++) {
             const nc = col + cardinals[i][0];
             const nr = row + cardinals[i][1];
-            if (boundaryBlocksStepFrom(grid, col, row, nc, nr)) continue;
+            if (boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, col, row, nc, nr)) continue;
             queue.push({ col: nc, row: nr });
         }
     }

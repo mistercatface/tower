@@ -1,11 +1,11 @@
-import { createBeltRailEdge, createForcefieldEdge, EDGE_KIND, edgeBlocksCrossing, isBeltRailEdge, isForcefieldEdge, isRailWallEdge, parsePassageMode } from "./CellEdge.js";
+﻿import { createBeltRailEdge, createForcefieldEdge, EDGE_KIND, edgeBlocksCrossing, isBeltRailEdge, isForcefieldEdge, isRailWallEdge, parsePassageMode } from "./CellEdge.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { resolvePassageStepFrom, resolvePassageStepUndirected } from "./passageStep.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { neighborFillLevel } from "./gridCellTopology.js";
-import { diagonalBoundaryBlockedFromVertexCache, diagonalStepOpen } from "./vertexPassability.js";
+import { diagonalStepOpen } from "./vertexPassability.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {{ kind: "passage", mode?: string, allowedSide?: number, powered?: boolean }} PassageBoundarySpec */
 /** @typedef {RailWallBoundarySpec | PassageBoundarySpec} BoundaryPrimarySpec */
@@ -47,7 +47,7 @@ export function setPassageProfile(grid, col, row, side, mode, allowedSide) {
  * @param {number} col
  * @param {number} row
  * @param {number} side
- * @param {BoundaryPrimarySpec | null} spec — null clears primary only (preserves derived beltRail)
+ * @param {BoundaryPrimarySpec | null} spec ΓÇö null clears primary only (preserves derived beltRail)
  * @param {{ bumpRevision?: boolean }} [opts]
  * @returns {boolean} false when exclusivity rejects the write
  */
@@ -90,7 +90,7 @@ export function clearBoundaryPrimary(grid, col, row, side, { bumpRevision = fals
     return true;
 }
 /**
- * Clear one boundary slot — primary (railWall, passage) or derived beltRail.
+ * Clear one boundary slot ΓÇö primary (railWall, passage) or derived beltRail.
  *
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {number} col
@@ -228,23 +228,7 @@ export function boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, t
  * @param {number} toCol
  * @param {number} toRow
  */
-export function boundaryBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow) {
-    if (grid.isBlocked(toCol, toRow)) return true;
-    if (beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow)) return true;
-    const dc = toCol - fromCol;
-    const dr = toRow - fromRow;
-    if (dc !== 0 && dr === 0) {
-        const side = dc > 0 ? 1 : 3;
-        return boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
-    }
-    if (dc === 0 && dr !== 0) {
-        const side = dr > 0 ? 2 : 0;
-        return boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
-    }
-    if (dc !== 0 && dr !== 0) return diagonalBoundaryBlockedFromVertexCache(grid, fromCol, fromRow, toCol, toRow);
-    return false;
-}
-export function boundaryBlocksStepFromNavCaches(grid, navCardinalOpen, vertexPassability, fromCol, fromRow, toCol, toRow) {
+export function boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, fromCol, fromRow, toCol, toRow) {
     if (grid.isBlocked(toCol, toRow)) return true;
     if (beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow)) return true;
     const dc = toCol - fromCol;

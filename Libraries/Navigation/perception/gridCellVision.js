@@ -1,4 +1,4 @@
-import { boundaryBlocksStepFromNavCaches } from "../../Spatial/grid/boundaryOccupancy.js";
+import { boundaryBlocksStepFrom } from "../../Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 const HEADING_SPEED_MIN = 0.25;
 export function resolveObserverHeading(prop) {
@@ -48,7 +48,7 @@ export function hasGridCellLineOfSight(gridNavContext, col0, row0, col1, row1) {
             ny = y + sy;
         }
         if (!cellInRect(nx, ny, grid.cols, grid.rows)) return false;
-        if (boundaryBlocksStepFromNavCaches(grid, gridNavContext.navCardinalOpen, gridNavContext.vertexPassability, x, y, nx, ny)) return false;
+        if (boundaryBlocksStepFrom(grid, gridNavContext.navCardinalOpen, gridNavContext.vertexPassability, x, y, nx, ny)) return false;
         x = nx;
         y = ny;
     }

@@ -35,13 +35,11 @@ export class WorldObstacleGrid {
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
         this.floorNavEpoch = 0;
-        this.vertexPassability = new Uint8Array(0);
         this.gridNavCacheKey = "";
         /** @type {import("../../Pathfinding/GridNavSnapshot.js").GridFrame | null} */
         this.navGridFrame = null;
         /** @type {import("../../Pathfinding/navTopologySab.js").NavTopology | null} */
         this.navTopology = null;
-        this.navCardinalOpen = new Uint8Array(0);
         this.gridTopologyEpoch = 0;
         this._passagePowerNavKey = "";
     }
@@ -395,10 +393,10 @@ export class WorldObstacleGrid {
         const { col, row } = this.worldToGrid(x, y);
         return this.isBlocked(col, row);
     }
-    canStep(currCol, currRow, nextCol, nextRow) {
+    canStep(currCol, currRow, nextCol, nextRow, gridNavContext) {
         const { navGridFrame: frame, navTopology: topology } = this;
         if (frame && topology) return navCanStep(frame, topology, currCol, currRow, nextCol, nextRow);
-        return !boundaryBlocksStepFrom(this, currCol, currRow, nextCol, nextRow);
+        return !boundaryBlocksStepFrom(this, gridNavContext.navCardinalOpen, gridNavContext.vertexPassability, currCol, currRow, nextCol, nextRow);
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

@@ -1,8 +1,6 @@
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { boundaryDirectedCrossingBlocked, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
-/** Bit i set when half-edge i is open (not boundary-blocked). See {@link HALF_EDGE_SPECS}. */
 export const VERTEX_HALF_EDGE = { NwEast: 1 << 0, NwSouth: 1 << 1, NeWest: 1 << 2, NeSouth: 1 << 3, SwEast: 1 << 4, SwNorth: 1 << 5, SeWest: 1 << 6, SeNorth: 1 << 7 };
-/** @type {readonly { bit: number, fromCol: number, fromRow: number, toCol: number, toRow: number, ownerCol: number, ownerRow: number, ownerSide: number }[]} */
 const HALF_EDGE_SPECS = [
     { bit: VERTEX_HALF_EDGE.NwEast, fromCol: -1, fromRow: -1, toCol: 0, toRow: -1, ownerCol: -1, ownerRow: -1, ownerSide: 1 },
     { bit: VERTEX_HALF_EDGE.NwSouth, fromCol: -1, fromRow: -1, toCol: -1, toRow: 0, ownerCol: -1, ownerRow: -1, ownerSide: 2 },
@@ -16,10 +14,6 @@ const HALF_EDGE_SPECS = [
 export function packVertexKey(vx, vy, cols) {
     return vx + vy * (cols + 1);
 }
-export function getVertexPassabilityMask(grid, vx, vy) {
-    return grid.vertexPassability[packVertexKey(vx, vy, grid.cols)] ?? 0;
-}
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | import("../../Pathfinding/navSimView.js").ReturnType<typeof import("../../Pathfinding/navSimView.js").createNavSimView>} grid @param {Uint8Array} vertexPassability @param {import("../../DataStructures/CellRect.js").CellBounds | null} [bounds] cell bounds — vertex rect is expanded by one corner */
 export function recomputeVertexPassabilityInto(grid, vertexPassability, bounds = null) {
     if (!grid.cols) return;
     const { cols, rows } = grid;
@@ -44,16 +38,6 @@ export function recomputeVertexPassabilityInto(grid, vertexPassability, bounds =
             vertexPassability[packVertexKey(vx, vy, cols)] = mask;
         }
 }
-export function recomputeVertexPassability(grid) {
-    if (!grid.cols) {
-        grid.vertexPassability = new Uint8Array(0);
-        return;
-    }
-    const vertCount = (grid.cols + 1) * (grid.rows + 1);
-    const out = new Uint8Array(vertCount);
-    recomputeVertexPassabilityInto(grid, out);
-    grid.vertexPassability = out;
-}
 const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
 const DIAGONAL_VERTEX_BITS = {
     "1,1": [VERTEX_HALF_EDGE.NwEast, VERTEX_HALF_EDGE.NwSouth, VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.NeSouth],
@@ -61,8 +45,7 @@ const DIAGONAL_VERTEX_BITS = {
     "1,-1": [VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.NwEast],
     "-1,1": [VERTEX_HALF_EDGE.NeWest, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.NwSouth],
 };
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid | import("../../Pathfinding/navSimView.js").ReturnType<typeof import("../../Pathfinding/navSimView.js").createNavSimView>} grid @param {Uint8Array} cardinalOpen @param {import("../../DataStructures/CellRect.js").CellBounds | null} [bounds] */
-export function recomputeNavCardinalOpenInto(grid, cardinalOpen, bounds = null) {
+export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassability, bounds = null) {
     const { cols, rows } = grid;
     const c0 = bounds ? bounds.startCol : 0;
     const c1 = bounds ? bounds.endCol : cols - 1;
@@ -81,23 +64,14 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, bounds = null) 
                 const nc = col + dc;
                 const nr = row + dr;
                 if (!cellInRect(nc, nr, cols, rows)) continue;
-                if (!grid.isBlocked(nc, nr) && !boundaryBlocksStepFrom(grid, col, row, nc, nr)) mask |= CARDINAL_BITS[key];
+                if (!grid.isBlocked(nc, nr) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, col, row, nc, nr)) mask |= CARDINAL_BITS[key];
             }
             cardinalOpen[idx] = mask;
         }
 }
-/** Cardinal step bits per open cell — baked on topology sync, not on click. */
-export function recomputeNavCardinalOpen(grid) {
-    const { cols, rows } = grid;
-    const size = cols * rows;
-    const out = new Uint8Array(size);
-    recomputeNavCardinalOpenInto(grid, out);
-    grid.navCardinalOpen = out;
-}
 function cardinalLegOpen(cardinalOpen, cols, col, row, dc, dr) {
     return (cardinalOpen[colRowToIndex(col, row, cols)] & CARDINAL_BITS[`${dc},${dr}`]) !== 0;
 }
-/** Octile corner rule: all four cardinal legs into the diagonal dest must be open (same rule walls get via filled shoulders). */
 function diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr) {
     const shoulderHCol = col + dc;
     const shoulderHRow = row;
@@ -119,17 +93,4 @@ export function diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, co
     if (!need) return false;
     for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return false;
     return true;
-}
-/** Boundary-only diagonal block test — four cardinal legs + vertex half-edge mask. Caller handles destination cell + belts. */
-export function diagonalBoundaryBlockedFromVertexCache(grid, fromCol, fromRow, toCol, toRow) {
-    const dc = toCol - fromCol;
-    const dr = toRow - fromRow;
-    if (!diagonalCardinalLegsOpen(grid.navCardinalOpen, grid.cols, fromCol, fromRow, dc, dr)) return true;
-    const cvx = dc > 0 ? toCol : fromCol;
-    const cvy = dr > 0 ? toRow : fromRow;
-    const mask = getVertexPassabilityMask(grid, cvx, cvy);
-    const need = DIAGONAL_VERTEX_BITS[`${dc},${dr}`];
-    if (!need) return true;
-    for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return true;
-    return false;
 }

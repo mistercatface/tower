@@ -21,12 +21,27 @@ export function syncGridNavContext(context, grid, damageBounds = null) {
     }
     const bakeBounds = resolveNavTopologyBakeBounds(grid, damageBounds);
     recomputeVertexPassabilityInto(grid, context.vertexPassability, bakeBounds);
-    recomputeNavCardinalOpenInto(grid, context.navCardinalOpen, bakeBounds);
+    recomputeNavCardinalOpenInto(grid, context.navCardinalOpen, context.vertexPassability, bakeBounds);
     context.grid = grid;
     context.wallRevision = grid.wallGridRevision;
 }
 export function bakeNavCachesInto(grid, navCardinalOpen, vertexPassability, damageBounds = null) {
     const bakeBounds = resolveNavTopologyBakeBounds(grid, damageBounds);
     recomputeVertexPassabilityInto(grid, vertexPassability, bakeBounds);
-    recomputeNavCardinalOpenInto(grid, navCardinalOpen, bakeBounds);
+    recomputeNavCardinalOpenInto(grid, navCardinalOpen, vertexPassability, bakeBounds);
+}
+export function createTestNavigation(obstacleGrid) {
+    const gridNavContext = createGridNavContext(obstacleGrid);
+    syncGridNavContext(gridNavContext, obstacleGrid);
+    const navigation = {
+        settings: {},
+        obstacleGeneration: 0,
+        gridNavContext,
+        onObstaclesChanged(damageBounds) {
+            syncGridNavContext(gridNavContext, obstacleGrid, damageBounds);
+            navigation.obstacleGeneration++;
+            return Promise.resolve();
+        },
+    };
+    return navigation;
 }

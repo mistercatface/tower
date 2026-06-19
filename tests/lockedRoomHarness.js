@@ -8,6 +8,7 @@ import ball from "../Assets/props/ball/ball.asset.js";
 import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
 import { boundaryBlocksStepFrom, isPassagePowered } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { applyPassagePowerGridState } from "../Libraries/Sandbox/passagePowerNetwork.js";
@@ -49,16 +50,16 @@ export function createRoomBakeTestState(cols = 64, rows = 64) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {} },
-        navigation: { onObstaclesChanged: async () => {} },
+        navigation: createTestNavigation(grid),
     };
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../Libraries/RoomGraph/roomGraphLockedRoom.js").LockedRoomEgressBake} egress @param {boolean} sealed */
-export function assertLockedExitSealed(grid, egress, sealed, label = "exit") {
+export function assertLockedExitSealed(grid, gridNavContext, egress, sealed, label = "exit") {
     const exterior = lockedRoomCorridorExteriorCell(egress);
     const holeCell = lockedRoomHoleCell(egress);
     const powered = isPassagePowered(grid, egress.forcefield.col, egress.forcefield.row, egress.forcefield.side);
-    const corridorToHole = boundaryBlocksStepFrom(grid, exterior.col, exterior.row, holeCell.col, holeCell.row);
-    const holeToCorridor = boundaryBlocksStepFrom(grid, holeCell.col, holeCell.row, exterior.col, exterior.row);
+    const { navCardinalOpen, vertexPassability } = gridNavContext;
+    const corridorToHole = boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, exterior.col, exterior.row, holeCell.col, holeCell.row);
+    const holeToCorridor = boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, holeCell.col, holeCell.row, exterior.col, exterior.row);
     if (sealed) {
         if (egress.forcefield.col !== egress.hole.c || egress.forcefield.row !== egress.hole.r || egress.forcefield.side !== egress.hole.side)
             throw new Error(`${label}: forcefield is not on the corridor hole edge`);
@@ -71,9 +72,8 @@ export function assertLockedExitSealed(grid, egress, sealed, label = "exit") {
     if (corridorToHole) throw new Error(`${label}: corridor (${exterior.col},${exterior.row}) should enter hole (${holeCell.col},${holeCell.row})`);
     if (holeToCorridor) throw new Error(`${label}: hole (${holeCell.col},${holeCell.row}) should reach corridor (${exterior.col},${exterior.row})`);
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../Libraries/RoomGraph/roomGraphLockedRoom.js").BakedLockedRoom} bake @param {boolean} sealed @param {string} [label] */
-export function assertLockedRoomSealed(grid, bake, sealed, label = "room") {
-    for (let i = 0; i < bake.egresses.length; i++) assertLockedExitSealed(grid, bake.egresses[i], sealed, `${label} lane ${i}`);
+export function assertLockedRoomSealed(grid, gridNavContext, bake, sealed, label = "room") {
+    for (let i = 0; i < bake.egresses.length; i++) assertLockedExitSealed(grid, gridNavContext, bake.egresses[i], sealed, `${label} lane ${i}`);
 }
 /** @param {object} state @param {import("../Libraries/RoomGraph/roomGraphLockedRoom.js").BakedLockedRoom} bake */
 export function assertLockedRoomEgressPlacements(state, bake) {
@@ -102,6 +102,7 @@ export function bakeLinkedLockedRoomFixture(state, fixture, linkSeed = 0) {
     const link = listRoomLinks(state)[0];
     link.seed = linkSeed;
     syncRoomGraphBake(state);
+    void state.navigation.onObstaclesChanged(null);
     return { locked, open, link };
 }
 /** @param {object} state @param {number} nodeId */

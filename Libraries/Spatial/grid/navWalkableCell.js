@@ -5,20 +5,20 @@ const CARDINALS = [
     [0, 1],
     [0, -1],
 ];
-export function isNavWalkableCell(grid, col, row) {
+export function isNavWalkableCell(grid, gridNavContext, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (grid.isBlocked(col, row)) return false;
     for (let i = 0; i < CARDINALS.length; i++) {
         const nc = col + CARDINALS[i][0];
         const nr = row + CARDINALS[i][1];
-        if (grid.canStep(col, row, nc, nr) || grid.canStep(nc, nr, col, row)) return true;
+        if (grid.canStep(col, row, nc, nr, gridNavContext) || grid.canStep(nc, nr, col, row, gridNavContext)) return true;
     }
     return false;
 }
 function navWalkableCellKey(col, row) {
     return `${col},${row}`;
 }
-export function floodConnectedNavWalkableCells(grid, candidates, candidateKeys, seedCells) {
+export function floodConnectedNavWalkableCells(grid, gridNavContext, candidates, candidateKeys, seedCells) {
     const reached = new Set();
     const queue = [];
     for (let i = 0; i < seedCells.length; i++) {
@@ -35,7 +35,7 @@ export function floodConnectedNavWalkableCells(grid, candidates, candidateKeys, 
             const nr = row + CARDINALS[i][1];
             const key = navWalkableCellKey(nc, nr);
             if (!candidateKeys.has(key) || reached.has(key)) continue;
-            if (!grid.canStep(col, row, nc, nr) && !grid.canStep(nc, nr, col, row)) continue;
+            if (!grid.canStep(col, row, nc, nr, gridNavContext) && !grid.canStep(nc, nr, col, row, gridNavContext)) continue;
             reached.add(key);
             queue.push({ col: nc, row: nr });
         }

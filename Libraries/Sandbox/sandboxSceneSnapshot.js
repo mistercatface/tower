@@ -134,7 +134,6 @@ function clearSandboxSceneContent(state) {
     clearRoomGraph(state);
     state.sandbox._passageEdgeDrawCache = null;
     setGridPassagePowerNavKey(state.obstacleGrid, "");
-    state.obstacleGrid.vertexPassability = new Uint8Array(0);
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string, width?: number, height?: number }} entry */
 function spawnSnapshotProp(state, entry) {
