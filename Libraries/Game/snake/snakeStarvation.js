@@ -21,7 +21,6 @@ export function shrinkSnakeChainFromStarvation(state, headId) {
     const tailId = members[members.length - 1];
     const prevId = members[members.length - 2];
     const tail = state.entityRegistry.getLive(tailId);
-    if (!tail) return false;
     removeChainLinkBetween(state, prevId, tailId);
     clearChainLinksForProp(state, tailId);
     removeSandboxWorldProp(state, tail);

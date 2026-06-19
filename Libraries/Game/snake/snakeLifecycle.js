@@ -1,10 +1,5 @@
-export function wireSnakeGameRegistry(state, registry, autosimsByHeadId = new Map()) {
-    state.sandbox.snakeGame = { registry, autosimsByHeadId };
-}
-export function requireSnakeGameRegistry(state) {
-    const registry = state.sandbox.snakeGame?.registry;
-    if (!registry) throw new Error("state.sandbox.snakeGame.registry required — use setupSnakeGame or wireSnakeGameRegistry");
-    return registry;
+export function wireSnakeGameRegistry(state, registry, autosimsByHeadId, navWalkable) {
+    state.sandbox.snakeGame = { registry, autosimsByHeadId, navWalkable };
 }
 export function createSnakeLifecycleRegistry() {
     return { aliveByHeadId: new Map(), inertByLeadId: new Map(), deadHeadIds: new Set() };

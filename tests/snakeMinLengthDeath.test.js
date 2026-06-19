@@ -9,9 +9,10 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
 
@@ -50,6 +51,15 @@ function snakeChainOptions(segmentCount) {
     };
 }
 
+function stubAutosim() {
+    return { stop() {} };
+}
+function wireCombatSnakeGame(state, registry, headIds) {
+    const autosimsByHeadId = new Map();
+    for (let i = 0; i < headIds.length; i++) autosimsByHeadId.set(headIds[i], stubAutosim());
+    wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
+    return autosimsByHeadId;
+}
 function setupSnakeFrame(props) {
     const frame = new KineticSpatialFrame(50);
     frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
@@ -72,8 +82,7 @@ describe("snake combat min length", () => {
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, predator.chain.head.id);
         registerAliveSnake(registry, prey.chain.head.id);
-        const snakeGame = { registry, autosimsByHeadId: new Map() };
-        state.sandbox.snakeGame = snakeGame;
+        wireCombatSnakeGame(state, registry, [predator.chain.head.id, prey.chain.head.id]);
         const preyHead = prey.chain.head;
         predator.chain.head.vx = 80;
         predator.chain.head.vy = 0;
@@ -104,8 +113,7 @@ describe("snake combat min length", () => {
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, big.chain.head.id);
         registerAliveSnake(registry, small.chain.head.id);
-        const snakeGame = { registry, autosimsByHeadId: new Map() };
-        state.sandbox.snakeGame = snakeGame;
+        wireCombatSnakeGame(state, registry, [big.chain.head.id, small.chain.head.id]);
         const bigTail = big.chain.tail;
         const smallHead = small.chain.head;
         smallHead.vx = 80;

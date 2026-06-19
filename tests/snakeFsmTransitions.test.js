@@ -18,7 +18,7 @@ import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { createSnakeBrain } from "../Libraries/Game/snake/snakeBrain.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
-import { wireSnakeGameForHead } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
 
@@ -101,6 +101,7 @@ function mockNavBehavior() {
 }
 
 function createMockIntent(state, selfHeadId, registry) {
+    const navWalkable = snakeGameNavWalkable(state);
     const nav = mockNavBehavior();
     const { brain, sync } = createSnakeBrain();
     const intent = createSnakePredatorPreyIntent({
@@ -112,9 +113,10 @@ function createMockIntent(state, selfHeadId, registry) {
         ]),
         setActiveBehaviorId() {},
         resolveVisibleFood: () => null,
-        resolveExploreCell: resolveSnakeExploreCell,
+        resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
         selfHeadId,
         registry,
+        navWalkable,
         rng: () => 0,
     });
     return { intent, nav };
@@ -133,7 +135,7 @@ describe("snake FSM transitions", () => {
         stampWall(state.obstacleGrid, 6, 8);
         stampWall(state.obstacleGrid, 7, 8);
         stampWall(state.obstacleGrid, 8, 8);
-        const autosim = createSnakeAutosim(state, { headId: chain.head.id, behaviorById: snakeBehaviors(state), eatRadius: 20, rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, behaviorById: snakeBehaviors(state), eatRadius: 20, rng: () => 0 });
         autosim.start();
         assert.equal(autosim.getMode(), "explore");
         chain.head.x = state.obstacleGrid.gridToWorld(10, 8).x;
@@ -153,12 +155,12 @@ describe("snake FSM transitions", () => {
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, small.head.id);
         registerAliveSnake(registry, large.head.id);
-        wireSnakeGameRegistry(state, registry);
+        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
         spawnGoalOrbAtCell(state, { col: 8, row: 10 });
         small.head.facing = 0;
         large.head.x = small.head.x + 200;
         large.head.y = small.head.y;
-        const autosim = createSnakeAutosim(state, { headId: small.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: small.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_food");
         large.head.x = small.head.x + 80;
@@ -178,13 +180,13 @@ describe("snake FSM transitions", () => {
         registerAliveSnake(registry, prey.head.id);
         registerAliveSnake(registry, threatA.head.id);
         registerAliveSnake(registry, threatB.head.id);
-        wireSnakeGameRegistry(state, registry);
+        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
         prey.head.facing = 0;
         threatA.head.x = prey.head.x + 80;
         threatA.head.y = prey.head.y;
         threatB.head.x = prey.head.x;
         threatB.head.y = prey.head.y + 80;
-        const autosim = createSnakeAutosim(state, { headId: prey.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: prey.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
         autosim.start();
         autosim.tick(1 / 60);
         const latched = autosim.getDestination();
@@ -207,7 +209,7 @@ describe("snake FSM transitions", () => {
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, chain.head.id);
-        wireSnakeGameRegistry(state, registry);
+        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
         const { intent, nav } = createMockIntent(state, chain.head.id, registry);
         const seeker = chain.head;
         intent.perceive(seeker, state);
@@ -227,6 +229,7 @@ describe("snake FSM transitions", () => {
         resetKineticConstraintIds(1);
         const state = createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
-        assert.throws(() => createSnakeAutosim(state, { headId: chain.head.id, behaviorById: snakeBehaviors(state) }), /registry required/);
+        const stubNavWalkable = { cells: () => [], has: () => false, pick: () => null, filterInBounds: () => [], rebake: () => {} };
+        assert.throws(() => createSnakeAutosim(state, { headId: chain.head.id, behaviorById: snakeBehaviors(state), navWalkable: stubNavWalkable }), /registry/);
     });
 });

@@ -3,7 +3,7 @@ import { getCirclePropRadius, setCirclePropRadius } from "../../Props/propScale.
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 export function getSnakeChainRadius(state, headId) {
     const head = state.entityRegistry.getLive(headId);
-    return getCirclePropRadius(head) ?? getSnakeGameConfig().startRadius;
+    return getCirclePropRadius(head);
 }
 export function getSnakeSegmentCount(state, headId) {
     return getOrderedChainMemberIds(state, headId).length;

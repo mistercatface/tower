@@ -11,24 +11,20 @@ import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { countLiveSnakeGoals, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 import { createSnakeBrain } from "./snakeBrain.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
-import { requireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 function chainMemberProps(state, headId) {
     const ids = getChainMemberIds(state, headId);
     const members = [];
-    for (let i = 0; i < ids.length; i++) {
-        const prop = state.entityRegistry.getLive(ids[i]);
-        if (prop && !prop.isDead) members.push(prop);
-    }
+    for (let i = 0; i < ids.length; i++) members.push(state.entityRegistry.getLive(ids[i]));
     return members;
 }
-function replenishSnakeGoals(state, headId, rng) {
+function replenishSnakeGoals(state, headId, rng, navWalkable) {
     const config = getSnakeGameConfig();
     const live = countLiveSnakeGoals(state);
     if (live >= config.goalCount) return;
     const occupied = linkedChainOccupiedCellKeys(chainMemberProps(state, headId), state.obstacleGrid);
-    spawnGoalOrbOnOpenCell(state, { excludeKeys: occupied, rng });
+    spawnGoalOrbOnOpenCell(state, navWalkable, { excludeKeys: occupied, rng });
 }
 function runSnakeFsmTick(intent, seeker, state) {
     intent.perceive(seeker, state);
@@ -36,28 +32,26 @@ function runSnakeFsmTick(intent, seeker, state) {
     intent.locomotion.tickNav(seeker, state);
     return choice;
 }
-export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorById, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null }) {
+export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorById, navWalkable, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null }) {
     const config = getSnakeGameConfig();
     let tailId = null;
     let pinnedGoalId = goalPropId;
     const head = state.entityRegistry.getLive(headId);
-    if (!head || head.isDead) throw new Error("Snake autosim requires a live chain head prop");
     const members = chainMemberProps(state, headId);
-    if (!members.length) throw new Error("Snake autosim chain head has no members");
     tailId = members[members.length - 1].id;
     const resolvedBallType = ballType ?? config.segmentPropId;
     const resolvedGrowDirX = growDirX ?? config.growDirX;
     const resolvedGrowDirY = growDirY ?? config.growDirY;
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
     const meta = getSandboxEntityMeta(state);
-    const registry = requireSnakeGameRegistry(state);
+    const registry = state.sandbox.snakeGame.registry;
     const { brain, sync } = createSnakeBrain({ visionCone });
     const resolveVisibleFood = (seeker, gameState) => {
         if (pinnedGoalId != null) {
             const pinned = gameState.entityRegistry.getLive(pinnedGoalId);
-            if (pinned && !pinned.isDead) {
+            if (pinned) {
                 const visible = findNearestVisibleSnakeGoal(gameState, seeker, config.visionCone);
-                if (visible?.id === pinned.id) return pinned;
+                if (visible && visible.id === pinned.id) return pinned;
             } else pinnedGoalId = null;
         }
         return findNearestVisibleSnakeGoal(gameState, seeker, config.visionCone);
@@ -68,9 +62,10 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         behaviorById,
         setActiveBehaviorId: (propId, behaviorId) => meta.setActiveBehaviorId(propId, behaviorId),
         resolveVisibleFood,
-        resolveExploreCell: resolveSnakeExploreCell,
+        resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
         selfHeadId: headId,
         registry,
+        navWalkable,
         visionCone: visionCone ?? config.visionCone,
         rng,
     });
@@ -78,7 +73,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     const foodTimer = createSnakeFoodTimer(config.starvationIntervalSec);
     const syncTailId = () => {
         const liveMembers = chainMemberProps(state, headId);
-        tailId = liveMembers.length ? liveMembers[liveMembers.length - 1].id : headId;
+        tailId = liveMembers[liveMembers.length - 1].id;
     };
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
     const eatGoal = (seeker, goal) => {
@@ -101,7 +96,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         });
         copySnakeChainTintFromHead(state, headId, newTail);
         tailId = newTail.id;
-        replenishSnakeGoals(state, headId, rng);
+        replenishSnakeGoals(state, headId, rng, navWalkable);
         runSnakeFsmTick(intent, seeker, state);
     };
     return {
@@ -111,13 +106,11 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
             resetSnakeFoodTimer(foodTimer, config.starvationIntervalSec);
             intent.resetMode();
             intent.resetMemory();
-            const seeker = resolveSeeker();
-            if (seeker) runSnakeFsmTick(intent, seeker, state);
+            runSnakeFsmTick(intent, resolveSeeker(), state);
         },
         stop() {
             active = false;
-            const seeker = resolveSeeker();
-            if (seeker) intent.clear(seeker, state);
+            intent.clear(resolveSeeker(), state);
         },
         isActive() {
             return active;
@@ -133,7 +126,6 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         },
         getFsmSnapshot() {
             const seeker = resolveSeeker();
-            if (!seeker) return null;
             return intent.getFsmSnapshot(seeker, state);
         },
         getBrain() {
@@ -143,14 +135,11 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
             return getSnakeFoodTimerFraction(foodTimer);
         },
         getFsmDebugLine() {
-            const snapshot = this.getFsmSnapshot();
-            if (!snapshot) return "";
-            return formatSnakeFsmDebug(snapshot);
+            return formatSnakeFsmDebug(this.getFsmSnapshot());
         },
         tick(dt) {
             if (!active) return;
             const seeker = resolveSeeker();
-            if (!seeker || seeker.isDead) return;
             const choice = runSnakeFsmTick(intent, seeker, state);
             let fedThisTick = false;
             if (choice.mode === "seek_food" && choice.target) {

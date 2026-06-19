@@ -23,11 +23,8 @@ export function enforceSnakeMinLength(state, snakeGame, headId) {
     return true;
 }
 export function killSnake(state, snakeGame, headId) {
-    const autosim = snakeGame.autosimsByHeadId.get(headId);
-    if (autosim) {
-        autosim.stop();
-        snakeGame.autosimsByHeadId.delete(headId);
-    }
+    snakeGame.autosimsByHeadId.get(headId).stop();
+    snakeGame.autosimsByHeadId.delete(headId);
     const meta = getSandboxEntityMeta(state);
     const members = orderedMembers(state, headId);
     for (let i = 0; i < members.length; i++) meta.setChainHead(members[i], false);
@@ -50,7 +47,7 @@ export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struck
     return { aliveHeadId: victimHeadId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
 }
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
-    if (!snakeGame || contacts.count === 0) return;
+    if (contacts.count === 0) return;
     const config = getSnakeGameConfig();
     const registry = snakeGame.registry;
     const splitLinks = new Set();

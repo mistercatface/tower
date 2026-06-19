@@ -4,11 +4,10 @@ import { applySnakeGameConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
 import { createSnakeAutosim } from "./snakeAutosim.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { applySnakeHeadGameplay } from "./snakeHeadGameplay.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake, isAliveSnakeHead } from "./snakeLifecycle.js";
+import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { mountSnakeHud } from "./snakeHud.js";
 import { resolvePlayerSnakeCombatHud } from "./snakeCombatHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
-import { bakeSnakeWalkableCells } from "./snakeWalkableCells.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -16,25 +15,28 @@ export async function setupSnakeGame(state) {
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
     const registry = createSnakeLifecycleRegistry();
     const autosimsByHeadId = new Map();
-    state.sandbox.snakeGame = { registry, autosimsByHeadId };
+    wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
     let playerSnake = null;
     for (let i = 0; i < scene.snakes.length; i++) {
         const snake = scene.snakes[i];
         applySnakeHeadGameplay(snake.chain.head);
         registerAliveSnake(registry, snake.chain.head.id);
-        const autosim = createSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById, visionCone: snake.cameraFollow && config.playerVisionCone ? config.playerVisionCone : null });
+        const autosim = createSnakeAutosim(state, {
+            headId: snake.chain.head.id,
+            behaviorById,
+            navWalkable: scene.navWalkable,
+            visionCone: snake.cameraFollow && config.playerVisionCone ? config.playerVisionCone : null,
+        });
         autosim.start();
         autosimsByHeadId.set(snake.chain.head.id, autosim);
         if (snake.cameraFollow) {
-            if (playerSnake) throw new Error("Snake game config has multiple cameraFollow snakes");
             playerSnake = snake;
             setSandboxCameraTarget(state, snake.chain.head, true);
             state.viewport.snapTo(snake.chain.head.x, snake.chain.head.y);
         }
     }
-    if (!playerSnake) throw new Error("Snake game config requires one snake with cameraFollow: true");
     void state.navigation.onObstaclesChanged(null);
-    bakeSnakeWalkableCells(state);
+    scene.navWalkable.rebake();
     const playerHeadId = playerSnake.chain.head.id;
     const playerAutosim = autosimsByHeadId.get(playerHeadId);
     const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
@@ -46,16 +48,16 @@ export async function setupSnakeGame(state) {
     const snakeHeadIds = config.showAllSnakeVisionCones ? scene.snakes.map((snake) => snake.chain.head.id) : [playerHeadId];
     return {
         head: playerSnake.chain.head,
-        goal: scene.goals[0] ?? null,
+        goal: scene.goals[0],
         goals: scene.goals,
         snakes: scene.snakes,
         cameraTarget: playerSnake.chain.head,
-        appendOverlayCommands(out, gameState, selection) {
-            appendSnakeGameOverlayCommands(out, gameState, selection, {
-                registry,
+        appendOverlayCommands(out, gameState) {
+            appendSnakeGameOverlayCommands(out, gameState, {
                 autosimsByHeadId,
                 snakeHeadIds,
                 memoryHeatmapHeadId: playerHeadId,
+                fsmDebugHeadId: playerHeadId,
                 showVisionCones: config.showVisionCones,
                 showMemoryHeatmap: config.showMemoryHeatmap,
                 showSnakeFsmDebug: config.showSnakeFsmDebug,
@@ -64,10 +66,7 @@ export async function setupSnakeGame(state) {
         getSegmentCount,
         tick(dtMs) {
             const dtSec = dtMs / 1000;
-            for (const [headId, autosim] of autosimsByHeadId) {
-                if (!isAliveSnakeHead(registry, headId)) continue;
-                autosim.tick(dtSec);
-            }
+            for (const autosim of autosimsByHeadId.values()) autosim.tick(dtSec);
             hud.update();
         },
         stop() {

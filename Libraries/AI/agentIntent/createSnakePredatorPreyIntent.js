@@ -12,13 +12,12 @@ export function createSnakePredatorPreyIntent({
     resolveExploreCell,
     selfHeadId,
     registry,
+    navWalkable,
     navBehaviorId = HPA_GROUND_NAV_BEHAVIOR_ID,
     directBehaviorId = DIRECT_GROUND_NAV_BEHAVIOR_ID,
     visionCone = null,
     rng = Math.random,
 }) {
-    if (!behaviorById.get(navBehaviorId)) throw new Error(`Snake intent missing behavior: ${navBehaviorId}`);
-    if (!behaviorById.get(directBehaviorId)) throw new Error(`Snake intent missing behavior: ${directBehaviorId}`);
     const navBehavior = () => behaviorById.get(navBehaviorId);
     const directBehavior = () => behaviorById.get(directBehaviorId);
     const locomotion = createSnakeLocomotion(navBehavior, directBehavior, setActiveBehaviorId, navBehaviorId);
@@ -60,7 +59,7 @@ export function createSnakePredatorPreyIntent({
             return;
         }
         if (mode === "flee") {
-            const cell = pickRetreatDestination(seeker, state, registry, selfHeadId, brain.spatial, rng, resolvedVision);
+            const cell = pickRetreatDestination(seeker, state, registry, selfHeadId, brain.spatial, rng, navWalkable, resolvedVision);
             if (cell) locomotion.setDestination(grid, cell.col, cell.row);
             return;
         }
@@ -155,8 +154,8 @@ export function createSnakePredatorPreyIntent({
                 pathLen: loco.pathLen,
                 replanReason,
                 stuckFrames: loco.stuckFrames,
-                vx: seeker.vx ?? 0,
-                vy: seeker.vy ?? 0,
+                vx: seeker.vx,
+                vy: seeker.vy,
                 lastTransition: lastTransitionReason,
             };
         },

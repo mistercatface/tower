@@ -12,13 +12,11 @@ export function appendSnakeVisionOverlayCommands(out, state, snakeHeadIds) {
     const grid = state.obstacleGrid;
     for (let i = 0; i < snakeHeadIds.length; i++) {
         const head = state.entityRegistry.getLive(snakeHeadIds[i]);
-        if (!head || head.isDead) continue;
         const vision = queryGridCellVision(head, goals, { halfAngle: config.halfAngle, range: config.range, state });
         appendGridCellVisionOverlayCommands(out, { grid, cells: vision.cells, cellFill: config.cellFill });
         for (let g = 0; g < vision.visible.length; g++) {
             const goal = vision.visible[g];
-            const goalRadius = goal.radius ?? 6;
-            out.push(overlayCircleFillStroke(goal.x, goal.y, goalRadius + 2, { fill: "rgba(255, 220, 80, 0.2)", stroke: config.visibleGoalStroke, lineWidth: 1 }));
+            out.push(overlayCircleFillStroke(goal.x, goal.y, goal.radius + 2, { fill: "rgba(255, 220, 80, 0.2)", stroke: config.visibleGoalStroke, lineWidth: 1 }));
         }
     }
 }

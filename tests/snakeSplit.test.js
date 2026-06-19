@@ -14,7 +14,7 @@ import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength } from "../
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
+import { createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
 
@@ -62,9 +62,9 @@ function mockSnakeGame(state, headIds) {
     for (let i = 0; i < headIds.length; i++) {
         registerAliveSnake(registry, headIds[i]);
     }
-    wireSnakeGameRegistry(state, registry, autosimsByHeadId);
+    wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
     for (let i = 0; i < headIds.length; i++) {
-        const autosim = createSnakeAutosim(state, { headId: headIds[i], behaviorById, rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: headIds[i], behaviorById, rng: () => 0 });
         autosim.start();
         autosimsByHeadId.set(headIds[i], autosim);
     }

@@ -12,7 +12,7 @@ import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/di
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { createSnakeAutosim, findSnakeGoalProp } from "../Libraries/Game/snake/snakeAutosim.js";
-import { wireSnakeGameForHead } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
@@ -68,7 +68,7 @@ describe("snakeAutosim", () => {
         wireSnakeGameForHead(state, chain.head.id);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
         const behaviorById = snakeBehaviorById(state);
-        const autosim = createSnakeAutosim(state, {
+        const autosim = createWiredSnakeAutosim(state, {
             headId: chain.head.id,
             goalPropId: goal.id,
             behaviorById,
@@ -93,7 +93,7 @@ describe("snakeAutosim", () => {
         wireSnakeGameForHead(state, chain.head.id);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
         const behaviorById = snakeBehaviorById(state);
-        const autosim = createSnakeAutosim(state, {
+        const autosim = createWiredSnakeAutosim(state, {
             headId: chain.head.id,
             goalPropId: goal.id,
             behaviorById,
@@ -117,7 +117,7 @@ describe("snakeAutosim", () => {
         const goal = spawnGoalOrbAtCell(state, { col: 12, row: 8 });
         const behaviorById = snakeBehaviorById(state);
         const hpaBehavior = behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID);
-        const autosim = createSnakeAutosim(state, {
+        const autosim = createWiredSnakeAutosim(state, {
             headId: chain.head.id,
             goalPropId: goal.id,
             behaviorById,

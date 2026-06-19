@@ -13,10 +13,10 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Li
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/hex.js";
 import { pickSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
-import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
-import { wireSnakeGameForHead } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell, spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
+import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 import { SNAKE_GAME_DEFAULTS } from "../Config/games/snake.js";
 
@@ -73,7 +73,8 @@ describe("snake multi-spawn", () => {
         const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3, rng: () => 0.1 });
         const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, excludeKeys: first.occupiedKeys, rng: () => 0.9 });
         assert.notEqual(first.tintHex, second.tintHex);
-        const goals = spawnSnakeGoalPool(state, 3, { excludeKeys: first.occupiedKeys, rng: () => 0.5 });
+        const navWalkable = createSnakeNavWalkable(state);
+        const goals = spawnSnakeGoalPool(state, 3, navWalkable, { excludeKeys: first.occupiedKeys, rng: () => 0.5 });
         assert.equal(goals.length, 3);
     });
 
@@ -88,7 +89,7 @@ describe("snake multi-spawn", () => {
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
             [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
         ]);
-        const autosim = createSnakeAutosim(state, {
+        const autosim = createWiredSnakeAutosim(state, {
             headId: pack.chain.head.id,
             goalPropId: goal.id,
             behaviorById,

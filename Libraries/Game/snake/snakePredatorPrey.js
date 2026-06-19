@@ -4,15 +4,11 @@ import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { collectSnakeWaypointCandidates } from "./snakeExplore.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
-import { isAliveSnakeHead } from "./snakeLifecycle.js";
-import { getSnakeWalkableCells } from "./snakeWalkableCells.js";
 export function collectAliveSnakeHeads(state, registry, selfHeadId) {
     const heads = [];
     for (const headId of registry.aliveByHeadId.keys()) {
         if (headId === selfHeadId) continue;
-        if (!isAliveSnakeHead(registry, headId)) continue;
-        const head = state.entityRegistry.getLive(headId);
-        if (head && !head.isDead) heads.push(head);
+        heads.push(state.entityRegistry.getLive(headId));
     }
     return heads;
 }
@@ -66,13 +62,13 @@ export function findNearestVisibleSnakeThreat(state, seeker, selfHeadId, registr
     }
     return nearest;
 }
-export function pickRetreatDestination(seeker, state, registry, selfHeadId, memory, rng, visionCone = getSnakeGameConfig().visionCone) {
+export function pickRetreatDestination(seeker, state, registry, selfHeadId, memory, rng, navWalkable, visionCone = getSnakeGameConfig().visionCone) {
     const threats = collectVisibleSnakeThreats(state, seeker, selfHeadId, registry, visionCone);
     if (!threats.length) return null;
     const config = getSnakeGameConfig();
     const grid = state.obstacleGrid;
     const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
-    const openCells = getSnakeWalkableCells(state);
+    const openCells = navWalkable.cells();
     let minTiles = config.exploreMinTiles;
     let candidates = collectSnakeWaypointCandidates(grid, col, row, minTiles, openCells);
     if (!candidates.length && minTiles > config.exploreFallbackMinTiles) {

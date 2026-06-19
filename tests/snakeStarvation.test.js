@@ -11,8 +11,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getSnakeChainRadius, stepSnakeChainRadius } from "../Libraries/Game/snake/snakeScale.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, tickSnakeFoodTimer } from "../Libraries/Game/snake/snakeStarvation.js";
-import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
-import { wireSnakeGameForHead } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
@@ -88,7 +87,7 @@ describe("snake starvation", () => {
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
             [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
         ]);
-        const autosim = createSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById, eatRadius: 20, rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById, eatRadius: 20, rng: () => 0 });
         autosim.start();
         autosim.tick(10);
         assert.ok(autosim.getFoodTimerFraction() < 1);
@@ -108,7 +107,7 @@ describe("snake starvation", () => {
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
             [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
         ]);
-        const autosim = createSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById, eatRadius: 20, rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById, eatRadius: 20, rng: () => 0 });
         autosim.start();
         const radiusBefore = getSnakeChainRadius(state, chain.head.id);
         chain.head.x = goal.x;

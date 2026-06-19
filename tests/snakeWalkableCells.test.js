@@ -5,20 +5,15 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { generateSnakeSplitMap } from "../Libraries/Game/snake/snakeScene.js";
-import {
-    bakeSnakeWalkableCells,
-    getSnakeWalkableCells,
-    isSnakeNavWalkableCell,
-    isSnakeWalkableCell,
-    pickSnakeWalkableCell,
-} from "../Libraries/Game/snake/snakeWalkableCells.js";
+import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
+import { wireSnakeGameRegistry, createSnakeLifecycleRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { walkableCellKey } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { gridSettings } from "../Config/world.js";
+import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
 
@@ -44,54 +39,36 @@ function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
     };
 }
 
-describe("snakeWalkableCells", () => {
-    it("excludes blocked voxels from the baked snake walkable list", () => {
-        applySnakeGameConfig();
-        const state = createSnakeWalkableTestState(16);
-        state.sandbox.snakePlayableBounds = { boundsMode: "rect", boundsCol: 0, boundsRow: 0, boundsCols: 16, boundsRows: 16 };
-        const grid = state.obstacleGrid;
-        grid.grid[colRowToIndex(4, 4, grid.cols)] = 1;
-        bakeSnakeWalkableCells(state);
-        assert.ok(!isSnakeWalkableCell(state, 4, 4));
-        assert.ok(getSnakeWalkableCells(state).every((cell) => !(cell.col === 4 && cell.row === 4)));
+describe("snake navWalkable session", () => {
+    it("spawnSnakeCavernScene returns navWalkable bound to playable bounds", async () => {
+        applySnakeGameConfig({ snakeCount: 2, goalCount: 3 });
+        const state = createSnakeWalkableTestState(48, 1337);
+        const scene = await spawnSnakeCavernScene(state);
+        assert.ok(scene.navWalkable);
+        assert.ok(scene.navWalkable.cells().length >= 80);
     });
 
-    it("rebakes when navigation epoch changes", () => {
-        applySnakeGameConfig();
-        const state = createSnakeWalkableTestState(16);
-        state.sandbox.snakePlayableBounds = { boundsMode: "rect", boundsCol: 0, boundsRow: 0, boundsCols: 16, boundsRows: 16 };
-        bakeSnakeWalkableCells(state);
-        const before = getSnakeWalkableCells(state).length;
-        state.navigation.obstacleGeneration = 1;
-        state.obstacleGrid.grid[colRowToIndex(2, 2, state.obstacleGrid.cols)] = 1;
-        bakeSnakeWalkableCells(state);
-        const after = getSnakeWalkableCells(state).length;
-        assert.ok(after <= before);
-        assert.ok(!isSnakeWalkableCell(state, 2, 2));
-    });
-
-    it("pickSnakeWalkableCell only returns baked nav-walkable cells", () => {
-        applySnakeGameConfig();
-        const state = createSnakeWalkableTestState(16);
-        state.sandbox.snakePlayableBounds = { boundsMode: "rect", boundsCol: 0, boundsRow: 0, boundsCols: 16, boundsRows: 16 };
-        bakeSnakeWalkableCells(state);
-        const picked = pickSnakeWalkableCell(state, { rng: () => 0 });
+    it("wired navWalkable serves explore picks after wireSnakeGameRegistry", async () => {
+        applySnakeGameConfig({ snakeCount: 2, goalCount: 3 });
+        const state = createSnakeWalkableTestState(48, 1337);
+        const scene = await spawnSnakeCavernScene(state);
+        wireSnakeGameRegistry(state, createSnakeLifecycleRegistry(), new Map(), scene.navWalkable);
+        const picked = state.sandbox.snakeGame.navWalkable.pick({ rng: () => 0 });
         assert.ok(picked);
-        assert.ok(isSnakeWalkableCell(state, picked.col, picked.row));
-        assert.ok(isSnakeNavWalkableCell(state.obstacleGrid, picked.col, picked.row));
+        assert.ok(state.sandbox.snakeGame.navWalkable.has(picked.col, picked.row));
     });
 
-    it("baked cells on generated snake split map are nav-walkable", async () => {
+    it("wired navWalkable cells on split map are nav-walkable", async () => {
         applySnakeGameConfig();
         const state = createSnakeWalkableTestState(48, 1337);
         await generateSnakeSplitMap(state);
-        bakeSnakeWalkableCells(state);
-        const cells = getSnakeWalkableCells(state);
+        wireSnakeGameRegistry(state, createSnakeLifecycleRegistry(), new Map(), createSnakeNavWalkable(state));
+        const cells = state.sandbox.snakeGame.navWalkable.cells();
         assert.ok(cells.length >= 80);
         const grid = state.obstacleGrid;
         for (let i = 0; i < cells.length; i++) {
             const cell = cells[i];
-            assert.ok(isSnakeNavWalkableCell(grid, cell.col, cell.row), `cell ${walkableCellKey(cell.col, cell.row)} not nav-walkable`);
+            assert.ok(isNavWalkableCell(grid, cell.col, cell.row), `cell ${walkableCellKey(cell.col, cell.row)} not nav-walkable`);
         }
     });
 });

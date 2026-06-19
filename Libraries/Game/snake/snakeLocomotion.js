@@ -47,7 +47,7 @@ export function createSnakeLocomotion(navBehavior, directBehavior, setActiveBeha
 }
 export function formatSnakeFsmDebug(snapshot) {
     const dest = snapshot.destCell ? `${snapshot.destCell.col},${snapshot.destCell.row}` : "—";
-    const replan = snapshot.replanReason ?? "none";
+    const replan = snapshot.replanReason;
     const speed = Math.hypot(snapshot.vx, snapshot.vy).toFixed(1);
     return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}`;
 }

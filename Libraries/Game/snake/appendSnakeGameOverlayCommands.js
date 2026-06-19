@@ -1,19 +1,12 @@
-import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
-import { resolveAliveSnakeHeadId } from "./snakeLifecycle.js";
 import { appendSnakeVisionOverlayCommands } from "./snakeVisionOverlays.js";
 import { appendSnakeMemoryHeatmapOverlayCommands } from "./snakeMemoryOverlays.js";
 import { appendSnakeFsmDebugOverlayCommands } from "./snakeFsmDebugOverlays.js";
-export function appendSnakeGameOverlayCommands(out, state, selection, { registry, autosimsByHeadId, snakeHeadIds, memoryHeatmapHeadId, showVisionCones, showMemoryHeatmap, showSnakeFsmDebug }) {
-    if (showVisionCones && snakeHeadIds.length) appendSnakeVisionOverlayCommands(out, state, snakeHeadIds);
-    if (showMemoryHeatmap && memoryHeatmapHeadId) {
-        const brain = autosimsByHeadId.get(memoryHeatmapHeadId)?.getBrain();
-        if (brain) appendSnakeMemoryHeatmapOverlayCommands(out, state, brain);
+export function appendSnakeGameOverlayCommands(out, state, { autosimsByHeadId, snakeHeadIds, memoryHeatmapHeadId, fsmDebugHeadId, showVisionCones, showMemoryHeatmap, showSnakeFsmDebug }) {
+    if (showVisionCones) appendSnakeVisionOverlayCommands(out, state, snakeHeadIds);
+    if (showMemoryHeatmap) appendSnakeMemoryHeatmapOverlayCommands(out, state, autosimsByHeadId.get(memoryHeatmapHeadId).getBrain());
+    if (showSnakeFsmDebug) {
+        const autosim = autosimsByHeadId.get(fsmDebugHeadId);
+        const seeker = state.entityRegistry.getLive(fsmDebugHeadId);
+        appendSnakeFsmDebugOverlayCommands(out, state, seeker, autosim.getFsmSnapshot(seeker, state));
     }
-    if (!showSnakeFsmDebug || selection?.kind !== "prop") return;
-    const headId = resolveAliveSnakeHeadId(registry, (id) => getChainMemberIds(state, id), selection.id);
-    if (!headId) return;
-    const autosim = autosimsByHeadId.get(headId);
-    const seeker = state.entityRegistry.getLive(headId);
-    const snapshot = autosim?.getFsmSnapshot?.();
-    if (seeker && snapshot) appendSnakeFsmDebugOverlayCommands(out, state, seeker, snapshot);
 }

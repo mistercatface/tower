@@ -1,6 +1,5 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { queryGridCellVision } from "../../Navigation/perception/gridCellVision.js";
-
 export function collectSnakeGoalProps(state) {
     const goalPropId = getSnakeGameConfig().goalPropId;
     const goals = [];
@@ -10,7 +9,6 @@ export function collectSnakeGoalProps(state) {
     });
     return goals;
 }
-
 export function findNearestVisibleSnakeGoal(state, seeker, { halfAngle, range } = getSnakeGameConfig().visionCone) {
     const goals = collectSnakeGoalProps(state);
     const { visible } = queryGridCellVision(seeker, goals, { halfAngle, range, state });
@@ -26,11 +24,9 @@ export function findNearestVisibleSnakeGoal(state, seeker, { halfAngle, range } 
     }
     return nearest;
 }
-
 export function countLiveSnakeGoals(state) {
     return collectSnakeGoalProps(state).length;
 }
-
 export function findNearestSnakeGoal(state, x, y) {
     const goals = collectSnakeGoalProps(state);
     let nearest = null;
@@ -45,8 +41,7 @@ export function findNearestSnakeGoal(state, x, y) {
     }
     return nearest;
 }
-
 export function findSnakeGoalProp(state) {
     const goals = collectSnakeGoalProps(state);
-    return goals[0] ?? null;
+    return goals[0];
 }

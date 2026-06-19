@@ -15,9 +15,7 @@ export function resolveSnakeSpawnSpecs(config = getSnakeGameConfig()) {
     return specs;
 }
 export function resolveSnakePropRadius(propId) {
-    const radius = getPropAsset(propId)?.physics?.radius;
-    if (radius == null) throw new Error(`Snake config prop "${propId}" has no physics.radius`);
-    return radius;
+    return getPropAsset(propId).physics.radius;
 }
 export function resolveSnakeSegmentSpacing(config = getSnakeGameConfig(), segmentRadius = null) {
     const radius = segmentRadius ?? resolveSnakePropRadius(config.segmentPropId);
