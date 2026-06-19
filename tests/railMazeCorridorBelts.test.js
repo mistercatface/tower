@@ -70,8 +70,12 @@ describe("rail maze corridor belts", () => {
                 rail: config.rail,
             });
             const plan = preview.beltPlan;
-            assert.ok(plan.pathCount >= 5, `seed ${seeds[i]}: only ${plan.pathCount} corridor paths`);
-            assert.ok(plan.floorBelts.length > 20, `seed ${seeds[i]}: only ${plan.floorBelts.length} belts`);
+            assert.ok(plan.pathCount >= 15, `seed ${seeds[i]}: only ${plan.pathCount} corridor paths`);
+            for (let pi = 0; pi < plan.paths.length; pi++) {
+                const len = plan.paths[pi].length;
+                assert.ok(len >= 6 && len <= 12, `seed ${seeds[i]} path ${pi}: length ${len}`);
+            }
+            assert.ok(plan.floorBelts.length > 60, `seed ${seeds[i]}: only ${plan.floorBelts.length} belts`);
             let elbows = 0;
             for (let bi = 0; bi < plan.floorBelts.length; bi++) {
                 if (floorBeltElbowTurn(plan.floorBelts[bi].kind)) elbows++;

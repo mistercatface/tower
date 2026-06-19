@@ -7,16 +7,21 @@ import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
 import { beltFootprintKeys, tryValidateBeltChains } from "./beltChainValidation.js";
 import { collectPathMouthExteriorKeys, filterNavBeltEndpointCandidates, validateBeltPathMouthAccess } from "./railMazeBeltEndpoints.js";
 import { createRailMazeNavCorridorPathfinder, findRailMazeNavCorridorPath } from "./railMazeNavCorridorPath.js";
-
 const FULL_FOOTPRINT = { interiorOnly: false };
-const DEFAULT_CORRIDOR_COUNT = 15;
-const MAX_PAIR_ATTEMPTS_PER_CORRIDOR = 48;
+const DEFAULT_CORRIDOR_COUNT = 150;
+const DEFAULT_PATH_LENGTH_MIN = 6;
+const DEFAULT_PATH_LENGTH_MAX = 24;
+const MAX_PAIR_ATTEMPTS_PER_CORRIDOR = 96;
 const BELT_PLAN_SEED_SALT = 0xbe1a5afe;
-
+function manhattanCells(a, b) {
+    return Math.abs(a.col - b.col) + Math.abs(a.row - b.row);
+}
+function pathLengthInBand(path, minLen, maxLen) {
+    return path.length >= minLen && path.length <= maxLen;
+}
 function cellKey(col, row) {
     return `${col},${row}`;
 }
-
 function navWalkableNeighbors(grid, gridNavContext, col, row) {
     const cardinals = [
         [1, 0],
@@ -35,7 +40,6 @@ function navWalkableNeighbors(grid, gridNavContext, col, row) {
     }
     return out;
 }
-
 export function collectRailMazeBeltZoneCells(grid, gridNavContext, railConfig, northReserveRows, walkableKeys) {
     const cellSize = grid.cellSize;
     const beltStartGlobalRow = railConfig.boundsRow + Math.max(0, Math.round(northReserveRows));
@@ -49,7 +53,6 @@ export function collectRailMazeBeltZoneCells(grid, gridNavContext, railConfig, n
     });
     return cells;
 }
-
 function collectNorthReserveProtectedKeys(grid, railConfig, northReserveRows) {
     const protectedKeys = new Set();
     const depth = Math.max(0, Math.round(northReserveRows));
@@ -64,7 +67,6 @@ function collectNorthReserveProtectedKeys(grid, railConfig, northReserveRows) {
     });
     return protectedKeys;
 }
-
 function degreeInZone(cells, neighborAt) {
     const memberSet = new Set();
     for (let i = 0; i < cells.length; i++) memberSet.add(cellKey(cells[i].col, cells[i].row));
@@ -76,7 +78,6 @@ function degreeInZone(cells, neighborAt) {
     }
     return degreeByKey;
 }
-
 function collectNorthSeamMouthKeys(cells, northReserveRows, footprint) {
     const mouths = new Set();
     if (northReserveRows <= 0) return mouths;
@@ -90,12 +91,10 @@ function collectNorthSeamMouthKeys(cells, northReserveRows, footprint) {
     }
     return mouths;
 }
-
 /** @param {{ c: number, r: number }[][]} paths */
 function collectPathEndpointMouthKeys(paths) {
     return collectPathMouthExteriorKeys(paths);
 }
-
 function peelBrokenBelts(floorBelts, mouthExteriorKeys) {
     let belts = floorBelts.slice();
     for (let pass = 0; pass < belts.length + 4; pass++) {
@@ -131,7 +130,6 @@ function peelBrokenBelts(floorBelts, mouthExteriorKeys) {
     }
     return { floorBelts: belts, validation: tryValidateBeltChains(belts, mouthExteriorKeys) };
 }
-
 function pickRandomFreeCell(freeCells, occupied, rng) {
     if (freeCells.length < 2) return null;
     for (let attempt = 0; attempt < freeCells.length; attempt++) {
@@ -140,8 +138,20 @@ function pickRandomFreeCell(freeCells, occupied, rng) {
     }
     return null;
 }
-
-function planRandomNavCorridorPaths({ grid, gridNavContext, railConfig, zoneCells, walkableKeys, northReserveRows, corridorCount, corridorWidth, rng }) {
+function pickRandomEndInLengthBand(start, endpointCells, occupied, minLen, maxLen, rng) {
+    const candidates = [];
+    for (let i = 0; i < endpointCells.length; i++) {
+        const cell = endpointCells[i];
+        if (cell.col === start.col && cell.row === start.row) continue;
+        if (occupied.has(cellKey(cell.col, cell.row))) continue;
+        const dist = manhattanCells(start, cell);
+        if (dist < minLen || dist > maxLen) continue;
+        candidates.push(cell);
+    }
+    if (!candidates.length) return pickRandomFreeCell(endpointCells, occupied, rng);
+    return candidates[Math.floor(rng() * candidates.length)];
+}
+function planRandomNavCorridorPaths({ grid, gridNavContext, railConfig, zoneCells, walkableKeys, northReserveRows, corridorCount, corridorWidth, pathLengthMin, pathLengthMax, rng }) {
     const endpointCells = filterNavBeltEndpointCandidates(
         grid,
         gridNavContext,
@@ -159,11 +169,12 @@ function planRandomNavCorridorPaths({ grid, gridNavContext, railConfig, zoneCell
         for (let attempt = 0; attempt < MAX_PAIR_ATTEMPTS_PER_CORRIDOR; attempt++) {
             const start = pickRandomFreeCell(endpointCells, occupied, rng);
             if (!start) break;
-            const end = pickRandomFreeCell(endpointCells, occupied, rng);
+            const end = pickRandomEndInLengthBand(start, endpointCells, occupied, pathLengthMin, pathLengthMax, rng);
             if (!end) break;
             if (start.col === end.col && start.row === end.row) continue;
-            const path = findRailMazeNavCorridorPath(pathfinder, start, end, occupied, corridorWidth);
+            const path = findRailMazeNavCorridorPath(pathfinder, start, end, occupied, corridorWidth, pathLengthMax);
             if (!path) continue;
+            if (!pathLengthInBand(path, pathLengthMin, pathLengthMax)) continue;
             if (!validateBeltPathMouthAccess(grid, gridNavContext, path, occupied)) continue;
             placedPath = path;
             break;
@@ -175,7 +186,6 @@ function planRandomNavCorridorPaths({ grid, gridNavContext, railConfig, zoneCell
     }
     return { paths, widths };
 }
-
 export function planRailMazeCorridorBelts({
     grid,
     gridNavContext,
@@ -184,6 +194,8 @@ export function planRailMazeCorridorBelts({
     walkableKeys,
     corridorCount = DEFAULT_CORRIDOR_COUNT,
     corridorWidth = 1,
+    pathLengthMin = DEFAULT_PATH_LENGTH_MIN,
+    pathLengthMax = DEFAULT_PATH_LENGTH_MAX,
     mapSeed = 0,
     rng = null,
 }) {
@@ -198,6 +210,8 @@ export function planRailMazeCorridorBelts({
         northReserveRows,
         corridorCount,
         corridorWidth,
+        pathLengthMin,
+        pathLengthMax,
         rng: random,
     });
     const neighborAt = (col, row) => navWalkableNeighbors(grid, gridNavContext, col, row);
@@ -206,24 +220,12 @@ export function planRailMazeCorridorBelts({
     const protectedKeys = collectNorthReserveProtectedKeys(grid, railConfig, northReserveRows);
     if (protectedKeys.size) floorBelts = floorBelts.filter((belt) => !protectedKeys.has(cellKey(belt.col, belt.row)));
     const footprint = beltFootprintKeys(floorBelts);
-    const mouthExteriorKeys = new Set([
-        ...collectNorthSeamMouthKeys(zoneCells, northReserveRows, footprint),
-        ...collectPathEndpointMouthKeys(paths),
-    ]);
+    const mouthExteriorKeys = new Set([...collectNorthSeamMouthKeys(zoneCells, northReserveRows, footprint), ...collectPathEndpointMouthKeys(paths)]);
     const peeled = peelBrokenBelts(floorBelts, mouthExteriorKeys);
     floorBelts = peeled.floorBelts;
     const validation = peeled.validation;
-    return {
-        floorBelts,
-        paths,
-        zoneCellCount: zoneCells.length,
-        pathCount: paths.length,
-        mouthExteriorKeys,
-        validation,
-        degreeByKey,
-    };
+    return { floorBelts, paths, zoneCellCount: zoneCells.length, pathCount: paths.length, mouthExteriorKeys, validation, degreeByKey };
 }
-
 export function planRailMazeCorridorBeltsFromPreview(preview) {
     return planRailMazeCorridorBelts({
         grid: preview.grid,
