@@ -92,7 +92,7 @@ function spawnCavernStressChain(state) {
         }
         for (let i = 0; i < props.length - 1; i++) {
             const restLength = Math.hypot(props[i + 1].x - props[i].x, props[i + 1].y - props[i].y);
-            addDistanceConstraint(state.kinetic, { bodyAId: props[i].id, bodyBId: props[i + 1].id, restLength });
+            addDistanceConstraint(state.kinetic, { bodyA: props[i], bodyB: props[i + 1], restLength });
         }
         if (props.length > 0) setChainHead(state, getSandboxEntityMeta(state), props[0].id);
     });

@@ -12,8 +12,11 @@ import {
 function createState() {
     return { kinetic: createKineticSession() };
 }
-function link(state, a, b) {
-    return addDistanceConstraint(state.kinetic, { bodyAId: a, bodyBId: b, restLength: 10 });
+function stubBody(id) {
+    return { id, isDead: false, strategy: { isKinetic: true } };
+}
+function link(state, aId, bId) {
+    return addDistanceConstraint(state.kinetic, { bodyA: stubBody(aId), bodyB: stubBody(bId), restLength: 10 });
 }
 describe("kineticConstraintGraph", () => {
     it("getConnectedBodyIds returns the whole island for any member", () => {

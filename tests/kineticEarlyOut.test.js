@@ -38,7 +38,7 @@ describe("kinetic early-out", () => {
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(20, 0, 10);
         const tick = createKineticTestTick([bodyA, bodyB], { constraintsDirty: true });
-        addDistanceConstraint(tick.world.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 20 });
+        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 20 });
         runCollisionPipeline(tick, { resolveWalls: () => {} });
         assert.ok(tick.world.kinetic.kineticSolverStats.outerIterations < tick.world.kinetic.kineticSolverStats.maxIterations);
         applyGameCollisionSettings(null);

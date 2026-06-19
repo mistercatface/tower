@@ -78,11 +78,11 @@ describe("link capsule wall projection", () => {
         const bodyA = mockCircleBody(50, 14, 4);
         const bodyB = mockCircleBody(66, 14, 4);
         const tick = createKineticTestTick([bodyA, bodyB]);
-        addDistanceConstraint(tick.world.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 16 });
+        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
         tick.frame.getWallCandidates = () => [wall];
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) < 4);
         const { buffer, groups } = gatherKineticConstraintBuffer(tick);
-        projectIslandLinkCapsulesAgainstWalls(tick.frame, buffer, groups);
+        projectIslandLinkCapsulesAgainstWalls(tick, buffer, groups);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
     });
     it("collision pipeline clears wedged head-neck link in a 1-cell corridor", () => {

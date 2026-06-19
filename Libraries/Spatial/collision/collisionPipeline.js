@@ -87,9 +87,9 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = g
                 resolveKineticContactPass(tick);
                 applyContactSideEffects(tick, kineticContactBuffer);
             }
-            projectKineticConstraintBuffer(constraintBuffer, constraintGroups);
-            projectIslandLinkCapsulesAgainstWalls(frame, constraintBuffer, constraintGroups);
-            solveKineticConstraintBuffer(frame, constraintBuffer, constraintGroups);
+            projectKineticConstraintBuffer(tick, constraintBuffer, constraintGroups);
+            projectIslandLinkCapsulesAgainstWalls(tick, constraintBuffer, constraintGroups);
+            solveKineticConstraintBuffer(tick, constraintBuffer, constraintGroups);
             for (let i = 0; i < activeBodies.length; i++) {
                 const prop = activeBodies[i];
                 if (!prop.strategy?.isKinetic) continue;

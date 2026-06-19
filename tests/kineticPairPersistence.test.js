@@ -10,6 +10,7 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
+import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
 loadPropAssets();
@@ -66,11 +67,11 @@ describe("kinetic pair persistence", () => {
                 kineticEarlyOut: { enabled: true, persistPairs: true, minIterations: 1, velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3, contactMinIterations: 1, contactImpulseEpsilon: 1e-4 },
             },
         });
+        resetKineticConstraintIds(1);
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(20, 0, 10);
         const tick = createKineticTestTick([bodyA, bodyB]);
-        tick.world.kinetic.kineticConstraints.push({ id: 1, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, anchorA: { x: 0, y: 0 }, anchorB: { x: 0, y: 0 }, restLength: 20 });
-        tick.world.kinetic.kineticConstraintsDirty = true;
+        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 20 });
         runCollisionPipeline(tick, { resolveWalls: () => {} });
         snapshotActiveBroadphaseBounds(tick.frame._activeKineticBodies);
         assert.ok(activeBodiesMatchKineticSlab(tick.frame._activeKineticBodies));

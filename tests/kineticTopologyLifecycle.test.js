@@ -80,8 +80,8 @@ describe("kinetic topology lifecycle", () => {
         const bodies = [a, b, c];
         const world = createTestWorld(bodies);
         const state = chainLinkState(world);
-        addDistanceConstraint(world.kinetic, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
-        addDistanceConstraint(world.kinetic, { bodyAId: b.id, bodyBId: c.id, restLength: 18 });
+        addDistanceConstraint(world.kinetic, { bodyA: a, bodyB: b, restLength: 18 });
+        addDistanceConstraint(world.kinetic, { bodyA: b, bodyB: c, restLength: 18 });
         const frame = setupKineticTestFrame(bodies);
         bakeKineticIslandPlan(world.kinetic, frame._kineticBodies);
         assert.equal(a._kineticIslandPeers.length, 3);

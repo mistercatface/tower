@@ -34,14 +34,14 @@ function applyPhysicsSnapshot(state, doc) {
     getSandboxEntityMeta(state).clear();
     for (let i = state.worldProps.length - 1; i >= 0; i--) state.worldProps[i].isDead = true;
     state.worldProps.length = 0;
-    const propIds = [];
+    const propRefs = new Array(doc.props.length);
     for (let i = 0; i < doc.props.length; i++) {
         const entry = doc.props[i];
         const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction, entry.facing ?? 0, undefined, entry.visualOverride);
-        propIds.push(prop.id);
+        propRefs[i] = prop;
     }
-    applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, propIds);
-    if (doc.chainHeadProp != null) setChainHead(state, getSandboxEntityMeta(state), propIds[doc.chainHeadProp]);
+    applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, propRefs);
+    if (doc.chainHeadProp != null) setChainHead(state, getSandboxEntityMeta(state), propRefs[doc.chainHeadProp].id);
 }
 
 describe("sandboxSceneSnapshot physics", () => {

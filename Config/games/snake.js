@@ -3,7 +3,7 @@ export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
     goalPropId: "goal_orb",
-    snakeCount: 50,
+    snakeCount: 70,
     goalCount: 200,
     playerSnakeIndex: 0,
     segmentCount: 3,

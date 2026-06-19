@@ -74,7 +74,7 @@ export function addChainLink(state, fromPropId, toPropId, linkSlack = 1) {
     if (!isChainLinkBall(bodyA) || !isChainLinkBall(bodyB)) return false;
     if (hasChainLinkBetween(state, fromPropId, toPropId)) return true;
     const restLength = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
-    addDistanceConstraint(state.kinetic, { bodyAId: fromPropId, bodyBId: toPropId, restLength });
+    addDistanceConstraint(state.kinetic, { bodyA, bodyB, restLength });
     return true;
 }
 export function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {
@@ -87,8 +87,9 @@ export function resyncChainLinkRestLengths(state, memberIds, linkSlack) {
         const entry = list[i];
         if (entry.type !== "distance") continue;
         if (!members.has(entry.bodyAId) || !members.has(entry.bodyBId)) continue;
-        const bodyA = state.entityRegistry.getLive(entry.bodyAId);
-        const bodyB = state.entityRegistry.getLive(entry.bodyBId);
+        const bodyA = entry.bodyA;
+        const bodyB = entry.bodyB;
+        if (bodyA.isDead || bodyB.isDead) continue;
         entry.restLength = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
     }
 }

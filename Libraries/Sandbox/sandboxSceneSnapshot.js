@@ -151,15 +151,15 @@ function spawnSnapshotProp(state, entry) {
 }
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
 function spawnSnapshotProps(state, doc) {
-    const propIds = [];
+    const propRefs = new Array(doc.props.length);
     for (let i = 0; i < doc.props.length; i++) {
         const prop = spawnSnapshotProp(state, doc.props[i]);
-        if (prop) propIds.push(prop.id);
+        if (prop) propRefs[i] = prop;
     }
-    if (doc.schemaVersion >= 9 && doc.kineticConstraints?.length) applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, propIds);
+    if (doc.schemaVersion >= 9 && doc.kineticConstraints?.length) applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, propRefs);
     if (doc.schemaVersion >= 9 && doc.chainHeadProp != null) {
-        const headId = propIds[doc.chainHeadProp];
-        if (headId != null) setChainHead(state, getSandboxEntityMeta(state), headId);
+        const headProp = propRefs[doc.chainHeadProp];
+        if (headProp) setChainHead(state, getSandboxEntityMeta(state), headProp.id);
     }
 }
 /**

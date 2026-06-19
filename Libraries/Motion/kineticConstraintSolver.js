@@ -19,6 +19,14 @@ const kineticConstraintBuffer = {
     anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
     anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS),
     restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    massA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    massB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    invMassB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    invIA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    pinnedA: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
+    pinnedB: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
     reset() {
         this.count = 0;
     },
@@ -91,13 +99,23 @@ function orderIslandConstraintItems(items) {
 }
 function appendConstraintEntry(buffer, item) {
     const idx = buffer.count++;
-    buffer.bodyA[idx] = item.bodyA;
-    buffer.bodyB[idx] = item.bodyB;
+    const bodyA = item.bodyA;
+    const bodyB = item.bodyB;
+    buffer.bodyA[idx] = bodyA;
+    buffer.bodyB[idx] = bodyB;
     buffer.anchorAx[idx] = item.entry.anchorA.x;
     buffer.anchorAy[idx] = item.entry.anchorA.y;
     buffer.anchorBx[idx] = item.entry.anchorB.x;
     buffer.anchorBy[idx] = item.entry.anchorB.y;
     buffer.restLength[idx] = item.entry.restLength;
+    buffer.massA[idx] = massFromBody(bodyA);
+    buffer.massB[idx] = massFromBody(bodyB);
+    buffer.invMassA[idx] = inverseMassFromBody(bodyA);
+    buffer.invMassB[idx] = inverseMassFromBody(bodyB);
+    buffer.invIA[idx] = bodyA.momentOfInertia ? 1 / bodyA.momentOfInertia : 0;
+    buffer.invIB[idx] = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
+    buffer.pinnedA[idx] = bodyPinnedForContact(bodyA) ? 1 : 0;
+    buffer.pinnedB[idx] = bodyPinnedForContact(bodyB) ? 1 : 0;
 }
 function islandConstraintsAsleep(buffer, start, count) {
     for (let i = start; i < start + count; i++) {
@@ -112,16 +130,16 @@ export function gatherKineticConstraintBuffer(tick, buffer = kineticConstraintBu
     groups.reset();
     const { frame, world } = tick;
     const session = world.kinetic;
-    const registry = world.entityRegistry;
     const plan = ensureKineticIslandPlan(session, frame._kineticBodies);
     const list = session.kineticConstraints;
     const buckets = new Map();
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
         if (entry.type !== "distance") continue;
-        const bodyA = registry.getLive(entry.bodyAId);
-        const bodyB = registry.getLive(entry.bodyBId);
-        if (!bodyA?.strategy?.isKinetic || !bodyB?.strategy?.isKinetic) continue;
+        const bodyA = entry.bodyA;
+        const bodyB = entry.bodyB;
+        if (bodyA.isDead || bodyB.isDead) continue;
+        if (!bodyA.strategy?.isKinetic || !bodyB.strategy?.isKinetic) continue;
         const root = plan.bodyIdToIslandRoot.get(bodyA.id) ?? bodyA.id;
         if (!buckets.has(root)) buckets.set(root, []);
         buckets.get(root).push({ entry, bodyA, bodyB });
@@ -213,7 +231,8 @@ function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy
         spatialFrame.scheduleKineticActivation(bodyB);
     }
 }
-export function projectIslandLinkCapsulesAgainstWalls(spatialFrame, buffer, groups) {
+export function projectIslandLinkCapsulesAgainstWalls(tick, buffer, groups) {
+    const spatialFrame = tick.frame;
     const walls = [];
     for (let g = 0; g < groups.count; g++) {
         const start = groups.starts[g];
@@ -240,9 +259,9 @@ function projectDistanceConstraint(buffer, index) {
     const ny = dy / dist;
     const error = dist - buffer.restLength[index];
     if (Math.abs(error) < 1e-5) return;
-    separateAlongNormal(bodyA, bodyB, nx, ny, -error, massFromBody(bodyA), massFromBody(bodyB), bodyPinnedForContact(bodyA), bodyPinnedForContact(bodyB));
+    separateAlongNormal(bodyA, bodyB, nx, ny, -error, buffer.massA[index], buffer.massB[index], buffer.pinnedA[index], buffer.pinnedB[index]);
 }
-function solveDistanceConstraintVelocity(buffer, index, spatialFrame) {
+function solveDistanceConstraintVelocity(buffer, index, spatialFrame, velocityBias) {
     const bodyA = buffer.bodyA[index];
     const bodyB = buffer.bodyB[index];
     const wa = worldAnchorFromBody(bodyA, buffer.anchorAx[index], buffer.anchorAy[index]);
@@ -254,14 +273,14 @@ function solveDistanceConstraintVelocity(buffer, index, spatialFrame) {
     const nx = dx / dist;
     const ny = dy / dist;
     const error = dist - buffer.restLength[index];
-    const invMassA = inverseMassFromBody(bodyA);
-    const invMassB = inverseMassFromBody(bodyB);
+    const invMassA = buffer.invMassA[index];
+    const invMassB = buffer.invMassB[index];
     const rax = wa.x - bodyA.x;
     const ray = wa.y - bodyA.y;
     const rbx = wb.x - bodyB.x;
     const rby = wb.y - bodyB.y;
-    const invIA = bodyA.momentOfInertia ? 1 / bodyA.momentOfInertia : 0;
-    const invIB = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
+    const invIA = buffer.invIA[index];
+    const invIB = buffer.invIB[index];
     const rAn = rax * ny - ray * nx;
     const rBn = rbx * ny - rby * nx;
     const k = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
@@ -271,8 +290,7 @@ function solveDistanceConstraintVelocity(buffer, index, spatialFrame) {
     const vBx = (bodyB.vx ?? 0) - (bodyB.angularVelocity ?? 0) * rby;
     const vBy = (bodyB.vy ?? 0) + (bodyB.angularVelocity ?? 0) * rbx;
     const vRelN = (vBx - vAx) * nx + (vBy - vAy) * ny;
-    const bias = getCollisionSettings().kineticConstraints.velocityBias;
-    const lambda = -(vRelN + bias * error) / k;
+    const lambda = -(vRelN + velocityBias * error) / k;
     if (lambda === 0) return 0;
     bodyA.vx = (bodyA.vx ?? 0) - lambda * nx * invMassA;
     bodyA.vy = (bodyA.vy ?? 0) - lambda * ny * invMassA;
@@ -284,7 +302,7 @@ function solveDistanceConstraintVelocity(buffer, index, spatialFrame) {
     spatialFrame.scheduleKineticActivation(bodyB);
     return Math.abs(lambda);
 }
-export function projectKineticConstraintBuffer(buffer, groups) {
+export function projectKineticConstraintBuffer(_tick, buffer, groups) {
     for (let g = 0; g < groups.count; g++) {
         const start = groups.starts[g];
         const count = groups.counts[g];
@@ -292,18 +310,19 @@ export function projectKineticConstraintBuffer(buffer, groups) {
         for (let i = start; i < start + count; i++) projectDistanceConstraint(buffer, i);
     }
 }
-export function solveKineticConstraintBuffer(spatialFrame, buffer, groups) {
+export function solveKineticConstraintBuffer(tick, buffer, groups) {
     if (buffer.count === 0) return;
-    const iterations = getCollisionSettings().kineticConstraints.iterations;
+    const spatialFrame = tick.frame;
+    const constraintSettings = getCollisionSettings().kineticConstraints;
     const earlyOut = getCollisionSettings().kineticEarlyOut;
-    for (let iter = 0; iter < iterations; iter++) {
+    for (let iter = 0; iter < constraintSettings.iterations; iter++) {
         let maxImpulse = 0;
         for (let g = 0; g < groups.count; g++) {
             const start = groups.starts[g];
             const count = groups.counts[g];
             if (islandConstraintsAsleep(buffer, start, count)) continue;
             for (let i = start; i < start + count; i++) {
-                const impulse = solveDistanceConstraintVelocity(buffer, i, spatialFrame);
+                const impulse = solveDistanceConstraintVelocity(buffer, i, spatialFrame, constraintSettings.velocityBias);
                 if (impulse > maxImpulse) maxImpulse = impulse;
             }
         }
@@ -312,8 +331,8 @@ export function solveKineticConstraintBuffer(spatialFrame, buffer, groups) {
 }
 export function resolveKineticConstraintPass(tick) {
     const { buffer, groups } = gatherKineticConstraintBuffer(tick);
-    projectKineticConstraintBuffer(buffer, groups);
-    solveKineticConstraintBuffer(tick.frame, buffer, groups);
+    projectKineticConstraintBuffer(tick, buffer, groups);
+    solveKineticConstraintBuffer(tick, buffer, groups);
 }
 export function measureConstraintBufferMaxError(buffer) {
     let max = 0;
@@ -327,9 +346,9 @@ export function measureConstraintBufferMaxError(buffer) {
     }
     return max;
 }
-export function measureDistanceConstraintError(registry, constraint) {
-    const bodyA = registry.getLive(constraint.bodyAId);
-    const bodyB = registry.getLive(constraint.bodyBId);
-    if (!bodyA || !bodyB) return Infinity;
+export function measureDistanceConstraintError(constraint) {
+    const bodyA = constraint.bodyA;
+    const bodyB = constraint.bodyB;
+    if (bodyA.isDead || bodyB.isDead) return Infinity;
     return Math.abs(distanceBetweenAnchors(bodyA, constraint.anchorA, bodyB, constraint.anchorB) - constraint.restLength);
 }

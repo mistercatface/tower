@@ -70,8 +70,8 @@ function linkChain(state, bodies, spacing) {
     resetKineticConstraintIds(1);
     for (let i = 0; i < bodies.length - 1; i++) {
         addDistanceConstraint(state.kinetic, {
-            bodyAId: bodies[i].id,
-            bodyBId: bodies[i + 1].id,
+            bodyA: bodies[i],
+            bodyB: bodies[i + 1],
             restLength: spacing,
         });
     }
@@ -202,7 +202,7 @@ describe("kinetic islands", () => {
         const b = mockCircleBody(18, 0, 10);
         const state = createState([a, b]);
         state.kinetic.kineticConstraintsDirty = false;
-        addDistanceConstraint(state.kinetic, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
+        addDistanceConstraint(state.kinetic, { bodyA: a, bodyB: b, restLength: 18 });
         assert.equal(state.kinetic.kineticConstraintsDirty, true);
     });
 });
