@@ -147,7 +147,7 @@ describe("kinetic islands", () => {
         for (let i = 0; i < bodies.length; i++) assert.equal(bodies[i].isSleeping, true);
     });
 
-    it("waking the head wakes the whole island", () => {
+    it("waking the head wakes direct link neighbors only", () => {
         const a = mockCircleBody(0, 0, 10, 0, 0);
         const b = mockCircleBody(18, 0, 10, 0, 0);
         const c = mockCircleBody(36, 0, 10, 0, 0);
@@ -162,6 +162,31 @@ describe("kinetic islands", () => {
         wakeKineticBody(a);
         assert.equal(a.isSleeping, false);
         assert.equal(b.isSleeping, false);
-        assert.equal(c.isSleeping, false);
+        assert.equal(c.isSleeping, true);
+    });
+
+    it("buildKineticIslands assigns one-hop link neighbors", () => {
+        const a = mockCircleBody(0, 0, 10);
+        const b = mockCircleBody(18, 0, 10);
+        const c = mockCircleBody(36, 0, 10);
+        const bodies = [a, b, c];
+        const state = createState(bodies);
+        linkChain(state, bodies, 18);
+        buildKineticIslands(state, bodies);
+        assert.equal(a._kineticLinkNeighbors.length, 1);
+        assert.equal(a._kineticLinkNeighbors[0], b);
+        assert.equal(b._kineticLinkNeighbors.length, 2);
+        assert.equal(c._kineticLinkNeighbors.length, 1);
+        assert.equal(c._kineticLinkNeighbors[0], b);
+    });
+
+    it("addDistanceConstraint marks island topology dirty", () => {
+        resetKineticConstraintIds(1);
+        const a = mockCircleBody(0, 0, 10);
+        const b = mockCircleBody(18, 0, 10);
+        const state = createState([a, b]);
+        state.sandbox.kineticConstraintsDirty = false;
+        addDistanceConstraint(state, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
+        assert.equal(state.sandbox.kineticConstraintsDirty, true);
     });
 });

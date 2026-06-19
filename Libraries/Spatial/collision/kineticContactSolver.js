@@ -226,7 +226,9 @@ function precomputeKineticContacts(contacts) {
 }
 function solveKineticContactVelocities(contacts, iterations) {
     const count = contacts.count;
-    for (let iter = 0; iter < iterations; iter++)
+    const earlyOut = getCollisionSettings().kineticEarlyOut;
+    for (let iter = 0; iter < iterations; iter++) {
+        let maxImpulse = 0;
         for (let i = 0; i < count; i++) {
             const bodyA = contacts.bodyA[i];
             const bodyB = contacts.bodyB[i];
@@ -250,6 +252,7 @@ function solveKineticContactVelocities(contacts, iterations) {
             const invMassA = contacts.invMassA[i];
             const invMassB = contacts.invMassB[i];
             if (j !== 0) {
+                maxImpulse = Math.max(maxImpulse, Math.abs(j));
                 bodyA.vx = (bodyA.vx || 0) - j * nx * invMassA;
                 bodyA.vy = (bodyA.vy || 0) - j * ny * invMassA;
                 bodyB.vx = (bodyB.vx || 0) + j * nx * invMassB;
@@ -272,6 +275,7 @@ function solveKineticContactVelocities(contacts, iterations) {
             contacts.jt[i] = Math.max(-maxFriction, Math.min(maxFriction, oldJt + jt));
             jt = contacts.jt[i] - oldJt;
             if (jt === 0) continue;
+            maxImpulse = Math.max(maxImpulse, Math.abs(jt));
             bodyA.vx = (bodyA.vx || 0) + jt * tx * invMassA;
             bodyA.vy = (bodyA.vy || 0) + jt * ty * invMassA;
             bodyB.vx = (bodyB.vx || 0) - jt * tx * invMassB;
@@ -279,6 +283,8 @@ function solveKineticContactVelocities(contacts, iterations) {
             bodyA.angularVelocity = wAn + jt * contacts.rAt[i] * contacts.invIA[i];
             bodyB.angularVelocity = wBn - jt * contacts.rBt[i] * contacts.invIB[i];
         }
+        if (earlyOut.enabled && iter + 1 >= earlyOut.contactMinIterations && maxImpulse <= earlyOut.contactImpulseEpsilon) break;
+    }
 }
 function applyKineticContactEffects(contacts, spatialFrame, state) {
     for (let i = 0; i < contacts.count; i++) {

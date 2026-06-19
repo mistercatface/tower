@@ -16,6 +16,16 @@ export function wakeKineticBody(entity) {
     if (!isKinetic(entity)) return;
     entity._sleepFrames = 0;
     entity.isSleeping = false;
+    const linked = entity._kineticLinkNeighbors;
+    if (linked?.length) {
+        for (let i = 0; i < linked.length; i++) {
+            const peer = linked[i];
+            if (peer === entity) continue;
+            peer._sleepFrames = 0;
+            peer.isSleeping = false;
+        }
+        return;
+    }
     const peers = entity._kineticIslandPeers;
     if (!peers) return;
     for (let i = 0; i < peers.length; i++) {

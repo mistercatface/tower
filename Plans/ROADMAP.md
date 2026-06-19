@@ -1,4 +1,4 @@
-# Engine Roadmap — the bible
+# Engine Roadmap
 
 The single hub for this engine: a **2D-canvas, pseudo-3D sandbox engine** (no WebGL, by design). This doc consolidates the five subsystem roadmaps into one map of **what exists, in what state, what it's actually doing computer-scientifically, and what realistically ships next**. Spokes hold the detail; this hub holds the dashboard, the cross-engine comparison, the shared foundations, the library audit, and the master backlog.
 
@@ -282,21 +282,70 @@ Every major code home, its owner doc, state, and CS role. **Condensed below — 
 
 ---
 
-## 7. Master backlog — biased to one-step-away
+## 7. Tech Tree & Unlocks
 
-Cross-subsystem priority queue. Ordered by **foundational leverage** (unblocks the most, lowest risk), every item realistic from where the code is *today*. This is the "always a task on the path" guarantee.
+This section maps out upcoming tasks as a dependency graph. Completing foundational nodes unlocks advanced capabilities.
 
-- [ ] **1. Unified root seed** (`foundations 4.2` + `procedural T10`) — derive all subsystem seeds from one root; unblocks reproducible generation and regression tests. *Cheap, high leverage.*
-- [ ] **2. Reusable agent FSM** (`AI T3`) — lift `snakeAutosim`'s `seek`/`explore` + `createBrain` into a generic agent intent system any prop can mount; the decision loop already works for the snake, this generalizes it.
-- [ ] **3. Funnel path smoothing** (`pathfinding T6`) — string-pull over octile paths using existing LOS; immediate feel win, transfers to a future navmesh.
-- [ ] **4. Projected drop shadows** (`rendering T10`) — wire the existing `shadowProjection.js` into the prop/wall pass; biggest visual payoff for least effort.
-- [ ] **5. Persistent contact manifolds** (`physics T4/T7`) — feature-id keyed warm-start; stabilizes stacking and dogpiles.
-- [ ] **6. Room-graph generator v1** (`procedural T11`) — rect packing + MST connectivity → existing bake; flips the engine to true procedural authorship.
-- [ ] **7. Utility/EQS scored decisions** (`AI T4`) — generalize `pickExploreDestination` into a scored spatial query; pick among multiple visible goals by distance/contested-ness. Builds on #2.
-- [ ] **8. Top-down 2D mode** (`rendering T11`) — true orthographic projection; rung 2 of the perspective ladder.
+```mermaid
+flowchart LR
+    %% Foundation Tier
+    subgraph T1["Tier 1: Core Systems (Next Actions)"]
+        seed[Unified Root Seed]
+        fsm[Reusable Agent FSM]
+        shadows[Projected Drop Shadows]
+        manifold[Persistent Contact Manifolds]
+        smooth[Funnel Path Smoothing]
+        topdown[Top-down 2D Mode]
+    end
 
-> **Pairing note:** #1 and #6 chain (seed → reproducible generator); #2 and #7 chain (generic FSM → scored decisions on it); #3 and #4 are independent quick wins. A natural first sprint is **#1 + #2 + #4** — one per domain, all one-step-away.
-> **Shipped since hub v1:** perception-gated target selection and a 2-state intent FSM (seek/explore) — both were on the original backlog and are now done in `snakeAutosim`; backlog re-pointed to *generalizing* them.
+    %% Unlocks Tier
+    subgraph T2["Tier 2: System Unlocks"]
+        procgen[Reproducible ProcGen]
+        util[Utility/EQS Decisions]
+        lighting[Lighting & Shading]
+        stacking[Stable Physics Stacking]
+        rvo[Local Avoidance / RVO]
+    end
+
+    %% Advanced Capabilities
+    subgraph T3["Tier 3: Pro Capabilities"]
+        room[Room-Graph Generator]
+        squads[Squads & Game Theory]
+        crowd[Crowd Simulation]
+    end
+
+    %% The Progression Links
+    seed -->|Unlocks| procgen
+    procgen -->|Prerequisite for| room
+    
+    fsm -->|Unlocks| util
+    util -->|Prerequisite for| squads
+    
+    shadows -->|Unlocks| lighting
+    
+    manifold -->|Unlocks| stacking
+    
+    smooth -->|Unlocks| rvo
+    rvo -->|Prerequisite for| crowd
+
+    %% Styling
+    classDef unlocked fill:#2d4a22,stroke:#4caf50,color:#fff;
+    classDef next_step fill:#5a4a1c,stroke:#ffeb3b,color:#fff;
+    classDef locked fill:#222,stroke:#555,color:#888,stroke-dasharray: 5 5;
+
+    class seed,fsm,shadows,manifold,smooth,topdown next_step;
+    class procgen,util,lighting,stacking,rvo locked;
+    class room,squads,crowd locked;
+```
+
+### Active Tasks (Available to grab)
+
+- [ ] **Unified root seed**: Derive all subsystem seeds from one root. Unblocks reproducible generation and regression tests.
+- [ ] **Reusable agent FSM**: Lift snake's seek/explore into a generic agent intent system. Unblocks complex AI logic.
+- [ ] **Funnel path smoothing**: String-pull over octile paths using existing LOS. Unblocks local avoidance.
+- [ ] **Projected drop shadows**: Wire the existing shadow projection into the prop/wall pass. Unblocks future lighting.
+- [ ] **Persistent contact manifolds**: Feature-id keyed warm-start. Unblocks stable stacking.
+- [ ] **Top-down 2D mode**: True orthographic projection.
 
 ---
 

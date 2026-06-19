@@ -1,12 +1,26 @@
 export function buildKineticIslands(state, kineticBodies) {
     const constraints = state.sandbox.kineticConstraints;
+    const bodyById = new Map();
+    for (let i = 0; i < kineticBodies.length; i++) bodyById.set(kineticBodies[i].id, kineticBodies[i]);
     if (constraints.length === 0) {
         for (let i = 0; i < kineticBodies.length; i++) {
             const body = kineticBodies[i];
             delete body._kineticIslandPeers;
+            delete body._kineticLinkNeighbors;
             body._kineticIslandRoot = body.id;
         }
         return;
+    }
+    const linkNeighborsById = new Map();
+    for (let i = 0; i < constraints.length; i++) {
+        const entry = constraints[i];
+        const bodyA = bodyById.get(entry.bodyAId);
+        const bodyB = bodyById.get(entry.bodyBId);
+        if (!bodyA || !bodyB) continue;
+        if (!linkNeighborsById.has(bodyA.id)) linkNeighborsById.set(bodyA.id, []);
+        if (!linkNeighborsById.has(bodyB.id)) linkNeighborsById.set(bodyB.id, []);
+        linkNeighborsById.get(bodyA.id).push(bodyB);
+        linkNeighborsById.get(bodyB.id).push(bodyA);
     }
     const parent = new Map();
     function find(id) {
@@ -34,6 +48,9 @@ export function buildKineticIslands(state, kineticBodies) {
         const body = kineticBodies[i];
         const root = find(body.id);
         body._kineticIslandRoot = root;
+        const linkNeighbors = linkNeighborsById.get(body.id);
+        if (linkNeighbors?.length) body._kineticLinkNeighbors = linkNeighbors;
+        else delete body._kineticLinkNeighbors;
         if (!membersByRoot.has(root)) membersByRoot.set(root, []);
         membersByRoot.get(root).push(body);
     }

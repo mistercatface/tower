@@ -111,7 +111,7 @@ flowchart TB
 | Global `tickWorld` + per-prop run state | ✅ | 80 | nav behaviors hold per-prop `Map`s |
 | Move-target API | ✅ | 80 | `setMoveTarget` / `hasMoveTarget` |
 | Per-prop behavior overrides / input gates | 🟡 | 55 | `sandboxBehaviorConfig.js`, `inputGates.js` (gates *player* input) |
-| Per-agent "brain" (memory store) | 🟡 | 45 | `AI/brain/createBrain.js` exists but is wired only via `snakeBrain` |
+| Per-agent "brain" (memory store) | 🟡 | 55 | `AI/brain/createBrain.js` + `syncSpatialBrain.js`; snake via `snakeBrain.js` |
 | Behavior priority / interrupt / resume | ⬜ | 0 | one active behavior, no stack |
 | Automatic behavior selection from world state | ⬜ | 0 | only manual / editor / autosim sets it |
 
@@ -159,11 +159,11 @@ flowchart TB
 
 | Item | Status | % | Notes / modules |
 |------|--------|---|-----------------|
-| **AI intent FSM** (`seek` ↔ `explore`) | ✅ | 65 | `snakeAutosim.js` — `mode`, `enterSeek`/`enterExplore`/`refreshIntent` |
+| **AI intent FSM** (`seek` ↔ `explore`) | ✅ | 65 | `AI/agentIntent/createSeekExploreIntent.js`; snake mounts via `snakeAutosim.js` |
 | **Perception-gated transitions** | ✅ | 70 | visible goal → seek; none → explore |
 | Per-state behavior binding | ✅ | 65 | each state sets active behavior + HPA move target |
-| Generic FSM transition infra | 🟡 | 40 | `Libraries/FSM/transition.js` (separate; snake FSM is hand-rolled) |
-| **Reusable / multi-agent intent FSM** | ⬜ | 0 | logic lives in `snakeAutosim`, not a generic agent FSM |
+| Generic FSM transition infra | 🟡 | 40 | `Libraries/FSM/transition.js` (separate; seek/explore uses dedicated intent module) |
+| **Reusable / multi-agent intent FSM** | 🟡 | 55 | `createSeekExploreIntent` — inject `resolveVisibleGoal` + `resolveExploreCell`; snake is one consumer |
 | Richer states (idle / flee / return / regroup) | ⬜ | 0 | only seek + explore today |
 | Hierarchical / nested states | ⬜ | 0 | |
 

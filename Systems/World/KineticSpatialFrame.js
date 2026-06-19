@@ -84,26 +84,17 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         wakeKineticBody(prop);
         this._activationScheduled.add(prop);
     }
-    flushScheduledKineticActivations() {
-        const scheduled = this._activationScheduled;
-        if (scheduled.size === 0) return;
-        for (const prop of scheduled) {
-            this._ensureActive(prop);
-            const peers = prop._kineticIslandPeers;
-            if (!peers) continue;
-            for (let i = 0; i < peers.length; i++) {
-                const peer = peers[i];
+    _wakeConstraintLinkedPeers(prop) {
+        const linked = prop._kineticLinkNeighbors;
+        if (linked?.length) {
+            for (let i = 0; i < linked.length; i++) {
+                const peer = linked[i];
                 if (peer === prop || peer._physId === undefined) continue;
                 if (peer.isSleeping) wakeKineticBody(peer);
                 this._ensureActive(peer);
             }
+            return;
         }
-        scheduled.clear();
-    }
-    activateKineticBody(prop) {
-        if (prop._physId === undefined) return;
-        if (prop.isSleeping) wakeKineticBody(prop);
-        this._ensureActive(prop);
         const peers = prop._kineticIslandPeers;
         if (!peers) return;
         for (let i = 0; i < peers.length; i++) {
@@ -112,6 +103,21 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             if (peer.isSleeping) wakeKineticBody(peer);
             this._ensureActive(peer);
         }
+    }
+    flushScheduledKineticActivations() {
+        const scheduled = this._activationScheduled;
+        if (scheduled.size === 0) return;
+        for (const prop of scheduled) {
+            this._ensureActive(prop);
+            this._wakeConstraintLinkedPeers(prop);
+        }
+        scheduled.clear();
+    }
+    activateKineticBody(prop) {
+        if (prop._physId === undefined) return;
+        if (prop.isSleeping) wakeKineticBody(prop);
+        this._ensureActive(prop);
+        this._wakeConstraintLinkedPeers(prop);
     }
     reindexKineticBodies(bodies) {
         if (!bodies?.length) return;
