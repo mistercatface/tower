@@ -121,10 +121,12 @@ export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {
 export function findChainHeadProp(state) {
     const meta = getSandboxEntityMeta(state);
     let head = null;
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || !meta.isChainHead(prop.id)) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || !meta.isChainHead(prop.id)) continue;
         head = prop;
-    });
+    }
     return head;
 }
 export function appendChainLinkWireOverlayCommands(out, state, { wireFromPropId = null, wireCursor = null } = {}) {

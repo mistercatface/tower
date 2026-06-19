@@ -112,10 +112,12 @@ export function listButtonLinkEndpoints(state, button) {
 }
 /** @param {object} state @param {(button: object) => void} visit */
 export function forEachButtonEntity(state, visit) {
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || !isButtonEntity(prop)) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || !isButtonEntity(prop)) continue;
         visit(prop);
-    });
+    }
 }
 export function appendButtonWireOverlayCommands(out, state, { wireFromPropId = null, wireCursor = null } = {}) {
     forEachButtonEntity(state, (button) => {

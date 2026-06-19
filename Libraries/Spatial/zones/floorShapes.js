@@ -95,12 +95,13 @@ export function anchorFloorPropToObstacleGrid(prop, obstacleGrid, worldX, worldY
 export function rotateCardinalFloorProp(prop, steps = 1) {
     prop.facing = stepCardinalFacing(prop.facing ?? 0, steps);
 }
-export function findGridAnchoredFloorPropAtCell(registry, col, row, exceptPropId = -1) {
+export function findGridAnchoredFloorPropAtCell(worldProps, col, row, exceptPropId = -1) {
     let hit = null;
-    registry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || !prop.strategy?.gridAnchored || prop.id === exceptPropId) return;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || !prop.strategy?.gridAnchored || prop.id === exceptPropId) continue;
         if (prop.gridCol === col && prop.gridRow === row) hit = prop;
-    });
+    }
     return hit;
 }
 export function isAabbInView(entity, viewport) {

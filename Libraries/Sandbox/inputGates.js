@@ -33,24 +33,19 @@ function isExcludedFromGate(entity, excludeStates) {
     const state = entity.currentStateName;
     return state != null && excludeStates.includes(state);
 }
-/**
- * @param {InputGateScope} scope
- * @param {object} prop
- * @param {object} state
- * @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry
- * @param {string | undefined} linkField
- */
-export function resolveInputGateScope(scope, prop, state, registry, linkField) {
+export function resolveInputGateScope(scope, prop, state, linkField) {
     if (scope === "self") return [prop];
     const linkValue = linkField ? resolveSandboxEntityLinkValue(state, prop, linkField) : undefined;
     if (linkValue == null) return [];
     const members = [];
-    registry.forEachOfKind("worldProp", (entity) => {
-        if (entity.isDead) return;
-        if (resolveSandboxEntityLinkValue(state, entity, linkField) !== linkValue) return;
-        if (scope === "groupKinetic" && !entity.strategy?.isKinetic) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const entity = worldProps[i];
+        if (entity.isDead) continue;
+        if (resolveSandboxEntityLinkValue(state, entity, linkField) !== linkValue) continue;
+        if (scope === "groupKinetic" && !entity.strategy?.isKinetic) continue;
         members.push(entity);
-    });
+    }
     return members;
 }
 /** @param {object[]} entities @param {InputGateUntil} until @param {string[] | undefined} excludeStates */
@@ -64,9 +59,8 @@ function scopePassesUntil(entities, until, excludeStates) {
     }
     return true;
 }
-/** @param {InputGateRule} rule @param {object} prop @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
-export function evaluateInputGateRule(rule, prop, state, registry) {
-    const entities = resolveInputGateScope(rule.scope, prop, state, registry, rule.link);
+export function evaluateInputGateRule(rule, prop, state) {
+    const entities = resolveInputGateScope(rule.scope, prop, state, rule.link);
     if (entities.length === 0) return true;
     return scopePassesUntil(entities, rule.until, rule.excludeStates);
 }
@@ -79,10 +73,9 @@ export function evaluateInputGateRule(rule, prop, state, registry) {
 export function evaluateInputGates(behaviorId, prop, asset, state) {
     const rules = resolveWorldPropInputGateRules(state, prop, asset, behaviorId);
     if (rules.length === 0) return { allowed: true };
-    const registry = state.entityRegistry;
     for (let i = 0; i < rules.length; i++) {
         const rule = rules[i];
-        if (!evaluateInputGateRule(rule, prop, state, registry)) return { allowed: false, failedRule: rule };
+        if (!evaluateInputGateRule(rule, prop, state)) return { allowed: false, failedRule: rule };
     }
     return { allowed: true };
 }

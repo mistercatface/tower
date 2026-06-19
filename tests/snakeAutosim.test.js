@@ -140,9 +140,12 @@ describe("snakeAutosim", () => {
 
 function countLiveGoalOrbs(state) {
     let count = 0;
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || prop.type !== getSnakeGameConfig().goalPropId) return;
+    const goalPropId = getSnakeGameConfig().goalPropId;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || prop.type !== goalPropId) continue;
         count++;
-    });
+    }
     return count;
 }

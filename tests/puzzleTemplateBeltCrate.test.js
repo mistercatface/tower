@@ -14,10 +14,12 @@ loadPropAssets();
 
 function countBallsWithTint(state, tint) {
     let count = 0;
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || prop.type !== "ball") return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || prop.type !== "ball") continue;
         if (getPropVisualTint(prop) === tint) count++;
-    });
+    }
     return count;
 }
 function propInsideRoom(state, prop, room) {
@@ -52,10 +54,12 @@ describe("belt crate puzzle template", () => {
         assert.equal(countBallsWithTint(state, PUZZLE_TEMPLATE_BALL_TINTS.roomA), 1);
         assert.equal(countBallsWithTint(state, PUZZLE_TEMPLATE_BALL_TINTS.roomB), 1);
         const roomABalls = [];
-        state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-            if (prop.isDead || prop.type !== "ball") return;
+        const worldProps = state.worldProps;
+        for (let i = 0; i < worldProps.length; i++) {
+            const prop = worldProps[i];
+            if (prop.isDead || prop.type !== "ball") continue;
             if (propInsideRoom(state, prop, stamped.roomA)) roomABalls.push(prop);
-        });
+        }
         assert.equal(roomABalls.length, 2);
         assert.ok((getRoomGraph(state).bakedFloorBelts ?? []).length > 0, "expected belt corridors to bake floor belts");
     });

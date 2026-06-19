@@ -18,10 +18,12 @@ export function initFloorButtonProp(prop) {
 }
 export function hitTestFloorButton(state, wx, wy, padding = POINTER_HIT_PADDING) {
     let hit = null;
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || !isButtonEntity(prop)) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || !isButtonEntity(prop)) continue;
         if (Math.hypot(wx - prop.x, wy - prop.y) <= prop.radius + padding) hit = prop;
-    });
+    }
     return hit;
 }
 export function handleButtonPointerDown(state, button, world) {
@@ -36,11 +38,13 @@ export function handleButtonPointerDown(state, button, world) {
     return true;
 }
 export function releaseButtonPointerHold(state) {
-    state.entityRegistry.forEachOfKind("worldProp", (button) => {
-        if (!isButtonEntity(button) || isMassButtonInputMode(button.inputMode) || button.inputMode === "toggle") return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const button = worldProps[i];
+        if (!isButtonEntity(button) || isMassButtonInputMode(button.inputMode) || button.inputMode === "toggle") continue;
         if (button.inputMode === "tap" && button.invert) runButtonTapLinks(state, button);
         button._pointerHeld = false;
-    });
+    }
 }
 function tickFloorButton(state, button) {
     if (button.inputMode === "massToggle") {
@@ -64,11 +68,13 @@ function tickFloorButton(state, button) {
 export function tickFloorButtons(state, spatialFrame) {
     const massButtons = [];
     const buttons = [];
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || !isButtonEntity(prop)) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || !isButtonEntity(prop)) continue;
         buttons.push(prop);
         if (isMassButtonInputMode(prop.inputMode)) massButtons.push(prop);
-    });
+    }
     if (!buttons.length) {
         syncForcefieldButtonPower(state);
         return;

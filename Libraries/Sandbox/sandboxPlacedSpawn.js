@@ -37,11 +37,13 @@ function serializePlacedProp(prop) {
 export function collectFlatPlacedSandboxPropEntries(state) {
     const props = [];
     const propIdToIndex = new Map();
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead) continue;
         propIdToIndex.set(prop.id, props.length);
         props.push(serializePlacedProp(prop));
-    });
+    }
     return { props, propIdToIndex };
 }
 function tryExportSpawnGroup(members, meta) {
@@ -64,17 +66,19 @@ export function collectPlacedSandboxPropEntries(state) {
     const meta = getSandboxEntityMeta(state);
     const byGroup = new Map();
     const entries = [];
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead) continue;
         const groupId = meta.getSpawnGroupId(prop.id);
         if (groupId) {
             const group = byGroup.get(groupId) ?? [];
             group.push(prop);
             byGroup.set(groupId, group);
-            return;
+            continue;
         }
         entries.push(serializePlacedProp(prop));
-    });
+    }
     for (const members of byGroup.values()) {
         const exported = tryExportSpawnGroup(members, meta);
         if (exported) {

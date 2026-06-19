@@ -8,20 +8,14 @@ export function postCueStrikeSpeed(strikePower) {
 export function estimateCueStrikeTravelDistance(strikePower, strategy = {}) {
     return estimateRollingTravelDistance(postCueStrikeSpeed(strikePower), strategy);
 }
-/**
- * Circle targets for cue-ball aim preview — skips dead bodies.
- *
- * @param {object} shooter
- * @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry
- * @param {number} [defaultRadius]
- */
-export function buildCueStrikeCircleTargets(shooter, registry, defaultRadius = 8) {
+export function buildCueStrikeCircleTargets(shooter, worldProps, defaultRadius = 8) {
     const shooterRadius = shooter?.radius ?? defaultRadius;
     const targets = [];
-    registry.forEachOfKind("worldProp", (body) => {
-        if (body === shooter || body.isDead) return;
+    for (let i = 0; i < worldProps.length; i++) {
+        const body = worldProps[i];
+        if (body === shooter || body.isDead) continue;
         targets.push({ x: body.x, y: body.y, radius: body.radius ?? shooterRadius });
-    });
+    }
     return targets;
 }
 /**
@@ -63,7 +57,7 @@ export function buildCueStrikeAimLineContext(cueBall, state, { tableWidth, table
     return {
         prop: cueBall,
         radius,
-        circleTargets: buildCueStrikeCircleTargets(cueBall, state.entityRegistry, radius),
+        circleTargets: buildCueStrikeCircleTargets(cueBall, state.worldProps, radius),
         obstacleGrid: state.obstacleGrid,
         maxRayDist: resolveCueStrikeMaxRayDist({ obstacleGrid: state.obstacleGrid, tableWidth, tableHeight }),
     };

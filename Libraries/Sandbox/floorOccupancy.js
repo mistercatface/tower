@@ -41,7 +41,7 @@ export function canStampFloorBeltAt(state, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (grid.isBlocked(col, row)) return false;
     if (grid.hasFloorOccupancy(col, row)) return false;
-    if (findGridAnchoredFloorPropAtCell(state.entityRegistry, col, row)) return false;
+    if (findGridAnchoredFloorPropAtCell(state.worldProps, col, row)) return false;
     return true;
 }
 const RAILED_BELT_RAIL_COLORS = { shadow: "#92400E", mid: "#D97706", highlight: "#FBBF24" };
@@ -231,7 +231,7 @@ export function canStampPassagePowerSourceAt(state, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (grid.isBlocked(col, row)) return false;
     if (grid.hasFloorOccupancy(col, row)) return false;
-    if (findGridAnchoredFloorPropAtCell(state.entityRegistry, col, row)) return false;
+    if (findGridAnchoredFloorPropAtCell(state.worldProps, col, row)) return false;
     return true;
 }
 export function stampPassagePowerSourceAt(state, col, row, defaultPowered = false) {

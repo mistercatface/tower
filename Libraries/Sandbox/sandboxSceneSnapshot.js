@@ -39,10 +39,12 @@ export function collectSandboxSceneSnapshot(state) {
     const meta = getSandboxEntityMeta(state);
     const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
     let chainHeadProp = null;
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || !meta.isChainHead(prop.id)) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || !meta.isChainHead(prop.id)) continue;
         chainHeadProp = propIdToIndex.get(prop.id) ?? null;
-    });
+    }
     const voxels = listPlacedVoxelWalls(grid).map(({ col, row, heightLevel }) => {
         const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
         return { col: globalCol, row: globalRow, heightLevel };

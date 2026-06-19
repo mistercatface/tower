@@ -3,10 +3,12 @@ import { queryGridCellVision } from "../../Navigation/perception/gridCellVision.
 export function collectSnakeGoalProps(state) {
     const goalPropId = getSnakeGameConfig().goalPropId;
     const goals = [];
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || prop.type !== goalPropId) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || prop.type !== goalPropId) continue;
         goals.push(prop);
-    });
+    }
     return goals;
 }
 export function findNearestVisibleSnakeGoal(state, seeker, { halfAngle, range } = getSnakeGameConfig().visionCone) {

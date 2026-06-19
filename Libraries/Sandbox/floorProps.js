@@ -6,10 +6,12 @@ export function tickFloorProps(state, spatialFrame, dt) {
     tickFloorButtons(state, spatialFrame);
     /** @type {object[]} */
     const shapes = [];
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || !prop.triggers?.length) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || !prop.triggers?.length) continue;
         shapes.push(prop);
-    });
+    }
     if (!shapes.length) return;
     const dtSec = dt / 1000;
     processFloorShapes(spatialFrame, shapes, {

@@ -80,10 +80,12 @@ describe("sandboxSceneSnapshot physics", () => {
         const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
         const meta = getSandboxEntityMeta(state);
         let chainHeadProp = null;
-        state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-            if (prop.isDead || !meta.isChainHead(prop.id)) return;
+        const worldProps = state.worldProps;
+        for (let i = 0; i < worldProps.length; i++) {
+            const prop = worldProps[i];
+            if (prop.isDead || !meta.isChainHead(prop.id)) continue;
             chainHeadProp = propIdToIndex.get(prop.id);
-        });
+        }
         const physicsDoc = {
             props,
             kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex),

@@ -84,13 +84,15 @@ export function createSandboxSession(state) {
     const listPlacedProps = () => {
         const counts = new Map();
         const placed = [];
-        registry().forEachOfKind("worldProp", (prop) => {
-            if (prop.isDead) return;
+        const worldProps = state.worldProps;
+        for (let i = 0; i < worldProps.length; i++) {
+            const prop = worldProps[i];
+            if (prop.isDead) continue;
             const typeLabel = formatPropTypeLabel(prop.type);
             const index = (counts.get(prop.type) ?? 0) + 1;
             counts.set(prop.type, index);
             placed.push({ id: prop.id, type: prop.type, faction: resolveSandboxFaction(prop), label: `${typeLabel} #${index}` });
-        });
+        }
         return placed;
     };
     const listPlacedFloorBelts = () => {
@@ -152,11 +154,13 @@ export function createSandboxSession(state) {
     };
     const selectAllPropsWithTagFilter = (filter) => {
         const ids = [];
-        registry().forEachOfKind("worldProp", (prop) => {
-            if (prop.isDead) return;
-            if (!sandboxAssetMatchesTagFilter(getPropAsset(prop.type), filter)) return;
+        const worldProps = state.worldProps;
+        for (let i = 0; i < worldProps.length; i++) {
+            const prop = worldProps[i];
+            if (prop.isDead) continue;
+            if (!sandboxAssetMatchesTagFilter(getPropAsset(prop.type), filter)) continue;
             ids.push(prop.id);
-        });
+        }
         pickSelection(ids.length === 0 ? null : { kind: "prop", ids });
     };
     const filterPropSelectionToTag = (filter) => {

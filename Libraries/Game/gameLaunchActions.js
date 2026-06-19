@@ -20,10 +20,12 @@ export function stampBeltCratePuzzleAction(state, ctx) {
 /** @param {object} state */
 function findPuzzleBallProp(state) {
     let ball = null;
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || prop.type !== "ball") return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || prop.type !== "ball") continue;
         if (getPropVisualTint(prop) === PUZZLE_TEMPLATE_BALL_TINTS.roomA) ball = prop;
-    });
+    }
     return ball;
 }
 /** @param {object} state @param {GameLaunchContext} ctx */

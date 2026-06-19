@@ -116,12 +116,14 @@ function tickFlipperWorldProp(prop, asset, dt) {
 }
 /** @param {object} state @param {number} dt */
 function tickAllFlippers(state, dt) {
-    state.entityRegistry.forEachOfKind("worldProp", (prop) => {
-        if (prop.isDead || !isFlipperWorldProp(prop)) return;
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || !isFlipperWorldProp(prop)) continue;
         const asset = getPropAsset(prop.type);
-        if (!asset) return;
+        if (!asset) continue;
         tickFlipperWorldProp(prop, asset, dt);
-    });
+    }
 }
 /** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createFlipperBehavior(state) {
