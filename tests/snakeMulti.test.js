@@ -44,12 +44,11 @@ function createSnakeSceneTestState(cols = 32, rows = 32) {
 }
 
 describe("snake multi-spawn", () => {
-    it("derives spawn specs from snakeCount and playerSnakeIndex", () => {
+    it("derives one spawn spec per snakeCount entry", () => {
         applySnakeGameConfig();
         const specs = resolveSnakeSpawnSpecs();
         assert.equal(specs.length, SNAKE_GAME_DEFAULTS.snakeCount);
-        assert.equal(specs[0].cameraFollow, true);
-        assert.equal(specs[1].cameraFollow, false);
+        assert.equal(specs[0].segmentCount, SNAKE_GAME_DEFAULTS.segmentCount);
         assert.equal(specs[1].segmentCount, SNAKE_GAME_DEFAULTS.segmentCount);
     });
 

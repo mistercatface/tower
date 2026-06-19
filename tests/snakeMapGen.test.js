@@ -8,7 +8,7 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { collectSnakeGoalProps } from "../Libraries/Game/snake/snakeGoals.js";
-import { generateSnakeSplitMap, resolvePlayerSnakeSpawnAnchor, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
+import { generateSnakeSplitMap, resolveCenterSnakeSpawnAnchor, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
 import { boundaryBlocksStepFrom } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
@@ -161,19 +161,19 @@ describe("snake split map generation", () => {
         }
     });
 
-    it("spawns the player at the nearest walkable cell to the map center", async () => {
-        applySnakeGameConfig({ snakeCount: 3, playerSnakeIndex: 0 });
+    it("spawns the center-start snake at the nearest walkable cell to the map center", async () => {
+        applySnakeGameConfig({ snakeCount: 3 });
         const state = createSnakeMapGenTestState(64, 42);
         const scene = await spawnSnakeCavernScene(state);
-        const player = scene.snakes[0];
-        const expectedAnchor = resolvePlayerSnakeSpawnAnchor(state, scene.navWalkable, { segmentCount: getSnakeGameConfig().segmentCount });
-        const headCell = state.obstacleGrid.worldToGrid(player.chain.head.x, player.chain.head.y);
+        const centerSnake = scene.snakes[0];
+        const expectedAnchor = resolveCenterSnakeSpawnAnchor(state, scene.navWalkable, { segmentCount: getSnakeGameConfig().segmentCount });
+        const headCell = state.obstacleGrid.worldToGrid(centerSnake.chain.head.x, centerSnake.chain.head.y);
         assert.equal(headCell.col, expectedAnchor.col);
         assert.equal(headCell.row, expectedAnchor.row);
     });
 
     it("places food in the lower rail maze, not only the upper cavern", async () => {
-        applySnakeGameConfig({ snakeCount: 1, goalCount: 40, playerSnakeIndex: 0 });
+        applySnakeGameConfig({ snakeCount: 1, goalCount: 40 });
         const state = createSnakeMapGenTestState(64, 42);
         await spawnSnakeCavernScene(state);
         const { railConfig } = state.editor;

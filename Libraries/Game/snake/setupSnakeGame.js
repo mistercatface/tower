@@ -19,42 +19,78 @@ export async function setupSnakeGame(state) {
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
     void state.navigation.onObstaclesChanged(null);
     scene.navWalkable.rebake();
-    let playerSnake = null;
     for (let i = 0; i < scene.snakes.length; i++) {
         const snake = scene.snakes[i];
         applySnakeHeadGameplay(snake.chain.head);
         registerAliveSnake(registry, snake.chain.head.id);
-        const autosim = createSnakeAutosim(state, {
-            headId: snake.chain.head.id,
-            navWalkable: scene.navWalkable,
-            visionCone: snake.cameraFollow && config.playerVisionCone ? config.playerVisionCone : null,
-        });
+        const autosim = createSnakeAutosim(state, { headId: snake.chain.head.id, navWalkable: scene.navWalkable });
         autosim.start();
         autosimsByHeadId.set(snake.chain.head.id, autosim);
-        if (snake.cameraFollow) {
-            playerSnake = snake;
-            setSandboxCameraTarget(state, snake.chain.head, true);
-            state.viewport.snapTo(snake.chain.head.x, snake.chain.head.y);
-        }
     }
-    const playerHeadId = playerSnake.chain.head.id;
-    const playerHead = playerSnake.chain.head;
-    const strikerBall = spawnSnakeStriker(state, playerHead);
+    const centerSnake = scene.snakes[0];
+    let focusedHeadId = centerSnake.chain.head.id;
+    setSandboxCameraTarget(state, centerSnake.chain.head, true);
+    state.viewport.snapTo(centerSnake.chain.head.x, centerSnake.chain.head.y);
+    const strikerBall = spawnSnakeStriker(state, centerSnake.chain.head);
     state.sandbox.snakeGame.strikerBall = strikerBall;
-    const playerAutosim = autosimsByHeadId.get(playerHeadId);
-    const getSegmentCount = () => getConnectedBodyIds(state.kinetic, playerHeadId).length;
-    const getFoodTimerFraction = () => playerAutosim.getFoodTimerFraction();
-    const getFsmDebugLine = config.showSnakeFsmDebug ? () => playerAutosim.getFsmDebugLine() : null;
+    function pickNextFocusedHeadId(skipHeadId = null) {
+        for (const headId of registry.aliveByHeadId.keys()) if (headId !== skipHeadId) return headId;
+        return null;
+    }
+    function resolveFocusedHeadProp() {
+        if (!registry.aliveByHeadId.has(focusedHeadId)) return null;
+        return state.entityRegistry.getLive(focusedHeadId);
+    }
+    function resolveFocusedAutosim() {
+        if (!registry.aliveByHeadId.has(focusedHeadId)) return null;
+        return autosimsByHeadId.get(focusedHeadId) ?? null;
+    }
+    function retargetFocusedSnake(skipHeadId = null) {
+        const nextHeadId = pickNextFocusedHeadId(skipHeadId);
+        focusedHeadId = nextHeadId;
+        if (nextHeadId == null) return null;
+        const head = state.entityRegistry.getLive(nextHeadId);
+        if (cameraFocus === "snake") {
+            setSandboxCameraTarget(state, strikerBall, false);
+            setSandboxCameraTarget(state, head, true);
+        }
+        return head;
+    }
+    function onHeadDied(headId) {
+        if (focusedHeadId !== headId) return;
+        if (retargetFocusedSnake(headId)) return;
+        if (cameraFocus === "snake") focusStrikerCamera();
+    }
+    state.sandbox.snakeGame.onHeadDied = onHeadDied;
+    const getSegmentCount = () => {
+        if (!registry.aliveByHeadId.has(focusedHeadId)) return 0;
+        return getConnectedBodyIds(state.kinetic, focusedHeadId).length;
+    };
+    const getFoodTimerFraction = () => {
+        const autosim = resolveFocusedAutosim();
+        if (!autosim) return 0;
+        return autosim.getFoodTimerFraction();
+    };
+    const getFsmDebugLine = config.showSnakeFsmDebug
+        ? () => {
+              const autosim = resolveFocusedAutosim();
+              if (!autosim) return "—";
+              return autosim.getFsmDebugLine();
+          }
+        : null;
     const hud = mountSnakeHud(getSegmentCount, { getFoodTimerFraction, getFsmDebugLine, onToggleCameraFocus: toggleCameraFocus });
     let cameraFocus = "snake";
     function focusSnakeCamera() {
+        const head = resolveFocusedHeadProp() ?? retargetFocusedSnake();
+        if (!head) return;
         setSandboxCameraTarget(state, strikerBall, false);
-        setSandboxCameraTarget(state, playerHead, true);
+        setSandboxCameraTarget(state, head, true);
         cameraFocus = "snake";
         hud.setCameraFocus("snake");
     }
     function focusStrikerCamera() {
-        setSandboxCameraTarget(state, playerHead, false);
+        const head = resolveFocusedHeadProp();
+        if (head) setSandboxCameraTarget(state, head, false);
         setSandboxCameraTarget(state, strikerBall, true);
         cameraFocus = "ball";
         hud.setCameraFocus("ball");
@@ -65,19 +101,23 @@ export async function setupSnakeGame(state) {
     }
     hud.update();
     return {
-        head: playerHead,
         strikerBall,
         goal: scene.goals[0],
         goals: scene.goals,
         snakes: scene.snakes,
-        cameraTarget: playerHead,
+        getFocusedHeadId: () => focusedHeadId,
+        getFocusedSnakeHead: resolveFocusedHeadProp,
+        cameraTarget: centerSnake.chain.head,
         focusSnakeCamera,
         focusStrikerCamera,
         toggleCameraFocus,
         appendOverlayCommands(out, gameState) {
+            if (cameraFocus === "ball") return;
+            const focusedAutosim = resolveFocusedAutosim();
+            if (!focusedAutosim) return;
             appendSnakeGameOverlayCommands(out, gameState, {
                 autosimsByHeadId,
-                playerAutosim,
+                focusedAutosim,
                 showVisionCones: config.showVisionCones,
                 showMemoryHeatmap: config.showMemoryHeatmap,
                 showSnakeFsmDebug: config.showSnakeFsmDebug,

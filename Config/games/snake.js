@@ -5,7 +5,6 @@ export const SNAKE_GAME_DEFAULTS = {
     goalPropId: "goal_orb",
     snakeCount: 70,
     goalCount: 200,
-    playerSnakeIndex: 0,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,
@@ -52,7 +51,7 @@ export const SNAKE_GAME_DEFAULTS = {
     splitImpulseThreshold: 35,
     /** Striker ball speed required to cut a snake (at-rest ball never cuts). */
     strikerMinStrikeSpeed: 28,
-    /** Placed beside the player snake; drag-launch with at-rest gate. */
+    /** Placed beside the center-start snake; drag-launch with at-rest gate. */
     strikerPropId: "snake_striker",
     /** Grid tiles to flee away from a visible larger snake (Chebyshev step). */
     fleeTiles: 8,
@@ -62,6 +61,4 @@ export const SNAKE_GAME_DEFAULTS = {
     starvationIntervalSec: 30,
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
     showSnakeFsmDebug: false,
-    /** Optional vision cone override for the player snake only; null uses visionCone. */
-    playerVisionCone: null,
 };

@@ -73,7 +73,7 @@ export function createSnakeGameHarnessState(cols = 32, rows = 32) {
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
         hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
-        viewport: { snapTo() {} },
+        viewport: { isVisible: () => true, snapTo() {} },
     };
     const hpaBehavior = createHpaGroundNavBehavior(state);
     const directBehavior = createDirectGroundNavBehavior(state);
@@ -115,7 +115,6 @@ export async function buildSnakeGameSession(state) {
     const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById, eatRadius: 20, rng: () => 0 });
     autosim.start();
     return {
-        head: chain.head,
         goal,
         cameraTarget: chain.head,
         tick(dt) {

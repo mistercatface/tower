@@ -154,7 +154,7 @@ export function resolveSnakePlayableCenterCell(state) {
     const cellSize = state.obstacleGrid.cellSize;
     return state.obstacleGrid.worldToGrid(seed.boundsCol * cellSize, seed.boundsRow * cellSize);
 }
-export function resolvePlayerSnakeSpawnAnchor(state, navWalkable, { segmentCount, excludeKeys = null }) {
+export function resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount, excludeKeys = null }) {
     const config = getSnakeGameConfig();
     const centerCell = resolveSnakePlayableCenterCell(state);
     return pickSnakeChainSpawnCellNearestTo(navWalkable.cells(), navWalkable, state, centerCell.col, centerCell.row, {
@@ -222,7 +222,6 @@ export async function spawnSnakeCavernScene(state) {
     const spawnCells = navWalkable.cells();
     const snakes = [];
     let goals = [];
-    const playerIndex = config.playerSnakeIndex ?? 0;
     withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset, () => {
         const specs = resolveSnakeSpawnSpecs(config);
         const segmentCount = config.segmentCount;
@@ -231,23 +230,19 @@ export async function spawnSnakeCavernScene(state) {
         const growDirY = config.growDirY;
         const chainSpawnParams = { segmentCount, spacing, growDirX, growDirY };
         let excludeKeys = null;
-        const playerSpec = specs[playerIndex];
-        const playerAnchor = resolvePlayerSnakeSpawnAnchor(state, navWalkable, { segmentCount: playerSpec.segmentCount ?? segmentCount, excludeKeys });
-        const playerPack = spawnSnakeChain(state, playerAnchor, { excludeKeys, segmentCount: playerSpec.segmentCount });
-        const snakeSlots = new Array(specs.length);
-        snakeSlots[playerIndex] = { ...playerPack, cameraFollow: playerSpec.cameraFollow };
-        excludeKeys = playerPack.occupiedKeys;
+        const centerAnchor = resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount, excludeKeys });
+        const centerPack = spawnSnakeChain(state, centerAnchor, { excludeKeys, segmentCount });
+        snakes.push(centerPack);
+        excludeKeys = centerPack.occupiedKeys;
         const shuffledSpawnCells = spawnCells.slice();
         shuffleInPlace(shuffledSpawnCells);
-        for (let i = 0; i < specs.length; i++) {
-            if (i === playerIndex) continue;
+        for (let i = 1; i < specs.length; i++) {
             const spec = specs[i];
             const anchorCell = pickSnakeChainSpawnCell(shuffledSpawnCells, navWalkable, state, { ...chainSpawnParams, segmentCount: spec.segmentCount ?? segmentCount, excludeKeys });
             const pack = spawnSnakeChain(state, anchorCell, { excludeKeys, segmentCount: spec.segmentCount });
-            snakeSlots[i] = { ...pack, cameraFollow: spec.cameraFollow };
+            snakes.push(pack);
             excludeKeys = pack.occupiedKeys;
         }
-        for (let i = 0; i < snakeSlots.length; i++) snakes.push(snakeSlots[i]);
         goals = spawnSnakeGoalPool(state, config.goalCount, navWalkable, { excludeKeys });
     });
     return { snakes, goals, navWalkable };

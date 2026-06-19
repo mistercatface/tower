@@ -10,8 +10,7 @@ export function getSnakeGameConfig() {
 }
 export function resolveSnakeSpawnSpecs(config = getSnakeGameConfig()) {
     const specs = [];
-    const playerIndex = config.playerSnakeIndex ?? 0;
-    for (let i = 0; i < config.snakeCount; i++) specs.push({ segmentCount: config.segmentCount, cameraFollow: i === playerIndex });
+    for (let i = 0; i < config.snakeCount; i++) specs.push({ segmentCount: config.segmentCount });
     return specs;
 }
 export function resolveSnakePropRadius(propId) {

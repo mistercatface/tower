@@ -8,14 +8,14 @@ describe("snakeGameHarness", () => {
     it("builds an active snake session with head, goal, and tick", async () => {
         const { state } = createSnakeGameHarnessState();
         const session = await buildSnakeGameSession(state);
-        assert.ok(session.head);
+        assert.ok(session.cameraTarget);
         assert.ok(session.goal);
         assert.equal(typeof session.tick, "function");
-        assert.equal(getChainMemberIds(state, session.head.id).length, getSnakeGameConfig().segmentCount);
-        session.head.x = session.goal.x;
-        session.head.y = session.goal.y;
+        assert.equal(getChainMemberIds(state, session.cameraTarget.id).length, getSnakeGameConfig().segmentCount);
+        session.cameraTarget.x = session.goal.x;
+        session.cameraTarget.y = session.goal.y;
         session.tick(1 / 60);
-        assert.equal(getChainMemberIds(state, session.head.id).length, getSnakeGameConfig().segmentCount + 1);
+        assert.equal(getChainMemberIds(state, session.cameraTarget.id).length, getSnakeGameConfig().segmentCount + 1);
         session.stop();
     });
 });

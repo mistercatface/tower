@@ -75,7 +75,7 @@ describe("snake navWalkable session", () => {
     });
 
     it("baked navWalkable drops disconnected cells on the split map", async () => {
-        applySnakeGameConfig({ snakeCount: 1, playerSnakeIndex: 0 });
+        applySnakeGameConfig({ snakeCount: 1 });
         const state = createSnakeWalkableTestState(48, 42);
         const scene = await spawnSnakeCavernScene(state);
         const player = scene.snakes[0];

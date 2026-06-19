@@ -89,7 +89,7 @@ function buildMultiSnakeSession(state) {
         const autosim = createWiredSnakeAutosim(state, { headId: pack.chain.head.id, behaviorById, rng: () => ((i + 1) * 0.17) % 1 });
         autosim.start();
         state.sandbox.snakeGame.autosimsByHeadId.set(pack.chain.head.id, autosim);
-        autosims.push({ autosim, head: pack.chain.head, isPlayer: specs[i].cameraFollow });
+        autosims.push({ autosim, head: pack.chain.head });
     }
     spawnSnakeGoalPool(state, config.goalCount, navWalkable, { excludeKeys, rng: () => 0.42 });
     return { autosims };
