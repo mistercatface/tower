@@ -167,6 +167,40 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getLastTransitionReason(), "threat_visible");
     });
 
+    it("flee chains to a new retreat cell on arrival while threat remains visible", () => {
+        applySnakeGameConfig({ fleeRange: 128, fleeTiles: 8 });
+        resetKineticConstraintIds(1);
+        const state = createFsmTestState();
+        const small = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
+        const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, small.head.id);
+        registerAliveSnake(registry, large.head.id);
+        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+        large.head.x = small.head.x + 64;
+        large.head.y = small.head.y;
+        const { intent } = createMockIntent(state, small.head.id, registry);
+        const seeker = small.head;
+        const grid = state.obstacleGrid;
+        intent.perceive(seeker, state);
+        intent.transition(seeker, state);
+        assert.equal(intent.getMode(), "flee");
+        const latched = intent.getDestination();
+        assert.ok(latched);
+        const world = grid.gridToWorld(latched.col, latched.row);
+        seeker.x = world.x;
+        seeker.y = world.y;
+        large.head.x = seeker.x + 64;
+        large.head.y = seeker.y;
+        intent.perceive(seeker, state);
+        intent.transition(seeker, state);
+        assert.equal(intent.getMode(), "flee");
+        assert.equal(intent.getLastTransitionReason(), "flee_continue");
+        const next = intent.getDestination();
+        assert.ok(next);
+        assert.notDeepEqual(next, latched);
+    });
+
     it("route failure retries the same latched cell", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);

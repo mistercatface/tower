@@ -27,6 +27,22 @@ export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFo
         const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
         return cellChebyshevDistance(col, row, dest.col, dest.row) <= 1;
     };
+    const hasReachedDest = (seeker, grid) => {
+        const dest = headNav.getDestination();
+        if (!dest) return false;
+        if (hasArrivedAtDest(seeker, grid)) return true;
+        if (!dest.world) return false;
+        const stopRadius = Math.max(seeker.radius ?? 2, 2) * 2;
+        return Math.hypot(seeker.x - dest.world.x, seeker.y - dest.world.y) <= stopRadius;
+    };
+    const setFleeDestination = (seeker, state, avoidCell = null) => {
+        const grid = state.obstacleGrid;
+        const world = perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
+        if (!world.threat) return null;
+        const cell = pickFleeCell(seeker, world.threat, grid, navWalkable, undefined, avoidCell);
+        if (cell) headNav.setDestination(grid, cell.col, cell.row);
+        return cell;
+    };
     const setDestinationForCommit = (seeker, state) => {
         const grid = state.obstacleGrid;
         if (mode === "explore") {
@@ -35,10 +51,7 @@ export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFo
             return;
         }
         if (mode === "flee") {
-            const world = perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
-            if (!world.threat) return;
-            const cell = pickFleeCell(seeker, world.threat, grid, navWalkable);
-            if (cell) headNav.setDestination(grid, cell.col, cell.row);
+            setFleeDestination(seeker, state);
             return;
         }
         const target = resolveCommittedTarget(state);
@@ -96,6 +109,20 @@ export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFo
             }
             lastTransitionReason = "held_latch";
             return { mode, target };
+        }
+        if (mode === "flee") {
+            if (!dest) {
+                lastTransitionReason = "repick_dest";
+                setFleeDestination(seeker, state);
+                return { mode, target: null };
+            }
+            if (hasReachedDest(seeker, grid) && world.threat) {
+                const nextCell = setFleeDestination(seeker, state, dest);
+                lastTransitionReason = nextCell && (nextCell.col !== dest.col || nextCell.row !== dest.row) ? "flee_continue" : "held_latch";
+                return { mode, target: null };
+            }
+            lastTransitionReason = "held_latch";
+            return { mode, target: null };
         }
         if (!dest || hasArrivedAtDest(seeker, grid)) {
             lastTransitionReason = hasArrivedAtDest(seeker, grid) ? "arrived" : "repick_dest";

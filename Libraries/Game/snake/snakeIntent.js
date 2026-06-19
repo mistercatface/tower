@@ -51,17 +51,15 @@ export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, vi
     return nearest;
 }
 export function perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, visionCone = getSnakeGameConfig().visionCone) {
-    return {
-        threat: findNearestVisibleThreat(seeker, selfHeadId, state, registry, visionCone),
-        food: resolveVisibleFood(seeker, state),
-    };
+    return { threat: findNearestVisibleThreat(seeker, selfHeadId, state, registry, visionCone), food: resolveVisibleFood(seeker, state) };
 }
 export function pickSnakeIntentPolicy(world) {
     if (world.threat) return { mode: "flee", targetId: null };
     if (world.food) return { mode: "seek_food", targetId: world.food.id };
     return { mode: "explore", targetId: null };
 }
-export function pickFleeCell(seeker, threat, grid, navWalkable, fleeTiles = getSnakeGameConfig().fleeTiles) {
+export function pickFleeCell(seeker, threat, grid, navWalkable, fleeTiles = getSnakeGameConfig().fleeTiles, avoidCell = null) {
+    const sameCell = (a, b) => a && b && a.col === b.col && a.row === b.row;
     const selfCell = grid.worldToGrid(seeker.x, seeker.y);
     const threatCell = grid.worldToGrid(threat.x, threat.y);
     let dCol = selfCell.col - threatCell.col;
@@ -70,20 +68,28 @@ export function pickFleeCell(seeker, threat, grid, navWalkable, fleeTiles = getS
     const scale = fleeTiles / Math.max(Math.abs(dCol), Math.abs(dRow), 1);
     const awayCol = selfCell.col + Math.round(dCol * scale);
     const awayRow = selfCell.row + Math.round(dRow * scale);
-    if (navWalkable.has(awayCol, awayRow)) return { col: awayCol, row: awayRow };
+    const ideal = { col: awayCol, row: awayRow };
+    if (navWalkable.has(awayCol, awayRow) && !sameCell(ideal, avoidCell)) return ideal;
     const openCells = navWalkable.cells();
     let best = null;
     let bestAway = -Infinity;
     for (let i = 0; i < openCells.length; i++) {
         const cell = openCells[i];
         if (cell.col === selfCell.col && cell.row === selfCell.row) continue;
+        if (sameCell(cell, avoidCell)) continue;
         const away = cellChebyshevDistance(cell.col, cell.row, threatCell.col, threatCell.row) - cellChebyshevDistance(selfCell.col, selfCell.row, threatCell.col, threatCell.row);
         if (away > bestAway) {
             bestAway = away;
             best = cell;
         }
     }
-    return best ?? pickWalkableCell(openCells, { rng: Math.random });
+    if (best) return best;
+    for (let i = 0; i < openCells.length; i++) {
+        const cell = openCells[i];
+        if (sameCell(cell, avoidCell)) continue;
+        return cell;
+    }
+    return pickWalkableCell(openCells, { rng: Math.random });
 }
 function policyToIntentChoice(state, policy) {
     if (policy.mode === "explore" || policy.mode === "flee") return { mode: policy.mode, target: null };
