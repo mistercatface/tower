@@ -60,6 +60,7 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         const headA = resolveHead(registry, state, bodyA.id);
         const headB = resolveHead(registry, state, bodyB.id);
         if (headA == null || headB == null || headA === headB) continue;
+        if (bodyA.id !== headA || bodyB.id !== headB) continue;
         const sizeA = snakeSizeScore(state, headA);
         const sizeB = snakeSizeScore(state, headB);
         if (sizeA === sizeB) continue;
