@@ -7,6 +7,8 @@ import { applySnakeHeadGameplay } from "./snakeHeadGameplay.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { mountSnakeHud } from "./snakeHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
+import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
+import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -62,6 +64,10 @@ export async function setupSnakeGame(state) {
             const dtSec = dtMs / 1000;
             for (const autosim of autosimsByHeadId.values()) autosim.tick(dtSec);
             hud.update();
+        },
+        applyContactSideEffects(tick, contacts) {
+            applyKineticContactSideEffects(tick, contacts);
+            resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
         },
         stop() {
             for (const autosim of autosimsByHeadId.values()) autosim.stop();

@@ -1,5 +1,6 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
 import { createKineticTick } from "../../GameState/KineticTick.js";
+import { worldSimFromState } from "../../GameState/WorldSim.js";
 import { KineticSpatialFrame } from "../../Systems/World/KineticSpatialFrame.js";
 
 export function createKineticTestRegistry(liveProps) {
@@ -46,4 +47,17 @@ export function createKineticTestTick(initialProps, options = {}) {
     const world = createKineticTestWorld(initialProps, options);
     const frame = setupKineticTestFrame(initialProps, options.cellSize);
     return createKineticTick(frame, world);
+}
+
+export function attachKineticTestTickFromState(state, props, cellSize = state.obstacleGrid?.cellSize ?? 16) {
+    const frame = new KineticSpatialFrame(cellSize);
+    frame.resetFrame(state.obstacleGrid);
+    for (let i = 0; i < props.length; i++) {
+        frame.insertEntity(props[i], i);
+        props[i]._physId = i;
+    }
+    frame._kineticBodies = props.slice();
+    frame._activeKineticBodies = props.slice();
+    frame._nextPhysId = props.length;
+    return createKineticTick(frame, worldSimFromState(state));
 }

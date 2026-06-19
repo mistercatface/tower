@@ -24,7 +24,7 @@ function tickKineticSleep(frame) {
         for (let j = 0; j < islandMembers.length; j++) advanceKineticSleep(islandMembers[j], eligible);
     }
 }
-export function runKineticPhysics(tick, dt, state) {
+export function runKineticPhysics(tick, dt, hooks) {
     const frame = tick.frame;
     const world = tick.world;
     const session = world.kinetic;
@@ -38,17 +38,11 @@ export function runKineticPhysics(tick, dt, state) {
     const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });
     const subDt = dt / steps;
     const subDtSec = subDt / 1000;
-    const gameContext = { snakeGame: state.sandbox?.snakeGame, state };
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec);
-        for (let i = world.worldProps.length - 1; i >= 0; i--) world.worldProps[i].update(subDt, state, frame);
+        for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updateProp(world.worldProps[i], subDt, frame);
         frame.reindexKineticBodies(activeBodies);
-        runCollisionPipeline(tick, {
-            resolveWalls(entity) {
-                state.wallResolver.resolve(entity, frame);
-            },
-            gameContext,
-        });
+        runCollisionPipeline(tick, { resolveWalls: (entity) => hooks.resolveWalls(entity, frame), applyContactSideEffects: hooks.applyContactSideEffects });
     }
     tickKineticSleep(frame);
     frame.syncActiveKineticBodies();

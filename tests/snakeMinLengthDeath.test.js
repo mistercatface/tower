@@ -11,10 +11,10 @@ import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
+import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
-import { kineticTickFromState } from "../GameState/KineticTick.js";
+import { resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
@@ -64,17 +64,6 @@ function wireCombatSnakeGame(state, registry, headIds) {
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
     return autosimsByHeadId;
 }
-function setupSnakeFrame(props) {
-    const frame = new KineticSpatialFrame(50);
-    frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
-    for (let i = 0; i < props.length; i++) {
-        frame.insertEntity(props[i], i);
-        props[i]._physId = i;
-    }
-    frame._kineticBodies = props.slice();
-    frame._activeKineticBodies = props.slice();
-    return frame;
-}
 
 describe("snake combat min length", () => {
     it("resolveSnakeCombatFromContacts splits smaller snake on hard head-to-head ram", () => {
@@ -95,11 +84,11 @@ describe("snake combat min length", () => {
         predator.chain.head.x = preyHead.x - predator.chain.head.radius - preyHead.radius + 2;
         predator.chain.head.y = preyHead.y;
         const props = [...predator.chain.members, ...prey.chain.members];
-        const frame = setupSnakeFrame(props);
-        const tick = kineticTickFromState(state, frame);
+        const tick = attachKineticTestTickFromState(state, props, 50);
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
-        applyKineticContactSideEffects(tick, kineticContactBuffer, { snakeGame: state.sandbox.snakeGame, state });
+        applyKineticContactSideEffects(tick, kineticContactBuffer);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
         assert.ok(kineticContactBuffer.count >= 1);
         const preyHeadId = prey.chain.head.id;
         const splitHappened = registry.inertByLeadId.size > 0;
@@ -129,11 +118,11 @@ describe("snake combat min length", () => {
         smallHead.x = bigTail.x - smallHead.radius - bigTail.radius + 2;
         smallHead.y = bigTail.y;
         const props = [...big.chain.members, ...small.chain.members];
-        const frame = setupSnakeFrame(props);
-        const tick = kineticTickFromState(state, frame);
+        const tick = attachKineticTestTickFromState(state, props, 50);
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
-        applyKineticContactSideEffects(tick, kineticContactBuffer, { snakeGame: state.sandbox.snakeGame, state });
+        applyKineticContactSideEffects(tick, kineticContactBuffer);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
         assert.ok(kineticContactBuffer.count >= 1);
         assert.equal(registry.inertByLeadId.size, 0);
         assert.equal(registry.deadHeadIds.size, 0);

@@ -6,6 +6,7 @@ import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { kineticTickFromState } from "../../GameState/KineticTick.js";
 import { runKineticPhysics } from "../../Libraries/Motion/kineticPhysicsPass.js";
+import { applyKineticContactSideEffects } from "../../Libraries/Spatial/collision/kineticContactSideEffects.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
@@ -30,6 +31,19 @@ function loadGameModeStylesheet() {
     link.href = new URL("./game-mode.css", import.meta.url).href;
     document.head.appendChild(link);
 }
+/** @param {import("./state.js").TileLabGameState} state */
+function simulationKineticHooks(state) {
+    const applyContactSideEffects = state.appLaunch?.session?.applyContactSideEffects ?? ((tick, contacts) => applyKineticContactSideEffects(tick, contacts));
+    return {
+        updateProp(prop, dt, frame) {
+            prop.update(dt, state, frame);
+        },
+        resolveWalls(entity, frame) {
+            state.wallResolver.resolve(entity, frame);
+        },
+        applyContactSideEffects,
+    };
+}
 /** @param {import("./state.js").TileLabGameState} state @param {number} dt */
 function runSimulationTick(state, dt) {
     const simDt = dt * state.selectedSpeed;
@@ -37,7 +51,7 @@ function runSimulationTick(state, dt) {
     const spatialFrame = kineticSpatial.begin(state);
     tickFloorProps(state, spatialFrame, simDt);
     tickFloorOccupancy(state, spatialFrame, simDt);
-    runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, state);
+    runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, simulationKineticHooks(state));
     tickGridZones(state, spatialFrame);
     FloatingText.updateAll(state, simDt);
 }

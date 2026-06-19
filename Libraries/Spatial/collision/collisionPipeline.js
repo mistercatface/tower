@@ -47,13 +47,14 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
  * @param {{
  *   resolveWalls: (entity: object) => void,
  *   kineticIterations?: number,
- *   gameContext?: { snakeGame?: object, state?: object },
  *   applyContactSideEffects?: (tick: object, contacts: object) => void,
  * }} hooks
  */
-export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations, gameContext = {}, applyContactSideEffects } = {}) {
+export function runCollisionPipeline(
+    tick,
+    { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations, applyContactSideEffects = (t, contacts) => applyKineticContactSideEffects(t, contacts) } = {},
+) {
     const frame = tick.frame;
-    if (!applyContactSideEffects) applyContactSideEffects = (t, contacts) => applyKineticContactSideEffects(t, contacts, gameContext);
     const earlyOut = getCollisionSettings().kineticEarlyOut;
     const activeBodies = frame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;

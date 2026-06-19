@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { kineticTickFromState } from "../GameState/KineticTick.js";
+import { createKineticTestTick, attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
-import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
@@ -95,14 +93,7 @@ describe("link capsule wall projection", () => {
         neck.x = head.x + 8.4;
         neck.y = head.y + 4;
         state.worldProps.push(head, neck);
-        const frame = new KineticSpatialFrame(16);
-        frame.resetFrame(state.obstacleGrid);
-        frame.insertEntity(head, 0);
-        frame.insertEntity(neck, 1);
-        head._physId = 0;
-        neck._physId = 1;
-        frame._kineticBodies = [head, neck];
-        frame._activeKineticBodies = [head, neck];
+        const tick = attachKineticTestTickFromState(state, [head, neck], 16);
         const radius = Math.max(head.radius, neck.radius);
         const walls = [];
         state.obstacleGrid.resetStaticWallProxyPool();
@@ -110,7 +101,7 @@ describe("link capsule wall projection", () => {
         let minClear = Infinity;
         for (let i = 0; i < walls.length; i++) minClear = Math.min(minClear, minDistanceSegmentToWall(head.x, head.y, neck.x, neck.y, walls[i]));
         assert.ok(minClear < radius, "fixture should start with link-capsule wall overlap");
-        runCollisionPipeline(kineticTickFromState(state, frame), { resolveWalls: () => {}, kineticIterations: 4 });
+        runCollisionPipeline(tick, { resolveWalls: () => {}, kineticIterations: 4 });
         minClear = Infinity;
         state.obstacleGrid.resetStaticWallProxyPool();
         state.obstacleGrid.appendStaticWallProxiesNearWorld((head.x + neck.x) * 0.5, (head.y + neck.y) * 0.5, 64, walls);

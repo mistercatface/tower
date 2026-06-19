@@ -1,10 +1,9 @@
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
-import { resolveSnakeCombatFromContacts } from "../../Game/snake/snakeCombat.js";
 import { resolveKineticContactPass, kineticContactBuffer } from "./kineticContactSolver.js";
 import { kineticPairBodiesAt } from "./kineticPairStream.js";
 import { kineticBodySlab } from "./kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
-export function applyKineticContactSideEffects(tick, contacts, { snakeGame, state } = {}) {
+export function applyKineticContactSideEffects(tick, contacts) {
     if (contacts.count === 0) return;
     const slab = kineticBodySlab;
     for (let i = 0; i < contacts.count; i++) {
@@ -27,9 +26,8 @@ export function applyKineticContactSideEffects(tick, contacts, { snakeGame, stat
         const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
         tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relSpeed);
     }
-    if (snakeGame && state) resolveSnakeCombatFromContacts(state, tick.frame, contacts, snakeGame);
 }
-export function resolveKineticContactPassWithEffects(tick, gameContext = {}) {
+export function resolveKineticContactPassWithEffects(tick) {
     resolveKineticContactPass(tick);
-    applyKineticContactSideEffects(tick, kineticContactBuffer, gameContext);
+    applyKineticContactSideEffects(tick, kineticContactBuffer);
 }
