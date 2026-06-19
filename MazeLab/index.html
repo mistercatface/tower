@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>MazeLab — Snake split map</title>
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <aside class="panel">
+                <header>
+                    <h1>MazeLab</h1>
+                    <p>Snake split map preview — V-CA cavern, padding strip, R-DFS rails (same generators as the game).</p>
+                </header>
+                <section>
+                    <h2>Generate</h2>
+                    <label>Seed <input id="seed" type="number" step="1" /></label>
+                    <label>Play area <select id="play-area"></select></label>
+                    <div class="row">
+                        <button id="generate" type="button">Generate</button>
+                        <button id="random-seed" type="button">Random seed</button>
+                    </div>
+                    <p id="timing" class="meta"></p>
+                </section>
+                <section>
+                    <h2>Cavern (V-CA)</h2>
+                    <label>Fill chance <input id="fill-chance" type="number" min="0" max="1" step="0.01" /></label>
+                    <label>Iterations <input id="iterations" type="number" min="1" max="12" step="1" /></label>
+                    <label>South open rows <input id="open-boundary-rows" type="number" min="1" max="8" step="1" /></label>
+                    <label>Region padding <input id="region-padding" type="number" min="0" max="16" step="1" /></label>
+                </section>
+                <section>
+                    <h2>Rail (R-DFS)</h2>
+                    <label>Corridor width min <input id="corridor-width-min" type="number" min="1" max="4" step="1" /></label>
+                    <label>Corridor width max <input id="corridor-width-max" type="number" min="1" max="4" step="1" /></label>
+                    <label>Extra link ratio <input id="extra-link-ratio" type="number" min="0" max="1" step="0.05" /></label>
+                </section>
+                <section>
+                    <h2>View</h2>
+                    <label>Pixels / cell <select id="px-per-cell"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+                    <fieldset class="layers">
+                        <legend>Layers</legend>
+                        <label><input id="layer-zones" type="checkbox" checked /> Zone bands</label>
+                        <label><input id="layer-voxels" type="checkbox" checked /> Voxel walls</label>
+                        <label><input id="layer-rails" type="checkbox" checked /> Rail edges</label>
+                        <label><input id="layer-northReserve" type="checkbox" checked /> North reserve</label>
+                        <label><input id="layer-walkable" type="checkbox" checked /> Nav walkable flood</label>
+                    </fieldset>
+                </section>
+                <p id="stats" class="stats"></p>
+            </aside>
+            <main class="stage">
+                <canvas id="maze-canvas"></canvas>
+            </main>
+        </div>
+        <script type="module" src="mazeLabApp.js"></script>
+    </body>
+</html>
