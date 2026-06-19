@@ -29,6 +29,8 @@ export const kineticContactBuffer = {
     rby: new Float32Array(MAX_CONTACTS),
     preDvx: new Float32Array(MAX_CONTACTS),
     preDvy: new Float32Array(MAX_CONTACTS),
+    preSpeedA: new Float32Array(MAX_CONTACTS),
+    preSpeedB: new Float32Array(MAX_CONTACTS),
     invMassA: new Float32Array(MAX_CONTACTS),
     invMassB: new Float32Array(MAX_CONTACTS),
     invIA: new Float32Array(MAX_CONTACTS),
@@ -202,6 +204,7 @@ function contactLeverArms(bodyA, bodyB, shapeA, shapeB, info) {
 function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy, rax, ray, rbx, rby) {
     if (contacts.count >= MAX_CONTACTS) return;
     const i = contacts.count++;
+    const slab = kineticBodySlab;
     contacts.physIdA[i] = physIdA;
     contacts.physIdB[i] = physIdB;
     contacts.tier[i] = tier;
@@ -213,6 +216,8 @@ function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy,
     contacts.rby[i] = rby;
     contacts.preDvx[i] = preDvx;
     contacts.preDvy[i] = preDvy;
+    contacts.preSpeedA[i] = Math.hypot(slab.vx[physIdA], slab.vy[physIdA]);
+    contacts.preSpeedB[i] = Math.hypot(slab.vx[physIdB], slab.vy[physIdB]);
 }
 function narrowPhaseCircleContact(physIdA, physIdB, preDvx, preDvy, contacts) {
     const info = circleCircleContactSlab(physIdA, physIdB);

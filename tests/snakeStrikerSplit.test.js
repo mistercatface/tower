@@ -81,7 +81,7 @@ describe("snake striker ball", () => {
     });
 
     it("resolveStrikerBallSnakeSplitsFromContacts splits snake at struck segment above threshold", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, strikerPropId: "snake_striker" });
+        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, strikerMinStrikeSpeed: 28, strikerPropId: "snake_striker" });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
@@ -107,8 +107,34 @@ describe("snake striker ball", () => {
         assert.ok(getOrderedChainMemberIds(state, snake.chain.head.id).length >= 3);
     });
 
+    it("resolveStrikerBallSnakeSplitsFromContacts ignores parked ball rammed by a fast snake", () => {
+        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, strikerMinStrikeSpeed: 28, strikerPropId: "snake_striker" });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, snake.chain.head.id);
+        wireSnakeGame(state, registry, snake.chain.head.id);
+        const striker = spawnSnakeStriker(state, snake.chain.head);
+        const head = snake.chain.head;
+        striker.vx = 0;
+        striker.vy = 0;
+        head.vx = 90;
+        head.vy = 0;
+        head.x = striker.x - head.radius - striker.radius + 1;
+        head.y = striker.y;
+        const props = [...snake.chain.members, striker];
+        const tick = attachKineticTestTickFromState(state, props, 50);
+        const pairs = gatherKineticContactPairs(tick);
+        resolveKineticContactPassWithPairs(tick, pairs);
+        resolveStrikerBallSnakeSplitsFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame, striker);
+        assert.ok(kineticContactBuffer.count >= 1);
+        assert.equal(registry.inertByLeadId.size, 0);
+        assert.equal(getOrderedChainMemberIds(state, snake.chain.head.id).length, 5);
+    });
+
     it("resolveStrikerBallSnakeSplitsFromContacts ignores impacts below threshold", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, strikerPropId: "snake_striker" });
+        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, strikerMinStrikeSpeed: 28, strikerPropId: "snake_striker" });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));

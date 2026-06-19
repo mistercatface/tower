@@ -50,6 +50,8 @@ export const SNAKE_GAME_DEFAULTS = {
     minAliveSegmentCount: 3,
     /** Relative impact speed required to split a smaller snake at the struck segment. */
     splitImpulseThreshold: 35,
+    /** Striker ball speed required to cut a snake (at-rest ball never cuts). */
+    strikerMinStrikeSpeed: 28,
     /** Placed beside the player snake; drag-launch with at-rest gate. */
     strikerPropId: "snake_striker",
     /** Grid tiles to flee away from a visible larger snake (Chebyshev step). */
