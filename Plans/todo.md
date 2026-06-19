@@ -12,19 +12,7 @@
 
 ## 06/18/2026
 
-9:13 AM: RTS interface 3 part PR.
-
-9:39 AM: In-game interface refactor 3 part PR.
-
-11:14 AM: Physics sleep/pipeline/routing 3 part PR.
-
-12:08 PM: Connected kinetics 3 part PR.
-
-1:03 PM: Snake game 3 part PR.
-
-2:03 PM: Multi snakes, physics needle push.
-
-3:35 PM: Prop consolidation, tinting, UI pass.
+10:48 AM: Physics + snake passes
 
 ## MILESTONE LOG
 
@@ -38,3 +26,21 @@
 | 2026-06-XX | **Belts**                                                                           |
 | 2026-06-XX | **4 way edge graph**                                                                |
 | 2026-06-XX | **Sandbox JSON import/export**                                                      |
+
+## LOG
+
+## 06/18/2026
+
+9:13 AM: RTS interface 3 part PR.
+
+9:39 AM: In-game interface refactor 3 part PR.
+
+11:14 AM: Physics sleep/pipeline/routing 3 part PR.
+
+12:08 PM: Connected kinetics 3 part PR.
+
+1:03 PM: Snake game 3 part PR.
+
+2:03 PM: Multi snakes, physics needle push.
+
+3:35 PM: Prop consolidation, tinting, UI pass.
