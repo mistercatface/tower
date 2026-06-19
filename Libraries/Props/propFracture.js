@@ -7,25 +7,20 @@ import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { splitPoxels } from "./poxelFracture.js";
 import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts } from "./chunkFracture.js";
 import { GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon } from "./glassFracture.js";
-
 export const FRACTURE_MIN_PIECE_SIZE = 5;
 export const FRACTURE_IMPACT_THRESHOLD = 12;
-
 function isGlassFracture(prop) {
     return prop?.strategy?.fractureMode === "glass";
 }
-
 function isChunkFracture(prop) {
     return prop?.strategy?.fractureMode === "chunk";
 }
-
 function glassFootprintArea(prop) {
     if (prop.footprintArea != null) return prop.footprintArea;
     const shape = prop.getShape?.() ?? prop.shape;
     if (shape?.type === "Polygon") return Math.abs(polygonSignedArea2D(shape.vertices));
     return 0;
 }
-
 function canGlassFractureSplit(prop, minSize) {
     const shape = prop.getShape?.() ?? prop.shape;
     if (shape?.type !== "Polygon") return false;
@@ -34,7 +29,6 @@ function canGlassFractureSplit(prop, minSize) {
     const minArea = minShardAreaForPolygon(shape.vertices) * 2;
     return glassFootprintArea(prop) >= minArea;
 }
-
 export function canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
     if (!prop?.strategy?.fracture) return false;
     if (isGlassFracture(prop)) return canGlassFractureSplit(prop, minSize);
@@ -44,7 +38,6 @@ export function canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
     if (x * 2 < minSize * 2 || y * 2 < minSize * 2) return false;
     return Boolean(prop.chunks && prop.chunks.length > 1);
 }
-
 function flatVertsFromShape(prop) {
     const shape = prop.getShape?.() ?? prop.shape;
     const flat = new Float32Array(shape.vertices.length * 2);
@@ -54,13 +47,11 @@ function flatVertsFromShape(prop) {
     }
     return flat;
 }
-
 export function initFractureFootprint(prop) {
     if (isGlassFracture(prop)) return;
     if (!isChunkFracture(prop)) throw new Error(`Fracture props need fractureMode "chunk" or "glass", got ${prop.strategy?.fractureMode}`);
     applyChunkGeometryToProp(prop, bakeChunkOutline(flatVertsFromShape(prop)));
 }
-
 function applyFractureGeometryToProp(prop, geometry) {
     prop.footprintVertices = geometry.footprintVertices;
     prop.footprintArea = geometry.footprintArea;
@@ -74,7 +65,6 @@ function applyFractureGeometryToProp(prop, geometry) {
     invalidateBroadphaseBounds(prop);
     syncKineticRigidBody(prop);
 }
-
 export function applyChunkGeometryToProp(prop, geometry) {
     prop.chunks = geometry.chunks;
     prop.collisionParts = geometry.collisionParts;
@@ -85,27 +75,22 @@ export function applyChunkGeometryToProp(prop, geometry) {
     invalidateBroadphaseBounds(prop);
     syncKineticRigidBody(prop);
 }
-
 export function applyShardGeometryToProp(prop, geometry) {
     applyFractureGeometryToProp(prop, geometry);
 }
-
 function splitMeshComponents(cells, localHitX, localHitY, impactForce, forceExplode) {
     if (!cells?.length) return [];
     let components = splitPoxels(cells, localHitX, localHitY, impactForce);
     if (forceExplode && cells.length > 1) components = cells.map((cell) => [cell]);
     return components;
 }
-
 function geometryFromChunkComponent(comp, atOrigin) {
     const parts = comp.map((chunk) => ({ vertices: chunk.vertices }));
     return atOrigin ? buildChunkGeometryAtPropOrigin(parts) : buildGeometryFromChunkParts(parts);
 }
-
 export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactForce, forceExplode = false) {
     return splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, forceExplode).map((comp) => geometryFromChunkComponent(comp, false));
 }
-
 function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     const components = splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, false);
     if (components.length <= 1) return null;
@@ -116,7 +101,6 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     applyChunkGeometryToProp(prop, geometryFromChunkComponent(components[0], true));
     return { debris, originX, originY, facing: prop.facing };
 }
-
 export function worldHitToPropLocal(prop, worldX, worldY) {
     const dx = worldX - prop.x;
     const dy = worldY - prop.y;
@@ -124,11 +108,9 @@ export function worldHitToPropLocal(prop, worldX, worldY) {
     const sin = Math.sin(prop.facing);
     return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
 }
-
 export function impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
     return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
 }
-
 export function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (!canFracturePropSplit(prop)) return null;
     const local = worldHitToPropLocal(prop, worldHitX, worldHitY);
@@ -136,24 +118,22 @@ export function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (debris.length < 2) return null;
     return { debris, originX: prop.x, originY: prop.y, facing: prop.facing, impactLocal: local, impactForce };
 }
-
 export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
     if (!canFracturePropSplit(prop)) return null;
     const local = worldHitToPropLocal(prop, worldHitX, worldHitY);
     return peelSolidFracture(prop, local.x, local.y, impactForce);
 }
-
 function evictFracturedProp(state, prop, spatialFrame) {
     spatialFrame.evictKineticProp(prop);
     removeWorldPropFromState(state, prop);
 }
-
 export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relativeSpeed, spatialFrame) {
     const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
     for (let i = 0; i < 2; i++) {
         const prop = i === 0 ? bodyA : bodyB;
         const other = i === 0 ? bodyB : bodyA;
+        if (prop._physId === undefined) continue;
         if (!canFracturePropSplit(prop)) continue;
         if (prop._glassFractureCooldown > 0) continue;
         if (isGlassFracture(prop) && isGlassFracture(other)) continue;
@@ -162,8 +142,8 @@ export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relat
         const fracture = fracturePropOnImpact(prop, hitX, hitY, force);
         if (!fracture) continue;
         if (isGlassFracture(prop)) {
-            prop.spawnGlassShatter(state, fracture, spatialFrame);
             evictFracturedProp(state, prop, spatialFrame);
+            prop.spawnGlassShatter(state, fracture, spatialFrame);
         } else {
             wakeKineticBody(prop);
             prop.spawnFractureFragments(state, fracture, spatialFrame);

@@ -18,6 +18,7 @@ import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 
 loadPropAssets();
 
@@ -66,7 +67,7 @@ function createFractureTestState(initialProps) {
     const worldProps = initialProps.slice();
     return {
         worldProps,
-        sandbox: { entityMeta: { delete() {} } },
+        sandbox: { entityMeta: { delete() {} }, kineticConstraints: [] },
         entityRegistry: {
             membershipGen: 0,
             register(_kind, prop) {
@@ -264,6 +265,22 @@ describe("glass fracture", () => {
         assert.ok(SatCollision.checkCollision(glass, glass.getShape(), crate, crate.getShape()));
         resolveKineticContactPass(frame, state);
         assert.ok(liveGlassPropCount(state) > 2);
+        assert.ok(!state.worldProps.includes(glass));
+    });
+
+    it("runCollisionPipeline does not reproduce glass across persisted pair iterations", () => {
+        const glass = new WorldProp(0, 0, "glass_pane", 0);
+        const ball = new WorldProp(18, 0, "ball", 0);
+        applyPropBoxFootprint(glass, 24, 18);
+        glass.vx = 0;
+        ball.vx = -200;
+        assert.ok(SatCollision.checkCollision(glass, glass.getShape(), ball, ball.getShape()));
+        const state = createFractureTestState([glass, ball]);
+        const frame = setupGlassPairFrame([glass, ball]);
+        runCollisionPipeline(state, frame, { resolveWalls() {} });
+        const count = liveGlassPropCount(state);
+        assert.ok(count > 2);
+        assert.ok(count <= GLASS_MAX_SHARDS_PER_SHATTER + 2);
         assert.ok(!state.worldProps.includes(glass));
     });
 });

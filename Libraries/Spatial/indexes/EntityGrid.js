@@ -94,6 +94,7 @@ export class EntityGrid {
             curr = this.entityNext[curr];
         }
         entity._gridTileIdx = -1;
+        this.entities[targetId] = null;
     }
     /**
      * @param {Aabb2D} bounds

@@ -47,6 +47,12 @@ export function refreshKineticPairRelativeVelocities(pairs) {
 export function kineticPairBodyAt(spatialFrame, physId) {
     return spatialFrame.entityGrid.entities[physId];
 }
+export function kineticPairBodiesAt(spatialFrame, physIdA, physIdB) {
+    const bodyA = spatialFrame.entityGrid.entities[physIdA];
+    const bodyB = spatialFrame.entityGrid.entities[physIdB];
+    if (!bodyA || !bodyB || bodyA._physId !== physIdA || bodyB._physId !== physIdB) return null;
+    return { bodyA, bodyB };
+}
 export function gatherKineticCandidatePairs(spatialFrame, pairs) {
     pairs.reset();
     const active = spatialFrame._activeKineticBodies;

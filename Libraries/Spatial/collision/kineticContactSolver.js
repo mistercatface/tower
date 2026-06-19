@@ -3,7 +3,7 @@ import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.j
 import { bodyPinnedForContact, massFromBody } from "../../Motion/bodyMass.js";
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
 import { resolveSnakeCombatFromContacts } from "../../Game/snake/snakeCombat.js";
-import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer, refreshKineticPairRelativeVelocities } from "./kineticPairStream.js";
+import { gatherKineticCandidatePairs, kineticPairBodiesAt, kineticPairBodyAt, kineticPairBuffer, refreshKineticPairRelativeVelocities } from "./kineticPairStream.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { kineticBodySlab, writebackKineticBodySlabPhysIds } from "./kineticBodySlab.js";
 import { separateAlongNormal, separateCoincidentCirclePair, COINCIDENT_CIRCLE_EPS } from "./penetration.js";
@@ -252,6 +252,7 @@ function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
     for (let i = 0; i < pairs.count; i++) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
+        if (!kineticPairBodiesAt(spatialFrame, physIdA, physIdB)) continue;
         const tier = pairs.tier[i];
         if (tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) narrowPhaseCircleContact(physIdA, physIdB, pairs.preDvx[i], pairs.preDvy[i], contacts);
         else narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, pairs.preDvx[i], pairs.preDvy[i], contacts);
@@ -385,8 +386,9 @@ function applyKineticContactEffects(contacts, spatialFrame, state) {
     for (let i = 0; i < contacts.count; i++) {
         const physIdA = contacts.physIdA[i];
         const physIdB = contacts.physIdB[i];
-        const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
-        const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
+        const pair = kineticPairBodiesAt(spatialFrame, physIdA, physIdB);
+        if (!pair) continue;
+        const { bodyA, bodyB } = pair;
         const nx = contacts.nx[i];
         const ny = contacts.ny[i];
         let hitX;
