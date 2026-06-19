@@ -3,7 +3,7 @@ import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
 import { createHpaGroundNavSession } from "./hpaGroundNavSession.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
-import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward } from "../kineticRollActuator.js";
+import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { isEntityOnFloorBelt, isFloorBeltCell, resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
 import { HPA_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
 export function createHpaGroundNavBehavior(state) {
@@ -25,6 +25,7 @@ export function createHpaGroundNavBehavior(state) {
         run.hpaNav.reset(state);
     };
     const releaseMoveTarget = (prop, run) => {
+        clearGroundRollDrive(prop);
         clearRunTarget(run, state);
     };
     const applyMoveTarget = (run, world, forceReset = false) => {
@@ -50,6 +51,7 @@ export function createHpaGroundNavBehavior(state) {
         }
         if (onBelt) {
             run.wasOnBelt = true;
+            clearGroundRollDrive(prop);
             return;
         }
         let steering = null;
@@ -120,6 +122,7 @@ export function createHpaGroundNavBehavior(state) {
             return { hasRoute: navHasPath(nav), replanPending: run.hpaNav.isRoutePending(), stuckFrames: nav.stuckFrames, pathLen: nav.pathLen };
         },
         clearMoveTarget(prop) {
+            clearGroundRollDrive(prop);
             clearRunTarget(getRun(prop), state);
         },
         tick(prop, dt) {

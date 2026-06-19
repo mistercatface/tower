@@ -347,6 +347,25 @@ describe("snake predator prey autosim", () => {
         assert.deepEqual(resolvePlayerSnakeCombatHud(preyAutosim, state, registry, autosimsByHeadId), { hunting: false, hunted: true, foraging: false });
     });
 
+    it("resolvePlayerSnakeCombatHud ignores seek_prey hunters with no visible prey", () => {
+        applySnakeGameConfig({ preySizeRatio: 1 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const predator = spawnLinkedBallChain(state, { col: 8, row: 10 }, chainOptions(5));
+        const prey = spawnLinkedBallChain(state, { col: 16, row: 10 }, chainOptions(5));
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, predator.head.id);
+        registerAliveSnake(registry, prey.head.id);
+        const autosimsByHeadId = new Map();
+        wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
+        prey.head.x = predator.head.x + 40;
+        prey.head.y = predator.head.y;
+        const preyAutosim = createWiredSnakeAutosim(state, { headId: prey.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosimsByHeadId.set(prey.head.id, preyAutosim);
+        autosimsByHeadId.set(predator.head.id, { getMode: () => "seek_prey" });
+        assert.deepEqual(resolvePlayerSnakeCombatHud(preyAutosim, state, registry, autosimsByHeadId), { hunting: false, hunted: false, foraging: true });
+    });
+
     it("resolvePlayerSnakeCombatHud shows foraging when seeking food or exploring", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);

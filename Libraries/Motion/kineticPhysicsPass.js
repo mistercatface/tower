@@ -2,7 +2,7 @@ import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js";
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible } from "./kineticSleep.js";
 import { buildKineticIslands } from "./kineticIslands.js";
-import { applyGroundRollDrive, clearGroundRollDrives } from "../Sandbox/kineticRollActuator.js";
+import { applyGroundRollDrive } from "../Sandbox/kineticRollActuator.js";
 import { countMotionSubsteps } from "./motionSubsteps.js";
 function propBlocksSleep(prop) {
     const fn = prop.currentState.blocksSleep;
@@ -44,7 +44,6 @@ export function runKineticPhysics(state, dt, spatialFrame) {
             },
         });
     }
-    clearGroundRollDrives(spatialFrame._kineticBodies);
     tickKineticSleep(spatialFrame);
     spatialFrame.syncActiveKineticBodies();
 }

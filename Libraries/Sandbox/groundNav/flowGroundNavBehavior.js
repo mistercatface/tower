@@ -3,7 +3,7 @@ import { agentPose } from "../../Agent/index.js";
 import { computeFlowFieldSteering } from "../../Pathfinding/flowSteering.js";
 import { sampleFlowDirectionOnGrid } from "../../Pathfinding/sampleFlowDirection.js";
 import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
-import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward } from "../kineticRollActuator.js";
+import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { FLOW_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
 export function createFlowGroundNavBehavior(state) {
     const propRuns = new Map();
@@ -15,7 +15,8 @@ export function createFlowGroundNavBehavior(state) {
         }
         return run;
     };
-    const clearRunTarget = (run) => {
+    const clearRunTarget = (run, prop) => {
+        if (prop) clearGroundRollDrive(prop);
         run.targetWorld = null;
         run.dragging = false;
         run.lastNavGeneration = -1;
@@ -41,7 +42,7 @@ export function createFlowGroundNavBehavior(state) {
         syncFlowWindow(prop, steerTarget);
         const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);
         if (distToTarget <= config.stopRadius) {
-            clearRunTarget(run);
+            clearRunTarget(run, prop);
             return;
         }
         const steering = computeFlowFieldSteering(agentPose(prop), steerTarget.x, steerTarget.y, flowFieldGrid);

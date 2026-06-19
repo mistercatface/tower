@@ -109,6 +109,15 @@ describe("kineticRollActuator", () => {
         assert.equal(prop.vx, 0);
     });
 
+    it("drive intent persists until explicitly cleared", () => {
+        const prop = mockRollingProp();
+        steerRollToward(prop, 1, 0, { accel: 600, maxSpeed: 180 });
+        applyGroundRollDrive(prop, 1 / 60);
+        const vxAfterFirst = prop.vx;
+        applyGroundRollDrive(prop, 1 / 60);
+        assert.ok(prop.vx > vxAfterFirst);
+    });
+
     it("getKineticRollConfig merges prop strategy overrides", () => {
         const prop = mockRollingProp({ strategy: { rolls: true, groundNav: { maxSpeed: 90 } } });
         assert.equal(getKineticRollConfig(prop).maxSpeed, 90);

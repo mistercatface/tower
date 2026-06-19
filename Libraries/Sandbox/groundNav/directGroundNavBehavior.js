@@ -1,4 +1,4 @@
-import { decelerateRoll, getKineticRollConfig, steerRollToward } from "../kineticRollActuator.js";
+import { decelerateRoll, getKineticRollConfig, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
 export function createDirectGroundNavBehavior(state) {
     const propRuns = new Map();
@@ -10,7 +10,8 @@ export function createDirectGroundNavBehavior(state) {
         }
         return run;
     };
-    const clearRunTarget = (run) => {
+    const clearRunTarget = (run, prop) => {
+        if (prop) clearGroundRollDrive(prop);
         run.targetWorld = null;
         run.unitDragActive = false;
         run.moveTargetActive = false;
@@ -23,7 +24,7 @@ export function createDirectGroundNavBehavior(state) {
         const dist = Math.hypot(dx, dy);
         if (dist < config.stopRadius) {
             if (run.moveTargetActive) {
-                clearRunTarget(run);
+                clearRunTarget(run, prop);
                 return;
             }
             decelerateRoll(prop, config);
@@ -48,7 +49,7 @@ export function createDirectGroundNavBehavior(state) {
         onPointerUp(prop) {
             const run = getRun(prop);
             run.unitDragActive = false;
-            if (!run.moveTargetActive) run.targetWorld = null;
+            if (!run.moveTargetActive) clearRunTarget(run, prop);
         },
         setMoveTarget(prop, world) {
             const run = getRun(prop);
@@ -66,7 +67,7 @@ export function createDirectGroundNavBehavior(state) {
             return run.moveTargetActive && run.targetWorld != null;
         },
         clearMoveTarget(prop) {
-            clearRunTarget(getRun(prop));
+            clearRunTarget(getRun(prop), prop);
         },
         tick(prop, dt) {
             tickProp(prop, getRun(prop), dt);

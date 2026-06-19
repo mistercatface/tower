@@ -11,8 +11,9 @@ export function resolvePlayerSnakeCombatHud(playerAutosim, state, registry, auto
             if (headId === playerHeadId) continue;
             if (autosim.getMode() !== "seek_prey") continue;
             const hunter = state.entityRegistry.getLive(headId);
+            if (!hunter) continue;
             const prey = findNearestVisibleSnakePrey(state, hunter, headId, registry, visionCone);
-            if (prey.id === playerHeadId) {
+            if (prey?.id === playerHeadId) {
                 hunted = true;
                 break;
             }

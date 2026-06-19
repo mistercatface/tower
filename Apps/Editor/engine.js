@@ -92,8 +92,8 @@ export function createEditorApp(options = {}) {
         if (gameMode) tickGameViewportNavigation(dt);
         else tickLabViewportNavigation(dt);
         tickSandboxCameraFollow(state.viewport, state, state.entityRegistry, dt);
-        state.sandbox.controller?.tick(dt);
         state.appLaunch?.session?.tick(dt);
+        state.sandbox.controller?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
         if (shouldRenderLabFrame(state)) drawLabFrame(state);
         if (!gameMode) {

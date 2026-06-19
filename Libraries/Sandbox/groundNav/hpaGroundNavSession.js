@@ -44,8 +44,13 @@ export function createHpaGroundNavSession() {
     const update = (prop, targetX, targetY, state, dtMs, pathSettings) => {
         replanClockMs += dtMs;
         const settings = state.navigation.settings;
-        trackNavStuck(navState, prop.x, prop.y, settings.stuckMoveThreshold);
         const inFlight = state.hpaPathSession.isReplanInFlight(navState);
+        const routePending = pendingTargetReplan || navState.hpaReplanRequestId !== 0;
+        if (inFlight || routePending) {
+            navState.stuckFrames = 0;
+            navState.lastX = prop.x;
+            navState.lastY = prop.y;
+        } else trackNavStuck(navState, prop.x, prop.y, settings.stuckMoveThreshold);
         const isVisible = isPropNavVisible(state, prop);
         const stuckFrames = navState.stuckFrames;
         const stuckReplanFrames = settings.stuckReplanFrames;
