@@ -1,5 +1,5 @@
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../../Sandbox/sandboxSceneSnapshot.js";
-import { walkableCellKey, collectWalkableCells, pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
+import { walkableCellKey, pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { linkedChainOccupiedCellKeys, spawnLinkedBallChain } from "../../Sandbox/spawnLinkedBallChain.js";
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { SANDBOX_DEFAULT_FACTION } from "../../Sandbox/sandboxFaction.js";
@@ -9,6 +9,7 @@ import { commitBoundaryEdit } from "../../Sandbox/boundaryEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
+import { bakeSnakeWalkableCells, filterSnakeWalkableCellsInBounds, getSnakeWalkableCells, pickSnakeWalkableCell } from "./snakeWalkableCells.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
     const grid = state.obstacleGrid;
@@ -60,7 +61,7 @@ function resolveSnakePlayableBounds(state) {
     return state.sandbox.snakePlayableBounds ?? state.editor.cavernConfig;
 }
 export function collectSnakePlayableOpenCells(state) {
-    return collectWalkableCells(state, resolveSnakePlayableBounds(state));
+    return getSnakeWalkableCells(state);
 }
 export async function generateSnakeSplitMap(state) {
     const config = getSnakeGameConfig();
@@ -116,8 +117,7 @@ export function spawnGoalOrbAtCell(state, cell, faction = SANDBOX_DEFAULT_FACTIO
     return spawnGoalOrb(state, x, y, faction);
 }
 export function spawnGoalOrbOnOpenCell(state, { excludeKeys = null, faction = SANDBOX_DEFAULT_FACTION, rng = Math.random } = {}) {
-    const openCells = collectSnakePlayableOpenCells(state);
-    const cell = pickWalkableCell(openCells, { excludeKeys, rng });
+    const cell = pickSnakeWalkableCell(state, { excludeKeys, rng });
     if (!cell) throw new Error("Play area has no open floor cell for goal orb");
     return spawnGoalOrbAtCell(state, cell, faction);
 }
@@ -157,11 +157,12 @@ export function spawnSnakeGoalPool(state, goalCount, { excludeKeys = null, rng =
 export async function spawnSnakeCavernScene(state) {
     const config = getSnakeGameConfig();
     await spawnSnakeCavernMap(state);
-    const cavernCells = collectSnakePlayableOpenCells(state);
-    if (!cavernCells.length) throw new Error("Play area has no open floor cells for snake placement");
+    bakeSnakeWalkableCells(state);
+    const cavernCells = getSnakeWalkableCells(state);
+    if (!cavernCells.length) throw new Error("Play area has no nav-walkable floor cells for snake placement");
     const playerSpawnBounds = resolveSnakePlayerSpawnBounds(state);
-    const playerCells = collectWalkableCells(state, playerSpawnBounds);
-    if (!playerCells.length) throw new Error("Lower map quarter has no open floor cell for player spawn");
+    const playerCells = filterSnakeWalkableCellsInBounds(cavernCells, state.obstacleGrid, playerSpawnBounds);
+    if (!playerCells.length) throw new Error("Lower map quarter has no nav-walkable floor cell for player spawn");
     const snakes = [];
     let goals = [];
     const playerIndex = config.playerSnakeIndex ?? 0;
@@ -171,9 +172,9 @@ export async function spawnSnakeCavernScene(state) {
         const specs = resolveSnakeSpawnSpecs(config);
         for (let i = 0; i < specs.length; i++) {
             const spec = specs[i];
-            const pool = i === playerIndex ? playerCells : cavernCells;
-            const anchorCell = pickWalkableCell(pool, { excludeKeys });
-            if (!anchorCell) throw new Error(`No open floor cell for snake ${i + 1}`);
+            const spawnPool = i === playerIndex ? playerCells : cavernCells;
+            const anchorCell = pickWalkableCell(spawnPool, { excludeKeys, rng: () => (i * 0.13) % 1 });
+            if (!anchorCell) throw new Error(`No nav-walkable floor cell for snake ${i + 1}`);
             const pack = spawnSnakeChain(state, anchorCell, { excludeKeys, segmentCount: spec.segmentCount });
             snakes.push({ ...pack, cameraFollow: spec.cameraFollow });
             excludeKeys = pack.occupiedKeys;

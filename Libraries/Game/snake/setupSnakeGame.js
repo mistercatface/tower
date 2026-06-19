@@ -8,6 +8,7 @@ import { createSnakeLifecycleRegistry, registerAliveSnake, isAliveSnakeHead } fr
 import { mountSnakeHud } from "./snakeHud.js";
 import { resolvePlayerSnakeCombatHud } from "./snakeCombatHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
+import { bakeSnakeWalkableCells } from "./snakeWalkableCells.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -33,6 +34,7 @@ export async function setupSnakeGame(state) {
     }
     if (!playerSnake) throw new Error("Snake game config requires one snake with cameraFollow: true");
     void state.navigation.onObstaclesChanged(null);
+    bakeSnakeWalkableCells(state);
     const playerHeadId = playerSnake.chain.head.id;
     const playerAutosim = autosimsByHeadId.get(playerHeadId);
     const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;

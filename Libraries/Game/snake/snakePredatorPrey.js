@@ -1,10 +1,11 @@
 import { queryGridCellVision } from "../../Navigation/perception/gridCellVision.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
-import { collectWalkableCells, pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
+import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { collectSnakeWaypointCandidates } from "./snakeExplore.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { isAliveSnakeHead } from "./snakeLifecycle.js";
+import { getSnakeWalkableCells } from "./snakeWalkableCells.js";
 export function collectAliveSnakeHeads(state, registry, selfHeadId) {
     const heads = [];
     for (const headId of registry.aliveByHeadId.keys()) {
@@ -71,7 +72,7 @@ export function pickRetreatDestination(seeker, state, registry, selfHeadId, memo
     const config = getSnakeGameConfig();
     const grid = state.obstacleGrid;
     const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
-    const openCells = collectWalkableCells(state);
+    const openCells = getSnakeWalkableCells(state);
     let minTiles = config.exploreMinTiles;
     let candidates = collectSnakeWaypointCandidates(grid, col, row, minTiles, openCells);
     if (!candidates.length && minTiles > config.exploreFallbackMinTiles) {

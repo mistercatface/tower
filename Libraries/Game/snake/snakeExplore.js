@@ -1,13 +1,13 @@
-import { walkableCellKey, collectWalkableCells, pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
+import { walkableCellKey, pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { pickExploreDestination, cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
+import { getSnakeWalkableCells } from "./snakeWalkableCells.js";
 export function collectSnakeWaypointCandidates(grid, originCol, originRow, minTiles, openCells) {
     const candidates = [];
     for (let i = 0; i < openCells.length; i++) {
         const cell = openCells[i];
         if (cell.col === originCol && cell.row === originRow) continue;
         if (cellChebyshevDistance(originCol, originRow, cell.col, cell.row) < minTiles) continue;
-        if (grid.isBlocked(cell.col, cell.row)) continue;
         candidates.push(cell);
     }
     return candidates;
@@ -16,7 +16,7 @@ export function resolveSnakeExploreCell(seeker, state, memory, rng) {
     const config = getSnakeGameConfig();
     const grid = state.obstacleGrid;
     const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
-    const openCells = collectWalkableCells(state);
+    const openCells = getSnakeWalkableCells(state);
     const explorePick = { memory, openCells, rng, fringeRatio: config.spatialMemoryFringeRatio };
     let cell = pickExploreDestination(grid, col, row, { ...explorePick, minTiles: config.exploreMinTiles });
     if (!cell && config.exploreMinTiles > config.exploreFallbackMinTiles) cell = pickExploreDestination(grid, col, row, { ...explorePick, minTiles: config.exploreFallbackMinTiles });
