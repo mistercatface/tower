@@ -27,6 +27,7 @@ const kineticConstraintBuffer = {
     invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
     pinnedA: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
     pinnedB: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
+    capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS),
     reset() {
         this.count = 0;
     },
@@ -97,6 +98,14 @@ function orderIslandConstraintItems(items) {
     }
     return ordered;
 }
+function circleRadiusFromBody(body) {
+    const parts = getEntityCollisionParts(body);
+    for (let i = 0; i < parts.length; i++) if (parts[i].type === "Circle") return parts[i].radius;
+    return body.radius;
+}
+function linkCapsuleRadius(bodyA, bodyB) {
+    return Math.max(circleRadiusFromBody(bodyA), circleRadiusFromBody(bodyB));
+}
 function appendConstraintEntry(buffer, item) {
     const idx = buffer.count++;
     const bodyA = item.bodyA;
@@ -116,6 +125,7 @@ function appendConstraintEntry(buffer, item) {
     buffer.invIB[idx] = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
     buffer.pinnedA[idx] = bodyPinnedForContact(bodyA) ? 1 : 0;
     buffer.pinnedB[idx] = bodyPinnedForContact(bodyB) ? 1 : 0;
+    buffer.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
 }
 function islandConstraintsAsleep(buffer, start, count) {
     for (let i = start; i < start + count; i++) {
@@ -160,14 +170,6 @@ export function gatherKineticConstraintBuffer(tick, buffer = kineticConstraintBu
     }
     return { buffer, groups };
 }
-function circleRadiusFromBody(body) {
-    const parts = getEntityCollisionParts(body);
-    for (let i = 0; i < parts.length; i++) if (parts[i].type === "Circle") return parts[i].radius;
-    return body.radius;
-}
-function linkCapsuleRadius(bodyA, bodyB) {
-    return Math.max(circleRadiusFromBody(bodyA), circleRadiusFromBody(bodyB));
-}
 function linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, segment) {
     const reach = capsuleRadius + segment.size * 0.75;
     const minX = Math.min(ax, bx) - reach;
@@ -205,12 +207,9 @@ function translateLinkAwayFromWall(bodyA, bodyB, normalX, normalY, overlap, pinn
     applyPositionCorrection(bodyA, normalX, normalY, overlap);
     applyPositionCorrection(bodyB, normalX, normalY, overlap);
 }
-function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, anchorBx, anchorBy, walls, spatialFrame) {
-    const capsuleRadius = linkCapsuleRadius(bodyA, bodyB);
+function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, anchorBx, anchorBy, walls, spatialFrame, pinnedA, pinnedB, capsuleRadius) {
     const approachX = ((bodyA.vx ?? 0) + (bodyB.vx ?? 0)) * 0.5;
     const approachY = ((bodyA.vy ?? 0) + (bodyB.vy ?? 0)) * 0.5;
-    const pinnedA = bodyPinnedForContact(bodyA);
-    const pinnedB = bodyPinnedForContact(bodyB);
     for (let pass = 0; pass < LINK_CAPSULE_WALL_PASSES; pass++) {
         const wa = worldAnchorFromBody(bodyA, anchorAx, anchorAy);
         const wb = worldAnchorFromBody(bodyB, anchorBx, anchorBy);
@@ -242,7 +241,19 @@ export function projectIslandLinkCapsulesAgainstWalls(tick, buffer, groups) {
             const bodyA = buffer.bodyA[i];
             const bodyB = buffer.bodyB[i];
             gatherLinkWallCandidates(spatialFrame, bodyA, bodyB, walls);
-            projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, buffer.anchorAx[i], buffer.anchorAy[i], buffer.anchorBx[i], buffer.anchorBy[i], walls, spatialFrame);
+            projectDistanceLinkCapsuleAgainstWalls(
+                bodyA,
+                bodyB,
+                buffer.anchorAx[i],
+                buffer.anchorAy[i],
+                buffer.anchorBx[i],
+                buffer.anchorBy[i],
+                walls,
+                spatialFrame,
+                buffer.pinnedA[i],
+                buffer.pinnedB[i],
+                buffer.capsuleRadius[i],
+            );
         }
     }
 }

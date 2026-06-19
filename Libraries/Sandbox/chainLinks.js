@@ -100,10 +100,9 @@ export function listChainLinkEndpoints(state, propId) {
         const entry = list[i];
         if (entry.type !== "distance") continue;
         if (entry.bodyAId !== propId && entry.bodyBId !== propId) continue;
-        const targetId = entry.bodyAId === propId ? entry.bodyBId : entry.bodyAId;
-        const target = state.entityRegistry.getLive(targetId);
-        if (!target) continue;
-        endpoints.push({ constraintId: entry.id, targetId, label: `${formatPropTypeLabel(target.type)} · #${target.id}`, x: target.x, y: target.y });
+        const target = entry.bodyAId === propId ? entry.bodyB : entry.bodyA;
+        if (target.isDead) continue;
+        endpoints.push({ constraintId: entry.id, targetId: target.id, label: `${formatPropTypeLabel(target.type)} · #${target.id}`, x: target.x, y: target.y });
     }
     return endpoints;
 }
