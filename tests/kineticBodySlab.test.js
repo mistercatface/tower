@@ -1,10 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { getBroadphaseBounds, snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { kineticBroadphaseSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeKineticBroadphaseSlabSlot } from "../Libraries/Spatial/collision/kineticBroadphaseSlab.js";
+import { getBroadphaseBounds, snapshotActiveBroadphaseBounds, snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { kineticBodySlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeKinematicBodySlabSlot } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { pairBroadphaseBoundsOverlap } from "../Libraries/Spatial/collision/Broadphase.js";
-import { snapshotKinematicSlab } from "../Libraries/Spatial/collision/kineticKinematicSlab.js";
 import { circleCircleContactSlab } from "../Libraries/Spatial/collision/kineticCircleContactSolver.js";
 import { circleCircleContact } from "../Libraries/Spatial/collision/SatCollision.js";
 
@@ -25,14 +24,15 @@ function mockCircleBody(x, y, radius) {
     };
 }
 
-describe("kinetic broadphase slab", () => {
-    it("slab slot matches computed broadphase bounds", () => {
+describe("kinetic body slab", () => {
+    it("broadphase slot uses body x/y as circle center", () => {
         const body = mockCircleBody(12, -4, 9);
         body._physId = 3;
-        writeKineticBroadphaseSlabSlot(body._physId, getBroadphaseBounds(body));
-        assert.equal(kineticBroadphaseSlab.cx[3], 12);
-        assert.equal(kineticBroadphaseSlab.cy[3], -4);
-        assert.equal(kineticBroadphaseSlab.r[3], 9);
+        writeKinematicBodySlabSlot(body);
+        writeBroadphaseFromBounds(body._physId, getBroadphaseBounds(body));
+        assert.equal(kineticBodySlab.x[3], 12);
+        assert.equal(kineticBodySlab.y[3], -4);
+        assert.equal(kineticBodySlab.r[3], 9);
     });
 
     it("slab overlap matches object overlap after snapshot", () => {
@@ -40,9 +40,20 @@ describe("kinetic broadphase slab", () => {
         const b = mockCircleBody(18, 0, 10);
         a._physId = 0;
         b._physId = 1;
-        snapshotActiveBroadphaseBounds([a, b]);
+        snapshotKineticBodySlab([a, b]);
         assert.equal(pairCircleCircleOverlapSlab(0, 1), pairBroadphaseBoundsOverlap(a.broadphaseBounds, b.broadphaseBounds));
         assert.equal(pairBroadphaseOverlapSlab(0, 1), pairBroadphaseBoundsOverlap(a.broadphaseBounds, b.broadphaseBounds));
+    });
+
+    it("snapshotActiveBroadphaseBounds fills kinematic and broadphase columns", () => {
+        const a = mockCircleBody(1, 2, 5,);
+        a._physId = 4;
+        a.vx = 3;
+        a.vy = -1;
+        snapshotActiveBroadphaseBounds([a]);
+        assert.equal(kineticBodySlab.vx[4], 3);
+        assert.equal(kineticBodySlab.vy[4], -1);
+        assert.equal(kineticBodySlab.r[4], 5);
     });
 
     it("slab circle contact matches SAT circle contact", () => {
@@ -50,8 +61,7 @@ describe("kinetic broadphase slab", () => {
         const b = mockCircleBody(18, 0, 10);
         a._physId = 0;
         b._physId = 1;
-        snapshotActiveBroadphaseBounds([a, b]);
-        snapshotKinematicSlab([a, b]);
+        snapshotKineticBodySlab([a, b]);
         const slab = circleCircleContactSlab(0, 1);
         const sat = circleCircleContact(a, a.getShape(), b, b.getShape());
         assert.ok(slab);

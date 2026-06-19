@@ -4,7 +4,7 @@ import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../M
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
 import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "./kineticPairStream.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
-import { snapshotKinematicSlab, writebackKinematicSlabPhysIds } from "./kineticKinematicSlab.js";
+import { writebackKineticBodySlabPhysIds } from "./kineticBodySlab.js";
 import {
     applyCircleContactEffects,
     collectCircleContactPhysIds,
@@ -321,7 +321,6 @@ export function resolveKineticContactPass(spatialFrame, state) {
 }
 export function gatherKineticContactPairs(spatialFrame) {
     snapshotActiveBroadphaseBounds(spatialFrame._activeKineticBodies);
-    snapshotKinematicSlab(spatialFrame._activeKineticBodies);
     const pairs = kineticPairBuffer;
     gatherKineticCandidatePairs(spatialFrame, pairs);
     return pairs;
@@ -334,7 +333,7 @@ export function resolveKineticContactPassWithPairs(spatialFrame, state, pairs) {
         precomputeCircleContacts(spatialFrame, circleContacts);
         warmStartCircleContacts(circleContacts, warmStartKeys, warmStartJn, warmStartJt);
         solveCircleContactVelocities(circleContacts, INNER_SOLVE_ITERATIONS);
-        writebackKinematicSlabPhysIds(spatialFrame, collectCircleContactPhysIds(circleContacts));
+        writebackKineticBodySlabPhysIds(spatialFrame, collectCircleContactPhysIds(circleContacts));
     }
     narrowPhaseKineticContacts(spatialFrame, pairs, contacts);
     if (contacts.count > 0) {

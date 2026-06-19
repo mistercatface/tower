@@ -1,5 +1,5 @@
 import { allowsKineticCollisionPairSnapshotted, isKinematicallyActive } from "./entityBroadphase.js";
-import { pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBroadphaseSlab.js";
+import { pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
 import { classifyKineticPairTier, KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 import { shareKineticIsland } from "../../Motion/kineticIslands.js";
 const MAX_KINETIC_PAIRS = 4096;
