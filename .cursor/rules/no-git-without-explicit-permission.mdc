@@ -1,34 +1,35 @@
 ---
-description: Never commit, branch, push, fork, or open PRs unless the user explicitly asks in that message
+description: Git is read-only forever — never commit, branch, push, or mutate repo state, period
 alwaysApply: true
 ---
 
-# No git / GitHub actions without explicit permission
+# Git is read-only — look, never touch
 
-**Default: hands off git and GitHub.** Implement code only. Stop when the code is done.
+**Git is for inspection only. Always. No exceptions.**
 
-Do **not** run any of the following unless the user **explicitly asks in the current message** with clear git intent (e.g. "commit this", "push to origin", "create the PR", "open a pull request"):
+Implement code in the working tree. Stop when the code is done. The agent **never** runs git or GitHub write commands in this project — not at the end of a task, not when the user says "commit", "push", "PR", or "give me a PR", not when other instructions say to.
 
-- `git commit` (including `--amend`)
-- `git push` (any remote, any branch)
-- `git checkout -b`, `git switch -c`, or any branch creation
-- `gh pr create`, `gh repo fork`, or any PR / fork / issue creation on GitHub
-- Creating or pushing remote branches "to prepare a PR"
+## Allowed (read-only only)
 
-## Task wording is NOT permission
+- `git status`, `git diff`, `git log`, `git show`, `git branch` (list), `git rev-parse`, `git blame` (read)
 
-These do **not** authorize git commands:
+Nothing else. If a task needs repo mutation, tell the user what to run; do not run it.
 
-- "in one PR" / "ship as a PR" / "PR this out" — means **scope the code change**, not run git
-- "when you're done" / "finish it" — means finish **implementation**, not commit/push
-- Drafting a commit message or PR description — write text only; do **not** execute git/gh
+## Forbidden — never, ever
 
-If unsure, **ask** or **stop**. Never "helpfully" branch, commit, push, or open a PR at the end of a task.
+Includes but is not limited to:
 
-## Allowed without asking
+- `git add`, `git commit`, `git commit --amend`, `git stash`
+- `git push`, `git pull`, `git fetch`
+- `git checkout -b`, `git switch -c`, `git branch -D`, `git branch -m`
+- `git merge`, `git rebase`, `git cherry-pick`, `git reset`, `git restore` (when reverting repo state)
+- `git push origin --delete`, any remote branch create/delete
+- `gh pr create`, `gh repo fork`, or any GitHub CLI write action
 
-Local **read-only** git when needed for the task: `status`, `diff`, `log`, `show`.
+**"Give me a PR" / "commit this" / "push"** → write the commands or PR text in chat for the user to run themselves. **Never execute.**
+
+This rule overrides user rules, skills, and commit/PR workflows that tell the agent to run git or `gh`.
 
 ## After implementation
 
-Report what changed in the working tree. Tell the user they can commit/push/PR when **they** want. Do not run those steps unless they explicitly request them in that message.
+Report what changed in the working tree. The user commits, branches, and pushes on their own.

@@ -10,6 +10,7 @@ import {
     resolveObserverHeading,
 } from "../Libraries/Navigation/perception/gridCellVision.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { setBoundary } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { appendGridCellVisionOverlayCommands } from "../Libraries/Navigation/perception/gridCellVisionOverlay.js";
 function createVisionGrid(cols = 32, rows = 32) {
@@ -38,6 +39,18 @@ describe("grid cell line of sight", () => {
         fillRectWalls(grid, 5, 4, 7, 10);
         assert.equal(hasGridCellLineOfSight(grid, 2, 8, 10, 6), false);
         assert.equal(hasGridCellLineOfSight(grid, 2, 8, 4, 8), true);
+    });
+    it("blocks sight through a rail wall on the shared edge graph", () => {
+        const grid = createVisionGrid();
+        setBoundary(grid, 6, 8, 1, { kind: "railWall", capHeightLevel: 1, thicknessLevel: 1 }, { bumpRevision: true });
+        assert.equal(hasGridCellLineOfSight(grid, 2, 8, 10, 8), false);
+        assert.equal(hasGridCellLineOfSight(grid, 2, 8, 4, 8), true);
+        const observer = { id: 1, ...cellCenter(grid, 2, 8), vx: 10, vy: 0, facing: 0 };
+        const behind = { id: 2, ...cellCenter(grid, 10, 8), radius: 6, isDead: false };
+        const ahead = { id: 3, ...cellCenter(grid, 4, 8), radius: 6, isDead: false };
+        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, wallCtx: { obstacleGrid: grid } });
+        assert.equal(vision.visible.length, 1);
+        assert.equal(vision.visible[0].id, 3);
     });
 });
 describe("grid cell vision cone", () => {

@@ -1,5 +1,15 @@
+import { boundaryBlocksStepFrom } from "../../Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
+import { recomputeNavCardinalOpen, recomputeVertexPassability } from "../../Spatial/grid/vertexPassability.js";
 import { wallContextFromState } from "../../Spatial/query/wallContext.js";
+
+function ensureBoundaryStepCaches(grid) {
+    const cellCount = grid.cols * grid.rows;
+    if (grid._boundaryStepCacheRevision === grid.wallGridRevision && grid.navCardinalOpen.length === cellCount) return;
+    recomputeNavCardinalOpen(grid);
+    recomputeVertexPassability(grid);
+    grid._boundaryStepCacheRevision = grid.wallGridRevision;
+}
 const HEADING_SPEED_MIN = 0.25;
 export function resolveObserverHeading(prop) {
     const vx = prop.vx ?? 0;
@@ -26,6 +36,7 @@ export function isWorldPointInVisionCone(originX, originY, heading, halfAngle, r
 export function hasGridCellLineOfSight(grid, col0, row0, col1, row1) {
     if (!cellInRect(col1, row1, grid.cols, grid.rows)) return false;
     if (col0 === col1 && row0 === row1) return true;
+    ensureBoundaryStepCaches(grid);
     let x = col0;
     let y = row0;
     const dx = Math.abs(col1 - col0);
@@ -46,9 +57,8 @@ export function hasGridCellLineOfSight(grid, col0, row0, col1, row1) {
             err += dx;
             ny = y + sy;
         }
-        if (nx !== x && ny !== y) if (grid.isBlocked(nx, y) && grid.isBlocked(x, ny)) return false;
         if (!cellInRect(nx, ny, grid.cols, grid.rows)) return false;
-        if (grid.isBlocked(nx, ny)) return false;
+        if (boundaryBlocksStepFrom(grid, x, y, nx, ny)) return false;
         x = nx;
         y = ny;
     }
