@@ -11,7 +11,7 @@
             <aside class="panel">
                 <header>
                     <h1>MazeLab</h1>
-                    <p>Snake split map preview — V-CA cavern, padding strip, R-DFS rails, corridor belts with elbows.</p>
+                    <p><b>Block view</b> — white floor, black walls/rails. Belts are colored tiles with arrow glyphs. Default zoom fills your screen.</p>
                 </header>
                 <section>
                     <h2>Generate</h2>
@@ -38,21 +38,29 @@
                 </section>
                 <section>
                     <h2>View</h2>
-                    <label>Pixels / cell <select id="px-per-cell"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+                    <label>Pixels / cell <select id="px-per-cell"></select></label>
                     <fieldset class="layers">
                         <legend>Layers</legend>
                         <label><input id="layer-zones" type="checkbox" checked /> Zone bands</label>
                         <label><input id="layer-voxels" type="checkbox" checked /> Voxel walls</label>
                         <label><input id="layer-rails" type="checkbox" checked /> Rail edges</label>
                         <label><input id="layer-northReserve" type="checkbox" checked /> North reserve</label>
-                        <label><input id="layer-walkable" type="checkbox" checked /> Nav walkable flood</label>
-                        <label><input id="layer-belts" type="checkbox" checked /> Floor belts (arrows + elbows)</label>
+                        <label><input id="layer-walkable" type="checkbox" /> Walkable flood (optional)</label>
+                        <label><input id="layer-belts" type="checkbox" checked /> Floor belts</label>
                     </fieldset>
+                    <div class="legend">
+                        <b>Map key</b>
+                        ⬛ wall &nbsp; ⬜ floor &nbsp; ▬ rail bar<br />
+                        🟦 belt → &nbsp; 🟧 belt ↰ &nbsp; 🟥 belt ↱<br />
+                        Yellow strip = north reserve &nbsp;|&nbsp; Black bars = zone splits
+                    </div>
                 </section>
                 <p id="stats" class="stats"></p>
             </aside>
             <main class="stage">
-                <canvas id="maze-canvas"></canvas>
+                <div id="canvas-wrap">
+                    <canvas id="maze-canvas"></canvas>
+                </div>
             </main>
         </div>
         <script type="module" src="mazeLabApp.js"></script>

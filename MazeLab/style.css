@@ -1,8 +1,8 @@
 :root {
-    color-scheme: dark;
-    font-family: "Segoe UI", system-ui, sans-serif;
-    background: #07090d;
-    color: #e6edf3;
+    color-scheme: light dark;
+    font-family: system-ui, sans-serif;
+    background: #2a2a2a;
+    color: #111;
 }
 
 * {
@@ -11,124 +11,152 @@
 
 body {
     margin: 0;
-    min-height: 100vh;
 }
 
 .shell {
     display: grid;
-    grid-template-columns: minmax(280px, 340px) 1fr;
+    grid-template-columns: 320px 1fr;
     min-height: 100vh;
 }
 
 .panel {
-    padding: 1rem 1.1rem 2rem;
-    border-right: 1px solid #21262d;
-    background: #0d1117;
+    padding: 12px 14px 24px;
+    background: #f0f0f0;
+    border-right: 2px solid #000;
     overflow: auto;
+    color: #111;
 }
 
 .panel h1 {
-    margin: 0 0 0.35rem;
-    font-size: 1.35rem;
+    margin: 0 0 4px;
+    font-size: 1.4rem;
 }
 
 .panel h2 {
-    margin: 1.1rem 0 0.5rem;
-    font-size: 0.85rem;
-    letter-spacing: 0.04em;
+    margin: 14px 0 6px;
+    font-size: 0.75rem;
     text-transform: uppercase;
-    color: #8b949e;
+    letter-spacing: 0.06em;
+    color: #444;
 }
 
 .panel p {
-    margin: 0.35rem 0;
-    color: #8b949e;
-    font-size: 0.9rem;
-    line-height: 1.4;
+    margin: 4px 0;
+    font-size: 0.85rem;
+    color: #333;
+    line-height: 1.35;
 }
 
 .panel label {
-    display: grid;
-    gap: 0.25rem;
-    margin-bottom: 0.55rem;
+    display: block;
+    margin-bottom: 8px;
     font-size: 0.85rem;
+    font-weight: 600;
 }
 
 .panel input,
 .panel select,
 .panel button {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
     font: inherit;
+    font-weight: 400;
 }
 
 .panel input,
 .panel select {
-    padding: 0.35rem 0.45rem;
-    border-radius: 6px;
-    border: 1px solid #30363d;
-    background: #161b22;
-    color: inherit;
+    padding: 6px 8px;
+    border: 2px solid #000;
+    border-radius: 0;
+    background: #fff;
 }
 
 .panel button {
-    padding: 0.45rem 0.75rem;
-    border-radius: 6px;
-    border: 1px solid #30363d;
-    background: #21262d;
-    color: inherit;
+    padding: 8px 12px;
+    border: 2px solid #000;
+    background: #fff;
     cursor: pointer;
+    font-weight: 700;
 }
 
 .panel button:hover {
-    background: #30363d;
+    background: #ddd;
 }
 
 .row {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.row button {
+    flex: 1;
 }
 
 .layers {
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    padding: 0.5rem 0.75rem;
+    border: 2px solid #000;
+    padding: 8px 10px;
+    background: #fff;
 }
 
 .layers label {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
-    margin-bottom: 0.35rem;
+    gap: 8px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.layers input {
+    width: auto;
+    margin: 0;
+}
+
+.legend {
+    margin-top: 10px;
+    padding: 8px;
+    background: #fff;
+    border: 2px solid #000;
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+.legend b {
+    display: block;
+    margin-bottom: 4px;
 }
 
 .meta,
 .stats {
-    font-family: ui-monospace, "Cascadia Code", monospace;
-    font-size: 0.78rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
     word-break: break-word;
 }
 
 .stage {
-    display: grid;
-    place-items: center;
-    padding: 1rem;
     overflow: auto;
-    background: #050608;
+    padding: 8px;
+    background: #555;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+#canvas-wrap {
+    border: 4px solid #000;
+    background: #888;
+    line-height: 0;
 }
 
 #maze-canvas {
+    display: block;
     image-rendering: pixelated;
-    border: 1px solid #21262d;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    image-rendering: crisp-edges;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 800px) {
     .shell {
         grid-template-columns: 1fr;
-    }
-
-    .panel {
-        border-right: none;
-        border-bottom: 1px solid #21262d;
     }
 }

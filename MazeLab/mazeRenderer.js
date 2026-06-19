@@ -1,225 +1,168 @@
 import { cellInRect } from "../Libraries/Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides, floorBeltElbowTurn } from "../Libraries/Spatial/grid/FloorCell.js";
 
-const BELT_COLORS = {
-    straight: "#5ec4ff",
-    elbowLeft: "#ffb454",
-    elbowRight: "#ff7eb6",
-    invalid: "#ff4444",
+const C = {
+    void: "#888888",
+    floor: "#ffffff",
+    wall: "#000000",
+    rail: "#000000",
+    beltStraight: "#0066ff",
+    beltLeft: "#ff8800",
+    beltRight: "#cc0066",
+    beltBad: "#ff0000",
+    padStrip: "#66ff66",
+    northStrip: "#ffdd00",
+    zoneLine: "#000000",
 };
+
+const ARROW = ["↑", "→", "↓", "←"];
+const ELBOW_GLYPH = { left: "↰", right: "↱" };
+
+export function autoPxPerCell(playAreaCols, playAreaRows) {
+    const panelW = 380;
+    const maxW = Math.max(640, window.innerWidth - panelW - 16);
+    const maxH = Math.max(640, window.innerHeight - 16);
+    const fit = Math.floor(Math.min(maxW / playAreaCols, maxH / playAreaRows));
+    return Math.max(8, Math.min(20, fit));
+}
 
 export function drawSnakeSplitLayout(ctx, preview, options) {
     const { grid, layout, walkableKeys, playableBounds, beltPlan } = preview;
     const { zones } = layout;
     const cellSize = grid.cellSize;
-    const pxPerCell = options.pxPerCell;
+    const px = options.pxPerCell;
     const layers = options.layers;
-    const originGlobalCol = playableBounds.boundsCol;
-    const originGlobalRow = playableBounds.boundsRow;
+    const oCol = playableBounds.boundsCol;
+    const oRow = playableBounds.boundsRow;
     const cols = playableBounds.boundsCols;
     const rows = playableBounds.boundsRows;
-    const width = cols * pxPerCell;
-    const height = rows * pxPerCell;
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "#0d1117";
-    ctx.fillRect(0, 0, width, height);
-    if (layers.zones) drawZoneBands(ctx, zones, originGlobalCol, originGlobalRow, pxPerCell);
-    if (layers.voxels) drawVoxels(ctx, grid, layout.cavern, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize);
-    if (layers.walkable) drawWalkable(ctx, grid, walkableKeys, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize);
-    if (layers.rails) drawRails(ctx, grid, layout.rails, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize);
-    if (layers.northReserve) drawNorthReserve(ctx, zones.railConfig, layout.northReserveRows, originGlobalCol, originGlobalRow, pxPerCell);
-    if (layers.belts && beltPlan) drawBelts(ctx, grid, beltPlan, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize, options.beltInvalidKeys);
+    const w = cols * px;
+    const h = rows * px;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = C.void;
+    ctx.fillRect(0, 0, w, h);
+
+    paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, walkableKeys, layers);
+    if (layers.zones) paintZoneSeparators(ctx, zones, oCol, oRow, px, cols);
+    if (layers.northReserve) paintNorthStrip(ctx, zones.railConfig, layout.northReserveRows, oCol, oRow, px);
+    if (layers.rails) paintRails(ctx, grid, layout.rails, oCol, oRow, cols, rows, px, cellSize);
+    if (layers.belts && beltPlan) paintBelts(ctx, grid, beltPlan, oCol, oRow, cols, rows, px, cellSize);
 }
-function globalToCanvas(globalCol, globalRow, originGlobalCol, originGlobalRow, pxPerCell) {
-    return { x: (globalCol - originGlobalCol) * pxPerCell, y: (globalRow - originGlobalRow) * pxPerCell };
+
+function rect(gc, gr, oCol, oRow, px) {
+    return { x: (gc - oCol) * px, y: (gr - oRow) * px, s: px };
 }
-function drawZoneBands(ctx, zones, originGlobalCol, originGlobalRow, pxPerCell) {
-    const bands = [
-        { config: zones.cavernConfig, fill: "rgba(255, 152, 0, 0.06)" },
-        { config: zones.paddingConfig, fill: "rgba(80, 200, 120, 0.08)" },
-        { config: zones.railConfig, fill: "rgba(224, 64, 251, 0.06)" },
-    ];
-    for (let i = 0; i < bands.length; i++) {
-        const band = bands[i];
-        const { boundsCol, boundsRow, boundsCols, boundsRows } = band.config;
-        const topLeft = globalToCanvas(boundsCol, boundsRow, originGlobalCol, originGlobalRow, pxPerCell);
-        ctx.fillStyle = band.fill;
-        ctx.fillRect(topLeft.x, topLeft.y, boundsCols * pxPerCell, boundsRows * pxPerCell);
+
+function paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, walkableKeys, layers) {
+    for (let gr = oRow; gr < oRow + rows; gr++) {
+        for (let gc = oCol; gc < oCol + cols; gc++) {
+            const { col, row } = grid.worldToGrid(gc * cellSize, gr * cellSize);
+            const r = rect(gc, gr, oCol, oRow, px);
+            let fill = C.floor;
+            if (!cellInRect(col, row, grid.cols, grid.rows)) fill = C.void;
+            else if (layers.voxels && grid.isBlocked(col, row)) fill = C.wall;
+            else if (layers.walkable && walkableKeys.has(`${col},${row}`)) fill = "#aaf0ff";
+            ctx.fillStyle = fill;
+            ctx.fillRect(r.x, r.y, r.s, r.s);
+        }
+    }
+    if (layers.zones) {
+        tintBand(ctx, zones.paddingConfig, oCol, oRow, px, C.padStrip, 0.35);
+        tintBand(ctx, zones.railConfig, oCol, oRow, px, "#e8d4ff", 0.25);
+        tintBand(ctx, zones.cavernConfig, oCol, oRow, px, "#ffe0b0", 0.2);
     }
 }
-function drawNorthReserve(ctx, railConfig, northReserveRows, originGlobalCol, originGlobalRow, pxPerCell) {
+
+function tintBand(ctx, config, oCol, oRow, px, color, alpha) {
+    const { boundsCol, boundsRow, boundsCols, boundsRows } = config;
+    const r = rect(boundsCol, boundsRow, oCol, oRow, px);
+    ctx.fillStyle = color;
+    ctx.globalAlpha = alpha;
+    ctx.fillRect(r.x, r.y, boundsCols * px, boundsRows * px);
+    ctx.globalAlpha = 1;
+}
+
+function paintZoneSeparators(ctx, zones, oCol, oRow, px, cols) {
+    const y1 = (zones.cavernConfig.boundsRow + zones.cavernConfig.boundsRows - oRow) * px;
+    const y2 = (zones.paddingConfig.boundsRow + zones.paddingConfig.boundsRows - oRow) * px;
+    const thick = Math.max(4, Math.round(px * 0.35));
+    ctx.fillStyle = C.zoneLine;
+    ctx.fillRect(0, y1 - thick / 2, cols * px, thick);
+    ctx.fillRect(0, y2 - thick / 2, cols * px, thick);
+    if (px >= 10) {
+        ctx.fillStyle = "#000000";
+        ctx.font = `bold ${Math.round(px * 1.1)}px ui-sans-serif, system-ui, sans-serif`;
+        const cy = (zones.cavernConfig.boundsRow - oRow + zones.cavernConfig.boundsRows * 0.5) * px;
+        const py = (zones.paddingConfig.boundsRow - oRow + zones.paddingConfig.boundsRows * 0.5) * px;
+        const ry = (zones.railConfig.boundsRow - oRow + zones.railConfig.boundsRows * 0.5) * px;
+        ctx.fillText("CAVERN", 8, cy);
+        ctx.fillText("PAD", 8, py);
+        ctx.fillText("RAILS", 8, ry);
+    }
+}
+
+function paintNorthStrip(ctx, railConfig, northReserveRows, oCol, oRow, px) {
     const depth = Math.max(1, Math.round(northReserveRows));
-    const topLeft = globalToCanvas(railConfig.boundsCol, railConfig.boundsRow, originGlobalCol, originGlobalRow, pxPerCell);
-    ctx.fillStyle = "rgba(255, 220, 80, 0.12)";
-    ctx.fillRect(topLeft.x, topLeft.y, railConfig.boundsCols * pxPerCell, depth * pxPerCell);
-    ctx.strokeStyle = "rgba(255, 220, 80, 0.45)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(topLeft.x + 0.5, topLeft.y + 0.5, railConfig.boundsCols * pxPerCell - 1, depth * pxPerCell - 1);
+    const r = rect(railConfig.boundsCol, railConfig.boundsRow, oCol, oRow, px);
+    ctx.fillStyle = C.northStrip;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(r.x, r.y, railConfig.boundsCols * px, depth * px);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = C.zoneLine;
+    const bar = Math.max(3, px * 0.2);
+    ctx.fillRect(r.x, r.y + depth * px - bar, railConfig.boundsCols * px, bar);
 }
-function drawVoxels(ctx, grid, cavernStamp, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize) {
-    ctx.fillStyle = "#3d4450";
-    for (let gr = originGlobalRow; gr < originGlobalRow + rows; gr++)
-        for (let gc = originGlobalCol; gc < originGlobalCol + cols; gc++) {
-            const { col, row } = grid.worldToGrid(gc * cellSize, gr * cellSize);
-            if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-            if (grid.isBlocked(col, row)) {
-                const { x, y } = globalToCanvas(gc, gr, originGlobalCol, originGlobalRow, pxPerCell);
-                ctx.fillRect(x, y, pxPerCell, pxPerCell);
-            }
-        }
-}
-function drawWalkable(ctx, grid, walkableKeys, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize) {
-    ctx.fillStyle = "rgba(100, 220, 140, 0.22)";
-    for (let gr = originGlobalRow; gr < originGlobalRow + rows; gr++)
-        for (let gc = originGlobalCol; gc < originGlobalCol + cols; gc++) {
-            const { col, row } = grid.worldToGrid(gc * cellSize, gr * cellSize);
-            if (!walkableKeys.has(`${col},${row}`)) continue;
-            const { x, y } = globalToCanvas(gc, gr, originGlobalCol, originGlobalRow, pxPerCell);
-            ctx.fillRect(x, y, pxPerCell, pxPerCell);
-        }
-}
-function drawRails(ctx, grid, rails, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize) {
-    ctx.strokeStyle = "#e040fb";
-    ctx.lineWidth = Math.max(1, pxPerCell * 0.18);
-    ctx.lineCap = "square";
+
+function paintRails(ctx, grid, rails, oCol, oRow, cols, rows, px, cellSize) {
+    const bar = Math.max(Math.ceil(px * 0.45), 4);
+    ctx.fillStyle = C.rail;
     for (let i = 0; i < rails.length; i++) {
         const rail = rails[i];
-        if (rail.col < originGlobalCol || rail.col >= originGlobalCol + cols) continue;
-        if (rail.row < originGlobalRow || rail.row >= originGlobalRow + rows) continue;
+        if (rail.col < oCol || rail.col >= oCol + cols) continue;
+        if (rail.row < oRow || rail.row >= oRow + rows) continue;
         const { col, row } = grid.worldToGrid(rail.col * cellSize, rail.row * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        const { x, y } = globalToCanvas(rail.col, rail.row, originGlobalCol, originGlobalRow, pxPerCell);
-        const inset = pxPerCell * 0.08;
-        const max = pxPerCell - inset;
-        ctx.beginPath();
-        if (rail.side === 0) {
-            ctx.moveTo(x + inset, y + inset);
-            ctx.lineTo(x + max, y + inset);
-        } else if (rail.side === 1) {
-            ctx.moveTo(x + max, y + inset);
-            ctx.lineTo(x + max, y + max);
-        } else if (rail.side === 2) {
-            ctx.moveTo(x + inset, y + max);
-            ctx.lineTo(x + max, y + max);
-        } else {
-            ctx.moveTo(x + inset, y + inset);
-            ctx.lineTo(x + inset, y + max);
-        }
-        ctx.stroke();
+        const r = rect(rail.col, rail.row, oCol, oRow, px);
+        if (rail.side === 0) ctx.fillRect(r.x, r.y, r.s, bar);
+        else if (rail.side === 1) ctx.fillRect(r.x + r.s - bar, r.y, bar, r.s);
+        else if (rail.side === 2) ctx.fillRect(r.x, r.y + r.s - bar, r.s, bar);
+        else ctx.fillRect(r.x, r.y, bar, r.s);
     }
 }
 
-function gridCellCenterCanvas(grid, col, row, originGlobalCol, originGlobalRow, pxPerCell, cellSize) {
-    const { x, y } = grid.gridToWorld(col, row);
-    const globalCol = Math.round(x / cellSize);
-    const globalRow = Math.round(y / cellSize);
-    const topLeft = globalToCanvas(globalCol, globalRow, originGlobalCol, originGlobalRow, pxPerCell);
-    return { x: topLeft.x + pxPerCell * 0.5, y: topLeft.y + pxPerCell * 0.5 };
-}
-
-function drawBelts(ctx, grid, beltPlan, originGlobalCol, originGlobalRow, cols, rows, pxPerCell, cellSize, invalidKeys) {
+function paintBelts(ctx, grid, beltPlan, oCol, oRow, cols, rows, px, cellSize) {
     const belts = beltPlan.floorBelts;
-    const invalid = invalidKeys ?? new Set();
+    const fontPx = Math.max(10, Math.floor(px * 0.72));
+    ctx.font = `bold ${fontPx}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     for (let i = 0; i < belts.length; i++) {
         const belt = belts[i];
-        const { x, y } = gridCellCenterCanvas(grid, belt.col, belt.row, originGlobalCol, originGlobalRow, pxPerCell, cellSize);
-        const { x: wx, y: wy } = grid.gridToWorld(belt.col, belt.row);
-        const gc = Math.round(wx / cellSize);
-        const gr = Math.round(wy / cellSize);
-        if (gc < originGlobalCol || gc >= originGlobalCol + cols || gr < originGlobalRow || gr >= originGlobalRow + rows) continue;
-        const key = `${belt.col},${belt.row}`;
+        const { x, y } = grid.gridToWorld(belt.col, belt.row);
+        const gc = Math.round(x / cellSize);
+        const gr = Math.round(y / cellSize);
+        if (gc < oCol || gc >= oCol + cols || gr < oRow || gr >= oRow + rows) continue;
+        const r = rect(gc, gr, oCol, oRow, px);
         const turn = floorBeltElbowTurn(belt.kind);
-        const color = invalid.has(key) ? BELT_COLORS.invalid : turn === "left" ? BELT_COLORS.elbowLeft : turn === "right" ? BELT_COLORS.elbowRight : BELT_COLORS.straight;
-        const radius = pxPerCell * 0.34;
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fill();
-        if (turn) {
-            const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
-            drawBeltSideTick(ctx, x, y, entrySide, pxPerCell, radius, true);
-            drawBeltSideTick(ctx, x, y, exitSide, pxPerCell, radius, false);
-        } else {
-            const { exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
-            drawBeltArrow(ctx, x, y, exitSide, pxPerCell, radius);
-        }
+        const bad = beltPlan.validation?.ok === false;
+        ctx.fillStyle = bad ? C.beltBad : turn === "left" ? C.beltLeft : turn === "right" ? C.beltRight : C.beltStraight;
+        ctx.fillRect(r.x + 1, r.y + 1, r.s - 2, r.s - 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = Math.max(2, px * 0.08);
+        ctx.strokeRect(r.x + 1.5, r.y + 1.5, r.s - 3, r.s - 3);
+        let glyph = "→";
+        if (turn) glyph = ELBOW_GLYPH[turn];
+        else glyph = ARROW[floorBeltEntryExitSides(belt.kind, belt.facingIndex).exitSide];
+        ctx.fillStyle = "#000000";
+        ctx.fillText(glyph, r.x + r.s * 0.5, r.y + r.s * 0.52);
     }
 }
 
-function drawBeltSideTick(ctx, cx, cy, side, pxPerCell, radius, isEntry) {
-    const len = radius * 0.95;
-    let x0 = cx;
-    let y0 = cy;
-    let x1 = cx;
-    let y1 = cy;
-    if (side === 0) {
-        y0 = cy + (isEntry ? len : -len * 0.35);
-        y1 = cy - len;
-    } else if (side === 1) {
-        x0 = cx - (isEntry ? len : -len * 0.35);
-        x1 = cx + len;
-    } else if (side === 2) {
-        y0 = cy - (isEntry ? len : -len * 0.35);
-        y1 = cy + len;
-    } else {
-        x0 = cx + (isEntry ? len : -len * 0.35);
-        x1 = cx - len;
-    }
-    ctx.strokeStyle = "rgba(0,0,0,0.55)";
-    ctx.lineWidth = Math.max(1, pxPerCell * 0.12);
-    ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    ctx.lineTo(x1, y1);
-    ctx.stroke();
-}
-
-function drawBeltArrow(ctx, cx, cy, exitSide, pxPerCell, radius) {
-    const len = radius * 1.15;
-    let tipX = cx;
-    let tipY = cy;
-    let tailX = cx;
-    let tailY = cy;
-    if (exitSide === 0) {
-        tipY = cy - len;
-        tailY = cy + radius * 0.2;
-    } else if (exitSide === 1) {
-        tipX = cx + len;
-        tailX = cx - radius * 0.2;
-    } else if (exitSide === 2) {
-        tipY = cy + len;
-        tailY = cy - radius * 0.2;
-    } else {
-        tipX = cx - len;
-        tailX = cx + radius * 0.2;
-    }
-    ctx.strokeStyle = "rgba(0,0,0,0.65)";
-    ctx.fillStyle = "rgba(0,0,0,0.65)";
-    ctx.lineWidth = Math.max(1, pxPerCell * 0.1);
-    ctx.beginPath();
-    ctx.moveTo(tailX, tailY);
-    ctx.lineTo(tipX, tipY);
-    ctx.stroke();
-    const head = pxPerCell * 0.18;
-    ctx.beginPath();
-    if (exitSide === 0) {
-        ctx.moveTo(tipX, tipY);
-        ctx.lineTo(tipX - head, tipY + head * 1.4);
-        ctx.lineTo(tipX + head, tipY + head * 1.4);
-    } else if (exitSide === 1) {
-        ctx.moveTo(tipX, tipY);
-        ctx.lineTo(tipX - head * 1.4, tipY - head);
-        ctx.lineTo(tipX - head * 1.4, tipY + head);
-    } else if (exitSide === 2) {
-        ctx.moveTo(tipX, tipY);
-        ctx.lineTo(tipX - head, tipY - head * 1.4);
-        ctx.lineTo(tipX + head, tipY - head * 1.4);
-    } else {
-        ctx.moveTo(tipX, tipY);
-        ctx.lineTo(tipX + head * 1.4, tipY - head);
-        ctx.lineTo(tipX + head * 1.4, tipY + head);
-    }
-    ctx.closePath();
-    ctx.fill();
+export function suggestedPxPerCell(playAreaCols) {
+    return autoPxPerCell(playAreaCols, playAreaCols);
 }
 
 export function layoutStats(preview) {
@@ -227,7 +170,6 @@ export function layoutStats(preview) {
     const cellSize = grid.cellSize;
     let voxelCells = 0;
     let openCells = 0;
-    let railCount = layout.rails.length;
     const { boundsCol, boundsRow, boundsCols, boundsRows } = playableBounds;
     for (let gr = boundsRow; gr < boundsRow + boundsRows; gr++)
         for (let gc = boundsCol; gc < boundsCol + boundsCols; gc++) {
@@ -240,8 +182,7 @@ export function layoutStats(preview) {
     let straightCount = 0;
     if (beltPlan) {
         for (let i = 0; i < beltPlan.floorBelts.length; i++) {
-            const turn = floorBeltElbowTurn(beltPlan.floorBelts[i].kind);
-            if (turn) elbowCount++;
+            if (floorBeltElbowTurn(beltPlan.floorBelts[i].kind)) elbowCount++;
             else straightCount++;
         }
     }
@@ -250,7 +191,7 @@ export function layoutStats(preview) {
         playArea: `${boundsCols}×${boundsRows}`,
         voxelCells,
         openCells,
-        railEdges: railCount,
+        railEdges: layout.rails.length,
         navWalkable: walkableKeys.size,
         beltCells: beltPlan?.floorBelts.length ?? 0,
         beltStraight: straightCount,
