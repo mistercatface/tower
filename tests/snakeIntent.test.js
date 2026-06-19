@@ -141,7 +141,8 @@ describe("snake intent FSM", () => {
         assert.ok(autosim.getDestination());
     });
 
-    it("forage intent ignores larger visible snakes", () => {
+    it("forage intent flees from a visible larger snake", () => {
+        applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createIntentTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });
@@ -156,6 +157,6 @@ describe("snake intent FSM", () => {
         const autosim = createWiredSnakeAutosim(state, { headId: small.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
         autosim.start();
         autosim.tick(1 / 60);
-        assert.notEqual(autosim.getMode(), "seek_prey");
+        assert.equal(autosim.getMode(), "flee");
     });
 });

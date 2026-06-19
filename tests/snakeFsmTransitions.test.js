@@ -110,6 +110,9 @@ function createMockIntent(state, selfHeadId, registry) {
         headNav,
         resolveVisibleFood: () => null,
         resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
+        selfHeadId,
+        registry,
+        navWalkable,
         rng: () => 0,
     });
     return { intent, headNav };
@@ -139,7 +142,8 @@ describe("snake FSM transitions", () => {
         assert.ok(autosim.getDestination());
     });
 
-    it("seek_food continues when a larger snake appears", () => {
+    it("seek_food transitions to flee when a larger snake appears", () => {
+        applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, chainOptions(3));
@@ -157,7 +161,8 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "seek_food");
         large.head.x = small.head.x + 80;
         autosim.tick(1 / 60);
-        assert.equal(autosim.getMode(), "seek_food");
+        assert.equal(autosim.getMode(), "flee");
+        assert.equal(autosim.getLastTransitionReason(), "threat_visible");
     });
 
     it("route failure retries the same latched cell", () => {

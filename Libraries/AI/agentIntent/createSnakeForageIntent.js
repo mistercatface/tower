@@ -1,6 +1,8 @@
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
-import { perceiveSnakeIntentWorld, pickSnakeIntentPolicy } from "../../Game/snake/snakeIntent.js";
-export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFood, resolveExploreCell, rng = Math.random }) {
+import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
+import { perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "../../Game/snake/snakeIntent.js";
+export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFood, resolveExploreCell, selfHeadId, registry, navWalkable, visionCone = null, rng = Math.random }) {
+    const resolvedVision = visionCone ?? getSnakeGameConfig().visionCone;
     let mode = "explore";
     let targetId = null;
     let lastArrivalCol = null;
@@ -32,6 +34,13 @@ export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFo
             if (cell) headNav.setDestination(grid, cell.col, cell.row);
             return;
         }
+        if (mode === "flee") {
+            const world = perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
+            if (!world.threat) return;
+            const cell = pickFleeCell(seeker, world.threat, grid, navWalkable);
+            if (cell) headNav.setDestination(grid, cell.col, cell.row);
+            return;
+        }
         const target = resolveCommittedTarget(state);
         if (target) {
             const cell = grid.worldToGrid(target.x, target.y);
@@ -46,6 +55,8 @@ export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFo
         setDestinationForCommit(seeker, state);
     };
     const transitionReason = (prevMode, nextMode) => {
+        if (nextMode === "flee") return "threat_visible";
+        if (prevMode === "flee") return "threat_clear";
         if (prevMode === "seek_food" && nextMode !== prevMode) return "target_lost";
         return `mode_${nextMode}`;
     };
@@ -55,7 +66,7 @@ export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFo
     };
     const transition = (seeker, state) => {
         const grid = state.obstacleGrid;
-        const world = perceiveSnakeIntentWorld(seeker, state, resolveVisibleFood);
+        const world = perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         const policy = pickSnakeIntentPolicy(world);
         if (mode === "seek_food" && !resolveCommittedTarget(state)) {
             commit(seeker, state, policy.mode, policy.targetId, "target_lost");
@@ -67,7 +78,7 @@ export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFo
         }
         if (headNav.getDestination() && headNav.needsRetry()) {
             lastTransitionReason = "route_failed_retry";
-            if (!headNav.getStatus().replanPending && mode === "explore") setDestinationForCommit(seeker, state);
+            if (!headNav.getStatus().replanPending && (mode === "explore" || mode === "flee")) setDestinationForCommit(seeker, state);
             return { mode, target: resolveCommittedTarget(state) };
         }
         const dest = headNav.getDestination();

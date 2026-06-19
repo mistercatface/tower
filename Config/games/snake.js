@@ -50,10 +50,14 @@ export const SNAKE_GAME_DEFAULTS = {
     minAliveSegmentCount: 3,
     /** Relative impact speed required to split a smaller snake at the struck segment. */
     splitImpulseThreshold: 35,
+    /** Grid tiles to flee away from a visible larger snake (Chebyshev step). */
+    fleeTiles: 8,
+    /** Max world distance to react to a larger snake; null uses visionCone.range. */
+    fleeRange: null,
     /** Seconds without food before a snake sheds one tail segment and shrinks. */
     starvationIntervalSec: 30,
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
-    showSnakeFsmDebug: true,
+    showSnakeFsmDebug: false,
     /** Optional vision cone override for the player snake only; null uses visionCone. */
     playerVisionCone: null,
 };

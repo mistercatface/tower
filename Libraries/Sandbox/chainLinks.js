@@ -22,23 +22,38 @@ export function isChainSteeringTarget(state, entityMeta, propId) {
     if (!prop || prop.isDead) return false;
     return isChainLinkBall(prop);
 }
-export function getChainMemberIds(state, propId) {
-    const members = new Set([propId]);
-    let changed = true;
+function buildChainAdjacency(state) {
     const list = listKineticConstraints(state);
-    while (changed) {
-        changed = false;
-        for (let i = 0; i < list.length; i++) {
-            const entry = list[i];
-            if (entry.type !== "distance") continue;
-            const hasA = members.has(entry.bodyAId);
-            const hasB = members.has(entry.bodyBId);
-            if (hasA && !hasB) {
-                members.add(entry.bodyBId);
-                changed = true;
-            } else if (hasB && !hasA) {
-                members.add(entry.bodyAId);
-                changed = true;
+    const adjacency = new Map();
+    for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (entry.type !== "distance") continue;
+        addChainAdjacencyEdge(adjacency, entry.bodyAId, entry.bodyBId);
+        addChainAdjacencyEdge(adjacency, entry.bodyBId, entry.bodyAId);
+    }
+    return adjacency;
+}
+function addChainAdjacencyEdge(adjacency, fromId, toId) {
+    let neighbors = adjacency.get(fromId);
+    if (!neighbors) {
+        neighbors = [];
+        adjacency.set(fromId, neighbors);
+    }
+    neighbors.push(toId);
+}
+export function getChainMemberIds(state, propId) {
+    const adjacency = buildChainAdjacency(state);
+    const members = new Set([propId]);
+    const stack = [propId];
+    while (stack.length > 0) {
+        const current = stack.pop();
+        const neighbors = adjacency.get(current);
+        if (!neighbors) continue;
+        for (let i = 0; i < neighbors.length; i++) {
+            const next = neighbors[i];
+            if (!members.has(next)) {
+                members.add(next);
+                stack.push(next);
             }
         }
     }
@@ -68,20 +83,20 @@ export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
     return null;
 }
 export function getOrderedChainMemberIds(state, headId) {
-    const members = new Set(getChainMemberIds(state, headId));
-    if (!members.has(headId)) return [headId];
+    const adjacency = buildChainAdjacency(state);
     const ordered = [headId];
     const visited = new Set([headId]);
     let current = headId;
-    while (ordered.length < members.size) {
+    while (true) {
+        const neighbors = adjacency.get(current);
         let next = null;
-        const list = listKineticConstraints(state);
-        for (let i = 0; i < list.length; i++) {
-            const entry = list[i];
-            if (entry.type !== "distance") continue;
-            if (entry.bodyAId === current && !visited.has(entry.bodyBId)) next = entry.bodyBId;
-            else if (entry.bodyBId === current && !visited.has(entry.bodyAId)) next = entry.bodyAId;
-            if (next != null) break;
+        if (neighbors) {
+            for (let i = 0; i < neighbors.length; i++) {
+                if (!visited.has(neighbors[i])) {
+                    next = neighbors[i];
+                    break;
+                }
+            }
         }
         if (next == null) break;
         ordered.push(next);

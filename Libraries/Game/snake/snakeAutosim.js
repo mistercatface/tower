@@ -62,6 +62,10 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         headNav,
         resolveVisibleFood,
         resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
+        selfHeadId: headId,
+        registry,
+        navWalkable,
+        visionCone: visionCone ?? config.visionCone,
         rng,
     });
     let active = false;
