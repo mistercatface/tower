@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { getBroadphaseBounds, snapshotActiveBroadphaseBounds, snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { kineticBodySlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeKinematicBodySlabSlot } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { kineticBodySlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeKinematicBodySlabSlot, activeBodiesMatchKineticSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { pairBroadphaseBoundsOverlap } from "../Libraries/Spatial/collision/Broadphase.js";
 import { circleCircleContactSlab } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { circleCircleContact } from "../Libraries/Spatial/collision/SatCollision.js";
@@ -69,5 +69,16 @@ describe("kinetic body slab", () => {
         assert.ok(Math.abs(slab.overlap - sat.overlap) < 1e-5);
         assert.ok(Math.abs(slab.nx - sat.nx) < 1e-5);
         assert.ok(Math.abs(slab.ny - sat.ny) < 1e-5);
+    });
+
+    it("activeBodiesMatchKineticSlab detects pose drift after unsynced move", () => {
+        const a = mockCircleBody(0, 0, 10);
+        a._physId = 0;
+        snapshotActiveBroadphaseBounds([a]);
+        assert.ok(activeBodiesMatchKineticSlab([a]));
+        a.x = 5;
+        assert.equal(activeBodiesMatchKineticSlab([a]), false);
+        snapshotActiveBroadphaseBounds([a]);
+        assert.ok(activeBodiesMatchKineticSlab([a]));
     });
 });

@@ -4,7 +4,34 @@ Progress tracker for the sandbox kinetic physics stack. Read top-to-bottom like 
 
 **Legend:** ✅ shipped · 🟡 partial · ⬜ not started · 🔜 planned (named PR set)
 
-**Overall engine maturity:** ~**58%** of a full 2D rigid-body sandbox engine (not counting 3D, fluids, or networking).
+**Overall engine maturity:** ~**68%** of a full 2D rigid-body sandbox engine (not counting 3D, fluids, or networking). **Physics v1** (sandbox/snake stack) is maintenance-ready — see [Physics v1 scope](#physics-v1--in-scope--out-of-scope) below.
+
+---
+
+## Physics v1 — in scope / out of scope
+
+Shipped for sandbox + snake autosim. Pause engine work here unless you need an item from **out of scope**.
+
+**In scope**
+
+- Circles + convex polys + compound debris; circle–circle slab narrow phase + SAT for other tiers
+- Unified contact buffer + `kineticBodySlab` contact-pass mirror (writeback once per pass)
+- Distance constraints, island sleep/wake, dirty island rebuild, 1-hop link wake
+- Sequential-impulse contacts + Baumgarte constraints; warm-start decay cache
+- Pair list persistence across outer iters (`persistPairs`); body slab resync each contact pass
+- Active-set sleep; island internal pair skip; substep + outer early-out (slab-sync guard)
+- Voxel + rail walls, wall resolver, prop fracture
+- Chain link tool, head steering, scene snapshot for constraints + chain head
+- Perf gate: `tests/snakePerfBudget.test.js`
+
+**Out of scope (future trilogy / v2)**
+
+- Revolute / motor / weld joints; breakable links; crate trains
+- Continuous collision detection (CCD)
+- Multi-point manifolds + feature-id persistence
+- Constraint compliance / break force tuning
+- Chain swept volume vs walls (v1 accepts tail clip on grow — `chainVsWallGrowth.test.js`)
+- Full-time integration on body slab; SIMD; parallel pair solve
 
 ---
 
@@ -199,8 +226,8 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | Warm-start impulse cache | 🟡 | 65 | decay cache, not full manifold |
 | **Dedicated circle–circle impulse path** | ✅ | 85 | slab narrow phase + unified PGS in `kineticContactSolver.js` |
 | Manifold persistence (feature ids) | ⬜ | 0 | 🔜 trilogy 2 PR 1 |
-| **Pair stream persistence (outer iters)** | 🟡 | 40 | `collisionPipeline.js` reuses broadphase pairs when `kineticEarlyOut.persistPairs` |
-| **Substep early-out when stable** | 🟡 | 70 | outer ε on constraint error + velocity; contact inner impulse ε |
+| **Pair stream persistence (outer iters)** | ✅ | 80 | `persistedKineticPairBuffer`; gather once, slab refresh + velocity refresh each pass |
+| **Substep early-out when stable** | ✅ | 80 | constraint ε + velocity ε; skips early-out while slab ≠ props |
 | **Constraint-linked peer wake (1-hop)** | 🟡 | 65 | `_kineticLinkNeighbors` + narrowed activation vs full island |
 | Contact callbacks (break, sound, VFX) | 🟡 | 55 | fracture uses pre-impact speed |
 
@@ -241,7 +268,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | Wall hit wakes body | ✅ | 85 | |
 | Grid belts / floor effects | 🟡 | 40 | separate from rigid pipeline |
 | Forcefields / one-way | 🟡 | 35 | grid stamps, partial |
-| **Chain swept volume vs walls** | ⬜ | 0 | head-only nav; tail clips |
+| **Chain swept volume vs walls** | 🟡 | 25 | v1 accepts tail clip on grow; head-only nav (`chainVsWallGrowth.test.js`) |
 | Chain-aware pathfinding | ⬜ | 0 | integration test idea only |
 
 **Branch progress: 58%**
@@ -352,7 +379,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 
 | PR | Theme | Status |
 |----|-------|--------|
-| C1 | Manifold persistence + substep early-out + circle impulse lane | 🟡 partial (body slab, unified contact buffer, early-out, pair persist, dirty islands, 1-hop wake) |
+| C1 | Manifold persistence + substep early-out + circle impulse lane | 🟡 partial (v1 contact stack shipped; manifold feature-ids remain) |
 | C2 | Revolute + motor joints | 🔜 |
 | C3 | Mixed-shape / breakable chains, crate train | 🔜 |
 
@@ -366,10 +393,9 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 
 ## Recommended next unlocks (short path)
 
-1. ~~**Chain vs wall integration test**~~ — `tests/chainVsWallGrowth.test.js` documents growth overlap baseline.
-2. ~~**Persist constraints + `chainHead` in scene snapshot**~~ — schema v9 export/import.
-3. **Trilogy C PR 1 finish** — manifold persistence across outer iters; pair cache with feature ids.
-4. **Trilogy C PR 3 / snake polish** — chain-vs-wall stance, HUD, head asset (`Libraries/Game/snake/`).
+1. ~~**Trilogy C PR 1 finish**~~ — v1 contact/coherence stack shipped (PRs 1–3).
+2. **Snake game** — HUD, head asset, gameplay polish (`Libraries/Game/snake/`).
+3. **v2 when needed** — manifold feature-ids, revolute/motor, breakable links, chain wall sweep.
 
 ---
 

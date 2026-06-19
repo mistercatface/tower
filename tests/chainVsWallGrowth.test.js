@@ -50,8 +50,8 @@ function countSegmentsInBlockedCells(state, headId) {
     return count;
 }
 
-describe("chainVsWallGrowth", () => {
-    it("documents tail overlap when growth pushes segment centers into blocked corridor cells", () => {
+describe("chainVsWallGrowth (v1 accepted: tail clip on grow)", () => {
+    it("v1 documents tail overlap when growth pushes segment centers into blocked corridor cells", () => {
         resetKineticConstraintIds(1);
         const state = createNarrowCorridorState();
         const chain = spawnLinkedBallChain(state, { col: 5, row: 7 }, CHAIN_OPTIONS);

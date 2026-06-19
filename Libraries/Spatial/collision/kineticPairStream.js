@@ -1,5 +1,5 @@
 import { allowsKineticCollisionPairSnapshotted, isKinematicallyActive } from "./entityBroadphase.js";
-import { pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
+import { kineticBodySlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
 import { classifyKineticPairTier, KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 import { shareKineticIsland } from "../../Motion/kineticIslands.js";
 const MAX_KINETIC_PAIRS = 4096;
@@ -14,6 +14,36 @@ export const kineticPairBuffer = {
         this.count = 0;
     },
 };
+export const persistedKineticPairBuffer = {
+    count: 0,
+    physIdA: new Int32Array(MAX_KINETIC_PAIRS),
+    physIdB: new Int32Array(MAX_KINETIC_PAIRS),
+    preDvx: new Float32Array(MAX_KINETIC_PAIRS),
+    preDvy: new Float32Array(MAX_KINETIC_PAIRS),
+    tier: new Uint8Array(MAX_KINETIC_PAIRS),
+    reset() {
+        this.count = 0;
+    },
+};
+export function copyKineticPairBuffer(from, to) {
+    to.count = from.count;
+    for (let i = 0; i < from.count; i++) {
+        to.physIdA[i] = from.physIdA[i];
+        to.physIdB[i] = from.physIdB[i];
+        to.preDvx[i] = from.preDvx[i];
+        to.preDvy[i] = from.preDvy[i];
+        to.tier[i] = from.tier[i];
+    }
+}
+export function refreshKineticPairRelativeVelocities(pairs) {
+    const slab = kineticBodySlab;
+    for (let i = 0; i < pairs.count; i++) {
+        const physIdA = pairs.physIdA[i];
+        const physIdB = pairs.physIdB[i];
+        pairs.preDvx[i] = slab.vx[physIdB] - slab.vx[physIdA];
+        pairs.preDvy[i] = slab.vy[physIdB] - slab.vy[physIdA];
+    }
+}
 export function kineticPairBodyAt(spatialFrame, physId) {
     return spatialFrame.entityGrid.entities[physId];
 }

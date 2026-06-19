@@ -2,6 +2,9 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { gatherKineticConstraintBuffer, measureConstraintBufferMaxError, projectKineticConstraintBuffer, solveKineticConstraintBuffer } from "../../Motion/kineticConstraintSolver.js";
 import { gatherKineticContactPairs, resolveKineticContactPass, resolveKineticContactPassWithPairs } from "./kineticContactSolver.js";
+import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
+import { activeBodiesMatchKineticSlab } from "./kineticBodySlab.js";
+import { copyKineticPairBuffer, kineticPairBuffer, persistedKineticPairBuffer } from "./kineticPairStream.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
 function maxActiveKineticSpeedSq(activeBodies) {
@@ -63,7 +66,11 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;
             if (earlyOut.persistPairs) {
-                if (iter === 0) persistedPairs = gatherKineticContactPairs(spatialFrame);
+                if (iter === 0) {
+                    gatherKineticContactPairs(spatialFrame);
+                    copyKineticPairBuffer(kineticPairBuffer, persistedKineticPairBuffer);
+                    persistedPairs = persistedKineticPairBuffer;
+                }
                 resolveKineticContactPassWithPairs(spatialFrame, state, persistedPairs);
             } else resolveKineticContactPass(spatialFrame, state);
             projectKineticConstraintBuffer(constraintBuffer, constraintGroups);
@@ -77,6 +84,8 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
             }
             spatialFrame.flushScheduledKineticActivations();
             if (earlyOut.enabled && outerIterationsRun >= earlyOut.minIterations) {
+                if (!activeBodiesMatchKineticSlab(activeBodies)) continue;
+                snapshotActiveBroadphaseBounds(activeBodies);
                 const maxError = measureConstraintBufferMaxError(constraintBuffer);
                 const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
                 if (maxError <= earlyOut.constraintErrorEpsilon && maxSpeedSq <= earlyOut.velocityEpsilonSq) break;

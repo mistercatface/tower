@@ -65,6 +65,21 @@ export function writebackKineticBodySlabPhysId(spatialFrame, physId) {
 export function writebackKineticBodySlabPhysIds(spatialFrame, physIds) {
     for (let i = 0; i < physIds.length; i++) writebackKineticBodySlabPhysId(spatialFrame, physIds[i]);
 }
+const SLAB_POSE_EPS = 1e-4;
+const SLAB_VEL_EPS = 1e-4;
+export function activeBodiesMatchKineticSlab(bodies) {
+    const slab = kineticBodySlab;
+    for (let i = 0; i < bodies.length; i++) {
+        const body = bodies[i];
+        const physId = body._physId;
+        if (Math.abs(body.x - slab.x[physId]) > SLAB_POSE_EPS) return false;
+        if (Math.abs(body.y - slab.y[physId]) > SLAB_POSE_EPS) return false;
+        if (Math.abs((body.vx ?? 0) - slab.vx[physId]) > SLAB_VEL_EPS) return false;
+        if (Math.abs((body.vy ?? 0) - slab.vy[physId]) > SLAB_VEL_EPS) return false;
+        if (Math.abs((body.angularVelocity ?? 0) - slab.w[physId]) > SLAB_VEL_EPS) return false;
+    }
+    return true;
+}
 function readSlabIntoBounds(physId, out) {
     const slab = kineticBodySlab;
     out.cx = slab.x[physId];
