@@ -10,6 +10,7 @@ import { commitBoundaryEdit } from "../../Sandbox/boundaryEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
+import { applySnakeHeadGameplay, applySnakeSegmentGameplay } from "./snakeHeadGameplay.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
     const grid = state.obstacleGrid;
@@ -195,6 +196,8 @@ export function spawnSnakeChain(state, anchorCell, { excludeKeys = null, segment
         exportType: SNAKE_CHAIN_EXPORT_TYPE,
     });
     applySnakeChainTint(chain.members, tintHex);
+    applySnakeHeadGameplay(chain.head);
+    for (let i = 1; i < chain.members.length; i++) applySnakeSegmentGameplay(chain.members[i]);
     const occupiedKeys = new Set(excludeKeys ?? []);
     const occupied = linkedChainOccupiedCellKeys(chain.members, state.obstacleGrid);
     for (const key of occupied) occupiedKeys.add(key);
@@ -239,11 +242,7 @@ export async function spawnSnakeCavernScene(state) {
         for (let i = 0; i < specs.length; i++) {
             if (i === playerIndex) continue;
             const spec = specs[i];
-            const anchorCell = pickSnakeChainSpawnCell(shuffledSpawnCells, navWalkable, state, {
-                ...chainSpawnParams,
-                segmentCount: spec.segmentCount ?? segmentCount,
-                excludeKeys,
-            });
+            const anchorCell = pickSnakeChainSpawnCell(shuffledSpawnCells, navWalkable, state, { ...chainSpawnParams, segmentCount: spec.segmentCount ?? segmentCount, excludeKeys });
             const pack = spawnSnakeChain(state, anchorCell, { excludeKeys, segmentCount: spec.segmentCount });
             snakeSlots[i] = { ...pack, cameraFollow: spec.cameraFollow };
             excludeKeys = pack.occupiedKeys;

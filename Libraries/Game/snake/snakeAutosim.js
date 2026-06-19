@@ -8,6 +8,7 @@ import { getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js"
 import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
+import { applySnakeSegmentGameplay } from "./snakeHeadGameplay.js";
 import { countLiveSnakeGoals, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 import { createSnakeBrain } from "./snakeBrain.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
@@ -93,6 +94,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
             exportType: SNAKE_CHAIN_EXPORT_TYPE,
         });
         copySnakeChainTintFromHead(state, headId, newTail);
+        applySnakeSegmentGameplay(newTail);
         tailId = newTail.id;
         replenishSnakeGoals(state, headId, rng, navWalkable);
         runSnakeFsmTick(intent, seeker, state, dt);

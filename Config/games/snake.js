@@ -13,7 +13,15 @@ export const SNAKE_GAME_DEFAULTS = {
     growDirX: -1,
     growDirY: 0,
     /** Optional cap on head roll speed; null uses global groundNavRoll.maxSpeed. */
-    headMaxSpeed: 140,
+    headMaxSpeed: 250,
+    /** Damping/friction applied to the head. */
+    headFriction: 1.75,
+    /** Damping/friction applied to the follower segments. */
+    segmentFriction: 2.0,
+    /** Density of snake follower segments (default ball is 0.007958). */
+    segmentDensity: 0.001,
+    /** Head acceleration override; null uses global groundNavRoll.accel. */
+    headAccel: 200,
     hudHighScoreStorageKey: "snakeHighScore",
     startRadius: 2,
     maxRadius: 4,
