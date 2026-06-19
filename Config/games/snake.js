@@ -4,7 +4,7 @@ export const SNAKE_GAME_DEFAULTS = {
     headPropId: "snake_head",
     goalPropId: "goal_orb",
     snakeCount: 30,
-    goalCount: 75,
+    goalCount: 100,
     playerSnakeIndex: 0,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
