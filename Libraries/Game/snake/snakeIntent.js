@@ -13,6 +13,18 @@ function collectOtherSnakeHeads(state, registry, selfHeadId) {
     }
     return heads;
 }
+function visibleThreatInRange(seeker, threat, rangeSq, grid, selfCell) {
+    if (!threat || threat.isDead) return null;
+    const dx = threat.x - seeker.x;
+    const dy = threat.y - seeker.y;
+    const distSq = dx * dx + dy * dy;
+    if (distSq > rangeSq) return null;
+    if (grid && selfCell) {
+        const threatCell = grid.worldToGrid(threat.x, threat.y);
+        if (!hasGridCellLineOfSight(grid, selfCell.col, selfCell.row, threatCell.col, threatCell.row)) return null;
+    }
+    return Math.sqrt(distSq);
+}
 export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, visionCone = getSnakeGameConfig().visionCone) {
     const config = getSnakeGameConfig();
     const range = config.fleeRange ?? visionCone.range;
@@ -25,20 +37,16 @@ export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, vi
     let bestDist = Infinity;
     for (let i = 0; i < candidates.length; i++) {
         const head = candidates[i];
-        const dx = head.x - seeker.x;
-        const dy = head.y - seeker.y;
-        const distSq = dx * dx + dy * dy;
-        if (distSq > rangeSq) continue;
         if (getSnakeSizeScore(state, head.id) <= selfScore) continue;
-        if (grid && selfCell) {
-            const threatCell = grid.worldToGrid(head.x, head.y);
-            if (!hasGridCellLineOfSight(grid, selfCell.col, selfCell.row, threatCell.col, threatCell.row)) continue;
-        }
-        const dist = Math.sqrt(distSq);
-        if (dist < bestDist) {
-            bestDist = dist;
-            nearest = head;
-        }
+        const dist = visibleThreatInRange(seeker, head, rangeSq, grid, selfCell);
+        if (dist == null || dist >= bestDist) continue;
+        bestDist = dist;
+        nearest = head;
+    }
+    const snakeGame = state.sandbox.snakeGame;
+    if (snakeGame) {
+        const strikerDist = visibleThreatInRange(seeker, snakeGame.strikerBall, rangeSq, grid, selfCell);
+        if (strikerDist != null && strikerDist < bestDist) nearest = snakeGame.strikerBall;
     }
     return nearest;
 }

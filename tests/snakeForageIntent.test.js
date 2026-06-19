@@ -19,6 +19,7 @@ import {
     perceiveSnakeIntentWorld,
 } from "../Libraries/Game/snake/snakeIntent.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { spawnSnakeStriker } from "../Libraries/Game/snake/snakeStriker.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
@@ -107,6 +108,23 @@ describe("snake forage intent", () => {
         larger.head.y = self.head.y;
         const world = perceiveSnakeIntentWorld(self.head, self.head.id, state, registry, () => null);
         assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
+    });
+
+    it("pickSnakeIntentPolicy flees from a visible striker ball", () => {
+        applySnakeGameConfig({ fleeRange: 128, strikerPropId: "snake_striker" });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const registry = createSnakeLifecycleRegistry();
+        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+        const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
+        registerAliveSnake(registry, self.head.id);
+        const striker = spawnSnakeStriker(state, self.head);
+        state.sandbox.snakeGame.strikerBall = striker;
+        striker.x = self.head.x + 64;
+        striker.y = self.head.y;
+        const world = perceiveSnakeIntentWorld(self.head, self.head.id, state, registry, () => null);
+        assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
+        assert.equal(world.threat.id, striker.id);
     });
 
     it("pickSnakeIntentPolicy prefers flee over visible food", () => {
