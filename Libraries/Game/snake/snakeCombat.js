@@ -1,14 +1,14 @@
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { getOrderedChainMemberIds, removeChainLinkBetween, clearChainLinksForMembers } from "../../Sandbox/chainLinks.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { getSnakeChainRadius } from "./snakeScale.js";
+import { getSnakeSizeScore } from "./snakeScale.js";
 import { markSnakeDead, registerInertSnake, resolveAliveSnakeHeadId } from "./snakeLifecycle.js";
 import { kineticPairBodyAt } from "../../Spatial/collision/kineticPairStream.js";
 function snakeSegmentCount(state, headId) {
     return getOrderedChainMemberIds(state, headId).length;
 }
 function snakeSizeScore(state, headId) {
-    return snakeSegmentCount(state, headId) * 1000 + getSnakeChainRadius(state, headId);
+    return getSnakeSizeScore(state, headId);
 }
 function orderedMembers(state, headId) {
     return getOrderedChainMemberIds(state, headId);

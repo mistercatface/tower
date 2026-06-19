@@ -4,6 +4,7 @@ import { cellChebyshevDistance, pickExploreDestination, exploreFringeMinRankFrom
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
+import { createSnakeLifecycleRegistry, registerAliveSnake } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
@@ -141,5 +142,24 @@ describe("snake intent FSM", () => {
         autosim.tick(1 / 60);
         assert.equal(autosim.getMode(), "seek");
         assert.ok(hpa.hasMoveTarget(chain.head));
+    });
+
+    it("predator-prey intent flees from a visible larger snake", () => {
+        applySnakeGameConfig({ predatorPreyEnabled: true, fleeRange: 128 });
+        resetKineticConstraintIds(1);
+        const state = createIntentTestState();
+        const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });
+        const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, { ...snakeChainOptions(), segmentCount: 5 });
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, small.head.id);
+        registerAliveSnake(registry, large.head.id);
+        state.sandbox.snakeGame = { registry, autosimsByHeadId: new Map() };
+        small.head.facing = 0;
+        large.head.x = small.head.x + 80;
+        large.head.y = small.head.y;
+        const autosim = createSnakeAutosim(state, { headId: small.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosim.start();
+        autosim.tick(1 / 60);
+        assert.equal(autosim.getMode(), "flee");
     });
 });

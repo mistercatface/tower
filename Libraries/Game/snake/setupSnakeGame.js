@@ -6,6 +6,7 @@ import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { applySnakeHeadGameplay } from "./snakeHeadGameplay.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, isAliveSnakeHead } from "./snakeLifecycle.js";
 import { mountSnakeHud } from "./snakeHud.js";
+import { resolvePlayerSnakeCombatHud } from "./snakeCombatHud.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -33,7 +34,8 @@ export async function setupSnakeGame(state) {
     void state.navigation.onObstaclesChanged(null);
     const playerHeadId = playerSnake.chain.head.id;
     const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
-    const hud = mountSnakeHud(getSegmentCount, { getKineticSolverStats: config.showKineticSolverStats ? () => state.sandbox.kineticSolverStats ?? null : null });
+    const getCombatStatus = () => resolvePlayerSnakeCombatHud(playerHeadId, registry, autosimsByHeadId);
+    const hud = mountSnakeHud(getSegmentCount, { getKineticSolverStats: config.showKineticSolverStats ? () => state.sandbox.kineticSolverStats ?? null : null, getCombatStatus });
     hud.update();
     const snakeHeadIds = config.showAllSnakeVisionCones ? scene.snakes.map((snake) => snake.chain.head.id) : [playerHeadId];
     return {

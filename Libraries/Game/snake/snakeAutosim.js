@@ -3,6 +3,7 @@ import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
 import { linkedChainOccupiedCellKeys, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createSeekExploreIntent } from "../../AI/agentIntent/createSeekExploreIntent.js";
+import { createSnakePredatorPreyIntent } from "../../AI/agentIntent/createSnakePredatorPreyIntent.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
@@ -42,7 +43,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
     const meta = getSandboxEntityMeta(state);
     const { brain, sync } = createSnakeBrain({ visionCone });
-    const resolveVisibleGoal = (seeker, gameState) => {
+    const resolveVisibleFood = (seeker, gameState) => {
         if (pinnedGoalId != null) {
             const pinned = gameState.entityRegistry.getLive(pinnedGoalId);
             if (pinned && !pinned.isDead) {
@@ -52,17 +53,56 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         }
         return findNearestVisibleSnakeGoal(gameState, seeker, config.visionCone);
     };
-    const intent = createSeekExploreIntent({
-        brain,
-        sync,
-        behaviorById,
-        setActiveBehaviorId: (propId, behaviorId) => meta.setActiveBehaviorId(propId, behaviorId),
-        resolveVisibleGoal,
-        resolveExploreCell: resolveSnakeExploreCell,
-        rng,
-    });
+    const snakeGame = state.sandbox.snakeGame;
+    const usePredatorPrey = config.predatorPreyEnabled && snakeGame?.registry;
+    const intent = usePredatorPrey
+        ? createSnakePredatorPreyIntent({
+              brain,
+              sync,
+              behaviorById,
+              setActiveBehaviorId: (propId, behaviorId) => meta.setActiveBehaviorId(propId, behaviorId),
+              resolveVisibleFood,
+              resolveExploreCell: resolveSnakeExploreCell,
+              selfHeadId: headId,
+              registry: snakeGame.registry,
+              visionCone: visionCone ?? config.visionCone,
+              rng,
+          })
+        : createSeekExploreIntent({
+              brain,
+              sync,
+              behaviorById,
+              setActiveBehaviorId: (propId, behaviorId) => meta.setActiveBehaviorId(propId, behaviorId),
+              resolveVisibleGoal: resolveVisibleFood,
+              resolveExploreCell: resolveSnakeExploreCell,
+              rng,
+          });
     let active = false;
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
+    const eatGoal = (seeker, goal) => {
+        const goalCell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
+        brain.stampArrival(goalCell.col, goalCell.row);
+        removeSandboxWorldProp(state, goal);
+        if (pinnedGoalId === goal.id) pinnedGoalId = null;
+        if (intent.clearTrackedTarget) intent.clearTrackedTarget();
+        else if (intent.clearTrackedGoal) intent.clearTrackedGoal();
+        intent.navBehavior().clearMoveTarget(seeker);
+        const grow = growSnakeChainAfterMeal(state, headId);
+        const tail = state.entityRegistry.getLive(tailId);
+        const newTail = growChainSegment(state, tail, {
+            spacing: grow.spacing,
+            segmentRadius: grow.segmentRadius,
+            linkSlack: grow.linkSlack,
+            ballType: resolvedBallType,
+            growDirX: resolvedGrowDirX,
+            growDirY: resolvedGrowDirY,
+            exportType: SNAKE_CHAIN_EXPORT_TYPE,
+        });
+        copySnakeChainTintFromHead(state, headId, newTail);
+        tailId = newTail.id;
+        replenishSnakeGoals(state, headId, rng);
+        intent.refresh(seeker, state);
+    };
     return {
         start() {
             active = true;
@@ -85,6 +125,11 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         getMode() {
             return intent.getMode();
         },
+        getTrackedTargetId() {
+            if (intent.getTrackedTargetId) return intent.getTrackedTargetId();
+            if (intent.getTrackedGoalId) return intent.getTrackedGoalId();
+            return null;
+        },
         getBrain() {
             return brain;
         },
@@ -93,34 +138,23 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
             const seeker = resolveSeeker();
             if (!seeker || seeker.isDead) return;
             intent.sync(seeker, state);
-            const goal = resolveVisibleGoal(seeker, state);
+            if (usePredatorPrey) {
+                const choice = intent.refresh(seeker, state);
+                if (choice.mode === "seek_food" && choice.target) {
+                    const goal = choice.target;
+                    const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
+                    const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
+                    if (dist <= radius) eatGoal(seeker, goal);
+                }
+                return;
+            }
+            const goal = resolveVisibleFood(seeker, state);
             if (goal) {
                 intent.enterSeek(seeker, goal, state);
                 const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
                 const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
-                if (dist <= radius) {
-                    const goalCell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
-                    brain.stampArrival(goalCell.col, goalCell.row);
-                    removeSandboxWorldProp(state, goal);
-                    if (pinnedGoalId === goal.id) pinnedGoalId = null;
-                    intent.clearTrackedGoal();
-                    intent.navBehavior().clearMoveTarget(seeker);
-                    const grow = growSnakeChainAfterMeal(state, headId);
-                    const tail = state.entityRegistry.getLive(tailId);
-                    const newTail = growChainSegment(state, tail, {
-                        spacing: grow.spacing,
-                        segmentRadius: grow.segmentRadius,
-                        linkSlack: grow.linkSlack,
-                        ballType: resolvedBallType,
-                        growDirX: resolvedGrowDirX,
-                        growDirY: resolvedGrowDirY,
-                        exportType: SNAKE_CHAIN_EXPORT_TYPE,
-                    });
-                    copySnakeChainTintFromHead(state, headId, newTail);
-                    tailId = newTail.id;
-                    replenishSnakeGoals(state, headId, rng);
-                    intent.refresh(seeker, state);
-                } else if (goal.id !== intent.getTrackedGoalId()) intent.enterSeek(seeker, goal, state);
+                if (dist <= radius) eatGoal(seeker, goal);
+                else if (goal.id !== intent.getTrackedGoalId()) intent.enterSeek(seeker, goal, state);
                 else if (!intent.hasMoveTarget(seeker)) intent.enterSeek(seeker, goal, state);
                 return;
             }

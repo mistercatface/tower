@@ -41,6 +41,16 @@ export const SNAKE_GAME_DEFAULTS = {
     minAliveSegmentCount: 3,
     /** Relative impact speed required to split a smaller snake at the struck segment. */
     splitImpulseThreshold: 35,
+    /** When true and snakeGame registry exists, snakes hunt smaller heads and flee larger ones. */
+    predatorPreyEnabled: true,
+    /** Visible prey must have size score below self × this ratio (1 = strictly smaller). */
+    preySizeRatio: 1,
+    /** Utility weight for prey vs food when both are visible (0–1). */
+    huntPriority: 0.55,
+    /** Max distance to react to a larger snake with flee (world units); null uses visionCone.range. */
+    fleeRange: null,
+    /** HPA flee waypoint distance away from the threat (world units). */
+    fleeMinDistance: 96,
     showKineticSolverStats: false,
     /** Optional vision cone override for the player snake only; null uses visionCone. */
     playerVisionCone: null,

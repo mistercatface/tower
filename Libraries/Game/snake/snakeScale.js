@@ -1,9 +1,15 @@
-import { getChainMemberIds, resyncChainLinkRestLengths } from "../../Sandbox/chainLinks.js";
+import { getChainMemberIds, getOrderedChainMemberIds, resyncChainLinkRestLengths } from "../../Sandbox/chainLinks.js";
 import { getCirclePropRadius, setCirclePropRadius } from "../../Props/propScale.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 export function getSnakeChainRadius(state, headId) {
     const head = state.entityRegistry.getLive(headId);
     return getCirclePropRadius(head) ?? getSnakeGameConfig().startRadius;
+}
+export function getSnakeSegmentCount(state, headId) {
+    return getOrderedChainMemberIds(state, headId).length;
+}
+export function getSnakeSizeScore(state, headId) {
+    return getSnakeSegmentCount(state, headId) * 1000 + getSnakeChainRadius(state, headId);
 }
 export function stepSnakeChainRadius(state, headId) {
     const config = getSnakeGameConfig();

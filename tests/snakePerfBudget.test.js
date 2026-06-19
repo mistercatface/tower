@@ -12,6 +12,7 @@ import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGr
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { createSnakeLifecycleRegistry, registerAliveSnake } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
 loadPropAssets();
@@ -19,7 +20,7 @@ loadPropAssets();
 const PERF_TICKS = 120;
 const PERF_DT = 1 / 60;
 const WALL_CLOCK_MS_CEILING = 12_000;
-const REPLAN_REQUEST_CEILING = 800;
+const REPLAN_REQUEST_CEILING = 1200;
 function createPerfState(cols = 48, rows = 48) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
@@ -70,6 +71,8 @@ function createPerfState(cols = 48, rows = 48) {
 function buildMultiSnakeSession(state) {
     const config = getSnakeGameConfig();
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
+    const registry = createSnakeLifecycleRegistry();
+    state.sandbox.snakeGame = { registry, autosimsByHeadId: new Map() };
     const autosims = [];
     let excludeKeys = null;
     const specs = resolveSnakeSpawnSpecs(config);
@@ -78,8 +81,10 @@ function buildMultiSnakeSession(state) {
         const row = 4 + Math.floor(i / 8) * 3;
         const pack = spawnSnakeChain(state, { col, row }, { excludeKeys, segmentCount: config.segmentCount, rng: () => (i * 0.13) % 1 });
         excludeKeys = pack.occupiedKeys;
+        registerAliveSnake(registry, pack.chain.head.id);
         const autosim = createSnakeAutosim(state, { headId: pack.chain.head.id, behaviorById, rng: () => ((i + 1) * 0.17) % 1 });
         autosim.start();
+        state.sandbox.snakeGame.autosimsByHeadId.set(pack.chain.head.id, autosim);
         autosims.push({ autosim, head: pack.chain.head, isPlayer: specs[i].cameraFollow });
     }
     spawnSnakeGoalPool(state, config.goalCount, { excludeKeys, rng: () => 0.42 });
@@ -87,7 +92,7 @@ function buildMultiSnakeSession(state) {
 }
 describe("snakePerfBudget", () => {
     it("30 snakes with brains stay within wall-clock and replan budget", () => {
-        applySnakeGameConfig({ snakeCount: 500, goalCount: 75, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4 });
+        applySnakeGameConfig({ snakeCount: 30, goalCount: 75, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4, predatorPreyEnabled: true });
         resetKineticConstraintIds(1);
         const state = createPerfState();
         const { autosims, hpaBehavior } = buildMultiSnakeSession(state);

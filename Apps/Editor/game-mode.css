@@ -85,3 +85,43 @@ body.shell-game .snake-hud-value {
     font-weight: 700;
     line-height: 1;
 }
+
+body.shell-game .snake-hud-combat-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+body.shell-game .snake-hud-chip {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: rgba(245, 247, 251, 0.38);
+    background: rgba(255, 255, 255, 0.04);
+    transition: color 120ms ease, background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+body.shell-game .snake-hud-chip-hunted.is-active {
+    color: #ffd4d4;
+    border-color: rgba(255, 96, 96, 0.65);
+    background: rgba(120, 24, 24, 0.55);
+    box-shadow: 0 0 12px rgba(255, 64, 64, 0.35);
+}
+
+body.shell-game .snake-hud-chip-hunting.is-active {
+    color: #ffe8b0;
+    border-color: rgba(255, 196, 72, 0.65);
+    background: rgba(96, 64, 8, 0.55);
+    box-shadow: 0 0 12px rgba(255, 180, 48, 0.28);
+}
+
+body.shell-game .snake-hud-chip-foraging.is-active {
+    color: #c8f5d0;
+    border-color: rgba(96, 220, 128, 0.65);
+    background: rgba(16, 72, 32, 0.55);
+    box-shadow: 0 0 12px rgba(80, 220, 120, 0.22);
+}
