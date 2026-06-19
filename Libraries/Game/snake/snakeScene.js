@@ -125,11 +125,19 @@ export async function generateSnakeSplitMap(state) {
     cavernConfig.iterations = prevCavernIterations;
     railConfig.edgeThickness = prevRailEdgeThickness;
 }
-function resolveSnakePlayerSpawnBounds(state) {
-    const { cavernConfig, railConfig, playConfig } = state.editor;
-    const playRows = playConfig.playAreaRows;
-    const quarterStart = Math.floor(playRows * 0.75);
-    return { boundsMode: "rect", boundsCol: railConfig.boundsCol, boundsRow: cavernConfig.boundsRow + quarterStart, boundsCols: railConfig.boundsCols, boundsRows: playRows - quarterStart };
+export function resolveSnakePlayerSpawnBounds(state) {
+    const playable = resolveSnakePlayableBounds(state);
+    const spanRows = Math.max(6, Math.floor(playable.boundsRows * 0.25));
+    const spanCols = Math.max(6, Math.floor(playable.boundsCols * 0.25));
+    const midRow = playable.boundsRow + Math.floor(playable.boundsRows / 2);
+    const midCol = playable.boundsCol + Math.floor(playable.boundsCols / 2);
+    return {
+        boundsMode: "rect",
+        boundsCol: midCol - Math.floor(spanCols / 2),
+        boundsRow: midRow - Math.floor(spanRows / 2),
+        boundsCols: spanCols,
+        boundsRows: spanRows,
+    };
 }
 async function spawnSnakeCavernMap(state) {
     await generateSnakeSplitMap(state);
@@ -181,7 +189,7 @@ export function spawnSnakeGoalPool(state, goalCount, navWalkable, { excludeKeys 
 export async function spawnSnakeCavernScene(state) {
     const config = getSnakeGameConfig();
     await spawnSnakeCavernMap(state);
-    const navWalkable = createNavWalkableAccess(state, resolveSnakePlayableBounds(state));
+    const navWalkable = createNavWalkableAccess(state, resolveSnakePlayableBounds(state), { floodSeedBounds: resolveSnakePlayerSpawnBounds(state) });
     navWalkable.rebake();
     const cavernCells = navWalkable.cells();
     const playerSpawnBounds = resolveSnakePlayerSpawnBounds(state);

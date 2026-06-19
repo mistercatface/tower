@@ -5,7 +5,7 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
+import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { wireSnakeGameRegistry, createSnakeLifecycleRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
@@ -70,5 +70,23 @@ describe("snake navWalkable session", () => {
             const cell = cells[i];
             assert.ok(isNavWalkableCell(grid, cell.col, cell.row), `cell ${walkableCellKey(cell.col, cell.row)} not nav-walkable`);
         }
+    });
+
+    it("baked navWalkable drops disconnected cells on the split map", async () => {
+        applySnakeGameConfig({ snakeCount: 1, playerSnakeIndex: 0 });
+        const state = createSnakeWalkableTestState(48, 42);
+        const scene = await spawnSnakeCavernScene(state);
+        const player = scene.snakes[0];
+        const headCell = state.obstacleGrid.worldToGrid(player.chain.head.x, player.chain.head.y);
+        assert.ok(scene.navWalkable.has(headCell.col, headCell.row));
+        let localPassCount = 0;
+        const playable = state.sandbox.snakePlayableBounds;
+        const grid = state.obstacleGrid;
+        const cellSize = grid.cellSize;
+        forEachGlobalCellInMapGenBounds(playable, (globalCol, globalRow) => {
+            const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
+            if (isNavWalkableCell(grid, col, row)) localPassCount++;
+        });
+        assert.ok(scene.navWalkable.cells().length < localPassCount);
     });
 });

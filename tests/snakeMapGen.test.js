@@ -7,7 +7,7 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { collectSnakeGoalProps } from "../Libraries/Game/snake/snakeGoals.js";
-import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
+import { generateSnakeSplitMap, resolveSnakePlayerSpawnBounds, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
 import { boundaryBlocksStepFrom } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
@@ -159,15 +159,15 @@ describe("snake split map generation", () => {
         }
     });
 
-    it("spawns the player in the lower quarter of the play area", async () => {
+    it("spawns the player in the center of the play area", async () => {
         applySnakeGameConfig({ snakeCount: 3, playerSnakeIndex: 0 });
         const state = createSnakeMapGenTestState(64, 42);
         const scene = await spawnSnakeCavernScene(state);
         const player = scene.snakes[0];
-        const playOriginRow = state.editor.cavernConfig.boundsRow;
-        const quarterStartRow = playOriginRow + Math.floor(state.editor.playConfig.playAreaRows * 0.75);
+        const spawnBounds = resolveSnakePlayerSpawnBounds(state);
         const headCell = state.obstacleGrid.worldToGrid(player.chain.head.x, player.chain.head.y);
-        assert.ok(headCell.row >= quarterStartRow, `player row ${headCell.row} should be in lower quarter from ${quarterStartRow}`);
+        const centerCells = scene.navWalkable.filterInBounds(spawnBounds);
+        assert.ok(centerCells.some((cell) => cell.col === headCell.col && cell.row === headCell.row));
     });
 
     it("player spawn cell varies with map seed", async () => {
