@@ -23,8 +23,11 @@ export function enforceSnakeMinLength(state, snakeGame, headId) {
     return true;
 }
 export function killSnake(state, snakeGame, headId) {
-    snakeGame.autosimsByHeadId.get(headId).stop();
-    snakeGame.autosimsByHeadId.delete(headId);
+    const autosim = snakeGame.autosimsByHeadId.get(headId);
+    if (autosim) {
+        autosim.stop();
+        snakeGame.autosimsByHeadId.delete(headId);
+    }
     const meta = getSandboxEntityMeta(state);
     const members = orderedMembers(state, headId);
     for (let i = 0; i < members.length; i++) meta.setChainHead(members[i], false);

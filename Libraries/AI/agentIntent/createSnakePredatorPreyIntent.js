@@ -2,7 +2,7 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../..
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { createSnakeLocomotion } from "../../Game/snake/snakeLocomotion.js";
 import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
-import { pickSnakeIntentTarget, pickRetreatDestination } from "../../Game/snake/snakePredatorPrey.js";
+import { normalizeSnakeIntentChoice, pickSnakeIntentTarget, pickRetreatDestination } from "../../Game/snake/snakePredatorPrey.js";
 export function createSnakePredatorPreyIntent({
     brain,
     sync,
@@ -44,8 +44,14 @@ export function createSnakePredatorPreyIntent({
     const destinationStillValid = (seeker, grid, choice) => {
         const dest = locomotion.getDestination();
         if (!dest || hasArrivedAtDest(seeker, grid)) return false;
-        if (mode === "seek_food" || mode === "seek_prey") {
-            if (!choice.target) return false;
+        if (choice.mode !== mode) return false;
+        if (mode === "seek_prey") {
+            if (!choice.target || choice.target.isDead || !registry.aliveByHeadId.has(choice.target.id)) return false;
+            const targetCell = grid.worldToGrid(choice.target.x, choice.target.y);
+            return dest.col === targetCell.col && dest.row === targetCell.row;
+        }
+        if (mode === "seek_food") {
+            if (!choice.target || choice.target.isDead) return false;
             const targetCell = grid.worldToGrid(choice.target.x, choice.target.y);
             return dest.col === targetCell.col && dest.row === targetCell.row;
         }
@@ -84,28 +90,29 @@ export function createSnakePredatorPreyIntent({
     };
     const transition = (seeker, state) => {
         const grid = state.obstacleGrid;
-        const rawChoice = pickSnakeIntentTarget(seeker, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
-        const nextMode = resolveEffectiveMode(rawChoice.mode);
+        const choice = normalizeSnakeIntentChoice(pickSnakeIntentTarget(seeker, selfHeadId, state, registry, resolveVisibleFood, resolvedVision), registry);
+        const nextMode = resolveEffectiveMode(choice.mode);
         const prevMode = mode;
         if (nextMode !== mode) {
             mode = nextMode;
             if (nextMode === "flee") lastTransitionReason = "threat_entered";
             else if (prevMode === "flee") lastTransitionReason = "threat_cleared";
+            else if (prevMode === "seek_prey" || prevMode === "seek_food") lastTransitionReason = "target_lost";
             else lastTransitionReason = `mode_${nextMode}`;
-            pickDestinationForMode(seeker, state, rawChoice);
-            return { mode, target: rawChoice.target };
+            pickDestinationForMode(seeker, state, choice);
+            return { mode, target: choice.target };
         }
-        if (locomotion.getDestination() && locomotion.needsRetry(seeker)) {
+        if (locomotion.getDestination() && locomotion.needsRetry(seeker) && choice.mode === mode) {
             lastTransitionReason = "route_failed_retry";
-            return { mode, target: rawChoice.target };
+            return { mode, target: choice.target };
         }
-        if (destinationStillValid(seeker, grid, rawChoice)) {
+        if (destinationStillValid(seeker, grid, choice)) {
             lastTransitionReason = "held_latch";
-            return { mode, target: rawChoice.target };
+            return { mode, target: choice.target };
         }
         lastTransitionReason = hasArrivedAtDest(seeker, grid) ? "arrived" : "repick_dest";
-        pickDestinationForMode(seeker, state, rawChoice);
-        return { mode, target: rawChoice.target };
+        pickDestinationForMode(seeker, state, choice);
+        return { mode, target: choice.target };
     };
     return {
         perceive,

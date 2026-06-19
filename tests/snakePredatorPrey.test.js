@@ -14,9 +14,11 @@ import {
     collectVisibleSnakeThreats,
     findNearestVisibleSnakePrey,
     findNearestVisibleSnakeThreat,
+    normalizeSnakeIntentChoice,
     pickRetreatDestination,
     pickSnakeIntentTarget,
 } from "../Libraries/Game/snake/snakePredatorPrey.js";
+import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
 import { resolvePlayerSnakeCombatHud } from "../Libraries/Game/snake/snakeCombatHud.js";
 import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
@@ -222,6 +224,65 @@ describe("snake predator prey autosim", () => {
         assert.equal(autosim.getMode(), "seek_prey");
         const preyCell = state.obstacleGrid.worldToGrid(prey.head.x, prey.head.y);
         assert.deepEqual(autosim.getDestination(), { col: preyCell.col, row: preyCell.row, world: state.obstacleGrid.gridToWorld(preyCell.col, preyCell.row) });
+    });
+
+    it("predator leaves seek_prey when prey is killed", () => {
+        applySnakeGameConfig({ huntPriority: 0.95, fleeRange: 128 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const predator = spawnLinkedBallChain(state, { col: 8, row: 10 }, chainOptions(5));
+        const prey = spawnLinkedBallChain(state, { col: 16, row: 10 }, chainOptions(3));
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, predator.head.id);
+        registerAliveSnake(registry, prey.head.id);
+        const autosimsByHeadId = new Map();
+        wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
+        predator.head.facing = 0;
+        prey.head.x = predator.head.x + 80;
+        prey.head.y = predator.head.y;
+        const predatorAutosim = createWiredSnakeAutosim(state, { headId: predator.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        const preyAutosim = createWiredSnakeAutosim(state, { headId: prey.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosimsByHeadId.set(predator.head.id, predatorAutosim);
+        autosimsByHeadId.set(prey.head.id, preyAutosim);
+        predatorAutosim.start();
+        predatorAutosim.tick(1 / 60);
+        assert.equal(predatorAutosim.getMode(), "seek_prey");
+        killSnake(state, state.sandbox.snakeGame, prey.head.id);
+        predatorAutosim.tick(1 / 60);
+        assert.notEqual(predatorAutosim.getMode(), "seek_prey");
+    });
+
+    it("killSnake marks prey dead even when prey autosim is missing", () => {
+        applySnakeGameConfig({ huntPriority: 0.95, fleeRange: 128 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const predator = spawnLinkedBallChain(state, { col: 8, row: 10 }, chainOptions(5));
+        const prey = spawnLinkedBallChain(state, { col: 16, row: 10 }, chainOptions(3));
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, predator.head.id);
+        registerAliveSnake(registry, prey.head.id);
+        const autosimsByHeadId = new Map();
+        wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
+        predator.head.facing = 0;
+        prey.head.x = predator.head.x + 80;
+        prey.head.y = predator.head.y;
+        const predatorAutosim = createWiredSnakeAutosim(state, { headId: predator.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosimsByHeadId.set(predator.head.id, predatorAutosim);
+        predatorAutosim.start();
+        predatorAutosim.tick(1 / 60);
+        assert.equal(predatorAutosim.getMode(), "seek_prey");
+        killSnake(state, state.sandbox.snakeGame, prey.head.id);
+        assert.equal(registry.aliveByHeadId.has(prey.head.id), false);
+        predatorAutosim.tick(1 / 60);
+        assert.notEqual(predatorAutosim.getMode(), "seek_prey");
+    });
+
+    it("normalizeSnakeIntentChoice drops seek_prey when prey is not alive in registry", () => {
+        const registry = createSnakeLifecycleRegistry();
+        const prey = { id: 99, x: 0, y: 0, isDead: false };
+        const normalized = normalizeSnakeIntentChoice({ mode: "seek_prey", target: prey }, registry);
+        assert.equal(normalized.mode, "explore");
+        assert.equal(normalized.target, null);
     });
 
     it("resolvePlayerSnakeCombatHud reports hunting and hunted states", () => {

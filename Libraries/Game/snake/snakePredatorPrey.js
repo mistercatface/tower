@@ -8,9 +8,23 @@ export function collectAliveSnakeHeads(state, registry, selfHeadId) {
     const heads = [];
     for (const headId of registry.aliveByHeadId.keys()) {
         if (headId === selfHeadId) continue;
-        heads.push(state.entityRegistry.getLive(headId));
+        const head = state.entityRegistry.getLive(headId);
+        if (!head || head.isDead) continue;
+        if (!registry.aliveByHeadId.has(headId)) continue;
+        heads.push(head);
     }
     return heads;
+}
+export function normalizeSnakeIntentChoice(choice, registry) {
+    if (choice.mode === "seek_prey") {
+        const target = choice.target;
+        if (!target || target.isDead || !registry.aliveByHeadId.has(target.id)) return { mode: "explore", target: null };
+    }
+    if (choice.mode === "seek_food") {
+        const target = choice.target;
+        if (!target || target.isDead) return { mode: "explore", target: null };
+    }
+    return choice;
 }
 export function findNearestVisibleSnakePrey(state, seeker, selfHeadId, registry, visionCone = getSnakeGameConfig().visionCone) {
     const config = getSnakeGameConfig();
