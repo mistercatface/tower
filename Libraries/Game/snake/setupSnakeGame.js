@@ -9,6 +9,7 @@ import { mountSnakeHud } from "./snakeHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
+import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -37,18 +38,42 @@ export async function setupSnakeGame(state) {
         }
     }
     const playerHeadId = playerSnake.chain.head.id;
+    const playerHead = playerSnake.chain.head;
+    const strikerBall = spawnSnakeStriker(state, playerHead);
+    state.sandbox.snakeGame.strikerBall = strikerBall;
     const playerAutosim = autosimsByHeadId.get(playerHeadId);
     const getSegmentCount = () => getConnectedBodyIds(state.kinetic, playerHeadId).length;
     const getFoodTimerFraction = () => playerAutosim.getFoodTimerFraction();
     const getFsmDebugLine = config.showSnakeFsmDebug ? () => playerAutosim.getFsmDebugLine() : null;
-    const hud = mountSnakeHud(getSegmentCount, { getFoodTimerFraction, getFsmDebugLine });
+    const hud = mountSnakeHud(getSegmentCount, { getFoodTimerFraction, getFsmDebugLine, onToggleCameraFocus: toggleCameraFocus });
+    let cameraFocus = "snake";
+    function focusSnakeCamera() {
+        setSandboxCameraTarget(state, strikerBall, false);
+        setSandboxCameraTarget(state, playerHead, true);
+        cameraFocus = "snake";
+        hud.setCameraFocus("snake");
+    }
+    function focusStrikerCamera() {
+        setSandboxCameraTarget(state, playerHead, false);
+        setSandboxCameraTarget(state, strikerBall, true);
+        cameraFocus = "ball";
+        hud.setCameraFocus("ball");
+    }
+    function toggleCameraFocus() {
+        if (cameraFocus === "snake") focusStrikerCamera();
+        else focusSnakeCamera();
+    }
     hud.update();
     return {
-        head: playerSnake.chain.head,
+        head: playerHead,
+        strikerBall,
         goal: scene.goals[0],
         goals: scene.goals,
         snakes: scene.snakes,
-        cameraTarget: playerSnake.chain.head,
+        cameraTarget: playerHead,
+        focusSnakeCamera,
+        focusStrikerCamera,
+        toggleCameraFocus,
         appendOverlayCommands(out, gameState) {
             appendSnakeGameOverlayCommands(out, gameState, {
                 autosimsByHeadId,
@@ -68,6 +93,7 @@ export async function setupSnakeGame(state) {
         applyContactSideEffects(tick, contacts) {
             applyKineticContactSideEffects(tick, contacts);
             resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
+            resolveStrikerBallSnakeSplitsFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame, strikerBall);
         },
         stop() {
             for (const autosim of autosimsByHeadId.values()) autosim.stop();

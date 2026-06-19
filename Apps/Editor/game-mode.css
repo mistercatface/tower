@@ -143,3 +143,27 @@ body.shell-game .snake-hud-food-fill {
     background: linear-gradient(90deg, rgba(255, 120, 72, 0.95), rgba(255, 210, 96, 0.95));
     transition: width 120ms linear;
 }
+
+body.shell-game .snake-hud-camera-toggle {
+    pointer-events: auto;
+    cursor: pointer;
+    min-width: 88px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(8, 10, 16, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #f5f7fb;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+
+body.shell-game .snake-hud-camera-toggle.is-ball-focus {
+    border-color: rgba(255, 112, 67, 0.65);
+    box-shadow: 0 0 12px rgba(255, 112, 67, 0.28);
+}
+
+body.shell-game .snake-hud-camera-toggle .snake-hud-value {
+    font-size: 18px;
+}
