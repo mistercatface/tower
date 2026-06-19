@@ -8,6 +8,7 @@ import { appendRoomGraphOverlayCommands } from "../RoomGraph/roomGraphOverlayCom
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
 import { resolveSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isChainSteeringTarget } from "../Sandbox/chainLinks.js";
+import { resolveGroundNavPathOverlayBehavior } from "../Sandbox/groundNav/resolveGroundNavPathOverlayBehavior.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 export function buildSandboxOverlayCommands({
     state,
@@ -60,7 +61,7 @@ export function buildSandboxOverlayCommands({
             if (!isChainSteeringTarget(state, getSandboxEntityMeta(state), prop.id)) continue;
             const visual = resolveSandboxPathVisual(state, prop);
             if (visual === "off") continue;
-            const behavior = behaviorById.get(getPropBehaviorId(prop));
+            const behavior = resolveGroundNavPathOverlayBehavior(state, prop, behaviorById) ?? behaviorById.get(getPropBehaviorId(prop));
             if (!behavior?.getPathOverlay) continue;
             const overlay = behavior.getPathOverlay(prop);
             appendPathOverlayCommands(commands, overlay, visual);

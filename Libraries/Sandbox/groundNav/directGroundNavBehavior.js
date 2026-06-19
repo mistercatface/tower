@@ -23,6 +23,7 @@ export function createDirectGroundNavBehavior(state) {
         const dist = Math.hypot(dx, dy);
         if (dist < config.stopRadius) {
             if (run.moveTargetActive) {
+                clearGroundRollDrive(prop);
                 clearRunTarget(run);
                 return;
             }

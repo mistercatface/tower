@@ -25,6 +25,7 @@ export function createHpaGroundNavBehavior(state) {
         run.hpaNav.reset(state);
     };
     const releaseMoveTarget = (prop, run) => {
+        clearGroundRollDrive(prop);
         clearRunTarget(run, state);
     };
     const applyMoveTarget = (run, world, forceReset = false) => {

@@ -7,6 +7,9 @@ import { applySnakeHeadGameplay } from "./snakeHeadGameplay.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { mountSnakeHud } from "./snakeHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
+import { appendPropGroundNavPathOverlay } from "../../Sandbox/groundNav/resolveGroundNavPathOverlayBehavior.js";
+import { resolveSandboxPathVisual } from "../../Sandbox/sandboxPropMeta.js";
+import { selectionPropIds } from "../../Sandbox/sandboxSelectionInspectors.js";
 import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
@@ -114,6 +117,14 @@ export async function setupSnakeGame(state) {
         focusStrikerCamera,
         toggleCameraFocus,
         appendOverlayCommands(out, gameState) {
+            const behaviorById = gameState.sandbox.controller?.getBehaviorByIdMap?.();
+            if (behaviorById) {
+                const sel = gameState.sandbox.controller?.session?.getSelection?.();
+                const strikerSelected = sel?.kind === "prop" && selectionPropIds(sel).includes(strikerBall.id);
+                if (!strikerSelected) {
+                    appendPropGroundNavPathOverlay(out, gameState, strikerBall, behaviorById, resolveSandboxPathVisual(gameState, strikerBall));
+                }
+            }
             if (cameraFocus === "ball") return;
             const focusedAutosim = resolveFocusedAutosim();
             if (!focusedAutosim) return;
