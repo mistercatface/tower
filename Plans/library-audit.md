@@ -135,7 +135,7 @@ Grouped by **owner doc** so you can find the home of a concern, not just a file.
 | `Libraries/Random/` | Seeded RNG + weighted pick | `seededRandom.js`, `weightedPick.js` |
 | `Libraries/Config/` | Partial-config merge | `mergePartial.js` |
 | `GameState/` | Registries + shared state + per-entity meta | `EntityRegistry.js`, `SharedGameState.js`, `SandboxWorldState.js`, `sandboxEntityMeta.js`, `GameState.js` |
-| `Systems/World/` | Per-frame kinetic frame population | `KineticSpatialFrame.js`, `populateKineticFrame.js` |
+| `Systems/World/` | Per-frame kinetic frame population | `KineticSpatialFrame.js` |
 | `Core/` | Settings + globals + events | `GamePhysicsSettings.js`, `GameCollisionSettings.js`, `GamePerspective.js`, `GameProceduralDesign.js`, `EventSystem.js`, `EventNames.js`, `engineGlobals.js` |
 
 ### 3.8 Props & assets (cross-cutting: physics shape + render recipe)

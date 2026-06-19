@@ -26,13 +26,13 @@ The single hub for this engine: a **2D-canvas, pseudo-3D sandbox engine** (no We
 
 | Subsystem       | Maturity | One-line state                                                           | CS core                                                                            | ▶ Next ship                                          | Doc                                |
 | --------------- | -------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------- |
-| **Physics**     | ~58%     | rigid-body core solid; no CCD, no joints beyond distance                 | sequential-impulse PGS solver, SAT, uniform-grid broadphase                        | persistent contact manifolds (feature-id warm-start) | [physics.md](./physics.md)         |
+| **Physics**     | ~62%     | rigid-body core solid; sim boundary peeled; no CCD, no joints beyond distance | sequential-impulse PGS solver, SAT, uniform-grid broadphase                        | persistent contact manifolds (feature-id warm-start) | [physics.md](./physics.md)         |
 | **Pathfinding** | ~55%     | pro planning core; no local avoidance or smoothing                       | octile A\* + HPA\* Voronoi abstraction + flow-field BFS, off-thread on SAB         | funnel / string-pull path smoothing                  | [pathfinding.md](./pathfinding.md) |
 | **Rendering**   | ~52%     | distinctive radial pseudo-3D; no lighting/shadows                        | camera-relative elevation projection + painter's sort + bake/blit LRU              | wire projected drop shadows (math exists)            | [rendering.md](./rendering.md)     |
 | **Procedural**  | ~40%     | strong _resolution_, weak _authorship_                                   | cellular-automata caves + room-graph bake + cardinal-A\* corridors                 | unified root seed → derived subsystem seeds          | [procedural.md](./procedural.md)   |
 | **AI**          | ~30%     | one agent with a real perception-gated FSM + memory; snake-bound, narrow | vision-gated intent FSM + recency-LRU spatial memory + stigmergic A\* cost penalty | generalize the loop into a reusable agent FSM        | [AI.md](./AI.md)                   |
 
-**Overall engine maturity: ~47%** _(unweighted mean of the five pillars; manual)_ — a genuinely capable physics/nav/render core with a distinctive projection, a young procedural layer, and a narrow-but-real decision-AI layer (one smart agent, not yet a system).
+**Overall engine maturity: ~48%** _(unweighted mean of the five pillars; manual)_ — a genuinely capable physics/nav/render core with a distinctive projection, a young procedural layer, and a narrow-but-real decision-AI layer (one smart agent, not yet a system).
 
 ---
 
@@ -180,16 +180,17 @@ The substrate: `WorldObstacleGrid` (16 px cells, voxel walls, edge barriers, flo
 
 ### 4.5 Snapshot persistence 🟡 (~70%)
 
-Scene snapshot **schema v9** — flat props, kinetic constraints, chain head, room graph, factions.
+Scene snapshot **schema v11** — flat props, kinetic constraints, chain head, room graph, factions, visual overrides.
 
 - **CS:** versioned serialization with explicit schema migration at the load boundary.
 - [ ] ▶ **Next:** a schema-version test that round-trips every persisted field, so bumps to v10 can't silently drop data.
 
 ### 4.6 RAF tick + sim/render split 🟡 (~50%)
 
-`Apps/Editor/engine.js` RAF loop → sim tick (when unpaused) → `drawLabFrame`.
+`Apps/Editor/engine.js` RAF loop → sim tick (when unpaused) → `drawLabFrame`. Kinetic sim uses `runKineticPhysics(tick, dt, hooks)` — hooks assembled once per tick; active game sessions may override `applyContactSideEffects`.
 
 - **CS:** variable-timestep RAF with dt clamping; render reads sim `gameTime` directly (no interpolation).
+- [x] Physics/game boundary — `tick` + `world` through collision/constraint; full `state` stops at hook assembly in engine (snake combat via `setupSnakeGame` session hook).
 - [ ] ▶ **Next:** decouple a fixed-step sim accumulator from render, with render-side interpolation — removes timestep coupling that touches physics _and_ animation.
 
 ---
@@ -199,13 +200,15 @@ Scene snapshot **schema v9** — flat props, kinetic constraints, chain head, ro
 Collapsed tier checklists; click through to the spoke for CS detail and per-tier `▶ next`.
 
 <details>
-<summary><b>Physics</b> — ~58% · rigid-body sandbox · <a href="./physics.md">physics.md</a></summary>
+<summary><b>Physics</b> — ~62% · rigid-body sandbox · <a href="./physics.md">physics.md</a></summary>
 
 - [x] Body model + uniform-grid broadphase (SAT narrow phase)
 - [x] Semi-implicit Euler integration, fixed substeps, island sleep
 - [x] Sequential-impulse contact solve, distance constraints, chains
 - [x] Static voxel/rail walls, fracture, snake autosim payoff
-- [ ] ▶ Persistent contact manifolds (feature-id warm-start) + substep early-out
+- [x] Sim boundary peel — `{ frame, world }` tick, constraint slab, frame wall cache, `worldProps`, `runKineticPhysics(tick, dt, hooks)`
+- [ ] ▶ **GridNavContext** peel (nav/perception; independent of physics) — see [physics.md](./physics.md) peel part 4
+- [ ] Persistent contact manifolds (feature-id warm-start) + substep early-out polish
 - [ ] Revolute / motor joints; CCD (TOI); mixed-shape breakable chains
   </details>
 

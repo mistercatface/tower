@@ -17,6 +17,10 @@ Shipped for sandbox + snake autosim. Pause engine work here unless you need an i
 - Circles + convex polys + compound debris; circle–circle slab narrow phase + SAT for other tiers
 - Unified contact buffer + `kineticBodySlab` contact-pass mirror (writeback once per pass)
 - Distance constraints, island sleep/wake, dirty island rebuild, 1-hop link wake
+- **Tick/world peel** — `{ frame, world }` kinetic tick; constraint slab gather-once/resolve-many; body refs at link creation
+- **Frame-scoped wall candidates** — bucket cache on `SpatialFrameCore`, no `wallContext` wrapper
+- **`worldProps` canonical list** — cold-path `visitLiveWorldProps` / `findLiveWorldProp`; hot loops stay raw index walks
+- **Physics orchestration boundary** — `runKineticPhysics(tick, dt, hooks)`; game session supplies optional `applyContactSideEffects` (snake combat wired in `setupSnakeGame`)
 - Sequential-impulse contacts + Baumgarte constraints; warm-start decay cache
 - Pair list persistence across outer iters (`persistPairs`); body slab resync each contact pass
 - Active-set sleep; island internal pair skip; substep + outer early-out (slab-sync guard)
@@ -242,7 +246,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | **Constraint registry (distance)** | ✅ | 70 | `kineticConstraints.js`, PR 1 |
 | **Island rebuild dirty flag** | 🟡 | 70 | `markKineticConstraintsDirty`; skip union-find when topology unchanged |
 | Local anchor frames → world | ✅ | 75 | `constraintAnchors.js` |
-| **Post-contact constraint pass** | ✅ | 70 | `kineticConstraintSolver.js` |
+| **Post-contact constraint pass** | ✅ | 80 | `kineticConstraintSlab` gather-once / `resolveGatheredKineticConstraintSlab(tick)` |
 | Position + velocity correction | ✅ | 65 | no compliance matrix yet |
 | Constraint debug overlay (tension color) | ✅ | 75 | `kineticConstraintOverlays.js` |
 | Constraint warm-start | ⬜ | 0 | |
@@ -265,6 +269,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | Rail wall edge segments | ✅ | 75 | `setBoundary`, rail caverns |
 | Wall segment narrow phase | ✅ | 75 | `wallResolution.js` |
 | Wall resolver (per active body) | ✅ | 80 | `WallCollisionResolver.js` |
+| **Frame wall-candidate cache** | ✅ | 75 | `SpatialFrameCore.getWallCandidates`, bucket cache + `wallGridRevision` |
 | Wall hit wakes body | ✅ | 85 | |
 | Grid belts / floor effects | 🟡 | 40 | separate from rigid pipeline |
 | Forcefields / one-way | 🟡 | 35 | grid stamps, partial |
@@ -389,27 +394,47 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 |------|--------|
 | Autonomous snake (HPA head, eat food, grow segment) | ✅ |
 
+### Architecture peel — sim boundary cleanup (2026)
+
+Peel full `GameState` out of the hot physics path so `tick` + `world` carry spatial work and the engine/game layer inject hooks.
+
+| Part | Theme | Status |
+|------|-------|--------|
+| 1 | Kinetic tick interior — constraints on `tick`, constraint slab, body refs at link creation | ✅ |
+| 2 | Wall queries on frame — candidate cache, drop `wallContextFromState` | ✅ |
+| 3 | `worldProps` replaces `forEachOfKind("worldProp")` at world boundaries | ✅ |
+| 4 | `GridNavContext` for pathfinding / perception hot paths | ⬜ |
+| 5 | `runKineticPhysics(tick, dt, hooks)` — engine + game session own game hooks | ✅ |
+
 ---
 
 ## Recommended next unlocks (short path)
 
 1. ~~**Trilogy C PR 1 finish**~~ — v1 contact/coherence stack shipped (PRs 1–3).
-2. **Snake death rules** — lifecycle FSM, split-on-impact, predator–prey AI, inert fracture (`Plans/plan.md` snake trilogy).
-3. **v2 when needed** — manifold feature-ids, revolute/motor, editor breakable links, chain wall sweep.
+2. ~~**Sim boundary peel (parts 1–3, 5)**~~ — tick/world/hooks split landed; part 4 (`GridNavContext`) still open.
+3. **Snake as physics proving ground** — multi-head combat (`snakeMinLengthDeath`, split-on-impact), corridor link-capsule stress (`linkCapsuleWall`), perf gate (`snakePerfBudget`) — exercise the peeled stack under real gameplay before v2 joints/CCD.
+4. **GridNavContext (peel part 4)** — `{ grid, navCardinalOpen, vertexPassability, wallRevision }` built on grid change; thread through `gridCellVision` + nav worker payloads.
+5. **v2 when needed** — manifold feature-ids, revolute/motor, editor breakable links, chain wall sweep.
 
 ---
 
 ## Key file map
 
 ```
-Libraries/Motion/          — integration, sleep, constraints, walls
-Libraries/Spatial/collision/ — broadphase, pairs, kineticBodySlab, SAT, contact, pipeline
+GameState/KineticTick.js       — createKineticTick / kineticTickFromState (engine boundary only)
+GameState/EntityRegistry.js  — worldProps list, visitLiveWorldProps, findLiveWorldProp
+Libraries/Motion/kineticPhysicsPass.js — runKineticPhysics(tick, dt, hooks)
+Libraries/Motion/kineticConstraintSolver.js — kineticConstraintSlab gather/resolve
+Libraries/Spatial/collision/   — broadphase, pairs, kineticBodySlab, SAT, contact, pipeline
+Libraries/Spatial/world/SpatialFrameCore.js — frame + wall candidate cache
 Libraries/Sandbox/chainLinks.js — chain head, link API
-Systems/World/KineticSpatialFrame.js — frame + active set
-Apps/Editor/world/sandboxStartScene.js — stress chain demo
-tests/kinetic*.test.js, chainLinks.test.js, activeKineticBodies.test.js
+Libraries/Game/snake/setupSnakeGame.js — session.applyContactSideEffects (snake combat hook)
+Systems/World/KineticSpatialFrame.js — frame begin from worldProps
+Apps/Editor/engine.js          — simulationKineticHooks(state) assembly
+tests/harness/kineticTickHarness.js — createKineticTestTick, attachKineticTestTickFromState
+tests/kinetic*.test.js, linkCapsuleWall.test.js, snakeMinLengthDeath.test.js
 ```
 
 ---
 
-*Last updated: after trilogy B (constraints + islands + chain sandbox). Revisit percentages when trilogy C lands or snake autosim ships.*
+*Last updated: after sim-boundary peel (tick/world/hooks, constraint slab, frame wall cache, worldProps). Revisit percentages when GridNavContext lands or trilogy C manifold work ships.*
