@@ -1,4 +1,5 @@
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
+import { createGridNavContext, syncGridNavContext } from "../../Libraries/Navigation/GridNavContext.js";
 /**
  * Obstacle-driven nav sync — HPA worker graph patches and flow-field topology invalidation.
  */
@@ -14,6 +15,7 @@ export class NavigationService {
         this._workerNavGraphSyncChain = Promise.resolve();
         this.settings = settings;
         this.obstacleGeneration = 0;
+        this.gridNavContext = createGridNavContext(obstacleGrid);
     }
     /** @param {(grid: import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, bounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => { x: number, y: number }} fn */
     setPruneSeedResolver(fn) {
@@ -32,6 +34,7 @@ export class NavigationService {
         const grid = this._obstacleGrid;
         const topologyChanged = grid.gridTopologyEpoch !== this._lastGridTopologyEpoch;
         if (topologyChanged) this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
+        syncGridNavContext(this.gridNavContext, grid, topologyChanged ? null : damageBounds);
         this.flowFieldGrid.invalidateNavTopology();
         const run = () => this._syncWorkerNavGraph(grid, damageBounds, topologyChanged);
         this._workerNavGraphSyncChain = this._workerNavGraphSyncChain.then(run, run);

@@ -19,7 +19,7 @@ import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { createSnakeBrain } from "../Libraries/Game/snake/snakeBrain.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
-import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireTestGridNavContext } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
 
@@ -31,7 +31,7 @@ function createFsmTestState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    return {
+    const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
@@ -41,6 +41,8 @@ function createFsmTestState(cols = 32, rows = 32) {
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
         hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
     };
+    wireTestGridNavContext(state);
+    return state;
 }
 
 function stampWall(grid, col, row) {

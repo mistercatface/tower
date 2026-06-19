@@ -13,15 +13,16 @@ function collectOtherSnakeHeads(state, registry, selfHeadId) {
     }
     return heads;
 }
-function visibleThreatInRange(seeker, threat, rangeSq, grid, selfCell) {
+function visibleThreatInRange(seeker, threat, rangeSq, gridNavContext, selfCell) {
     if (!threat || threat.isDead) return null;
     const dx = threat.x - seeker.x;
     const dy = threat.y - seeker.y;
     const distSq = dx * dx + dy * dy;
     if (distSq > rangeSq) return null;
-    if (grid && selfCell) {
+    if (gridNavContext && selfCell) {
+        const grid = gridNavContext.grid;
         const threatCell = grid.worldToGrid(threat.x, threat.y);
-        if (!hasGridCellLineOfSight(grid, selfCell.col, selfCell.row, threatCell.col, threatCell.row)) return null;
+        if (!hasGridCellLineOfSight(gridNavContext, selfCell.col, selfCell.row, threatCell.col, threatCell.row)) return null;
     }
     return Math.sqrt(distSq);
 }
@@ -31,6 +32,7 @@ export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, vi
     const rangeSq = range * range;
     const candidates = collectOtherSnakeHeads(state, registry, selfHeadId);
     const selfScore = getSnakeSizeScore(state, selfHeadId);
+    const gridNavContext = state.navigation.gridNavContext;
     const grid = state.obstacleGrid;
     const selfCell = grid ? grid.worldToGrid(seeker.x, seeker.y) : null;
     let nearest = null;
@@ -38,14 +40,14 @@ export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, vi
     for (let i = 0; i < candidates.length; i++) {
         const head = candidates[i];
         if (getSnakeSizeScore(state, head.id) <= selfScore) continue;
-        const dist = visibleThreatInRange(seeker, head, rangeSq, grid, selfCell);
+        const dist = visibleThreatInRange(seeker, head, rangeSq, gridNavContext, selfCell);
         if (dist == null || dist >= bestDist) continue;
         bestDist = dist;
         nearest = head;
     }
     const snakeGame = state.sandbox.snakeGame;
     if (snakeGame) {
-        const strikerDist = visibleThreatInRange(seeker, snakeGame.strikerBall, rangeSq, grid, selfCell);
+        const strikerDist = visibleThreatInRange(seeker, snakeGame.strikerBall, rangeSq, gridNavContext, selfCell);
         if (strikerDist != null && strikerDist < bestDist) nearest = snakeGame.strikerBall;
     }
     return nearest;

@@ -18,7 +18,7 @@ import {
     pickSnakeIntentTarget,
     perceiveSnakeIntentWorld,
 } from "../Libraries/Game/snake/snakeIntent.js";
-import { createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { createWiredSnakeAutosim, createSnakeNavWalkable, wireTestGridNavContext } from "./harness/snakeGameHarness.js";
 import { spawnSnakeStriker } from "../Libraries/Game/snake/snakeStriker.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
@@ -34,7 +34,7 @@ function createTestState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    return {
+    const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
@@ -44,6 +44,8 @@ function createTestState(cols = 32, rows = 32) {
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
         hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
     };
+    wireTestGridNavContext(state);
+    return state;
 }
 
 function snakeBehaviors(state) {

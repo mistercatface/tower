@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { cellChebyshevDistance, pickExploreDestination, exploreFringeMinRankFromNewest } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
-import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, wireTestGridNavContext } from "./harness/snakeGameHarness.js";
 import { findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -31,7 +31,7 @@ function createIntentTestState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    return {
+    const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
@@ -41,6 +41,8 @@ function createIntentTestState(cols = 32, rows = 32) {
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
         hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
     };
+    wireTestGridNavContext(state);
+    return state;
 }
 
 function stampWall(grid, col, row) {

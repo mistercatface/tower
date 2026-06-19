@@ -5,7 +5,7 @@ import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { neighborFillLevel } from "./gridCellTopology.js";
-import { diagonalBoundaryBlockedFromVertexCache } from "./vertexPassability.js";
+import { diagonalBoundaryBlockedFromVertexCache, diagonalStepOpen } from "./vertexPassability.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {{ kind: "passage", mode?: string, allowedSide?: number, powered?: boolean }} PassageBoundarySpec */
 /** @typedef {RailWallBoundarySpec | PassageBoundarySpec} BoundaryPrimarySpec */
@@ -242,5 +242,21 @@ export function boundaryBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow) {
         return boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
     }
     if (dc !== 0 && dr !== 0) return diagonalBoundaryBlockedFromVertexCache(grid, fromCol, fromRow, toCol, toRow);
+    return false;
+}
+export function boundaryBlocksStepFromNavCaches(grid, navCardinalOpen, vertexPassability, fromCol, fromRow, toCol, toRow) {
+    if (grid.isBlocked(toCol, toRow)) return true;
+    if (beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow)) return true;
+    const dc = toCol - fromCol;
+    const dr = toRow - fromRow;
+    if (dc !== 0 && dr === 0) {
+        const side = dc > 0 ? 1 : 3;
+        return boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
+    }
+    if (dc === 0 && dr !== 0) {
+        const side = dr > 0 ? 2 : 0;
+        return boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, fromCol, fromRow, side);
+    }
+    if (dc !== 0 && dr !== 0) return !diagonalStepOpen(navCardinalOpen, vertexPassability, grid.cols, grid.rows, fromCol, fromRow, dc, dr);
     return false;
 }

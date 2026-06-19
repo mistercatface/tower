@@ -1,14 +1,5 @@
-import { boundaryBlocksStepFrom } from "../../Spatial/grid/boundaryOccupancy.js";
+import { boundaryBlocksStepFromNavCaches } from "../../Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
-import { recomputeNavCardinalOpen, recomputeVertexPassability } from "../../Spatial/grid/vertexPassability.js";
-
-function ensureBoundaryStepCaches(grid) {
-    const cellCount = grid.cols * grid.rows;
-    if (grid._boundaryStepCacheRevision === grid.wallGridRevision && grid.navCardinalOpen.length === cellCount) return;
-    recomputeNavCardinalOpen(grid);
-    recomputeVertexPassability(grid);
-    grid._boundaryStepCacheRevision = grid.wallGridRevision;
-}
 const HEADING_SPEED_MIN = 0.25;
 export function resolveObserverHeading(prop) {
     const vx = prop.vx ?? 0;
@@ -32,10 +23,10 @@ export function isWorldPointInVisionCone(originX, originY, heading, halfAngle, r
     const angle = Math.atan2(dy, dx);
     return Math.abs(normalizeAngleDelta(angle - heading)) <= halfAngle;
 }
-export function hasGridCellLineOfSight(grid, col0, row0, col1, row1) {
+export function hasGridCellLineOfSight(gridNavContext, col0, row0, col1, row1) {
+    const grid = gridNavContext.grid;
     if (!cellInRect(col1, row1, grid.cols, grid.rows)) return false;
     if (col0 === col1 && row0 === row1) return true;
-    ensureBoundaryStepCaches(grid);
     let x = col0;
     let y = row0;
     const dx = Math.abs(col1 - col0);
@@ -57,12 +48,13 @@ export function hasGridCellLineOfSight(grid, col0, row0, col1, row1) {
             ny = y + sy;
         }
         if (!cellInRect(nx, ny, grid.cols, grid.rows)) return false;
-        if (boundaryBlocksStepFrom(grid, x, y, nx, ny)) return false;
+        if (boundaryBlocksStepFromNavCaches(grid, gridNavContext.navCardinalOpen, gridNavContext.vertexPassability, x, y, nx, ny)) return false;
         x = nx;
         y = ny;
     }
 }
-export function collectVisibleGridCells(grid, originX, originY, heading, halfAngle, range) {
+export function collectVisibleGridCells(gridNavContext, originX, originY, heading, halfAngle, range) {
+    const grid = gridNavContext.grid;
     const { col: originCol, row: originRow } = grid.worldToGrid(originX, originY);
     const rangeCells = Math.ceil(range / grid.cellSize);
     const rangeSq = range * range;
@@ -78,22 +70,23 @@ export function collectVisibleGridCells(grid, originX, originY, heading, halfAng
             const dy = y - originY;
             if (dx * dx + dy * dy > rangeSq) continue;
             if (!isWorldPointInVisionCone(originX, originY, heading, halfAngle, range, x, y)) continue;
-            if (!hasGridCellLineOfSight(grid, originCol, originRow, col, row)) continue;
+            if (!hasGridCellLineOfSight(gridNavContext, originCol, originRow, col, row)) continue;
             cells.push({ col, row });
         }
     return cells;
 }
-export function queryGridCellVision(observer, candidates, { halfAngle, range, obstacleGrid }) {
+export function queryGridCellVision(observer, candidates, { halfAngle, range, gridNavContext }) {
     const heading = resolveObserverHeading(observer);
-    const cells = collectVisibleGridCells(obstacleGrid, observer.x, observer.y, heading, halfAngle, range);
+    const cells = collectVisibleGridCells(gridNavContext, observer.x, observer.y, heading, halfAngle, range);
     const visible = [];
-    const { col: originCol, row: originRow } = obstacleGrid.worldToGrid(observer.x, observer.y);
+    const grid = gridNavContext.grid;
+    const { col: originCol, row: originRow } = grid.worldToGrid(observer.x, observer.y);
     for (let i = 0; i < candidates.length; i++) {
         const target = candidates[i];
         if (target === observer || target.isDead) continue;
         if (!isWorldPointInVisionCone(observer.x, observer.y, heading, halfAngle, range, target.x, target.y)) continue;
-        const { col, row } = obstacleGrid.worldToGrid(target.x, target.y);
-        if (!hasGridCellLineOfSight(obstacleGrid, originCol, originRow, col, row)) continue;
+        const { col, row } = grid.worldToGrid(target.x, target.y);
+        if (!hasGridCellLineOfSight(gridNavContext, originCol, originRow, col, row)) continue;
         visible.push(target);
     }
     return { heading, halfAngle, range, cells, visible };

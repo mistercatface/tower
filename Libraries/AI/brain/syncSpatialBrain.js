@@ -4,12 +4,11 @@ export function createSpatialBrainSync(brain, { visionCone, brainSyncOffScreenIn
     let lastPenaltyGeneration = -1;
     let lastPenalty = null;
     return function syncSpatialBrain(seeker, state) {
-        const grid = state.obstacleGrid;
         const onScreen = state.viewport?.isVisible?.(seeker.x, seeker.y, (seeker.radius ?? 8) * 2) ?? true;
         const tick = (seeker._brainSyncTick = (seeker._brainSyncTick ?? 0) + 1);
         if (onScreen || tick % brainSyncOffScreenInterval === 0) {
             const heading = resolveObserverHeading(seeker);
-            const cells = collectVisibleGridCells(grid, seeker.x, seeker.y, heading, visionCone.halfAngle, visionCone.range);
+            const cells = collectVisibleGridCells(state.navigation.gridNavContext, seeker.x, seeker.y, heading, visionCone.halfAngle, visionCone.range);
             brain.stampSeenCells(cells);
         }
         const generation = brain.spatial.generation;

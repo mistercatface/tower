@@ -12,10 +12,15 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../..
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
 import { resolveSnakeNavWalkableFloodSeedBounds, spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
+import { createGridNavContext, syncGridNavContext } from "../../Libraries/Navigation/GridNavContext.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
 import { HpaPathSession } from "../../Libraries/Pathfinding/HpaPathSession.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
 loadPropAssets();
+export function wireTestGridNavContext(state) {
+    if (!state.navigation.gridNavContext) state.navigation.gridNavContext = createGridNavContext(state.obstacleGrid);
+    syncGridNavContext(state.navigation.gridNavContext, state.obstacleGrid);
+}
 export function wireSnakeTestNavSession(state) {
     if (state.hpaPathSession) return;
     const mockWorker = {
@@ -28,6 +33,7 @@ export function wireSnakeTestNavSession(state) {
     state.hpaPathSession = new HpaPathSession(state.hpaPathWorker);
     state.viewport = state.viewport ?? { isVisible: () => true, snapTo() {} };
     if (state.navigation.obstacleGeneration == null) state.navigation.obstacleGeneration = 0;
+    wireTestGridNavContext(state);
     state.navigation.settings = {
         stuckMoveThreshold: 0.5,
         stuckReplanFrames: 30,
