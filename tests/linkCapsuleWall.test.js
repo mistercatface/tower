@@ -15,7 +15,7 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
-import { wallContextFromState } from "../Libraries/Spatial/query/wallContext.js";
+import { wallContextFromObstacleGrid } from "../Libraries/Spatial/query/wallContext.js";
 
 loadPropAssets();
 
@@ -98,7 +98,7 @@ describe("link capsule wall projection", () => {
         state.worldProps.push(head, neck);
         const frame = new KineticSpatialFrame(16);
         frame.resetFrame(state.obstacleGrid);
-        frame.setWallContext(wallContextFromState(state));
+        frame.setWallContext(wallContextFromObstacleGrid(state.obstacleGrid));
         frame.insertEntity(head, 0);
         frame.insertEntity(neck, 1);
         head._physId = 0;
@@ -107,12 +107,14 @@ describe("link capsule wall projection", () => {
         frame._activeKineticBodies = [head, neck];
         const radius = Math.max(head.radius, neck.radius);
         const walls = [];
+        state.obstacleGrid.resetStaticWallProxyPool();
         state.obstacleGrid.appendStaticWallProxiesNearWorld((head.x + neck.x) * 0.5, (head.y + neck.y) * 0.5, 64, walls);
         let minClear = Infinity;
         for (let i = 0; i < walls.length; i++) minClear = Math.min(minClear, minDistanceSegmentToWall(head.x, head.y, neck.x, neck.y, walls[i]));
         assert.ok(minClear < radius, "fixture should start with link-capsule wall overlap");
         runCollisionPipeline(kineticTickFromState(state, frame), { resolveWalls: () => {}, kineticIterations: 4 });
         minClear = Infinity;
+        state.obstacleGrid.resetStaticWallProxyPool();
         state.obstacleGrid.appendStaticWallProxiesNearWorld((head.x + neck.x) * 0.5, (head.y + neck.y) * 0.5, 64, walls);
         for (let i = 0; i < walls.length; i++) minClear = Math.min(minClear, minDistanceSegmentToWall(head.x, head.y, neck.x, neck.y, walls[i]));
         assert.ok(minClear >= radius - 0.1, `expected link clearance >= ${radius}, got ${minClear}`);

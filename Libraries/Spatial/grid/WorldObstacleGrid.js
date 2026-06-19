@@ -117,8 +117,10 @@ export class WorldObstacleGrid {
         if ("gridSide" in proxy) delete proxy.gridSide;
         return proxy;
     }
-    appendStaticWallProxiesNearWorld(worldX, worldY, queryRadius, out) {
+    resetStaticWallProxyPool() {
         this._staticWallProxyCount = 0;
+    }
+    appendStaticWallProxiesNearWorld(worldX, worldY, queryRadius, out) {
         const { col: ec, row: er } = this.worldToGrid(worldX, worldY);
         const pad = 1 + Math.ceil(queryRadius / this.cellSize);
         const minCol = Math.max(0, ec - pad);

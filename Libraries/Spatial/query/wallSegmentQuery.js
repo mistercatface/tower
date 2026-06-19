@@ -24,6 +24,7 @@ export function collectWallSegmentsForEntity(_wallQuery, wallCtx, entity) {
 export function collectWallSegmentsAlongLine(wallCtx, x1, y1, x2, y2, queryRadius) {
     if (!wallCtx?.obstacleGrid) return [];
     const grid = wallCtx.obstacleGrid;
+    grid.resetStaticWallProxyPool?.();
     const dx = x2 - x1;
     const dy = y2 - y1;
     const len = Math.hypot(dx, dy);

@@ -182,6 +182,10 @@ function gatherLinkWallCandidates(spatialFrame, bodyA, bodyB, out) {
     out.length = 0;
     const candidatesA = spatialFrame.getWallCandidates(bodyA);
     const candidatesB = spatialFrame.getWallCandidates(bodyB);
+    if (candidatesA === candidatesB) {
+        for (let i = 0; i < candidatesA.length; i++) out.push(candidatesA[i]);
+        return;
+    }
     for (let i = 0; i < candidatesA.length; i++) out.push(candidatesA[i]);
     for (let i = 0; i < candidatesB.length; i++) {
         const seg = candidatesB[i];

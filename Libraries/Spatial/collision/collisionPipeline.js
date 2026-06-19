@@ -51,7 +51,7 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
  *
  * @param {{ frame: object, world: object }} tick
  * @param {{
- *   resolveWalls: (entity: object, frame: object) => void,
+ *   resolveWalls: (entity: object) => void,
  *   kineticIterations?: number,
  *   gameContext?: { snakeGame?: object, state?: object },
  *   applyContactSideEffects?: (tick: object, contacts: object) => void,
@@ -95,7 +95,7 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = g
                 if (!prop.strategy?.isKinetic) continue;
                 const wallCandidates = frame.getWallCandidates(prop);
                 if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
-                resolveWalls(prop, frame);
+                resolveWalls(prop);
             }
             frame.flushScheduledKineticActivations();
             if (earlyOut.enabled && outerIterationsRun >= earlyOut.minIterations) {

@@ -44,8 +44,8 @@ export function runKineticPhysics(tick, dt, state) {
         for (let i = world.worldProps.length - 1; i >= 0; i--) world.worldProps[i].update(subDt, state, frame);
         frame.reindexKineticBodies(activeBodies);
         runCollisionPipeline(tick, {
-            resolveWalls(entity, f) {
-                state.wallResolver.resolve(entity, f);
+            resolveWalls(entity) {
+                state.wallResolver.resolve(entity, frame);
             },
             gameContext,
         });
