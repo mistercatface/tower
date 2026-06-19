@@ -247,8 +247,8 @@ describe("snake predator prey autosim", () => {
         preyAutosim.start();
         predatorAutosim.tick(1 / 60);
         preyAutosim.tick(1 / 60);
-        assert.deepEqual(resolvePlayerSnakeCombatHud(predator.head.id, state, registry, autosimsByHeadId), { hunting: true, hunted: false, foraging: false });
-        assert.deepEqual(resolvePlayerSnakeCombatHud(prey.head.id, state, registry, autosimsByHeadId), { hunting: false, hunted: true, foraging: false });
+        assert.deepEqual(resolvePlayerSnakeCombatHud(predatorAutosim, state, registry, autosimsByHeadId), { hunting: true, hunted: false, foraging: false });
+        assert.deepEqual(resolvePlayerSnakeCombatHud(preyAutosim, state, registry, autosimsByHeadId), { hunting: false, hunted: true, foraging: false });
     });
 
     it("resolvePlayerSnakeCombatHud shows foraging when seeking food or exploring", () => {
@@ -264,6 +264,6 @@ describe("snake predator prey autosim", () => {
         autosimsByHeadId.set(snake.head.id, autosim);
         autosim.start();
         autosim.tick(1 / 60);
-        assert.deepEqual(resolvePlayerSnakeCombatHud(snake.head.id, state, registry, autosimsByHeadId), { hunting: false, hunted: false, foraging: true });
+        assert.deepEqual(resolvePlayerSnakeCombatHud(autosim, state, registry, autosimsByHeadId), { hunting: false, hunted: false, foraging: true });
     });
 });

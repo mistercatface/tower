@@ -1,7 +1,8 @@
 import { findNearestVisibleSnakePrey } from "./snakePredatorPrey.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-export function resolvePlayerSnakeCombatHud(playerHeadId, state, registry, autosimsByHeadId) {
-    const mode = autosimsByHeadId.get(playerHeadId).getMode();
+export function resolvePlayerSnakeCombatHud(playerAutosim, state, registry, autosimsByHeadId) {
+    const playerHeadId = playerAutosim.headId;
+    const mode = playerAutosim.getMode();
     const hunting = mode === "seek_prey";
     let hunted = mode === "flee";
     if (!hunted) {

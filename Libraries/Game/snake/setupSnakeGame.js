@@ -40,12 +40,11 @@ export async function setupSnakeGame(state) {
     const playerHeadId = playerSnake.chain.head.id;
     const playerAutosim = autosimsByHeadId.get(playerHeadId);
     const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
-    const getCombatStatus = () => resolvePlayerSnakeCombatHud(playerHeadId, state, registry, autosimsByHeadId);
+    const getCombatStatus = () => resolvePlayerSnakeCombatHud(playerAutosim, state, registry, autosimsByHeadId);
     const getFoodTimerFraction = () => playerAutosim.getFoodTimerFraction();
     const getFsmDebugLine = config.showSnakeFsmDebug ? () => playerAutosim.getFsmDebugLine() : null;
     const hud = mountSnakeHud(getSegmentCount, { getCombatStatus, getFoodTimerFraction, getFsmDebugLine });
     hud.update();
-    const snakeHeadIds = config.showAllSnakeVisionCones ? scene.snakes.map((snake) => snake.chain.head.id) : [playerHeadId];
     return {
         head: playerSnake.chain.head,
         goal: scene.goals[0],
@@ -55,12 +54,11 @@ export async function setupSnakeGame(state) {
         appendOverlayCommands(out, gameState) {
             appendSnakeGameOverlayCommands(out, gameState, {
                 autosimsByHeadId,
-                snakeHeadIds,
-                memoryHeatmapHeadId: playerHeadId,
-                fsmDebugHeadId: playerHeadId,
+                playerAutosim,
                 showVisionCones: config.showVisionCones,
                 showMemoryHeatmap: config.showMemoryHeatmap,
                 showSnakeFsmDebug: config.showSnakeFsmDebug,
+                showAllSnakeVisionCones: config.showAllSnakeVisionCones,
             });
         },
         getSegmentCount,
