@@ -11,6 +11,7 @@ import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { countLiveSnakeGoals, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 import { createSnakeBrain } from "./snakeBrain.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
+import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 function chainMemberProps(state, headId) {
     const ids = getChainMemberIds(state, headId);
@@ -78,8 +79,14 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
               rng,
           });
     let active = false;
+    const foodTimer = createSnakeFoodTimer(config.starvationIntervalSec);
+    const syncTailId = () => {
+        const liveMembers = chainMemberProps(state, headId);
+        tailId = liveMembers.length ? liveMembers[liveMembers.length - 1].id : headId;
+    };
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
     const eatGoal = (seeker, goal) => {
+        resetSnakeFoodTimer(foodTimer, config.starvationIntervalSec);
         const goalCell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
         brain.stampArrival(goalCell.col, goalCell.row);
         removeSandboxWorldProp(state, goal);
@@ -106,6 +113,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
     return {
         start() {
             active = true;
+            resetSnakeFoodTimer(foodTimer, config.starvationIntervalSec);
             intent.resetMode();
             intent.resetMemory();
             const seeker = resolveSeeker();
@@ -133,8 +141,12 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         getBrain() {
             return brain;
         },
-        tick(_dt) {
+        getFoodTimerFraction() {
+            return getSnakeFoodTimerFraction(foodTimer);
+        },
+        tick(dt) {
             if (!active) return;
+            let fedThisTick = false;
             const seeker = resolveSeeker();
             if (!seeker || seeker.isDead) return;
             intent.sync(seeker, state);
@@ -144,21 +156,25 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
                     const goal = choice.target;
                     const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
                     const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
-                    if (dist <= radius) eatGoal(seeker, goal);
+                    if (dist <= radius) {
+                        eatGoal(seeker, goal);
+                        fedThisTick = true;
+                    }
                 }
-                return;
+            } else {
+                const goal = resolveVisibleFood(seeker, state);
+                if (goal) {
+                    intent.enterSeek(seeker, goal, state);
+                    const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
+                    const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
+                    if (dist <= radius) {
+                        eatGoal(seeker, goal);
+                        fedThisTick = true;
+                    } else if (goal.id !== intent.getTrackedGoalId()) intent.enterSeek(seeker, goal, state);
+                    else if (!intent.hasMoveTarget(seeker)) intent.enterSeek(seeker, goal, state);
+                } else intent.refresh(seeker, state);
             }
-            const goal = resolveVisibleFood(seeker, state);
-            if (goal) {
-                intent.enterSeek(seeker, goal, state);
-                const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
-                const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
-                if (dist <= radius) eatGoal(seeker, goal);
-                else if (goal.id !== intent.getTrackedGoalId()) intent.enterSeek(seeker, goal, state);
-                else if (!intent.hasMoveTarget(seeker)) intent.enterSeek(seeker, goal, state);
-                return;
-            }
-            intent.refresh(seeker, state);
+            if (!fedThisTick && tickSnakeFoodTimer(state, headId, foodTimer, dt)) syncTailId();
         },
     };
 }

@@ -30,3 +30,17 @@ export function growSnakeChainAfterMeal(state, headId) {
     const segmentRadius = stepSnakeChainRadius(state, headId);
     return { segmentRadius, spacing: resolveSnakeSegmentSpacing(config, segmentRadius), linkSlack: config.linkSlack };
 }
+export function stepSnakeChainRadiusDown(state, headId) {
+    const config = getSnakeGameConfig();
+    const memberIds = getChainMemberIds(state, headId);
+    const current = getSnakeChainRadius(state, headId);
+    const next = Math.max(current - config.radiusPerMeal, config.startRadius);
+    if (next !== current) {
+        for (let i = 0; i < memberIds.length; i++) {
+            const prop = state.entityRegistry.getLive(memberIds[i]);
+            setCirclePropRadius(prop, next);
+        }
+        resyncChainLinkRestLengths(state, memberIds, config.linkSlack);
+    }
+    return next;
+}

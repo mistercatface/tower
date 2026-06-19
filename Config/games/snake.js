@@ -51,6 +51,8 @@ export const SNAKE_GAME_DEFAULTS = {
     fleeRange: null,
     /** HPA flee waypoint distance away from the threat (world units). */
     fleeMinDistance: 96,
+    /** Seconds without food before a snake sheds one tail segment and shrinks. */
+    starvationIntervalSec: 30,
     showKineticSolverStats: false,
     /** Optional vision cone override for the player snake only; null uses visionCone. */
     playerVisionCone: null,

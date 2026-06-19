@@ -1,5 +1,5 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, getCombatStatus = null } = {}) {
+export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, getCombatStatus = null, getFoodTimerFraction = null } = {}) {
     const stage = document.querySelector("#gameStage");
     if (!stage) return { update() {}, destroy() {} };
     const showCombat = getSnakeGameConfig().predatorPreyEnabled && getCombatStatus != null;
@@ -8,6 +8,9 @@ export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, g
     root.innerHTML =
         '<div class="snake-hud-panel"><span class="snake-hud-label">Length</span><span class="snake-hud-value" data-snake-length>0</span></div>' +
         '<div class="snake-hud-panel"><span class="snake-hud-label">Best</span><span class="snake-hud-value" data-snake-best>0</span></div>' +
+        (getFoodTimerFraction
+            ? '<div class="snake-hud-panel snake-hud-food"><span class="snake-hud-label">Food</span><div class="snake-hud-food-track"><div class="snake-hud-food-fill" data-snake-food-fill></div></div></div>'
+            : "") +
         (showCombat
             ? '<div class="snake-hud-panel snake-hud-combat"><span class="snake-hud-label">Status</span><div class="snake-hud-combat-row"><span class="snake-hud-chip snake-hud-chip-foraging" data-snake-foraging>Foraging</span><span class="snake-hud-chip snake-hud-chip-hunting" data-snake-hunting>Hunting</span><span class="snake-hud-chip snake-hud-chip-hunted" data-snake-hunted>Hunted</span></div></div>'
             : "") +
@@ -15,6 +18,7 @@ export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, g
     stage.appendChild(root);
     const lengthEl = root.querySelector("[data-snake-length]");
     const bestEl = root.querySelector("[data-snake-best]");
+    const foodFillEl = getFoodTimerFraction ? root.querySelector("[data-snake-food-fill]") : null;
     const foragingEl = showCombat ? root.querySelector("[data-snake-foraging]") : null;
     const huntedEl = showCombat ? root.querySelector("[data-snake-hunted]") : null;
     const huntingEl = showCombat ? root.querySelector("[data-snake-hunting]") : null;
@@ -26,6 +30,7 @@ export function mountSnakeHud(getSegmentCount, { getKineticSolverStats = null, g
         update() {
             const length = getSegmentCount();
             lengthEl.textContent = String(length);
+            if (getFoodTimerFraction && foodFillEl) foodFillEl.style.width = `${Math.round(getFoodTimerFraction() * 100)}%`;
             if (getCombatStatus && foragingEl && huntedEl && huntingEl) {
                 const { foraging, hunting, hunted } = getCombatStatus();
                 foragingEl.classList.toggle("is-active", foraging);

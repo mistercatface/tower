@@ -33,9 +33,11 @@ export async function setupSnakeGame(state) {
     if (!playerSnake) throw new Error("Snake game config requires one snake with cameraFollow: true");
     void state.navigation.onObstaclesChanged(null);
     const playerHeadId = playerSnake.chain.head.id;
+    const playerAutosim = autosimsByHeadId.get(playerHeadId);
     const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
     const getCombatStatus = () => resolvePlayerSnakeCombatHud(playerHeadId, registry, autosimsByHeadId);
-    const hud = mountSnakeHud(getSegmentCount, { getKineticSolverStats: config.showKineticSolverStats ? () => state.sandbox.kineticSolverStats ?? null : null, getCombatStatus });
+    const getFoodTimerFraction = () => playerAutosim.getFoodTimerFraction();
+    const hud = mountSnakeHud(getSegmentCount, { getKineticSolverStats: config.showKineticSolverStats ? () => state.sandbox.kineticSolverStats ?? null : null, getCombatStatus, getFoodTimerFraction });
     hud.update();
     const snakeHeadIds = config.showAllSnakeVisionCones ? scene.snakes.map((snake) => snake.chain.head.id) : [playerHeadId];
     return {
@@ -53,10 +55,11 @@ export async function setupSnakeGame(state) {
             return autosimsByHeadId.get(headId)?.getBrain() ?? null;
         },
         getSegmentCount,
-        tick(_dt) {
+        tick(dtMs) {
+            const dtSec = dtMs / 1000;
             for (const [headId, autosim] of autosimsByHeadId) {
                 if (!isAliveSnakeHead(registry, headId)) continue;
-                autosim.tick(_dt);
+                autosim.tick(dtSec);
             }
             hud.update();
         },
