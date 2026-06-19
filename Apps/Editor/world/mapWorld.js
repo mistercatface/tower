@@ -3,9 +3,9 @@ import { gridSettings } from "../../../Config/world.js";
 import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
-import { bakeSnakeRailBspMaze } from "../../../Libraries/Game/snake/snakeRailBspMaze.js";
+import { bakeRailMazeDfs } from "../../../Libraries/Procedural/Mazes/railMazeDfs.js";
+import { stampGlobalRailWalls } from "../../../Libraries/Procedural/Mazes/stampRailWalls.js";
 import { commitBoundaryEdit } from "../../../Libraries/Sandbox/boundaryEdit.js";
-import { stampRailWallsBatch } from "../../../Libraries/Sandbox/gridWallEdit.js";
 import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
@@ -306,19 +306,7 @@ function clearRailZoneNorthStrip(grid, startCol, endCol, startRow, endRow, strip
         }
     return { startCol, endCol, startRow, endRow: lastRow };
 }
-function stampGlobalRailWalls(state, rails) {
-    const grid = state.obstacleGrid;
-    const cellSize = gridSettings.cellSize;
-    const gridRails = [];
-    for (let i = 0; i < rails.length; i++) {
-        const wall = rails[i];
-        const { col, row } = grid.worldToGrid(wall.col * cellSize, wall.row * cellSize);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        gridRails.push({ col, row, side: wall.side, heightLevel: wall.heightLevel, thicknessLevel: wall.thicknessLevel });
-    }
-    stampRailWallsBatch(state, gridRails);
-}
-export async function generateLabRailBspMaze(state, options = {}) {
+export async function generateLabRailDfsMaze(state, options = {}) {
     const { railConfig } = state.editor;
     const cellSize = gridSettings.cellSize;
     const stampBoundsAabb = getMapGenBoundsAabb(railConfig, cellSize);
@@ -331,14 +319,11 @@ export async function generateLabRailBspMaze(state, options = {}) {
     const startRow = Math.max(0, baseRow);
     const endRow = Math.min(grid.rows - 1, baseRow + rows - 1);
     clearRailStampCellBounds(grid, startCol, endCol, startRow, endRow);
-    const rails = bakeSnakeRailBspMaze(
+    const rails = bakeRailMazeDfs(
         { originCol, originRow, cols, rows },
         {
             railWallHeightLevel: options.railWallHeightLevel ?? railConfig.wallHeightLevel,
             railWallThicknessLevel: options.railWallThicknessLevel ?? railConfig.edgeThickness,
-            roomSizeMin: options.roomSizeMin,
-            roomSizeMax: options.roomSizeMax,
-            roomMargin: options.roomMargin,
             corridorWidthMin: options.corridorWidthMin,
             corridorWidthMax: options.corridorWidthMax,
             extraLinkRatio: options.extraLinkRatio,

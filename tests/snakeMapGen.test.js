@@ -8,7 +8,7 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { collectSnakeGoalProps } from "../Libraries/Game/snake/snakeGoals.js";
 import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
-import { collectOpenCavernCells } from "../Libraries/Sandbox/cavernFloorCells.js";
+import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
 import { boundaryBlocksStepFrom } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -132,7 +132,7 @@ async function analyzeSnakeSplitMap(mapSeed, playAreaCells = 64) {
     const rail = countWalkableInBounds(state, railConfig);
     const padConfig = paddingBounds(state);
     const padding = countWalkableInBounds(state, padConfig);
-    const openCavernCells = collectOpenCavernCells(state);
+    const openCavernCells = collectWalkableCells(state);
     const start = pickCavernSouthOpenCell(state, openCavernCells);
     const visited = start ? floodFillWalkable(state, start.col, start.row) : new Set();
     const padReach = countVisitedInBounds(visited, state, padConfig);

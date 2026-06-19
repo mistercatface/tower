@@ -17,7 +17,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
-import { collectOpenCavernCells } from "../Libraries/Sandbox/cavernFloorCells.js";
+import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 
 loadPropAssets();
@@ -75,7 +75,7 @@ describe("explore steering", () => {
     it("pickExploreDestination respects minimum tile distance", () => {
         const state = createIntentTestState();
         const grid = state.obstacleGrid;
-        const openCells = collectOpenCavernCells(state);
+        const openCells = collectWalkableCells(state);
         const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells, rng: () => 0, fringeRatio: 0.25 });
         assert.ok(cell);
         assert.ok(cellChebyshevDistance(10, 10, cell.col, cell.row) >= 8);
@@ -84,7 +84,7 @@ describe("explore steering", () => {
     it("prefers destinations outside spatial memory", () => {
         const state = createIntentTestState();
         const grid = state.obstacleGrid;
-        const openCells = collectOpenCavernCells(state);
+        const openCells = collectWalkableCells(state);
         const memory = createSpatialCellMemory({ capacity: 64 });
         memory.stamp(18, 10);
         const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, memory, openCells, rng: () => 0, fringeRatio: 0.25 });
@@ -95,7 +95,7 @@ describe("explore steering", () => {
     it("prefers fresh cells over recently remembered cells", () => {
         const state = createIntentTestState();
         const grid = state.obstacleGrid;
-        const openCells = collectOpenCavernCells(state);
+        const openCells = collectWalkableCells(state);
         const memory = createSpatialCellMemory({ capacity: 8 });
         memory.stamp(12, 10);
         const cell = pickExploreDestination(grid, 10, 10, { minTiles: 1, memory, openCells, rng: () => 0, fringeRatio: 0.25 });

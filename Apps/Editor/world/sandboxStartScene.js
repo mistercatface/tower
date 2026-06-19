@@ -5,7 +5,7 @@ import { addDistanceConstraint } from "../../../Libraries/Motion/kineticConstrai
 import { setChainHead } from "../../../Libraries/Sandbox/chainLinks.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { SANDBOX_DEFAULT_FACTION, sandboxFactions } from "../../../Libraries/Sandbox/sandboxFaction.js";
-import { collectOpenCavernCells } from "../../../Libraries/Sandbox/cavernFloorCells.js";
+import { collectWalkableCells } from "../../../Libraries/Procedural/Mazes/walkableCells.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns } from "./mapWorld.js";
 const STRESS_CHAIN_SEGMENT_COUNT = 45;
@@ -79,7 +79,7 @@ function buildChainPathThroughCavern(openCells, segmentCount) {
 }
 function spawnCavernStressChain(state) {
     const grid = state.obstacleGrid;
-    const openCells = collectOpenCavernCells(state);
+    const openCells = collectWalkableCells(state);
     if (!openCells.length) throw new Error("Cavern has no open floor cells for chain placement");
     withSeededRandom(state.mapSeed + 2, () => {
         shuffleInPlace(openCells);
@@ -100,7 +100,7 @@ function spawnCavernStressChain(state) {
 function spawnCavernStressProps(state) {
     const grid = state.obstacleGrid;
     const cellSize = grid.cellSize;
-    const openCells = collectOpenCavernCells(state);
+    const openCells = collectWalkableCells(state);
     if (!openCells.length) throw new Error("Cavern has no open floor cells for prop placement");
     spawnCavernStressChain(state);
     withSeededRandom(state.mapSeed + 3, () => {

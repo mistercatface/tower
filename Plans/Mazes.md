@@ -1,165 +1,177 @@
-# Maze & level layout generators — research tree
+# Mazes & spatial layout — research tree
 
-Progress tracker and CS index for maze generation algorithms and spatial layout generators: spanning trees, loop-injection (imperfect mazes), space partitioning (BSP), agent-carving (drunkard's walk), constraint satisfaction (WFC), and grammar-based layout. Percentages represent **honest engineering readiness** (shipped, verified, and wired to gameplay).
+Progress tracker and **computer-science index** for maze generation: spanning trees, cycle injection, space partitioning, agent carving, constraint propagation, and grammar-based layout. Percentages are **honest engineering readiness** (shipped, verified, wired to gameplay).
 
-**Legend:** ✅ shipped · 🟡 partial · ⬜ not started · 🔗 owned by another doc (referenced here) · 🔜 planned
+**Legend:** ✅ shipped · 🟡 partial · ⬜ not started · 🔗 owned by another doc · 🔜 planned
 
----
+**Related docs (overlap OK for now — consolidate later):**
 
-## Scope & ownership
-
-This document serves as the master catalog and technical roadmap for **maze-building and spatial layout algorithms**.
-
-| Paradigm | Primary CS Technique | Visual/Gameplay Characteristic |
-|---|---|---|
-| **Perfect Grid Mazes** | Spanning Tree Algorithms (DFS, Kruskal's, Prim's) | Tight, winding, single-path corridors; no loops or open chambers. |
-| **Imperfect & Loopy Mazes** | Graph Cycle Injection, Spanning Forests | Winding corridors with loops, shortcuts, and dead-end removals. |
-| **Space Partitioning** | Binary Space Partitioning (BSP), Quadtrees | Structured room-and-corridor layouts; rectangular subdivisions. |
-| **Agent-Based Carving** | Drunkard's Walk, Self-Avoiding Agents | Organic, cavernous, or messy winding paths. |
-| **Constraint-Based Layout** | Wave Function Collapse (WFC), SAT Solvers | Tile-based local-pattern matching; highly structured constraints. |
-| **Grammar-Based Layout** | Graph Grammars, L-Systems | Mission-to-space mapping; topological keys, locks, and progression. |
+- 🔗 [`procedural.md`](procedural.md) — end-to-end procgen pipeline, room graph model, corridor **solver bridge**, bake-to-geometry, world scale
+- 🔗 [`pathfinding.md`](pathfinding.md) — corridor A\*, HPA, `canStep` / boundary graph
+- 🔗 [`rendering.md`](rendering.md) — wall atlas (voxel fill) vs edge-rail draw (boundary graph)
 
 ---
 
-## Where this sits vs standard level generators
+## The confusion: voxel fill vs rail walls (read this first)
 
-This comparison maps maze and level generation paradigms against classic game implementations.
+Two different **geometry roles** on the same four-way **cell-edge graph**. Mixing the names is why rails “look like shit” when treated as chunky voxels.
 
-| Paradigm | This engine | Classic Game Examples | CS Core |
-|---|---|---|---|
-| **Grid-Rail DFS Maze** | ✅ Shipped | Pac-Man, Snake, classic pencil-and-paper mazes | Randomized Depth-First Search over a cell-edge boundary grid |
-| **Hollow-Room BSP** | 🟡 Replaced | Rogue, NetHack, Diablo I | Hierarchical division of space using BSP trees + corridor connectors |
-| **Organic Caves** | ✅ Shipped | Spelunky, Terraria, Minecraft | Cellular Automata majority-rule smoothing on randomly filled grids |
-| **Topological Progression** | ⬜ Not started | Zelda dungeons, Metroidvania maps | Graph Grammars separating "Mission (key/lock keys)" from "Space" |
-| **Micro-Structure Detail** | ⬜ Not started | Townscaper, Bad North | Wave Function Collapse (WFC) propagating local adjacency rules |
+|                       | **Voxel maze**                                                 | **Rail-wall maze**                                                                              |
+| --------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **What blocks**       | Filled `grid[]` cells (solid mass)                             | `railWall` entries on **shared edges** between walkable cells                                   |
+| **Walkable space**    | Empty cells (`grid[] === 0`)                                   | Same — floor cells stay empty; walls are _boundaries_                                           |
+| **Typical CS output** | CA-smoothed rock field, noise threshold, or carved cell bitmap | Perfect/imperfect maze on dual graph: **spanning tree + optional cycle injection** → edge rails |
+| **Visual**            | Iso building mass / cave blob                                  | Thin corridor **rails** (editor corridor look)                                                  |
+| **Stamp API**         | `stampStaticWalls(cells)`                                      | `setBoundary(… railWall …)` / `stampRailWallsBatch`                                             |
+| **LOS / nav**         | `grid.isBlocked` + `boundaryBlocksStepFrom`                    | Same boundary pipeline — rails must use edge graph, not fake voxels                             |
 
----
-
-## Fundamentals checklist — textbook maze & layout coverage
-
-Which **CS maze and level layout building blocks** exist in the codebase? `[x]` = implemented and used · `[~]` = present as a narrow/special case · `[ ]` = absent.
-
-### Spanning Trees (Perfect Mazes)
-- [x] **Randomized DFS (Backtracking)** — implemented in `snakeRailBspMaze.js` to build tight winding corridors.
-- [ ] **Kruskal's Algorithm** — absent; randomized minimum spanning tree algorithm.
-- [ ] **Prim's Algorithm** — absent; randomized vertex-addition algorithm.
-- [ ] **Wilson's Algorithm** — absent; generates unbiased uniform spanning trees via loop-erased random walks.
-
-### Cycle Injection (Loopy Mazes)
-- [x] **Dead-End Wall Removal** — implemented via `extraLinkRatio` which randomly clears remaining closed boundaries to create cycles/loops.
-- [x] **Room Chamber Merging** — implemented by merging 2x2 logical cell blocks to create larger open chambers in the maze.
-
-### Space Partitioning (Subdivisions)
-- [ ] **Binary Space Partitioning (BSP)** — absent; previously attempted room splits without boundary edges, currently not represented.
-- [ ] **Voronoi / Delaunay Layouts** — absent for layout synthesis (exists in nav regions and shaders).
-
-### Agent Carving
-- [ ] **Drunkard's Walk** — absent; random-walk carving.
-- [ ] **Mining Agents** — absent; directional agents that respect grid layouts.
+**Rule:** Pick one primary wall representation per chunk. Connecting chunks = open strips + shared walkable cells, not “voxel wall where a rail should be.”
 
 ---
 
-## Tiers of Maze & Level Generators
+## Generator checklist — by geometry type
 
-### Tier 0 — Perfect Grid Mazes (Spanning Trees)
-Perfect mazes have exactly one path between any two cells, resulting in a tree structure.
+Use this as the narrow vocabulary going forward. `[x]` = in repo and used · `[~]` = partial / misnamed / fallback · `[ ]` = not built.
 
-| Item | Status | % | Notes |
-|------|--------|---|-------|
-| Randomized DFS | ✅ | 100 | Winding, nested corridors. Shipped in [snakeRailBspMaze.js](file:///c:/Users/mrjbl/Desktop/tower/Libraries/Game/snake/snakeRailBspMaze.js) |
-| Randomized Kruskal's | ⬜ | 0 | Generates shorter, more fragmented corridors (forest merge) |
-| Randomized Prim's | ⬜ | 0 | Generates high branch-factor mazes (radial growth) |
-| Wilson's Algorithm | ⬜ | 0 | Perfect uniform distribution, unbiased corridors |
+### A — Voxel-fill mazes (cell occupancy)
 
-**Branch progress: 25%**
+| ID            | CS technique                                            | Status | Where / notes                                                        |
+| ------------- | ------------------------------------------------------- | ------ | -------------------------------------------------------------------- |
+| **V-CA**      | Cellular automata (Moore, majority rule) on random fill | ✅     | `cellularAutomata.js` → `generateLabCaverns` — organic caves         |
+| **V-CA-rail** | CA on **edge grid** (horizontal + vertical edge arrays) | 🟡     | `generateLabRailCaverns` — rail CA; snake fallback only, often muddy |
+| **V-noise**   | Perlin / threshold / worm                               | ⬜     | —                                                                    |
+| **V-carve**   | Drunkard’s walk / recursive backtracker on **cells**    | ⬜     | —                                                                    |
 
----
+### B — Rail-edge mazes (boundary graph)
 
-### Tier 1 — Imperfect & Loopy Mazes
-Essential for active gameplay like snake or combat, as perfect tree-structure mazes create trap-prone dead ends.
+| ID                              | CS technique                                                                       | Status | Where / notes                                           |
+| ------------------------------- | ---------------------------------------------------------------------------------- | ------ | ------------------------------------------------------- |
+| **R-DFS**                       | Randomized DFS spanning tree on logical cell graph → open walls → `railWall` stamp | ✅     | `Libraries/Procedural/Mazes/railMazeDfs.js`             |
+| **R-loop**                      | Cycle injection (`extraLinkRatio` wall clearance)                                  | ✅     | Same file                                               |
+| **R-chamber**                   | Local wall removal / 2×2 merges (open pockets)                                     | ✅     | Same file                                               |
+| **R-mask**                      | Binary **floor mask** → outline walkable → `railWallsFromFloorMask`                | ✅     | `roomGraphCorridorRails.js` — shared with corridor bake |
+| **R-BSP**                       | BSP room leaves + MST inter-room links → floor mask → rails                        | ⬜     | Planned; do **not** confuse with shipped R-DFS          |
+| **R-Prim / R-Kruskal / Wilson** | Other spanning-tree samplers on dual graph                                         | ⬜     | Same stamp path as R-DFS                                |
 
-| Item | Status | % | Notes |
-|------|--------|---|-------|
-| Randomized Wall Clearance | ✅ | 100 | Uses `extraLinkRatio` to inject loops |
-| 2x2 Chamber Merges | ✅ | 100 | Merges adjacent cells to create open room pockets |
-| Dead-End Trimming | ⬜ | 0 | Recursively prunes nodes with degree 1 |
-| Spanning Forest Generation | ⬜ | 0 | Generates multiple disjoint trees, then links them selectively |
+### C — Room-graph + corridor solver (separate track — do not forget)
 
-**Branch progress: 50%**
+| ID             | Technique                                                   | Status | Where / notes                                                       |
+| -------------- | ----------------------------------------------------------- | ------ | ------------------------------------------------------------------- |
+| **G-room**     | Authored / manual rect nodes + links                        | ✅     | `RoomGraph/` — editor-first                                         |
+| **G-bake**     | Closed rooms + gap keys → perimeter rails                   | ✅     | `roomGraphBake`, `roomGraphClosedRooms`                             |
+| **G-corridor** | A\* corridor bundle between room rects → floor mask → rails | ✅     | `corridorBundle.js`, `roomGraphCorridorApply` — 🔗 `pathfinding.md` |
+| **G-auto**     | Seed → auto room graph (BSP / packing / MST)                | ⬜     | 🔗 `procedural.md` Tier 11                                          |
 
----
+This pipeline is **not** the snake autosim default. It is the right tool for **structured dungeon chunks** and editor room links.
 
-### Tier 2 — Space Partitioning (BSP & Subdivisions)
-Structured layouts where space is recursively split and rooms are carved inside the leaves.
+### D — Directed / one-way mazes (future)
 
-| Item | Status | % | Notes |
-|------|--------|---|-------|
-| BSP Room Divison | ⬜ | 0 | Split horizontal/vertical planes to generate room blocks |
-| Quadtree Partitioning | ⬜ | 0 | Recursive 4-way splitting for multi-scale room layouts |
-| Corridor Graph Connectors | ⬜ | 0 | Minimum Spanning Tree (MST) on leaf centers to connect rooms |
+| ID            | Technique                                                | Status | Notes                                                  |
+| ------------- | -------------------------------------------------------- | ------ | ------------------------------------------------------ |
+| **D-belt**    | Perfect maze + **one-way floor belts** on corridor cells | ⬜     | Use `floorStore` + belt facing; graph becomes directed |
+| **D-passage** | One-way **forcefield** edges instead of belts            | ⬜     | `PASSAGE_MODE.OneWay` on boundary graph                |
+| **D-graph**   | Strongly connected components / Eulerian trail puzzles   | ⬜     | Gameplay validation 🔗 `AI.md`                         |
 
-**Branch progress: 0%**
-
----
-
-### Tier 3 — Agent-Based Carving
-Generates organic, winding tunnels and cave corridors through step-by-step mining.
-
-| Item | Status | % | Notes |
-|------|--------|---|-------|
-| Drunkard's Walk | ⬜ | 0 | Carves grid cells using a biased random walk |
-| Corridors with Inertia | ⬜ | 0 | Agent maintains direction for N steps, generating straight hallways |
-| Self-Avoiding Walks | ⬜ | 0 | Carver avoids wrapping back onto their own paths |
-
-**Branch progress: 0%**
+Belts and one-way passages belong in this doc as **maze semantics**, not just floor props.
 
 ---
 
-### Tier 4 — Constraint-Based Layouts (WFC & SAT)
-Arranges tiles or rooms according to strict adjacency rules, propagating constraints to avoid invalid configurations.
+## CS algorithm index (textbook names)
 
-| Item | Status | % | Notes |
-|------|--------|---|-------|
-| Wave Function Collapse (WFC) | ⬜ | 0 | Synthesizes local tile grids based on input samples |
-| Arc Consistency (AC-3) | ⬜ | 0 | Constraint propagation during cell placement |
-| Backtracking Solver | ⬜ | 0 | Backtracks when WFC reaches a contradiction state |
-
-**Branch progress: 0%**
-
----
-
-### Tier 5 — Grammar-Based Dungeons (Zelda-style)
-Layouts generated top-down, separating the mission (the logical flow of keys, locks, and bosses) from the physical space.
-
-| Item | Status | % | Notes |
-|------|--------|---|-------|
-| Mission Graph Synthesis | ⬜ | 0 | Node graph representing keys, locks, and goals |
-| Graph Rewriting Rules | ⬜ | 0 | Graph grammar replacement to increase dungeon depth |
-| Spatial Layout Mapping | ⬜ | 0 | Maps the abstract mission nodes to grid coordinates |
-
-**Branch progress: 0%**
+| Paradigm           | Primary CS technique                                     | Shipped here?                                               |
+| ------------------ | -------------------------------------------------------- | ----------------------------------------------------------- |
+| Perfect grid maze  | Randomized DFS / Prim / Kruskal / Wilson on dual graph   | R-DFS only                                                  |
+| Imperfect maze     | Uniform edge removal / extra openings (`extraLinkRatio`) | ✅                                                          |
+| Space partitioning | BSP, quadtrees → room rects                              | ⬜ (G-auto)                                                 |
+| Room connectivity  | MST on room centroids                                    | ⬜ (corridor solver does pairwise A\*, not full layout MST) |
+| Agent carving      | Drunkard’s walk, self-avoiding walk                      | ⬜                                                          |
+| Constraint layout  | WFC, AC-3                                                | ⬜                                                          |
+| Grammar layout     | Mission graph + spatial embedding                        | ⬜                                                          |
+| Organic mass       | CA majority rule                                         | V-CA ✅                                                     |
 
 ---
 
-## What's Shipped vs What's Recommended Next
+## Snake today (reference implementation — not the library home)
 
-### Shipped Primitives
-1. **Randomized DFS Grid-Rail Carver**: Built directly on the cell-edge boundary graph, producing high-quality winding corridors.
-2. **Loopy-Passage Clearance & Chambers**: Overcomes perfect-maze bottlenecks, creating playable arenas for AI and players.
+Current split map (`snakeScene.generateSnakeSplitMap`):
 
-### Recommended Next Layout Primitives
-1. **Dungeon BSP Generator (Tier 2)**: Write a generator that creates hierarchical room divisions and connects them via a Minimum Spanning Tree (MST). This is the key tool for traditional room-and-corridor layouts.
-2. **Drunkard's Walk Tunnel Carver (Tier 3)**: An organic tunnel generator that offers a visual contrast to cellular-automata caves.
-3. **Dead-End Pruning (Tier 1)**: A utility to clean up small 1-cell dead ends from loopy mazes, leaving only circular pathways.
+1. **Upper chunk:** V-CA cavern (`generateLabCaverns`)
+2. **Padding strip:** cleared walkable (`clearSnakeRegionPaddingStrip`)
+3. **Lower chunk:** R-DFS rail maze (`generateLabRailDfsMaze` + `stampGlobalRailWalls`)
+
+Food/spawn pool: `collectSnakePlayableOpenCells` (full inner play bounds — cavern + pad + rail).
+
+**Honest debt:** maze **math** lives in `Libraries/Procedural/Mazes/`; snake only chooses chunk recipes via `snakeScene`.
 
 ---
 
-## Key File References
+## 🔜 Maze garden — 1024×1024 autosnake endgame
 
+Target: one large world (`playAreaCols/Rows` → 1024), **not** one monolithic generator. A **chunk composer** places fixed-size regions (e.g. 64×64 or 128×128), each with a `(geometry, algorithm)` recipe from the checklist above, stitched with deterministic **interface strips** (open rows/cols, matching padding rules).
+
+```text
+world seed
+  → chunk grid (cx, cy)
+  → per chunk: pick recipe from table (seed + biome + distance)
+  → stamp into expanded obstacleGrid
+  → seam pass: ensure cross-chunk walkability (vent carving / boundary clear)
+  → nav epoch bump per dirty chunk
 ```
-Plans/Mazes.md                     — This document
-Libraries/Game/snake/
-  snakeRailBspMaze.js               — Seeded DFS grid-rail generator
-tests/
-  snakeRailBspMaze.test.js          — Unit tests validating DFS and determinism
+
+**Recipe table (initial):**
+
+| Chunk tag        | Geometry | Algorithm                          | When to use                                |
+| ---------------- | -------- | ---------------------------------- | ------------------------------------------ |
+| `cavern-dense`   | Voxel    | V-CA (high fill)                   | Claustrophobic tops, loot density          |
+| `cavern-vent`    | Voxel    | V-CA + south/north open strip      | Vertical connectors between bands          |
+| `rail-dfs-tight` | Rail     | R-DFS, low extraLinkRatio          | Classic maze corridors                     |
+| `rail-dfs-loopy` | Rail     | R-DFS + high extraLinkRatio        | Combat / chase loops                       |
+| `rail-rooms`     | Rail     | G-corridor bake on mini room graph | Structured pocket (editor-quality)         |
+| `pad`            | —        | cleared strip                      | Mandatory seam between incompatible chunks |
+
+Snake-specific: player bias to lower bands early; endgame fills more of the 1024²; HPA already supports expandable grid — chunk composer must **expandToCoverAabb** incrementally.
+
+---
+
+## Recommended next engineering (layout primitives)
+
+1. ~~**Rename & relocate:** `snakeRailBspMaze` → `railMazeDfs.js`~~ ✅
+2. **R-BSP chunk:** BSP leaves → floor mask → `railWallsFromFloorMask` (reuse room-graph rail outline).
+3. **Chunk composer module:** seeded `(cx,cy) → recipe → stampBounds` — no snake imports in generator core.
+4. **Dead-end trim utility** on logical maze before rail stamp (Tier-1 cleanup).
+5. **D-belt prototype chunk** once physics pass is stable.
+
+---
+
+## Key file references
+
+```text
+Plans/Mazes.md                          — this doc
+Plans/procedural.md                     — room graph, corridor solver, world scale
+Libraries/Procedural/Mazes/
+  railMazeDfs.js                        — R-DFS bake
+  walkableCells.js                      — collectWalkableCells / pickWalkableCell
+  stampRailWalls.js                     — stampGlobalRailWalls
+Libraries/RoomGraph/roomGraphCorridorRails.js — R-mask / rail outline from floor
+Libraries/Pathfinding/Corridor/         — G-corridor solver
+Apps/Editor/world/mapWorld.js           — generateLabCaverns, generateLabRailDfsMaze
+Libraries/Game/snake/snakeScene.js      — split-map orchestration (→ chunk composer)
+Libraries/Navigation/perception/gridCellVision.js — LOS on boundary graph
+tests/railMazeDfs.test.js
+tests/walkableCells.test.js
+tests/snakeMapGen.test.js
 ```
+
+---
+
+## Cleanup / redundant (post-snake maze pass)
+
+| Item                                                 | Verdict                                                            |
+| ---------------------------------------------------- | ------------------------------------------------------------------ |
+| ~~`rail.generator: "bspMaze"` + `snakeRailBspMaze`~~ | ✅ Renamed `railDfs` / `railMazeDfs.js`                            |
+| ~~`roomSizeMin/Max/Margin` in snake rail config~~    | ✅ Removed                                                         |
+| ~~`generateLabRailCaverns` snake fallback~~          | ✅ Removed from snake; lab editor keeps it                         |
+| ~~`corridorBundle` `searchBounds` param~~            | ✅ Removed                                                         |
+| ~~`collectOpenCavernCells` / `cavernFloorCells.js`~~ | ✅ → `walkableCells.js`                                            |
+| Corridor-maze / `snakeRailCorridorMaze`              | **Deleted** — do not resurrect without floor-mask + grid stamp fix |
+| ~~`visionCone.stroke`~~                              | ✅ Removed — fill-only overlays                                    |
