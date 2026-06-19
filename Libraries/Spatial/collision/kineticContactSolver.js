@@ -297,6 +297,7 @@ function precomputeKineticContacts(spatialFrame, contacts) {
         contacts.kTangent[i] = invMassA + invMassB + rAt * rAt * invIA + rBt * rBt * invIB;
         const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
         const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
+        if (!bodyA || !bodyB) continue;
         contacts.restitution[i] = kineticPairRestitution(bodyA, bodyB);
         contacts.friction[i] = kineticPairFriction(bodyA, bodyB);
         contacts.pairKey[i] = pairContactKey(bodyA, bodyB);

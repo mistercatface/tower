@@ -316,7 +316,7 @@ export function removeWorldPropFromState(state, prop) {
     state.entityRegistry.unregister(prop);
     getSandboxEntityMeta(state)?.delete(prop.id);
     pruneKineticConstraintsForBody(state, prop.id);
-    kineticSpatial.evictKineticProp(prop);
+    if (prop._physId !== undefined) kineticSpatial.evictKineticProp(prop);
 }
 /** @param {object} state */
 export function clearWorldPropsInState(state) {

@@ -16,5 +16,7 @@ export class SandboxWorldState {
         this.beltZoneEvents = [];
         /** @type {object[]} distance and future kinetic joint definitions */
         this.kineticConstraints = [];
+        this.kineticConstraintsDirty = false;
+        this.kineticConstraintsVersion = 0;
     }
 }

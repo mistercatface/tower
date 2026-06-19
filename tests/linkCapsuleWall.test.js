@@ -12,7 +12,6 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
-import { bakeKineticIslandPlan } from "../Libraries/Motion/kineticIslands.js";
 import { wallContextFromState } from "../Libraries/Spatial/query/wallContext.js";
 
 loadPropAssets();
@@ -118,7 +117,6 @@ describe("link capsule wall projection", () => {
         neck.x = head.x + 8.4;
         neck.y = head.y + 4;
         state.worldProps.push(head, neck);
-        bakeKineticIslandPlan(state, [head, neck]);
         const frame = new KineticSpatialFrame(16);
         frame.resetFrame(state.obstacleGrid);
         frame.setWallContext(wallContextFromState(state));

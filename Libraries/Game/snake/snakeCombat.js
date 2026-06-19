@@ -4,7 +4,7 @@ import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.j
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { markSnakeDead, registerInertSnake, resolveAliveSnakeHeadId } from "./snakeLifecycle.js";
-import { kineticPairBodyAt } from "../../Spatial/collision/kineticPairStream.js";
+import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 function snakeSegmentCount(state, headId) {
     return getConnectedComponentPath(state, headId).length;
 }
@@ -56,8 +56,9 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
     const registry = snakeGame.registry;
     const splitLinks = new Set();
     for (let i = 0; i < contacts.count; i++) {
-        const bodyA = kineticPairBodyAt(spatialFrame, contacts.physIdA[i]);
-        const bodyB = kineticPairBodyAt(spatialFrame, contacts.physIdB[i]);
+        const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
+        if (!pair) continue;
+        const { bodyA, bodyB } = pair;
         const headA = resolveHead(registry, state, bodyA.id);
         const headB = resolveHead(registry, state, bodyB.id);
         if (headA == null || headB == null || headA === headB) continue;

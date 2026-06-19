@@ -45,12 +45,14 @@ export function refreshKineticPairRelativeVelocities(pairs) {
     }
 }
 export function kineticPairBodyAt(spatialFrame, physId) {
-    return spatialFrame.entityGrid.entities[physId];
+    const body = spatialFrame.entityGrid.entities[physId];
+    if (!body || body._physId !== physId) return null;
+    return body;
 }
 export function kineticPairBodiesAt(spatialFrame, physIdA, physIdB) {
-    const bodyA = spatialFrame.entityGrid.entities[physIdA];
-    const bodyB = spatialFrame.entityGrid.entities[physIdB];
-    if (!bodyA || !bodyB || bodyA._physId !== physIdA || bodyB._physId !== physIdB) return null;
+    const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
+    const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
+    if (!bodyA || !bodyB) return null;
     return { bodyA, bodyB };
 }
 export function gatherKineticCandidatePairs(spatialFrame, pairs) {
