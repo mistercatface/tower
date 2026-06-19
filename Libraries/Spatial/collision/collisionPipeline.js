@@ -1,6 +1,6 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
-import { gatherKineticConstraintBuffer, measureConstraintBufferMaxError, solveKineticConstraintBuffer } from "../../Motion/kineticConstraintSolver.js";
+import { gatherKineticConstraintBuffer, measureConstraintBufferMaxError, projectKineticConstraintBuffer, solveKineticConstraintBuffer } from "../../Motion/kineticConstraintSolver.js";
 import { gatherKineticContactPairs, resolveKineticContactPass, resolveKineticContactPassWithPairs } from "./kineticContactSolver.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
@@ -58,7 +58,7 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
         }
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
-        const constraintBuffer = gatherKineticConstraintBuffer(state);
+        const { buffer: constraintBuffer, groups: constraintGroups } = gatherKineticConstraintBuffer(state);
         let persistedPairs = null;
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;
@@ -66,7 +66,8 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
                 if (iter === 0) persistedPairs = gatherKineticContactPairs(spatialFrame);
                 resolveKineticContactPassWithPairs(spatialFrame, state, persistedPairs);
             } else resolveKineticContactPass(spatialFrame, state);
-            solveKineticConstraintBuffer(spatialFrame, constraintBuffer);
+            projectKineticConstraintBuffer(constraintBuffer, constraintGroups);
+            solveKineticConstraintBuffer(spatialFrame, constraintBuffer, constraintGroups);
             for (let i = 0; i < activeBodies.length; i++) {
                 const prop = activeBodies[i];
                 if (!prop.strategy?.isKinetic) continue;
