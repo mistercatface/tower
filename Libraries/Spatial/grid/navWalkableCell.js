@@ -1,4 +1,4 @@
-import { cellInRect } from "./GridUtils.js";
+import { cellInRect, colRowToIndex } from "./GridUtils.js";
 const CARDINALS = [
     [1, 0],
     [-1, 0],
@@ -15,17 +15,24 @@ export function isNavWalkableCell(grid, gridNavContext, col, row) {
     }
     return false;
 }
-function navWalkableCellKey(col, row) {
-    return `${col},${row}`;
-}
-export function floodConnectedNavWalkableCells(grid, gridNavContext, candidates, candidateKeys, seedCells) {
-    const reached = new Set();
+/**
+ * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {import("../Navigation/GridNavContext.js").GridNavContext | { navCardinalOpen: Uint8Array, vertexPassability: Uint8Array }} gridNavContext
+ * @param {{ col: number, row: number }[]} candidates
+ * @param {Uint8Array} candidateMask
+ * @param {number} cols
+ * @param {number} rows
+ * @param {{ col: number, row: number }[]} seedCells
+ * @param {Uint8Array} reachedMask
+ */
+export function floodConnectedNavWalkableCells(grid, gridNavContext, candidates, candidateMask, cols, rows, seedCells, reachedMask) {
+    reachedMask.fill(0);
     const queue = [];
     for (let i = 0; i < seedCells.length; i++) {
         const cell = seedCells[i];
-        const key = navWalkableCellKey(cell.col, cell.row);
-        if (!candidateKeys.has(key) || reached.has(key)) continue;
-        reached.add(key);
+        const idx = colRowToIndex(cell.col, cell.row, cols);
+        if (!candidateMask[idx] || reachedMask[idx]) continue;
+        reachedMask[idx] = 1;
         queue.push(cell);
     }
     while (queue.length) {
@@ -33,17 +40,18 @@ export function floodConnectedNavWalkableCells(grid, gridNavContext, candidates,
         for (let i = 0; i < CARDINALS.length; i++) {
             const nc = col + CARDINALS[i][0];
             const nr = row + CARDINALS[i][1];
-            const key = navWalkableCellKey(nc, nr);
-            if (!candidateKeys.has(key) || reached.has(key)) continue;
+            if (!cellInRect(nc, nr, cols, rows)) continue;
+            const nIdx = colRowToIndex(nc, nr, cols);
+            if (!candidateMask[nIdx] || reachedMask[nIdx]) continue;
             if (!grid.canStep(col, row, nc, nr, gridNavContext) && !grid.canStep(nc, nr, col, row, gridNavContext)) continue;
-            reached.add(key);
+            reachedMask[nIdx] = 1;
             queue.push({ col: nc, row: nr });
         }
     }
     const connected = [];
     for (let i = 0; i < candidates.length; i++) {
         const cell = candidates[i];
-        if (reached.has(navWalkableCellKey(cell.col, cell.row))) connected.push(cell);
+        if (reachedMask[colRowToIndex(cell.col, cell.row, cols)]) connected.push(cell);
     }
     return connected;
 }

@@ -7,6 +7,7 @@ import { applySnakeHeadGameplay } from "./snakeHeadGameplay.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { mountSnakeHud } from "./snakeHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
+import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
@@ -17,6 +18,7 @@ export async function setupSnakeGame(state) {
     const registry = createSnakeLifecycleRegistry();
     const autosimsByHeadId = new Map();
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
+    state.navigation.setNavWalkableSyncHook(() => patchNavWalkableCellIndex(state));
     void state.navigation.onObstaclesChanged(null);
     scene.navWalkable.rebake();
     for (let i = 0; i < scene.snakes.length; i++) {

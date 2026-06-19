@@ -22,6 +22,7 @@ export function wireTestGridNavContext(state, damageBounds = null) {
         const testNav = createTestNavigation(state.obstacleGrid);
         state.navigation.gridNavContext = testNav.gridNavContext;
         state.navigation.onObstaclesChanged = testNav.onObstaclesChanged;
+        state.navigation.setNavWalkableSyncHook = testNav.setNavWalkableSyncHook;
         if (state.navigation.obstacleGeneration == null) state.navigation.obstacleGeneration = testNav.obstacleGeneration;
         return;
     }

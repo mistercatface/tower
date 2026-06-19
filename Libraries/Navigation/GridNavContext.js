@@ -33,13 +33,19 @@ export function bakeNavCachesInto(grid, navCardinalOpen, vertexPassability, dama
 export function createTestNavigation(obstacleGrid) {
     const gridNavContext = createGridNavContext(obstacleGrid);
     syncGridNavContext(gridNavContext, obstacleGrid);
+    /** @type {((damageBounds: import("../DataStructures/CellRect.js").CellBounds | null) => void) | null} */
+    let navWalkableSyncHook = null;
     const navigation = {
         settings: {},
         obstacleGeneration: 0,
         gridNavContext,
+        setNavWalkableSyncHook(hook) {
+            navWalkableSyncHook = hook;
+        },
         onObstaclesChanged(damageBounds) {
             syncGridNavContext(gridNavContext, obstacleGrid, damageBounds);
             navigation.obstacleGeneration++;
+            navWalkableSyncHook?.(damageBounds);
             return Promise.resolve();
         },
     };

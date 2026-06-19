@@ -6,12 +6,15 @@ import {
     collectWalkableCells,
     collectNavWalkableCells,
     createNavWalkableAccess,
+    getNavWalkableCellIndex,
     getNavWalkableCells,
     isNavWalkableCellAt,
+    patchNavWalkableCellIndex,
     pickWalkableCell,
     pickNavWalkableCell,
     pickRandomWalkableCell,
 } from "../Libraries/Procedural/Mazes/walkableCells.js";
+import { readNavWalkableFlag } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -65,6 +68,37 @@ describe("walkableCells", () => {
         collectNavWalkableCells(state);
         assert.ok(getNavWalkableCells(state).length <= before);
         assert.ok(!isNavWalkableCellAt(state, 2, 2));
+    });
+
+    it("stores nav-walkable cells in a dense flag grid", () => {
+        const config = createDefaultMapGenBoundsConfig();
+        config.boundsCol = 0;
+        config.boundsRow = 0;
+        config.boundsCols = 8;
+        config.boundsRows = 8;
+        const state = createWalkableCellsTestState(config);
+        const index = getNavWalkableCellIndex(state, config);
+        assert.ok(index.flags instanceof Uint8Array);
+        assert.equal(index.flags.length, state.obstacleGrid.cols * state.obstacleGrid.rows);
+        const picked = pickNavWalkableCell(state, { rng: () => 0 });
+        assert.ok(readNavWalkableFlag(index.flags, index.cols, picked.col, picked.row));
+    });
+
+    it("patchNavWalkableCellIndex rebakes cached bounds after obstacle epoch bump", async () => {
+        const config = createDefaultMapGenBoundsConfig();
+        config.boundsCol = 0;
+        config.boundsRow = 0;
+        config.boundsCols = 8;
+        config.boundsRows = 8;
+        const state = createWalkableCellsTestState(config);
+        state.navigation.setNavWalkableSyncHook(() => patchNavWalkableCellIndex(state));
+        collectNavWalkableCells(state);
+        const picked = pickNavWalkableCell(state, { rng: () => 0 });
+        assert.ok(picked);
+        assert.ok(isNavWalkableCellAt(state, picked.col, picked.row));
+        state.obstacleGrid.grid[colRowToIndex(picked.col, picked.row, state.obstacleGrid.cols)] = 1;
+        await state.navigation.onObstaclesChanged({ startCol: picked.col, endCol: picked.col, startRow: picked.row, endRow: picked.row });
+        assert.ok(!isNavWalkableCellAt(state, picked.col, picked.row));
     });
 
     it("pickNavWalkableCell only returns baked nav-walkable cells", () => {

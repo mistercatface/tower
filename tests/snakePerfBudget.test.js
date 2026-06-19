@@ -11,6 +11,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
+import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
@@ -38,6 +39,8 @@ function createPerfState(cols = 48, rows = 48) {
         replanRequests++;
         return origReplan(...args);
     };
+    const testNav = createTestNavigation(grid);
+    testNav.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000 };
     const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
@@ -45,7 +48,7 @@ function createPerfState(cols = 48, rows = 48) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation: { obstacleGeneration: 0, settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000 }, onObstaclesChanged: async () => {} },
+        navigation: testNav,
         hpaPathWorker: mockWorker,
         hpaPathSession,
         viewport: {

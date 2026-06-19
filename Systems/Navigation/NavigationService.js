@@ -2,6 +2,7 @@ import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
 import { createGridNavContext, syncGridNavContext } from "../../Libraries/Navigation/GridNavContext.js";
 /**
  * Obstacle-driven nav sync — HPA worker graph patches and flow-field topology invalidation.
+ * @typedef {(damageBounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => void} NavWalkableSyncHook
  */
 export class NavigationService {
     /** @param {import("../../Libraries/Pathfinding/FlowFieldGrid.js").FlowFieldGrid} flowFieldGrid @param {import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {object} settings @param {import("../../Libraries/Pathfinding/HpaPathWorker.js").HpaPathWorker} hpaPathWorker */
@@ -16,6 +17,12 @@ export class NavigationService {
         this.settings = settings;
         this.obstacleGeneration = 0;
         this.gridNavContext = createGridNavContext(obstacleGrid);
+        /** @type {NavWalkableSyncHook | null} */
+        this._navWalkableSyncHook = null;
+    }
+    /** @param {NavWalkableSyncHook | null} hook */
+    setNavWalkableSyncHook(hook) {
+        this._navWalkableSyncHook = hook;
     }
     /** @param {(grid: import("../../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, bounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => { x: number, y: number }} fn */
     setPruneSeedResolver(fn) {
@@ -49,5 +56,6 @@ export class NavigationService {
         const fullGraph = topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds);
         await this._hpaPathWorker.syncObstacleNavGraph(grid, damageBounds, graphEpoch, seed.x, seed.y, fullGraph);
         this.obstacleGeneration = graphEpoch;
+        this._navWalkableSyncHook?.(damageBounds);
     }
 }
