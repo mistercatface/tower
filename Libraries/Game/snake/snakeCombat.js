@@ -33,6 +33,7 @@ export function killSnake(state, snakeGame, headId) {
     for (let i = 0; i < members.length; i++) meta.setChainHead(members[i], false);
     clearChainLinksForMembers(state, members);
     markSnakeDead(snakeGame.registry, headId);
+    for (const autosim of snakeGame.autosimsByHeadId.values()) autosim.onSnakeDied(headId);
 }
 export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struckSegmentId) {
     const members = orderedMembers(state, victimHeadId);

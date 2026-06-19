@@ -15,16 +15,32 @@ export function collectAliveSnakeHeads(state, registry, selfHeadId) {
     }
     return heads;
 }
-export function normalizeSnakeIntentChoice(choice, registry) {
-    if (choice.mode === "seek_prey") {
-        const target = choice.target;
-        if (!target || target.isDead || !registry.aliveByHeadId.has(target.id)) return { mode: "explore", target: null };
-    }
-    if (choice.mode === "seek_food") {
-        const target = choice.target;
-        if (!target || target.isDead) return { mode: "explore", target: null };
-    }
-    return choice;
+export function perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, visionCone = getSnakeGameConfig().visionCone) {
+    return {
+        threats: collectVisibleSnakeThreats(state, seeker, selfHeadId, registry, visionCone),
+        prey: findNearestVisibleSnakePrey(state, seeker, selfHeadId, registry, visionCone),
+        food: resolveVisibleFood(seeker, state),
+    };
+}
+export function pickSnakeIntentPolicy(world, seeker, config = getSnakeGameConfig()) {
+    if (world.threats.length) return { mode: "flee", targetId: null };
+    const food = world.food;
+    const prey = world.prey;
+    if (!food && !prey) return { mode: "explore", targetId: null };
+    if (food && !prey) return { mode: "seek_food", targetId: food.id };
+    if (prey && !food) return { mode: "seek_prey", targetId: prey.id };
+    const foodDist = Math.max(Math.hypot(food.x - seeker.x, food.y - seeker.y), 1);
+    const preyDist = Math.max(Math.hypot(prey.x - seeker.x, prey.y - seeker.y), 1);
+    const foodScore = (1 - config.huntPriority) / foodDist;
+    const preyScore = config.huntPriority / preyDist;
+    if (preyScore > foodScore) return { mode: "seek_prey", targetId: prey.id };
+    return { mode: "seek_food", targetId: food.id };
+}
+function policyToIntentChoice(state, policy) {
+    if (policy.mode === "explore" || policy.mode === "flee") return { mode: policy.mode, target: null };
+    const target = state.entityRegistry.getLive(policy.targetId);
+    if (!target || target.isDead) return { mode: "explore", target: null };
+    return { mode: policy.mode, target };
 }
 export function findNearestVisibleSnakePrey(state, seeker, selfHeadId, registry, visionCone = getSnakeGameConfig().visionCone) {
     const config = getSnakeGameConfig();
@@ -107,17 +123,6 @@ export function pickRetreatDestination(seeker, state, registry, selfHeadId, memo
     return best[Math.floor(rng() * best.length)];
 }
 export function pickSnakeIntentTarget(seeker, selfHeadId, state, registry, resolveVisibleFood, visionCone) {
-    const config = getSnakeGameConfig();
-    if (collectVisibleSnakeThreats(state, seeker, selfHeadId, registry, visionCone).length) return { mode: "flee", target: null };
-    const food = resolveVisibleFood(seeker, state);
-    const prey = findNearestVisibleSnakePrey(state, seeker, selfHeadId, registry, visionCone);
-    if (!food && !prey) return { mode: "explore", target: null };
-    if (food && !prey) return { mode: "seek_food", target: food };
-    if (prey && !food) return { mode: "seek_prey", target: prey };
-    const foodDist = Math.max(Math.hypot(food.x - seeker.x, food.y - seeker.y), 1);
-    const preyDist = Math.max(Math.hypot(prey.x - seeker.x, prey.y - seeker.y), 1);
-    const foodScore = (1 - config.huntPriority) / foodDist;
-    const preyScore = config.huntPriority / preyDist;
-    if (preyScore > foodScore) return { mode: "seek_prey", target: prey };
-    return { mode: "seek_food", target: food };
+    const world = perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, visionCone);
+    return policyToIntentChoice(state, pickSnakeIntentPolicy(world, seeker));
 }

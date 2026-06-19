@@ -2,7 +2,7 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../..
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { createSnakeLocomotion } from "../../Game/snake/snakeLocomotion.js";
 import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
-import { normalizeSnakeIntentChoice, pickSnakeIntentTarget, pickRetreatDestination } from "../../Game/snake/snakePredatorPrey.js";
+import { perceiveSnakeIntentWorld, pickRetreatDestination, pickSnakeIntentPolicy } from "../../Game/snake/snakePredatorPrey.js";
 export function createSnakePredatorPreyIntent({
     brain,
     sync,
@@ -24,10 +24,18 @@ export function createSnakePredatorPreyIntent({
     const resolvedVision = visionCone ?? getSnakeGameConfig().visionCone;
     const fleeThreatClearTicks = getSnakeGameConfig().fleeThreatClearTicks;
     let mode = "explore";
+    let targetId = null;
     let threatClearTicks = 0;
     let lastArrivalCol = null;
     let lastArrivalRow = null;
     let lastTransitionReason = "init";
+    const resolveCommittedTarget = (state) => {
+        if (targetId == null) return null;
+        if (mode === "seek_prey" && !registry.aliveByHeadId.has(targetId)) return null;
+        const prop = state.entityRegistry.getLive(targetId);
+        if (!prop || prop.isDead) return null;
+        return prop;
+    };
     const stampArrivalOnCellEnter = (seeker, grid) => {
         const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
         if (col === lastArrivalCol && row === lastArrivalRow) return;
@@ -41,23 +49,7 @@ export function createSnakePredatorPreyIntent({
         const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
         return cellChebyshevDistance(col, row, dest.col, dest.row) <= 1;
     };
-    const destinationStillValid = (seeker, grid, choice) => {
-        const dest = locomotion.getDestination();
-        if (!dest || hasArrivedAtDest(seeker, grid)) return false;
-        if (choice.mode !== mode) return false;
-        if (mode === "seek_prey") {
-            if (!choice.target || choice.target.isDead || !registry.aliveByHeadId.has(choice.target.id)) return false;
-            const targetCell = grid.worldToGrid(choice.target.x, choice.target.y);
-            return dest.col === targetCell.col && dest.row === targetCell.row;
-        }
-        if (mode === "seek_food") {
-            if (!choice.target || choice.target.isDead) return false;
-            const targetCell = grid.worldToGrid(choice.target.x, choice.target.y);
-            return dest.col === targetCell.col && dest.row === targetCell.row;
-        }
-        return true;
-    };
-    const pickDestinationForMode = (seeker, state, choice) => {
+    const setDestinationForCommit = (seeker, state) => {
         const grid = state.obstacleGrid;
         if (mode === "explore") {
             const cell = resolveExploreCell(seeker, state, brain.spatial, rng);
@@ -69,12 +61,20 @@ export function createSnakePredatorPreyIntent({
             if (cell) locomotion.setDestination(grid, cell.col, cell.row);
             return;
         }
-        if ((mode === "seek_food" || mode === "seek_prey") && choice.target) {
-            const cell = grid.worldToGrid(choice.target.x, choice.target.y);
+        const target = resolveCommittedTarget(state);
+        if (target) {
+            const cell = grid.worldToGrid(target.x, target.y);
             locomotion.setDestination(grid, cell.col, cell.row);
         }
     };
-    const resolveEffectiveMode = (rawMode) => {
+    const commit = (seeker, state, nextMode, nextTargetId, reason) => {
+        mode = nextMode;
+        targetId = nextTargetId;
+        lastTransitionReason = reason;
+        locomotion.clearDestination();
+        setDestinationForCommit(seeker, state);
+    };
+    const resolvePolicyMode = (rawMode) => {
         if (mode === "flee" && rawMode !== "flee") {
             threatClearTicks++;
             if (threatClearTicks < fleeThreatClearTicks) return "flee";
@@ -84,44 +84,75 @@ export function createSnakePredatorPreyIntent({
         else if (mode !== "flee") threatClearTicks = 0;
         return rawMode;
     };
+    const transitionReason = (prevMode, nextMode) => {
+        if (nextMode === "flee") return "threat_entered";
+        if (prevMode === "flee") return "threat_cleared";
+        if ((prevMode === "seek_prey" || prevMode === "seek_food") && nextMode !== prevMode) return "target_lost";
+        return `mode_${nextMode}`;
+    };
     const perceive = (seeker, state) => {
         sync(seeker, state);
         stampArrivalOnCellEnter(seeker, state.obstacleGrid);
     };
     const transition = (seeker, state) => {
         const grid = state.obstacleGrid;
-        const choice = normalizeSnakeIntentChoice(pickSnakeIntentTarget(seeker, selfHeadId, state, registry, resolveVisibleFood, resolvedVision), registry);
-        const nextMode = resolveEffectiveMode(choice.mode);
-        const prevMode = mode;
-        if (nextMode !== mode) {
-            mode = nextMode;
-            if (nextMode === "flee") lastTransitionReason = "threat_entered";
-            else if (prevMode === "flee") lastTransitionReason = "threat_cleared";
-            else if (prevMode === "seek_prey" || prevMode === "seek_food") lastTransitionReason = "target_lost";
-            else lastTransitionReason = `mode_${nextMode}`;
-            pickDestinationForMode(seeker, state, choice);
-            return { mode, target: choice.target };
+        const world = perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
+        const rawPolicy = pickSnakeIntentPolicy(world, seeker);
+        const policyMode = resolvePolicyMode(rawPolicy.mode);
+        const policy = { mode: policyMode, targetId: policyMode === "flee" ? null : rawPolicy.targetId };
+        if ((mode === "seek_prey" || mode === "seek_food") && !resolveCommittedTarget(state)) {
+            commit(seeker, state, policy.mode, policy.targetId, "target_lost");
+            return { mode, target: resolveCommittedTarget(state) };
         }
-        if (locomotion.getDestination() && locomotion.needsRetry(seeker) && choice.mode === mode) {
+        if (policy.mode !== mode || policy.targetId !== targetId) {
+            commit(seeker, state, policy.mode, policy.targetId, transitionReason(mode, policy.mode));
+            return { mode, target: resolveCommittedTarget(state) };
+        }
+        if (locomotion.getDestination() && locomotion.needsRetry(seeker)) {
             lastTransitionReason = "route_failed_retry";
-            return { mode, target: choice.target };
+            return { mode, target: resolveCommittedTarget(state) };
         }
-        if (destinationStillValid(seeker, grid, choice)) {
+        const dest = locomotion.getDestination();
+        const target = resolveCommittedTarget(state);
+        if (mode === "seek_food" || mode === "seek_prey") {
+            if (!target) {
+                commit(seeker, state, policy.mode, policy.targetId, "target_lost");
+                return { mode, target: null };
+            }
+            const targetCell = grid.worldToGrid(target.x, target.y);
+            if (!dest || hasArrivedAtDest(seeker, grid) || dest.col !== targetCell.col || dest.row !== targetCell.row) {
+                lastTransitionReason = hasArrivedAtDest(seeker, grid) ? "arrived" : "repick_dest";
+                setDestinationForCommit(seeker, state);
+                return { mode, target };
+            }
             lastTransitionReason = "held_latch";
-            return { mode, target: choice.target };
+            return { mode, target };
         }
-        lastTransitionReason = hasArrivedAtDest(seeker, grid) ? "arrived" : "repick_dest";
-        pickDestinationForMode(seeker, state, choice);
-        return { mode, target: choice.target };
+        if (!dest || hasArrivedAtDest(seeker, grid)) {
+            lastTransitionReason = hasArrivedAtDest(seeker, grid) ? "arrived" : "repick_dest";
+            setDestinationForCommit(seeker, state);
+            return { mode, target: null };
+        }
+        lastTransitionReason = "held_latch";
+        return { mode, target: null };
     };
     return {
         perceive,
         transition,
+        onSnakeDied(deadHeadId) {
+            if (targetId !== deadHeadId) return;
+            mode = "explore";
+            targetId = null;
+            threatClearTicks = 0;
+            lastTransitionReason = "target_died";
+            locomotion.clearDestination();
+        },
         clear(seeker, state) {
             threatClearTicks = 0;
             lastArrivalCol = null;
             lastArrivalRow = null;
             lastTransitionReason = "cleared";
+            targetId = null;
             locomotion.clearDestination();
             locomotion.tickNav(seeker, state);
             seeker.navStepPenalty = null;
@@ -131,6 +162,7 @@ export function createSnakePredatorPreyIntent({
         },
         resetMode() {
             mode = "explore";
+            targetId = null;
             threatClearTicks = 0;
             lastArrivalCol = null;
             lastArrivalRow = null;
@@ -139,6 +171,9 @@ export function createSnakePredatorPreyIntent({
         },
         getMode() {
             return mode;
+        },
+        getTargetId() {
+            return targetId;
         },
         getDestination() {
             return locomotion.getDestination();

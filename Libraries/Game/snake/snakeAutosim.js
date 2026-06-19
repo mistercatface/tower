@@ -137,6 +137,9 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, behaviorB
         getFsmDebugLine() {
             return formatSnakeFsmDebug(this.getFsmSnapshot());
         },
+        onSnakeDied(deadHeadId) {
+            intent.onSnakeDied(deadHeadId);
+        },
         tick(dt) {
             if (!active) return;
             const seeker = resolveSeeker();
