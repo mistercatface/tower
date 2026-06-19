@@ -4,6 +4,16 @@ import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../M
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
 import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "./kineticPairStream.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
+import { snapshotKinematicSlab, writebackKinematicSlabPhysIds } from "./kineticKinematicSlab.js";
+import {
+    applyCircleContactEffects,
+    collectCircleContactPhysIds,
+    kineticCircleContactBuffer,
+    narrowPhaseCircleContacts,
+    precomputeCircleContacts,
+    solveCircleContactVelocities,
+    warmStartCircleContacts,
+} from "./kineticCircleContactSolver.js";
 import { separateAlongNormal, separateCoincidentCirclePair } from "./penetration.js";
 import { checkEntityPairCollision, circleCircleContact } from "./SatCollision.js";
 import { KINETIC_PAIR_TIER, circleCirclePairShapes } from "./kineticNarrowPhase.js";
@@ -113,11 +123,11 @@ function warmStartKineticContacts(contacts) {
         applyCachedContactImpulse(contacts, i);
     }
 }
-function storeKineticWarmStartCache(contacts) {
-    warmStartKeys.fill(0);
+function storeWarmStartContactEntries(contacts, warmStartKeys, warmStartJn, warmStartJt) {
+    const mask = warmStartKeys.length - 1;
     for (let i = 0; i < contacts.count; i++) {
         const key = contacts.pairKey[i];
-        let idx = (Math.trunc(key / PAIR_KEY_SCALE) ^ (key % PAIR_KEY_SCALE)) & WARM_START_CACHE_MASK;
+        let idx = (Math.trunc(key / PAIR_KEY_SCALE) ^ (key % PAIR_KEY_SCALE)) & mask;
         while (true) {
             const slot = warmStartKeys[idx];
             if (slot === key || slot === 0) {
@@ -126,9 +136,14 @@ function storeKineticWarmStartCache(contacts) {
                 warmStartJt[idx] = contacts.jt[i];
                 break;
             }
-            idx = (idx + 1) & WARM_START_CACHE_MASK;
+            idx = (idx + 1) & mask;
         }
     }
+}
+function storeCombinedWarmStartCache(circleContacts, contacts) {
+    warmStartKeys.fill(0);
+    storeWarmStartContactEntries(circleContacts, warmStartKeys, warmStartJn, warmStartJt);
+    storeWarmStartContactEntries(contacts, warmStartKeys, warmStartJn, warmStartJt);
 }
 function contactLeverArms(bodyA, bodyB, shapeA, shapeB, info) {
     const nx = info.nx;
@@ -183,6 +198,7 @@ function appendContact(contacts, bodyA, bodyB, info, preDvx, preDvy) {
 function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
     contacts.reset();
     for (let i = 0; i < pairs.count; i++) {
+        if (pairs.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) continue;
         const primary = kineticPairBodyAt(spatialFrame, pairs.physIdA[i]);
         const neighbor = kineticPairBodyAt(spatialFrame, pairs.physIdB[i]);
         const info = detectAndSeparateContact(primary, neighbor, pairs.tier[i]);
@@ -305,17 +321,28 @@ export function resolveKineticContactPass(spatialFrame, state) {
 }
 export function gatherKineticContactPairs(spatialFrame) {
     snapshotActiveBroadphaseBounds(spatialFrame._activeKineticBodies);
+    snapshotKinematicSlab(spatialFrame._activeKineticBodies);
     const pairs = kineticPairBuffer;
     gatherKineticCandidatePairs(spatialFrame, pairs);
     return pairs;
 }
 export function resolveKineticContactPassWithPairs(spatialFrame, state, pairs) {
+    const circleContacts = kineticCircleContactBuffer;
     const contacts = kineticContactBuffer;
+    narrowPhaseCircleContacts(spatialFrame, pairs, circleContacts);
+    if (circleContacts.count > 0) {
+        precomputeCircleContacts(spatialFrame, circleContacts);
+        warmStartCircleContacts(circleContacts, warmStartKeys, warmStartJn, warmStartJt);
+        solveCircleContactVelocities(circleContacts, INNER_SOLVE_ITERATIONS);
+        writebackKinematicSlabPhysIds(spatialFrame, collectCircleContactPhysIds(circleContacts));
+    }
     narrowPhaseKineticContacts(spatialFrame, pairs, contacts);
-    if (contacts.count === 0) return;
-    precomputeKineticContacts(contacts);
-    warmStartKineticContacts(contacts);
-    solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS);
-    storeKineticWarmStartCache(contacts);
-    applyKineticContactEffects(contacts, spatialFrame, state);
+    if (contacts.count > 0) {
+        precomputeKineticContacts(contacts);
+        warmStartKineticContacts(contacts);
+        solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS);
+    }
+    if (circleContacts.count > 0 || contacts.count > 0) storeCombinedWarmStartCache(circleContacts, contacts);
+    if (circleContacts.count > 0) applyCircleContactEffects(circleContacts, spatialFrame, state);
+    if (contacts.count > 0) applyKineticContactEffects(contacts, spatialFrame, state);
 }
