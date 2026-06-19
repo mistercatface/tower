@@ -4,6 +4,7 @@ import { PauseManager } from "../../Libraries/Pause/index.js";
 import { installEditorDefaults } from "../../Core/engineGlobals.js";
 import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
+import { kineticTickFromState } from "../../GameState/KineticTick.js";
 import { runKineticPhysics } from "../../Libraries/Motion/kineticPhysicsPass.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
@@ -36,7 +37,7 @@ function runSimulationTick(state, dt) {
     const spatialFrame = kineticSpatial.begin(state);
     tickFloorProps(state, spatialFrame, simDt);
     tickFloorOccupancy(state, spatialFrame, simDt);
-    runKineticPhysics(state, simDt, spatialFrame);
+    runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, state);
     tickGridZones(state, spatialFrame);
     FloatingText.updateAll(state, simDt);
 }

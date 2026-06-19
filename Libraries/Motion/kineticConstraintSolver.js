@@ -107,10 +107,13 @@ function islandConstraintsAsleep(buffer, start, count) {
     }
     return count > 0;
 }
-export function gatherKineticConstraintBuffer(session, registry, spatialFrame, buffer = kineticConstraintBuffer, groups = kineticConstraintGroups) {
+export function gatherKineticConstraintBuffer(tick, buffer = kineticConstraintBuffer, groups = kineticConstraintGroups) {
     buffer.reset();
     groups.reset();
-    const plan = ensureKineticIslandPlan(session, spatialFrame._kineticBodies);
+    const { frame, world } = tick;
+    const session = world.kinetic;
+    const registry = world.entityRegistry;
+    const plan = ensureKineticIslandPlan(session, frame._kineticBodies);
     const list = session.kineticConstraints;
     const buckets = new Map();
     for (let i = 0; i < list.length; i++) {
@@ -307,10 +310,10 @@ export function solveKineticConstraintBuffer(spatialFrame, buffer, groups) {
         if (earlyOut.enabled && iter + 1 >= earlyOut.contactMinIterations && maxImpulse <= earlyOut.contactImpulseEpsilon) break;
     }
 }
-export function resolveKineticConstraintPass(spatialFrame, session, registry) {
-    const { buffer, groups } = gatherKineticConstraintBuffer(session, registry, spatialFrame);
+export function resolveKineticConstraintPass(tick) {
+    const { buffer, groups } = gatherKineticConstraintBuffer(tick);
     projectKineticConstraintBuffer(buffer, groups);
-    solveKineticConstraintBuffer(spatialFrame, buffer, groups);
+    solveKineticConstraintBuffer(tick.frame, buffer, groups);
 }
 export function measureConstraintBufferMaxError(buffer) {
     let max = 0;

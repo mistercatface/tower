@@ -392,25 +392,25 @@ function applyKineticContactWake(contacts, spatialFrame) {
 }
 export function resolveKineticContactPass(tick) {
     const pairs = gatherKineticContactPairs(tick);
-    resolveKineticContactPassWithPairs(tick.frame, pairs);
+    resolveKineticContactPassWithPairs(tick, pairs);
 }
 export function gatherKineticContactPairs(tick) {
     snapshotActiveBroadphaseBounds(tick.frame._activeKineticBodies);
-    stampKineticPairGatherTopology(tick.frame, tick.session);
+    stampKineticPairGatherTopology(tick.frame, tick.world.kinetic);
     const pairs = kineticPairBuffer;
     gatherKineticCandidatePairs(tick.frame, pairs);
     return pairs;
 }
-export function resolveKineticContactPassWithPairs(spatialFrame, pairs) {
-    snapshotActiveBroadphaseBounds(spatialFrame._activeKineticBodies);
+export function resolveKineticContactPassWithPairs(tick, pairs) {
+    const frame = tick.frame;
     refreshKineticPairRelativeVelocities(pairs);
     const contacts = kineticContactBuffer;
-    narrowPhaseKineticContacts(spatialFrame, pairs, contacts);
+    narrowPhaseKineticContacts(frame, pairs, contacts);
     if (contacts.count === 0) return;
-    precomputeKineticContacts(spatialFrame, contacts);
+    precomputeKineticContacts(frame, contacts);
     warmStartKineticContacts(contacts);
     solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS);
     storeKineticWarmStartCache(contacts);
-    writebackKineticBodySlabPhysIds(spatialFrame, collectContactPhysIds(contacts));
-    applyKineticContactWake(contacts, spatialFrame);
+    writebackKineticBodySlabPhysIds(frame, collectContactPhysIds(contacts));
+    applyKineticContactWake(contacts, frame);
 }

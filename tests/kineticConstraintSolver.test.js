@@ -1,13 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, pruneKineticConstraintsForBody, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { distanceBetweenAnchors } from "../Libraries/Motion/constraintAnchors.js";
-import { createContactPassTick } from "../GameState/KineticTick.js";
 import { measureDistanceConstraintError, resolveKineticConstraintPass } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { createKineticTestTick } from "./harness/kineticTickHarness.js";
+
 let nextId = 1;
 function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
     return {
@@ -29,54 +28,29 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
         },
     };
 }
-function createConstraintTestState(props, constraints = []) {
-    return {
-        worldProps: props.slice(),
-        kinetic: createKineticSession({ constraints }),
-        sandbox: {},
-        entityRegistry: {
-            getLive(id) {
-                for (let i = 0; i < props.length; i++) if (props[i].id === id) return props[i];
-                return null;
-            },
-        },
-    };
-}
-function setupActiveFrame(bodies) {
-    const frame = new KineticSpatialFrame(50);
-    frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
-    for (let i = 0; i < bodies.length; i++) {
-        frame.insertEntity(bodies[i], i);
-        bodies[i]._physId = i;
-    }
-    frame._kineticBodies = bodies.slice();
-    frame._activeKineticBodies = bodies.slice();
-    return frame;
-}
+
 describe("kinetic constraint solver", () => {
     it("pulls stretched distance joint back toward rest length", () => {
         resetKineticConstraintIds(1);
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(30, 0, 10);
         const restLength = 30;
-        const state = createConstraintTestState([bodyA, bodyB]);
-        const constraint = addDistanceConstraint(state.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength });
+        const tick = createKineticTestTick([bodyA, bodyB]);
+        const constraint = addDistanceConstraint(tick.world.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength });
         bodyB.x = 50;
-        const frame = setupActiveFrame([bodyA, bodyB]);
-        for (let pass = 0; pass < 8; pass++) resolveKineticConstraintPass(frame, state.kinetic, state.entityRegistry);
+        for (let pass = 0; pass < 8; pass++) resolveKineticConstraintPass(tick);
         const dist = distanceBetweenAnchors(bodyA, constraint.anchorA, bodyB, constraint.anchorB);
         assert.ok(Math.abs(dist - restLength) < 0.5, `expected ~${restLength}, got ${dist}`);
-        assert.ok(measureDistanceConstraintError(state.entityRegistry, constraint) < 0.5);
+        assert.ok(measureDistanceConstraintError(tick.world.entityRegistry, constraint) < 0.5);
     });
     it("leaves unlinked bodies unchanged when contact pass runs", () => {
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(40, 0, 10);
-        const state = createConstraintTestState([bodyA, bodyB]);
-        const frame = setupActiveFrame([bodyA, bodyB]);
+        const tick = createKineticTestTick([bodyA, bodyB]);
         const ax = bodyA.x;
         const bx = bodyB.x;
-        resolveKineticContactPass(createContactPassTick(frame, state.kinetic));
-        resolveKineticConstraintPass(frame, state.kinetic, state.entityRegistry);
+        resolveKineticContactPass(tick);
+        resolveKineticConstraintPass(tick);
         assert.equal(bodyA.x, ax);
         assert.equal(bodyB.x, bx);
     });
@@ -84,10 +58,10 @@ describe("kinetic constraint solver", () => {
         resetKineticConstraintIds(1);
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(30, 0, 10);
-        const state = createConstraintTestState([bodyA, bodyB]);
-        addDistanceConstraint(state.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 30 });
-        assert.equal(state.kinetic.kineticConstraints.length, 1);
-        pruneKineticConstraintsForBody(state.kinetic, bodyB.id);
-        assert.equal(state.kinetic.kineticConstraints.length, 0);
+        const tick = createKineticTestTick([bodyA, bodyB]);
+        addDistanceConstraint(tick.world.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 30 });
+        assert.equal(tick.world.kinetic.kineticConstraints.length, 1);
+        pruneKineticConstraintsForBody(tick.world.kinetic, bodyB.id);
+        assert.equal(tick.world.kinetic.kineticConstraints.length, 0);
     });
 });

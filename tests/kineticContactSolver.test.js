@@ -6,10 +6,8 @@ import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
-import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
-import { createKineticSession } from "../GameState/KineticSession.js";
-import { createContactPassTick } from "../GameState/KineticTick.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 loadPropAssets();
@@ -37,15 +35,6 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0, pairFriction = null) {
         },
     };
 }
-function setupPairFrame(a, b) {
-    const frame = new KineticSpatialFrame(50);
-    frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
-    frame.insertEntity(a, 0);
-    frame.insertEntity(b, 1);
-    frame._kineticBodies.push(a, b);
-    frame._activeKineticBodies.push(a, b);
-    return frame;
-}
 function pairStillOverlaps(a, b) {
     return SatCollision.checkCollision(a, a.getShape(), b, b.getShape()) != null;
 }
@@ -60,10 +49,10 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
     }
     return last;
 }
-function resolveContactUntilClear(frame, state, maxPasses = 4) {
+function resolveContactUntilClear(tick, maxPasses = 4) {
     for (let pass = 0; pass < maxPasses; pass++) {
-        resolveKineticContactPass(createContactPassTick(frame, state.kinetic));
-        const [a, b] = frame._activeKineticBodies;
+        resolveKineticContactPass(tick);
+        const [a, b] = tick.frame._activeKineticBodies;
         if (!pairStillOverlaps(a, b)) return;
     }
 }
@@ -71,8 +60,7 @@ describe("kinetic contact solver", () => {
     it("separates overlapping circles and applies opposing impulses", () => {
         const a = mockCircleBody(0, 0, 10, 50, 0);
         const b = mockCircleBody(15, 0, 10, -30, 0);
-        const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(createContactPassTick(frame, createKineticSession()));
+        resolveKineticContactPass(createKineticTestTick([a, b]));
         assert.ok(a.x < 0);
         assert.ok(b.x > 15);
         assert.ok(a.vx < 50);
@@ -81,8 +69,7 @@ describe("kinetic contact solver", () => {
     it("friction reduces tangential slip between contacting circles", () => {
         const a = mockCircleBody(0, 0, 10, 40, 0, 0.8);
         const b = mockCircleBody(12, 0, 10, 0, 0, 0.8);
-        const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(createContactPassTick(frame, createKineticSession()));
+        resolveKineticContactPass(createKineticTestTick([a, b]));
         assert.ok(Math.abs(a.vx) < 40);
     });
     it("resting overlapping circles are left alone until one moves", () => {
@@ -90,8 +77,7 @@ describe("kinetic contact solver", () => {
         const b = mockCircleBody(15, 0, 10, 0, 0);
         const ax0 = a.x;
         const bx0 = b.x;
-        const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(createContactPassTick(frame, createKineticSession()));
+        resolveKineticContactPass(createKineticTestTick([a, b]));
         assert.equal(a.x, ax0);
         assert.equal(b.x, bx0);
     });
@@ -132,8 +118,7 @@ describe("poly-poly kinetic contact", () => {
         const box = new WorldProp(12, 0, "crate", 0);
         box.vx = -20;
         assert.ok(pairStillOverlaps(bar, box));
-        const frame = setupPairFrame(bar, box);
-        resolveContactUntilClear(frame, { kinetic: createKineticSession() });
+        resolveContactUntilClear(createKineticTestTick([bar, box]));
         assert.ok(!pairStillOverlaps(bar, box));
     });
     it("circle-poly ball and tri wedge separate with normal toward polygon", () => {
@@ -152,8 +137,7 @@ describe("poly-poly kinetic contact", () => {
         const b = new WorldProp(10, 0, "hex_block", 0);
         a.vx = 40;
         b.vx = -20;
-        const frame = setupPairFrame(a, b);
-        resolveContactUntilClear(frame, { kinetic: createKineticSession() });
+        resolveContactUntilClear(createKineticTestTick([a, b]));
         assert.ok(!pairStillOverlaps(a, b));
         assert.ok(a.vx < 40);
         assert.ok(b.vx > -20);
@@ -165,8 +149,7 @@ describe("poly-poly kinetic contact", () => {
         applyPropBoxFootprint(right, 8, 4);
         left.vx = 35;
         right.vx = 0;
-        const frame = setupPairFrame(left, right);
-        resolveKineticContactPass(createContactPassTick(frame, createKineticSession()));
+        resolveKineticContactPass(createKineticTestTick([left, right]));
         assert.ok(left.vx < 35);
     });
 });

@@ -14,8 +14,7 @@ import {
     snapshotActiveBroadphaseBounds,
 } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
-import { createKineticSession } from "../GameState/KineticSession.js";
-import { createContactPassTick } from "../GameState/KineticTick.js";
+import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 loadPropAssets();
 let nextId = 1;
@@ -141,9 +140,7 @@ describe("kinetic pair stream on proof props", () => {
     it("contact pass still separates moving circle pair after pair-stream refactor", () => {
         const a = mockCircleBody(0, 0, 10, 50, 0);
         const b = mockCircleBody(15, 0, 10, -30, 0);
-        const frame = setupActiveFrame([a, b]);
-        const session = createKineticSession();
-        resolveKineticContactPass(createContactPassTick(frame, session));
+        resolveKineticContactPass(createKineticTestTick([a, b]));
         assert.ok(a.x < 0);
         assert.ok(b.x > 15);
     });
@@ -152,9 +149,7 @@ describe("kinetic pair stream on proof props", () => {
         const b = mockCircleBody(15, 0, 10, 0, 0);
         const ax0 = a.x;
         const bx0 = b.x;
-        const frame = setupActiveFrame([a, b]);
-        const session = createKineticSession();
-        resolveKineticContactPass(createContactPassTick(frame, session));
+        resolveKineticContactPass(createKineticTestTick([a, b]));
         assert.equal(a.x, ax0);
         assert.equal(b.x, bx0);
     });

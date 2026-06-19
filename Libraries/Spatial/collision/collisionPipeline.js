@@ -49,7 +49,7 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
 /**
  * Kinetic collision substeps: contact solve + wall resolve.
  *
- * @param {{ frame: object, session: object, world: object }} tick
+ * @param {{ frame: object, world: object }} tick
  * @param {{
  *   resolveWalls: (entity: object, frame: object) => void,
  *   kineticIterations?: number,
@@ -58,7 +58,7 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
  * }} hooks
  */
 export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations, gameContext = {}, applyContactSideEffects } = {}) {
-    const { frame, session, world } = tick;
+    const frame = tick.frame;
     if (!applyContactSideEffects) applyContactSideEffects = (t, contacts) => applyKineticContactSideEffects(t, contacts, gameContext);
     const earlyOut = getCollisionSettings().kineticEarlyOut;
     const activeBodies = frame._activeKineticBodies;
@@ -71,7 +71,7 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = g
         }
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
-        const { buffer: constraintBuffer, groups: constraintGroups } = gatherKineticConstraintBuffer(session, world.entityRegistry, frame);
+        const { buffer: constraintBuffer, groups: constraintGroups } = gatherKineticConstraintBuffer(tick);
         let persistedPairs = null;
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;
@@ -81,7 +81,7 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = g
                     copyKineticPairBuffer(kineticPairBuffer, persistedKineticPairBuffer);
                     persistedPairs = persistedKineticPairBuffer;
                 }
-                resolveKineticContactPassWithPairs(frame, persistedPairs);
+                resolveKineticContactPassWithPairs(tick, persistedPairs);
                 applyContactSideEffects(tick, kineticContactBuffer);
             } else {
                 resolveKineticContactPass(tick);
@@ -106,7 +106,7 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = g
                 if (maxError <= earlyOut.constraintErrorEpsilon && maxSpeedSq <= earlyOut.velocityEpsilonSq) break;
             }
         }
-        session.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
+        tick.world.kinetic.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
     }
     if (hasActiveBodies)
         for (let i = 0; i < activeBodies.length; i++) {

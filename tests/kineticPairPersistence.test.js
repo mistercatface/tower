@@ -53,7 +53,7 @@ describe("kinetic pair persistence", () => {
         const tick = createKineticTestTick([a, b]);
         const ax0 = a.x;
         runCollisionPipeline(tick, { resolveWalls: () => {} });
-        assert.equal(tick.session.kineticSolverStats.outerIterations, 3);
+        assert.equal(tick.world.kinetic.kineticSolverStats.outerIterations, 3);
         assert.equal(persistedKineticPairBuffer.count, 1);
         assert.ok(a.x !== ax0 || b.x !== 14);
         applyGameCollisionSettings(null);
@@ -69,12 +69,12 @@ describe("kinetic pair persistence", () => {
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(20, 0, 10);
         const tick = createKineticTestTick([bodyA, bodyB]);
-        tick.session.kineticConstraints.push({ id: 1, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, anchorA: { x: 0, y: 0 }, anchorB: { x: 0, y: 0 }, restLength: 20 });
-        tick.session.kineticConstraintsDirty = true;
+        tick.world.kinetic.kineticConstraints.push({ id: 1, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, anchorA: { x: 0, y: 0 }, anchorB: { x: 0, y: 0 }, restLength: 20 });
+        tick.world.kinetic.kineticConstraintsDirty = true;
         runCollisionPipeline(tick, { resolveWalls: () => {} });
         snapshotActiveBroadphaseBounds(tick.frame._activeKineticBodies);
         assert.ok(activeBodiesMatchKineticSlab(tick.frame._activeKineticBodies));
-        assert.ok(tick.session.kineticSolverStats.outerIterations <= tick.session.kineticSolverStats.maxIterations);
+        assert.ok(tick.world.kinetic.kineticSolverStats.outerIterations <= tick.world.kinetic.kineticSolverStats.maxIterations);
         applyGameCollisionSettings(null);
     });
 

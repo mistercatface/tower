@@ -16,8 +16,7 @@ import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { createKineticTick } from "../GameState/KineticTick.js";
-import { createKineticTestWorld, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPassWithEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 
@@ -62,19 +61,6 @@ function analyzeShards(shards, parentArea) {
         minThin = Math.min(minThin, metrics.thin);
     }
     return { totalArea, maxAspect, minThin, count: shards.length };
-}
-
-function createFractureTestWorld(initialProps) {
-    return createKineticTestWorld(initialProps);
-}
-
-function setupGlassPairFrame(props) {
-    return setupKineticTestFrame(props);
-}
-
-function fractureTick(props) {
-    const world = createFractureTestWorld(props);
-    return createKineticTick(setupGlassPairFrame(props), world);
 }
 
 function liveGlassPropCount(world) {
@@ -220,14 +206,14 @@ describe("glass fracture", () => {
 
     it("glass shard on glass shard does not reproduce on kinetic contact", () => {
         const { a, b } = makeOverlappingGlassShards();
-        const tick = fractureTick([a, b]);
+        const tick = createKineticTestTick([a, b]);
         tryFractureKineticContact(tick, a, b, 4, 0, 240);
         assert.equal(liveGlassPropCount(tick.world), 2);
     });
 
     it("resolveKineticContactPassWithEffects keeps glass shard count stable across substeps", () => {
         const { a, b } = makeOverlappingGlassShards();
-        const tick = fractureTick([a, b]);
+        const tick = createKineticTestTick([a, b]);
         for (let step = 0; step < 8; step++) {
             resolveKineticContactPassWithEffects(tick);
             assert.equal(liveGlassPropCount(tick.world), 2, `reproduced on substep ${step}`);
@@ -242,7 +228,7 @@ describe("glass fracture", () => {
         glass._glassFractureCooldown = 0;
         glass.vx = 120;
         crate.vx = -40;
-        const tick = fractureTick([glass, crate]);
+        const tick = createKineticTestTick([glass, crate]);
         assert.ok(SatCollision.checkCollision(glass, glass.getShape(), crate, crate.getShape()));
         resolveKineticContactPassWithEffects(tick);
         assert.ok(liveGlassPropCount(tick.world) > 2);
@@ -256,7 +242,7 @@ describe("glass fracture", () => {
         glass.vx = 0;
         ball.vx = -200;
         assert.ok(SatCollision.checkCollision(glass, glass.getShape(), ball, ball.getShape()));
-        const tick = fractureTick([glass, ball]);
+        const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, { resolveWalls() {} });
         const count = liveGlassPropCount(tick.world);
         assert.ok(count > 2);

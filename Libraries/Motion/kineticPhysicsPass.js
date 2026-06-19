@@ -1,6 +1,4 @@
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
-import { createKineticTick } from "../../GameState/KineticTick.js";
-import { worldSimFromState } from "../../GameState/WorldSim.js";
 import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js";
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible } from "./kineticSleep.js";
 import { ensureKineticIslandPlan } from "./kineticIslands.js";
@@ -12,8 +10,8 @@ function propBlocksSleep(prop) {
     if (fn) return fn.call(prop.currentState);
     return false;
 }
-function tickKineticSleep(spatialFrame) {
-    const kineticBodies = spatialFrame._kineticBodies;
+function tickKineticSleep(frame) {
+    const kineticBodies = frame._kineticBodies;
     if (!kineticBodies) return;
     const visited = new Set();
     for (let i = 0; i < kineticBodies.length; i++) {
@@ -22,20 +20,20 @@ function tickKineticSleep(spatialFrame) {
         if (visited.has(root)) continue;
         visited.add(root);
         const islandMembers = prop._kineticIslandPeers ?? [prop];
-        const eligible = evaluateKineticIslandSleepEligible(islandMembers, spatialFrame, { blocksSleep: propBlocksSleep });
+        const eligible = evaluateKineticIslandSleepEligible(islandMembers, frame, { blocksSleep: propBlocksSleep });
         for (let j = 0; j < islandMembers.length; j++) advanceKineticSleep(islandMembers[j], eligible);
     }
 }
-/** @param {object} state @param {number} dt @param {object} spatialFrame */
-export function runKineticPhysics(state, dt, spatialFrame) {
-    const world = worldSimFromState(state);
+export function runKineticPhysics(tick, dt, state) {
+    const frame = tick.frame;
+    const world = tick.world;
     const session = world.kinetic;
-    ensureKineticIslandPlan(session, spatialFrame._kineticBodies);
+    ensureKineticIslandPlan(session, frame._kineticBodies);
     session.kineticConstraintsDirty = false;
-    const kineticBodies = spatialFrame._kineticBodies;
+    const kineticBodies = frame._kineticBodies;
     for (let i = 0; i < kineticBodies.length; i++) if (kineticBodies[i]._groundRollDrive) wakeKineticBody(kineticBodies[i]);
-    spatialFrame.syncActiveKineticBodies();
-    const activeBodies = spatialFrame._activeKineticBodies;
+    frame.syncActiveKineticBodies();
+    const activeBodies = frame._activeKineticBodies;
     const { maxStepPx, maxSubsteps } = getCollisionSettings().motionSubsteps;
     const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });
     const subDt = dt / steps;
@@ -43,15 +41,15 @@ export function runKineticPhysics(state, dt, spatialFrame) {
     const gameContext = { snakeGame: state.sandbox?.snakeGame, state };
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec);
-        for (let i = world.worldProps.length - 1; i >= 0; i--) world.worldProps[i].update(subDt, state, spatialFrame);
-        spatialFrame.reindexKineticBodies(activeBodies);
-        runCollisionPipeline(createKineticTick(spatialFrame, world), {
-            resolveWalls(entity, frame) {
-                state.wallResolver.resolve(entity, frame);
+        for (let i = world.worldProps.length - 1; i >= 0; i--) world.worldProps[i].update(subDt, state, frame);
+        frame.reindexKineticBodies(activeBodies);
+        runCollisionPipeline(tick, {
+            resolveWalls(entity, f) {
+                state.wallResolver.resolve(entity, f);
             },
             gameContext,
         });
     }
-    tickKineticSleep(spatialFrame);
-    spatialFrame.syncActiveKineticBodies();
+    tickKineticSleep(frame);
+    frame.syncActiveKineticBodies();
 }
