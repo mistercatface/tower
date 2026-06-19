@@ -1,7 +1,7 @@
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js";
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible } from "./kineticSleep.js";
-import { buildKineticIslands } from "./kineticIslands.js";
+import { bakeKineticIslandPlan } from "./kineticIslands.js";
 import { applyGroundRollDrive } from "../Sandbox/kineticRollActuator.js";
 import { wakeKineticBody } from "./kineticSleep.js";
 import { countMotionSubsteps } from "./motionSubsteps.js";
@@ -27,7 +27,7 @@ function tickKineticSleep(spatialFrame) {
 /** @param {object} state @param {number} dt @param {object} spatialFrame */
 export function runKineticPhysics(state, dt, spatialFrame) {
     if (state.sandbox.kineticConstraintsDirty !== false) {
-        buildKineticIslands(state, spatialFrame._kineticBodies);
+        bakeKineticIslandPlan(state, spatialFrame._kineticBodies);
         state.sandbox.kineticConstraintsDirty = false;
     }
     const kineticBodies = spatialFrame._kineticBodies;

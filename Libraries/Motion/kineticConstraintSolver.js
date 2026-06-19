@@ -4,6 +4,7 @@ import { distanceBetweenAnchors, worldAnchorFromBody } from "./constraintAnchors
 import { getLinkCapsuleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";
 import { getEntityCollisionParts } from "../Spatial/collision/SatCollision.js";
 import { separateAlongNormal, applyPositionCorrection } from "../Spatial/collision/penetration.js";
+import { ensureKineticIslandPlan } from "./kineticIslands.js";
 import { wakeKineticBody } from "./kineticSleep.js";
 const LINK_CAPSULE_WALL_PASSES = 2;
 const MAX_KINETIC_CONSTRAINTS = 2048;
@@ -106,43 +107,21 @@ function islandConstraintsAsleep(buffer, start, count) {
     }
     return count > 0;
 }
-export function gatherKineticConstraintBuffer(state, buffer = kineticConstraintBuffer, groups = kineticConstraintGroups) {
+export function gatherKineticConstraintBuffer(state, spatialFrame, buffer = kineticConstraintBuffer, groups = kineticConstraintGroups) {
     buffer.reset();
     groups.reset();
+    const plan = ensureKineticIslandPlan(state, spatialFrame._kineticBodies);
     const list = state.sandbox.kineticConstraints;
-    const pending = [];
-    const parent = new Map();
-    function find(id) {
-        let root = id;
-        while (parent.has(root) && parent.get(root) !== root) root = parent.get(root);
-        let cursor = id;
-        while (parent.has(cursor) && parent.get(cursor) !== root) {
-            const next = parent.get(cursor);
-            parent.set(cursor, root);
-            cursor = next;
-        }
-        return root;
-    }
-    function union(a, b) {
-        const ra = find(a);
-        const rb = find(b);
-        if (ra !== rb) parent.set(ra, rb);
-    }
+    const buckets = new Map();
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
         if (entry.type !== "distance") continue;
         const bodyA = state.entityRegistry.getLive(entry.bodyAId);
         const bodyB = state.entityRegistry.getLive(entry.bodyBId);
         if (!bodyA?.strategy?.isKinetic || !bodyB?.strategy?.isKinetic) continue;
-        pending.push({ entry, bodyA, bodyB });
-        union(bodyA.id, bodyB.id);
-    }
-    const buckets = new Map();
-    for (let i = 0; i < pending.length; i++) {
-        const item = pending[i];
-        const root = find(item.bodyA.id);
+        const root = plan.bodyIdToIslandRoot.get(bodyA.id) ?? bodyA.id;
         if (!buckets.has(root)) buckets.set(root, []);
-        buckets.get(root).push(item);
+        buckets.get(root).push({ entry, bodyA, bodyB });
     }
     for (const items of buckets.values()) {
         if (buffer.count >= MAX_KINETIC_CONSTRAINTS || groups.count >= MAX_ISLAND_GROUPS) break;
@@ -329,7 +308,7 @@ export function solveKineticConstraintBuffer(spatialFrame, buffer, groups) {
     }
 }
 export function resolveKineticConstraintPass(spatialFrame, state) {
-    const { buffer, groups } = gatherKineticConstraintBuffer(state);
+    const { buffer, groups } = gatherKineticConstraintBuffer(state, spatialFrame);
     projectKineticConstraintBuffer(buffer, groups);
     solveKineticConstraintBuffer(spatialFrame, buffer, groups);
 }

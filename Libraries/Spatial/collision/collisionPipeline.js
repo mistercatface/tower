@@ -67,7 +67,7 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
         }
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
-        const { buffer: constraintBuffer, groups: constraintGroups } = gatherKineticConstraintBuffer(state);
+        const { buffer: constraintBuffer, groups: constraintGroups } = gatherKineticConstraintBuffer(state, spatialFrame);
         let persistedPairs = null;
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;

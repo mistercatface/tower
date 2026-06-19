@@ -1,19 +1,23 @@
 import { getKineticConstraintGraph } from "./kineticConstraintGraph.js";
-/**
- * Annotate the live kinetic bodies with their constraint-island grouping for the
- * solver and sleep systems. Connectivity comes from the shared, version-cached
- * constraint graph (see kineticConstraintGraph.js); this pass only translates
- * that graph into the body-resident layout the hot loops read:
- *   - `_kineticLinkNeighbors`: directly-linked in-frame bodies (one hop)
- *   - `_kineticIslandPeers`: all in-frame bodies in the island (only when > 1)
- *   - `_kineticIslandRoot`: shared id per island; the body's own id when alone
- * Bodies absent from the spatial frame are skipped during translation, so an
- * island's peer/neighbor lists only ever reference bodies present this frame.
- */
-export function buildKineticIslands(state, kineticBodies) {
+import { getKineticConstraintsVersion } from "./kineticConstraints.js";
+const MAX_PHYS_BODIES = 4096;
+export const islandRootByPhysId = new Int32Array(MAX_PHYS_BODIES);
+islandRootByPhysId.fill(-1);
+function clearBodyIslandFields(body) {
+    delete body._kineticLinkNeighbors;
+    delete body._kineticIslandPeers;
+    delete body._kineticIslandRoot;
+}
+export function bakeKineticIslandPlan(state, kineticBodies) {
     const adjacency = getKineticConstraintGraph(state);
     const bodyById = new Map();
-    for (let i = 0; i < kineticBodies.length; i++) bodyById.set(kineticBodies[i].id, kineticBodies[i]);
+    for (let i = 0; i < kineticBodies.length; i++) {
+        const body = kineticBodies[i];
+        bodyById.set(body.id, body);
+        clearBodyIslandFields(body);
+        if (body._physId !== undefined) islandRootByPhysId[body._physId] = -1;
+    }
+    const bodyIdToIslandRoot = new Map();
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
         const neighborIds = adjacency.get(body.id);
@@ -26,7 +30,6 @@ export function buildKineticIslands(state, kineticBodies) {
                 linkNeighbors.push(neighbor);
             }
         if (linkNeighbors) body._kineticLinkNeighbors = linkNeighbors;
-        else delete body._kineticLinkNeighbors;
     }
     const assigned = new Set();
     for (let i = 0; i < kineticBodies.length; i++) {
@@ -55,10 +58,19 @@ export function buildKineticIslands(state, kineticBodies) {
             const body = memberBodies[m];
             assigned.add(body.id);
             body._kineticIslandRoot = root;
+            bodyIdToIslandRoot.set(body.id, root);
+            if (body._physId !== undefined) islandRootByPhysId[body._physId] = root;
             if (multiBody) body._kineticIslandPeers = memberBodies;
-            else delete body._kineticIslandPeers;
         }
     }
+    state.sandbox._kineticIslandPlan = { version: getKineticConstraintsVersion(state), bodyIdToIslandRoot };
+}
+export function ensureKineticIslandPlan(state, kineticBodies) {
+    const version = getKineticConstraintsVersion(state);
+    const plan = state.sandbox._kineticIslandPlan;
+    if (plan && plan.version === version) return plan;
+    bakeKineticIslandPlan(state, kineticBodies);
+    return state.sandbox._kineticIslandPlan;
 }
 export function shareKineticIsland(bodyA, bodyB) {
     if (bodyA._kineticIslandRoot !== bodyB._kineticIslandRoot) return false;
