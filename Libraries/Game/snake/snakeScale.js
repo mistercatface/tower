@@ -1,4 +1,5 @@
-import { getChainMemberIds, getOrderedChainMemberIds, resyncChainLinkRestLengths } from "../../Sandbox/chainLinks.js";
+import { resyncChainLinkRestLengths } from "../../Sandbox/chainLinks.js";
+import { getConnectedBodyIds, getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { getCirclePropRadius, setCirclePropRadius } from "../../Props/propScale.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 export function getSnakeChainRadius(state, headId) {
@@ -6,14 +7,14 @@ export function getSnakeChainRadius(state, headId) {
     return getCirclePropRadius(head);
 }
 export function getSnakeSegmentCount(state, headId) {
-    return getOrderedChainMemberIds(state, headId).length;
+    return getConnectedComponentPath(state, headId).length;
 }
 export function getSnakeSizeScore(state, headId) {
     return getSnakeSegmentCount(state, headId) * 1000 + getSnakeChainRadius(state, headId);
 }
 export function stepSnakeChainRadius(state, headId) {
     const config = getSnakeGameConfig();
-    const memberIds = getChainMemberIds(state, headId);
+    const memberIds = getConnectedBodyIds(state, headId);
     const current = getSnakeChainRadius(state, headId);
     const next = Math.min(current + config.radiusPerMeal, config.maxRadius);
     if (next !== current) {
@@ -32,7 +33,7 @@ export function growSnakeChainAfterMeal(state, headId) {
 }
 export function stepSnakeChainRadiusDown(state, headId) {
     const config = getSnakeGameConfig();
-    const memberIds = getChainMemberIds(state, headId);
+    const memberIds = getConnectedBodyIds(state, headId);
     const current = getSnakeChainRadius(state, headId);
     const next = Math.max(current - config.radiusPerMeal, config.startRadius);
     if (next !== current) {

@@ -1,4 +1,5 @@
 import { addDistanceConstraint, listKineticConstraints, removeKineticConstraint } from "../Motion/kineticConstraints.js";
+import { getConnectedBodyIds, getConnectedComponentPath } from "../Motion/kineticConstraintGraph.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
@@ -22,42 +23,8 @@ export function isChainSteeringTarget(state, entityMeta, propId) {
     if (!prop || prop.isDead) return false;
     return isChainLinkBall(prop);
 }
-function buildChainAdjacency(state) {
-    const list = listKineticConstraints(state);
-    const adjacency = new Map();
-    for (let i = 0; i < list.length; i++) {
-        const entry = list[i];
-        if (entry.type !== "distance") continue;
-        addChainAdjacencyEdge(adjacency, entry.bodyAId, entry.bodyBId);
-        addChainAdjacencyEdge(adjacency, entry.bodyBId, entry.bodyAId);
-    }
-    return adjacency;
-}
-function addChainAdjacencyEdge(adjacency, fromId, toId) {
-    let neighbors = adjacency.get(fromId);
-    if (!neighbors) {
-        neighbors = [];
-        adjacency.set(fromId, neighbors);
-    }
-    neighbors.push(toId);
-}
 export function getChainMemberIds(state, propId) {
-    const adjacency = buildChainAdjacency(state);
-    const members = new Set([propId]);
-    const stack = [propId];
-    while (stack.length > 0) {
-        const current = stack.pop();
-        const neighbors = adjacency.get(current);
-        if (!neighbors) continue;
-        for (let i = 0; i < neighbors.length; i++) {
-            const next = neighbors[i];
-            if (!members.has(next)) {
-                members.add(next);
-                stack.push(next);
-            }
-        }
-    }
-    return [...members];
+    return getConnectedBodyIds(state, propId);
 }
 export function setChainHead(state, entityMeta, propId) {
     const members = getChainMemberIds(state, propId);
@@ -83,27 +50,7 @@ export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
     return null;
 }
 export function getOrderedChainMemberIds(state, headId) {
-    const adjacency = buildChainAdjacency(state);
-    const ordered = [headId];
-    const visited = new Set([headId]);
-    let current = headId;
-    while (true) {
-        const neighbors = adjacency.get(current);
-        let next = null;
-        if (neighbors) {
-            for (let i = 0; i < neighbors.length; i++) {
-                if (!visited.has(neighbors[i])) {
-                    next = neighbors[i];
-                    break;
-                }
-            }
-        }
-        if (next == null) break;
-        ordered.push(next);
-        visited.add(next);
-        current = next;
-    }
-    return ordered;
+    return getConnectedComponentPath(state, headId);
 }
 export function removeChainLinkBetween(state, bodyAId, bodyBId) {
     const entry = findDistanceConstraintBetween(state, bodyAId, bodyBId);

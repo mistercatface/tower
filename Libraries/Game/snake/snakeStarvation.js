@@ -1,4 +1,5 @@
-import { getOrderedChainMemberIds, removeChainLinkBetween, clearChainLinksForProp } from "../../Sandbox/chainLinks.js";
+import { removeChainLinkBetween, clearChainLinksForProp } from "../../Sandbox/chainLinks.js";
+import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSegmentCount, stepSnakeChainRadiusDown } from "./snakeScale.js";
@@ -16,7 +17,7 @@ export function getSnakeFoodTimerFraction(timer) {
 export function shrinkSnakeChainFromStarvation(state, headId) {
     const config = getSnakeGameConfig();
     const minSegments = config.minAliveSegmentCount;
-    const members = getOrderedChainMemberIds(state, headId);
+    const members = getConnectedComponentPath(state, headId);
     if (members.length <= minSegments) return false;
     const tailId = members[members.length - 1];
     const prevId = members[members.length - 2];

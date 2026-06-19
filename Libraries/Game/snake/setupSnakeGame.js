@@ -1,4 +1,4 @@
-import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
+import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
 import { createSnakeAutosim } from "./snakeAutosim.js";
@@ -36,7 +36,7 @@ export async function setupSnakeGame(state) {
     }
     const playerHeadId = playerSnake.chain.head.id;
     const playerAutosim = autosimsByHeadId.get(playerHeadId);
-    const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
+    const getSegmentCount = () => getConnectedBodyIds(state, playerHeadId).length;
     const getFoodTimerFraction = () => playerAutosim.getFoodTimerFraction();
     const getFsmDebugLine = config.showSnakeFsmDebug ? () => playerAutosim.getFsmDebugLine() : null;
     const hud = mountSnakeHud(getSegmentCount, { getFoodTimerFraction, getFsmDebugLine });

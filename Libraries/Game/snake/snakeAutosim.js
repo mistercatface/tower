@@ -1,4 +1,4 @@
-import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
+import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { linkedChainOccupiedCellKeys, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createSnakeForageIntent } from "../../AI/agentIntent/createSnakeForageIntent.js";
@@ -15,7 +15,7 @@ import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 function chainMemberProps(state, headId) {
-    const ids = getChainMemberIds(state, headId);
+    const ids = getConnectedBodyIds(state, headId);
     const members = [];
     for (let i = 0; i < ids.length; i++) members.push(state.entityRegistry.getLive(ids[i]));
     return members;

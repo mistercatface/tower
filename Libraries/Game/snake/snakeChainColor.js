@@ -1,10 +1,10 @@
-import { getChainMemberIds } from "../../Sandbox/chainLinks.js";
+import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { getPropVisualTint, randomVisualTintHex, setPropVisualTint } from "../../Color/visualOverride.js";
 export function applySnakeChainTint(members, tintHex) {
     for (let i = 0; i < members.length; i++) setPropVisualTint(members[i], tintHex);
 }
 export function tintSnakeChain(state, headId, tintHex) {
-    const memberIds = getChainMemberIds(state, headId);
+    const memberIds = getConnectedBodyIds(state, headId);
     for (let i = 0; i < memberIds.length; i++) {
         const prop = state.entityRegistry.getLive(memberIds[i]);
         if (prop && !prop.isDead) setPropVisualTint(prop, tintHex);

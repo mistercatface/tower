@@ -1,6 +1,10 @@
 let nextKineticConstraintId = 1;
 export function markKineticConstraintsDirty(state) {
     state.sandbox.kineticConstraintsDirty = true;
+    state.sandbox.kineticConstraintsVersion = (state.sandbox.kineticConstraintsVersion ?? 0) + 1;
+}
+export function getKineticConstraintsVersion(state) {
+    return state.sandbox.kineticConstraintsVersion ?? 0;
 }
 export function resetKineticConstraintIds(startId = 1) {
     nextKineticConstraintId = startId;
