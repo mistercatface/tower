@@ -4,7 +4,8 @@ import { linkedChainOccupiedCellKeys, spawnLinkedBallChain } from "../../Sandbox
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { SANDBOX_DEFAULT_FACTION } from "../../Sandbox/sandboxFaction.js";
 import { withSeededRandom } from "../../Random/index.js";
-import { applyPlayAreaConfig, generateLabCaverns } from "../../../Apps/Editor/world/mapWorld.js";
+import { applyPlayAreaConfig, generateLabCaverns, generateLabRailCaverns } from "../../../Apps/Editor/world/mapWorld.js";
+import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
@@ -33,15 +34,62 @@ function shuffleInPlace(items) {
         items[j] = tmp;
     }
 }
-async function spawnSnakeCavernMap(state) {
-    const cavern = getSnakeGameConfig().cavern;
+function applySnakeSplitMapGenBounds(state, paddingCells) {
+    const { cavernConfig, railConfig, playConfig } = state.editor;
+    const padding = Math.max(0, Math.round(paddingCells));
+    const baseCol = cavernConfig.boundsCol;
+    const baseRow = cavernConfig.boundsRow;
+    const cols = cavernConfig.boundsCols;
+    const innerRows = Math.max(2, playConfig.playAreaRows - padding);
+    const topRows = Math.floor(innerRows / 2);
+    const bottomRows = innerRows - topRows;
+    cavernConfig.boundsCol = baseCol;
+    cavernConfig.boundsRow = baseRow;
+    cavernConfig.boundsCols = cols;
+    cavernConfig.boundsRows = topRows;
+    migrateMapGenBoundsForMode(cavernConfig);
+    railConfig.boundsCol = baseCol;
+    railConfig.boundsRow = baseRow + topRows + padding;
+    railConfig.boundsCols = cols;
+    railConfig.boundsRows = bottomRows;
+    migrateMapGenBoundsForMode(railConfig);
+}
+export async function generateSnakeSplitMap(state) {
+    const config = getSnakeGameConfig();
+    const cavern = config.cavern;
     await applyPlayAreaConfig(state);
+    applySnakeSplitMapGenBounds(state, cavern.regionPaddingCells ?? 4);
     await applySandboxSceneSnapshot(state, buildEmptySandboxDoc(state));
-    const cavernConfig = state.editor.cavernConfig;
-    const prevWallHeightLevel = cavernConfig.wallHeightLevel;
+    const { cavernConfig, railConfig } = state.editor;
+    const prevCavernWallHeightLevel = cavernConfig.wallHeightLevel;
+    const prevRailWallHeightLevel = railConfig.wallHeightLevel;
+    const prevCavernFillChance = cavernConfig.fillChance;
+    const prevCavernIterations = cavernConfig.iterations;
+    const prevRailFillChance = railConfig.fillChance;
+    const prevRailIterations = railConfig.iterations;
     cavernConfig.wallHeightLevel = cavern.wallHeightLevel;
-    await generateLabCaverns(state);
-    cavernConfig.wallHeightLevel = prevWallHeightLevel;
+    railConfig.wallHeightLevel = config.rail.wallHeightLevel;
+    if (cavern.fillChance != null) cavernConfig.fillChance = cavern.fillChance;
+    if (cavern.iterations != null) cavernConfig.iterations = cavern.iterations;
+    if (config.rail.fillChance != null) railConfig.fillChance = config.rail.fillChance;
+    if (config.rail.iterations != null) railConfig.iterations = config.rail.iterations;
+    await generateLabCaverns(state, { openBoundarySides: { south: true }, openBoundaryRows: cavern.openBoundaryRows ?? 2 });
+    await generateLabRailCaverns(state, { openBoundarySides: { north: true } });
+    cavernConfig.wallHeightLevel = prevCavernWallHeightLevel;
+    railConfig.wallHeightLevel = prevRailWallHeightLevel;
+    cavernConfig.fillChance = prevCavernFillChance;
+    cavernConfig.iterations = prevCavernIterations;
+    railConfig.fillChance = prevRailFillChance;
+    railConfig.iterations = prevRailIterations;
+}
+function resolveSnakePlayerSpawnBounds(state) {
+    const { cavernConfig, railConfig, playConfig } = state.editor;
+    const playRows = playConfig.playAreaRows;
+    const quarterStart = Math.floor(playRows * 0.75);
+    return { boundsMode: "rect", boundsCol: railConfig.boundsCol, boundsRow: cavernConfig.boundsRow + quarterStart, boundsCols: railConfig.boundsCols, boundsRows: playRows - quarterStart };
+}
+async function spawnSnakeCavernMap(state) {
+    await generateSnakeSplitMap(state);
 }
 export function spawnGoalOrb(state, worldX, worldY, faction = SANDBOX_DEFAULT_FACTION) {
     return spawnPlacedSandboxProp(state, worldX, worldY, getSnakeGameConfig().goalPropId, faction);
@@ -92,18 +140,23 @@ export function spawnSnakeGoalPool(state, goalCount, { excludeKeys = null, rng =
 export async function spawnSnakeCavernScene(state) {
     const config = getSnakeGameConfig();
     await spawnSnakeCavernMap(state);
-    const openCells = collectOpenCavernCells(state);
-    if (!openCells.length) throw new Error("Cavern has no open floor cells for snake placement");
+    const cavernCells = collectOpenCavernCells(state);
+    if (!cavernCells.length) throw new Error("Cavern has no open floor cells for snake placement");
+    const playerSpawnBounds = resolveSnakePlayerSpawnBounds(state);
+    const playerCells = collectOpenCavernCells(state, playerSpawnBounds);
+    if (!playerCells.length) throw new Error("Lower map quarter has no open floor cell for player spawn");
     const snakes = [];
     let goals = [];
+    const playerIndex = config.playerSnakeIndex ?? 0;
     withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset, () => {
-        shuffleInPlace(openCells);
+        shuffleInPlace(cavernCells);
         let excludeKeys = null;
         const specs = resolveSnakeSpawnSpecs(config);
         for (let i = 0; i < specs.length; i++) {
             const spec = specs[i];
-            const anchorCell = pickOpenCavernCell(openCells, { excludeKeys });
-            if (!anchorCell) throw new Error(`Cavern has no open floor cell for snake ${i + 1}`);
+            const pool = i === playerIndex ? playerCells : cavernCells;
+            const anchorCell = pickOpenCavernCell(pool, { excludeKeys });
+            if (!anchorCell) throw new Error(`No open floor cell for snake ${i + 1}`);
             const pack = spawnSnakeChain(state, anchorCell, { excludeKeys, segmentCount: spec.segmentCount });
             snakes.push({ ...pack, cameraFollow: spec.cameraFollow });
             excludeKeys = pack.occupiedKeys;

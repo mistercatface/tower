@@ -134,22 +134,40 @@ export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     const expanded = grid.expandToCoverAabb(required);
     return expanded;
 }
+function clearCavernOccupancyBoundaryStrip(cells, cols, rows, side, stripRows) {
+    const depth = Math.max(1, Math.round(stripRows));
+    if (side === "south") {
+        for (let strip = 0; strip < depth; strip++) {
+            const lr = rows - 1 - strip;
+            if (lr < 0) break;
+            for (let lc = 0; lc < cols; lc++) cells[lr * cols + lc] = 0;
+        }
+        return;
+    }
+    if (side === "north")
+        for (let strip = 0; strip < depth; strip++) {
+            if (strip >= rows) break;
+            for (let lc = 0; lc < cols; lc++) cells[strip * cols + lc] = 0;
+        }
+}
 /** @param {import("../TileLabEditorState.js").TileLabEditorState["cavernConfig"]} config @returns {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
-function generateCavernOccupancy(config) {
+function generateCavernOccupancy(config, { openBoundarySides = null, openBoundaryRows = 1 } = {}) {
     const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(config);
     let cells = fillRandomGrid(cols, rows, config.fillChance);
     cells = runCellularAutomata(cols, rows, cells, { iterations: config.iterations, scratch: new Uint8Array(cols * rows) });
     applyMapGenShapeMask(cells, cols, rows, config, originCol, originRow);
+    if (openBoundarySides?.south) clearCavernOccupancyBoundaryStrip(cells, cols, rows, "south", openBoundaryRows);
+    if (openBoundarySides?.north) clearCavernOccupancyBoundaryStrip(cells, cols, rows, "north", openBoundaryRows);
     return { originCol, originRow, cols, rows, cells };
 }
 /** @param {import("../state.js").TileLabGameState} state */
-export async function generateLabCaverns(state) {
+export async function generateLabCaverns(state, { openBoundarySides = null, openBoundaryRows = 1 } = {}) {
     const { cavernConfig } = state.editor;
     const cellSize = gridSettings.cellSize;
     /** @type {{ originCol: number, originRow: number, cols: number, rows: number, cells: Uint8Array }} */
     let stamp = null;
     withSeededRandom(state.mapSeed, () => {
-        stamp = generateCavernOccupancy(cavernConfig);
+        stamp = generateCavernOccupancy(cavernConfig, { openBoundarySides, openBoundaryRows });
     });
     ensureLabObstacleGridCoverage(state);
     const level = clampStampWallHeightLevel(cavernConfig.wallHeightLevel, state.worldSurfaces.settings);
@@ -166,7 +184,7 @@ export async function generateLabCaverns(state) {
     state.worldSurfaces.clearBakeCache();
     await rebuildLabMapCaches(state);
 }
-export async function generateLabRailCaverns(state) {
+export async function generateLabRailCaverns(state, { openBoundarySides = null } = {}) {
     const { railConfig } = state.editor;
     const cellSize = gridSettings.cellSize;
     const stampBounds = getMapGenBoundsAabb(railConfig, cellSize);
@@ -192,6 +210,11 @@ export async function generateLabRailCaverns(state) {
             const in2 = isGlobalCellInMapGenBounds(railConfig, gc, gr);
             if (!in1 && !in2) hCells[lr * hCols + lc] = 0;
         }
+    if (openBoundarySides?.north) for (let lc = 0; lc < hCols; lc++) hCells[lc] = 0;
+    if (openBoundarySides?.south) {
+        const lr = hRows - 1;
+        for (let lc = 0; lc < hCols; lc++) hCells[lr * hCols + lc] = 0;
+    }
     // 2. Generate Vertical Edges CA (slightly offset the seed so H and V structures are unique)
     const vCols = cols + 1;
     const vRows = rows;
@@ -209,6 +232,11 @@ export async function generateLabRailCaverns(state) {
             const in2 = isGlobalCellInMapGenBounds(railConfig, gc, gr);
             if (!in1 && !in2) vCells[lr * vCols + lc] = 0;
         }
+    if (openBoundarySides?.west) for (let lr = 0; lr < vRows; lr++) vCells[lr * vCols] = 0;
+    if (openBoundarySides?.east) {
+        const lc = vCols - 1;
+        for (let lr = 0; lr < vRows; lr++) vCells[lr * vCols + lc] = 0;
+    }
     const { col: baseCol, row: baseRow } = grid.worldToGrid(originCol * cellSize, originRow * cellSize);
     const startCol = Math.max(0, baseCol);
     const endCol = Math.min(grid.cols - 1, baseCol + cols - 1);
