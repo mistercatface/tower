@@ -43,9 +43,11 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
 }
 export function steerRollToward(prop, dirX, dirY, config) {
     prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: config.maxSpeed };
+    wakeKineticBody(prop);
 }
 export function decelerateRoll(prop, config) {
     prop._groundRollDrive = { kind: "brake", accel: config.accel };
+    wakeKineticBody(prop);
 }
 export function applyGroundRollDrive(prop, dtSec) {
     const drive = prop._groundRollDrive;
@@ -56,7 +58,4 @@ export function applyGroundRollDrive(prop, dtSec) {
 }
 export function clearGroundRollDrive(prop) {
     delete prop._groundRollDrive;
-}
-export function clearGroundRollDrives(bodies) {
-    for (let i = 0; i < bodies.length; i++) clearGroundRollDrive(bodies[i]);
 }

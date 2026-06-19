@@ -3,6 +3,7 @@ import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js"
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible } from "./kineticSleep.js";
 import { buildKineticIslands } from "./kineticIslands.js";
 import { applyGroundRollDrive } from "../Sandbox/kineticRollActuator.js";
+import { wakeKineticBody } from "./kineticSleep.js";
 import { countMotionSubsteps } from "./motionSubsteps.js";
 function propBlocksSleep(prop) {
     const fn = prop.currentState.blocksSleep;
@@ -29,6 +30,9 @@ export function runKineticPhysics(state, dt, spatialFrame) {
         buildKineticIslands(state, spatialFrame._kineticBodies);
         state.sandbox.kineticConstraintsDirty = false;
     }
+    const kineticBodies = spatialFrame._kineticBodies;
+    for (let i = 0; i < kineticBodies.length; i++) if (kineticBodies[i]._groundRollDrive) wakeKineticBody(kineticBodies[i]);
+    spatialFrame.syncActiveKineticBodies();
     const activeBodies = spatialFrame._activeKineticBodies;
     const { maxStepPx, maxSubsteps } = getCollisionSettings().motionSubsteps;
     const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });

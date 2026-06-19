@@ -109,6 +109,12 @@ describe("kineticRollActuator", () => {
         assert.equal(prop.vx, 0);
     });
 
+    it("steerRollToward wakes the body for the physics pass", () => {
+        const prop = mockRollingProp({ isSleeping: true });
+        steerRollToward(prop, 1, 0, { accel: 600, maxSpeed: 180 });
+        assert.equal(prop.isSleeping, false);
+    });
+
     it("drive intent persists until explicitly cleared", () => {
         const prop = mockRollingProp();
         steerRollToward(prop, 1, 0, { accel: 600, maxSpeed: 180 });

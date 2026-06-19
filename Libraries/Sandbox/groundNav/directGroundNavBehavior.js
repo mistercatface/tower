@@ -10,8 +10,7 @@ export function createDirectGroundNavBehavior(state) {
         }
         return run;
     };
-    const clearRunTarget = (run, prop) => {
-        if (prop) clearGroundRollDrive(prop);
+    const clearRunTarget = (run) => {
         run.targetWorld = null;
         run.unitDragActive = false;
         run.moveTargetActive = false;
@@ -24,7 +23,7 @@ export function createDirectGroundNavBehavior(state) {
         const dist = Math.hypot(dx, dy);
         if (dist < config.stopRadius) {
             if (run.moveTargetActive) {
-                clearRunTarget(run, prop);
+                clearRunTarget(run);
                 return;
             }
             decelerateRoll(prop, config);
@@ -49,7 +48,10 @@ export function createDirectGroundNavBehavior(state) {
         onPointerUp(prop) {
             const run = getRun(prop);
             run.unitDragActive = false;
-            if (!run.moveTargetActive) clearRunTarget(run, prop);
+            if (!run.moveTargetActive) {
+                clearGroundRollDrive(prop);
+                clearRunTarget(run);
+            }
         },
         setMoveTarget(prop, world) {
             const run = getRun(prop);
@@ -67,7 +69,8 @@ export function createDirectGroundNavBehavior(state) {
             return run.moveTargetActive && run.targetWorld != null;
         },
         clearMoveTarget(prop) {
-            clearRunTarget(getRun(prop), prop);
+            clearGroundRollDrive(prop);
+            clearRunTarget(getRun(prop));
         },
         tick(prop, dt) {
             tickProp(prop, getRun(prop), dt);

@@ -25,7 +25,6 @@ export function createHpaGroundNavBehavior(state) {
         run.hpaNav.reset(state);
     };
     const releaseMoveTarget = (prop, run) => {
-        clearGroundRollDrive(prop);
         clearRunTarget(run, state);
     };
     const applyMoveTarget = (run, world, forceReset = false) => {
@@ -51,7 +50,6 @@ export function createHpaGroundNavBehavior(state) {
         }
         if (onBelt) {
             run.wasOnBelt = true;
-            clearGroundRollDrive(prop);
             return;
         }
         let steering = null;

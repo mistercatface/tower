@@ -16,6 +16,8 @@ export async function setupSnakeGame(state) {
     const registry = createSnakeLifecycleRegistry();
     const autosimsByHeadId = new Map();
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
+    void state.navigation.onObstaclesChanged(null);
+    scene.navWalkable.rebake();
     let playerSnake = null;
     for (let i = 0; i < scene.snakes.length; i++) {
         const snake = scene.snakes[i];
@@ -35,8 +37,6 @@ export async function setupSnakeGame(state) {
             state.viewport.snapTo(snake.chain.head.x, snake.chain.head.y);
         }
     }
-    void state.navigation.onObstaclesChanged(null);
-    scene.navWalkable.rebake();
     const playerHeadId = playerSnake.chain.head.id;
     const playerAutosim = autosimsByHeadId.get(playerHeadId);
     const getSegmentCount = () => getChainMemberIds(state, playerHeadId).length;
