@@ -1,7 +1,9 @@
+import { bumpKineticTopologyGeneration } from "./kineticTopology.js";
 let nextKineticConstraintId = 1;
 export function markKineticConstraintsDirty(state) {
     state.sandbox.kineticConstraintsDirty = true;
     state.sandbox.kineticConstraintsVersion = (state.sandbox.kineticConstraintsVersion ?? 0) + 1;
+    bumpKineticTopologyGeneration(state);
 }
 export function getKineticConstraintsVersion(state) {
     return state.sandbox.kineticConstraintsVersion ?? 0;

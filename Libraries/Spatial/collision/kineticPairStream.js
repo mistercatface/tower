@@ -2,6 +2,7 @@ import { allowsKineticCollisionPairSnapshotted, isKinematicallyActive } from "./
 import { kineticBodySlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
 import { classifyKineticPairTier, KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 import { shareKineticIsland } from "../../Motion/kineticIslands.js";
+import { kineticPairTopologyStale } from "../../Motion/kineticTopology.js";
 const MAX_KINETIC_PAIRS = 4096;
 export const kineticPairBuffer = {
     count: 0,
@@ -49,7 +50,8 @@ export function kineticPairBodyAt(spatialFrame, physId) {
     if (!body || body._physId !== physId) return null;
     return body;
 }
-export function kineticPairBodiesAt(spatialFrame, physIdA, physIdB) {
+export function kineticPairBodiesAt(spatialFrame, state, physIdA, physIdB) {
+    if (state && kineticPairTopologyStale(spatialFrame, state)) return null;
     const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
     const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
     if (!bodyA || !bodyB) return null;

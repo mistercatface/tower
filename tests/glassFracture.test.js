@@ -67,7 +67,7 @@ function createFractureTestState(initialProps) {
     const worldProps = initialProps.slice();
     return {
         worldProps,
-        sandbox: { entityMeta: { delete() {} }, kineticConstraints: [] },
+        sandbox: { entityMeta: { delete() {} }, kineticConstraints: [], kineticTopologyGeneration: 0 },
         entityRegistry: {
             membershipGen: 0,
             register(_kind, prop) {

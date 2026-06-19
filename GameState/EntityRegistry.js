@@ -309,14 +309,14 @@ export function addWorldPropToState(state, prop) {
     state.worldProps.push(prop);
     state.entityRegistry.register("worldProp", prop);
 }
-/** @param {object} state @param {object} prop */
-export function removeWorldPropFromState(state, prop) {
+/** @param {object} state @param {object} prop @param {object} [spatialFrame] */
+export function removeWorldPropFromState(state, prop, spatialFrame = kineticSpatial) {
     const index = state.worldProps.indexOf(prop);
     if (index >= 0) state.worldProps.splice(index, 1);
     state.entityRegistry.unregister(prop);
     getSandboxEntityMeta(state)?.delete(prop.id);
     pruneKineticConstraintsForBody(state, prop.id);
-    if (prop._physId !== undefined) kineticSpatial.evictKineticProp(prop);
+    spatialFrame.evictKineticProp(prop, state);
 }
 /** @param {object} state */
 export function clearWorldPropsInState(state) {

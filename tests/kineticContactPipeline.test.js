@@ -59,7 +59,8 @@ describe("kinetic contact pipeline", () => {
         wedge.vx = -20;
         assert.ok(SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
         const frame = setupPairFrame(ball, wedge);
-        resolveKineticContactPassWithPairs(frame, {}, gatherKineticContactPairs(frame));
+        const state = { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } };
+        resolveKineticContactPassWithPairs(frame, state, gatherKineticContactPairs(frame, state));
         assert.equal(kineticContactBuffer.count, 1);
         assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.CIRCLE_POLY);
         assert.ok(!SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
@@ -69,7 +70,8 @@ describe("kinetic contact pipeline", () => {
         const a = mockCircleBody(0, 0, 10, 50, 0);
         const b = mockCircleBody(15, 0, 10, -30, 0);
         const frame = setupPairFrame(a, b);
-        resolveKineticContactPassWithPairs(frame, {}, gatherKineticContactPairs(frame));
+        const state = { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } };
+        resolveKineticContactPassWithPairs(frame, state, gatherKineticContactPairs(frame, state));
         assert.equal(kineticContactBuffer.count, 1);
         assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.CIRCLE_CIRCLE);
     });
@@ -80,7 +82,8 @@ describe("kinetic contact pipeline", () => {
         right.vx = -20;
         assert.ok(checkEntityPairCollision(left, right));
         const frame = setupPairFrame(left, right);
-        resolveKineticContactPassWithPairs(frame, {}, gatherKineticContactPairs(frame));
+        const state = { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } };
+        resolveKineticContactPassWithPairs(frame, state, gatherKineticContactPairs(frame, state));
         assert.equal(kineticContactBuffer.count, 1);
         assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.POLY_POLY);
         assert.equal(checkEntityPairCollision(left, right), null);

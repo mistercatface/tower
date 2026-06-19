@@ -4,6 +4,7 @@ import { bodyPinnedForContact, massFromBody } from "../../Motion/bodyMass.js";
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
 import { resolveSnakeCombatFromContacts } from "../../Game/snake/snakeCombat.js";
 import { gatherKineticCandidatePairs, kineticPairBodiesAt, kineticPairBodyAt, kineticPairBuffer, refreshKineticPairRelativeVelocities } from "./kineticPairStream.js";
+import { stampKineticPairGatherTopology } from "../../Motion/kineticTopology.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { kineticBodySlab, writebackKineticBodySlabPhysIds } from "./kineticBodySlab.js";
 import { separateAlongNormal, separateCoincidentCirclePair, COINCIDENT_CIRCLE_EPS } from "./penetration.js";
@@ -247,12 +248,12 @@ function narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, preDvx, pre
     const arms = contactLeverArms(bodyA, bodyB, shapeA, shapeB, info);
     appendContact(contacts, physIdA, physIdB, tier, info.nx, info.ny, preDvx, preDvy, arms.rax, arms.ray, arms.rbx, arms.rby);
 }
-function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
+function narrowPhaseKineticContacts(spatialFrame, state, pairs, contacts) {
     contacts.reset();
     for (let i = 0; i < pairs.count; i++) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
-        if (!kineticPairBodiesAt(spatialFrame, physIdA, physIdB)) continue;
+        if (!kineticPairBodiesAt(spatialFrame, state, physIdA, physIdB)) continue;
         const tier = pairs.tier[i];
         if (tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) narrowPhaseCircleContact(physIdA, physIdB, pairs.preDvx[i], pairs.preDvy[i], contacts);
         else narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, pairs.preDvx[i], pairs.preDvy[i], contacts);
@@ -387,7 +388,7 @@ function applyKineticContactEffects(contacts, spatialFrame, state) {
     for (let i = 0; i < contacts.count; i++) {
         const physIdA = contacts.physIdA[i];
         const physIdB = contacts.physIdB[i];
-        const pair = kineticPairBodiesAt(spatialFrame, physIdA, physIdB);
+        const pair = kineticPairBodiesAt(spatialFrame, state, physIdA, physIdB);
         if (!pair) continue;
         const { bodyA, bodyB } = pair;
         const nx = contacts.nx[i];
@@ -409,11 +410,12 @@ function applyKineticContactEffects(contacts, spatialFrame, state) {
     }
 }
 export function resolveKineticContactPass(spatialFrame, state) {
-    const pairs = gatherKineticContactPairs(spatialFrame);
+    const pairs = gatherKineticContactPairs(spatialFrame, state);
     resolveKineticContactPassWithPairs(spatialFrame, state, pairs);
 }
-export function gatherKineticContactPairs(spatialFrame) {
+export function gatherKineticContactPairs(spatialFrame, state) {
     snapshotActiveBroadphaseBounds(spatialFrame._activeKineticBodies);
+    stampKineticPairGatherTopology(spatialFrame, state);
     const pairs = kineticPairBuffer;
     gatherKineticCandidatePairs(spatialFrame, pairs);
     return pairs;
@@ -422,7 +424,7 @@ export function resolveKineticContactPassWithPairs(spatialFrame, state, pairs) {
     snapshotActiveBroadphaseBounds(spatialFrame._activeKineticBodies);
     refreshKineticPairRelativeVelocities(pairs);
     const contacts = kineticContactBuffer;
-    narrowPhaseKineticContacts(spatialFrame, pairs, contacts);
+    narrowPhaseKineticContacts(spatialFrame, state, pairs, contacts);
     if (contacts.count === 0) return;
     precomputeKineticContacts(spatialFrame, contacts);
     warmStartKineticContacts(contacts);

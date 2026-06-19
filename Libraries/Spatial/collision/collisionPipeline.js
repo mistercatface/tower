@@ -73,7 +73,7 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
             outerIterationsRun = iter + 1;
             if (earlyOut.persistPairs) {
                 if (iter === 0) {
-                    gatherKineticContactPairs(spatialFrame);
+                    gatherKineticContactPairs(spatialFrame, state);
                     copyKineticPairBuffer(kineticPairBuffer, persistedKineticPairBuffer);
                     persistedPairs = persistedKineticPairBuffer;
                 }

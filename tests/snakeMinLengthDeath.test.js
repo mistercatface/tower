@@ -92,7 +92,7 @@ describe("snake combat min length", () => {
         predator.chain.head.y = preyHead.y;
         const props = [...predator.chain.members, ...prey.chain.members];
         const frame = setupSnakeFrame(props);
-        const pairs = gatherKineticContactPairs(frame);
+        const pairs = gatherKineticContactPairs(frame, state);
         resolveKineticContactPassWithPairs(frame, state, pairs);
         assert.ok(kineticContactBuffer.count >= 1);
         const preyHeadId = prey.chain.head.id;
@@ -124,7 +124,7 @@ describe("snake combat min length", () => {
         smallHead.y = bigTail.y;
         const props = [...big.chain.members, ...small.chain.members];
         const frame = setupSnakeFrame(props);
-        const pairs = gatherKineticContactPairs(frame);
+        const pairs = gatherKineticContactPairs(frame, state);
         resolveKineticContactPassWithPairs(frame, state, pairs);
         assert.ok(kineticContactBuffer.count >= 1);
         assert.equal(registry.inertByLeadId.size, 0);

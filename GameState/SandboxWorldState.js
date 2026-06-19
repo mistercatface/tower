@@ -18,5 +18,6 @@ export class SandboxWorldState {
         this.kineticConstraints = [];
         this.kineticConstraintsDirty = false;
         this.kineticConstraintsVersion = 0;
+        this.kineticTopologyGeneration = 0;
     }
 }

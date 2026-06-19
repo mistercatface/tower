@@ -2,6 +2,7 @@ import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore
 import { populateKineticFrame } from "./populateKineticFrame.js";
 import { wakeKineticBody } from "../../Libraries/Motion/kineticSleep.js";
 import { islandRootByPhysId } from "../../Libraries/Motion/kineticIslands.js";
+import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticTopology.js";
 /**
  * Kinetic spatial frame — populates SpatialFrameCore from GameState.
  *
@@ -45,6 +46,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._wallCache.clear();
         if (prop.strategy?.isKinetic) this.activateKineticBody(prop);
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
+        bumpKineticTopologyGeneration(state);
     }
     syncActiveKineticBodies() {
         const active = this._activeKineticBodies;
@@ -126,7 +128,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (!bodies.length) return;
         super.reindexKineticBodies(bodies);
     }
-    evictKineticProp(prop) {
+    evictKineticProp(prop, state) {
         if (!prop || prop._physId === undefined) return;
         islandRootByPhysId[prop._physId] = -1;
         this.entityGrid.remove(prop);
@@ -139,6 +141,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (prop._neighbors) prop._neighbors.length = 0;
         this.frameId = (this.frameId + 1) | 0;
         this._wallCache.clear();
+        if (state) bumpKineticTopologyGeneration(state);
     }
 }
 /** Shared frame for simulation ticks. Call begin() once per update. */

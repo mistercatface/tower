@@ -56,7 +56,7 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
     const registry = snakeGame.registry;
     const splitLinks = new Set();
     for (let i = 0; i < contacts.count; i++) {
-        const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
+        const pair = kineticPairBodiesAt(spatialFrame, state, contacts.physIdA[i], contacts.physIdB[i]);
         if (!pair) continue;
         const { bodyA, bodyB } = pair;
         const headA = resolveHead(registry, state, bodyA.id);

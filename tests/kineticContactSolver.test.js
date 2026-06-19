@@ -70,7 +70,7 @@ describe("kinetic contact solver", () => {
         const a = mockCircleBody(0, 0, 10, 50, 0);
         const b = mockCircleBody(15, 0, 10, -30, 0);
         const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(frame, {});
+        resolveKineticContactPass(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
         assert.ok(a.x < 0);
         assert.ok(b.x > 15);
         assert.ok(a.vx < 50);
@@ -80,7 +80,7 @@ describe("kinetic contact solver", () => {
         const a = mockCircleBody(0, 0, 10, 40, 0, 0.8);
         const b = mockCircleBody(12, 0, 10, 0, 0, 0.8);
         const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(frame, {});
+        resolveKineticContactPass(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
         assert.ok(Math.abs(a.vx) < 40);
     });
     it("resting overlapping circles are left alone until one moves", () => {
@@ -89,7 +89,7 @@ describe("kinetic contact solver", () => {
         const ax0 = a.x;
         const bx0 = b.x;
         const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(frame, {});
+        resolveKineticContactPass(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
         assert.equal(a.x, ax0);
         assert.equal(b.x, bx0);
     });
@@ -131,7 +131,7 @@ describe("poly-poly kinetic contact", () => {
         box.vx = -20;
         assert.ok(pairStillOverlaps(bar, box));
         const frame = setupPairFrame(bar, box);
-        resolveContactUntilClear(frame, {});
+        resolveContactUntilClear(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
         assert.ok(!pairStillOverlaps(bar, box));
     });
     it("circle-poly ball and tri wedge separate with normal toward polygon", () => {
@@ -151,7 +151,7 @@ describe("poly-poly kinetic contact", () => {
         a.vx = 40;
         b.vx = -20;
         const frame = setupPairFrame(a, b);
-        resolveContactUntilClear(frame, {});
+        resolveContactUntilClear(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
         assert.ok(!pairStillOverlaps(a, b));
         assert.ok(a.vx < 40);
         assert.ok(b.vx > -20);
@@ -164,7 +164,7 @@ describe("poly-poly kinetic contact", () => {
         left.vx = 35;
         right.vx = 0;
         const frame = setupPairFrame(left, right);
-        resolveKineticContactPass(frame, {});
+        resolveKineticContactPass(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
         assert.ok(left.vx < 35);
     });
 });

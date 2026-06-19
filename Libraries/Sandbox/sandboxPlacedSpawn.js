@@ -1,5 +1,6 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { getPropAsset } from "../Props/PropCatalog.js";
 import { applyPropBoxFootprint } from "../Props/propStrategy.js";
@@ -84,6 +85,6 @@ export function collectPlacedSandboxPropEntries(state) {
     }
     return entries;
 }
-export function removeSandboxWorldProp(state, prop) {
-    removeWorldPropFromState(state, prop);
+export function removeSandboxWorldProp(state, prop, spatialFrame = kineticSpatial) {
+    removeWorldPropFromState(state, prop, spatialFrame);
 }

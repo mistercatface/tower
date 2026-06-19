@@ -125,8 +125,7 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     return peelSolidFracture(prop, local.x, local.y, impactForce);
 }
 function evictFracturedProp(state, prop, spatialFrame) {
-    spatialFrame.evictKineticProp(prop);
-    removeWorldPropFromState(state, prop);
+    removeWorldPropFromState(state, prop, spatialFrame);
 }
 export function tryFractureKineticContact(state, bodyA, bodyB, hitX, hitY, relativeSpeed, spatialFrame) {
     const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
