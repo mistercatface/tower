@@ -390,13 +390,13 @@ function applyKineticContactWake(contacts, spatialFrame) {
         spatialFrame.scheduleKineticActivation(pair.bodyB);
     }
 }
-export function resolveKineticContactPass(spatialFrame, sandbox) {
-    const pairs = gatherKineticContactPairs(spatialFrame, sandbox);
+export function resolveKineticContactPass(spatialFrame, session) {
+    const pairs = gatherKineticContactPairs(spatialFrame, session);
     resolveKineticContactPassWithPairs(spatialFrame, pairs);
 }
-export function gatherKineticContactPairs(spatialFrame, sandbox) {
+export function gatherKineticContactPairs(spatialFrame, session) {
     snapshotActiveBroadphaseBounds(spatialFrame._activeKineticBodies);
-    stampKineticPairGatherTopology(spatialFrame, sandbox);
+    stampKineticPairGatherTopology(spatialFrame, session);
     const pairs = kineticPairBuffer;
     gatherKineticCandidatePairs(spatialFrame, pairs);
     return pairs;

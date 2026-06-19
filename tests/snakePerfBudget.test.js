@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { performance } from "node:perf_hooks";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
@@ -41,6 +42,7 @@ function createPerfState(cols = 48, rows = 48) {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
         navigation: { obstacleGeneration: 0, settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000 }, onObstaclesChanged: async () => {} },

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession, createKineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
@@ -23,12 +24,13 @@ function createSnapshotTestState(cols = 32, rows = 32) {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
     };
 }
 
 function applyPhysicsSnapshot(state, doc) {
-    clearKineticConstraints(state.sandbox);
+    clearKineticConstraints(state.kinetic);
     getSandboxEntityMeta(state).clear();
     for (let i = state.worldProps.length - 1; i >= 0; i--) state.worldProps[i].isDead = true;
     state.worldProps.length = 0;
@@ -38,7 +40,7 @@ function applyPhysicsSnapshot(state, doc) {
         const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction, entry.facing ?? 0, undefined, entry.visualOverride);
         propIds.push(prop.id);
     }
-    applyKineticConstraintsFromSnapshot(state.sandbox, doc.kineticConstraints, propIds);
+    applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, propIds);
     if (doc.chainHeadProp != null) setChainHead(state, getSandboxEntityMeta(state), propIds[doc.chainHeadProp]);
 }
 
@@ -84,14 +86,14 @@ describe("sandboxSceneSnapshot physics", () => {
         });
         const physicsDoc = {
             props,
-            kineticConstraints: collectKineticConstraintsSnapshot(state.sandbox, propIdToIndex),
+            kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex),
             chainHeadProp,
         };
         const fresh = createSnapshotTestState();
         applyPhysicsSnapshot(fresh, physicsDoc);
         const freshMeta = getSandboxEntityMeta(fresh);
         assert.equal(fresh.worldProps.length, 5);
-        assert.equal(fresh.sandbox.kineticConstraints.length, 3);
+        assert.equal(fresh.kinetic.kineticConstraints.length, 3);
         const tintedProp = fresh.worldProps.find((prop) => getPropVisualTint(prop) === tintHex);
         assert.ok(tintedProp);
         const head = fresh.worldProps.find((prop) => freshMeta.isChainHead(prop.id));

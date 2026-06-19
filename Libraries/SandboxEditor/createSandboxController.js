@@ -302,7 +302,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.sync();
         },
         removeSelectedChainLink: (constraintId) => {
-            removeKineticConstraint(state.sandbox, constraintId);
+            removeKineticConstraint(state.kinetic, constraintId);
             session.sync();
         },
         listSelectedChainLinks: () => {

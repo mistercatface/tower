@@ -10,6 +10,7 @@ import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { NavigationService } from "../Systems/Navigation/NavigationService.js";
 import { EntityRegistry } from "./EntityRegistry.js";
+import { KineticSession } from "./KineticSession.js";
 const navigationSettings = { recenterThreshold: 400, stuckReplanFrames: 60, stuckMoveThreshold: 1.5, pathOffPathDistance: 80 };
 export class SharedGameState {
     constructor() {
@@ -30,6 +31,7 @@ export class SharedGameState {
         this.radioSeenThisRun = {};
         this.worldProps = [];
         this.entityRegistry = new EntityRegistry();
+        this.kinetic = new KineticSession();
         this.wallResolver = new WallCollisionResolver();
         this.obstacleGrid.rebuildFixed(0, 0, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows));
         void this.navigation.onObstaclesChanged(null);

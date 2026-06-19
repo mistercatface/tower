@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
@@ -19,7 +20,7 @@ const noopDeps = {
 function createPropScaleTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 256, 256);
-    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], sandbox: new SandboxWorldState() };
+    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
 }
 
 describe("propScale", () => {

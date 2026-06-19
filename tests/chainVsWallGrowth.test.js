@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -31,7 +32,7 @@ function createNarrowCorridorState() {
         stampBlockedCell(grid, col, 8);
     }
     for (let col = 11; col <= 27; col++) stampBlockedCell(grid, col, 7);
-    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], sandbox: new SandboxWorldState() };
+    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
 }
 
 function segmentCenterInBlockedCell(state, prop) {

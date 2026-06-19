@@ -17,6 +17,7 @@ import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { resolveKineticContactPassWithEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 
@@ -67,7 +68,8 @@ function createFractureTestState(initialProps) {
     const worldProps = initialProps.slice();
     return {
         worldProps,
-        sandbox: { entityMeta: { delete() {} }, kineticConstraints: [], kineticTopologyGeneration: 0 },
+        kinetic: createKineticSession(),
+        sandbox: { entityMeta: { delete() {} } },
         entityRegistry: {
             membershipGen: 0,
             register(_kind, prop) {

@@ -1,5 +1,6 @@
 import "./nodeCanvasSetup.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import button_floor from "../Assets/props/button_floor/button_floor.asset.js";
@@ -45,6 +46,7 @@ export function createRoomBakeTestState(cols = 64, rows = 64) {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {} },
         navigation: { onObstaclesChanged: async () => {} },

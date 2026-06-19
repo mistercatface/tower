@@ -1,5 +1,6 @@
 import { loadPropAssets } from "../../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
+import { KineticSession } from "../../GameState/KineticSession.js";
 import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDefaultMapGenBoundsConfig } from "../../Libraries/Sandbox/mapGenBounds.js";
@@ -67,6 +68,7 @@ export function createSnakeGameHarnessState(cols = 32, rows = 32) {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },

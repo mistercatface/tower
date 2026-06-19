@@ -30,6 +30,6 @@ export function applyKineticContactSideEffects(state, spatialFrame, contacts) {
     if (state.sandbox?.snakeGame) resolveSnakeCombatFromContacts(state, spatialFrame, contacts, state.sandbox.snakeGame);
 }
 export function resolveKineticContactPassWithEffects(state, spatialFrame) {
-    resolveKineticContactPass(spatialFrame, state.sandbox);
+    resolveKineticContactPass(spatialFrame, state.kinetic);
     applyKineticContactSideEffects(state, spatialFrame, kineticContactBuffer);
 }

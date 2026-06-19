@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { bakeKineticIslandPlan, islandRootByPhysId, shareKineticIsland } from "../Libraries/Motion/kineticIslands.js";
 import {
@@ -40,7 +41,8 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
 
 function createState(props, constraints = []) {
     return {
-        sandbox: { kineticConstraints: constraints.slice() },
+        kinetic: createKineticSession({ constraints }),
+        sandbox: {},
         entityRegistry: {
             getLive(id) {
                 for (let i = 0; i < props.length; i++) {
@@ -67,7 +69,7 @@ function setupActiveFrame(bodies) {
 function linkChain(state, bodies, spacing) {
     resetKineticConstraintIds(1);
     for (let i = 0; i < bodies.length - 1; i++) {
-        addDistanceConstraint(state.sandbox, {
+        addDistanceConstraint(state.kinetic, {
             bodyAId: bodies[i].id,
             bodyBId: bodies[i + 1].id,
             restLength: spacing,
@@ -84,7 +86,7 @@ describe("kinetic islands", () => {
         const state = createState(bodies);
         linkChain(state, bodies, 18);
         const frame = setupActiveFrame(bodies);
-        bakeKineticIslandPlan(state.sandbox, frame._kineticBodies);
+        bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
         snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 0);
@@ -97,7 +99,7 @@ describe("kinetic islands", () => {
         const bodies = [left, center, right];
         const state = createState(bodies);
         const frame = setupActiveFrame(bodies);
-        bakeKineticIslandPlan(state.sandbox, frame._kineticBodies);
+        bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
         snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 2);
@@ -111,7 +113,7 @@ describe("kinetic islands", () => {
         const linkedState = createState(bodies);
         linkChain(linkedState, bodies, spacing);
         const linkedFrame = setupActiveFrame(bodies);
-        bakeKineticIslandPlan(linkedState.sandbox, linkedFrame._kineticBodies);
+        bakeKineticIslandPlan(linkedState.kinetic, linkedFrame._kineticBodies);
         snapshotActiveBroadphaseBounds(linkedFrame._activeKineticBodies);
         gatherKineticCandidatePairs(linkedFrame, kineticPairBuffer);
         const linkedPairs = kineticPairBuffer.count;
@@ -121,7 +123,7 @@ describe("kinetic islands", () => {
         for (let i = 0; i < count; i++) freeBodies.push(mockCircleBody(i * spacing, 0, 10, i === 5 ? 20 : 0, 0));
         const freeState = createState(freeBodies);
         const freeFrame = setupActiveFrame(freeBodies);
-        bakeKineticIslandPlan(freeState.sandbox, freeFrame._kineticBodies);
+        bakeKineticIslandPlan(freeState.kinetic, freeFrame._kineticBodies);
         snapshotActiveBroadphaseBounds(freeFrame._activeKineticBodies);
         gatherKineticCandidatePairs(freeFrame, kineticPairBuffer);
         assert.ok(linkedPairs < kineticPairBuffer.count);
@@ -136,7 +138,7 @@ describe("kinetic islands", () => {
         const state = createState(bodies);
         linkChain(state, bodies, spacing);
         const frame = setupActiveFrame(bodies);
-        bakeKineticIslandPlan(state.sandbox, frame._kineticBodies);
+        bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
         assert.ok(shareKineticIsland(bodies[0], bodies[1]));
         const islandMembers = bodies[0]._kineticIslandPeers;
         assert.equal(islandMembers.length, count);
@@ -154,7 +156,7 @@ describe("kinetic islands", () => {
         const bodies = [a, b, c];
         const state = createState(bodies);
         linkChain(state, bodies, 18);
-        bakeKineticIslandPlan(state.sandbox, bodies);
+        bakeKineticIslandPlan(state.kinetic, bodies);
         for (let i = 0; i < bodies.length; i++) {
             bodies[i].isSleeping = true;
             bodies[i]._sleepFrames = SLEEP_FRAMES;
@@ -172,7 +174,7 @@ describe("kinetic islands", () => {
         const bodies = [a, b, c];
         const state = createState(bodies);
         linkChain(state, bodies, 18);
-        bakeKineticIslandPlan(state.sandbox, bodies);
+        bakeKineticIslandPlan(state.kinetic, bodies);
         assert.equal(a._kineticLinkNeighbors.length, 1);
         assert.equal(a._kineticLinkNeighbors[0], b);
         assert.equal(b._kineticLinkNeighbors.length, 2);
@@ -188,7 +190,7 @@ describe("kinetic islands", () => {
         const state = createState(bodies);
         linkChain(state, bodies, 18);
         const frame = setupActiveFrame(bodies);
-        bakeKineticIslandPlan(state.sandbox, frame._kineticBodies);
+        bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
         assert.equal(islandRootByPhysId[a._physId], a.id);
         assert.equal(islandRootByPhysId[b._physId], a.id);
         assert.equal(islandRootByPhysId[c._physId], a.id);
@@ -199,8 +201,8 @@ describe("kinetic islands", () => {
         const a = mockCircleBody(0, 0, 10);
         const b = mockCircleBody(18, 0, 10);
         const state = createState([a, b]);
-        state.sandbox.kineticConstraintsDirty = false;
-        addDistanceConstraint(state.sandbox, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
-        assert.equal(state.sandbox.kineticConstraintsDirty, true);
+        state.kinetic.kineticConstraintsDirty = false;
+        addDistanceConstraint(state.kinetic, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
+        assert.equal(state.kinetic.kineticConstraintsDirty, true);
     });
 });

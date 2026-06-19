@@ -5,6 +5,7 @@ import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Spatial/collision/wallResolution.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
@@ -69,7 +70,7 @@ describe("polygon wall resolution", () => {
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();
         const frame = { frameId: 1, _activeKineticBodies: [bar], getWallCandidates: () => [wall], getNeighbors: () => [] };
-        runCollisionPipeline({ sandbox: { kineticConstraints: [] } }, frame, { resolveWalls: (entity, spatialFrame) => resolver.resolve(entity, spatialFrame), kineticIterations: 1 });
+        runCollisionPipeline({ kinetic: new KineticSession() }, frame, { resolveWalls: (entity, spatialFrame) => resolver.resolve(entity, spatialFrame), kineticIterations: 1 });
         assert.ok(!shapeOverlapsWall(bar, wall));
     });
     it("wall hit wakes a sleeping polygon", () => {

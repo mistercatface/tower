@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, pruneKineticConstraintsForBody, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { distanceBetweenAnchors } from "../Libraries/Motion/constraintAnchors.js";
 import { measureDistanceConstraintError, resolveKineticConstraintPass } from "../Libraries/Motion/kineticConstraintSolver.js";
@@ -30,7 +31,8 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
 function createConstraintTestState(props, constraints = []) {
     return {
         worldProps: props.slice(),
-        sandbox: { kineticConstraints: constraints.slice() },
+        kinetic: createKineticSession({ constraints }),
+        sandbox: {},
         entityRegistry: {
             getLive(id) {
                 for (let i = 0; i < props.length; i++) if (props[i].id === id) return props[i];
@@ -57,7 +59,7 @@ describe("kinetic constraint solver", () => {
         const bodyB = mockCircleBody(30, 0, 10);
         const restLength = 30;
         const state = createConstraintTestState([bodyA, bodyB]);
-        const constraint = addDistanceConstraint(state.sandbox, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength });
+        const constraint = addDistanceConstraint(state.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength });
         bodyB.x = 50;
         const frame = setupActiveFrame([bodyA, bodyB]);
         for (let pass = 0; pass < 8; pass++) resolveKineticConstraintPass(frame, state);
@@ -72,7 +74,7 @@ describe("kinetic constraint solver", () => {
         const frame = setupActiveFrame([bodyA, bodyB]);
         const ax = bodyA.x;
         const bx = bodyB.x;
-        resolveKineticContactPass(frame, state.sandbox);
+        resolveKineticContactPass(frame, state.kinetic);
         resolveKineticConstraintPass(frame, state);
         assert.equal(bodyA.x, ax);
         assert.equal(bodyB.x, bx);
@@ -82,9 +84,9 @@ describe("kinetic constraint solver", () => {
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(30, 0, 10);
         const state = createConstraintTestState([bodyA, bodyB]);
-        addDistanceConstraint(state.sandbox, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 30 });
-        assert.equal(state.sandbox.kineticConstraints.length, 1);
-        pruneKineticConstraintsForBody(state.sandbox, bodyB.id);
-        assert.equal(state.sandbox.kineticConstraints.length, 0);
+        addDistanceConstraint(state.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 30 });
+        assert.equal(state.kinetic.kineticConstraints.length, 1);
+        pruneKineticConstraintsForBody(state.kinetic, bodyB.id);
+        assert.equal(state.kinetic.kineticConstraints.length, 0);
     });
 });

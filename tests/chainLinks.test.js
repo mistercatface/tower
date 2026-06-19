@@ -2,7 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
+import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { addChainLink, getChainMemberIds, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Sandbox/chainLinks.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 loadPropAssets();
@@ -44,7 +45,8 @@ function mockBall(x, y) {
 }
 function createState(props) {
     return {
-        sandbox: { kineticConstraints: [], entityMeta: new MockEntityMeta() },
+        kinetic: createKineticSession(),
+        sandbox: { entityMeta: new MockEntityMeta() },
         entityRegistry: {
             getLive(id) {
                 for (let i = 0; i < props.length; i++) if (props[i].id === id) return props[i];
@@ -60,8 +62,8 @@ describe("chain links", () => {
         const b = mockBall(30, 0);
         const state = createState([a, b]);
         assert.ok(addChainLink(state, a.id, b.id, 1.05));
-        assert.equal(state.sandbox.kineticConstraints.length, 1);
-        assert.equal(state.sandbox.kineticConstraints[0].restLength, resolveChainLinkRestLength(a, b, 1.05));
+        assert.equal(state.kinetic.kineticConstraints.length, 1);
+        assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(a, b, 1.05));
     });
     it("resyncChainLinkRestLengths updates rest lengths after prop scale", () => {
         resetKineticConstraintIds(1);
@@ -72,7 +74,7 @@ describe("chain links", () => {
         setCirclePropRadius(a, 3);
         setCirclePropRadius(b, 3);
         resyncChainLinkRestLengths(state, [a.id, b.id], 1.05);
-        assert.equal(state.sandbox.kineticConstraints[0].restLength, resolveChainLinkRestLength(a, b, 1.05));
+        assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(a, b, 1.05));
     });
     it("chain tail is not a steering target but head is", () => {
         resetKineticConstraintIds(1);

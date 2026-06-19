@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { bakeKineticIslandPlan, ensureKineticIslandPlan } from "../Libraries/Motion/kineticIslands.js";
 import { getKineticTopologyGeneration, stampKineticPairGatherTopology } from "../Libraries/Motion/kineticTopology.js";
@@ -44,7 +45,8 @@ function createState(initialProps, constraints = []) {
     const worldProps = initialProps.slice();
     return {
         worldProps,
-        sandbox: { kineticConstraints: constraints.slice(), kineticConstraintsDirty: false, kineticConstraintsVersion: 0, kineticTopologyGeneration: 0 },
+        kinetic: createKineticSession({ constraints, constraintsDirty: false, constraintsVersion: 0, topologyGeneration: 0 }),
+        sandbox: {},
         entityRegistry: {
             membershipGen: 0,
             register(_kind, prop) {
@@ -93,7 +95,7 @@ describe("kinetic topology lifecycle", () => {
         const b = mockCircleBody(15, 0, 10, -30, 0);
         const state = createState([a, b]);
         const frame = setupActiveFrame([a, b]);
-        stampKineticPairGatherTopology(frame, state.sandbox);
+        stampKineticPairGatherTopology(frame, state.kinetic);
         assert.ok(kineticPairBodiesAt(frame, 0, 1));
         frame.admitKineticProp(mockCircleBody(40, 0, 10), state);
         assert.equal(kineticPairBodiesAt(frame, 0, 1), null);
@@ -106,15 +108,15 @@ describe("kinetic topology lifecycle", () => {
         const c = mockCircleBody(36, 0, 10);
         const bodies = [a, b, c];
         const state = createState(bodies);
-        addDistanceConstraint(state.sandbox, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
-        addDistanceConstraint(state.sandbox, { bodyAId: b.id, bodyBId: c.id, restLength: 18 });
+        addDistanceConstraint(state.kinetic, { bodyAId: a.id, bodyBId: b.id, restLength: 18 });
+        addDistanceConstraint(state.kinetic, { bodyAId: b.id, bodyBId: c.id, restLength: 18 });
         const frame = setupActiveFrame(bodies);
-        bakeKineticIslandPlan(state.sandbox, frame._kineticBodies);
+        bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
         assert.equal(a._kineticIslandPeers.length, 3);
-        const genBefore = getKineticTopologyGeneration(state.sandbox);
+        const genBefore = getKineticTopologyGeneration(state.kinetic);
         removeChainLinkBetween(state, b.id, c.id);
-        assert.ok(getKineticTopologyGeneration(state.sandbox) > genBefore);
-        ensureKineticIslandPlan(state.sandbox, frame._kineticBodies);
+        assert.ok(getKineticTopologyGeneration(state.kinetic) > genBefore);
+        ensureKineticIslandPlan(state.kinetic, frame._kineticBodies);
         assert.equal(c._kineticIslandPeers, undefined);
         assert.equal(b._kineticLinkNeighbors.length, 1);
     });

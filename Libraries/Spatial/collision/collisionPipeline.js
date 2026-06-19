@@ -62,7 +62,7 @@ export function runCollisionPipeline(
     spatialFrame,
     { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations, applyContactSideEffects = applyKineticContactSideEffects } = {},
 ) {
-    const sandbox = state.sandbox;
+    const session = state.kinetic;
     const earlyOut = getCollisionSettings().kineticEarlyOut;
     const activeBodies = spatialFrame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;
@@ -80,14 +80,14 @@ export function runCollisionPipeline(
             outerIterationsRun = iter + 1;
             if (earlyOut.persistPairs) {
                 if (iter === 0) {
-                    gatherKineticContactPairs(spatialFrame, sandbox);
+                    gatherKineticContactPairs(spatialFrame, session);
                     copyKineticPairBuffer(kineticPairBuffer, persistedKineticPairBuffer);
                     persistedPairs = persistedKineticPairBuffer;
                 }
                 resolveKineticContactPassWithPairs(spatialFrame, persistedPairs);
                 applyContactSideEffects(state, spatialFrame, kineticContactBuffer);
             } else {
-                resolveKineticContactPass(spatialFrame, sandbox);
+                resolveKineticContactPass(spatialFrame, session);
                 applyContactSideEffects(state, spatialFrame, kineticContactBuffer);
             }
             projectKineticConstraintBuffer(constraintBuffer, constraintGroups);
@@ -109,7 +109,7 @@ export function runCollisionPipeline(
                 if (maxError <= earlyOut.constraintErrorEpsilon && maxSpeedSq <= earlyOut.velocityEpsilonSq) break;
             }
         }
-        state.sandbox.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
+        state.kinetic.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
     }
     if (hasActiveBodies)
         for (let i = 0; i < activeBodies.length; i++) {

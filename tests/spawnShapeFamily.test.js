@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getPropVisualBrightness, getPropVisualTint } from "../Libraries/Color/visualOverride.js";
@@ -21,6 +22,7 @@ function createSpawnTestState() {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         viewport: { x: 128, y: 128 },
     };

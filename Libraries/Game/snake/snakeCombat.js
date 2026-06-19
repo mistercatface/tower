@@ -6,13 +6,13 @@ import { getSnakeSizeScore } from "./snakeScale.js";
 import { markSnakeDead, registerInertSnake, resolveAliveSnakeHeadId } from "./snakeLifecycle.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 function snakeSegmentCount(state, headId) {
-    return getConnectedComponentPath(state.sandbox, headId).length;
+    return getConnectedComponentPath(state.kinetic, headId).length;
 }
 function snakeSizeScore(state, headId) {
     return getSnakeSizeScore(state, headId);
 }
 function orderedMembers(state, headId) {
-    return getConnectedComponentPath(state.sandbox, headId);
+    return getConnectedComponentPath(state.kinetic, headId);
 }
 function resolveHead(registry, state, propId) {
     return resolveAliveSnakeHeadId(registry, (headId) => orderedMembers(state, headId), propId);

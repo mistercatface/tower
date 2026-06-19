@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
@@ -30,6 +31,7 @@ function createTestState(cols = 32, rows = 32) {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
@@ -96,7 +98,7 @@ describe("snake split on impact", () => {
         assert.ok(result);
         assert.equal(result.aliveIds.length, 3);
         assert.equal(result.inertIds.length, 2);
-        assert.equal(state.sandbox.kineticConstraints.length, 3);
+        assert.equal(state.kinetic.kineticConstraints.length, 3);
         assert.ok(isAliveSnakeHead(snakeGame.registry, headId));
         assert.equal(snakeGame.registry.inertByLeadId.size, 1);
     });
@@ -112,7 +114,7 @@ describe("snake split on impact", () => {
         splitSnakeAtStruckSegment(state, snakeGame, headId, members[0]);
         assert.equal(isAliveSnakeHead(snakeGame.registry, headId), false);
         assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
-        assert.equal(state.sandbox.kineticConstraints.length, 1);
+        assert.equal(state.kinetic.kineticConstraints.length, 1);
     });
 });
 
@@ -146,9 +148,9 @@ describe("snake min length death", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
-        assert.equal(state.sandbox.kineticConstraints.length, 2);
+        assert.equal(state.kinetic.kineticConstraints.length, 2);
         killSnake(state, snakeGame, headId);
-        assert.equal(state.sandbox.kineticConstraints.length, 0);
+        assert.equal(state.kinetic.kineticConstraints.length, 0);
         assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
     });
 });

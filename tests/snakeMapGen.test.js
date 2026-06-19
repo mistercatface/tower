@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { gridSettings } from "../Config/world.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { collectSnakeGoalProps } from "../Libraries/Game/snake/snakeGoals.js";
@@ -31,6 +32,7 @@ function createSnakeMapGenTestState(playAreaCells, mapSeed) {
             railConfig: { ...createDefaultMapGenBoundsConfig(), fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 },
             eraseConfig: createDefaultMapGenBoundsConfig(),
         },
+        kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         entityRegistry: new EntityRegistry(),
         worldProps: [],

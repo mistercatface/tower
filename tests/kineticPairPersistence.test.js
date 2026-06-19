@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { applyGameCollisionSettings } from "../Core/GameCollisionSettings.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { persistedKineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { activeBodiesMatchKineticSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
@@ -55,7 +56,8 @@ function setupFrame(bodies) {
 function createState(props) {
     return {
         worldProps: props.slice(),
-        sandbox: { kineticConstraints: [], kineticConstraintsDirty: false },
+        kinetic: createKineticSession(),
+        sandbox: {},
         entityRegistry: {
             getLive(id) {
                 for (let i = 0; i < props.length; i++) if (props[i].id === id) return props[i];
@@ -80,7 +82,7 @@ describe("kinetic pair persistence", () => {
         const frame = setupFrame([a, b]);
         const ax0 = a.x;
         runCollisionPipeline(state, frame, { resolveWalls: () => {} });
-        assert.equal(state.sandbox.kineticSolverStats.outerIterations, 3);
+        assert.equal(state.kinetic.kineticSolverStats.outerIterations, 3);
         assert.equal(persistedKineticPairBuffer.count, 1);
         assert.ok(a.x !== ax0 || b.x !== 14);
         applyGameCollisionSettings(null);
@@ -96,13 +98,13 @@ describe("kinetic pair persistence", () => {
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(20, 0, 10);
         const state = createState([bodyA, bodyB]);
-        state.sandbox.kineticConstraints.push({ id: 1, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, anchorA: { x: 0, y: 0 }, anchorB: { x: 0, y: 0 }, restLength: 20 });
-        state.sandbox.kineticConstraintsDirty = true;
+        state.kinetic.kineticConstraints.push({ id: 1, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, anchorA: { x: 0, y: 0 }, anchorB: { x: 0, y: 0 }, restLength: 20 });
+        state.kinetic.kineticConstraintsDirty = true;
         const frame = setupFrame([bodyA, bodyB]);
         runCollisionPipeline(state, frame, { resolveWalls: () => {} });
         snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
         assert.ok(activeBodiesMatchKineticSlab(frame._activeKineticBodies));
-        assert.ok(state.sandbox.kineticSolverStats.outerIterations <= state.sandbox.kineticSolverStats.maxIterations);
+        assert.ok(state.kinetic.kineticSolverStats.outerIterations <= state.kinetic.kineticSolverStats.maxIterations);
         applyGameCollisionSettings(null);
     });
 

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { applyGameCollisionSettings } from "../Core/GameCollisionSettings.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 
@@ -34,7 +35,8 @@ function mockCircleBody(x, y, radius) {
 function createState(props, constraints = []) {
     return {
         worldProps: props.slice(),
-        sandbox: { kineticConstraints: constraints.slice(), kineticConstraintsDirty: true },
+        kinetic: createKineticSession({ constraints, constraintsDirty: true }),
+        sandbox: {},
         entityRegistry: {
             getLive(id) {
                 for (let i = 0; i < props.length; i++) if (props[i].id === id) return props[i];
@@ -64,10 +66,10 @@ describe("kinetic early-out", () => {
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(20, 0, 10);
         const state = createState([bodyA, bodyB]);
-        addDistanceConstraint(state.sandbox, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 20 });
+        addDistanceConstraint(state.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 20 });
         const frame = setupFrame([bodyA, bodyB]);
         runCollisionPipeline(state, frame, { resolveWalls: () => {} });
-        assert.ok(state.sandbox.kineticSolverStats.outerIterations < state.sandbox.kineticSolverStats.maxIterations);
+        assert.ok(state.kinetic.kineticSolverStats.outerIterations < state.kinetic.kineticSolverStats.maxIterations);
         applyGameCollisionSettings(null);
     });
 });

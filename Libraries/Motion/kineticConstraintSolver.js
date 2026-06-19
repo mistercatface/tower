@@ -110,8 +110,8 @@ function islandConstraintsAsleep(buffer, start, count) {
 export function gatherKineticConstraintBuffer(state, spatialFrame, buffer = kineticConstraintBuffer, groups = kineticConstraintGroups) {
     buffer.reset();
     groups.reset();
-    const plan = ensureKineticIslandPlan(state.sandbox, spatialFrame._kineticBodies);
-    const list = state.sandbox.kineticConstraints;
+    const plan = ensureKineticIslandPlan(state.kinetic, spatialFrame._kineticBodies);
+    const list = state.kinetic.kineticConstraints;
     const buckets = new Map();
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];

@@ -17,7 +17,7 @@ export function getSnakeFoodTimerFraction(timer) {
 export function shrinkSnakeChainFromStarvation(state, headId) {
     const config = getSnakeGameConfig();
     const minSegments = config.minAliveSegmentCount;
-    const members = getConnectedComponentPath(state.sandbox, headId);
+    const members = getConnectedComponentPath(state.kinetic, headId);
     if (members.length <= minSegments) return false;
     const tailId = members[members.length - 1];
     const prevId = members[members.length - 2];

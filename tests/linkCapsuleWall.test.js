@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { gatherKineticConstraintBuffer, projectIslandLinkCapsulesAgainstWalls } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -46,7 +48,8 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
 function createConstraintTestState(props, constraints = []) {
     return {
         worldProps: props.slice(),
-        sandbox: { kineticConstraints: constraints.slice(), kineticConstraintsDirty: false },
+        kinetic: createKineticSession({ constraints }),
+        sandbox: {},
         entityRegistry: {
             getLive(id) {
                 for (let i = 0; i < props.length; i++) if (props[i].id === id) return props[i];
@@ -77,7 +80,7 @@ function createNarrowCorridorState() {
         stampBlockedCell(grid, col, 6);
         stampBlockedCell(grid, col, 8);
     }
-    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], sandbox: new SandboxWorldState() };
+    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
 }
 
 describe("link capsule wall projection", () => {
@@ -99,7 +102,7 @@ describe("link capsule wall projection", () => {
         const bodyA = mockCircleBody(50, 14, 4);
         const bodyB = mockCircleBody(66, 14, 4);
         const state = createConstraintTestState([bodyA, bodyB]);
-        addDistanceConstraint(state.sandbox, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 16 });
+        addDistanceConstraint(state.kinetic, { bodyAId: bodyA.id, bodyBId: bodyB.id, restLength: 16 });
         const frame = setupActiveFrame([bodyA, bodyB], [wall]);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) < 4);
         const { buffer, groups } = gatherKineticConstraintBuffer(state, frame);

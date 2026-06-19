@@ -46,7 +46,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._wallCache.clear();
         if (prop.strategy?.isKinetic) this.activateKineticBody(prop);
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
-        bumpKineticTopologyGeneration(state.sandbox);
+        bumpKineticTopologyGeneration(state.kinetic);
     }
     syncActiveKineticBodies() {
         const active = this._activeKineticBodies;
@@ -141,7 +141,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (prop._neighbors) prop._neighbors.length = 0;
         this.frameId = (this.frameId + 1) | 0;
         this._wallCache.clear();
-        if (state) bumpKineticTopologyGeneration(state.sandbox);
+        if (state) bumpKineticTopologyGeneration(state.kinetic);
     }
 }
 /** Shared frame for simulation ticks. Call begin() once per update. */

@@ -12,6 +12,7 @@ import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGr
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
@@ -34,6 +35,7 @@ function createIntentTestState(cols = 32, rows = 32) {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },

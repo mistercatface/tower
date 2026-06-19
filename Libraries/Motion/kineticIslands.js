@@ -8,8 +8,8 @@ function clearBodyIslandFields(body) {
     delete body._kineticIslandPeers;
     delete body._kineticIslandRoot;
 }
-export function bakeKineticIslandPlan(sandbox, kineticBodies) {
-    const adjacent = getKineticConstraintGraph(sandbox);
+export function bakeKineticIslandPlan(session, kineticBodies) {
+    const adjacent = getKineticConstraintGraph(session);
     const bodyById = new Map();
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
@@ -63,14 +63,14 @@ export function bakeKineticIslandPlan(sandbox, kineticBodies) {
             if (multiBody) body._kineticIslandPeers = memberBodies;
         }
     }
-    sandbox._kineticIslandPlan = { version: getKineticConstraintsVersion(sandbox), bodyIdToIslandRoot };
+    session._kineticIslandPlan = { version: getKineticConstraintsVersion(session), bodyIdToIslandRoot };
 }
-export function ensureKineticIslandPlan(sandbox, kineticBodies) {
-    const version = getKineticConstraintsVersion(sandbox);
-    const plan = sandbox._kineticIslandPlan;
+export function ensureKineticIslandPlan(session, kineticBodies) {
+    const version = getKineticConstraintsVersion(session);
+    const plan = session._kineticIslandPlan;
     if (plan && plan.version === version) return plan;
-    bakeKineticIslandPlan(sandbox, kineticBodies);
-    return sandbox._kineticIslandPlan;
+    bakeKineticIslandPlan(session, kineticBodies);
+    return session._kineticIslandPlan;
 }
 export function shareKineticIsland(bodyA, bodyB) {
     if (bodyA._kineticIslandRoot !== bodyB._kineticIslandRoot) return false;

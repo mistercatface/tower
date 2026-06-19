@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
@@ -31,6 +32,7 @@ function createSnakeAutosimTestState(cols = 32, rows = 32) {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
@@ -79,7 +81,7 @@ describe("snakeAutosim", () => {
         chain.head.x = goal.x;
         chain.head.y = goal.y;
         autosim.tick(1 / 60);
-        assert.equal(state.sandbox.kineticConstraints.length, 3);
+        assert.equal(state.kinetic.kineticConstraints.length, 3);
         assert.equal(getChainMemberIds(state, chain.head.id).length, 4);
         assert.equal(countLiveGoalOrbs(state), 1);
         assert.notEqual(findSnakeGoalProp(state)?.id, goal.id);

@@ -7,8 +7,8 @@ function addAdjacencyEdge(adjacency, fromId, toId) {
     }
     neighbors.push(toId);
 }
-function buildAdjacency(sandbox) {
-    const list = listKineticConstraints(sandbox);
+function buildAdjacency(session) {
+    const list = listKineticConstraints(session);
     const adjacency = new Map();
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
@@ -17,16 +17,16 @@ function buildAdjacency(sandbox) {
     }
     return adjacency;
 }
-export function getKineticConstraintGraph(sandbox) {
-    const version = getKineticConstraintsVersion(sandbox);
-    const cache = sandbox._kineticConstraintGraphCache;
+export function getKineticConstraintGraph(session) {
+    const version = getKineticConstraintsVersion(session);
+    const cache = session._kineticConstraintGraphCache;
     if (cache && cache.version === version) return cache.adjacency;
-    const adjacency = buildAdjacency(sandbox);
-    sandbox._kineticConstraintGraphCache = { version, adjacency };
+    const adjacency = buildAdjacency(session);
+    session._kineticConstraintGraphCache = { version, adjacency };
     return adjacency;
 }
-export function getConnectedBodyIds(sandbox, bodyId) {
-    const adjacency = getKineticConstraintGraph(sandbox);
+export function getConnectedBodyIds(session, bodyId) {
+    const adjacency = getKineticConstraintGraph(session);
     const members = new Set([bodyId]);
     const stack = [bodyId];
     while (stack.length > 0) {
@@ -43,8 +43,8 @@ export function getConnectedBodyIds(sandbox, bodyId) {
     }
     return [...members];
 }
-export function getConnectedComponentPath(sandbox, endpointId) {
-    const adjacency = getKineticConstraintGraph(sandbox);
+export function getConnectedComponentPath(session, endpointId) {
+    const adjacency = getKineticConstraintGraph(session);
     const ordered = [endpointId];
     const visited = new Set([endpointId]);
     let current = endpointId;
@@ -64,9 +64,9 @@ export function getConnectedComponentPath(sandbox, endpointId) {
     }
     return ordered;
 }
-export function areBodiesConnected(sandbox, bodyAId, bodyBId) {
+export function areBodiesConnected(session, bodyAId, bodyBId) {
     if (bodyAId === bodyBId) return true;
-    const adjacency = getKineticConstraintGraph(sandbox);
+    const adjacency = getKineticConstraintGraph(session);
     const visited = new Set([bodyAId]);
     const stack = [bodyAId];
     while (stack.length > 0) {
@@ -84,8 +84,8 @@ export function areBodiesConnected(sandbox, bodyAId, bodyBId) {
     }
     return false;
 }
-export function getConstraintIslands(sandbox) {
-    const adjacency = getKineticConstraintGraph(sandbox);
+export function getConstraintIslands(session) {
+    const adjacency = getKineticConstraintGraph(session);
     const seen = new Set();
     const islands = [];
     for (const startId of adjacency.keys()) {

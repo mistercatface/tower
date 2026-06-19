@@ -15,7 +15,7 @@ import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 function chainMemberProps(state, headId) {
-    const ids = getConnectedBodyIds(state.sandbox, headId);
+    const ids = getConnectedBodyIds(state.kinetic, headId);
     const members = [];
     for (let i = 0; i < ids.length; i++) members.push(state.entityRegistry.getLive(ids[i]));
     return members;

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
@@ -14,7 +15,7 @@ const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX
 function createChainSpawnTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
-    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], sandbox: new SandboxWorldState() };
+    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
 }
 describe("spawnLinkedBallChain", () => {
     it("spawns a linked ball chain with one head and distance links", () => {
@@ -24,7 +25,7 @@ describe("spawnLinkedBallChain", () => {
         const anchorCell = { col: 10, row: 10 };
         const chain = spawnLinkedBallChain(state, anchorCell, CHAIN_OPTIONS);
         assert.equal(chain.members.length, 3);
-        assert.equal(state.sandbox.kineticConstraints.length, 2);
+        assert.equal(state.kinetic.kineticConstraints.length, 2);
         assert.ok(meta.isChainHead(chain.head.id));
         assert.ok(!meta.isChainHead(chain.tail.id));
         assert.ok(isChainSteeringTarget(state, meta, chain.head.id));
@@ -34,7 +35,7 @@ describe("spawnLinkedBallChain", () => {
             members,
             chain.members.map((prop) => prop.id).sort((a, b) => a - b),
         );
-        for (let i = 0; i < state.sandbox.kineticConstraints.length; i++) assert.ok(Math.abs(state.sandbox.kineticConstraints[i].restLength - 8) < 1e-6);
+        for (let i = 0; i < state.kinetic.kineticConstraints.length; i++) assert.ok(Math.abs(state.kinetic.kineticConstraints[i].restLength - 8) < 1e-6);
     });
     it("exports linked chain spawn groups with segment count and anchor position", () => {
         resetKineticConstraintIds(1);
@@ -66,7 +67,7 @@ describe("spawnLinkedBallChain", () => {
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, CHAIN_OPTIONS);
         const tail = chain.tail;
         const segment = growChainSegment(state, tail, CHAIN_OPTIONS);
-        assert.equal(state.sandbox.kineticConstraints.length, 3);
+        assert.equal(state.kinetic.kineticConstraints.length, 3);
         assert.equal(segment.x, tail.x - CHAIN_OPTIONS.spacing);
         assert.equal(segment.y, tail.y);
     });
@@ -83,6 +84,6 @@ describe("spawnLinkedBallChain", () => {
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...CHAIN_OPTIONS, segmentRadius: 2, spacing: 4.2, linkSlack: 1.05 });
         assert.equal(chain.head.radius, 2);
         assert.equal(chain.tail.radius, 2);
-        assert.equal(state.sandbox.kineticConstraints[0].restLength, 4.2);
+        assert.equal(state.kinetic.kineticConstraints[0].restLength, 4.2);
     });
 });

@@ -14,6 +14,7 @@ import {
     snapshotActiveBroadphaseBounds,
 } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 
 loadPropAssets();
@@ -154,8 +155,8 @@ describe("kinetic pair stream on proof props", () => {
         const a = mockCircleBody(0, 0, 10, 50, 0);
         const b = mockCircleBody(15, 0, 10, -30, 0);
         const frame = setupActiveFrame([a, b]);
-        const state = { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } };
-        resolveKineticContactPass(frame, state.sandbox);
+        const session = createKineticSession();
+        resolveKineticContactPass(frame, session);
         assert.ok(a.x < 0);
         assert.ok(b.x > 15);
     });
@@ -166,8 +167,8 @@ describe("kinetic pair stream on proof props", () => {
         const ax0 = a.x;
         const bx0 = b.x;
         const frame = setupActiveFrame([a, b]);
-        const state = { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } };
-        resolveKineticContactPass(frame, state.sandbox);
+        const session = createKineticSession();
+        resolveKineticContactPass(frame, session);
         assert.equal(a.x, ax0);
         assert.equal(b.x, bx0);
     });

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
@@ -29,6 +30,7 @@ function createTestState(cols = 32, rows = 32) {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
@@ -93,7 +95,7 @@ describe("snake combat min length", () => {
         predator.chain.head.y = preyHead.y;
         const props = [...predator.chain.members, ...prey.chain.members];
         const frame = setupSnakeFrame(props);
-        const pairs = gatherKineticContactPairs(frame, state.sandbox);
+        const pairs = gatherKineticContactPairs(frame, state.kinetic);
         resolveKineticContactPassWithPairs(frame, pairs);
         applyKineticContactSideEffects(state, frame, kineticContactBuffer);
         assert.ok(kineticContactBuffer.count >= 1);
@@ -126,7 +128,7 @@ describe("snake combat min length", () => {
         smallHead.y = bigTail.y;
         const props = [...big.chain.members, ...small.chain.members];
         const frame = setupSnakeFrame(props);
-        const pairs = gatherKineticContactPairs(frame, state.sandbox);
+        const pairs = gatherKineticContactPairs(frame, state.kinetic);
         resolveKineticContactPassWithPairs(frame, pairs);
         applyKineticContactSideEffects(state, frame, kineticContactBuffer);
         assert.ok(kineticContactBuffer.count >= 1);

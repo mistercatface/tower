@@ -7,6 +7,7 @@ import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
@@ -60,7 +61,7 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
 }
 function resolveContactUntilClear(frame, state, maxPasses = 4) {
     for (let pass = 0; pass < maxPasses; pass++) {
-        resolveKineticContactPass(frame, state.sandbox);
+        resolveKineticContactPass(frame, state.kinetic);
         const [a, b] = frame._activeKineticBodies;
         if (!pairStillOverlaps(a, b)) return;
     }
@@ -70,7 +71,7 @@ describe("kinetic contact solver", () => {
         const a = mockCircleBody(0, 0, 10, 50, 0);
         const b = mockCircleBody(15, 0, 10, -30, 0);
         const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(frame, { kineticConstraints: [], kineticTopologyGeneration: 0 });
+        resolveKineticContactPass(frame, createKineticSession());
         assert.ok(a.x < 0);
         assert.ok(b.x > 15);
         assert.ok(a.vx < 50);
@@ -80,7 +81,7 @@ describe("kinetic contact solver", () => {
         const a = mockCircleBody(0, 0, 10, 40, 0, 0.8);
         const b = mockCircleBody(12, 0, 10, 0, 0, 0.8);
         const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(frame, { kineticConstraints: [], kineticTopologyGeneration: 0 });
+        resolveKineticContactPass(frame, createKineticSession());
         assert.ok(Math.abs(a.vx) < 40);
     });
     it("resting overlapping circles are left alone until one moves", () => {
@@ -89,7 +90,7 @@ describe("kinetic contact solver", () => {
         const ax0 = a.x;
         const bx0 = b.x;
         const frame = setupPairFrame(a, b);
-        resolveKineticContactPass(frame, { kineticConstraints: [], kineticTopologyGeneration: 0 });
+        resolveKineticContactPass(frame, createKineticSession());
         assert.equal(a.x, ax0);
         assert.equal(b.x, bx0);
     });
@@ -131,7 +132,7 @@ describe("poly-poly kinetic contact", () => {
         box.vx = -20;
         assert.ok(pairStillOverlaps(bar, box));
         const frame = setupPairFrame(bar, box);
-        resolveContactUntilClear(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
+        resolveContactUntilClear(frame, { kinetic: createKineticSession() });
         assert.ok(!pairStillOverlaps(bar, box));
     });
     it("circle-poly ball and tri wedge separate with normal toward polygon", () => {
@@ -151,7 +152,7 @@ describe("poly-poly kinetic contact", () => {
         a.vx = 40;
         b.vx = -20;
         const frame = setupPairFrame(a, b);
-        resolveContactUntilClear(frame, { sandbox: { kineticConstraints: [], kineticTopologyGeneration: 0 } });
+        resolveContactUntilClear(frame, { kinetic: createKineticSession() });
         assert.ok(!pairStillOverlaps(a, b));
         assert.ok(a.vx < 40);
         assert.ok(b.vx > -20);
@@ -164,7 +165,7 @@ describe("poly-poly kinetic contact", () => {
         left.vx = 35;
         right.vx = 0;
         const frame = setupPairFrame(left, right);
-        resolveKineticContactPass(frame, { kineticConstraints: [], kineticTopologyGeneration: 0 });
+        resolveKineticContactPass(frame, createKineticSession());
         assert.ok(left.vx < 35);
     });
 });

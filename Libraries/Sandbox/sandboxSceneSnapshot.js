@@ -79,7 +79,7 @@ export function collectSandboxSceneSnapshot(state) {
         floorBelts: listPlacedFloorBeltsForSnapshot(grid),
         powerSources: listPlacedPassagePowerSourcesForSnapshot(grid),
         props,
-        kineticConstraints: collectKineticConstraintsSnapshot(state.sandbox, propIdToIndex),
+        kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex),
         chainHeadProp,
         roomGraph: collectRoomGraphForSnapshot(state, grid),
     };
@@ -128,7 +128,7 @@ function expandGridForSnapshot(state, doc) {
 /** @param {object} state */
 function clearSandboxSceneContent(state) {
     for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i]);
-    clearKineticConstraints(state.sandbox);
+    clearKineticConstraints(state.kinetic);
     state.obstacleGrid.clearAllFloorCells();
     clearAllStampedGridWalls(state, { notify: false });
     getSandboxEntityMeta(state).clear();
@@ -156,7 +156,7 @@ function spawnSnapshotProps(state, doc) {
         const prop = spawnSnapshotProp(state, doc.props[i]);
         if (prop) propIds.push(prop.id);
     }
-    if (doc.schemaVersion >= 9 && doc.kineticConstraints?.length) applyKineticConstraintsFromSnapshot(state.sandbox, doc.kineticConstraints, propIds);
+    if (doc.schemaVersion >= 9 && doc.kineticConstraints?.length) applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, propIds);
     if (doc.schemaVersion >= 9 && doc.chainHeadProp != null) {
         const headId = propIds[doc.chainHeadProp];
         if (headId != null) setChainHead(state, getSandboxEntityMeta(state), headId);

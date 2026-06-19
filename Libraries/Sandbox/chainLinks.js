@@ -9,7 +9,7 @@ export function isChainLinkBall(prop) {
     return sandboxAssetMatchesTagFilter(getPropAsset(prop.type), "nav");
 }
 export function hasChainMembership(state, propId) {
-    const list = listKineticConstraints(state.sandbox);
+    const list = listKineticConstraints(state.kinetic);
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
         if (entry.bodyAId === propId || entry.bodyBId === propId) return true;
@@ -24,7 +24,7 @@ export function isChainSteeringTarget(state, entityMeta, propId) {
     return isChainLinkBall(prop);
 }
 export function getChainMemberIds(state, propId) {
-    return getConnectedBodyIds(state.sandbox, propId);
+    return getConnectedBodyIds(state.kinetic, propId);
 }
 export function setChainHead(state, entityMeta, propId) {
     const members = getChainMemberIds(state, propId);
@@ -32,7 +32,7 @@ export function setChainHead(state, entityMeta, propId) {
     entityMeta.setChainHead(propId, true);
 }
 export function hasChainLinkBetween(state, bodyAId, bodyBId) {
-    const list = listKineticConstraints(state.sandbox);
+    const list = listKineticConstraints(state.kinetic);
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
         if (entry.type !== "distance") continue;
@@ -41,7 +41,7 @@ export function hasChainLinkBetween(state, bodyAId, bodyBId) {
     return false;
 }
 export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
-    const list = listKineticConstraints(state.sandbox);
+    const list = listKineticConstraints(state.kinetic);
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
         if (entry.type !== "distance") continue;
@@ -50,21 +50,21 @@ export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
     return null;
 }
 export function getOrderedChainMemberIds(state, headId) {
-    return getConnectedComponentPath(state.sandbox, headId);
+    return getConnectedComponentPath(state.kinetic, headId);
 }
 export function removeChainLinkBetween(state, bodyAId, bodyBId) {
     const entry = findDistanceConstraintBetween(state, bodyAId, bodyBId);
     if (!entry) return false;
-    removeKineticConstraint(state.sandbox, entry.id);
+    removeKineticConstraint(state.kinetic, entry.id);
     return true;
 }
 export function clearChainLinksForMembers(state, memberIds) {
     const members = new Set(memberIds);
-    const list = listKineticConstraints(state.sandbox);
+    const list = listKineticConstraints(state.kinetic);
     for (let i = list.length - 1; i >= 0; i--) {
         const entry = list[i];
         if (entry.type !== "distance") continue;
-        if (members.has(entry.bodyAId) && members.has(entry.bodyBId)) removeKineticConstraint(state.sandbox, entry.id);
+        if (members.has(entry.bodyAId) && members.has(entry.bodyBId)) removeKineticConstraint(state.kinetic, entry.id);
     }
 }
 export function addChainLink(state, fromPropId, toPropId, linkSlack = 1) {
@@ -74,7 +74,7 @@ export function addChainLink(state, fromPropId, toPropId, linkSlack = 1) {
     if (!isChainLinkBall(bodyA) || !isChainLinkBall(bodyB)) return false;
     if (hasChainLinkBetween(state, fromPropId, toPropId)) return true;
     const restLength = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
-    addDistanceConstraint(state.sandbox, { bodyAId: fromPropId, bodyBId: toPropId, restLength });
+    addDistanceConstraint(state.kinetic, { bodyAId: fromPropId, bodyBId: toPropId, restLength });
     return true;
 }
 export function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {
@@ -82,7 +82,7 @@ export function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {
 }
 export function resyncChainLinkRestLengths(state, memberIds, linkSlack) {
     const members = new Set(memberIds);
-    const list = listKineticConstraints(state.sandbox);
+    const list = listKineticConstraints(state.kinetic);
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
         if (entry.type !== "distance") continue;
@@ -93,7 +93,7 @@ export function resyncChainLinkRestLengths(state, memberIds, linkSlack) {
     }
 }
 export function listChainLinkEndpoints(state, propId) {
-    const list = listKineticConstraints(state.sandbox);
+    const list = listKineticConstraints(state.kinetic);
     const endpoints = [];
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
@@ -107,10 +107,10 @@ export function listChainLinkEndpoints(state, propId) {
     return endpoints;
 }
 export function clearChainLinksForProp(state, propId) {
-    const list = listKineticConstraints(state.sandbox);
+    const list = listKineticConstraints(state.kinetic);
     for (let i = list.length - 1; i >= 0; i--) {
         const entry = list[i];
-        if (entry.bodyAId === propId || entry.bodyBId === propId) removeKineticConstraint(state.sandbox, entry.id);
+        if (entry.bodyAId === propId || entry.bodyBId === propId) removeKineticConstraint(state.kinetic, entry.id);
     }
 }
 export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {

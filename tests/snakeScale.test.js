@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
@@ -27,7 +28,7 @@ const CHAIN_OPTIONS = {
 function createSnakeScaleTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 256, 256);
-    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], sandbox: new SandboxWorldState() };
+    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
 }
 
 describe("snakeScale", () => {
@@ -44,7 +45,7 @@ describe("snakeScale", () => {
         });
         assert.equal(getSnakeChainRadius(state, chain.head.id), 2);
         for (let i = 0; i < chain.members.length; i++) assert.equal(getCirclePropRadius(chain.members[i]), 2);
-        assert.equal(state.sandbox.kineticConstraints[0].restLength, resolveChainLinkRestLength(chain.members[0], chain.members[1], config.linkSlack));
+        assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(chain.members[0], chain.members[1], config.linkSlack));
     });
 
     it("steps the whole chain from startRadius to maxRadius across meals", () => {
@@ -67,7 +68,7 @@ describe("snakeScale", () => {
         assert.equal(stepSnakeChainRadius(state, chain.head.id), 4);
         const members = getChainMemberIds(state, chain.head.id).map((id) => state.entityRegistry.getLive(id));
         for (let i = 0; i < members.length; i++) assert.equal(getCirclePropRadius(members[i]), 4);
-        assert.equal(state.sandbox.kineticConstraints[0].restLength, resolveChainLinkRestLength(members[0], members[1], config.linkSlack));
+        assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(members[0], members[1], config.linkSlack));
     });
 
     it("growSnakeChainAfterMeal returns spacing for the updated radius", () => {
