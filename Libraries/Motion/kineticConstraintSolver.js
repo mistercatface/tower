@@ -1,7 +1,11 @@
 import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "./bodyMass.js";
 import { distanceBetweenAnchors, worldAnchorFromBody } from "./constraintAnchors.js";
-import { separateAlongNormal } from "../Spatial/collision/penetration.js";
+import { getLinkCapsuleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";
+import { getEntityCollisionParts } from "../Spatial/collision/SatCollision.js";
+import { separateAlongNormal, applyPositionCorrection } from "../Spatial/collision/penetration.js";
+import { wakeKineticBody } from "./kineticSleep.js";
+const LINK_CAPSULE_WALL_PASSES = 2;
 const MAX_KINETIC_CONSTRAINTS = 2048;
 const MAX_ISLAND_GROUPS = 256;
 const CONSTRAINT_EDGE_KEY_SCALE = 1_000_000;
@@ -155,6 +159,91 @@ export function gatherKineticConstraintBuffer(state, buffer = kineticConstraintB
         groups.count++;
     }
     return { buffer, groups };
+}
+function circleRadiusFromBody(body) {
+    const parts = getEntityCollisionParts(body);
+    for (let i = 0; i < parts.length; i++) if (parts[i].type === "Circle") return parts[i].radius;
+    return body.radius;
+}
+function linkCapsuleRadius(bodyA, bodyB) {
+    return Math.max(circleRadiusFromBody(bodyA), circleRadiusFromBody(bodyB));
+}
+function linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, segment) {
+    const reach = capsuleRadius + segment.size * 0.75;
+    const minX = Math.min(ax, bx) - reach;
+    const maxX = Math.max(ax, bx) + reach;
+    const minY = Math.min(ay, by) - reach;
+    const maxY = Math.max(ay, by) + reach;
+    return segment.x >= minX && segment.x <= maxX && segment.y >= minY && segment.y <= maxY;
+}
+function gatherLinkWallCandidates(spatialFrame, bodyA, bodyB, out) {
+    out.length = 0;
+    const candidatesA = spatialFrame.getWallCandidates(bodyA);
+    const candidatesB = spatialFrame.getWallCandidates(bodyB);
+    for (let i = 0; i < candidatesA.length; i++) out.push(candidatesA[i]);
+    for (let i = 0; i < candidatesB.length; i++) {
+        const seg = candidatesB[i];
+        let seen = false;
+        for (let j = 0; j < candidatesA.length; j++)
+            if (candidatesA[j] === seg) {
+                seen = true;
+                break;
+            }
+        if (!seen) out.push(seg);
+    }
+}
+function translateLinkAwayFromWall(bodyA, bodyB, normalX, normalY, overlap, pinnedA, pinnedB) {
+    if (pinnedA && pinnedB) return;
+    if (pinnedA) {
+        applyPositionCorrection(bodyB, normalX, normalY, overlap);
+        return;
+    }
+    if (pinnedB) {
+        applyPositionCorrection(bodyA, normalX, normalY, overlap);
+        return;
+    }
+    applyPositionCorrection(bodyA, normalX, normalY, overlap);
+    applyPositionCorrection(bodyB, normalX, normalY, overlap);
+}
+function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, anchorBx, anchorBy, walls, spatialFrame) {
+    const capsuleRadius = linkCapsuleRadius(bodyA, bodyB);
+    const approachX = ((bodyA.vx ?? 0) + (bodyB.vx ?? 0)) * 0.5;
+    const approachY = ((bodyA.vy ?? 0) + (bodyB.vy ?? 0)) * 0.5;
+    const pinnedA = bodyPinnedForContact(bodyA);
+    const pinnedB = bodyPinnedForContact(bodyB);
+    for (let pass = 0; pass < LINK_CAPSULE_WALL_PASSES; pass++) {
+        const wa = worldAnchorFromBody(bodyA, anchorAx, anchorAy);
+        const wb = worldAnchorFromBody(bodyB, anchorBx, anchorBy);
+        let best = null;
+        for (let i = 0; i < walls.length; i++) {
+            const seg = walls[i];
+            if (seg.passageEdge) continue;
+            if (!linkSegmentOverlapsWall(wa.x, wa.y, wb.x, wb.y, capsuleRadius, seg)) continue;
+            const penetration = getLinkCapsuleSegmentPenetration(wa.x, wa.y, wb.x, wb.y, capsuleRadius, seg, { approachX, approachY });
+            if (!penetration || penetration.overlap <= 0) continue;
+            if (!best || penetration.overlap > best.overlap) best = penetration;
+        }
+        if (!best) break;
+        translateLinkAwayFromWall(bodyA, bodyB, best.normalX, best.normalY, best.overlap, pinnedA, pinnedB);
+        wakeKineticBody(bodyA);
+        wakeKineticBody(bodyB);
+        spatialFrame.scheduleKineticActivation(bodyA);
+        spatialFrame.scheduleKineticActivation(bodyB);
+    }
+}
+export function projectIslandLinkCapsulesAgainstWalls(spatialFrame, buffer, groups) {
+    const walls = [];
+    for (let g = 0; g < groups.count; g++) {
+        const start = groups.starts[g];
+        const count = groups.counts[g];
+        if (islandConstraintsAsleep(buffer, start, count)) continue;
+        for (let i = start; i < start + count; i++) {
+            const bodyA = buffer.bodyA[i];
+            const bodyB = buffer.bodyB[i];
+            gatherLinkWallCandidates(spatialFrame, bodyA, bodyB, walls);
+            projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, buffer.anchorAx[i], buffer.anchorAy[i], buffer.anchorBx[i], buffer.anchorBy[i], walls, spatialFrame);
+        }
+    }
 }
 function projectDistanceConstraint(buffer, index) {
     const bodyA = buffer.bodyA[index];

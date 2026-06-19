@@ -1,6 +1,12 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
-import { gatherKineticConstraintBuffer, measureConstraintBufferMaxError, projectKineticConstraintBuffer, solveKineticConstraintBuffer } from "../../Motion/kineticConstraintSolver.js";
+import {
+    gatherKineticConstraintBuffer,
+    measureConstraintBufferMaxError,
+    projectIslandLinkCapsulesAgainstWalls,
+    projectKineticConstraintBuffer,
+    solveKineticConstraintBuffer,
+} from "../../Motion/kineticConstraintSolver.js";
 import { gatherKineticContactPairs, resolveKineticContactPass, resolveKineticContactPassWithPairs } from "./kineticContactSolver.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { activeBodiesMatchKineticSlab } from "./kineticBodySlab.js";
@@ -74,6 +80,7 @@ export function runCollisionPipeline(state, spatialFrame, { resolveWalls, kineti
                 resolveKineticContactPassWithPairs(spatialFrame, state, persistedPairs);
             } else resolveKineticContactPass(spatialFrame, state);
             projectKineticConstraintBuffer(constraintBuffer, constraintGroups);
+            projectIslandLinkCapsulesAgainstWalls(spatialFrame, constraintBuffer, constraintGroups);
             solveKineticConstraintBuffer(spatialFrame, constraintBuffer, constraintGroups);
             for (let i = 0; i < activeBodies.length; i++) {
                 const prop = activeBodies[i];

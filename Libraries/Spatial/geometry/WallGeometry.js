@@ -210,6 +210,21 @@ function approachToSegmentLocal(segment, worldVx, worldVy) {
  * @param {object} segment
  * @param {{ approachX?: number, approachY?: number }} [options] — world-space motion hint for face selection
  */
+export function getLinkCapsuleSegmentPenetration(ax, ay, bx, by, capsuleRadius, segment, { approachX = 0, approachY = 0 } = {}) {
+    if (minDistanceSegmentToWall(ax, ay, bx, by, segment) >= capsuleRadius - 1e-5) return null;
+    const closest = findClosestPointOnPathToWall(ax, ay, bx, by, segment);
+    const circlePen = getCircleSegmentPenetration({ x: closest.x, y: closest.y, radius: capsuleRadius }, segment, { approachX, approachY });
+    if (circlePen) return circlePen;
+    if (closest.dist >= capsuleRadius) return null;
+    const wallPoint = closestPointOnSegment(segment, closest.x, closest.y);
+    let normalX = closest.x - wallPoint.x;
+    let normalY = closest.y - wallPoint.y;
+    const len = Math.hypot(normalX, normalY);
+    if (len < 1e-8) return null;
+    normalX /= len;
+    normalY /= len;
+    return { normalX, normalY, overlap: capsuleRadius - closest.dist, distanceSq: closest.dist * closest.dist };
+}
 export function getCircleSegmentPenetration(circle, segment, { approachX = 0, approachY = 0 } = {}) {
     const { localX, localY, halfX, halfY } = toSegmentLocal(segment, circle.x, circle.y);
     const localApproach = approachToSegmentLocal(segment, approachX, approachY);

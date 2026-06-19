@@ -170,6 +170,15 @@ describe("snake split map generation", () => {
         assert.ok(headCell.row >= quarterStartRow, `player row ${headCell.row} should be in lower quarter from ${quarterStartRow}`);
     });
 
+    it("player spawn cell varies with map seed", async () => {
+        applySnakeGameConfig({ snakeCount: 1, playerSnakeIndex: 0 });
+        const sceneA = await spawnSnakeCavernScene(createSnakeMapGenTestState(64, 42));
+        const sceneB = await spawnSnakeCavernScene(createSnakeMapGenTestState(64, 9001));
+        const headA = sceneA.snakes[0].chain.head;
+        const headB = sceneB.snakes[0].chain.head;
+        assert.ok(headA.x !== headB.x || headA.y !== headB.y, "player spawn should differ across map seeds");
+    });
+
     it("places food in the lower rail maze, not only the upper cavern", async () => {
         applySnakeGameConfig({ snakeCount: 1, goalCount: 40, playerSnakeIndex: 0 });
         const state = createSnakeMapGenTestState(64, 42);
