@@ -15,9 +15,16 @@ import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState,
  */
 export function createQuantizedSpriteCache({ maxItems = 2000, viewStep = 30, viewLimit = 120 } = {}) {
     const baked = createBakedSpriteCache({ maxItems });
+    const telemetry = { requests: 0, misses: 0, evictions: 0, uniqueKeys: new Set() };
+    const originalOnEvict = baked.cache.onEvict;
+    baked.cache.onEvict = (key, value) => {
+        telemetry.evictions++;
+        if (originalOnEvict) originalOnEvict(key, value);
+    };
     return {
         maxItems: baked.maxItems,
         cache: baked.cache,
+        telemetry,
         viewStep,
         viewLimit,
         quantizeView(dx, dy) {
@@ -34,7 +41,23 @@ export function createQuantizedSpriteCache({ maxItems = 2000, viewStep = 30, vie
          * @param {() => OffscreenCanvas | { canvas: OffscreenCanvas, meta?: Record<string, unknown> }} bakeFn
          */
         getOrBake(key, bakeFn) {
+            this.telemetry.requests++;
+            this.telemetry.uniqueKeys.add(key);
             const cached = baked.get(key);
+            if (!cached) this.telemetry.misses++;
+            // Evaluate cache pressure periodically
+            if (this.telemetry.requests >= 2000) {
+                const workingSet = this.telemetry.uniqueKeys.size;
+                // If working set is pushing the cache limits and we are thrashing
+                if (workingSet > baked.cache.maxSize * 0.8 && this.telemetry.evictions > 0) {
+                    baked.cache.maxSize = Math.max(baked.cache.maxSize, Math.ceil(workingSet * 1.5));
+                    this.maxItems = baked.cache.maxSize;
+                }
+                this.telemetry.requests = 0;
+                this.telemetry.misses = 0;
+                this.telemetry.evictions = 0;
+                this.telemetry.uniqueKeys.clear();
+            }
             if (cached) return cached;
             const result = bakeFn();
             if (result instanceof OffscreenCanvas || (typeof HTMLCanvasElement !== "undefined" && result instanceof HTMLCanvasElement))
@@ -92,6 +115,8 @@ const PROP_STAGE_PADDING = 40;
 export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0, zoom = 1) {
     const dx = prop.x - px;
     const dy = prop.y - py;
+    // Note: To avoid over-granular sub-pixel caching thrash, dx/dy view quantization
+    // uses the robust step/limit algorithm baked into propSpriteCache.quantizeView().
     const { keyDx, keyDy } = propSpriteCache.quantizeView(dx, dy);
     const basePhysicsKey = getBaseSpriteCacheKey(prop, { quantizeAngleIndex, buildRollOrientKey });
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
