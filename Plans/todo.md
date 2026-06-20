@@ -10,11 +10,9 @@
 
 -- Bigger dedupe targets: three visibility models doing the same job (viewport.isVisible in nav/render, entityRegistry.queryView in overlays/draw, isPropNavVisible as a one-off wrapper) — one “in sim view bounds?” helper keyed off boundsQuery/boundsVisibleWide would unify overlay culling and off-screen replan/sleep policy.
 
-## 06/18/2026
+## 06/19/2026
 
-10:48 AM: Physics + snake passes
-
-7:27 PM: Lots of time wasted on belts. Physics + wall damage PR.
+8:00 AM - : Viewport refactor
 
 ## MILESTONE LOG
 
@@ -34,15 +32,14 @@
 ## 06/18/2026
 
 9:13 AM: RTS interface 3 part PR.
-
 9:39 AM: In-game interface refactor 3 part PR.
-
 11:14 AM: Physics sleep/pipeline/routing 3 part PR.
-
 12:08 PM: Connected kinetics 3 part PR.
-
 1:03 PM: Snake game 3 part PR.
-
 2:03 PM: Multi snakes, physics needle push.
-
 3:35 PM: Prop consolidation, tinting, UI pass.
+
+## 06/19/2026
+
+10:48 AM: Physics + snake passes
+7:27 PM: Lots of time wasted on belts. Physics + wall damage PR.

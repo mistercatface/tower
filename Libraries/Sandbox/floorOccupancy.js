@@ -117,7 +117,7 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
 export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {
     const grid = state.obstacleGrid;
     if (!grid.floorStore.hasAny()) return;
-    const bounds = viewport.boundsVisibleDefault;
+    const bounds = viewport.bounds("props");
     const minCol = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).col);
     const maxCol = Math.min(grid.cols - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).col);
     const minRow = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).row);
@@ -147,7 +147,7 @@ export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {
 export function drawFloorOccupancyPowerSources(ctx, state, viewport, camera) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
-    const bounds = viewport.boundsVisibleDefault;
+    const bounds = viewport.bounds("props");
     const minCol = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).col);
     const maxCol = Math.min(grid.cols - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).col);
     const minRow = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).row);

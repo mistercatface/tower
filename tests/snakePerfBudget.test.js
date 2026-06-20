@@ -54,10 +54,12 @@ function createPerfState(cols = 48, rows = 48) {
         hpaPathSession,
         viewport: {
             snapTo() {},
-            isVisible(_x, _y, _pad) {
+            circleInBounds() {
                 return false;
             },
-            boundsVisibleWide: { minX: -1e9, minY: -1e9, maxX: 1e9, maxY: 1e9 },
+            isVisible() {
+                return false;
+            },
         },
         get replanRequests() {
             return replanRequests;

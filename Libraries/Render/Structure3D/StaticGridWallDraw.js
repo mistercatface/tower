@@ -40,7 +40,7 @@ export function storeWallGridDrawCache(cache, grid, wallGridRevision, bounds, wa
  */
 export function collectStaticGridWallDrawables(obstacleGrid, viewport, viewerX, viewerY, out, wallDamageRevision = 0) {
     out.length = 0;
-    const bounds = viewport.boundsQuery;
+    const bounds = viewport.bounds("structure");
     const wallGridRevision = obstacleGrid.wallGridRevision;
     if (!wallGridDrawCacheHit(sGeomCache, obstacleGrid, wallGridRevision, bounds, wallDamageRevision)) {
         collectVoxelWallFacesInAabb(obstacleGrid, bounds, sGeomCache.faces);

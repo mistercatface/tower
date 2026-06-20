@@ -44,7 +44,7 @@ function railWallBoxTowardViewer(box, viewerX, viewerY) {
  */
 export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, viewerX, viewerY, out, wallDamageRevision = 0) {
     out.length = 0;
-    const bounds = viewport.boundsQuery;
+    const bounds = viewport.bounds("structure");
     const wallGridRevision = obstacleGrid.wallGridRevision;
     if (!wallGridDrawCacheHit(sBoxCache, obstacleGrid, wallGridRevision, bounds, wallDamageRevision)) {
         collectRailWallBoxesInAabb(obstacleGrid, bounds, sBoxCache.boxes);

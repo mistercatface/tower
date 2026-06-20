@@ -58,7 +58,7 @@ export class WorldSceneRenderer {
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
         const props = input.entityRegistry.queryView(
-            { bounds: viewport.boundsVisibleDefault, kinds: ["worldProp"], filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" },
+            { bounds: viewport.bounds("props"), kinds: ["worldProp"], filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" },
             input.spatialFrame,
         );
         for (let i = 0; i < props.length; i++) drawWorldProp(ctx, props[i], viewport, { gameState: input.gameState, propRenderer: this.props, px, py, zoom });
@@ -72,7 +72,7 @@ export class WorldSceneRenderer {
         const px = viewport.x;
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
-        const bounds = viewport.boundsVisibleDefault;
+        const bounds = viewport.bounds("props");
         const drawContext = this.propDrawContext;
         drawContext.gameState = input.gameState;
         drawContext.px = px;
@@ -95,10 +95,7 @@ export class WorldSceneRenderer {
     }
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this.visibleDrawables;
-        const props = input.entityRegistry.queryView(
-            { bounds: viewport.boundsVisibleDefault, kinds: ["worldProp"], filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" },
-            input.spatialFrame,
-        );
+        const props = input.entityRegistry.queryView({ bounds: viewport.bounds("props"), kinds: ["worldProp"], filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" }, input.spatialFrame);
         for (let i = 0; i < props.length; i++) {
             const p = props[i];
             p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
@@ -151,7 +148,7 @@ export class WorldSceneRenderer {
             wallCtx.gameState = input.gameState;
             wallCtx.fillStyle = this.settings.floorShadow;
             wallCtx.bleedPx = this.settings.wallTextureBleedPx;
-            wallCtx.worldBounds = viewport.boundsDraw;
+            wallCtx.worldBounds = viewport.bounds("chunks");
             wallCtx.skipWallCaps = options.skipWallCaps === true;
             wallCtx.cacheObj = null;
             wallCtx.atlasFaceId = undefined;

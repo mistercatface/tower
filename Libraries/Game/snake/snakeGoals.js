@@ -33,7 +33,7 @@ export function findNearestVisibleSnakeGoal(state, seeker, visionCone = getSnake
     ensureSnakePerceptionTick(state);
     const gridNavContext = state.navigation.gridNavContext;
     const visionSession = state.navigation.gridCellVisionSession;
-    const onScreen = state.viewport?.isVisible?.(seeker.x, seeker.y, (seeker.radius ?? 8) * 2) ?? true;
+    const onScreen = state.viewport?.circleInBounds?.(seeker.x, seeker.y, (seeker.radius ?? 8) * 2, "props") ?? true;
     const brainSyncOffScreenInterval = getSnakeGameConfig().brainSyncOffScreenInterval;
     const vision = resolveObserverGridVision(seeker, gridNavContext, visionCone, visionSession, { onScreen, brainSyncOffScreenInterval });
     const candidates = collectSnakeGoalCandidates(state, seeker, visionCone, vision);

@@ -57,7 +57,7 @@ export function drawDamagedVoxelRoofOverlays(ctx, state, viewport, camera) {
     const grid = state.obstacleGrid;
     const settings = state.worldSurfaces?.settings;
     if (!settings) return;
-    const bounds = viewport.boundsDraw;
+    const bounds = viewport.bounds("chunks");
     for (const entry of session.entries.values()) {
         if (entry.kind !== "voxel") continue;
         const ratio = resolveWallDamageTintRatio(session, entry);

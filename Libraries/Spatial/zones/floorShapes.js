@@ -1,6 +1,6 @@
 import { CircleShape, PolygonShape } from "../collision/Shapes.js";
 import { SatCollision } from "../collision/SatCollision.js";
-import { aabbOverlap, centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
+import { centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { boxLocalFootprint, convexFootprintHalfExtents } from "../../Math/Poly2D.js";
 import { kineticNeighborQueryPad } from "../collision/entityBroadphase.js";
 import { stepCardinalFacing } from "../../Math/Angle.js";
@@ -100,5 +100,5 @@ export function findGridAnchoredFloorPropAtCell(worldProps, col, row, exceptProp
     return findLiveWorldProp(worldProps, (prop) => prop.strategy?.gridAnchored && prop.id !== exceptPropId && prop.gridCol === col && prop.gridRow === row);
 }
 export function isAabbInView(entity, viewport) {
-    return aabbOverlap(entity.aabb, viewport.boundsClip);
+    return viewport.aabbInBounds(entity.aabb, "clip");
 }

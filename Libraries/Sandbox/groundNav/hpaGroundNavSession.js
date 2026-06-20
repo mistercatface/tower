@@ -17,7 +17,7 @@ import {
 } from "../../Pathfinding/hpaReplanPolicy.js";
 import { navHasPath } from "../../Pathfinding/navSession.js";
 function isPropNavVisible(state, prop) {
-    return state.viewport.isVisible(prop.x, prop.y, prop.radius);
+    return state.viewport.circleInBounds(prop.x, prop.y, prop.radius ?? 0, "props");
 }
 export function createHpaGroundNavSession() {
     const navState = createNavState();
@@ -34,7 +34,11 @@ export function createHpaGroundNavSession() {
     };
     const isRoutePending = () => pendingTargetReplan || navState.hpaReplanRequestId !== 0;
     const replan = (prop, targetX, targetY, state, priority = REPLAN_PRIORITY_TARGET) => {
-        state.hpaPathSession.requestReplan(navState, buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, state.navigation.obstacleGeneration, prop.navStepPenalty, state.navigation.gridNavContext), priority);
+        state.hpaPathSession.requestReplan(
+            navState,
+            buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, state.navigation.obstacleGeneration, prop.navStepPenalty, state.navigation.gridNavContext),
+            priority,
+        );
     };
     const requestReplan = (prop, targetX, targetY, state, priority) => {
         pendingTargetReplan = false;
@@ -72,7 +76,18 @@ export function createHpaGroundNavSession() {
             return null;
         }
         if (!navHasPath(navState)) return null;
-        const steering = computeSabPathSteering(agentPose(prop), state.hpaPathWorker, navState.pathSlot, navState.pathLen, targetX, targetY, state.obstacleGrid, state.navigation.gridNavContext, pathSettings, navState);
+        const steering = computeSabPathSteering(
+            agentPose(prop),
+            state.hpaPathWorker,
+            navState.pathSlot,
+            navState.pathLen,
+            targetX,
+            targetY,
+            state.obstacleGrid,
+            state.navigation.gridNavContext,
+            pathSettings,
+            navState,
+        );
         if (steering && !inFlight && offPathReplanDue(steering, navState, replanClockMs))
             if (obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) {
                 navState.lastOffPathReplan = replanClockMs;

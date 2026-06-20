@@ -52,7 +52,7 @@ export function buildSandboxOverlayCommands({
     if (sel?.kind === "prop") {
         const selectedIds = new Set(selectionPropIds(sel));
         visibleSelectedProps = queryPropsInView(state.entityRegistry, viewport, spatialFrame, {
-            bounds: viewport.boundsVisibleWide,
+            bounds: viewport.bounds("chunks"),
             filterId: "selectedOverlay",
             match: (prop) => selectedIds.has(prop.id),
         });

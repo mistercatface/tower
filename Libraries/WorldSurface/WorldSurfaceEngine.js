@@ -235,7 +235,7 @@ export class WorldSurfaceEngine {
         const { obstacleGrid, viewport, state, zLevel = 0, playBounds = null, beforeDraw, flatWallRails = false, staticRoofDraw = false } = options;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
-        const viewportBounds = viewport.boundsDraw;
+        const viewportBounds = viewport.bounds("chunks");
         let bounds = viewportBounds;
         if (playBounds) {
             if (!intersectAabbOptionalInto(this.chunkDrawBounds, viewportBounds, playBounds)) return;

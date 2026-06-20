@@ -147,7 +147,7 @@ function getCorridorFloorCanvas(engine, state, linkId, cellKeys, profileId) {
  */
 export function drawRoomGraphFloorPatches(ctx, engine, state, viewport) {
     const settings = engine.settings;
-    const viewBounds = viewport.boundsVisibleDefault;
+    const viewBounds = viewport.bounds("props");
     const nodes = listRoomNodes(state);
     for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];

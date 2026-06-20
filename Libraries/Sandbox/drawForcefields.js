@@ -159,7 +159,7 @@ export function collectForcefieldEdgeDrawables(grid, gameState, viewport, px, py
     if (!grid.cols || !grid.edgeStore.passageEdgeCount || !gameState.sandbox) return;
     syncPassageEdgeDrawCache(gameState, grid);
     const cached = gameState.sandbox._passageEdgeDrawCache.items;
-    const bounds = viewport.boundsVisibleDefault;
+    const bounds = viewport.bounds("props");
     const minX = bounds.minX;
     const maxX = bounds.maxX;
     const minY = bounds.minY;

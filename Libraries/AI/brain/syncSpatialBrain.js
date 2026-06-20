@@ -5,7 +5,7 @@ export function createSpatialBrainSync(brain, { visionCone, brainSyncOffScreenIn
     let lastPenaltyGeneration = -1;
     let lastPenalty = null;
     return function syncSpatialBrain(seeker, state) {
-        const onScreen = state.viewport?.isVisible?.(seeker.x, seeker.y, (seeker.radius ?? 8) * 2) ?? true;
+        const onScreen = state.viewport?.circleInBounds?.(seeker.x, seeker.y, (seeker.radius ?? 8) * 2, "props") ?? true;
         seeker._brainSyncTick = (seeker._brainSyncTick ?? 0) + 1;
         if (onScreen || seeker._brainSyncTick % brainSyncOffScreenInterval === 0) {
             ensureSnakePerceptionTick(state);

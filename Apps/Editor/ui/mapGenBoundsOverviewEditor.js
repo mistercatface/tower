@@ -140,7 +140,7 @@ export function createMapGenBoundsOverviewEditor(state) {
 export function createViewportOverviewEditor(state) {
     return {
         isEnabled: () => state.editor.showMapOverview,
-        hitTest: (sx, sy, frame) => hitTestRectAabb(sx, sy, state.viewport.boundsClip, frame.cache, frame.displayW, frame.displayH, { moveOnly: true }),
+        hitTest: (sx, sy, frame) => hitTestRectAabb(sx, sy, state.viewport.bounds("clip"), frame.cache, frame.displayW, frame.displayH, { moveOnly: true }),
         applyDrag: (mode, dxWorld, dyWorld) => {
             if (mode === "move") state.viewport.snapTo(state.viewport.x + dxWorld, state.viewport.y + dyWorld);
         },

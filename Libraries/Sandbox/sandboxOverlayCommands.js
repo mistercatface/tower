@@ -52,7 +52,7 @@ export function appendMarqueeOverlayCommands(out, { marqueeRect }) {
     out.push(overlayAabb(marqueeRect, { fill: "rgba(255, 252, 245, 0.05)", stroke: "rgba(255, 252, 245, 0.32)", lineWidth: 1, dash: [4, 4] }));
 }
 export function queryPropsInView(entityRegistry, viewport, spatialFrame, { bounds = null, match = null, filterId = "overlay" } = {}) {
-    return entityRegistry.queryView({ bounds: bounds ?? viewport.boundsVisibleDefault, kinds: ["worldProp"], filterId, match }, spatialFrame);
+    return entityRegistry.queryView({ bounds: bounds ?? viewport.bounds("props"), kinds: ["worldProp"], filterId, match }, spatialFrame);
 }
 export function appendPropTileCellOverlayCommands(out, { show, grid, entityRegistry, viewport, spatialFrame }) {
     if (!show) return;

@@ -1,9 +1,8 @@
 import { aabbOverlap, centerHalfExtentsAabbInto, circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { LIBRARY_MIN_WORLD_SPAN } from "../Spatial/iso/perspectiveDefaults.js";
-/** Default entity cull padding (px in world space). */
-export const VIEWPORT_VISIBILITY_PAD_DEFAULT = 20;
-/** Loose visibility tier — cached for callers that need extra margin beyond clip. */
-export const VIEWPORT_VISIBILITY_PAD_WIDE = 128;
+/** Default prop/entity cull padding (world px). */
+export const VIEW_BOUNDS_PROPS_PAD_PX = 20;
+/** @typedef {"clip" | "props" | "structure" | "chunks"} ViewBoundsTier */
 /** 2D world camera: pan, zoom, and screen/world coordinate transforms. */
 export class Viewport {
     constructor(x, y, zoom = 1.0) {
@@ -19,22 +18,18 @@ export class Viewport {
         this.invZoom = 1;
         this.viewQueryPadPx = 0;
         this.viewPaddingPx = 0;
-        this.boundsClip = createAabb();
-        this.boundsQuery = createAabb();
-        this.boundsDraw = createAabb();
-        this.boundsVisibleDefault = createAabb();
-        this.boundsVisibleWide = createAabb();
+        this._boundsClip = createAabb();
+        this._boundsProps = createAabb();
+        this._boundsStructure = createAabb();
+        this._boundsChunks = createAabb();
         this.structurePerspectiveWorldSpan = LIBRARY_MIN_WORLD_SPAN;
         this.structurePerspectiveReferenceSpan = LIBRARY_MIN_WORLD_SPAN;
-        /** @type {number | undefined} Lazily filled by resolveStructurePerspectiveStrength. */
         this.structurePerspectiveStrength = undefined;
-        /** @type {number | undefined} */
         this._structurePerspectiveConfigGen = undefined;
         Object.defineProperty(this, "x", { get: () => this._x, set: (v) => this._setPosition(v, this._y) });
         Object.defineProperty(this, "y", { get: () => this._y, set: (v) => this._setPosition(this._x, v) });
         Object.defineProperty(this, "zoom", { get: () => this._zoom, set: (v) => this._setZoom(v) });
     }
-    /** @param {number} viewQueryPadPx @param {number} viewPaddingPx */
     configureDrawBounds(viewQueryPadPx, viewPaddingPx) {
         if (this.viewQueryPadPx === viewQueryPadPx && this.viewPaddingPx === viewPaddingPx) return;
         this.viewQueryPadPx = viewQueryPadPx;
@@ -56,14 +51,26 @@ export class Viewport {
         this.halfW = w / (2 * this._zoom);
         this.halfH = h / (2 * this._zoom);
         this.invZoom = 1 / this._zoom;
-        centerHalfExtentsAabbInto(this.boundsClip, this._x, this._y, this.halfW, this.halfH, 0);
-        centerHalfExtentsAabbInto(this.boundsQuery, this._x, this._y, this.halfW, this.halfH, this.viewQueryPadPx);
-        centerHalfExtentsAabbInto(this.boundsDraw, this._x, this._y, this.halfW, this.halfH, this.viewPaddingPx);
-        centerHalfExtentsAabbInto(this.boundsVisibleDefault, this._x, this._y, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_DEFAULT);
-        centerHalfExtentsAabbInto(this.boundsVisibleWide, this._x, this._y, this.halfW, this.halfH, VIEWPORT_VISIBILITY_PAD_WIDE);
+        centerHalfExtentsAabbInto(this._boundsClip, this._x, this._y, this.halfW, this.halfH, 0);
+        centerHalfExtentsAabbInto(this._boundsProps, this._x, this._y, this.halfW, this.halfH, VIEW_BOUNDS_PROPS_PAD_PX);
+        centerHalfExtentsAabbInto(this._boundsStructure, this._x, this._y, this.halfW, this.halfH, this.viewQueryPadPx);
+        centerHalfExtentsAabbInto(this._boundsChunks, this._x, this._y, this.halfW, this.halfH, this.viewPaddingPx);
         this.structurePerspectiveWorldSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(this.halfW, this.halfH) * 2);
         this.structurePerspectiveReferenceSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, this.getVisualRadius() * 2);
         this.structurePerspectiveStrength = undefined;
+    }
+    bounds(tier) {
+        if (tier === "clip") return this._boundsClip;
+        if (tier === "props") return this._boundsProps;
+        if (tier === "structure") return this._boundsStructure;
+        if (tier === "chunks") return this._boundsChunks;
+        throw new Error(`unknown view bounds tier: ${tier}`);
+    }
+    circleInBounds(worldX, worldY, radius = 0, tier = "props") {
+        return circleIntersectsAabb(worldX, worldY, radius, this.bounds(tier));
+    }
+    aabbInBounds(aabb, tier = "clip") {
+        return aabbOverlap(aabb, this.bounds(tier));
     }
     apply(ctx) {
         ctx.translate(this.cx, this.cy);
@@ -92,16 +99,7 @@ export class Viewport {
     getVisualRadius() {
         return Math.max(1, Math.min(this.cx, this.cy) - 4);
     }
-    isVisible(worldX, worldY, radius = 0, padding = VIEWPORT_VISIBILITY_PAD_DEFAULT) {
-        if (padding === VIEWPORT_VISIBILITY_PAD_DEFAULT) return circleIntersectsAabb(worldX, worldY, radius, this.boundsVisibleDefault);
-        if (padding === VIEWPORT_VISIBILITY_PAD_WIDE) return circleIntersectsAabb(worldX, worldY, radius, this.boundsVisibleWide);
-        return circleIntersectsAabb(worldX, worldY, radius + padding, this.boundsClip);
-    }
-    /** @param {import("../Math/Aabb2D.js").Aabb2D} aabb @param {number} [padding] */
-    intersectsAabb(aabb, padding = 0) {
-        if (padding === 0) return aabbOverlap(aabb, this.boundsClip);
-        const hw = this.halfW + padding;
-        const hh = this.halfH + padding;
-        return aabb.minX <= this.x + hw && aabb.maxX >= this.x - hw && aabb.minY <= this.y + hh && aabb.maxY >= this.y - hh;
+    isVisible(worldX, worldY, radius = 0, tier = "props") {
+        return this.circleInBounds(worldX, worldY, radius, tier);
     }
 }
