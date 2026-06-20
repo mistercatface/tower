@@ -8,7 +8,7 @@ import ball from "../Assets/props/ball/ball.asset.js";
 import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { createWorkerNavigation, syncWorkerNavigationTopology } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createWorkerNavigationService, syncWorkerNavigationTopology } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { boundaryBlocksStepFrom, isPassagePowered } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { applyPassagePowerGridState } from "../Libraries/Sandbox/passagePowerNetwork.js";
@@ -50,7 +50,7 @@ export async function createRoomBakeTestState(cols = 64, rows = 64) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {} },
-        navigation: await createWorkerNavigation(grid, null, { topologyOnly: true }),
+        navigation: createWorkerNavigationService(grid),
     };
 }
 export function assertLockedExitSealed(grid, gridNavContext, egress, sealed, label = "exit") {

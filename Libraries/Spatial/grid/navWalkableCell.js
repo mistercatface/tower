@@ -17,7 +17,7 @@ export function isNavWalkableCell(grid, gridNavContext, col, row) {
 }
 /**
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {import("../Navigation/GridNavContext.js").GridNavContext | { navCardinalOpen: Uint8Array, vertexPassability: Uint8Array }} gridNavContext
+ * @param {{ navCardinalOpen: Uint8Array, vertexPassability: Uint8Array, grid: import("./WorldObstacleGrid.js").WorldObstacleGrid, wallRevision: number }} gridNavContext
  * @param {{ col: number, row: number }[]} candidates
  * @param {Uint8Array} candidateMask
  * @param {number} cols

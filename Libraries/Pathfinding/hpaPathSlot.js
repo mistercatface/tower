@@ -117,7 +117,7 @@ export function buildSabAbstractPathOverlay(worker, slot, pathLen, grid) {
  * @param {number} targetX
  * @param {number} targetY
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {import("../Navigation/GridNavContext.js").GridNavContext | { navCardinalOpen: Uint8Array, vertexPassability: Uint8Array }} gridNavContext
+ * @param {{ navCardinalOpen: Uint8Array, vertexPassability: Uint8Array, grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, wallRevision: number }} gridNavContext
  * @param {object} [settings]
  * @param {import("./navSession.js").NavSessionState | null} [navState]
  */

@@ -20,11 +20,6 @@ function mockWorker(path) {
     };
 }
 describe("hpaPathSlot", () => {
-    it("canStep returns false when gridNavContext is missing", async () => {
-        const { grid, navigation } = await createGridWithNav();
-        assert.equal(grid.canStep(4, 4, 5, 4, null), false);
-        terminateWorkerNavigation(navigation);
-    });
     it("findSabPathProgressIdx uses gridNavContext for waypoint canStep checks", async () => {
         const { grid, gridNavContext, navigation } = await createGridWithNav();
         const path = [

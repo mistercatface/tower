@@ -6,7 +6,7 @@ import { FLOOR_CELL_KIND, floorBeltElbowTurn, isFloorBeltRailsKind } from "../Li
 import { planRailMazeCorridorBelts } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { collectCorridorPathPolylines } from "../Libraries/Procedural/Mazes/collectCorridorPathPolylines.js";
 import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
-import { createWorkerNavigation, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createWorkerNavigationService, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -41,7 +41,7 @@ describe("rail maze corridor belts", () => {
     it("rejects belt paths whose mouths are rail-blocked", async () => {
         const grid = new WorldObstacleGrid(gridSettings.cellSize);
         grid.rebuildFixed(0, 0, 5 * gridSettings.cellSize, 5 * gridSettings.cellSize);
-        const navigation = await createWorkerNavigation(grid, null, { topologyOnly: true });
+        const navigation = createWorkerNavigationService(grid);
         for (let c = 0; c < 5; c++) for (let r = 0; r < 5; r++) grid.grid[c + r * grid.cols] = 0;
         grid.stampCellEdge(2, 0, 2, 1, 1);
         await syncWorkerNavigationTopology(navigation, grid, { startCol: 1, endCol: 3, startRow: 0, endRow: 2 });

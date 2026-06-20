@@ -1,5 +1,4 @@
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
-import { createWorkerGridNavContextView } from "../../Libraries/Navigation/GridNavContext.js";
 /**
  * Obstacle-driven nav sync — HPA worker graph patches and flow-field topology invalidation.
  * @typedef {(damageBounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => void} NavWalkableSyncHook
@@ -17,7 +16,18 @@ export class NavigationService {
         this.settings = settings;
         this.obstacleGeneration = 0;
         hpaPathWorker.ensureNavArenaForGrid(obstacleGrid);
-        this.gridNavContext = createWorkerGridNavContextView(hpaPathWorker, obstacleGrid);
+        this.gridNavContext = {
+            grid: obstacleGrid,
+            get wallRevision() {
+                return obstacleGrid.wallGridRevision;
+            },
+            get navCardinalOpen() {
+                return hpaPathWorker.getNavArena().cardinalOpen;
+            },
+            get vertexPassability() {
+                return hpaPathWorker.getNavArena().vertexPassability;
+            },
+        };
         /** @type {NavWalkableSyncHook | null} */
         this._navWalkableSyncHook = null;
     }

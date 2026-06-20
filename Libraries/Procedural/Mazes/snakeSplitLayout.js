@@ -1,6 +1,6 @@
 import { gridSettings } from "../../../Config/world.js";
 import { withSeededRandom } from "../../Random/index.js";
-import { createWorkerNavigation, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../../Navigation/WorkerNavigationFactory.js";
+import { createWorkerNavigationService, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../../Navigation/WorkerNavigationFactory.js";
 import { forEachGlobalCellInMapGenBounds, getMapGenBoundsAabb, getMapGenBoundsStampExtent, migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../../Spatial/grid/WorldObstacleGrid.js";
@@ -141,7 +141,7 @@ export async function bakeSnakeSplitLayoutPreview({ mapSeed, playAreaCols, playA
     const cellSize = gridSettings.cellSize;
     const grid = new WorldObstacleGrid(cellSize);
     grid.rebuildFixed((playAreaCols * cellSize) / 2, (playAreaRows * cellSize) / 2, playAreaCols * cellSize, playAreaRows * cellSize);
-    const navigation = await createWorkerNavigation(grid, null, { topologyOnly: true });
+    const navigation = createWorkerNavigationService(grid);
     try {
         const applied = await applySnakeSplitLayoutToGrid(grid, layout, navigation);
         const walkableState = { obstacleGrid: grid, navigation, sandbox: {}, editor: { cavernConfig: applied.playableBounds } };
