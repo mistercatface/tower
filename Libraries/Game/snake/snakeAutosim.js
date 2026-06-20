@@ -24,6 +24,7 @@ export function createSnakeBrain(visionConeOverride) {
         navMemoryStepPenalty: config.navMemoryStepPenalty,
         navMemoryStepFalloff: config.navMemoryStepFalloff,
         ensurePerceptionTick: ensureSnakePerceptionTick,
+        resolvePerceptionTick: (state) => state.sandbox.snakeGame.simTick,
     });
     return { brain, sync };
 }
@@ -57,7 +58,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
     const resolvedGrowDirY = growDirY ?? config.growDirY;
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
     const registry = state.sandbox.snakeGame.registry;
-    const { brain, sync } = createSnakeBrain({ visionCone });
+    const { brain, sync } = createSnakeBrain(visionCone);
     const headNav = createCellTargetHpaNav(state);
     const resolveVisibleFood = (seeker, gameState) => {
         if (pinnedGoalId != null) {

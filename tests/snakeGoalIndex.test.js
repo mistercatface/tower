@@ -7,6 +7,7 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { countLiveSnakeGoals, findNearestVisibleSnakeGoal, removeSnakeGoalProp } from "../Libraries/Game/snake/snakeGoals.js";
+import { ensureSnakeObserverVision } from "../Libraries/Game/snake/snakePerception.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeNavWalkable, wireSnakeTestNavSession } from "./harness/snakeGameHarness.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
@@ -80,6 +81,7 @@ describe("snake visible goal parity", () => {
         stampWall(state.obstacleGrid, 11, 8);
         const seeker = chain.head;
         seeker.facing = Math.PI;
+        ensureSnakeObserverVision(state, seeker);
         assert.equal(findNearestVisibleSnakeGoal(state, seeker).id, visible.id);
     });
 });

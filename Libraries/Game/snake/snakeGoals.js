@@ -1,5 +1,5 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { hasGridCellLineOfSightCached, isWorldPointInVisionCone, resolveObserverGridVision, resolveObserverViewSyncContext } from "../../Navigation/perception/gridCellVision.js";
+import { hasGridCellLineOfSightCached, isWorldPointInVisionCone, readObserverGridVision, resolveObserverViewSyncContext } from "../../Navigation/perception/gridCellVision.js";
 import { visitLiveWorldProps } from "../../../GameState/EntityRegistry.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { collectAllSnakeGoals, collectSnakeGoalsInRect, countSnakeGoals, getSnakeGoalIndex, unregisterSnakeGoal } from "./snakeGoalIndex.js";
@@ -35,7 +35,8 @@ export function findNearestVisibleSnakeGoal(state, seeker, visionCone = getSnake
     const visionSession = state.navigation.gridCellVisionSession;
     const brainSyncOffScreenInterval = getSnakeGameConfig().brainSyncOffScreenInterval;
     const viewSync = resolveObserverViewSyncContext(state.viewport, seeker, brainSyncOffScreenInterval);
-    const vision = resolveObserverGridVision(seeker, gridNavContext, visionCone, visionSession, viewSync);
+    const vision = readObserverGridVision(seeker, gridNavContext, visionCone, { ...viewSync, perceptionTick: state.sandbox.snakeGame.simTick, brainSyncTick: seeker._brainSyncTick ?? 0 });
+    if (!vision) return null;
     const candidates = collectSnakeGoalCandidates(state, seeker, visionCone, vision);
     const grid = gridNavContext.grid;
     let nearest = null;

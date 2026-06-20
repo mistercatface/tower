@@ -4,6 +4,7 @@ import { cellChebyshevDistance, pickExploreDestination, exploreFringeMinRankFrom
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, wireTestGridNavContext } from "./harness/snakeGameHarness.js";
 import { findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
+import { ensureSnakeObserverVision } from "../Libraries/Game/snake/snakePerception.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -40,6 +41,7 @@ function createIntentTestState(cols = 32, rows = 32) {
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
         hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
+        viewport: { circleInBounds: () => true },
     };
     wireTestGridNavContext(state);
     return state;
@@ -118,6 +120,8 @@ describe("snake intent FSM", () => {
         stampWall(state.obstacleGrid, 11, 8);
         const seeker = chain.head;
         seeker.facing = Math.PI;
+        wireSnakeGameRegistry(state, createSnakeLifecycleRegistry(), new Map(), createSnakeNavWalkable(state));
+        ensureSnakeObserverVision(state, seeker);
         assert.equal(findNearestSnakeGoal(state, seeker.x, seeker.y).id, nearBehindWall.id);
         assert.equal(findNearestVisibleSnakeGoal(state, seeker).id, farVisible.id);
     });

@@ -18,6 +18,7 @@ import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry
 import { createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
 import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
+import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/gridCellVision.js";
 loadPropAssets();
 /** Brain-on baseline — raise only when intentionally adding cost. */
 const PERF_TICKS = 120;
@@ -101,9 +102,11 @@ describe("snakePerfBudget", () => {
     it("50 snakes with brains stay within wall-clock and replan budget", () => {
         applySnakeGameConfig({ snakeCount: 50, goalCount: 100, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4 });
         resetKineticConstraintIds(1);
+        resetVisionFullBuildCount();
         const state = createPerfState();
         const { autosims } = buildMultiSnakeSession(state);
         const snakeGame = state.sandbox.snakeGame;
+        const aliveSnakes = autosims.length;
         const t0 = performance.now();
         for (let tick = 0; tick < PERF_TICKS; tick++) {
             snakeGame._batchingPerception = true;
@@ -112,8 +115,13 @@ describe("snakePerfBudget", () => {
             snakeGame._batchingPerception = false;
         }
         const elapsed = performance.now() - t0;
+        const visionFullBuilds = getVisionFullBuildCount();
         assert.ok(elapsed < WALL_CLOCK_MS_CEILING, `wall-clock ${elapsed.toFixed(1)}ms exceeds ${WALL_CLOCK_MS_CEILING}ms`);
         assert.ok(state.replanRequests <= REPLAN_REQUEST_CEILING, `replan requests ${state.replanRequests} exceed ${REPLAN_REQUEST_CEILING}`);
+        assert.ok(
+            visionFullBuilds <= aliveSnakes * PERF_TICKS,
+            `vision full builds ${visionFullBuilds} exceed ${aliveSnakes} snakes × ${PERF_TICKS} ticks`,
+        );
         applySnakeGameConfig();
     });
 });

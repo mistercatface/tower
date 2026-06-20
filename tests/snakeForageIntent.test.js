@@ -19,6 +19,7 @@ import {
     perceiveSnakeIntentWorld,
 } from "../Libraries/Game/snake/snakeIntent.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable, wireTestGridNavContext } from "./harness/snakeGameHarness.js";
+import { ensureSnakeObserverVision } from "../Libraries/Game/snake/snakePerception.js";
 import { spawnSnakeStriker } from "../Libraries/Game/snake/snakeStriker.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
@@ -43,6 +44,7 @@ function createTestState(cols = 32, rows = 32) {
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
         hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
+        viewport: { circleInBounds: () => true },
     };
     wireTestGridNavContext(state);
     return state;
@@ -69,14 +71,23 @@ function chainOptions(segmentCount) {
     };
 }
 
+function wireSnakeIntentPerception(state, registry) {
+    wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+}
+function perceiveIntentWorld(state, seeker, headId, registry, resolveFood) {
+    ensureSnakeObserverVision(state, seeker);
+    return perceiveSnakeIntentWorld(seeker, headId, state, registry, resolveFood);
+}
+
 describe("snake forage intent", () => {
     it("pickSnakeIntentPolicy explores when no food or threat", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const registry = createSnakeLifecycleRegistry();
+        wireSnakeIntentPerception(state, registry);
         const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
         registerAliveSnake(registry, self.head.id);
-        const world = perceiveSnakeIntentWorld(self.head, self.head.id, state, registry, () => null);
+        const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => null);
         assert.equal(pickSnakeIntentPolicy(world).mode, "explore");
     });
 
@@ -84,15 +95,16 @@ describe("snake forage intent", () => {
         applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createTestState();
+        const registry = createSnakeLifecycleRegistry();
+        wireSnakeIntentPerception(state, registry);
         const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
         const larger = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
-        const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, self.head.id);
         registerAliveSnake(registry, larger.head.id);
         self.head.facing = 0;
         larger.head.x = self.head.x + 64;
         larger.head.y = self.head.y;
-        const world = perceiveSnakeIntentWorld(self.head, self.head.id, state, registry, () => null);
+        const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => null);
         assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
     });
 
@@ -100,15 +112,16 @@ describe("snake forage intent", () => {
         applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createTestState();
+        const registry = createSnakeLifecycleRegistry();
+        wireSnakeIntentPerception(state, registry);
         const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
         const larger = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
-        const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, self.head.id);
         registerAliveSnake(registry, larger.head.id);
         self.head.facing = 0;
         larger.head.x = self.head.x - 64;
         larger.head.y = self.head.y;
-        const world = perceiveSnakeIntentWorld(self.head, self.head.id, state, registry, () => null);
+        const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => null);
         assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
     });
 
@@ -117,14 +130,14 @@ describe("snake forage intent", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const registry = createSnakeLifecycleRegistry();
-        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+        wireSnakeIntentPerception(state, registry);
         const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
         registerAliveSnake(registry, self.head.id);
         const striker = spawnSnakeStriker(state, self.head);
         state.sandbox.snakeGame.strikerBall = striker;
         striker.x = self.head.x + 64;
         striker.y = self.head.y;
-        const world = perceiveSnakeIntentWorld(self.head, self.head.id, state, registry, () => null);
+        const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => null);
         assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
         assert.equal(world.threat.id, striker.id);
     });
@@ -133,16 +146,17 @@ describe("snake forage intent", () => {
         applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = createTestState();
+        const registry = createSnakeLifecycleRegistry();
+        wireSnakeIntentPerception(state, registry);
         const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
         const larger = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
-        const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, self.head.id);
         registerAliveSnake(registry, larger.head.id);
         self.head.facing = 0;
         larger.head.x = self.head.x + 64;
         larger.head.y = self.head.y;
         const food = { id: 999, x: self.head.x + 32, y: self.head.y, isDead: false };
-        const world = perceiveSnakeIntentWorld(self.head, self.head.id, state, registry, () => food);
+        const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => food);
         assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
     });
 
@@ -150,11 +164,13 @@ describe("snake forage intent", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const registry = createSnakeLifecycleRegistry();
+        wireSnakeIntentPerception(state, registry);
         const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
         registerAliveSnake(registry, self.head.id);
         const food = { id: 999, x: self.head.x + 32, y: self.head.y, isDead: false };
         state.worldProps.push(food);
         state.entityRegistry.register("worldProp", food);
+        ensureSnakeObserverVision(state, self.head);
         const choice = pickSnakeIntentTarget(self.head, self.head.id, state, registry, () => food);
         assert.equal(choice.mode, "seek_food");
         assert.equal(choice.target.id, 999);
@@ -175,6 +191,7 @@ describe("snake forage intent", () => {
         self.head.facing = 0;
         larger.head.x = self.head.x + 64;
         larger.head.y = self.head.y;
+        ensureSnakeObserverVision(state, self.head);
         const threat = findNearestVisibleThreat(self.head, self.head.id, state, registry);
         const cell = pickFleeCell(self.head, threat, grid, navWalkable);
         assert.ok(cell);
