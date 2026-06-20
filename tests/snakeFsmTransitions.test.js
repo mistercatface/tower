@@ -19,6 +19,7 @@ import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireTestGridNavContext } from "./harness/snakeGameHarness.js";
+import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 
 loadPropAssets();
 
@@ -186,6 +187,7 @@ describe("snake FSM transitions", () => {
         const { intent } = createMockIntent(state, small.head.id, registry);
         const seeker = small.head;
         const grid = state.obstacleGrid;
+        beginSnakePerceptionFrame(state);
         intent.perceive(seeker, state);
         intent.transition(seeker, state);
         assert.equal(intent.getMode(), "flee");
@@ -196,6 +198,7 @@ describe("snake FSM transitions", () => {
         seeker.y = world.y;
         large.head.x = seeker.x + 64;
         large.head.y = seeker.y;
+        beginSnakePerceptionFrame(state);
         intent.perceive(seeker, state);
         intent.transition(seeker, state);
         assert.equal(intent.getMode(), "flee");
@@ -215,12 +218,14 @@ describe("snake FSM transitions", () => {
         wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
         const { intent, headNav } = createMockIntent(state, chain.head.id, registry);
         const seeker = chain.head;
+        beginSnakePerceptionFrame(state);
         intent.perceive(seeker, state);
         intent.transition(seeker, state);
         intent.headNav.tick(seeker, 0);
         const latched = intent.getDestination();
         assert.ok(latched);
         headNav.setHasRoute(false);
+        beginSnakePerceptionFrame(state);
         intent.perceive(seeker, state);
         intent.transition(seeker, state);
         assert.equal(intent.getLastTransitionReason(), "route_failed_retry");

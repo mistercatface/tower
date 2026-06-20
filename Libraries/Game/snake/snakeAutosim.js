@@ -23,8 +23,6 @@ export function createSnakeBrain(visionConeOverride) {
         brainSyncOffScreenInterval: config.brainSyncOffScreenInterval,
         navMemoryStepPenalty: config.navMemoryStepPenalty,
         navMemoryStepFalloff: config.navMemoryStepFalloff,
-        ensurePerceptionTick: ensureSnakePerceptionTick,
-        resolvePerceptionTick: (state) => state.sandbox.snakeGame.simTick,
     });
     return { brain, sync };
 }
@@ -42,6 +40,9 @@ function replenishSnakeGoals(state, headId, rng, navWalkable) {
     spawnGoalOrbOnOpenCell(state, navWalkable, { excludeKeys: occupied, rng });
 }
 function runSnakeFsmTick(intent, seeker, state, dt) {
+    const snakeGame = state.sandbox.snakeGame;
+    if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
+    else maybeBeginSnakeAutosimTick(state);
     intent.perceive(seeker, state);
     const choice = intent.transition(seeker, state);
     intent.headNav.tick(seeker, dt);
@@ -156,7 +157,6 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         },
         tick(dt) {
             if (!active) return;
-            maybeBeginSnakeAutosimTick(state);
             const seeker = resolveSeeker();
             const choice = runSnakeFsmTick(intent, seeker, state, dt);
             let fedThisTick = false;

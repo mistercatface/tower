@@ -1,12 +1,24 @@
 import { beginGridVisionTick } from "../../Navigation/perception/gridCellVisionSession.js";
-import { ensureObserverGridVision, resolveObserverViewSyncContext } from "../../Navigation/perception/gridCellVision.js";
+import { createObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
+function refreshObserverVisionFrame(state) {
+    const config = getSnakeGameConfig();
+    state.navigation.observerVisionFrame = createObserverVisionFrame({
+        tickId: state.sandbox.snakeGame.simTick,
+        gridNavContext: state.navigation.gridNavContext,
+        visionSession: state.navigation.gridCellVisionSession,
+        visionCone: config.visionCone,
+        viewport: state.viewport,
+        brainSyncOffScreenInterval: config.brainSyncOffScreenInterval,
+    });
+}
 export function beginSnakePerceptionTick(state, tickId) {
     const snakeGame = state.sandbox.snakeGame;
     snakeGame.simTick = tickId;
     if (snakeGame.lastVisionBeginTick === tickId) return;
     snakeGame.lastVisionBeginTick = tickId;
     beginGridVisionTick(state, tickId);
+    refreshObserverVisionFrame(state);
 }
 export function nextSnakePerceptionTickId(state) {
     const snakeGame = state.sandbox.snakeGame;
@@ -30,11 +42,5 @@ export function maybeBeginSnakeAutosimTick(state) {
 }
 export function ensureSnakeObserverVision(state, observer, visionCone = getSnakeGameConfig().visionCone) {
     ensureSnakePerceptionTick(state);
-    const config = getSnakeGameConfig();
-    const viewSync = resolveObserverViewSyncContext(state.viewport, observer, config.brainSyncOffScreenInterval);
-    return ensureObserverGridVision(observer, state.navigation.gridNavContext, visionCone, state.navigation.gridCellVisionSession, {
-        ...viewSync,
-        perceptionTick: state.sandbox.snakeGame.simTick,
-        brainSyncTick: observer._brainSyncTick ?? 0,
-    });
+    return state.navigation.observerVisionFrame.ensureHeadVision(observer, visionCone);
 }

@@ -1,4 +1,5 @@
-import { hasGridCellLineOfSightCached, readObserverGridVision, resolveObserverViewSyncContext } from "../../Navigation/perception/gridCellVision.js";
+import { hasGridCellLineOfSightCached } from "../../Navigation/perception/gridCellVision.js";
+import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
@@ -26,13 +27,13 @@ function visibleThreatInRange(seeker, threat, rangeSq, gridNavContext, originCol
 }
 export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, visionCone = getSnakeGameConfig().visionCone) {
     ensureSnakePerceptionTick(state);
-    const visionSession = state.navigation.gridCellVisionSession;
+    const frame = getObserverVisionFrame(state);
+    const gridNavContext = frame.gridNavContext;
+    const visionSession = frame.visionSession;
     const config = getSnakeGameConfig();
     const range = config.fleeRange ?? visionCone.range;
     const rangeSq = range * range;
-    const gridNavContext = state.navigation.gridNavContext;
-    const viewSync = resolveObserverViewSyncContext(state.viewport, seeker, config.brainSyncOffScreenInterval);
-    const vision = readObserverGridVision(seeker, gridNavContext, visionCone, { ...viewSync, perceptionTick: state.sandbox.snakeGame.simTick, brainSyncTick: seeker._brainSyncTick ?? 0 });
+    const vision = frame.readHeadVision(seeker, visionCone);
     const originCol = vision?.originCol ?? gridNavContext.grid.worldToGrid(seeker.x, seeker.y).col;
     const originRow = vision?.originRow ?? gridNavContext.grid.worldToGrid(seeker.x, seeker.y).row;
     const candidates = collectOtherSnakeHeads(state, registry, selfHeadId);
