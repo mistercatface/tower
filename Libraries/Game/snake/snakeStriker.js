@@ -8,6 +8,8 @@ import { getPropAsset } from "../../Props/PropCatalog.js";
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { getSnakeGameConfig, resolveSnakeStartRadius } from "./snakeGameConfig.js";
+import { applyPendingStrikerWallDamage, createGridWallDamageSession, queueStrikerWallHits } from "../../Sandbox/gridWallDamage.js";
+import { createDeferredGridWallCommit } from "../../Sandbox/deferredGridWallCommit.js";
 import { resolveAliveSnakeHeadId } from "./snakeLifecycle.js";
 import { splitSnakeAtStruckSegment } from "./snakeCombat.js";
 const STRIKER_BEHAVIOR_OVERRIDES = { inputGates: { [DRAG_LAUNCH_WAIT_BEHAVIOR_ID]: [{ scope: "self", until: "atRest" }] } };
@@ -55,4 +57,18 @@ export function resolveStrikerBallSnakeSplitsFromContacts(state, spatialFrame, c
         splitLinks.add(linkKey);
         splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, snakeBody.id);
     }
+}
+export function createSnakeStrikerWallDamage(state) {
+    const session = createGridWallDamageSession();
+    const commit = createDeferredGridWallCommit(state);
+    return { session, commit };
+}
+export function resolveStrikerBallWallDamageFromHits(state, strikerBall, hits, preSpeed, wallDamageState) {
+    if (!strikerBall || !hits?.length || !wallDamageState) return;
+    const config = getSnakeGameConfig().wallDamage;
+    queueStrikerWallHits(wallDamageState.session, state.obstacleGrid, hits, preSpeed, config);
+}
+export function flushStrikerWallDamage(state, wallDamageState) {
+    if (!wallDamageState) return null;
+    return applyPendingStrikerWallDamage(state, wallDamageState.session, wallDamageState.commit, getSnakeGameConfig().wallDamage);
 }

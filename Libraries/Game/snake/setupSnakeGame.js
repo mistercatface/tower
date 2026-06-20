@@ -13,7 +13,7 @@ import { selectionPropIds } from "../../Sandbox/sandboxSelectionInspectors.js";
 import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
-import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
+import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts, createSnakeStrikerWallDamage, resolveStrikerBallWallDamageFromHits, flushStrikerWallDamage } from "./snakeStriker.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -38,6 +38,8 @@ export async function setupSnakeGame(state) {
     state.viewport.snapTo(centerSnake.chain.head.x, centerSnake.chain.head.y);
     const strikerBall = spawnSnakeStriker(state, centerSnake.chain.head);
     state.sandbox.snakeGame.strikerBall = strikerBall;
+    const strikerWallDamage = createSnakeStrikerWallDamage(state);
+    state.sandbox.snakeGame.strikerWallDamage = strikerWallDamage;
     function pickNextFocusedHeadId(skipHeadId = null) {
         for (const headId of registry.aliveByHeadId.keys()) if (headId !== skipHeadId) return headId;
         return null;
@@ -145,6 +147,15 @@ export async function setupSnakeGame(state) {
             applyKineticContactSideEffects(tick, contacts);
             resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
             resolveStrikerBallSnakeSplitsFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame, strikerBall);
+        },
+        resolveWalls(entity, frame) {
+            const preSpeed = Math.hypot(entity.vx ?? 0, entity.vy ?? 0);
+            const collided = state.wallResolver.resolve(entity, frame);
+            if (entity.id === strikerBall.id) resolveStrikerBallWallDamageFromHits(state, strikerBall, entity._wallResolveHits, preSpeed, strikerWallDamage);
+            return collided;
+        },
+        afterKineticPhysics() {
+            flushStrikerWallDamage(state, strikerWallDamage);
         },
         stop() {
             for (const autosim of autosimsByHeadId.values()) autosim.stop();

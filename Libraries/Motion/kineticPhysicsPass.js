@@ -53,4 +53,5 @@ export function runKineticPhysics(tick, dt, hooks) {
     session.motionSubstepStats = { substepsRun, substepsPlanned: steps };
     tickKineticSleep(frame);
     frame.syncActiveKineticBodies();
+    hooks.afterKineticPhysics?.(tick);
 }

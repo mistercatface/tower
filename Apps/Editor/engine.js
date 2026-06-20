@@ -39,9 +39,14 @@ function simulationKineticHooks(state) {
             prop.update(dt, state, frame);
         },
         resolveWalls(entity, frame) {
-            state.wallResolver.resolve(entity, frame);
+            const session = state.appLaunch?.session;
+            if (session?.resolveWalls) return session.resolveWalls(entity, frame);
+            return state.wallResolver.resolve(entity, frame);
         },
         applyContactSideEffects,
+        afterKineticPhysics(tick) {
+            state.appLaunch?.session?.afterKineticPhysics?.(tick);
+        },
     };
 }
 /** @param {import("./state.js").TileLabGameState} state @param {number} dt */

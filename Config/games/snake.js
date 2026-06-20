@@ -57,6 +57,8 @@ export const SNAKE_GAME_DEFAULTS = {
     splitImpulseThreshold: 35,
     /** Striker ball speed required to cut a snake (at-rest ball never cuts). */
     strikerMinStrikeSpeed: 28,
+    /** Striker wall breakage — flat HP; height level is visual only. */
+    wallDamage: { maxHp: 100, maxHitDamage: 45, minStrikeSpeed: 28, referenceMaxSpeed: 560, minAngleFactor: 0.2 },
     /** Placed beside the center-start snake; drag-launch with at-rest gate. */
     strikerPropId: "snake_striker",
     /** Grid tiles to flee away from a visible larger snake (Chebyshev step). */

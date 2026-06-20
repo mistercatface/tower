@@ -16,15 +16,20 @@ export class WallCollisionResolver {
         const candidateWalls = spatialFrame.getWallCandidates(entity);
         if (candidateWalls.length === 0) {
             entity._wallResolvedCollided = false;
+            entity._wallResolveHits = null;
             return false;
         }
         const wp = entity.strategy?.wallPhysics;
         const parts = entity.getCollisionParts?.() ?? [entity.getShape()];
         let collided = false;
+        /** @type {import("../Spatial/collision/wallResolution.js").WallHit[]} */
+        const hits = [];
         for (let i = 0; i < parts.length; i++) {
             const result = resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9 });
             if (result.collided) collided = true;
+            if (result.hits.length) hits.push(...result.hits);
         }
+        entity._wallResolveHits = hits.length ? hits : null;
         if (collided) wakeKineticBody(entity);
         entity._wallResolvedCollided = collided;
         return collided;
