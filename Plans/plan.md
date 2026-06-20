@@ -4,7 +4,7 @@ Replace the string-key Set walkability cache with a dense per-cell flag (plus th
 PR 2 — Link capsule wall culling (physics proving ground)
 Optimize projectIslandLinkCapsulesAgainstWalls / projectDistanceLinkCapsuleAgainstWalls with link-AABB filtering against the frame’s wall-candidate buckets, reuse/clear the per-island walls[] buffer, and skip work for asleep or nearly-static links. This is pure snake-chain physics perf (~17% of your profile) and doesn’t change gameplay — just keeps 70-snake sim headroom before you add wall impacts.
 
-PR 3 — Trilogy C1: manifolds + substep early-out
+PR 3 — Trilogy C1: manifolds + substep early-out ✅
 Finish the partial contact stack: feature-id keyed manifold warm-start, reduced re-solving on resting contacts, and substep early-out when impulses are negligible. Helps all kinetic piles (snake segments, striker, debris) and is independent of walls — land it before striker starts adding new contact traffic.
 
 PR 4 — Wall health + striker breakage + localized nav delete
@@ -46,3 +46,7 @@ PR 3 is physics contact stack, not pathfinding: feature-id manifold warm-start, 
 Practical recommendation
 
 Ship PR 3 next without more pathfinding work. The only pre-PR-3 code I’d actually consider is the canStep guard + a replan apply test that exercises gridNavContext end-to-end (you have hpaPathSlot.test.js now; an async applyHpaReplanResult smoke would close the loop). Everything else is either PR 4 (nav patch + walls), PR 6 polish (arrival parity), or physics perf you’re about to touch anyway in C1.
+
+## PR 3 POST MORTEM
+
+PR 3 status. Landed. `kineticContactManifold.js` adds feature-id keyed warm-start (`contactWarmStartKey` quantizes contact normal into 16 angle bins). `kineticContactSolver.js` stores/restores impulses per feature key, flags resting contacts from relative normal/tangent pre-velocity, skips re-solve iterations for resting contacts (and breaks early when all contacts are resting), and routes circle–circle pairs through a dedicated impulse lane using precomputed lever arms. `kineticPhysicsPass.js` early-outs remaining motion substeps when active bodies fall below `kineticEarlyOut.velocityEpsilonSq`; stats land on `session.motionSubstepStats`. Defaults in `collisionDefaults.js`: `kineticResting`, `substepEarlyOut`. Tests: `kineticContactManifold.test.js`, `kineticContactWarmStart.test.js`, `kineticSubstepEarlyOut.test.js`. Multi-point manifolds remain future work (still single-point SAT); this PR is warm-start persistence + resting/substep polish per Trilogy C1.

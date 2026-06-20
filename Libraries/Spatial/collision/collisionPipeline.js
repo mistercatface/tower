@@ -1,6 +1,7 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab } from "../../Motion/kineticConstraintSolver.js";
+import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
 import { gatherKineticContactPairs, resolveKineticContactPass, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
@@ -8,17 +9,6 @@ import { activeBodiesMatchKineticSlab } from "./kineticBodySlab.js";
 import { copyKineticPairBuffer, kineticPairBuffer, persistedKineticPairBuffer } from "./kineticPairStream.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
-function maxActiveKineticSpeedSq(activeBodies) {
-    let max = 0;
-    for (let i = 0; i < activeBodies.length; i++) {
-        const prop = activeBodies[i];
-        const vx = prop.vx ?? 0;
-        const vy = prop.vy ?? 0;
-        const sq = vx * vx + vy * vy;
-        if (sq > max) max = sq;
-    }
-    return max;
-}
 /** @param {object} prop @param {object[]} wallCandidates */
 function kineticOverlapsWallSegment(prop, wallCandidates) {
     const parts = getEntityCollisionParts(prop);

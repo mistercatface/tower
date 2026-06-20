@@ -21,3 +21,16 @@ export function countMotionSubsteps(dtMs, bodies, { maxStepPx = 4, maxSubsteps =
     if (maxDisp <= 1e-6) return 1;
     return Math.min(maxSubsteps, Math.max(1, Math.ceil(maxDisp / maxStepPx)));
 }
+
+/** @param {object[] | null | undefined} bodies */
+export function maxActiveKineticSpeedSq(bodies) {
+    let max = 0;
+    if (!bodies?.length) return max;
+    for (let i = 0; i < bodies.length; i++) {
+        const vx = bodies[i].vx ?? 0;
+        const vy = bodies[i].vy ?? 0;
+        const sq = vx * vx + vy * vy;
+        if (sq > max) max = sq;
+    }
+    return max;
+}
