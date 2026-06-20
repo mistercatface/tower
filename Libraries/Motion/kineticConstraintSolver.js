@@ -34,6 +34,8 @@ export const kineticConstraintSlab = {
     pinnedA: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
     pinnedB: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
     capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    entry: new Array(MAX_KINETIC_CONSTRAINTS),
     reset() {
         this.count = 0;
         this.groupCount = 0;
@@ -125,6 +127,8 @@ function appendConstraintEntry(slab, item) {
     slab.pinnedA[idx] = bodyPinnedForContact(bodyA) ? 1 : 0;
     slab.pinnedB[idx] = bodyPinnedForContact(bodyB) ? 1 : 0;
     slab.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
+    slab.accumulatedImpulse[idx] = item.entry.accumulatedImpulse || 0;
+    slab.entry[idx] = item.entry;
 }
 function islandConstraintsAsleep(slab, start, count) {
     for (let i = start; i < start + count; i++) {
@@ -342,6 +346,7 @@ function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias
     const vRelN = (vBx - vAx) * nx + (vBy - vAy) * ny;
     const lambda = -(vRelN + velocityBias * error) / k;
     if (lambda === 0) return 0;
+    slab.accumulatedImpulse[index] += lambda;
     bodyA.vx = (bodyA.vx ?? 0) - lambda * nx * invMassA;
     bodyA.vy = (bodyA.vy ?? 0) - lambda * ny * invMassA;
     bodyB.vx = (bodyB.vx ?? 0) + lambda * nx * invMassB;
@@ -359,12 +364,49 @@ function projectKineticConstraintSlab() {
         for (let i = start; i < start + count; i++) projectDistanceConstraint(slab, i);
     });
 }
+function warmStartKineticConstraintSlab() {
+    const slab = kineticConstraintSlab;
+    forEachConstraintIsland(slab, (start, count) => {
+        if (islandConstraintsAsleep(slab, start, count)) return;
+        for (let i = start; i < start + count; i++) {
+            const lambda = slab.accumulatedImpulse[i];
+            if (lambda === 0) continue;
+            const bodyA = slab.bodyA[i];
+            const bodyB = slab.bodyB[i];
+            const wa = worldAnchorFromBody(bodyA, slab.anchorAx[i], slab.anchorAy[i]);
+            const wb = worldAnchorFromBody(bodyB, slab.anchorBx[i], slab.anchorBy[i]);
+            const dx = wb.x - wa.x;
+            const dy = wb.y - wa.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 1e-8) continue;
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const invMassA = slab.invMassA[i];
+            const invMassB = slab.invMassB[i];
+            const invIA = slab.invIA[i];
+            const invIB = slab.invIB[i];
+            const rax = wa.x - bodyA.x;
+            const ray = wa.y - bodyA.y;
+            const rbx = wb.x - bodyB.x;
+            const rby = wb.y - bodyB.y;
+            const rAn = rax * ny - ray * nx;
+            const rBn = rbx * ny - rby * nx;
+            bodyA.vx = (bodyA.vx ?? 0) - lambda * nx * invMassA;
+            bodyA.vy = (bodyA.vy ?? 0) - lambda * ny * invMassA;
+            bodyB.vx = (bodyB.vx ?? 0) + lambda * nx * invMassB;
+            bodyB.vy = (bodyB.vy ?? 0) + lambda * ny * invMassB;
+            bodyA.angularVelocity = (bodyA.angularVelocity ?? 0) - lambda * rAn * invIA;
+            bodyB.angularVelocity = (bodyB.angularVelocity ?? 0) + lambda * rBn * invIB;
+        }
+    });
+}
 function solveKineticConstraintSlab(tick) {
     const slab = kineticConstraintSlab;
     if (slab.count === 0) return;
     const spatialFrame = tick.frame;
     const constraintSettings = getCollisionSettings().kineticConstraints;
     const { contactImpulseEpsilon } = getCollisionSettings().kineticEarlyOut;
+    warmStartKineticConstraintSlab();
     for (let iter = 0; iter < constraintSettings.iterations; iter++) {
         let maxImpulse = 0;
         forEachConstraintIsland(slab, (start, count) => {
@@ -376,6 +418,7 @@ function solveKineticConstraintSlab(tick) {
         });
         if (maxImpulse <= contactImpulseEpsilon) break;
     }
+    for (let i = 0; i < slab.count; i++) slab.entry[i].accumulatedImpulse = slab.accumulatedImpulse[i];
 }
 export function resolveGatheredKineticConstraintSlab(tick) {
     projectKineticConstraintSlab();

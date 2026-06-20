@@ -22,6 +22,7 @@ export function addDistanceConstraint(session, { bodyA, bodyB, anchorA = { x: 0,
         anchorA: { x: anchorA.x, y: anchorA.y },
         anchorB: { x: anchorB.x, y: anchorB.y },
         restLength,
+        accumulatedImpulse: 0,
     };
     session.kineticConstraints.push(constraint);
     markKineticConstraintsDirty(session);
@@ -63,13 +64,27 @@ export function collectKineticConstraintsSnapshot(session, propIdToIndex) {
         const bodyA = propIdToIndex.get(constraint.bodyAId);
         const bodyB = propIdToIndex.get(constraint.bodyBId);
         if (bodyA == null || bodyB == null) continue;
-        entries.push({ bodyA, bodyB, restLength: constraint.restLength, anchorA: { x: constraint.anchorA.x, y: constraint.anchorA.y }, anchorB: { x: constraint.anchorB.x, y: constraint.anchorB.y } });
+        entries.push({
+            bodyA,
+            bodyB,
+            restLength: constraint.restLength,
+            anchorA: { x: constraint.anchorA.x, y: constraint.anchorA.y },
+            anchorB: { x: constraint.anchorB.x, y: constraint.anchorB.y },
+            accumulatedImpulse: constraint.accumulatedImpulse,
+        });
     }
     return entries;
 }
 export function applyKineticConstraintsFromSnapshot(session, entries, propRefsByIndex) {
     for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
-        addDistanceConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], restLength: entry.restLength, anchorA: entry.anchorA, anchorB: entry.anchorB });
+        const constraint = addDistanceConstraint(session, {
+            bodyA: propRefsByIndex[entry.bodyA],
+            bodyB: propRefsByIndex[entry.bodyB],
+            restLength: entry.restLength,
+            anchorA: entry.anchorA,
+            anchorB: entry.anchorB,
+        });
+        constraint.accumulatedImpulse = entry.accumulatedImpulse || 0;
     }
 }
