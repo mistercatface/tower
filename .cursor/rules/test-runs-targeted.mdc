@@ -18,3 +18,4 @@ Do **not** run `npm test` or belt/pathfinding tests as a default wrap-up after u
 - User explicitly asks to run tests.
 - Change is in or directly wired to: `Libraries/Pathfinding/`, `Systems/Navigation/`, belt nav behavior, corridor/HPA tests, or the specific feature's own test file.
 - Prefer targeted runs (`node --test tests/foo.test.js`) over the full suite.
+- **Always cap wait time** — see `terminal-timeouts.mdc`. Kill hung commands; never block the session on multi-file nav/map-gen test batches.

@@ -55,12 +55,12 @@ describe("rail maze corridor belts", () => {
         assert.equal(validateBeltPathMouthAccess(grid, navigation.gridNavContext, path), true);
         terminateTestNavigation(navigation);
     });
-    it("plans belt chains on snake split map samples", () => {
+    it("plans belt chains on snake split map samples", async () => {
         applySnakeGameConfig();
         const config = getSnakeGameConfig();
         const seeds = [11, 42, 256, 1337];
         for (let i = 0; i < seeds.length; i++) {
-            const preview = bakeSnakeSplitLayoutPreview({ mapSeed: seeds[i], playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
+            const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: seeds[i], playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
             const plan = preview.beltPlan;
             assert.ok(plan.pathCount >= 15, `seed ${seeds[i]}: only ${plan.pathCount} corridor paths`);
             for (let pi = 0; pi < plan.paths.length; pi++) {
@@ -74,10 +74,10 @@ describe("rail maze corridor belts", () => {
             assert.equal(plan.validation.ok, true, `seed ${seeds[i]}: ${plan.validation.error}`);
         }
     });
-    it("rolls open vs railed belt kind per cell", () => {
+    it("rolls open vs railed belt kind per cell", async () => {
         applySnakeGameConfig();
         const config = getSnakeGameConfig();
-        const preview = bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
+        const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
         const baseArgs = {
             grid: preview.grid,
             gridNavContext: preview.gridNavContext,

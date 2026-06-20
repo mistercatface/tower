@@ -1,0 +1,39 @@
+---
+description: Never block on long-running or hung terminal commands — use timeouts and kill
+alwaysApply: true
+---
+
+# Terminal commands — bounded waits only
+
+**Never** start a terminal command and wait indefinitely when it is likely to hang, run forever, or take many minutes without clear progress.
+
+## Hard rules
+
+1. **Set explicit time budgets** before running tests, builds, or batch jobs. Default max wait: **15–30 seconds** for smoke checks; **60 seconds** only when the user explicitly asked for that command and the scope is narrow.
+2. **If a command exceeds the budget, kill it immediately** and report what ran, how long it waited, and why it was stopped. Do not retry the same unbounded command hoping it finishes.
+3. **Never run obviously expensive batches** without user approval: full `npm test`, multi-file `node --test` on worker/HPA/map-gen suites, large grid bakes (256×256), multi-seed loops, locked-room sweeps.
+4. **Prefer targeted verification**: one test file, `--test-name-pattern`, smallest fixture, or static checks (grep, import parse) over suite-wide runs.
+5. **Do not use `block_until_ms` of minutes** on commands known to hang. Use short blocks + poll, or wrap with an OS-level timeout/kill.
+
+## Recognize hang-prone commands in this repo
+
+- `node --test` with multiple nav/worker/map-gen test files together
+- `snakeSplitLayout.test.js` (256×256 bake + multi-seed map gen)
+- `railMazeCorridorBelts.test.js` belt-chain tests across many seeds
+- `lockedRoom.test.js` without `topologyOnly` / reduced seeds
+- Any command that already hung once in the session — do not rerun unbounded
+
+## When verification is needed
+
+Run the **smallest** check that proves the change, with a kill path:
+
+```powershell
+$p = Start-Process node -ArgumentList @("--test","--test-name-pattern=exact test name","tests/foo.test.js") -NoNewWindow -PassThru
+if (-not $p.WaitForExit(15000)) { $p.Kill(); "KILLED after 15s" }
+```
+
+If smoke tests pass or static analysis suffices, **stop** — do not escalate to full suites unless the user asks.
+
+## On kill / timeout
+
+Tell the user: what was run, that it was killed, what passed before kill (if anything), and what remains unverified. **Continue the task** — do not stall the session waiting on terminals.

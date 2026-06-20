@@ -97,7 +97,7 @@ async function generate() {
     const started = performance.now();
     await new Promise((resolve) => setTimeout(resolve, 0));
     if (token !== generateToken) return;
-    preview = bakeSnakeSplitLayoutPreview(config);
+    preview = await bakeSnakeSplitLayoutPreview(config);
     const elapsed = performance.now() - started;
     if (token !== generateToken) return;
     els.timing.textContent = `${elapsed.toFixed(1)} ms`;

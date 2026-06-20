@@ -1,6 +1,6 @@
 import { gridSettings } from "../../../Config/world.js";
 import { withSeededRandom } from "../../Random/index.js";
-import { createGridNavContext, createSyncTestNavigation, syncGridNavContext } from "../../Navigation/GridNavContext.js";
+import { createWorkerNavigation, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../../Navigation/WorkerNavigationFactory.js";
 import { forEachGlobalCellInMapGenBounds, getMapGenBoundsAabb, getMapGenBoundsStampExtent, migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../../Spatial/grid/WorldObstacleGrid.js";
@@ -73,7 +73,8 @@ function stampRailsOnGrid(grid, rails, wallHeightLevel, edgeThickness) {
         grid.stampCellEdge(col, row, wall.side, level, thickness);
     }
 }
-export function applySnakeSplitLayoutToGrid(grid, layout, navigation) {
+/** @param {import("../../Systems/Navigation/NavigationService.js").NavigationService} navigation */
+export async function applySnakeSplitLayoutToGrid(grid, layout, navigation) {
     const cellSize = grid.cellSize;
     const { cavernConfig, paddingConfig, railConfig, playableBounds } = layout.zones;
     const cavernStamp = layout.cavern;
@@ -95,8 +96,7 @@ export function applySnakeSplitLayoutToGrid(grid, layout, navigation) {
     clearRailZoneNorthStrip(grid, railStartCol, railEndCol, railStartRow, layout.northReserveRows);
     clearRectWalkable(grid, paddingConfig);
     const damageBounds = { startCol: railStartCol, endCol: railEndCol, startRow: railStartRow, endRow: railEndRow };
-    if (navigation) syncGridNavContext(navigation.gridNavContext, grid, damageBounds);
-    else syncGridNavContext(createGridNavContext(grid), grid, damageBounds);
+    await syncWorkerNavigationTopology(navigation, grid, damageBounds);
     return { playableBounds, floodSeedBounds: resolveSnakeNavWalkableFloodSeedBounds(playableBounds), cavernConfig, paddingConfig, railConfig };
 }
 export function bakeSnakeSplitLayout({ mapSeed, playAreaCols, playAreaRows, playAreaBounds = null, cavern = {}, rail = {} }) {
@@ -136,28 +136,32 @@ export function bakeSnakeSplitLayout({ mapSeed, playAreaCols, playAreaRows, play
         railEdgeThickness: rail.edgeThickness ?? 1,
     };
 }
-export function bakeSnakeSplitLayoutPreview({ mapSeed, playAreaCols, playAreaRows, playAreaBounds = null, cavern = {}, rail = {} }) {
+export async function bakeSnakeSplitLayoutPreview({ mapSeed, playAreaCols, playAreaRows, playAreaBounds = null, cavern = {}, rail = {} }) {
     const layout = bakeSnakeSplitLayout({ mapSeed, playAreaCols, playAreaRows, playAreaBounds, cavern, rail });
     const cellSize = gridSettings.cellSize;
     const grid = new WorldObstacleGrid(cellSize);
     grid.rebuildFixed((playAreaCols * cellSize) / 2, (playAreaRows * cellSize) / 2, playAreaCols * cellSize, playAreaRows * cellSize);
-    const navigation = createSyncTestNavigation(grid);
-    const applied = applySnakeSplitLayoutToGrid(grid, layout, navigation);
-    const walkableState = { obstacleGrid: grid, navigation: { gridNavContext: navigation.gridNavContext, obstacleGeneration: 0 }, sandbox: {}, editor: { cavernConfig: applied.playableBounds } };
-    const navWalkable = collectNavWalkableCells(walkableState, applied.playableBounds, applied.floodSeedBounds);
-    const walkableKeys = new Set();
-    for (let i = 0; i < navWalkable.length; i++) walkableKeys.add(`${navWalkable[i].col},${navWalkable[i].row}`);
-    const beltPlan = planRailMazeCorridorBelts({
-        grid,
-        gridNavContext: navigation.gridNavContext,
-        railConfig: applied.railConfig,
-        northReserveRows: layout.northReserveRows,
-        walkableKeys,
-        mapSeed: layout.mapSeed,
-    });
-    stampFloorBeltsOnGrid(grid, beltPlan.floorBelts);
-    syncGridNavContext(navigation.gridNavContext, grid);
-    return { layout, grid, gridNavContext: navigation.gridNavContext, navWalkable, walkableKeys, beltPlan, ...applied };
+    const navigation = await createWorkerNavigation(grid, null, { topologyOnly: true });
+    try {
+        const applied = await applySnakeSplitLayoutToGrid(grid, layout, navigation);
+        const walkableState = { obstacleGrid: grid, navigation, sandbox: {}, editor: { cavernConfig: applied.playableBounds } };
+        const navWalkable = collectNavWalkableCells(walkableState, applied.playableBounds, applied.floodSeedBounds);
+        const walkableKeys = new Set();
+        for (let i = 0; i < navWalkable.length; i++) walkableKeys.add(`${navWalkable[i].col},${navWalkable[i].row}`);
+        const beltPlan = planRailMazeCorridorBelts({
+            grid,
+            gridNavContext: navigation.gridNavContext,
+            railConfig: applied.railConfig,
+            northReserveRows: layout.northReserveRows,
+            walkableKeys,
+            mapSeed: layout.mapSeed,
+        });
+        stampFloorBeltsOnGrid(grid, beltPlan.floorBelts);
+        await syncWorkerNavigationTopology(navigation, grid, null);
+        return { layout, grid, gridNavContext: navigation.gridNavContext, navWalkable, walkableKeys, beltPlan, ...applied };
+    } finally {
+        terminateWorkerNavigation(navigation);
+    }
 }
 export function globalCellFromGrid(grid, col, row) {
     const cellSize = grid.cellSize;

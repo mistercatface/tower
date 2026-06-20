@@ -62,7 +62,7 @@ describe("snakeSplitLayout preview bake", () => {
             const state = await createSnakeMapGenTestState(playAreaCells, mapSeed);
             await generateSnakeSplitMap(state);
             const gameSig = gridSignature(state.obstacleGrid, state.sandbox.snakePlayableBounds);
-            const preview = bakeSnakeSplitLayoutPreview({
+            const preview = await bakeSnakeSplitLayoutPreview({
                 mapSeed,
                 playAreaCols: playAreaCells,
                 playAreaRows: playAreaCells,
@@ -75,11 +75,11 @@ describe("snakeSplitLayout preview bake", () => {
             assert.equal(labSig.edges, gameSig.edges, `seed ${mapSeed} edge mismatch`);
         }
     });
-    it("bakes 256×256 under a few seconds", () => {
+    it("bakes 256×256 under a few seconds", async () => {
         applySnakeGameConfig();
         const config = getSnakeGameConfig();
         const started = performance.now();
-        const preview = bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 256, playAreaRows: 256, cavern: config.cavern, rail: config.rail });
+        const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 256, playAreaRows: 256, cavern: config.cavern, rail: config.rail });
         const elapsed = performance.now() - started;
         assert.ok(preview.walkableKeys.size > 1000);
         assert.ok(elapsed < 4000, `256 bake took ${elapsed.toFixed(0)} ms`);
