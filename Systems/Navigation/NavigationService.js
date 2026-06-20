@@ -1,5 +1,5 @@
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
-import { createGridNavContext, syncGridNavContext } from "../../Libraries/Navigation/GridNavContext.js";
+import { createWorkerGridNavContextView } from "../../Libraries/Navigation/GridNavContext.js";
 /**
  * Obstacle-driven nav sync — HPA worker graph patches and flow-field topology invalidation.
  * @typedef {(damageBounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => void} NavWalkableSyncHook
@@ -16,7 +16,8 @@ export class NavigationService {
         this._workerNavGraphSyncChain = Promise.resolve();
         this.settings = settings;
         this.obstacleGeneration = 0;
-        this.gridNavContext = createGridNavContext(obstacleGrid);
+        hpaPathWorker.ensureNavArenaForGrid(obstacleGrid);
+        this.gridNavContext = createWorkerGridNavContextView(hpaPathWorker, obstacleGrid);
         /** @type {NavWalkableSyncHook | null} */
         this._navWalkableSyncHook = null;
     }
@@ -41,7 +42,6 @@ export class NavigationService {
         const grid = this._obstacleGrid;
         const topologyChanged = grid.gridTopologyEpoch !== this._lastGridTopologyEpoch;
         if (topologyChanged) this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
-        syncGridNavContext(this.gridNavContext, grid, topologyChanged ? null : damageBounds);
         this.flowFieldGrid.invalidateNavTopology();
         const run = () => this._syncWorkerNavGraph(grid, damageBounds, topologyChanged);
         this._workerNavGraphSyncChain = this._workerNavGraphSyncChain.then(run, run);

@@ -397,6 +397,7 @@ export class WorldObstacleGrid {
         const { navGridFrame: frame, navTopology: topology } = this;
         if (frame && topology) return navCanStep(frame, topology, currCol, currRow, nextCol, nextRow);
         if (!gridNavContext) return false;
+        if (gridNavContext.navCardinalOpen?.buffer instanceof SharedArrayBuffer) return false;
         return !boundaryBlocksStepFrom(this, gridNavContext.navCardinalOpen, gridNavContext.vertexPassability, currCol, currRow, nextCol, nextRow);
     }
     getCellBounds(col, row) {

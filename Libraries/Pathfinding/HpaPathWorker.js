@@ -318,6 +318,16 @@ export class HpaPathWorker {
     getNavTopology() {
         return this._navArena?.topologyHandle ?? null;
     }
+    getNavArena() {
+        return this._navArena;
+    }
+    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+    ensureNavArenaForGrid(grid) {
+        const size = grid.cols * grid.rows;
+        if (size <= 0) return;
+        const vertCount = (grid.cols + 1) * (grid.rows + 1);
+        this._ensureNavBuffers(size, vertCount, Math.max(grid.edgeStore.pool.length, 4));
+    }
     getGridFrame() {
         return this._gridFrame;
     }
