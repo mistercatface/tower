@@ -108,8 +108,7 @@ export function createEditorApp(options = {}) {
         let dt = timestamp - state.lastTime;
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
-        if (gameMode) resizeGameShell(state);
-        else flushEditorLayoutResize(state);
+        if (!gameMode) flushEditorLayoutResize(state);
         state.scheduler.update(dt);
         if (gameMode) tickGameViewportNavigation(dt);
         else tickLabViewportNavigation(dt);

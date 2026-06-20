@@ -122,21 +122,21 @@ export function mountEditorUi(state, { playbackHandlers }) {
         drawLabAndWaitForBakes();
     });
     mountTilelabSandbox(state);
-    bindToolbarControls({
-        onOverlayChange: () => {
-            if (isShowLabPathDebug()) void ensureLabPathDebugCache(state);
+    bindToolbarControls(
+        {
+            onOverlayChange: () => {
+                if (isShowLabPathDebug()) void ensureLabPathDebugCache(state);
+            },
+            onRedraw: () => {
+                commitPlayAreaFromToolbar(state);
+                pushEditorProfile(state);
+                drawLabAndWaitForBakes();
+            },
+            onStageResize: () => resizeCanvases(state),
+            onRenderModeChange: () => applyLabWorldRenderMode(state),
         },
-        onRedraw: () => {
-            commitPlayAreaFromToolbar(state);
-            pushEditorProfile(state);
-            drawLabAndWaitForBakes();
-        },
-        onStageResize: () => resizeCanvases(state),
-        onRenderModeChange: (mode) => {
-            state.worldRenderMode = mode;
-            applyLabWorldRenderMode(state);
-        },
-    });
+        state,
+    );
     bindVectorPropsToolbar(state, () => {});
     syncWorldRenderModeUi(state);
     fitLabStageToView(state);

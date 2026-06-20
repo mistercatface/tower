@@ -1,12 +1,18 @@
 import { setupLabViewportNavigation } from "./lab-shared.js";
 /** @type {((dt: number) => void) | null} */
 let tickKeyboardPan = null;
+let fittedStageWidth = -1;
+let fittedStageHeight = -1;
 /** @param {number} dt */
 export function tickGameViewportNavigation(dt) {
     tickKeyboardPan?.(dt);
 }
-/** @param {import("../state.js").TileLabGameState} state */
-export function mountGameViewport(state) {
+export function resetGameCanvasStageFit() {
+    fittedStageWidth = -1;
+    fittedStageHeight = -1;
+}
+/** @param {import("../state.js").TileLabGameState} state @param {() => void} onStageResize */
+export function mountGameViewport(state, onStageResize) {
     tickKeyboardPan = setupLabViewportNavigation("gameCanvas", {
         getCamera: () => state.viewport,
         setCamera: (x, y, zoom) => {
@@ -14,17 +20,29 @@ export function mountGameViewport(state) {
             state.viewport.zoom = zoom;
         },
     });
+    resetGameCanvasStageFit();
+    const stage = document.getElementById("gameStage");
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(onStageResize).observe(stage);
 }
-/** @param {import("../state.js").TileLabGameState} state */
+/** @param {import("../state.js").TileLabGameState} state @returns {boolean} */
 export function fitGameCanvasToStage(state) {
     const canvas = state.editor.canvas;
     const stage = document.getElementById("gameStage");
     const rect = stage.getBoundingClientRect();
-    const size = Math.max(128, Math.floor(Math.min(rect.width, rect.height)));
-    canvas.width = size;
-    canvas.height = size;
-    canvas.getContext("2d").imageSmoothingEnabled = false;
-    canvas.style.width = `${size}px`;
-    canvas.style.height = `${size}px`;
+    const stageWidth = Math.floor(rect.width);
+    const stageHeight = Math.floor(rect.height);
+    if (stageWidth === fittedStageWidth && stageHeight === fittedStageHeight) return false;
+    fittedStageWidth = stageWidth;
+    fittedStageHeight = stageHeight;
+    const size = Math.max(128, Math.min(stageWidth, stageHeight));
+    if (canvas.width !== size || canvas.height !== size) {
+        canvas.width = size;
+        canvas.height = size;
+        state.editor.ctx.imageSmoothingEnabled = false;
+    }
+    const sizePx = `${size}px`;
+    if (canvas.style.width !== sizePx) canvas.style.width = sizePx;
+    if (canvas.style.height !== sizePx) canvas.style.height = sizePx;
     state.viewport.setCanvasSize(size, size);
+    return true;
 }

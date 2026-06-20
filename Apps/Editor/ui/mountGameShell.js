@@ -3,12 +3,17 @@ import { initTileLabWorld } from "../world/mapWorld.js";
 import { mountGameSandbox } from "../world/gameSandbox.js";
 import { fitTileLabStageZoom, GAME_MODE_ZOOM_MULTIPLIER } from "../../../Libraries/Viewport/tileLabViewportLimits.js";
 import { runGameLaunch } from "../../../Libraries/Game/runGameLaunch.js";
-import { drawLabFrame, mountLabFrameRefresh, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, setLabVignetteEnabled } from "./preview.js";
+import { drawLabFrame, mountLabFrameRefresh, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, setLabVignetteEnabled, markLabViewDirty } from "./preview.js";
 import { seedRuntimeLabProfile } from "./profile/ProfileEditor.js";
 import { fitGameCanvasToStage, mountGameViewport } from "./gameViewport.js";
+import { WORLD_RENDER_CONTROLS_HTML } from "./shellHtml.js";
+import { bindVectorPropsToolbar, bindWorldRenderModeToolbar, syncWorldRenderModeUi } from "./toolbar.js";
 const GAME_SHELL_HTML = `
-<div id="gameStage" class="game-stage">
-    <div class="game-stage-inner"></div>
+<div class="game-shell">
+    <div class="game-toolbar toolbar">${WORLD_RENDER_CONTROLS_HTML}</div>
+    <div id="gameStage" class="game-stage">
+        <div class="game-stage-inner"></div>
+    </div>
 </div>
 `;
 function tryLockPortraitOrientation(enabled) {
@@ -31,10 +36,13 @@ export async function mountGameShell(state, launcher) {
     state.editor.showAnimationPreview = false;
     applyLabWorldRenderMode(state);
     setLabVignetteEnabled(true);
+    bindVectorPropsToolbar(state, markLabViewDirty);
+    bindWorldRenderModeToolbar(state, () => applyLabWorldRenderMode(state));
+    syncWorldRenderModeUi(state);
     mountLabFrameRefresh(canvas);
     seedRuntimeLabProfile(SURFACE_PROFILE_ID.tomatoGarden);
     await pushEditorProfile(state);
-    mountGameViewport(state);
+    mountGameViewport(state, () => resizeGameShell(state));
     tryLockPortraitOrientation(launcher.lockPortraitOrientation);
     const syncCanvas = () => {
         fitGameCanvasToStage(state);
@@ -50,6 +58,6 @@ export async function mountGameShell(state, launcher) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function resizeGameShell(state) {
-    fitGameCanvasToStage(state);
+    if (!fitGameCanvasToStage(state)) return;
     fitTileLabStageZoom(state.viewport, GAME_MODE_ZOOM_MULTIPLIER);
 }

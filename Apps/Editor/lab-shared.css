@@ -70,7 +70,6 @@ body {
     padding: 0 16px;
     height: var(--toolbar-h);
     background: var(--panel);
-    backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
     min-height: var(--toolbar-h);
@@ -230,7 +229,6 @@ body {
     min-width: 0;
     border-right: 1px solid var(--border);
     background: var(--panel);
-    backdrop-filter: blur(12px);
 }
 
 .col:last-child {

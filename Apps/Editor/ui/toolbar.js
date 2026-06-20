@@ -75,16 +75,26 @@ export function bindVectorPropsToolbar(state, onChange) {
         onChange();
     });
 }
-/** @param {{ onOverlayChange: () => void, onRedraw: () => void, onStageResize: () => void, onRenderModeChange: (mode: import("../../../Render/WorldRenderMode.js").WorldRenderMode) => void }} handlers */
-export function bindToolbarControls(handlers) {
-    const { onOverlayChange, onRedraw, onStageResize, onRenderModeChange } = handlers;
-    for (const id of ["showVignetteInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onOverlayChange);
-    const renderModeSelect = document.getElementById("worldRenderModeSelect");
+/** @param {import("../state.js").TileLabGameState} state @param {(mode: import("../../../Render/WorldRenderMode.js").WorldRenderMode) => void} onChange */
+export function bindWorldRenderModeToolbar(state, onChange) {
+    const select = document.getElementById("worldRenderModeSelect");
+    if (!select) return;
     for (const mode of WORLD_RENDER_MODE_OPTIONS) {
-        const option = renderModeSelect.querySelector(`option[value="${mode}"]`);
+        const option = select.querySelector(`option[value="${mode}"]`);
         if (option) option.textContent = WORLD_RENDER_MODE_LABELS[mode];
     }
-    renderModeSelect.addEventListener("change", () => onRenderModeChange(normalizeWorldRenderMode(renderModeSelect.value)));
+    select.value = normalizeWorldRenderMode(state.worldRenderMode);
+    select.addEventListener("change", () => {
+        const mode = normalizeWorldRenderMode(select.value);
+        state.worldRenderMode = mode;
+        onChange(mode);
+    });
+}
+/** @param {{ onOverlayChange: () => void, onRedraw: () => void, onStageResize: () => void, onRenderModeChange: (mode: import("../../../Render/WorldRenderMode.js").WorldRenderMode) => void }} handlers @param {import("../state.js").TileLabGameState} state */
+export function bindToolbarControls(handlers, state) {
+    const { onOverlayChange, onRedraw, onStageResize, onRenderModeChange } = handlers;
+    for (const id of ["showVignetteInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onOverlayChange);
+    bindWorldRenderModeToolbar(state, onRenderModeChange);
     document.getElementById("regenerateBtn").addEventListener("click", onRedraw);
     const stage = document.getElementById("mapStage");
     if (typeof ResizeObserver !== "undefined") new ResizeObserver(onStageResize).observe(stage);
