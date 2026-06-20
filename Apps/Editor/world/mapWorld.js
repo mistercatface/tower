@@ -1,6 +1,5 @@
 import { unionCellBounds } from "../../../Libraries/DataStructures/CellRect.js";
 import { gridSettings } from "../../../Config/world.js";
-import { rebuildLabMapCaches } from "../../../Libraries/Render/map/labMapCaches.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
 import { bakeRailMazeDfs } from "../../../Libraries/Procedural/Mazes/railMazeDfs.js";
@@ -50,8 +49,7 @@ export async function applyPlayAreaConfig(state) {
         migrateMapGenBoundsForMode(config);
     }
     ensureLabObstacleGridCoverage(state);
-    await state.navigation.onObstaclesChanged(null);
-    await rebuildLabMapCaches(state);
+    await commitGridNavEdit(state, null, { fullNavSync: true });
 }
 /** @param {import("../state.js").TileLabGameState} state @param {number} centerWorldX @param {number} centerWorldY @param {number} radiusWorld @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} */
 function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
@@ -83,9 +81,7 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
     });
     if (startCol === Infinity) return null;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-    const damageBounds = { startCol, endCol, startRow, endRow };
-    state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-    return damageBounds;
+    return { startCol, endCol, startRow, endRow };
 }
 /** @param {import("../state.js").TileLabGameState} state @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} */
 function eraseWallsInShape(state) {
@@ -124,10 +120,8 @@ export async function eraseLabWallsInBounds(state) {
     ensureLabObstacleGridCoverage(state, getMapGenBoundsAabb(state.editor.eraseConfig, gridSettings.cellSize));
     const damageBounds = eraseWallsInShape(state);
     if (!damageBounds) return;
-    state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-    await state.navigation.onObstaclesChanged(damageBounds);
+    await commitGridNavEdit(state, damageBounds);
     state.worldSurfaces.clearBakeCache();
-    await rebuildLabMapCaches(state);
 }
 export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     const cellSize = gridSettings.cellSize;
@@ -156,11 +150,9 @@ export async function generateLabCaverns(state, { openBoundarySides = null, open
         const cleared = clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
         if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
     }
-    state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-    await state.navigation.onObstaclesChanged(damageBounds);
+    await commitGridNavEdit(state, damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
-    await rebuildLabMapCaches(state);
 }
 function clearRailStampCellBounds(grid, startCol, endCol, startRow, endRow) {
     for (let r = startRow; r <= endRow; r++)
@@ -239,7 +231,6 @@ export async function generateLabRailDfsMaze(state, options = {}) {
     await commitGridNavEdit(state, damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
-    await rebuildLabMapCaches(state);
 }
 export async function generateLabRailCaverns(state, { openBoundarySides = null } = {}) {
     const { railConfig } = state.editor;
@@ -332,9 +323,7 @@ export async function generateLabRailCaverns(state, { openBoundarySides = null }
         const cleared = clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
         if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
     }
-    state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-    await state.navigation.onObstaclesChanged(damageBounds);
+    await commitGridNavEdit(state, damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
-    await rebuildLabMapCaches(state);
 }

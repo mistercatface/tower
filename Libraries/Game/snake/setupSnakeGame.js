@@ -10,6 +10,7 @@ import { appendPropGroundNavPathOverlay } from "../../Sandbox/groundNav/resolveG
 import { resolveSandboxPathVisual } from "../../Sandbox/sandboxPropMeta.js";
 import { selectionPropIds } from "../../Sandbox/sandboxSelectionInspectors.js";
 import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
+import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
@@ -23,7 +24,7 @@ export async function setupSnakeGame(state) {
     const autosimsByHeadId = new Map();
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
     state.navigation.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
-    void state.navigation.onObstaclesChanged(null);
+    await commitGridNavEdit(state, null, { fullNavSync: true });
     scene.navWalkable.rebake();
     for (let i = 0; i < scene.snakes.length; i++) {
         const snake = scene.snakes[i];
