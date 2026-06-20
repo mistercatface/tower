@@ -3,13 +3,14 @@
  */
 import { collectVoxelWallFacesInAabb } from "../../World/wallGridBake.js";
 import { isOutwardFaceTowardViewer } from "../../Spatial/iso/IsometricProjection.js";
-/** @type {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, faces: object[] }} */
-const sGeomCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: [] };
-/** @param {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number }} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
-export function wallGridDrawCacheHit(cache, grid, wallGridRevision, bounds) {
+/** @type {{ grid: object | null, wallGridRevision: number, wallDamageRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, faces: object[] }} */
+const sGeomCache = { grid: null, wallGridRevision: -1, wallDamageRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: [] };
+/** @param {{ grid: object | null, wallGridRevision: number, wallDamageRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number }} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {import("../../Math/Aabb2D.js").Aabb2D} bounds @param {number} [wallDamageRevision] */
+export function wallGridDrawCacheHit(cache, grid, wallGridRevision, bounds, wallDamageRevision = 0) {
     return (
         cache.grid === grid &&
         cache.wallGridRevision === wallGridRevision &&
+        cache.wallDamageRevision === wallDamageRevision &&
         cache.gridCols === grid.cols &&
         cache.gridRows === grid.rows &&
         cache.boundsMinX === bounds.minX &&
@@ -18,10 +19,11 @@ export function wallGridDrawCacheHit(cache, grid, wallGridRevision, bounds) {
         cache.boundsMaxY === bounds.maxY
     );
 }
-/** @param {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number }} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {import("../../Math/Aabb2D.js").Aabb2D} bounds */
-export function storeWallGridDrawCache(cache, grid, wallGridRevision, bounds) {
+/** @param {{ grid: object | null, wallGridRevision: number, wallDamageRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number }} cache @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} wallGridRevision @param {import("../../Math/Aabb2D.js").Aabb2D} bounds @param {number} [wallDamageRevision] */
+export function storeWallGridDrawCache(cache, grid, wallGridRevision, bounds, wallDamageRevision = 0) {
     cache.grid = grid;
     cache.wallGridRevision = wallGridRevision;
+    cache.wallDamageRevision = wallDamageRevision;
     cache.gridCols = grid.cols;
     cache.gridRows = grid.rows;
     cache.boundsMinX = bounds.minX;
@@ -36,13 +38,13 @@ export function storeWallGridDrawCache(cache, grid, wallGridRevision, bounds) {
  * @param {number} viewerY
  * @param {object[]} out
  */
-export function collectStaticGridWallDrawables(obstacleGrid, viewport, viewerX, viewerY, out) {
+export function collectStaticGridWallDrawables(obstacleGrid, viewport, viewerX, viewerY, out, wallDamageRevision = 0) {
     out.length = 0;
     const bounds = viewport.boundsQuery;
     const wallGridRevision = obstacleGrid.wallGridRevision;
-    if (!wallGridDrawCacheHit(sGeomCache, obstacleGrid, wallGridRevision, bounds)) {
+    if (!wallGridDrawCacheHit(sGeomCache, obstacleGrid, wallGridRevision, bounds, wallDamageRevision)) {
         collectVoxelWallFacesInAabb(obstacleGrid, bounds, sGeomCache.faces);
-        storeWallGridDrawCache(sGeomCache, obstacleGrid, wallGridRevision, bounds);
+        storeWallGridDrawCache(sGeomCache, obstacleGrid, wallGridRevision, bounds, wallDamageRevision);
     }
     const faces = sGeomCache.faces;
     for (let i = 0; i < faces.length; i++) {
@@ -57,5 +59,6 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, viewerX, 
 }
 export function invalidateStaticGridWallDrawCache() {
     sGeomCache.wallGridRevision = -1;
+    sGeomCache.wallDamageRevision = -1;
     sGeomCache.faces.length = 0;
 }

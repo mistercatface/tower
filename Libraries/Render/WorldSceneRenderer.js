@@ -4,6 +4,7 @@
 import { collectStaticGridEdgeRailDrawables, drawProjectedGridEdgeRail } from "./Structure3D/StaticGridEdgeRailDraw.js";
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
+import { getGridWallDamageSession, resolveWallDamageTintRatioForDrawable } from "../Sandbox/gridWallDamage.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 import { aabbOverlap } from "../Math/Aabb2D.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
@@ -38,6 +39,7 @@ export class WorldSceneRenderer {
             worldBounds: null,
             camera: this.wallPassCamera,
             skipWallCaps: false,
+            damageTintRatio: 0,
         };
         this.propDrawContext = { gameState: null, propRenderer: this.props, px: 0, py: 0, zoom: 1 };
     }
@@ -104,8 +106,9 @@ export class WorldSceneRenderer {
         }
     }
     _appendVisibleStaticGridWalls(input, viewport, px, py) {
-        collectStaticGridWallDrawables(input.obstacleGrid, viewport, px, py, this.staticGridDrawables);
-        collectStaticGridEdgeRailDrawables(input.obstacleGrid, viewport, px, py, this.staticGridEdgeRailDrawables);
+        const wallDamageRevision = getGridWallDamageSession(input.gameState)?.damageRevision ?? 0;
+        collectStaticGridWallDrawables(input.obstacleGrid, viewport, px, py, this.staticGridDrawables, wallDamageRevision);
+        collectStaticGridEdgeRailDrawables(input.obstacleGrid, viewport, px, py, this.staticGridEdgeRailDrawables, wallDamageRevision);
         const visibleObjects = this.visibleDrawables;
         for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
         for (let i = 0; i < this.staticGridEdgeRailDrawables.length; i++) visibleObjects.push(this.staticGridEdgeRailDrawables[i]);
@@ -120,11 +123,12 @@ export class WorldSceneRenderer {
         const visibleObjects = this.visibleDrawables;
         for (let i = 0; i < drawables.length; i++) visibleObjects.push(drawables[i]);
     }
-    _bindWallDrawable(wallCtx, drawable) {
+    _bindWallDrawable(wallCtx, drawable, gameState) {
         wallCtx.wallHeight = drawable.wallHeight;
         wallCtx.wallBaseZ = drawable.wallBaseZ;
         wallCtx.wallCapHeight = drawable.wallCapHeight;
         wallCtx.cacheObj = drawable;
+        wallCtx.damageTintRatio = resolveWallDamageTintRatioForDrawable(getGridWallDamageSession(gameState), drawable);
     }
     draw3DBuildings(ctx, input, viewport, options = {}) {
         const px = viewport.x;
@@ -160,10 +164,10 @@ export class WorldSceneRenderer {
             if (obj.strategy) drawWorldProp(ctx, obj, viewport, drawContext);
             else if (obj._forcefield) drawForcefieldEdgeProp(ctx, obj, px, py);
             else if (obj.p1) {
-                this._bindWallDrawable(this.wallCtx, obj);
+                this._bindWallDrawable(this.wallCtx, obj, input.gameState);
                 drawProjectedWallFace(ctx, obj.p1, obj.p2, this.wallCtx);
             } else if (obj.innerP1x !== undefined) {
-                this._bindWallDrawable(this.wallCtx, obj);
+                this._bindWallDrawable(this.wallCtx, obj, input.gameState);
                 drawProjectedGridEdgeRail(ctx, obj, this.wallCtx);
             }
         }

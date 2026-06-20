@@ -8,6 +8,7 @@ import { railWallCapUvCorners } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { getSurfaceBakeScale } from "../../WorldSurface/WorldSurfaceResolution.js";
+import { applyProjectedCapDamageOverlay, applyProjectedWallFaceDamageOverlay } from "./wallDamageDraw.js";
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
@@ -246,6 +247,7 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
     projectRailWallTopCornersInto(sCapCorners, box, camera);
     if (!proceduralSurfaceDraw || !gameState) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
         return;
     }
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
@@ -253,10 +255,12 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
     const sample = worldSurfaces.getHorizontalCapDrawSample(uvCorners, box.wallCapHeight, gameState, profileId);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
         return;
     }
     assignCapSampleSrc(sample);
     blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, wallCtx.bleedPx);
+    if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
 }
 /**
  * Horizontal cap from world AABB corners (voxelBlock caps, generic quads).
@@ -277,6 +281,7 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
     );
     if (!proceduralSurfaceDraw || !gameState) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
         return;
     }
     const cx = (minX + maxX) * 0.5;
@@ -291,10 +296,12 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
     const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, z, gameState, profileId);
     if (!sample) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
+        if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
         return;
     }
     assignCapSampleSrc(sample);
     blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, wallCtx.bleedPx);
+    if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
 }
 /**
  * Wall face draw: projectWorldPointInto band → trace → texture or solid fill → optional damage overlay.
@@ -304,7 +311,7 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedWallFace(ctx, p1, p2, wallCtx) {
-    const { wallHeight, wallBaseZ, proceduralSurfaceDraw, fillStyle, camera } = wallCtx;
+    const { wallHeight, wallBaseZ, proceduralSurfaceDraw, fillStyle, camera, damageTintRatio = 0 } = wallCtx;
     const topZ = wallBaseZ + wallHeight;
     const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, camera, sFaceBottom);
     const faceTop = projectWallFaceBandInto(p1, p2, topZ, camera, sharedScratchFace);
@@ -314,4 +321,5 @@ export function drawProjectedWallFace(ctx, p1, p2, wallCtx) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
     }
+    if (damageTintRatio > 0) applyProjectedWallFaceDamageOverlay(ctx, faceBottom, faceTop, damageTintRatio);
 }

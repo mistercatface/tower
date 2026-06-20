@@ -59,7 +59,8 @@ export function resolveStrikerBallSnakeSplitsFromContacts(state, spatialFrame, c
     }
 }
 export function createSnakeStrikerWallDamage(state) {
-    const session = createGridWallDamageSession();
+    const maxHp = getSnakeGameConfig().wallDamage.maxHp;
+    const session = createGridWallDamageSession(maxHp);
     const commit = createDeferredGridWallCommit(state);
     return { session, commit };
 }

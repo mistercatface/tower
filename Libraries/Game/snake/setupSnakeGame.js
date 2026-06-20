@@ -37,8 +37,9 @@ export async function setupSnakeGame(state) {
     setSandboxCameraTarget(state, centerSnake.chain.head, true);
     state.viewport.snapTo(centerSnake.chain.head.x, centerSnake.chain.head.y);
     const strikerBall = spawnSnakeStriker(state, centerSnake.chain.head);
-    state.sandbox.snakeGame.strikerBall = strikerBall;
     const strikerWallDamage = createSnakeStrikerWallDamage(state);
+    state.sandbox.gridWallDamage = strikerWallDamage;
+    state.sandbox.snakeGame.strikerBall = strikerBall;
     state.sandbox.snakeGame.strikerWallDamage = strikerWallDamage;
     function pickNextFocusedHeadId(skipHeadId = null) {
         for (const headId of registry.aliveByHeadId.keys()) if (headId !== skipHeadId) return headId;

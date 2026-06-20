@@ -18,4 +18,5 @@
  * @property {object} gameState — live game state for horizontal cap chunk sampling
  * @property {string} [atlasFaceId] — per-face wall atlas slot on cacheObj (`inner`, `outer`, `end0`, `end1`)
  * @property {boolean} [skipWallCaps] — wall faces only (no horizontal caps / roofs)
+ * @property {number} [damageTintRatio] — 0–1 damage blend for multiply tint overlay (white → red)
  */

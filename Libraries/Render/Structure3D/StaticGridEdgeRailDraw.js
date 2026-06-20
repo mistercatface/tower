@@ -5,8 +5,8 @@ import { collectRailWallBoxesInAabb } from "../../World/wallGridBake.js";
 import { isOutwardFaceTowardViewer } from "../../Spatial/iso/IsometricProjection.js";
 import { drawProjectedWallFace, drawProjectedRailWallCap } from "./ProjectedWallDraw.js";
 import { storeWallGridDrawCache, wallGridDrawCacheHit } from "./StaticGridWallDraw.js";
-/** @type {{ grid: object | null, wallGridRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, boxes: object[] }} */
-const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: [] };
+/** @type {{ grid: object | null, wallGridRevision: number, wallDamageRevision: number, boundsMinX: number, boundsMaxX: number, boundsMinY: number, boundsMaxY: number, gridCols: number, gridRows: number, boxes: object[] }} */
+const sBoxCache = { grid: null, wallGridRevision: -1, wallDamageRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: [] };
 const sRailP1 = { x: 0, y: 0 };
 const sRailP2 = { x: 0, y: 0 };
 /** @param {{ x: number, y: number }} p1 @param {{ x: number, y: number }} p2 @param {number} x1 @param {number} y1 @param {number} x2 @param {number} y2 */
@@ -42,13 +42,13 @@ function railWallBoxTowardViewer(box, viewerX, viewerY) {
  * @param {number} viewerY
  * @param {object[]} out
  */
-export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, viewerX, viewerY, out) {
+export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, viewerX, viewerY, out, wallDamageRevision = 0) {
     out.length = 0;
     const bounds = viewport.boundsQuery;
     const wallGridRevision = obstacleGrid.wallGridRevision;
-    if (!wallGridDrawCacheHit(sBoxCache, obstacleGrid, wallGridRevision, bounds)) {
+    if (!wallGridDrawCacheHit(sBoxCache, obstacleGrid, wallGridRevision, bounds, wallDamageRevision)) {
         collectRailWallBoxesInAabb(obstacleGrid, bounds, sBoxCache.boxes);
-        storeWallGridDrawCache(sBoxCache, obstacleGrid, wallGridRevision, bounds);
+        storeWallGridDrawCache(sBoxCache, obstacleGrid, wallGridRevision, bounds, wallDamageRevision);
     }
     const boxes = sBoxCache.boxes;
     for (let i = 0; i < boxes.length; i++) {
@@ -102,5 +102,6 @@ export function drawProjectedGridEdgeRail(ctx, box, wallCtx) {
 }
 export function invalidateStaticGridEdgeRailDrawCache() {
     sBoxCache.wallGridRevision = -1;
+    sBoxCache.wallDamageRevision = -1;
     sBoxCache.boxes.length = 0;
 }
