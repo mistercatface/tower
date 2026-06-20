@@ -44,7 +44,7 @@ export function resolveStrikerBallSnakeSplitsFromContacts(state, spatialFrame, c
         const victimHeadId = resolveHead(snakeBody.id);
         if (victimHeadId == null) continue;
         const strikerPreSpeed = pair.bodyA.id === strikerId ? contacts.preSpeedA[i] : contacts.preSpeedB[i];
-        if (strikerPreSpeed < config.strikerMinStrikeSpeed) continue;
+        if (strikerPreSpeed < config.kineticMinStrikeSpeed) continue;
         const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
         if (relSpeed < config.splitImpulseThreshold) continue;
         const members = orderedMembers(state, victimHeadId);

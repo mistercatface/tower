@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
-import { SNAKE_GAME_DEFAULTS } from "../Config/games/snake.js";
-import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../Config/games/snake.js";
+import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing, resolveSnakeWallDamageConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 
 loadPropAssets();
 
@@ -19,6 +19,15 @@ describe("snakeGameConfig", () => {
         const eatRadius = resolveSnakeEatRadius();
         assert.equal(eatRadius, 4 + 2 + SNAKE_GAME_DEFAULTS.eatMargin);
         assert.equal(resolveSnakeEatRadius(getSnakeGameConfig(), 2), 2 + 2 + SNAKE_GAME_DEFAULTS.eatMargin);
+    });
+
+    it("resolveSnakeWallDamageConfig links kinetic floor to striker drag-launch ceiling", () => {
+        applySnakeGameConfig();
+        const wallDamage = resolveSnakeWallDamageConfig();
+        assert.equal(wallDamage.minStrikeSpeed, SNAKE_KINETIC_MIN_STRIKE_SPEED);
+        assert.equal(wallDamage.minStrikeSpeed, getSnakeGameConfig().kineticMinStrikeSpeed);
+        assert.equal(wallDamage.referenceMaxSpeed, 560);
+        assert.equal(wallDamage.maxHp, SNAKE_GAME_DEFAULTS.wallDamage.maxHp);
     });
 
     it("applySnakeGameConfig merges overrides onto defaults", () => {

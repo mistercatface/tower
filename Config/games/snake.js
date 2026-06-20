@@ -1,9 +1,11 @@
+/** Minimum pre-impact speed for kinetic wall chips and striker snake cuts. */
+export const SNAKE_KINETIC_MIN_STRIKE_SPEED = 28;
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
     goalPropId: "goal_orb",
-    snakeCount: 70,
+    snakeCount: 50,
     goalCount: 200,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
@@ -55,10 +57,14 @@ export const SNAKE_GAME_DEFAULTS = {
     minAliveSegmentCount: 3,
     /** Relative impact speed required to split a smaller snake at the struck segment. */
     splitImpulseThreshold: 35,
-    /** Striker ball speed required to cut a snake (at-rest ball never cuts). */
-    strikerMinStrikeSpeed: 28,
-    /** Striker wall breakage — flat HP; height level is visual only. */
-    wallDamage: { maxHp: 100, maxHitDamage: 45, minStrikeSpeed: 28, referenceMaxSpeed: 560, minAngleFactor: 0.2 },
+    /** Kinetic speed floor for striker snake cuts (shared with wallDamage.minStrikeSpeed). */
+    kineticMinStrikeSpeed: SNAKE_KINETIC_MIN_STRIKE_SPEED,
+    /**
+     * Wall breakage — flat HP; height level is visual only.
+     * minStrikeSpeed and referenceMaxSpeed are filled by resolveSnakeWallDamageConfig.
+     * referenceMaxSpeed tracks striker drag-launch max; headMaxSpeed caps snake chip rate in practice.
+     */
+    wallDamage: { maxHp: 100, maxHitDamage: 45, minAngleFactor: 0.2 },
     /** Placed beside the center-start snake; drag-launch with at-rest gate. */
     strikerPropId: "snake_striker",
     /** Grid tiles to flee away from a visible larger snake (Chebyshev step). */

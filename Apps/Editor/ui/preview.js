@@ -2,7 +2,7 @@ import { registerRuntimeSurfaceProfile } from "../../../Config/procedural/profil
 import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
-import { invalidateWallAtlasKeyMemos } from "../../../Render/game/wallSurfaceInvalidation.js";
+import { invalidateWallSurfaceDraw } from "../../../Libraries/Sandbox/wallDamageInvalidation.js";
 import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { drawAnimatedSurfaceZones } from "../../../Libraries/WorldSurface/animatedSurfaceDraw.js";
 import { floorPropEffectPass } from "../../../Libraries/Sandbox/floorProps.js";
@@ -109,14 +109,14 @@ function maybeClearProfileBakeCaches(state, profileId) {
     const key = `${profileId}:${getSurfaceProfileRevision(profileId)}:${state.worldSurfaces.worldSurfaceSeed ?? 0}`;
     if (lastProfileBakeKey === key) return;
     lastProfileBakeKey = key;
-    invalidateWallAtlasKeyMemos(state);
+    invalidateWallSurfaceDraw(state);
     state.worldSurfaces.clearBakeCache();
     labRenderer = null;
 }
 /** @param {import("../state.js").TileLabGameState} state @returns {Promise<void>} */
 export function pushEditorProfile(state) {
     invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
-    invalidateWallAtlasKeyMemos(state);
+    invalidateWallSurfaceDraw(state);
     state.worldSurfaces.clearBakeCache();
     lastProfileBakeKey = "";
     labRenderer = null;

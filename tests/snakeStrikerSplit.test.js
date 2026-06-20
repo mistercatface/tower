@@ -81,7 +81,7 @@ describe("snake striker ball", () => {
     });
 
     it("resolveStrikerBallSnakeSplitsFromContacts splits snake at struck segment above threshold", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, strikerMinStrikeSpeed: 28, strikerPropId: "snake_striker" });
+        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, kineticMinStrikeSpeed: 28, strikerPropId: "snake_striker" });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
@@ -108,7 +108,7 @@ describe("snake striker ball", () => {
     });
 
     it("resolveStrikerBallSnakeSplitsFromContacts ignores parked ball rammed by a fast snake", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, strikerMinStrikeSpeed: 28, strikerPropId: "snake_striker" });
+        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, kineticMinStrikeSpeed: 28, strikerPropId: "snake_striker" });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
@@ -134,7 +134,7 @@ describe("snake striker ball", () => {
     });
 
     it("resolveStrikerBallSnakeSplitsFromContacts ignores impacts below threshold", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, strikerMinStrikeSpeed: 28, strikerPropId: "snake_striker" });
+        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, kineticMinStrikeSpeed: 28, strikerPropId: "snake_striker" });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));

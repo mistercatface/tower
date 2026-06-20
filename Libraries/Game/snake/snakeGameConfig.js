@@ -1,4 +1,4 @@
-import { SNAKE_GAME_DEFAULTS } from "../../../Config/games/snake.js";
+import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../../../Config/games/snake.js";
 import { mergePartial } from "../../Config/mergePartial.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
 let activeSnakeGameConfig = SNAKE_GAME_DEFAULTS;
@@ -26,4 +26,9 @@ export function resolveSnakeEatRadius(config = getSnakeGameConfig(), segmentRadi
 }
 export function resolveSnakeStartRadius(config = getSnakeGameConfig()) {
     return config.startRadius;
+}
+/** Runtime wall-damage tuning for snake mode (shared kinetic floor + striker speed ceiling). */
+export function resolveSnakeWallDamageConfig(config = getSnakeGameConfig()) {
+    const strikerMax = getPropAsset(config.strikerPropId)?.sandbox?.dragLaunch?.maxPower ?? 560;
+    return { ...config.wallDamage, minStrikeSpeed: SNAKE_KINETIC_MIN_STRIKE_SPEED, referenceMaxSpeed: strikerMax };
 }

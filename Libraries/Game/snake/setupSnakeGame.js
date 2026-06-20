@@ -1,6 +1,6 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
-import { applySnakeGameConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
+import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
 import { createSnakeAutosim } from "./snakeAutosim.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { applySnakeHeadGameplay } from "./snakeHeadGameplay.js";
@@ -38,7 +38,7 @@ export async function setupSnakeGame(state) {
     setSandboxCameraTarget(state, centerSnake.chain.head, true);
     state.viewport.snapTo(centerSnake.chain.head.x, centerSnake.chain.head.y);
     const strikerBall = spawnSnakeStriker(state, centerSnake.chain.head);
-    state.sandbox.gridWallDamage = createGridWallDamage(state, config.wallDamage);
+    state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config));
     state.sandbox.snakeGame.strikerBall = strikerBall;
     function pickNextFocusedHeadId(skipHeadId = null) {
         for (const headId of registry.aliveByHeadId.keys()) if (headId !== skipHeadId) return headId;

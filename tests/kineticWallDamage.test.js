@@ -1,7 +1,8 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SNAKE_GAME_DEFAULTS } from "../Config/games/snake.js";
+import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
+import { SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../Config/games/snake.js";
 import {
     applyPendingWallDamage,
     computeWallImpactDamage,
@@ -20,8 +21,11 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
 import { patchNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { resolveSnakeWallDamageConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 
-const WALL_DAMAGE = SNAKE_GAME_DEFAULTS.wallDamage;
+loadPropAssets();
+
+const WALL_DAMAGE = resolveSnakeWallDamageConfig();
 
 function createWallDamageTestState() {
     const grid = new WorldObstacleGrid(16);
@@ -42,6 +46,11 @@ function stampVoxel(grid, col, row, level = 1) {
 }
 
 describe("kinetic wall damage", () => {
+    it("resolveSnakeWallDamageConfig shares kinetic floor and striker speed ceiling", () => {
+        assert.equal(WALL_DAMAGE.minStrikeSpeed, SNAKE_KINETIC_MIN_STRIKE_SPEED);
+        assert.equal(WALL_DAMAGE.referenceMaxSpeed, 560);
+    });
+
     it("computeWallImpactDamage scales with speed and approach angle", () => {
         assert.equal(computeWallImpactDamage(20, -20, WALL_DAMAGE), 0);
         assert.equal(computeWallImpactDamage(560, 10, WALL_DAMAGE), 0);

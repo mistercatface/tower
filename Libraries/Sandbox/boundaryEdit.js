@@ -1,3 +1,4 @@
+import { unionCellBounds } from "../DataStructures/CellRect.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { clearBoundaryPrimary, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
@@ -12,9 +13,13 @@ export function notifyGridWallChange(state, bounds, { fullNavSync = false } = {}
     return navPromise;
 }
 export function commitBoundaryEdit(state, bounds, { power = false } = {}) {
-    const regions = Array.isArray(bounds) ? bounds : [bounds];
     if (power) return syncPassagePowerNetwork(state);
-    for (let i = 0; i < regions.length; i++) notifyGridWallChange(state, regions[i]);
+    if (!bounds) return;
+    const regions = Array.isArray(bounds) ? bounds : [bounds];
+    if (!regions.length) return;
+    let merged = regions[0];
+    for (let i = 1; i < regions.length; i++) merged = unionCellBounds(merged, regions[i]);
+    notifyGridWallChange(state, merged);
 }
 /** Clear whichever primary boundary occupies a slot (railWall or forcefield). */
 export function clearPrimaryBoundaryAt(state, col, row, side) {
