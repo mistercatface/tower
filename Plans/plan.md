@@ -25,3 +25,24 @@ Snake lean vs libraries. The shape is mostly right: gameLaunchers.js is thin, se
 Drift between snake game and editor. Runtime drift is low by design: snake mode still runs the same sandbox controller, ground-nav behaviors, runKineticPhysics, HPA workers, and overlay pipeline as the editor — playMode mostly hides selection rings and room-graph chrome. Intentional snake-only additions are appLaunch.session.tick (autosim before controller tickWorld), combat/striker contact side effects, and HUD/camera focus. The meaningful divergence is content pipeline, not sim: both paths generate maps through mapWorld, but only snake bundles that into spawnSnakeCavernScene. Editor users place props; snake auto-spawns chains, goals, and nav-walkable bounds. Recent ground-nav path overlays bridged another gap (manual HPA/flow debug in snake without FSM flags) via library helper resolveGroundNavPathOverlayBehavior — good pattern: behavior in libraries, one hook in setupSnakeGame.
 
 PR 2 plan. Link capsule wall culling is the next pure perf win in kineticConstraintSolver.js: projectIslandLinkCapsulesAgainstWalls already skips asleep islands and gatherLinkWallCandidates already pulls from the frame’s wall-candidate buckets, but it still re-gathers and re-scans per link inside each island (walls.length = 0 every constraint). PR 2 is: hoist/reuse a per-island walls[] buffer, tighten broadphase so each link capsule AABB filters wall segments before narrow getLinkCapsuleSegmentPenetration, and early-out links that are asleep or below a velocity threshold. No gameplay change — it protects 70-snake headroom (~17% of your profile) before PR 4 adds striker wall impacts and more contact traffic. It’s independent of PR 1; PR 1’s bitmask just needs the existing rebake hook extended to bounded regions when wall deletion lands in PR 4.
+
+## PR 2 POST MORTEM
+
+Easy wins still sitting in those files (low risk, optional before PR 3)
+
+Belt-and-suspenders on WorldObstacleGrid.canStep — if there’s no navGridFrame/navTopology and gridNavContext is null/undefined, return false instead of throwing. That turns “mystery crash” into “waypoint doesn’t advance,” which is easier to debug if another caller forgets context.
+buildReplanParams / applyHpaReplanResult — gridNavContext is optional with a null default. A dev assert (or test-only check) when applying a replan with a real path would catch regressions like the one you just hit.
+PR 2 has one more slice if profiling still shows link-capsule cost: island gather is deduped per body now, but each link still scans the full island wall list. A per-link pre-pass that keeps only segments overlapping that link’s capsule AABB (from the shared island list) is a small follow-up, not a redesign.
+Docs only — mark PR 1 + PR 2 done in Plans/plan.md / ROADMAP so PR 3 doesn’t get planned against stale “partial” status.
+Not worth doing before PR 3
+
+Merging cellTargetHpaNav and hpaGroundNavSession — same HPA session underneath, but snake FSM arrival vs sandbox right-click nav are different policies; unifying is a medium refactor, not a quick win.
+Regional patchNavWalkableCellIndex(damageBounds) — belongs with PR 4 wall deletion; full rebake is fine until then.
+PR 6 ground-nav arrival unification for cellTargetHpaNav — sandbox HPA/flow/drive-clear is done; snake heads use cell-based FSM arrival (snakeNavArrival.js), which is a separate behavioral pass.
+What PR 3 actually is (and what’s already there)
+
+PR 3 is physics contact stack, not pathfinding: feature-id manifold warm-start, less re-solving on resting contacts, substep early-out when impulses are negligible. You already have partial pieces — impulse-decay warm-start in kineticContactSolver.js, outer-iteration early-out in collisionPipeline.js and constraint solve — but no substep early-out in kineticPhysicsPass.js (it always runs all motion substeps), and manifolds are still mostly single-point. That’s the right next chunk; pathfinding/HPA files are in decent shape for it.
+
+Practical recommendation
+
+Ship PR 3 next without more pathfinding work. The only pre-PR-3 code I’d actually consider is the canStep guard + a replan apply test that exercises gridNavContext end-to-end (you have hpaPathSlot.test.js now; an async applyHpaReplanResult smoke would close the loop). Everything else is either PR 4 (nav patch + walls), PR 6 polish (arrival parity), or physics perf you’re about to touch anyway in C1.
