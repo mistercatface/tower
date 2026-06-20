@@ -1,10 +1,11 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, isFloorBeltCell, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
+import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
 import { boundaryBlocksStepFrom } from "../Spatial/grid/boundaryOccupancy.js";
 import { navCanStep } from "../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyLocal } from "../Pathfinding/bakeNavTopology.js";
 /** @typedef {{ col: number, row: number }} NavGraphCell */
 /** @typedef {{ col: number, row: number, side: number }} NavGraphEdgeRef */
+/** @typedef {{ grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, navCardinalOpen: Uint8Array, vertexPassability: Uint8Array }} GridNavContextLike */
 /**
  * Logical nav graph view over one grid — cell nodes + cardinal step edges.
  * Authoring reads floorStore + edgeStore; pathfinding reads baked arena when present.
@@ -36,7 +37,8 @@ export function createNavGraphView(grid, baked = null) {
             return grid.edgeStore.get(col, row, side, grid.cols);
         },
         isBeltCell(col, row) {
-            return isFloorBeltCell(grid, col, row);
+            if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
+            return isFloorBeltKind(grid.floorStore.kind[colRowToIndex(col, row, grid.cols)]);
         },
         beltEntryExit(col, row) {
             if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
@@ -109,6 +111,23 @@ export function validateBeltChain(graph, cells) {
         if (graph.canStep(b.col, b.row, a.col, a.row)) return { ok: false, reason: `reverse canStep open ${i + 1}→${i}` };
     }
     return { ok: true };
+}
+/** Worker-synced nav context → graph view (map-gen, vision, belt endpoints). */
+export function createNavGraphViewFromContext(gridNavContext) {
+    return createNavGraphView(gridNavContext.grid, { cardinalOpen: gridNavContext.navCardinalOpen, vertexPassability: gridNavContext.vertexPassability });
+}
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
+export function canStepForAuthoring(grid, fromCol, fromRow, toCol, toRow, damageBounds = null) {
+    return createNavGraphViewWithLocalBake(grid, damageBounds).canStep(fromCol, fromRow, toCol, toRow);
+}
+/** @param {ReturnType<typeof createNavGraphView>} graph @param {{ col: number, row: number }[]} cells */
+export function canStepPath(graph, cells) {
+    for (let i = 0; i < cells.length - 1; i++) {
+        const a = cells[i];
+        const b = cells[i + 1];
+        if (!graph.canStep(a.col, a.row, b.col, b.row)) return false;
+    }
+    return true;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function createNavGraphViewWithLocalBake(grid, damageBounds = null) {

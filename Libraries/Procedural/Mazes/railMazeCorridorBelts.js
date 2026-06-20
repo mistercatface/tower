@@ -2,7 +2,7 @@ import { addCorridorPathToOccupied } from "../../Pathfinding/Corridor/corridorLa
 import { buildCorridorBeltsFromPaths } from "../../RoomGraph/roomGraphCorridorBelts.js";
 import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
-import { CARDINAL_OFFSETS, cellInRect } from "../../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, cellInRect, gridCellKey } from "../../Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
 import { beltFootprintKeys, tryValidateBeltChains } from "./beltChainValidation.js";
 import { collectPathMouthExteriorKeys, filterNavBeltEndpointCandidates, validateBeltPathMouthAccess } from "./railMazeBeltEndpoints.js";
@@ -19,9 +19,6 @@ function manhattanCells(a, b) {
 }
 function pathLengthInBand(path, minLen, maxLen) {
     return path.length >= minLen && path.length <= maxLen;
-}
-function cellKey(col, row) {
-    return `${col},${row}`;
 }
 function navWalkableNeighbors(grid, gridNavContext, col, row) {
     const cardinals = [
@@ -49,7 +46,7 @@ export function collectRailMazeBeltZoneCells(grid, gridNavContext, railConfig, n
         if (globalRow < beltStartGlobalRow) return;
         const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
-        if (!walkableKeys.has(cellKey(col, row))) return;
+        if (!walkableKeys.has(gridCellKey(col, row))) return;
         cells.push({ col, row, globalCol, globalRow });
     });
     return cells;
@@ -64,18 +61,18 @@ function collectNorthReserveProtectedKeys(grid, railConfig, northReserveRows) {
         if (globalRow > reserveEndGlobalRow) return;
         const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
-        protectedKeys.add(cellKey(col, row));
+        protectedKeys.add(gridCellKey(col, row));
     });
     return protectedKeys;
 }
 function degreeInZone(cells, neighborAt) {
     const memberSet = new Set();
-    for (let i = 0; i < cells.length; i++) memberSet.add(cellKey(cells[i].col, cells[i].row));
+    for (let i = 0; i < cells.length; i++) memberSet.add(gridCellKey(cells[i].col, cells[i].row));
     const degreeByKey = new Map();
     for (let i = 0; i < cells.length; i++) {
         const cell = cells[i];
-        const neighbors = neighborAt(cell.col, cell.row).filter((n) => memberSet.has(cellKey(n.col, n.row)));
-        degreeByKey.set(cellKey(cell.col, cell.row), neighbors.length);
+        const neighbors = neighborAt(cell.col, cell.row).filter((n) => memberSet.has(gridCellKey(n.col, n.row)));
+        degreeByKey.set(gridCellKey(cell.col, cell.row), neighbors.length);
     }
     return degreeByKey;
 }
@@ -87,8 +84,8 @@ function collectNorthSeamMouthKeys(cells, northReserveRows, footprint) {
     for (let i = 0; i < cells.length; i++) {
         const cell = cells[i];
         if (cell.globalRow !== minGlobalRow) continue;
-        if (!footprint.has(cellKey(cell.col, cell.row))) continue;
-        mouths.add(cellKey(cell.col, cell.row));
+        if (!footprint.has(gridCellKey(cell.col, cell.row))) continue;
+        mouths.add(gridCellKey(cell.col, cell.row));
     }
     return mouths;
 }
@@ -109,8 +106,8 @@ function peelBrokenBelts(floorBelts, mouthExteriorKeys) {
             const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
             const entry = { col: belt.col + CARDINAL_OFFSETS[entrySide].dc, row: belt.row + CARDINAL_OFFSETS[entrySide].dr };
             const exit = { col: belt.col + CARDINAL_OFFSETS[exitSide].dc, row: belt.row + CARDINAL_OFFSETS[exitSide].dr };
-            const entryKey = cellKey(entry.col, entry.row);
-            const exitKey = cellKey(exit.col, exit.row);
+            const entryKey = gridCellKey(entry.col, entry.row);
+            const exitKey = gridCellKey(exit.col, exit.row);
             const entryInFootprint = footprint.has(entryKey);
             const exitInFootprint = footprint.has(exitKey);
             if (!entryInFootprint && !exitInFootprint && !mouthExteriorKeys.has(key)) removeKeys.add(key);
@@ -126,7 +123,7 @@ function peelBrokenBelts(floorBelts, mouthExteriorKeys) {
             }
         }
         if (removeKeys.size === 0) return { floorBelts: belts, validation };
-        belts = belts.filter((belt) => !removeKeys.has(cellKey(belt.col, belt.row)));
+        belts = belts.filter((belt) => !removeKeys.has(gridCellKey(belt.col, belt.row)));
         if (belts.length === 0) return { floorBelts: belts, validation: tryValidateBeltChains(belts, mouthExteriorKeys) };
     }
     return { floorBelts: belts, validation: tryValidateBeltChains(belts, mouthExteriorKeys) };
@@ -135,7 +132,7 @@ function pickRandomFreeCell(freeCells, occupied, rng) {
     if (freeCells.length < 2) return null;
     for (let attempt = 0; attempt < freeCells.length; attempt++) {
         const cell = freeCells[Math.floor(rng() * freeCells.length)];
-        if (!occupied.has(cellKey(cell.col, cell.row))) return cell;
+        if (!occupied.has(gridCellKey(cell.col, cell.row))) return cell;
     }
     return null;
 }
@@ -144,7 +141,7 @@ function pickRandomEndInLengthBand(start, endpointCells, occupied, minLen, maxLe
     for (let i = 0; i < endpointCells.length; i++) {
         const cell = endpointCells[i];
         if (cell.col === start.col && cell.row === start.row) continue;
-        if (occupied.has(cellKey(cell.col, cell.row))) continue;
+        if (occupied.has(gridCellKey(cell.col, cell.row))) continue;
         const dist = manhattanCells(start, cell);
         if (dist < minLen || dist > maxLen) continue;
         candidates.push(cell);
@@ -220,7 +217,7 @@ export function planRailMazeCorridorBelts({
     const degreeByKey = degreeInZone(zoneCells, neighborAt);
     let floorBelts = buildCorridorBeltsFromPaths(paths, widths, [], null, null, { openBeltChance, rng: random });
     const protectedKeys = collectNorthReserveProtectedKeys(grid, railConfig, northReserveRows);
-    if (protectedKeys.size) floorBelts = floorBelts.filter((belt) => !protectedKeys.has(cellKey(belt.col, belt.row)));
+    if (protectedKeys.size) floorBelts = floorBelts.filter((belt) => !protectedKeys.has(gridCellKey(belt.col, belt.row)));
     const footprint = beltFootprintKeys(floorBelts);
     const mouthExteriorKeys = new Set([...collectNorthSeamMouthKeys(zoneCells, northReserveRows, footprint), ...collectPathEndpointMouthKeys(paths)]);
     const peeled = peelBrokenBelts(floorBelts, mouthExteriorKeys);

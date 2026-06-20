@@ -1,6 +1,10 @@
 export function colRowToIndex(col, row, cols) {
     return row * cols + col;
 }
+/** Stable string key for Set/Map lookups over grid cells. */
+export function gridCellKey(col, row) {
+    return `${col},${row}`;
+}
 /** @param {number} col @param {number} row @param {number} cols @param {number} rows */
 export function cellInRect(col, row, cols, rows) {
     return col >= 0 && col < cols && row >= 0 && row < rows;

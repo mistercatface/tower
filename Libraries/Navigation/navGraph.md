@@ -51,7 +51,11 @@ All nav-affecting edits go through:
 
 Room graph bake, editor stamps, and snake map-gen call the same floor/edge helpers; no third belt-rail authoring path.
 
+- `createNavGraphViewFromContext(gridNavContext)` — worker-synced reads for map-gen / vision
+- `canStepForAuthoring(grid, …, damageBounds?)` — local bake for batch authoring
+- `canStepPath(graph, cells)` — chain walk check
+
 ## Tests
 
-- `tests/navTopologyParity.test.js` — same snapshot → same `canStep` (local bake vs worker)
-- `tests/navGraphBeltChain.test.js` — stamp chain → wrong-way blocked → snap → validate
+- `tests/navGraphBeltChain.test.js` — belt rails, wrong-way, snap, full commit+bake path
+- `tests/navTopologyParity.test.js` — local bake ≡ worker `canStep`

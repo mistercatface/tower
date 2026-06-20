@@ -2,10 +2,8 @@ import { runCardinalAStarFlat } from "../../Pathfinding/AStar.js";
 import { SearchState } from "../../Pathfinding/SearchState.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
+import { gridCellKey } from "../../Spatial/grid/GridUtils.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
-function cellKey(col, row) {
-    return `${col},${row}`;
-}
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} railConfig */
 export function railMazeBeltZoneGridBounds(grid, railConfig) {
     const cellSize = grid.cellSize;
@@ -29,7 +27,7 @@ export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railCo
     const size = cols * rows;
     const walkable = new Uint8Array(size);
     for (let r = bounds.startRow; r <= bounds.endRow; r++)
-        for (let c = bounds.startCol; c <= bounds.endCol; c++) if (walkableKeys.has(cellKey(c, r))) walkable[(r - originRow) * cols + (c - originCol)] = 1;
+        for (let c = bounds.startCol; c <= bounds.endCol; c++) if (walkableKeys.has(gridCellKey(c, r))) walkable[(r - originRow) * cols + (c - originCol)] = 1;
     const searchState = new SearchState(size);
     /** @type {Set<string>} */
     let reservedKeys = new Set();
@@ -43,7 +41,7 @@ export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railCo
             const gr0 = r0 + originRow;
             const gc1 = c1 + originCol;
             const gr1 = r1 + originRow;
-            if (reservedKeys.has(cellKey(gc1, gr1))) return false;
+            if (reservedKeys.has(gridCellKey(gc1, gr1))) return false;
             return grid.canStep(gc0, gr0, gc1, gr1, gridNavContext);
         },
     };
@@ -63,7 +61,7 @@ export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railCo
             const si = sr * cols + sc;
             const gi = gr * cols + gc;
             if (!walkable[si] || !walkable[gi]) return null;
-            if (reservedKeys.has(cellKey(startCol, startRow)) || reservedKeys.has(cellKey(goalCol, goalRow))) return null;
+            if (reservedKeys.has(gridCellKey(startCol, startRow)) || reservedKeys.has(gridCellKey(goalCol, goalRow))) return null;
             const flat = runCardinalAStarFlat(sc, sr, gc, gr, navGraph, cols, rows, maxPathLen, searchState.prepare());
             if (!flat) return null;
             /** @type {{ c: number, r: number }[]} */

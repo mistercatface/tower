@@ -1,4 +1,5 @@
-﻿import { loadPropAssets } from "../../Libraries/Props/loadPropAssets.js";
+﻿import "../nodeCanvasSetup.js";
+import { loadPropAssets } from "../../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
 import { KineticSession } from "../../GameState/KineticSession.js";
 import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";

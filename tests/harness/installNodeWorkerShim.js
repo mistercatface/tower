@@ -3,6 +3,8 @@ import { Worker as NodeWorker } from "node:worker_threads";
 const bootstrapUrl = new URL("./nodeWorkerBootstrap.js", import.meta.url);
 
 let installed = false;
+/** @type {Set<Worker>} */
+const trackedWorkers = new Set();
 
 /** Browser-style Worker on Node via worker_threads + self polyfill in nodeWorkerBootstrap.js */
 export function installNodeWorkerShim() {
@@ -21,6 +23,7 @@ export function installNodeWorkerShim() {
         constructor(scriptURL, _options = {}) {
             const target = scriptURL instanceof URL ? scriptURL.href : new URL(scriptURL, import.meta.url).href;
             this.#nodeWorker = new NodeWorker(bootstrapUrl, { workerData: { target }, type: "module" });
+            trackedWorkers.add(this);
             this.#nodeWorker.on("message", (data) => {
                 this.onmessage?.({ data });
             });
@@ -39,7 +42,19 @@ export function installNodeWorkerShim() {
         }
 
         terminate() {
-            void this.#nodeWorker.terminate();
+            trackedWorkers.delete(this);
+            this.onmessage = null;
+            this.onerror = null;
+            this.#nodeWorker.removeAllListeners();
+            return this.#nodeWorker.terminate();
         }
     };
+}
+
+/** @param {InstanceType<typeof globalThis.Worker>[]} [skip] */
+export async function terminateAllTrackedWorkers(skip = []) {
+    const skipSet = new Set(skip);
+    const pending = [...trackedWorkers].filter((worker) => !skipSet.has(worker)).map((worker) => worker.terminate());
+    trackedWorkers.clear();
+    await Promise.allSettled(pending);
 }

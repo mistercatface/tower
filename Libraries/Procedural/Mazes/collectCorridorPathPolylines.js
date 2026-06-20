@@ -1,33 +1,29 @@
-function cellKey(col, row) {
-    return `${col},${row}`;
-}
-
+import { gridCellKey } from "../../Spatial/grid/GridUtils.js";
 function undirectedEdgeKey(aCol, aRow, bCol, bRow) {
-    const a = cellKey(aCol, aRow);
-    const b = cellKey(bCol, bRow);
+    const a = gridCellKey(aCol, aRow);
+    const b = gridCellKey(bCol, bRow);
     return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
-
 export function collectCorridorPathPolylines(cells, neighborAt) {
     const members = cells.slice();
     const memberSet = new Set();
-    for (let i = 0; i < members.length; i++) memberSet.add(cellKey(members[i].col, members[i].row));
+    for (let i = 0; i < members.length; i++) memberSet.add(gridCellKey(members[i].col, members[i].row));
     const degreeByKey = new Map();
     const neighborsByKey = new Map();
     for (let i = 0; i < members.length; i++) {
         const cell = members[i];
-        const key = cellKey(cell.col, cell.row);
-        const neighbors = neighborAt(cell.col, cell.row).filter((n) => memberSet.has(cellKey(n.col, n.row)));
+        const key = gridCellKey(cell.col, cell.row);
+        const neighbors = neighborAt(cell.col, cell.row).filter((n) => memberSet.has(gridCellKey(n.col, n.row)));
         neighborsByKey.set(key, neighbors);
         degreeByKey.set(key, neighbors.length);
     }
-    const isSpecial = (col, row) => degreeByKey.get(cellKey(col, row)) !== 2;
+    const isSpecial = (col, row) => degreeByKey.get(gridCellKey(col, row)) !== 2;
     const usedEdges = new Set();
     const paths = [];
     for (let si = 0; si < members.length; si++) {
         const start = members[si];
         if (!isSpecial(start.col, start.row)) continue;
-        const startNeighbors = neighborsByKey.get(cellKey(start.col, start.row));
+        const startNeighbors = neighborsByKey.get(gridCellKey(start.col, start.row));
         for (let ni = 0; ni < startNeighbors.length; ni++) {
             const first = startNeighbors[ni];
             const edge = undirectedEdgeKey(start.col, start.row, first.col, first.row);
@@ -40,7 +36,7 @@ export function collectCorridorPathPolylines(cells, neighborAt) {
             let curRow = first.row;
             while (!isSpecial(curCol, curRow)) {
                 path.push({ c: curCol, r: curRow });
-                const midNeighbors = neighborsByKey.get(cellKey(curCol, curRow));
+                const midNeighbors = neighborsByKey.get(gridCellKey(curCol, curRow));
                 let nextCol = null;
                 let nextRow = null;
                 for (let mi = 0; mi < midNeighbors.length; mi++) {
@@ -63,12 +59,11 @@ export function collectCorridorPathPolylines(cells, neighborAt) {
     }
     if (paths.length === 0 && members.length > 0) {
         let allDegreeTwo = true;
-        for (let i = 0; i < members.length; i++) {
-            if (degreeByKey.get(cellKey(members[i].col, members[i].row)) !== 2) {
+        for (let i = 0; i < members.length; i++)
+            if (degreeByKey.get(gridCellKey(members[i].col, members[i].row)) !== 2) {
                 allDegreeTwo = false;
                 break;
             }
-        }
         if (allDegreeTwo) {
             const start = members[0];
             const loop = [{ c: start.col, r: start.row }];
@@ -77,7 +72,7 @@ export function collectCorridorPathPolylines(cells, neighborAt) {
             let curCol = start.col;
             let curRow = start.row;
             for (;;) {
-                const midNeighbors = neighborsByKey.get(cellKey(curCol, curRow));
+                const midNeighbors = neighborsByKey.get(gridCellKey(curCol, curRow));
                 let nextCol = null;
                 let nextRow = null;
                 for (let mi = 0; mi < midNeighbors.length; mi++) {

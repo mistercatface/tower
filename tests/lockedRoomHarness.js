@@ -9,7 +9,8 @@ import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { createWorkerNavigationService, syncWorkerNavigationTopology } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { boundaryBlocksStepFrom, isPassagePowered } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
+import { createNavGraphViewFromContext } from "../Libraries/Navigation/navGraph.js";
+import { isPassagePowered } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { applyPassagePowerGridState } from "../Libraries/Sandbox/passagePowerNetwork.js";
 import { addRoomLink, addRoomNode, getRoomGraph, getRoomNode, listRoomLinks } from "../Libraries/RoomGraph/roomGraphStore.js";
@@ -57,9 +58,9 @@ export function assertLockedExitSealed(grid, gridNavContext, egress, sealed, lab
     const exterior = lockedRoomCorridorExteriorCell(egress);
     const holeCell = lockedRoomHoleCell(egress);
     const powered = isPassagePowered(grid, egress.forcefield.col, egress.forcefield.row, egress.forcefield.side);
-    const { navCardinalOpen, vertexPassability } = gridNavContext;
-    const corridorToHole = boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, exterior.col, exterior.row, holeCell.col, holeCell.row);
-    const holeToCorridor = boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, holeCell.col, holeCell.row, exterior.col, exterior.row);
+    const graph = createNavGraphViewFromContext(gridNavContext);
+    const corridorToHole = !graph.canStep(exterior.col, exterior.row, holeCell.col, holeCell.row);
+    const holeToCorridor = !graph.canStep(holeCell.col, holeCell.row, exterior.col, exterior.row);
     if (sealed) {
         if (egress.forcefield.col !== egress.hole.c || egress.forcefield.row !== egress.hole.r || egress.forcefield.side !== egress.hole.side)
             throw new Error(`${label}: forcefield is not on the corridor hole edge`);

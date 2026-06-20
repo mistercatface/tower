@@ -1,11 +1,10 @@
+import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { installNodeWorkerShim } from "./harness/installNodeWorkerShim.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { HPA_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-installNodeWorkerShim();
 describe("node worker shim", () => {
     it("runs HpaPathWorker nav topology sync", async () => {
         assert.equal(typeof Worker, "function");
@@ -16,7 +15,8 @@ describe("node worker shim", () => {
         assert.ok(hpa.getNavArena());
         assert.ok(grid.navTopology);
         assert.ok(grid.navGridFrame);
-        hpa.host.worker.terminate();
+        hpa.shutdown();
+        await hpa.host.worker.terminate();
     });
     it("createWorkerNavigation wires NavigationService to worker", async () => {
         const grid = new WorldObstacleGrid(16);
@@ -24,6 +24,6 @@ describe("node worker shim", () => {
         const navigation = await createWorkerNavigation(grid);
         assert.ok(navigation.gridNavContext.navCardinalOpen?.buffer instanceof SharedArrayBuffer);
         assert.ok(grid.navTopology);
-        terminateWorkerNavigation(navigation);
+        await terminateWorkerNavigation(navigation);
     });
 });

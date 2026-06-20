@@ -12,8 +12,8 @@ import { generateSnakeSplitMap, resolveCenterSnakeSpawnAnchor, spawnSnakeCavernS
 import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { boundaryBlocksStepFrom } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
-import { cellInRect } from "../Libraries/Spatial/grid/GridUtils.js";
+import { createNavGraphViewFromContext } from "../Libraries/Navigation/navGraph.js";
+import { cellInRect, gridCellKey } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 loadPropAssets();
@@ -41,9 +41,6 @@ async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
         hpaPathWorker: navigation._hpaPathWorker,
     };
 }
-function cellKey(col, row) {
-    return `${col},${row}`;
-}
 function countWalkableInBounds(state, config) {
     const grid = state.obstacleGrid;
     const cellSize = grid.cellSize;
@@ -66,7 +63,7 @@ function paddingBounds(state) {
 }
 function floodFillWalkable(state, startCol, startRow) {
     const grid = state.obstacleGrid;
-    const { navCardinalOpen, vertexPassability } = state.navigation.gridNavContext;
+    const graph = createNavGraphViewFromContext(state.navigation.gridNavContext);
     const visited = new Set();
     const queue = [{ col: startCol, row: startRow }];
     const cardinals = [
@@ -77,14 +74,14 @@ function floodFillWalkable(state, startCol, startRow) {
     ];
     while (queue.length) {
         const { col, row } = queue.pop();
-        const key = cellKey(col, row);
+        const key = gridCellKey(col, row);
         if (visited.has(key)) continue;
         if (!cellInRect(col, row, grid.cols, grid.rows) || grid.isBlocked(col, row)) continue;
         visited.add(key);
         for (let i = 0; i < cardinals.length; i++) {
             const nc = col + cardinals[i][0];
             const nr = row + cardinals[i][1];
-            if (boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, col, row, nc, nr)) continue;
+            if (!graph.canStep(col, row, nc, nr)) continue;
             queue.push({ col: nc, row: nr });
         }
     }
@@ -99,7 +96,7 @@ function countVisitedInBounds(visited, state, config) {
         const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
         total++;
-        if (visited.has(cellKey(col, row))) reached++;
+        if (visited.has(gridCellKey(col, row))) reached++;
     });
     return { total, reached, ratio: total ? reached / total : 0 };
 }

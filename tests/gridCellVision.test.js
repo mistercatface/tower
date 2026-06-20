@@ -1,3 +1,4 @@
+import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { collectVisibleGridCells, hasGridCellLineOfSight, isWorldPointInVisionCone, normalizeAngleDelta, resolveObserverHeading } from "../Libraries/Navigation/perception/gridCellVision.js";

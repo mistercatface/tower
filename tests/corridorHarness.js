@@ -7,6 +7,7 @@ import { buildCorridorBeltsFromPaths, collapsePathRevisits, corridorExteriorCell
 import { assertBeltChains, beltMapFromFloorBelts } from "../Libraries/Procedural/Mazes/beltChainValidation.js";
 import { DEFAULT_CORRIDOR_EGRESS_CELLS } from "../Libraries/RoomGraph/roomGraphCorridorRails.js";
 import { floorBeltEntryExitSides } from "../Libraries/Spatial/grid/FloorCell.js";
+import { gridCellKey } from "../Libraries/Spatial/grid/GridUtils.js";
 export function makeRoomRect(c0, r0, width, height) {
     const c1 = c0 + width - 1;
     const r1 = r0 + height - 1;
@@ -42,9 +43,6 @@ export function solveTwoRoomBundle(fixture, corridorCount, corridorWidth, seed) 
 export function maxLanesForFixture(fixture, corridorWidth) {
     return maxCorridorLanesBetweenNodes(fixture.roomA, fixture.roomB, corridorWidth);
 }
-function cellKey(c, r) {
-    return `${c},${r}`;
-}
 function oppositeSide(side) {
     return (side + 2) % 4;
 }
@@ -66,7 +64,7 @@ export function assertLaneReachesRoomMouths(fixture, bundle, laneIndex, label = 
     const belts = buildCorridorBeltsFromPaths([bundle.paths[laneIndex]], [bundle.corridorWidths[laneIndex]], rooms, [bundle.parentAnchors[laneIndex]], [bundle.childAnchors[laneIndex]]);
     const beltsByCell = beltMap(belts);
     const corridorFootprint = corridorOnlyFootprint(bundle.paths[laneIndex], bundle.corridorWidths[laneIndex]);
-    const mouthExteriorKeys = new Set([cellKey(exteriorA.c, exteriorA.r), cellKey(exteriorB.c, exteriorB.r)]);
+    const mouthExteriorKeys = new Set([gridCellKey(exteriorA.c, exteriorA.r), gridCellKey(exteriorB.c, exteriorB.r)]);
     for (const key of mouthExteriorKeys) {
         const comma = key.indexOf(",");
         const c = Number(key.slice(0, comma));
@@ -93,7 +91,7 @@ export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label
         [childHole, exteriorB, "child", "exit"],
     ]) {
         if (cellInsideAnyRoom(rooms, exterior.c, exterior.r)) continue;
-        const key = cellKey(exterior.c, exterior.r);
+        const key = gridCellKey(exterior.c, exterior.r);
         const belt = beltsByCell.get(key);
         if (!belt) throw new Error(`${label}: missing belt at ${role} mouth ${key}`);
         const sides = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
@@ -101,7 +99,7 @@ export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label
         const actual = check === "entry" ? sides.entrySide : sides.exitSide;
         if (actual !== wantIntoRoom) throw new Error(`${label}: ${role} mouth belt at ${key} ${check} side ${actual}, expected ${wantIntoRoom} into room`);
     }
-    const childKey = cellKey(exteriorB.c, exteriorB.r);
+    const childKey = gridCellKey(exteriorB.c, exteriorB.r);
     if (!cellInsideAnyRoom(rooms, exteriorB.c, exteriorB.r)) {
         const childBelt = beltsByCell.get(childKey);
         const { entrySide, exitSide } = floorBeltEntryExitSides(childBelt.kind, childBelt.facingIndex);

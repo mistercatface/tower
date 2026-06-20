@@ -442,4 +442,20 @@ export class HpaPathWorker {
         workerOut.result.pathSlot = slot;
         return workerOut;
     }
+    /** Release pending slot waiters and worker handlers before thread termination (tests). */
+    shutdown() {
+        this.host.invalidateSlots();
+        this._navSyncPromise = null;
+        if (this._navSyncResolve) {
+            this._navSyncResolve();
+            this._navSyncResolve = null;
+        }
+        this._graphPatchChain = Promise.resolve();
+        if (this._graphPatchResolve) {
+            this._graphPatchResolve();
+            this._graphPatchResolve = null;
+        }
+        this.host.worker.onmessage = null;
+        this.host.worker.onerror = null;
+    }
 }

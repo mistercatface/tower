@@ -1,13 +1,11 @@
 import { gridNavCacheKey, isNavTopologyReady } from "../../Spatial/grid/gridNavEpoch.js";
-import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex, gridCellKey } from "../../Spatial/grid/GridUtils.js";
 import { floodConnectedNavWalkableCells, isNavWalkableCell } from "../../Spatial/grid/navWalkableCell.js";
 import { forEachGlobalCellInMapGenBounds, isGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { expandNavTopologyBakeBounds } from "../../Pathfinding/navTopologySab.js";
 import { clampCellBoundsToGrid, forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { createNavWalkableCandidateMask, createNavWalkableReachedMask, readNavWalkableFlag, writeNavWalkableFlags } from "./navWalkableIndex.js";
-export function walkableCellKey(col, row) {
-    return `${col},${row}`;
-}
+export const walkableCellKey = gridCellKey;
 function navWalkableCacheKey(state) {
     const grid = state.obstacleGrid;
     const worker = state.navigation?._hpaPathWorker;
