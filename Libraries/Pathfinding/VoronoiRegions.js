@@ -13,7 +13,8 @@ export class RegionNode {
         this.cells = [];
     }
 }
-export function computeDistanceTransform(grid, cols, rows, distToWall = null) {
+export function computeDistanceTransform(grid, frame, distToWall = null) {
+    const { cols, rows } = frame;
     const size = cols * rows;
     const distances = distToWall ?? new Float32Array(size);
     distances.fill(Infinity);
@@ -44,7 +45,8 @@ export function computeDistanceTransform(grid, cols, rows, distToWall = null) {
     for (let i = 0; i < size; i++) if (distances[i] === Infinity) distances[i] = 1000;
     return distances;
 }
-export function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, nodeCells, maxCellsPerChunk, navGraph, unassigned = null) {
+export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCells, maxCellsPerChunk, navGraph, unassigned = null) {
+    const { cols, rows } = frame;
     let cellCount = 0;
     cellToNode[startIdx] = node;
     nodeCells.push(startIdx);
@@ -71,7 +73,8 @@ export function floodFillRegion(startIdx, node, grid, cols, rows, cellToNode, no
         }
     });
 }
-export function mergeSmallRegions(nodesMap, cellToNode, cols, rows, minCellsPerChunk, navGraph = null) {
+export function mergeSmallRegions(nodesMap, cellToNode, frame, minCellsPerChunk, navGraph = null) {
+    const { cols, rows } = frame;
     let merged;
     do {
         merged = false;
@@ -106,7 +109,8 @@ export function mergeSmallRegions(nodesMap, cellToNode, cols, rows, minCellsPerC
         }
     } while (merged);
 }
-export function repositionRegionCentroids(nodesMap, grid, cols, rows, minX, minY, cellSize, cellToNode) {
+export function repositionRegionCentroids(nodesMap, grid, frame, cellToNode) {
+    const { cols, rows, minX, minY, cellSize } = frame;
     for (const id in nodesMap) {
         const node = nodesMap[id];
         const nodeCells = node.cells;
@@ -132,7 +136,8 @@ export function repositionRegionCentroids(nodesMap, grid, cols, rows, minX, minY
         node.y = minY + node.row * cellSize + cellSize / 2;
     }
 }
-export function generateVoronoiRegions({ grid, distToWall, cols, rows, minX, minY, cellSize, maxCellsPerChunk, minCellsPerChunk, cellToNode = null, navGraph = null }) {
+export function generateVoronoiRegions({ grid, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode = null, navGraph = null }) {
+    const { cols, rows, minX, minY, cellSize } = frame;
     const size = cols * rows;
     const assignment = cellToNode ?? new Array(size).fill(null);
     assignment.fill(null);
@@ -148,13 +153,14 @@ export function generateVoronoiRegions({ grid, distToWall, cols, rows, minX, min
         const id = `node_${++nodeIdCounter}`;
         const node = new RegionNode(id, startCol, startRow, startCol, startRow, minX, minY, cellSize);
         nodesMap[id] = node;
-        floodFillRegion(startIdx, node, grid, cols, rows, assignment, node.cells, maxCellsPerChunk, navGraph);
+        floodFillRegion(startIdx, node, grid, frame, assignment, node.cells, maxCellsPerChunk, navGraph);
     }
-    if (minCellsPerChunk > 0) mergeSmallRegions(nodesMap, assignment, cols, rows, minCellsPerChunk, navGraph);
-    repositionRegionCentroids(nodesMap, grid, cols, rows, minX, minY, cellSize, assignment);
+    if (minCellsPerChunk > 0) mergeSmallRegions(nodesMap, assignment, frame, minCellsPerChunk, navGraph);
+    repositionRegionCentroids(nodesMap, grid, frame, assignment);
     return { nodesMap, cellToNode: assignment, nodeIdCounter };
 }
-export function findRegionAdjacenciesInBox(cellToNode, cols, rows, startCol, endCol, startRow, endRow, navGraph = null) {
+export function findRegionAdjacenciesInBox(cellToNode, frame, startCol, endCol, startRow, endRow, navGraph = null) {
+    const { cols, rows } = frame;
     const adjacencies = new Set();
     for (let r = startRow; r <= endRow; r++)
         for (let c = startCol; c <= endCol; c++) {
@@ -172,7 +178,8 @@ export function findRegionAdjacenciesInBox(cellToNode, cols, rows, startCol, end
         }
     return adjacencies;
 }
-export function repositionNodeCentroid(node, cellToNode, grid, cols, rows, minX, minY, cellSize) {
+export function repositionNodeCentroid(node, cellToNode, grid, frame) {
+    const { cols, rows, minX, minY, cellSize } = frame;
     const nodeCells = node.cells;
     const count = nodeCells.length;
     if (count === 0) return;
@@ -194,7 +201,8 @@ export function repositionNodeCentroid(node, cellToNode, grid, cols, rows, minX,
     node.x = minX + node.col * cellSize + cellSize / 2;
     node.y = minY + node.row * cellSize + cellSize / 2;
 }
-export function findRegionAdjacencies(cellToNode, grid, cols, rows, navGraph = null) {
+export function findRegionAdjacencies(cellToNode, grid, frame, navGraph = null) {
+    const { cols, rows } = frame;
     const adjacencies = new Set();
     for (let r = 0; r < rows; r++)
         for (let c = 0; c < cols; c++) {
