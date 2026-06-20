@@ -17,16 +17,22 @@ function buildAdjacency(session) {
     }
     return adjacency;
 }
-export function getKineticConstraintGraph(session) {
+function getGraphCache(session) {
     const version = getKineticConstraintsVersion(session);
-    const cache = session._kineticConstraintGraphCache;
-    if (cache && cache.version === version) return cache.adjacency;
-    const adjacency = buildAdjacency(session);
-    session._kineticConstraintGraphCache = { version, adjacency };
-    return adjacency;
+    let cache = session._kineticConstraintGraphCache;
+    if (!cache || cache.version !== version) {
+        cache = { version, adjacency: buildAdjacency(session), paths: new Map(), connectedIds: new Map(), islands: null };
+        session._kineticConstraintGraphCache = cache;
+    }
+    return cache;
+}
+export function getKineticConstraintGraph(session) {
+    return getGraphCache(session).adjacency;
 }
 export function getConnectedBodyIds(session, bodyId) {
-    const adjacency = getKineticConstraintGraph(session);
+    const cache = getGraphCache(session);
+    if (cache.connectedIds.has(bodyId)) return cache.connectedIds.get(bodyId);
+    const adjacency = cache.adjacency;
     const members = new Set([bodyId]);
     const stack = [bodyId];
     while (stack.length > 0) {
@@ -41,10 +47,14 @@ export function getConnectedBodyIds(session, bodyId) {
             }
         }
     }
-    return [...members];
+    const result = [...members];
+    for (let i = 0; i < result.length; i++) cache.connectedIds.set(result[i], result);
+    return result;
 }
 export function getConnectedComponentPath(session, endpointId) {
-    const adjacency = getKineticConstraintGraph(session);
+    const cache = getGraphCache(session);
+    if (cache.paths.has(endpointId)) return cache.paths.get(endpointId);
+    const adjacency = cache.adjacency;
     const ordered = [endpointId];
     const visited = new Set([endpointId]);
     let current = endpointId;
@@ -62,30 +72,17 @@ export function getConnectedComponentPath(session, endpointId) {
         visited.add(next);
         current = next;
     }
+    cache.paths.set(endpointId, ordered);
     return ordered;
 }
 export function areBodiesConnected(session, bodyAId, bodyBId) {
     if (bodyAId === bodyBId) return true;
-    const adjacency = getKineticConstraintGraph(session);
-    const visited = new Set([bodyAId]);
-    const stack = [bodyAId];
-    while (stack.length > 0) {
-        const current = stack.pop();
-        const neighbors = adjacency.get(current);
-        if (!neighbors) continue;
-        for (let i = 0; i < neighbors.length; i++) {
-            const next = neighbors[i];
-            if (next === bodyBId) return true;
-            if (!visited.has(next)) {
-                visited.add(next);
-                stack.push(next);
-            }
-        }
-    }
-    return false;
+    return getConnectedBodyIds(session, bodyAId).includes(bodyBId);
 }
 export function getConstraintIslands(session) {
-    const adjacency = getKineticConstraintGraph(session);
+    const cache = getGraphCache(session);
+    if (cache.islands) return cache.islands;
+    const adjacency = cache.adjacency;
     const seen = new Set();
     const islands = [];
     for (const startId of adjacency.keys()) {
@@ -108,5 +105,6 @@ export function getConstraintIslands(session) {
         }
         islands.push(island);
     }
+    cache.islands = islands;
     return islands;
 }

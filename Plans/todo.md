@@ -8,10 +8,13 @@
 
 -- duplicate work in hot loops and parallel abstractions are. UI-side, virtual lists fixed DOM cost but refreshPanel still rebuilds every section and re-sorts the full scene list on every sync — dirty flags on placement/selection would be the next library-level win there, separate from physics.
 
+**PR 4b — Render cull hardening:** prop blit path only for `queryPropsInView` hits; audit wall-atlas / `QuantizedSpriteCache` eviction (no new pipeline). Measure with Chrome profiler; separate from AI work.
+
 ## 06/19/2026
 
 8:00 AM - 8:50 AM: ViewportBounds refactor
 8:50 AM - 9:12 AM: Generic FSM extract
+9:12 AM - 10:54 AM: Finite state refactor, HPA tweak
 
 ## MILESTONE LOG
 
