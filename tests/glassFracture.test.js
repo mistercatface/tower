@@ -17,7 +17,7 @@ import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
-import { resolveKineticContactPassWithEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
+import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 
 loadPropAssets();

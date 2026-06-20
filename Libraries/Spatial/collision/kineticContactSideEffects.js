@@ -1,5 +1,4 @@
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
-import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
 import { kineticPairBodiesAt } from "./kineticPairStream.js";
 import { kineticBodySlab } from "./kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
@@ -26,9 +25,4 @@ export function applyKineticContactSideEffects(tick, contacts) {
         const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
         tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relSpeed);
     }
-}
-export function resolveKineticContactPassWithEffects(tick) {
-    const pairs = gatherKineticContactPairs(tick);
-    resolveKineticContactPassWithPairs(tick, pairs);
-    applyKineticContactSideEffects(tick, kineticContactBuffer);
 }

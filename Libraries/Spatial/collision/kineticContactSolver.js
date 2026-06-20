@@ -8,17 +8,14 @@ import { kineticBodySlab, writebackKineticBodySlabPhysIds } from "./kineticBodyS
 import { separateAlongNormal, separateCoincidentCirclePair, COINCIDENT_CIRCLE_EPS } from "./penetration.js";
 import { checkEntityPairCollision } from "./SatCollision.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
-import { contactWarmStartKey, isRestingKineticContact } from "./kineticContactManifold.js";
+import { contactWarmStartKey, isRestingKineticContact, warmStartCacheIndex } from "./kineticContactManifold.js";
 const MAX_CONTACTS = 4096;
 const INNER_SOLVE_ITERATIONS = 4;
-const PAIR_KEY_SCALE = 1_000_000;
 const WARM_START_CACHE_SIZE = 16384;
 const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1;
 const warmStartKeys = new Float64Array(WARM_START_CACHE_SIZE);
 const warmStartJn = new Float32Array(WARM_START_CACHE_SIZE);
 const warmStartJt = new Float32Array(WARM_START_CACHE_SIZE);
-/** @type {{ innerIterations: number, maxImpulse: number, restingCount: number }} */
-export let lastKineticContactSolveStats = { innerIterations: 0, maxImpulse: 0, restingCount: 0 };
 export const kineticContactBuffer = {
     count: 0,
     physIdA: new Int32Array(MAX_CONTACTS),
@@ -48,7 +45,6 @@ export const kineticContactBuffer = {
     jt: new Float32Array(MAX_CONTACTS),
     restitution: new Float32Array(MAX_CONTACTS),
     friction: new Float32Array(MAX_CONTACTS),
-    pairKey: new Float64Array(MAX_CONTACTS),
     warmStartKey: new Float64Array(MAX_CONTACTS),
     resting: new Uint8Array(MAX_CONTACTS),
     reset() {
@@ -118,9 +114,6 @@ function syncBodyPoseToSlab(physIdA, physIdB, bodyA, bodyB) {
     slab.x[physIdB] = bodyB.x;
     slab.y[physIdB] = bodyB.y;
 }
-function pairContactKey(bodyA, bodyB) {
-    return bodyA.id < bodyB.id ? bodyA.id * PAIR_KEY_SCALE + bodyB.id : bodyB.id * PAIR_KEY_SCALE + bodyA.id;
-}
 function pairMaterialFriction(body) {
     const pair = body.strategy?.pairFriction;
     if (pair != null) return pair;
@@ -139,7 +132,7 @@ function kineticPairFriction(bodyA, bodyB) {
     return f1 ?? f2 ?? getCollisionSettings().pairFriction;
 }
 function warmStartCacheLookup(key) {
-    let idx = (Math.trunc(key / PAIR_KEY_SCALE) ^ (key % PAIR_KEY_SCALE)) & WARM_START_CACHE_MASK;
+    let idx = warmStartCacheIndex(key);
     while (true) {
         const slot = warmStartKeys[idx];
         if (slot === key) return idx;
@@ -190,7 +183,7 @@ function storeKineticWarmStartCache(contacts) {
     warmStartKeys.fill(0);
     for (let i = 0; i < contacts.count; i++) {
         const key = contacts.warmStartKey[i];
-        let idx = (Math.trunc(key / PAIR_KEY_SCALE) ^ (key % PAIR_KEY_SCALE)) & WARM_START_CACHE_MASK;
+        let idx = warmStartCacheIndex(key);
         while (true) {
             const slot = warmStartKeys[idx];
             if (slot === key || slot === 0) {
@@ -314,67 +307,10 @@ function precomputeKineticContacts(spatialFrame, contacts) {
         if (!bodyA || !bodyB) continue;
         contacts.restitution[i] = kineticPairRestitution(bodyA, bodyB);
         contacts.friction[i] = kineticPairFriction(bodyA, bodyB);
-        contacts.pairKey[i] = pairContactKey(bodyA, bodyB);
-        contacts.warmStartKey[i] = contactWarmStartKey(contacts.pairKey[i], nx, ny);
+        contacts.warmStartKey[i] = contactWarmStartKey(bodyA, bodyB, nx, ny);
     }
 }
-function applyCircleCircleContactImpulse(contacts, i, slab, iterMaxImpulse) {
-    const physIdA = contacts.physIdA[i];
-    const physIdB = contacts.physIdB[i];
-    const nx = contacts.nx[i];
-    const ny = contacts.ny[i];
-    const rax = contacts.rax[i];
-    const ray = contacts.ray[i];
-    const rbx = contacts.rbx[i];
-    const rby = contacts.rby[i];
-    const wA = slab.w[physIdA];
-    const wB = slab.w[physIdB];
-    const vAx = slab.vx[physIdA] - wA * ray;
-    const vAy = slab.vy[physIdA] + wA * rax;
-    const vBx = slab.vx[physIdB] - wB * rby;
-    const vBy = slab.vy[physIdB] + wB * rbx;
-    const velAlongNormal = (vBx - vAx) * nx + (vBy - vAy) * ny;
-    let j = (-(1 + contacts.restitution[i]) * velAlongNormal) / contacts.kNormal[i];
-    const oldJn = contacts.jn[i];
-    contacts.jn[i] = Math.max(oldJn + j, 0);
-    j = contacts.jn[i] - oldJn;
-    const invMassA = contacts.invMassA[i];
-    const invMassB = contacts.invMassB[i];
-    let maxImpulse = iterMaxImpulse;
-    if (j !== 0) {
-        maxImpulse = Math.max(maxImpulse, Math.abs(j));
-        slab.vx[physIdA] -= j * nx * invMassA;
-        slab.vy[physIdA] -= j * ny * invMassA;
-        slab.vx[physIdB] += j * nx * invMassB;
-        slab.vy[physIdB] += j * ny * invMassB;
-        slab.w[physIdA] -= j * contacts.rAn[i] * contacts.invIA[i];
-        slab.w[physIdB] += j * contacts.rBn[i] * contacts.invIB[i];
-    }
-    const tx = -ny;
-    const ty = nx;
-    const wAn = slab.w[physIdA];
-    const wBn = slab.w[physIdB];
-    const vAxT = slab.vx[physIdA] - wAn * ray;
-    const vAyT = slab.vy[physIdA] + wAn * rax;
-    const vBxT = slab.vx[physIdB] - wBn * rby;
-    const vByT = slab.vy[physIdB] + wBn * rbx;
-    const vt = (vAxT - vBxT) * tx + (vAyT - vByT) * ty;
-    let jt = -vt / contacts.kTangent[i];
-    const maxFriction = contacts.jn[i] * contacts.friction[i];
-    const oldJt = contacts.jt[i];
-    contacts.jt[i] = Math.max(-maxFriction, Math.min(maxFriction, oldJt + jt));
-    jt = contacts.jt[i] - oldJt;
-    if (jt === 0) return maxImpulse;
-    maxImpulse = Math.max(maxImpulse, Math.abs(jt));
-    slab.vx[physIdA] += jt * tx * invMassA;
-    slab.vy[physIdA] += jt * ty * invMassA;
-    slab.vx[physIdB] -= jt * tx * invMassB;
-    slab.vy[physIdB] -= jt * ty * invMassB;
-    slab.w[physIdA] += jt * contacts.rAt[i] * contacts.invIA[i];
-    slab.w[physIdB] -= jt * contacts.rBt[i] * contacts.invIB[i];
-    return maxImpulse;
-}
-function applyGenericContactImpulse(contacts, i, slab, iterMaxImpulse) {
+function applyContactImpulse(contacts, i, slab, iterMaxImpulse) {
     const physIdA = contacts.physIdA[i];
     const physIdB = contacts.physIdB[i];
     const nx = contacts.nx[i];
@@ -441,14 +377,13 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
         let maxImpulse = 0;
         for (let i = 0; i < count; i++) {
             if (contacts.resting[i] && iter > 0) continue;
-            if (contacts.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) maxImpulse = applyCircleCircleContactImpulse(contacts, i, slab, maxImpulse);
-            else maxImpulse = applyGenericContactImpulse(contacts, i, slab, maxImpulse);
+            maxImpulse = applyContactImpulse(contacts, i, slab, maxImpulse);
         }
         solveMaxImpulse = Math.max(solveMaxImpulse, maxImpulse);
         if (maxImpulse <= contactImpulseEpsilon) break;
-        if (restingCount === count && count > 0 && iter + 1 >= 1) break;
+        if (restingCount === count && count > 0) break;
     }
-    lastKineticContactSolveStats = { innerIterations: iterationsRun, maxImpulse: solveMaxImpulse, restingCount };
+    return { innerIterations: iterationsRun, maxImpulse: solveMaxImpulse, restingCount };
 }
 function collectContactPhysIds(contacts) {
     const touched = new Set();
@@ -482,7 +417,7 @@ export function resolveKineticContactPassWithPairs(tick, pairs) {
     if (contacts.count === 0) return;
     precomputeKineticContacts(frame, contacts);
     const restingCount = warmStartKineticContacts(contacts);
-    solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS, restingCount);
+    tick.world.kinetic.kineticContactStats = solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS, restingCount);
     storeKineticWarmStartCache(contacts);
     writebackKineticBodySlabPhysIds(frame, collectContactPhysIds(contacts));
     applyKineticContactWake(contacts, frame);

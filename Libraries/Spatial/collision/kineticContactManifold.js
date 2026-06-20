@@ -1,10 +1,16 @@
-/** @typedef {import("./kineticContactSolver.js").KineticContactBuffer} KineticContactBuffer */
-
+export const PAIR_KEY_SCALE = 1_000_000;
 export const FEATURE_ANGLE_BINS = 16;
+export const WARM_START_CACHE_MASK = 16383;
 const WARM_START_FEATURE_STRIDE = 32;
-
 /**
- * Quantize contact normal into a stable feature bucket for warm-start keys.
+ * @param {{ id: number }} bodyA
+ * @param {{ id: number }} bodyB
+ * @returns {number}
+ */
+export function pairContactKey(bodyA, bodyB) {
+    return bodyA.id < bodyB.id ? bodyA.id * PAIR_KEY_SCALE + bodyB.id : bodyB.id * PAIR_KEY_SCALE + bodyA.id;
+}
+/**
  * @param {number} nx
  * @param {number} ny
  * @returns {number}
@@ -15,22 +21,24 @@ export function quantizeContactFeatureId(nx, ny) {
     const bin = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * FEATURE_ANGLE_BINS) % FEATURE_ANGLE_BINS;
     return bin + 1;
 }
-
 /**
- * Feature-id keyed warm-start cache entry for a body pair contact.
- * @param {number} pairKey
+ * @param {{ id: number }} bodyA
+ * @param {{ id: number }} bodyB
  * @param {number} nx
  * @param {number} ny
  * @returns {number}
  */
-export function contactWarmStartKey(pairKey, nx, ny) {
-    return pairKey * WARM_START_FEATURE_STRIDE + quantizeContactFeatureId(nx, ny);
+export function contactWarmStartKey(bodyA, bodyB, nx, ny) {
+    return pairContactKey(bodyA, bodyB) * WARM_START_FEATURE_STRIDE + quantizeContactFeatureId(nx, ny);
 }
-
+/** @param {number} warmStartKey */
+export function warmStartCacheIndex(warmStartKey) {
+    return (Math.trunc(warmStartKey / PAIR_KEY_SCALE) ^ (warmStartKey % PAIR_KEY_SCALE)) & WARM_START_CACHE_MASK;
+}
 /**
- * @param {KineticContactBuffer} contacts
+ * @param {{ preDvx: Float32Array, preDvy: Float32Array, nx: Float32Array, ny: Float32Array }} contacts
  * @param {number} i
- * @param {{ kineticResting?: { normalVelocityEpsilon?: number, maxBodySpeed?: number } }} settings
+ * @param {{ kineticResting?: { normalVelocityEpsilon?: number, tangentVelocityEpsilon?: number } }} settings
  * @returns {boolean}
  */
 export function isRestingKineticContact(contacts, i, settings) {

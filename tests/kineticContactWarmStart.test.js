@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGameCollisionSettings } from "../Core/GameCollisionSettings.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { lastKineticContactSolveStats } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
@@ -39,8 +38,9 @@ describe("kinetic contact warm-start", () => {
         const b = mockCircleBody(18, 0, 10, 0.55, 0);
         const tick = createKineticTestTick([a, b]);
         resolveKineticContactPass(tick);
-        assert.ok(lastKineticContactSolveStats.restingCount > 0);
-        assert.equal(lastKineticContactSolveStats.innerIterations, 1);
+        const stats = tick.world.kinetic.kineticContactStats;
+        assert.ok(stats.restingCount > 0);
+        assert.equal(stats.innerIterations, 1);
         applyGameCollisionSettings(null);
     });
 
@@ -55,10 +55,11 @@ describe("kinetic contact warm-start", () => {
         const b = mockCircleBody(18, 0, 10, 0.55, 0);
         const tick = createKineticTestTick([a, b]);
         resolveKineticContactPass(tick);
-        assert.ok(lastKineticContactSolveStats.maxImpulse > 0.05);
+        assert.ok(tick.world.kinetic.kineticContactStats.maxImpulse > 0.05);
         resolveKineticContactPass(tick);
-        assert.ok(lastKineticContactSolveStats.restingCount > 0);
-        assert.equal(lastKineticContactSolveStats.innerIterations, 1);
+        const stats = tick.world.kinetic.kineticContactStats;
+        assert.ok(stats.restingCount > 0);
+        assert.equal(stats.innerIterations, 1);
         applyGameCollisionSettings(null);
     });
 });
