@@ -58,3 +58,19 @@ PR 3 status. Landed. `kineticContactManifold.js` adds feature-id keyed warm-star
 The manifold work is done for C1 scope — feature-keyed warm-start, resting fast-path, and substep early-out are in and the config/branch cruft is gone. What you have is still single-point contact with normal-angle quantization as the “feature id,” not real SAT feature persistence (vertex/edge ids, multi-point manifolds, clip points). That’s the big remaining item on the roadmap and it’s a proper physics feature, not a cleanup. Same bucket: warm-start cache still wipes and rebuilds every contact pass (warmStartKeys.fill(0) then re-store) — fine for now, but true manifold persistence would keep per-pair slots across frames without full clear and support multiple points per pair.
 
 Easy wins / dedupes still sitting there: applyCircleCircleContactImpulse and applyGenericContactImpulse are byte-for-byte the same — the “circle impulse lane” is just a duplicated function and a tier branch in the solve loop; one applyContactImpulse would do. contacts.pairKey is only used to build warmStartKey — you could drop the array and compute inline. lastKineticContactSolveStats is a test/debug export on the hot module; could live on tick.world.kinetic or test-only. preSpeedA/preSpeedB are still filled every contact (striker uses them) — keep those. Minor: kineticContactManifold.js JSDoc still mentions removed maxBodySpeed. None of this blocks shipping; the only meaningful “manifold v2” left is multi-point + real feature ids, which is Trilogy C follow-on, not a dedupe pass.
+
+## PR 4 POST MORTEM
+
+4a only built the plumbing so wall removal works like editor delete and nav updates correctly:
+
+Quiet/batch delete for voxel + rail (clearGridWallsQuiet, clearGridWallsBatch)
+Deferred commit (createDeferredGridWallCommit) so many hits can flush once per tick
+Regional patchNavWalkableCellIndex(state, damageBounds) on obstacle change
+Nothing in the striker or wall-hit path calls those yet. Tests delete walls programmatically to prove the contract.
+
+4b is where behavior lands:
+
+Sparse wallDamage (only when a wall has been hit)
+Striker hook in setupSnakeGame.js / snakeStriker.js on wall impacts
+Variable damage from hit speed/angle
+At 0 HP → clearGridWallsQuiet / deferred flush → same commitBoundaryEdit path 4a added
