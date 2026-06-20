@@ -25,8 +25,9 @@ function tickKineticSleep(frame) {
     }
 }
 export function runKineticPhysics(tick, dt, hooks) {
-    const frame = tick.frame;
     const world = tick.world;
+    world.sandbox?.simulationFrameHooks?.beforePhysics?.(world);
+    const frame = tick.frame;
     const session = world.kinetic;
     ensureKineticIslandPlan(session, frame._kineticBodies);
     session.kineticConstraintsDirty = false;
@@ -53,5 +54,6 @@ export function runKineticPhysics(tick, dt, hooks) {
     session.motionSubstepStats = { substepsRun, substepsPlanned: steps };
     tickKineticSleep(frame);
     frame.syncActiveKineticBodies();
+    world.sandbox?.simulationFrameHooks?.afterPhysics?.(world);
     hooks.afterKineticPhysics?.(tick);
 }

@@ -27,7 +27,15 @@ export function mountSandboxController(state, { playMode = false } = {}) {
         state.editor.showSelectionRings = false;
         state.editor.showPropTileCells = false;
         state.editor.showRoomNodesAlways = false;
-    }
+    } else
+        state.sandbox.simulationFrameHooks = {
+            beforePhysics(state) {
+                state.hpaPathSession.beginFrame();
+            },
+            afterPhysics(state) {
+                state.hpaPathSession.flushFrame();
+            },
+        };
     const getCanvas = () => state.editor.canvas;
     state.sandbox.controller = createSandboxController(state, {
         getCanvas,

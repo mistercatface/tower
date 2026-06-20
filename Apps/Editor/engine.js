@@ -55,14 +55,12 @@ function simulationKineticHooks(state) {
 function runSimulationTick(state, dt) {
     const simDt = dt * state.selectedSpeed;
     state.gameTime += simDt;
-    if (!state.sandbox.snakeGame) state.hpaPathSession.beginFrame();
     const spatialFrame = kineticSpatial.begin(state);
     tickFloorProps(state, spatialFrame, simDt);
     tickFloorOccupancy(state, spatialFrame, simDt);
     runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, simulationKineticHooks(state));
     tickGridZones(state, spatialFrame);
     FloatingText.updateAll(state, simDt);
-    if (!state.sandbox.snakeGame) state.hpaPathSession.flushFrame();
 }
 export function createEditorApp(options = {}) {
     const gameLaunchId = options.gameLaunchId ?? null;
