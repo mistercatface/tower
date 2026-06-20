@@ -6,11 +6,11 @@ import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 import { getGridWallDamageSession, resolveWallDamageTintRatioForDrawable } from "../Sandbox/gridWallDamage.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
-import { aabbOverlap } from "../Math/Aabb2D.js";
 import { PropRenderer } from "./Props3D/PropRenderer.js";
 import { drawWorldProp } from "./drawWorldProp.js";
 import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources } from "../Sandbox/floorOccupancy.js";
 import { collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/drawForcefields.js";
+import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { elevationCameraFromViewportInto } from "../Spatial/iso/ElevationCamera.js";
 export class WorldSceneRenderer {
     /**
@@ -57,10 +57,7 @@ export class WorldSceneRenderer {
         const px = viewport.x;
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
-        const props = input.entityRegistry.queryView(
-            { bounds: viewport.bounds("props"), kinds: ["worldProp"], filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" },
-            input.spatialFrame,
-        );
+        const props = queryPropsInView(input.entityRegistry, viewport, input.spatialFrame, { filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" });
         for (let i = 0; i < props.length; i++) drawWorldProp(ctx, props[i], viewport, { gameState: input.gameState, propRenderer: this.props, px, py, zoom });
     }
     /**
@@ -72,7 +69,6 @@ export class WorldSceneRenderer {
         const px = viewport.x;
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
-        const bounds = viewport.bounds("props");
         const drawContext = this.propDrawContext;
         drawContext.gameState = input.gameState;
         drawContext.px = px;
@@ -82,11 +78,9 @@ export class WorldSceneRenderer {
         drawFloorOccupancyPowerSources(ctx, input.gameState, viewport, { px, py });
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
-        const worldProps = input.gameState.worldProps;
-        for (let i = 0; i < worldProps.length; i++) {
-            const prop = worldProps[i];
-            if (prop.isDead || prop.strategy?.renderMode !== "floor") continue;
-            if (!prop.aabb || !aabbOverlap(prop.aabb, bounds)) continue;
+        const props = queryPropsInView(input.entityRegistry, viewport, input.spatialFrame, { hitTest: "aabb", filterId: "floor", match: (p) => p.strategy?.renderMode === "floor" });
+        for (let i = 0; i < props.length; i++) {
+            const prop = props[i];
             prop._distSq = (prop.x - px) ** 2 + (prop.y - py) ** 2;
             visibleObjects.push(prop);
         }
@@ -95,7 +89,7 @@ export class WorldSceneRenderer {
     }
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this.visibleDrawables;
-        const props = input.entityRegistry.queryView({ bounds: viewport.bounds("props"), kinds: ["worldProp"], filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" }, input.spatialFrame);
+        const props = queryPropsInView(input.entityRegistry, viewport, input.spatialFrame, { filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" });
         for (let i = 0; i < props.length; i++) {
             const p = props[i];
             p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;

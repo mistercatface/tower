@@ -51,11 +51,7 @@ export function buildSandboxOverlayCommands({
     let visibleSelectedProps = [];
     if (sel?.kind === "prop") {
         const selectedIds = new Set(selectionPropIds(sel));
-        visibleSelectedProps = queryPropsInView(state.entityRegistry, viewport, spatialFrame, {
-            bounds: viewport.bounds("chunks"),
-            filterId: "selectedOverlay",
-            match: (prop) => selectedIds.has(prop.id),
-        });
+        visibleSelectedProps = queryPropsInView(state.entityRegistry, viewport, spatialFrame, { tier: "chunks", filterId: "selectedOverlay", match: (prop) => selectedIds.has(prop.id) });
         for (let i = 0; i < visibleSelectedProps.length; i++) {
             const prop = visibleSelectedProps[i];
             if (!isChainSteeringTarget(state, getSandboxEntityMeta(state), prop.id)) continue;

@@ -51,8 +51,8 @@ export function appendMarqueeOverlayCommands(out, { marqueeRect }) {
     if (!marqueeRect) return;
     out.push(overlayAabb(marqueeRect, { fill: "rgba(255, 252, 245, 0.05)", stroke: "rgba(255, 252, 245, 0.32)", lineWidth: 1, dash: [4, 4] }));
 }
-export function queryPropsInView(entityRegistry, viewport, spatialFrame, { bounds = null, match = null, filterId = "overlay" } = {}) {
-    return entityRegistry.queryView({ bounds: bounds ?? viewport.bounds("props"), kinds: ["worldProp"], filterId, match }, spatialFrame);
+export function queryPropsInView(entityRegistry, viewport, spatialFrame, { tier = "props", hitTest = "circle", match = null, filterId = "overlay" } = {}) {
+    return entityRegistry.queryView({ bounds: viewport.bounds(tier), kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
 }
 export function appendPropTileCellOverlayCommands(out, { show, grid, entityRegistry, viewport, spatialFrame }) {
     if (!show) return;

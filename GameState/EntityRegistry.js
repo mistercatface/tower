@@ -15,6 +15,7 @@ import { getEntityCollisionParts } from "../Libraries/Spatial/collision/SatColli
  * @property {string[]} [kinds]
  * @property {string} [filterId] — cache key segment for optional `match`
  * @property {(ref: object) => boolean} [match]
+ * @property {AabbEntityHitTest} [hitTest]
  */
 /**
  * @typedef {Object} QueryInAabbStrictOptions
@@ -70,7 +71,8 @@ export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
 function filterKey(criteria) {
     const kinds = criteria.kinds ?? EMPTY_KINDS;
     const filterId = criteria.filterId ?? "";
-    return `${kinds.join(",")}|${filterId}`;
+    const hitTest = criteria.hitTest ?? "circle";
+    return `${kinds.join(",")}|${filterId}|${hitTest}`;
 }
 /**
  * @typedef {Object} QueryViewCacheEntry
@@ -186,7 +188,7 @@ export class EntityRegistry {
         return this._queryInAabb(bounds, options.kinds ?? EMPTY_KINDS, options.match, options.hitTest ?? "center", null);
     }
     /**
-     * View/cull query — spatial broadphase when fresh, then circle-vs-AABB filter on candidates.
+     * View/cull query — spatial broadphase when fresh, then entity-vs-AABB filter on candidates.
      *
      * @param {QueryViewCriteria} criteria
      * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore | null | undefined} spatialFrame
@@ -194,6 +196,7 @@ export class EntityRegistry {
      */
     queryView(criteria, spatialFrame) {
         const kinds = criteria.kinds ?? EMPTY_KINDS;
+        const hitTest = criteria.hitTest ?? "circle";
         const spatialGen = spatialFrame?.frameId ?? -1;
         const bounds = criteria.bounds;
         const boundsHash = aabbHash(bounds);
@@ -204,7 +207,7 @@ export class EntityRegistry {
         if (queryViewCacheMatches(cached, spatialGen, this.membershipGen, bounds, boundsHash, filterHash, filterKeyStr)) return cached.result;
         let result;
         if (criteria.match && criteria.filterId) {
-            const baseFilterKeyStr = filterKey({ kinds });
+            const baseFilterKeyStr = filterKey({ kinds, hitTest });
             const baseFilterHash = hashString(baseFilterKeyStr);
             const baseCacheKey = queryViewCacheKey(spatialGen, this.membershipGen, boundsHash, baseFilterHash);
             const baseCached = this._queryCache.get(baseCacheKey);
@@ -218,7 +221,7 @@ export class EntityRegistry {
                 return result;
             }
         }
-        result = this._queryInAabb(bounds, kinds, criteria.match, "circle", spatialFrame);
+        result = this._queryInAabb(bounds, kinds, criteria.match, hitTest, spatialFrame);
         this._queryCache.set(cacheKey, makeQueryViewCacheEntry(result, spatialGen, this.membershipGen, bounds, boundsHash, filterHash, filterKeyStr));
         return result;
     }

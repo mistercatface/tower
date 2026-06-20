@@ -1,5 +1,5 @@
 /** @typedef {{ minX: number; minY: number; maxX: number; maxY: number }} Aabb2D */
-/** @typedef {'center' | 'circle'} AabbEntityHitTest */
+/** @typedef {'center' | 'circle' | 'aabb'} AabbEntityHitTest */
 /** @returns {Aabb2D} */
 export function createAabb() {
     return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
@@ -225,6 +225,11 @@ export function circleIntersectsAabb(x, y, radius, { minX, minY, maxX, maxY }) {
 /** @param {object} ref @param {Aabb2D} bounds @param {AabbEntityHitTest} hitTest */
 export function entityIntersectsAabb(ref, bounds, hitTest) {
     if (hitTest === "center") return pointInAabb(ref.x, ref.y, bounds);
+    if (hitTest === "aabb") {
+        const aabb = ref.aabb;
+        if (!aabb) return false;
+        return aabbOverlap(aabb, bounds);
+    }
     const radius = ref.getBoundingRadius?.() ?? ref.radius ?? 0;
     return circleIntersectsAabb(ref.x, ref.y, radius, bounds);
 }
