@@ -16,6 +16,7 @@
 8:50 AM - 9:12 AM: Generic FSM extract
 9:12 AM - 10:54 AM: Finite state refactor, HPA tweak
 10:54 AM - 11:19 AM: Kinetic chain refactor
+11:20 AM - 11:41 AM: Physics warm starts
 
 ## MILESTONE LOG
 
