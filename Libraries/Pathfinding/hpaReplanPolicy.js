@@ -5,6 +5,8 @@ export const REPLAN_PRIORITY_TARGET = 4;
 export const REPLAN_PRIORITY_VISIBLE = 3;
 export const REPLAN_PRIORITY_NORMAL = 2;
 export const REPLAN_PRIORITY_STUCK_OFFSCREEN = 1;
+export const HPA_REPLAN_FRAME_START_BUDGET = 12;
+export const HPA_REPLAN_PEAK_INFLIGHT_CAP = 16;
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @returns {{ obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, startX: number, startY: number, targetX: number, targetY: number, graphEpoch: number }}

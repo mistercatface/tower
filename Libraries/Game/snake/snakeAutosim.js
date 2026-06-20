@@ -13,7 +13,7 @@ import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { countLiveSnakeGoals, findNearestVisibleSnakeGoal, findNearestVisibleSnakeGoalFromVision, removeSnakeGoalProp } from "./snakeGoals.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
-import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick } from "./snakePerception.js";
+import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 export function createSnakeBrain(visionConeOverride) {
     const config = getSnakeGameConfig();
@@ -40,11 +40,13 @@ function replenishSnakeGoals(state, headId, rng, navWalkable) {
 }
 function runSnakeFsmTick(intent, seeker, state, dt) {
     const snakeGame = state.sandbox.snakeGame;
+    const soloTick = !snakeGame._batchingPerception;
     if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
     else maybeBeginSnakeAutosimTick(state);
     intent.perceive(seeker, state);
     const choice = intent.transition(seeker, state);
     intent.headNav.tick(seeker, dt);
+    if (soloTick) endSnakePerceptionFrame(state);
     return choice;
 }
 export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkable, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null }) {

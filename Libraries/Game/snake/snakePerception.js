@@ -32,7 +32,11 @@ export function nextSnakePerceptionTickId(state) {
 export function beginSnakePerceptionFrame(state) {
     const tickId = nextSnakePerceptionTickId(state);
     beginSnakePerceptionTick(state, tickId);
+    state.hpaPathSession?.beginFrame(tickId);
     return tickId;
+}
+export function endSnakePerceptionFrame(state) {
+    state.hpaPathSession?.flushFrame();
 }
 export function ensureSnakePerceptionTick(state) {
     const snakeGame = state.sandbox.snakeGame;

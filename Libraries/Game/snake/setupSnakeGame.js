@@ -13,7 +13,7 @@ import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
-import { beginSnakePerceptionFrame } from "./snakePerception.js";
+import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
@@ -143,6 +143,7 @@ export async function setupSnakeGame(state) {
             snakeGame._batchingPerception = true;
             beginSnakePerceptionFrame(state);
             for (const autosim of autosimsByHeadId.values()) autosim.tick(dtSec);
+            endSnakePerceptionFrame(state);
             snakeGame._batchingPerception = false;
             hud.update();
         },

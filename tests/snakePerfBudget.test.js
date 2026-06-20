@@ -17,8 +17,9 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
-import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
+import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
+import { HPA_REPLAN_PEAK_INFLIGHT_CAP } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
 loadPropAssets();
 /** Brain-on baseline — raise only when intentionally adding cost. */
 const PERF_TICKS = 120;
@@ -104,6 +105,7 @@ describe("snakePerfBudget", () => {
         resetKineticConstraintIds(1);
         resetVisionFullBuildCount();
         const state = createPerfState();
+        state.hpaPathSession.resetPeakInflightReplans();
         const { autosims } = buildMultiSnakeSession(state);
         const snakeGame = state.sandbox.snakeGame;
         const aliveSnakes = autosims.length;
@@ -112,6 +114,7 @@ describe("snakePerfBudget", () => {
             snakeGame._batchingPerception = true;
             beginSnakePerceptionFrame(state);
             for (let i = 0; i < autosims.length; i++) autosims[i].autosim.tick(PERF_DT);
+            endSnakePerceptionFrame(state);
             snakeGame._batchingPerception = false;
         }
         const elapsed = performance.now() - t0;
@@ -121,6 +124,10 @@ describe("snakePerfBudget", () => {
         assert.ok(
             visionFullBuilds <= aliveSnakes * PERF_TICKS,
             `vision full builds ${visionFullBuilds} exceed ${aliveSnakes} snakes × ${PERF_TICKS} ticks`,
+        );
+        assert.ok(
+            state.hpaPathSession.getPeakInflightReplans() <= HPA_REPLAN_PEAK_INFLIGHT_CAP,
+            `peak in-flight replans ${state.hpaPathSession.getPeakInflightReplans()} exceed ${HPA_REPLAN_PEAK_INFLIGHT_CAP}`,
         );
         applySnakeGameConfig();
     });

@@ -1,46 +1,59 @@
 import { applyHpaReplanResult, clearHpaNavPath } from "./hpaPathPlan.js";
+import { HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP } from "./hpaReplanPolicy.js";
 import { MAX_HPA_REPLAN_SLOTS } from "./HpaPathWorker.js";
-/**
- * Async HPA replan controller — one leased worker slot per in-flight replan per navState.
- * Coalesces superseding requests; keeps last good path until apply.
- * Caps concurrent worker replans at MAX_HPA_REPLAN_SLOTS with a priority wait queue.
- */
 export class HpaPathSession {
-    /** @param {import("./HpaPathWorker.js").HpaPathWorker} hpaPathWorker */
-    constructor(hpaPathWorker) {
+    constructor(hpaPathWorker, { frameStartBudget = HPA_REPLAN_FRAME_START_BUDGET, peakInflightCap = HPA_REPLAN_PEAK_INFLIGHT_CAP } = {}) {
         this.worker = hpaPathWorker;
+        this._frameStartBudget = frameStartBudget;
+        this._peakInflightCap = Math.min(peakInflightCap, MAX_HPA_REPLAN_SLOTS);
         this._nextRequestId = 1;
-        /** @type {WeakMap<import("./navSession.js").NavSessionState, object>} */
         this._pendingParams = new WeakMap();
-        /** @type {WeakMap<import("./navSession.js").NavSessionState, number>} */
         this._replanPriority = new WeakMap();
-        /** @type {WeakSet<import("./navSession.js").NavSessionState>} */
         this._draining = new WeakSet();
-        /** @type {WeakSet<import("./navSession.js").NavSessionState>} */
         this._queuedNavStates = new WeakSet();
-        /** @type {import("./navSession.js").NavSessionState[]} */
         this._waitQueue = [];
         this._activeWorkerCount = 0;
         this._slotWaiters = [];
+        this._frameId = 0;
+        this._frameStartsUsed = 0;
+        this._peakInflightSeen = 0;
     }
     isReplanInFlight(navState) {
         return navState.hpaReplanRequestId !== 0;
+    }
+    getInflightCount() {
+        return this._activeWorkerCount;
+    }
+    getPeakInflightReplans() {
+        return this._peakInflightSeen;
+    }
+    resetPeakInflightReplans() {
+        this._peakInflightSeen = 0;
+    }
+    beginFrame(frameId) {
+        if (frameId != null && frameId === this._frameId) return;
+        this._frameId = frameId ?? this._frameId + 1;
+        this._frameStartsUsed = 0;
+    }
+    flushFrame() {
+        this._pumpQueue();
     }
     requestReplan(navState, params, priority = 0) {
         this._pendingParams.set(navState, params);
         this._replanPriority.set(navState, priority);
         navState.hpaReplanRequestId = this._nextRequestId++;
         if (this._draining.has(navState)) return;
-        this._tryStartDrain(navState);
+        this._enqueue(navState);
     }
-    _tryStartDrain(navState) {
-        if (this._draining.has(navState) || navState.hpaReplanRequestId === 0) return;
-        if (this._activeWorkerCount >= MAX_HPA_REPLAN_SLOTS) {
-            this._enqueue(navState);
-            return;
-        }
+    _canStartDrain() {
+        return this._activeWorkerCount < this._peakInflightCap && this._frameStartsUsed < this._frameStartBudget;
+    }
+    _startDrain(navState) {
+        if (this._draining.has(navState) || navState.hpaReplanRequestId === 0) return false;
+        this._frameStartsUsed++;
         this._draining.add(navState);
         void this._drainReplan(navState);
+        return true;
     }
     _enqueue(navState) {
         if (this._queuedNavStates.has(navState)) {
@@ -61,13 +74,15 @@ export class HpaPathSession {
         this._waitQueue.sort((a, b) => (this._replanPriority.get(b) ?? 0) - (this._replanPriority.get(a) ?? 0));
     }
     _pumpQueue() {
-        while (this._waitQueue.length > 0 && this._activeWorkerCount < MAX_HPA_REPLAN_SLOTS) {
+        while (this._waitQueue.length > 0 && this._canStartDrain()) {
             const navState = this._waitQueue.shift();
             this._queuedNavStates.delete(navState);
             if (navState.hpaReplanRequestId === 0 || this._draining.has(navState)) continue;
-            this._draining.add(navState);
-            void this._drainReplan(navState);
+            this._startDrain(navState);
         }
+    }
+    _recordInflightPeak() {
+        if (this._activeWorkerCount > this._peakInflightSeen) this._peakInflightSeen = this._activeWorkerCount;
     }
     _releaseWorkerSlot() {
         this._activeWorkerCount--;
@@ -75,7 +90,7 @@ export class HpaPathSession {
         this._pumpQueue();
     }
     async _awaitWorkerSlot() {
-        while (this._activeWorkerCount >= MAX_HPA_REPLAN_SLOTS)
+        while (this._activeWorkerCount >= this._peakInflightCap)
             await new Promise((resolve) => {
                 this._slotWaiters.push(resolve);
             });
@@ -87,6 +102,7 @@ export class HpaPathSession {
                 const requestId = navState.hpaReplanRequestId;
                 const params = this._pendingParams.get(navState);
                 this._activeWorkerCount++;
+                this._recordInflightPeak();
                 let workerOut = null;
                 try {
                     workerOut = await this.worker.requestPath({
@@ -117,7 +133,7 @@ export class HpaPathSession {
             }
         } finally {
             this._draining.delete(navState);
-            if (navState.hpaReplanRequestId !== 0) this._tryStartDrain(navState);
+            if (navState.hpaReplanRequestId !== 0) this._enqueue(navState);
         }
     }
 }
