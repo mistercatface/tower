@@ -8,7 +8,7 @@ import ball from "../Assets/props/ball/ball.asset.js";
 import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { createTestNavigation, syncTestNavigationTopology } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation, syncWorkerNavigationTopology } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { boundaryBlocksStepFrom, isPassagePowered } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { applyPassagePowerGridState } from "../Libraries/Sandbox/passagePowerNetwork.js";
@@ -50,7 +50,7 @@ export async function createRoomBakeTestState(cols = 64, rows = 64) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {} },
-        navigation: await createTestNavigation(grid, null, { topologyOnly: true }),
+        navigation: await createWorkerNavigation(grid, null, { topologyOnly: true }),
     };
 }
 export function assertLockedExitSealed(grid, gridNavContext, egress, sealed, label = "exit") {
@@ -102,7 +102,7 @@ export async function bakeLinkedLockedRoomFixture(state, fixture, linkSeed = 0) 
     const link = listRoomLinks(state)[0];
     link.seed = linkSeed;
     syncRoomGraphBake(state);
-    await syncTestNavigationTopology(state.navigation, state.obstacleGrid, null);
+    await syncWorkerNavigationTopology(state.navigation, state.obstacleGrid, null);
     return { locked, open, link };
 }
 /** @param {object} state @param {number} nodeId */

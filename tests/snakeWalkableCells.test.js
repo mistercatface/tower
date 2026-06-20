@@ -10,7 +10,7 @@ import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { wireSnakeGameRegistry, createSnakeLifecycleRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { createTestNavigation, terminateTestNavigation } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { walkableCellKey } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
@@ -21,7 +21,7 @@ async function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
     const cellSize = gridSettings.cellSize;
     const grid = new WorldObstacleGrid(cellSize);
     grid.rebuildFixed(0, 0, playAreaCells * cellSize, playAreaCells * cellSize);
-    const navigation = await createTestNavigation(grid);
+    const navigation = await createWorkerNavigation(grid);
     return {
         mapSeed,
         obstacleGrid: grid,

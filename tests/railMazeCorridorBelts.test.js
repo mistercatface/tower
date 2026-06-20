@@ -6,7 +6,7 @@ import { FLOOR_CELL_KIND, floorBeltElbowTurn, isFloorBeltRailsKind } from "../Li
 import { planRailMazeCorridorBelts } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { collectCorridorPathPolylines } from "../Libraries/Procedural/Mazes/collectCorridorPathPolylines.js";
 import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
-import { createTestNavigation, syncTestNavigation, terminateTestNavigation } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -41,19 +41,19 @@ describe("rail maze corridor belts", () => {
     it("rejects belt paths whose mouths are rail-blocked", async () => {
         const grid = new WorldObstacleGrid(gridSettings.cellSize);
         grid.rebuildFixed(0, 0, 5 * gridSettings.cellSize, 5 * gridSettings.cellSize);
-        const navigation = await createTestNavigation(grid, null, { topologyOnly: true });
+        const navigation = await createWorkerNavigation(grid, null, { topologyOnly: true });
         for (let c = 0; c < 5; c++) for (let r = 0; r < 5; r++) grid.grid[c + r * grid.cols] = 0;
         grid.stampCellEdge(2, 0, 2, 1, 1);
-        await syncTestNavigation(navigation, { startCol: 1, endCol: 3, startRow: 0, endRow: 2 }, { topologyOnly: true });
+        await syncWorkerNavigationTopology(navigation, grid, { startCol: 1, endCol: 3, startRow: 0, endRow: 2 });
         const path = [
             { c: 2, r: 1 },
             { c: 2, r: 2 },
         ];
         assert.equal(validateBeltPathMouthAccess(grid, navigation.gridNavContext, path), false);
         grid.clearCellEdges(2, 0);
-        await syncTestNavigation(navigation, { startCol: 1, endCol: 3, startRow: 0, endRow: 2 }, { topologyOnly: true });
+        await syncWorkerNavigationTopology(navigation, grid, { startCol: 1, endCol: 3, startRow: 0, endRow: 2 });
         assert.equal(validateBeltPathMouthAccess(grid, navigation.gridNavContext, path), true);
-        terminateTestNavigation(navigation);
+        terminateWorkerNavigation(navigation);
     });
     it("plans belt chains on snake split map samples", async () => {
         applySnakeGameConfig();

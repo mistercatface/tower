@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { cellChebyshevDistance, pickExploreDestination, exploreFringeMinRankFromNewest } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
-import { createTestNavigation } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -30,7 +30,7 @@ async function createIntentTestState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    const navigation = await createTestNavigation(grid);
+    const navigation = await createWorkerNavigation(grid);
     return {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),

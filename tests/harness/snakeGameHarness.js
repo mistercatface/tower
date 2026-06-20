@@ -12,27 +12,18 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../..
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
 import { resolveSnakeNavWalkableFloodSeedBounds, spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
-import { createTestNavigation, syncTestNavigation } from "./workerNavigationHarness.js";
+import { createWorkerNavigation } from "../../Libraries/Navigation/WorkerNavigationFactory.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
 import { HpaPathSession } from "../../Libraries/Pathfinding/HpaPathSession.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
 loadPropAssets();
-/** @param {object} state @param {import("../../Libraries/DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
-export async function syncTestNavigationNav(state, damageBounds = null) {
-    await syncTestNavigation(state.navigation, damageBounds);
-}
 export function wireSnakeTestNavSession(state) {
     if (state.hpaPathSession) return;
-    const worker = state.navigation._hpaPathWorker ?? state.hpaPathWorker;
-    if (!worker?.host) {
-        const mockWorker = { getPathSlot: () => -1, releaseOwnedPathSlot: () => {}, releaseSlot: () => {}, requestPath: async () => ({ result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } }) };
-        if (!state.hpaPathWorker || typeof state.hpaPathWorker.requestPath !== "function") state.hpaPathWorker = mockWorker;
-    } else state.hpaPathWorker = worker;
+    state.hpaPathWorker = state.navigation._hpaPathWorker;
     state.hpaPathSession = new HpaPathSession(state.hpaPathWorker);
     state.viewport = state.viewport ?? { circleInBounds: () => true, snapTo() {} };
-    if (state.navigation.obstacleGeneration == null) state.navigation.obstacleGeneration = 0;
     state.navigation.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000, ...state.navigation.settings };
 }
 function ensureSnakePlayableBounds(state) {
@@ -64,7 +55,7 @@ export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    const navigation = await createTestNavigation(grid);
+    const navigation = await createWorkerNavigation(grid);
     const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),

@@ -13,7 +13,7 @@ import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry
 import { cellChebyshevDistance } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { findNearestVisibleThreat, pickFleeCell, pickSnakeIntentPolicy, pickSnakeIntentTarget, perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
-import { createTestNavigation } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { spawnSnakeStriker } from "../Libraries/Game/snake/snakeStriker.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
@@ -27,7 +27,7 @@ async function createTestState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    const navigation = await createTestNavigation(grid);
+    const navigation = await createWorkerNavigation(grid);
     return {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),

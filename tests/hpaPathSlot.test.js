@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { createTestNavigation, terminateTestNavigation } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { findSabPathProgressIdx, computeSabPathSteering } from "../Libraries/Pathfinding/hpaPathSlot.js";
 async function createGridWithNav() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);
-    const navigation = await createTestNavigation(grid);
+    const navigation = await createWorkerNavigation(grid);
     return { grid, gridNavContext: navigation.gridNavContext, navigation };
 }
 function mockWorker(path) {
@@ -23,7 +23,7 @@ describe("hpaPathSlot", () => {
     it("canStep returns false when gridNavContext is missing", async () => {
         const { grid, navigation } = await createGridWithNav();
         assert.equal(grid.canStep(4, 4, 5, 4, null), false);
-        terminateTestNavigation(navigation);
+        terminateWorkerNavigation(navigation);
     });
     it("findSabPathProgressIdx uses gridNavContext for waypoint canStep checks", async () => {
         const { grid, gridNavContext, navigation } = await createGridWithNav();
@@ -35,7 +35,7 @@ describe("hpaPathSlot", () => {
         const start = grid.gridToWorld(4, 4);
         const idx = findSabPathProgressIdx(start.x, start.y, worker, 0, path.length, grid, gridNavContext);
         assert.ok(idx >= 1);
-        terminateTestNavigation(navigation);
+        terminateWorkerNavigation(navigation);
     });
     it("computeSabPathSteering advances with gridNavContext", async () => {
         const { grid, gridNavContext, navigation } = await createGridWithNav();
@@ -54,6 +54,6 @@ describe("hpaPathSlot", () => {
         });
         assert.ok(steering);
         assert.ok(Math.hypot(steering.desiredX, steering.desiredY) > 0);
-        terminateTestNavigation(navigation);
+        terminateWorkerNavigation(navigation);
     });
 });

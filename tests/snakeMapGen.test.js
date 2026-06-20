@@ -11,7 +11,7 @@ import { collectSnakeGoalProps } from "../Libraries/Game/snake/snakeGoals.js";
 import { generateSnakeSplitMap, resolveCenterSnakeSpawnAnchor, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
-import { createTestNavigation } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { boundaryBlocksStepFrom } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -21,7 +21,7 @@ async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
     const cellSize = gridSettings.cellSize;
     const grid = new WorldObstacleGrid(cellSize);
     grid.rebuildFixed(0, 0, playAreaCells * cellSize, playAreaCells * cellSize);
-    const navigation = await createTestNavigation(grid);
+    const navigation = await createWorkerNavigation(grid);
     return {
         mapSeed,
         obstacleGrid: grid,

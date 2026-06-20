@@ -4,9 +4,9 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { createNavState } from "../Libraries/Pathfinding/navSession.js";
 import { HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP, REPLAN_PRIORITY_STUCK_OFFSCREEN, REPLAN_PRIORITY_VISIBLE } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
-import { createTestNavigation, terminateTestNavigation } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 async function replanParams(grid) {
-    const navigation = await createTestNavigation(grid);
+    const navigation = await createWorkerNavigation(grid);
     return { obstacleGrid: grid, startX: 40, startY: 40, targetX: 120, targetY: 120, graphEpoch: 0, stepPenalty: null, gridNavContext: navigation.gridNavContext, _navigation: navigation };
 }
 describe("HpaPathSession frame budget", () => {
@@ -39,7 +39,7 @@ describe("HpaPathSession frame budget", () => {
         assert.equal(session.getInflightCount(), 4);
         release();
         await gate;
-        terminateTestNavigation(params._navigation);
+        terminateWorkerNavigation(params._navigation);
     });
     it("prefers visible replans when the frame budget is tight", async () => {
         const grid = new WorldObstacleGrid(16);
@@ -73,7 +73,7 @@ describe("HpaPathSession frame budget", () => {
         session.flushFrame();
         await Promise.resolve();
         assert.deepEqual(started.slice(0, 2), ["highA", "highB"]);
-        terminateTestNavigation(params._navigation);
+        terminateWorkerNavigation(params._navigation);
     });
     it("tracks peak in-flight replans under the configured cap", async () => {
         const grid = new WorldObstacleGrid(16);
@@ -104,6 +104,6 @@ describe("HpaPathSession frame budget", () => {
         assert.ok(session.getPeakInflightReplans() <= HPA_REPLAN_PEAK_INFLIGHT_CAP);
         release();
         await gate;
-        terminateTestNavigation(params._navigation);
+        terminateWorkerNavigation(params._navigation);
     });
 });

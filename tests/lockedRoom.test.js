@@ -22,7 +22,7 @@ import {
     releaseLockedRoomButton,
 } from "./lockedRoomHarness.js";
 import { makeHorizontalFixture } from "./corridorHarness.js";
-import { syncTestNavigationTopology } from "./harness/workerNavigationHarness.js";
+import { syncWorkerNavigationTopology } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 describe("locked room egress layout", () => {
     it("places power on the wall beside the mouth and forcefield on the exit edge", async () => {
         const fixture = makeHorizontalFixture(8, 8, 8, 8, 8);
@@ -86,7 +86,7 @@ describe("passage power inverted hold suppress", () => {
         setBoundary(grid, layout.forcefield.col, layout.forcefield.row, layout.forcefield.side, { kind: "passage", mode: PASSAGE_MODE.Solid, allowedSide: layout.forcefield.side, powered: false });
         grid.floorStore.setPassagePowerSourceAtIdx(colRowToIndex(layout.power.col, layout.power.row, grid.cols), true);
         grid.edgeStore.recomputePassageEdgeCount();
-        await syncTestNavigationTopology(state.navigation, grid, { startCol: 7, endCol: 9, startRow: 11, endRow: 13 });
+        await syncWorkerNavigationTopology(state.navigation, grid, { startCol: 7, endCol: 9, startRow: 11, endRow: 13 });
         const { x, y } = grid.gridToWorld(14, 14);
         const button = new WorldProp(x, y, "button_floor", 0);
         button.inputMode = "massHold";

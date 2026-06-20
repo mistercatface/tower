@@ -1,4 +1,6 @@
 import { createMockCanvas2d } from "./mockCanvas2d.js";
+import { installNodeWorkerShim } from "./harness/installNodeWorkerShim.js";
+installNodeWorkerShim();
 if (typeof globalThis.OffscreenCanvas === "undefined")
     globalThis.OffscreenCanvas = class OffscreenCanvas {
         constructor(width, height) {

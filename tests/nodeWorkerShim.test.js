@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { installNodeWorkerShim } from "./harness/installNodeWorkerShim.js";
-import { createTestNavigation, terminateTestNavigation } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { HPA_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -18,12 +18,12 @@ describe("node worker shim", () => {
         assert.ok(grid.navGridFrame);
         hpa.host.worker.terminate();
     });
-    it("createTestNavigation wires NavigationService to worker", async () => {
+    it("createWorkerNavigation wires NavigationService to worker", async () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 256, 256);
-        const navigation = await createTestNavigation(grid);
+        const navigation = await createWorkerNavigation(grid);
         assert.ok(navigation.gridNavContext.navCardinalOpen?.buffer instanceof SharedArrayBuffer);
         assert.ok(grid.navTopology);
-        terminateTestNavigation(navigation);
+        terminateWorkerNavigation(navigation);
     });
 });

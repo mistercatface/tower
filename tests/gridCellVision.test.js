@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { collectVisibleGridCells, hasGridCellLineOfSight, isWorldPointInVisionCone, normalizeAngleDelta, resolveObserverHeading } from "../Libraries/Navigation/perception/gridCellVision.js";
 import { createObserverVisionFrame, getVisionFullBuildCount, queryGridCellVision, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
-import { createTestNavigation, terminateTestNavigation } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { setBoundary } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Libraries/Spatial/grid/gridNavEpoch.js";
@@ -11,7 +11,7 @@ import { appendGridCellVisionOverlayCommands } from "../Libraries/Navigation/per
 async function createVisionGrid(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
-    const navigation = await createTestNavigation(grid);
+    const navigation = await createWorkerNavigation(grid);
     return { grid, gridNavContext: navigation.gridNavContext, navigation };
 }
 async function syncNavBounds(ctx, startCol, endCol, startRow, endRow) {
@@ -38,14 +38,14 @@ describe("grid cell line of sight", () => {
         await stampWall(ctx, 6, 8);
         assert.equal(hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 10, 8), false);
         assert.equal(hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 4, 8), true);
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
     it("blocks diagonal sight through a solid wall patch", async () => {
         const ctx = await createVisionGrid();
         await fillRectWalls(ctx, 5, 4, 7, 10);
         assert.equal(hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 10, 6), false);
         assert.equal(hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 4, 8), true);
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
     it("blocks sight through a rail wall on the shared edge graph", async () => {
         const ctx = await createVisionGrid();
@@ -59,7 +59,7 @@ describe("grid cell line of sight", () => {
         const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, gridNavContext: ctx.gridNavContext });
         assert.equal(vision.visible.length, 1);
         assert.equal(vision.visible[0].id, 3);
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
 });
 describe("grid cell vision cone", () => {
@@ -71,7 +71,7 @@ describe("grid cell vision cone", () => {
         assert.ok(cells.length > 0);
         assert.ok(!cells.some((cell) => cell.col > 10));
         assert.ok(cells.some((cell) => cell.col === 9));
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
     it("queryGridCellVision hides goal behind wall and keeps open corridor goal", async () => {
         const ctx = await createVisionGrid();
@@ -83,7 +83,7 @@ describe("grid cell vision cone", () => {
         assert.equal(vision.visible.length, 1);
         assert.equal(vision.visible[0].id, 3);
         assert.ok(vision.cells.length > 0);
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
     it("cannot see around an L-shaped corner", async () => {
         const ctx = await createVisionGrid();
@@ -98,7 +98,7 @@ describe("grid cell vision cone", () => {
         });
         assert.equal(vision.visible.length, 0);
         assert.ok(!vision.cells.some((cell) => cell.col === 12 && cell.row === 4));
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
     it("goal outside arc is rejected even with clear grid LOS", async () => {
         const ctx = await createVisionGrid();
@@ -111,7 +111,7 @@ describe("grid cell vision cone", () => {
             gridNavContext: ctx.gridNavContext,
         });
         assert.equal(vision.visible.length, 0);
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
     it("queryGridCellVision filters visible goals by wall and arc", async () => {
         const ctx = await createVisionGrid();
@@ -123,7 +123,7 @@ describe("grid cell vision cone", () => {
         assert.equal(cone.visible.length, 1);
         assert.equal(cone.visible[0].id, 2);
         assert.ok(cone.cells.length > 0);
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
     it("observer vision frame reuses one full build per tick", async () => {
         resetVisionFullBuildCount();
@@ -152,7 +152,7 @@ describe("grid cell vision cone", () => {
         });
         nextFrame.ensureHeadVision(observer);
         assert.equal(getVisionFullBuildCount(), 2);
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
 });
 describe("grid cell vision overlay", () => {
@@ -169,7 +169,7 @@ describe("grid cell vision overlay", () => {
             assert.equal(out[i].maxY - out[i].minY, ctx.grid.cellSize);
             assert.ok(!out[i].cache);
         }
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
 });
 describe("vision cone helpers", () => {
@@ -195,6 +195,6 @@ describe("grid nav context", () => {
         for (let i = 0; i < 20; i++) hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 4, 8);
         assert.equal(ctx.gridNavContext.wallRevision, revisionAfterStamp);
         assert.deepEqual(Array.from(ctx.gridNavContext.navCardinalOpen), Array.from(openBefore));
-        terminateTestNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.navigation);
     });
 });

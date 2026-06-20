@@ -4,7 +4,7 @@ import { cellEdgeEndpoints, blockingPassageEdgeAt, edgeRailCollisionShouldEmit, 
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
-import { boundaryBlocksStep, boundaryBlocksStepFrom, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
+import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { navCanStep } from "../../Pathfinding/navTopologySab.js";
@@ -393,12 +393,10 @@ export class WorldObstacleGrid {
         const { col, row } = this.worldToGrid(x, y);
         return this.isBlocked(col, row);
     }
-    canStep(currCol, currRow, nextCol, nextRow, gridNavContext) {
+    canStep(currCol, currRow, nextCol, nextRow, _gridNavContext) {
         const { navGridFrame: frame, navTopology: topology } = this;
-        if (frame && topology) return navCanStep(frame, topology, currCol, currRow, nextCol, nextRow);
-        if (!gridNavContext) return false;
-        if (gridNavContext.navCardinalOpen?.buffer instanceof SharedArrayBuffer) return false;
-        return !boundaryBlocksStepFrom(this, gridNavContext.navCardinalOpen, gridNavContext.vertexPassability, currCol, currRow, nextCol, nextRow);
+        if (!frame || !topology) return false;
+        return navCanStep(frame, topology, currCol, currRow, nextCol, nextRow);
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

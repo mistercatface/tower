@@ -19,7 +19,7 @@ import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
-import { createTestNavigation } from "./harness/workerNavigationHarness.js";
+import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 
 loadPropAssets();
@@ -32,7 +32,7 @@ async function createFsmTestState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    const navigation = await createTestNavigation(grid);
+    const navigation = await createWorkerNavigation(grid);
     return {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
