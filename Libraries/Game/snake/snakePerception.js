@@ -1,5 +1,5 @@
 import { beginGridVisionTick } from "../../Navigation/perception/gridCellVisionSession.js";
-import { createObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
+import { createObserverVisionFrame, getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 function refreshObserverVisionFrame(state) {
     const config = getSnakeGameConfig();
@@ -11,6 +11,10 @@ function refreshObserverVisionFrame(state) {
         viewport: state.viewport,
         brainSyncOffScreenInterval: config.brainSyncOffScreenInterval,
     });
+}
+export function requireSnakeVisionFrame(state) {
+    ensureSnakePerceptionTick(state);
+    return getObserverVisionFrame(state);
 }
 export function beginSnakePerceptionTick(state, tickId) {
     const snakeGame = state.sandbox.snakeGame;

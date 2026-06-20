@@ -30,7 +30,7 @@ The single hub for this engine: a **2D-canvas, pseudo-3D sandbox engine** (no We
 | **Pathfinding** | ~56%     | pro planning core; **GridNavContext** sync; no local avoidance or smoothing              | octile A\* + HPA\* Voronoi abstraction + flow-field BFS, off-thread on SAB         | funnel / string-pull path smoothing                  | [pathfinding.md](./pathfinding.md) |
 | **Rendering**   | ~52%     | distinctive radial pseudo-3D; no lighting/shadows                        | camera-relative elevation projection + painter's sort + bake/blit LRU              | wire projected drop shadows (math exists)            | [rendering.md](./rendering.md)     |
 | **Procedural**  | ~42%     | strong _resolution_, weak _authorship_; **maze post-process** starting | cellular-automata caves + room-graph bake + cardinal-A\* corridors                 | unified root seed → derived subsystem seeds          | [procedural.md](./procedural.md)   |
-| **AI**          | ~30%     | one agent with a real perception-gated FSM + memory; snake-bound, narrow | vision-gated intent FSM + recency-LRU spatial memory + stigmergic A\* cost penalty | generalize the loop into a reusable agent FSM        | [AI.md](./AI.md)                   |
+| **AI**          | ~40%     | generic agent intent FSM + snake forage; vision frame per tick         | flee/pursue polish, utility scoring, off-screen physics sleep              | [AI.md](./AI.md)                   |
 
 **Overall engine maturity: ~49%** _(unweighted mean of the five pillars; manual)_ — sim boundary peel complete; nav/perception caches unified; headline work shifts to AI generality, path polish, and physics v2 when gameplay demands it.
 
@@ -250,10 +250,11 @@ Collapsed tier checklists; click through to the spoke for CS detail and per-tier
 <summary><b>AI</b> — ~30% · one agent with perception-gated FSM + memory · <a href="./AI.md">AI.md</a></summary>
 
 - [x] Per-entity behavior dispatch + active-behavior id + tick model
-- [x] Vision-gated intent FSM: `seek` (goal visible) ↔ `explore` (`snakeAutosim`)
+- [x] Vision-gated intent FSM: `seek` (goal visible) ↔ `explore` ↔ `flee` (`createAgentIntent` + `snakeAutosim`)
+- [x] Observer vision frame — one cone build per head per sim tick (`observerVisionFrame.js`)
 - [x] Spatial working memory (recency-LRU) → frontier explore + stigmergic A\* step penalty
 - [x] Perception (vision cone + LOS) **drives both target choice and path cost**
-- [ ] ▶ Extract a reusable agent FSM (lift seek/explore + brain out of `snakeAutosim`)
+- [ ] ▶ Off-screen snake chain sleep + HPA replan budget (snake perf PR 3–4)
 - [ ] Utility/EQS-style scored decisions; flee/pursue states; behavior trees
 - [ ] Faction hostility, squads, strategy, game theory, puzzle solvability (long-term)
   </details>
@@ -290,7 +291,7 @@ Every major code home, its owner doc, state, and CS role. **Condensed below — 
 | `Libraries/Navigation/steering/`       | AI                   | ✅    | `exploreSteering` — frontier explore destination pick                            |
 | `Libraries/FSM/`                       | AI                   | 🟡    | generic transition infra (snake FSM is hand-rolled in `snakeAutosim`)            |
 | `Libraries/Agent/`                     | AI                   | ✅    | pose + steering result contracts                                                 |
-| `Libraries/Game/snake/`                | AI/game              | ✅    | intent FSM (`snakeAutosim`), brain wiring (`snakeBrain`), goals, multi-snake     |
+| `Libraries/Game/snake/`                | AI/game              | ✅    | intent FSM (`snakeAutosim`), `observerVisionFrame`, goals, multi-snake              |
 | `Libraries/DataStructures/`            | 🔗 foundations       | ✅    | binary min-heap, grid BFS toolkit, **LRU map, packed cell keys**                 |
 | `Entities/`, `Systems/`, `GameState/`  | mixed                | ✅    | WorldProp + strategy, KineticSpatialFrame, NavigationService, shared state       |
 | `Render/`, `Apps/Editor/`              | rendering/tooling    | ✅    | render loop, draw passes, editor shell, map gen entry                            |
@@ -356,8 +357,8 @@ flowchart LR
 
 ### Active Tasks (Available to grab)
 
+- [ ] **Off-screen snake sleep + replan budget**: Sleep fully off-screen chains; cap HPA replans per frame. Snake perf after vision work.
 - [ ] **Unified root seed**: Derive all subsystem seeds from one root. Unblocks reproducible generation and regression tests.
-- [ ] **Reusable agent FSM**: Lift snake's seek/explore into a generic agent intent system. Unblocks complex AI logic.
 - [ ] **Funnel path smoothing**: String-pull over octile paths using existing LOS. Unblocks local avoidance.
 - [ ] **Projected drop shadows**: Wire the existing shadow projection into the prop/wall pass. Unblocks future lighting.
 - [ ] **Persistent contact manifolds**: Feature-id keyed warm-start. Unblocks stable stacking.

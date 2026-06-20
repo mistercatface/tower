@@ -173,11 +173,11 @@ describe("snake FSM transitions", () => {
     });
 
     it("flee chains to a new retreat cell on arrival while threat remains visible", () => {
-        applySnakeGameConfig({ fleeRange: 128, fleeTiles: 8 });
+        applySnakeGameConfig({ fleeRange: 128, fleeTiles: 2 });
         resetKineticConstraintIds(1);
         const state = createFsmTestState();
-        const small = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
-        const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
+        const small = spawnLinkedBallChain(state, { col: 24, row: 20 }, chainOptions(3));
+        const large = spawnLinkedBallChain(state, { col: 28, row: 20 }, chainOptions(5));
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, small.head.id);
         registerAliveSnake(registry, large.head.id);

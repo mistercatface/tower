@@ -29,7 +29,7 @@ export const SNAKE_GAME_DEFAULTS = {
     radiusPerMeal: 0.25,
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1, regionPaddingCells: 4, fillChance: 0.48, iterations: 4, openBoundaryRows: 3 },
     rail: { wallHeightLevel: 1, edgeThickness: 1, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
-    showVisionCones: true,
+    showVisionCones: false,
     showAllSnakeVisionCones: false,
     visionCone: { halfAngle: Math.PI / 3, range: 128, cellFill: "rgba(120, 220, 255, 0.04)", visibleGoalStroke: "rgba(255, 220, 80, 0.35)", lineWidth: 1 },
     /** Explore waypoints must be at least this many grid tiles away (Chebyshev). */
@@ -49,7 +49,7 @@ export const SNAKE_GAME_DEFAULTS = {
     navMemoryStepFalloff: 0.65,
     /** When no cell meets exploreMinTiles, retry with this minimum distance. */
     exploreFallbackMinTiles: 1,
-    showMemoryHeatmap: true,
+    showMemoryHeatmap: false,
     memoryHeatmap: { bucketCount: 8, fillRgb: "180, 100, 255", fillAlphaMax: 0.12, fillAlphaMin: 0.02 },
     /** Off-screen snakes run full FOV sync every N ticks (on-screen = every tick). */
     brainSyncOffScreenInterval: 4,

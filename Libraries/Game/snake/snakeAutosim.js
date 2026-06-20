@@ -10,7 +10,7 @@ import { getSnakeGameConfig, resolveSnakeEatRadius, applySnakeSegmentGameplay } 
 import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
-import { countLiveSnakeGoals, findNearestVisibleSnakeGoal, removeSnakeGoalProp } from "./snakeGoals.js";
+import { countLiveSnakeGoals, findNearestVisibleSnakeGoal, findNearestVisibleSnakeGoalFromVision, removeSnakeGoalProp } from "./snakeGoals.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick } from "./snakePerception.js";
@@ -60,15 +60,18 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
     const registry = state.sandbox.snakeGame.registry;
     const { brain, sync } = createSnakeBrain(visionCone);
     const headNav = createCellTargetHpaNav(state);
-    const resolveVisibleFood = (seeker, gameState) => {
+    const resolvedVisionCone = visionCone ?? config.visionCone;
+    const resolveVisibleFood = (seeker, gameState, visionContext = null) => {
+        const nearest = visionContext
+            ? findNearestVisibleSnakeGoalFromVision(gameState, seeker, visionContext.frame, visionContext.vision, visionContext.visionCone)
+            : findNearestVisibleSnakeGoal(gameState, seeker, resolvedVisionCone);
         if (pinnedGoalId != null) {
             const pinned = gameState.entityRegistry.getLive(pinnedGoalId);
             if (pinned) {
-                const visible = findNearestVisibleSnakeGoal(gameState, seeker, config.visionCone);
-                if (visible && visible.id === pinned.id) return pinned;
+                if (nearest && nearest.id === pinned.id) return pinned;
             } else pinnedGoalId = null;
         }
-        return findNearestVisibleSnakeGoal(gameState, seeker, config.visionCone);
+        return nearest;
     };
     const intent = createSnakeForageIntent({
         brain,
@@ -79,7 +82,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         selfHeadId: headId,
         registry,
         navWalkable,
-        visionCone: visionCone ?? config.visionCone,
+        visionCone: resolvedVisionCone,
         rng,
     });
     let active = false;

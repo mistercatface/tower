@@ -1,10 +1,9 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { hasGridCellLineOfSightCached, isWorldPointInVisionCone } from "../../Navigation/perception/gridCellVision.js";
-import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 import { visitLiveWorldProps } from "../../../GameState/EntityRegistry.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { collectAllSnakeGoals, collectSnakeGoalsInRect, countSnakeGoals, getSnakeGoalIndex, unregisterSnakeGoal } from "./snakeGoalIndex.js";
-import { ensureSnakePerceptionTick } from "./snakePerception.js";
+import { requireSnakeVisionFrame } from "./snakePerception.js";
 function collectSnakeGoalPropsFallback(state) {
     const goalPropId = getSnakeGameConfig().goalPropId;
     const goals = [];
@@ -30,10 +29,7 @@ export function collectSnakeGoalProps(state) {
     if (index) return collectAllSnakeGoals(index, state.entityRegistry);
     return collectSnakeGoalPropsFallback(state);
 }
-export function findNearestVisibleSnakeGoal(state, seeker, visionCone = getSnakeGameConfig().visionCone) {
-    ensureSnakePerceptionTick(state);
-    const frame = getObserverVisionFrame(state);
-    const vision = frame.readHeadVision(seeker, visionCone);
+export function findNearestVisibleSnakeGoalFromVision(state, seeker, frame, vision, visionCone = frame.visionCone) {
     if (!vision) return null;
     const gridNavContext = frame.gridNavContext;
     const visionSession = frame.visionSession;
@@ -54,6 +50,12 @@ export function findNearestVisibleSnakeGoal(state, seeker, visionCone = getSnake
         }
     }
     return nearest;
+}
+export function findNearestVisibleSnakeGoal(state, seeker, visionCone) {
+    const frame = requireSnakeVisionFrame(state);
+    const cone = visionCone ?? frame.visionCone;
+    const vision = frame.readHeadVision(seeker, cone);
+    return findNearestVisibleSnakeGoalFromVision(state, seeker, frame, vision, cone);
 }
 export function countLiveSnakeGoals(state) {
     const index = getSnakeGoalIndex(state);

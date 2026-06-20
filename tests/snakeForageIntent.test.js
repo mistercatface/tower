@@ -176,11 +176,11 @@ describe("snake forage intent", () => {
     });
 
     it("pickFleeCell steps away from the threat", () => {
-        applySnakeGameConfig({ fleeTiles: 6 });
+        applySnakeGameConfig({ fleeTiles: 3 });
         resetKineticConstraintIds(1);
         const state = createTestState();
-        const self = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
-        const larger = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
+        const self = spawnLinkedBallChain(state, { col: 22, row: 20 }, chainOptions(3));
+        const larger = spawnLinkedBallChain(state, { col: 26, row: 20 }, chainOptions(5));
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, self.head.id);
         registerAliveSnake(registry, larger.head.id);
@@ -200,11 +200,11 @@ describe("snake forage intent", () => {
     });
 
     it("smaller snake flees when a larger head is visible", () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+        applySnakeGameConfig({ fleeRange: 128, fleeTiles: 3 });
         resetKineticConstraintIds(1);
         const state = createTestState();
-        const small = spawnLinkedBallChain(state, { col: 8, row: 10 }, chainOptions(3));
-        const large = spawnLinkedBallChain(state, { col: 16, row: 10 }, chainOptions(5));
+        const small = spawnLinkedBallChain(state, { col: 22, row: 20 }, chainOptions(3));
+        const large = spawnLinkedBallChain(state, { col: 26, row: 20 }, chainOptions(5));
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, small.head.id);
         registerAliveSnake(registry, large.head.id);
