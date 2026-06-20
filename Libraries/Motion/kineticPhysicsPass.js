@@ -46,7 +46,10 @@ export function runKineticPhysics(tick, dt, hooks) {
         for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updateProp(world.worldProps[i], subDt, frame);
         frame.reindexKineticBodies(activeBodies);
         runCollisionPipeline(tick, { resolveWalls: (entity) => hooks.resolveWalls(entity, frame), applyContactSideEffects: hooks.applyContactSideEffects });
-        if (s + 1 < steps && maxActiveKineticSpeedSq(activeBodies) <= velocityEpsilonSq) {
+        const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
+        const solverStats = world.kinetic.kineticSolverStats;
+        const constraintsStable = !solverStats || solverStats.outerIterations < getCollisionSettings().kineticConstraints.iterations;
+        if (s + 1 < steps && maxSpeedSq <= velocityEpsilonSq && constraintsStable) {
             substepsRun = s + 1;
             break;
         }

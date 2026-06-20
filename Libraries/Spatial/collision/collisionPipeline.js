@@ -79,7 +79,7 @@ export function runCollisionPipeline(
             if (maxError <= constraintErrorEpsilon && maxSpeedSq <= velocityEpsilonSq) break;
         }
         tick.world.kinetic.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
-    }
+    } else tick.world.kinetic.kineticSolverStats = { outerIterations: 0, maxIterations: kineticIterations };
     if (hasActiveBodies)
         for (let i = 0; i < activeBodies.length; i++) {
             const prop = activeBodies[i];
