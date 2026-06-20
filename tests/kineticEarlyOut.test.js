@@ -33,7 +33,7 @@ function mockCircleBody(x, y, radius) {
 
 describe("kinetic early-out", () => {
     it("stops outer iterations early on settled constraint chain", () => {
-        applyGameCollisionSettings({ collisionSettings: { kineticIterations: 4, kineticEarlyOut: { minIterations: 1, velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3, persistPairs: true } } });
+        applyGameCollisionSettings({ collisionSettings: { kineticIterations: 4, kineticEarlyOut: { minIterations: 1, velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3 } } });
         resetKineticConstraintIds(1);
         const bodyA = mockCircleBody(0, 0, 10);
         const bodyB = mockCircleBody(20, 0, 10);

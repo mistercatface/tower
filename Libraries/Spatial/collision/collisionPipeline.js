@@ -2,7 +2,7 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab } from "../../Motion/kineticConstraintSolver.js";
 import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
-import { gatherKineticContactPairs, resolveKineticContactPass, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
+import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { activeBodiesMatchKineticSlab } from "./kineticBodySlab.js";
@@ -45,7 +45,7 @@ export function runCollisionPipeline(
     { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations, applyContactSideEffects = (t, contacts) => applyKineticContactSideEffects(t, contacts) } = {},
 ) {
     const frame = tick.frame;
-    const { minIterations, velocityEpsilonSq, constraintErrorEpsilon, persistPairs } = getCollisionSettings().kineticEarlyOut;
+    const { minIterations, velocityEpsilonSq, constraintErrorEpsilon } = getCollisionSettings().kineticEarlyOut;
     const activeBodies = frame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;
     if (hasActiveBodies)
@@ -57,21 +57,12 @@ export function runCollisionPipeline(
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
         gatherKineticConstraintSlab(tick);
-        let persistedPairs = null;
+        gatherKineticContactPairs(tick);
+        copyKineticPairBuffer(kineticPairBuffer, persistedKineticPairBuffer);
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;
-            if (persistPairs) {
-                if (iter === 0) {
-                    gatherKineticContactPairs(tick);
-                    copyKineticPairBuffer(kineticPairBuffer, persistedKineticPairBuffer);
-                    persistedPairs = persistedKineticPairBuffer;
-                }
-                resolveKineticContactPassWithPairs(tick, persistedPairs);
-                applyContactSideEffects(tick, kineticContactBuffer);
-            } else {
-                resolveKineticContactPass(tick);
-                applyContactSideEffects(tick, kineticContactBuffer);
-            }
+            resolveKineticContactPassWithPairs(tick, persistedKineticPairBuffer);
+            applyContactSideEffects(tick, kineticContactBuffer);
             resolveGatheredKineticConstraintSlab(tick);
             for (let i = 0; i < activeBodies.length; i++) {
                 const prop = activeBodies[i];
