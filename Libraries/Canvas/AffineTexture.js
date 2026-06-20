@@ -77,8 +77,10 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2, opts = {}) {
     let srcW = srcMaxX - srcMinX;
     let srcH = srcMaxY - srcMinY;
     if (srcW <= 0 || srcH <= 0) return;
+    // Grab current transform to restore manually instead of stack
+    const currentTransform = ctx.getTransform();
+    // Attempt absolute math to bypass save/restore entirely for the default path
     if (skipClip) {
-        ctx.save();
         if (underlay) {
             ctx.beginPath();
             ctx.moveTo(r0_x, r0_y);
@@ -90,15 +92,22 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2, opts = {}) {
         }
         ctx.transform(m11, m12, m21, m22, dx, dy);
         ctx.drawImage(img, srcMinX, srcMinY, srcW, srcH, srcMinX, srcMinY, srcW, srcH);
-        ctx.restore();
+        ctx.setTransform(currentTransform);
         return;
     }
-    ctx.save();
+    // When bleeding geometry, geometric overlap replaces the need for clipping opaque triangles
+    if (bleedPx > 0 && !underlay) {
+        ctx.transform(m11, m12, m21, m22, dx, dy);
+        ctx.drawImage(img, srcMinX, srcMinY, srcW, srcH, srcMinX, srcMinY, srcW, srcH);
+        ctx.setTransform(currentTransform);
+        return;
+    }
     ctx.beginPath();
     ctx.moveTo(r0_x, r0_y);
     ctx.lineTo(r1_x, r1_y);
     ctx.lineTo(r2_x, r2_y);
     ctx.closePath();
+    ctx.save();
     ctx.clip();
     if (underlay) {
         ctx.fillStyle = underlay;

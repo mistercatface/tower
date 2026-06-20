@@ -70,26 +70,6 @@ export function createQuantizedSpriteCache({ maxItems = 2000, viewStep = 30, vie
         },
     };
 }
-function drawImageWithModifier(ctx, image, dx, dy, dw, dh, modifier) {
-    if (modifier?.clipCircle) {
-        ctx.save();
-        prepModifiedBlit(ctx, modifier);
-        ctx.drawImage(image, dx, dy, dw, dh);
-        ctx.restore();
-        return;
-    }
-    if (modifier?.alpha != null) {
-        const prevAlpha = ctx.globalAlpha;
-        ctx.globalAlpha = prevAlpha * modifier.alpha;
-        ctx.drawImage(image, dx, dy, dw, dh);
-        ctx.globalAlpha = prevAlpha;
-        return;
-    }
-    ctx.drawImage(image, dx, dy, dw, dh);
-}
-/**
- * World-anchored blit for iso props. Opacity applied at blit time, not bake time.
- */
 export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null) {
     const bakeScale = sprite.bakeScale ?? 1;
     const anchorX = sprite.anchorX ?? 0;
@@ -99,7 +79,26 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
     const drawX = modifier?.drawX ?? worldX;
     const drawY = modifier?.drawY ?? worldY;
     const scale = modifier?.scale ?? 1;
-    drawImageWithModifier(ctx, sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale, modifier);
+    // Fast path for 99% of sprites that have no modifier
+    if (!modifier) {
+        ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+        return;
+    }
+    if (modifier.clipCircle) {
+        ctx.save();
+        prepModifiedBlit(ctx, modifier);
+        ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+        ctx.restore();
+        return;
+    }
+    if (modifier.alpha != null) {
+        const prevAlpha = ctx.globalAlpha;
+        ctx.globalAlpha = prevAlpha * modifier.alpha;
+        ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+        ctx.globalAlpha = prevAlpha;
+        return;
+    }
+    ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
 }
 // ─── Iso prop preset ─────────────────────────────────────────────────────────
 const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
