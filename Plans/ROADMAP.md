@@ -26,7 +26,7 @@ The single hub for this engine: a **2D-canvas, pseudo-3D sandbox engine** (no We
 
 | Subsystem       | Maturity | One-line state                                                           | CS core                                                                            | ▶ Next ship                                          | Doc                                |
 | --------------- | -------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------- |
-| **Physics**     | ~63%     | rigid-body core solid; **sim boundary peel complete**; no CCD, no joints beyond distance | sequential-impulse PGS solver, SAT, uniform-grid broadphase                        | persistent contact manifolds (feature-id warm-start) | [physics.md](./physics.md)         |
+| **Physics**     | ~72%     | rigid-body core solid; **feature-id warm-start complete**; no CCD, no joints beyond distance | sequential-impulse PGS solver, SAT, uniform-grid broadphase                        | revolute / motor joints | [physics.md](./physics.md)         |
 | **Pathfinding** | ~56%     | pro planning core; **GridNavContext** sync; no local avoidance or smoothing              | octile A\* + HPA\* Voronoi abstraction + flow-field BFS, off-thread on SAB         | funnel / string-pull path smoothing                  | [pathfinding.md](./pathfinding.md) |
 | **Rendering**   | ~52%     | distinctive radial pseudo-3D; no lighting/shadows                        | camera-relative elevation projection + painter's sort + bake/blit LRU              | wire projected drop shadows (math exists)            | [rendering.md](./rendering.md)     |
 | **Procedural**  | ~42%     | strong _resolution_, weak _authorship_; **maze post-process** starting | cellular-automata caves + room-graph bake + cardinal-A\* corridors                 | unified root seed → derived subsystem seeds          | [procedural.md](./procedural.md)   |
@@ -47,7 +47,7 @@ Grouped by domain. Each row: the capability, **what you have (with the CS techni
 | Integration          | ✅ semi-implicit (symplectic) Euler + fixed substeps                                      | same + sub-stepping                              | parity                                     |
 | Broadphase           | ✅ uniform-grid spatial hash, id-ordered pair stream                                      | SAP / dynamic BVH                                | grid clumps on uneven density              |
 | Narrow phase         | ✅ SAT (poly/poly), circle tiers                                                          | SAT + GJK/EPA                                    | no GJK/EPA distance                        |
-| Contact solve        | ✅ sequential impulse (PGS), Baumgarte position correction, Coulomb friction, restitution | same + block solver                              | single-point manifolds, partial warm-start |
+| Contact solve        | ✅ sequential impulse (PGS), Baumgarte, Coulomb friction, feature-id warm-start | same + block solver                              | multi-point manifolds (currently single-point) |
 | Continuous collision | ⬜ substeps only                                                                          | conservative advancement / TOI                   | tunneling at speed                         |
 | Constraints          | 🟡 distance joints, island sleep                                                          | revolute/prismatic/weld/motor + soft constraints | only distance                              |
 | Determinism          | 🟡 fixed dt                                                                               | fixed-point / cross-platform determinism         | float, non-deterministic                   |
@@ -201,14 +201,14 @@ Scene snapshot **schema v11** — flat props, kinetic constraints, chain head, r
 Collapsed tier checklists; click through to the spoke for CS detail and per-tier `▶ next`.
 
 <details>
-<summary><b>Physics</b> — ~63% · rigid-body sandbox · <a href="./physics.md">physics.md</a></summary>
+<summary><b>Physics</b> — ~72% · rigid-body sandbox · <a href="./physics.md">physics.md</a></summary>
 
 - [x] Body model + uniform-grid broadphase (SAT narrow phase)
 - [x] Semi-implicit Euler integration, fixed substeps, island sleep
 - [x] Sequential-impulse contact solve, distance constraints, chains
 - [x] Static voxel/rail walls, fracture, snake autosim payoff
 - [x] Sim boundary peel — `{ frame, world }` tick, constraint slab, frame wall cache, `worldProps`, `runKineticPhysics(tick, dt, hooks)`, **`GridNavContext`**
-- [ ] Persistent contact manifolds (feature-id warm-start) + substep early-out polish
+- [x] Persistent contact manifolds (feature-id warm-start) + substep early-out polish
 - [ ] Revolute / motor joints; CCD (TOI); mixed-shape breakable chains
   </details>
 
@@ -310,7 +310,7 @@ flowchart LR
         seed[Unified Root Seed]
         fsm[Reusable Agent FSM]
         shadows[Projected Drop Shadows]
-        manifold[Persistent Contact Manifolds]
+        cache[Render LRU Telemetry]
         smooth[Funnel Path Smoothing]
         topdown[Top-down 2D Mode]
     end
@@ -340,7 +340,7 @@ flowchart LR
 
     shadows -->|Unlocks| lighting
 
-    manifold -->|Unlocks| stacking
+    cache -->|Unlocks| 100_snakes
 
     smooth -->|Unlocks| rvo
     rvo -->|Prerequisite for| crowd
@@ -350,7 +350,7 @@ flowchart LR
     classDef next_step fill:#5a4a1c,stroke:#ffeb3b,color:#fff;
     classDef locked fill:#222,stroke:#555,color:#888,stroke-dasharray: 5 5;
 
-    class seed,fsm,shadows,manifold,smooth,topdown next_step;
+    class seed,fsm,shadows,cache,smooth,topdown next_step;
     class procgen,util,lighting,stacking,rvo locked;
     class room,squads,crowd locked;
 ```
@@ -361,7 +361,7 @@ flowchart LR
 - [ ] **Unified root seed**: Derive all subsystem seeds from one root. Unblocks reproducible generation and regression tests.
 - [ ] **Funnel path smoothing**: String-pull over octile paths using existing LOS. Unblocks local avoidance.
 - [ ] **Projected drop shadows**: Wire the existing shadow projection into the prop/wall pass. Unblocks future lighting.
-- [ ] **Persistent contact manifolds**: Feature-id keyed warm-start. Unblocks stable stacking.
+- [ ] **Render cache-pressure telemetry**: Dynamically size LRU caches based on scene unique sprite count. Unblocks smooth 100-snake rendering.
 - [ ] **Top-down 2D mode**: True orthographic projection.
 
 ---

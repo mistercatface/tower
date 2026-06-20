@@ -4,7 +4,7 @@ Progress tracker for the sandbox kinetic physics stack. Read top-to-bottom like 
 
 **Legend:** ✅ shipped · 🟡 partial · ⬜ not started · 🔜 planned (named PR set)
 
-**Overall engine maturity:** ~**68%** of a full 2D rigid-body sandbox engine (not counting 3D, fluids, or networking). **Physics v1** (sandbox/snake stack) is maintenance-ready — see [Physics v1 scope](#physics-v1--in-scope--out-of-scope) below.
+**Overall engine maturity:** ~**75%** of a full 2D rigid-body sandbox engine (not counting 3D, fluids, or networking). **Physics v1** (sandbox/snake stack) is maintenance-ready — see [Physics v1 scope](#physics-v1--in-scope--out-of-scope) below.
 
 ---
 
@@ -21,7 +21,8 @@ Shipped for sandbox + snake autosim. Pause engine work here unless you need an i
 - **Frame-scoped wall candidates** — bucket cache on `SpatialFrameCore`, no `wallContext` wrapper
 - **`worldProps` canonical list** — cold-path `visitLiveWorldProps` / `findLiveWorldProp`; hot loops stay raw index walks
 - **Physics orchestration boundary** — `runKineticPhysics(tick, dt, hooks)`; game session supplies optional `applyContactSideEffects` (snake combat wired in `setupSnakeGame`)
-- Sequential-impulse contacts + Baumgarte constraints; warm-start decay cache
+- Sequential-impulse contacts + Baumgarte constraints; feature-id manifold warm-starting
+- Distance constraint warm-starting; flattened island iteration
 - Pair list persistence across outer iters (`persistPairs`); body slab resync each contact pass
 - Active-set sleep; island internal pair skip; substep + outer early-out (slab-sync guard)
 - Voxel + rail walls, wall resolver, prop fracture
@@ -32,7 +33,7 @@ Shipped for sandbox + snake autosim. Pause engine work here unless you need an i
 
 - Game-scoped **impact break** on snake distance links (snake death trilogy PR1/PR3) — not full editor breakable-link trilogy
 - Continuous collision detection (CCD)
-- Multi-point manifolds + feature-id persistence
+- Multi-point manifolds (currently single-point SAT)
 - Constraint compliance / break force tuning
 - Chain swept volume vs walls (v1 accepts tail clip on grow — `chainVsWallGrowth.test.js`)
 - Full-time integration on body slab; SIMD; parallel pair solve
@@ -126,7 +127,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 - [x] **Sequential-impulse PGS** — velocity-level Projected Gauss–Seidel.
 - [x] **Baumgarte position bias** — penetration push-out term.
 - [x] **Coulomb friction** + [x] **restitution** — per-pair / material defaults.
-- [~] **Warm-starting** — impulse-decay cache, not full feature-id manifold persistence.
+- [x] **Warm-starting** — full feature-id manifold persistence and distance constraint warm-starting.
 - [ ] **Block / 2-contact LCP solver**, [ ] **split-impulse / NGS** — Baumgarte only.
 
 ### Constraints & joints
@@ -227,9 +228,9 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | Position correction (penetration) | ✅ | 80 | `penetration.js`, `separateAlongNormal` |
 | Normal + Coulomb friction | ✅ | 75 | pair friction defaults |
 | Restitution (pair + material) | ✅ | 70 | `collisionDefaults.js` |
-| Warm-start impulse cache | 🟡 | 65 | decay cache, not full manifold |
+| Warm-start impulse cache | ✅ | 100 | feature-id manifold persistence |
 | **Dedicated circle–circle impulse path** | ✅ | 85 | slab narrow phase + unified PGS in `kineticContactSolver.js` |
-| Manifold persistence (feature ids) | ⬜ | 0 | 🔜 trilogy 2 PR 1 |
+| Manifold persistence (feature ids) | ✅ | 100 | |
 | **Pair stream persistence (outer iters)** | ✅ | 80 | `persistedKineticPairBuffer`; gather once, slab refresh + velocity refresh each pass |
 | **Substep early-out when stable** | ✅ | 80 | constraint ε + velocity ε; skips early-out while slab ≠ props |
 | **Constraint-linked peer wake (1-hop)** | 🟡 | 65 | `_kineticLinkNeighbors` + narrowed activation vs full island |
@@ -249,7 +250,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | **Post-contact constraint pass** | ✅ | 80 | `kineticConstraintSlab` gather-once / `resolveGatheredKineticConstraintSlab(tick)` |
 | Position + velocity correction | ✅ | 65 | no compliance matrix yet |
 | Constraint debug overlay (tension color) | ✅ | 75 | `kineticConstraintOverlays.js` |
-| Constraint warm-start | ⬜ | 0 | |
+| Constraint warm-start | ✅ | 100 | |
 | Stiffness / compliance tuning | ⬜ | 0 | fixed iteration count |
 | Break force / breakable links | ⬜ | 0 | 🔜 trilogy 2 capstone |
 | Revolute / pin joint | ⬜ | 0 | 🔜 trilogy 2 PR 2 |
@@ -304,9 +305,12 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 | Iteration budget config | ✅ | 70 | `collisionDefaults.js` |
 | Worker / HPA off main thread | ✅ | 90 | nav, not physics |
 | Profile-friendly pipeline stages | ✅ | 80 | pair stream visible in traces |
-| Manifold + pair cache | ⬜ | 0 | 🔜 trilogy 2 |
+| Flattened constraint island iteration | ✅ | 100 | removes nested loop overhead |
+| Manifold + pair cache | ✅ | 100 | |
 | SoA / SIMD bodies | 🟡 | 45 | `kineticBodySlab.js` contact-pass mirror; props stay AoS · SIMD still ⬜ |
 | Parallel pair solve | ⬜ | 0 | |
+| Dynamic BVH broadphase | ⬜ | 0 | better for clumped densities than uniform grid |
+| WebAssembly / SIMD solver | ⬜ | 0 | |
 
 **Branch progress: 62%**
 
@@ -384,7 +388,7 @@ A different lens from the feature tiers below: do the **CS / numerical-methods b
 
 | PR | Theme | Status |
 |----|-------|--------|
-| C1 | Manifold persistence + substep early-out + circle impulse lane | 🟡 partial (v1 contact stack shipped; manifold feature-ids remain) |
+| C1 | Manifold persistence + substep early-out + circle impulse lane | ✅ |
 | C2 | Revolute + motor joints | 🔜 |
 | C3 | Mixed-shape / breakable chains, crate train | 🔜 |
 
@@ -410,11 +414,11 @@ Peel full `GameState` out of the hot physics path so `tick` + `world` carry spat
 
 ## Recommended next unlocks (short path)
 
-1. ~~**Trilogy C PR 1 finish**~~ — v1 contact/coherence stack shipped (PRs 1–3).
+1. ~~**Trilogy C PR 1 finish**~~ — v1 contact/coherence stack shipped (PRs 1–3 + feature-id warm-start).
 2. ~~**Sim boundary peel (parts 1–5)**~~ — tick/world/hooks split + `GridNavContext` landed; nav/perception no longer lazily rebuilds boundary caches per query.
 3. **Snake as physics proving ground** — multi-head combat (`snakeMinLengthDeath`, split-on-impact), corridor link-capsule stress (`linkCapsuleWall`), perf gate (`snakePerfBudget`) — exercise the peeled stack under real gameplay before v2 joints/CCD.
 4. **Reusable agent FSM + richer snake intents** — lift seek/explore/flee out of `snakeAutosim`; pursue/threat states on top of vision + `GridNavContext` LOS (see [AI.md](./AI.md), [pathfinding.md](./pathfinding.md)).
-5. **v2 when needed** — manifold feature-ids, revolute/motor, editor breakable links, chain wall sweep.
+5. **v2 when needed** — revolute/motor, editor breakable links, chain wall sweep, dynamic BVH.
 
 ---
 
