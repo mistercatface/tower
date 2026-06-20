@@ -8,14 +8,13 @@ import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import {
     allowsKineticCollisionPair,
-    allowsKineticCollisionPairSnapshotted,
     pairBroadphaseOverlap,
     pairBroadphaseOverlapSnapshotted,
     snapshotActiveBroadphaseBounds,
 } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
-import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 loadPropAssets();
 let nextId = 1;
 function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
@@ -77,13 +76,16 @@ describe("kinetic pair stream", () => {
         snapshotActiveBroadphaseBounds([a, b]);
         assert.equal(pairBroadphaseOverlapSnapshotted(a, b), pairBroadphaseOverlap(a, b));
     });
-    it("snapshotted pair policy matches live pair policy", () => {
+    it("slab-backed pair policy matches live bounds overlap", () => {
         const rest = mockCircleBody(0, 0, 10, 0, 0);
         const mover = mockCircleBody(18, 0, 10, 20, 0);
         rest._physId = 0;
         mover._physId = 1;
         snapshotActiveBroadphaseBounds([rest, mover]);
-        assert.equal(allowsKineticCollisionPairSnapshotted(rest, mover), allowsKineticCollisionPair(rest, mover));
+        assert.equal(
+            allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlapSnapshotted(rest, mover)),
+            allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlap(rest, mover)),
+        );
     });
     it("resting overlapping circles emit no candidate pairs", () => {
         const a = mockCircleBody(0, 0, 10, 0, 0);

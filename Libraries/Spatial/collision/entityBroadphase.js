@@ -148,27 +148,15 @@ export function pairCircleCircleOverlapSnapshotted(a, b) {
 export function pairBroadphaseOverlapSnapshotted(a, b) {
     return pairBroadphaseOverlapSlab(a._physId, b._physId);
 }
-export function shouldResolveKineticPairSnapshotted(a, b, overlaps = pairBroadphaseOverlapSnapshotted(a, b)) {
+export function shouldResolveKineticPair(a, b, overlaps) {
     if (!overlaps) return false;
     if (isKinematicallyActive(a) || isKinematicallyActive(b)) return true;
     if (a.isSleeping || b.isSleeping) return false;
     return false;
 }
-export function shouldResolveKineticPair(a, b) {
-    if (!pairBroadphaseOverlap(a, b)) return false;
-    if (isKinematicallyActive(a) || isKinematicallyActive(b)) return true;
-    if (a.isSleeping || b.isSleeping) return false;
-    return false;
-}
-export function allowsKineticCollisionPairSnapshotted(primary, other, overlaps = pairBroadphaseOverlapSnapshotted(primary, other)) {
+export function allowsKineticCollisionPair(primary, other, overlaps) {
     if (primary === other) return false;
     if (!other.strategy?.isKinetic) return false;
     if (primary.id >= other.id) return false;
-    return shouldResolveKineticPairSnapshotted(primary, other, overlaps);
-}
-export function allowsKineticCollisionPair(primary, other) {
-    if (primary === other) return false;
-    if (!other.strategy?.isKinetic) return false;
-    if (primary.id >= other.id) return false;
-    return shouldResolveKineticPair(primary, other);
+    return shouldResolveKineticPair(primary, other, overlaps);
 }

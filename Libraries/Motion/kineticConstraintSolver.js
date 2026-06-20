@@ -359,7 +359,7 @@ function solveKineticConstraintSlab(tick) {
     if (slab.count === 0) return;
     const spatialFrame = tick.frame;
     const constraintSettings = getCollisionSettings().kineticConstraints;
-    const { contactMinIterations, contactImpulseEpsilon } = getCollisionSettings().kineticEarlyOut;
+    const { contactImpulseEpsilon } = getCollisionSettings().kineticEarlyOut;
     for (let iter = 0; iter < constraintSettings.iterations; iter++) {
         let maxImpulse = 0;
         forEachConstraintIsland(slab, (start, count) => {
@@ -369,7 +369,7 @@ function solveKineticConstraintSlab(tick) {
                 if (impulse > maxImpulse) maxImpulse = impulse;
             }
         });
-        if (iter + 1 >= contactMinIterations && maxImpulse <= contactImpulseEpsilon) break;
+        if (maxImpulse <= contactImpulseEpsilon) break;
     }
 }
 export function resolveGatheredKineticConstraintSlab(tick) {

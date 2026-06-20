@@ -6,7 +6,7 @@ import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
 import { advanceKineticSleep, evaluateKineticSleepEligible, hasSleepBlockingNeighbor } from "../Libraries/Motion/kineticSleep.js";
-import { isRotatingEntity, shouldResolveKineticPair } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { isRotatingEntity, pairBroadphaseOverlap, shouldResolveKineticPair } from "../Libraries/Spatial/collision/entityBroadphase.js";
 loadPropAssets();
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 function separatePairUntilClear(a, b, maxPasses = 8) {
@@ -73,8 +73,8 @@ describe("kinetic sleep on proof props", () => {
         const a = new WorldProp(0, 0, "crate", 0);
         const b = new WorldProp(0, 14, "crate", 0);
         separatePairUntilClear(a, b);
-        assert.ok(shouldResolveKineticPair(a, b) === false);
+        assert.ok(shouldResolveKineticPair(a, b, pairBroadphaseOverlap(a, b)) === false);
         a.vx = 10;
-        assert.ok(shouldResolveKineticPair(a, b));
+        assert.ok(shouldResolveKineticPair(a, b, pairBroadphaseOverlap(a, b)));
     });
 });

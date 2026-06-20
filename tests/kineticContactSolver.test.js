@@ -6,7 +6,7 @@ import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
-import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";

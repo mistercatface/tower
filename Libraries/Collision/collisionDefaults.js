@@ -19,7 +19,7 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     /** Post-contact distance joints — separate from kinetic pair stream. */
     kineticConstraints: { iterations: 4, velocityBias: 0.2 },
     /** Stop outer kinetic iterations when constraints + velocities settle. */
-    kineticEarlyOut: { minIterations: 1, velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3, contactMinIterations: 1, contactImpulseEpsilon: 1e-4 },
+    kineticEarlyOut: { velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3, contactImpulseEpsilon: 1e-4 },
     /** Resting contacts skip re-solve iterations after warm-start. */
     kineticResting: { normalVelocityEpsilon: 0.05, tangentVelocityEpsilon: 0.05 },
 };

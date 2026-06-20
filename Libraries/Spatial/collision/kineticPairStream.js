@@ -1,4 +1,4 @@
-import { allowsKineticCollisionPairSnapshotted, isKinematicallyActive } from "./entityBroadphase.js";
+import { allowsKineticCollisionPair, isKinematicallyActive } from "./entityBroadphase.js";
 import { kineticBodySlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
 import { classifyKineticPairTier, KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 import { shareKineticIsland } from "../../Motion/kineticIslands.js";
@@ -71,7 +71,7 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (neighbor.isSleeping && isKinematicallyActive(primary) && overlaps) spatialFrame.activateKineticBody(neighbor);
             if (shareKineticIsland(primary, neighbor)) continue;
-            if (!allowsKineticCollisionPairSnapshotted(primary, neighbor, overlaps)) continue;
+            if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) continue;
             const idx = pairs.count++;
             pairs.physIdA[idx] = physIdA;

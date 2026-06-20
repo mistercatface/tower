@@ -8,7 +8,7 @@ import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { KINETIC_PAIR_TIER, classifyKineticPairTier } from "../Libraries/Spatial/collision/kineticNarrowPhase.js";
-import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 loadPropAssets();

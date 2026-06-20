@@ -19,11 +19,8 @@ function visibleThreatInRange(seeker, threat, rangeSq, gridNavContext, selfCell)
     const dy = threat.y - seeker.y;
     const distSq = dx * dx + dy * dy;
     if (distSq > rangeSq) return null;
-    if (gridNavContext && selfCell) {
-        const grid = gridNavContext.grid;
-        const threatCell = grid.worldToGrid(threat.x, threat.y);
-        if (!hasGridCellLineOfSight(gridNavContext, selfCell.col, selfCell.row, threatCell.col, threatCell.row)) return null;
-    }
+    const threatCell = gridNavContext.grid.worldToGrid(threat.x, threat.y);
+    if (!hasGridCellLineOfSight(gridNavContext, selfCell.col, selfCell.row, threatCell.col, threatCell.row)) return null;
     return Math.sqrt(distSq);
 }
 export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, visionCone = getSnakeGameConfig().visionCone) {
@@ -33,8 +30,7 @@ export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, vi
     const candidates = collectOtherSnakeHeads(state, registry, selfHeadId);
     const selfScore = getSnakeSizeScore(state, selfHeadId);
     const gridNavContext = state.navigation.gridNavContext;
-    const grid = state.obstacleGrid;
-    const selfCell = grid ? grid.worldToGrid(seeker.x, seeker.y) : null;
+    const selfCell = state.obstacleGrid.worldToGrid(seeker.x, seeker.y);
     let nearest = null;
     let bestDist = Infinity;
     for (let i = 0; i < candidates.length; i++) {

@@ -24,6 +24,11 @@ function mockWorker(path) {
 }
 
 describe("hpaPathSlot", () => {
+    it("canStep returns false when gridNavContext is missing", () => {
+        const { grid } = createGridWithNav();
+        assert.equal(grid.canStep(4, 4, 5, 4, null), false);
+    });
+
     it("findSabPathProgressIdx uses gridNavContext for waypoint canStep checks", () => {
         const { grid, gridNavContext } = createGridWithNav();
         const path = [

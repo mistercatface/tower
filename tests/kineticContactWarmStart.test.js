@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGameCollisionSettings } from "../Core/GameCollisionSettings.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { resolveKineticContactPass, lastKineticContactSolveStats } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { lastKineticContactSolveStats } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
 let nextId = 1;

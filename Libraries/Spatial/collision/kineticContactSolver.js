@@ -433,7 +433,7 @@ function applyGenericContactImpulse(contacts, i, slab, iterMaxImpulse) {
 function solveKineticContactVelocities(contacts, iterations, restingCount) {
     const slab = kineticBodySlab;
     const count = contacts.count;
-    const { contactMinIterations, contactImpulseEpsilon } = getCollisionSettings().kineticEarlyOut;
+    const { contactImpulseEpsilon } = getCollisionSettings().kineticEarlyOut;
     let iterationsRun = 0;
     let solveMaxImpulse = 0;
     for (let iter = 0; iter < iterations; iter++) {
@@ -445,7 +445,7 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
             else maxImpulse = applyGenericContactImpulse(contacts, i, slab, maxImpulse);
         }
         solveMaxImpulse = Math.max(solveMaxImpulse, maxImpulse);
-        if (iter + 1 >= contactMinIterations && maxImpulse <= contactImpulseEpsilon) break;
+        if (maxImpulse <= contactImpulseEpsilon) break;
         if (restingCount === count && count > 0 && iter + 1 >= 1) break;
     }
     lastKineticContactSolveStats = { innerIterations: iterationsRun, maxImpulse: solveMaxImpulse, restingCount };
@@ -466,10 +466,6 @@ function applyKineticContactWake(contacts, spatialFrame) {
         spatialFrame.scheduleKineticActivation(pair.bodyA);
         spatialFrame.scheduleKineticActivation(pair.bodyB);
     }
-}
-export function resolveKineticContactPass(tick) {
-    const pairs = gatherKineticContactPairs(tick);
-    resolveKineticContactPassWithPairs(tick, pairs);
 }
 export function gatherKineticContactPairs(tick) {
     snapshotActiveBroadphaseBounds(tick.frame._activeKineticBodies);

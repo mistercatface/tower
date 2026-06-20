@@ -4,7 +4,7 @@ import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { addDistanceConstraint, pruneKineticConstraintsForBody, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { distanceBetweenAnchors } from "../Libraries/Motion/constraintAnchors.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
-import { resolveKineticContactPass } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
 let nextId = 1;
