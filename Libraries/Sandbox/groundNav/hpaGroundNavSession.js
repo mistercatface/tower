@@ -31,14 +31,6 @@ export function createHpaGroundNavSession() {
     };
     const isRoutePending = () => pendingTargetReplan || navState.hpaReplanRequestId !== 0;
     const replan = (prop, targetX, targetY, state, priority = REPLAN_PRIORITY_TARGET) => {
-        console.log("hpaGroundNavSession replan requested:", {
-            propId: prop.id,
-            from: { x: prop.x, y: prop.y },
-            to: { x: targetX, y: targetY },
-            priority,
-            obstacleGeneration: state.navigation.obstacleGeneration,
-            navStepPenalty: prop.navStepPenalty,
-        });
         state.hpaPathSession.requestReplan(
             navState,
             buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, state.navigation.obstacleGeneration, prop.navStepPenalty, state.navigation.gridNavContext),
