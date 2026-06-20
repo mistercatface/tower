@@ -15,6 +15,7 @@ import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualO
 import { hueToPickerHex } from "../Libraries/Color/hex.js";
 import { pickSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
+import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell, spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
@@ -100,7 +101,7 @@ describe("snake multi-spawn", () => {
         autosim.start();
         pack.chain.head.x = goal.x;
         pack.chain.head.y = goal.y;
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         const memberIds = getChainMemberIds(state, pack.chain.head.id);
         const tail = state.entityRegistry.getLive(memberIds[memberIds.length - 1]);
         assert.equal(getPropVisualTint(tail), pack.tintHex);

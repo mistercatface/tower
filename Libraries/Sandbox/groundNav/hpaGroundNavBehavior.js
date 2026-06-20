@@ -37,7 +37,8 @@ export function createHpaGroundNavBehavior(state) {
         run.targetCellRow = snapped.row;
         if (forceReset || cellChanged) run.hpaNav.markTargetChanged();
     };
-    const tickProp = (prop, run, dt) => {
+    /** @param {number} dtMs */
+    const tickProp = (prop, run, dtMs) => {
         if (!run.targetWorld) return;
         const grid = state.obstacleGrid;
         const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
@@ -53,7 +54,7 @@ export function createHpaGroundNavBehavior(state) {
             nav: run.hpaNav,
             beltWasOnBelt: run.wasOnBelt,
             state,
-            dtMs: dt * 1000,
+            dtMs: dtMs,
             pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
         });
         run.wasOnBelt = beltWasOnBelt;
@@ -115,10 +116,10 @@ export function createHpaGroundNavBehavior(state) {
             clearGroundRollDrive(prop);
             clearRunTarget(getRun(prop), state);
         },
-        tick(prop, dt) {
-            tickProp(prop, getRun(prop), dt);
+        tick(prop, dtMs) {
+            tickProp(prop, getRun(prop), dtMs);
         },
-        tickWorld(dt) {
+        tickWorld(dtMs) {
             propRuns.forEach((run, propId) => {
                 if (!run.targetWorld) return;
                 const prop = state.entityRegistry.getLive(propId);
@@ -126,7 +127,7 @@ export function createHpaGroundNavBehavior(state) {
                     propRuns.delete(propId);
                     return;
                 }
-                tickProp(prop, run, dt);
+                tickProp(prop, run, dtMs);
             });
         },
         getPathOverlay(prop) {

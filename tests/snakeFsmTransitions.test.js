@@ -14,6 +14,7 @@ import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGr
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { createSnakeForageIntent } from "../Libraries/AI/agentIntent/createSnakeForageIntent.js";
 import { createSnakeAutosim, createSnakeBrain } from "../Libraries/Game/snake/snakeAutosim.js";
+import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
@@ -143,7 +144,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "explore");
         chain.head.x = state.obstacleGrid.gridToWorld(10, 8).x;
         chain.head.y = state.obstacleGrid.gridToWorld(10, 8).y;
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "seek_food");
         assert.equal(autosim.getLastTransitionReason(), "mode_seek_food");
         assert.ok(autosim.getDestination());
@@ -167,7 +168,7 @@ describe("snake FSM transitions", () => {
         autosim.start();
         assert.equal(autosim.getMode(), "seek_food");
         large.head.x = small.head.x + 80;
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "flee");
         assert.equal(autosim.getLastTransitionReason(), "threat_visible");
     });

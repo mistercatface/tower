@@ -20,10 +20,11 @@ import { spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/sna
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { HPA_REPLAN_PEAK_INFLIGHT_CAP } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
+import { FRAME_MS } from "./frameMs.js";
 loadPropAssets();
 /** Brain-on baseline — raise only when intentionally adding cost. */
 const PERF_TICKS = 120;
-const PERF_DT = 1 / 60;
+const PERF_DT = FRAME_MS;
 const WALL_CLOCK_MS_CEILING = 18_000;
 const REPLAN_REQUEST_CEILING = 2000;
 async function createPerfState(cols = 48, rows = 48) {

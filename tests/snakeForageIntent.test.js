@@ -13,6 +13,7 @@ import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry
 import { cellChebyshevDistance } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { findNearestVisibleThreat, pickFleeCell, pickSnakeIntentPolicy, pickSnakeIntentTarget, perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
+import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { spawnSnakeStriker } from "../Libraries/Game/snake/snakeStriker.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
@@ -195,7 +196,7 @@ describe("snake forage intent", () => {
         large.head.y = small.head.y;
         const autosim = createWiredSnakeAutosim(state, { headId: small.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
         autosim.start();
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "flee");
         assert.ok(autosim.getDestination());
     });

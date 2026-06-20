@@ -49,8 +49,8 @@ export function createCellTargetLocomotion(headNav) {
         getStatus(_agent, _state) {
             return headNav.getStatus();
         },
-        tick(agent, dt, _state) {
-            headNav.tick(agent, dt);
+        tick(agent, dtMs, _state) {
+            headNav.tick(agent, dtMs);
         },
         clear(agent, _state) {
             headNav.clear(agent);
@@ -101,7 +101,8 @@ export function createCellTargetHpaNav(state) {
         if (!destWorld) return;
         hpaNav.replan(prop, destWorld.x, destWorld.y, state, REPLAN_PRIORITY_TARGET);
     };
-    const tick = (prop, dt) => {
+    /** @param {number} dtMs */
+    const tick = (prop, dtMs) => {
         if (destCol == null || !destWorld) return;
         if (needsRetry()) replan(prop);
         const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
@@ -113,7 +114,7 @@ export function createCellTargetHpaNav(state) {
             nav: hpaNav,
             beltWasOnBelt: wasOnBelt,
             state,
-            dtMs: dt * 1000,
+            dtMs: dtMs,
             pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
         });
         wasOnBelt = beltWasOnBelt;

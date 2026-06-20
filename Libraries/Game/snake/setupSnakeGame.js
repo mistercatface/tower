@@ -138,11 +138,10 @@ export async function setupSnakeGame(state) {
         },
         getSegmentCount,
         tick(dtMs) {
-            const dtSec = dtMs / 1000;
             const snakeGame = state.sandbox.snakeGame;
             snakeGame._batchingPerception = true;
             beginSnakePerceptionFrame(state);
-            for (const autosim of autosimsByHeadId.values()) autosim.tick(dtSec);
+            for (const autosim of autosimsByHeadId.values()) autosim.tick(dtMs);
             endSnakePerceptionFrame(state);
             snakeGame._batchingPerception = false;
             hud.update();

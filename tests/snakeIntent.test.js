@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { cellChebyshevDistance, pickExploreDestination, exploreFringeMinRankFromNewest } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
+import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
@@ -134,7 +135,7 @@ describe("snake intent FSM", () => {
         assert.ok(autosim.getDestination());
         chain.head.x = state.obstacleGrid.gridToWorld(10, 8).x;
         chain.head.y = state.obstacleGrid.gridToWorld(10, 8).y;
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "seek_food");
         assert.ok(autosim.getDestination());
     });
@@ -153,7 +154,7 @@ describe("snake intent FSM", () => {
         large.head.y = small.head.y;
         const autosim = createWiredSnakeAutosim(state, { headId: small.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
         autosim.start();
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "flee");
     });
 });

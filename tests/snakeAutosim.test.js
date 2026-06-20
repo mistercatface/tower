@@ -13,6 +13,7 @@ import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/di
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { createSnakeAutosim, findSnakeGoalProp } from "../Libraries/Game/snake/snakeAutosim.js";
+import { FRAME_MS } from "./frameMs.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
@@ -80,7 +81,7 @@ describe("snakeAutosim", () => {
         autosim.start();
         chain.head.x = goal.x;
         chain.head.y = goal.y;
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         assert.equal(state.kinetic.kineticConstraints.length, 3);
         assert.equal(getChainMemberIds(state, chain.head.id).length, 4);
         assert.equal(countLiveGoalOrbs(state), 1);
@@ -105,7 +106,7 @@ describe("snakeAutosim", () => {
         autosim.start();
         chain.head.x = goal.x;
         chain.head.y = goal.y;
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         const members = getChainMemberIds(state, chain.head.id).map((id) => state.entityRegistry.getLive(id));
         for (let i = 0; i < members.length; i++) assert.equal(getCirclePropRadius(members[i]), 2.25);
     });
@@ -126,9 +127,9 @@ describe("snakeAutosim", () => {
         autosim.start();
         chain.head.x = goal.x;
         chain.head.y = goal.y;
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         const nextGoal = findSnakeGoalProp(state);
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         const dest = autosim.getDestination();
         assert.ok(nextGoal);
         assert.ok(dest);

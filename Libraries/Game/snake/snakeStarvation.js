@@ -3,16 +3,16 @@ import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.j
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSegmentCount, stepSnakeChainRadiusDown } from "./snakeScale.js";
-export function createSnakeFoodTimer(intervalSec = getSnakeGameConfig().starvationIntervalSec) {
-    return { remainingSec: intervalSec, intervalSec };
+export function createSnakeFoodTimer(intervalMs = getSnakeGameConfig().starvationIntervalMs) {
+    return { remainingMs: intervalMs, intervalMs };
 }
-export function resetSnakeFoodTimer(timer, intervalSec = timer.intervalSec) {
-    timer.remainingSec = intervalSec;
-    timer.intervalSec = intervalSec;
+export function resetSnakeFoodTimer(timer, intervalMs = timer.intervalMs) {
+    timer.remainingMs = intervalMs;
+    timer.intervalMs = intervalMs;
 }
 export function getSnakeFoodTimerFraction(timer) {
-    if (timer.intervalSec <= 0) return 1;
-    return Math.max(0, Math.min(1, timer.remainingSec / timer.intervalSec));
+    if (timer.intervalMs <= 0) return 1;
+    return Math.max(0, Math.min(1, timer.remainingMs / timer.intervalMs));
 }
 export function shrinkSnakeChainFromStarvation(state, headId, members = null) {
     const config = getSnakeGameConfig();
@@ -28,24 +28,25 @@ export function shrinkSnakeChainFromStarvation(state, headId, members = null) {
     stepSnakeChainRadiusDown(state, headId, resolvedMembers.slice(0, -1));
     return true;
 }
-export function tickSnakeFoodTimer(state, headId, timer, dt, members = null) {
+/** @param {number} dtMs */
+export function tickSnakeFoodTimer(state, headId, timer, dtMs, members = null) {
     const config = getSnakeGameConfig();
     const resolvedMembers = members || getConnectedComponentPath(state.kinetic, headId);
     if (getSnakeSegmentCount(state, headId, resolvedMembers) <= config.minAliveSegmentCount) {
-        timer.remainingSec = timer.intervalSec;
+        timer.remainingMs = timer.intervalMs;
         return false;
     }
-    timer.remainingSec -= dt;
+    timer.remainingMs -= dtMs;
     let shed = false;
-    while (timer.remainingSec <= 0 && getSnakeSegmentCount(state, headId, resolvedMembers) > config.minAliveSegmentCount) {
+    while (timer.remainingMs <= 0 && getSnakeSegmentCount(state, headId, resolvedMembers) > config.minAliveSegmentCount) {
         if (!shrinkSnakeChainFromStarvation(state, headId, resolvedMembers)) {
-            timer.remainingSec = timer.intervalSec;
+            timer.remainingMs = timer.intervalMs;
             break;
         }
         resolvedMembers.pop();
         shed = true;
-        timer.remainingSec += timer.intervalSec;
+        timer.remainingMs += timer.intervalMs;
     }
-    if (getSnakeSegmentCount(state, headId, resolvedMembers) <= config.minAliveSegmentCount) timer.remainingSec = timer.intervalSec;
+    if (getSnakeSegmentCount(state, headId, resolvedMembers) <= config.minAliveSegmentCount) timer.remainingMs = timer.intervalMs;
     return shed;
 }

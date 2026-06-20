@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createGoalSeekAutosim } from "../Libraries/Sandbox/autosim/goalSeekAutosim.js";
+import { FRAME_MS } from "./frameMs.js";
 
 describe("goalSeekAutosim", () => {
     it("issues setMoveTarget once per goal until the nav target is lost", () => {
@@ -38,11 +39,11 @@ describe("goalSeekAutosim", () => {
         );
         autosim.start();
         assert.equal(setMoveTargetCalls, 1);
-        autosim.tick(1 / 60);
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
+        autosim.tick(FRAME_MS);
         assert.equal(setMoveTargetCalls, 1);
         behavior._hasTarget = false;
-        autosim.tick(1 / 60);
+        autosim.tick(FRAME_MS);
         assert.equal(setMoveTargetCalls, 2);
     });
 });

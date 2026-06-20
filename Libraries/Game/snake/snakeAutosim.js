@@ -88,14 +88,14 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         rng,
     });
     let active = false;
-    const foodTimer = createSnakeFoodTimer(config.starvationIntervalSec);
+    const foodTimer = createSnakeFoodTimer(config.starvationIntervalMs);
     const syncTailId = () => {
         const liveMembers = chainMemberProps(state, headId);
         tailId = liveMembers[liveMembers.length - 1].id;
     };
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
     const eatGoal = (seeker, goal, dt, members = null) => {
-        resetSnakeFoodTimer(foodTimer, config.starvationIntervalSec);
+        resetSnakeFoodTimer(foodTimer, config.starvationIntervalMs);
         const goalCell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
         brain.stampArrival(goalCell.col, goalCell.row);
         removeSnakeGoalProp(state, goal);
@@ -122,7 +122,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         headId,
         start() {
             active = true;
-            resetSnakeFoodTimer(foodTimer, config.starvationIntervalSec);
+            resetSnakeFoodTimer(foodTimer, config.starvationIntervalMs);
             intent.resetMode();
             intent.resetMemory();
             runSnakeFsmTick(intent, resolveSeeker(), state, 0);
@@ -159,22 +159,23 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         getPathOverlay() {
             return intent.headNav.getPathOverlay(resolveSeeker());
         },
-        tick(dt) {
+        /** @param {number} dtMs */
+        tick(dtMs) {
             if (!active) return;
             const seeker = resolveSeeker();
             const members = getConnectedBodyIds(state.kinetic, headId);
-            const choice = runSnakeFsmTick(intent, seeker, state, dt);
+            const choice = runSnakeFsmTick(intent, seeker, state, dtMs);
             let fedThisTick = false;
             if (choice.mode === "seek_food" && choice.target) {
                 const goal = choice.target;
                 const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
                 const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
                 if (dist <= radius) {
-                    eatGoal(seeker, goal, dt, members);
+                    eatGoal(seeker, goal, dtMs, members);
                     fedThisTick = true;
                 }
             }
-            if (!fedThisTick && tickSnakeFoodTimer(state, headId, foodTimer, dt, members)) syncTailId();
+            if (!fedThisTick && tickSnakeFoodTimer(state, headId, foodTimer, dtMs, members)) syncTailId();
         },
     };
 }

@@ -518,14 +518,14 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
                 selectedProp: session.getSelectedProp(),
             });
         },
-        tick(dt) {
+        tick(dtMs) {
             session.pruneSelection();
-            for (let i = 0; i < behaviors.length; i++) behaviors[i].tickWorld?.(dt);
+            for (let i = 0; i < behaviors.length; i++) behaviors[i].tickWorld?.(dtMs);
             const prop = session.getSelectedProp();
             const behavior = resolveBehavior();
             if (!prop || !behavior?.tick) return;
             if (behavior.tickWorld) return;
-            behavior.tick(prop, dt);
+            behavior.tick(prop, dtMs);
         },
         getPathVisual(prop) {
             return resolveSandboxPathVisual(state, prop);

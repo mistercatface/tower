@@ -5,6 +5,7 @@ import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { SandboxEntityMetaStore } from "../GameState/sandboxEntityMeta.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { createFlowGroundNavBehavior } from "../Libraries/Sandbox/groundNav/flowGroundNavBehavior.js";
+import { FRAME_MS } from "./frameMs.js";
 import { steerRollToward, getKineticRollConfig } from "../Libraries/Sandbox/kineticRollActuator.js";
 
 function createNavState(prop) {
@@ -47,7 +48,7 @@ describe("ground nav arrival", () => {
         prop.x = target.x;
         prop.y = target.y;
 
-        hpa.tickWorld(1 / 60);
+        hpa.tickWorld(FRAME_MS);
 
         assert.equal(hpa.hasMoveTarget(prop), false);
         assert.equal(prop._groundRollDrive, undefined);
@@ -65,7 +66,7 @@ describe("ground nav arrival", () => {
         prop.x = target.x;
         prop.y = target.y;
 
-        flow.tickWorld(1 / 60);
+        flow.tickWorld(FRAME_MS);
 
         assert.equal(prop._groundRollDrive, undefined);
         assert.equal(prop.vx, 12);
