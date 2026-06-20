@@ -28,7 +28,7 @@ export function mountSnakeHud(getSegmentCount, { getFoodTimerFraction = null, ge
         update() {
             const length = getSegmentCount();
             lengthEl.textContent = String(length);
-            if (getFoodTimerFraction && foodFillEl) foodFillEl.style.width = `${Math.round(getFoodTimerFraction() * 100)}%`;
+            if (getFoodTimerFraction && foodFillEl) foodFillEl.style.transform = `scaleX(${getFoodTimerFraction()})`;
             if (fsmDebugEl) fsmDebugEl.textContent = getFsmDebugLine();
             if (length <= best) return;
             best = length;

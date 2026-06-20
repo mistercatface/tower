@@ -141,7 +141,9 @@ body.shell-game .snake-hud-food-fill {
     width: 100%;
     border-radius: inherit;
     background: linear-gradient(90deg, rgba(255, 120, 72, 0.95), rgba(255, 210, 96, 0.95));
-    transition: width 120ms linear;
+    transform-origin: left center;
+    transform: scaleX(1);
+    transition: transform 120ms linear;
 }
 
 body.shell-game .snake-hud-camera-toggle {

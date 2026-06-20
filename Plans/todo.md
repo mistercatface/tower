@@ -8,11 +8,10 @@
 
 -- duplicate work in hot loops and parallel abstractions are. UI-side, virtual lists fixed DOM cost but refreshPanel still rebuilds every section and re-sorts the full scene list on every sync — dirty flags on placement/selection would be the next library-level win there, separate from physics.
 
--- Bigger dedupe targets: three visibility models doing the same job (viewport.isVisible in nav/render, entityRegistry.queryView in overlays/draw, isPropNavVisible as a one-off wrapper) — one “in sim view bounds?” helper keyed off boundsQuery/boundsVisibleWide would unify overlay culling and off-screen replan/sleep policy.
-
 ## 06/19/2026
 
 8:00 AM - 8:50 AM: ViewportBounds refactor
+8:50 AM - 9:12 AM: Generic FSM extract
 
 ## MILESTONE LOG
 
