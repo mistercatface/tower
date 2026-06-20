@@ -14,6 +14,7 @@ export function canSleepKinetic(entity, { blocksSleep = () => false } = {}) {
 }
 export function wakeKineticBody(entity) {
     if (!isKinetic(entity)) return;
+    if (!entity.isSleeping && entity._sleepFrames === 0) return;
     entity._sleepFrames = 0;
     entity.isSleeping = false;
     const linked = entity._kineticLinkNeighbors;
