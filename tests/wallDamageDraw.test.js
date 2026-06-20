@@ -42,7 +42,7 @@ describe("wall damage draw (PR 5)", () => {
         const session = createGridWallDamageSession(100);
         const state = {
             obstacleGrid: grid,
-            sandbox: { gridWallDamage: { session, commit: { flush() {} } } },
+            sandbox: { gridWallDamage: { session, commit: { flush() {} }, config: { maxHp: 100 } } },
             worldSurfaces: { invalidateGridBounds() {} },
         };
         const bounds = { startCol: 1, endCol: 2, startRow: 1, endRow: 2 };

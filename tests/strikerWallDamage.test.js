@@ -2,12 +2,13 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { SNAKE_GAME_DEFAULTS } from "../Config/games/snake.js";
-import { createDeferredGridWallCommit } from "../Libraries/Sandbox/deferredGridWallCommit.js";
 import {
-    applyPendingStrikerWallDamage,
-    computeStrikerWallDamage,
-    createGridWallDamageSession,
-    queueStrikerWallHits,
+    applyPendingWallDamage,
+    computeWallImpactDamage,
+    createGridWallDamage,
+    flushPendingWallDamage,
+    queueWallHits,
+    resolveKineticWallDamage,
     resolveWallDamageTarget,
     wallDamageKey,
 } from "../Libraries/Sandbox/gridWallDamage.js";
@@ -22,7 +23,7 @@ import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js"
 
 const WALL_DAMAGE = SNAKE_GAME_DEFAULTS.wallDamage;
 
-function createStrikerWallDamageTestState() {
+function createWallDamageTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 128, 128);
     const navigation = createTestNavigation(grid);
@@ -40,18 +41,36 @@ function stampVoxel(grid, col, row, level = 1) {
     grid.grid[colRowToIndex(col, row, grid.cols)] = level;
 }
 
-describe("striker wall damage (4b)", () => {
-    it("computeStrikerWallDamage scales with speed and approach angle", () => {
-        assert.equal(computeStrikerWallDamage(20, -20, WALL_DAMAGE), 0);
-        assert.equal(computeStrikerWallDamage(560, 10, WALL_DAMAGE), 0);
-        const maxHit = computeStrikerWallDamage(560, -560, WALL_DAMAGE);
+describe("kinetic wall damage", () => {
+    it("computeWallImpactDamage scales with speed and approach angle", () => {
+        assert.equal(computeWallImpactDamage(20, -20, WALL_DAMAGE), 0);
+        assert.equal(computeWallImpactDamage(560, 10, WALL_DAMAGE), 0);
+        const maxHit = computeWallImpactDamage(560, -560, WALL_DAMAGE);
         assert.ok(Math.abs(maxHit - 45) < 0.001);
-        const graze = computeStrikerWallDamage(560, -112, WALL_DAMAGE);
+        const graze = computeWallImpactDamage(560, -112, WALL_DAMAGE);
         assert.ok(Math.abs(graze - 9) < 0.001);
     });
 
+    it("resolveKineticWallDamage queues hits for any kinetic body", () => {
+        const state = createWallDamageTestState();
+        state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        stampVoxel(state.obstacleGrid, 6, 6);
+        const segment = { gridCol: 6, gridRow: 6, isStaticGridProxy: true, isEdgeRail: false };
+        const entity = { id: 42, vx: 560, vy: 0 };
+        const wallResolver = {
+            resolve(body) {
+                body._wallResolveHits = [{ approachDot: -560, normalX: 1, normalY: 0, segment }];
+                return true;
+            },
+        };
+        resolveKineticWallDamage(state, entity, {}, wallResolver);
+        assert.equal(state.sandbox.gridWallDamage.session.pendingDamage.get("v:6,6"), 45);
+        flushPendingWallDamage(state);
+        assert.ok(state.sandbox.gridWallDamage.session.entries.get("v:6,6").hp < 100);
+    });
+
     it("resolveWallDamageTarget distinguishes voxel and rail segments", () => {
-        const state = createStrikerWallDamageTestState();
+        const state = createWallDamageTestState();
         const grid = state.obstacleGrid;
         stampVoxel(grid, 2, 2);
         stampRailWallsQuiet(state, [{ col: 4, row: 4, side: 1, heightLevel: 1, thicknessLevel: 1 }]);
@@ -62,32 +81,30 @@ describe("striker wall damage (4b)", () => {
     });
 
     it("three max-power head-on hits destroy a voxel wall", async () => {
-        const state = createStrikerWallDamageTestState();
+        const state = createWallDamageTestState();
         const grid = state.obstacleGrid;
         stampVoxel(grid, 3, 3);
-        const session = createGridWallDamageSession();
-        const commit = createDeferredGridWallCommit(state);
+        const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         const segment = { gridCol: 3, gridRow: 3, isStaticGridProxy: true, isEdgeRail: false };
         const hit = { approachDot: -560, normalX: 1, normalY: 0, segment };
         for (let i = 0; i < 3; i++) {
-            queueStrikerWallHits(session, grid, [hit], 560, WALL_DAMAGE);
-            await applyPendingStrikerWallDamage(state, session, commit, WALL_DAMAGE);
+            queueWallHits(wallDamage.session, grid, [hit], 560, WALL_DAMAGE);
+            await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit, WALL_DAMAGE);
         }
         assert.ok(!cellIsStaticWall(grid, 3, 3));
-        assert.equal(session.entries.size, 0);
+        assert.equal(wallDamage.session.entries.size, 0);
     });
 
     it("three max-power head-on hits destroy a rail wall", async () => {
-        const state = createStrikerWallDamageTestState();
+        const state = createWallDamageTestState();
         const grid = state.obstacleGrid;
         stampRailWallsQuiet(state, [{ col: 5, row: 5, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
-        const session = createGridWallDamageSession();
-        const commit = createDeferredGridWallCommit(state);
+        const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         const segment = { gridCol: 5, gridRow: 5, gridSide: 0, isStaticGridProxy: false, isEdgeRail: true };
         const hit = { approachDot: -560, normalX: 0, normalY: 1, segment };
         for (let i = 0; i < 3; i++) {
-            queueStrikerWallHits(session, grid, [hit], 560, WALL_DAMAGE);
-            await applyPendingStrikerWallDamage(state, session, commit, WALL_DAMAGE);
+            queueWallHits(wallDamage.session, grid, [hit], 560, WALL_DAMAGE);
+            await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit, WALL_DAMAGE);
         }
         assert.ok(!isRailWallEdge(grid.edgeStore.get(5, 5, 0, grid.cols)));
     });

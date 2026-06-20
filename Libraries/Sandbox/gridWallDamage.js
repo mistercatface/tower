@@ -2,7 +2,10 @@ import { emptyCellBounds, growCellBounds } from "../DataStructures/CellRect.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { isRailWallEdge } from "../Spatial/grid/CellEdge.js";
 import { cellIsStaticWall } from "../Spatial/grid/gridCellTopology.js";
+import { createDeferredGridWallCommit } from "./deferredGridWallCommit.js";
 import { invalidateWallDamageDraw } from "./wallDamageInvalidation.js";
+/** @typedef {{ maxHp: number, minStrikeSpeed: number, referenceMaxSpeed: number, maxHitDamage: number, minAngleFactor: number }} WallDamageConfig */
+/** @typedef {{ config: WallDamageConfig, session: ReturnType<typeof createGridWallDamageSession>, commit: import("./deferredGridWallCommit.js").DeferredGridWallCommit }} GridWallDamageState */
 /** @typedef {{ kind: "voxel", col: number, row: number } | { kind: "rail", col: number, row: number, side: number }} WallDamageTarget */
 /** @typedef {{ kind: "voxel", col: number, row: number, hp: number } | { kind: "rail", col: number, row: number, side: number, hp: number }} WallDamageEntry */
 export function wallDamageKey(target) {
@@ -29,7 +32,7 @@ export function resolveWallDamageTarget(grid, segment) {
  * @param {number} approachDot — negative when driving into the wall normal
  * @param {{ minStrikeSpeed: number, referenceMaxSpeed: number, maxHitDamage: number, minAngleFactor: number }} config
  */
-export function computeStrikerWallDamage(preSpeed, approachDot, config) {
+export function computeWallImpactDamage(preSpeed, approachDot, config) {
     if (preSpeed < config.minStrikeSpeed || approachDot >= 0) return 0;
     const speedSpan = config.referenceMaxSpeed - config.minStrikeSpeed;
     const speedT = speedSpan <= 0 ? 1 : Math.min(1, Math.max(0, (preSpeed - config.minStrikeSpeed) / speedSpan));
@@ -47,8 +50,36 @@ export function createGridWallDamageSession(maxHp = 100) {
     };
 }
 /** @param {object} state */
+export function getGridWallDamageState(state) {
+    return state.sandbox?.gridWallDamage ?? null;
+}
+/** @param {object} state */
 export function getGridWallDamageSession(state) {
-    return state.sandbox?.gridWallDamage?.session ?? state.sandbox?.snakeGame?.strikerWallDamage?.session ?? null;
+    return getGridWallDamageState(state)?.session ?? null;
+}
+/** @param {object} state @param {WallDamageConfig} config */
+export function createGridWallDamage(state, config) {
+    return { config, session: createGridWallDamageSession(config.maxHp), commit: createDeferredGridWallCommit(state) };
+}
+/**
+ * @param {object} state
+ * @param {import("../Motion/WallCollisionResolver.js").WallCollisionResolver} wallResolver
+ * @param {object} entity
+ * @param {{ frameId: number, getWallCandidates: (entity: object) => object[] }} spatialFrame
+ */
+export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolver) {
+    const wallDamage = getGridWallDamageState(state);
+    const preSpeed = Math.hypot(entity.vx ?? 0, entity.vy ?? 0);
+    const collided = wallResolver.resolve(entity, spatialFrame);
+    if (!wallDamage || !entity._wallResolveHits?.length) return collided;
+    queueWallHits(wallDamage.session, state.obstacleGrid, entity._wallResolveHits, preSpeed, wallDamage.config);
+    return collided;
+}
+/** @param {object} state */
+export function flushPendingWallDamage(state) {
+    const wallDamage = getGridWallDamageState(state);
+    if (!wallDamage) return null;
+    return applyPendingWallDamage(state, wallDamage.session, wallDamage.commit, wallDamage.config);
 }
 /** @param {ReturnType<typeof createGridWallDamageSession>} session @param {WallDamageTarget} target */
 export function resolveWallDamageTintRatio(session, target) {
@@ -89,12 +120,12 @@ function targetToSegment(target) {
  * @param {number} preSpeed
  * @param {{ maxHp: number, minStrikeSpeed: number, referenceMaxSpeed: number, maxHitDamage: number, minAngleFactor: number }} config
  */
-export function queueStrikerWallHits(session, grid, hits, preSpeed, config) {
+export function queueWallHits(session, grid, hits, preSpeed, config) {
     for (let i = 0; i < hits.length; i++) {
         const hit = hits[i];
         const target = resolveWallDamageTarget(grid, hit.segment);
         if (!target) continue;
-        const damage = computeStrikerWallDamage(preSpeed, hit.approachDot, config);
+        const damage = computeWallImpactDamage(preSpeed, hit.approachDot, config);
         if (damage <= 0) continue;
         const key = wallDamageKey(target);
         const prev = session.pendingDamage.get(key) ?? 0;
@@ -107,7 +138,7 @@ export function queueStrikerWallHits(session, grid, hits, preSpeed, config) {
  * @param {import("./deferredGridWallCommit.js").DeferredGridWallCommit} commit
  * @param {{ maxHp: number, minStrikeSpeed: number, referenceMaxSpeed: number, maxHitDamage: number, minAngleFactor: number }} config
  */
-export function applyPendingStrikerWallDamage(state, session, commit, config) {
+export function applyPendingWallDamage(state, session, commit, config) {
     if (!session.pendingDamage.size) return null;
     const grid = state.obstacleGrid;
     const voxels = [];

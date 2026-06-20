@@ -7,6 +7,7 @@ import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { kineticTickFromState } from "../../GameState/KineticTick.js";
 import { runKineticPhysics } from "../../Libraries/Motion/kineticPhysicsPass.js";
 import { applyKineticContactSideEffects } from "../../Libraries/Spatial/collision/kineticContactSideEffects.js";
+import { flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Sandbox/gridWallDamage.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
@@ -41,11 +42,12 @@ function simulationKineticHooks(state) {
         resolveWalls(entity, frame) {
             const session = state.appLaunch?.session;
             if (session?.resolveWalls) return session.resolveWalls(entity, frame);
-            return state.wallResolver.resolve(entity, frame);
+            return resolveKineticWallDamage(state, entity, frame, state.wallResolver);
         },
         applyContactSideEffects,
-        afterKineticPhysics(tick) {
-            state.appLaunch?.session?.afterKineticPhysics?.(tick);
+        afterKineticPhysics() {
+            state.appLaunch?.session?.afterKineticPhysics?.();
+            flushPendingWallDamage(state);
         },
     };
 }
