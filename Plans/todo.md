@@ -12,7 +12,8 @@
 10:54 AM - 11:19 AM: Kinetic chain refactor
 11:20 AM - 11:41 AM: Physics warm starts
 11:41 AM - 12:01 PM: Canvas pooling + thrashing fixes
-12:01 PM - 2:36 PM: Real bad pathfinding bug. Preparation for large pathfinding refactor.
+12:01 PM - 2:36 PM: Real bad pathfinding bug. Preparation for large pathfinding refactor
+3:30 PM - : Pathfinding refactor
 
 ## MILESTONE LOG
 
