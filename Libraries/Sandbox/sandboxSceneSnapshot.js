@@ -1,11 +1,11 @@
 import { getPropAsset } from "../Props/PropCatalog.js";
-import { unionCellBoundsList } from "../DataStructures/CellRect.js";
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
 import { cellToGlobalColRow, isCanonicalEdgeRepresentative } from "../Spatial/grid/gridCellTopology.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlacedFloorBeltsForSnapshot, listPlacedPassagePowerSourcesForSnapshot } from "./floorOccupancy.js";
 import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";
-import { notifyGridWallChange } from "./boundaryEdit.js";
+import { commitGridNavEdit } from "./gridNavEdit.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch, setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 import {
     applyStampedForcefieldsFromGlobal,
     applyStampedGridWallsFromGlobal,
@@ -21,7 +21,6 @@ import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, removeSand
 import { setChainHead } from "./chainLinks.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Motion/kineticConstraints.js";
-import { setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Sandbox/sandboxFaction.js";
 /**
@@ -172,14 +171,13 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     expandGridForSnapshot(state, doc);
     const wallBounds = applyStampedGridWallsFromGlobal(state, doc.voxels, doc.railWalls, cellSize);
     const forcefieldBounds = applyStampedForcefieldsFromGlobal(state, doc.forcefields, cellSize);
-    const beltBounds = applyFloorBeltsFromGlobal(state, doc.floorBelts, cellSize);
-    const powerSourceBounds = applyPassagePowerSourcesFromGlobal(state, doc.powerSources, cellSize);
-    const stampBounds = unionCellBoundsList([wallBounds, forcefieldBounds, beltBounds, powerSourceBounds]);
+    applyFloorBeltsFromGlobal(state, doc.floorBelts, cellSize);
+    applyPassagePowerSourcesFromGlobal(state, doc.powerSources, cellSize);
     const grid = state.obstacleGrid;
     grid.edgeStore.recomputePassageEdgeCount();
     applyPassagePowerGridState(state);
-    const surfaceBounds = stampBounds ?? { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 };
-    await notifyGridWallChange(state, surfaceBounds, { fullNavSync: true });
+    if (wallBounds || forcefieldBounds) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    await commitGridNavEdit(state, null, { fullNavSync: true });
     applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);
     syncRoomGraphBake(state);
     spawnSnapshotProps(state, doc);

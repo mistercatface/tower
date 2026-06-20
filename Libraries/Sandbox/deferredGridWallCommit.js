@@ -1,5 +1,5 @@
 import { unionCellBounds } from "../DataStructures/CellRect.js";
-import { commitBoundaryEdit } from "./boundaryEdit.js";
+import { commitGridNavEdit } from "./gridNavEdit.js";
 import { clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet } from "./gridWallEdit.js";
 /** Accumulate quiet wall clears and commit once via the same path as editor delete. */
 /** @typedef {ReturnType<typeof createDeferredGridWallCommit>} DeferredGridWallCommit */
@@ -38,7 +38,7 @@ export function createDeferredGridWallCommit(state) {
             if (!pending) return null;
             const bounds = pending;
             pending = null;
-            commitBoundaryEdit(state, bounds);
+            commitGridNavEdit(state, bounds);
             return bounds;
         },
     };

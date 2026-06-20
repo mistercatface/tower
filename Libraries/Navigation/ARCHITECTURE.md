@@ -15,7 +15,7 @@ Walls block collision first; the worker bakes collision + floor direction + edge
 
 ## Edits → worker sync
 
-One entry point: **`commitGridNavEdit`** / **`commitGridNavEditUnion`** in `gridNavEdit.js` → `onObstaclesChanged`. Grid writes bump epoch channels first; boundary-only legacy paths use `commitBoundaryEdit` (adds wall bump).
+One entry point: **`commitGridNavEdit`** / **`commitGridNavEditUnion`** in `gridNavEdit.js` → `onObstaclesChanged`. Grid writes bump epoch channels at mutation time; commit only schedules worker resync.
 
 - **Readiness:** `isNavTopologyReady(hpaPathWorker, grid)`
 

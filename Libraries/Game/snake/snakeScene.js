@@ -8,8 +8,7 @@ import { withSeededRandom } from "../../Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns, generateLabRailDfsMaze, clearSnakeRegionPaddingStrip } from "../../../Apps/Editor/world/mapWorld.js";
 import { planRailMazeCorridorBelts } from "../../Procedural/Mazes/railMazeCorridorBelts.js";
 import { stampGlobalRailMazeBelts } from "../../Procedural/Mazes/stampGlobalRailMazeBelts.js";
-import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
-import { commitBoundaryEdit } from "../../Sandbox/boundaryEdit.js";
+import { commitGridNavEdit, commitGridNavEditUnion } from "../../Sandbox/gridNavEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
 import { ensureSnakeGoalIndex, registerSnakeGoal } from "./snakeGoalIndex.js";
@@ -139,9 +138,6 @@ export async function generateSnakeSplitMap(state) {
         northReserveRows: cavern.openBoundaryRows ?? 3,
     });
     const paddingBounds = clearSnakeRegionPaddingStrip(state, cavern.regionPaddingCells ?? 4);
-    commitBoundaryEdit(state, paddingBounds);
-    state.worldSurfaces.invalidateGridBounds(paddingBounds, state);
-    await state.navigation.onObstaclesChanged(paddingBounds);
     const playable = resolveSnakePlayableBounds(state);
     const floodSeed = resolveSnakeNavWalkableFloodSeedBounds(state);
     const navWalkable = collectNavWalkableCells(state, playable, floodSeed);
@@ -156,7 +152,7 @@ export async function generateSnakeSplitMap(state) {
         mapSeed: state.mapSeed,
     });
     const { bounds: beltBounds } = stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
-    if (beltBounds) await commitGridNavEdit(state, beltBounds);
+    await commitGridNavEditUnion(state, paddingBounds, beltBounds);
     cavernConfig.wallHeightLevel = prevCavernWallHeightLevel;
     railConfig.wallHeightLevel = prevRailWallHeightLevel;
     cavernConfig.fillChance = prevCavernFillChance;

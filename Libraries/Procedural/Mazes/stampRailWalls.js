@@ -1,7 +1,8 @@
 import { gridSettings } from "../../../Config/world.js";
-import { stampRailWallsBatch } from "../../Sandbox/gridWallEdit.js";
+import { stampRailWallsQuiet } from "../../Sandbox/gridWallEdit.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
-export function stampGlobalRailWalls(state, rails) {
+import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
+export function stampGlobalRailWalls(state, rails, { commit = true } = {}) {
     const grid = state.obstacleGrid;
     const cellSize = gridSettings.cellSize;
     const gridRails = [];
@@ -11,5 +12,8 @@ export function stampGlobalRailWalls(state, rails) {
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         gridRails.push({ col, row, side: wall.side, heightLevel: wall.heightLevel, thicknessLevel: wall.thicknessLevel });
     }
-    stampRailWallsBatch(state, gridRails);
+    const result = stampRailWallsQuiet(state, gridRails);
+    if (!commit || !result.bounds) return result;
+    commitGridNavEdit(state, result.bounds);
+    return result;
 }

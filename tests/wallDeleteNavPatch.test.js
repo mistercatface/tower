@@ -143,6 +143,7 @@ describe("wall delete nav patch (4a)", () => {
         assert.equal(grid.canStep(5, 5, 6, 5, state.navigation.gridNavContext), false);
         state.resetNotifyCount();
         const bounds = clearGridWallsBatch(state, { voxels: [{ col: blocked.col, row: blocked.row }], rails: [{ col: 5, row: 5, side: 1 }] });
+        await state.navigation.awaitWorkerNavReady();
         assert.equal(state.notifyCount, 1);
         assert.ok(isNavWalkableCellAt(state, blocked.col, blocked.row));
         assert.equal(grid.canStep(5, 5, 6, 5, state.navigation.gridNavContext), true);

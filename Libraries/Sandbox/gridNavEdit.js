@@ -1,6 +1,5 @@
 import { cellBoundsAt, isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
-import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 /** @param {import("../DataStructures/CellRect.js").CellBounds | import("../DataStructures/CellRect.js").CellBounds[] | null | undefined} bounds */
 function mergeNavEditBounds(bounds) {
@@ -12,15 +11,13 @@ function mergeNavEditBounds(bounds) {
 }
 /**
  * Schedule one worker nav resync after grid edits (walls, belts, boundaries).
- * Grid writes must bump the relevant epoch channels first; pass bumpWall only when
- * the edit did not already bump (legacy boundary-only paths).
+ * Grid writes must bump the relevant epoch channels before calling this.
  *
  * @param {object} state
  * @param {import("../DataStructures/CellRect.js").CellBounds | import("../DataStructures/CellRect.js").CellBounds[] | null} bounds
- * @param {{ invalidateSurfaces?: boolean, fullNavSync?: boolean, bumpWall?: boolean }} [options]
+ * @param {{ invalidateSurfaces?: boolean, fullNavSync?: boolean }} [options]
  */
-export function commitGridNavEdit(state, bounds, { invalidateSurfaces = true, fullNavSync = false, bumpWall = false } = {}) {
-    if (bumpWall) bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
+export function commitGridNavEdit(state, bounds, { invalidateSurfaces = true, fullNavSync = false } = {}) {
     const merged = fullNavSync ? null : mergeNavEditBounds(bounds);
     if (!fullNavSync && (!merged || isEmptyCellBounds(merged))) return Promise.resolve();
     const grid = state.obstacleGrid;

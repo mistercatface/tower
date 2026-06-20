@@ -6,7 +6,7 @@ import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index
 import { bakeRailMazeDfs } from "../../../Libraries/Procedural/Mazes/railMazeDfs.js";
 import { generateCavernOccupancy } from "../../../Libraries/Procedural/Mazes/cavernOccupancy.js";
 import { stampGlobalRailWalls } from "../../../Libraries/Procedural/Mazes/stampRailWalls.js";
-import { commitBoundaryEdit } from "../../../Libraries/Sandbox/boundaryEdit.js";
+import { commitGridNavEdit } from "../../../Libraries/Sandbox/gridNavEdit.js";
 import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
@@ -231,15 +231,12 @@ export async function generateLabRailDfsMaze(state, options = {}) {
         },
         state.mapSeed,
     );
-    stampGlobalRailWalls(state, rails);
+    stampGlobalRailWalls(state, rails, { commit: false });
     const northRows = Math.max(1, Math.round(options.northReserveRows ?? 3));
     const northBounds = clearRailZoneNorthStrip(grid, startCol, endCol, startRow, endRow, northRows);
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-    let damageBounds = { startCol, endCol, startRow, endRow };
-    damageBounds = unionCellBounds(damageBounds, northBounds);
-    commitBoundaryEdit(state, northBounds);
-    state.worldSurfaces.invalidateGridBounds(damageBounds, state);
-    await state.navigation.onObstaclesChanged(damageBounds);
+    const damageBounds = unionCellBounds({ startCol, endCol, startRow, endRow }, northBounds);
+    await commitGridNavEdit(state, damageBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
     await rebuildLabMapCaches(state);

@@ -7,7 +7,8 @@ import { cellInRect, colRowToIndex, gridSideNeighborCell } from "../Spatial/grid
 import { railWallEdgeAt, cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { applyPassagePowerGridState } from "../Sandbox/passagePowerNetwork.js";
 import { addButtonLink } from "../Sandbox/buttonLinks.js";
-import { clearPrimaryBoundaryAt, commitBoundaryEdit } from "../Sandbox/boundaryEdit.js";
+import { clearPrimaryBoundaryAt } from "../Sandbox/boundaryEdit.js";
+import { syncPassagePowerNetwork } from "../Sandbox/passagePowerNetwork.js";
 import { corridorExteriorCellFromWallHole, roomInteriorCellFromWallHole } from "./roomGraphCorridorBelts.js";
 import { roomWallEdgeKey } from "./roomGraphClosedRooms.js";
 import { getRoomGraph, roomNodeCenterCell, roomNodeContainsCell } from "./roomGraphStore.js";
@@ -77,7 +78,7 @@ export function clearLockedRoomBakes(state) {
     if (!isEmptyCellBounds(bounds)) {
         state.obstacleGrid.edgeStore.recomputePassageEdgeCount();
         applyPassagePowerGridState(state);
-        commitBoundaryEdit(state, bounds, { power: true });
+        syncPassagePowerNetwork(state);
     }
 }
 /** @param {RoomWallHole} hole */
@@ -145,7 +146,7 @@ export function syncLockedRoomBakes(state, layout, lockedLinkBakes) {
     if (!bakes.length) return;
     grid.edgeStore.recomputePassageEdgeCount();
     applyPassagePowerGridState(state);
-    commitBoundaryEdit(state, bounds, { power: true });
+    syncPassagePowerNetwork(state);
 }
 /** @param {import("./roomGraphStore.js").RoomNode} node @param {LockedRoomEgressBake} egress @param {string} [label] */
 export function assertLockedRoomEgressLayout(node, egress, label = "egress") {
