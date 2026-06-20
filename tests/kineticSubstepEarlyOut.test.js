@@ -43,8 +43,7 @@ describe("kinetic substep early-out", () => {
         applyGameCollisionSettings({
             collisionSettings: {
                 motionSubsteps: { maxStepPx: 4, maxSubsteps: 8 },
-                kineticEarlyOut: { enabled: true, velocityEpsilonSq: 0.04 },
-                substepEarlyOut: { enabled: true },
+                kineticEarlyOut: { velocityEpsilonSq: 0.04 },
             },
         });
         const body = mockCircleBody(0, 0, 10, 120, 0);

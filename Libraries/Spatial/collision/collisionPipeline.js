@@ -45,7 +45,7 @@ export function runCollisionPipeline(
     { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations, applyContactSideEffects = (t, contacts) => applyKineticContactSideEffects(t, contacts) } = {},
 ) {
     const frame = tick.frame;
-    const earlyOut = getCollisionSettings().kineticEarlyOut;
+    const { minIterations, velocityEpsilonSq, constraintErrorEpsilon, persistPairs } = getCollisionSettings().kineticEarlyOut;
     const activeBodies = frame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;
     if (hasActiveBodies)
@@ -60,7 +60,7 @@ export function runCollisionPipeline(
         let persistedPairs = null;
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;
-            if (earlyOut.persistPairs) {
+            if (persistPairs) {
                 if (iter === 0) {
                     gatherKineticContactPairs(tick);
                     copyKineticPairBuffer(kineticPairBuffer, persistedKineticPairBuffer);
@@ -81,12 +81,12 @@ export function runCollisionPipeline(
                 resolveWalls(prop);
             }
             frame.flushScheduledKineticActivations();
-            if (earlyOut.enabled && outerIterationsRun >= earlyOut.minIterations) {
+            if (outerIterationsRun >= minIterations) {
                 if (!activeBodiesMatchKineticSlab(activeBodies)) continue;
                 snapshotActiveBroadphaseBounds(activeBodies);
                 const maxError = measureConstraintSlabMaxError();
                 const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
-                if (maxError <= earlyOut.constraintErrorEpsilon && maxSpeedSq <= earlyOut.velocityEpsilonSq) break;
+                if (maxError <= constraintErrorEpsilon && maxSpeedSq <= velocityEpsilonSq) break;
             }
         }
         tick.world.kinetic.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };

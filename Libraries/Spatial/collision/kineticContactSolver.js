@@ -433,7 +433,7 @@ function applyGenericContactImpulse(contacts, i, slab, iterMaxImpulse) {
 function solveKineticContactVelocities(contacts, iterations, restingCount) {
     const slab = kineticBodySlab;
     const count = contacts.count;
-    const earlyOut = getCollisionSettings().kineticEarlyOut;
+    const { contactMinIterations, contactImpulseEpsilon } = getCollisionSettings().kineticEarlyOut;
     let iterationsRun = 0;
     let solveMaxImpulse = 0;
     for (let iter = 0; iter < iterations; iter++) {
@@ -445,7 +445,7 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
             else maxImpulse = applyGenericContactImpulse(contacts, i, slab, maxImpulse);
         }
         solveMaxImpulse = Math.max(solveMaxImpulse, maxImpulse);
-        if (earlyOut.enabled && iter + 1 >= earlyOut.contactMinIterations && maxImpulse <= earlyOut.contactImpulseEpsilon) break;
+        if (iter + 1 >= contactMinIterations && maxImpulse <= contactImpulseEpsilon) break;
         if (restingCount === count && count > 0 && iter + 1 >= 1) break;
     }
     lastKineticContactSolveStats = { innerIterations: iterationsRun, maxImpulse: solveMaxImpulse, restingCount };

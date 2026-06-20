@@ -46,7 +46,7 @@ describe("kinetic pair persistence", () => {
         applyGameCollisionSettings({
             collisionSettings: {
                 kineticIterations: 3,
-                kineticEarlyOut: { enabled: false, persistPairs: true, minIterations: 1, velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3, contactMinIterations: 1, contactImpulseEpsilon: 1e-4 },
+                kineticEarlyOut: { persistPairs: true, minIterations: 1, velocityEpsilonSq: -1, constraintErrorEpsilon: -1, contactMinIterations: 1, contactImpulseEpsilon: -1 },
             },
         });
         const a = mockCircleBody(0, 0, 10, 50, 0);
@@ -64,7 +64,7 @@ describe("kinetic pair persistence", () => {
         applyGameCollisionSettings({
             collisionSettings: {
                 kineticIterations: 4,
-                kineticEarlyOut: { enabled: true, persistPairs: true, minIterations: 1, velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3, contactMinIterations: 1, contactImpulseEpsilon: 1e-4 },
+                kineticEarlyOut: { persistPairs: true, minIterations: 1, velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3, contactMinIterations: 1, contactImpulseEpsilon: 1e-4 },
             },
         });
         resetKineticConstraintIds(1);
@@ -83,7 +83,7 @@ describe("kinetic pair persistence", () => {
         applyGameCollisionSettings({
             collisionSettings: {
                 kineticIterations: 2,
-                kineticEarlyOut: { enabled: false, persistPairs: true, minIterations: 1, velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3, contactMinIterations: 1, contactImpulseEpsilon: 1e-4 },
+                kineticEarlyOut: { persistPairs: true, minIterations: 1, velocityEpsilonSq: -1, constraintErrorEpsilon: -1, contactMinIterations: 1, contactImpulseEpsilon: -1 },
             },
         });
         const ball = new WorldProp(0, 0, "ball", 0);

@@ -38,15 +38,14 @@ export function runKineticPhysics(tick, dt, hooks) {
     const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });
     const subDt = dt / steps;
     const subDtSec = subDt / 1000;
-    const earlyOut = getCollisionSettings().kineticEarlyOut;
-    const substepEarlyOut = getCollisionSettings().substepEarlyOut?.enabled !== false;
+    const { velocityEpsilonSq } = getCollisionSettings().kineticEarlyOut;
     let substepsRun = steps;
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec);
         for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updateProp(world.worldProps[i], subDt, frame);
         frame.reindexKineticBodies(activeBodies);
         runCollisionPipeline(tick, { resolveWalls: (entity) => hooks.resolveWalls(entity, frame), applyContactSideEffects: hooks.applyContactSideEffects });
-        if (earlyOut.enabled && substepEarlyOut && s + 1 < steps && maxActiveKineticSpeedSq(activeBodies) <= earlyOut.velocityEpsilonSq) {
+        if (s + 1 < steps && maxActiveKineticSpeedSq(activeBodies) <= velocityEpsilonSq) {
             substepsRun = s + 1;
             break;
         }
