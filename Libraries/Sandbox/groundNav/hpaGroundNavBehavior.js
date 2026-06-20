@@ -2,9 +2,10 @@ import { getPhysicsSettings } from "../../../Core/GamePhysicsSettings.js";
 import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
 import { createHpaGroundNavSession } from "./hpaGroundNavSession.js";
+import { buildHpaGroundNavPathSettings, driveGroundNav, groundNavArrivedAtTarget } from "./driveGroundNav.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
-import { isEntityOnFloorBelt, isFloorBeltCell, resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
+import { isEntityOnFloorBelt } from "../../Spatial/grid/FloorCell.js";
 import { HPA_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
 export function createHpaGroundNavBehavior(state) {
     const propRuns = new Map();
@@ -39,36 +40,26 @@ export function createHpaGroundNavBehavior(state) {
     const tickProp = (prop, run, dt) => {
         if (!run.targetWorld) return;
         const grid = state.obstacleGrid;
-        const hpaNav = getPhysicsSettings().groundNavHpa;
-        const config = getKineticRollConfig(prop, { stopRadius: hpaNav.stopRadius });
-        const onBelt = isEntityOnFloorBelt(grid, prop.x, prop.y);
-        const targetOnBelt = isFloorBeltCell(grid, run.targetCellCol, run.targetCellRow);
-        const steerTarget = resolveFloorBeltSteerTarget(grid, run.targetWorld.x, run.targetWorld.y, prop.x, prop.y);
-        const distToTarget = Math.hypot(run.targetWorld.x - prop.x, run.targetWorld.y - prop.y);
-        if (distToTarget <= config.stopRadius && (!targetOnBelt || onBelt)) {
+        const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
+        if (groundNavArrivedAtTarget(prop, run.targetWorld, run.targetCellCol, run.targetCellRow, grid, config.stopRadius)) {
             releaseMoveTarget(prop, run);
             return;
         }
-        if (onBelt) {
-            run.wasOnBelt = true;
-            return;
-        }
-        let steering = null;
-        if (run.wasOnBelt) {
-            run.wasOnBelt = false;
-            run.hpaNav.reset(state);
-            run.hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
-        } else {
-            const pathSettings = {
-                ...state.navigation.settings,
-                pathWaypointArrival: Math.max(hpaNav.pathWaypointArrivalMin, (prop.radius ?? 6) * hpaNav.pathWaypointArrivalRadiusFactor),
-                arrivalDistance: config.stopRadius,
-            };
-            steering = run.hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000, pathSettings);
-        }
+        const { vx, vy, steering, beltWasOnBelt } = driveGroundNav({
+            prop,
+            targetWorld: run.targetWorld,
+            targetCellCol: run.targetCellCol,
+            targetCellRow: run.targetCellRow,
+            nav: run.hpaNav,
+            beltWasOnBelt: run.wasOnBelt,
+            state,
+            dtMs: dt * 1000,
+            pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
+        });
+        run.wasOnBelt = beltWasOnBelt;
         if (!steering) return;
-        if (steering.desiredX === 0 && steering.desiredY === 0) return;
-        steerRollToward(prop, steering.desiredX, steering.desiredY, config);
+        if (vx === 0 && vy === 0) return;
+        steerRollToward(prop, vx, vy, config);
     };
     return {
         id: HPA_GROUND_NAV_BEHAVIOR_ID,

@@ -37,10 +37,11 @@ export function createHpaGroundNavSession() {
             priority,
         );
     };
-    const requestReplan = (prop, targetX, targetY, state, priority) => {
+    const requestReplan = (prop, targetX, targetY, state, priority, reason) => {
         pendingTargetReplan = false;
         navState.stuckFrames = 0;
         replan(prop, targetX, targetY, state, priority);
+        return { steering: null, replanReason: reason };
     };
     const update = (prop, targetX, targetY, state, dtMs, pathSettings) => {
         replanClockMs += dtMs;
@@ -59,20 +60,15 @@ export function createHpaGroundNavSession() {
         if (!inFlight && obstacleEpochReplanDue(navState, graphEpoch))
             if (obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) {
                 if (navHasPath(navState)) clearHpaNavPath(navState, state.hpaPathWorker);
-                requestReplan(prop, targetX, targetY, state, replanPriorityFor("epoch", isVisible));
-                return null;
+                return requestReplan(prop, targetX, targetY, state, replanPriorityFor("epoch", isVisible), "epoch");
             }
         const sandboxReason = sandboxReplanReason(navState, pendingTargetReplan, inFlight, targetX, targetY);
-        if (sandboxReason && sandboxReplanAllowed(sandboxReason, isVisible, stuckFrames, stuckReplanFrames)) {
-            requestReplan(prop, targetX, targetY, state, replanPriorityFor(sandboxReason, isVisible));
-            return null;
-        }
+        if (sandboxReason && sandboxReplanAllowed(sandboxReason, isVisible, stuckFrames, stuckReplanFrames))
+            return requestReplan(prop, targetX, targetY, state, replanPriorityFor(sandboxReason, isVisible), sandboxReason);
         const idleReason = idlePathReplanReason(navState, settings, inFlight);
-        if (idleReason && idlePathReplanAllowed(navState, idleReason, isVisible, stuckReplanFrames)) {
-            requestReplan(prop, targetX, targetY, state, replanPriorityFor(idleReason, isVisible));
-            return null;
-        }
-        if (!navHasPath(navState)) return null;
+        if (idleReason && idlePathReplanAllowed(navState, idleReason, isVisible, stuckReplanFrames))
+            return requestReplan(prop, targetX, targetY, state, replanPriorityFor(idleReason, isVisible), idleReason);
+        if (!navHasPath(navState)) return { steering: null, replanReason: routePending ? "pending" : "noPath" };
         const steering = computeSabPathSteering(
             agentPose(prop),
             state.hpaPathWorker,
@@ -88,10 +84,9 @@ export function createHpaGroundNavSession() {
         if (steering && !inFlight && offPathReplanDue(steering, navState, replanClockMs))
             if (obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) {
                 navState.lastOffPathReplan = replanClockMs;
-                requestReplan(prop, targetX, targetY, state, replanPriorityFor("offPath", isVisible));
-                return null;
+                return requestReplan(prop, targetX, targetY, state, replanPriorityFor("offPath", isVisible), "offPath");
             }
-        return steering;
+        return { steering, replanReason: null };
     };
     return { navState, reset, markTargetChanged, replan, update, isRoutePending };
 }

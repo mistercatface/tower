@@ -3,8 +3,9 @@ import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { createHpaGroundNavSession } from "./hpaGroundNavSession.js";
+import { buildHpaGroundNavPathSettings, driveGroundNav } from "./driveGroundNav.js";
 import { decelerateRoll, getKineticRollConfig, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
-import { isEntityOnFloorBelt, resolveFloorBeltSteerTarget, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
+import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 export function cellTargetHasArrivedAtDestCell(grid, col, row, destCol, destRow) {
     if (isFloorBeltCell(grid, destCol, destRow)) return col === destCol && row === destRow;
@@ -103,34 +104,25 @@ export function createCellTargetHpaNav(state) {
     const tick = (prop, dt) => {
         if (destCol == null || !destWorld) return;
         if (needsRetry()) replan(prop);
-        const grid = state.obstacleGrid;
-        const hpaNavSettings = getPhysicsSettings().groundNavHpa;
-        const config = getKineticRollConfig(prop, { stopRadius: hpaNavSettings.stopRadius });
-        const onBelt = isEntityOnFloorBelt(grid, prop.x, prop.y);
-        const steerTarget = resolveFloorBeltSteerTarget(grid, destWorld.x, destWorld.y, prop.x, prop.y);
-        if (onBelt) {
-            wasOnBelt = true;
-            return;
-        }
-        let steering = null;
-        if (wasOnBelt) {
-            wasOnBelt = false;
-            hpaNav.reset(state);
-            hpaNav.replan(prop, steerTarget.x, steerTarget.y, state);
-        } else {
-            const pathSettings = {
-                ...state.navigation.settings,
-                pathWaypointArrival: Math.max(hpaNavSettings.pathWaypointArrivalMin, (prop.radius ?? 6) * hpaNavSettings.pathWaypointArrivalRadiusFactor),
-                arrivalDistance: config.stopRadius,
-            };
-            steering = hpaNav.update(prop, steerTarget.x, steerTarget.y, state, dt * 1000, pathSettings);
-        }
+        const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
+        const { vx, vy, steering, beltWasOnBelt } = driveGroundNav({
+            prop,
+            targetWorld: destWorld,
+            targetCellCol: destCol,
+            targetCellRow: destRow,
+            nav: hpaNav,
+            beltWasOnBelt: wasOnBelt,
+            state,
+            dtMs: dt * 1000,
+            pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
+        });
+        wasOnBelt = beltWasOnBelt;
         if (!steering) return;
-        if (steering.desiredX === 0 && steering.desiredY === 0) {
+        if (vx === 0 && vy === 0) {
             decelerateRoll(prop, config);
             return;
         }
-        steerRollToward(prop, steering.desiredX, steering.desiredY, config);
+        steerRollToward(prop, vx, vy, config);
     };
     const getStatus = () => {
         const nav = hpaNav.navState;

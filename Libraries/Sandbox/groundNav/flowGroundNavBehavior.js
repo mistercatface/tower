@@ -1,8 +1,7 @@
 import { getPhysicsSettings } from "../../../Core/GamePhysicsSettings.js";
-import { agentPose } from "../../Agent/index.js";
-import { computeFlowFieldSteering } from "../../Pathfinding/flowSteering.js";
 import { sampleFlowDirectionOnGrid } from "../../Pathfinding/sampleFlowDirection.js";
-import { resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
+import { resolveGroundNavSteerTarget } from "./driveGroundNav.js";
+import { driveFlowGroundNav } from "./driveFlowGroundNav.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { FLOW_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
 export function createFlowGroundNavBehavior(state) {
@@ -24,7 +23,7 @@ export function createFlowGroundNavBehavior(state) {
         const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
         run.targetWorld = snapped.world;
     };
-    const resolveSteerTarget = (run, prop) => resolveFloorBeltSteerTarget(state.obstacleGrid, run.targetWorld.x, run.targetWorld.y, prop.x, prop.y);
+    const resolveSteerTarget = (run, prop) => resolveGroundNavSteerTarget(state.obstacleGrid, run.targetWorld.x, run.targetWorld.y, prop.x, prop.y);
     const syncFlowWindow = (prop, steerTarget) => {
         state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, state.navigation.settings.recenterThreshold);
     };
@@ -45,9 +44,9 @@ export function createFlowGroundNavBehavior(state) {
             clearRunTarget(run);
             return;
         }
-        const steering = computeFlowFieldSteering(agentPose(prop), steerTarget.x, steerTarget.y, flowFieldGrid);
+        const { vx, vy, steering } = driveFlowGroundNav({ prop, targetWorld: steerTarget, flowFieldGrid });
         if (!steering) return;
-        steerRollToward(prop, steering.desiredX, steering.desiredY, config);
+        steerRollToward(prop, vx, vy, config);
     };
     return {
         id: FLOW_GROUND_NAV_BEHAVIOR_ID,
