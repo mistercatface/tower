@@ -6,11 +6,12 @@ function manhattanDistance(c0, r0, c1, r1) {
     return Math.abs(c0 - c1) + Math.abs(r0 - r1);
 }
 /** 4-connected grid A* — for axis-aligned tubes (corridors); never cuts corners diagonally. */
-export function runCardinalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, gScore, cameFrom, visited, runId) {
+export function runCardinalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, searchState) {
     const startIdx = startRow * cols + startCol;
     const targetIdx = targetRow * cols + targetCol;
     if (startIdx === targetIdx) return [{ col: startCol, row: startRow }];
     const openSet = new IdxMinHeap();
+    const { gScore, cameFrom, visited, runId } = searchState;
     gScore[startIdx] = 0;
     visited[startIdx] = runId;
     cameFrom[startIdx] = -1;
@@ -51,11 +52,12 @@ export function runCardinalAStarFlat(startCol, startRow, targetCol, targetRow, n
     }
     return null;
 }
-export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, gScore, cameFrom, visited, runId, stepPenaltyLookup = null) {
+export function runLocalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, searchState, stepPenaltyLookup = null) {
     const startIdx = startRow * cols + startCol;
     const targetIdx = targetRow * cols + targetCol;
     if (startIdx === targetIdx) return [{ col: startCol, row: startRow }];
     const openSet = new IdxMinHeap();
+    const { gScore, cameFrom, visited, runId } = searchState;
     gScore[startIdx] = 0;
     visited[startIdx] = runId;
     cameFrom[startIdx] = -1;
@@ -138,16 +140,15 @@ export function runAbstractAStar(startNodeId, targetNodeId, nodesMap) {
     return null;
 }
 /** Flat CSR abstract A* — node indices, worker-safe. */
-export function runAbstractAStarFlat(startIdx, targetIdx, nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount) {
+export function runAbstractAStarFlat(startIdx, targetIdx, nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, searchState) {
     if (startIdx === targetIdx) return [startIdx];
     const targetCol = nodeCol[targetIdx];
     const targetRow = nodeRow[targetIdx];
     const openSet = new MinHeap((a, b) => a.f - b.f);
-    const cameFrom = new Int16Array(nodeCount);
-    cameFrom.fill(-1);
-    const gScore = new Float32Array(nodeCount);
-    gScore.fill(Infinity);
+    const { gScore, cameFrom, visited, runId } = searchState;
     gScore[startIdx] = 0;
+    visited[startIdx] = runId;
+    cameFrom[startIdx] = -1;
     openSet.push({ id: startIdx, f: octileDistance(nodeCol[startIdx], nodeRow[startIdx], targetCol, targetRow) });
     while (openSet.size > 0) {
         const curr = openSet.pop();
@@ -170,7 +171,8 @@ export function runAbstractAStarFlat(startIdx, targetIdx, nodeCol, nodeRow, edge
         for (let i = edgeStart; i < edgeEnd; i++) {
             const neighborIdx = edgeTargets[i];
             const tentativeG = currentG + edgeCosts[i];
-            if (tentativeG < gScore[neighborIdx]) {
+            if (visited[neighborIdx] !== runId || tentativeG < gScore[neighborIdx]) {
+                visited[neighborIdx] = runId;
                 cameFrom[neighborIdx] = currentIdx;
                 gScore[neighborIdx] = tentativeG;
                 openSet.push({ id: neighborIdx, f: tentativeG + octileDistance(nodeCol[neighborIdx], nodeRow[neighborIdx], targetCol, targetRow) });

@@ -1,5 +1,5 @@
 import { runCardinalAStarFlat } from "../AStar.js";
-
+import { SearchState } from "../SearchState.js";
 /**
  * Reusable grid A* for corridor mid-routing. Room interiors live in `roomBlocked`;
  * reserved corridor footprints live in `reservedKeys` ("col,row").
@@ -13,19 +13,14 @@ export class CorridorGridPathfinder {
         this.originRow = originRow;
         const size = cols * rows;
         this.roomBlocked = new Uint8Array(size);
-        this.gScore = new Float32Array(size);
-        this.cameFrom = new Int32Array(size);
-        this.visited = new Int32Array(size);
-        this.runId = 0;
+        this.searchState = new SearchState(size);
         /** @type {Set<string>} */
         this.reservedKeys = new Set();
     }
-
     /** @param {number} col @param {number} row */
     globalToLocal(col, row) {
         return { col: col - this.originCol, row: row - this.originRow };
     }
-
     /** @param {number} col @param {number} row */
     isBlockedGlobal(col, row) {
         const localCol = col - this.originCol;
@@ -35,7 +30,6 @@ export class CorridorGridPathfinder {
         if (this.roomBlocked[idx]) return true;
         return this.reservedKeys.has(`${col},${row}`);
     }
-
     /** @param {number} col @param {number} row */
     isBlocked(col, row) {
         if (col < 0 || row < 0 || col >= this.cols || row >= this.rows) return true;
@@ -43,17 +37,14 @@ export class CorridorGridPathfinder {
         if (this.roomBlocked[idx]) return true;
         return this.reservedKeys.has(`${col + this.originCol},${row + this.originRow}`);
     }
-
     /** @param {Uint8Array} roomBlocked */
     setRoomBlocked(roomBlocked) {
         this.roomBlocked = roomBlocked;
     }
-
     /** @param {Set<string>} keys */
     setReservedKeys(keys) {
         this.reservedKeys = keys;
     }
-
     /** @param {number} startCol @param {number} startRow @param {number} goalCol @param {number} goalRow @param {number} [maxPathLen] */
     findPath(startCol, startRow, goalCol, goalRow, maxPathLen = 512) {
         const start = this.globalToLocal(startCol, startRow);
@@ -76,8 +67,7 @@ export class CorridorGridPathfinder {
                 return !this.isBlocked(c1, r1);
             },
         };
-        this.runId++;
-        const flat = runCardinalAStarFlat(start.col, start.row, goal.col, goal.row, navGraph, cols, rows, maxPathLen, this.gScore, this.cameFrom, this.visited, this.runId);
+        const flat = runCardinalAStarFlat(start.col, start.row, goal.col, goal.row, navGraph, cols, rows, maxPathLen, this.searchState.prepare());
         if (!flat) return null;
         /** @type {{ c: number, r: number }[]} */
         const path = new Array(flat.length);
@@ -85,7 +75,6 @@ export class CorridorGridPathfinder {
         return path;
     }
 }
-
 /** @param {import("./corridorWalkGrid.js").CorridorSearchBounds} bounds */
 export function createCorridorGridPathfinder(bounds) {
     return new CorridorGridPathfinder(bounds.cols, bounds.rows, bounds.originCol, bounds.originRow);

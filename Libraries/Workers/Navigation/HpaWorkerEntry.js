@@ -28,6 +28,7 @@ import {
     hpaPersistNodeColView,
     hpaPersistNodeRowView,
 } from "../../Pathfinding/hpaWorkerSab.js";
+import { SearchState } from "../../Pathfinding/SearchState.js";
 let maxSlots;
 let maxPathLen;
 let maxAbstractLen;
@@ -50,10 +51,7 @@ let navCacheKey = "";
 /** @type {import("../../Pathfinding/navTopologySab.js").NavTopology | null} */
 let navTopology = null;
 let navView;
-let aStarGScore;
-let aStarCameFrom;
-let aStarVisited;
-let replanRunId = 0;
+let searchState;
 let persistNodeCount = 0;
 let persistEdgeWrite = 0;
 /** @type {string[]} */
@@ -125,11 +123,8 @@ function bindNavArena(data) {
     navTopology = navTopologyFromSab(data.sabBlocked, data.sabOctileNeighbors, data.sabOctilePredecessors);
     navView = createNavLocalView(requireGridFrame(), navTopology);
     const size = requireGridFrame().cols * requireGridFrame().rows;
-    if (!aStarGScore || aStarGScore.length !== size) {
-        aStarGScore = new Float32Array(size);
-        aStarCameFrom = new Int32Array(size);
-        aStarVisited = new Int32Array(size);
-    }
+    if (!searchState) searchState = new SearchState(size);
+    else searchState.resize(size);
     navArenaBound = true;
 }
 function syncNavSimEdgePool() {
@@ -400,8 +395,7 @@ function runReplan(slot, data) {
     const { startCol, startRow, targetCol, targetRow } = data;
     const { cols, rows } = requireGridFrame();
     const stepPenaltyLookup = data.stepPenaltyKeys?.length > 0 ? createNavStepPenaltyLookup(cols, data.stepPenaltyKeys, data.stepPenaltyCosts) : null;
-    const localAStar = (fromCol, fromRow, toCol, toRow, maxLen) =>
-        runLocalAStarFlat(fromCol, fromRow, toCol, toRow, navView, cols, rows, maxLen, aStarGScore, aStarCameFrom, aStarVisited, ++replanRunId, stepPenaltyLookup);
+    const localAStar = (fromCol, fromRow, toCol, toRow, maxLen) => runLocalAStarFlat(fromCol, fromRow, toCol, toRow, navView, cols, rows, maxLen, searchState.prepare(), stepPenaltyLookup);
     const cellToRegion = hpaCellToRegionView(sabCellToRegionIdx, cols * rows);
     const nodeCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, persistNodeCount);
     const nodeRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, persistNodeCount);
@@ -426,6 +420,7 @@ function runReplan(slot, data) {
         extEdgeTargets.subarray(0, extended.edgeWrite),
         extEdgeCosts.subarray(0, extended.edgeWrite),
         extended.extCount,
+        searchState.prepare(),
     );
     writeAbstractPath(slot, abstractPath);
     if (!abstractPath) {

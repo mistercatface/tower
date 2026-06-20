@@ -1,26 +1,18 @@
 import { runCardinalAStarFlat } from "../../Pathfinding/AStar.js";
+import { SearchState } from "../../Pathfinding/SearchState.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
-
 const FULL_FOOTPRINT = { interiorOnly: false };
-
 function cellKey(col, row) {
     return `${col},${row}`;
 }
-
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} railConfig */
 export function railMazeBeltZoneGridBounds(grid, railConfig) {
     const cellSize = grid.cellSize;
     const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(railConfig);
     const { col: baseCol, row: baseRow } = grid.worldToGrid(originCol * cellSize, originRow * cellSize);
-    return {
-        startCol: Math.max(0, baseCol),
-        endCol: Math.min(grid.cols - 1, baseCol + cols - 1),
-        startRow: Math.max(0, baseRow),
-        endRow: Math.min(grid.rows - 1, baseRow + rows - 1),
-    };
+    return { startCol: Math.max(0, baseCol), endCol: Math.min(grid.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(grid.rows - 1, baseRow + rows - 1) };
 }
-
 /**
  * Cardinal A* over nav-walkable cells in the rail zone, respecting rail walls via `grid.canStep`.
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
@@ -36,15 +28,9 @@ export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railCo
     const originRow = bounds.startRow;
     const size = cols * rows;
     const walkable = new Uint8Array(size);
-    for (let r = bounds.startRow; r <= bounds.endRow; r++) {
-        for (let c = bounds.startCol; c <= bounds.endCol; c++) {
-            if (walkableKeys.has(cellKey(c, r))) walkable[(r - originRow) * cols + (c - originCol)] = 1;
-        }
-    }
-    const gScore = new Float32Array(size);
-    const cameFrom = new Int32Array(size);
-    const visited = new Int32Array(size);
-    let runId = 0;
+    for (let r = bounds.startRow; r <= bounds.endRow; r++)
+        for (let c = bounds.startCol; c <= bounds.endCol; c++) if (walkableKeys.has(cellKey(c, r))) walkable[(r - originRow) * cols + (c - originCol)] = 1;
+    const searchState = new SearchState(size);
     /** @type {Set<string>} */
     let reservedKeys = new Set();
     const navGraph = {
@@ -78,8 +64,7 @@ export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railCo
             const gi = gr * cols + gc;
             if (!walkable[si] || !walkable[gi]) return null;
             if (reservedKeys.has(cellKey(startCol, startRow)) || reservedKeys.has(cellKey(goalCol, goalRow))) return null;
-            runId++;
-            const flat = runCardinalAStarFlat(sc, sr, gc, gr, navGraph, cols, rows, maxPathLen, gScore, cameFrom, visited, runId);
+            const flat = runCardinalAStarFlat(sc, sr, gc, gr, navGraph, cols, rows, maxPathLen, searchState.prepare());
             if (!flat) return null;
             /** @type {{ c: number, r: number }[]} */
             const path = new Array(flat.length);
@@ -88,7 +73,6 @@ export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railCo
         },
     };
 }
-
 /**
  * @param {ReturnType<typeof createRailMazeNavCorridorPathfinder>} pathfinder
  * @param {{ col: number, row: number }} start
