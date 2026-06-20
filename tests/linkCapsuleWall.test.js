@@ -114,6 +114,35 @@ describe("link capsule wall projection", () => {
         resolveGatheredKineticConstraintSlab(tick);
         assert.equal(wallQueries, 3, "three unique bodies in a two-link chain");
     });
+    it("does not disturb a fast-moving link in open space with distant gathered walls", () => {
+        resetKineticConstraintIds(1);
+        const bodyA = mockCircleBody(10, 10, 4, 40, 0);
+        const bodyB = mockCircleBody(26, 10, 4, 40, 0);
+        const startAx = bodyA.x;
+        const startBx = bodyB.x;
+        const tick = createKineticTestTick([bodyA, bodyB]);
+        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        const decoyWalls = Array.from({ length: 32 }, (_, i) => mockWallSegment(400 + i * 8, 400, 16));
+        tick.frame.getWallCandidates = () => decoyWalls;
+        gatherKineticConstraintSlab(tick);
+        resolveGatheredKineticConstraintSlab(tick);
+        assert.equal(bodyA.x, startAx);
+        assert.equal(bodyB.x, startBx);
+    });
+    it("filters island walls per link before narrow phase", () => {
+        resetKineticConstraintIds(1);
+        const nearWall = mockWallSegment(58, 4, 16);
+        const farWall = mockWallSegment(500, 500, 16);
+        const bodyA = mockCircleBody(50, 14, 4, 0, 0);
+        const bodyB = mockCircleBody(66, 14, 4, 0, 0);
+        const tick = createKineticTestTick([bodyA, bodyB]);
+        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        tick.frame.getWallCandidates = () => [nearWall, farWall];
+        assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, nearWall) < 4);
+        gatherKineticConstraintSlab(tick);
+        resolveGatheredKineticConstraintSlab(tick);
+        assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, nearWall) >= 4 - 0.05);
+    });
     it("still projects a nearly-static wedged link", () => {
         resetKineticConstraintIds(1);
         const wall = mockWallSegment(58, 4, 16);

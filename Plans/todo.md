@@ -14,6 +14,8 @@
 
 10:48 AM: Physics + snake passes
 
+7:27 PM: Lots of time wasted on belts. Physics + wall damage PR.
+
 ## MILESTONE LOG
 
 | DATE       | MILESTONE                                                                           |

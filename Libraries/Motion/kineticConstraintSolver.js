@@ -3,13 +3,14 @@ import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "./bodyM
 import { worldAnchorFromBody } from "./constraintAnchors.js";
 import { getLinkCapsuleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";
 import { getEntityCollisionParts } from "../Spatial/collision/SatCollision.js";
-import { isKinematicallyActive } from "../Spatial/collision/entityBroadphase.js";
 import { separateAlongNormal, applyPositionCorrection } from "../Spatial/collision/penetration.js";
 import { ensureKineticIslandPlan } from "./kineticIslands.js";
 import { wakeKineticBody } from "./kineticSleep.js";
 const LINK_CAPSULE_WALL_PASSES = 2;
 /** Reused per-island wall candidate list — cleared at the start of each awake island. */
 const islandLinkWallCandidates = [];
+/** Per-link AABB filter into the current island list before narrow-phase wall tests. */
+const linkFilteredWallCandidates = [];
 const MAX_KINETIC_CONSTRAINTS = 2048;
 const MAX_ISLAND_GROUPS = 256;
 const CONSTRAINT_EDGE_KEY_SCALE = 1_000_000;
@@ -211,20 +212,23 @@ function gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gather
         appendBodyWallCandidates(spatialFrame, slab.bodyB[i], gatherMark, out);
     }
 }
-function linkCapsuleOverlapsAnyWall(ax, ay, bx, by, capsuleRadius, walls) {
+function collectLinkOverlappingWalls(ax, ay, bx, by, capsuleRadius, walls, out) {
+    out.length = 0;
     for (let i = 0; i < walls.length; i++) {
         const seg = walls[i];
         if (seg.passageEdge) continue;
-        if (linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, seg)) return true;
+        if (linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, seg)) out.push(seg);
     }
-    return false;
 }
-function shouldProjectLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, anchorBx, anchorBy, capsuleRadius, walls) {
-    if (bodyA.isSleeping && bodyB.isSleeping) return false;
-    if (isKinematicallyActive(bodyA) || isKinematicallyActive(bodyB)) return true;
+function shouldProjectLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, anchorBx, anchorBy, capsuleRadius, islandWalls, linkWallsOut) {
+    if (bodyA.isSleeping && bodyB.isSleeping) {
+        linkWallsOut.length = 0;
+        return false;
+    }
     const wa = worldAnchorFromBody(bodyA, anchorAx, anchorAy);
     const wb = worldAnchorFromBody(bodyB, anchorBx, anchorBy);
-    return linkCapsuleOverlapsAnyWall(wa.x, wa.y, wb.x, wb.y, capsuleRadius, walls);
+    collectLinkOverlappingWalls(wa.x, wa.y, wb.x, wb.y, capsuleRadius, islandWalls, linkWallsOut);
+    return linkWallsOut.length > 0;
 }
 function translateLinkAwayFromWall(bodyA, bodyB, normalX, normalY, overlap, pinnedA, pinnedB) {
     if (pinnedA && pinnedB) return;
@@ -239,16 +243,16 @@ function translateLinkAwayFromWall(bodyA, bodyB, normalX, normalY, overlap, pinn
     applyPositionCorrection(bodyA, normalX, normalY, overlap);
     applyPositionCorrection(bodyB, normalX, normalY, overlap);
 }
-function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, anchorBx, anchorBy, walls, spatialFrame, pinnedA, pinnedB, capsuleRadius) {
+function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, anchorBx, anchorBy, linkWalls, spatialFrame, pinnedA, pinnedB, capsuleRadius) {
+    if (!linkWalls.length) return;
     const approachX = ((bodyA.vx ?? 0) + (bodyB.vx ?? 0)) * 0.5;
     const approachY = ((bodyA.vy ?? 0) + (bodyB.vy ?? 0)) * 0.5;
     for (let pass = 0; pass < LINK_CAPSULE_WALL_PASSES; pass++) {
         const wa = worldAnchorFromBody(bodyA, anchorAx, anchorAy);
         const wb = worldAnchorFromBody(bodyB, anchorBx, anchorBy);
         let best = null;
-        for (let i = 0; i < walls.length; i++) {
-            const seg = walls[i];
-            if (seg.passageEdge) continue;
+        for (let i = 0; i < linkWalls.length; i++) {
+            const seg = linkWalls[i];
             if (!linkSegmentOverlapsWall(wa.x, wa.y, wb.x, wb.y, capsuleRadius, seg)) continue;
             const penetration = getLinkCapsuleSegmentPenetration(wa.x, wa.y, wb.x, wb.y, capsuleRadius, seg, { approachX, approachY });
             if (!penetration || penetration.overlap <= 0) continue;
@@ -265,16 +269,17 @@ function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy
 function projectIslandLinkCapsulesAgainstWalls(tick) {
     const slab = kineticConstraintSlab;
     const spatialFrame = tick.frame;
-    const walls = islandLinkWallCandidates;
+    const islandWalls = islandLinkWallCandidates;
+    const linkWalls = linkFilteredWallCandidates;
     const gatherMark = spatialFrame.frameId;
     forEachConstraintIsland(slab, (start, count) => {
         if (islandConstraintsAsleep(slab, start, count)) return;
-        gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gatherMark, walls);
-        if (!walls.length) return;
+        gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gatherMark, islandWalls);
+        if (!islandWalls.length) return;
         for (let i = start; i < start + count; i++) {
             const bodyA = slab.bodyA[i];
             const bodyB = slab.bodyB[i];
-            if (!shouldProjectLinkCapsuleAgainstWalls(bodyA, bodyB, slab.anchorAx[i], slab.anchorAy[i], slab.anchorBx[i], slab.anchorBy[i], slab.capsuleRadius[i], walls)) continue;
+            if (!shouldProjectLinkCapsuleAgainstWalls(bodyA, bodyB, slab.anchorAx[i], slab.anchorAy[i], slab.anchorBx[i], slab.anchorBy[i], slab.capsuleRadius[i], islandWalls, linkWalls)) continue;
             projectDistanceLinkCapsuleAgainstWalls(
                 bodyA,
                 bodyB,
@@ -282,7 +287,7 @@ function projectIslandLinkCapsulesAgainstWalls(tick) {
                 slab.anchorAy[i],
                 slab.anchorBx[i],
                 slab.anchorBy[i],
-                walls,
+                linkWalls,
                 spatialFrame,
                 slab.pinnedA[i],
                 slab.pinnedB[i],
