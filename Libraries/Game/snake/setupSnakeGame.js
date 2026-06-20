@@ -14,6 +14,7 @@ import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
+import { beginSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
@@ -140,7 +141,11 @@ export async function setupSnakeGame(state) {
         getSegmentCount,
         tick(dtMs) {
             const dtSec = dtMs / 1000;
+            const snakeGame = state.sandbox.snakeGame;
+            snakeGame._batchingPerception = true;
+            beginSnakePerceptionFrame(state);
             for (const autosim of autosimsByHeadId.values()) autosim.tick(dtSec);
+            snakeGame._batchingPerception = false;
             hud.update();
         },
         applyContactSideEffects(tick, contacts) {

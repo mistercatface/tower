@@ -1,7 +1,10 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { queryGridCellVision } from "../../Navigation/perception/gridCellVision.js";
+import { hasGridCellLineOfSightCached, isWorldPointInVisionCone, resolveObserverGridVision } from "../../Navigation/perception/gridCellVision.js";
 import { visitLiveWorldProps } from "../../../GameState/EntityRegistry.js";
-export function collectSnakeGoalProps(state) {
+import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
+import { collectAllSnakeGoals, collectSnakeGoalsInRect, countSnakeGoals, getSnakeGoalIndex, unregisterSnakeGoal } from "./snakeGoalIndex.js";
+import { ensureSnakePerceptionTick } from "./snakePerception.js";
+function collectSnakeGoalPropsFallback(state) {
     const goalPropId = getSnakeGameConfig().goalPropId;
     const goals = [];
     visitLiveWorldProps(state.worldProps, (prop) => {
@@ -10,13 +13,39 @@ export function collectSnakeGoalProps(state) {
     });
     return goals;
 }
-export function findNearestVisibleSnakeGoal(state, seeker, { halfAngle, range } = getSnakeGameConfig().visionCone) {
-    const goals = collectSnakeGoalProps(state);
-    const { visible } = queryGridCellVision(seeker, goals, { halfAngle, range, gridNavContext: state.navigation.gridNavContext });
+function collectSnakeGoalCandidates(state, seeker, visionCone, vision) {
+    const index = getSnakeGoalIndex(state);
+    if (!index) return collectSnakeGoalPropsFallback(state);
+    const grid = state.obstacleGrid;
+    const rangeCells = Math.ceil(visionCone.range / grid.cellSize);
+    const minCol = Math.max(0, vision.originCol - rangeCells);
+    const maxCol = Math.min(grid.cols - 1, vision.originCol + rangeCells);
+    const minRow = Math.max(0, vision.originRow - rangeCells);
+    const maxRow = Math.min(grid.rows - 1, vision.originRow + rangeCells);
+    return collectSnakeGoalsInRect(index, state.entityRegistry, minCol, maxCol, minRow, maxRow, grid.cols, grid.rows);
+}
+export function collectSnakeGoalProps(state) {
+    const index = getSnakeGoalIndex(state);
+    if (index) return collectAllSnakeGoals(index, state.entityRegistry);
+    return collectSnakeGoalPropsFallback(state);
+}
+export function findNearestVisibleSnakeGoal(state, seeker, visionCone = getSnakeGameConfig().visionCone) {
+    ensureSnakePerceptionTick(state);
+    const gridNavContext = state.navigation.gridNavContext;
+    const visionSession = state.navigation.gridCellVisionSession;
+    const onScreen = state.viewport?.isVisible?.(seeker.x, seeker.y, (seeker.radius ?? 8) * 2) ?? true;
+    const brainSyncOffScreenInterval = getSnakeGameConfig().brainSyncOffScreenInterval;
+    const vision = resolveObserverGridVision(seeker, gridNavContext, visionCone, visionSession, { onScreen, brainSyncOffScreenInterval });
+    const candidates = collectSnakeGoalCandidates(state, seeker, visionCone, vision);
+    const grid = gridNavContext.grid;
     let nearest = null;
     let bestDist = Infinity;
-    for (let i = 0; i < visible.length; i++) {
-        const goal = visible[i];
+    for (let i = 0; i < candidates.length; i++) {
+        const goal = candidates[i];
+        if (goal === seeker || goal.isDead) continue;
+        if (!isWorldPointInVisionCone(seeker.x, seeker.y, vision.heading, visionCone.halfAngle, visionCone.range, goal.x, goal.y)) continue;
+        const { col, row } = grid.worldToGrid(goal.x, goal.y);
+        if (!hasGridCellLineOfSightCached(visionSession, gridNavContext, vision.originCol, vision.originRow, col, row)) continue;
         const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
         if (dist < bestDist) {
             bestDist = dist;
@@ -26,7 +55,9 @@ export function findNearestVisibleSnakeGoal(state, seeker, { halfAngle, range } 
     return nearest;
 }
 export function countLiveSnakeGoals(state) {
-    return collectSnakeGoalProps(state).length;
+    const index = getSnakeGoalIndex(state);
+    if (index) return countSnakeGoals(index);
+    return collectSnakeGoalPropsFallback(state).length;
 }
 export function findNearestSnakeGoal(state, x, y) {
     const goals = collectSnakeGoalProps(state);
@@ -44,5 +75,10 @@ export function findNearestSnakeGoal(state, x, y) {
 }
 export function findSnakeGoalProp(state) {
     const goals = collectSnakeGoalProps(state);
-    return goals[0];
+    return goals[0] ?? null;
+}
+export function removeSnakeGoalProp(state, prop) {
+    const index = getSnakeGoalIndex(state);
+    if (index) unregisterSnakeGoal(index, prop.id);
+    removeSandboxWorldProp(state, prop);
 }

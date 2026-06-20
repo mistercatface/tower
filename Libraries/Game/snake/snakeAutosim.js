@@ -9,10 +9,11 @@ import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { applySnakeSegmentGameplay } from "./snakeHeadGameplay.js";
-import { countLiveSnakeGoals, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
+import { countLiveSnakeGoals, findNearestVisibleSnakeGoal, removeSnakeGoalProp } from "./snakeGoals.js";
 import { createSnakeBrain } from "./snakeBrain.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
+import { maybeBeginSnakeAutosimTick } from "./snakePerception.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 function chainMemberProps(state, headId) {
     const ids = getConnectedBodyIds(state.kinetic, headId);
@@ -79,7 +80,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         resetSnakeFoodTimer(foodTimer, config.starvationIntervalSec);
         const goalCell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
         brain.stampArrival(goalCell.col, goalCell.row);
-        removeSandboxWorldProp(state, goal);
+        removeSnakeGoalProp(state, goal);
         if (pinnedGoalId === goal.id) pinnedGoalId = null;
         intent.headNav.clearDestination();
         const grow = growSnakeChainAfterMeal(state, headId);
@@ -142,6 +143,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         },
         tick(dt) {
             if (!active) return;
+            maybeBeginSnakeAutosimTick(state);
             const seeker = resolveSeeker();
             const choice = runSnakeFsmTick(intent, seeker, state, dt);
             let fedThisTick = false;

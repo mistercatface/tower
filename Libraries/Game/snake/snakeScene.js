@@ -11,6 +11,7 @@ import { stampGlobalRailMazeBelts } from "../../Procedural/Mazes/stampGlobalRail
 import { commitBoundaryEdit } from "../../Sandbox/boundaryEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
+import { ensureSnakeGoalIndex, registerSnakeGoal } from "./snakeGoalIndex.js";
 import { pickNavWalkableBeltCellAny } from "./snakeBeltCells.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
 import { applySnakeHeadGameplay, applySnakeSegmentGameplay } from "./snakeHeadGameplay.js";
@@ -190,7 +191,10 @@ async function spawnSnakeCavernMap(state) {
     await generateSnakeSplitMap(state);
 }
 export function spawnGoalOrb(state, worldX, worldY, faction = SANDBOX_DEFAULT_FACTION) {
-    return spawnPlacedSandboxProp(state, worldX, worldY, getSnakeGameConfig().goalPropId, faction);
+    const prop = spawnPlacedSandboxProp(state, worldX, worldY, getSnakeGameConfig().goalPropId, faction);
+    const index = ensureSnakeGoalIndex(state);
+    if (index) registerSnakeGoal(index, prop, state.obstacleGrid);
+    return prop;
 }
 export function spawnGoalOrbAtCell(state, cell, faction = SANDBOX_DEFAULT_FACTION) {
     const { x, y } = state.obstacleGrid.gridToWorld(cell.col, cell.row);

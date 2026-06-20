@@ -17,12 +17,13 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
+import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 loadPropAssets();
 /** Brain-on baseline — raise only when intentionally adding cost. */
 const PERF_TICKS = 120;
 const PERF_DT = 1 / 60;
-const WALL_CLOCK_MS_CEILING = 12_000;
-const REPLAN_REQUEST_CEILING = 1200;
+const WALL_CLOCK_MS_CEILING = 18_000;
+const REPLAN_REQUEST_CEILING = 2000;
 function createPerfState(cols = 48, rows = 48) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
@@ -98,14 +99,18 @@ function buildMultiSnakeSession(state) {
     return { autosims };
 }
 describe("snakePerfBudget", () => {
-    it("30 snakes with brains stay within wall-clock and replan budget", () => {
-        applySnakeGameConfig({ snakeCount: 30, goalCount: 75, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4 });
+    it("50 snakes with brains stay within wall-clock and replan budget", () => {
+        applySnakeGameConfig({ snakeCount: 50, goalCount: 100, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4 });
         resetKineticConstraintIds(1);
         const state = createPerfState();
         const { autosims } = buildMultiSnakeSession(state);
+        const snakeGame = state.sandbox.snakeGame;
         const t0 = performance.now();
         for (let tick = 0; tick < PERF_TICKS; tick++) {
+            snakeGame._batchingPerception = true;
+            beginSnakePerceptionFrame(state);
             for (let i = 0; i < autosims.length; i++) autosims[i].autosim.tick(PERF_DT);
+            snakeGame._batchingPerception = false;
         }
         const elapsed = performance.now() - t0;
         assert.ok(elapsed < WALL_CLOCK_MS_CEILING, `wall-clock ${elapsed.toFixed(1)}ms exceeds ${WALL_CLOCK_MS_CEILING}ms`);

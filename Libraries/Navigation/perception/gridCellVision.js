@@ -1,12 +1,17 @@
 import { boundaryBlocksStepFrom } from "../../Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
+import { gridCellLosCacheKey } from "./gridCellVisionSession.js";
 const HEADING_SPEED_MIN = 0.25;
+const HEADING_CACHE_BUCKETS = 32;
 export function resolveObserverHeading(prop) {
     const vx = prop.vx ?? 0;
     const vy = prop.vy ?? 0;
     const speed = Math.hypot(vx, vy);
     if (speed >= HEADING_SPEED_MIN) return Math.atan2(vy, vx);
     return prop.facing ?? 0;
+}
+export function bucketObserverHeading(heading) {
+    return Math.round(heading * HEADING_CACHE_BUCKETS) / HEADING_CACHE_BUCKETS;
 }
 export function normalizeAngleDelta(delta) {
     let d = delta;
@@ -53,7 +58,17 @@ export function hasGridCellLineOfSight(gridNavContext, col0, row0, col1, row1) {
         y = ny;
     }
 }
-export function collectVisibleGridCells(gridNavContext, originX, originY, heading, halfAngle, range) {
+/** @param {import("./gridCellVisionSession.js").ReturnType<typeof import("./gridCellVisionSession.js").createGridCellVisionSession> | null | undefined} visionSession */
+export function hasGridCellLineOfSightCached(visionSession, gridNavContext, col0, row0, col1, row1) {
+    if (!visionSession) return hasGridCellLineOfSight(gridNavContext, col0, row0, col1, row1);
+    const key = gridCellLosCacheKey(col0, row0, col1, row1);
+    if (visionSession.losCache.has(key)) return visionSession.losCache.get(key);
+    const visible = hasGridCellLineOfSight(gridNavContext, col0, row0, col1, row1);
+    visionSession.losCache.set(key, visible);
+    return visible;
+}
+/** @param {import("./gridCellVisionSession.js").ReturnType<typeof import("./gridCellVisionSession.js").createGridCellVisionSession> | null | undefined} [visionSession] */
+export function collectVisibleGridCells(gridNavContext, originX, originY, heading, halfAngle, range, visionSession = null) {
     const grid = gridNavContext.grid;
     const { col: originCol, row: originRow } = grid.worldToGrid(originX, originY);
     const rangeCells = Math.ceil(range / grid.cellSize);
@@ -70,24 +85,56 @@ export function collectVisibleGridCells(gridNavContext, originX, originY, headin
             const dy = y - originY;
             if (dx * dx + dy * dy > rangeSq) continue;
             if (!isWorldPointInVisionCone(originX, originY, heading, halfAngle, range, x, y)) continue;
-            if (!hasGridCellLineOfSight(gridNavContext, originCol, originRow, col, row)) continue;
+            if (!hasGridCellLineOfSightCached(visionSession, gridNavContext, originCol, originRow, col, row)) continue;
             cells.push({ col, row });
         }
     return cells;
 }
-export function queryGridCellVision(observer, candidates, { halfAngle, range, gridNavContext }) {
+/**
+ * Cached cone sweep for one observer — shared by brain sync and food vision.
+ * @param {object} observer
+ * @param {import("../GridNavContext.js").GridNavContext} gridNavContext
+ * @param {{ halfAngle: number, range: number }} visionCone
+ * @param {import("./gridCellVisionSession.js").ReturnType<typeof import("./gridCellVisionSession.js").createGridCellVisionSession> | null | undefined} visionSession
+ * @param {{ force?: boolean, onScreen?: boolean, brainSyncOffScreenInterval?: number }} [opts]
+ */
+export function resolveObserverGridVision(observer, gridNavContext, visionCone, visionSession, { force = false, onScreen = true, brainSyncOffScreenInterval = 1 } = {}) {
+    const grid = gridNavContext.grid;
+    const wallRevision = gridNavContext.wallRevision;
+    const { col, row } = grid.worldToGrid(observer.x, observer.y);
     const heading = resolveObserverHeading(observer);
-    const cells = collectVisibleGridCells(gridNavContext, observer.x, observer.y, heading, halfAngle, range);
+    const headingBucket = bucketObserverHeading(heading);
+    const tick = observer._brainSyncTick ?? 0;
+    const cache = observer._observerVisionCache;
+    if (
+        !force &&
+        cache &&
+        cache.wallRevision === wallRevision &&
+        cache.col === col &&
+        cache.row === row &&
+        cache.headingBucket === headingBucket &&
+        cache.halfAngle === visionCone.halfAngle &&
+        cache.range === visionCone.range &&
+        (onScreen || tick % brainSyncOffScreenInterval === 0)
+    )
+        return cache;
+    if (!force && !onScreen && brainSyncOffScreenInterval > 1 && tick % brainSyncOffScreenInterval !== 0 && cache) return cache;
+    const cells = collectVisibleGridCells(gridNavContext, observer.x, observer.y, heading, visionCone.halfAngle, visionCone.range, visionSession);
+    const next = { wallRevision, col, row, originCol: col, originRow: row, heading, headingBucket, halfAngle: visionCone.halfAngle, range: visionCone.range, cells };
+    observer._observerVisionCache = next;
+    return next;
+}
+export function queryGridCellVision(observer, candidates, { halfAngle, range, gridNavContext, visionSession = null }) {
+    const vision = resolveObserverGridVision(observer, gridNavContext, { halfAngle, range }, visionSession, { force: true });
     const visible = [];
     const grid = gridNavContext.grid;
-    const { col: originCol, row: originRow } = grid.worldToGrid(observer.x, observer.y);
     for (let i = 0; i < candidates.length; i++) {
         const target = candidates[i];
         if (target === observer || target.isDead) continue;
-        if (!isWorldPointInVisionCone(observer.x, observer.y, heading, halfAngle, range, target.x, target.y)) continue;
+        if (!isWorldPointInVisionCone(observer.x, observer.y, vision.heading, halfAngle, range, target.x, target.y)) continue;
         const { col, row } = grid.worldToGrid(target.x, target.y);
-        if (!hasGridCellLineOfSight(gridNavContext, originCol, originRow, col, row)) continue;
+        if (!hasGridCellLineOfSightCached(visionSession, gridNavContext, vision.originCol, vision.originRow, col, row)) continue;
         visible.push(target);
     }
-    return { heading, halfAngle, range, cells, visible };
+    return { heading: vision.heading, halfAngle, range, cells: vision.cells, visible };
 }

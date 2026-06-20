@@ -1,5 +1,7 @@
+import { createSnakeGoalIndex, rebuildSnakeGoalIndex } from "./snakeGoalIndex.js";
 export function wireSnakeGameRegistry(state, registry, autosimsByHeadId, navWalkable) {
-    state.sandbox.snakeGame = { registry, autosimsByHeadId, navWalkable };
+    state.sandbox.snakeGame = { registry, autosimsByHeadId, navWalkable, goalIndex: createSnakeGoalIndex(), simTick: 0, lastVisionBeginTick: -1 };
+    rebuildSnakeGoalIndex(state);
 }
 export function createSnakeLifecycleRegistry() {
     return { aliveByHeadId: new Map(), inertByLeadId: new Map(), deadHeadIds: new Set() };
