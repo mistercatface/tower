@@ -45,6 +45,8 @@ export const kineticContactBuffer = {
     jt: new Float32Array(MAX_CONTACTS),
     restitution: new Float32Array(MAX_CONTACTS),
     friction: new Float32Array(MAX_CONTACTS),
+    featureA: new Uint8Array(MAX_CONTACTS),
+    featureB: new Uint8Array(MAX_CONTACTS),
     warmStartKey: new Float64Array(MAX_CONTACTS),
     resting: new Uint8Array(MAX_CONTACTS),
     reset() {
@@ -204,7 +206,7 @@ function contactLeverArms(bodyA, bodyB, shapeA, shapeB, info) {
     const cy = info.cy ?? bodyA.y + ny * (info.overlap / 2);
     return { rax: cx - bodyA.x, ray: cy - bodyA.y, rbx: cx - bodyB.x, rby: cy - bodyB.y };
 }
-function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy, rax, ray, rbx, rby) {
+function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy, rax, ray, rbx, rby, featureA = 0, featureB = 0) {
     if (contacts.count >= MAX_CONTACTS) return;
     const i = contacts.count++;
     const slab = kineticBodySlab;
@@ -217,6 +219,8 @@ function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy,
     contacts.ray[i] = ray;
     contacts.rbx[i] = rbx;
     contacts.rby[i] = rby;
+    contacts.featureA[i] = featureA;
+    contacts.featureB[i] = featureB;
     contacts.preDvx[i] = preDvx;
     contacts.preDvy[i] = preDvy;
     contacts.preSpeedA[i] = Math.hypot(slab.vx[physIdA], slab.vy[physIdA]);
@@ -252,7 +256,7 @@ function narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, preDvx, pre
     const shapeA = hit.shapeA ?? bodyA.getShape();
     const shapeB = hit.shapeB ?? bodyB.getShape();
     const arms = contactLeverArms(bodyA, bodyB, shapeA, shapeB, info);
-    appendContact(contacts, physIdA, physIdB, tier, info.nx, info.ny, preDvx, preDvy, arms.rax, arms.ray, arms.rbx, arms.rby);
+    appendContact(contacts, physIdA, physIdB, tier, info.nx, info.ny, preDvx, preDvy, arms.rax, arms.ray, arms.rbx, arms.rby, info.featureA, info.featureB);
 }
 function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
     contacts.reset();
@@ -307,7 +311,7 @@ function precomputeKineticContacts(spatialFrame, contacts) {
         if (!bodyA || !bodyB) continue;
         contacts.restitution[i] = kineticPairRestitution(bodyA, bodyB);
         contacts.friction[i] = kineticPairFriction(bodyA, bodyB);
-        contacts.warmStartKey[i] = contactWarmStartKey(bodyA, bodyB, nx, ny);
+        contacts.warmStartKey[i] = contactWarmStartKey(bodyA, bodyB, contacts.featureA[i], contacts.featureB[i]);
     }
 }
 function applyContactImpulse(contacts, i, slab, iterMaxImpulse) {

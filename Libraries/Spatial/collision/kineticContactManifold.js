@@ -1,7 +1,6 @@
 export const PAIR_KEY_SCALE = 1_000_000;
-export const FEATURE_ANGLE_BINS = 16;
 export const WARM_START_CACHE_MASK = 16383;
-const WARM_START_FEATURE_STRIDE = 32;
+const WARM_START_FEATURE_STRIDE = 1024;
 /**
  * @param {{ id: number }} bodyA
  * @param {{ id: number }} bodyB
@@ -11,25 +10,18 @@ export function pairContactKey(bodyA, bodyB) {
     return bodyA.id < bodyB.id ? bodyA.id * PAIR_KEY_SCALE + bodyB.id : bodyB.id * PAIR_KEY_SCALE + bodyA.id;
 }
 /**
- * @param {number} nx
- * @param {number} ny
- * @returns {number}
- */
-export function quantizeContactFeatureId(nx, ny) {
-    if (Math.abs(nx) < 1e-8 && Math.abs(ny) < 1e-8) return 0;
-    const angle = Math.atan2(ny, nx);
-    const bin = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * FEATURE_ANGLE_BINS) % FEATURE_ANGLE_BINS;
-    return bin + 1;
-}
-/**
  * @param {{ id: number }} bodyA
  * @param {{ id: number }} bodyB
- * @param {number} nx
- * @param {number} ny
+ * @param {number} featureA
+ * @param {number} featureB
  * @returns {number}
  */
-export function contactWarmStartKey(bodyA, bodyB, nx, ny) {
-    return pairContactKey(bodyA, bodyB) * WARM_START_FEATURE_STRIDE + quantizeContactFeatureId(nx, ny);
+export function contactWarmStartKey(bodyA, bodyB, featureA = 0, featureB = 0) {
+    const isAFirst = bodyA.id < bodyB.id;
+    const f1 = isAFirst ? featureA : featureB;
+    const f2 = isAFirst ? featureB : featureA;
+    const featureKey = (f1 & 0x1f) | ((f2 & 0x1f) << 5);
+    return pairContactKey(bodyA, bodyB) * WARM_START_FEATURE_STRIDE + featureKey;
 }
 /** @param {number} warmStartKey */
 export function warmStartCacheIndex(warmStartKey) {

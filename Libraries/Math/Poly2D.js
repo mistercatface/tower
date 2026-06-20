@@ -55,9 +55,7 @@ export function regularStarFootprint(points, outerRadius, innerRadius, startAngl
 }
 export function fanTriangulateFromOrigin(vertices) {
     const triangles = [];
-    for (let i = 0; i < vertices.length; i++) {
-        triangles.push([{ x: 0, y: 0 }, vertices[i], vertices[(i + 1) % vertices.length]]);
-    }
+    for (let i = 0; i < vertices.length; i++) triangles.push([{ x: 0, y: 0 }, vertices[i], vertices[(i + 1) % vertices.length]]);
     return triangles;
 }
 export function convexFootprintHalfExtents(vertices) {
@@ -71,6 +69,7 @@ export function convexFootprintHalfExtents(vertices) {
 }
 export function findExtremeVertexInto(out, vertices, pos, cos, sin, axisX, axisY, findMax = true) {
     let bestProj = findMax ? -Infinity : Infinity;
+    let bestIndex = 0;
     out.x = pos.x;
     out.y = pos.y;
     for (let i = 0; i < vertices.length; i++) {
@@ -82,12 +81,14 @@ export function findExtremeVertexInto(out, vertices, pos, cos, sin, axisX, axisY
             bestProj = proj;
             out.x = vx;
             out.y = vy;
+            bestIndex = i;
         }
     }
-    return out;
+    return bestIndex;
 }
 export function findClosestWorldVertexInto(out, vertices, pos, cos, sin, targetX, targetY) {
     let bestDistSq = Infinity;
+    let bestIndex = 0;
     out.x = pos.x;
     out.y = pos.y;
     for (let i = 0; i < vertices.length; i++) {
@@ -101,9 +102,10 @@ export function findClosestWorldVertexInto(out, vertices, pos, cos, sin, targetX
             bestDistSq = distSq;
             out.x = vx;
             out.y = vy;
+            bestIndex = i;
         }
     }
-    return out;
+    return bestIndex;
 }
 function pointOnPolygonRing(px, py, count, xAt, yAt) {
     for (let i = 0, j = count - 1; i < count; j = i++) if (distanceSqToLineSegment(px, py, xAt(j), yAt(j), xAt(i), yAt(i)) <= POLYGON_EDGE_EPS_SQ) return true;

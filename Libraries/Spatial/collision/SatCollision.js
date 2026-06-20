@@ -82,12 +82,12 @@ export class SatCollision {
         const facingB = entityFacing(posB);
         const cosB = Math.cos(facingB);
         const sinB = Math.sin(facingB);
-        findExtremeVertexInto(contactB, shapeB.vertices, posB, cosB, sinB, minNormal.x, minNormal.y, false);
+        const featureB = findExtremeVertexInto(contactB, shapeB.vertices, posB, cosB, sinB, minNormal.x, minNormal.y, false);
         const facingA = entityFacing(posA);
         const cosA = Math.cos(facingA);
         const sinA = Math.sin(facingA);
-        findExtremeVertexInto(contactA, shapeA.vertices, posA, cosA, sinA, minNormal.x, minNormal.y, true);
-        return { overlap: minOverlap, nx: minNormal.x, ny: minNormal.y, cx: (contactA.x + contactB.x) / 2, cy: (contactA.y + contactB.y) / 2 };
+        const featureA = findExtremeVertexInto(contactA, shapeA.vertices, posA, cosA, sinA, minNormal.x, minNormal.y, true);
+        return { overlap: minOverlap, nx: minNormal.x, ny: minNormal.y, cx: (contactA.x + contactB.x) / 2, cy: (contactA.y + contactB.y) / 2, featureA, featureB };
     }
     static _circlePolygon(posCircle, circleShape, posPoly, polyShape) {
         const polyAngle = entityFacing(posPoly);
@@ -108,7 +108,7 @@ export class SatCollision {
                 minNormal = rotatedNormal;
             }
         }
-        findClosestWorldVertexInto(closestVertex, polyShape.vertices, posPoly, cosP, sinP, posCircle.x, posCircle.y);
+        const featureB = findClosestWorldVertexInto(closestVertex, polyShape.vertices, posPoly, cosP, sinP, posCircle.x, posCircle.y);
         const dx = closestVertex.x - posCircle.x;
         const dy = closestVertex.y - posCircle.y;
         if (dx !== 0 || dy !== 0) {
@@ -132,6 +132,8 @@ export class SatCollision {
             ny: minNormal.y,
             cx: posCircle.x + minNormal.x * (circleShape.radius - minOverlap / 2),
             cy: posCircle.y + minNormal.y * (circleShape.radius - minOverlap / 2),
+            featureA: 0,
+            featureB,
         };
     }
     static _projectPolygon(axis, shape, pos, angle = 0) {
