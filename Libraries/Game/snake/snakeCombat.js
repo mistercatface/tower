@@ -5,11 +5,11 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { markSnakeDead, registerInertSnake, resolveAliveSnakeHeadId } from "./snakeLifecycle.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
-function snakeSegmentCount(state, headId) {
-    return getConnectedComponentPath(state.kinetic, headId).length;
+function snakeSegmentCount(state, headId, members = null) {
+    return (members || getConnectedComponentPath(state.kinetic, headId)).length;
 }
-function snakeSizeScore(state, headId) {
-    return getSnakeSizeScore(state, headId);
+function snakeSizeScore(state, headId, members = null) {
+    return getSnakeSizeScore(state, headId, members);
 }
 function orderedMembers(state, headId) {
     return getConnectedComponentPath(state.kinetic, headId);
@@ -17,27 +17,27 @@ function orderedMembers(state, headId) {
 function resolveHead(registry, state, propId) {
     return resolveAliveSnakeHeadId(registry, (headId) => orderedMembers(state, headId), propId);
 }
-export function enforceSnakeMinLength(state, snakeGame, headId) {
+export function enforceSnakeMinLength(state, snakeGame, headId, members = null) {
     const config = getSnakeGameConfig();
-    if (snakeSegmentCount(state, headId) >= config.minAliveSegmentCount) return false;
-    killSnake(state, snakeGame, headId);
+    if (snakeSegmentCount(state, headId, members) >= config.minAliveSegmentCount) return false;
+    killSnake(state, snakeGame, headId, members);
     return true;
 }
-export function killSnake(state, snakeGame, headId) {
+export function killSnake(state, snakeGame, headId, members = null) {
     const autosim = snakeGame.autosimsByHeadId.get(headId);
     if (autosim) {
         autosim.stop();
         snakeGame.autosimsByHeadId.delete(headId);
     }
     const meta = getSandboxEntityMeta(state);
-    const members = orderedMembers(state, headId);
-    for (let i = 0; i < members.length; i++) meta.setChainHead(members[i], false);
-    clearChainLinksForMembers(state, members);
+    const resolvedMembers = members || orderedMembers(state, headId);
+    for (let i = 0; i < resolvedMembers.length; i++) meta.setChainHead(resolvedMembers[i], false);
+    clearChainLinksForMembers(state, resolvedMembers);
     markSnakeDead(snakeGame.registry, headId);
     if (snakeGame.onHeadDied) snakeGame.onHeadDied(headId);
 }
-export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struckSegmentId) {
-    const members = orderedMembers(state, victimHeadId);
+export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struckSegmentId, victimMembers = null) {
+    const members = victimMembers || orderedMembers(state, victimHeadId);
     const strikeIndex = members.indexOf(struckSegmentId);
     if (strikeIndex < 0 || strikeIndex >= members.length - 1) return null;
     const linkA = members[strikeIndex];
@@ -64,8 +64,8 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         const headB = resolveHead(registry, state, bodyB.id);
         if (headA == null || headB == null || headA === headB) continue;
         if (bodyA.id !== headA || bodyB.id !== headB) continue;
-        const sizeA = snakeSizeScore(state, headA);
-        const sizeB = snakeSizeScore(state, headB);
+        const sizeA = snakeSizeScore(state, headA, orderedMembers(state, headA));
+        const sizeB = snakeSizeScore(state, headB, orderedMembers(state, headB));
         if (sizeA === sizeB) continue;
         const victimHead = sizeA > sizeB ? headB : headA;
         const victimMembers = orderedMembers(state, victimHead);
@@ -73,12 +73,11 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         if (!victimMembers.includes(victimBody.id)) continue;
         const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
         if (relSpeed < config.splitImpulseThreshold) continue;
-        const members = orderedMembers(state, victimHead);
-        const strikeIndex = members.indexOf(victimBody.id);
-        if (strikeIndex < 0 || strikeIndex >= members.length - 1) continue;
-        const linkKey = `${members[strikeIndex]}:${members[strikeIndex + 1]}`;
+        const strikeIndex = victimMembers.indexOf(victimBody.id);
+        if (strikeIndex < 0 || strikeIndex >= victimMembers.length - 1) continue;
+        const linkKey = `${victimMembers[strikeIndex]}:${victimMembers[strikeIndex + 1]}`;
         if (splitLinks.has(linkKey)) continue;
         splitLinks.add(linkKey);
-        splitSnakeAtStruckSegment(state, snakeGame, victimHead, victimBody.id);
+        splitSnakeAtStruckSegment(state, snakeGame, victimHead, victimBody.id, victimMembers);
     }
 }

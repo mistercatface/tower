@@ -14,36 +14,38 @@ export function getSnakeFoodTimerFraction(timer) {
     if (timer.intervalSec <= 0) return 1;
     return Math.max(0, Math.min(1, timer.remainingSec / timer.intervalSec));
 }
-export function shrinkSnakeChainFromStarvation(state, headId) {
+export function shrinkSnakeChainFromStarvation(state, headId, members = null) {
     const config = getSnakeGameConfig();
     const minSegments = config.minAliveSegmentCount;
-    const members = getConnectedComponentPath(state.kinetic, headId);
-    if (members.length <= minSegments) return false;
-    const tailId = members[members.length - 1];
-    const prevId = members[members.length - 2];
+    const resolvedMembers = members || getConnectedComponentPath(state.kinetic, headId);
+    if (resolvedMembers.length <= minSegments) return false;
+    const tailId = resolvedMembers[resolvedMembers.length - 1];
+    const prevId = resolvedMembers[resolvedMembers.length - 2];
     const tail = state.entityRegistry.getLive(tailId);
     removeChainLinkBetween(state, prevId, tailId);
     clearChainLinksForProp(state, tailId);
     removeSandboxWorldProp(state, tail);
-    stepSnakeChainRadiusDown(state, headId);
+    stepSnakeChainRadiusDown(state, headId, resolvedMembers.slice(0, -1));
     return true;
 }
-export function tickSnakeFoodTimer(state, headId, timer, dt) {
+export function tickSnakeFoodTimer(state, headId, timer, dt, members = null) {
     const config = getSnakeGameConfig();
-    if (getSnakeSegmentCount(state, headId) <= config.minAliveSegmentCount) {
+    const resolvedMembers = members || getConnectedComponentPath(state.kinetic, headId);
+    if (getSnakeSegmentCount(state, headId, resolvedMembers) <= config.minAliveSegmentCount) {
         timer.remainingSec = timer.intervalSec;
         return false;
     }
     timer.remainingSec -= dt;
     let shed = false;
-    while (timer.remainingSec <= 0 && getSnakeSegmentCount(state, headId) > config.minAliveSegmentCount) {
-        if (!shrinkSnakeChainFromStarvation(state, headId)) {
+    while (timer.remainingSec <= 0 && getSnakeSegmentCount(state, headId, resolvedMembers) > config.minAliveSegmentCount) {
+        if (!shrinkSnakeChainFromStarvation(state, headId, resolvedMembers)) {
             timer.remainingSec = timer.intervalSec;
             break;
         }
+        resolvedMembers.pop();
         shed = true;
         timer.remainingSec += timer.intervalSec;
     }
-    if (getSnakeSegmentCount(state, headId) <= config.minAliveSegmentCount) timer.remainingSec = timer.intervalSec;
+    if (getSnakeSegmentCount(state, headId, resolvedMembers) <= config.minAliveSegmentCount) timer.remainingSec = timer.intervalSec;
     return shed;
 }

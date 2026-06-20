@@ -94,14 +94,14 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         tailId = liveMembers[liveMembers.length - 1].id;
     };
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
-    const eatGoal = (seeker, goal, dt) => {
+    const eatGoal = (seeker, goal, dt, members = null) => {
         resetSnakeFoodTimer(foodTimer, config.starvationIntervalSec);
         const goalCell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
         brain.stampArrival(goalCell.col, goalCell.row);
         removeSnakeGoalProp(state, goal);
         if (pinnedGoalId === goal.id) pinnedGoalId = null;
         intent.headNav.clearDestination();
-        const grow = growSnakeChainAfterMeal(state, headId);
+        const grow = growSnakeChainAfterMeal(state, headId, members);
         const tail = state.entityRegistry.getLive(tailId);
         const newTail = growChainSegment(state, tail, {
             spacing: grow.spacing,
@@ -162,6 +162,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         tick(dt) {
             if (!active) return;
             const seeker = resolveSeeker();
+            const members = getConnectedBodyIds(state.kinetic, headId);
             const choice = runSnakeFsmTick(intent, seeker, state, dt);
             let fedThisTick = false;
             if (choice.mode === "seek_food" && choice.target) {
@@ -169,11 +170,11 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
                 const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
                 const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
                 if (dist <= radius) {
-                    eatGoal(seeker, goal, dt);
+                    eatGoal(seeker, goal, dt, members);
                     fedThisTick = true;
                 }
             }
-            if (!fedThisTick && tickSnakeFoodTimer(state, headId, foodTimer, dt)) syncTailId();
+            if (!fedThisTick && tickSnakeFoodTimer(state, headId, foodTimer, dt, members)) syncTailId();
         },
     };
 }

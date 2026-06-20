@@ -6,15 +6,15 @@ export function getSnakeChainRadius(state, headId) {
     const head = state.entityRegistry.getLive(headId);
     return getCirclePropRadius(head);
 }
-export function getSnakeSegmentCount(state, headId) {
-    return getConnectedComponentPath(state.kinetic, headId).length;
+export function getSnakeSegmentCount(state, headId, members = null) {
+    return (members || getConnectedComponentPath(state.kinetic, headId)).length;
 }
-export function getSnakeSizeScore(state, headId) {
-    return getSnakeSegmentCount(state, headId) * 1000 + getSnakeChainRadius(state, headId);
+export function getSnakeSizeScore(state, headId, members = null) {
+    return getSnakeSegmentCount(state, headId, members) * 1000 + getSnakeChainRadius(state, headId);
 }
-export function stepSnakeChainRadius(state, headId) {
+export function stepSnakeChainRadius(state, headId, members = null) {
     const config = getSnakeGameConfig();
-    const memberIds = getConnectedBodyIds(state.kinetic, headId);
+    const memberIds = members || getConnectedBodyIds(state.kinetic, headId);
     const current = getSnakeChainRadius(state, headId);
     const next = Math.min(current + config.radiusPerMeal, config.maxRadius);
     if (next !== current) {
@@ -26,14 +26,14 @@ export function stepSnakeChainRadius(state, headId) {
     }
     return next;
 }
-export function growSnakeChainAfterMeal(state, headId) {
+export function growSnakeChainAfterMeal(state, headId, members = null) {
     const config = getSnakeGameConfig();
-    const segmentRadius = stepSnakeChainRadius(state, headId);
+    const segmentRadius = stepSnakeChainRadius(state, headId, members);
     return { segmentRadius, spacing: resolveSnakeSegmentSpacing(config, segmentRadius), linkSlack: config.linkSlack };
 }
-export function stepSnakeChainRadiusDown(state, headId) {
+export function stepSnakeChainRadiusDown(state, headId, members = null) {
     const config = getSnakeGameConfig();
-    const memberIds = getConnectedBodyIds(state.kinetic, headId);
+    const memberIds = members || getConnectedBodyIds(state.kinetic, headId);
     const current = getSnakeChainRadius(state, headId);
     const next = Math.max(current - config.radiusPerMeal, config.startRadius);
     if (next !== current) {

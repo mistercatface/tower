@@ -53,6 +53,6 @@ export function resolveStrikerBallSnakeSplitsFromContacts(state, spatialFrame, c
         const linkKey = `${members[strikeIndex]}:${members[strikeIndex + 1]}`;
         if (splitLinks.has(linkKey)) continue;
         splitLinks.add(linkKey);
-        splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, snakeBody.id);
+        splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, snakeBody.id, members);
     }
 }
