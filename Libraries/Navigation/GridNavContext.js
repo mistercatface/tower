@@ -25,11 +25,6 @@ export function syncGridNavContext(context, grid, damageBounds = null) {
     context.grid = grid;
     context.wallRevision = grid.wallGridRevision;
 }
-export function bakeNavCachesInto(grid, navCardinalOpen, vertexPassability, damageBounds = null) {
-    const bakeBounds = resolveNavTopologyBakeBounds(grid, damageBounds);
-    recomputeVertexPassabilityInto(grid, vertexPassability, bakeBounds);
-    recomputeNavCardinalOpenInto(grid, navCardinalOpen, vertexPassability, bakeBounds);
-}
 export function createTestNavigation(obstacleGrid) {
     const gridNavContext = createGridNavContext(obstacleGrid);
     syncGridNavContext(gridNavContext, obstacleGrid);

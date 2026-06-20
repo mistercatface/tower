@@ -3,7 +3,6 @@ import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { gridNavCacheKey } from "../Spatial/grid/gridNavEpoch.js";
 import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, navCanStep } from "./navTopologySab.js";
-import { bakeNavCachesInto } from "../Navigation/GridNavContext.js";
 import {
     createHpaWorkerSabPools,
     growHpaCellToRegionSab,
@@ -380,7 +379,6 @@ export class HpaPathWorker {
         this._ensureNavBuffers(size, vertCount, edgePoolRefs);
         const rebindArena = !this._workerNavArenaBound || this._workerBoundNavSize !== size || this._workerBoundEdgePoolSab !== this.sabEdgePool.byteLength;
         packNavTopologyFromGrid(grid, this._navArena, rebindArena ? null : damageBounds);
-        bakeNavCachesInto(grid, this._navArena.cardinalOpen, this._navArena.vertexPassability, rebindArena ? null : damageBounds);
         this._packNavEdgePoolForWorker(grid);
         if (rebindArena) {
             this._workerNavArenaBound = true;

@@ -15,6 +15,7 @@ import {
     navTopologyFromSab,
     recomputeBlockedFromGridFill,
 } from "../../Pathfinding/navTopologySab.js";
+import { recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto } from "../../Spatial/grid/vertexPassability.js";
 import {
     hpaCellToRegionView,
     hpaPathSlotAbstractIdx,
@@ -146,6 +147,8 @@ function bakeNavTopology(damageBounds) {
     const bakeBounds = copyBounds ? expandNavTopologyBakeBounds(copyBounds, cols, rows) : null;
     const topology = requireNavTopology();
     recomputeBlockedFromGridFill(baked.simView.grid, topology.blocked, cols, copyBounds);
+    recomputeVertexPassabilityInto(baked.simView, baked.vertexPassability, bakeBounds);
+    recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen, baked.vertexPassability, bakeBounds);
     const octCol0 = bakeBounds ? bakeBounds.startCol : 0;
     const octCol1 = bakeBounds ? bakeBounds.endCol : cols - 1;
     const octRow0 = bakeBounds ? bakeBounds.startRow : 0;
