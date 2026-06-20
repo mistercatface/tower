@@ -6,7 +6,13 @@ export function buildGroundNavSelectionMenuActions({ propIds, world, navCount, i
     const actions = [];
     for (let i = 0; i < GROUND_NAV_SELECTION_MOVE_IDS.length; i++) {
         const behaviorId = GROUND_NAV_SELECTION_MOVE_IDS[i];
-        actions.push({ label: `${getSandboxBehaviorLabel(behaviorId)} (${navCount})`, onClick: () => issueGroundNav({ propIds, behaviorId, world }) });
+        actions.push({
+            label: `${getSandboxBehaviorLabel(behaviorId)} (${navCount})`,
+            onClick: () => {
+                if (behaviorId === HPA_GROUND_NAV_BEHAVIOR_ID) console.log("Ground nav (hpa) clicked", { propIds, world });
+                issueGroundNav({ propIds, behaviorId, world });
+            },
+        });
     }
     return actions;
 }

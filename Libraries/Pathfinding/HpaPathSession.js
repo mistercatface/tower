@@ -105,6 +105,14 @@ export class HpaPathSession {
                 this._recordInflightPeak();
                 let workerOut = null;
                 try {
+                    console.log("HpaPathSession sending requestPath to worker:", {
+                        startX: params.startX,
+                        startY: params.startY,
+                        targetX: params.targetX,
+                        targetY: params.targetY,
+                        graphEpoch: params.graphEpoch,
+                        replanRequestId: requestId,
+                    });
                     workerOut = await this.worker.requestPath({
                         obstacleGrid: params.obstacleGrid,
                         startX: params.startX,
@@ -115,6 +123,12 @@ export class HpaPathSession {
                         stepPenalty: params.stepPenalty ?? null,
                         navState,
                         replanRequestId: requestId,
+                    });
+                    console.log("HpaPathSession received requestPath response from worker:", {
+                        replanRequestId: requestId,
+                        success: !!workerOut?.result,
+                        pathLen: workerOut?.result?.pathLen,
+                        pathSlot: workerOut?.result?.pathSlot,
                     });
                 } catch (err) {
                     console.error("HPA replan failed", err);

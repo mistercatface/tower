@@ -34,7 +34,10 @@ export function createHpaGroundNavBehavior(state) {
         run.targetWorld = snapped.world;
         run.targetCellCol = snapped.col;
         run.targetCellRow = snapped.row;
-        if (forceReset || cellChanged) run.hpaNav.markTargetChanged();
+        if (forceReset || cellChanged) {
+            console.log("hpaGroundNavBehavior applyMoveTarget marking target changed:", { forceReset, cellChanged });
+            run.hpaNav.markTargetChanged();
+        }
     };
     const tickProp = (prop, run, dt) => {
         if (!run.targetWorld) return;
@@ -87,9 +90,11 @@ export function createHpaGroundNavBehavior(state) {
             getRun(prop).dragging = false;
         },
         setMoveTarget(prop, world) {
+            console.log("hpaGroundNavBehavior setMoveTarget called:", { propId: prop.id, world });
             const run = getRun(prop);
             run.dragging = false;
             applyMoveTarget(run, world, true);
+            console.log("hpaGroundNavBehavior setMoveTarget applied target:", { targetWorld: run.targetWorld, targetCellCol: run.targetCellCol, targetCellRow: run.targetCellRow });
         },
         updateMoveTarget(prop, world) {
             const run = getRun(prop);
