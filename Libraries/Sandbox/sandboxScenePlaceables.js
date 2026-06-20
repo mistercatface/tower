@@ -2,6 +2,7 @@ import { formatSandboxFactionLabel } from "../Sandbox/sandboxFaction.js";
 import { expandGridForRoomNodeFootprint, stampRoomNodeAt, syncRoomGraphBake } from "../RoomGraph/index.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { canStampFloorBeltAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
+import { applyFloorCellEdit } from "./floorNavEdit.js";
 import { listPlacedForcefields } from "./gridWallEdit.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
@@ -99,8 +100,7 @@ const PLACEABLE = {
             const { col, row } = grid.worldToGrid(worldX, worldY);
             if (!canStampFloorBeltAt(state, col, row)) return false;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
-            if (!grid.writeFloorCell(col, row, kind, 0)) return false;
-            markGridZoneSubscriptionsDirty(state);
+            if (!applyFloorCellEdit(state, col, row, kind, 0)) return false;
             ctx.placement.touchFloorPlacement(col, row);
             ctx.pickSelection({ kind: "floor", col, row });
             return true;

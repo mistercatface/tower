@@ -1,39 +1,50 @@
 ---
-description: Never block on long-running or hung terminal commands — use timeouts and kill
+description: Never block on or spawn background terminals — bounded foreground waits only
 alwaysApply: true
 ---
 
-# Terminal commands — bounded waits only
+# Terminal commands — bounded foreground waits only
 
-**Never** start a terminal command and wait indefinitely when it is likely to hang, run forever, or take many minutes without clear progress.
+**Never** start a terminal command and wait indefinitely. **Never** fire-and-forget background shells for routine verification.
 
 ## Hard rules
 
-1. **Set explicit time budgets** before running tests, builds, or batch jobs. Default max wait: **15–30 seconds** for smoke checks; **60 seconds** only when the user explicitly asked for that command and the scope is narrow.
-2. **If a command exceeds the budget, kill it immediately** and report what ran, how long it waited, and why it was stopped. Do not retry the same unbounded command hoping it finishes.
-3. **Never run obviously expensive batches** without user approval: full `npm test`, multi-file `node --test` on worker/HPA/map-gen suites, large grid bakes (256×256), multi-seed loops, locked-room sweeps.
-4. **Prefer targeted verification**: one test file, `--test-name-pattern`, smallest fixture, or static checks (grep, import parse) over suite-wide runs.
-5. **Do not use `block_until_ms` of minutes** on commands known to hang. Use short blocks + poll, or wrap with an OS-level timeout/kill.
+1. **Foreground by default.** Run tests/builds in the foreground with an explicit `block_until_ms` budget (15–30s smoke; 60s only when the user asked for that exact command). Do **not** use `block_until_ms: 0` / background mode for normal test runs, import checks, or “let me see if this passes.”
+2. **No background retry chains.** If a command is killed, times out, or shows `terminated_by_user` / `aborted`, **stop** — report what happened and what remains unverified. Do **not** re-launch the same command in background, with a different reporter, or via `Await` polling.
+3. **One verification attempt per change** unless the user asks to rerun. Do not spawn parallel or sequential duplicate test processes for the same file.
+4. **If a command exceeds its budget, kill it immediately** and move on. Do not retry unbounded hoping it finishes.
+5. **Never run expensive batches** without user approval: full `npm test`, multi-file `node --test` on worker/HPA/map-gen suites, large grid bakes, multi-seed loops, locked-room sweeps.
+6. **Prefer targeted verification**: one test file, `--test-name-pattern`, grep/import parse — not suite-wide runs.
+7. **Do not use `block_until_ms` of minutes** on hang-prone commands. Use short foreground blocks; kill on expiry.
 
-## Recognize hang-prone commands in this repo
+## Background shells — almost never
 
-- `node --test` with multiple nav/worker/map-gen test files together
-- `snakeSplitLayout.test.js` (256×256 bake + multi-seed map gen)
-- `railMazeCorridorBelts.test.js` belt-chain tests across many seeds
-- `lockedRoom.test.js` without `topologyOnly` / reduced seeds
-- Any command that already hung once in the session — do not rerun unbounded
+Use background **only** when:
+- the user explicitly asked to run something in background, or
+- a long build/server must stay up and the user knows it’s running.
 
-## When verification is needed
+Even then: one background job, name what it is, don’t spawn extras to “check on” it unless the user asked.
 
-Run the **smallest** check that proves the change, with a kill path:
+**Forbidden patterns:**
+- `block_until_ms: 0` then `Await` polling for a 3-line unit test
+- Re-running a killed test “with spec reporter” / “to see errors” without user request
+- Multiple terminal IDs for the same verification in one turn
+
+## Hang-prone commands in this repo
+
+- `node --test` with multiple nav/worker/map-gen files together
+- `snakeSplitLayout.test.js`, `railMazeCorridorBelts.test.js`, full `lockedRoom.test.js`
+- Any command that already hung or was killed this session
+
+## Preferred smoke run (PowerShell)
 
 ```powershell
-$p = Start-Process node -ArgumentList @("--test","--test-name-pattern=exact test name","tests/foo.test.js") -NoNewWindow -PassThru
+$p = Start-Process node -ArgumentList @("--test","tests/foo.test.js") -NoNewWindow -PassThru
 if (-not $p.WaitForExit(15000)) { $p.Kill(); "KILLED after 15s" }
 ```
 
-If smoke tests pass or static analysis suffices, **stop** — do not escalate to full suites unless the user asks.
+Or Shell with `block_until_ms: 15000` on a **single** small test file.
 
-## On kill / timeout
+## On kill / timeout / abort
 
-Tell the user: what was run, that it was killed, what passed before kill (if anything), and what remains unverified. **Continue the task** — do not stall the session waiting on terminals.
+Tell the user once: what ran, that it stopped, what passed (if anything), what’s unverified. **Continue the task** — do not stall the session on terminals or spawn follow-up background jobs.

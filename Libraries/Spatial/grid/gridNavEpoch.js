@@ -6,6 +6,7 @@
  *
  * `HpaPathWorker._syncedNavCacheKey` is the sole synced-key store (set on worker ack).
  * Replan epoch (`NavigationService.obstacleGeneration`) is separate — not topology readiness.
+ * Live floor/belt edits must call `commitFloorNavEdit` (Libraries/Sandbox/floorNavEdit.js) after grid writes.
  */
 export const GRID_NAV_EPOCH = { Wall: "wall", Floor: "floor", Topology: "topology" };
 /**

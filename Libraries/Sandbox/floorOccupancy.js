@@ -1,4 +1,4 @@
-import { emptyCellBounds, growCellBounds, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
+import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
@@ -11,6 +11,7 @@ import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 import { createConveyorDraw } from "../Render/conveyorDraw.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
+import { commitFloorNavEdit } from "./floorNavEdit.js";
 import { syncPassagePowerNetwork, isPassagePowerSourceEnergized } from "./passagePowerNetwork.js";
 import { applyKineticAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
@@ -32,7 +33,7 @@ export function rotateGridOccupantAt(state, occupant, steps = 1) {
         const beltKind = grid.floorStore.kind[idx];
         const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
         grid.writeFloorCell(col, row, beltKind, stepCardinalFacing(facingRadians, steps));
-        markGridZoneSubscriptionsDirty(state);
+        commitFloorNavEdit(state, cellBoundsAt(col, row));
         return true;
     }
     throw new Error(`Unknown rotatable grid occupant kind: ${kind}`);

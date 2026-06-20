@@ -7,6 +7,8 @@ import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKi
 import { getRoomLink, clearRoomGraph, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
+import { applyFloorCellEdit, clearFloorCellNavEdit, commitFloorNavEdit } from "./floorNavEdit.js";
+import { cellBoundsAt, unionCellBounds } from "../DataStructures/CellRect.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import {
@@ -215,13 +217,14 @@ export function createSandboxSession(state) {
             if (!canStampFloorBeltAt(state, targetCol, targetRow)) return false;
             const kind = grid.floorStore.kind[idx];
             const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
+            const bounds = unionCellBounds(cellBoundsAt(col, row), cellBoundsAt(targetCol, targetRow));
             grid.clearFloorCell(col, row);
             if (!grid.writeFloorCell(targetCol, targetRow, kind, facingRadians)) {
                 grid.writeFloorCell(col, row, kind, facingRadians);
                 return false;
             }
+            commitFloorNavEdit(state, bounds);
             pickSelection({ kind: "floor", col: targetCol, row: targetRow });
-            markGridZoneSubscriptionsDirty(state);
             return true;
         },
         setSelectedFloorBeltKind(kind) {
@@ -236,8 +239,7 @@ export function createSandboxSession(state) {
             }
             if (grid.floorStore.kind[idx] === kind) return true;
             const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
-            grid.writeFloorCell(col, row, kind, facingRadians);
-            markGridZoneSubscriptionsDirty(state);
+            applyFloorCellEdit(state, col, row, kind, facingRadians);
             notifyUi();
             return true;
         },
@@ -249,6 +251,8 @@ export function createSandboxSession(state) {
             const idx = col + row * grid.cols;
             if (grid.floorStore.isPassagePowerSourceAtIdx(idx)) {
                 if (!clearPassagePowerSourceAt(state, col, row)) return false;
+            } else if (grid.floorStore.isBeltKindAtIdx(idx)) {
+                if (!clearFloorCellNavEdit(state, col, row)) return false;
             } else if (!grid.clearFloorCell(col, row)) return false;
             else markGridZoneSubscriptionsDirty(state);
             placement.forgetFloorPlacement(col, row);
