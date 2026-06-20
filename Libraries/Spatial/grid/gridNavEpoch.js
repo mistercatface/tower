@@ -1,23 +1,11 @@
 /**
- * Nav invalidation spine — one key answers "is walkability stale?"
+ * Nav invalidation spine.
  *
- * **Channels** (bump via `bumpGridNavEpoch` on grid edits):
- * - `wallGridRevision` — voxels, edges, boundaries, passage geometry
- * - `floorNavEpoch` — belt kinds / floor nav facing
- * - `gridTopologyEpoch` — grid resize / rebind (cols×rows changed)
- * - `_passagePowerNavKey` — powered forcefield network (via `setGridPassagePowerNavKey`)
+ * Grid edits bump channels via `bumpGridNavEpoch`. They fold into `gridNavCacheKey(grid)`.
+ * Topology readiness: `isNavTopologyReady(hpaPathWorker, grid)` — the only staleness check.
  *
- * **Canonical key:** `gridNavCacheKey(grid)` folds all channels into one string.
- * Compare it everywhere — never mirror it on the grid object.
- *
- * **Who reads it:**
- * - `HpaPathWorker` — topology bake (`syncedNavCacheKey`, set when worker acks `syncNavDone`)
- * - `FlowFieldGrid` — local window bind (`syncLocalTopology`)
- * - `NavigationService.syncedNavCacheKey` — host mirror after sync (debug + walkability caches)
- *
- * **Separate from topology key:** `NavigationService.obstacleGeneration` / worker `_graphEpoch`
- * track HPA region-graph replan completion (partial patches can finish while topology key is unchanged).
- * Replan predicates use obstacleGeneration; topology readiness uses `gridNavCacheKey`.
+ * `HpaPathWorker._syncedNavCacheKey` is the sole synced-key store (set on worker ack).
+ * Replan epoch (`NavigationService.obstacleGeneration`) is separate — not topology readiness.
  */
 export const GRID_NAV_EPOCH = { Wall: "wall", Floor: "floor", Topology: "topology" };
 /**
@@ -41,13 +29,17 @@ export function bumpGridNavEpoch(grid, channel) {
     }
     throw new Error(`unknown grid nav epoch channel: ${channel}`);
 }
-/** Canonical nav-topology staleness key — all invalidation channels + passage power. */
+/** Live nav-topology key — all invalidation channels + passage power. */
 export function gridNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
 }
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {string} syncedNavCacheKey */
-export function isGridNavStale(grid, syncedNavCacheKey) {
-    return gridNavCacheKey(grid) !== syncedNavCacheKey;
+/**
+ * @param {import("../../Pathfinding/HpaPathWorker.js").HpaPathWorker} hpaPathWorker
+ * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
+ */
+export function isNavTopologyReady(hpaPathWorker, grid) {
+    if (hpaPathWorker._navSyncPromise) return false;
+    return gridNavCacheKey(grid) === hpaPathWorker._syncedNavCacheKey;
 }
 /** Passage edge (forcefield) sprite draw cache key. */
 export function passageEdgeDrawCacheKey(grid) {

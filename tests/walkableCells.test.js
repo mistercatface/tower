@@ -65,7 +65,7 @@ describe("walkableCells", () => {
         const before = getNavWalkableCells(state).length;
         state.obstacleGrid.grid[colRowToIndex(2, 2, state.obstacleGrid.cols)] = 1;
         bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
-        state.navigation.syncedNavCacheKey = gridNavCacheKey(state.obstacleGrid);
+        await state.navigation.onObstaclesChanged({ startCol: 2, endCol: 2, startRow: 2, endRow: 2 });
         collectNavWalkableCells(state);
         assert.ok(getNavWalkableCells(state).length <= before);
         assert.ok(!isNavWalkableCellAt(state, 2, 2));

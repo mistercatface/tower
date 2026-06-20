@@ -1,5 +1,5 @@
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
-import { gridNavCacheKey, isGridNavStale } from "../../Libraries/Spatial/grid/gridNavEpoch.js";
+import { isNavTopologyReady } from "../../Libraries/Spatial/grid/gridNavEpoch.js";
 /**
  * Obstacle-driven nav sync — HPA worker graph patches and flow-field topology invalidation.
  * @typedef {(damageBounds: import("../../Libraries/DataStructures/CellRect.js").CellBounds | null) => void} NavWalkableSyncHook
@@ -16,7 +16,6 @@ export class NavigationService {
         this._workerNavGraphSyncChain = Promise.resolve();
         this.settings = settings;
         this.obstacleGeneration = 0;
-        this.syncedNavCacheKey = "";
         hpaPathWorker.ensureNavArenaForGrid(obstacleGrid);
         this.gridNavContext = {
             grid: obstacleGrid,
@@ -33,14 +32,8 @@ export class NavigationService {
         /** @type {NavWalkableSyncHook | null} */
         this._navWalkableSyncHook = null;
     }
-    navCacheKey() {
-        return gridNavCacheKey(this._obstacleGrid);
-    }
-    isNavTopologySynced() {
-        return this._hpaPathWorker.isNavTopologySynced(this._obstacleGrid);
-    }
-    isNavTopologyStale() {
-        return isGridNavStale(this._obstacleGrid, this.syncedNavCacheKey);
+    isNavTopologyReady() {
+        return isNavTopologyReady(this._hpaPathWorker, this._obstacleGrid);
     }
     /** @param {NavWalkableSyncHook | null} hook */
     setNavWalkableSyncHook(hook) {
@@ -71,16 +64,12 @@ export class NavigationService {
     awaitWorkerNavReady() {
         return this._workerNavGraphSyncChain;
     }
-    _markNavTopologySynced() {
-        this.syncedNavCacheKey = this._hpaPathWorker.getSyncedNavCacheKey();
-    }
     async _syncWorkerNavGraph(grid, damageBounds, topologyChanged) {
         const graphEpoch = this.obstacleGeneration + 1;
         const seed = this._resolvePruneSeed(grid, damageBounds);
         const fullGraph = topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds);
         await this._hpaPathWorker.syncObstacleNavGraph(grid, damageBounds, graphEpoch, seed.x, seed.y, fullGraph);
         this.obstacleGeneration = graphEpoch;
-        this._markNavTopologySynced();
         this._navWalkableSyncHook?.(damageBounds);
     }
 }

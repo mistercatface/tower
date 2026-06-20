@@ -1,7 +1,7 @@
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
-import { gridNavCacheKey, isGridNavStale } from "../Spatial/grid/gridNavEpoch.js";
+import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
 import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, navCanStep } from "./navTopologySab.js";
 import {
     createHpaWorkerSabPools,
@@ -338,19 +338,8 @@ export class HpaPathWorker {
     getNavOctilePredecessorsSab() {
         return this.sabOctilePredecessors;
     }
-    getSyncedNavCacheKey() {
-        return this._syncedNavCacheKey;
-    }
-    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} [grid] */
-    /** Ready when worker acked a key matching the live grid (in-flight resync still blocks). */
-    isNavTopologySynced(grid = this.navGraph) {
-        if (this._navSyncPromise) return false;
-        return !isGridNavStale(grid, this._syncedNavCacheKey);
-    }
     async scheduleNavTopologySyncAwait(grid = this.navGraph, damageBounds = null) {
-        while (true) {
-            const targetKey = gridNavCacheKey(grid);
-            if (this._syncedNavCacheKey === targetKey && !this._navSyncPromise) return;
+        while (!isNavTopologyReady(this, grid)) {
             this.scheduleNavTopologySync(grid, damageBounds);
             if (this._navSyncPromise) await this._navSyncPromise;
         }
@@ -382,8 +371,7 @@ export class HpaPathWorker {
         };
     }
     scheduleNavTopologySync(grid = this.navGraph, damageBounds = null) {
-        const cacheKey = gridNavCacheKey(grid);
-        if (cacheKey === this._syncedNavCacheKey && !this._navSyncPromise) return;
+        if (isNavTopologyReady(this, grid)) return;
         if (this._navSyncPromise) {
             this._deferFullNavSync = true;
             this._deferNavBounds = damageBounds;
@@ -391,7 +379,7 @@ export class HpaPathWorker {
         }
         const size = grid.cols * grid.rows;
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
-        this._inFlightNavCacheKey = cacheKey;
+        this._inFlightNavCacheKey = gridNavCacheKey(grid);
         this.navGraph.navGridFrame = null;
         this.navGraph.navTopology = null;
         const edgePoolRefs = Math.max(grid.edgeStore.pool.length, 4);
@@ -406,7 +394,7 @@ export class HpaPathWorker {
         }
         this._navSyncPromise = new Promise((resolve) => {
             this._navSyncResolve = resolve;
-            this.host.worker.postMessage(this._navTopologySyncMessage(grid, cacheKey, rebindArena, rebindArena ? null : damageBounds));
+            this.host.worker.postMessage(this._navTopologySyncMessage(grid, this._inFlightNavCacheKey, rebindArena, rebindArena ? null : damageBounds));
         });
     }
     async _ensureWorkerGraphReady(graphEpoch) {
@@ -435,7 +423,7 @@ export class HpaPathWorker {
     async requestPath(opts) {
         const { obstacleGrid, startX, startY, targetX, targetY, graphEpoch, navState, stepPenalty = null } = opts;
         await this.scheduleNavTopologySyncAwait(obstacleGrid, null);
-        if (!this.isNavTopologySynced(obstacleGrid)) return null;
+        if (!isNavTopologyReady(this, obstacleGrid)) return null;
         this.releaseOwnedPathSlot(navState);
         if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;
         const { startCol, startRow, targetCol, targetRow } = resolveSnappedPathEndpoints(obstacleGrid, startX, startY, targetX, targetY);

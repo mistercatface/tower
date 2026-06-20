@@ -1,4 +1,4 @@
-import { gridNavCacheKey } from "../../Spatial/grid/gridNavEpoch.js";
+import { gridNavCacheKey, isNavTopologyReady } from "../../Spatial/grid/gridNavEpoch.js";
 import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { floodConnectedNavWalkableCells, isNavWalkableCell } from "../../Spatial/grid/navWalkableCell.js";
 import { forEachGlobalCellInMapGenBounds, isGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
@@ -8,10 +8,11 @@ import { createNavWalkableCandidateMask, createNavWalkableReachedMask, readNavWa
 export function walkableCellKey(col, row) {
     return `${col},${row}`;
 }
-function navigationTopologyKey(state) {
-    const workerKey = state.navigation?._hpaPathWorker?.getSyncedNavCacheKey?.();
-    if (workerKey) return workerKey;
-    return state.navigation?.syncedNavCacheKey ?? "";
+function navWalkableCacheKey(state) {
+    const grid = state.obstacleGrid;
+    const worker = state.navigation?._hpaPathWorker;
+    if (!worker || !isNavTopologyReady(worker, grid)) return null;
+    return gridNavCacheKey(grid);
 }
 function globalCellForGridCell(grid, col, row) {
     const cellSize = grid.cellSize;
@@ -96,7 +97,7 @@ function patchNavWalkableCellIndexRegion(state, cache, damageBounds) {
     writeNavWalkableFlagsInRect(cache.flags, grid.cols, connected, patchBounds);
     cache.cells = connected;
     cache.reachedMask = reachedMask;
-    cache.epoch = navigationTopologyKey(state);
+    cache.navCacheKey = navWalkableCacheKey(state);
     return cache;
 }
 function ensureNavWalkableBuffers(cache, grid) {
@@ -114,7 +115,7 @@ function ensureNavWalkableBuffers(cache, grid) {
 function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
     const grid = state.obstacleGrid;
     const gridNavContext = state.navigation.gridNavContext;
-    const epoch = navigationTopologyKey(state);
+    const navCacheKey = navWalkableCacheKey(state);
     const cellSize = grid.cellSize;
     const candidates = [];
     const seen = new Uint8Array(grid.cols * grid.rows);
@@ -133,7 +134,7 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
     }
     const prior = state.sandbox._navWalkableCellsCache;
     const cache = ensureNavWalkableBuffers(
-        { epoch, boundsConfig, floodSeedBounds, cells: [], flags: prior?.flags, candidateMask: prior?.candidateMask, reachedMask: prior?.reachedMask, cols: prior?.cols, rows: prior?.rows },
+        { navCacheKey, boundsConfig, floodSeedBounds, cells: [], flags: prior?.flags, candidateMask: prior?.candidateMask, reachedMask: prior?.reachedMask, cols: prior?.cols, rows: prior?.rows },
         grid,
     );
     const candidateMask = createNavWalkableCandidateMask(grid, candidates, cache.candidateMask);
@@ -147,19 +148,19 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
     state.sandbox._navWalkableCellsCache = cache;
     return cache;
 }
-function navWalkableCacheHit(cache, epoch, boundsConfig, floodSeedBounds) {
-    return cache && cache.epoch === epoch && cache.boundsConfig === boundsConfig && cache.floodSeedBounds === floodSeedBounds;
+function navWalkableCacheHit(cache, navCacheKey, boundsConfig, floodSeedBounds) {
+    return cache && navCacheKey && cache.navCacheKey === navCacheKey && cache.boundsConfig === boundsConfig && cache.floodSeedBounds === floodSeedBounds;
 }
 export function collectNavWalkableCells(state, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
-    const epoch = navigationTopologyKey(state);
+    const navCacheKey = navWalkableCacheKey(state);
     const cache = state.sandbox._navWalkableCellsCache;
-    if (navWalkableCacheHit(cache, epoch, boundsConfig, floodSeedBounds)) return cache.cells;
+    if (navWalkableCacheHit(cache, navCacheKey, boundsConfig, floodSeedBounds)) return cache.cells;
     return bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds).cells;
 }
 export function getNavWalkableCellIndex(state, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
-    const epoch = navigationTopologyKey(state);
+    const navCacheKey = navWalkableCacheKey(state);
     const cache = state.sandbox._navWalkableCellsCache;
-    if (navWalkableCacheHit(cache, epoch, boundsConfig, floodSeedBounds)) return cache;
+    if (navWalkableCacheHit(cache, navCacheKey, boundsConfig, floodSeedBounds)) return cache;
     return bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds);
 }
 export function getNavWalkableCells(state, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
@@ -197,8 +198,8 @@ export function createNavWalkableAccess(state, boundsConfig, { floodSeedBounds =
     let live = null;
     const isLive = () => {
         if (!live) return false;
-        const epoch = navigationTopologyKey(state);
-        return navWalkableCacheHit(live, epoch, boundsConfig, floodSeedBounds);
+        const navCacheKey = navWalkableCacheKey(state);
+        return navWalkableCacheHit(live, navCacheKey, boundsConfig, floodSeedBounds);
     };
     const ensure = () => {
         if (!isLive()) live = getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds);

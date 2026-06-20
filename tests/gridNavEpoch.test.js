@@ -5,7 +5,7 @@ import {
     GRID_NAV_EPOCH,
     bumpGridNavEpoch,
     gridNavCacheKey,
-    isGridNavStale,
+    isNavTopologyReady,
     setGridPassagePowerNavKey,
 } from "../Libraries/Spatial/grid/gridNavEpoch.js";
 
@@ -23,20 +23,17 @@ describe("gridNavEpoch invalidation spine", () => {
         setGridPassagePowerNavKey(grid, "power-a");
         assert.notEqual(gridNavCacheKey(grid), key2);
     });
-    it("isGridNavStale compares live key to synced snapshot", () => {
+    it("isNavTopologyReady is the sole readiness check", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 64, 64);
-        const synced = gridNavCacheKey(grid);
-        assert.equal(isGridNavStale(grid, synced), false);
+        const key = gridNavCacheKey(grid);
+        const worker = { _navSyncPromise: null, _syncedNavCacheKey: key };
+        assert.equal(isNavTopologyReady(worker, grid), true);
         bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-        assert.equal(isGridNavStale(grid, synced), true);
-    });
-    it("scheduleNavTopologySyncAwait must not freeze targetKey across grid bumps", () => {
-        const grid = new WorldObstacleGrid(16);
-        grid.rebuildFixed(0, 0, 64, 64);
-        const keyA = gridNavCacheKey(grid);
-        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-        const keyB = gridNavCacheKey(grid);
-        assert.notEqual(keyA, keyB);
+        assert.equal(isNavTopologyReady(worker, grid), false);
+        worker._syncedNavCacheKey = gridNavCacheKey(grid);
+        assert.equal(isNavTopologyReady(worker, grid), true);
+        worker._navSyncPromise = Promise.resolve();
+        assert.equal(isNavTopologyReady(worker, grid), false);
     });
 });
