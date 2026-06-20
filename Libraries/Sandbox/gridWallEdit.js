@@ -1,4 +1,4 @@
-import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStructures/CellRect.js";
+import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { clearPrimaryBoundaryAt, commitBoundaryEdit, notifyGridWallChange } from "./boundaryEdit.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
@@ -78,6 +78,41 @@ export function stampRailWallsBatch(state, railWalls) {
 export function clearRailWallsBatch(state, rails) {
     const bounds = clearRailWallsQuiet(state, rails);
     if (bounds) commitBoundaryEdit(state, bounds);
+}
+export function clearVoxelWallQuiet(state, col, row) {
+    const grid = state.obstacleGrid;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
+    const idx = colRowToIndex(col, row, grid.cols);
+    if (!cellIsStaticWallAtIdx(grid, idx)) return false;
+    grid.grid[idx] = 0;
+    return true;
+}
+export function clearVoxelWallsQuiet(state, voxels) {
+    const bounds = emptyCellBounds();
+    let changed = false;
+    for (let i = 0; i < voxels.length; i++) {
+        const { col, row } = voxels[i];
+        if (!clearVoxelWallQuiet(state, col, row)) continue;
+        changed = true;
+        growCellBounds(bounds, col, row);
+    }
+    if (!changed) return null;
+    return bounds;
+}
+export function clearVoxelWallsBatch(state, voxels) {
+    const bounds = clearVoxelWallsQuiet(state, voxels);
+    if (bounds) commitBoundaryEdit(state, bounds);
+    return bounds;
+}
+/** Clear voxel and rail walls without nav invalidation — pair with commitBoundaryEdit or deferred flush. */
+export function clearGridWallsQuiet(state, { voxels = [], rails = [] } = {}) {
+    return unionCellBounds(clearVoxelWallsQuiet(state, voxels), clearRailWallsQuiet(state, rails));
+}
+/** Clear voxel and rail walls in one boundary edit / nav invalidation. */
+export function clearGridWallsBatch(state, { voxels = [], rails = [] } = {}) {
+    const bounds = clearGridWallsQuiet(state, { voxels, rails });
+    if (bounds) commitBoundaryEdit(state, bounds);
+    return bounds;
 }
 export function clearAllStampedGridWalls(state, { notify = true } = {}) {
     const grid = state.obstacleGrid;

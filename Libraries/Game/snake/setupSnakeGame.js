@@ -21,7 +21,7 @@ export async function setupSnakeGame(state) {
     const registry = createSnakeLifecycleRegistry();
     const autosimsByHeadId = new Map();
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
-    state.navigation.setNavWalkableSyncHook(() => patchNavWalkableCellIndex(state));
+    state.navigation.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     void state.navigation.onObstaclesChanged(null);
     scene.navWalkable.rebake();
     for (let i = 0; i < scene.snakes.length; i++) {
@@ -121,9 +121,7 @@ export async function setupSnakeGame(state) {
             if (behaviorById) {
                 const sel = gameState.sandbox.controller?.session?.getSelection?.();
                 const strikerSelected = sel?.kind === "prop" && selectionPropIds(sel).includes(strikerBall.id);
-                if (!strikerSelected) {
-                    appendPropGroundNavPathOverlay(out, gameState, strikerBall, behaviorById, resolveSandboxPathVisual(gameState, strikerBall));
-                }
+                if (!strikerSelected) appendPropGroundNavPathOverlay(out, gameState, strikerBall, behaviorById, resolveSandboxPathVisual(gameState, strikerBall));
             }
             if (cameraFocus === "ball") return;
             const focusedAutosim = resolveFocusedAutosim();

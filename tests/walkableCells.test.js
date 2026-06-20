@@ -91,7 +91,7 @@ describe("walkableCells", () => {
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = createWalkableCellsTestState(config);
-        state.navigation.setNavWalkableSyncHook(() => patchNavWalkableCellIndex(state));
+        state.navigation.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
         collectNavWalkableCells(state);
         const picked = pickNavWalkableCell(state, { rng: () => 0 });
         assert.ok(picked);
