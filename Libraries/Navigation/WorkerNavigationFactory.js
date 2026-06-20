@@ -17,6 +17,7 @@ export async function createWorkerNavigation(obstacleGrid, damageBounds = null) 
 export async function syncWorkerNavigationTopology(navigation, grid = navigation._hpaPathWorker.navGraph, damageBounds = null) {
     await navigation._hpaPathWorker.scheduleNavTopologySyncAwait(grid, damageBounds);
     navigation.obstacleGeneration++;
+    navigation.syncedNavCacheKey = navigation._hpaPathWorker.getSyncedNavCacheKey();
 }
 /** @param {NavigationService} navigation */
 export function terminateWorkerNavigation(navigation) {

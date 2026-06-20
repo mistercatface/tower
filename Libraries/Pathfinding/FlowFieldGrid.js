@@ -114,7 +114,7 @@ export class FlowFieldGrid {
     syncLocalTopology() {
         const cacheKey = gridNavCacheKey(this.navGraph);
         const navFrame = this.hpaPathWorker?.getGridFrame();
-        if (!navFrame || this.navGraph.gridNavCacheKey !== cacheKey) return false;
+        if (!navFrame || !this.hpaPathWorker?.isNavTopologySynced(this.navGraph)) return false;
         return this.ensureLocalTopology(cacheKey, navFrame);
     }
     refresh() {

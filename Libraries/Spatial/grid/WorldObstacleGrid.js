@@ -35,7 +35,6 @@ export class WorldObstacleGrid {
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
         this.floorNavEpoch = 0;
-        this.gridNavCacheKey = "";
         /** @type {import("../../Pathfinding/GridNavSnapshot.js").GridFrame | null} */
         this.navGridFrame = null;
         /** @type {import("../../Pathfinding/navTopologySab.js").NavTopology | null} */
@@ -45,7 +44,6 @@ export class WorldObstacleGrid {
     }
     invalidateNavTopology() {
         if (this.navTopology?.octileNeighbors?.buffer instanceof SharedArrayBuffer) return;
-        this.gridNavCacheKey = "";
         this.navGridFrame = null;
         this.navTopology = null;
     }

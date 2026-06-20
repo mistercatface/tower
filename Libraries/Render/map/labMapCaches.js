@@ -3,6 +3,7 @@ import { fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba } from "../../Canvas/i
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 import { isRailWallEdge } from "../../Spatial/grid/CellEdge.js";
 import { forEachCellEdge } from "../../Spatial/grid/gridCellTopology.js";
+import { gridNavCacheKey } from "../../Spatial/grid/gridNavEpoch.js";
 /** Pixels per grid cell in the map overview bake — edges draw on boundaries, not as cell fills. */
 const OVERVIEW_PIXELS_PER_CELL = 4;
 const OVERVIEW_FLOOR_RGB = [12, 14, 18];
@@ -116,7 +117,7 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
 /** @param {object} state */
 export function labPathDebugCacheKey(state) {
     const grid = state.obstacleGrid;
-    return `${grid.gridTopologyEpoch}:${state.navigation.obstacleGeneration}:${grid.cols}x${grid.rows}`;
+    return `${gridNavCacheKey(grid)}:${state.navigation.obstacleGeneration}:${grid.cols}x${grid.rows}`;
 }
 /** @param {object} state */
 export async function ensureLabPathDebugCache(state) {

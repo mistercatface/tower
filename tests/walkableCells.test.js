@@ -19,6 +19,7 @@ import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch, gridNavCacheKey } from "../Libraries/Spatial/grid/gridNavEpoch.js";
 async function createWalkableCellsTestState(config) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, config.boundsCols * 16, config.boundsRows * 16);
@@ -62,8 +63,9 @@ describe("walkableCells", () => {
         const state = await createWalkableCellsTestState(config);
         collectNavWalkableCells(state);
         const before = getNavWalkableCells(state).length;
-        state.navigation.obstacleGeneration = 1;
         state.obstacleGrid.grid[colRowToIndex(2, 2, state.obstacleGrid.cols)] = 1;
+        bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
+        state.navigation.syncedNavCacheKey = gridNavCacheKey(state.obstacleGrid);
         collectNavWalkableCells(state);
         assert.ok(getNavWalkableCells(state).length <= before);
         assert.ok(!isNavWalkableCellAt(state, 2, 2));
