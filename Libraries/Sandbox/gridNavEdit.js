@@ -1,6 +1,7 @@
 import { cellBoundsAt, isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
+import { writeNavFloorCell, clearNavFloorCell } from "../Spatial/grid/navGridMutations.js";
 /** @param {import("../DataStructures/CellRect.js").CellBounds | import("../DataStructures/CellRect.js").CellBounds[] | null | undefined} bounds */
 function mergeNavEditBounds(bounds) {
     if (!bounds) return null;
@@ -36,13 +37,15 @@ export function commitGridNavEditUnion(state, ...boundsParts) {
 }
 /** Stamp or replace one floor cell and resync nav topology. */
 export function applyFloorCellEdit(state, col, row, kind, facingRadians) {
-    if (!state.obstacleGrid.writeFloorCell(col, row, kind, facingRadians)) return null;
-    return commitGridNavEdit(state, cellBoundsAt(col, row));
+    const { changed, bounds } = writeNavFloorCell(state.obstacleGrid, col, row, kind, facingRadians);
+    if (!changed) return null;
+    return commitGridNavEdit(state, bounds);
 }
 /** Clear one floor cell and resync nav topology. */
 export function clearFloorCellNavEdit(state, col, row) {
-    if (!state.obstacleGrid.clearFloorCell(col, row)) return null;
-    return commitGridNavEdit(state, cellBoundsAt(col, row));
+    const { changed, bounds } = clearNavFloorCell(state.obstacleGrid, col, row);
+    if (!changed) return null;
+    return commitGridNavEdit(state, bounds);
 }
 /** @param {object} state @param {{ col: number, row: number }[]} cells */
 export function commitGridNavEditCells(state, cells) {

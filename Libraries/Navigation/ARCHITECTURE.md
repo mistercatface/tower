@@ -15,7 +15,9 @@ Walls block collision first; the worker bakes collision + floor direction + edge
 
 ## Edits → worker sync
 
-One entry point: **`commitGridNavEdit`** / **`commitGridNavEditUnion`** in `gridNavEdit.js` → `onObstaclesChanged`. Grid writes bump epoch channels at mutation time; commit only schedules worker resync.
+One entry point: **`commitGridNavEdit`** / **`commitGridNavEditUnion`** → `onObstaclesChanged`. Mutations: **`writeNavFloorCell`**, **`setNavEdge`**, **`syncBeltCellToEdges`** in `navGridMutations.js`. One bake input: **`captureNavGridSnapshot`** → **`bakeNavTopologyIntoArena`** (worker + `bakeNavTopologyLocal`).
+
+Logical graph: **`createNavGraphView`** — see `navGraph.md`.
 
 - **Readiness:** `isNavTopologyReady(hpaPathWorker, grid)`
 

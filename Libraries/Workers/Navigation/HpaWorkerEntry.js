@@ -6,16 +6,8 @@ import { stitchAbstractCellPath } from "../../Pathfinding/hpaStitch.js";
 import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Pathfinding/hpaReplanPrep.js";
 import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Pathfinding/hpaRegionGraph.js";
-import { clampCellBoundsToGrid } from "../../DataStructures/CellRect.js";
-import {
-    buildOctileNeighborsFromTopologyRect,
-    buildOctilePredecessorsFromForwardGrid,
-    createNavLocalView,
-    expandNavTopologyBakeBounds,
-    navTopologyFromSab,
-    recomputeBlockedFromGridFill,
-} from "../../Pathfinding/navTopologySab.js";
-import { recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto } from "../../Spatial/grid/vertexPassability.js";
+import { createNavLocalView, navTopologyFromSab } from "../../Pathfinding/navTopologySab.js";
+import { bakeNavTopologyIntoArena } from "../../Pathfinding/bakeNavTopology.js";
 import {
     hpaCellToRegionView,
     hpaPathSlotAbstractIdx,
@@ -142,19 +134,8 @@ function requireNavTopology() {
 function bakeNavTopology(damageBounds) {
     const frame = requireGridFrame();
     const baked = requireNavSimBake();
-    const { cols, rows } = frame;
-    const copyBounds = damageBounds ? clampCellBoundsToGrid(damageBounds, cols, rows) : null;
-    const bakeBounds = copyBounds ? expandNavTopologyBakeBounds(copyBounds, cols, rows) : null;
     const topology = requireNavTopology();
-    recomputeBlockedFromGridFill(baked.simView.grid, topology.blocked, cols, copyBounds);
-    recomputeVertexPassabilityInto(baked.simView, baked.vertexPassability, bakeBounds);
-    recomputeNavCardinalOpenInto(baked.simView, baked.cardinalOpen, baked.vertexPassability, bakeBounds);
-    const octCol0 = bakeBounds ? bakeBounds.startCol : 0;
-    const octCol1 = bakeBounds ? bakeBounds.endCol : cols - 1;
-    const octRow0 = bakeBounds ? bakeBounds.startRow : 0;
-    const octRow1 = bakeBounds ? bakeBounds.endRow : rows - 1;
-    buildOctileNeighborsFromTopologyRect(topology.blocked, baked.cardinalOpen, baked.vertexPassability, cols, rows, topology.octileNeighbors, octCol0, octCol1, octRow0, octRow1);
-    buildOctilePredecessorsFromForwardGrid(topology.octileNeighbors, topology.octilePredecessors, cols, rows, bakeBounds);
+    bakeNavTopologyIntoArena(baked.simView, topology, baked.cardinalOpen, baked.vertexPassability, damageBounds);
     return baked;
 }
 function buildNavTopologyOnWorker(data) {

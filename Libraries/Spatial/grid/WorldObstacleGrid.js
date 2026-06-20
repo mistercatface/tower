@@ -4,7 +4,8 @@ import { cellEdgeEndpoints, blockingPassageEdgeAt, edgeRailCollisionShouldEmit, 
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
-import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
+import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary } from "./boundaryOccupancy.js";
+import { syncBeltCellToEdges, clearBeltCellEdges } from "./navGridMutations.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { navCanStep } from "../../Pathfinding/navTopologySab.js";
@@ -305,10 +306,10 @@ export class WorldObstacleGrid {
         return boundaryBlocksStep(this, col, row, side);
     }
     syncFloorBeltRailEdges(col, row, kind, facingIndex) {
-        reconcileBeltBoundaries(this, col, row, kind, facingIndex);
+        syncBeltCellToEdges(this, col, row, kind, facingIndex);
     }
     clearFloorBeltRailEdges(col, row, kind, facingIndex) {
-        clearBeltBoundariesForCell(this, col, row, kind, facingIndex);
+        clearBeltCellEdges(this, col, row, kind, facingIndex);
     }
     writeFloorCell(col, row, kind, facingRadians) {
         if (this.isBlocked(col, row)) return false;
