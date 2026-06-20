@@ -20,3 +20,10 @@ export function beginGridCellVisionTick(session, wallRevision) {
 export function gridCellLosCacheKey(col0, row0, col1, row1) {
     return `${col0},${row0}:${col1},${row1}`;
 }
+export function beginGridVisionTick(state, tickId) {
+    const nav = state.navigation;
+    if (nav._gridVisionBeginTick === tickId) return;
+    nav._gridVisionBeginTick = tickId;
+    if (!nav.gridCellVisionSession) nav.gridCellVisionSession = createGridCellVisionSession();
+    beginGridCellVisionTick(nav.gridCellVisionSession, nav.gridNavContext.wallRevision);
+}

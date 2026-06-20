@@ -14,7 +14,7 @@ import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs,
 import { ensureSnakeGoalIndex, registerSnakeGoal } from "./snakeGoalIndex.js";
 import { pickNavWalkableBeltCellAny } from "./snakeBeltCells.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
-import { applySnakeHeadGameplay, applySnakeSegmentGameplay } from "./snakeHeadGameplay.js";
+import { applySnakeHeadGameplay, applySnakeSegmentGameplay } from "./snakeGameConfig.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
     const grid = state.obstacleGrid;

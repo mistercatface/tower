@@ -1,15 +1,14 @@
 import { buildNavStepPenaltyFromSpatialMemory } from "./navStepPenalty.js";
-import { resolveObserverGridVision } from "../../Navigation/perception/gridCellVision.js";
-import { ensureSnakePerceptionTick } from "../../Game/snake/snakePerception.js";
-export function createSpatialBrainSync(brain, { visionCone, brainSyncOffScreenInterval, navMemoryStepPenalty, navMemoryStepFalloff }) {
+import { resolveObserverGridVision, resolveObserverViewSyncContext } from "../../Navigation/perception/gridCellVision.js";
+export function createSpatialBrainSync(brain, { visionCone, brainSyncOffScreenInterval, navMemoryStepPenalty, navMemoryStepFalloff, ensurePerceptionTick }) {
     let lastPenaltyGeneration = -1;
     let lastPenalty = null;
-    return function syncSpatialBrain(seeker, state) {
-        const onScreen = state.viewport?.circleInBounds?.(seeker.x, seeker.y, (seeker.radius ?? 8) * 2, "props") ?? true;
-        seeker._brainSyncTick = (seeker._brainSyncTick ?? 0) + 1;
-        if (onScreen || seeker._brainSyncTick % brainSyncOffScreenInterval === 0) {
-            ensureSnakePerceptionTick(state);
-            const vision = resolveObserverGridVision(seeker, state.navigation.gridNavContext, visionCone, state.navigation.gridCellVisionSession, { onScreen, brainSyncOffScreenInterval });
+    return function syncSpatialBrain(agent, state) {
+        const viewSync = resolveObserverViewSyncContext(state.viewport, agent, brainSyncOffScreenInterval);
+        agent._brainSyncTick += 1;
+        if (viewSync.onScreen || agent._brainSyncTick % viewSync.brainSyncOffScreenInterval === 0) {
+            ensurePerceptionTick(state);
+            const vision = resolveObserverGridVision(agent, state.navigation.gridNavContext, visionCone, state.navigation.gridCellVisionSession, viewSync);
             brain.stampSeenCells(vision.cells);
         }
         const generation = brain.spatial.generation;
@@ -17,6 +16,6 @@ export function createSpatialBrainSync(brain, { visionCone, brainSyncOffScreenIn
             lastPenalty = buildNavStepPenaltyFromSpatialMemory(brain.spatial, { basePenalty: navMemoryStepPenalty, falloff: navMemoryStepFalloff });
             lastPenaltyGeneration = generation;
         }
-        seeker.navStepPenalty = lastPenalty;
+        agent.navStepPenalty = lastPenalty;
     };
 }

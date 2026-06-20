@@ -138,3 +138,8 @@ export function queryGridCellVision(observer, candidates, { halfAngle, range, gr
     }
     return { heading: vision.heading, halfAngle, range, cells: vision.cells, visible };
 }
+export const OBSERVER_VIEW_RADIUS_SCALE = 2;
+export function resolveObserverViewSyncContext(viewport, observer, brainSyncOffScreenInterval) {
+    const onScreen = viewport.circleInBounds(observer.x, observer.y, observer.radius * OBSERVER_VIEW_RADIUS_SCALE, "props");
+    return { onScreen, brainSyncOffScreenInterval };
+}

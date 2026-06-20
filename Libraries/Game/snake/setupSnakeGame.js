@@ -3,7 +3,6 @@ import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
 import { createSnakeAutosim } from "./snakeAutosim.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
-import { applySnakeHeadGameplay } from "./snakeHeadGameplay.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { mountSnakeHud } from "./snakeHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
@@ -28,7 +27,6 @@ export async function setupSnakeGame(state) {
     scene.navWalkable.rebake();
     for (let i = 0; i < scene.snakes.length; i++) {
         const snake = scene.snakes[i];
-        applySnakeHeadGameplay(snake.chain.head);
         registerAliveSnake(registry, snake.chain.head.id);
         const autosim = createSnakeAutosim(state, { headId: snake.chain.head.id, navWalkable: scene.navWalkable });
         autosim.start();

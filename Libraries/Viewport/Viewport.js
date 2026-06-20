@@ -52,6 +52,9 @@ export class Viewport {
     circleInBounds(worldX, worldY, radius = 0, tier = "props") {
         return this.viewBounds.circleInBounds(worldX, worldY, radius, tier);
     }
+    entityInBounds(entity, tier = "props", radiusScale = 1) {
+        return this.circleInBounds(entity.x, entity.y, entity.radius * radiusScale, tier);
+    }
     aabbInBounds(aabb, tier = "clip") {
         return this.viewBounds.aabbInBounds(aabb, tier);
     }

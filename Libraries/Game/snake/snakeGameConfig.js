@@ -1,3 +1,4 @@
+import { syncKineticRigidBody } from "../../Motion/bodyMass.js";
 import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../../../Config/games/snake.js";
 import { mergePartial } from "../../Config/mergePartial.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
@@ -31,4 +32,20 @@ export function resolveSnakeStartRadius(config = getSnakeGameConfig()) {
 export function resolveSnakeWallDamageConfig(config = getSnakeGameConfig()) {
     const strikerMax = getPropAsset(config.strikerPropId)?.sandbox?.dragLaunch?.maxPower ?? 560;
     return { ...config.wallDamage, minStrikeSpeed: SNAKE_KINETIC_MIN_STRIKE_SPEED, referenceMaxSpeed: strikerMax };
+}
+export function applySnakeHeadGameplay(head) {
+    const config = getSnakeGameConfig();
+    head._brainSyncTick = 0;
+    const headMaxSpeed = config.headMaxSpeed;
+    if (headMaxSpeed != null) head.strategy.groundNav = { ...head.strategy.groundNav, maxSpeed: headMaxSpeed };
+    if (config.headAccel != null) head.strategy.groundNav = { ...head.strategy.groundNav, accel: config.headAccel };
+    if (config.headFriction != null) head.strategy.friction = config.headFriction;
+}
+export function applySnakeSegmentGameplay(segment) {
+    const config = getSnakeGameConfig();
+    if (config.segmentFriction != null) segment.strategy.friction = config.segmentFriction;
+    if (config.segmentDensity != null) {
+        segment.strategy.density = config.segmentDensity;
+        if (segment.strategy.isKinetic) syncKineticRigidBody(segment);
+    }
 }

@@ -32,7 +32,7 @@ function createIntentTestState() {
 describe("createSeekExploreIntent", () => {
     it("enters seek when resolveVisibleGoal returns a target", () => {
         const state = createIntentTestState();
-        const seeker = { id: 1, x: 80, y: 80, facing: 0 };
+        const agent = { id: 1, x: 80, y: 80, facing: 0 };
         const goal = { id: 99, x: 160, y: 80 };
         const hpa = mockMoveBehavior();
         const direct = mockMoveBehavior();
@@ -49,16 +49,16 @@ describe("createSeekExploreIntent", () => {
             resolveVisibleGoal: () => goal,
             resolveExploreCell: () => ({ col: 20, row: 5 }),
         });
-        intent.refresh(seeker, state);
+        intent.refresh(agent, state);
         assert.equal(intent.getMode(), "seek");
         assert.equal(intent.getTrackedGoalId(), 99);
-        assert.ok(hpa.hasMoveTarget(seeker));
-        assert.equal(hpa.getTarget(seeker).x, 160);
+        assert.ok(hpa.hasMoveTarget(agent));
+        assert.equal(hpa.getTarget(agent).x, 160);
     });
 
     it("enters explore when no visible goal and picks explore cell", () => {
         const state = createIntentTestState();
-        const seeker = { id: 1, x: 80, y: 80, facing: 0 };
+        const agent = { id: 1, x: 80, y: 80, facing: 0 };
         const hpa = mockMoveBehavior();
         const direct = mockMoveBehavior();
         const behaviorById = new Map([
@@ -74,11 +74,11 @@ describe("createSeekExploreIntent", () => {
             resolveVisibleGoal: () => null,
             resolveExploreCell: () => ({ col: 12, row: 8 }),
         });
-        intent.refresh(seeker, state);
+        intent.refresh(agent, state);
         assert.equal(intent.getMode(), "explore");
         assert.equal(intent.getTrackedGoalId(), null);
-        assert.ok(hpa.hasMoveTarget(seeker));
-        const target = hpa.getTarget(seeker);
+        assert.ok(hpa.hasMoveTarget(agent));
+        const target = hpa.getTarget(agent);
         const cell = state.obstacleGrid.worldToGrid(target.x, target.y);
         assert.equal(cell.col, 12);
         assert.equal(cell.row, 8);
@@ -86,7 +86,7 @@ describe("createSeekExploreIntent", () => {
 
     it("switches from seek to explore when visible goal disappears", () => {
         const state = createIntentTestState();
-        const seeker = { id: 1, x: 80, y: 80, facing: 0 };
+        const agent = { id: 1, x: 80, y: 80, facing: 0 };
         const goal = { id: 99, x: 160, y: 80 };
         let visible = goal;
         const hpa = mockMoveBehavior();
@@ -104,10 +104,10 @@ describe("createSeekExploreIntent", () => {
             resolveVisibleGoal: () => visible,
             resolveExploreCell: () => ({ col: 6, row: 6 }),
         });
-        intent.refresh(seeker, state);
+        intent.refresh(agent, state);
         assert.equal(intent.getMode(), "seek");
         visible = null;
-        intent.refresh(seeker, state);
+        intent.refresh(agent, state);
         assert.equal(intent.getMode(), "explore");
     });
 });

@@ -1,20 +1,32 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { linkedChainOccupiedCellKeys, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
+import { createBrain } from "../../AI/brain/createBrain.js";
+import { createSpatialBrainSync } from "../../AI/brain/syncSpatialBrain.js";
 import { createSnakeForageIntent } from "../../AI/agentIntent/createSnakeForageIntent.js";
 import { formatSnakeFsmDebug } from "./snakeFsmDebugOverlays.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
-import { getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
+import { getSnakeGameConfig, resolveSnakeEatRadius, applySnakeSegmentGameplay } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE, spawnGoalOrbOnOpenCell } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
-import { applySnakeSegmentGameplay } from "./snakeHeadGameplay.js";
 import { countLiveSnakeGoals, findNearestVisibleSnakeGoal, removeSnakeGoalProp } from "./snakeGoals.js";
-import { createSnakeBrain } from "./snakeBrain.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
-import { maybeBeginSnakeAutosimTick } from "./snakePerception.js";
+import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick } from "./snakePerception.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
+export function createSnakeBrain(visionConeOverride) {
+    const config = getSnakeGameConfig();
+    const brain = createBrain({ spatialMemoryCapacity: config.spatialMemoryCapacity });
+    const sync = createSpatialBrainSync(brain, {
+        visionCone: visionConeOverride ?? config.visionCone,
+        brainSyncOffScreenInterval: config.brainSyncOffScreenInterval,
+        navMemoryStepPenalty: config.navMemoryStepPenalty,
+        navMemoryStepFalloff: config.navMemoryStepFalloff,
+        ensurePerceptionTick: ensureSnakePerceptionTick,
+    });
+    return { brain, sync };
+}
 function chainMemberProps(state, headId) {
     const ids = getConnectedBodyIds(state.kinetic, headId);
     const members = [];

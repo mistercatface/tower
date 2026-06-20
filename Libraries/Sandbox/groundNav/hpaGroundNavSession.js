@@ -16,9 +16,6 @@ import {
     REPLAN_PRIORITY_TARGET,
 } from "../../Pathfinding/hpaReplanPolicy.js";
 import { navHasPath } from "../../Pathfinding/navSession.js";
-function isPropNavVisible(state, prop) {
-    return state.viewport.circleInBounds(prop.x, prop.y, prop.radius ?? 0, "props");
-}
 export function createHpaGroundNavSession() {
     const navState = createNavState();
     let replanClockMs = 0;
@@ -55,7 +52,7 @@ export function createHpaGroundNavSession() {
             navState.lastX = prop.x;
             navState.lastY = prop.y;
         } else trackNavStuck(navState, prop.x, prop.y, settings.stuckMoveThreshold);
-        const isVisible = isPropNavVisible(state, prop);
+        const isVisible = state.viewport.circleInBounds(prop.x, prop.y, prop.radius, "props");
         const stuckFrames = navState.stuckFrames;
         const stuckReplanFrames = settings.stuckReplanFrames;
         const graphEpoch = state.navigation.obstacleGeneration;

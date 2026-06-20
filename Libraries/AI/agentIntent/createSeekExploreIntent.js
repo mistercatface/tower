@@ -1,7 +1,9 @@
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Sandbox/groundNav/groundNavIds.js";
+import { createAgentIntent } from "./createAgentIntent.js";
+import { createBehaviorGroundLocomotion } from "./behaviorGroundLocomotion.js";
 export function createSeekExploreIntent({
     brain,
-    sync,
+    sync: brainSync,
     behaviorById,
     setActiveBehaviorId,
     resolveVisibleGoal,
@@ -10,92 +12,53 @@ export function createSeekExploreIntent({
     directBehaviorId = DIRECT_GROUND_NAV_BEHAVIOR_ID,
     rng = Math.random,
 }) {
-    if (!behaviorById.get(navBehaviorId)) throw new Error(`Seek/explore intent missing behavior: ${navBehaviorId}`);
-    if (!behaviorById.get(directBehaviorId)) throw new Error(`Seek/explore intent missing behavior: ${directBehaviorId}`);
-    const navBehavior = () => behaviorById.get(navBehaviorId);
-    const directBehavior = () => behaviorById.get(directBehaviorId);
-    let mode = "explore";
-    let trackedGoalId = null;
-    let exploreCellKey = null;
-    const clearNavTargets = (seeker) => {
-        navBehavior().clearMoveTarget(seeker);
-        directBehavior().clearMoveTarget(seeker);
-    };
-    const enterSeek = (seeker, goal, state) => {
-        const nav = navBehavior();
-        if (mode === "seek" && trackedGoalId === goal.id && nav.hasMoveTarget(seeker)) return;
-        directBehavior().clearMoveTarget(seeker);
-        mode = "seek";
-        trackedGoalId = goal.id;
-        exploreCellKey = null;
-        setActiveBehaviorId(seeker.id, navBehaviorId);
-        nav.setMoveTarget(seeker, { x: goal.x, y: goal.y });
-    };
-    const enterExplore = (seeker, state) => {
-        const nav = navBehavior();
-        const grid = state.obstacleGrid;
-        const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
-        brain.stampArrival(col, row);
-        const cell = resolveExploreCell(seeker, state, brain.spatial, rng);
-        if (!cell) return;
-        const key = `${cell.col},${cell.row}`;
-        if (mode === "explore" && exploreCellKey === key && nav.hasMoveTarget(seeker)) return;
-        directBehavior().clearMoveTarget(seeker);
-        mode = "explore";
-        trackedGoalId = null;
-        exploreCellKey = key;
-        setActiveBehaviorId(seeker.id, navBehaviorId);
-        nav.setMoveTarget(seeker, grid.gridToWorld(cell.col, cell.row));
-    };
-    const refresh = (seeker, state) => {
-        const goal = resolveVisibleGoal(seeker, state);
-        if (goal) {
-            enterSeek(seeker, goal, state);
-            return goal;
-        }
-        if (mode === "seek") {
-            clearNavTargets(seeker);
-            mode = "explore";
-            trackedGoalId = null;
-            exploreCellKey = null;
-        }
-        const nav = navBehavior();
-        if (!exploreCellKey || !nav.hasMoveTarget(seeker)) enterExplore(seeker, state);
-        return null;
-    };
+    const locomotion = createBehaviorGroundLocomotion(behaviorById, setActiveBehaviorId, navBehaviorId, directBehaviorId);
+    const intent = createAgentIntent({
+        brain,
+        sync() {},
+        perceiveWorld(agent, state) {
+            return { goal: resolveVisibleGoal(agent, state) };
+        },
+        pickPolicy(world) {
+            if (world.goal) return { mode: "seek", targetId: world.goal.id };
+            return { mode: "explore", targetId: null };
+        },
+        transitionReason(prevMode, nextMode) {
+            if (prevMode === "seek" && nextMode !== prevMode) return "target_lost";
+            return `mode_${nextMode}`;
+        },
+        resolveExploreCell,
+        resolveCommitTarget(_state, id, world) {
+            if (world.goal && world.goal.id === id) return world.goal;
+            return null;
+        },
+        locomotion,
+        seekMode: "seek",
+        exploreMode: "explore",
+        rng,
+    });
     return {
-        sync(seeker, state) {
-            sync(seeker, state);
+        sync(agent, state) {
+            brainSync(agent, state);
         },
-        refresh,
-        enterSeek,
-        enterExplore,
-        clear(seeker) {
-            trackedGoalId = null;
-            exploreCellKey = null;
-            clearNavTargets(seeker);
-            seeker.navStepPenalty = null;
+        refresh: intent.refresh,
+        enterSeek(agent, goal, state) {
+            intent.holdSeek(agent, state, goal);
         },
-        resetMemory() {
-            brain.clearMemory();
+        enterExplore(agent, state) {
+            intent.holdExplore(agent, state);
         },
+        clear: intent.clear,
+        resetMemory: intent.resetMemory,
         resetMode() {
-            mode = "explore";
-            trackedGoalId = null;
-            exploreCellKey = null;
+            intent.resetMode(null, null, { clearLocomotion: false });
         },
-        getMode() {
-            return mode;
+        getMode: intent.getMode,
+        getTrackedGoalId: intent.getTrackedGoalId,
+        clearTrackedGoal: intent.clearTrackedGoal,
+        hasMoveTarget(agent) {
+            return locomotion.hasMoveTarget(agent, null);
         },
-        getTrackedGoalId() {
-            return trackedGoalId;
-        },
-        clearTrackedGoal() {
-            trackedGoalId = null;
-        },
-        hasMoveTarget(seeker) {
-            return navBehavior().hasMoveTarget(seeker);
-        },
-        navBehavior,
+        navBehavior: () => behaviorById.get(navBehaviorId),
     };
 }

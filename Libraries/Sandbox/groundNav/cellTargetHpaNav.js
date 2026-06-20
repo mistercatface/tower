@@ -4,7 +4,69 @@ import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { createHpaGroundNavSession } from "./hpaGroundNavSession.js";
 import { decelerateRoll, getKineticRollConfig, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
-import { isEntityOnFloorBelt, resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
+import { isEntityOnFloorBelt, resolveFloorBeltSteerTarget, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
+import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
+export function cellTargetHasArrivedAtDestCell(grid, col, row, destCol, destRow) {
+    if (isFloorBeltCell(grid, destCol, destRow)) return col === destCol && row === destRow;
+    return cellChebyshevDistance(col, row, destCol, destRow) <= 1;
+}
+export function createCellTargetLocomotion(headNav) {
+    const hasArrivedAtDest = (agent, grid) => {
+        const dest = headNav.getDestination();
+        if (!dest) return false;
+        const cell = grid.worldToGrid(agent.x, agent.y);
+        return cellTargetHasArrivedAtDestCell(grid, cell.col, cell.row, dest.col, dest.row);
+    };
+    const hasReachedDest = (agent, grid) => {
+        const dest = headNav.getDestination();
+        if (!dest) return false;
+        if (hasArrivedAtDest(agent, grid)) return true;
+        if (!dest.world) return false;
+        const stopRadius = Math.max(agent.radius, 2) * 2;
+        return Math.hypot(agent.x - dest.world.x, agent.y - dest.world.y) <= stopRadius;
+    };
+    return {
+        setExplore(agent, state, cell) {
+            headNav.setDestination(state.obstacleGrid, cell.col, cell.row);
+        },
+        setSeek(agent, state, target) {
+            const cell = state.obstacleGrid.worldToGrid(target.x, target.y);
+            headNav.setDestination(state.obstacleGrid, cell.col, cell.row);
+        },
+        setFlee(agent, state, cell) {
+            headNav.setDestination(state.obstacleGrid, cell.col, cell.row);
+        },
+        clearDestination(_agent, _state) {
+            headNav.clearDestination();
+        },
+        getDestination() {
+            return headNav.getDestination();
+        },
+        needsRetry(_agent, _state) {
+            return headNav.needsRetry();
+        },
+        getStatus(_agent, _state) {
+            return headNav.getStatus();
+        },
+        tick(agent, dt, _state) {
+            headNav.tick(agent, dt);
+        },
+        clear(agent, _state) {
+            headNav.clear(agent);
+        },
+        hasArrivedAtDest,
+        hasReachedDest,
+        retryOnRouteFailure(mode, { fleeMode, exploreMode }) {
+            return mode === exploreMode || mode === fleeMode;
+        },
+        hasMoveTarget(_agent, _state) {
+            const dest = headNav.getDestination();
+            if (!dest) return false;
+            const status = headNav.getStatus();
+            return status.hasRoute || status.replanPending;
+        },
+    };
+}
 export function createCellTargetHpaNav(state) {
     let destCol = null;
     let destRow = null;

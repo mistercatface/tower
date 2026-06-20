@@ -13,11 +13,10 @@ import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/di
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { createSnakeForageIntent } from "../Libraries/AI/agentIntent/createSnakeForageIntent.js";
-import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
-import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { createSnakeAutosim, createSnakeBrain } from "../Libraries/Game/snake/snakeAutosim.js";
+import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { createSnakeBrain } from "../Libraries/Game/snake/snakeBrain.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireTestGridNavContext } from "./harness/snakeGameHarness.js";
 
@@ -40,6 +39,7 @@ function createFsmTestState(cols = 32, rows = 32) {
         editor: { cavernConfig },
         navigation: { settings: {}, onObstaclesChanged: async () => {} },
         hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
+        viewport: { circleInBounds() { return true; } },
     };
     wireTestGridNavContext(state);
     return state;
@@ -107,6 +107,8 @@ function mockHeadNav() {
 function createMockIntent(state, selfHeadId, registry) {
     const navWalkable = snakeGameNavWalkable(state);
     const headNav = mockHeadNav();
+    const head = state.entityRegistry.getLive(selfHeadId);
+    applySnakeHeadGameplay(head);
     const { brain, sync } = createSnakeBrain();
     const intent = createSnakeForageIntent({
         brain,
