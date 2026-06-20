@@ -8,7 +8,7 @@ import ball from "../Assets/props/ball/ball.asset.js";
 import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
+import { createTestNavigation, syncTestNavigationTopology } from "./harness/workerNavigationHarness.js";
 import { boundaryBlocksStepFrom, isPassagePowered } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { applyPassagePowerGridState } from "../Libraries/Sandbox/passagePowerNetwork.js";
@@ -39,7 +39,7 @@ function ensurePropCatalog() {
     setPropCatalog({ definitions, recipes, assets });
     propsLoaded = true;
 }
-export function createRoomBakeTestState(cols = 64, rows = 64) {
+export async function createRoomBakeTestState(cols = 64, rows = 64) {
     ensurePropCatalog();
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
@@ -50,7 +50,7 @@ export function createRoomBakeTestState(cols = 64, rows = 64) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {} },
-        navigation: createTestNavigation(grid),
+        navigation: await createTestNavigation(grid, null, { topologyOnly: true }),
     };
 }
 export function assertLockedExitSealed(grid, gridNavContext, egress, sealed, label = "exit") {
@@ -95,14 +95,14 @@ export function assertLockedRoomEgressPlacements(state, bake) {
  * @param {ReturnType<typeof import("./corridorHarness.js").makeHorizontalFixture>} fixture
  * @param {number} [linkSeed]
  */
-export function bakeLinkedLockedRoomFixture(state, fixture, linkSeed = 0) {
+export async function bakeLinkedLockedRoomFixture(state, fixture, linkSeed = 0) {
     const locked = addRoomNode(state, { col: fixture.roomA.c0, row: fixture.roomA.r0, width: fixture.roomA.c1 - fixture.roomA.c0 + 1, height: fixture.roomA.r1 - fixture.roomA.r0 + 1 });
     const open = addRoomNode(state, { col: fixture.roomB.c0, row: fixture.roomB.r0, width: fixture.roomB.c1 - fixture.roomB.c0 + 1, height: fixture.roomB.r1 - fixture.roomB.r0 + 1 });
     addRoomLink(state, locked.id, open.id, { corridorType: CORRIDOR_TYPE_LOCKED_ROOM });
     const link = listRoomLinks(state)[0];
     link.seed = linkSeed;
     syncRoomGraphBake(state);
-    void state.navigation.onObstaclesChanged(null);
+    await syncTestNavigationTopology(state.navigation, state.obstacleGrid, null);
     return { locked, open, link };
 }
 /** @param {object} state @param {number} nodeId */

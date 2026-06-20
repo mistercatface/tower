@@ -10,19 +10,18 @@ import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { wireSnakeGameRegistry, createSnakeLifecycleRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
+import { createTestNavigation, terminateTestNavigation } from "./harness/workerNavigationHarness.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { walkableCellKey } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { gridSettings } from "../Config/world.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
-
 loadPropAssets();
-
-function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
+async function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
     const cellSize = gridSettings.cellSize;
     const grid = new WorldObstacleGrid(cellSize);
     grid.rebuildFixed(0, 0, playAreaCells * cellSize, playAreaCells * cellSize);
+    const navigation = await createTestNavigation(grid);
     return {
         mapSeed,
         obstacleGrid: grid,
@@ -38,32 +37,30 @@ function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
         entityRegistry: new EntityRegistry(),
         worldProps: [],
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {}, clearBakeCache: () => {} },
-        navigation: createTestNavigation(grid),
+        navigation,
+        hpaPathWorker: navigation._hpaPathWorker,
     };
 }
-
 describe("snake navWalkable session", () => {
     it("spawnSnakeCavernScene returns navWalkable bound to playable bounds", async () => {
         applySnakeGameConfig({ snakeCount: 2, goalCount: 3 });
-        const state = createSnakeWalkableTestState(48, 1337);
+        const state = await createSnakeWalkableTestState(48, 1337);
         const scene = await spawnSnakeCavernScene(state);
         assert.ok(scene.navWalkable);
         assert.ok(scene.navWalkable.cells().length >= 80);
     });
-
     it("wired navWalkable serves explore picks after wireSnakeGameRegistry", async () => {
         applySnakeGameConfig({ snakeCount: 2, goalCount: 3 });
-        const state = createSnakeWalkableTestState(48, 1337);
+        const state = await createSnakeWalkableTestState(48, 1337);
         const scene = await spawnSnakeCavernScene(state);
         wireSnakeGameRegistry(state, createSnakeLifecycleRegistry(), new Map(), scene.navWalkable);
         const picked = state.sandbox.snakeGame.navWalkable.pick({ rng: () => 0 });
         assert.ok(picked);
         assert.ok(state.sandbox.snakeGame.navWalkable.has(picked.col, picked.row));
     });
-
     it("wired navWalkable cells on split map are nav-walkable", async () => {
         applySnakeGameConfig();
-        const state = createSnakeWalkableTestState(48, 1337);
+        const state = await createSnakeWalkableTestState(48, 1337);
         await generateSnakeSplitMap(state);
         wireSnakeGameRegistry(state, createSnakeLifecycleRegistry(), new Map(), createSnakeNavWalkable(state));
         const cells = state.sandbox.snakeGame.navWalkable.cells();
@@ -74,10 +71,9 @@ describe("snake navWalkable session", () => {
             assert.ok(isNavWalkableCell(grid, state.navigation.gridNavContext, cell.col, cell.row), `cell ${walkableCellKey(cell.col, cell.row)} not nav-walkable`);
         }
     });
-
     it("baked navWalkable drops disconnected cells on the split map", async () => {
         applySnakeGameConfig({ snakeCount: 1 });
-        const state = createSnakeWalkableTestState(48, 42);
+        const state = await createSnakeWalkableTestState(48, 42);
         const scene = await spawnSnakeCavernScene(state);
         const player = scene.snakes[0];
         const headCell = state.obstacleGrid.worldToGrid(player.chain.head.x, player.chain.head.y);

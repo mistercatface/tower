@@ -3,32 +3,17 @@ import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { createNavState } from "../Libraries/Pathfinding/navSession.js";
-import {
-    HPA_REPLAN_FRAME_START_BUDGET,
-    HPA_REPLAN_PEAK_INFLIGHT_CAP,
-    REPLAN_PRIORITY_STUCK_OFFSCREEN,
-    REPLAN_PRIORITY_VISIBLE,
-} from "../Libraries/Pathfinding/hpaReplanPolicy.js";
-import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
-
-function replanParams(grid) {
-    return {
-        obstacleGrid: grid,
-        startX: 40,
-        startY: 40,
-        targetX: 120,
-        targetY: 120,
-        graphEpoch: 0,
-        stepPenalty: null,
-        gridNavContext: createTestNavigation(grid).gridNavContext,
-    };
+import { HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP, REPLAN_PRIORITY_STUCK_OFFSCREEN, REPLAN_PRIORITY_VISIBLE } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
+import { createTestNavigation, terminateTestNavigation } from "./harness/workerNavigationHarness.js";
+async function replanParams(grid) {
+    const navigation = await createTestNavigation(grid);
+    return { obstacleGrid: grid, startX: 40, startY: 40, targetX: 120, targetY: 120, graphEpoch: 0, stepPenalty: null, gridNavContext: navigation.gridNavContext, _navigation: navigation };
 }
-
 describe("HpaPathSession frame budget", () => {
     it("starts at most one frame budget of drains per flush", async () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 32 * 16, 32 * 16);
-        const params = replanParams(grid);
+        const params = await replanParams(grid);
         let release;
         const gate = new Promise((resolve) => {
             release = resolve;
@@ -54,12 +39,12 @@ describe("HpaPathSession frame budget", () => {
         assert.equal(session.getInflightCount(), 4);
         release();
         await gate;
+        terminateTestNavigation(params._navigation);
     });
-
     it("prefers visible replans when the frame budget is tight", async () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 32 * 16, 32 * 16);
-        const params = replanParams(grid);
+        const params = await replanParams(grid);
         const started = [];
         const mockWorker = {
             getPathSlot: () => -1,
@@ -88,12 +73,12 @@ describe("HpaPathSession frame budget", () => {
         session.flushFrame();
         await Promise.resolve();
         assert.deepEqual(started.slice(0, 2), ["highA", "highB"]);
+        terminateTestNavigation(params._navigation);
     });
-
     it("tracks peak in-flight replans under the configured cap", async () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 32 * 16, 32 * 16);
-        const params = replanParams(grid);
+        const params = await replanParams(grid);
         let release;
         const gate = new Promise((resolve) => {
             release = resolve;
@@ -107,10 +92,7 @@ describe("HpaPathSession frame budget", () => {
                 return { result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } };
             },
         };
-        const session = new HpaPathSession(mockWorker, {
-            frameStartBudget: HPA_REPLAN_FRAME_START_BUDGET,
-            peakInflightCap: HPA_REPLAN_PEAK_INFLIGHT_CAP,
-        });
+        const session = new HpaPathSession(mockWorker, { frameStartBudget: HPA_REPLAN_FRAME_START_BUDGET, peakInflightCap: HPA_REPLAN_PEAK_INFLIGHT_CAP });
         session.resetPeakInflightReplans();
         const navStates = Array.from({ length: 20 }, () => createNavState());
         session.beginFrame(1);
@@ -122,5 +104,6 @@ describe("HpaPathSession frame budget", () => {
         assert.ok(session.getPeakInflightReplans() <= HPA_REPLAN_PEAK_INFLIGHT_CAP);
         release();
         await gate;
+        terminateTestNavigation(params._navigation);
     });
 });

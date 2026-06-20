@@ -1,6 +1,6 @@
 import { gridSettings } from "../../../Config/world.js";
 import { withSeededRandom } from "../../Random/index.js";
-import { createGridNavContext, createTestNavigation, syncGridNavContext } from "../../Navigation/GridNavContext.js";
+import { createGridNavContext, createSyncTestNavigation, syncGridNavContext } from "../../Navigation/GridNavContext.js";
 import { forEachGlobalCellInMapGenBounds, getMapGenBoundsAabb, getMapGenBoundsStampExtent, migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../../Spatial/grid/WorldObstacleGrid.js";
@@ -141,7 +141,7 @@ export function bakeSnakeSplitLayoutPreview({ mapSeed, playAreaCols, playAreaRow
     const cellSize = gridSettings.cellSize;
     const grid = new WorldObstacleGrid(cellSize);
     grid.rebuildFixed((playAreaCols * cellSize) / 2, (playAreaRows * cellSize) / 2, playAreaCols * cellSize, playAreaRows * cellSize);
-    const navigation = createTestNavigation(grid);
+    const navigation = createSyncTestNavigation(grid);
     const applied = applySnakeSplitLayoutToGrid(grid, layout, navigation);
     const walkableState = { obstacleGrid: grid, navigation: { gridNavContext: navigation.gridNavContext, obstacleGeneration: 0 }, sandbox: {}, editor: { cavernConfig: applied.playableBounds } };
     const navWalkable = collectNavWalkableCells(walkableState, applied.playableBounds, applied.floodSeedBounds);

@@ -10,9 +10,7 @@ import { getRoomGraph, listRoomLinks, listRoomNodes } from "../Libraries/RoomGra
 import { stampBeltCratePuzzleAt } from "../Libraries/RoomGraph/puzzleTemplateBeltCrate.js";
 import { visitLiveWorldProps } from "../GameState/EntityRegistry.js";
 import { createRoomBakeTestState } from "./lockedRoomHarness.js";
-
 loadPropAssets();
-
 function countBallsWithTint(state, tint) {
     let count = 0;
     visitLiveWorldProps(state.worldProps, (prop) => {
@@ -27,8 +25,8 @@ function propInsideRoom(state, prop, room) {
     return col >= room.col && col < room.col + room.width && row >= room.row && row < room.row + room.height;
 }
 describe("belt crate puzzle template", () => {
-    it("stamps three rooms, fixed links, props in room A, and locked bake on B→C", () => {
-        const state = createRoomBakeTestState(128, 96);
+    it("stamps three rooms, fixed links, props in room A, and locked bake on B→C", async () => {
+        const state = await createRoomBakeTestState(128, 96);
         const rng = createSeededRng(90210);
         let stamped = null;
         for (let originCol = 8; originCol <= 24 && !stamped; originCol += 8) stamped = stampBeltCratePuzzleAt(state, originCol, 8, 48, 40, rng);
@@ -60,11 +58,11 @@ describe("belt crate puzzle template", () => {
         assert.equal(roomABalls.length, 2);
         assert.ok((getRoomGraph(state).bakedFloorBelts ?? []).length > 0, "expected belt corridors to bake floor belts");
     });
-    it("rolls different room footprints on each stamp", () => {
+    it("rolls different room footprints on each stamp", async () => {
         const rng = createSeededRng(4242);
         const layouts = [];
         for (let i = 0; i < 4; i++) {
-            const state = createRoomBakeTestState(160, 120);
+            const state = await createRoomBakeTestState(160, 120);
             const stamped = stampBeltCratePuzzleAt(state, 8, 8, 44, 36, rng);
             assert.ok(stamped);
             layouts.push(`${stamped.roomA.width}x${stamped.roomA.height},${stamped.roomB.width}x${stamped.roomB.height},${stamped.roomC.width}x${stamped.roomC.height}`);

@@ -11,18 +11,17 @@ import { collectSnakeGoalProps } from "../Libraries/Game/snake/snakeGoals.js";
 import { generateSnakeSplitMap, resolveCenterSnakeSpawnAnchor, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
-import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
+import { createTestNavigation } from "./harness/workerNavigationHarness.js";
 import { boundaryBlocksStepFrom } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-
 loadPropAssets();
-
-function createSnakeMapGenTestState(playAreaCells, mapSeed) {
+async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
     const cellSize = gridSettings.cellSize;
     const grid = new WorldObstacleGrid(cellSize);
     grid.rebuildFixed(0, 0, playAreaCells * cellSize, playAreaCells * cellSize);
+    const navigation = await createTestNavigation(grid);
     return {
         mapSeed,
         obstacleGrid: grid,
@@ -38,14 +37,13 @@ function createSnakeMapGenTestState(playAreaCells, mapSeed) {
         entityRegistry: new EntityRegistry(),
         worldProps: [],
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {}, clearBakeCache: () => {} },
-        navigation: createTestNavigation(grid),
+        navigation,
+        hpaPathWorker: navigation._hpaPathWorker,
     };
 }
-
 function cellKey(col, row) {
     return `${col},${row}`;
 }
-
 function countWalkableInBounds(state, config) {
     const grid = state.obstacleGrid;
     const cellSize = grid.cellSize;
@@ -59,21 +57,13 @@ function countWalkableInBounds(state, config) {
     });
     return { total, open, ratio: total ? open / total : 0 };
 }
-
 function paddingBounds(state) {
     const { cavernConfig, railConfig, playConfig } = state.editor;
     const padding = getSnakeGameConfig().cavern.regionPaddingCells ?? 4;
     const innerRows = Math.max(2, playConfig.playAreaRows - padding);
     const topRows = Math.floor(innerRows / 2);
-    return {
-        boundsMode: "rect",
-        boundsCol: cavernConfig.boundsCol,
-        boundsRow: cavernConfig.boundsRow + topRows,
-        boundsCols: cavernConfig.boundsCols,
-        boundsRows: padding,
-    };
+    return { boundsMode: "rect", boundsCol: cavernConfig.boundsCol, boundsRow: cavernConfig.boundsRow + topRows, boundsCols: cavernConfig.boundsCols, boundsRows: padding };
 }
-
 function floodFillWalkable(state, startCol, startRow) {
     const grid = state.obstacleGrid;
     const { navCardinalOpen, vertexPassability } = state.navigation.gridNavContext;
@@ -100,7 +90,6 @@ function floodFillWalkable(state, startCol, startRow) {
     }
     return visited;
 }
-
 function countVisitedInBounds(visited, state, config) {
     const grid = state.obstacleGrid;
     const cellSize = grid.cellSize;
@@ -114,7 +103,6 @@ function countVisitedInBounds(visited, state, config) {
     });
     return { total, reached, ratio: total ? reached / total : 0 };
 }
-
 function pickCavernSouthOpenCell(state, openCavernCells) {
     const { cavernConfig } = state.editor;
     const southGlobalRow = cavernConfig.boundsRow + cavernConfig.boundsRows - 1;
@@ -126,10 +114,9 @@ function pickCavernSouthOpenCell(state, openCavernCells) {
     }
     return openCavernCells[0] ?? null;
 }
-
 async function analyzeSnakeSplitMap(mapSeed, playAreaCells = 64) {
     applySnakeGameConfig();
-    const state = createSnakeMapGenTestState(playAreaCells, mapSeed);
+    const state = await createSnakeMapGenTestState(playAreaCells, mapSeed);
     await generateSnakeSplitMap(state);
     const { cavernConfig, railConfig } = state.editor;
     const cavern = countWalkableInBounds(state, cavernConfig);
@@ -143,7 +130,6 @@ async function analyzeSnakeSplitMap(mapSeed, playAreaCells = 64) {
     const railReach = countVisitedInBounds(visited, state, railConfig);
     return { mapSeed, cavern, rail, padding, padReach, railReach, openCavernCount: openCavernCells.length };
 }
-
 describe("snake split map generation", () => {
     it("keeps cavern floor open enough for snakes and goals", async () => {
         const samples = [11, 42, 99, 256, 1337, 9001];
@@ -153,7 +139,6 @@ describe("snake split map generation", () => {
             assert.ok(stats.openCavernCount >= 80, `seed ${stats.mapSeed}: only ${stats.openCavernCount} open cavern cells`);
         }
     });
-
     it("connects upper cavern to padding and lower rail zone on sampled seeds", async () => {
         const samples = [11, 42, 99, 256, 1337, 9001];
         for (let i = 0; i < samples.length; i++) {
@@ -162,10 +147,9 @@ describe("snake split map generation", () => {
             assert.ok(stats.railReach.ratio >= 0.15, `seed ${stats.mapSeed}: rail reach ${stats.railReach.ratio.toFixed(3)}`);
         }
     });
-
     it("spawns the center-start snake at the nearest walkable cell to the map center", async () => {
         applySnakeGameConfig({ snakeCount: 3 });
-        const state = createSnakeMapGenTestState(64, 42);
+        const state = await createSnakeMapGenTestState(64, 42);
         const scene = await spawnSnakeCavernScene(state);
         const centerSnake = scene.snakes[0];
         const expectedAnchor = resolveCenterSnakeSpawnAnchor(state, scene.navWalkable, { segmentCount: getSnakeGameConfig().segmentCount });
@@ -173,10 +157,9 @@ describe("snake split map generation", () => {
         assert.equal(headCell.col, expectedAnchor.col);
         assert.equal(headCell.row, expectedAnchor.row);
     });
-
     it("places food in the lower rail maze, not only the upper cavern", async () => {
         applySnakeGameConfig({ snakeCount: 1, goalCount: 40 });
-        const state = createSnakeMapGenTestState(64, 42);
+        const state = await createSnakeMapGenTestState(64, 42);
         await spawnSnakeCavernScene(state);
         const { railConfig } = state.editor;
         const railRow0 = railConfig.boundsRow;

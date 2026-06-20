@@ -6,11 +6,10 @@ import { FLOOR_CELL_KIND, floorBeltElbowTurn, isFloorBeltRailsKind } from "../Li
 import { planRailMazeCorridorBelts } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { collectCorridorPathPolylines } from "../Libraries/Procedural/Mazes/collectCorridorPathPolylines.js";
 import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
-import { createTestNavigation, syncGridNavContext } from "../Libraries/Navigation/GridNavContext.js";
+import { createTestNavigation, syncTestNavigation, terminateTestNavigation } from "./harness/workerNavigationHarness.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-
 describe("rail maze corridor belts", () => {
     it("collects corridor polylines on a T-junction fixture", () => {
         const cells = [
@@ -39,37 +38,29 @@ describe("rail maze corridor belts", () => {
         const armLengths = paths.map((path) => path.length);
         assert.ok(armLengths.some((len) => len >= 2));
     });
-
-    it("rejects belt paths whose mouths are rail-blocked", () => {
+    it("rejects belt paths whose mouths are rail-blocked", async () => {
         const grid = new WorldObstacleGrid(gridSettings.cellSize);
         grid.rebuildFixed(0, 0, 5 * gridSettings.cellSize, 5 * gridSettings.cellSize);
-        const navigation = createTestNavigation(grid);
-        for (let c = 0; c < 5; c++)
-            for (let r = 0; r < 5; r++) grid.grid[c + r * grid.cols] = 0;
+        const navigation = await createTestNavigation(grid, null, { topologyOnly: true });
+        for (let c = 0; c < 5; c++) for (let r = 0; r < 5; r++) grid.grid[c + r * grid.cols] = 0;
         grid.stampCellEdge(2, 0, 2, 1, 1);
-        syncGridNavContext(navigation.gridNavContext, grid);
+        await syncTestNavigation(navigation, { startCol: 1, endCol: 3, startRow: 0, endRow: 2 }, { topologyOnly: true });
         const path = [
             { c: 2, r: 1 },
             { c: 2, r: 2 },
         ];
         assert.equal(validateBeltPathMouthAccess(grid, navigation.gridNavContext, path), false);
         grid.clearCellEdges(2, 0);
-        syncGridNavContext(navigation.gridNavContext, grid);
+        await syncTestNavigation(navigation, { startCol: 1, endCol: 3, startRow: 0, endRow: 2 }, { topologyOnly: true });
         assert.equal(validateBeltPathMouthAccess(grid, navigation.gridNavContext, path), true);
+        terminateTestNavigation(navigation);
     });
-
     it("plans belt chains on snake split map samples", () => {
         applySnakeGameConfig();
         const config = getSnakeGameConfig();
         const seeds = [11, 42, 256, 1337];
         for (let i = 0; i < seeds.length; i++) {
-            const preview = bakeSnakeSplitLayoutPreview({
-                mapSeed: seeds[i],
-                playAreaCols: 64,
-                playAreaRows: 64,
-                cavern: config.cavern,
-                rail: config.rail,
-            });
+            const preview = bakeSnakeSplitLayoutPreview({ mapSeed: seeds[i], playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
             const plan = preview.beltPlan;
             assert.ok(plan.pathCount >= 15, `seed ${seeds[i]}: only ${plan.pathCount} corridor paths`);
             for (let pi = 0; pi < plan.paths.length; pi++) {
@@ -78,24 +69,15 @@ describe("rail maze corridor belts", () => {
             }
             assert.ok(plan.floorBelts.length > 60, `seed ${seeds[i]}: only ${plan.floorBelts.length} belts`);
             let elbows = 0;
-            for (let bi = 0; bi < plan.floorBelts.length; bi++) {
-                if (floorBeltElbowTurn(plan.floorBelts[bi].kind)) elbows++;
-            }
+            for (let bi = 0; bi < plan.floorBelts.length; bi++) if (floorBeltElbowTurn(plan.floorBelts[bi].kind)) elbows++;
             assert.ok(elbows > 0, `seed ${seeds[i]}: no elbow belts`);
             assert.equal(plan.validation.ok, true, `seed ${seeds[i]}: ${plan.validation.error}`);
         }
     });
-
     it("rolls open vs railed belt kind per cell", () => {
         applySnakeGameConfig();
         const config = getSnakeGameConfig();
-        const preview = bakeSnakeSplitLayoutPreview({
-            mapSeed: 42,
-            playAreaCols: 64,
-            playAreaRows: 64,
-            cavern: config.cavern,
-            rail: config.rail,
-        });
+        const preview = bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
         const baseArgs = {
             grid: preview.grid,
             gridNavContext: preview.gridNavContext,

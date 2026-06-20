@@ -11,7 +11,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { createTestNavigation } from "../Libraries/Navigation/GridNavContext.js";
+import { createTestNavigation } from "./harness/workerNavigationHarness.js";
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
@@ -26,7 +26,7 @@ const PERF_TICKS = 120;
 const PERF_DT = 1 / 60;
 const WALL_CLOCK_MS_CEILING = 18_000;
 const REPLAN_REQUEST_CEILING = 2000;
-function createPerfState(cols = 48, rows = 48) {
+async function createPerfState(cols = 48, rows = 48) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
     const cavernConfig = createDefaultMapGenBoundsConfig();
@@ -42,7 +42,7 @@ function createPerfState(cols = 48, rows = 48) {
         replanRequests++;
         return origReplan(...args);
     };
-    const testNav = createTestNavigation(grid);
+    const testNav = await createTestNavigation(grid);
     testNav.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000 };
     const state = {
         obstacleGrid: grid,
@@ -100,11 +100,11 @@ function buildMultiSnakeSession(state) {
     return { autosims };
 }
 describe("snakePerfBudget", () => {
-    it("50 snakes with brains stay within wall-clock and replan budget", () => {
+    it("50 snakes with brains stay within wall-clock and replan budget", async () => {
         applySnakeGameConfig({ snakeCount: 50, goalCount: 100, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4 });
         resetKineticConstraintIds(1);
         resetVisionFullBuildCount();
-        const state = createPerfState();
+        const state = await createPerfState();
         state.hpaPathSession.resetPeakInflightReplans();
         const { autosims } = buildMultiSnakeSession(state);
         const snakeGame = state.sandbox.snakeGame;
@@ -121,10 +121,7 @@ describe("snakePerfBudget", () => {
         const visionFullBuilds = getVisionFullBuildCount();
         assert.ok(elapsed < WALL_CLOCK_MS_CEILING, `wall-clock ${elapsed.toFixed(1)}ms exceeds ${WALL_CLOCK_MS_CEILING}ms`);
         assert.ok(state.replanRequests <= REPLAN_REQUEST_CEILING, `replan requests ${state.replanRequests} exceed ${REPLAN_REQUEST_CEILING}`);
-        assert.ok(
-            visionFullBuilds <= aliveSnakes * PERF_TICKS,
-            `vision full builds ${visionFullBuilds} exceed ${aliveSnakes} snakes × ${PERF_TICKS} ticks`,
-        );
+        assert.ok(visionFullBuilds <= aliveSnakes * PERF_TICKS, `vision full builds ${visionFullBuilds} exceed ${aliveSnakes} snakes × ${PERF_TICKS} ticks`);
         assert.ok(
             state.hpaPathSession.getPeakInflightReplans() <= HPA_REPLAN_PEAK_INFLIGHT_CAP,
             `peak in-flight replans ${state.hpaPathSession.getPeakInflightReplans()} exceed ${HPA_REPLAN_PEAK_INFLIGHT_CAP}`,

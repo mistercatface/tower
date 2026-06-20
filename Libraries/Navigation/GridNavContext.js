@@ -45,7 +45,8 @@ export function syncGridNavContext(context, grid, damageBounds = null) {
     context.grid = grid;
     context.wallRevision = grid.wallGridRevision;
 }
-export function createTestNavigation(obstacleGrid) {
+/** Sync main-thread nav for batch map-gen (tests use workerNavigationHarness). */
+export function createSyncTestNavigation(obstacleGrid) {
     const gridNavContext = createGridNavContext(obstacleGrid);
     syncGridNavContext(gridNavContext, obstacleGrid);
     /** @type {((damageBounds: import("../DataStructures/CellRect.js").CellBounds | null) => void) | null} */

@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { cellChebyshevDistance, pickExploreDestination, exploreFringeMinRankFromNewest } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
-import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, wireTestGridNavContext, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
+import { createTestNavigation } from "./harness/workerNavigationHarness.js";
 import { findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -20,10 +21,8 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } 
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
-
 loadPropAssets();
-
-function createIntentTestState(cols = 32, rows = 32) {
+async function createIntentTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
     const cavernConfig = createDefaultMapGenBoundsConfig();
@@ -31,32 +30,28 @@ function createIntentTestState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    const state = {
+    const navigation = await createTestNavigation(grid);
+    return {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation: { settings: {}, onObstaclesChanged: async () => {} },
-        hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
+        navigation,
+        hpaPathWorker: navigation._hpaPathWorker,
         viewport: { circleInBounds: () => true },
     };
-    wireTestGridNavContext(state);
-    return state;
 }
-
 function stampWall(grid, col, row) {
     grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
 }
-
 function snakeBehaviors(state) {
     return new Map([
         [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
         [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
     ]);
 }
-
 function snakeChainOptions() {
     const config = getSnakeGameConfig();
     return {
@@ -70,24 +65,21 @@ function snakeChainOptions() {
         growDirY: config.growDirY,
     };
 }
-
 describe("explore steering", () => {
     it("exploreFringeMinRankFromNewest selects the oldest fringeRatio slice", () => {
         const memory = createSpatialCellMemory({ capacity: 100 });
         assert.equal(exploreFringeMinRankFromNewest(memory, 0.25), 74);
     });
-
-    it("pickExploreDestination respects minimum tile distance", () => {
-        const state = createIntentTestState();
+    it("pickExploreDestination respects minimum tile distance", async () => {
+        const state = await createIntentTestState();
         const grid = state.obstacleGrid;
         const openCells = collectWalkableCells(state);
         const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells, rng: () => 0, fringeRatio: 0.25 });
         assert.ok(cell);
         assert.ok(cellChebyshevDistance(10, 10, cell.col, cell.row) >= 8);
     });
-
-    it("prefers destinations outside spatial memory", () => {
-        const state = createIntentTestState();
+    it("prefers destinations outside spatial memory", async () => {
+        const state = await createIntentTestState();
         const grid = state.obstacleGrid;
         const openCells = collectWalkableCells(state);
         const memory = createSpatialCellMemory({ capacity: 64 });
@@ -96,9 +88,8 @@ describe("explore steering", () => {
         assert.ok(cell);
         assert.ok(!memory.has(cell.col, cell.row));
     });
-
-    it("prefers fresh cells over recently remembered cells", () => {
-        const state = createIntentTestState();
+    it("prefers fresh cells over recently remembered cells", async () => {
+        const state = await createIntentTestState();
         const grid = state.obstacleGrid;
         const openCells = collectWalkableCells(state);
         const memory = createSpatialCellMemory({ capacity: 8 });
@@ -108,15 +99,15 @@ describe("explore steering", () => {
         assert.ok(!memory.has(cell.col, cell.row));
     });
 });
-
 describe("snake intent FSM", () => {
-    it("seeks nearest visible goal, not nearest goal behind a wall", () => {
+    it("seeks nearest visible goal, not nearest goal behind a wall", async () => {
         applySnakeGameConfig();
-        const state = createIntentTestState();
+        const state = await createIntentTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 8 }, snakeChainOptions());
         const nearBehindWall = spawnGoalOrbAtCell(state, { col: 12, row: 8 });
         const farVisible = spawnGoalOrbAtCell(state, { col: 6, row: 8 });
         stampWall(state.obstacleGrid, 11, 8);
+        await state.navigation.onObstaclesChanged({ startCol: 10, endCol: 12, startRow: 7, endRow: 9 });
         const seeker = chain.head;
         seeker.facing = Math.PI;
         wireSnakeGameRegistry(state, createSnakeLifecycleRegistry(), new Map(), createSnakeNavWalkable(state));
@@ -124,11 +115,10 @@ describe("snake intent FSM", () => {
         assert.equal(findNearestSnakeGoal(state, seeker.x, seeker.y).id, nearBehindWall.id);
         assert.equal(findNearestVisibleSnakeGoal(state, seeker).id, farVisible.id);
     });
-
-    it("explores via HPA when no goal is visible and seeks when food enters vision", () => {
+    it("explores via HPA when no goal is visible and seeks when food enters vision", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
-        const state = createIntentTestState();
+        const state = await createIntentTestState();
         const chain = spawnLinkedBallChain(state, { col: 4, row: 8 }, snakeChainOptions());
         wireSnakeGameForHead(state, chain.head.id);
         spawnGoalOrbAtCell(state, { col: 7, row: 8 });
@@ -137,6 +127,7 @@ describe("snake intent FSM", () => {
         stampWall(state.obstacleGrid, 6, 8);
         stampWall(state.obstacleGrid, 7, 8);
         stampWall(state.obstacleGrid, 8, 8);
+        await state.navigation.onObstaclesChanged({ startCol: 4, endCol: 9, startRow: 7, endRow: 9 });
         const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20, rng: () => 0 });
         autosim.start();
         assert.equal(autosim.getMode(), "explore");
@@ -147,11 +138,10 @@ describe("snake intent FSM", () => {
         assert.equal(autosim.getMode(), "seek_food");
         assert.ok(autosim.getDestination());
     });
-
-    it("forage intent flees from a visible larger snake", () => {
+    it("forage intent flees from a visible larger snake", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
-        const state = createIntentTestState();
+        const state = await createIntentTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });
         const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, { ...snakeChainOptions(), segmentCount: 5 });
         const registry = createSnakeLifecycleRegistry();

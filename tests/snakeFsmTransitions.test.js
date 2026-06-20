@@ -18,12 +18,13 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, a
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
-import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireTestGridNavContext } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { createTestNavigation } from "./harness/workerNavigationHarness.js";
 import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 
 loadPropAssets();
 
-function createFsmTestState(cols = 32, rows = 32) {
+async function createFsmTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
     const cavernConfig = createDefaultMapGenBoundsConfig();
@@ -31,19 +32,18 @@ function createFsmTestState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    const state = {
+    const navigation = await createTestNavigation(grid);
+    return {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation: { settings: {}, onObstaclesChanged: async () => {} },
-        hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
+        navigation,
+        hpaPathWorker: navigation._hpaPathWorker,
         viewport: { circleInBounds() { return true; } },
     };
-    wireTestGridNavContext(state);
-    return state;
 }
 
 function stampWall(grid, col, row) {
@@ -126,10 +126,10 @@ function createMockIntent(state, selfHeadId, registry) {
 }
 
 describe("snake FSM transitions", () => {
-    it("explore transitions to seek_food when food enters vision", () => {
+    it("explore transitions to seek_food when food enters vision", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
-        const state = createFsmTestState();
+        const state = await createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 4, row: 8 }, chainOptions());
         wireSnakeGameForHead(state, chain.head.id);
         spawnGoalOrbAtCell(state, { col: 7, row: 8 });
@@ -149,10 +149,10 @@ describe("snake FSM transitions", () => {
         assert.ok(autosim.getDestination());
     });
 
-    it("seek_food transitions to flee when a larger snake appears", () => {
+    it("seek_food transitions to flee when a larger snake appears", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
-        const state = createFsmTestState();
+        const state = await createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, chainOptions(3));
         const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
         const registry = createSnakeLifecycleRegistry();
@@ -172,10 +172,10 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getLastTransitionReason(), "threat_visible");
     });
 
-    it("flee chains to a new retreat cell on arrival while threat remains visible", () => {
+    it("flee chains to a new retreat cell on arrival while threat remains visible", async () => {
         applySnakeGameConfig({ fleeRange: 128, fleeTiles: 2 });
         resetKineticConstraintIds(1);
-        const state = createFsmTestState();
+        const state = await createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 24, row: 20 }, chainOptions(3));
         const large = spawnLinkedBallChain(state, { col: 28, row: 20 }, chainOptions(5));
         const registry = createSnakeLifecycleRegistry();
@@ -208,10 +208,10 @@ describe("snake FSM transitions", () => {
         assert.notDeepEqual(next, latched);
     });
 
-    it("route failure retries the same latched cell", () => {
+    it("route failure retries the same latched cell", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
-        const state = createFsmTestState();
+        const state = await createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
         const registry = createSnakeLifecycleRegistry();
         registerAliveSnake(registry, chain.head.id);
@@ -235,7 +235,7 @@ describe("snake FSM transitions", () => {
     it("createSnakeAutosim requires a wired registry", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
-        const state = createFsmTestState();
+        const state = await createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
         const stubNavWalkable = { cells: () => [], has: () => false, pick: () => null, filterInBounds: () => [], rebake: () => {} };
         assert.throws(() => createSnakeAutosim(state, { headId: chain.head.id, navWalkable: stubNavWalkable }), /registry/);

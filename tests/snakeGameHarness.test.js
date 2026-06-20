@@ -3,10 +3,9 @@ import { describe, it } from "node:test";
 import { getChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { buildSnakeGameSession, createSnakeGameHarnessState } from "./harness/snakeGameHarness.js";
-
 describe("snakeGameHarness", () => {
     it("builds an active snake session with head, goal, and tick", async () => {
-        const { state } = createSnakeGameHarnessState();
+        const { state } = await createSnakeGameHarnessState();
         const session = await buildSnakeGameSession(state);
         assert.ok(session.cameraTarget);
         assert.ok(session.goal);

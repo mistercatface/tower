@@ -12,43 +12,28 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../..
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
 import { resolveSnakeNavWalkableFloodSeedBounds, spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
-import { createTestNavigation, syncGridNavContext } from "../../Libraries/Navigation/GridNavContext.js";
+import { createTestNavigation, syncTestNavigation } from "./workerNavigationHarness.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
 import { HpaPathSession } from "../../Libraries/Pathfinding/HpaPathSession.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
 loadPropAssets();
-export function wireTestGridNavContext(state, damageBounds = null) {
-    if (!state.navigation.gridNavContext) {
-        const testNav = createTestNavigation(state.obstacleGrid);
-        state.navigation.gridNavContext = testNav.gridNavContext;
-        state.navigation.onObstaclesChanged = testNav.onObstaclesChanged;
-        state.navigation.setNavWalkableSyncHook = testNav.setNavWalkableSyncHook;
-        if (state.navigation.obstacleGeneration == null) state.navigation.obstacleGeneration = testNav.obstacleGeneration;
-        return;
-    }
-    syncGridNavContext(state.navigation.gridNavContext, state.obstacleGrid, damageBounds);
+/** @param {object} state @param {import("../../Libraries/DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
+export async function syncTestNavigationNav(state, damageBounds = null) {
+    await syncTestNavigation(state.navigation, damageBounds);
 }
 export function wireSnakeTestNavSession(state) {
     if (state.hpaPathSession) return;
-    const mockWorker = {
-        getPathSlot: () => -1,
-        releaseOwnedPathSlot: () => {},
-        releaseSlot: () => {},
-        requestPath: async () => ({ result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } }),
-    };
-    if (!state.hpaPathWorker || typeof state.hpaPathWorker.requestPath !== "function") state.hpaPathWorker = mockWorker;
+    const worker = state.navigation._hpaPathWorker ?? state.hpaPathWorker;
+    if (!worker?.host) {
+        const mockWorker = { getPathSlot: () => -1, releaseOwnedPathSlot: () => {}, releaseSlot: () => {}, requestPath: async () => ({ result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } }) };
+        if (!state.hpaPathWorker || typeof state.hpaPathWorker.requestPath !== "function") state.hpaPathWorker = mockWorker;
+    } else state.hpaPathWorker = worker;
     state.hpaPathSession = new HpaPathSession(state.hpaPathWorker);
     state.viewport = state.viewport ?? { circleInBounds: () => true, snapTo() {} };
     if (state.navigation.obstacleGeneration == null) state.navigation.obstacleGeneration = 0;
-    wireTestGridNavContext(state);
-    state.navigation.settings = {
-        stuckMoveThreshold: 0.5,
-        stuckReplanFrames: 30,
-        idlePathReplanMs: 5000,
-        ...state.navigation.settings,
-    };
+    state.navigation.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000, ...state.navigation.settings };
 }
 function ensureSnakePlayableBounds(state) {
     if (state.sandbox.snakePlayableBounds) return;
@@ -71,7 +56,7 @@ export function createWiredSnakeAutosim(state, options) {
     wireSnakeTestNavSession(state);
     return createSnakeAutosim(state, { ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
 }
-export function createSnakeGameHarnessState(cols = 32, rows = 32) {
+export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
     const cavernConfig = createDefaultMapGenBoundsConfig();
@@ -79,6 +64,7 @@ export function createSnakeGameHarnessState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
+    const navigation = await createTestNavigation(grid);
     const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
@@ -86,8 +72,8 @@ export function createSnakeGameHarnessState(cols = 32, rows = 32) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation: createTestNavigation(grid),
-        hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
+        navigation,
+        hpaPathWorker: navigation._hpaPathWorker,
         viewport: { circleInBounds: () => true, snapTo() {} },
     };
     const hpaBehavior = createHpaGroundNavBehavior(state);
