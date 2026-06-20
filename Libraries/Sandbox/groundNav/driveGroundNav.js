@@ -1,9 +1,6 @@
+import { snapNavGoalWorld } from "../../Navigation/snapNavGoal.js";
 import { getPhysicsSettings } from "../../../Core/GamePhysicsSettings.js";
-import { isEntityOnFloorBelt, isFloorBeltCell, resolveFloorBeltSteerTarget } from "../../Spatial/grid/FloorCell.js";
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-export function resolveGroundNavSteerTarget(grid, targetWorldX, targetWorldY, propX, propY) {
-    return resolveFloorBeltSteerTarget(grid, targetWorldX, targetWorldY, propX, propY);
-}
+import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
 /**
  * @param {object} prop
  * @param {{ x: number, y: number }} targetWorld
@@ -41,7 +38,7 @@ export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
 export function driveGroundNav({ prop, targetWorld, targetCellCol = null, targetCellRow = null, nav, beltWasOnBelt, state, dtMs, pathSettings }) {
     const grid = state.obstacleGrid;
     if (isEntityOnFloorBelt(grid, prop.x, prop.y)) return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: true };
-    const steerTarget = resolveGroundNavSteerTarget(grid, targetWorld.x, targetWorld.y, prop.x, prop.y);
+    const steerTarget = snapNavGoalWorld(grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
     if (beltWasOnBelt) {
         nav.reset(state);
         nav.replan(prop, steerTarget.x, steerTarget.y, state);

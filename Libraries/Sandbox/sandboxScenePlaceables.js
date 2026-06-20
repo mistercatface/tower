@@ -2,7 +2,7 @@ import { formatSandboxFactionLabel } from "../Sandbox/sandboxFaction.js";
 import { expandGridForRoomNodeFootprint, stampRoomNodeAt, syncRoomGraphBake } from "../RoomGraph/index.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { canStampFloorBeltAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
-import { applyFloorCellEdit } from "./floorNavEdit.js";
+import { applyFloorCellEdit } from "./gridNavEdit.js";
 import { listPlacedForcefields } from "./gridWallEdit.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";

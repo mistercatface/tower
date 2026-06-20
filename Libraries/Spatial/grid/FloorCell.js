@@ -125,18 +125,3 @@ export function isEntityOnFloorBelt(grid, x, y) {
     const { col, row } = grid.worldToGrid(x, y);
     return isFloorBeltCell(grid, col, row);
 }
-/**
- * Steer target when a click lands on a belt — approach from entry, not downstream through rails.
- * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
- */
-export function resolveFloorBeltSteerTarget(grid, worldX, worldY, fromX, fromY) {
-    const { col, row } = grid.worldToGrid(worldX, worldY);
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return { x: worldX, y: worldY };
-    const idx = col + row * grid.cols;
-    const kind = grid.floorStore.kind[idx];
-    if (!grid.floorStore.isBeltKindAtIdx(idx)) return { x: worldX, y: worldY };
-    const { col: fromCol, row: fromRow } = grid.worldToGrid(fromX, fromY);
-    if (fromCol === col && fromRow === row) return { x: worldX, y: worldY };
-    const { entrySide } = floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
-    return floorBeltEntryEdgeWorldPoint(grid, col, row, entrySide);
-}

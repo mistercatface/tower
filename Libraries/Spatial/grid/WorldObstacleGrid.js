@@ -3,7 +3,7 @@ import { colRowToIndex, cellInRect } from "./GridUtils.js";
 import { cellEdgeEndpoints, blockingPassageEdgeAt, edgeRailCollisionShouldEmit, edgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
-import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
+import { floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
 import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBeltBoundariesForCell, clearBoundaryPrimary, reconcileBeltBoundaries, setBoundary } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
@@ -363,19 +363,6 @@ export class WorldObstacleGrid {
         }
         this.floorStore.reset(size);
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
-    }
-    // Belt goal cells snap to upstream entry so HPA approaches from the belt mouth.
-    snapPathTargetCell(fromCol, fromRow, targetCol, targetRow) {
-        const idx = colRowToIndex(targetCol, targetRow, this.cols);
-        if (!this.floorStore.isBeltKindAtIdx(idx)) return { col: targetCol, row: targetRow };
-        const kind = this.floorStore.kind[idx];
-        const facingIndex = this.floorStore.facing[idx];
-        const { entrySide } = floorBeltEntryExitSides(kind, facingIndex);
-        const neighbor = floorBeltEntryNeighborCell(targetCol, targetRow, entrySide);
-        if (neighbor.col < 0 || neighbor.col >= this.cols || neighbor.row < 0 || neighbor.row >= this.rows) return { col: targetCol, row: targetRow };
-        if (this.isBlocked(neighbor.col, neighbor.row)) return { col: targetCol, row: targetRow };
-        if (fromCol === neighbor.col && fromRow === neighbor.row) return { col: targetCol, row: targetRow };
-        return neighbor;
     }
     worldToGrid(x, y) {
         return worldToGridAtOrigin(x, y, this.minX, this.minY, this.cellSize);

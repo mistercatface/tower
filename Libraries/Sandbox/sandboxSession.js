@@ -7,7 +7,7 @@ import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKi
 import { getRoomLink, clearRoomGraph, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
 import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
-import { applyFloorCellEdit, clearFloorCellNavEdit, commitFloorNavEdit } from "./floorNavEdit.js";
+import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
 import { cellBoundsAt, unionCellBounds } from "../DataStructures/CellRect.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
@@ -223,7 +223,7 @@ export function createSandboxSession(state) {
                 grid.writeFloorCell(col, row, kind, facingRadians);
                 return false;
             }
-            commitFloorNavEdit(state, bounds);
+            commitGridNavEdit(state, bounds);
             pickSelection({ kind: "floor", col: targetCol, row: targetRow });
             return true;
         },

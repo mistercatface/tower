@@ -1,6 +1,6 @@
 import { unionCellBounds } from "../DataStructures/CellRect.js";
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
-import { commitBoundaryEdit } from "../Sandbox/boundaryEdit.js";
+import { commitGridNavEditUnion } from "../Sandbox/gridNavEdit.js";
 import { clearRailWallsQuiet, stampRailWallsQuiet } from "../Sandbox/gridWallEdit.js";
 import { createSeededRng } from "../Math/SeededRng.js";
 import {
@@ -184,8 +184,8 @@ function computeRoomGraphBake(layout) {
 }
 /** Rebuild all room-graph-owned rail walls from `state.roomGraph`. */
 export function syncRoomGraphBake(state) {
-    let dirtyBounds = clearRailWallsQuiet(state, listBakedRails(state));
-    dirtyBounds = unionCellBounds(dirtyBounds, clearBakedFloorBeltsQuiet(state, listBakedFloorBelts(state)));
+    let dirtyRailBounds = clearRailWallsQuiet(state, listBakedRails(state));
+    const dirtyBeltBounds = clearBakedFloorBeltsQuiet(state, listBakedFloorBelts(state));
     setBakedRails(state, []);
     setBakedFloorBelts(state, []);
     setBakedCorridorFloorCells(state, []);
@@ -194,7 +194,7 @@ export function syncRoomGraphBake(state) {
     if (!layout.rooms.length) {
         clearLockedRoomBakes(state);
         setBakedCorridorFloorCells(state, []);
-        if (dirtyBounds) commitBoundaryEdit(state, dirtyBounds);
+        commitGridNavEditUnion(state, dirtyRailBounds, dirtyBeltBounds);
         return;
     }
     expandGridForGraphNodes(state, layout.rooms);
@@ -206,20 +206,20 @@ export function syncRoomGraphBake(state) {
     setBakedRails(state, stampedRails);
     setBakedFloorBelts(state, stampedBelts);
     setBakedCorridorFloorCells(state, bake.corridorFloorCells);
-    dirtyBounds = unionCellBounds(dirtyBounds, railBounds);
-    dirtyBounds = unionCellBounds(dirtyBounds, beltBounds);
-    if (dirtyBounds) commitBoundaryEdit(state, dirtyBounds);
+    dirtyRailBounds = unionCellBounds(dirtyRailBounds, railBounds);
+    const bakedBeltBounds = unionCellBounds(dirtyBeltBounds, beltBounds);
+    commitGridNavEditUnion(state, dirtyRailBounds, bakedBeltBounds);
     syncLockedRoomBakes(state, layout, bake.lockedLinkBakes);
 }
 /** @param {object} state */
 export function unbakeRoomGraph(state) {
     clearLockedRoomBakes(state);
-    let bounds = clearRailWallsQuiet(state, listBakedRails(state));
-    bounds = unionCellBounds(bounds, clearBakedFloorBeltsQuiet(state, listBakedFloorBelts(state)));
+    const railBounds = clearRailWallsQuiet(state, listBakedRails(state));
+    const beltBounds = clearBakedFloorBeltsQuiet(state, listBakedFloorBelts(state));
     setBakedRails(state, []);
     setBakedFloorBelts(state, []);
     setBakedCorridorFloorCells(state, []);
-    if (bounds) commitBoundaryEdit(state, bounds);
+    commitGridNavEditUnion(state, railBounds, beltBounds);
 }
 /** @param {object} state @param {number} linkId */
 export function rerollRoomLinkBake(state, linkId) {

@@ -1,4 +1,5 @@
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { snapNavGoalCell } from "../Navigation/snapNavGoal.js";
 export const HPA_LOCAL_MAX_LEN = 96;
 export const HPA_REGION_CONNECT_MAX_LEN = 96;
 export const HPA_LOCAL_DISTANCE_THRESHOLD = 32;
@@ -41,11 +42,9 @@ export function resolveSnappedPathEndpoints(grid, startX, startY, targetX, targe
     const targetOpen = findNearestOpenCell(grid, targetCol, targetRow);
     targetCol = targetOpen.col;
     targetRow = targetOpen.row;
-    if (grid.snapPathTargetCell) {
-        const snapped = grid.snapPathTargetCell(startCol, startRow, targetCol, targetRow);
-        targetCol = snapped.col;
-        targetRow = snapped.row;
-    }
+    const snapped = snapNavGoalCell(grid, startCol, startRow, targetCol, targetRow);
+    targetCol = snapped.col;
+    targetRow = snapped.row;
     return { startCol, startRow, targetCol, targetRow };
 }
 /**
