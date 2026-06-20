@@ -57,9 +57,6 @@ function createPerfState(cols = 48, rows = 48) {
             circleInBounds() {
                 return false;
             },
-            isVisible() {
-                return false;
-            },
         },
         get replanRequests() {
             return replanRequests;

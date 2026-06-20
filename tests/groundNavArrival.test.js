@@ -28,7 +28,7 @@ function createNavState(prop) {
                 return id === prop.id ? prop : null;
             },
         },
-        viewport: { isVisible: () => true },
+        viewport: { circleInBounds: () => true },
     };
 }
 

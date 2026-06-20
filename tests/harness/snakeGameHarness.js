@@ -38,7 +38,7 @@ export function wireSnakeTestNavSession(state) {
     };
     if (!state.hpaPathWorker || typeof state.hpaPathWorker.requestPath !== "function") state.hpaPathWorker = mockWorker;
     state.hpaPathSession = new HpaPathSession(state.hpaPathWorker);
-    state.viewport = state.viewport ?? { isVisible: () => true, snapTo() {} };
+    state.viewport = state.viewport ?? { circleInBounds: () => true, snapTo() {} };
     if (state.navigation.obstacleGeneration == null) state.navigation.obstacleGeneration = 0;
     wireTestGridNavContext(state);
     state.navigation.settings = {
@@ -86,7 +86,7 @@ export function createSnakeGameHarnessState(cols = 32, rows = 32) {
         editor: { cavernConfig },
         navigation: createTestNavigation(grid),
         hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
-        viewport: { isVisible: () => true, snapTo() {} },
+        viewport: { circleInBounds: () => true, snapTo() {} },
     };
     const hpaBehavior = createHpaGroundNavBehavior(state);
     const directBehavior = createDirectGroundNavBehavior(state);

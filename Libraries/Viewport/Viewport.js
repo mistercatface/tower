@@ -82,7 +82,4 @@ export class Viewport {
     getVisualRadius() {
         return Math.max(1, Math.min(this.cx, this.cy) - 4);
     }
-    isVisible(worldX, worldY, radius = 0, tier = "props") {
-        return this.viewBounds.circleInBounds(worldX, worldY, radius, tier);
-    }
 }

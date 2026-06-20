@@ -41,9 +41,6 @@ export class FloatingText {
         this.life = remaining / this.maxLife;
         if (remaining <= 0) this.isDead = true;
     }
-    isVisible(viewport) {
-        return viewport.isVisible(this.x, this.y, 20);
-    }
     static spawn(state, x, y, text, color, styleName = "standard", options = {}) {
         const offsetX = (Math.random() - 0.5) * 16;
         const offsetY = (Math.random() - 0.5) * 16;

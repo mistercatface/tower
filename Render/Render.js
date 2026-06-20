@@ -108,8 +108,10 @@ export class Renderer {
     }
     renderEntityCollection(collection, state, viewport) {
         if (!collection) return;
-        for (const entity of collection) {
-            if (typeof entity.isVisible === "function" && !entity.isVisible(viewport)) continue;
+        for (let i = 0; i < collection.length; i++) {
+            const entity = collection[i];
+            const radius = entity.getBoundingRadius?.() ?? entity.radius ?? 20;
+            if (!viewport.circleInBounds(entity.x, entity.y, radius, "props")) continue;
             entity.render(this.ctx, this, state);
         }
     }

@@ -28,7 +28,7 @@ function createNavTestState() {
         navigation: { obstacleGeneration: 0, settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000 } },
         hpaPathWorker: mockWorker,
         hpaPathSession,
-        viewport: { isVisible: () => true },
+        viewport: { circleInBounds: () => true },
         get replanCalls() {
             return replanCalls;
         },

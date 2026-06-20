@@ -29,7 +29,7 @@ function createGoalIndexState() {
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
         navigation: {},
-        viewport: { isVisible: () => true },
+        viewport: { circleInBounds: () => true },
     };
     wireSnakeTestNavSession(state);
     const navWalkable = createSnakeNavWalkable(state);

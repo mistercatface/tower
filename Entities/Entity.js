@@ -31,9 +31,6 @@ export class Entity {
         if (this.shape) return this.shape.getBoundingRadius();
         return this.radius || 0;
     }
-    isVisible(viewport) {
-        return viewport.isVisible(this.x, this.y, this.getBoundingRadius());
-    }
     hasLineOfSightFromPoint(x, y, state, { sourceRadius = 0 } = {}) {
         return hasLineOfSight(x, y, this.x, this.y, state.obstacleGrid, sourceRadius, this.radius ?? 0);
     }
