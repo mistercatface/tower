@@ -35,6 +35,12 @@ export const kineticConstraintSlab = {
     pinnedB: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
     capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS),
     accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    nx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    ny: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    rAn: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    rBn: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    k: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    error: new Float32Array(MAX_KINETIC_CONSTRAINTS),
     islandAsleep: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
     entry: new Array(MAX_KINETIC_CONSTRAINTS),
     reset() {
@@ -329,37 +335,25 @@ function projectDistanceConstraint(slab, index) {
     separateAlongNormal(bodyA, bodyB, nx, ny, -error, slab.massA[index], slab.massB[index], slab.pinnedA[index], slab.pinnedB[index]);
 }
 function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias) {
+    const k = slab.k[index];
+    if (k <= 1e-12) return 0;
     const bodyA = slab.bodyA[index];
     const bodyB = slab.bodyB[index];
-    const wa = worldAnchorFromBody(bodyA, slab.anchorAx[index], slab.anchorAy[index]);
-    const wb = worldAnchorFromBody(bodyB, slab.anchorBx[index], slab.anchorBy[index]);
-    const dx = wb.x - wa.x;
-    const dy = wb.y - wa.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist < 1e-8) return 0;
-    const nx = dx / dist;
-    const ny = dy / dist;
-    const error = dist - slab.restLength[index];
-    const invMassA = slab.invMassA[index];
-    const invMassB = slab.invMassB[index];
-    const rax = wa.x - bodyA.x;
-    const ray = wa.y - bodyA.y;
-    const rbx = wb.x - bodyB.x;
-    const rby = wb.y - bodyB.y;
-    const invIA = slab.invIA[index];
-    const invIB = slab.invIB[index];
-    const rAn = rax * ny - ray * nx;
-    const rBn = rbx * ny - rby * nx;
-    const k = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
-    if (k <= 1e-12) return 0;
-    const vAx = (bodyA.vx ?? 0) - (bodyA.angularVelocity ?? 0) * ray;
-    const vAy = (bodyA.vy ?? 0) + (bodyA.angularVelocity ?? 0) * rax;
-    const vBx = (bodyB.vx ?? 0) - (bodyB.angularVelocity ?? 0) * rby;
-    const vBy = (bodyB.vy ?? 0) + (bodyB.angularVelocity ?? 0) * rbx;
-    const vRelN = (vBx - vAx) * nx + (vBy - vAy) * ny;
+    const nx = slab.nx[index];
+    const ny = slab.ny[index];
+    const rAn = slab.rAn[index];
+    const rBn = slab.rBn[index];
+    const error = slab.error[index];
+    const vAn = (bodyA.vx ?? 0) * nx + (bodyA.vy ?? 0) * ny + (bodyA.angularVelocity ?? 0) * rAn;
+    const vBn = (bodyB.vx ?? 0) * nx + (bodyB.vy ?? 0) * ny + (bodyB.angularVelocity ?? 0) * rBn;
+    const vRelN = vBn - vAn;
     const lambda = -(vRelN + velocityBias * error) / k;
     if (lambda === 0) return 0;
     slab.accumulatedImpulse[index] += lambda;
+    const invMassA = slab.invMassA[index];
+    const invMassB = slab.invMassB[index];
+    const invIA = slab.invIA[index];
+    const invIB = slab.invIB[index];
     bodyA.vx = (bodyA.vx ?? 0) - lambda * nx * invMassA;
     bodyA.vy = (bodyA.vy ?? 0) - lambda * ny * invMassA;
     bodyB.vx = (bodyB.vx ?? 0) + lambda * nx * invMassB;
@@ -378,8 +372,6 @@ function warmStartKineticConstraintSlab() {
     const slab = kineticConstraintSlab;
     for (let i = 0; i < slab.count; i++) {
         if (slab.islandAsleep[i]) continue;
-        const lambda = slab.accumulatedImpulse[i];
-        if (lambda === 0) continue;
         const bodyA = slab.bodyA[i];
         const bodyB = slab.bodyB[i];
         const wa = worldAnchorFromBody(bodyA, slab.anchorAx[i], slab.anchorAy[i]);
@@ -387,25 +379,47 @@ function warmStartKineticConstraintSlab() {
         const dx = wb.x - wa.x;
         const dy = wb.y - wa.y;
         const dist = Math.hypot(dx, dy);
-        if (dist < 1e-8) continue;
-        const nx = dx / dist;
-        const ny = dy / dist;
-        const invMassA = slab.invMassA[i];
-        const invMassB = slab.invMassB[i];
-        const invIA = slab.invIA[i];
-        const invIB = slab.invIB[i];
-        const rax = wa.x - bodyA.x;
-        const ray = wa.y - bodyA.y;
-        const rbx = wb.x - bodyB.x;
-        const rby = wb.y - bodyB.y;
-        const rAn = rax * ny - ray * nx;
-        const rBn = rbx * ny - rby * nx;
-        bodyA.vx = (bodyA.vx ?? 0) - lambda * nx * invMassA;
-        bodyA.vy = (bodyA.vy ?? 0) - lambda * ny * invMassA;
-        bodyB.vx = (bodyB.vx ?? 0) + lambda * nx * invMassB;
-        bodyB.vy = (bodyB.vy ?? 0) + lambda * ny * invMassB;
-        bodyA.angularVelocity = (bodyA.angularVelocity ?? 0) - lambda * rAn * invIA;
-        bodyB.angularVelocity = (bodyB.angularVelocity ?? 0) + lambda * rBn * invIB;
+        let nx = 0,
+            ny = 0,
+            error = 0,
+            rAn = 0,
+            rBn = 0,
+            k = 0;
+        if (dist >= 1e-8) {
+            nx = dx / dist;
+            ny = dy / dist;
+            error = dist - slab.restLength[i];
+            const invMassA = slab.invMassA[i];
+            const invMassB = slab.invMassB[i];
+            const invIA = slab.invIA[i];
+            const invIB = slab.invIB[i];
+            const rax = wa.x - bodyA.x;
+            const ray = wa.y - bodyA.y;
+            const rbx = wb.x - bodyB.x;
+            const rby = wb.y - bodyB.y;
+            rAn = rax * ny - ray * nx;
+            rBn = rbx * ny - rby * nx;
+            k = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
+        }
+        slab.nx[i] = nx;
+        slab.ny[i] = ny;
+        slab.error[i] = error;
+        slab.rAn[i] = rAn;
+        slab.rBn[i] = rBn;
+        slab.k[i] = k;
+        const lambda = slab.accumulatedImpulse[i];
+        if (lambda !== 0 && dist >= 1e-8) {
+            const invMassA = slab.invMassA[i];
+            const invMassB = slab.invMassB[i];
+            const invIA = slab.invIA[i];
+            const invIB = slab.invIB[i];
+            bodyA.vx = (bodyA.vx ?? 0) - lambda * nx * invMassA;
+            bodyA.vy = (bodyA.vy ?? 0) - lambda * ny * invMassA;
+            bodyB.vx = (bodyB.vx ?? 0) + lambda * nx * invMassB;
+            bodyB.vy = (bodyB.vy ?? 0) + lambda * ny * invMassB;
+            bodyA.angularVelocity = (bodyA.angularVelocity ?? 0) - lambda * rAn * invIA;
+            bodyB.angularVelocity = (bodyB.angularVelocity ?? 0) + lambda * rBn * invIB;
+        }
     }
 }
 function solveKineticConstraintSlab(tick) {
