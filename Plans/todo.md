@@ -4,7 +4,7 @@
 
 ## REFACTOR NEEDED:
 
-## 06/19/2026
+## 06/20/2026
 
 8:00 AM - 8:50 AM: ViewportBounds refactor
 8:50 AM - 9:12 AM: Generic FSM extract
@@ -12,8 +12,8 @@
 10:54 AM - 11:19 AM: Kinetic chain refactor
 11:20 AM - 11:41 AM: Physics warm starts
 11:41 AM - 12:01 PM: Canvas pooling + thrashing fixes
-12:01 PM - 2:36 PM: Real bad pathfinding bug. Preparation for large pathfinding refactor
-3:30 PM - : Pathfinding refactor
+12:01 PM - 2:36 PM: Real bad pathfinding bug + preparation for large pathfinding refactor
+3:30 PM - 4:30 PM: Pathfinding refactor: continued migration to worker
 
 ## MILESTONE LOG
 
