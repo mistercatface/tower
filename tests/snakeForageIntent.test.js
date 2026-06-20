@@ -18,8 +18,7 @@ import {
     pickSnakeIntentTarget,
     perceiveSnakeIntentWorld,
 } from "../Libraries/Game/snake/snakeIntent.js";
-import { createWiredSnakeAutosim, createSnakeNavWalkable, wireTestGridNavContext } from "./harness/snakeGameHarness.js";
-import { ensureSnakeObserverVision } from "../Libraries/Game/snake/snakePerception.js";
+import { createWiredSnakeAutosim, createSnakeNavWalkable, wireTestGridNavContext, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
 import { spawnSnakeStriker } from "../Libraries/Game/snake/snakeStriker.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
@@ -75,7 +74,7 @@ function wireSnakeIntentPerception(state, registry) {
     wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
 }
 function perceiveIntentWorld(state, seeker, headId, registry, resolveFood) {
-    ensureSnakeObserverVision(state, seeker);
+    primeSnakeHeadVision(state, seeker);
     return perceiveSnakeIntentWorld(seeker, headId, state, registry, resolveFood);
 }
 
@@ -170,7 +169,7 @@ describe("snake forage intent", () => {
         const food = { id: 999, x: self.head.x + 32, y: self.head.y, isDead: false };
         state.worldProps.push(food);
         state.entityRegistry.register("worldProp", food);
-        ensureSnakeObserverVision(state, self.head);
+        primeSnakeHeadVision(state, self.head);
         const choice = pickSnakeIntentTarget(self.head, self.head.id, state, registry, () => food);
         assert.equal(choice.mode, "seek_food");
         assert.equal(choice.target.id, 999);
@@ -191,7 +190,7 @@ describe("snake forage intent", () => {
         self.head.facing = 0;
         larger.head.x = self.head.x + 64;
         larger.head.y = self.head.y;
-        ensureSnakeObserverVision(state, self.head);
+        primeSnakeHeadVision(state, self.head);
         const threat = findNearestVisibleThreat(self.head, self.head.id, state, registry);
         const cell = pickFleeCell(self.head, threat, grid, navWalkable);
         assert.ok(cell);

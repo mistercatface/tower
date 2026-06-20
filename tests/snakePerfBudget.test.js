@@ -18,7 +18,7 @@ import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry
 import { createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
 import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
-import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/gridCellVision.js";
+import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 loadPropAssets();
 /** Brain-on baseline — raise only when intentionally adding cost. */
 const PERF_TICKS = 120;

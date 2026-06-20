@@ -2,17 +2,17 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
     collectVisibleGridCells,
-    ensureObserverGridVision,
-    getVisionFullBuildCount,
     hasGridCellLineOfSight,
     isWorldPointInVisionCone,
     normalizeAngleDelta,
-    queryGridCellVision,
-    readObserverGridVision,
-    resetVisionFullBuildCount,
     resolveObserverHeading,
 } from "../Libraries/Navigation/perception/gridCellVision.js";
-import { createObserverVisionFrame } from "../Libraries/Navigation/perception/observerVisionFrame.js";
+import {
+    createObserverVisionFrame,
+    getVisionFullBuildCount,
+    queryGridCellVision,
+    resetVisionFullBuildCount,
+} from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { createGridNavContext, syncGridNavContext } from "../Libraries/Navigation/GridNavContext.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { setBoundary } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
@@ -123,19 +123,6 @@ describe("grid cell vision cone", () => {
         assert.equal(cone.visible[0].id, 2);
         assert.ok(cone.cells.length > 0);
     });
-    it("readObserverGridVision reuses one full build per perception tick", () => {
-        resetVisionFullBuildCount();
-        const { gridNavContext } = createVisionGrid();
-        const observer = { id: 1, x: 128, y: 128, vx: 10, vy: 0, facing: 0, _brainSyncTick: 0 };
-        const visionCone = { halfAngle: Math.PI / 3, range: 200 };
-        const opts = { perceptionTick: 7, onScreen: true, brainSyncOffScreenInterval: 1, brainSyncTick: 1 };
-        ensureObserverGridVision(observer, gridNavContext, visionCone, null, opts);
-        assert.equal(getVisionFullBuildCount(), 1);
-        assert.ok(readObserverGridVision(observer, gridNavContext, visionCone, opts));
-        assert.equal(getVisionFullBuildCount(), 1);
-        ensureObserverGridVision(observer, gridNavContext, visionCone, null, { ...opts, perceptionTick: 8 });
-        assert.equal(getVisionFullBuildCount(), 2);
-    });
     it("observer vision frame reuses one full build per tick", () => {
         resetVisionFullBuildCount();
         const { gridNavContext } = createVisionGrid();
@@ -148,11 +135,21 @@ describe("grid cell vision cone", () => {
             viewport: { circleInBounds: () => true },
             brainSyncOffScreenInterval: 1,
         });
-        const observer = { id: 1, x: 128, y: 128, vx: 10, vy: 0, facing: 0, _brainSyncTick: 1 };
+        const observer = { id: 1, x: 128, y: 128, vx: 10, vy: 0, facing: 0, _brainSyncPass: 1 };
         frame.ensureHeadVision(observer);
         assert.equal(getVisionFullBuildCount(), 1);
         assert.ok(frame.readHeadVision(observer));
         assert.equal(getVisionFullBuildCount(), 1);
+        const nextFrame = createObserverVisionFrame({
+            tickId: 10,
+            gridNavContext,
+            visionSession: null,
+            visionCone,
+            viewport: { circleInBounds: () => true },
+            brainSyncOffScreenInterval: 1,
+        });
+        nextFrame.ensureHeadVision(observer);
+        assert.equal(getVisionFullBuildCount(), 2);
     });
 });
 describe("grid cell vision overlay", () => {

@@ -20,7 +20,6 @@ export function createSnakeBrain(visionConeOverride) {
     const brain = createBrain({ spatialMemoryCapacity: config.spatialMemoryCapacity });
     const sync = createSpatialBrainSync(brain, {
         visionCone: visionConeOverride ?? config.visionCone,
-        brainSyncOffScreenInterval: config.brainSyncOffScreenInterval,
         navMemoryStepPenalty: config.navMemoryStepPenalty,
         navMemoryStepFalloff: config.navMemoryStepFalloff,
     });

@@ -1,6 +1,6 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { collectSnakeGoalProps } from "./snakeGoals.js";
-import { queryGridCellVision } from "../../Navigation/perception/gridCellVision.js";
+import { queryGridCellVision } from "../../Navigation/perception/observerVisionFrame.js";
 import { appendGridCellVisionOverlayCommands } from "../../Navigation/perception/gridCellVisionOverlay.js";
 import { overlayCircleFillStroke } from "../../Render/overlays/overlayCommands.js";
 function snakeVisionConeConfig() {

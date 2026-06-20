@@ -40,7 +40,3 @@ export function maybeBeginSnakeAutosimTick(state) {
     if (snakeGame._batchingPerception) return;
     beginSnakePerceptionFrame(state);
 }
-export function ensureSnakeObserverVision(state, observer, visionCone = getSnakeGameConfig().visionCone) {
-    ensureSnakePerceptionTick(state);
-    return state.navigation.observerVisionFrame.ensureHeadVision(observer, visionCone);
-}

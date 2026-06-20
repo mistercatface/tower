@@ -16,6 +16,8 @@ import { createTestNavigation, syncGridNavContext } from "../../Libraries/Naviga
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
 import { HpaPathSession } from "../../Libraries/Pathfinding/HpaPathSession.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
+import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
+import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
 loadPropAssets();
 export function wireTestGridNavContext(state, damageBounds = null) {
     if (!state.navigation.gridNavContext) {
@@ -104,6 +106,10 @@ export function wireSnakeGameForHead(state, headId) {
     registerAliveSnake(registry, headId);
     wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
     return registry;
+}
+export function primeSnakeHeadVision(state, seeker, visionCone) {
+    beginSnakePerceptionFrame(state);
+    return getObserverVisionFrame(state).ensureHeadVision(seeker, visionCone);
 }
 export async function buildSnakeGameSession(state) {
     applySnakeGameConfig();

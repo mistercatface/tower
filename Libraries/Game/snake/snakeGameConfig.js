@@ -35,7 +35,7 @@ export function resolveSnakeWallDamageConfig(config = getSnakeGameConfig()) {
 }
 export function applySnakeHeadGameplay(head) {
     const config = getSnakeGameConfig();
-    head._brainSyncTick = 0;
+    head._brainSyncPass = 0;
     const headMaxSpeed = config.headMaxSpeed;
     if (headMaxSpeed != null) head.strategy.groundNav = { ...head.strategy.groundNav, maxSpeed: headMaxSpeed };
     if (config.headAccel != null) head.strategy.groundNav = { ...head.strategy.groundNav, accel: config.headAccel };

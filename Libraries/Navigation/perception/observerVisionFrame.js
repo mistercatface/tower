@@ -1,24 +1,105 @@
-import { ensureObserverGridVision, readObserverGridVision, resolveObserverViewSyncContext } from "./gridCellVision.js";
-export function createObserverVisionFrame({ tickId, gridNavContext, visionSession, visionCone, viewport, brainSyncOffScreenInterval }) {
-    function cacheOptsFor(observer) {
-        const viewSync = resolveObserverViewSyncContext(viewport, observer, brainSyncOffScreenInterval);
-        return { ...viewSync, perceptionTick: tickId, brainSyncTick: observer._brainSyncTick ?? 0 };
+import { bucketObserverHeading, collectVisibleGridCells, hasGridCellLineOfSightCached, isWorldPointInVisionCone, resolveObserverHeading } from "./gridCellVision.js";
+export const OBSERVER_VIEW_RADIUS_SCALE = 2;
+let visionFullBuildCount = 0;
+export function resetVisionFullBuildCount() {
+    visionFullBuildCount = 0;
+}
+export function getVisionFullBuildCount() {
+    return visionFullBuildCount;
+}
+function observerVisionPoseKey(observer, gridNavContext, visionCone) {
+    const grid = gridNavContext.grid;
+    const { col, row } = grid.worldToGrid(observer.x, observer.y);
+    const heading = resolveObserverHeading(observer);
+    return { wallRevision: gridNavContext.wallRevision, col, row, heading, headingBucket: bucketObserverHeading(heading), halfAngle: visionCone.halfAngle, range: visionCone.range };
+}
+function observerVisionCacheMatches(cache, key) {
+    return (
+        cache.wallRevision === key.wallRevision &&
+        cache.col === key.col &&
+        cache.row === key.row &&
+        cache.headingBucket === key.headingBucket &&
+        cache.halfAngle === key.halfAngle &&
+        cache.range === key.range
+    );
+}
+function lookupHeadVisionCache(observer, gridNavContext, visionCone, { force = false, perceptionTick = null, onScreen = true, brainSyncOffScreenInterval = 1 }) {
+    if (force) return null;
+    const cache = observer._observerVisionCache;
+    if (!cache) return null;
+    const key = observerVisionPoseKey(observer, gridNavContext, visionCone);
+    if (!observerVisionCacheMatches(cache, key)) return null;
+    if (perceptionTick != null && cache.perceptionTick === perceptionTick) return cache;
+    if (!onScreen && brainSyncOffScreenInterval > 1 && perceptionTick != null && perceptionTick % brainSyncOffScreenInterval !== 0) return cache;
+    return null;
+}
+function buildHeadVision(observer, gridNavContext, visionCone, visionSession, { perceptionTick = null } = {}) {
+    const key = observerVisionPoseKey(observer, gridNavContext, visionCone);
+    visionFullBuildCount++;
+    const cells = collectVisibleGridCells(gridNavContext, observer.x, observer.y, key.heading, visionCone.halfAngle, visionCone.range, visionSession);
+    const next = {
+        wallRevision: key.wallRevision,
+        col: key.col,
+        row: key.row,
+        originCol: key.col,
+        originRow: key.row,
+        heading: key.heading,
+        headingBucket: key.headingBucket,
+        halfAngle: visionCone.halfAngle,
+        range: visionCone.range,
+        perceptionTick,
+        cells,
+    };
+    observer._observerVisionCache = next;
+    return next;
+}
+function resolveObserverViewportSync(viewport, observer, brainSyncOffScreenInterval) {
+    const onScreen = viewport.circleInBounds(observer.x, observer.y, observer.radius * OBSERVER_VIEW_RADIUS_SCALE, "props");
+    return { onScreen, brainSyncOffScreenInterval };
+}
+function headVisionLookupFor(frame, observer) {
+    const viewSync = resolveObserverViewportSync(frame.viewport, observer, frame.brainSyncOffScreenInterval);
+    return { ...viewSync, perceptionTick: frame.tickId };
+}
+export function queryGridCellVision(observer, candidates, { halfAngle, range, gridNavContext, visionSession = null }) {
+    const visionCone = { halfAngle, range };
+    const vision = buildHeadVision(observer, gridNavContext, visionCone, visionSession);
+    const visible = [];
+    const grid = gridNavContext.grid;
+    for (let i = 0; i < candidates.length; i++) {
+        const target = candidates[i];
+        if (target === observer || target.isDead) continue;
+        if (!isWorldPointInVisionCone(observer.x, observer.y, vision.heading, halfAngle, range, target.x, target.y)) continue;
+        const { col, row } = grid.worldToGrid(target.x, target.y);
+        if (!hasGridCellLineOfSightCached(visionSession, gridNavContext, vision.originCol, vision.originRow, col, row)) continue;
+        visible.push(target);
     }
-    return {
+    return { heading: vision.heading, halfAngle, range, cells: vision.cells, visible };
+}
+export function createObserverVisionFrame({ tickId, gridNavContext, visionSession, visionCone, viewport, brainSyncOffScreenInterval }) {
+    const frame = {
         tickId,
         gridNavContext,
         visionSession,
         visionCone,
-        viewSyncFor(observer) {
-            return resolveObserverViewSyncContext(viewport, observer, brainSyncOffScreenInterval);
+        viewport,
+        brainSyncOffScreenInterval,
+        shouldSyncBrain(agent) {
+            agent._brainSyncPass = (agent._brainSyncPass ?? 0) + 1;
+            const { onScreen } = resolveObserverViewportSync(viewport, agent, brainSyncOffScreenInterval);
+            return onScreen || agent._brainSyncPass % brainSyncOffScreenInterval === 0;
         },
         readHeadVision(observer, visionConeOverride = visionCone) {
-            return readObserverGridVision(observer, gridNavContext, visionConeOverride, cacheOptsFor(observer));
+            return lookupHeadVisionCache(observer, gridNavContext, visionConeOverride, headVisionLookupFor(frame, observer));
         },
         ensureHeadVision(observer, visionConeOverride = visionCone) {
-            return ensureObserverGridVision(observer, gridNavContext, visionConeOverride, visionSession, cacheOptsFor(observer));
+            const lookup = headVisionLookupFor(frame, observer);
+            const cached = lookupHeadVisionCache(observer, gridNavContext, visionConeOverride, lookup);
+            if (cached) return cached;
+            return buildHeadVision(observer, gridNavContext, visionConeOverride, visionSession, { perceptionTick: frame.tickId });
         },
     };
+    return frame;
 }
 export function getObserverVisionFrame(state) {
     return state.navigation.observerVisionFrame;

@@ -58,7 +58,6 @@ export function hasGridCellLineOfSight(gridNavContext, col0, row0, col1, row1) {
         y = ny;
     }
 }
-/** @param {import("./gridCellVisionSession.js").ReturnType<typeof import("./gridCellVisionSession.js").createGridCellVisionSession> | null | undefined} visionSession */
 export function hasGridCellLineOfSightCached(visionSession, gridNavContext, col0, row0, col1, row1) {
     if (!visionSession) return hasGridCellLineOfSight(gridNavContext, col0, row0, col1, row1);
     const key = gridCellLosCacheKey(col0, row0, col1, row1);
@@ -67,42 +66,6 @@ export function hasGridCellLineOfSightCached(visionSession, gridNavContext, col0
     visionSession.losCache.set(key, visible);
     return visible;
 }
-let visionFullBuildCount = 0;
-export function resetVisionFullBuildCount() {
-    visionFullBuildCount = 0;
-}
-export function getVisionFullBuildCount() {
-    return visionFullBuildCount;
-}
-function observerVisionPoseKey(observer, gridNavContext, visionCone) {
-    const grid = gridNavContext.grid;
-    const { col, row } = grid.worldToGrid(observer.x, observer.y);
-    const heading = resolveObserverHeading(observer);
-    return { wallRevision: gridNavContext.wallRevision, col, row, heading, headingBucket: bucketObserverHeading(heading), halfAngle: visionCone.halfAngle, range: visionCone.range };
-}
-function observerVisionCacheMatches(cache, key) {
-    return (
-        cache.wallRevision === key.wallRevision &&
-        cache.col === key.col &&
-        cache.row === key.row &&
-        cache.headingBucket === key.headingBucket &&
-        cache.halfAngle === key.halfAngle &&
-        cache.range === key.range
-    );
-}
-function lookupObserverVisionCache(observer, gridNavContext, visionCone, { force = false, perceptionTick = null, onScreen = true, brainSyncOffScreenInterval = 1, brainSyncTick = 0 } = {}) {
-    if (force) return null;
-    const cache = observer._observerVisionCache;
-    if (!cache) return null;
-    const key = observerVisionPoseKey(observer, gridNavContext, visionCone);
-    if (!observerVisionCacheMatches(cache, key)) return null;
-    const tick = perceptionTick ?? brainSyncTick;
-    if (perceptionTick != null && cache.perceptionTick === perceptionTick) return cache;
-    if (!onScreen && brainSyncOffScreenInterval > 1 && tick % brainSyncOffScreenInterval !== 0) return cache;
-    if (perceptionTick == null && (onScreen || tick % brainSyncOffScreenInterval === 0)) return cache;
-    return null;
-}
-/** @param {import("./gridCellVisionSession.js").ReturnType<typeof import("./gridCellVisionSession.js").createGridCellVisionSession> | null | undefined} [visionSession] */
 export function collectVisibleGridCells(gridNavContext, originX, originY, heading, halfAngle, range, visionSession = null) {
     const grid = gridNavContext.grid;
     const { col: originCol, row: originRow } = grid.worldToGrid(originX, originY);
@@ -124,51 +87,4 @@ export function collectVisibleGridCells(gridNavContext, originX, originY, headin
             cells.push({ col, row });
         }
     return cells;
-}
-export function readObserverGridVision(observer, gridNavContext, visionCone, opts = {}) {
-    return lookupObserverVisionCache(observer, gridNavContext, visionCone, opts);
-}
-export function ensureObserverGridVision(observer, gridNavContext, visionCone, visionSession, opts = {}) {
-    const cached = lookupObserverVisionCache(observer, gridNavContext, visionCone, opts);
-    if (cached) return cached;
-    const key = observerVisionPoseKey(observer, gridNavContext, visionCone);
-    visionFullBuildCount++;
-    const cells = collectVisibleGridCells(gridNavContext, observer.x, observer.y, key.heading, visionCone.halfAngle, visionCone.range, visionSession);
-    const next = {
-        wallRevision: key.wallRevision,
-        col: key.col,
-        row: key.row,
-        originCol: key.col,
-        originRow: key.row,
-        heading: key.heading,
-        headingBucket: key.headingBucket,
-        halfAngle: visionCone.halfAngle,
-        range: visionCone.range,
-        perceptionTick: opts.perceptionTick ?? null,
-        cells,
-    };
-    observer._observerVisionCache = next;
-    return next;
-}
-export function resolveObserverGridVision(observer, gridNavContext, visionCone, visionSession, opts = {}) {
-    return ensureObserverGridVision(observer, gridNavContext, visionCone, visionSession, opts);
-}
-export function queryGridCellVision(observer, candidates, { halfAngle, range, gridNavContext, visionSession = null }) {
-    const vision = resolveObserverGridVision(observer, gridNavContext, { halfAngle, range }, visionSession, { force: true });
-    const visible = [];
-    const grid = gridNavContext.grid;
-    for (let i = 0; i < candidates.length; i++) {
-        const target = candidates[i];
-        if (target === observer || target.isDead) continue;
-        if (!isWorldPointInVisionCone(observer.x, observer.y, vision.heading, halfAngle, range, target.x, target.y)) continue;
-        const { col, row } = grid.worldToGrid(target.x, target.y);
-        if (!hasGridCellLineOfSightCached(visionSession, gridNavContext, vision.originCol, vision.originRow, col, row)) continue;
-        visible.push(target);
-    }
-    return { heading: vision.heading, halfAngle, range, cells: vision.cells, visible };
-}
-export const OBSERVER_VIEW_RADIUS_SCALE = 2;
-export function resolveObserverViewSyncContext(viewport, observer, brainSyncOffScreenInterval) {
-    const onScreen = viewport.circleInBounds(observer.x, observer.y, observer.radius * OBSERVER_VIEW_RADIUS_SCALE, "props");
-    return { onScreen, brainSyncOffScreenInterval };
 }
