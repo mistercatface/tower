@@ -159,15 +159,10 @@ export function collectForcefieldEdgeDrawables(grid, gameState, viewport, px, py
     if (!grid.cols || !grid.edgeStore.passageEdgeCount || !gameState.sandbox) return;
     syncPassageEdgeDrawCache(gameState, grid);
     const cached = gameState.sandbox._passageEdgeDrawCache.items;
-    const bounds = viewport.bounds("props");
-    const minX = bounds.minX;
-    const maxX = bounds.maxX;
-    const minY = bounds.minY;
-    const maxY = bounds.maxY;
     const tripwireTriggered = gameState.sandbox.tripwireTriggeredKeys;
     for (let i = 0; i < cached.length; i++) {
         const item = cached[i];
-        if (item.midX < minX || item.midX > maxX || item.midY < minY || item.midY > maxY) continue;
+        if (!viewport.circleInBounds(item.midX, item.midY, item.proxy.radius, "props")) continue;
         const tripped = item.proxy._forcefield.powered && tripwireTriggered.has(item.edgeKey);
         if (tripped !== item.proxy._forcefield.tripped) item.proxy._forcefield.tripped = tripped;
         item.proxy._distSq = (item.midX - px) ** 2 + (item.midY - py) ** 2;

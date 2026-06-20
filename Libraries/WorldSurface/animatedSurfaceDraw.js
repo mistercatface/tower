@@ -1,4 +1,3 @@
-import { isAabbInView } from "../Spatial/zones/floorShapes.js";
 import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
@@ -63,7 +62,7 @@ function drawAnimatedPatch(ctx, patch, frameIndex, settings, zLevel, camera) {
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createAnimatedSurfaceZone>} zone @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
 export function drawAnimatedSurfaceZone(ctx, zone, state, viewport) {
     if (!zone?.profileId || !zone.flipbook || !viewport) return;
-    if (!isAabbInView(zone, viewport)) return;
+    if (!viewport.aabbInBounds(zone.aabb, "clip")) return;
     const settings = getGameWorldSurfaceSettings();
     const frameIndex = resolveFlipbookFrameIndex(zone.flipbook, state.gameTime ?? 0);
     const camera = elevationCameraFromViewport(viewport);

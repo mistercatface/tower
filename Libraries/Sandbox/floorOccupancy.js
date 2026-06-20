@@ -1,6 +1,7 @@
 import { emptyCellBounds, growCellBounds, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
 import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
@@ -117,14 +118,9 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
 export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {
     const grid = state.obstacleGrid;
     if (!grid.floorStore.hasAny()) return;
-    const bounds = viewport.bounds("props");
-    const minCol = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).col);
-    const maxCol = Math.min(grid.cols - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).col);
-    const minRow = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).row);
-    const maxRow = Math.min(grid.rows - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).row);
     const cellHalf = grid.cellHalfSize;
     const { px, py } = camera;
-    forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row, idx) => {
+    forEachObstacleGridCellInAabb(grid, viewport.bounds("props"), (col, row, idx) => {
         const kind = grid.floorStore.kind[idx];
         if (!grid.floorStore.isBeltKindAtIdx(idx)) return;
         const { x, y } = grid.gridToWorld(col, row);
@@ -147,14 +143,9 @@ export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {
 export function drawFloorOccupancyPowerSources(ctx, state, viewport, camera) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
-    const bounds = viewport.bounds("props");
-    const minCol = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).col);
-    const maxCol = Math.min(grid.cols - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).col);
-    const minRow = Math.max(0, grid.worldToGrid(bounds.minX, bounds.minY).row);
-    const maxRow = Math.min(grid.rows - 1, grid.worldToGrid(bounds.maxX, bounds.maxY).row);
     const cellHalf = grid.cellHalfSize;
     const { px, py } = camera;
-    forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row, idx) => {
+    forEachObstacleGridCellInAabb(grid, viewport.bounds("props"), (col, row, idx) => {
         if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return;
         const { x, y } = grid.gridToWorld(col, row);
         const energized = isPassagePowerSourceEnergized(state, col, row);

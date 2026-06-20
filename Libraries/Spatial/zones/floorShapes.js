@@ -99,6 +99,3 @@ export function rotateCardinalFloorProp(prop, steps = 1) {
 export function findGridAnchoredFloorPropAtCell(worldProps, col, row, exceptPropId = -1) {
     return findLiveWorldProp(worldProps, (prop) => prop.strategy?.gridAnchored && prop.id !== exceptPropId && prop.gridCol === col && prop.gridRow === row);
 }
-export function isAabbInView(entity, viewport) {
-    return viewport.aabbInBounds(entity.aabb, "clip");
-}

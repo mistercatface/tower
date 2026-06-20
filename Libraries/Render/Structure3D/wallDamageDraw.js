@@ -1,5 +1,4 @@
 import { traceClosedPolygon } from "../../Canvas/CanvasPath.js";
-import { aabbOverlap } from "../../Math/Aabb2D.js";
 import { getGridWallDamageSession, resolveWallDamageTintRatio } from "../../Sandbox/gridWallDamage.js";
 import { resolveCellWallHeightAtIdx } from "../../Spatial/grid/gridCellTopology.js";
 import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
@@ -57,13 +56,12 @@ export function drawDamagedVoxelRoofOverlays(ctx, state, viewport, camera) {
     const grid = state.obstacleGrid;
     const settings = state.worldSurfaces?.settings;
     if (!settings) return;
-    const bounds = viewport.bounds("chunks");
     for (const entry of session.entries.values()) {
         if (entry.kind !== "voxel") continue;
         const ratio = resolveWallDamageTintRatio(session, entry);
         if (ratio <= 0) continue;
         const cellBounds = grid.getCellBounds(entry.col, entry.row);
-        if (!aabbOverlap(cellBounds, bounds)) continue;
+        if (!viewport.aabbInBounds(cellBounds, "chunks")) continue;
         const idx = colRowToIndex(entry.col, entry.row, grid.cols);
         const capHeight = resolveCellWallHeightAtIdx(grid, idx);
         if (capHeight <= 0) continue;

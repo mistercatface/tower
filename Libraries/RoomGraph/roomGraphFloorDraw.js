@@ -1,4 +1,3 @@
-import { aabbOverlap } from "../Math/Aabb2D.js";
 import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 import { bakePixelsForWorldSpan, drawBakedTexture, getSurfaceBakeScale } from "../WorldSurface/WorldSurfaceResolution.js";
@@ -147,13 +146,12 @@ function getCorridorFloorCanvas(engine, state, linkId, cellKeys, profileId) {
  */
 export function drawRoomGraphFloorPatches(ctx, engine, state, viewport) {
     const settings = engine.settings;
-    const viewBounds = viewport.bounds("props");
     const nodes = listRoomNodes(state);
     for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
         if (!node.surfaceProfileId) continue;
         const aabb = roomNodeWorldAabb(state.obstacleGrid, node);
-        if (!aabbOverlap(aabb, viewBounds)) continue;
+        if (!viewport.aabbInBounds(aabb, "props")) continue;
         const canvas = getRoomFloorCanvas(engine, state, node);
         if (!canvas) continue;
         drawBakedTexture(ctx, canvas, aabb.minX, aabb.minY, aabb.maxX - aabb.minX, aabb.maxY - aabb.minY, settings);
@@ -167,7 +165,7 @@ export function drawRoomGraphFloorPatches(ctx, engine, state, viewport) {
         const draw = getCorridorFloorCanvas(engine, state, entry.linkId, entry.cellKeys, link.surfaceProfileId);
         if (!draw) continue;
         const patchAabb = { minX: draw.minX, minY: draw.minY, maxX: draw.minX + draw.worldW, maxY: draw.minY + draw.worldH };
-        if (!aabbOverlap(patchAabb, viewBounds)) continue;
+        if (!viewport.aabbInBounds(patchAabb, "props")) continue;
         drawBakedTexture(ctx, draw.canvas, draw.minX, draw.minY, draw.worldW, draw.worldH, settings);
     }
 }
