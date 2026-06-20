@@ -82,6 +82,50 @@ describe("link capsule wall projection", () => {
         resolveGatheredKineticConstraintSlab(tick);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
     });
+    it("gathers wall candidates once per unique body in an island", () => {
+        resetKineticConstraintIds(1);
+        const bodyA = mockCircleBody(10, 10, 4, 0, 0);
+        const bodyB = mockCircleBody(26, 10, 4, 0, 0);
+        const tick = createKineticTestTick([bodyA, bodyB]);
+        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        let wallQueries = 0;
+        tick.frame.getWallCandidates = () => {
+            wallQueries++;
+            return [];
+        };
+        gatherKineticConstraintSlab(tick);
+        resolveGatheredKineticConstraintSlab(tick);
+        assert.equal(wallQueries, 2, "one wall gather per unique body in the island");
+    });
+    it("dedupes wall gathers across a multi-link chain island", () => {
+        resetKineticConstraintIds(1);
+        const bodyA = mockCircleBody(10, 10, 4, 0, 0);
+        const bodyB = mockCircleBody(26, 10, 4, 0, 0);
+        const bodyC = mockCircleBody(42, 10, 4, 0, 0);
+        const tick = createKineticTestTick([bodyA, bodyB, bodyC]);
+        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        addDistanceConstraint(tick.world.kinetic, { bodyA: bodyB, bodyB: bodyC, restLength: 16 });
+        let wallQueries = 0;
+        tick.frame.getWallCandidates = () => {
+            wallQueries++;
+            return [];
+        };
+        gatherKineticConstraintSlab(tick);
+        resolveGatheredKineticConstraintSlab(tick);
+        assert.equal(wallQueries, 3, "three unique bodies in a two-link chain");
+    });
+    it("still projects a nearly-static wedged link", () => {
+        resetKineticConstraintIds(1);
+        const wall = mockWallSegment(58, 4, 16);
+        const bodyA = mockCircleBody(50, 14, 4, 0, 0);
+        const bodyB = mockCircleBody(66, 14, 4, 0, 0);
+        const tick = createKineticTestTick([bodyA, bodyB]);
+        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        tick.frame.getWallCandidates = () => [wall];
+        gatherKineticConstraintSlab(tick);
+        resolveGatheredKineticConstraintSlab(tick);
+        assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
+    });
     it("collision pipeline clears wedged head-neck link in a 1-cell corridor", () => {
         resetKineticConstraintIds(1);
         const state = createNarrowCorridorState();
