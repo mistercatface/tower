@@ -1,5 +1,5 @@
 import { prepModifiedBlit, resolveSpriteDrawModifier } from "../Render/spriteDrawModifier.js";
-import { createOffscreenCanvas } from "./offscreenCanvas.js";
+import { acquireOffscreenCanvas } from "./offscreenCanvas.js";
 import { createBakedSpriteCache } from "./BakedSpriteCache.js";
 import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
@@ -124,7 +124,7 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const stageSpan = Math.ceil((stageR * 2.6 + PROP_STAGE_PADDING * 2) * bakeScale);
         const anchorX = PROP_STAGE_PADDING + stageR * 1.3;
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;
-        const canvas = createOffscreenCanvas(stageSpan, stageSpan);
+        const canvas = acquireOffscreenCanvas(stageSpan, stageSpan);
         const ctx = canvas.getContext("2d");
         const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX, anchorY });
         stageProp.radius = resolveBodyRadius(prop);
@@ -185,7 +185,7 @@ export function getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, cust
         const stageSpan = Math.ceil((worldSpan + OVERLAY_STAGE_PADDING * 2) * bakeScale);
         const anchorX = stageSpan / 2;
         const anchorY = stageSpan / 2;
-        const canvas = createOffscreenCanvas(stageSpan, stageSpan);
+        const canvas = acquireOffscreenCanvas(stageSpan, stageSpan);
         const ctx = canvas.getContext("2d");
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);

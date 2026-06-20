@@ -1,5 +1,5 @@
 import { LruMap } from "../DataStructures/LruMap.js";
-import { createOffscreenCanvas } from "./offscreenCanvas.js";
+import { releaseOffscreenCanvas } from "./offscreenCanvas.js";
 /**
  * LRU cache of offscreen canvas sprites (bake once, blit many).
  * Used by kinematics bodies and iso props; animation frame buckets plug into caller keys.
@@ -7,7 +7,11 @@ import { createOffscreenCanvas } from "./offscreenCanvas.js";
  * @param {{ maxItems?: number }} [options]
  */
 export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
-    const cache = new LruMap(maxItems);
+    const cache = new LruMap(maxItems, {
+        onEvict: (key, canvas) => {
+            releaseOffscreenCanvas(canvas);
+        },
+    });
     return {
         maxItems,
         cache,
@@ -20,13 +24,12 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
          * @param {Record<string, unknown>} [meta] — copied onto the cached canvas (anchorX, anchorY, drawRatio, …)
          */
         set(key, sourceCanvas, meta = {}) {
-            const copy = createOffscreenCanvas(sourceCanvas.width, sourceCanvas.height);
-            copy.getContext("2d").drawImage(sourceCanvas, 0, 0);
-            for (const [field, value] of Object.entries(meta)) copy[field] = value;
-            cache.set(key, copy);
-            return copy;
+            for (const [field, value] of Object.entries(meta)) sourceCanvas[field] = value;
+            cache.set(key, sourceCanvas);
+            return sourceCanvas;
         },
         clear() {
+            for (const canvas of cache.values()) releaseOffscreenCanvas(canvas);
             cache.clear();
         },
     };
