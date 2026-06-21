@@ -17,7 +17,6 @@ import {
 } from "./hpaWorkerSab.js";
 import { gridSettings } from "../../Config/world.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
-import { resolveSnappedPathEndpoints } from "./hpaPathRequest.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
@@ -516,32 +515,22 @@ export class HpaPathWorker {
             clearTimeout(timer);
         }
     }
-    async runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, stepPenalty = null) {
-        await this._dispatchAndWait(slot, "replan", { startCol, startRow, targetCol, targetRow, stepPenaltyKeys: stepPenalty?.keys ?? null, stepPenaltyCosts: stepPenalty?.costs ?? null });
+    async runOneShotReplan(slot, request) {
+        await this._dispatchAndWait(slot, "replan", request.toWorkerPayload());
         const result = this._replanResults[slot];
         this._replanResults[slot] = null;
         if (!result) return null;
         return { complete: true, result };
     }
-    /**
-     * @param {{
-     *   obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid,
-     *   startX: number, startY: number, targetX: number, targetY: number,
-     *   graphEpoch: number, navState: import("./navSession.js").NavSessionState,
-     *   replanRequestId: number,
-     * }} opts
-     */
-    async requestPath(opts) {
-        const { obstacleGrid, startX, startY, targetX, targetY, graphEpoch, navState, stepPenalty = null } = opts;
-        await this.scheduleNavTopologySyncAwait(obstacleGrid, null);
-        if (!isNavTopologyReady(this, obstacleGrid)) return null;
+    async requestPath(request, navState) {
+        await this.scheduleNavTopologySyncAwait(request.obstacleGrid, null);
+        if (!isNavTopologyReady(this, request.obstacleGrid)) return null;
         this.releaseOwnedPathSlot(navState);
-        if (!(await this._ensureWorkerGraphReady(graphEpoch))) return null;
-        const { startCol, startRow, targetCol, targetRow } = resolveSnappedPathEndpoints(obstacleGrid, startX, startY, targetX, targetY);
+        if (!(await this._ensureWorkerGraphReady(request.graphEpoch))) return null;
         const slot = this.leaseSlot();
         let workerOut = null;
         try {
-            workerOut = await this.runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, stepPenalty);
+            workerOut = await this.runOneShotReplan(slot, request);
         } catch (err) {
             this.releaseSlot(slot);
             throw err;

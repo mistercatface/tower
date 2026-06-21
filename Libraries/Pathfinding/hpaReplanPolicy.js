@@ -1,4 +1,5 @@
 import { navHasPath } from "./navSession.js";
+import { HpaReplanRequest } from "./hpaPathRequest.js";
 export const REPLAN_TARGET_MOVE_PX = 64;
 export const REPLAN_OFF_PATH_COOLDOWN_MS = 250;
 export const REPLAN_PRIORITY_TARGET = 4;
@@ -7,12 +8,18 @@ export const REPLAN_PRIORITY_NORMAL = 2;
 export const REPLAN_PRIORITY_STUCK_OFFSCREEN = 1;
 export const HPA_REPLAN_FRAME_START_BUDGET = 12;
 export const HPA_REPLAN_PEAK_INFLIGHT_CAP = 16;
-/**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
- * @param {import("../Navigation/NavRuntime.js").NavRuntime} nav
- */
 export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, nav, stepPenalty) {
-    return { obstacleGrid, startX, startY, targetX, targetY, graphEpoch: nav.graphSyncGeneration, topologyKey: nav.syncedTopologyKey(), navTopology: nav.topology, stepPenalty: stepPenalty ?? null };
+    return new HpaReplanRequest({
+        obstacleGrid,
+        startX,
+        startY,
+        targetX,
+        targetY,
+        graphEpoch: nav.graphSyncGeneration,
+        topologyKey: nav.syncedTopologyKey(),
+        navTopology: nav.topology,
+        stepPenalty: stepPenalty ?? null,
+    });
 }
 /** @param {import("./navSession.js").NavSessionState} navState */
 export function trackNavStuck(navState, x, y, stuckMoveThreshold) {

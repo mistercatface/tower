@@ -4,22 +4,13 @@ import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { createNavState } from "../Libraries/Pathfinding/navSession.js";
-import { HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP, REPLAN_PRIORITY_STUCK_OFFSCREEN, REPLAN_PRIORITY_VISIBLE } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
+import { buildReplanParams, HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP, REPLAN_PRIORITY_STUCK_OFFSCREEN, REPLAN_PRIORITY_VISIBLE } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 async function replanParams(grid) {
     const navigation = await createWorkerNavigation(grid);
-    return {
-        obstacleGrid: grid,
-        startX: 40,
-        startY: 40,
-        targetX: 120,
-        targetY: 120,
-        graphEpoch: navigation.graphSyncGeneration,
-        stepPenalty: null,
-        navTopology: navigation.topology,
-        topologyKey: navigation.syncedTopologyKey(),
-        _navigation: navigation,
-    };
+    const request = buildReplanParams(grid, 40, 40, 120, 120, navigation, null);
+    request._navigation = navigation;
+    return request;
 }
 describe("HpaPathSession frame budget", () => {
     it("starts at most one frame budget of drains per flush", async () => {
@@ -62,7 +53,7 @@ describe("HpaPathSession frame budget", () => {
             getPathSlot: () => -1,
             releaseOwnedPathSlot: () => {},
             releaseSlot: () => {},
-            requestPath: async ({ navState }) => {
+            requestPath: async (request, navState) => {
                 started.push(navState.label);
                 await Promise.resolve();
                 return { result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } };

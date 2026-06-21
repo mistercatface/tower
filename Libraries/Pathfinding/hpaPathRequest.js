@@ -1,8 +1,42 @@
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { snapNavGoalCell } from "../Navigation/snapNavGoal.js";
+import { findSabPathProgressIdx } from "./hpaPathSlot.js";
 export const HPA_LOCAL_MAX_LEN = 96;
 export const HPA_REGION_CONNECT_MAX_LEN = 96;
 export const HPA_LOCAL_DISTANCE_THRESHOLD = 32;
+export class HpaReplanRequest {
+    constructor({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch, topologyKey, navTopology, stepPenalty = null }) {
+        this.obstacleGrid = obstacleGrid;
+        this.startX = startX;
+        this.startY = startY;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.graphEpoch = graphEpoch;
+        this.topologyKey = topologyKey;
+        this.navTopology = navTopology;
+        this.stepPenalty = stepPenalty;
+    }
+    resolveEndpoints() {
+        return resolveSnappedPathEndpoints(this.obstacleGrid, this.startX, this.startY, this.targetX, this.targetY);
+    }
+    toWorkerPayload() {
+        const endpoints = this.resolveEndpoints();
+        return { ...endpoints, stepPenaltyKeys: this.stepPenalty?.keys ?? null, stepPenaltyCosts: this.stepPenalty?.costs ?? null };
+    }
+    applyResult(navState, worker, result) {
+        navState.topologyKey = this.topologyKey;
+        if (!result.pathLen) {
+            worker.releaseOwnedPathSlot(navState);
+            return;
+        }
+        worker.releaseOwnedPathSlot(navState);
+        navState.pathSlot = result.pathSlot;
+        navState.pathLen = result.pathLen;
+        navState.pathProgressIdx = findSabPathProgressIdx(this.startX, this.startY, worker, result.pathSlot, result.pathLen, this.obstacleGrid, this.navTopology);
+        navState.lastTargetX = this.targetX;
+        navState.lastTargetY = this.targetY;
+    }
+}
 function findNearestOpenCellCore(cols, rows, col, row, isOpen) {
     if (isOpen(col, row)) return { col, row };
     for (let r = 1; r <= 5; r++)

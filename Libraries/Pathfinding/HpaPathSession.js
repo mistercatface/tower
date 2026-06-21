@@ -1,4 +1,3 @@
-import { applyHpaReplanResult, clearHpaNavPath } from "./hpaPathPlan.js";
 import { HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP } from "./hpaReplanPolicy.js";
 import { MAX_HPA_REPLAN_SLOTS } from "./HpaPathWorker.js";
 export class HpaPathSession {
@@ -7,7 +6,7 @@ export class HpaPathSession {
         this._frameStartBudget = frameStartBudget;
         this._peakInflightCap = Math.min(peakInflightCap, MAX_HPA_REPLAN_SLOTS);
         this._nextRequestId = 1;
-        this._pendingParams = new WeakMap();
+        this._pendingRequests = new WeakMap();
         this._replanPriority = new WeakMap();
         this._lastReplanFrame = new WeakMap();
         this._draining = new WeakSet();
@@ -39,11 +38,11 @@ export class HpaPathSession {
     flushFrame() {
         this._pumpQueue();
     }
-    requestReplan(navState, params, priority = 0) {
+    requestReplan(navState, request, priority = 0) {
         const lastFrame = this._lastReplanFrame.get(navState) ?? -9999;
         if (this._frameId - lastFrame < 15) return false;
         this._lastReplanFrame.set(navState, this._frameId);
-        this._pendingParams.set(navState, params);
+        this._pendingRequests.set(navState, request);
         this._replanPriority.set(navState, priority);
         navState.hpaReplanRequestId = this._nextRequestId++;
         if (this._draining.has(navState)) return true;
@@ -106,22 +105,12 @@ export class HpaPathSession {
                 await this._awaitWorkerSlot();
                 if (navState.hpaReplanRequestId === 0) break;
                 const requestId = navState.hpaReplanRequestId;
-                const params = this._pendingParams.get(navState);
+                const request = this._pendingRequests.get(navState);
                 this._activeWorkerCount++;
                 this._recordInflightPeak();
                 let workerOut = null;
                 try {
-                    workerOut = await this.worker.requestPath({
-                        obstacleGrid: params.obstacleGrid,
-                        startX: params.startX,
-                        startY: params.startY,
-                        targetX: params.targetX,
-                        targetY: params.targetY,
-                        graphEpoch: params.graphEpoch,
-                        stepPenalty: params.stepPenalty ?? null,
-                        navState,
-                        replanRequestId: requestId,
-                    });
+                    workerOut = await this.worker.requestPath(request, navState);
                 } catch (err) {
                     console.error("HPA replan failed", err);
                     if (navState.hpaReplanRequestId === requestId) navState.hpaReplanRequestId = 0;
@@ -134,8 +123,8 @@ export class HpaPathSession {
                     continue;
                 }
                 navState.hpaReplanRequestId = 0;
-                if (!workerOut?.result) clearHpaNavPath(navState, this.worker);
-                else applyHpaReplanResult(navState, workerOut.result, { ...params, worker: this.worker });
+                if (!workerOut?.result) this.worker.releaseOwnedPathSlot(navState);
+                else request.applyResult(navState, this.worker, workerOut.result);
             }
         } finally {
             this._draining.delete(navState);

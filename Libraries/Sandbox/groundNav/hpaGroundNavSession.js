@@ -1,6 +1,5 @@
 import { agentPose } from "../../Agent/index.js";
 import { createNavState } from "../../Pathfinding/navSession.js";
-import { clearHpaNavPath } from "../../Pathfinding/hpaPathPlan.js";
 import { computeSabPathSteering } from "../../Pathfinding/hpaPathSlot.js";
 import {
     buildReplanParams,
@@ -24,7 +23,7 @@ export function createHpaGroundNavSession() {
     const reset = (state) => {
         pendingTargetReplan = false;
         const nav = resolveNavRuntime(state);
-        clearHpaNavPath(navState, nav.worker);
+        nav.worker.releaseOwnedPathSlot(navState);
         Object.assign(navState, createNavState());
         replanClockMs = 0;
     };
