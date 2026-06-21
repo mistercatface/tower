@@ -9,7 +9,22 @@ export function globalCellIdx(col, row, gridCols) {
 }
 /** @param {number} originCol @param {number} originRow @param {number} patchCols @param {number} patchRows @returns {CellIndexLayout} */
 export function createPatchLayout(originCol, originRow, patchCols, patchRows) {
-    return { originCol, originRow, strideCols: patchCols, cellCount: patchCols * patchRows };
+    return createCellIndexLayout(originCol, originRow, patchCols, patchRows);
+}
+export function createCellIndexLayout(originCol, originRow, cols, rows) {
+    return { originCol, originRow, strideCols: cols, cellCount: cols * rows };
+}
+export function layoutCellRows(layout) {
+    return layout.cellCount / layout.strideCols;
+}
+export function layoutContainsAbsCell(layout, col, row) {
+    return col >= layout.originCol && col < layout.originCol + layout.strideCols && row >= layout.originRow && row < layout.originRow + layoutCellRows(layout);
+}
+export function layoutAbsToLocalCell(layout, col, row) {
+    return { col: col - layout.originCol, row: row - layout.originRow };
+}
+export function layoutLocalToAbsCell(layout, col, row) {
+    return { col: col + layout.originCol, row: row + layout.originRow };
 }
 /** @param {LayoutCellIdx} idx @param {CellIndexLayout} layout */
 export function layoutIndexToAbsColRow(idx, layout) {

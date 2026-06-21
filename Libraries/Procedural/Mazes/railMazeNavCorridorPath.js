@@ -1,26 +1,16 @@
-import { runCardinalAStarFlat } from "../../Pathfinding/AStar.js";
+import { FlatGridSearch, GridPathQuery } from "../../Pathfinding/AStar.js";
 import { SearchState } from "../../Pathfinding/SearchState.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
-import { createPatchLayout, globalCellIdx, gridCellLayout, layoutCellIndex } from "../../Spatial/grid/GridUtils.js";
+import { createPatchLayout, globalCellIdx, gridCellLayout, layoutAbsToLocalCell, layoutCellIndex, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
 import { readNavWalkableFlag } from "./navWalkableIndex.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} railConfig */
 export function railMazeBeltZoneGridBounds(grid, railConfig) {
     const cellSize = grid.cellSize;
     const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(railConfig);
     const { col: baseCol, row: baseRow } = grid.worldToGrid(originCol * cellSize, originRow * cellSize);
     return { startCol: Math.max(0, baseCol), endCol: Math.min(grid.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(grid.rows - 1, baseRow + rows - 1) };
 }
-/**
- * Cardinal A* over nav-walkable cells in the rail zone patch.
- * Patch-local indices exist only inside this pathfinder; all external sets use {@link GlobalCellIdx}.
- *
- * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {object} navTopology
- * @param {object} railConfig
- * @param {import("./navWalkableIndex.js").NavWalkableIndex} navWalkableIndex
- */
 export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfig, navWalkableIndex) {
     const bounds = railMazeBeltZoneGridBounds(grid, railConfig);
     const patchCols = bounds.endCol - bounds.startCol + 1;
@@ -36,7 +26,6 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
             walkable[patchIdx] = 1;
         }
     const searchState = new SearchState(size);
-    /** @type {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} */
     let reservedGlobalIndices = new Set();
     const navGraph = {
         cols: patchCols,
@@ -52,46 +41,41 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
             return grid.canStep(gc0, gr0, gc1, gr1, navTopology);
         },
     };
+    const gridSearch = new FlatGridSearch({ navGraph, cols: patchCols, rows: patchRows, searchState });
     return {
         globalLayout,
         patchLayout,
         gridCols: grid.cols,
-        /** @param {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} indices */
         setReservedGlobalIndices(indices) {
             reservedGlobalIndices = indices;
         },
-        /** @param {number} startCol @param {number} startRow @param {number} goalCol @param {number} goalRow @param {number} [maxPathLen] */
-        findPath(startCol, startRow, goalCol, goalRow, maxPathLen = 512) {
-            const sc = startCol - patchLayout.originCol;
-            const sr = startRow - patchLayout.originRow;
-            const gc = goalCol - patchLayout.originCol;
-            const gr = goalRow - patchLayout.originRow;
-            if (sc < 0 || sr < 0 || sc >= patchCols || sr >= patchRows) return null;
-            if (gc < 0 || gr < 0 || gc >= patchCols || gr >= patchRows) return null;
-            const si = sr * patchCols + sc;
-            const gi = gr * patchCols + gc;
+        findQuery(query, maxPathLen = 512) {
+            if (!layoutContainsAbsCell(patchLayout, query.start.col, query.start.row)) return null;
+            if (!layoutContainsAbsCell(patchLayout, query.target.col, query.target.row)) return null;
+            const start = layoutAbsToLocalCell(patchLayout, query.start.col, query.start.row);
+            const goal = layoutAbsToLocalCell(patchLayout, query.target.col, query.target.row);
+            const si = start.row * patchCols + start.col;
+            const gi = goal.row * patchCols + goal.col;
             if (!walkable[si] || !walkable[gi]) return null;
-            if (reservedGlobalIndices.has(globalCellIdx(startCol, startRow, grid.cols)) || reservedGlobalIndices.has(globalCellIdx(goalCol, goalRow, grid.cols))) return null;
-            const flat = runCardinalAStarFlat(sc, sr, gc, gr, navGraph, patchCols, patchRows, maxPathLen, searchState.prepare());
+            if (reservedGlobalIndices.has(globalCellIdx(query.start.col, query.start.row, grid.cols)) || reservedGlobalIndices.has(globalCellIdx(query.target.col, query.target.row, grid.cols)))
+                return null;
+            const flat = gridSearch.cardinal(new GridPathQuery(start, goal), maxPathLen);
             if (!flat) return null;
-            /** @type {{ c: number, r: number }[]} */
             const path = new Array(flat.length);
-            for (let i = 0; i < flat.length; i++) path[i] = { c: flat[i].col + patchLayout.originCol, r: flat[i].row + patchLayout.originRow };
+            for (let i = 0; i < flat.length; i++) {
+                const abs = layoutLocalToAbsCell(patchLayout, flat[i].col, flat[i].row);
+                path[i] = { c: abs.col, r: abs.row };
+            }
             return path;
+        },
+        findPath(startCol, startRow, goalCol, goalRow, maxPathLen = 512) {
+            return this.findQuery(GridPathQuery.fromCells(startCol, startRow, goalCol, goalRow), maxPathLen);
         },
     };
 }
-/**
- * @param {ReturnType<typeof createRailMazeNavCorridorPathfinder>} pathfinder
- * @param {{ col: number, row: number }} start
- * @param {{ col: number, row: number }} end
- * @param {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} occupiedGlobalIndices
- * @param {number} [corridorWidth]
- * @param {number} [maxPathLen]
- */
 export function findRailMazeNavCorridorPath(pathfinder, start, end, occupiedGlobalIndices, corridorWidth = 1, maxPathLen = 512) {
     pathfinder.setReservedGlobalIndices(occupiedGlobalIndices);
-    const path = pathfinder.findPath(start.col, start.row, end.col, end.row, maxPathLen);
+    const path = pathfinder.findQuery(new GridPathQuery(start, end), maxPathLen);
     if (!path || path.length < 2) return null;
     if (corridorPathHitsOccupied(path, occupiedGlobalIndices, corridorWidth, pathfinder.globalLayout, FULL_FOOTPRINT)) return null;
     return path;
