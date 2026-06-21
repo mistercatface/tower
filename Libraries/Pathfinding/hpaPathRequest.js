@@ -81,16 +81,12 @@ export function resolveSnappedPathEndpoints(grid, startX, startY, targetX, targe
     targetRow = snapped.row;
     return { startCol, startRow, targetCol, targetRow };
 }
-/**
- * @param {number} cols
- * @param {Int16Array} cellToRegion
- * @param {{ nodeCount: number, nodeIds: string[], nodeCol: Int16Array | ArrayLike<number>, nodeRow: Int16Array | ArrayLike<number> }} graphMeta
- * @param {number} startCol
- * @param {number} startRow
- * @param {number} targetCol
- * @param {number} targetRow
- */
-export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startCol, startRow, targetCol, targetRow) {
+export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, query) {
+    const { start, target } = query;
+    const startCol = start.col;
+    const startRow = start.row;
+    const targetCol = target.col;
+    const targetRow = target.row;
     const startIdx = colRowToIndex(startCol, startRow, cols);
     const targetIdx = colRowToIndex(targetCol, targetRow, cols);
     const startRegion = cellToRegion[startIdx];

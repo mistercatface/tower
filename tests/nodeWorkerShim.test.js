@@ -4,6 +4,8 @@ import { describe, it } from "node:test";
 import { createWorkerNavigation, terminateWorkerNavigation, NavTopology } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { HPA_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
+import { buildReplanParams } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
+import { createNavState } from "../Libraries/Pathfinding/navSession.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 describe("node worker shim", () => {
     it("runs HpaPathWorker nav topology sync", async () => {
@@ -41,6 +43,19 @@ describe("node worker shim", () => {
         const navigation = await createWorkerNavigation(grid);
         assert.ok(navigation.topology.isReady());
         assert.ok(navigation.topology.topology);
+        await terminateWorkerNavigation(navigation);
+    });
+    it("runs a real worker HPA replan request", async () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 256, 256);
+        const navigation = await createWorkerNavigation(grid);
+        const start = grid.gridToWorld(2, 2);
+        const target = grid.gridToWorld(10, 10);
+        const request = buildReplanParams(grid, start.x, start.y, target.x, target.y, navigation, null);
+        const navState = createNavState();
+        const workerOut = await navigation.worker.requestPath(request, navState);
+        assert.ok(workerOut?.result?.pathLen > 0);
+        navigation.worker.releaseSlot(workerOut.result.pathSlot);
         await terminateWorkerNavigation(navigation);
     });
 });

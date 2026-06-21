@@ -1,3 +1,4 @@
+import { GridPathQuery } from "./AStar.js";
 export class HpaAbstractGraph {
     constructor(nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds) {
         this.nodeCol = nodeCol;
@@ -55,9 +56,10 @@ export class HpaAbstractGraph {
         }
         return out;
     }
-    buildExtended(startCol, startRow, targetCol, targetRow, maxCellsPerChunk, resolveLegCost) {
-        const startCandidates = this.collectTempConnectCandidates(startCol, startRow, true, maxCellsPerChunk);
-        const targetCandidates = this.collectTempConnectCandidates(targetCol, targetRow, false, maxCellsPerChunk);
+    buildExtended(query, maxCellsPerChunk, resolveLegCost) {
+        const { start, target } = query;
+        const startCandidates = this.collectTempConnectCandidates(start.col, start.row, true, maxCellsPerChunk);
+        const targetCandidates = this.collectTempConnectCandidates(target.col, target.row, false, maxCellsPerChunk);
         const startTemp = this.nodeCount;
         const targetTemp = this.nodeCount + 1;
         const extCount = this.nodeCount + 2;
@@ -65,16 +67,16 @@ export class HpaAbstractGraph {
         const extNodeRow = new Int16Array(extCount);
         extNodeCol.set(this.nodeCol);
         extNodeRow.set(this.nodeRow);
-        extNodeCol[startTemp] = startCol;
-        extNodeRow[startTemp] = startRow;
-        extNodeCol[targetTemp] = targetCol;
-        extNodeRow[targetTemp] = targetRow;
+        extNodeCol[startTemp] = start.col;
+        extNodeRow[startTemp] = start.row;
+        extNodeCol[targetTemp] = target.col;
+        extNodeRow[targetTemp] = target.row;
         const tempLegs = new Map();
         const targetConnectCost = new Int32Array(this.nodeCount);
         for (let i = 0; i < targetCandidates.length; i++) {
             const cIdx = targetCandidates[i];
             const legKey = `${cIdx},${targetTemp}`;
-            const { cost, path } = resolveLegCost(extNodeCol[cIdx], extNodeRow[cIdx], targetCol, targetRow, legKey);
+            const { cost, path } = resolveLegCost(new GridPathQuery({ col: extNodeCol[cIdx], row: extNodeRow[cIdx] }, target), legKey);
             if (cost > 0) {
                 targetConnectCost[cIdx] = cost;
                 if (path) tempLegs.set(legKey, path);
@@ -84,7 +86,7 @@ export class HpaAbstractGraph {
         for (let i = 0; i < startCandidates.length; i++) {
             const cIdx = startCandidates[i];
             const legKey = `${startTemp},${cIdx}`;
-            const { cost, path } = resolveLegCost(startCol, startRow, extNodeCol[cIdx], extNodeRow[cIdx], legKey);
+            const { cost, path } = resolveLegCost(new GridPathQuery(start, { col: extNodeCol[cIdx], row: extNodeRow[cIdx] }), legKey);
             if (cost > 0) {
                 startEdges.push({ targetIdx: cIdx, cost });
                 if (path) tempLegs.set(legKey, path);

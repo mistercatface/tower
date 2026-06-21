@@ -1,4 +1,4 @@
-import { runLocalAStarFlat, runAbstractAStarFlat } from "../../Pathfinding/AStar.js";
+import { FlatAbstractGraphSearch, FlatGridSearch, GridPathQuery } from "../../Pathfinding/AStar.js";
 import { createNavStepPenaltyLookup } from "../../Pathfinding/navStepPenalty.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/grid/navEdgePoolSab.js";
@@ -273,11 +273,10 @@ export class HpaPathfindingWorker {
         }
     }
     runReplan(slot, data) {
-        const { startCol, startRow, targetCol, targetRow } = data;
+        const query = GridPathQuery.fromCells(data.startCol, data.startRow, data.targetCol, data.targetRow);
         const { cols, rows } = this.topology.requireGridFrame();
         const stepPenaltyLookup = data.stepPenaltyKeys?.length > 0 ? createNavStepPenaltyLookup(cols, data.stepPenaltyKeys, data.stepPenaltyCosts) : null;
-        const localAStar = (fromCol, fromRow, toCol, toRow, maxLen) =>
-            runLocalAStarFlat(fromCol, fromRow, toCol, toRow, this.topology.navView, cols, rows, maxLen, this.searchState.prepare(), stepPenaltyLookup);
+        const gridSearch = new FlatGridSearch({ navGraph: this.topology.navView, cols, rows, searchState: this.searchState, stepPenaltyLookup });
         const cellToRegion = hpaCellToRegionView(this.buffers.sabCellToRegionIdx, cols * rows);
         const baseGraph = new HpaAbstractGraph(
             hpaPersistNodeColView(this.buffers.sabPersistGraphNodeCol, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
@@ -289,41 +288,29 @@ export class HpaPathfindingWorker {
             this.graph.persistEdgeWrite,
             this.graph.persistNodeIds,
         );
-        const prep = prepareHpaReplanPrep(cols, cellToRegion, baseGraph, startCol, startRow, targetCol, targetRow);
+        const prep = prepareHpaReplanPrep(cols, cellToRegion, baseGraph, query);
         if (prep.mode === "local") {
-            const path = localAStar(startCol, startRow, targetCol, targetRow, HPA_LOCAL_MAX_LEN);
+            const path = gridSearch.local(query, HPA_LOCAL_MAX_LEN);
             this.buffers.writeCellPath(slot, path);
             this.buffers.writeAbstractPath(slot, null);
             return this.buffers.buildReplanResult(slot);
         }
-        const { extendedGraph, startTemp, targetTemp, tempLegs } = baseGraph.buildExtended(
-            startCol,
-            startRow,
-            targetCol,
-            targetRow,
-            this.buffers.maxCellsPerChunk,
-            (fromCol, fromRow, toCol, toRow) => {
-                const path = localAStar(fromCol, fromRow, toCol, toRow, prep.regionConnectMaxLen);
-                return path ? { cost: path.length, path } : { cost: 0 };
-            },
-        );
-        const abstractPath = runAbstractAStarFlat(
-            startTemp,
-            targetTemp,
-            extendedGraph.nodeCol,
-            extendedGraph.nodeRow,
-            extendedGraph.edgeOffsets,
-            extendedGraph.edgeTargets,
-            extendedGraph.edgeCosts,
-            extendedGraph.nodeCount,
-            this.searchState.prepare(),
-        );
+        const { extendedGraph, startTemp, targetTemp, tempLegs } = baseGraph.buildExtended(query, this.buffers.maxCellsPerChunk, (legQuery) => {
+            const path = gridSearch.local(legQuery, prep.regionConnectMaxLen);
+            return path ? { cost: path.length, path } : { cost: 0 };
+        });
+        const abstractSearch = new FlatAbstractGraphSearch({ ...extendedGraph, searchState: this.searchState });
+        const abstractPath = abstractSearch.run(startTemp, targetTemp);
         this.buffers.writeAbstractPath(slot, abstractPath);
         if (!abstractPath) {
             this.buffers.writeCellPath(slot, null);
             return this.buffers.buildReplanResult(slot);
         }
-        const resolveRegionLeg = (aIdx, bIdx) => localAStar(baseGraph.nodeCol[aIdx], baseGraph.nodeRow[aIdx], baseGraph.nodeCol[bIdx], baseGraph.nodeRow[bIdx], prep.regionConnectMaxLen);
+        const resolveRegionLeg = (aIdx, bIdx) =>
+            gridSearch.local(
+                new GridPathQuery({ col: baseGraph.nodeCol[aIdx], row: baseGraph.nodeRow[aIdx] }, { col: baseGraph.nodeCol[bIdx], row: baseGraph.nodeRow[bIdx] }),
+                prep.regionConnectMaxLen,
+            );
         const cellPath = stitchAbstractCellPath(abstractPath, prep, tempLegs, resolveRegionLeg);
         this.buffers.writeCellPath(slot, cellPath);
         return this.buffers.buildReplanResult(slot);

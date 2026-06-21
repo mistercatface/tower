@@ -5,6 +5,83 @@ const STALE_F_EPSILON = 1e-4;
 function manhattanDistance(c0, r0, c1, r1) {
     return Math.abs(c0 - c1) + Math.abs(r0 - r1);
 }
+export class GridPathQuery {
+    constructor(start, target) {
+        this.start = start;
+        this.target = target;
+    }
+    static fromCells(startCol, startRow, targetCol, targetRow) {
+        return new GridPathQuery({ col: startCol, row: startRow }, { col: targetCol, row: targetRow });
+    }
+}
+export class FlatGridSearch {
+    constructor({ navGraph, cols, rows, searchState, stepPenaltyLookup = null }) {
+        this.navGraph = navGraph;
+        this.cols = cols;
+        this.rows = rows;
+        this.searchState = searchState;
+        this.stepPenaltyLookup = stepPenaltyLookup;
+    }
+    cardinal(query, maxPathLen) {
+        return runCardinalAStarFlat(query.start.col, query.start.row, query.target.col, query.target.row, this.navGraph, this.cols, this.rows, maxPathLen, this.searchState.prepare());
+    }
+    local(query, maxPathLen) {
+        return runLocalAStarFlat(
+            query.start.col,
+            query.start.row,
+            query.target.col,
+            query.target.row,
+            this.navGraph,
+            this.cols,
+            this.rows,
+            maxPathLen,
+            this.searchState.prepare(),
+            this.stepPenaltyLookup,
+        );
+    }
+    dijkstra(query, maxPathLen) {
+        return runDijkstraFlat(
+            query.start.col,
+            query.start.row,
+            query.target.col,
+            query.target.row,
+            this.navGraph,
+            this.cols,
+            this.rows,
+            maxPathLen,
+            this.searchState.prepare(),
+            this.stepPenaltyLookup,
+        );
+    }
+    greedy(query, maxPathLen) {
+        return runGreedyBestFirstFlat(
+            query.start.col,
+            query.start.row,
+            query.target.col,
+            query.target.row,
+            this.navGraph,
+            this.cols,
+            this.rows,
+            maxPathLen,
+            this.searchState.prepare(),
+            this.stepPenaltyLookup,
+        );
+    }
+}
+export class FlatAbstractGraphSearch {
+    constructor({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, searchState }) {
+        this.nodeCol = nodeCol;
+        this.nodeRow = nodeRow;
+        this.edgeOffsets = edgeOffsets;
+        this.edgeTargets = edgeTargets;
+        this.edgeCosts = edgeCosts;
+        this.nodeCount = nodeCount;
+        this.searchState = searchState;
+    }
+    run(startIdx, targetIdx) {
+        return runAbstractAStarFlat(startIdx, targetIdx, this.nodeCol, this.nodeRow, this.edgeOffsets, this.edgeTargets, this.edgeCosts, this.nodeCount, this.searchState.prepare());
+    }
+}
 /** 4-connected grid A* — for axis-aligned tubes (corridors); never cuts corners diagonally. */
 export function runCardinalAStarFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, searchState) {
     const startIdx = startRow * cols + startCol;

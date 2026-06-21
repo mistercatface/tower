@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { GridPathQuery } from "../Libraries/Pathfinding/AStar.js";
 import { HpaAbstractGraph } from "../Libraries/Pathfinding/hpaReplanPrep.js";
 
 describe("HpaAbstractGraph Suite", () => {
@@ -36,11 +37,12 @@ describe("HpaAbstractGraph Suite", () => {
         const edgeCosts = new Uint16Array([]);
         const graph = new HpaAbstractGraph(nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, 1, 0, ["A"]);
 
-        const resolveLegCost = (fromCol, fromRow, toCol, toRow) => {
-            return { cost: 5, path: [{ col: fromCol, row: fromRow }, { col: toCol, row: toRow }] };
+        const query = GridPathQuery.fromCells(2, 2, 18, 18);
+        const resolveLegCost = (legQuery) => {
+            return { cost: 5, path: [legQuery.start, legQuery.target] };
         };
 
-        const { extendedGraph, startTemp, targetTemp, tempLegs } = graph.buildExtended(2, 2, 18, 18, 64, resolveLegCost);
+        const { extendedGraph, startTemp, targetTemp, tempLegs } = graph.buildExtended(query, 64, resolveLegCost);
 
         assert.equal(extendedGraph.nodeCount, 3);
         assert.equal(extendedGraph.nodeCol[startTemp], 2);

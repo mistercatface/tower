@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+    FlatGridSearch,
+    GridPathQuery,
     runCardinalAStarFlat,
     runLocalAStarFlat,
     runDijkstraFlat,
@@ -44,6 +46,19 @@ describe("AStar Engine Search Suite", () => {
         const path = runLocalAStarFlat(0, 0, 2, 2, navGraph, cols, rows, 20, searchState.prepare());
         assert.ok(path);
         assert.equal(path.length, 3);
+        assert.deepEqual(path, [
+            { col: 0, row: 0 },
+            { col: 1, row: 1 },
+            { col: 2, row: 2 }
+        ]);
+    });
+
+    it("FlatGridSearch runs local search from a query object", () => {
+        const searchState = new SearchState(size);
+        const navGraph = { canStep: () => true };
+        const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
+        const path = search.local(GridPathQuery.fromCells(0, 0, 2, 2), 20);
+        assert.ok(path);
         assert.deepEqual(path, [
             { col: 0, row: 0 },
             { col: 1, row: 1 },
