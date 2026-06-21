@@ -58,4 +58,20 @@ describe("cellTargetHpaNav arrival", () => {
         assert.equal(prop._groundRollDrive, undefined);
         assert.equal(prop.vx, 5);
     });
+
+    it("keeps driving locked seek targets after path arrival but before collision", () => {
+        const prop = { id: 1, x: 96, y: 80, radius: 2, vx: 0, vy: 0, strategy: { rolls: true, groundNav: {} } };
+        const state = createCellTargetNavState(prop);
+        const headNav = createCellTargetHpaNav(state);
+        const target = state.obstacleGrid.gridToWorld(7, 5);
+        prop.x = target.x - 10;
+        prop.y = target.y;
+        headNav.setDestination(state.obstacleGrid, 7, 5, { world: target, exactArrival: true, arrivalRadius: 20, lockOnTarget: true });
+
+        headNav.tick(prop, FRAME_MS);
+
+        assert.ok(headNav.getDestination(), "locked target should remain active until the caller consumes it");
+        assert.ok(prop._groundRollDrive, "locked target should keep applying drive toward the target");
+        assert.ok(prop._groundRollDrive.dirX > 0);
+    });
 });

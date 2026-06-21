@@ -175,6 +175,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "seek_food");
         assert.equal(autosim.getLastTransitionReason(), "mode_seek_food");
         assert.equal(autosim.getDestination().arrivalRadius, 20);
+        assert.equal(autosim.getDestination().lockOnTarget, true);
     });
 
     it("seek_prey transitions to flee when a larger snake appears", async () => {

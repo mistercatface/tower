@@ -81,8 +81,10 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         registry,
         navWalkable,
         visionCone: resolvedVisionCone,
-        seekArrivalRadius: (mode) =>
-            mode === "seek_prey" ? { arrivalRadius: resolveHuntArrivalRadius(), lockOnTarget: true } : typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius,
+        seekArrivalRadius: (mode) => {
+            if (mode === "seek_prey") return { arrivalRadius: resolveHuntArrivalRadius(), lockOnTarget: true };
+            return { arrivalRadius: typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius, lockOnTarget: true };
+        },
         rng,
     });
     let active = false;
