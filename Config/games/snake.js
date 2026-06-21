@@ -5,8 +5,8 @@ export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
     goalPropId: "goal_orb",
-    snakeCount: 100,
-    goalCount: 200,
+    snakeCount: 25,
+    goalCount: 100,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,
@@ -49,6 +49,9 @@ export const SNAKE_GAME_DEFAULTS = {
     navMemoryStepFalloff: 0.65,
     /** When no cell meets exploreMinTiles, retry with this minimum distance. */
     exploreFallbackMinTiles: 1,
+    /** Min Chebyshev distance when teleporting an eaten goal to a new cell (fallback if none). */
+    goalRelocateMinTiles: 8,
+    goalRelocateFallbackMinTiles: 1,
     showMemoryHeatmap: false,
     memoryHeatmap: { bucketCount: 8, fillRgb: "180, 100, 255", fillAlphaMax: 0.12, fillAlphaMin: 0.02 },
     /** Off-screen snakes run full FOV sync every N ticks (on-screen = every tick). */
