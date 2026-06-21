@@ -3,16 +3,12 @@ import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../M
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
 const MAX_PHYS_BODIES = 4096;
-export const kineticBodySlab = {
+export const kineticDynamicSlab = {
     x: new Float32Array(MAX_PHYS_BODIES),
     y: new Float32Array(MAX_PHYS_BODIES),
     vx: new Float32Array(MAX_PHYS_BODIES),
     vy: new Float32Array(MAX_PHYS_BODIES),
     w: new Float32Array(MAX_PHYS_BODIES),
-    mass: new Float32Array(MAX_PHYS_BODIES),
-    invMass: new Float32Array(MAX_PHYS_BODIES),
-    invI: new Float32Array(MAX_PHYS_BODIES),
-    pinned: new Uint8Array(MAX_PHYS_BODIES),
     asleep: new Uint8Array(MAX_PHYS_BODIES),
     activeSlot: new Int32Array(MAX_PHYS_BODIES),
     activePhysIds: new Int32Array(MAX_PHYS_BODIES),
@@ -25,12 +21,18 @@ export const kineticBodySlab = {
     cos: new Float32Array(MAX_PHYS_BODIES),
     sin: new Float32Array(MAX_PHYS_BODIES),
 };
-kineticBodySlab.activeSlot.fill(-1);
-kineticBodySlab.islandRoot.fill(-1);
+export const kineticStaticSlab = {
+    mass: new Float32Array(MAX_PHYS_BODIES),
+    invMass: new Float32Array(MAX_PHYS_BODIES),
+    invI: new Float32Array(MAX_PHYS_BODIES),
+    pinned: new Uint8Array(MAX_PHYS_BODIES),
+};
+kineticDynamicSlab.activeSlot.fill(-1);
+kineticDynamicSlab.islandRoot.fill(-1);
 const SLAB_SCRATCH_A = createBroadphaseBounds();
 const SLAB_SCRATCH_B = createBroadphaseBounds();
 export function writeBroadphaseFromBounds(physId, bounds) {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     if (bounds.kind === "circle") {
         slab.bpKind[physId] = BP_KIND_CIRCLE;
         slab.r[physId] = bounds.r;
@@ -44,85 +46,81 @@ export function writeBroadphaseFromBounds(physId, bounds) {
 }
 export function writeActiveKineticBodySlabPose(body) {
     const physId = body._physId;
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     slab.x[physId] = body.x;
     slab.y[physId] = body.y;
     slab.vx[physId] = body.vx ?? 0;
     slab.vy[physId] = body.vy ?? 0;
     slab.w[physId] = body.angularVelocity ?? 0;
 }
-export function writeKinematicBodySlabSlot(body) {
+export function writeStaticKineticSlabSlot(body) {
     const physId = body._physId;
-    const slab = kineticBodySlab;
-    slab.x[physId] = body.x;
-    slab.y[physId] = body.y;
-    slab.vx[physId] = body.vx ?? 0;
-    slab.vy[physId] = body.vy ?? 0;
-    slab.w[physId] = body.angularVelocity ?? 0;
+    const slab = kineticStaticSlab;
     slab.mass[physId] = massFromBody(body);
     slab.invMass[physId] = inverseMassFromBody(body);
     const moment = body.momentOfInertia;
     slab.invI[physId] = moment ? 1 / moment : 0;
     slab.pinned[physId] = bodyPinnedForContact(body) ? 1 : 0;
-    slab.asleep[physId] = body.isSleeping ? 1 : 0;
 }
 export function clearActiveKineticBodySlab() {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     for (let i = 0; i < slab.activePhysCount; i++) slab.activeSlot[slab.activePhysIds[i]] = -1;
     slab.activePhysCount = 0;
 }
 export function appendActiveKineticBodySlabPhysId(physId) {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     slab.activeSlot[physId] = slab.activePhysCount;
     slab.activePhysIds[slab.activePhysCount++] = physId;
 }
 export function separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap) {
-    const slab = kineticBodySlab;
-    const pinnedA = slab.pinned[physIdA];
-    const pinnedB = slab.pinned[physIdB];
+    const dynSlab = kineticDynamicSlab;
+    const statSlab = kineticStaticSlab;
+    const pinnedA = statSlab.pinned[physIdA];
+    const pinnedB = statSlab.pinned[physIdB];
     if (pinnedA && pinnedB) return;
     if (pinnedA) {
-        slab.x[physIdB] += nx * overlap;
-        slab.y[physIdB] += ny * overlap;
+        dynSlab.x[physIdB] += nx * overlap;
+        dynSlab.y[physIdB] += ny * overlap;
         return;
     }
     if (pinnedB) {
-        slab.x[physIdA] -= nx * overlap;
-        slab.y[physIdA] -= ny * overlap;
+        dynSlab.x[physIdA] -= nx * overlap;
+        dynSlab.y[physIdA] -= ny * overlap;
         return;
     }
-    const massA = slab.mass[physIdA];
-    const massB = slab.mass[physIdB];
+    const massA = statSlab.mass[physIdA];
+    const massB = statSlab.mass[physIdB];
     const totalMass = massA + massB;
-    slab.x[physIdA] -= nx * overlap * (massB / totalMass);
-    slab.y[physIdA] -= ny * overlap * (massB / totalMass);
-    slab.x[physIdB] += nx * overlap * (massA / totalMass);
-    slab.y[physIdB] += ny * overlap * (massA / totalMass);
+    dynSlab.x[physIdA] -= nx * overlap * (massB / totalMass);
+    dynSlab.y[physIdA] -= ny * overlap * (massB / totalMass);
+    dynSlab.x[physIdB] += nx * overlap * (massA / totalMass);
+    dynSlab.y[physIdB] += ny * overlap * (massA / totalMass);
 }
 export function separateCoincidentCircleSlab(physIdA, physIdB, overlap) {
-    const slab = kineticBodySlab;
-    const pinnedA = slab.pinned[physIdA];
-    const pinnedB = slab.pinned[physIdB];
+    const dynSlab = kineticDynamicSlab;
+    const statSlab = kineticStaticSlab;
+    const pinnedA = statSlab.pinned[physIdA];
+    const pinnedB = statSlab.pinned[physIdB];
     if (pinnedA && pinnedB) return;
     if (pinnedA) {
-        slab.x[physIdB] += overlap;
+        dynSlab.x[physIdB] += overlap;
         return;
     }
     if (pinnedB) {
-        slab.x[physIdA] -= overlap;
+        dynSlab.x[physIdA] -= overlap;
         return;
     }
-    const massA = slab.mass[physIdA];
-    const massB = slab.mass[physIdB];
+    const massA = statSlab.mass[physIdA];
+    const massB = statSlab.mass[physIdB];
     const totalMass = massA + massB;
-    slab.x[physIdA] -= overlap * (massB / totalMass);
-    slab.x[physIdB] += overlap * (massA / totalMass);
+    dynSlab.x[physIdA] -= overlap * (massB / totalMass);
+    dynSlab.x[physIdB] += overlap * (massA / totalMass);
 }
 function invalidateBodyBroadphase(body) {
     if (body.broadphaseSnapshot) body.broadphaseSnapshot.x = NaN;
 }
 export function writebackKineticBodySlabPhysId(spatialFrame, physId) {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     const body = spatialFrame.entityGrid.entities[physId];
     body.x = slab.x[physId];
     body.y = slab.y[physId];
@@ -135,7 +133,7 @@ export function writebackKineticBodySlabPhysIds(spatialFrame, physIds) {
     for (let i = 0; i < physIds.length; i++) writebackKineticBodySlabPhysId(spatialFrame, physIds[i]);
 }
 export function writebackActiveKineticBodySlab(bodies) {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     for (let i = 0; i < bodies.length; i++) {
         const body = bodies[i];
         const physId = body._physId;
@@ -148,7 +146,7 @@ export function writebackActiveKineticBodySlab(bodies) {
     }
 }
 export function clampActiveKineticBodySlabSpeed(maxSpeed) {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     const maxSpeedSq = maxSpeed * maxSpeed;
     for (let i = 0; i < slab.activePhysCount; i++) {
         const physId = slab.activePhysIds[i];
@@ -164,7 +162,7 @@ export function clampActiveKineticBodySlabSpeed(maxSpeed) {
 const SLAB_POSE_EPS = 1e-4;
 const SLAB_VEL_EPS = 1e-4;
 export function activeBodiesMatchKineticSlab(bodies) {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     for (let i = 0; i < bodies.length; i++) {
         const body = bodies[i];
         const physId = body._physId;
@@ -177,7 +175,7 @@ export function activeBodiesMatchKineticSlab(bodies) {
     return true;
 }
 function readSlabIntoBounds(physId, out) {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     out.cx = slab.x[physId];
     out.cy = slab.y[physId];
     if (slab.bpKind[physId] === BP_KIND_CIRCLE) {
@@ -193,14 +191,14 @@ function readSlabIntoBounds(physId, out) {
     return out;
 }
 export function pairCircleCircleOverlapSlab(physIdA, physIdB) {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     const dx = slab.x[physIdA] - slab.x[physIdB];
     const dy = slab.y[physIdA] - slab.y[physIdB];
     const radii = slab.r[physIdA] + slab.r[physIdB];
     return dx * dx + dy * dy < radii * radii;
 }
 export function pairBroadphaseOverlapSlab(physIdA, physIdB) {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     if (slab.bpKind[physIdA] === BP_KIND_CIRCLE && slab.bpKind[physIdB] === BP_KIND_CIRCLE) return pairCircleCircleOverlapSlab(physIdA, physIdB);
     readSlabIntoBounds(physIdA, SLAB_SCRATCH_A);
     readSlabIntoBounds(physIdB, SLAB_SCRATCH_B);

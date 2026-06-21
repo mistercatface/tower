@@ -1,6 +1,6 @@
 import { getKineticConstraintGraph } from "./kineticConstraintGraph.js";
 import { getKineticConstraintsVersion } from "./kineticConstraints.js";
-import { kineticBodySlab } from "../Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab } from "../Spatial/collision/kineticBodySlab.js";
 const MAX_PHYS_BODIES = 4096;
 export const islandRootByPhysId = new Int32Array(MAX_PHYS_BODIES);
 islandRootByPhysId.fill(-1);
@@ -18,7 +18,7 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
         clearBodyIslandFields(body);
         if (body._physId !== undefined) {
             islandRootByPhysId[body._physId] = -1;
-            kineticBodySlab.islandRoot[body._physId] = -1;
+            kineticDynamicSlab.islandRoot[body._physId] = -1;
         }
     }
     const bodyIdToIslandRoot = new Map();
@@ -65,7 +65,7 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
             bodyIdToIslandRoot.set(body.id, root);
             if (body._physId !== undefined) {
                 islandRootByPhysId[body._physId] = root;
-                kineticBodySlab.islandRoot[body._physId] = root;
+                kineticDynamicSlab.islandRoot[body._physId] = root;
             }
             if (multiBody) body._kineticIslandPeers = memberBodies;
         }

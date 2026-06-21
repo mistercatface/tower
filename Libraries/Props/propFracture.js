@@ -3,7 +3,7 @@ import { WorldProp } from "../../Entities/WorldProp.js";
 import { transformPoint2DInto, convexFootprintHalfExtents, polygonSignedArea2D } from "../Math/Poly2D.js";
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
-import { kineticBodySlab } from "../Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab } from "../Spatial/collision/kineticBodySlab.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { splitPoxels } from "./poxelFracture.js";
@@ -88,7 +88,7 @@ function propFacing(prop) {
 }
 function currentPropMotion(prop) {
     const physId = prop._physId;
-    if (physId !== undefined) return { vx: kineticBodySlab.vx[physId], vy: kineticBodySlab.vy[physId], w: kineticBodySlab.w[physId] };
+    if (physId !== undefined) return { vx: kineticDynamicSlab.vx[physId], vy: kineticDynamicSlab.vy[physId], w: kineticDynamicSlab.w[physId] };
     return { vx: prop.vx ?? 0, vy: prop.vy ?? 0, w: prop.angularVelocity ?? 0 };
 }
 function circleShardCount(impactForce, minShards, maxShards) {
@@ -153,7 +153,7 @@ export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactF
 }
 function propWorldPosition(prop) {
     const physId = prop._physId;
-    if (physId !== undefined) return { x: kineticBodySlab.x[physId], y: kineticBodySlab.y[physId] };
+    if (physId !== undefined) return { x: kineticDynamicSlab.x[physId], y: kineticDynamicSlab.y[physId] };
     return { x: prop.x, y: prop.y };
 }
 function peelSolidFracture(prop, localHitX, localHitY, impactForce) {

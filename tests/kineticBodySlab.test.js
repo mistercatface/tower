@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { getBroadphaseBounds, snapshotActiveBroadphaseBounds, snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { kineticBodySlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeKinematicBodySlabSlot, activeBodiesMatchKineticSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose, activeBodiesMatchKineticSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { pairBroadphaseBoundsOverlap } from "../Libraries/Spatial/collision/Broadphase.js";
 import { circleCircleContactSlab } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { circleCircleContact } from "../Libraries/Spatial/collision/SatCollision.js";
@@ -28,11 +28,12 @@ describe("kinetic body slab", () => {
     it("broadphase slot uses body x/y as circle center", () => {
         const body = mockCircleBody(12, -4, 9);
         body._physId = 3;
-        writeKinematicBodySlabSlot(body);
+        writeStaticKineticSlabSlot(body);
+        writeActiveKineticBodySlabPose(body);
         writeBroadphaseFromBounds(body._physId, getBroadphaseBounds(body));
-        assert.equal(kineticBodySlab.x[3], 12);
-        assert.equal(kineticBodySlab.y[3], -4);
-        assert.equal(kineticBodySlab.r[3], 9);
+        assert.equal(kineticDynamicSlab.x[3], 12);
+        assert.equal(kineticDynamicSlab.y[3], -4);
+        assert.equal(kineticDynamicSlab.r[3], 9);
     });
 
     it("slab overlap matches object overlap after snapshot", () => {
@@ -51,9 +52,9 @@ describe("kinetic body slab", () => {
         a.vx = 3;
         a.vy = -1;
         snapshotActiveBroadphaseBounds([a]);
-        assert.equal(kineticBodySlab.vx[4], 3);
-        assert.equal(kineticBodySlab.vy[4], -1);
-        assert.equal(kineticBodySlab.r[4], 5);
+        assert.equal(kineticDynamicSlab.vx[4], 3);
+        assert.equal(kineticDynamicSlab.vy[4], -1);
+        assert.equal(kineticDynamicSlab.r[4], 5);
     });
 
     it("slab circle contact matches SAT circle contact", () => {

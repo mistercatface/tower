@@ -1,7 +1,7 @@
 import { removeWorldPropFromState } from "../../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { transformPoint2DInto } from "../../Math/Poly2D.js";
-import { kineticBodySlab } from "../../Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
@@ -93,11 +93,11 @@ function contactWorldPointForBody(contacts, i, targetBody) {
     const nx = contacts.nx[i];
     const ny = contacts.ny[i];
     if (contacts.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
-        if (targetBody._physId === physIdB) return { x: kineticBodySlab.x[physIdB] + nx * kineticBodySlab.r[physIdB], y: kineticBodySlab.y[physIdB] + ny * kineticBodySlab.r[physIdB] };
-        return { x: kineticBodySlab.x[physIdA] - nx * kineticBodySlab.r[physIdA], y: kineticBodySlab.y[physIdA] - ny * kineticBodySlab.r[physIdA] };
+        if (targetBody._physId === physIdB) return { x: kineticDynamicSlab.x[physIdB] + nx * kineticDynamicSlab.r[physIdB], y: kineticDynamicSlab.y[physIdB] + ny * kineticDynamicSlab.r[physIdB] };
+        return { x: kineticDynamicSlab.x[physIdA] - nx * kineticDynamicSlab.r[physIdA], y: kineticDynamicSlab.y[physIdA] - ny * kineticDynamicSlab.r[physIdA] };
     }
-    if (targetBody._physId === physIdB) return { x: kineticBodySlab.x[physIdB] + contacts.rbx[i], y: kineticBodySlab.y[physIdB] + contacts.rby[i] };
-    return { x: kineticBodySlab.x[physIdA] + contacts.rax[i], y: kineticBodySlab.y[physIdA] + contacts.ray[i] };
+    if (targetBody._physId === physIdB) return { x: kineticDynamicSlab.x[physIdB] + contacts.rbx[i], y: kineticDynamicSlab.y[physIdB] + contacts.rby[i] };
+    return { x: kineticDynamicSlab.x[physIdA] + contacts.rax[i], y: kineticDynamicSlab.y[physIdA] + contacts.ray[i] };
 }
 function tryFractureRetiredSegment(state, spatialFrame, contacts, i, segment, fracturedIds) {
     if (!segment?.[FRACTURABLE_DEAD_SEGMENT_FLAG]) return false;

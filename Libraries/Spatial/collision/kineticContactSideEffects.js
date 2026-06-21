@@ -1,10 +1,10 @@
 import { tryFractureKineticContact } from "../../Props/propFracture.js";
 import { kineticContactBodiesAt } from "./kineticPairStream.js";
-import { kineticBodySlab } from "./kineticBodySlab.js";
+import { kineticDynamicSlab } from "./kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 export function applyKineticContactSideEffects(tick, contacts) {
     if (contacts.count === 0) return;
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     for (let i = 0; i < contacts.count; i++) {
         const physIdA = contacts.physIdA[i];
         const physIdB = contacts.physIdB[i];

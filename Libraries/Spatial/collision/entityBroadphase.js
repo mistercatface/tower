@@ -2,7 +2,7 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
-import { pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeKinematicBodySlabSlot } from "./kineticBodySlab.js";
+import { pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose } from "./kineticBodySlab.js";
 import { getEntityCollisionParts } from "./SatCollision.js";
 function kineticActivity() {
     return getCollisionSettings().kineticActivity;
@@ -135,7 +135,8 @@ export function pairBroadphaseOverlap(a, b) {
 export function snapshotKineticBodySlab(bodies) {
     for (let i = 0; i < bodies.length; i++) {
         const entity = bodies[i];
-        writeKinematicBodySlabSlot(entity);
+        writeStaticKineticSlabSlot(entity);
+        writeActiveKineticBodySlabPose(entity);
         writeBroadphaseFromBounds(entity._physId, getBroadphaseBounds(entity));
     }
 }

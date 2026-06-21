@@ -3,7 +3,7 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { getSnakeInstance, buildSnakeMemberToInstanceMap } from "./SnakeInstance.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
-import { kineticBodySlab } from "../../Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
 function snakeSegmentCount(state, headId, members = null) {
     return (members || getConnectedComponentPath(state.kinetic, headId)).length;
@@ -37,11 +37,11 @@ function contactWorldPointForBody(spatialFrame, contacts, i, targetBody) {
     const nx = contacts.nx[i];
     const ny = contacts.ny[i];
     if (contacts.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
-        if (targetBody._physId === physIdB) return { x: kineticBodySlab.x[physIdB] + nx * kineticBodySlab.r[physIdB], y: kineticBodySlab.y[physIdB] + ny * kineticBodySlab.r[physIdB] };
-        return { x: kineticBodySlab.x[physIdA] - nx * kineticBodySlab.r[physIdA], y: kineticBodySlab.y[physIdA] - ny * kineticBodySlab.r[physIdA] };
+        if (targetBody._physId === physIdB) return { x: kineticDynamicSlab.x[physIdB] + nx * kineticDynamicSlab.r[physIdB], y: kineticDynamicSlab.y[physIdB] + ny * kineticDynamicSlab.r[physIdB] };
+        return { x: kineticDynamicSlab.x[physIdA] - nx * kineticDynamicSlab.r[physIdA], y: kineticDynamicSlab.y[physIdA] - ny * kineticDynamicSlab.r[physIdA] };
     }
-    if (targetBody._physId === physIdB) return { x: kineticBodySlab.x[physIdB] + contacts.rbx[i], y: kineticBodySlab.y[physIdB] + contacts.rby[i] };
-    return { x: kineticBodySlab.x[physIdA] + contacts.rax[i], y: kineticBodySlab.y[physIdA] + contacts.ray[i] };
+    if (targetBody._physId === physIdB) return { x: kineticDynamicSlab.x[physIdB] + contacts.rbx[i], y: kineticDynamicSlab.y[physIdB] + contacts.rby[i] };
+    return { x: kineticDynamicSlab.x[physIdA] + contacts.rax[i], y: kineticDynamicSlab.y[physIdA] + contacts.ray[i] };
 }
 export function snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId, struckBody, impactForce = null) {
     const hit = contactWorldPointForBody(spatialFrame, contacts, i, struckBody);
@@ -88,11 +88,11 @@ function restoreHunterContactDrive(hunterHead, hunterPhysId, preyHead) {
     const dy = preyHead.y - hunterHead.y;
     const dist = Math.hypot(dx, dy);
     if (dist <= 0) return;
-    const speed = getSnakeGameConfig().headMaxSpeed ?? Math.hypot(kineticBodySlab.vx[hunterPhysId], kineticBodySlab.vy[hunterPhysId]);
+    const speed = getSnakeGameConfig().headMaxSpeed ?? Math.hypot(kineticDynamicSlab.vx[hunterPhysId], kineticDynamicSlab.vy[hunterPhysId]);
     const vx = (dx / dist) * speed;
     const vy = (dy / dist) * speed;
-    kineticBodySlab.vx[hunterPhysId] = vx;
-    kineticBodySlab.vy[hunterPhysId] = vy;
+    kineticDynamicSlab.vx[hunterPhysId] = vx;
+    kineticDynamicSlab.vy[hunterPhysId] = vy;
     hunterHead.vx = vx;
     hunterHead.vy = vy;
 }

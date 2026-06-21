@@ -1,6 +1,6 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { allowsKineticCollisionPair, isKinematicallyActive, shouldResolveKineticPair } from "./entityBroadphase.js";
-import { kineticBodySlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
+import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
 import { classifyKineticPairTier, KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 import { shareKineticIsland } from "../../Motion/kineticIslands.js";
 import { kineticPairTopologyStale } from "../../Motion/kineticTopology.js";
@@ -71,7 +71,7 @@ function writePairMaterial(pairs, index, bodyA, bodyB) {
     pairs.warmStartPairKey[index] = bodyA.id < bodyB.id ? bodyA.id * PAIR_BODY_KEY_SCALE + bodyB.id : bodyB.id * PAIR_BODY_KEY_SCALE + bodyA.id;
 }
 export function refreshKineticPairRelativeVelocities(pairs) {
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     for (let i = 0; i < pairs.count; i++) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
@@ -120,7 +120,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
     const keys = compactPairKeyScratch;
     keys.clear();
     for (let i = 0; i < pairs.count; i++) keys.add(pairPhysKey(pairs.physIdA[i], pairs.physIdB[i]));
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     let added = 0;
     const seenPrimary = new Set();
     for (let i = 0; i < bodies.length; i++) {
@@ -171,7 +171,7 @@ export function kineticContactBodiesAt(spatialFrame, physIdA, physIdB) {
 }
 export function gatherKineticCandidatePairs(spatialFrame, pairs) {
     pairs.reset();
-    const slab = kineticBodySlab;
+    const slab = kineticDynamicSlab;
     for (let i = 0; i < slab.activePhysCount; i++) {
         const physIdA = slab.activePhysIds[i];
         const primary = kineticPairBodyAt(spatialFrame, physIdA);
