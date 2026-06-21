@@ -9,7 +9,6 @@ export const kineticDynamicSlab = {
     vx: new Float32Array(MAX_PHYS_BODIES),
     vy: new Float32Array(MAX_PHYS_BODIES),
     w: new Float32Array(MAX_PHYS_BODIES),
-    asleep: new Uint8Array(MAX_PHYS_BODIES),
     activeSlot: new Int32Array(MAX_PHYS_BODIES),
     activePhysIds: new Int32Array(MAX_PHYS_BODIES),
     activePhysCount: 0,

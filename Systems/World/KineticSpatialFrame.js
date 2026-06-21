@@ -75,7 +75,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 prop._activeSlot = -1;
                 continue;
             }
-            kineticDynamicSlab.asleep[prop._physId] = prop.isSleeping ? 1 : 0;
             if (!prop.isSleeping) {
                 prop._activeSlot = active.length;
                 active.push(prop);
@@ -89,7 +88,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (prop._activeSlot >= 0 && active[prop._activeSlot] === prop) return;
         prop._activeSlot = active.length;
         active.push(prop);
-        kineticDynamicSlab.asleep[prop._physId] = 0;
         appendActiveKineticBodySlabPhysId(prop._physId);
         if (prop.mass != null) {
             writeStaticKineticSlabSlot(prop);
