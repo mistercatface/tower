@@ -6,7 +6,7 @@
 
 ## 06/21/2026
 
-8:00 AM - 1:14 PM: Pathfinding OOP refactor, snake FSM.
+7:25 AM - 1:14 PM: Pathfinding OOP refactor, snake FSM.
 
 ## MILESTONE LOG
 
