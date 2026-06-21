@@ -33,6 +33,13 @@ export function createNavState() {
         hpaReplanRequestId: 0,
         pathSlot: -1,
         pathLen: 0,
+        routeId: 0,
+        pendingReplanReason: null,
+        lastAcceptedRouteReason: null,
+        lastAcceptedPathLen: 0,
+        lastAcceptedProgressIdx: 0,
+        lastAcceptedTargetX: null,
+        lastAcceptedTargetY: null,
     };
 }
 export {};

@@ -37,6 +37,13 @@ export class HpaReplanRequest {
         navState.pathSlot = result.pathSlot;
         navState.pathLen = result.pathLen;
         navState.pathProgressIdx = findSabPathProgressIdx(this.startX, this.startY, worker, result.pathSlot, result.pathLen, this.obstacleGrid, this.navTopology);
+        navState.routeId += 1;
+        navState.lastAcceptedRouteReason = navState.pendingReplanReason;
+        navState.lastAcceptedPathLen = result.pathLen;
+        navState.lastAcceptedProgressIdx = navState.pathProgressIdx;
+        navState.lastAcceptedTargetX = this.targetX;
+        navState.lastAcceptedTargetY = this.targetY;
+        navState.pendingReplanReason = null;
         navState.lastTargetX = this.targetX;
         navState.lastTargetY = this.targetY;
     }

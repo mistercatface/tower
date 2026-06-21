@@ -45,6 +45,7 @@ export function createHpaGroundNavSession() {
         const accepted = replan(prop, targetX, targetY, state, priority);
         if (accepted) {
             pendingTargetReplan = false;
+            navState.pendingReplanReason = reason;
             navState.stuckFrames = 0;
             return { steering: null, replanReason: reason };
         }

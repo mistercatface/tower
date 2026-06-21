@@ -17,6 +17,7 @@ import {
 } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
 import { createHpaGroundNavSession } from "../Libraries/Sandbox/groundNav/hpaGroundNavSession.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import { HpaReplanRequest } from "../Libraries/Pathfinding/hpaPathRequest.js";
 const navSettings = { stuckReplanFrames: 20, stuckMoveThreshold: 1.5 };
 describe("hpa ground nav replan policy", () => {
     it("obstacleEpochReplanDue when path topology lags grid", () => {
@@ -130,5 +131,42 @@ describe("hpa ground nav replan policy", () => {
 
         for (let i = 0; i < 5; i++) session.update(prop, target.x, target.y, state, 300, pathSettings);
         assert.equal(replans, 1);
+    });
+    it("records accepted route diagnostics when a path result is applied", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);
+        const start = grid.gridToWorld(2, 3);
+        const target = grid.gridToWorld(4, 3);
+        const nav = createNavState();
+        nav.pendingReplanReason = "offPath";
+        const worker = {
+            releaseOwnedPathSlot() {},
+            pathCol(_slot, i) {
+                return i === 0 ? 2 : 4;
+            },
+            pathRow() {
+                return 3;
+            },
+        };
+        const request = new HpaReplanRequest({
+            obstacleGrid: grid,
+            startX: start.x,
+            startY: start.y,
+            targetX: target.x,
+            targetY: target.y,
+            graphEpoch: 1,
+            topologyKey: "topology-a",
+            navTopology: null,
+        });
+
+        request.applyResult(nav, worker, { pathSlot: 7, pathLen: 2 });
+
+        assert.equal(nav.routeId, 1);
+        assert.equal(nav.lastAcceptedRouteReason, "offPath");
+        assert.equal(nav.lastAcceptedPathLen, 2);
+        assert.equal(nav.lastAcceptedProgressIdx, 1);
+        assert.equal(nav.lastAcceptedTargetX, target.x);
+        assert.equal(nav.lastAcceptedTargetY, target.y);
+        assert.equal(nav.pendingReplanReason, null);
     });
 });

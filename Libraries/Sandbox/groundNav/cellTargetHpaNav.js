@@ -317,6 +317,12 @@ export function createCellTargetHpaNav(state) {
             routeGoal: destWorld,
             terminalGoal: terminalWorld,
             routeCommitFrames: commit.routeCommitFrames,
+            routeId: nav.routeId,
+            lastAcceptedRouteReason: nav.lastAcceptedRouteReason,
+            lastAcceptedPathLen: nav.lastAcceptedPathLen,
+            lastAcceptedProgressIdx: nav.lastAcceptedProgressIdx,
+            lastAcceptedTargetX: nav.lastAcceptedTargetX,
+            lastAcceptedTargetY: nav.lastAcceptedTargetY,
         };
     };
     const getPathOverlay = (prop) => {

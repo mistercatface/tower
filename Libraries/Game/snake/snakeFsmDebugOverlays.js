@@ -26,8 +26,9 @@ export function formatSnakeFsmDebug(snapshot) {
     const sprintText = sprint?.want ? ` | sprint:${sprint.reason}` : "";
     const phaseText = snapshot.navPhase ? ` | nav=${snapshot.navPhase}` : "";
     const commitText = snapshot.routeCommitFrames ? `:${snapshot.routeCommitFrames}` : "";
+    const routeText = snapshot.routeId ? ` | route=${snapshot.routeId}:${snapshot.lastAcceptedRouteReason ?? "?"} p${snapshot.lastAcceptedProgressIdx}/${snapshot.lastAcceptedPathLen}` : "";
     const effortText = formatEffortDebug(snapshot.decision);
-    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${phaseText}${commitText}${memoryText}${hungerText}${threatText}${sprintText}${effortText}`;
+    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${phaseText}${commitText}${routeText}${memoryText}${hungerText}${threatText}${sprintText}${effortText}`;
 }
 export function appendSnakeFsmDebugOverlayCommands(out, state, seeker, snapshot) {
     const grid = state.obstacleGrid;
