@@ -69,5 +69,5 @@ export const SNAKE_GAME_DEFAULTS = {
     /** Milliseconds without food before a snake sheds one tail segment and shrinks. */
     starvationIntervalMs: 30_000,
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
-    showSnakeFsmDebug: true,
+    showSnakeFsmDebug: false,
 };

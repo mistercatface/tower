@@ -25,6 +25,12 @@ export function killSnake(state, snakeGame, headId, members = null) {
 export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struckSegmentId, victimMembers = null) {
     return getSnakeInstance(snakeGame, victimHeadId).splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers);
 }
+function rewardPredatorForKill(state, snakeGame, predatorHeadId, preyHeadId) {
+    if (!snakeGame.registry.deadHeadIds.has(preyHeadId)) return;
+    const autosim = snakeGame.autosimsByHeadId.get(predatorHeadId);
+    if (!autosim?.onPreyKilled) return;
+    autosim.onPreyKilled(state.entityRegistry.get(preyHeadId));
+}
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
     const config = getSnakeGameConfig();
@@ -57,7 +63,9 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         const linkKey = `${victimMembers[strikeIndex]}:${victimMembers[strikeIndex + 1]}`;
         if (splitLinks.has(linkKey)) continue;
         splitLinks.add(linkKey);
+        const preyWasDead = snakeGame.registry.deadHeadIds.has(smallerHead);
         splitSnakeAtStruckSegment(state, snakeGame, smallerHead, struckSegmentId, victimMembers);
+        if (!preyWasDead) rewardPredatorForKill(state, snakeGame, largerHead, smallerHead);
     }
 }
 function restoreHunterContactDrive(hunterHead, hunterPhysId, preyHead) {

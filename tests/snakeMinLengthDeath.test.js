@@ -9,6 +9,7 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
+import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
@@ -134,6 +135,8 @@ describe("snake combat min length", () => {
             { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId },
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
         ]);
+        const predatorAutosim = createSnakeAutosim(state, { headId: predator.chain.head.id, navWalkable: state.sandbox.snakeGame.navWalkable });
+        autosimsByHeadId.set(predator.chain.head.id, predatorAutosim);
         const registry = state.sandbox.snakeGame.registry;
         const preyMembers = getOrderedChainMemberIds(state, prey.chain.head.id);
         const struckBody = state.entityRegistry.getLive(preyMembers[1]);
@@ -154,6 +157,8 @@ describe("snake combat min length", () => {
         assert.equal(autosimsByHeadId.has(prey.chain.head.id), false);
         assert.equal(registry.inertByLeadId.size, 0);
         assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 6);
+        assert.equal(predatorAutosim.flushPendingPreyFoodRewards(), true);
+        assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 7);
     });
 
     it("seek_prey contact restores hunter drive after contact impulse", () => {
