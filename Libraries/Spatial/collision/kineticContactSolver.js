@@ -198,14 +198,6 @@ function storeKineticWarmStartCache(contacts) {
         }
     }
 }
-function contactLeverArms(bodyA, bodyB, shapeA, shapeB, info) {
-    const nx = info.nx;
-    const ny = info.ny;
-    if (shapeA.type === "Circle" && shapeB.type === "Circle") return { rax: -nx * shapeA.radius, ray: -ny * shapeA.radius, rbx: nx * shapeB.radius, rby: ny * shapeB.radius };
-    const cx = info.cx ?? bodyA.x + nx * (info.overlap / 2);
-    const cy = info.cy ?? bodyA.y + ny * (info.overlap / 2);
-    return { rax: cx - bodyA.x, ray: cy - bodyA.y, rbx: cx - bodyB.x, rby: cy - bodyB.y };
-}
 function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy, rax, ray, rbx, rby, featureA = 0, featureB = 0) {
     if (contacts.count >= MAX_CONTACTS) return;
     const i = contacts.count++;
@@ -253,10 +245,11 @@ function narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, preDvx, pre
     }
     separateAlongNormal(bodyA, bodyB, info.nx, info.ny, info.overlap, massA, massB, pinnedA, pinnedB);
     syncBodyPoseToSlab(physIdA, physIdB, bodyA, bodyB);
-    const shapeA = hit.shapeA ?? bodyA.getShape();
-    const shapeB = hit.shapeB ?? bodyB.getShape();
-    const arms = contactLeverArms(bodyA, bodyB, shapeA, shapeB, info);
-    appendContact(contacts, physIdA, physIdB, tier, info.nx, info.ny, preDvx, preDvy, arms.rax, arms.ray, arms.rbx, arms.rby, info.featureA, info.featureB);
+    const points = info.points ?? [{ cx: info.cx, cy: info.cy, featureA: info.featureA ?? 0, featureB: info.featureB ?? 0 }];
+    for (let p = 0; p < points.length; p++) {
+        const pt = points[p];
+        appendContact(contacts, physIdA, physIdB, tier, info.nx, info.ny, preDvx, preDvy, pt.cx - bodyA.x, pt.cy - bodyA.y, pt.cx - bodyB.x, pt.cy - bodyB.y, pt.featureA ?? 0, pt.featureB ?? 0);
+    }
 }
 function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
     contacts.reset();

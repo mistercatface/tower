@@ -4,7 +4,7 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
+import { SatCollision, checkEntityPairCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
@@ -151,5 +151,22 @@ describe("poly-poly kinetic contact", () => {
         right.vx = 0;
         resolveKineticContactPass(createKineticTestTick([left, right]));
         assert.ok(left.vx < 35);
+    });
+    it("poly-poly crate overlap emits two manifold points", () => {
+        const left = new WorldProp(0, 0, "crate", 0);
+        const right = new WorldProp(10, 0, "crate", 0);
+        const hit = checkEntityPairCollision(left, right);
+        assert.ok(hit);
+        assert.equal(hit.info.points.length, 2);
+    });
+    it("three-crate stack settles without lateral drift", () => {
+        const bottom = new WorldProp(0, 0, "crate", 0);
+        const middle = new WorldProp(0, 12, "crate", 0);
+        const top = new WorldProp(0, 24, "crate", 0);
+        const tick = createKineticTestTick([bottom, middle, top]);
+        for (let pass = 0; pass < 10; pass++) resolveKineticContactPass(tick);
+        assert.ok(Math.abs(bottom.x) < 0.5);
+        assert.ok(Math.abs(middle.x) < 0.5);
+        assert.ok(Math.abs(top.x) < 0.5);
     });
 });

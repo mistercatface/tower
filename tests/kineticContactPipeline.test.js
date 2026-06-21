@@ -69,8 +69,9 @@ describe("kinetic contact pipeline", () => {
         assert.ok(checkEntityPairCollision(left, right));
         const tick = createKineticTestTick([left, right]);
         resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
-        assert.equal(kineticContactBuffer.count, 1);
+        assert.equal(kineticContactBuffer.count, 2);
         assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.POLY_POLY);
+        assert.equal(kineticContactBuffer.tier[1], KINETIC_PAIR_TIER.POLY_POLY);
         assert.equal(checkEntityPairCollision(left, right), null);
     });
 });
