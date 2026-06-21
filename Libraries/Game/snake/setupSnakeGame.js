@@ -53,8 +53,6 @@ export async function setupSnakeGame(state) {
             hud.update();
         },
     });
-    cameraCycler.setFocusedId(centerSnake.chain.head.id);
-    cameraCycler.bindInput();
     function resolveFocusedHeadProp() {
         return cameraCycler.getFocusedProp();
     }
@@ -93,6 +91,8 @@ export async function setupSnakeGame(state) {
         return resolveAgentName(focusedId, "Snake");
     };
     const hud = mountSnakeHud({ getFoodTimerFraction, getFsmDebugLine, onCycleCamera: () => cameraCycler.cycle(), getFocusedSnakeName });
+    cameraCycler.setFocusedId(centerSnake.chain.head.id);
+    cameraCycler.bindInput();
     hud.update();
     return {
         strikerBall,

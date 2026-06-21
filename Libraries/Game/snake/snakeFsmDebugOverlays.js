@@ -24,8 +24,9 @@ export function formatSnakeFsmDebug(snapshot) {
     const threatText = threat ? ` | threat=${threat.severity.toFixed(2)}${threat.lethal ? "!" : ""}` : "";
     const sprint = snapshot.decision?.sprintIntent;
     const sprintText = sprint?.want ? ` | sprint:${sprint.reason}` : "";
+    const phaseText = snapshot.navPhase ? ` | nav=${snapshot.navPhase}` : "";
     const effortText = formatEffortDebug(snapshot.decision);
-    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${memoryText}${hungerText}${threatText}${sprintText}${effortText}`;
+    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${phaseText}${memoryText}${hungerText}${threatText}${sprintText}${effortText}`;
 }
 export function appendSnakeFsmDebugOverlayCommands(out, state, seeker, snapshot) {
     const grid = state.obstacleGrid;

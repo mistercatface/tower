@@ -5,6 +5,7 @@ import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { createCellTargetHpaNav } from "../Libraries/Sandbox/groundNav/cellTargetHpaNav.js";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { writeNavFloorCell } from "../Libraries/Spatial/grid/navGridMutations.js";
+import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { FLOOR_CELL_KIND, floorBeltFacingFromIndex } from "../Libraries/Spatial/grid/FloorCell.js";
 import { FRAME_MS } from "./frameMs.js";
 loadPropAssets();
@@ -78,6 +79,53 @@ describe("cellTargetHpaNav", () => {
         assert.equal(dest.lockOnTarget, true);
         assert.equal(dest.col, 2);
         assert.equal(dest.row, 3);
+    });
+    it("terminal-homes locked visible targets without requesting an HPA route", () => {
+        const state = createNavTestState();
+        const nav = createCellTargetHpaNav(state);
+        const grid = state.obstacleGrid;
+        const seeker = testSeeker();
+        const target = grid.gridToWorld(7, 5);
+        seeker.x = target.x - 10;
+        seeker.y = target.y;
+        nav.setDestination(grid, 7, 5, {
+            world: target,
+            exactArrival: true,
+            arrivalRadius: 6,
+            lockOnTarget: true,
+            terminalHoming: { enabled: true, minHoldTicks: 0 },
+        });
+
+        nav.tick(seeker, FRAME_MS);
+
+        assert.equal(state.replanCalls, 0);
+        assert.equal(nav.getStatus().navPhase, "terminal_homing");
+        assert.ok(seeker._groundRollDrive);
+        assert.ok(seeker._groundRollDrive.dirX > 0);
+    });
+    it("does not terminal-home locked targets through walls", () => {
+        const state = createNavTestState();
+        const nav = createCellTargetHpaNav(state);
+        const grid = state.obstacleGrid;
+        const seeker = testSeeker();
+        const start = grid.gridToWorld(4, 5);
+        const target = grid.gridToWorld(6, 5);
+        seeker.x = start.x;
+        seeker.y = start.y;
+        grid.grid[colRowToIndex(5, 5, grid.cols)] = 1;
+        nav.setDestination(grid, 6, 5, {
+            world: target,
+            exactArrival: true,
+            arrivalRadius: 6,
+            lockOnTarget: true,
+            terminalHoming: { enabled: true, handoffRadius: 64, minHoldTicks: 0 },
+        });
+
+        nav.tick(seeker, FRAME_MS);
+
+        assert.notEqual(nav.getStatus().navPhase, "terminal_homing");
+        assert.equal(nav.getStatus().targetLos, false);
+        assert.ok(state.replanCalls >= 1);
     });
     it("gives up after frames without a route and stops replan spam", () => {
         const state = createNavTestState();

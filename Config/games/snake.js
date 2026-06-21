@@ -65,6 +65,8 @@ export const SNAKE_GAME_DEFAULTS = {
     lethalThreatRange: 48,
     /** Short-term intent memory after LOS loss, in FSM ticks. */
     intentMemory: { threatTtlTicks: 45, preyTtlTicks: 90, foodTtlTicks: 180 },
+    /** Locked seek targets switch from HPA pathing to direct steering once close and visible. */
+    terminalHoming: { enabled: true, handoffRadius: null, requireWorldLos: true, minHoldTicks: 6 },
     /**
      * Metabolism — hunger and size are two separate meters.
      * hungerDrainMs: time to drain the hunger bar from full (1) to empty (0) at normal speed.

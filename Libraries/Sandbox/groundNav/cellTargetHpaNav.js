@@ -7,6 +7,7 @@ import { buildHpaGroundNavPathSettings, driveGroundNav, groundNavArrivedAtTarget
 import { decelerateRoll, getKineticRollConfig, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
+import { hasLineOfSight } from "../../Spatial/query/lineOfSight.js";
 export function cellTargetHasArrivedAtDestCell(grid, col, row, destCol, destRow) {
     if (isFloorBeltCell(grid, destCol, destRow)) return col === destCol && row === destRow;
     return cellChebyshevDistance(col, row, destCol, destRow) <= 1;
@@ -47,6 +48,7 @@ export function createCellTargetLocomotion(headNav) {
                 exactArrival: true,
                 arrivalRadius: options.arrivalRadius,
                 lockOnTarget: options.lockOnTarget === true,
+                terminalHoming: options.terminalHoming,
             });
         },
         setFlee(agent, state, cell) {
@@ -89,6 +91,12 @@ export function createCellTargetHpaNav(state) {
     let destWorld = null;
     let arrivalRadius = null;
     let lockOnTarget = false;
+    let terminalHoming = null;
+    let terminalHomingHoldTicks = 0;
+    let navPhase = "idle";
+    let lastReplanReason = null;
+    let lastTargetDistance = null;
+    let lastTargetLos = null;
     let wasOnBelt = false;
     let strandedFrames = 0;
     const beltHandoffCooldown = { frames: 0 };
@@ -105,6 +113,12 @@ export function createCellTargetHpaNav(state) {
         destWorld = null;
         arrivalRadius = null;
         lockOnTarget = false;
+        terminalHoming = null;
+        terminalHomingHoldTicks = 0;
+        navPhase = "idle";
+        lastReplanReason = null;
+        lastTargetDistance = null;
+        lastTargetLos = null;
         exactArrival = false;
         resetSession();
     };
@@ -119,6 +133,8 @@ export function createCellTargetHpaNav(state) {
         exactArrival = nextExactArrival;
         arrivalRadius = options.arrivalRadius ?? null;
         lockOnTarget = options.lockOnTarget === true;
+        terminalHoming = options.terminalHoming ?? null;
+        terminalHomingHoldTicks = 0;
         if (changed) {
             strandedFrames = 0;
             hpaNav.markTargetChanged();
@@ -134,9 +150,41 @@ export function createCellTargetHpaNav(state) {
         if (!destWorld) return;
         hpaNav.replan(prop, destWorld.x, destWorld.y, state, REPLAN_PRIORITY_TARGET);
     };
+    const steerDirectToTarget = (prop, config) => {
+        const dx = destWorld.x - prop.x;
+        const dy = destWorld.y - prop.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0) steerRollToward(prop, dx / dist, dy / dist, config, state);
+    };
+    const terminalHomingEnabled = () => terminalHoming?.enabled === true;
+    const terminalHomingHandoffRadius = (grid, config) => {
+        if (terminalHoming.handoffRadius != null) return terminalHoming.handoffRadius;
+        return Math.max(arrivalRadius ?? 0, config.stopRadius, grid.cellSize * 1.5);
+    };
+    const shouldTerminalHome = (prop, grid, config) => {
+        lastTargetDistance = Math.hypot(destWorld.x - prop.x, destWorld.y - prop.y);
+        const handoffRadius = terminalHomingHandoffRadius(grid, config);
+        const withinHandoff = lastTargetDistance <= handoffRadius;
+        const requireWorldLos = terminalHoming.requireWorldLos !== false;
+        lastTargetLos = requireWorldLos ? hasLineOfSight(prop.x, prop.y, destWorld.x, destWorld.y, grid, prop.radius ?? 0, terminalHoming.targetRadius ?? 0) : true;
+        if (withinHandoff && lastTargetLos) {
+            terminalHomingHoldTicks = terminalHoming.minHoldTicks ?? 0;
+            return true;
+        }
+        if (terminalHomingHoldTicks > 0 && lastTargetLos) {
+            terminalHomingHoldTicks--;
+            return true;
+        }
+        terminalHomingHoldTicks = 0;
+        return false;
+    };
     /** @param {number} dtMs */
     const tick = (prop, dtMs) => {
         if (destCol == null || !destWorld) return;
+        navPhase = "hpa";
+        lastReplanReason = null;
+        lastTargetDistance = null;
+        lastTargetLos = null;
         const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
         const grid = state.obstacleGrid;
         const arrived = exactArrival
@@ -149,8 +197,9 @@ export function createCellTargetHpaNav(state) {
         }
         const onBelt = isEntityOnFloorBelt(grid, prop.x, prop.y);
         if (onBelt) {
+            navPhase = "hpa";
             strandedFrames = 0;
-            const { beltWasOnBelt } = driveGroundNav({
+            const { replanReason, beltWasOnBelt } = driveGroundNav({
                 prop,
                 targetWorld: destWorld,
                 targetCellCol: destCol,
@@ -162,7 +211,14 @@ export function createCellTargetHpaNav(state) {
                 dtMs: dtMs,
                 pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
             });
+            lastReplanReason = replanReason;
             wasOnBelt = beltWasOnBelt;
+            return;
+        }
+        if (lockOnTarget && exactArrival && terminalHomingEnabled() && shouldTerminalHome(prop, grid, config)) {
+            navPhase = "terminal_homing";
+            strandedFrames = 0;
+            steerDirectToTarget(prop, config);
             return;
         }
         const status = getStatus();
@@ -176,10 +232,11 @@ export function createCellTargetHpaNav(state) {
         }
         const allowNavUpdate = status.hasRoute || status.replanPending || strandedFrames <= 1;
         if (!allowNavUpdate) {
+            navPhase = "stranded";
             decelerateRoll(prop, config, state);
             return;
         }
-        const { vx, vy, steering, beltWasOnBelt } = driveGroundNav({
+        const { vx, vy, steering, replanReason, beltWasOnBelt } = driveGroundNav({
             prop,
             targetWorld: destWorld,
             targetCellCol: destCol,
@@ -191,24 +248,19 @@ export function createCellTargetHpaNav(state) {
             dtMs: dtMs,
             pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
         });
+        lastReplanReason = replanReason;
         wasOnBelt = beltWasOnBelt;
         if (!steering && lockOnTarget) {
-            const dx = destWorld.x - prop.x;
-            const dy = destWorld.y - prop.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > 0) steerRollToward(prop, dx / dist, dy / dist, config, state);
+            navPhase = "direct_locked";
+            steerDirectToTarget(prop, config);
             return;
         }
         if (!steering) return;
         if (vx === 0 && vy === 0) {
             if (lockOnTarget) {
-                const dx = destWorld.x - prop.x;
-                const dy = destWorld.y - prop.y;
-                const dist = Math.hypot(dx, dy);
-                if (dist > 0) {
-                    steerRollToward(prop, dx / dist, dy / dist, config, state);
-                    return;
-                }
+                navPhase = "direct_locked";
+                steerDirectToTarget(prop, config);
+                return;
             }
             decelerateRoll(prop, config, state);
             return;
@@ -217,7 +269,19 @@ export function createCellTargetHpaNav(state) {
     };
     const getStatus = () => {
         const nav = hpaNav.navState;
-        return { hasDest: destCol != null, destCol, destRow, hasRoute: navHasPath(nav), replanPending: hpaNav.isRoutePending(), stuckFrames: nav.stuckFrames, pathLen: nav.pathLen };
+        return {
+            hasDest: destCol != null,
+            destCol,
+            destRow,
+            hasRoute: navHasPath(nav),
+            replanPending: hpaNav.isRoutePending(),
+            stuckFrames: nav.stuckFrames,
+            pathLen: nav.pathLen,
+            navPhase,
+            lastReplanReason,
+            targetDistance: lastTargetDistance,
+            targetLos: lastTargetLos,
+        };
     };
     const getPathOverlay = (prop) => {
         if (destCol == null || !destWorld) return null;
