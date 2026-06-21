@@ -8,6 +8,8 @@ export const SNAKE_GAME_DEFAULTS = {
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,
+    bodyPressureNudgeWeight: 0.5,
+    bodyPressureSpeedDamp: 2.0,
     eatMargin: 2,
     foodPickupRadius: 2,
     growDirX: -1,

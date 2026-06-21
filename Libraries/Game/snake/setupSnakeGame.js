@@ -139,6 +139,10 @@ export async function setupSnakeGame(state) {
             fractureRetiredSnakeSegmentsFromContacts(state, tick.frame, contacts);
             syncAliveSnakeInstances(state, state.sandbox.snakeGame);
         },
+        afterKineticPhysics() {
+            const snakeGame = state.sandbox.snakeGame;
+            if (snakeGame) for (const instance of snakeGame.instancesByHeadId.values()) instance.updatePressureDiagnostics(state);
+        },
         stop() {
             cameraCycler.destroy();
             for (const autosim of autosimsByHeadId.values()) autosim.stop();

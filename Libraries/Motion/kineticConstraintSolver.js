@@ -7,7 +7,7 @@ import { applyPositionCorrection } from "../Spatial/collision/penetration.js";
 import { ensureKineticIslandPlan } from "./kineticIslands.js";
 import { wakeKineticBody } from "./kineticSleep.js";
 import { kineticBodySlab, writeKinematicBodySlabSlot, writebackKineticBodySlabPhysIds, separateAlongNormalSlab } from "../Spatial/collision/kineticBodySlab.js";
-const LINK_CAPSULE_WALL_PASSES = 2;
+const LINK_CAPSULE_WALL_PASSES = 4;
 /** Reused per-island wall candidate list — cleared at the start of each awake island. */
 const islandLinkWallCandidates = [];
 /** Segment identity set paired with islandLinkWallCandidates for O(1) dedup during gather. */
@@ -120,7 +120,7 @@ function circleRadiusFromBody(body) {
     return body.radius;
 }
 function linkCapsuleRadius(bodyA, bodyB) {
-    return Math.max(circleRadiusFromBody(bodyA), circleRadiusFromBody(bodyB));
+    return Math.max(circleRadiusFromBody(bodyA), circleRadiusFromBody(bodyB)) + 0.05;
 }
 function appendConstraintEntry(slab, item) {
     const idx = slab.count++;
@@ -309,6 +309,12 @@ function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy
             if (!best || penetration.overlap > best.overlap) best = penetration;
         }
         if (!best) break;
+        const approachDot = approachX * best.normalX + approachY * best.normalY;
+        const hit = { approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, isLinkCapsule: true };
+        if (!bodyA._linkWallHits) bodyA._linkWallHits = [];
+        if (!bodyB._linkWallHits) bodyB._linkWallHits = [];
+        bodyA._linkWallHits.push(hit);
+        bodyB._linkWallHits.push(hit);
         translateLinkAwayFromWall(bodyA, bodyB, best.normalX, best.normalY, best.overlap, pinnedA, pinnedB);
         wakeKineticBody(bodyA);
         wakeKineticBody(bodyB);
@@ -322,32 +328,38 @@ function projectIslandLinkCapsulesAgainstWalls(tick) {
     const islandWalls = islandLinkWallCandidates;
     const linkWalls = linkFilteredWallCandidates;
     const gatherMark = spatialFrame.frameId;
+    for (let i = 0; i < slab.activeCount; i++) {
+        if (slab.bodyA[i]) slab.bodyA[i]._linkWallHits = null;
+        if (slab.bodyB[i]) slab.bodyB[i]._linkWallHits = null;
+    }
     let currentGroupStart = 0;
     for (let g = 0; g < slab.groupCount; g++) {
         const count = slab.groupCounts[g];
         const start = currentGroupStart;
         currentGroupStart += count;
-        if (start >= slab.activeCount) continue;
+        if (start >= slab.activeCount) break;
         gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gatherMark, islandWalls);
         if (!islandWalls.length) continue;
-        for (let i = start; i < start + count; i++) {
-            const bodyA = slab.bodyA[i];
-            const bodyB = slab.bodyB[i];
-            if (!shouldProjectLinkCapsuleAgainstWalls(bodyA, bodyB, slab.anchorAx[i], slab.anchorAy[i], slab.anchorBx[i], slab.anchorBy[i], slab.capsuleRadius[i], islandWalls, linkWalls)) continue;
-            projectDistanceLinkCapsuleAgainstWalls(
-                bodyA,
-                bodyB,
-                slab.anchorAx[i],
-                slab.anchorAy[i],
-                slab.anchorBx[i],
-                slab.anchorBy[i],
-                linkWalls,
-                spatialFrame,
-                slab.pinnedA[i],
-                slab.pinnedB[i],
-                slab.capsuleRadius[i],
-            );
-        }
+        for (let pass = 0; pass < 2; pass++)
+            for (let i = start; i < start + count; i++) {
+                const bodyA = slab.bodyA[i];
+                const bodyB = slab.bodyB[i];
+                if (!shouldProjectLinkCapsuleAgainstWalls(bodyA, bodyB, slab.anchorAx[i], slab.anchorAy[i], slab.anchorBx[i], slab.anchorBy[i], slab.capsuleRadius[i], islandWalls, linkWalls))
+                    continue;
+                projectDistanceLinkCapsuleAgainstWalls(
+                    bodyA,
+                    bodyB,
+                    slab.anchorAx[i],
+                    slab.anchorAy[i],
+                    slab.anchorBx[i],
+                    slab.anchorBy[i],
+                    linkWalls,
+                    spatialFrame,
+                    slab.pinnedA[i],
+                    slab.pinnedB[i],
+                    slab.capsuleRadius[i],
+                );
+            }
     }
 }
 function projectDistanceConstraint(slab, index) {
@@ -401,7 +413,8 @@ function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias
 }
 function projectKineticConstraintSlab() {
     const slab = kineticConstraintSlab;
-    for (let i = 0; i < slab.activeCount; i++) projectDistanceConstraint(slab, i);
+    for (let i = 0; i < slab.activeCount; i += 2) projectDistanceConstraint(slab, i);
+    for (let i = 1; i < slab.activeCount; i += 2) projectDistanceConstraint(slab, i);
 }
 function warmStartKineticConstraintSlab() {
     const slab = kineticConstraintSlab;
@@ -468,7 +481,11 @@ function solveKineticConstraintSlab(tick) {
     warmStartKineticConstraintSlab();
     for (let iter = 0; iter < constraintSettings.iterations; iter++) {
         let maxImpulse = 0;
-        for (let i = 0; i < slab.activeCount; i++) {
+        for (let i = 0; i < slab.activeCount; i += 2) {
+            const impulse = solveDistanceConstraintVelocity(slab, i, spatialFrame, constraintSettings.velocityBias);
+            if (impulse > maxImpulse) maxImpulse = impulse;
+        }
+        for (let i = 1; i < slab.activeCount; i += 2) {
             const impulse = solveDistanceConstraintVelocity(slab, i, spatialFrame, constraintSettings.velocityBias);
             if (impulse > maxImpulse) maxImpulse = impulse;
         }

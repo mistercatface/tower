@@ -14,6 +14,10 @@ export class SnakeInstance {
         this.lifecycle = lifecycle;
         this.memberIds = memberIds;
         this.steeringEpoch = 0;
+        this.segmentWallPressures = new Map();
+        this.accumulatedPressure = 0;
+        this.peakPressure = 0;
+        this.isHeadRouteValid = false;
     }
     start(state) {
         grantSnakeSteeringLease(this, state);
@@ -41,6 +45,80 @@ export class SnakeInstance {
     syncMembersFromGraph(state) {
         this.memberIds = getConnectedComponentPath(state.kinetic, this.headId);
         return this.memberIds;
+    }
+    updatePressureDiagnostics(state) {
+        if (this.lifecycle !== "alive") {
+            this.segmentWallPressures.clear();
+            this.accumulatedPressure = 0;
+            this.peakPressure = 0;
+            this.isHeadRouteValid = false;
+            return;
+        }
+        const head = state.entityRegistry.getLive(this.headId);
+        if (head && head.isSleeping) {
+            let hasActive = false;
+            for (const [segmentId, record] of this.segmentWallPressures.entries()) {
+                record.pressure *= 0.8;
+                record.frameCount = 0;
+                if (record.pressure < 0.01) this.segmentWallPressures.delete(segmentId);
+                else hasActive = true;
+            }
+            if (!hasActive) {
+                this.accumulatedPressure = 0;
+                this.peakPressure = 0;
+            } else {
+                let totalPressure = 0;
+                let peakPressure = 0;
+                for (const record of this.segmentWallPressures.values()) {
+                    totalPressure += record.pressure;
+                    if (record.pressure > peakPressure) peakPressure = record.pressure;
+                }
+                this.accumulatedPressure = totalPressure;
+                this.peakPressure = peakPressure;
+            }
+            this.isHeadRouteValid = false;
+            return;
+        }
+        const members = this.syncMembersFromGraph(state);
+        const activeIds = new Set(members);
+        for (const segmentId of this.segmentWallPressures.keys()) if (!activeIds.has(segmentId)) this.segmentWallPressures.delete(segmentId);
+        for (let i = 0; i < members.length; i++) {
+            const segmentId = members[i];
+            const prop = state.entityRegistry.getLive(segmentId);
+            if (!prop) continue;
+            const bodyWallHits = prop._wallResolveHits ?? [];
+            const linkWallHits = prop._linkWallHits ?? [];
+            const allHits = [...bodyWallHits, ...linkWallHits];
+            let record = this.segmentWallPressures.get(segmentId);
+            if (allHits.length > 0) {
+                let worstHit = allHits[0];
+                for (let j = 1; j < allHits.length; j++) if ((allHits[j].overlap ?? 0) > (worstHit.overlap ?? 0)) worstHit = allHits[j];
+                if (!record) {
+                    record = { segmentId, normalX: worstHit.normalX, normalY: worstHit.normalY, pressure: 0, frameCount: 0, peakOverlap: 0 };
+                    this.segmentWallPressures.set(segmentId, record);
+                }
+                record.normalX = worstHit.normalX;
+                record.normalY = worstHit.normalY;
+                const overlap = worstHit.overlap ?? 1.0;
+                record.pressure = record.pressure * 0.9 + overlap;
+                record.frameCount = (record.frameCount ?? 0) + 1;
+                record.peakOverlap = Math.max(record.peakOverlap ?? 0, overlap);
+            } else if (record) {
+                record.pressure *= 0.8;
+                record.frameCount = 0;
+                if (record.pressure < 0.01) this.segmentWallPressures.delete(segmentId);
+            }
+        }
+        let totalPressure = 0;
+        let peakPressure = 0;
+        for (const record of this.segmentWallPressures.values()) {
+            totalPressure += record.pressure;
+            if (record.pressure > peakPressure) peakPressure = record.pressure;
+        }
+        this.accumulatedPressure = totalPressure;
+        this.peakPressure = peakPressure;
+        this.isHeadRouteValid = false;
+        if (this.autosim && this.autosim.isActive()) this.isHeadRouteValid = this.autosim.getPathOverlay() != null;
     }
     retireMemberSegments(state, memberIds) {
         retireSnakeSegmentsFromNav(state, memberIds);
