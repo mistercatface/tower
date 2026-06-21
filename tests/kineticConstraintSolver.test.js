@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { addDistanceConstraint, pruneKineticConstraintsForBody, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { distanceBetweenAnchors } from "../Libraries/Motion/constraintAnchors.js";
-import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
+import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab, kineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
@@ -64,5 +64,20 @@ describe("kinetic constraint solver", () => {
         assert.equal(tick.world.kinetic.kineticConstraints.length, 1);
         pruneKineticConstraintsForBody(tick.world.kinetic, bodyB.id);
         assert.equal(tick.world.kinetic.kineticConstraints.length, 0);
+    });
+    it("partitions sleeping link islands out of activeCount", () => {
+        resetKineticConstraintIds(1);
+        const asleepA = mockCircleBody(0, 0, 10);
+        const asleepB = mockCircleBody(20, 0, 10);
+        const awakeA = mockCircleBody(0, 40, 10, 10, 0);
+        const awakeB = mockCircleBody(20, 40, 10);
+        asleepA.isSleeping = true;
+        asleepB.isSleeping = true;
+        const tick = createKineticTestTick([asleepA, asleepB, awakeA, awakeB]);
+        addDistanceConstraint(tick.world.kinetic, { bodyA: asleepA, bodyB: asleepB, restLength: 20 });
+        addDistanceConstraint(tick.world.kinetic, { bodyA: awakeA, bodyB: awakeB, restLength: 20 });
+        gatherKineticConstraintSlab(tick);
+        assert.equal(kineticConstraintSlab.count, 2);
+        assert.equal(kineticConstraintSlab.activeCount, 1);
     });
 });

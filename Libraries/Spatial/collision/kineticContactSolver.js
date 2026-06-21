@@ -4,7 +4,7 @@ import { bodyPinnedForContact, massFromBody } from "../../Motion/bodyMass.js";
 import { gatherKineticCandidatePairs, kineticPairBodiesAt, kineticPairBodyAt, kineticPairBuffer, refreshKineticPairRelativeVelocities } from "./kineticPairStream.js";
 import { stampKineticPairGatherTopology } from "../../Motion/kineticTopology.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
-import { kineticBodySlab, writebackKineticBodySlabPhysIds } from "./kineticBodySlab.js";
+import { kineticBodySlab, writebackKineticBodySlabPhysIds, separateAlongNormalSlab, separateCoincidentCircleSlab } from "./kineticBodySlab.js";
 import { separateAlongNormal, separateCoincidentCirclePair, COINCIDENT_CIRCLE_EPS } from "./penetration.js";
 import { checkEntityPairCollision } from "./SatCollision.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
@@ -66,48 +66,6 @@ export function circleCircleContactSlab(physIdA, physIdB) {
     const nx = dx / dist;
     const ny = dy / dist;
     return { overlap, nx, ny, coincident: false };
-}
-function separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap) {
-    const slab = kineticBodySlab;
-    const pinnedA = slab.pinned[physIdA];
-    const pinnedB = slab.pinned[physIdB];
-    if (pinnedA && pinnedB) return;
-    if (pinnedA) {
-        slab.x[physIdB] += nx * overlap;
-        slab.y[physIdB] += ny * overlap;
-        return;
-    }
-    if (pinnedB) {
-        slab.x[physIdA] -= nx * overlap;
-        slab.y[physIdA] -= ny * overlap;
-        return;
-    }
-    const massA = slab.mass[physIdA];
-    const massB = slab.mass[physIdB];
-    const totalMass = massA + massB;
-    slab.x[physIdA] -= nx * overlap * (massB / totalMass);
-    slab.y[physIdA] -= ny * overlap * (massB / totalMass);
-    slab.x[physIdB] += nx * overlap * (massA / totalMass);
-    slab.y[physIdB] += ny * overlap * (massA / totalMass);
-}
-function separateCoincidentCircleSlab(physIdA, physIdB, overlap) {
-    const slab = kineticBodySlab;
-    const pinnedA = slab.pinned[physIdA];
-    const pinnedB = slab.pinned[physIdB];
-    if (pinnedA && pinnedB) return;
-    if (pinnedA) {
-        slab.x[physIdB] += overlap;
-        return;
-    }
-    if (pinnedB) {
-        slab.x[physIdA] -= overlap;
-        return;
-    }
-    const massA = slab.mass[physIdA];
-    const massB = slab.mass[physIdB];
-    const totalMass = massA + massB;
-    slab.x[physIdA] -= overlap * (massB / totalMass);
-    slab.x[physIdB] += overlap * (massA / totalMass);
 }
 function syncBodyPoseToSlab(physIdA, physIdB, bodyA, bodyB) {
     const slab = kineticBodySlab;

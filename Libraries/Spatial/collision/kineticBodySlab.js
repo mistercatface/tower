@@ -49,6 +49,48 @@ export function writeKinematicBodySlabSlot(body) {
     slab.invI[physId] = moment ? 1 / moment : 0;
     slab.pinned[physId] = bodyPinnedForContact(body) ? 1 : 0;
 }
+export function separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap) {
+    const slab = kineticBodySlab;
+    const pinnedA = slab.pinned[physIdA];
+    const pinnedB = slab.pinned[physIdB];
+    if (pinnedA && pinnedB) return;
+    if (pinnedA) {
+        slab.x[physIdB] += nx * overlap;
+        slab.y[physIdB] += ny * overlap;
+        return;
+    }
+    if (pinnedB) {
+        slab.x[physIdA] -= nx * overlap;
+        slab.y[physIdA] -= ny * overlap;
+        return;
+    }
+    const massA = slab.mass[physIdA];
+    const massB = slab.mass[physIdB];
+    const totalMass = massA + massB;
+    slab.x[physIdA] -= nx * overlap * (massB / totalMass);
+    slab.y[physIdA] -= ny * overlap * (massB / totalMass);
+    slab.x[physIdB] += nx * overlap * (massA / totalMass);
+    slab.y[physIdB] += ny * overlap * (massA / totalMass);
+}
+export function separateCoincidentCircleSlab(physIdA, physIdB, overlap) {
+    const slab = kineticBodySlab;
+    const pinnedA = slab.pinned[physIdA];
+    const pinnedB = slab.pinned[physIdB];
+    if (pinnedA && pinnedB) return;
+    if (pinnedA) {
+        slab.x[physIdB] += overlap;
+        return;
+    }
+    if (pinnedB) {
+        slab.x[physIdA] -= overlap;
+        return;
+    }
+    const massA = slab.mass[physIdA];
+    const massB = slab.mass[physIdB];
+    const totalMass = massA + massB;
+    slab.x[physIdA] -= overlap * (massB / totalMass);
+    slab.x[physIdB] += overlap * (massA / totalMass);
+}
 function invalidateBodyBroadphase(body) {
     if (body.broadphaseSnapshot) body.broadphaseSnapshot.x = NaN;
 }

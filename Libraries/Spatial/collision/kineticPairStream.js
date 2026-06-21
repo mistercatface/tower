@@ -59,6 +59,7 @@ export function kineticPairBodiesAt(spatialFrame, physIdA, physIdB) {
 }
 export function gatherKineticCandidatePairs(spatialFrame, pairs) {
     pairs.reset();
+    const slab = kineticBodySlab;
     const active = spatialFrame._activeKineticBodies;
     for (let i = 0; i < active.length; i++) {
         const primary = active[i];
@@ -76,8 +77,8 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             const idx = pairs.count++;
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
-            pairs.preDvx[idx] = (neighbor.vx ?? 0) - (primary.vx ?? 0);
-            pairs.preDvy[idx] = (neighbor.vy ?? 0) - (primary.vy ?? 0);
+            pairs.preDvx[idx] = slab.vx[physIdB] - slab.vx[physIdA];
+            pairs.preDvy[idx] = slab.vy[physIdB] - slab.vy[physIdA];
             pairs.tier[idx] = tier;
         }
     }
