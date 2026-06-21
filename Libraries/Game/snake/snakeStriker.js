@@ -10,6 +10,7 @@ import { DRAG_LAUNCH_WAIT_BEHAVIOR_ID } from "../../Sandbox/dragLaunch.js";
 import { setCirclePropRadius } from "../../Props/propScale.js";
 import { stampPropVisualOverride } from "../../Color/visualOverride.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
+import { snakeDeathImpactFromContact } from "./snakeCombat.js";
 const STRIKER_BEHAVIOR_OVERRIDES = { inputGates: { [DRAG_LAUNCH_WAIT_BEHAVIOR_ID]: [{ scope: "self", until: "atRest" }] } };
 export function spawnSnakeStriker(state, anchorProp) {
     const config = getSnakeGameConfig();
@@ -55,6 +56,7 @@ export function resolveStrikerBallSnakeSplitsFromContacts(state, spatialFrame, c
         const linkKey = `${victim.members[strikeIndex]}:${victim.members[strikeIndex + 1]}`;
         if (splitLinks.has(linkKey)) continue;
         splitLinks.add(linkKey);
-        splitSnakeAtStruckSegment(state, snakeGame, victim.victimHeadId, snakeBody.id, victim.members);
+        const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, snakeBody.id, snakeBody, relSpeed);
+        splitSnakeAtStruckSegment(state, snakeGame, victim.victimHeadId, snakeBody.id, victim.members, deathImpact);
     }
 }

@@ -4,6 +4,7 @@ import { getSnakeSizeScore } from "./snakeScale.js";
 import { getSnakeInstance, buildSnakeMemberToInstanceMap } from "./SnakeInstance.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { kineticBodySlab } from "../../Spatial/collision/kineticBodySlab.js";
+import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
 function snakeSegmentCount(state, headId, members = null) {
     return (members || getConnectedComponentPath(state.kinetic, headId)).length;
 }
@@ -19,17 +20,41 @@ export function enforceSnakeMinLength(state, snakeGame, headId, members = null) 
     killSnake(state, snakeGame, headId, members);
     return true;
 }
-export function killSnake(state, snakeGame, headId, members = null) {
-    getSnakeInstance(snakeGame, headId).die(state, snakeGame, members);
+export function killSnake(state, snakeGame, headId, members = null, deathImpact = null) {
+    const instance = getSnakeInstance(snakeGame, headId);
+    if (!instance) return null;
+    instance.die(state, snakeGame, members, deathImpact);
+    return instance;
 }
-export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struckSegmentId, victimMembers = null) {
-    return getSnakeInstance(snakeGame, victimHeadId).splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers);
+export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struckSegmentId, victimMembers = null, deathImpact = null) {
+    const instance = getSnakeInstance(snakeGame, victimHeadId);
+    if (!instance) return null;
+    return instance.splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers, deathImpact);
 }
-function rewardPredatorForKill(state, snakeGame, predatorHeadId, preyHeadId) {
+function contactWorldPointForBody(spatialFrame, contacts, i, targetBody) {
+    const physIdA = contacts.physIdA[i];
+    const physIdB = contacts.physIdB[i];
+    const nx = contacts.nx[i];
+    const ny = contacts.ny[i];
+    if (contacts.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
+        if (targetBody._physId === physIdB) return { x: kineticBodySlab.x[physIdB] + nx * kineticBodySlab.r[physIdB], y: kineticBodySlab.y[physIdB] + ny * kineticBodySlab.r[physIdB] };
+        return { x: kineticBodySlab.x[physIdA] - nx * kineticBodySlab.r[physIdA], y: kineticBodySlab.y[physIdA] - ny * kineticBodySlab.r[physIdA] };
+    }
+    if (targetBody._physId === physIdB) return { x: kineticBodySlab.x[physIdB] + contacts.rbx[i], y: kineticBodySlab.y[physIdB] + contacts.rby[i] };
+    return { x: kineticBodySlab.x[physIdA] + contacts.rax[i], y: kineticBodySlab.y[physIdA] + contacts.ray[i] };
+}
+export function snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId, struckBody, impactForce = null) {
+    const hit = contactWorldPointForBody(spatialFrame, contacts, i, struckBody);
+    return { worldX: hit.x, worldY: hit.y, impactForce: impactForce ?? Math.hypot(contacts.preDvx[i], contacts.preDvy[i]), struckSegmentId, spatialFrame };
+}
+function rewardPredatorForKill(state, snakeGame, predatorHeadId, preyHeadId, preyHeadProp = null) {
     if (!snakeGame.registry.deadHeadIds.has(preyHeadId)) return;
     const autosim = snakeGame.autosimsByHeadId.get(predatorHeadId);
     if (!autosim?.onPreyKilled) return;
-    autosim.onPreyKilled(state.entityRegistry.get(preyHeadId));
+    const { foodValue, growthCost } = getSnakeGameConfig().metabolism;
+    const rewardCount = Math.max(1, Math.ceil(growthCost / Math.max(foodValue, 1e-6)));
+    const preyHead = preyHeadProp ?? state.entityRegistry.get(preyHeadId);
+    for (let i = 0; i < rewardCount; i++) autosim.onPreyKilled(preyHead);
 }
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
@@ -64,8 +89,10 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         if (splitLinks.has(linkKey)) continue;
         splitLinks.add(linkKey);
         const preyWasDead = snakeGame.registry.deadHeadIds.has(smallerHead);
-        splitSnakeAtStruckSegment(state, snakeGame, smallerHead, struckSegmentId, victimMembers);
-        if (!preyWasDead) rewardPredatorForKill(state, snakeGame, largerHead, smallerHead);
+        const preyHeadProp = state.entityRegistry.get(smallerHead);
+        const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId, smallerBody, relSpeed);
+        splitSnakeAtStruckSegment(state, snakeGame, smallerHead, struckSegmentId, victimMembers, deathImpact);
+        if (!preyWasDead) rewardPredatorForKill(state, snakeGame, largerHead, smallerHead, preyHeadProp);
     }
 }
 function restoreHunterContactDrive(hunterHead, hunterPhysId, preyHead) {

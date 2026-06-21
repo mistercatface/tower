@@ -5,6 +5,7 @@ import { createSnakeAutosim } from "./snakeAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease, clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { registerAliveSnake, registerInertSnake, markSnakeDead, retireSnakeSegmentsFromNav, purgeInertSnakesForHead } from "./snakeLifecycle.js";
+import { shatterSnakeSegments } from "./snakeSegmentFracture.js";
 export class SnakeInstance {
     constructor({ headId, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
         this.headId = headId;
@@ -62,13 +63,14 @@ export class SnakeInstance {
         this.retireMemberSegments(state, tailIds);
         registerInertSnake(snakeGame.registry, tailIds[0], tailIds, this.headId);
     }
-    die(state, snakeGame, members = null) {
+    die(state, snakeGame, members = null, deathImpact = null) {
         this.lifecycle = "dead";
         this.stopSteering(state);
         snakeGame.autosimsByHeadId.delete(this.headId);
         const connectedMembers = members ?? getConnectedComponentPath(state.kinetic, this.headId);
         const resolvedMembers = this.retireAllSegments(state, snakeGame, connectedMembers);
         clearChainLinksForMembers(state, resolvedMembers);
+        shatterSnakeSegments(state, deathImpact?.spatialFrame ?? null, resolvedMembers, deathImpact);
         purgeInertSnakesForHead(snakeGame.registry, this.headId);
         markSnakeDead(snakeGame.registry, this.headId);
         snakeGame.instancesByHeadId.delete(this.headId);
@@ -76,7 +78,7 @@ export class SnakeInstance {
         if (head) clearSnakeSteeringLeaseFromProp(head);
         if (snakeGame.onHeadDied) snakeGame.onHeadDied(this.headId);
     }
-    splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers = null) {
+    splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers = null, deathImpact = null) {
         const members = victimMembers ?? getConnectedComponentPath(state.kinetic, this.headId);
         const strikeIndex = members.indexOf(struckSegmentId);
         if (strikeIndex < 0 || strikeIndex >= members.length - 1) return null;
@@ -87,7 +89,7 @@ export class SnakeInstance {
         const tailIds = members.slice(strikeIndex + 1);
         this.severInertTail(state, snakeGame, tailIds);
         this.memberIds = aliveIds;
-        if (aliveIds.length < getSnakeGameConfig().minAliveSegmentCount) this.die(state, snakeGame, aliveIds);
+        if (aliveIds.length < getSnakeGameConfig().minAliveSegmentCount) this.die(state, snakeGame, aliveIds, deathImpact);
         return { aliveHeadId: this.headId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
     }
 }

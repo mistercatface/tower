@@ -476,9 +476,23 @@ function solveKineticConstraintSlab(tick) {
     }
     for (let i = 0; i < slab.activeCount; i++) slab.entry[i].accumulatedImpulse = slab.accumulatedImpulse[i];
 }
+function gatheredConstraintSlabHasEvictedBodies(spatialFrame, slab) {
+    const entities = spatialFrame.entityGrid.entities;
+    for (let i = 0; i < slab.activeCount; i++) {
+        const bodyA = slab.bodyA[i];
+        const bodyB = slab.bodyB[i];
+        if (bodyA._physId === undefined || bodyB._physId === undefined) return true;
+        if (entities[slab.physIdA[i]] !== bodyA || entities[slab.physIdB[i]] !== bodyB) return true;
+    }
+    return false;
+}
 export function resolveGatheredKineticConstraintSlab(tick) {
     const slab = kineticConstraintSlab;
     if (slab.count === 0) return;
+    if (gatheredConstraintSlabHasEvictedBodies(tick.frame, slab)) {
+        gatherKineticConstraintSlab(tick);
+        if (slab.count === 0) return;
+    }
     projectKineticConstraintSlab();
     collectActiveConstraintPhysIds(slab, constraintBridgePhysIds);
     writebackKineticBodySlabPhysIds(tick.frame, constraintBridgePhysIds);
