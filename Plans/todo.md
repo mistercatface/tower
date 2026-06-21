@@ -7,6 +7,7 @@
 ## 06/21/2026
 
 7:25 AM - 1:14 PM: Pathfinding OOP refactor, snake FSM.
+1:14 PM to 2:42 PM: Snake fracture food.
 
 ## MILESTONE LOG
 
