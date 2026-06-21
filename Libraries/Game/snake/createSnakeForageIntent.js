@@ -1,8 +1,9 @@
-import { createAgentIntent, createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/createAgentIntent.js";
+import { createAgentIntent } from "../../AI/agentIntent/createAgentIntent.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { createSnakeDecisionBlackboard, perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "./snakeIntent.js";
 import { createSnakeIntentMemory } from "./snakeIntentMemory.js";
+import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "./snakeIntentStates.js";
 export function createSnakeForageIntent({
     brain,
     sync,
