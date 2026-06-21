@@ -216,19 +216,7 @@ export class HpaPathWorker {
             return;
         }
         const box = expandRegionDamageBounds(damageBounds, this._gridFrame, this._damagePadding);
-        await this._postGraphPatch(
-            "patchRegionGraph",
-            {
-                gridFrameKey: this._gridFrame.key,
-                startCol: box.startCol,
-                endCol: box.endCol,
-                startRow: box.startRow,
-                endRow: box.endRow,
-                seedWorldX: seedWorldX ?? null,
-                seedWorldY: seedWorldY ?? null,
-            },
-            graphEpoch,
-        );
+        await this._postGraphPatch("patchRegionGraph", { gridFrameKey: this._gridFrame.key, bounds: box, seedWorldX: seedWorldX ?? null, seedWorldY: seedWorldY ?? null }, graphEpoch);
     }
     async awaitGraphReady() {
         if (this._navSyncPromise) await this._navSyncPromise;

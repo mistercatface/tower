@@ -248,7 +248,7 @@ export class HpaRegionGraphManager {
     patchRegionGraph(gridFrame, topology, navView, data) {
         if (data.seedWorldX != null) this.regionGraphState.seedWorldX = data.seedWorldX;
         if (data.seedWorldY != null) this.regionGraphState.seedWorldY = data.seedWorldY;
-        rebuildDamagedRegionGraph(this.regionGraphState, { startCol: data.startCol, endCol: data.endCol, startRow: data.startRow, endRow: data.endRow }, gridFrame, topology.blocked, navView);
+        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView);
         return this.writeRegionGraphToSab(gridFrame);
     }
 }
@@ -298,7 +298,7 @@ export class HpaReplanPlanner {
             const path = gridSearch.local(legQuery, prep.regionConnectMaxLen);
             return path ? { cost: path.length, path } : { cost: 0 };
         });
-        const abstractSearch = new FlatAbstractGraphSearch({ ...extendedGraph, searchState: this.searchState });
+        const abstractSearch = new FlatAbstractGraphSearch({ graph: extendedGraph, searchState: this.searchState });
         const abstractPath = abstractSearch.run(startTemp, targetTemp);
         this.buffers.writeAbstractPath(slot, abstractPath);
         if (!abstractPath) {

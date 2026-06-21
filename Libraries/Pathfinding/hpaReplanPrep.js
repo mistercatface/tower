@@ -1,14 +1,7 @@
-import { GridPathQuery } from "./AStar.js";
-export class HpaAbstractGraph {
+import { FlatGraphView, GridPathQuery } from "./AStar.js";
+export class HpaAbstractGraph extends FlatGraphView {
     constructor(nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds) {
-        this.nodeCol = nodeCol;
-        this.nodeRow = nodeRow;
-        this.edgeOffsets = edgeOffsets;
-        this.edgeTargets = edgeTargets;
-        this.edgeCosts = edgeCosts;
-        this.nodeCount = nodeCount;
-        this.edgeWrite = edgeWrite;
-        this.nodeIds = nodeIds;
+        super({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
     }
     nearestNodeIdx(col, row) {
         let best = -1;
