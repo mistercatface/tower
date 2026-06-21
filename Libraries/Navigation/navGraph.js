@@ -6,6 +6,15 @@ import { bakeNavTopologyLocal } from "../Pathfinding/bakeNavTopology.js";
 /** @typedef {{ col: number, row: number }} NavGraphCell */
 /** @typedef {{ col: number, row: number, side: number }} NavGraphEdgeRef */
 /** @typedef {{ grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, navCardinalOpen: Uint8Array, vertexPassability: Uint8Array }} NavTopologyLike */
+function gridSide(fromCol, fromRow, toCol, toRow) {
+    const dc = toCol - fromCol;
+    const dr = toRow - fromRow;
+    if (dc === 1 && dr === 0) return 1;
+    if (dc === -1 && dr === 0) return 3;
+    if (dc === 0 && dr === 1) return 2;
+    if (dc === 0 && dr === -1) return 0;
+    return -1;
+}
 /**
  * Logical nav graph view over one grid — cell nodes + cardinal step edges.
  * Authoring reads floorStore + edgeStore; pathfinding reads baked arena when present.
@@ -59,20 +68,16 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
             if (frame && topology) return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);
             return false;
         },
-        /** Wrong-way belt entry blocked (upstream of exit). */
+        /** Belt traversal must enter through entry side and leave through exit side. */
         beltBlocksEntry(fromCol, fromRow, toCol, toRow) {
-            if (!cellInRect(toCol, toRow, grid.cols, grid.rows)) return false;
-            const idx = colRowToIndex(toCol, toRow, grid.cols);
-            if (!isFloorBeltKind(grid.floorStore.kind[idx])) return false;
-            const { entrySide, exitSide } = floorBeltEntryExitSides(grid.floorStore.kind[idx], grid.floorStore.facing[idx]);
-            const dc = fromCol - toCol;
-            const dr = fromRow - toRow;
-            if (dc === 0 && dr === 0) return false;
-            if (dc === 0 && dr !== 0) return (dr > 0 ? 2 : 0) === exitSide && (dr > 0 ? 0 : 2) !== entrySide;
-            if (dc !== 0 && dr === 0) return (dc > 0 ? 1 : 3) === exitSide && (dc > 0 ? 3 : 1) !== entrySide;
-            const sideX = dc > 0 ? 1 : 3;
-            const sideY = dr > 0 ? 2 : 0;
-            return sideX === exitSide || sideY === exitSide;
+            const stepSide = gridSide(fromCol, fromRow, toCol, toRow);
+            const fromBelt = this.beltEntryExit(fromCol, fromRow);
+            const toBelt = this.beltEntryExit(toCol, toRow);
+            if (!fromBelt && !toBelt) return false;
+            if (stepSide < 0) return true;
+            if (fromBelt && stepSide !== fromBelt.exitSide) return true;
+            if (toBelt && ((stepSide + 2) % 4) === toBelt.exitSide) return true;
+            return false;
         },
     };
 }

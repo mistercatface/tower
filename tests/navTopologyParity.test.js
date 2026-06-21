@@ -27,6 +27,7 @@ describe("nav topology parity", () => {
         grid.rebuildFixed(0, 0, 12 * 16, 12 * 16);
         grid.writeFloorCell(4, 4, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
         grid.writeFloorCell(5, 4, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        grid.writeFloorCell(7, 7, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(1));
         stampRailWallsQuiet({ obstacleGrid: grid, worldSurfaces: { settings: { maxWallHeightLevel: 4 } } }, [{ col: 3, row: 5, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
 
         const navigation = await createWorkerNavigation(grid);
@@ -49,6 +50,16 @@ describe("nav topology parity", () => {
         assert.equal(navCanStep(local.frame, local.topology, 4, 4, 5, 4), true);
         assert.equal(navCanStep(local.frame, local.topology, 5, 4, 4, 4), false);
         assert.equal(navCanStep(local.frame, local.topology, 4, 4, 4, 5), false);
+        assert.equal(navCanStep(local.frame, local.topology, 7, 6, 7, 7), true);
+        assert.equal(navCanStep(local.frame, local.topology, 6, 7, 7, 7), true);
+        assert.equal(navCanStep(local.frame, local.topology, 7, 7, 7, 8), true);
+        assert.equal(navCanStep(local.frame, local.topology, 7, 7, 8, 7), false);
+        assert.equal(navCanStep(local.frame, local.topology, 7, 7, 7, 6), false);
+        assert.equal(navCanStep(workerFrame, workerTopology, 7, 6, 7, 7), true);
+        assert.equal(navCanStep(workerFrame, workerTopology, 6, 7, 7, 7), true);
+        assert.equal(navCanStep(workerFrame, workerTopology, 7, 7, 7, 8), true);
+        assert.equal(navCanStep(workerFrame, workerTopology, 7, 7, 8, 7), false);
+        assert.equal(navCanStep(workerFrame, workerTopology, 7, 7, 7, 6), false);
         assert.ok(isRailWallEdge(grid.edgeStore.get(3, 5, 0, grid.cols)) || grid.canStep(3, 4, 3, 5, navigation.topology) === false);
 
         terminateWorkerNavigation(navigation);

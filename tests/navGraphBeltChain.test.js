@@ -15,6 +15,8 @@ import {
 } from "../Libraries/Navigation/navGraph.js";
 import { snapNavGoalCell } from "../Libraries/Navigation/snapNavGoal.js";
 import { isBeltRailEdge } from "../Libraries/Spatial/grid/CellEdge.js";
+import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { buildFullRegionGraph, packRegionGraphFlat } from "../Libraries/Pathfinding/hpaRegionGraph.js";
 
 function createBeltChainTestState(grid) {
     return {
@@ -22,6 +24,11 @@ function createBeltChainTestState(grid) {
         sandbox: {},
         worldSurfaces: { invalidateGridBounds: () => {} },
     };
+}
+
+function packedRegionHasEdge(packed, fromRegion, toRegion) {
+    for (let i = 0; i < packed.edgeSources.length; i++) if (packed.edgeSources[i] === fromRegion && packed.edgeTargets[i] === toRegion) return true;
+    return false;
 }
 
 describe("navGraph belt chain", () => {
@@ -56,6 +63,46 @@ describe("navGraph belt chain", () => {
         assert.deepEqual(snapped, snapNavGoalCell(grid, 0, 3, 3, 3));
         assert.equal(snapped.col, 2);
         assert.equal(snapped.row, 3);
+    });
+
+    it("open belts allow side entry but only exit with belt flow", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 10 * 16, 10 * 16);
+        writeNavFloorCell(grid, 3, 3, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(1));
+        const graph = createNavGraphViewWithLocalBake(grid);
+
+        assert.equal(graph.canStep(3, 2, 3, 3), true);
+        assert.equal(graph.canStep(2, 3, 3, 3), true);
+        assert.equal(graph.canStep(3, 3, 3, 4), true);
+        assert.equal(graph.canStep(3, 4, 3, 3), false);
+        assert.equal(graph.canStep(3, 3, 3, 2), false);
+        assert.equal(graph.canStep(3, 3, 4, 3), false);
+    });
+
+    it("HPA region graph inherits belt direction as directed edges", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 10 * 16, 10 * 16);
+        writeNavFloorCell(grid, 3, 3, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(1));
+        const graph = createNavGraphViewWithLocalBake(grid);
+        const regionGraph = buildFullRegionGraph({
+            blocked: graph.topology.blocked,
+            frame: graph.frame,
+            navGraph: graph,
+            maxCellsPerChunk: 1,
+            minCellsPerChunk: 0,
+        });
+        const packed = packRegionGraphFlat(regionGraph.nodesMap, regionGraph.cellToNode, graph.frame);
+        const regionAt = (col, row) => packed.cellToRegion[colRowToIndex(col, row, grid.cols)];
+        const west = regionAt(2, 3);
+        const belt = regionAt(3, 3);
+        const south = regionAt(3, 4);
+        const east = regionAt(4, 3);
+
+        assert.equal(packedRegionHasEdge(packed, west, belt), true);
+        assert.equal(packedRegionHasEdge(packed, belt, south), true);
+        assert.equal(packedRegionHasEdge(packed, belt, west), false);
+        assert.equal(packedRegionHasEdge(packed, south, belt), false);
+        assert.equal(packedRegionHasEdge(packed, belt, east), false);
     });
 
     it("commit union bake path: forward canStep, reverse blocked, snap, walk chain", async () => {

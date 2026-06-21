@@ -2,7 +2,7 @@
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { resolvePassageStepFrom, resolvePassageStepUndirected } from "./passageStep.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
-import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltRailsKind } from "./FloorCell.js";
+import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltKind, isFloorBeltRailsKind } from "./FloorCell.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { neighborFillLevel } from "./gridCellTopology.js";
 import { diagonalStepOpen } from "./vertexPassability.js";
@@ -188,29 +188,34 @@ export function boundaryBlocksStep(grid, col, row, side) {
     return resolvePassageStepUndirected({ grid, edge, ownerCol: col, ownerRow: row, ownerSide: side, crossedSide: side, fromCol: col, fromRow: row, toCol: col, toRow: row, directional: false });
 }
 /** @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow */
-function beltCrossedSideFrom(fromCol, fromRow, toCol, toRow) {
-    const dc = fromCol - toCol;
-    const dr = fromRow - toRow;
-    if (dc === -1) return 3;
-    if (dc === 1) return 1;
-    if (dr === -1) return 0;
-    if (dr === 1) return 2;
+function cardinalStepSide(fromCol, fromRow, toCol, toRow) {
+    const dc = toCol - fromCol;
+    const dr = toRow - fromRow;
+    if (dc === 1 && dr === 0) return 1;
+    if (dc === -1 && dr === 0) return 3;
+    if (dc === 0 && dr === 1) return 2;
+    if (dc === 0 && dr === -1) return 0;
     return -1;
 }
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} toCol @param {number} toRow @param {number} fromCol @param {number} fromRow */
-function beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow) {
-    const idx = colRowToIndex(toCol, toRow, grid.cols);
-    if (!grid.floorStore.isBeltKindAtIdx(idx)) return false;
+function oppositeSide(side) {
+    return side < 0 ? -1 : (side + 2) % 4;
+}
+function beltEntryExitAt(grid, col, row) {
+    const idx = colRowToIndex(col, row, grid.cols);
     const kind = grid.floorStore.kind[idx];
-    const { exitSide } = floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
-    const dc = fromCol - toCol;
-    const dr = fromRow - toRow;
-    if (dc === 0 && dr === 0) return false;
-    const crossed = beltCrossedSideFrom(fromCol, fromRow, toCol, toRow);
-    if (crossed >= 0) return crossed === exitSide;
-    const sideX = dc > 0 ? 1 : 3;
-    const sideY = dr > 0 ? 2 : 0;
-    return sideX === exitSide || sideY === exitSide;
+    if (!isFloorBeltKind(kind)) return null;
+    return floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
+}
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow */
+function beltBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow) {
+    const stepSide = cardinalStepSide(fromCol, fromRow, toCol, toRow);
+    const fromBelt = beltEntryExitAt(grid, fromCol, fromRow);
+    const toBelt = beltEntryExitAt(grid, toCol, toRow);
+    if (!fromBelt && !toBelt) return false;
+    if (stepSide < 0) return true;
+    if (fromBelt && stepSide !== fromBelt.exitSide) return true;
+    if (toBelt && oppositeSide(stepSide) === toBelt.exitSide) return true;
+    return false;
 }
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} fromCol @param {number} fromRow @param {number} toCol @param {number} toRow @param {number} ownerCol @param {number} ownerRow @param {number} ownerSide */
 export function boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, ownerSide) {
@@ -230,7 +235,7 @@ export function boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, t
  */
 export function boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, fromCol, fromRow, toCol, toRow) {
     if (grid.isBlocked(toCol, toRow)) return true;
-    if (beltBlocksEntryFrom(grid, fromCol, fromRow, toCol, toRow)) return true;
+    if (beltBlocksStepFrom(grid, fromCol, fromRow, toCol, toRow)) return true;
     const dc = toCol - fromCol;
     const dr = toRow - fromRow;
     if (dc !== 0 && dr === 0) {
