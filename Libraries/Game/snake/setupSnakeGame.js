@@ -1,9 +1,9 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
-import { createSnakeAutosim } from "./snakeAutosim.js";
+import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "./snakeLifecycle.js";
+import { createAliveSnakeInstance, registerAliveSnakeInstance } from "./SnakeInstance.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { mountSnakeHud } from "./snakeHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
 import { appendPropGroundNavPathOverlay } from "../../Sandbox/groundNav/resolveGroundNavPathOverlayBehavior.js";
@@ -28,10 +28,9 @@ export async function setupSnakeGame(state) {
     scene.navWalkable.rebake();
     for (let i = 0; i < scene.snakes.length; i++) {
         const snake = scene.snakes[i];
-        registerAliveSnake(registry, snake.chain.head.id);
-        const autosim = createSnakeAutosim(state, { headId: snake.chain.head.id, navWalkable: scene.navWalkable });
-        autosim.start();
-        autosimsByHeadId.set(snake.chain.head.id, autosim);
+        const instance = createAliveSnakeInstance(state, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId, navWalkable: scene.navWalkable });
+        registerAliveSnakeInstance(state.sandbox.snakeGame, instance);
+        instance.start();
     }
     const centerSnake = scene.snakes[0];
     let focusedHeadId = centerSnake.chain.head.id;

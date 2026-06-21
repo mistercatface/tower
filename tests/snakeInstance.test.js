@@ -1,0 +1,119 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
+import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
+import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
+import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
+import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
+import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
+import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { SnakeInstance, createAliveSnakeInstance, registerAliveSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
+import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+
+loadPropAssets();
+
+function createTestState(cols = 32, rows = 32) {
+    const grid = new WorldObstacleGrid(16);
+    grid.rebuildFixed(0, 0, cols * 16, rows * 16);
+    const cavernConfig = createDefaultMapGenBoundsConfig();
+    cavernConfig.boundsCol = 0;
+    cavernConfig.boundsRow = 0;
+    cavernConfig.boundsCols = cols;
+    cavernConfig.boundsRows = rows;
+    return {
+        obstacleGrid: grid,
+        entityRegistry: new EntityRegistry(),
+        worldProps: [],
+        kinetic: new KineticSession(),
+        sandbox: new SandboxWorldState(),
+        editor: { cavernConfig },
+        nav: { settings: {}, commitEdit: async () => {}, topologyKey: () => "", syncedTopologyKey: () => "", graphSyncGeneration: 0, worker: { getPathSlot: () => null, releaseOwnedPathSlot: () => null }, session: { isReplanInFlight: () => false }, topology: null },
+    };
+}
+
+function snakeChainOptions(segmentCount) {
+    const config = getSnakeGameConfig();
+    return {
+        segmentCount,
+        spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
+        segmentRadius: config.startRadius,
+        linkSlack: config.linkSlack,
+        ballType: config.segmentPropId,
+        headBallType: config.headPropId,
+        growDirX: config.growDirX,
+        growDirY: config.growDirY,
+        exportType: SNAKE_CHAIN_EXPORT_TYPE,
+    };
+}
+
+describe("SnakeInstance", () => {
+    it("stopSteering clears head roll drive via autosim stop", () => {
+        applySnakeGameConfig({ segmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
+        const head = pack.chain.head;
+        head._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 5, maxSpeed: 10 };
+        const instance = new SnakeInstance({
+            headId: head.id,
+            spawnGroupId: pack.chain.spawnGroupId,
+            autosim: { stop() { delete head._groundRollDrive; } },
+            lifecycle: "alive",
+        });
+        instance.stopSteering();
+        assert.equal(head._groundRollDrive, undefined);
+    });
+
+    it("retireAllSegments clears roll drive on every member", () => {
+        applySnakeGameConfig({ segmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
+        const headId = pack.chain.head.id;
+        const registry = createSnakeLifecycleRegistry();
+        const autosimsByHeadId = new Map();
+        wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
+        const instance = new SnakeInstance({
+            headId,
+            spawnGroupId: pack.chain.spawnGroupId,
+            autosim: { stop() {} },
+            lifecycle: "alive",
+            memberIds: getOrderedChainMemberIds(state, headId),
+        });
+        registerAliveSnakeInstance(state.sandbox.snakeGame, instance);
+        const members = getOrderedChainMemberIds(state, headId);
+        for (let i = 0; i < members.length; i++) {
+            const prop = state.entityRegistry.getLive(members[i]);
+            prop._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 5, maxSpeed: 10 };
+        }
+        instance.retireAllSegments(state, state.sandbox.snakeGame);
+        for (let i = 0; i < members.length; i++) {
+            const prop = state.entityRegistry.getLive(members[i]);
+            assert.equal(prop._groundRollDrive, undefined);
+        }
+    });
+
+    it("createAliveSnakeInstance registers in snakeGame maps", () => {
+        applySnakeGameConfig({ segmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
+        const registry = createSnakeLifecycleRegistry();
+        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+        const instance = createAliveSnakeInstance(state, {
+            headId: pack.chain.head.id,
+            spawnGroupId: pack.chain.spawnGroupId,
+            navWalkable: createSnakeNavWalkable(state),
+        });
+        registerAliveSnakeInstance(state.sandbox.snakeGame, instance);
+        const snakeGame = state.sandbox.snakeGame;
+        assert.equal(snakeGame.instancesByHeadId.get(pack.chain.head.id), instance);
+        assert.equal(snakeGame.autosimsByHeadId.get(pack.chain.head.id), instance.autosim);
+        assert.equal(snakeGame.registry.aliveByHeadId.has(pack.chain.head.id), true);
+        assert.equal(instance.memberIds.length, 3);
+    });
+});

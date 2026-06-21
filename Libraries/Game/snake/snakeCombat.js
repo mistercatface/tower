@@ -2,6 +2,7 @@ import { removeChainLinkBetween, clearChainLinksForMembers } from "../../Sandbox
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
+import { getSnakeInstance } from "./SnakeInstance.js";
 import {
     markSnakeDead,
     registerInertSnake,
@@ -22,13 +23,7 @@ function snakeSizeScore(state, headId, members = null) {
 function orderedMembers(state, headId) {
     return getConnectedComponentPath(state.kinetic, headId);
 }
-export function enforceSnakeMinLength(state, snakeGame, headId, members = null) {
-    const config = getSnakeGameConfig();
-    if (snakeSegmentCount(state, headId, members) >= config.minAliveSegmentCount) return false;
-    killSnake(state, snakeGame, headId, members);
-    return true;
-}
-export function killSnake(state, snakeGame, headId, members = null) {
+function killSnakeWithoutInstance(state, snakeGame, headId, members = null) {
     const autosim = snakeGame.autosimsByHeadId.get(headId);
     if (autosim) {
         autosim.stop();
@@ -42,7 +37,7 @@ export function killSnake(state, snakeGame, headId, members = null) {
     markSnakeDead(snakeGame.registry, headId);
     if (snakeGame.onHeadDied) snakeGame.onHeadDied(headId);
 }
-export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struckSegmentId, victimMembers = null) {
+function splitSnakeAtStruckSegmentWithoutInstance(state, snakeGame, victimHeadId, struckSegmentId, victimMembers = null) {
     const members = victimMembers || orderedMembers(state, victimHeadId);
     const strikeIndex = members.indexOf(struckSegmentId);
     if (strikeIndex < 0 || strikeIndex >= members.length - 1) return null;
@@ -55,6 +50,25 @@ export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struck
     registerInertSnake(snakeGame.registry, tailIds[0], tailIds, victimHeadId);
     enforceSnakeMinLength(state, snakeGame, victimHeadId);
     return { aliveHeadId: victimHeadId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
+}
+export function enforceSnakeMinLength(state, snakeGame, headId, members = null) {
+    const config = getSnakeGameConfig();
+    if (snakeSegmentCount(state, headId, members) >= config.minAliveSegmentCount) return false;
+    killSnake(state, snakeGame, headId, members);
+    return true;
+}
+export function killSnake(state, snakeGame, headId, members = null) {
+    const instance = getSnakeInstance(snakeGame, headId);
+    if (instance) {
+        instance.die(state, snakeGame, members);
+        return;
+    }
+    killSnakeWithoutInstance(state, snakeGame, headId, members);
+}
+export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struckSegmentId, victimMembers = null) {
+    const instance = getSnakeInstance(snakeGame, victimHeadId);
+    if (instance) return instance.splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers);
+    return splitSnakeAtStruckSegmentWithoutInstance(state, snakeGame, victimHeadId, struckSegmentId, victimMembers);
 }
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;

@@ -27,7 +27,7 @@ export function retireSnakeSegmentsFromNav(state, memberIds) {
     }
 }
 export function wireSnakeGameRegistry(state, registry, autosimsByHeadId, navWalkable) {
-    state.sandbox.snakeGame = { registry, autosimsByHeadId, navWalkable, goalIndex: createSnakeGoalIndex(), simTick: 0, lastVisionBeginTick: -1 };
+    state.sandbox.snakeGame = { registry, autosimsByHeadId, instancesByHeadId: new Map(), navWalkable, goalIndex: createSnakeGoalIndex(), simTick: 0, lastVisionBeginTick: -1 };
     rebuildSnakeGoalIndex(state);
 }
 export function createSnakeLifecycleRegistry() {
