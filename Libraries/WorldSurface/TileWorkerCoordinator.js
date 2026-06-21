@@ -1,4 +1,5 @@
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
+import { PromiseWorkerPoolHost } from "../Workers/PromiseWorkerPoolHost.js";
 import { bumpSurfaceProfileRevision, getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { clampBakeFrameRange, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
@@ -15,9 +16,6 @@ const TIER_STATIC = 0; // first-frame / non-animated bakes
 const TIER_ANIMATION = 1; // incremental animation frame fill
 /** Re-sort the queue by focus only after the camera moves at least this far. */
 const FOCUS_RESORT_DIST_SQ = 16 * 16;
-const workers = [];
-const workerBusy = [];
-const workerJobTier = [];
 const bakeQueue = new MinHeap(compareJobs);
 const pending = new Map();
 let nextReqId = 1;
@@ -25,6 +23,8 @@ let nextReqId = 1;
 let workerReady = Promise.resolve();
 const registeredRuntimeProfileIds = new Set();
 const inFlightByKey = new Map();
+/** @type {PromiseWorkerPoolHost | null} */
+let workerPool = null;
 /** @type {URL | string | null} */
 let tileWorkerUrl = null;
 /**
@@ -95,35 +95,33 @@ function resolveJob(job, bitmaps) {
 }
 function dispatch() {
     if (bakeQueue.size === 0) return;
+    const pool = ensureWorkerPool();
     resortQueueIfNeeded();
     let activeAnimations = 0;
-    for (let wi = 0; wi < workers.length; wi++) if (workerBusy[wi] && workerJobTier[wi] === TIER_ANIMATION) activeAnimations++;
+    pool.forEachSlot((wi, slot) => {
+        if (slot.busy && slot.meta?.tier === TIER_ANIMATION) activeAnimations++;
+    });
     // Leave some worker threads idle from animations so the main thread and
     // static generation have breathing room.
-    const maxAnimations = Math.max(1, workers.length - 2);
-    for (let wi = 0; wi < workers.length; wi++) {
-        if (workerBusy[wi]) continue;
+    const maxAnimations = Math.max(1, pool.size - 2);
+    pool.forEachIdle((wi) => {
         let job = null;
         while (bakeQueue.size > 0) {
             const candidate = bakeQueue.data[0];
-            if (candidate.tier === TIER_ANIMATION && activeAnimations >= maxAnimations) break; // Top is animation and we're at limit; rest of heap is also animation
+            if (candidate.tier === TIER_ANIMATION && activeAnimations >= maxAnimations) break;
             const popped = bakeQueue.pop();
-            if (!pending.has(popped.id)) continue; // already settled elsewhere
+            if (!pending.has(popped.id)) continue;
             if (dropIfObsolete(popped)) continue;
             job = popped;
             if (job.tier === TIER_ANIMATION) activeAnimations++;
             break;
         }
-        if (!job) break;
-        workerBusy[wi] = true;
-        workerJobTier[wi] = job.tier;
-        workers[wi]._currentJobId = job.id;
-        workers[wi].postMessage({ id: job.id, type: job.type, payload: job.payload });
-    }
+        if (!job) return;
+        pool.markBusy(wi, { jobId: job.id, tier: job.tier });
+        pool.postJob(wi, { id: job.id, type: job.type, payload: job.payload });
+    });
 }
 function finishJob(workerIndex, id, bitmaps, error) {
-    workerBusy[workerIndex] = false;
-    workers[workerIndex]._currentJobId = null;
     const entry = pending.get(id);
     if (entry) {
         pending.delete(id);
@@ -141,32 +139,20 @@ function enqueueJob(type, payload, tier) {
         dispatch();
     });
 }
-function getWorkerPool() {
-    if (workers.length === 0) {
-        let poolSize = 4;
-        if (typeof navigator !== "undefined" && navigator.hardwareConcurrency) poolSize = Math.min(8, Math.max(2, Math.floor(navigator.hardwareConcurrency * 0.75)));
-        if (!tileWorkerUrl) throw new Error("TileWorkerCoordinator requires configureTileWorkerCoordinator({ workerUrl }) from game bootstrap");
-        for (let i = 0; i < poolSize; i++) {
-            const w = new Worker(tileWorkerUrl, { type: "module" });
-            w.onmessage = (e) => {
-                const { id, bitmaps, error } = e.data;
-                const wi = workers.indexOf(w);
-                finishJob(wi, id, bitmaps, error);
-            };
-            workers.push(w);
-            workerBusy.push(false);
-            workerJobTier.push(null);
-        }
-    }
-    return workers;
+function ensureWorkerPool() {
+    if (workerPool) return workerPool;
+    if (!tileWorkerUrl) throw new Error("TileWorkerCoordinator requires configureTileWorkerCoordinator({ workerUrl }) from game bootstrap");
+    workerPool = new PromiseWorkerPoolHost(tileWorkerUrl, { name: "TileSurfaceWorker", onJobComplete: (workerIndex, { id, bitmaps, error }) => finishJob(workerIndex, id, bitmaps, error) });
+    workerPool.ensureStarted();
+    return workerPool;
 }
 function sendRequest(type, payload, tier = TIER_STATIC) {
-    getWorkerPool();
+    ensureWorkerPool();
     return whenWorkersReady(() => enqueueJob(type, payload, tier));
 }
 function broadcastRequest(type, payload) {
-    getWorkerPool();
-    return Promise.all(workers.map(() => enqueueJob(type, payload, TIER_REGISTRATION)));
+    const pool = ensureWorkerPool();
+    return Promise.all(Array.from({ length: pool.size }, () => enqueueJob(type, payload, TIER_REGISTRATION)));
 }
 function withBakeFrameRange(payload, profile) {
     const sourceTotal = getAnimationFrames(profile?.animation);
@@ -222,14 +208,14 @@ export const TileWorkerCoordinator = {
     registerRuntimeProfile(profileId, profile) {
         getSurfaceProfileProvider().registerRuntime(profileId, profile);
         bumpSurfaceProfileRevision(profileId);
-        getWorkerPool();
+        ensureWorkerPool();
         registeredRuntimeProfileIds.add(profileId);
         workerReady = workerReady.then(() => broadcastRequest("registerRuntimeProfile", { profileId, profile }));
         return workerReady;
     },
     syncBakeConstants(settings) {
         const constants = { cellSize: settings.cellSize, cellsPerChunk: settings.cellsPerChunk, surfaceBakeScale: getSurfaceBakeScale(settings) };
-        getWorkerPool();
+        ensureWorkerPool();
         workerReady = workerReady.then(() => broadcastRequest("configureBakeConstants", constants));
         return workerReady;
     },

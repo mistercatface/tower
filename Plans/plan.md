@@ -18,5 +18,3 @@ The Underutilized Area:
 FlowCacheManager
 handles cache eviction by calling this.invalidate(protocol) which completely wipes the lookup array and resets the slot counter to 0 whenever it exceeds maxCacheSize.
 The Easy Win: Rewire FlowCacheManager to use the LruMap pattern to evict only the oldest unused flow field slot. Complete cache invalidation causes sudden CPU spikes and frame drops because all active agents using different flow fields are forced to re-request worker path recalculations at the same time.
-
-## PHYSICS
