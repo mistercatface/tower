@@ -9,6 +9,7 @@ import {
     compactSubstepKineticPairs,
     patchKineticPairsForBodies,
     copyKineticPairBuffer,
+    kineticContactBodiesAt,
 } from "./kineticPairStream.js";
 import { kineticPairTopologyStale } from "../../Motion/kineticTopology.js";
 import { stampKineticPairGatherTopology } from "../../Motion/kineticTopology.js";
@@ -338,7 +339,7 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
 }
 function applyKineticContactWake(contacts, spatialFrame) {
     for (let i = 0; i < contacts.count; i++) {
-        const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
+        const pair = kineticContactBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
         if (!pair) continue;
         invalidateWallResolveCache(pair.bodyA, pair.bodyB);
         spatialFrame.scheduleKineticActivation(pair.bodyA);

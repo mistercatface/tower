@@ -161,6 +161,9 @@ export function kineticPairBodyAt(spatialFrame, physId) {
 }
 export function kineticPairBodiesAt(spatialFrame, physIdA, physIdB) {
     if (kineticPairTopologyStale(spatialFrame)) return null;
+    return kineticContactBodiesAt(spatialFrame, physIdA, physIdB);
+}
+export function kineticContactBodiesAt(spatialFrame, physIdA, physIdB) {
     const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
     const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
     if (!bodyA || !bodyB) return null;

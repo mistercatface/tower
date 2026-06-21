@@ -14,6 +14,7 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
+import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 
 loadPropAssets();
 
@@ -70,6 +71,32 @@ describe("kinetic topology lifecycle", () => {
         assert.ok(kineticPairBodiesAt(frame, 0, 1));
         frame.admitKineticProp(mockCircleBody(40, 0, 10), world);
         assert.equal(kineticPairBodiesAt(frame, 0, 1), null);
+    });
+
+    it("contact side effects still fracture glass after topology bump", () => {
+        const glass = new WorldProp(0, 0, "glass_pane", 0);
+        const ball = new WorldProp(18, 0, "ball", 0);
+        applyPropBoxFootprint(glass, 24, 18);
+        ball.vx = -200;
+        const tick = createKineticTestTick([glass, ball]);
+        stampKineticPairGatherTopology(tick.frame, tick.world.kinetic);
+        tick.frame.admitKineticProp(mockCircleBody(40, 0, 10), tick.world);
+        assert.equal(kineticPairBodiesAt(tick.frame, glass._physId, ball._physId), null);
+        resolveKineticContactPassWithEffects(tick);
+        assert.ok(tick.world.worldProps.filter((p) => p.type === "glass_pane").length > 2);
+        assert.ok(!tick.world.worldProps.includes(glass));
+    });
+
+    it("contact side effects still fracture crate after topology bump", () => {
+        const crate = new WorldProp(0, 0, "crate", 0);
+        const ball = new WorldProp(10, 0, "ball", 0);
+        ball.vx = -200;
+        const tick = createKineticTestTick([crate, ball]);
+        stampKineticPairGatherTopology(tick.frame, tick.world.kinetic);
+        tick.frame.admitKineticProp(mockCircleBody(40, 0, 10), tick.world);
+        assert.equal(kineticPairBodiesAt(tick.frame, crate._physId, ball._physId), null);
+        resolveKineticContactPassWithEffects(tick);
+        assert.ok(tick.world.worldProps.length > 2);
     });
 
     it("removeChainLinkBetween bumps topology and rebuilds island plan", () => {

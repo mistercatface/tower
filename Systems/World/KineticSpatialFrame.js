@@ -2,7 +2,15 @@ import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore
 import { wakeKineticBody } from "../../Libraries/Motion/kineticSleep.js";
 import { islandRootByPhysId } from "../../Libraries/Motion/kineticIslands.js";
 import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticTopology.js";
-import { appendActiveKineticBodySlabPhysId, clearActiveKineticBodySlab, kineticBodySlab } from "../../Libraries/Spatial/collision/kineticBodySlab.js";
+import { getBroadphaseBounds } from "../../Libraries/Spatial/collision/entityBroadphase.js";
+import {
+    appendActiveKineticBodySlabPhysId,
+    clearActiveKineticBodySlab,
+    kineticBodySlab,
+    writeActiveKineticBodySlabPose,
+    writeBroadphaseFromBounds,
+    writeKinematicBodySlabSlot,
+} from "../../Libraries/Spatial/collision/kineticBodySlab.js";
 /**
  * Kinetic spatial frame — populates SpatialFrameCore from GameState.
  *
@@ -83,6 +91,13 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         active.push(prop);
         kineticBodySlab.asleep[prop._physId] = 0;
         appendActiveKineticBodySlabPhysId(prop._physId);
+        if (prop.mass != null) {
+            writeKinematicBodySlabSlot(prop);
+            writeBroadphaseFromBounds(prop._physId, getBroadphaseBounds(prop));
+        } else {
+            writeActiveKineticBodySlabPose(prop);
+            if (typeof prop.getShape === "function") writeBroadphaseFromBounds(prop._physId, getBroadphaseBounds(prop));
+        }
     }
     _removeFromActive(prop) {
         const slot = prop._activeSlot;

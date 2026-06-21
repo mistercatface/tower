@@ -42,6 +42,15 @@ export function writeBroadphaseFromBounds(physId, bounds) {
     slab.cos[physId] = bounds.cos;
     slab.sin[physId] = bounds.sin;
 }
+export function writeActiveKineticBodySlabPose(body) {
+    const physId = body._physId;
+    const slab = kineticBodySlab;
+    slab.x[physId] = body.x;
+    slab.y[physId] = body.y;
+    slab.vx[physId] = body.vx ?? 0;
+    slab.vy[physId] = body.vy ?? 0;
+    slab.w[physId] = body.angularVelocity ?? 0;
+}
 export function writeKinematicBodySlabSlot(body) {
     const physId = body._physId;
     const slab = kineticBodySlab;

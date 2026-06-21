@@ -2,6 +2,7 @@ import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { transformPoint2DInto, convexFootprintHalfExtents, polygonSignedArea2D } from "../Math/Poly2D.js";
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
+import { kineticBodySlab } from "../Spatial/collision/kineticBodySlab.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { splitPoxels } from "./poxelFracture.js";
@@ -91,19 +92,24 @@ function geometryFromChunkComponent(comp, atOrigin) {
 export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactForce, forceExplode = false) {
     return splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, forceExplode).map((comp) => geometryFromChunkComponent(comp, false));
 }
+function propWorldPosition(prop) {
+    const physId = prop._physId;
+    if (physId !== undefined) return { x: kineticBodySlab.x[physId], y: kineticBodySlab.y[physId] };
+    return { x: prop.x, y: prop.y };
+}
 function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     const components = splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, false);
     if (components.length <= 1) return null;
     components.sort((a, b) => b.length - a.length);
-    const originX = prop.x;
-    const originY = prop.y;
+    const { x: originX, y: originY } = propWorldPosition(prop);
     const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
     applyChunkGeometryToProp(prop, geometryFromChunkComponent(components[0], true));
     return { debris, originX, originY, facing: prop.facing };
 }
 export function worldHitToPropLocal(prop, worldX, worldY) {
-    const dx = worldX - prop.x;
-    const dy = worldY - prop.y;
+    const pos = propWorldPosition(prop);
+    const dx = worldX - pos.x;
+    const dy = worldY - pos.y;
     const cos = Math.cos(prop.facing);
     const sin = Math.sin(prop.facing);
     return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
@@ -116,7 +122,8 @@ export function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     const local = worldHitToPropLocal(prop, worldHitX, worldHitY);
     const debris = shatterGlassPolygon(flatVertsFromShape(prop), local.x, local.y, impactForce);
     if (debris.length < 2) return null;
-    return { debris, originX: prop.x, originY: prop.y, facing: prop.facing, impactLocal: local, impactForce };
+    const { x: originX, y: originY } = propWorldPosition(prop);
+    return { debris, originX, originY, facing: prop.facing, impactLocal: local, impactForce };
 }
 export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);

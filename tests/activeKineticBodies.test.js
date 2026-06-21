@@ -5,7 +5,7 @@ import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefa
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { advanceKineticSleep } from "../Libraries/Motion/kineticSleep.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { kineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { kineticBodySlab, writebackActiveKineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 let mockPhysId = 0;
 function mockKineticBody(isSleeping = false) {
@@ -107,6 +107,21 @@ describe("active kinetic bodies", () => {
         assert.ok(neighbors.includes(fragment));
         assert.ok(frame._activeKineticBodies.includes(fragment));
         assert.equal(kineticBodySlab.activeSlot[fragment._physId], fragment._activeSlot);
+    });
+    it("mid-frame admit syncs slab pose so writeback does not snap spawns to origin", () => {
+        const frame = new KineticSpatialFrame(50);
+        frame.resetFrame(mockGrid);
+        const anchor = mockCircleProp(0, 0, 10);
+        frame.insertEntity(anchor, 0);
+        frame._kineticBodies.push(anchor);
+        frame._nextPhysId = 1;
+        const fragment = mockCircleProp(240, 180, 8);
+        frame.admitKineticProp(fragment, mockState);
+        assert.equal(kineticBodySlab.x[fragment._physId], 240);
+        assert.equal(kineticBodySlab.y[fragment._physId], 180);
+        writebackActiveKineticBodySlab(frame._activeKineticBodies);
+        assert.equal(fragment.x, 240);
+        assert.equal(fragment.y, 180);
     });
     it("admitKineticProp reindexes props after geometry or position changes", () => {
         const frame = new KineticSpatialFrame(50);
