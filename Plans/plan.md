@@ -11,23 +11,3 @@
 5. Morton Codes and Hierarchical Bitsets for Broadphase The current grid broadphase relies on looping over AABBs and merging candidate arrays. We can revolutionize this spatial querying by mapping the 2D world grid into a 1D array using Morton Codes (Z-order curves), which mathematically guarantees that objects physically close in the world sit next to each other in RAM. If we back this up with a Hierarchical Bitset (a tree of 32-bit integers where a single bit represents grid chunk occupancy), broadphase culling becomes virtually instantaneous. Finding wall candidates or overlapping neighbors bypasses standard looping entirely, dropping down to raw CPU bitwise operations (&, |, and Math.clz32) to skip massive empty spaces in true O(1) time.
 
 ## VARIOUS
-
-Extract the snake scorer into a tiny utility-decision package. The effort work proved candidateScores, value/reach/cost/net, and snapshots. Move the generic shape out of Libraries/Game/snake/snakeDecisionModel.js into something like Libraries/AI/utility/, then leave snake with only domain scorers.
-
-Turn explore picking into an EQS-style query. Plans/AI.md calls this out, and it would cover AI + pathfinding + procedural later. Start with “score candidate cells by freshness, distance, visibility, risk,” then snake explore becomes the first consumer.
-
-Add path smoothing next if you want visible payoff. Plans/pathfinding.md and Plans/ROADMAP.md both point at funnel/string-pull smoothing. Snake would instantly show less grid-snappy chasing, and the work transfers to a future navmesh instead of being throwaway.
-
-Make target memory a real generic concept. Snake now has remembered prey/food distances in snakeIntentMemory.js; that’s close to a reusable “last-known target” memory package. This is a clean bridge from spatial memory to actual blackboard facts.
-
-Clean up stale roadmap language before it misleads you. Plans/AI.md still describes utility scoring/flee/pursue as absent in places, while the current snake FSM has much of that. Updating docs is an easy clarity win and prevents future plans from redoing shipped work.
-
-Audit snake-only names for reusable engine concepts. Anything named snakeDecision*, snakeIntentMemory, or snakeFsmDebug* that now describes generic AI facts, utility details, or debug snapshots is a candidate to split: generic core in Libraries/AI/, snake adapter in Libraries/Game/snake/.
-
-Unify root seed before deeper procedural work. Plans/procedural.md and Plans/ROADMAP.md both say this is cheap and foundational. It would make snake maps, room graphs, placement, and future regression tests reproducible from one number.
-
-Add render cache telemetry if 100+ snakes remain a target. This is a contained engine feature: measure hit/miss/eviction pressure in the existing bake caches instead of guessing LRU sizes. It supports snake stress scenes without becoming snake-specific.
-
-Wire projected shadows when you want the biggest visual win. Plans/rendering.md says the math exists in shadowProjection.js. This is probably the most satisfying “one PR, engine looks better” task, and snake gives you lots of moving props to validate it.
-
-Avoid physics v2 until gameplay forces it. Revolute/motor joints and CCD are real, but the plans frame physics v1 as maintenance-ready. I’d only go there after a snake/sandbox feature specifically needs joints, breakable links, or fast-body tunneling fixes.
