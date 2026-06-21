@@ -30,35 +30,39 @@ export const kineticContactBuffer = {
     count: 0,
     physIdA: new Int32Array(MAX_CONTACTS),
     physIdB: new Int32Array(MAX_CONTACTS),
-    tier: new Uint8Array(MAX_CONTACTS),
-    nx: new Float32Array(MAX_CONTACTS),
-    ny: new Float32Array(MAX_CONTACTS),
-    rax: new Float32Array(MAX_CONTACTS),
-    ray: new Float32Array(MAX_CONTACTS),
-    rbx: new Float32Array(MAX_CONTACTS),
-    rby: new Float32Array(MAX_CONTACTS),
-    preDvx: new Float32Array(MAX_CONTACTS),
-    preDvy: new Float32Array(MAX_CONTACTS),
-    preSpeedA: new Float32Array(MAX_CONTACTS),
-    preSpeedB: new Float32Array(MAX_CONTACTS),
-    invMassA: new Float32Array(MAX_CONTACTS),
-    invMassB: new Float32Array(MAX_CONTACTS),
-    invIA: new Float32Array(MAX_CONTACTS),
-    invIB: new Float32Array(MAX_CONTACTS),
-    kNormal: new Float32Array(MAX_CONTACTS),
-    kTangent: new Float32Array(MAX_CONTACTS),
-    rAn: new Float32Array(MAX_CONTACTS),
-    rBn: new Float32Array(MAX_CONTACTS),
-    rAt: new Float32Array(MAX_CONTACTS),
-    rBt: new Float32Array(MAX_CONTACTS),
-    jn: new Float32Array(MAX_CONTACTS),
-    jt: new Float32Array(MAX_CONTACTS),
-    restitution: new Float32Array(MAX_CONTACTS),
-    friction: new Float32Array(MAX_CONTACTS),
-    featureA: new Uint8Array(MAX_CONTACTS),
-    featureB: new Uint8Array(MAX_CONTACTS),
-    warmStartKey: new Float64Array(MAX_CONTACTS),
-    resting: new Uint8Array(MAX_CONTACTS),
+    dynamic: {
+        nx: new Float32Array(MAX_CONTACTS),
+        ny: new Float32Array(MAX_CONTACTS),
+        rax: new Float32Array(MAX_CONTACTS),
+        ray: new Float32Array(MAX_CONTACTS),
+        rbx: new Float32Array(MAX_CONTACTS),
+        rby: new Float32Array(MAX_CONTACTS),
+        preDvx: new Float32Array(MAX_CONTACTS),
+        preDvy: new Float32Array(MAX_CONTACTS),
+        preSpeedA: new Float32Array(MAX_CONTACTS),
+        preSpeedB: new Float32Array(MAX_CONTACTS),
+        rAn: new Float32Array(MAX_CONTACTS),
+        rBn: new Float32Array(MAX_CONTACTS),
+        rAt: new Float32Array(MAX_CONTACTS),
+        rBt: new Float32Array(MAX_CONTACTS),
+        jn: new Float32Array(MAX_CONTACTS),
+        jt: new Float32Array(MAX_CONTACTS),
+        resting: new Uint8Array(MAX_CONTACTS),
+    },
+    static: {
+        tier: new Uint8Array(MAX_CONTACTS),
+        invMassA: new Float32Array(MAX_CONTACTS),
+        invMassB: new Float32Array(MAX_CONTACTS),
+        invIA: new Float32Array(MAX_CONTACTS),
+        invIB: new Float32Array(MAX_CONTACTS),
+        kNormal: new Float32Array(MAX_CONTACTS),
+        kTangent: new Float32Array(MAX_CONTACTS),
+        restitution: new Float32Array(MAX_CONTACTS),
+        friction: new Float32Array(MAX_CONTACTS),
+        featureA: new Uint8Array(MAX_CONTACTS),
+        featureB: new Uint8Array(MAX_CONTACTS),
+        warmStartKey: new Float64Array(MAX_CONTACTS),
+    },
     reset() {
         this.count = 0;
     },
@@ -90,52 +94,52 @@ function applyCachedContactImpulse(contacts, i) {
     const slab = kineticDynamicSlab;
     const physIdA = contacts.physIdA[i];
     const physIdB = contacts.physIdB[i];
-    const nx = contacts.nx[i];
-    const ny = contacts.ny[i];
+    const nx = contacts.dynamic.nx[i];
+    const ny = contacts.dynamic.ny[i];
     const tx = -ny;
     const ty = nx;
-    const jn = contacts.jn[i];
-    const jt = contacts.jt[i];
-    const invMassA = contacts.invMassA[i];
-    const invMassB = contacts.invMassB[i];
+    const jn = contacts.dynamic.jn[i];
+    const jt = contacts.dynamic.jt[i];
+    const invMassA = contacts.static.invMassA[i];
+    const invMassB = contacts.static.invMassB[i];
     slab.vx[physIdA] -= jn * nx * invMassA - jt * tx * invMassA;
     slab.vy[physIdA] -= jn * ny * invMassA - jt * ty * invMassA;
     slab.vx[physIdB] += jn * nx * invMassB - jt * tx * invMassB;
     slab.vy[physIdB] += jn * ny * invMassB - jt * ty * invMassB;
-    slab.w[physIdA] -= jn * contacts.rAn[i] * contacts.invIA[i] - jt * contacts.rAt[i] * contacts.invIA[i];
-    slab.w[physIdB] += jn * contacts.rBn[i] * contacts.invIB[i] - jt * contacts.rBt[i] * contacts.invIB[i];
+    slab.w[physIdA] -= jn * contacts.dynamic.rAn[i] * contacts.static.invIA[i] - jt * contacts.dynamic.rAt[i] * contacts.static.invIA[i];
+    slab.w[physIdB] += jn * contacts.dynamic.rBn[i] * contacts.static.invIB[i] - jt * contacts.dynamic.rBt[i] * contacts.static.invIB[i];
 }
 function warmStartKineticContacts(contacts) {
     const settings = getCollisionSettings();
     const decay = settings.kineticWarmStartDecay;
     let restingCount = 0;
     for (let i = 0; i < contacts.count; i++) {
-        const key = contacts.warmStartKey[i];
+        const key = contacts.static.warmStartKey[i];
         const cacheIdx = warmStartCacheLookup(key);
         if (cacheIdx === -1) {
-            contacts.jn[i] = 0;
-            contacts.jt[i] = 0;
+            contacts.dynamic.jn[i] = 0;
+            contacts.dynamic.jt[i] = 0;
         } else {
-            contacts.jn[i] = warmStartJn[cacheIdx] * decay;
-            contacts.jt[i] = warmStartJt[cacheIdx] * decay;
+            contacts.dynamic.jn[i] = warmStartJn[cacheIdx] * decay;
+            contacts.dynamic.jt[i] = warmStartJt[cacheIdx] * decay;
             applyCachedContactImpulse(contacts, i);
         }
-        contacts.resting[i] = isRestingKineticContact(contacts, i, settings) ? 1 : 0;
-        if (contacts.resting[i]) restingCount++;
+        contacts.dynamic.resting[i] = isRestingKineticContact(contacts, i, settings) ? 1 : 0;
+        if (contacts.dynamic.resting[i]) restingCount++;
     }
     return restingCount;
 }
 function storeKineticWarmStartCache(contacts) {
     warmStartKeys.fill(0);
     for (let i = 0; i < contacts.count; i++) {
-        const key = contacts.warmStartKey[i];
+        const key = contacts.static.warmStartKey[i];
         let idx = warmStartCacheIndex(key);
         while (true) {
             const slot = warmStartKeys[idx];
             if (slot === key || slot === 0) {
                 warmStartKeys[idx] = key;
-                warmStartJn[idx] = contacts.jn[i];
-                warmStartJt[idx] = contacts.jt[i];
+                warmStartJn[idx] = contacts.dynamic.jn[i];
+                warmStartJt[idx] = contacts.dynamic.jt[i];
                 break;
             }
             idx = (idx + 1) & WARM_START_CACHE_MASK;
@@ -148,22 +152,22 @@ function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy,
     const slab = kineticDynamicSlab;
     contacts.physIdA[i] = physIdA;
     contacts.physIdB[i] = physIdB;
-    contacts.tier[i] = tier;
-    contacts.nx[i] = nx;
-    contacts.ny[i] = ny;
-    contacts.rax[i] = rax;
-    contacts.ray[i] = ray;
-    contacts.rbx[i] = rbx;
-    contacts.rby[i] = rby;
-    contacts.featureA[i] = featureA;
-    contacts.featureB[i] = featureB;
-    contacts.preDvx[i] = preDvx;
-    contacts.preDvy[i] = preDvy;
-    contacts.preSpeedA[i] = Math.hypot(slab.vx[physIdA], slab.vy[physIdA]);
-    contacts.preSpeedB[i] = Math.hypot(slab.vx[physIdB], slab.vy[physIdB]);
-    contacts.restitution[i] = restitution;
-    contacts.friction[i] = friction;
-    contacts.warmStartKey[i] = contactWarmStartKeyFromPairKey(warmStartPairKey, featureA, featureB);
+    contacts.static.tier[i] = tier;
+    contacts.dynamic.nx[i] = nx;
+    contacts.dynamic.ny[i] = ny;
+    contacts.dynamic.rax[i] = rax;
+    contacts.dynamic.ray[i] = ray;
+    contacts.dynamic.rbx[i] = rbx;
+    contacts.dynamic.rby[i] = rby;
+    contacts.static.featureA[i] = featureA;
+    contacts.static.featureB[i] = featureB;
+    contacts.dynamic.preDvx[i] = preDvx;
+    contacts.dynamic.preDvy[i] = preDvy;
+    contacts.dynamic.preSpeedA[i] = Math.hypot(slab.vx[physIdA], slab.vy[physIdA]);
+    contacts.dynamic.preSpeedB[i] = Math.hypot(slab.vx[physIdB], slab.vy[physIdB]);
+    contacts.static.restitution[i] = restitution;
+    contacts.static.friction[i] = friction;
+    contacts.static.warmStartKey[i] = contactWarmStartKeyFromPairKey(warmStartPairKey, featureA, featureB);
 }
 function narrowPhaseCircleContact(physIdA, physIdB, preDvx, preDvy, restitution, friction, warmStartPairKey, contacts) {
     const info = circleCircleContactSlab(physIdA, physIdB);
@@ -217,10 +221,31 @@ function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
         if (!kineticPairBodiesAt(spatialFrame, physIdA, physIdB)) continue;
-        const tier = pairs.tier[i];
+        const tier = pairs.static.tier[i];
         if (tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE)
-            narrowPhaseCircleContact(physIdA, physIdB, pairs.preDvx[i], pairs.preDvy[i], pairs.restitution[i], pairs.friction[i], pairs.warmStartPairKey[i], contacts);
-        else narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, pairs.preDvx[i], pairs.preDvy[i], pairs.restitution[i], pairs.friction[i], pairs.warmStartPairKey[i], contacts);
+            narrowPhaseCircleContact(
+                physIdA,
+                physIdB,
+                pairs.dynamic.preDvx[i],
+                pairs.dynamic.preDvy[i],
+                pairs.static.restitution[i],
+                pairs.static.friction[i],
+                pairs.static.warmStartPairKey[i],
+                contacts,
+            );
+        else
+            narrowPhaseSatContact(
+                spatialFrame,
+                physIdA,
+                physIdB,
+                tier,
+                pairs.dynamic.preDvx[i],
+                pairs.dynamic.preDvy[i],
+                pairs.static.restitution[i],
+                pairs.static.friction[i],
+                pairs.static.warmStartPairKey[i],
+                contacts,
+            );
     }
 }
 function precomputeKineticContacts(spatialFrame, contacts) {
@@ -229,13 +254,13 @@ function precomputeKineticContacts(spatialFrame, contacts) {
     for (let i = 0; i < contacts.count; i++) {
         const physIdA = contacts.physIdA[i];
         const physIdB = contacts.physIdB[i];
-        const nx = contacts.nx[i];
-        const ny = contacts.ny[i];
-        let rax = contacts.rax[i];
-        let ray = contacts.ray[i];
-        let rbx = contacts.rbx[i];
-        let rby = contacts.rby[i];
-        if (contacts.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
+        const nx = contacts.dynamic.nx[i];
+        const ny = contacts.dynamic.ny[i];
+        let rax = contacts.dynamic.rax[i];
+        let ray = contacts.dynamic.ray[i];
+        let rbx = contacts.dynamic.rbx[i];
+        let rby = contacts.dynamic.rby[i];
+        if (contacts.static.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
             const rA = dynSlab.r[physIdA];
             const rB = dynSlab.r[physIdB];
             rax = -nx * rA;
@@ -251,27 +276,27 @@ function precomputeKineticContacts(spatialFrame, contacts) {
         const rBn = rbx * ny - rby * nx;
         const rAt = rax * nx + ray * ny;
         const rBt = rbx * nx + rby * ny;
-        contacts.invMassA[i] = invMassA;
-        contacts.invMassB[i] = invMassB;
-        contacts.invIA[i] = invIA;
-        contacts.invIB[i] = invIB;
-        contacts.rAn[i] = rAn;
-        contacts.rBn[i] = rBn;
-        contacts.rAt[i] = rAt;
-        contacts.rBt[i] = rBt;
-        contacts.kNormal[i] = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
-        contacts.kTangent[i] = invMassA + invMassB + rAt * rAt * invIA + rBt * rBt * invIB;
+        contacts.static.invMassA[i] = invMassA;
+        contacts.static.invMassB[i] = invMassB;
+        contacts.static.invIA[i] = invIA;
+        contacts.static.invIB[i] = invIB;
+        contacts.dynamic.rAn[i] = rAn;
+        contacts.dynamic.rBn[i] = rBn;
+        contacts.dynamic.rAt[i] = rAt;
+        contacts.dynamic.rBt[i] = rBt;
+        contacts.static.kNormal[i] = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
+        contacts.static.kTangent[i] = invMassA + invMassB + rAt * rAt * invIA + rBt * rBt * invIB;
     }
 }
 function applyContactImpulse(contacts, i, slab, iterMaxImpulse) {
     const physIdA = contacts.physIdA[i];
     const physIdB = contacts.physIdB[i];
-    const nx = contacts.nx[i];
-    const ny = contacts.ny[i];
-    const rax = contacts.rax[i];
-    const ray = contacts.ray[i];
-    const rbx = contacts.rbx[i];
-    const rby = contacts.rby[i];
+    const nx = contacts.dynamic.nx[i];
+    const ny = contacts.dynamic.ny[i];
+    const rax = contacts.dynamic.rax[i];
+    const ray = contacts.dynamic.ray[i];
+    const rbx = contacts.dynamic.rbx[i];
+    const rby = contacts.dynamic.rby[i];
     const wA = slab.w[physIdA];
     const wB = slab.w[physIdB];
     const vAx = slab.vx[physIdA] - wA * ray;
@@ -279,12 +304,12 @@ function applyContactImpulse(contacts, i, slab, iterMaxImpulse) {
     const vBx = slab.vx[physIdB] - wB * rby;
     const vBy = slab.vy[physIdB] + wB * rbx;
     const velAlongNormal = (vBx - vAx) * nx + (vBy - vAy) * ny;
-    let j = (-(1 + contacts.restitution[i]) * velAlongNormal) / contacts.kNormal[i];
-    const oldJn = contacts.jn[i];
-    contacts.jn[i] = Math.max(oldJn + j, 0);
-    j = contacts.jn[i] - oldJn;
-    const invMassA = contacts.invMassA[i];
-    const invMassB = contacts.invMassB[i];
+    let j = (-(1 + contacts.static.restitution[i]) * velAlongNormal) / contacts.static.kNormal[i];
+    const oldJn = contacts.dynamic.jn[i];
+    contacts.dynamic.jn[i] = Math.max(oldJn + j, 0);
+    j = contacts.dynamic.jn[i] - oldJn;
+    const invMassA = contacts.static.invMassA[i];
+    const invMassB = contacts.static.invMassB[i];
     let maxImpulse = iterMaxImpulse;
     if (j !== 0) {
         maxImpulse = Math.max(maxImpulse, Math.abs(j));
@@ -292,8 +317,8 @@ function applyContactImpulse(contacts, i, slab, iterMaxImpulse) {
         slab.vy[physIdA] -= j * ny * invMassA;
         slab.vx[physIdB] += j * nx * invMassB;
         slab.vy[physIdB] += j * ny * invMassB;
-        slab.w[physIdA] -= j * contacts.rAn[i] * contacts.invIA[i];
-        slab.w[physIdB] += j * contacts.rBn[i] * contacts.invIB[i];
+        slab.w[physIdA] -= j * contacts.dynamic.rAn[i] * contacts.static.invIA[i];
+        slab.w[physIdB] += j * contacts.dynamic.rBn[i] * contacts.static.invIB[i];
     }
     const tx = -ny;
     const ty = nx;
@@ -304,19 +329,19 @@ function applyContactImpulse(contacts, i, slab, iterMaxImpulse) {
     const vBxT = slab.vx[physIdB] - wBn * rby;
     const vByT = slab.vy[physIdB] + wBn * rbx;
     const vt = (vAxT - vBxT) * tx + (vAyT - vByT) * ty;
-    let jt = -vt / contacts.kTangent[i];
-    const maxFriction = contacts.jn[i] * contacts.friction[i];
-    const oldJt = contacts.jt[i];
-    contacts.jt[i] = Math.max(-maxFriction, Math.min(maxFriction, oldJt + jt));
-    jt = contacts.jt[i] - oldJt;
+    let jt = -vt / contacts.static.kTangent[i];
+    const maxFriction = contacts.dynamic.jn[i] * contacts.static.friction[i];
+    const oldJt = contacts.dynamic.jt[i];
+    contacts.dynamic.jt[i] = Math.max(-maxFriction, Math.min(maxFriction, oldJt + jt));
+    jt = contacts.dynamic.jt[i] - oldJt;
     if (jt === 0) return maxImpulse;
     maxImpulse = Math.max(maxImpulse, Math.abs(jt));
     slab.vx[physIdA] += jt * tx * invMassA;
     slab.vy[physIdA] += jt * ty * invMassA;
     slab.vx[physIdB] -= jt * tx * invMassB;
     slab.vy[physIdB] -= jt * ty * invMassB;
-    slab.w[physIdA] += jt * contacts.rAt[i] * contacts.invIA[i];
-    slab.w[physIdB] -= jt * contacts.rBt[i] * contacts.invIB[i];
+    slab.w[physIdA] += jt * contacts.dynamic.rAt[i] * contacts.static.invIA[i];
+    slab.w[physIdB] -= jt * contacts.dynamic.rBt[i] * contacts.static.invIB[i];
     return maxImpulse;
 }
 function solveKineticContactVelocities(contacts, iterations, restingCount) {
@@ -329,7 +354,7 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
         iterationsRun = iter + 1;
         let maxImpulse = 0;
         for (let i = 0; i < count; i++) {
-            if (contacts.resting[i] && iter > 0) continue;
+            if (contacts.dynamic.resting[i] && iter > 0) continue;
             maxImpulse = applyContactImpulse(contacts, i, slab, maxImpulse);
         }
         solveMaxImpulse = Math.max(solveMaxImpulse, maxImpulse);

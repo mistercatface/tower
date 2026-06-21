@@ -11,12 +11,13 @@ export const kineticPairBuffer = {
     count: 0,
     physIdA: new Int32Array(MAX_KINETIC_PAIRS),
     physIdB: new Int32Array(MAX_KINETIC_PAIRS),
-    preDvx: new Float32Array(MAX_KINETIC_PAIRS),
-    preDvy: new Float32Array(MAX_KINETIC_PAIRS),
-    tier: new Uint8Array(MAX_KINETIC_PAIRS),
-    restitution: new Float32Array(MAX_KINETIC_PAIRS),
-    friction: new Float32Array(MAX_KINETIC_PAIRS),
-    warmStartPairKey: new Float64Array(MAX_KINETIC_PAIRS),
+    dynamic: { preDvx: new Float32Array(MAX_KINETIC_PAIRS), preDvy: new Float32Array(MAX_KINETIC_PAIRS) },
+    static: {
+        tier: new Uint8Array(MAX_KINETIC_PAIRS),
+        restitution: new Float32Array(MAX_KINETIC_PAIRS),
+        friction: new Float32Array(MAX_KINETIC_PAIRS),
+        warmStartPairKey: new Float64Array(MAX_KINETIC_PAIRS),
+    },
     reset() {
         this.count = 0;
     },
@@ -25,12 +26,13 @@ export const persistedKineticPairBuffer = {
     count: 0,
     physIdA: new Int32Array(MAX_KINETIC_PAIRS),
     physIdB: new Int32Array(MAX_KINETIC_PAIRS),
-    preDvx: new Float32Array(MAX_KINETIC_PAIRS),
-    preDvy: new Float32Array(MAX_KINETIC_PAIRS),
-    tier: new Uint8Array(MAX_KINETIC_PAIRS),
-    restitution: new Float32Array(MAX_KINETIC_PAIRS),
-    friction: new Float32Array(MAX_KINETIC_PAIRS),
-    warmStartPairKey: new Float64Array(MAX_KINETIC_PAIRS),
+    dynamic: { preDvx: new Float32Array(MAX_KINETIC_PAIRS), preDvy: new Float32Array(MAX_KINETIC_PAIRS) },
+    static: {
+        tier: new Uint8Array(MAX_KINETIC_PAIRS),
+        restitution: new Float32Array(MAX_KINETIC_PAIRS),
+        friction: new Float32Array(MAX_KINETIC_PAIRS),
+        warmStartPairKey: new Float64Array(MAX_KINETIC_PAIRS),
+    },
     reset() {
         this.count = 0;
     },
@@ -40,12 +42,12 @@ export function copyKineticPairBuffer(from, to) {
     for (let i = 0; i < from.count; i++) {
         to.physIdA[i] = from.physIdA[i];
         to.physIdB[i] = from.physIdB[i];
-        to.preDvx[i] = from.preDvx[i];
-        to.preDvy[i] = from.preDvy[i];
-        to.tier[i] = from.tier[i];
-        to.restitution[i] = from.restitution[i];
-        to.friction[i] = from.friction[i];
-        to.warmStartPairKey[i] = from.warmStartPairKey[i];
+        to.dynamic.preDvx[i] = from.dynamic.preDvx[i];
+        to.dynamic.preDvy[i] = from.dynamic.preDvy[i];
+        to.static.tier[i] = from.static.tier[i];
+        to.static.restitution[i] = from.static.restitution[i];
+        to.static.friction[i] = from.static.friction[i];
+        to.static.warmStartPairKey[i] = from.static.warmStartPairKey[i];
     }
 }
 function pairMaterialFriction(body) {
@@ -66,17 +68,17 @@ function kineticPairFriction(bodyA, bodyB) {
     return f1 ?? f2 ?? getCollisionSettings().pairFriction;
 }
 function writePairMaterial(pairs, index, bodyA, bodyB) {
-    pairs.restitution[index] = kineticPairRestitution(bodyA, bodyB);
-    pairs.friction[index] = kineticPairFriction(bodyA, bodyB);
-    pairs.warmStartPairKey[index] = bodyA.id < bodyB.id ? bodyA.id * PAIR_BODY_KEY_SCALE + bodyB.id : bodyB.id * PAIR_BODY_KEY_SCALE + bodyA.id;
+    pairs.static.restitution[index] = kineticPairRestitution(bodyA, bodyB);
+    pairs.static.friction[index] = kineticPairFriction(bodyA, bodyB);
+    pairs.static.warmStartPairKey[index] = bodyA.id < bodyB.id ? bodyA.id * PAIR_BODY_KEY_SCALE + bodyB.id : bodyB.id * PAIR_BODY_KEY_SCALE + bodyA.id;
 }
 export function refreshKineticPairRelativeVelocities(pairs) {
     const slab = kineticDynamicSlab;
     for (let i = 0; i < pairs.count; i++) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
-        pairs.preDvx[i] = slab.vx[physIdB] - slab.vx[physIdA];
-        pairs.preDvy[i] = slab.vy[physIdB] - slab.vy[physIdA];
+        pairs.dynamic.preDvx[i] = slab.vx[physIdB] - slab.vx[physIdA];
+        pairs.dynamic.preDvy[i] = slab.vy[physIdB] - slab.vy[physIdA];
     }
 }
 export function pairPhysKey(physIdA, physIdB) {
@@ -96,19 +98,19 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
         const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
         if (!bodyA || !bodyB) continue;
         if (shareKineticIsland(bodyA, bodyB)) continue;
-        const tier = pairs.tier[i];
+        const tier = pairs.static.tier[i];
         const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
         if (!overlaps) continue;
         if (!shouldResolveKineticPair(bodyA, bodyB, overlaps)) continue;
         if (write !== i) {
             pairs.physIdA[write] = physIdA;
             pairs.physIdB[write] = physIdB;
-            pairs.preDvx[write] = pairs.preDvx[i];
-            pairs.preDvy[write] = pairs.preDvy[i];
-            pairs.tier[write] = tier;
-            pairs.restitution[write] = pairs.restitution[i];
-            pairs.friction[write] = pairs.friction[i];
-            pairs.warmStartPairKey[write] = pairs.warmStartPairKey[i];
+            pairs.dynamic.preDvx[write] = pairs.dynamic.preDvx[i];
+            pairs.dynamic.preDvy[write] = pairs.dynamic.preDvy[i];
+            pairs.static.tier[write] = tier;
+            pairs.static.restitution[write] = pairs.static.restitution[i];
+            pairs.static.friction[write] = pairs.static.friction[i];
+            pairs.static.warmStartPairKey[write] = pairs.static.warmStartPairKey[i];
         }
         write++;
     }
@@ -144,9 +146,9 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             const idx = pairs.count++;
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
-            pairs.preDvx[idx] = slab.vx[physIdB] - slab.vx[physIdA];
-            pairs.preDvy[idx] = slab.vy[physIdB] - slab.vy[physIdA];
-            pairs.tier[idx] = tier;
+            pairs.dynamic.preDvx[idx] = slab.vx[physIdB] - slab.vx[physIdA];
+            pairs.dynamic.preDvy[idx] = slab.vy[physIdB] - slab.vy[physIdA];
+            pairs.static.tier[idx] = tier;
             writePairMaterial(pairs, idx, primary, neighbor);
             keys.add(key);
             added++;
@@ -188,9 +190,9 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             const idx = pairs.count++;
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
-            pairs.preDvx[idx] = slab.vx[physIdB] - slab.vx[physIdA];
-            pairs.preDvy[idx] = slab.vy[physIdB] - slab.vy[physIdA];
-            pairs.tier[idx] = tier;
+            pairs.dynamic.preDvx[idx] = slab.vx[physIdB] - slab.vx[physIdA];
+            pairs.dynamic.preDvy[idx] = slab.vy[physIdB] - slab.vy[physIdA];
+            pairs.static.tier[idx] = tier;
             writePairMaterial(pairs, idx, primary, neighbor);
         }
     }

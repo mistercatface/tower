@@ -43,10 +43,10 @@ export function warmStartCacheIndex(warmStartKey) {
  */
 export function isRestingKineticContact(contacts, i, settings) {
     const resting = settings.kineticResting ?? {};
-    const nx = contacts.nx[i];
-    const ny = contacts.ny[i];
-    const preN = contacts.preDvx[i] * nx + contacts.preDvy[i] * ny;
-    const preT = contacts.preDvx[i] * -ny + contacts.preDvy[i] * nx;
+    const nx = contacts.dynamic.nx[i];
+    const ny = contacts.dynamic.ny[i];
+    const preN = contacts.dynamic.preDvx[i] * nx + contacts.dynamic.preDvy[i] * ny;
+    const preT = contacts.dynamic.preDvx[i] * -ny + contacts.dynamic.preDvy[i] * nx;
     const normalEps = resting.normalVelocityEpsilon ?? 0.05;
     const tangentEps = resting.tangentVelocityEpsilon ?? 0.05;
     const velSlack = 1e-4;

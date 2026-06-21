@@ -11,18 +11,18 @@ export function applyKineticContactSideEffects(tick, contacts) {
         const pair = kineticContactBodiesAt(tick.frame, physIdA, physIdB);
         if (!pair) continue;
         const { bodyA, bodyB } = pair;
-        const nx = contacts.nx[i];
-        const ny = contacts.ny[i];
+        const nx = contacts.dynamic.nx[i];
+        const ny = contacts.dynamic.ny[i];
         let hitX;
         let hitY;
-        if (contacts.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
+        if (contacts.static.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
             hitX = slab.x[physIdA] - nx * slab.r[physIdA];
             hitY = slab.y[physIdA] - ny * slab.r[physIdA];
         } else {
-            hitX = slab.x[physIdA] + contacts.rax[i];
-            hitY = slab.y[physIdA] + contacts.ray[i];
+            hitX = slab.x[physIdA] + contacts.dynamic.rax[i];
+            hitY = slab.y[physIdA] + contacts.dynamic.ray[i];
         }
-        const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
+        const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
         tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relSpeed);
     }
 }

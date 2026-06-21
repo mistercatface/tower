@@ -47,9 +47,9 @@ export function resolveStrikerBallSnakeSplitsFromContacts(state, spatialFrame, c
         else continue;
         const victim = resolveStrikerVictim(state, snakeGame, snakeBody.id);
         if (!victim) continue;
-        const strikerPreSpeed = pair.bodyA.id === strikerId ? contacts.preSpeedA[i] : contacts.preSpeedB[i];
+        const strikerPreSpeed = pair.bodyA.id === strikerId ? contacts.dynamic.preSpeedA[i] : contacts.dynamic.preSpeedB[i];
         if (strikerPreSpeed < config.kineticMinStrikeSpeed) continue;
-        const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
+        const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
         if (relSpeed < config.splitImpulseThreshold) continue;
         const strikeIndex = victim.members.indexOf(snakeBody.id);
         if (strikeIndex < 0 || strikeIndex >= victim.members.length - 1) continue;

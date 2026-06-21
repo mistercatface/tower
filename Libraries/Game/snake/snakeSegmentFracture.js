@@ -90,19 +90,19 @@ export function shatterSnakeSegments(state, spatialFrame, memberIds, deathImpact
 function contactWorldPointForBody(contacts, i, targetBody) {
     const physIdA = contacts.physIdA[i];
     const physIdB = contacts.physIdB[i];
-    const nx = contacts.nx[i];
-    const ny = contacts.ny[i];
-    if (contacts.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
+    const nx = contacts.dynamic.nx[i];
+    const ny = contacts.dynamic.ny[i];
+    if (contacts.static.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
         if (targetBody._physId === physIdB) return { x: kineticDynamicSlab.x[physIdB] + nx * kineticDynamicSlab.r[physIdB], y: kineticDynamicSlab.y[physIdB] + ny * kineticDynamicSlab.r[physIdB] };
         return { x: kineticDynamicSlab.x[physIdA] - nx * kineticDynamicSlab.r[physIdA], y: kineticDynamicSlab.y[physIdA] - ny * kineticDynamicSlab.r[physIdA] };
     }
-    if (targetBody._physId === physIdB) return { x: kineticDynamicSlab.x[physIdB] + contacts.rbx[i], y: kineticDynamicSlab.y[physIdB] + contacts.rby[i] };
-    return { x: kineticDynamicSlab.x[physIdA] + contacts.rax[i], y: kineticDynamicSlab.y[physIdA] + contacts.ray[i] };
+    if (targetBody._physId === physIdB) return { x: kineticDynamicSlab.x[physIdB] + contacts.dynamic.rbx[i], y: kineticDynamicSlab.y[physIdB] + contacts.dynamic.rby[i] };
+    return { x: kineticDynamicSlab.x[physIdA] + contacts.dynamic.rax[i], y: kineticDynamicSlab.y[physIdA] + contacts.dynamic.ray[i] };
 }
 function tryFractureRetiredSegment(state, spatialFrame, contacts, i, segment, fracturedIds) {
     if (!segment?.[FRACTURABLE_DEAD_SEGMENT_FLAG]) return false;
     if (fracturedIds.has(segment.id)) return false;
-    const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
+    const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
     if (relSpeed < getSnakeGameConfig().splitImpulseThreshold) return false;
     const hit = contactWorldPointForBody(contacts, i, segment);
     const fracture = shatterSnakeSegments(state, spatialFrame, [segment.id], { worldX: hit.x, worldY: hit.y, impactForce: relSpeed, struckSegmentId: segment.id, spatialFrame });

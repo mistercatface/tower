@@ -33,27 +33,31 @@ export const kineticConstraintSlab = {
     bodyB: new Array(MAX_KINETIC_CONSTRAINTS),
     physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS),
-    anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    massA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    massB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    invMassB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    invIA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    pinnedA: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
-    pinnedB: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
-    capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    nx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    ny: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    rAn: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    rBn: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    k: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    error: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    dynamic: {
+        accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        nx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        ny: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        rAn: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        rBn: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        k: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        error: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    },
+    static: {
+        anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        massA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        massB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        invMassB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        invIA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        pinnedA: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
+        pinnedB: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
+        capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+    },
     entry: new Array(MAX_KINETIC_CONSTRAINTS),
     reset() {
         this.count = 0;
@@ -137,21 +141,21 @@ function appendConstraintEntry(slab, item) {
     slab.bodyB[idx] = bodyB;
     slab.physIdA[idx] = bodyA._physId;
     slab.physIdB[idx] = bodyB._physId;
-    slab.anchorAx[idx] = item.entry.anchorA.x;
-    slab.anchorAy[idx] = item.entry.anchorA.y;
-    slab.anchorBx[idx] = item.entry.anchorB.x;
-    slab.anchorBy[idx] = item.entry.anchorB.y;
-    slab.restLength[idx] = item.entry.restLength;
-    slab.massA[idx] = massFromBody(bodyA);
-    slab.massB[idx] = massFromBody(bodyB);
-    slab.invMassA[idx] = inverseMassFromBody(bodyA);
-    slab.invMassB[idx] = inverseMassFromBody(bodyB);
-    slab.invIA[idx] = bodyA.momentOfInertia ? 1 / bodyA.momentOfInertia : 0;
-    slab.invIB[idx] = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
-    slab.pinnedA[idx] = bodyPinnedForContact(bodyA) ? 1 : 0;
-    slab.pinnedB[idx] = bodyPinnedForContact(bodyB) ? 1 : 0;
-    slab.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
-    slab.accumulatedImpulse[idx] = item.entry.accumulatedImpulse || 0;
+    slab.static.anchorAx[idx] = item.entry.anchorA.x;
+    slab.static.anchorAy[idx] = item.entry.anchorA.y;
+    slab.static.anchorBx[idx] = item.entry.anchorB.x;
+    slab.static.anchorBy[idx] = item.entry.anchorB.y;
+    slab.static.restLength[idx] = item.entry.restLength;
+    slab.static.massA[idx] = massFromBody(bodyA);
+    slab.static.massB[idx] = massFromBody(bodyB);
+    slab.static.invMassA[idx] = inverseMassFromBody(bodyA);
+    slab.static.invMassB[idx] = inverseMassFromBody(bodyB);
+    slab.static.invIA[idx] = bodyA.momentOfInertia ? 1 / bodyA.momentOfInertia : 0;
+    slab.static.invIB[idx] = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
+    slab.static.pinnedA[idx] = bodyPinnedForContact(bodyA) ? 1 : 0;
+    slab.static.pinnedB[idx] = bodyPinnedForContact(bodyB) ? 1 : 0;
+    slab.static.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
+    slab.dynamic.accumulatedImpulse[idx] = item.entry.accumulatedImpulse || 0;
     slab.entry[idx] = item.entry;
 }
 function islandItemsAsleep(items) {
@@ -353,20 +357,32 @@ function projectIslandLinkCapsulesAgainstWalls(tick) {
             for (let i = start; i < start + count; i++) {
                 const bodyA = slab.bodyA[i];
                 const bodyB = slab.bodyB[i];
-                if (!shouldProjectLinkCapsuleAgainstWalls(bodyA, bodyB, slab.anchorAx[i], slab.anchorAy[i], slab.anchorBx[i], slab.anchorBy[i], slab.capsuleRadius[i], islandWalls, linkWalls))
+                if (
+                    !shouldProjectLinkCapsuleAgainstWalls(
+                        bodyA,
+                        bodyB,
+                        slab.static.anchorAx[i],
+                        slab.static.anchorAy[i],
+                        slab.static.anchorBx[i],
+                        slab.static.anchorBy[i],
+                        slab.static.capsuleRadius[i],
+                        islandWalls,
+                        linkWalls,
+                    )
+                )
                     continue;
                 projectDistanceLinkCapsuleAgainstWalls(
                     bodyA,
                     bodyB,
-                    slab.anchorAx[i],
-                    slab.anchorAy[i],
-                    slab.anchorBx[i],
-                    slab.anchorBy[i],
+                    slab.static.anchorAx[i],
+                    slab.static.anchorAy[i],
+                    slab.static.anchorBx[i],
+                    slab.static.anchorBy[i],
                     linkWalls,
                     spatialFrame,
-                    slab.pinnedA[i],
-                    slab.pinnedB[i],
-                    slab.capsuleRadius[i],
+                    slab.static.pinnedA[i],
+                    slab.static.pinnedB[i],
+                    slab.static.capsuleRadius[i],
                 );
             }
     }
@@ -375,41 +391,41 @@ function projectDistanceConstraint(slab, index) {
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
     const dynSlab = kineticDynamicSlab;
-    const wa = worldAnchorFromSlab(slab.bodyA[index], physIdA, slab.anchorAx[index], slab.anchorAy[index], dynSlab);
-    const wb = worldAnchorFromSlab(slab.bodyB[index], physIdB, slab.anchorBx[index], slab.anchorBy[index], dynSlab);
+    const wa = worldAnchorFromSlab(slab.bodyA[index], physIdA, slab.static.anchorAx[index], slab.static.anchorAy[index], dynSlab);
+    const wb = worldAnchorFromSlab(slab.bodyB[index], physIdB, slab.static.anchorBx[index], slab.static.anchorBy[index], dynSlab);
     const dx = wb.x - wa.x;
     const dy = wb.y - wa.y;
     const dist = Math.hypot(dx, dy);
     if (dist < 1e-8) return;
     const nx = dx / dist;
     const ny = dy / dist;
-    const error = dist - slab.restLength[index];
+    const error = dist - slab.static.restLength[index];
     if (Math.abs(error) < 1e-5) return;
     separateAlongNormalSlab(physIdA, physIdB, nx, ny, -error);
 }
 function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias) {
-    const k = slab.k[index];
+    const k = slab.dynamic.k[index];
     if (k <= 1e-12) return 0;
     const bodyA = slab.bodyA[index];
     const bodyB = slab.bodyB[index];
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
     const dynSlab = kineticDynamicSlab;
-    const nx = slab.nx[index];
-    const ny = slab.ny[index];
-    const rAn = slab.rAn[index];
-    const rBn = slab.rBn[index];
-    const error = slab.error[index];
+    const nx = slab.dynamic.nx[index];
+    const ny = slab.dynamic.ny[index];
+    const rAn = slab.dynamic.rAn[index];
+    const rBn = slab.dynamic.rBn[index];
+    const error = slab.dynamic.error[index];
     const vAn = dynSlab.vx[physIdA] * nx + dynSlab.vy[physIdA] * ny + dynSlab.w[physIdA] * rAn;
     const vBn = dynSlab.vx[physIdB] * nx + dynSlab.vy[physIdB] * ny + dynSlab.w[physIdB] * rBn;
     const vRelN = vBn - vAn;
     const lambda = -(vRelN + velocityBias * error) / k;
     if (lambda === 0) return 0;
-    slab.accumulatedImpulse[index] += lambda;
-    const invMassA = slab.invMassA[index];
-    const invMassB = slab.invMassB[index];
-    const invIA = slab.invIA[index];
-    const invIB = slab.invIB[index];
+    slab.dynamic.accumulatedImpulse[index] += lambda;
+    const invMassA = slab.static.invMassA[index];
+    const invMassB = slab.static.invMassB[index];
+    const invIA = slab.static.invIA[index];
+    const invIB = slab.static.invIB[index];
     dynSlab.vx[physIdA] -= lambda * nx * invMassA;
     dynSlab.vy[physIdA] -= lambda * ny * invMassA;
     dynSlab.vx[physIdB] += lambda * nx * invMassB;
@@ -433,8 +449,8 @@ function warmStartKineticConstraintSlab() {
         const bodyB = slab.bodyB[i];
         const physIdA = slab.physIdA[i];
         const physIdB = slab.physIdB[i];
-        const wa = worldAnchorFromSlab(bodyA, physIdA, slab.anchorAx[i], slab.anchorAy[i], dynSlab);
-        const wb = worldAnchorFromSlab(bodyB, physIdB, slab.anchorBx[i], slab.anchorBy[i], dynSlab);
+        const wa = worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab);
+        const wb = worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab);
         const dx = wb.x - wa.x;
         const dy = wb.y - wa.y;
         const dist = Math.hypot(dx, dy);
@@ -447,11 +463,11 @@ function warmStartKineticConstraintSlab() {
         if (dist >= 1e-8) {
             nx = dx / dist;
             ny = dy / dist;
-            error = dist - slab.restLength[i];
-            const invMassA = slab.invMassA[i];
-            const invMassB = slab.invMassB[i];
-            const invIA = slab.invIA[i];
-            const invIB = slab.invIB[i];
+            error = dist - slab.static.restLength[i];
+            const invMassA = slab.static.invMassA[i];
+            const invMassB = slab.static.invMassB[i];
+            const invIA = slab.static.invIA[i];
+            const invIB = slab.static.invIB[i];
             const rax = wa.x - dynSlab.x[physIdA];
             const ray = wa.y - dynSlab.y[physIdA];
             const rbx = wb.x - dynSlab.x[physIdB];
@@ -460,18 +476,18 @@ function warmStartKineticConstraintSlab() {
             rBn = rbx * ny - rby * nx;
             k = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
         }
-        slab.nx[i] = nx;
-        slab.ny[i] = ny;
-        slab.error[i] = error;
-        slab.rAn[i] = rAn;
-        slab.rBn[i] = rBn;
-        slab.k[i] = k;
-        const lambda = slab.accumulatedImpulse[i];
+        slab.dynamic.nx[i] = nx;
+        slab.dynamic.ny[i] = ny;
+        slab.dynamic.error[i] = error;
+        slab.dynamic.rAn[i] = rAn;
+        slab.dynamic.rBn[i] = rBn;
+        slab.dynamic.k[i] = k;
+        const lambda = slab.dynamic.accumulatedImpulse[i];
         if (lambda !== 0 && dist >= 1e-8) {
-            const invMassA = slab.invMassA[i];
-            const invMassB = slab.invMassB[i];
-            const invIA = slab.invIA[i];
-            const invIB = slab.invIB[i];
+            const invMassA = slab.static.invMassA[i];
+            const invMassB = slab.static.invMassB[i];
+            const invIA = slab.static.invIA[i];
+            const invIB = slab.static.invIB[i];
             dynSlab.vx[physIdA] -= lambda * nx * invMassA;
             dynSlab.vy[physIdA] -= lambda * ny * invMassA;
             dynSlab.vx[physIdB] += lambda * nx * invMassB;
@@ -500,7 +516,7 @@ function solveKineticConstraintSlab(tick) {
         }
         if (maxImpulse <= contactImpulseEpsilon) break;
     }
-    for (let i = 0; i < slab.activeCount; i++) slab.entry[i].accumulatedImpulse = slab.accumulatedImpulse[i];
+    for (let i = 0; i < slab.activeCount; i++) slab.entry[i].accumulatedImpulse = slab.dynamic.accumulatedImpulse[i];
 }
 function gatheredConstraintSlabHasEvictedBodies(spatialFrame, slab) {
     const entities = spatialFrame.entityGrid.entities;
@@ -533,9 +549,9 @@ export function measureConstraintSlabMaxError() {
     for (let i = 0; i < slab.activeCount; i++) {
         const bodyA = slab.bodyA[i];
         const bodyB = slab.bodyB[i];
-        const wa = worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.anchorAx[i], slab.anchorAy[i], dynSlab);
-        const wb = worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.anchorBx[i], slab.anchorBy[i], dynSlab);
-        const error = Math.abs(Math.hypot(wb.x - wa.x, wb.y - wa.y) - slab.restLength[i]);
+        const wa = worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab);
+        const wb = worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab);
+        const error = Math.abs(Math.hypot(wb.x - wa.x, wb.y - wa.y) - slab.static.restLength[i]);
         if (error > max) max = error;
     }
     return max;
