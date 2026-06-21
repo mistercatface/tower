@@ -1,11 +1,15 @@
 export const PAIR_KEY_SCALE = 1_000_000;
 export const WARM_START_CACHE_MASK = 16383;
 const WARM_START_FEATURE_STRIDE = 1024;
-/**
- * @param {{ id: number }} bodyA
- * @param {{ id: number }} bodyB
- * @returns {number}
- */
+const FEATURE_ANGLE_BUCKETS = 32;
+export function quantizeContactFeatureId(nx, ny) {
+    if (nx === 0 && ny === 0) return 0;
+    const angle = Math.atan2(ny, nx);
+    let bucket = Math.round((angle / (Math.PI * 2)) * FEATURE_ANGLE_BUCKETS);
+    if (bucket < 0) bucket += FEATURE_ANGLE_BUCKETS;
+    if (bucket >= FEATURE_ANGLE_BUCKETS) bucket = 0;
+    return bucket & 0x1f;
+}
 export function pairContactKey(bodyA, bodyB) {
     return bodyA.id < bodyB.id ? bodyA.id * PAIR_KEY_SCALE + bodyB.id : bodyB.id * PAIR_KEY_SCALE + bodyA.id;
 }
