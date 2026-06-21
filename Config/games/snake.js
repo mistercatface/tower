@@ -63,6 +63,8 @@ export const SNAKE_GAME_DEFAULTS = {
     fleeRange: null,
     /** Within this world distance a larger threat always forces flee, regardless of hunger. */
     lethalThreatRange: 48,
+    /** Flee has separate enter/exit thresholds so snakes do not yo-yo around threat vision. */
+    fleeHysteresis: { minTicks: 45, exitThreatSeverity: 0.15, refreshAtSeverity: 0.35 },
     /** Short-term intent memory after LOS loss, in FSM ticks. */
     intentMemory: { threatTtlTicks: 45, preyTtlTicks: 90, foodTtlTicks: 180 },
     /** Locked seek targets switch from HPA pathing to direct steering once close and visible. */

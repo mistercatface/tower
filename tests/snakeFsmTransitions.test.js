@@ -287,6 +287,34 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getLastTransitionReason(), "threat_visible");
     });
 
+    it("holds flee briefly after threat severity drops before returning to food", async () => {
+        applySnakeGameConfig({ fleeRange: 128, fleeHysteresis: { minTicks: 35, exitThreatSeverity: 0.15, refreshAtSeverity: 0.35 } });
+        resetKineticConstraintIds(1);
+        const state = await createFsmTestState();
+        const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
+        const threat = spawnLinkedBallChain(state, { col: 13, row: 10 }, chainOptions(7));
+        wireSnakeTestGame(state, [
+            { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
+            { headId: threat.head.id, spawnGroupId: threat.spawnGroupId },
+        ]);
+        spawnSnakeFoodShardAtCell(state, { col: 12, row: 10 });
+        hunter.head.facing = 0;
+        threat.head.x = hunter.head.x + 30;
+        threat.head.y = hunter.head.y;
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
+
+        autosim.start();
+        assert.equal(autosim.getMode(), "flee");
+
+        threat.head.x = hunter.head.x + 120;
+        for (let i = 0; i < 31; i++) autosim.tick(FRAME_MS);
+        assert.equal(autosim.getMode(), "flee");
+        assert.equal(autosim.getFsmSnapshot().decision.chosenIntent.reason, "flee_hysteresis");
+
+        for (let i = 0; i < 6; i++) autosim.tick(FRAME_MS);
+        assert.equal(autosim.getMode(), "seek_food");
+    });
+
     it("seek_prey transitions to seek_food when prey is lost and food is visible", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);

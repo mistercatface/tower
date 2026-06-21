@@ -1,7 +1,8 @@
 import { createAgentIntent } from "../../AI/agentIntent/createAgentIntent.js";
+import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { buildSnakeDecisionContext } from "./snakeDecisionModel.js";
+import { buildSnakeDecisionContext, deriveSprintIntent } from "./snakeDecisionModel.js";
 import { perceiveSnakeIntentWorld, pickFleeCell } from "./snakeIntent.js";
 import { createSnakeIntentMemory } from "./snakeIntentMemory.js";
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "./snakeIntentStates.js";
@@ -23,6 +24,20 @@ export function createSnakeForageIntent({
     const resolvedVision = visionCone ?? config.visionCone;
     const intentMemory = createSnakeIntentMemory(config.intentMemory);
     const locomotion = createCellTargetLocomotion(headNav);
+    const fleeHysteresis = config.fleeHysteresis;
+    const fleeLatch = createModePolicyLatch({
+        mode: "flee",
+        minTicks: fleeHysteresis.minTicks,
+        holdReason: "flee_hysteresis",
+        refreshWhen: ({ world }) => {
+            const threat = world.blackboard.facts.threatState;
+            return threat?.lethal || threat?.severity >= fleeHysteresis.refreshAtSeverity;
+        },
+        canRelease: ({ world }) => {
+            const threat = world.blackboard.facts.threatState;
+            return !threat || (!threat.lethal && threat.severity <= fleeHysteresis.exitThreatSeverity);
+        },
+    });
     let intent = null;
     let lastBlackboard = null;
     let lastDecisionSnapshot = null;
@@ -115,7 +130,18 @@ export function createSnakeForageIntent({
         },
         perceiveWorld: perceiveWithMemory,
         pickPolicy: (world) => {
-            return world.decisionSnapshot.chosenIntent;
+            const policy = world.decisionSnapshot.chosenIntent;
+            const latched = fleeLatch.apply(policy, { world, currentMode: intent?.getMode() });
+            if (latched !== policy) {
+                world.blackboard.events.push("FLEE_HELD");
+                world.decisionSnapshot.events = world.blackboard.events;
+                world.decisionSnapshot.chosenIntent = latched;
+                world.decisionSnapshot.chosenReason = latched.reason ?? null;
+                world.decisionSnapshot.targetId = latched.targetId ?? null;
+                world.decisionSnapshot.sprintIntent = deriveSprintIntent(latched.mode, world.decisionSnapshot.threatState);
+            }
+            world.decisionSnapshot.policyLatch = { flee: fleeLatch.snapshot() };
+            return latched;
         },
         transitionReason: (prevMode, nextMode, policy) => {
             if (policy?.reason) return policy.reason;
@@ -131,12 +157,14 @@ export function createSnakeForageIntent({
         onClear(agent, state) {
             lastArrivalCol = null;
             lastArrivalRow = null;
+            fleeLatch.clear();
             locomotion.clear(agent, state);
             if (agent) agent.navStepPenalty = null;
         },
         onResetMode(agent, state) {
             lastArrivalCol = null;
             lastArrivalRow = null;
+            fleeLatch.clear();
             locomotion.clearDestination(agent, state);
         },
     });
