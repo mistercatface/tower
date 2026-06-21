@@ -9,6 +9,8 @@ import { wakeKineticBody } from "./kineticSleep.js";
 const LINK_CAPSULE_WALL_PASSES = 2;
 /** Reused per-island wall candidate list — cleared at the start of each awake island. */
 const islandLinkWallCandidates = [];
+/** Segment identity set paired with islandLinkWallCandidates for O(1) dedup during gather. */
+const islandLinkWallSegmentSet = new Set();
 /** Per-link AABB filter into the current island list before narrow-phase wall tests. */
 const linkFilteredWallCandidates = [];
 const MAX_KINETIC_CONSTRAINTS = 2048;
@@ -203,20 +205,11 @@ function linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, segment) {
     return segment.x >= minX && segment.x <= maxX && segment.y >= minY && segment.y <= maxY;
 }
 function mergeWallCandidatesInto(candidates, out) {
-    if (!candidates.length) return;
-    if (!out.length) {
-        for (let i = 0; i < candidates.length; i++) out.push(candidates[i]);
-        return;
-    }
     for (let i = 0; i < candidates.length; i++) {
         const seg = candidates[i];
-        let seen = false;
-        for (let j = 0; j < out.length; j++)
-            if (out[j] === seg) {
-                seen = true;
-                break;
-            }
-        if (!seen) out.push(seg);
+        if (islandLinkWallSegmentSet.has(seg)) continue;
+        islandLinkWallSegmentSet.add(seg);
+        out.push(seg);
     }
 }
 function appendBodyWallCandidates(spatialFrame, body, gatherMark, out) {
@@ -226,6 +219,7 @@ function appendBodyWallCandidates(spatialFrame, body, gatherMark, out) {
 }
 function gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gatherMark, out) {
     out.length = 0;
+    islandLinkWallSegmentSet.clear();
     for (let i = start; i < start + count; i++) {
         appendBodyWallCandidates(spatialFrame, slab.bodyA[i], gatherMark, out);
         appendBodyWallCandidates(spatialFrame, slab.bodyB[i], gatherMark, out);
