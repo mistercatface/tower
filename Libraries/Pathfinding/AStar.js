@@ -181,7 +181,6 @@ export function runAbstractAStarFlat(startIdx, targetIdx, nodeCol, nodeRow, edge
     }
     return null;
 }
-
 export function runDijkstraFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, searchState, stepPenaltyLookup = null) {
     const startIdx = startRow * cols + startCol;
     const targetIdx = targetRow * cols + targetCol;
@@ -229,7 +228,6 @@ export function runDijkstraFlat(startCol, startRow, targetCol, targetRow, navGra
     }
     return null;
 }
-
 export function runGreedyBestFirstFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, searchState, stepPenaltyLookup = null) {
     const startIdx = startRow * cols + startCol;
     const targetIdx = targetRow * cols + targetCol;
