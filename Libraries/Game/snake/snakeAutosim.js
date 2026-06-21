@@ -80,6 +80,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         registry,
         navWalkable,
         visionCone: resolvedVisionCone,
+        seekArrivalRadius: () => (typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius),
         rng,
     });
     let active = false;

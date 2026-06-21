@@ -10,6 +10,7 @@ export function createAgentIntent({
     seekMode = "seek",
     fleeMode = "flee",
     exploreMode = "explore",
+    seekArrivalRadius = null,
     rng = Math.random,
     resolveCommitTarget = (state, id, world) => {
         const prop = state.entityRegistry.getLive(id);
@@ -55,7 +56,7 @@ export function createAgentIntent({
         }
         const perceived = world ?? perceiveWorld(agent, state);
         const target = resolveCommittedTarget(state, perceived);
-        if (target) locomotion.setSeek(agent, state, target);
+        if (target) locomotion.setSeek(agent, state, target, { arrivalRadius: typeof seekArrivalRadius === "function" ? seekArrivalRadius(agent, target, state) : seekArrivalRadius });
     };
     const commit = (agent, state, nextMode, nextTargetId, reason, world = null) => {
         mode = nextMode;

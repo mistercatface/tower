@@ -16,10 +16,14 @@ export function shouldReleaseCellTargetHpaNav(prop, grid, destCol, destRow, dest
     if (cellTargetHasArrivedAtDestCell(grid, cell.col, cell.row, destCol, destRow)) return true;
     return groundNavArrivedAtTarget(prop, destWorld, destCol, destRow, grid, stopRadius);
 }
+function exactCellTargetHasArrived(prop, grid, destCol, destRow, destWorld, stopRadius) {
+    return groundNavArrivedAtTarget(prop, destWorld, destCol, destRow, grid, stopRadius);
+}
 export function createCellTargetLocomotion(headNav) {
     const hasArrivedAtDest = (agent, grid) => {
         const dest = headNav.getDestination();
         if (!dest) return false;
+        if (dest.exactArrival) return exactCellTargetHasArrived(agent, grid, dest.col, dest.row, dest.world, dest.arrivalRadius ?? Math.max(agent.radius, 2) * 2);
         const cell = grid.worldToGrid(agent.x, agent.y);
         return cellTargetHasArrivedAtDestCell(grid, cell.col, cell.row, dest.col, dest.row);
     };
@@ -35,9 +39,9 @@ export function createCellTargetLocomotion(headNav) {
         setExplore(agent, state, cell) {
             headNav.setDestination(state.obstacleGrid, cell.col, cell.row);
         },
-        setSeek(agent, state, target) {
+        setSeek(agent, state, target, options = {}) {
             const cell = state.obstacleGrid.worldToGrid(target.x, target.y);
-            headNav.setDestination(state.obstacleGrid, cell.col, cell.row);
+            headNav.setDestination(state.obstacleGrid, cell.col, cell.row, { world: { x: target.x, y: target.y }, exactArrival: true, arrivalRadius: options.arrivalRadius });
         },
         setFlee(agent, state, cell) {
             headNav.setDestination(state.obstacleGrid, cell.col, cell.row);
@@ -77,6 +81,7 @@ export function createCellTargetHpaNav(state) {
     let destCol = null;
     let destRow = null;
     let destWorld = null;
+    let arrivalRadius = null;
     let wasOnBelt = false;
     let strandedFrames = 0;
     const beltHandoffCooldown = { frames: 0 };
@@ -91,13 +96,20 @@ export function createCellTargetHpaNav(state) {
         destCol = null;
         destRow = null;
         destWorld = null;
+        arrivalRadius = null;
+        exactArrival = false;
         resetSession();
     };
-    const setDestination = (grid, col, row) => {
-        const changed = destCol !== col || destRow !== row;
+    let exactArrival = false;
+    const setDestination = (grid, col, row, options = {}) => {
+        const world = options.world ?? grid.gridToWorld(col, row);
+        const nextExactArrival = Boolean(options.exactArrival);
+        const changed = destCol !== col || destRow !== row || !destWorld || destWorld.x !== world.x || destWorld.y !== world.y || exactArrival !== nextExactArrival;
         destCol = col;
         destRow = row;
-        destWorld = grid.gridToWorld(col, row);
+        destWorld = world;
+        exactArrival = nextExactArrival;
+        arrivalRadius = options.arrivalRadius ?? null;
         if (changed) {
             strandedFrames = 0;
             hpaNav.markTargetChanged();
@@ -118,7 +130,10 @@ export function createCellTargetHpaNav(state) {
         if (destCol == null || !destWorld) return;
         const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
         const grid = state.obstacleGrid;
-        if (shouldReleaseCellTargetHpaNav(prop, grid, destCol, destRow, destWorld, config.stopRadius)) {
+        const arrived = exactArrival
+            ? exactCellTargetHasArrived(prop, grid, destCol, destRow, destWorld, arrivalRadius ?? config.stopRadius)
+            : shouldReleaseCellTargetHpaNav(prop, grid, destCol, destRow, destWorld, config.stopRadius);
+        if (arrived) {
             clearGroundRollDrive(prop);
             clearDestination();
             return;
@@ -202,7 +217,10 @@ export function createCellTargetHpaNav(state) {
     return {
         getDestination() {
             if (destCol == null || destRow == null) return null;
-            return { col: destCol, row: destRow, world: destWorld };
+            const dest = { col: destCol, row: destRow, world: destWorld };
+            if (exactArrival) dest.exactArrival = true;
+            if (arrivalRadius != null) dest.arrivalRadius = arrivalRadius;
+            return dest;
         },
         setDestination,
         clearDestination,

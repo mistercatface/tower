@@ -2,7 +2,19 @@ import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
 import { perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "../../Game/snake/snakeIntent.js";
 import { createAgentIntent } from "./createAgentIntent.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
-export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFood, resolveExploreCell, selfHeadId, registry, navWalkable, visionCone = null, rng = Math.random }) {
+export function createSnakeForageIntent({
+    brain,
+    sync,
+    headNav,
+    resolveVisibleFood,
+    resolveExploreCell,
+    selfHeadId,
+    registry,
+    navWalkable,
+    visionCone = null,
+    seekArrivalRadius = null,
+    rng = Math.random,
+}) {
     const resolvedVision = visionCone ?? getSnakeGameConfig().visionCone;
     const locomotion = createCellTargetLocomotion(headNav);
     const intent = createAgentIntent({
@@ -22,6 +34,7 @@ export function createSnakeForageIntent({ brain, sync, headNav, resolveVisibleFo
         seekMode: "seek_food",
         fleeMode: "flee",
         exploreMode: "explore",
+        seekArrivalRadius,
         rng,
     });
     return {
