@@ -22,6 +22,7 @@ import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandbo
 import { createAabb } from "../Math/Aabb2D.js";
 import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
+import { CameraTargetCycler } from "../Sandbox/CameraTargetCycler.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { removeKineticConstraint } from "../Motion/kineticConstraints.js";
 import { clearChainLinksForProp, isChainLinkBall, listChainLinkEndpoints, resolveGroundNavSteeringProp, setChainHead } from "../Sandbox/chainLinks.js";
@@ -37,6 +38,7 @@ import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
  */
 export function createSandboxController(state, { getCanvas, clientToWorld, behaviors }) {
     const session = createSandboxSession(state);
+    const cameraCycler = new CameraTargetCycler(state, { getTargetIds: () => session.listPlacedProps().map((p) => p.id), onTargetChanged: () => session.sync() });
     const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     let spawnBehaviorId = behaviors[0]?.id ?? "";
     /** @type {(() => void) | null} */
@@ -262,7 +264,11 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         setSpawnVisualOverrideTint: (hex) => session.setSpawnVisualOverrideTint(hex),
         getSpawnVisualOverrideBrightness: () => session.getSpawnVisualOverrideBrightness(),
         setSpawnVisualOverrideBrightness: (brightness) => session.setSpawnVisualOverrideBrightness(brightness),
-        deleteSelectedProps: () => session.deleteSelectedProps(),
+        deleteSelectedProps: () => {
+            const sel = session.getSelection();
+            if (sel?.kind === "prop") for (const propId of sel.ids) cameraCycler.retarget(propId);
+            session.deleteSelectedProps();
+        },
         getSelectionTagFilter: () => session.getSelectionTagFilter(),
         setSelectionTagFilter: (filter) => session.setSelectionTagFilter(filter),
         listSelectedPropEntries: () => session.listSelectedPropEntries(),
@@ -352,7 +358,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.spawnAtCameraOrigin();
             stampPropBehavior(session.getSelectedProp());
         },
-        deletePropById: (id) => session.deletePropById(id),
+        deletePropById: (id) => {
+            cameraCycler.retarget(id);
+            session.deletePropById(id);
+        },
         removePropFromSelection: (id) => session.removePropFromSelection(id),
         listPlacedProps: () => session.listPlacedProps(),
         listPlacedFloorBelts: () => session.listPlacedFloorBelts(),
@@ -415,6 +424,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         exportSceneSnapshot: () => JSON.stringify(collectSandboxSceneSnapshot(state), null, 2),
         importSceneSnapshot(json) {
             applySandboxSceneSnapshot(state, parseSandboxSceneSnapshot(json));
+            cameraCycler.setFocusedId(null);
             resetBehaviors();
             exitWireModes();
             session.clearSelection();
@@ -423,6 +433,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         async loadStartScene() {
             await spawnSandboxStartScene(state);
+            cameraCycler.setFocusedId(null);
             resetBehaviors();
             exitWireModes();
             session.clearSelection();
@@ -482,6 +493,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             };
             window.addEventListener("keydown", onKeyDown);
             unbindKeyDown = () => window.removeEventListener("keydown", onKeyDown);
+            cameraCycler.bindInput();
         },
         destroy() {
             unbindKeyDown?.();
@@ -496,9 +508,11 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             placePreviewWorld = null;
             resetBehaviors();
             session.setUiSync(null);
+            cameraCycler.destroy();
         },
         clearBodies() {
             session.clear();
+            cameraCycler.setFocusedId(null);
             resetBehaviors();
         },
         collectOverlayCommands() {
@@ -542,11 +556,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.sync();
         },
         isCameraTarget(prop) {
-            return isSandboxCameraTarget(state, prop);
+            return cameraCycler.focusedId === prop.id;
         },
         setCameraTarget(enabled, prop) {
-            setSandboxCameraTarget(state, prop, enabled);
-            if (enabled) state.viewport.snapTo(prop.x, prop.y);
+            cameraCycler.setFocusedId(enabled ? prop.id : null);
             session.sync();
         },
     };
