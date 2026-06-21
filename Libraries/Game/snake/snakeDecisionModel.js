@@ -1,3 +1,4 @@
+import { netScoreDetail, pickBestScoreKey, scoreCandidateSet } from "../../AI/utility/utilityScoring.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 export function deriveSnakeHungerState(foodFraction) {
     if (foodFraction == null) return null;
@@ -104,11 +105,6 @@ function reachForCandidate(blackboard, mode, kind) {
     const dist = blackboard.facts.known[`${kind}Dist`];
     return Number.isFinite(dist) ? dist : null;
 }
-function netScoreDetail(value, reach, costPerCell) {
-    const cost = reach == null ? 0 : costPerCell * reach;
-    const net = value - cost;
-    return { value, reach, cost, net };
-}
 function policyReasonForTarget(blackboard, kind) {
     if (blackboard.facts.remembered[kind]) return `${kind}_memory`;
     return null;
@@ -136,9 +132,6 @@ function scorePreyDetail(blackboard, weights, pressure) {
     if (hunger?.desperate && (foodUnknown || routeFailed)) value += pressure.preyDesperationBonus;
     return netScoreDetail(value, reachForCandidate(blackboard, "seek_prey", "prey"), costPerCellForHunger(pressure, hunger));
 }
-function scorePrey(blackboard, weights, pressure) {
-    return scorePreyDetail(blackboard, weights, pressure).net;
-}
 function scoreFoodDetail(blackboard, weights, pressure) {
     if (!blackboard.facts.known.food) return { net: -Infinity };
     const hunger = blackboard.facts.hungerState;
@@ -146,19 +139,11 @@ function scoreFoodDetail(blackboard, weights, pressure) {
     const value = weights.food + pressure.foodHungerBonus * deficit;
     return netScoreDetail(value, reachForCandidate(blackboard, "seek_food", "food"), costPerCellForHunger(pressure, hunger));
 }
-function scoreFood(blackboard, weights, pressure) {
-    return scoreFoodDetail(blackboard, weights, pressure).net;
-}
 function scoreExplore(blackboard, weights) {
     return weights.explore;
 }
 export function scoreSnakeIntentCandidates(blackboard, weights = getSnakeGameConfig().decisionWeights, pressure = getSnakeGameConfig().decisionPressure) {
-    return {
-        flee: scoreFlee(blackboard, weights, pressure),
-        seek_prey: scorePrey(blackboard, weights, pressure),
-        seek_food: scoreFood(blackboard, weights, pressure),
-        explore: scoreExplore(blackboard, weights),
-    };
+    return scoreCandidateSet(scoreSnakeIntentCandidateDetails(blackboard, weights, pressure), INTENT_SCORE_ORDER).candidateScores;
 }
 export function scoreSnakeIntentCandidateDetails(blackboard, weights = getSnakeGameConfig().decisionWeights, pressure = getSnakeGameConfig().decisionPressure) {
     return {
@@ -176,14 +161,7 @@ function policyForScoredMode(blackboard, mode) {
     return { mode: "explore", targetId: null };
 }
 export function pickSnakeIntentPolicy(blackboard, scores = scoreSnakeIntentCandidates(blackboard)) {
-    let bestMode = "explore";
-    let bestScore = -Infinity;
-    for (const mode of INTENT_SCORE_ORDER)
-        if (scores[mode] > bestScore) {
-            bestScore = scores[mode];
-            bestMode = mode;
-        }
-    return policyForScoredMode(blackboard, bestMode);
+    return policyForScoredMode(blackboard, pickBestScoreKey(scores, INTENT_SCORE_ORDER).chosenKey);
 }
 export function buildSnakeDecisionContext({
     visibleWorld,
@@ -199,14 +177,8 @@ export function buildSnakeDecisionContext({
     const hungerState = deriveSnakeHungerState(foodFraction);
     const threatState = deriveSnakeThreatState(visibleWorld.threat, visibleWorld.threatDist);
     const blackboard = createSnakeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures });
-    const candidateScoreDetails = scoreSnakeIntentCandidateDetails(blackboard);
-    const candidateScores = {
-        flee: candidateScoreDetails.flee.net,
-        seek_prey: candidateScoreDetails.seek_prey.net,
-        seek_food: candidateScoreDetails.seek_food.net,
-        explore: candidateScoreDetails.explore.net,
-    };
-    const chosenIntent = pickPolicy(blackboard, candidateScores);
+    const scoredCandidates = scoreCandidateSet(scoreSnakeIntentCandidateDetails(blackboard), INTENT_SCORE_ORDER);
+    const chosenIntent = pickPolicy(blackboard, scoredCandidates.candidateScores);
     const sprintIntent = deriveSprintIntent(chosenIntent.mode, threatState);
     const decisionSnapshot = {
         events: blackboard.events,
@@ -214,8 +186,8 @@ export function buildSnakeDecisionContext({
         threatState,
         routeStatus,
         committedTarget,
-        candidateScores,
-        candidateScoreDetails,
+        candidateScores: scoredCandidates.candidateScores,
+        candidateScoreDetails: scoredCandidates.candidateScoreDetails,
         chosenIntent,
         chosenReason: chosenIntent.reason ?? null,
         targetId: chosenIntent.targetId ?? null,
