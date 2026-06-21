@@ -9,19 +9,7 @@ import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaPa
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Pathfinding/hpaRegionGraph.js";
 import { createNavLocalView, navTopologyFromSab } from "../../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyIntoArena } from "../../Pathfinding/bakeNavTopology.js";
-import {
-    hpaCellToRegionView,
-    hpaPathSlotAbstractIdx,
-    hpaPathSlotCols,
-    hpaPathSlotMeta,
-    hpaPathSlotRows,
-    hpaPersistEdgeCostsView,
-    hpaPersistEdgeOffsetsView,
-    hpaPersistEdgeSourcesView,
-    hpaPersistEdgeTargetsView,
-    hpaPersistNodeColView,
-    hpaPersistNodeRowView,
-} from "../../Pathfinding/hpaWorkerSab.js";
+import { hpaPathSlotAbstractIdx, hpaPathSlotCols, hpaPathSlotMeta, hpaPathSlotRows, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
 import { SearchState } from "../../Pathfinding/SearchState.js";
 export class HpaBufferManager {
     constructor() {
@@ -177,52 +165,26 @@ export class HpaTopologyArena {
 export class HpaRegionGraphManager {
     constructor(buffers) {
         this.buffers = buffers;
+        this.persistedGraph = new PersistedHpaGraphWriter(buffers);
         this.regionGraphState = null;
         this.persistNodeCount = 0;
         this.persistEdgeWrite = 0;
         /** @type {string[]} */
         this.persistNodeIds = [];
     }
-    buildPersistGraphCsr(nodeCount, edgeWrite) {
-        const srcSources = hpaPersistEdgeSourcesView(this.buffers.sabPersistGraphEdgeSources, this.buffers.maxGraphEdges).subarray(0, edgeWrite);
-        const edgeOffsets = hpaPersistEdgeOffsetsView(this.buffers.sabPersistGraphEdgeOffsets, this.buffers.maxGraphNodes);
-        edgeOffsets.fill(0, 0, nodeCount + 1);
-        for (let e = 0; e < edgeWrite; e++) {
-            const src = srcSources[e];
-            if (src >= 0 && src < nodeCount) edgeOffsets[src + 1]++;
-        }
-        let sum = 0;
-        for (let i = 0; i < nodeCount; i++) {
-            const count = edgeOffsets[i + 1];
-            edgeOffsets[i] = sum;
-            sum += count;
-        }
-        edgeOffsets[nodeCount] = sum;
-        return sum;
-    }
-    syncPersistAbstractGraph(nodeCount, edgeWrite) {
-        this.persistNodeCount = nodeCount;
-        this.persistEdgeWrite = this.buildPersistGraphCsr(nodeCount, edgeWrite);
-    }
     writeRegionGraphToSab(gridFrame) {
         if (!this.regionGraphState) return null;
         const frame = gridFrame;
         const packed = packRegionGraphFlat(this.regionGraphState.graph ?? this.regionGraphState.nodesMap, this.regionGraphState.cellToNode, frame);
-        if (packed.nodeCount > this.buffers.maxGraphNodes) throw new Error(`HPA region graph has ${packed.nodeCount} nodes (max ${this.buffers.maxGraphNodes})`);
-        const persistNodeCol = hpaPersistNodeColView(this.buffers.sabPersistGraphNodeCol, this.buffers.maxGraphNodes);
-        const persistNodeRow = hpaPersistNodeRowView(this.buffers.sabPersistGraphNodeRow, this.buffers.maxGraphNodes);
-        const persistEdgeSources = hpaPersistEdgeSourcesView(this.buffers.sabPersistGraphEdgeSources, this.buffers.maxGraphEdges);
-        const persistEdgeTargets = hpaPersistEdgeTargetsView(this.buffers.sabPersistGraphEdgeTargets, this.buffers.maxGraphEdges);
-        const persistEdgeCosts = hpaPersistEdgeCostsView(this.buffers.sabPersistGraphEdgeCosts, this.buffers.maxGraphEdges);
-        persistNodeCol.set(packed.nodeCol);
-        persistNodeRow.set(packed.nodeRow);
-        persistEdgeSources.set(packed.edgeSources);
-        persistEdgeTargets.set(packed.edgeTargets);
-        persistEdgeCosts.set(packed.edgeCosts);
-        hpaCellToRegionView(this.buffers.sabCellToRegionIdx, frame.cols * frame.rows).set(packed.cellToRegion);
-        this.syncPersistAbstractGraph(packed.nodeCount, packed.edgeWrite);
-        this.persistNodeIds = packed.nodeIds;
-        return { nodeCount: packed.nodeCount, edgeWrite: packed.edgeWrite, nodeIds: packed.nodeIds };
+        const meta = this.persistedGraph.writePackedRegionGraph(packed, frame);
+        this.persistNodeCount = meta.nodeCount;
+        this.persistEdgeWrite = meta.edgeWrite;
+        this.persistNodeIds = meta.nodeIds;
+        return meta;
+    }
+    abstractGraph() {
+        const graph = this.persistedGraph.flatGraphView();
+        return new HpaAbstractGraph(graph.nodeCol, graph.nodeRow, graph.edgeOffsets, graph.edgeTargets, graph.edgeCosts, graph.nodeCount, graph.edgeWrite, graph.nodeIds);
     }
     buildRegionGraphFull(gridFrame, topology, navView, data) {
         const frame = gridFrame;
@@ -328,17 +290,8 @@ export class HpaPathfindingWorker {
     runReplan(slot, data) {
         const frame = this.topology.requireGridFrame();
         const stepPenaltyLookup = data.stepPenaltyKeys?.length > 0 ? createNavStepPenaltyLookup(frame.cols, data.stepPenaltyKeys, data.stepPenaltyCosts) : null;
-        const cellToRegion = hpaCellToRegionView(this.buffers.sabCellToRegionIdx, frame.cols * frame.rows);
-        const baseGraph = new HpaAbstractGraph(
-            hpaPersistNodeColView(this.buffers.sabPersistGraphNodeCol, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
-            hpaPersistNodeRowView(this.buffers.sabPersistGraphNodeRow, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
-            hpaPersistEdgeOffsetsView(this.buffers.sabPersistGraphEdgeOffsets, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount + 1),
-            hpaPersistEdgeTargetsView(this.buffers.sabPersistGraphEdgeTargets, this.buffers.maxGraphEdges).subarray(0, this.graph.persistEdgeWrite),
-            hpaPersistEdgeCostsView(this.buffers.sabPersistGraphEdgeCosts, this.buffers.maxGraphEdges).subarray(0, this.graph.persistEdgeWrite),
-            this.graph.persistNodeCount,
-            this.graph.persistEdgeWrite,
-            this.graph.persistNodeIds,
-        );
+        const cellToRegion = new Int16Array(this.buffers.sabCellToRegionIdx, 0, frame.cols * frame.rows);
+        const baseGraph = this.graph.abstractGraph();
         const context = new HpaReplanContext({ frame, topology: this.topology.requireNavTopology(), navView: this.topology.navView, graph: baseGraph, penaltyLookup: stepPenaltyLookup, cellToRegion });
         return new HpaReplanPlanner(this.buffers, this.searchState).run(slot, context, data);
     }

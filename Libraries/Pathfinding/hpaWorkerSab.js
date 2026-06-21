@@ -1,3 +1,4 @@
+import { FlatGraphView } from "./AStar.js";
 export const HPA_PATH_META_FIELDS = 2;
 export const HPA_PATH_META_STRIDE_BYTES = HPA_PATH_META_FIELDS * 4;
 /** @param {SharedArrayBuffer} sabPathMetaPool @param {number} slot */
@@ -45,31 +46,87 @@ export function growHpaCellToRegionSab(sabCellToRegionIdx, cellCount) {
     if (sabCellToRegionIdx.byteLength >= byteLen) return sabCellToRegionIdx;
     return new SharedArrayBuffer(byteLen);
 }
-/** @param {SharedArrayBuffer} sab @param {number} nodeCount */
-export function hpaPersistNodeColView(sab, nodeCount) {
-    return new Int16Array(sab, 0, nodeCount);
-}
-/** @param {SharedArrayBuffer} sab @param {number} nodeCount */
-export function hpaPersistNodeRowView(sab, nodeCount) {
-    return new Int16Array(sab, 0, nodeCount);
-}
-/** @param {SharedArrayBuffer} sab @param {number} nodeCount */
-export function hpaPersistEdgeOffsetsView(sab, nodeCount) {
-    return new Int32Array(sab, 0, nodeCount + 1);
-}
-/** @param {SharedArrayBuffer} sab @param {number} edgeWrite */
-export function hpaPersistEdgeTargetsView(sab, edgeWrite) {
-    return new Int16Array(sab, 0, edgeWrite);
-}
-/** @param {SharedArrayBuffer} sab @param {number} edgeWrite */
-export function hpaPersistEdgeCostsView(sab, edgeWrite) {
-    return new Uint16Array(sab, 0, edgeWrite);
-}
-/** @param {SharedArrayBuffer} sab @param {number} edgeWrite */
-export function hpaPersistEdgeSourcesView(sab, edgeWrite) {
-    return new Int16Array(sab, 0, edgeWrite);
-}
-/** @param {SharedArrayBuffer} sab @param {number} cellCount */
-export function hpaCellToRegionView(sab, cellCount) {
-    return new Int16Array(sab, 0, cellCount);
+export class PersistedHpaGraphWriter {
+    constructor(buffers) {
+        this.buffers = buffers;
+        this.nodeCount = 0;
+        this.edgeWrite = 0;
+        /** @type {string[]} */
+        this.nodeIds = [];
+    }
+    get maxGraphNodes() {
+        return this.buffers.maxGraphNodes;
+    }
+    get maxGraphEdges() {
+        return this.buffers.maxGraphEdges;
+    }
+    nodeColView(length = this.maxGraphNodes) {
+        return new Int16Array(this.buffers.sabPersistGraphNodeCol, 0, length);
+    }
+    nodeRowView(length = this.maxGraphNodes) {
+        return new Int16Array(this.buffers.sabPersistGraphNodeRow, 0, length);
+    }
+    edgeOffsetsView(length = this.maxGraphNodes) {
+        return new Int32Array(this.buffers.sabPersistGraphEdgeOffsets, 0, length + 1);
+    }
+    edgeSourcesView(length = this.maxGraphEdges) {
+        return new Int16Array(this.buffers.sabPersistGraphEdgeSources, 0, length);
+    }
+    edgeTargetsView(length = this.maxGraphEdges) {
+        return new Int16Array(this.buffers.sabPersistGraphEdgeTargets, 0, length);
+    }
+    edgeCostsView(length = this.maxGraphEdges) {
+        return new Uint16Array(this.buffers.sabPersistGraphEdgeCosts, 0, length);
+    }
+    cellToRegionView(cellCount) {
+        return new Int16Array(this.buffers.sabCellToRegionIdx, 0, cellCount);
+    }
+    writePackedRegionGraph(packed, frame) {
+        this.assertCapacity(packed, frame);
+        this.nodeColView().set(packed.nodeCol);
+        this.nodeRowView().set(packed.nodeRow);
+        this.edgeSourcesView().set(packed.edgeSources);
+        this.edgeTargetsView().set(packed.edgeTargets);
+        this.edgeCostsView().set(packed.edgeCosts);
+        this.cellToRegionView(frame.cols * frame.rows).set(packed.cellToRegion);
+        this.nodeCount = packed.nodeCount;
+        this.edgeWrite = this.buildCsr(packed.nodeCount, packed.edgeWrite);
+        this.nodeIds = packed.nodeIds;
+        return { nodeCount: this.nodeCount, edgeWrite: this.edgeWrite, nodeIds: this.nodeIds };
+    }
+    assertCapacity(packed, frame) {
+        if (packed.nodeCount > this.maxGraphNodes) throw new Error(`HPA region graph has ${packed.nodeCount} nodes (max ${this.maxGraphNodes})`);
+        if (packed.edgeWrite > this.maxGraphEdges) throw new Error(`HPA region graph has ${packed.edgeWrite} edges (max ${this.maxGraphEdges})`);
+        const cellCount = frame.cols * frame.rows;
+        if (this.buffers.sabCellToRegionIdx.byteLength < cellCount * 2) throw new Error(`HPA cell-to-region buffer has ${this.buffers.sabCellToRegionIdx.byteLength} bytes (needs ${cellCount * 2})`);
+    }
+    buildCsr(nodeCount, edgeWrite) {
+        const srcSources = this.edgeSourcesView(edgeWrite);
+        const edgeOffsets = this.edgeOffsetsView();
+        edgeOffsets.fill(0, 0, nodeCount + 1);
+        for (let e = 0; e < edgeWrite; e++) {
+            const src = srcSources[e];
+            if (src >= 0 && src < nodeCount) edgeOffsets[src + 1]++;
+        }
+        let sum = 0;
+        for (let i = 0; i < nodeCount; i++) {
+            const count = edgeOffsets[i + 1];
+            edgeOffsets[i] = sum;
+            sum += count;
+        }
+        edgeOffsets[nodeCount] = sum;
+        return sum;
+    }
+    flatGraphView() {
+        return new FlatGraphView({
+            nodeCol: this.nodeColView(this.nodeCount),
+            nodeRow: this.nodeRowView(this.nodeCount),
+            edgeOffsets: this.edgeOffsetsView(this.nodeCount),
+            edgeTargets: this.edgeTargetsView(this.edgeWrite),
+            edgeCosts: this.edgeCostsView(this.edgeWrite),
+            nodeCount: this.nodeCount,
+            edgeWrite: this.edgeWrite,
+            nodeIds: this.nodeIds,
+        });
+    }
 }

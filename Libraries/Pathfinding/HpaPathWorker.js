@@ -3,18 +3,7 @@ import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
 import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, navCanStep } from "./navTopologySab.js";
-import {
-    createHpaWorkerSabPools,
-    growHpaCellToRegionSab,
-    hpaPathSlotMeta,
-    hpaPathSlotCols,
-    hpaPathSlotRows,
-    hpaPathSlotAbstractIdx,
-    hpaPersistNodeColView,
-    hpaPersistNodeRowView,
-    hpaPersistEdgeOffsetsView,
-    hpaPersistEdgeTargetsView,
-} from "./hpaWorkerSab.js";
+import { createHpaWorkerSabPools, growHpaCellToRegionSab, hpaPathSlotMeta, hpaPathSlotCols, hpaPathSlotRows, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";
 import { gridSettings } from "../../Config/world.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
@@ -194,11 +183,11 @@ export class HpaPathWorker {
         const size = grid.cols * grid.rows;
         if (!this.isRegionGraphReady(grid)) return null;
         const nodeCount = this.graphNodeCount;
-        const nodeCol = hpaPersistNodeColView(this.sabPersistGraphNodeCol, nodeCount);
-        const nodeRow = hpaPersistNodeRowView(this.sabPersistGraphNodeRow, nodeCount);
-        const edgeOffsets = hpaPersistEdgeOffsetsView(this.sabPersistGraphEdgeOffsets, nodeCount);
+        const nodeCol = new Int16Array(this.sabPersistGraphNodeCol, 0, nodeCount);
+        const nodeRow = new Int16Array(this.sabPersistGraphNodeRow, 0, nodeCount);
+        const edgeOffsets = new Int32Array(this.sabPersistGraphEdgeOffsets, 0, nodeCount + 1);
         const edgeWrite = nodeCount > 0 ? edgeOffsets[nodeCount] : 0;
-        const edgeTargets = hpaPersistEdgeTargetsView(this.sabPersistGraphEdgeTargets, edgeWrite);
+        const edgeTargets = new Int16Array(this.sabPersistGraphEdgeTargets, 0, edgeWrite);
         const cellToRegion = size > 0 ? new Int16Array(this.sabCellToRegionIdx, 0, size) : this.graphCellToRegion;
         const edges = [];
         for (let i = 0; i < nodeCount; i++) for (let e = edgeOffsets[i]; e < edgeOffsets[i + 1]; e++) edges.push({ sourceIdx: i, targetIdx: edgeTargets[e] });
@@ -258,10 +247,10 @@ export class HpaPathWorker {
         return this._abstractIdx(slot)[i];
     }
     graphNodeCol(idx) {
-        return hpaPersistNodeColView(this.sabPersistGraphNodeCol, this.graphNodeCount)[idx];
+        return new Int16Array(this.sabPersistGraphNodeCol, 0, this.graphNodeCount)[idx];
     }
     graphNodeRow(idx) {
-        return hpaPersistNodeRowView(this.sabPersistGraphNodeRow, this.graphNodeCount)[idx];
+        return new Int16Array(this.sabPersistGraphNodeRow, 0, this.graphNodeCount)[idx];
     }
     _pathMeta(slot) {
         return hpaPathSlotMeta(this.sabPathMetaPool, slot);
