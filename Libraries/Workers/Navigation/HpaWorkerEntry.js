@@ -207,7 +207,7 @@ export class HpaRegionGraphManager {
     writeRegionGraphToSab(gridFrame) {
         if (!this.regionGraphState) return null;
         const frame = gridFrame;
-        const packed = packRegionGraphFlat(this.regionGraphState.nodesMap, this.regionGraphState.cellToNode, frame);
+        const packed = packRegionGraphFlat(this.regionGraphState.graph ?? this.regionGraphState.nodesMap, this.regionGraphState.cellToNode, frame);
         if (packed.nodeCount > this.buffers.maxGraphNodes) throw new Error(`HPA region graph has ${packed.nodeCount} nodes (max ${this.buffers.maxGraphNodes})`);
         const persistNodeCol = hpaPersistNodeColView(this.buffers.sabPersistGraphNodeCol, this.buffers.maxGraphNodes);
         const persistNodeRow = hpaPersistNodeRowView(this.buffers.sabPersistGraphNodeRow, this.buffers.maxGraphNodes);
