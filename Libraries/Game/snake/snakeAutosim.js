@@ -32,8 +32,17 @@ export function createSnakeBrain(visionConeOverride) {
 function chainMemberProps(state, headId) {
     const ids = getConnectedBodyIds(state.kinetic, headId);
     const members = [];
-    for (let i = 0; i < ids.length; i++) members.push(state.entityRegistry.getLive(ids[i]));
+    for (let i = 0; i < ids.length; i++) {
+        const member = state.entityRegistry.getLive(ids[i]);
+        if (member) members.push(member);
+    }
     return members;
+}
+function resolveChainTailProp(state, headId) {
+    const members = chainMemberProps(state, headId);
+    const tail = members[members.length - 1];
+    if (!tail) throw new Error(`Cannot grow snake ${headId}: no live tail segment`);
+    return tail;
 }
 function runSnakeFsmTick(intent, seeker, state, dt, beforeNav = null) {
     const snakeGame = state.sandbox.snakeGame;
@@ -103,8 +112,7 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
         nav.accel = sprinting ? baseAccel * config.sprint.accelMultiplier : baseAccel;
     };
     const syncTailId = () => {
-        const liveMembers = chainMemberProps(state, headId);
-        tailId = liveMembers[liveMembers.length - 1].id;
+        tailId = resolveChainTailProp(state, headId).id;
     };
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
     const syncIntentTint = () => {
@@ -117,7 +125,7 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
     };
     const growOneSegment = (members = null) => {
         const grow = growSnakeChainAfterMeal(state, headId, members);
-        const tail = state.entityRegistry.getLive(tailId);
+        const tail = resolveChainTailProp(state, headId);
         const newTail = growChainSegment(state, tail, {
             spacing: grow.spacing,
             segmentRadius: grow.segmentRadius,

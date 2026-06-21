@@ -19,6 +19,7 @@ import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Librarie
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { SNAKE_SHARD_PROP_ID } from "../Libraries/Game/snake/snakeSegmentFracture.js";
+import { removeSandboxWorldProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 
 loadPropAssets();
 
@@ -137,6 +138,23 @@ describe("snakeAutosim", () => {
         autosim.tick(FRAME_MS);
         assert.equal(getChainMemberIds(state, chain.head.id).length, 4);
         autosim.tick(FRAME_MS);
+        autosim.tick(FRAME_MS);
+        assert.equal(getChainMemberIds(state, chain.head.id).length, 4);
+    });
+
+    it("grows from the current live tail when the cached tail was removed", () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(1);
+        const state = createSnakeAutosimTestState();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...snakeChainOptions(), segmentCount: 4 });
+        wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
+        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().metabolism.growthCost });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20, rng: () => 0 });
+        autosim.start();
+        removeSandboxWorldProp(state, chain.tail);
+        assert.equal(getChainMemberIds(state, chain.head.id).length, 3);
+        chain.head.x = food.x;
+        chain.head.y = food.y;
         autosim.tick(FRAME_MS);
         assert.equal(getChainMemberIds(state, chain.head.id).length, 4);
     });
