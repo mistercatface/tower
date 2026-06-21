@@ -36,3 +36,15 @@ PR 3: Use hunger to suppress prey chasing when satisfied. Adjust scorePrey so vi
 PR 4: Add satisfied visual feedback. Extend the snake tint logic so a snake that is effectively exploring while hungerState.satisfied appears purple instead of normal explore blue. Keep this as appearance, not a new FSM state, unless you want the snake to actually stop or behave differently. Tests should assert that satisfied explore gets purple while flee/food/prey colors still override it.
 
 PR 5: Add desperation tuning for “maybe I should chase before I run out.” Raise scorePrey and/or scoreFood as hunger drops, especially when food is not visible. This is where the in-between behavior becomes real: satisfied snakes ignore prey, hungry snakes consider food/prey, desperate snakes become more willing to chase prey because survival pressure is high.
+
+##
+
+PR 1: Add hunger facts to the decision model with no behavior change. Feed food timer fraction from snakeAutosim into createSnakeForageIntent, pass it into buildSnakeDecisionContext, and derive hungerState in snakeDecisionModel: satisfied, hungry, desperate, plus raw foodFraction. Surface that in decisionSnapshot and FSM debug. Policy should still pick the same modes as today.
+
+PR 2: Add scoring without changing outcomes. Move current threat > prey > food > explore priority into scoreFlee, scorePrey, scoreFood, and scoreExplore, with fixed weights that preserve current behavior exactly. Store candidateScores and chosen reason in decisionSnapshot. This gives observability before gameplay changes.
+
+PR 3: Make satisfied snakes ignore prey. If hungerState.satisfied, scorePrey should drop to zero or below explore unless there is a threat relationship requiring flee. Larger threats still force flee; smaller snakes still see bigger snakes as threats and flee through their own blackboard. This changes only decision scoring, not pathfinding or state movement rules.
+
+PR 4: Add satisfied appearance as a condition, not a state. Extend tint selection so explore + satisfied appears purple, while flee, seek_food, and seek_prey still override with yellow/green/red. Use the decision snapshot/blackboard hunger facts as the source of truth. No new FSM mode yet.
+
+PR 5: Add hunger pressure tuning and route-awareness to scoring. As hunger drops, raise scoreFood; when food is unknown or routes have recently failed, raise scorePrey enough that desperate snakes hunt smaller snakes. Route status should remain a blackboard fact like ROUTE_FAILED or routeStatus, not a fallback pathfinding system. The chosen mode still feeds the existing FSM and HPA locomotion.
