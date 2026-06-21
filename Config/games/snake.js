@@ -5,8 +5,8 @@ export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
     goalPropId: "goal_orb",
-    snakeCount: 250,
-    goalCount: 200,
+    snakeCount: 200,
+    goalCount: 300,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,
@@ -36,8 +36,6 @@ export const SNAKE_GAME_DEFAULTS = {
     exploreMinTiles: 8,
     /** LRU grid-cell memory window per snake (vision + arrival stamps). */
     spatialMemoryCapacity: 128,
-    /** Oldest memory fraction treated as explore frontier when no fresh cells exist. */
-    spatialMemoryFringeRatio: 0.25,
     /** Extra local/HPA step cost on recently remembered cells (newest = full penalty). */
     navMemoryStepPenalty: 6,
     navMemoryStepFalloff: 0.65,

@@ -1,7 +1,7 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { cellChebyshevDistance, pickExploreDestination, exploreFringeMinRankFromNewest } from "../Libraries/Navigation/steering/exploreSteering.js";
+import { cellChebyshevDistance, pickExploreDestination } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
@@ -21,7 +21,6 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
-import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 loadPropAssets();
 async function createIntentTestState(cols = 32, rows = 32) {
@@ -67,37 +66,40 @@ function snakeChainOptions() {
     };
 }
 describe("explore steering", () => {
-    it("exploreFringeMinRankFromNewest selects the oldest fringeRatio slice", () => {
-        const memory = createSpatialCellMemory({ capacity: 100 });
-        assert.equal(exploreFringeMinRankFromNewest(memory, 0.25), 74);
-    });
     it("pickExploreDestination respects minimum tile distance", async () => {
         const state = await createIntentTestState();
         const grid = state.obstacleGrid;
-        const openCells = collectWalkableCells(state);
-        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells, rng: () => 0, fringeRatio: 0.25 });
+        const openCells = [
+            { col: 11, row: 10 },
+            { col: 20, row: 10 },
+        ];
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells, rng: () => 0.75 });
         assert.ok(cell);
         assert.ok(cellChebyshevDistance(10, 10, cell.col, cell.row) >= 8);
     });
     it("prefers destinations outside spatial memory", async () => {
         const state = await createIntentTestState();
         const grid = state.obstacleGrid;
-        const openCells = collectWalkableCells(state);
+        const openCells = [
+            { col: 18, row: 10 },
+            { col: 20, row: 10 },
+        ];
         const memory = createSpatialCellMemory({ capacity: 64 });
         memory.stamp(18, 10);
-        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, memory, openCells, rng: () => 0, fringeRatio: 0.25 });
+        let call = 0;
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, memory, openCells, rng: () => (call++ === 0 ? 0 : 0.75) });
         assert.ok(cell);
         assert.ok(!memory.has(cell.col, cell.row));
     });
-    it("prefers fresh cells over recently remembered cells", async () => {
+    it("falls back to a remembered candidate when samples find no fresh cells", async () => {
         const state = await createIntentTestState();
         const grid = state.obstacleGrid;
-        const openCells = collectWalkableCells(state);
+        const openCells = [{ col: 12, row: 10 }];
         const memory = createSpatialCellMemory({ capacity: 8 });
         memory.stamp(12, 10);
-        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 1, memory, openCells, rng: () => 0, fringeRatio: 0.25 });
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 1, memory, openCells, rng: () => 0 });
         assert.ok(cell);
-        assert.ok(!memory.has(cell.col, cell.row));
+        assert.ok(memory.has(cell.col, cell.row));
     });
 });
 describe("snake intent FSM", () => {
