@@ -11,6 +11,7 @@ import { WorldProp } from "../Entities/WorldProp.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
+import { runKineticPhysics } from "../Libraries/Motion/kineticPhysicsPass.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
 loadPropAssets();
@@ -96,6 +97,37 @@ describe("kinetic pair persistence", () => {
         wedge.vx = -25;
         runCollisionPipeline(tick, { resolveWalls: () => {} });
         assert.ok(!SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
+        applyGameCollisionSettings(null);
+    });
+
+    it("refreshes persisted pairs across motion substeps instead of regathering", () => {
+        applyGameCollisionSettings({
+            collisionSettings: {
+                motionSubsteps: { maxStepPx: 4, maxSubsteps: 4 },
+                kineticIterations: 2,
+                kineticEarlyOut: { velocityEpsilonSq: -1, constraintErrorEpsilon: -1, contactImpulseEpsilon: -1 },
+            },
+        });
+        const a = mockCircleBody(0, 0, 10, 80, 0);
+        const b = mockCircleBody(14, 0, 10, -60, 0);
+        a.update = (dt) => {
+            a.x += a.vx * (dt / 1000);
+        };
+        b.update = (dt) => {
+            b.x += b.vx * (dt / 1000);
+        };
+        const tick = createKineticTestTick([a, b]);
+        runKineticPhysics(tick, 100, {
+            updateProp: (prop, subDt) => prop.update?.(subDt),
+            resolveWalls: () => {},
+            applyContactSideEffects: () => {},
+        });
+        const stats = tick.world.kinetic.kineticPairGatherStats;
+        const substeps = tick.world.kinetic.motionSubstepStats.substepsRun;
+        assert.equal(stats.full, 1);
+        assert.ok(substeps > 1);
+        assert.equal(stats.refresh, substeps - 1);
+        assert.equal(persistedKineticPairBuffer.count, 1);
         applyGameCollisionSettings(null);
     });
 });

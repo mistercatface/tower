@@ -94,7 +94,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         wakeKineticBody(prop);
         this._activationScheduled.add(prop);
     }
-    _wakeConstraintLinkedPeers(prop) {
+    _wakeConstraintLinkedPeers(prop, patchOut) {
         const linked = prop._kineticLinkNeighbors;
         if (linked?.length) {
             for (let i = 0; i < linked.length; i++) {
@@ -102,6 +102,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 if (peer === prop || peer._physId === undefined) continue;
                 if (peer.isSleeping) wakeKineticBody(peer);
                 this._ensureActive(peer);
+                if (patchOut) patchOut.push(peer);
             }
             return;
         }
@@ -112,14 +113,16 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             if (peer === prop || peer._physId === undefined) continue;
             if (peer.isSleeping) wakeKineticBody(peer);
             this._ensureActive(peer);
+            if (patchOut) patchOut.push(peer);
         }
     }
-    flushScheduledKineticActivations() {
+    flushScheduledKineticActivations(patchOut) {
         const scheduled = this._activationScheduled;
         if (scheduled.size === 0) return;
         for (const prop of scheduled) {
             this._ensureActive(prop);
-            this._wakeConstraintLinkedPeers(prop);
+            this._wakeConstraintLinkedPeers(prop, patchOut);
+            if (patchOut) patchOut.push(prop);
         }
         scheduled.clear();
     }

@@ -2,11 +2,11 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab } from "../../Motion/kineticConstraintSolver.js";
 import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
-import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
+import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { activeBodiesMatchKineticSlab, kineticBodySlab } from "./kineticBodySlab.js";
-import { copyKineticPairBuffer, kineticPairBuffer, persistedKineticPairBuffer } from "./kineticPairStream.js";
+import { persistedKineticPairBuffer } from "./kineticPairStream.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
 /** @param {object} prop @param {object[]} wallCandidates */
@@ -57,8 +57,8 @@ export function runCollisionPipeline(
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
         gatherKineticConstraintSlab(tick);
-        gatherKineticContactPairs(tick);
-        copyKineticPairBuffer(kineticPairBuffer, persistedKineticPairBuffer);
+        ensureKineticContactPairs(tick, persistedKineticPairBuffer);
+        const patchBodies = tick.world.kinetic.substepPairPatchBodies ?? (tick.world.kinetic.substepPairPatchBodies = []);
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;
             resolveKineticContactPassWithPairs(tick, persistedKineticPairBuffer);
@@ -71,7 +71,7 @@ export function runCollisionPipeline(
                 if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
                 resolveWalls(prop);
             }
-            frame.flushScheduledKineticActivations();
+            frame.flushScheduledKineticActivations(patchBodies);
             const MAX_KINETIC_SPEED = 1000;
             const MAX_KINETIC_SPEED_SQ = MAX_KINETIC_SPEED * MAX_KINETIC_SPEED;
             for (let i = 0; i < activeBodies.length; i++) {

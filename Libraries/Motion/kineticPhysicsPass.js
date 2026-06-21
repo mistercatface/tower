@@ -31,6 +31,10 @@ export function runKineticPhysics(tick, dt, hooks) {
     const session = world.kinetic;
     ensureKineticIslandPlan(session, frame._kineticBodies);
     session.kineticConstraintsDirty = false;
+    session.substepPairsValid = false;
+    session.substepPairPatchBodies = session.substepPairPatchBodies ?? [];
+    session.substepPairPatchBodies.length = 0;
+    session.kineticPairGatherStats = { full: 0, refresh: 0, patch: 0 };
     const kineticBodies = frame._kineticBodies;
     for (let i = 0; i < kineticBodies.length; i++) if (kineticBodies[i]._groundRollDrive) wakeKineticBody(kineticBodies[i]);
     frame.syncActiveKineticBodies();

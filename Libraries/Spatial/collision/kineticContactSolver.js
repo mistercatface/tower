@@ -1,7 +1,8 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import { bodyPinnedForContact, massFromBody } from "../../Motion/bodyMass.js";
-import { gatherKineticCandidatePairs, kineticPairBodiesAt, kineticPairBodyAt, kineticPairBuffer, refreshKineticPairRelativeVelocities } from "./kineticPairStream.js";
+import { gatherKineticCandidatePairs, kineticPairBuffer, kineticPairBodiesAt, kineticPairBodyAt, refreshKineticPairRelativeVelocities, compactSubstepKineticPairs, patchKineticPairsForBodies, copyKineticPairBuffer } from "./kineticPairStream.js";
+import { kineticPairTopologyStale } from "../../Motion/kineticTopology.js";
 import { stampKineticPairGatherTopology } from "../../Motion/kineticTopology.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
 import { kineticBodySlab, writebackKineticBodySlabPhysIds, separateAlongNormalSlab, separateCoincidentCircleSlab } from "./kineticBodySlab.js";
@@ -363,6 +364,35 @@ export function gatherKineticContactPairs(tick) {
     const pairs = kineticPairBuffer;
     gatherKineticCandidatePairs(tick.frame, pairs);
     return pairs;
+}
+function bumpPairGatherStat(session, field) {
+    if (!session.kineticPairGatherStats) session.kineticPairGatherStats = { full: 0, refresh: 0, patch: 0 };
+    session.kineticPairGatherStats[field]++;
+}
+export function ensureKineticContactPairs(tick, outPairs) {
+    const session = tick.world.kinetic;
+    const frame = tick.frame;
+    if (!session.substepPairsValid || kineticPairTopologyStale(frame)) {
+        gatherKineticContactPairs(tick);
+        copyKineticPairBuffer(kineticPairBuffer, outPairs);
+        session.substepPairsValid = true;
+        bumpPairGatherStat(session, "full");
+        return outPairs;
+    }
+    snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
+    stampKineticPairGatherTopology(frame, session);
+    if (!compactSubstepKineticPairs(frame, outPairs)) {
+        session.substepPairsValid = false;
+        return ensureKineticContactPairs(tick, outPairs);
+    }
+    refreshKineticPairRelativeVelocities(outPairs);
+    bumpPairGatherStat(session, "refresh");
+    const patchBodies = session.substepPairPatchBodies;
+    if (patchBodies?.length) {
+        if (patchKineticPairsForBodies(frame, outPairs, patchBodies) > 0) bumpPairGatherStat(session, "patch");
+        patchBodies.length = 0;
+    }
+    return outPairs;
 }
 export function resolveKineticContactPassWithPairs(tick, pairs) {
     const frame = tick.frame;
