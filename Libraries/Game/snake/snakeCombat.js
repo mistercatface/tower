@@ -3,7 +3,7 @@ import { removeChainLinkBetween, clearChainLinksForMembers } from "../../Sandbox
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
-import { markSnakeDead, registerInertSnake } from "./snakeLifecycle.js";
+import { markSnakeDead, registerInertSnake, retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 function snakeSegmentCount(state, headId, members = null) {
     return (members || getConnectedComponentPath(state.kinetic, headId)).length;
@@ -29,6 +29,7 @@ export function killSnake(state, snakeGame, headId, members = null) {
     const meta = getSandboxEntityMeta(state);
     const resolvedMembers = members || orderedMembers(state, headId);
     for (let i = 0; i < resolvedMembers.length; i++) meta.setChainHead(resolvedMembers[i], false);
+    retireSnakeSegmentsFromNav(state, resolvedMembers);
     clearChainLinksForMembers(state, resolvedMembers);
     markSnakeDead(snakeGame.registry, headId);
     if (snakeGame.onHeadDied) snakeGame.onHeadDied(headId);
@@ -44,6 +45,7 @@ export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struck
     const tailIds = members.slice(strikeIndex + 1);
     const meta = getSandboxEntityMeta(state);
     for (let i = 0; i < tailIds.length; i++) meta.setChainHead(tailIds[i], false);
+    retireSnakeSegmentsFromNav(state, tailIds);
     registerInertSnake(snakeGame.registry, tailIds[0], tailIds);
     enforceSnakeMinLength(state, snakeGame, victimHeadId);
     return { aliveHeadId: victimHeadId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };

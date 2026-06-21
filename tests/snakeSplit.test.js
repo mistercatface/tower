@@ -12,10 +12,8 @@ import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snak
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeLifecycleRegistry, isAliveSnakeHead, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength } from "../Libraries/Game/snake/snakeCombat.js";
-import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
-import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
-import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { steerRollToward } from "../Libraries/Sandbox/kineticRollActuator.js";
 
 loadPropAssets();
 
@@ -53,22 +51,18 @@ function snakeChainOptions(segmentCount) {
     };
 }
 
+function stubAutosim() {
+    return { start() {}, stop() {} };
+}
+
 function mockSnakeGame(state, headIds) {
     const registry = createSnakeLifecycleRegistry();
     const autosimsByHeadId = new Map();
-    const behaviorById = new Map([
-        [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
-        [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
-    ]);
     for (let i = 0; i < headIds.length; i++) {
         registerAliveSnake(registry, headIds[i]);
+        autosimsByHeadId.set(headIds[i], stubAutosim());
     }
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
-    for (let i = 0; i < headIds.length; i++) {
-        const autosim = createWiredSnakeAutosim(state, { headId: headIds[i], behaviorById, rng: () => 0 });
-        autosim.start();
-        autosimsByHeadId.set(headIds[i], autosim);
-    }
     return { registry, autosimsByHeadId };
 }
 
@@ -151,5 +145,69 @@ describe("snake min length death", () => {
         killSnake(state, snakeGame, headId);
         assert.equal(state.kinetic.kineticConstraints.length, 0);
         assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
+    });
+
+    it("killSnake strips nav drive but keeps segment velocity", () => {
+        applySnakeGameConfig({ segmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
+        const headId = pack.chain.head.id;
+        const snakeGame = mockSnakeGame(state, [headId]);
+        const head = pack.chain.head;
+        head.vx = 42;
+        head.vy = -17;
+        head._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 5, maxSpeed: 10 };
+        killSnake(state, snakeGame, headId);
+        assert.equal(head.vx, 42);
+        assert.equal(head.vy, -17);
+        assert.equal(head._groundRollDrive, undefined);
+    });
+
+    it("split inert tail retires nav drive on severed segments", () => {
+        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
+        const headId = pack.chain.head.id;
+        const snakeGame = mockSnakeGame(state, [headId]);
+        const members = getOrderedChainMemberIds(state, headId);
+        const tailLead = state.entityRegistry.getLive(members[3]);
+        tailLead.vx = 30;
+        tailLead.vy = 5;
+        tailLead._groundRollDrive = { kind: "thrust", dirX: 0, dirY: 1, accel: 5, maxSpeed: 10 };
+        splitSnakeAtStruckSegment(state, snakeGame, headId, members[2]);
+        assert.equal(tailLead.vx, 30);
+        assert.equal(tailLead.vy, 5);
+        assert.equal(tailLead._groundRollDrive, undefined);
+    });
+
+    it("alive registry guard skips autosim tick for dead heads", () => {
+        applySnakeGameConfig({ segmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
+        const headId = pack.chain.head.id;
+        const snakeGame = mockSnakeGame(state, [headId]);
+        const head = pack.chain.head;
+        const autosim = {
+            start() {},
+            stop() {},
+            tick() {
+                steerRollToward(head, 1, 0, { accel: 10, maxSpeed: 50 });
+            },
+        };
+        snakeGame.autosimsByHeadId.set(headId, autosim);
+        killSnake(state, snakeGame, headId);
+        snakeGame.autosimsByHeadId.set(headId, autosim);
+        head.vx = 0;
+        head.vy = 0;
+        for (const [id, sim] of snakeGame.autosimsByHeadId) {
+            if (!snakeGame.registry.aliveByHeadId.has(id)) continue;
+            sim.tick(50);
+        }
+        assert.equal(head.vx, 0);
+        assert.equal(head.vy, 0);
+        assert.equal(head._groundRollDrive, undefined);
     });
 });

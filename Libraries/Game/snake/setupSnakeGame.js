@@ -144,7 +144,10 @@ export async function setupSnakeGame(state) {
             const snakeGame = state.sandbox.snakeGame;
             snakeGame._batchingPerception = true;
             beginSnakePerceptionFrame(state);
-            for (const [, autosim] of autosimsByHeadId) autosim.tick(dtMs);
+            for (const [headId, autosim] of autosimsByHeadId) {
+                if (!registry.aliveByHeadId.has(headId)) continue;
+                autosim.tick(dtMs);
+            }
             recordSnakeAutosimDebug(state, autosimsByHeadId);
             endSnakePerceptionFrame(state);
             snakeGame._batchingPerception = false;

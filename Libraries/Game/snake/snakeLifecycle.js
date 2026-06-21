@@ -1,4 +1,13 @@
+import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { createSnakeGoalIndex, rebuildSnakeGoalIndex } from "./snakeGoalIndex.js";
+export function retireSnakeSegmentsFromNav(state, memberIds) {
+    for (let i = 0; i < memberIds.length; i++) {
+        const prop = state.entityRegistry.getLive(memberIds[i]);
+        if (!prop) continue;
+        clearGroundRollDrive(prop);
+        prop.navStepPenalty = null;
+    }
+}
 export function wireSnakeGameRegistry(state, registry, autosimsByHeadId, navWalkable) {
     state.sandbox.snakeGame = { registry, autosimsByHeadId, navWalkable, goalIndex: createSnakeGoalIndex(), simTick: 0, lastVisionBeginTick: -1 };
     rebuildSnakeGoalIndex(state);
