@@ -1,12 +1,15 @@
 import { centerReachAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { hasGridCellLineOfSightCached, isWorldPointInVisionCone } from "../../Navigation/perception/gridCellVision.js";
 import { kineticSpatial } from "../../../Systems/World/KineticSpatialFrame.js";
-import { SNAKE_SHARD_PROP_ID } from "./snakeSegmentFracture.js";
+import { isSnakeFracturableDeadSegment, SNAKE_SHARD_PROP_ID } from "./snakeSegmentFracture.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 const FOOD_QUERY_BOUNDS = createAabb();
 const ALL_FOOD_QUERY_BOUNDS = createAabb();
-function isSnakeFoodProp(prop) {
-    return prop.type === SNAKE_SHARD_PROP_ID;
+export function isSnakeShardFood(prop) {
+    return prop?.type === SNAKE_SHARD_PROP_ID;
+}
+export function isSnakeFoodTarget(prop) {
+    return isSnakeShardFood(prop) || isSnakeFracturableDeadSegment(prop);
 }
 function snakeWorldBoundsInto(out, state) {
     const grid = state.obstacleGrid;
@@ -17,7 +20,7 @@ function snakeWorldBoundsInto(out, state) {
     return out;
 }
 export function collectSnakeFoodPropsInBounds(state, bounds, spatialFrame = kineticSpatial) {
-    return state.entityRegistry.queryView({ bounds, kinds: ["worldProp"], filterId: "snakeFood", hitTest: "circle", match: isSnakeFoodProp }, spatialFrame);
+    return state.entityRegistry.queryView({ bounds, kinds: ["worldProp"], filterId: "snakeFood", hitTest: "circle", match: isSnakeFoodTarget }, spatialFrame);
 }
 export function collectSnakeFoodProps(state, spatialFrame = kineticSpatial) {
     return collectSnakeFoodPropsInBounds(state, snakeWorldBoundsInto(ALL_FOOD_QUERY_BOUNDS, state), spatialFrame);

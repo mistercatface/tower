@@ -14,6 +14,7 @@ import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { removeSandboxWorldProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { markSnakeSegmentsFracturable } from "../Libraries/Game/snake/snakeSegmentFracture.js";
 
 loadPropAssets();
 
@@ -74,5 +75,37 @@ describe("snake visible shard food parity", () => {
         seeker.facing = Math.PI;
         primeSnakeHeadVision(state, seeker);
         assert.equal(findNearestVisibleSnakeFood(state, seeker).id, visible.id);
+    });
+
+    it("treats intact fracturable dead segments as visible food targets", async () => {
+        applySnakeGameConfig();
+        const state = await createFoodQueryState();
+        const config = getSnakeGameConfig();
+        const seekerChain = spawnLinkedBallChain(state, { col: 10, row: 8 }, {
+            segmentCount: config.segmentCount,
+            spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
+            segmentRadius: config.startRadius,
+            linkSlack: config.linkSlack,
+            ballType: config.segmentPropId,
+            headBallType: config.headPropId,
+            growDirX: config.growDirX,
+            growDirY: config.growDirY,
+        });
+        const carcassChain = spawnLinkedBallChain(state, { col: 6, row: 8 }, {
+            segmentCount: config.segmentCount,
+            spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
+            segmentRadius: config.startRadius,
+            linkSlack: config.linkSlack,
+            ballType: config.segmentPropId,
+            headBallType: config.headPropId,
+            growDirX: config.growDirX,
+            growDirY: config.growDirY,
+        });
+        const carcassSegment = carcassChain.tail;
+        markSnakeSegmentsFracturable(state, [carcassSegment.id]);
+        const seeker = seekerChain.head;
+        seeker.facing = Math.PI;
+        primeSnakeHeadVision(state, seeker);
+        assert.equal(findNearestVisibleSnakeFood(state, seeker).id, carcassSegment.id);
     });
 });

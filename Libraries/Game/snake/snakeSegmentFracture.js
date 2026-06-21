@@ -39,6 +39,9 @@ function copyVisualOverride(from, to) {
 function markDeadSegmentFracturable(segment) {
     if (segment) segment[FRACTURABLE_DEAD_SEGMENT_FLAG] = true;
 }
+export function isSnakeFracturableDeadSegment(prop) {
+    return prop?.[FRACTURABLE_DEAD_SEGMENT_FLAG] === true;
+}
 export function markSnakeSegmentsFracturable(state, memberIds) {
     for (let i = 0; i < memberIds.length; i++) markDeadSegmentFracturable(state.entityRegistry.get(memberIds[i]));
 }

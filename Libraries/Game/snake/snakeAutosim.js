@@ -12,7 +12,7 @@ import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainTintFromHead, resolveSnakeChainTintHex, tintSnakeChain } from "./snakeChainColor.js";
 import { deriveSnakeHungerState } from "./snakeDecisionModel.js";
-import { findNearestVisibleSnakeFood, findNearestVisibleSnakeFoodFromVision } from "./snakeFood.js";
+import { findNearestVisibleSnakeFood, findNearestVisibleSnakeFoodFromVision, isSnakeShardFood } from "./snakeFood.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
 import { enforceSnakeMinLength } from "./snakeCombat.js";
@@ -77,8 +77,9 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
         registry,
         navWalkable,
         visionCone: resolvedVisionCone,
-        seekArrivalRadius: (mode) => {
+        seekArrivalRadius: (mode, agent, target) => {
             if (mode === "seek_prey") return { arrivalRadius: resolveHuntArrivalRadius(), lockOnTarget: true };
+            if (!isSnakeShardFood(target)) return { arrivalRadius: resolveHuntArrivalRadius(), lockOnTarget: true };
             return { arrivalRadius: typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius, lockOnTarget: true };
         },
         resolveHunger: () => getSnakeHunger(metabolism),
@@ -211,7 +212,7 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
             if (enforceSnakeMinLength(state, snakeGame, headId, members)) return;
             if (intent.getMode() === "seek_food" && intent.getTargetId() != null) {
                 const food = state.entityRegistry.getLive(intent.getTargetId());
-                if (food && !food.isDead) {
+                if (food && !food.isDead && isSnakeShardFood(food)) {
                     const dist = Math.hypot(food.x - seeker.x, food.y - seeker.y);
                     const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
                     if (dist <= radius) {
@@ -225,11 +226,13 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
             let fedThisTick = false;
             if (choice.mode === "seek_food" && choice.target) {
                 const food = choice.target;
-                const dist = Math.hypot(food.x - seeker.x, food.y - seeker.y);
-                const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
-                if (dist <= radius) {
-                    eatFoodShard(seeker, food, dtMs, members);
-                    fedThisTick = true;
+                if (isSnakeShardFood(food)) {
+                    const dist = Math.hypot(food.x - seeker.x, food.y - seeker.y);
+                    const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
+                    if (dist <= radius) {
+                        eatFoodShard(seeker, food, dtMs, members);
+                        fedThisTick = true;
+                    }
                 }
             }
             const drainMultiplier = sprinting ? config.sprint.hungerDrainMultiplier : 1;
