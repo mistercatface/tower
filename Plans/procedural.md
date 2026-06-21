@@ -400,9 +400,9 @@ The highest-leverage move is **Tier 11 rung 1** — a simple generator (random r
 
 1. **Unified world seed** — one root seed deriving cavern + graph + placement seeds (Tier 10). Cheap, and a prerequisite for reproducible generation.
 2. **Room-graph generator v1** — random rect packing + MST connectivity → existing bake (Tier 11 rung 1). The keystone.
-3. **Poisson / min-distance placement** — replace uniform open-cell pick so content stops clumping (Tier 7).
-4. **Second + third puzzle templates** — reuse the probe-before-commit pattern; grows the library (Tier 6).
-5. **CA + bake golden tests** — lock carving/bake output against seeds before building generators on top (Tier 1, 3, 12).
+3. **Seed golden tests** — lock CA, room-graph bake, and maze helper output against known seeds before building generators on top.
+4. **Poisson / min-distance placement** — replace uniform open-cell pick so content stops clumping (Tier 7).
+5. **Second + third puzzle templates** — reuse the probe-before-commit pattern; grows the library (Tier 6).
 
 > **On overlap:** when you build `levels.md` later, let it own *gameplay objectives, progression, and win/fail* — not geometry. This doc carves and arranges; a levels doc would say *what the player must do* in the arranged space, leaning on `AI.md` for solvability. Keep geometry here, goals there.
 
@@ -426,12 +426,14 @@ Libraries/RoomGraph/                — the level-gen core
   roomGraphSurfaceProfile.js        — theming assignment
   puzzleTemplateBeltCrate.js        — the one puzzle template
 Libraries/Sandbox/cavernFloorCells.js — open-cell placement helpers
+Libraries/Procedural/Mazes/          — rail maze, belt-corridor, split-layout helpers
 Config/procedural/profiles.js, Core/GameProceduralDesign.js — profile catalog/routing
-tests/cavernFloorCells, corridorWidthOne/MultiLane, puzzleTemplateBeltCrate, lockedRoom
+tests/cavernFloorCells, corridorWidthOne/MultiLane, puzzleTemplateBeltCrate,
+  lockedRoom, railMaze*, snakeSplitLayout
 ```
 
 Cross-doc: corridor solver → `pathfinding.md` Tier 9 · puzzle solvability/difficulty → `AI.md` Tier 10 · wall/floor rendering + surface textures → `rendering.md` Tiers 6, 8 · grid representation → `pathfinding.md` Tier 0.
 
 ---
 
-*Last updated: initial procedural/level-gen tree (mirrors `physics.md` / `pathfinding.md` / `rendering.md` / `AI.md`). Strong procedural resolution (CA caverns, corridor bake, locked rooms, one puzzle template, all seeded); weak procedural authorship (manual room layout, no generator, no unified seed). The keystone unlock is a room-graph generator feeding the existing bake (Tier 11). Revisit percentages when a layout generator or unified seed ships.*
+*Last updated: roadmap sync after `Procedural/Mazes` audit and maze/split-layout tests. Strong procedural resolution (CA caverns, corridor bake, locked rooms, one puzzle template, maze helpers); weak procedural authorship remains manual room layout, no generator, and no unified root seed.*

@@ -1,178 +1,206 @@
-# Library audit — what's in what state, and where it lives
+# Library audit — current map of the codebase
 
-The **map of record** for the codebase: every major folder, what it actually *is*, which roadmap doc **owns** it, and its state. This is the doc to open when you're asking *"where does X live?"* or *"wait, what is this folder?"* — the engine has several **name collisions** (a folder called `Procedural` that makes textures, an `IsometricProjection` that isn't isometric) and this is where they get untangled.
+This is the cross-cutting index for the engine. It answers two questions:
 
-> **Companion to:** [ROADMAP.md](./ROADMAP.md) §6 (condensed table). This file is the **expanded** version. Spoke file maps ([physics](./physics.md) · [pathfinding](./pathfinding.md) · [rendering](./rendering.md) · [procedural](./procedural.md) · [AI](./AI.md)) stay authoritative for *their* domain; this doc is the cross-cutting index.
+- **Where does this concern live?**
+- **Is this engine/library code, sandbox tooling, or snake-game-specific code?**
 
-**Legend:** ✅ shipped & wired · 🟡 partial / scaffolding · ⬜ stub / inert · 🔗 cross-cutting foundation (no single owner).
-**Owner doc** = which roadmap doc tracks this code's *feature progress* (one owner per concern; see §1).
+Spoke docs stay authoritative for feature progress: [physics](./physics.md), [pathfinding](./pathfinding.md), [rendering](./rendering.md), [procedural](./procedural.md), and [AI](./AI.md). This audit keeps the folder map and naming traps current.
 
----
-
-## 1. Naming traps — read this first
-
-These are the collisions that make the tree confusing. Each row: the name you see, what it **actually** is, and where the *other* meaning lives.
-
-| You see… | It **actually** is… | The other meaning lives in… |
-|---|---|---|
-| `Libraries/Procedural/` | **Surface-texture synthesis** (Perlin/Voronoi/motifs → pixel art for walls/floors) | Level/world *geometry* gen → `Libraries/CA/`, `Libraries/RoomGraph/` (owner: `procedural.md`) |
-| `Spatial/iso/IsometricProjection.js` | **Camera-relative radial elevation** projection (viewer-relative lean) | True fixed isometric — *doesn't exist*; "iso" here means "elevation" (owner: `rendering.md`) |
-| `prop.strategy` (`propStrategy.js`) | **WorldProp capability/config** pattern (collision shape, render key, sprite buckets) | AI strategy (GOAP/objectives) — *doesn't exist* (`AI.md` Tier 8) |
-| `goal` (`goalSeekAutosim`, `snakeGoals`) | A **navigation destination** (where to move) | AI *objective* (what to accomplish) — *doesn't exist* |
-| `Libraries/FSM/transition.js` | **Generic** enter/exit transition infra (used for prop lifecycle) | The snake's AI intent FSM — hand-rolled inside `snakeAutosim.js`, **not** this folder (owner: `AI.md`) |
-| `Libraries/AI/brain/` | The **real per-agent memory** (spatial LRU + nav penalty) — easy to miss | — (this *is* the AI memory; owner: `AI.md`) |
-| `navStepPenalty.js` (×2) | `AI/brain/navStepPenalty.js` **builds** the penalty from memory; `Pathfinding/navStepPenalty.js` **consumes** it in A\* | Two halves of one feature — producer (AI) + consumer (pathfinding) |
-| `Libraries/Navigation/` | **Perception + steering** for agents (vision cone, explore pick) | Path *algorithms* → `Libraries/Pathfinding/`; system *wiring* → `Systems/Navigation/` |
-| `Libraries/Motion/` | **Integrator + solver** (forces, impulses, substeps, islands) | Collision *detection* → `Libraries/Spatial/collision/` |
-| `Libraries/WorldSurface/` | **Chunk floor/wall texture-atlas baking** (worker-driven) | Per-prop sphere/decal texturing → `Render/SurfaceTexturing/`; texture *generators* → `Procedural/` |
-| `Libraries/Sandbox/` | A **mixed bag** — behaviors, ground-nav, chains, floor FX, map-gen UI; spans 4 docs | See §3.6 for the per-concern split |
-
-> **One-owner rule:** a concern is tracked by exactly **one** roadmap doc even if its code is split across folders. Perception code lives in `Libraries/Navigation/` but its *progress* is tracked in `AI.md`. The corridor solver lives in `Libraries/Pathfinding/Corridor/` but `procedural.md` only *calls* it. Cross-references use 🔗.
+**Legend:** ✅ shipped and wired · 🟡 partial / scaffolding · ⬜ inert or not behaviorally wired · 🔗 cross-cutting foundation.
 
 ---
 
-## 2. Repo top-level map
+## 1. Naming traps — read first
 
-| Folder | Role | Owner doc(s) |
+| You see… | It actually is… | Do not confuse it with… |
 |---|---|---|
-| `Apps/Editor/` | Editor shell, world mount, preview/draw passes, profile editor UI | tooling (🔗 rendering) |
-| `Core/` | Engine settings + globals + event system (`GamePhysicsSettings`, `GamePerspective`, `EventSystem`) | 🔗 foundations |
-| `Config/` | Game configs (`games/snake.js`), world config, procedural **profile presets** | per-domain |
-| `Entities/` | `Entity.js`, `WorldProp.js` — the base entity + prop model | 🔗 (physics/render/AI all touch it) |
-| `GameState/` | Registries + shared state + snapshots (`EntityRegistry`, `SharedGameState`, `sandboxEntityMeta`) | 🔗 foundations |
-| `Systems/` | Per-frame system wiring (`World/KineticSpatialFrame`, `Navigation/NavigationService`) | physics + pathfinding |
-| `Render/` | Top-level render loop + draw passes (`Render.js`, `RenderSprites`, `StructureDrawPass`) | rendering |
-| `Libraries/` | **The engine** — almost all subsystem code (see §3) | all |
-| `tests/` | `node --test` suites (see §5) | all |
+| `Libraries/Procedural/Motifs`, `Fields`, `Noise` | Surface texture synthesis for floors/walls | Geometry generation, which lives in `Libraries/CA`, `Libraries/RoomGraph`, and `Libraries/Procedural/Mazes` |
+| `Libraries/Procedural/Mazes` | Geometry/layout helpers for rail mazes, belt corridors, split layouts, walkable indexes | Texture motifs under `Libraries/Procedural/Motifs` |
+| `Spatial/iso/IsometricProjection.js` | Camera-relative radial elevation projection | True fixed isometric mode, which is still future rendering work |
+| `prop.strategy` | WorldProp capability/config pattern: physics, render keys, sandbox affordances | AI strategy / GOAP / objectives, which are not implemented |
+| `goal` in `snakeGoals` or ground nav | A movement target or food prop | AI objective / strategic goal |
+| `Libraries/FSM/transition.js` | Generic enter/exit transition helper for prop lifecycle-style FSMs | Agent intent FSM, now `Libraries/AI/agentIntent/createAgentIntent.js` |
+| `Libraries/AI/brain` | Spatial cell memory plus nav-step penalty producer | Entity target memory, now `Libraries/AI/memory/targetMemory.js` |
+| `navStepPenalty.js` x2 | `AI/brain/navStepPenalty.js` builds penalties; `Pathfinding/navStepPenalty.js` consumes them in A* | A duplicate implementation |
+| `Libraries/Navigation` | Runtime nav wiring, perception, steering, topology sync | Search algorithms, which live in `Libraries/Pathfinding` |
+| `Libraries/Motion` | Integration, constraints, solver, wall resolution | Collision detection, which lives in `Libraries/Spatial/collision` |
+| `Libraries/WorldSurface` | Chunk floor/wall texture-atlas baking | Per-prop surface texturing in `Libraries/Render/SurfaceTexturing` |
+| `Libraries/Sandbox` | Mixed engine-facing sandbox systems: nav behaviors, chains, floor systems, snapshots, map-gen UI | Snake game rules in `Libraries/Game/snake` |
 
 ---
 
-## 3. `Libraries/` — per-subsystem audit
+## 2. Top-level map
 
-Grouped by **owner doc** so you can find the home of a concern, not just a file.
-
-### 3.1 Physics & motion → [physics.md](./physics.md)
-
-| Folder | State | Role | Key files |
-|---|---|---|---|
-| `Libraries/Motion/` | ✅ | Integrator + impulse solver + substeps + islands + sleep | `kineticPhysicsPass.js` (driver), `motionSubsteps.js`, `applyAcceleration.js`, `applyDamping.js`, `rigidBodyImpulse.js`, `kineticConstraintSolver.js`, `kineticConstraints.js`, `kineticIslands.js`, `bodyMass.js`, `WallCollisionResolver.js`, `*Defaults.js` |
-| `Libraries/Spatial/collision/` | ✅ | Broadphase + narrowphase (SAT) + contact solve | `Broadphase.js`, `entityBroadphase.js`, `SatCollision.js`, `kineticNarrowPhase.js`, `kineticContactSolver.js`, `kineticPairStream.js`, `penetration.js`, `wallResolution.js`, `Shapes.js`, `overlap.js`, `collisionPipeline.js` |
-| `Libraries/Spatial/geometry/` | ✅ | Wall geometry + swept circle | `WallGeometry.js`, `circleSweep.js` |
-| `Libraries/Spatial/indexes/` | ✅ | Broadphase spatial hash | `EntityGrid.js` |
-
-### 3.2 Pathfinding & navigation → [pathfinding.md](./pathfinding.md)
-
-| Folder | State | Role | Key files |
-|---|---|---|---|
-| `Libraries/Pathfinding/` | ✅ | A\* (octile/cardinal/abstract), HPA\*, flow fields, sessions, replan | `AStar.js`, `FlowFieldGrid.js`, `flowFieldBfs.js`, `flowSteering.js`, `VoronoiRegions.js`, `hpaRegionGraph.js`, `hpaStitch.js`, `HpaPathSession.js`, `HpaPathWorker.js`, `navSession.js`, `navSimView.js`, `hpaReplanPolicy.js`, `gridReachabilityBfs.js`, `navStepPenalty.js` (consumer) |
-| `Libraries/Pathfinding/Corridor/` | ✅ | Cardinal-A\* **corridor solver** (called by procedural bake) | `corridorGridPathfinder.js`, `corridorBundle.js`, `corridorLanePath.js`, `corridorFootprint.js`, `corridorWallSlots.js` |
-| `Libraries/Workers/` | ✅ | SAB slot worker host + nav worker entries | `SabSlotWorkerHost.js`, `Navigation/HpaWorkerEntry.js`, `Navigation/FlowFieldWorkerEntry.js` |
-| `Systems/Navigation/` | ✅ | Per-frame nav service wiring | `NavigationService.js` |
-
-### 3.3 Rendering → [rendering.md](./rendering.md)
-
-| Folder | State | Role | Key files |
-|---|---|---|---|
-| `Libraries/Render/Props3D/` | ✅ | Prop meshes + projection + face cull | `PropRenderer.js`, `propMesh.js`, `sphere.js`, `sphereMesh.js`, `SolidDraw.js`, `flipperPaddle.js`, `pipeElbow.js` |
-| `Libraries/Render/Structure3D/` | ✅ | Voxel wall atlas + rail edges (building walls) | `StaticGridWallDraw.js`, `StaticGridEdgeRailDraw.js`, `ProjectedWallDraw.js`, `WallDrawContext.js` |
-| `Libraries/Render/overlays/` | ✅ | Editor/sandbox overlay command pipeline | `overlayCommands.js`, `drawOverlayCommands.js`, `overlayGlyphBake.js`, `overlayCacheKeys.js`, `pathOverlayCommands.js` |
-| `Libraries/Render/SurfaceTexturing/` | ✅ | Per-prop sphere/decal texture patches | `sphereSurface.js`, `drawSphereTexturePatch.js`, `texturedCells.js` |
-| `Libraries/Render/` (root) | ✅ | Scene assembly + prop draw entry | `WorldSceneRenderer.js`, `drawWorldProp.js`, `vectorProp.js`, `conveyorDraw.js`, `buttonFloorDraw.js`, `goalStarDraw.js`, `FloatingText.js`, `map/labMapCaches.js` |
-| `Libraries/Canvas/` | ✅ | Bake/quantize/LRU sprite cache + affine texture + offscreen | `QuantizedSpriteCache.js`, `BakedSpriteCache.js`, `SpriteCache.js`, `AffineTexture.js`, `viewQuantize.js`, `offscreenCanvas.js`, `maskCompositor.js` |
-| `Libraries/Spatial/iso/` | ✅ | **Radial elevation** projection + camera + shadow math | `IsometricProjection.js` (radial, misnamed), `ElevationCamera.js`, `shadowProjection.js` (⬜ unwired), `perspectiveDefaults.js` |
-| `Libraries/Viewport/` | ✅ | Pan/zoom transform + zoom limits | `index.js`, `zoomControl.js`, `zoomMappings.js` |
-| `Libraries/WorldSurface/` | ✅ | Chunk floor/wall texture-atlas **baking** (worker-driven) | `WorldSurfaceEngine.js`, `WorldSurfacePainter.js`, `TileWorkerCoordinator.js`, `ChunkDrawPass.js`, `WallFaceColumns.js`, `animatedSurface*.js` |
-| `Libraries/Color/` | ✅ | Prop tint / hue / brightness | `tintPresets.js`, `hueShift.js`, `brightness.js`, `visualOverride.js`, `hex.js` |
-| `Render/` (top-level) | ✅ | Render loop + sprite/structure passes | `Render.js`, `RenderSprites.js`, `StructureDrawPass.js`, `SimulationViewport.js`, `WorldRenderMode.js` |
-
-### 3.4 Procedural → [procedural.md](./procedural.md)
-
-| Folder | State | Role | Key files |
-|---|---|---|---|
-| `Libraries/CA/` | ✅ | Cellular-automata cave carving | `cellularAutomata.js` |
-| `Libraries/RoomGraph/` | ✅ | Room-graph model + bake-to-geometry + corridors + puzzle template | `roomGraphStore.js`, `roomGraphBake.js`, `roomGraphCorridorApply.js`, `roomGraphLinkCorridor.js`, `roomGraphCorridorTypes.js`, `roomGraphCorridorBelts.js`, `roomGraphClosedRooms.js`, `puzzleTemplateBeltCrate.js`, `roomGraphSnapshot.js` |
-| `Libraries/Procedural/` | ✅ | ⚠️ **Texture synthesis, NOT geometry** (🔗 rendering Tier 8) | `SurfaceTextureComposer.js`, `MotifRegistry.js`, `Fields/DomainWarp.js`, `Fields/VoronoiEdge.js`, `Motifs/*` (per-motif generators), `Motifs/Filters/*` |
-| `Config/procedural/` | ✅ | Named surface-**profile presets** + bootstrap | `profiles.js`, `profileIds.js`, `bootstrap.js`, `storage/*` (one file per theme: `neonWireframe`, `toxicSludge`, `cyberGrid`, …) |
-
-### 3.5 AI → [AI.md](./AI.md)
-
-| Folder | State | Role | Key files |
-|---|---|---|---|
-| `Libraries/AI/brain/` | ✅ | **Per-agent spatial memory** (recency LRU) + memory→A\* penalty **producer** | `createBrain.js`, `spatialCellMemory.js`, `navStepPenalty.js` (builder), `spatialCellMemoryOverlay.js` |
-| `Libraries/Navigation/perception/` | ✅ | Vision cone + grid LOS — **drives decisions** | `gridCellVision.js`, `gridCellVisionOverlay.js` |
-| `Libraries/Navigation/steering/` | ✅ | Frontier **explore** destination pick | `exploreSteering.js` |
-| `Libraries/Sandbox/autosim/` | ✅ | Generic greedy goal-seek autosim | `goalSeekAutosim.js` |
-| `Libraries/Game/snake/` | ✅ | **The intent FSM** (`seek`/`explore`) + brain wiring + goals + scene | `snakeAutosim.js` (FSM), `snakeBrain.js` (perception→memory→penalty), `snakeGoals.js`, `snakeScene.js`, `setupSnakeGame.js`, `snakeGameConfig.js`, `snake*Overlays.js` |
-| `Libraries/FSM/` | 🟡 | Generic transition infra (**not** the snake FSM) | `transition.js` |
-| `Libraries/Agent/` | ✅ | Pose + steering-result contracts | `types.js`, `create.js` |
-| `Libraries/Sandbox/sandboxFaction.js` | ⬜ | Faction metadata + "Team" label (no gameplay logic) | — |
-
-### 3.6 Sandbox & editor (mixed — spans multiple docs)
-
-`Libraries/Sandbox/` is the **most cross-cutting folder**; here's the per-concern split:
-
-| Sub-area | Owner doc | Files |
+| Path | Role | Owner / status |
 |---|---|---|
-| Ground-nav behaviors | 🔗 pathfinding/AI | `groundNav/hpaGroundNavBehavior.js`, `groundNav/flowGroundNavBehavior.js`, `groundNav/directGroundNavBehavior.js`, `groundNav/hpaGroundNavSession.js` |
-| Steering actuator | physics | `kineticRollActuator.js` |
-| Prop behaviors | AI/gameplay | `behaviors/flipperBehavior.js`, `behaviors/spawnerBehavior.js`, `behaviors/cueStrikeBehavior.js`, `behaviors/dragLaunchFacingBehavior.js` |
-| Chains / linked bodies | physics | `chainLinks.js`, `spawnLinkedBallChain.js` |
-| Floor systems | gameplay/render | `floorOccupancy.js`, `floorEffects.js`, `floorButtons.js`, `floorBeltDefaults.js`, `drawForcefields.js`, `forcefieldPower.js`, `passagePowerNetwork.js` |
-| Map-gen UI | procedural | `mapGenInspector.js`, `mapGenBounds.js`, `cavernFloorCells.js`, `sandboxRoomGraphSession.js` |
-| Scene/snapshot/placement | 🔗 foundations | `sandboxScenePlaceables.js`, `sandboxSceneSnapshot.js`, `sandboxPlacedSpawn.js`, `index.js` |
+| `Apps/Editor` | Editor shell, RAF loop, TileLab/sandbox mount, preview, map-gen/profile UI | tooling, rendering |
+| `Assets/props` | Placed prop assets: physics, sandbox metadata, render recipes | cross-cutting |
+| `Config` | Game configs, world config, procedural profiles and theme storage | per-domain |
+| `Core` | Engine globals, events, physics/collision/perspective/procedural design settings | 🔗 foundations |
+| `Entities` | `Entity`, `WorldProp` base model | 🔗 physics/render/AI |
+| `GameState` | Registries, shared state, kinetic tick/session, sandbox state, snapshot state | 🔗 foundations |
+| `Libraries` | Most engine, sandbox, AI, pathfinding, render, physics, procedural code | all |
+| `Render` | Top-level render loop, draw passes, simulation viewport, game surface bootstrap | rendering |
+| `Systems` | World kinetic frame population only (`Systems/World/KineticSpatialFrame.js`) | physics |
+| `tests` | Node test suites for engine, sandbox, snake, and docs-adjacent behavior | all |
 
-`Libraries/SandboxEditor/` (tooling): controller + pointer tools + inspectors + overlay collection — `createSandboxController.js`, `sandboxPrimaryPointerTool.js`, `sandboxMarqueeTool.js`, `*WireTool.js`, `buildSandboxOverlayCommands.js`, `ui/sandbox*Inspector.js`.
-`Libraries/UI/` (tooling): control widgets — `Component.js`, `controls/SliderControl.js`, `controls/SelectControl.js`, `paramFields.js`, `contextMenu.js`.
-
-### 3.7 Cross-cutting foundations 🔗 (no single owner)
-
-| Folder | Role | Key files |
-|---|---|---|
-| `Libraries/DataStructures/` | Heaps, BFS toolkit, LRU, packed keys, rects | `MinHeap.js`, `gridBfs.js`, `LruMap.js`, `CellKey.js`, `CellRect.js` |
-| `Libraries/Spatial/grid/` | The **shared grid** — obstacle grid, cell edges, floor cells, nav epoch, SAB edge pool | `WorldObstacleGrid.js`, `CellEdge.js`, `CellEdgeStore.js`, `FloorCell.js`, `GridCoords.js`, `GridUtils.js`, `gridNavEpoch.js`, `navEdgePoolSab.js`, `gridCellTopology.js`, `wallGridBake.js` |
-| `Libraries/Spatial/query/` | Raycasts + LOS (shared by physics, AI, editor) | `lineOfSight.js`, `circleCast.js`, `steppedCircleRayCast.js`, `SpatialQuery.js`, `wallSegmentQuery.js` |
-| `Libraries/Math/` | Vectors, angles, polys, interpolation, seeded RNG | `Poly2D.js`, `Angle.js`, `Segment2D.js`, `Screen2D.js`, `Interpolate.js`, `SeededRng.js`, `hash.js` |
-| `Libraries/Random/` | Seeded RNG + weighted pick | `seededRandom.js`, `weightedPick.js` |
-| `Libraries/Config/` | Partial-config merge | `mergePartial.js` |
-| `GameState/` | Registries + shared state + per-entity meta | `EntityRegistry.js`, `SharedGameState.js`, `SandboxWorldState.js`, `sandboxEntityMeta.js`, `GameState.js` |
-| `Systems/World/` | Per-frame kinetic frame population | `KineticSpatialFrame.js` |
-| `Core/` | Settings + globals + events | `GamePhysicsSettings.js`, `GameCollisionSettings.js`, `GamePerspective.js`, `GameProceduralDesign.js`, `EventSystem.js`, `EventNames.js`, `engineGlobals.js` |
-
-### 3.8 Props & assets (cross-cutting: physics shape + render recipe)
-
-`Libraries/Props/` straddles physics (shape) and rendering (recipe): `propStrategy.js` (the capability pattern — **not** AI), `loadPropAssets.js`, `primitives/spherePrimitive.js`, `primitives/polygonPrimitive.js`, `propScale.js`, `propMotion.js`, `rollingMotion.js`, and fracture variants (`propFracture.js`, `poxelFracture.js`, `chunkFracture.js`, `glassFracture.js`). Placed-prop assets live in `Assets/props/*/*.asset.js`.
+The old navigation service/context wording is no longer the map of reality. Navigation runtime lives in `Libraries/Navigation` and is mounted by shared game state / worker navigation setup.
 
 ---
 
-## 4. Test coverage map
+## 3. Engine libraries
 
-| Subsystem | Tests |
+### 3.1 Physics and spatial simulation
+
+| Path | State | Role |
+|---|---|---|
+| `Libraries/Motion` | ✅ | Integration, damping, substeps, constraints, islands, sleep, wall collision resolver, kinetic physics pass |
+| `Libraries/Spatial/collision` | ✅ | Broadphase snapshots, SAT/circle narrow phase, manifolds, pair stream, contact solve, side-effect hooks |
+| `Libraries/Spatial/geometry` | ✅ | Wall geometry, circle sweep |
+| `Libraries/Spatial/indexes` | ✅ | Uniform-grid broadphase (`EntityGrid`) |
+| `Libraries/Spatial/world` | ✅ | `SpatialFrameCore` frame/candidate cache shared by world systems |
+| `Systems/World` | ✅ | Kinetic spatial frame assembly |
+
+### 3.2 Pathfinding and navigation
+
+| Path | State | Role |
+|---|---|---|
+| `Libraries/Pathfinding` | ✅ | A*, HPA*, region graph, flow fields, nav sessions, worker path requests, topology SAB packing |
+| `Libraries/Pathfinding/Corridor` | ✅ | Cardinal corridor solver used by room graph / procedural bakes |
+| `Libraries/Navigation/NavRuntime.js` | ✅ | Runtime nav owner: worker, session, topology, invalidation/commit spine |
+| `Libraries/Navigation/NavTopology.js` | ✅ | Baked walkability/topology view consumed by runtime and workers |
+| `Libraries/Navigation/perception` | ✅ | Observer vision frame, grid-cell vision, LOS-driven perception |
+| `Libraries/Navigation/steering` | ✅ | Explore steering, now backed by EQS-style option scoring |
+| `Libraries/Workers` | ✅ | SAB slot worker host and HPA/flow worker entries |
+
+### 3.3 AI and agent intelligence
+
+| Path | State | Role |
+|---|---|---|
+| `Libraries/AI/agentIntent` | ✅ | Generic agent intent FSM host (`createAgentIntent`) |
+| `Libraries/AI/brain` | ✅ | Spatial memory and memory-to-A* penalty producer |
+| `Libraries/AI/memory` | ✅ | Generic TTL target memory (`targetMemory`) |
+| `Libraries/AI/utility` | ✅ | Generic utility/net-value candidate scoring |
+| `Libraries/AI/eqs` | ✅ | Tiny EQS-style weighted option scoring |
+| `Libraries/Agent` | ✅ | Agent pose / steering result contracts |
+| `Libraries/FSM` | 🟡 | Generic transition helper, separate from agent intent |
+
+Current first consumer: snake forage. Generic pieces now live outside `Libraries/Game/snake`.
+
+### 3.4 Rendering and presentation
+
+| Path | State | Role |
+|---|---|---|
+| `Libraries/Render/Props3D` | ✅ | Prop meshes, projection, face culling, primitive renderers |
+| `Libraries/Render/Structure3D` | ✅ | Voxel wall atlas and rail edge rendering |
+| `Libraries/Render/overlays` | ✅ | Overlay command pipeline for editor/sandbox feedback |
+| `Libraries/Render/SurfaceTexturing` | ✅ | Sphere/cell/decal texture patches |
+| `Libraries/Render` | ✅ | Scene assembly, prop draw entry, vector mode, map caches |
+| `Libraries/Canvas` | ✅ | Quantized sprite cache, baked cache, affine texture, offscreen canvas |
+| `Libraries/Spatial/iso` | ✅ | Radial elevation projection, camera, shadow math (`shadowProjection.js` still unwired) |
+| `Libraries/Viewport` | ✅ | Pan/zoom and world/screen transforms |
+| `Libraries/WorldSurface` | ✅ | Chunk surface atlas baking and draw coordination |
+| `Libraries/World` | ✅ | Wall/grid bake helpers consumed by render/surface systems |
+| `Render` and `Render/game` | ✅ | Top-level render frame and game surface/profile wiring |
+
+### 3.5 Procedural and generation
+
+| Path | State | Role |
+|---|---|---|
+| `Libraries/CA` | ✅ | Cellular automata cave carving |
+| `Libraries/RoomGraph` | ✅ | Room graph model, bake to geometry, corridors, locked rooms, puzzle template |
+| `Libraries/Procedural/Mazes` | ✅ | Maze/corridor generation helpers, rail maze belts, snake split layout, nav walkable indexes |
+| `Libraries/Procedural/Motifs`, `Fields`, `Noise` | ✅ | Surface texture synthesis |
+| `Config/procedural` | ✅ | Named procedural surface profiles and theme storage |
+
+### 3.6 Sandbox, editor, and gameplay substrate
+
+| Area | State | Role |
+|---|---|---|
+| `Libraries/Sandbox/groundNav` | ✅ | HPA, flow, direct, and cell-target ground-nav behaviors |
+| `Libraries/Sandbox/behaviors` | ✅ | Prop behavior adapters: flipper, spawner, cue strike, drag launch |
+| `Libraries/Sandbox` chains | ✅ | Chain links, linked-body spawn, kinetic roll actuator |
+| `Libraries/Sandbox` floor systems | ✅ | Floor occupancy/effects, belts, buttons, forcefields, passage power |
+| `Libraries/Sandbox` scene/snapshot | ✅ | Placed spawn, scene placeables, snapshot persistence, selection inspectors |
+| `Libraries/SandboxEditor` | ✅ | Controller, pointer tools, wire tools, inspectors, overlay command collection |
+| `Libraries/Editor` | ✅ | Low-level editor/canvas interaction helpers |
+| `Libraries/UI` | ✅ | Controls, field rendering, pipeline/profile UI |
+| `Libraries/Pipeline` | 🟡 | Pipeline schema/registry/export validation for authoring flows |
+
+### 3.7 Cross-cutting foundations
+
+| Path | Role |
 |---|---|
-| Physics | `kineticConstraintSolver`, `kineticContactSolver`, `kineticNarrowPhase`, `kineticPairStream`, `kineticIslands`, `kineticSleepProps`, `activeKineticBodies`, `bodyMass`, `wallResolution`, `chainLinks`, `chainVsWallGrowth`, `spawnLinkedBallChain` |
-| Pathfinding | `hpaBeltNav`, `hpaGroundNavReplan`, `corridorMultiLane`, `corridorWidthOne`, `lineOfSight`, `segment2D`, `poly2D` |
-| Rendering | `vectorProp`, `drawShapeParity`, `maskCompositor`, `propScale`, `colorVisualOverride`, `triWedgeProp`, `shapeFirstProps`, `spawnShapeFamily` |
-| Procedural | `puzzleTemplateBeltCrate`, `lockedRoom`, `cavernFloorCells` |
-| AI | `brain`, `navStepPenalty`, `snakeIntent`, `snakeAutosim`, `snakeMulti`, `goalSeekAutosim`, `gridCellVision`, `spatialCellMemoryOverlay` |
-| Gameplay / fracture | `snakeHeadGameplay`, `snakeScale`, `snakeGameConfig`, `snakeGameHarness`, `goalOrb`, `gameLaunch`, `propFracture`, `poxelFracture`, `glassFracture`, `chunkFracture`, `worldPropPick`, `sandboxEditorInspector`, `sandboxSceneSnapshot` |
-
-> **Coverage read:** physics, AI, and the snake game are the best-tested. Rendering leans on parity/snapshot tests. **Procedural layout** and **the projection/camera math** are the thinnest — consistent with their roadmap maturity.
+| `Libraries/DataStructures` | Heap, BFS toolkit, LRU, cell keys/rects, sparse bucket grid |
+| `Libraries/Spatial/grid` | Shared grid, cell edges, floor store, nav epoch, boundary occupancy, vertex passability |
+| `Libraries/Spatial/query` | LOS, ray/circle casts, wall segment queries |
+| `Libraries/Math` | Vectors, angles, polygons, segments, seeded RNG, hashes |
+| `Libraries/Random` | Seeded random and weighted pick |
+| `Libraries/Config` | Partial config merge |
+| `Libraries/Color` | Tint, hue shift, brightness, visual overrides |
+| `Libraries/Input`, `Events`, `Triggers`, `Persistence`, `Playback`, `Pause`, `Scheduler`, `Radio`, `CueStick` | Small focused engine/tooling packages |
 
 ---
 
-## 5. "Where do I add X?" quick index
+## 4. Game-specific code: snake
 
-| I want to add… | Go to | Pattern / entry point |
+| Path | Role | Reusable pieces it consumes |
 |---|---|---|
-| A placed prop (ball, crate, button) | `Assets/props/<name>/<name>.asset.js` + `Props/primitives/` | `loadPropAssets` → `PropRenderer.drawProp` (see `rendering-pipelines.mdc` §1) |
-| A grid/floor visual (belt, forcefield) | colocated recipe + `Canvas/QuantizedSpriteCache.js` | `drawCachedPropSprite` + `GRID_STAMP_RENDER_KEY` (§2) |
-| Editor/selection feedback | `Render/overlays/` + `SandboxEditor/buildSandboxOverlayCommands.js` | `append*OverlayCommands` (§4) |
-| A pathfinding tweak | `Libraries/Pathfinding/` | `AStar.js` / `HpaPathSession.js` (🔗 worker: `Workers/Navigation/`) |
-| A surface texture/theme | `Libraries/Procedural/Motifs/` + `Config/procedural/storage/` | `MotifRegistry` + a profile preset |
-| Level/room geometry | `Libraries/RoomGraph/` + `Libraries/CA/` | `roomGraphBake.js` (corridors 🔗 `Pathfinding/Corridor/`) |
-| An AI behavior/decision | `Libraries/Game/snake/snakeAutosim.js` (today) | the intent FSM — **generalize it** per `AI.md` next-unlock #1 |
-| Agent perception/memory | `Libraries/Navigation/perception/` + `Libraries/AI/brain/` | `gridCellVision` → `createBrain` |
-| A physics joint/constraint | `Libraries/Motion/kineticConstraints*.js` | PGS solver (distance joint is the template) |
+| `Libraries/Game/snake/snakeAutosim.js` | Snake chain sim, metabolism, sprinting, food/grow loop, brain creation | Motion, ground nav, AI brain |
+| `Libraries/Game/snake/createSnakeForageIntent.js` | Snake adapter over generic agent intent | `AI/agentIntent`, target memory, HPA cell nav |
+| `Libraries/Game/snake/snakeDecisionModel.js` | Snake facts, hunger/threat derivation, snake scorers, policy mapping | `AI/utility/utilityScoring` |
+| `Libraries/Game/snake/snakeIntentMemory.js` | Snake threat/prey/food adapter | `AI/memory/targetMemory` |
+| `Libraries/Game/snake/snakeIntent.js` | Snake perception: threat/prey/food and distances | Navigation perception |
+| `Libraries/Game/snake/snakeIntentStates.js` | Snake state implementations: explore, seek_food, seek_prey, flee | Generic agent intent context/effects |
+| `Libraries/Game/snake/setupSnakeGame.js`, `snakeScene.js`, `SnakeInstance.js`, combat/HUD/overlays | Snake game rules, scene, lifecycle, UI | Sandbox, physics, render |
+
+Current architecture:
+
+```text
+createAgentIntent (generic)
+  -> createSnakeForageIntent (snake adapter)
+    -> snakeDecisionModel (snake scorers + facts)
+      -> utilityScoring (generic score maps/details)
+    -> snakeIntentMemory
+      -> targetMemory (generic TTL target records)
+    -> snakeIntentStates (domain states)
+  -> snakeAutosim (game orchestration)
+```
 
 ---
 
-*Last updated: PR2 — full per-file audit extracted from the live tree (~411 JS modules across `Libraries/` + 7 top-level dirs). Leads with the naming-traps table since collisions (`Procedural`=textures, `iso`=radial, split `navStepPenalty`, `FSM`≠snake FSM) are the main confusion source. Linked from [ROADMAP.md](./ROADMAP.md) §6. Revisit when folders move or a new subsystem lands.*
+## 5. Test coverage map
+
+| Subsystem | Representative tests |
+|---|---|
+| Physics / kinetic | `kineticConstraintSolver`, `kineticContactSolver`, `kineticNarrowPhase`, `kineticPairStream`, `kineticIslands`, `kineticSleepProps`, `kineticContactManifold`, `activeKineticBodies`, `bodyMass`, `wallResolution`, `chainLinks`, `chainVsWallGrowth` |
+| Pathfinding / nav | `AStar`, `hpaGroundNavReplan`, `hpaPathSlot`, `hpaStitch`, `hpaRegionGraph`, `gridNavContext`, `hpaBeltNav`, `flowFieldBfs`, `lineOfSight`, corridor tests |
+| AI / decisions | `brain`, `navStepPenalty`, `targetMemory`, `utilityScoring`, `eqsScoreOptions`, `goalSeekAutosim`, `gridCellVision` |
+| Snake game | `snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `snakeForageIntent`, `snakeAutosim`, `snakeMulti`, `snakeStarvation`, `snakePerfBudget`, `snakeMinLengthDeath`, `snakeSplit`, `snakeScale` |
+| Procedural / mazes | `puzzleTemplateBeltCrate`, `lockedRoom`, `railMaze*`, `snakeSplitLayout`, `cavernFloorCells`, `navWalkableIndex` |
+| Rendering / props | `vectorProp`, `drawShapeParity`, `maskCompositor`, `propScale`, `colorVisualOverride`, `shapeFirstProps`, `spawnShapeFamily`, `sandboxSceneSnapshot` |
+
+Coverage read: physics, pathfinding, AI, and snake are the best-tested. Procedural authorship and projection/perspective-mode math are still thinner than their foundations.
+
+---
+
+## 6. Where do I add X?
+
+| I want to add… | Go to | Pattern |
+|---|---|---|
+| A placed prop | `Assets/props/<name>/<name>.asset.js` | Asset + prop recipe / primitive + `loadPropAssets` |
+| A grid/floor visual | Owning sandbox/floor module + `Canvas/QuantizedSpriteCache.js` | Cached grid stamp recipe |
+| Editor or sandbox feedback | `Libraries/Render/overlays` + `SandboxEditor/buildSandboxOverlayCommands.js` | Overlay commands |
+| Path search behavior | `Libraries/Pathfinding` | A*, HPA, flow, worker sessions |
+| Runtime nav wiring | `Libraries/Navigation` | `NavRuntime`, `NavTopology`, worker navigation factory |
+| Agent memory | `Libraries/AI/brain` or `Libraries/AI/memory` | Spatial cells vs entity targets |
+| Agent scoring / decisions | `Libraries/AI/utility`, `Libraries/AI/eqs`, domain adapter | Generic scoring core, domain-specific facts/scorers |
+| Snake game behavior | `Libraries/Game/snake` | Snake adapter over generic AI/nav/physics |
+| Surface texture/theme | `Libraries/Procedural/Motifs` + `Config/procedural/storage` | Motif + profile preset |
+| Level/room geometry | `Libraries/RoomGraph`, `Libraries/CA`, `Libraries/Procedural/Mazes` | Room graph bake / maze helpers |
+| Physics joints/constraints | `Libraries/Motion/kineticConstraints*.js` | PGS constraint solver |
+
+---
+
+*Last updated: current engine audit after generic AI utility scoring, target memory, EQS option scoring, effort-aware snake decisions, and nav runtime/topology split. Linked from [ROADMAP.md](./ROADMAP.md) §6.*

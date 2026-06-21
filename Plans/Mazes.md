@@ -78,11 +78,11 @@ Belts and one-way passages belong in this doc as **maze semantics**, not just fl
 
 **Problem:** R-DFS rail mazes are undirected walkable graphs. One-way floor belts (`floorStore` + belt facing + entry/exit sides) turn corridor cells into **directed edges**. A naive stamp can **strand** regions — unlike room-graph corridor belts, which are authored on known A\* paths between rects.
 
-**CS core:** Build the **nav walkable graph** on stamped geometry (`collectNavWalkableCells` / `canStep` + `GridNavContext`). Classify cells (dead-end / corridor / junction). Propose belt candidates on **straight corridor runs** (degree-2 chains). For each `(cell, facing)`, **simulate** belt entry rules (`beltBlocksEntryFrom`), then verify the directed graph stays **strongly connected** (Tarjan/Kosaraju SCC — one component covering the playable flood) or at minimum preserves reachability from the chunk seam seed. Only **safe** candidates get stamped (`floorStore` + optional `BeltRails` lateral edges).
+**CS core:** Build the **nav walkable graph** on stamped geometry (`collectNavWalkableCells` / `canStep` + `NavTopology`). Classify cells (dead-end / corridor / junction). Propose belt candidates on **straight corridor runs** (degree-2 chains). For each `(cell, facing)`, **simulate** belt entry rules (`beltBlocksEntryFrom`), then verify the directed graph stays **strongly connected** (Tarjan/Kosaraju SCC — one component covering the playable flood) or at minimum preserves reachability from the chunk seam seed. Only **safe** candidates get stamped (`floorStore` + optional `BeltRails` lateral edges).
 
 **Snake hook:** run after `generateLabRailDfsMaze` in `generateSnakeSplitMap` (lower band only); density/seed from `mapSeed` sub-stream.
 
-**Extensibility:** First **layout post-process** in `Libraries/Procedural/Mazes/postProcess/` — input = `{ grid, bounds, gridNavContext }`, output = floor stamps + `damageBounds`. Future ops same machine: dead-end trim, loop injection, belt-safe pass. Not a texture motif stack — operates on **geometry + nav graph**, validates before mutating. Fits chunk composer recipe: `R-DFS` → `D-belt-safe` → `onObstaclesChanged`.
+**Extensibility:** First **layout post-process** in `Libraries/Procedural/Mazes/postProcess/` — input = `{ grid, bounds, navTopology }`, output = floor stamps + `damageBounds`. Future ops same machine: dead-end trim, loop injection, belt-safe pass. Not a texture motif stack — operates on **geometry + nav graph**, validates before mutating. Fits chunk composer recipe: `R-DFS` → `D-belt-safe` → nav runtime obstacle commit.
 
 🔗 [`ROADMAP.md`](ROADMAP.md) cross-cutting grid · [`procedural.md`](procedural.md) bake pipeline · [`pathfinding.md`](pathfinding.md) belt nav rules
 

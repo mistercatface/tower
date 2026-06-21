@@ -407,7 +407,7 @@ Peel full `GameState` out of the hot physics path so `tick` + `world` carry spat
 | 1 | Kinetic tick interior — constraints on `tick`, constraint slab, body refs at link creation | ✅ |
 | 2 | Wall queries on frame — candidate cache, drop `wallContextFromState` | ✅ |
 | 3 | `worldProps` replaces `forEachOfKind("worldProp")` at world boundaries | ✅ |
-| 4 | `GridNavContext` for pathfinding / perception hot paths | ✅ |
+| 4 | Nav runtime/topology sync for pathfinding / perception hot paths | ✅ |
 | 5 | `runKineticPhysics(tick, dt, hooks)` — engine + game session own game hooks | ✅ |
 
 ---
@@ -415,9 +415,9 @@ Peel full `GameState` out of the hot physics path so `tick` + `world` carry spat
 ## Recommended next unlocks (short path)
 
 1. ~~**Trilogy C PR 1 finish**~~ — v1 contact/coherence stack shipped (PRs 1–3 + feature-id warm-start).
-2. ~~**Sim boundary peel (parts 1–5)**~~ — tick/world/hooks split + `GridNavContext` landed; nav/perception no longer lazily rebuilds boundary caches per query.
+2. ~~**Sim boundary peel (parts 1–5)**~~ — tick/world/hooks split + nav topology/runtime sync landed; nav/perception no longer lazily rebuilds boundary caches per query.
 3. **Snake as physics proving ground** — multi-head combat (`snakeMinLengthDeath`, split-on-impact), corridor link-capsule stress (`linkCapsuleWall`), perf gate (`snakePerfBudget`) — exercise the peeled stack under real gameplay before v2 joints/CCD.
-4. **Reusable agent FSM + richer snake intents** — lift seek/explore/flee out of `snakeAutosim`; pursue/threat states on top of vision + `GridNavContext` LOS (see [AI.md](./AI.md), [pathfinding.md](./pathfinding.md)).
+4. **Off-screen snake sleep + replan budget** — AI/nav scheduling pressure that keeps physics v1 honest without jumping to v2 features.
 5. **v2 when needed** — revolute/motor, editor breakable links, chain wall sweep, dynamic BVH.
 
 ---
@@ -432,7 +432,7 @@ Libraries/Motion/kineticConstraintSolver.js — kineticConstraintSlab gather/res
 Libraries/Spatial/collision/   — broadphase, pairs, kineticBodySlab, SAT, contact, pipeline
 Libraries/Spatial/world/SpatialFrameCore.js — frame + wall candidate cache
 Libraries/Sandbox/chainLinks.js — chain head, link API
-Libraries/Navigation/GridNavContext.js — nav/perception caches on obstacle sync
+Libraries/Navigation/NavRuntime.js, NavTopology.js — nav/perception topology sync
 Libraries/Game/snake/setupSnakeGame.js — session.applyContactSideEffects (snake combat hook)
 Systems/World/KineticSpatialFrame.js — frame begin from worldProps
 Apps/Editor/engine.js          — simulationKineticHooks(state) assembly
@@ -442,4 +442,4 @@ tests/kinetic*.test.js, linkCapsuleWall.test.js, snakeMinLengthDeath.test.js
 
 ---
 
-*Last updated: after **GridNavContext** — sim boundary peel complete (parts 1–5). Revisit percentages when trilogy C manifold work ships or agent FSM extraction lands.*
+*Last updated: roadmap sync after nav runtime/topology naming and generic AI extraction. Physics v1 remains maintenance-ready; revisit percentages when v2 joints/CCD or breakable-link work is driven by gameplay.*

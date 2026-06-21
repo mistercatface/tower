@@ -1,5 +1,13 @@
 # Effort-aware snake decisions
 
+**Status: implemented.** The generic score-detail shape lives in
+`Libraries/AI/utility/utilityScoring.js`; snake-specific effort scoring lives in
+`Libraries/Game/snake/snakeDecisionModel.js`; target distance memory is backed by
+`Libraries/AI/memory/targetMemory.js`; FSM debug output is in
+`Libraries/Game/snake/snakeFsmDebugOverlays.js`. Coverage lives in
+`tests/snakeDecisionModel.test.js`, with perception distance coverage in
+`tests/snakeIntent.test.js`.
+
 Add a **cost** half to the decision scoring so snakes weigh _what they'd gain_ against
 _what it'd take to get there_. Today scoring is value-only (weights + hunger pressure,
 argmax wins). Effort makes a full snake grab point-blank prey but ignore (and quickly

@@ -4,7 +4,7 @@ Progress tracker for the navigation stack: grid topology → A* → HPA* abstrac
 
 **Legend:** ✅ shipped · 🟡 partial · ⬜ not started · 🔜 planned (named PR set)
 
-**Overall engine maturity:** ~**55%** of a full multi-agent navigation engine. The *planning core* (A*, HPA*, flow fields, off-thread SAB workers, incremental replan) is genuinely production-grade — arguably the strongest part of this codebase. The gap to a pro stack is almost entirely **navmesh + crowd/local-avoidance + path smoothing**, not the search layer.
+**Overall engine maturity:** ~**56%** of a full multi-agent navigation engine. The *planning core* (A*, HPA*, flow fields, off-thread SAB workers, incremental replan) is genuinely production-grade — arguably the strongest part of this codebase. The live runtime is now `NavRuntime` + `NavTopology` rather than the older service/context framing. The gap to a pro stack is almost entirely **navmesh + crowd/local-avoidance + path smoothing**, not the search layer.
 
 ---
 
@@ -63,7 +63,7 @@ flowchart TB
         E2[Flow worker]
     end
     subgraph T5["Tier 5 — Dynamic replanning"]
-        F0[NavigationService]
+        F0[NavRuntime]
         F1[Incremental graph patch]
         F2[Replan policy]
     end
@@ -256,8 +256,8 @@ A different lens from the feature tiers below: do the **CS-textbook building blo
 
 | Item | Status | % | Notes / modules |
 |------|--------|---|-----------------|
-| `NavigationService` obstacle sync | ✅ | 90 | `Systems/Navigation/NavigationService.js` + `GridNavContext` |
-| `GridNavContext` (nav/perception caches) | ✅ | 85 | `Libraries/Navigation/GridNavContext.js`; unified `boundaryBlocksStepFrom`; worker skips redundant re-bake |
+| `NavRuntime` obstacle sync | ✅ | 90 | `Libraries/Navigation/NavRuntime.js` + worker navigation setup |
+| `NavTopology` sync | ✅ | 85 | `Libraries/Navigation/NavTopology.js`, `bakeNavTopology.js`, `navTopologySab.js`; worker skips redundant re-bake |
 | `onObstaclesChanged(damageBounds)` | ✅ | 85 | bumps `obstacleGeneration`, invalidates flow, syncs nav caches |
 | Full region graph rebuild | ✅ | 85 | on topology epoch / empty bounds |
 | Incremental localized patch | ✅ | 80 | `rebuildDamagedRegionGraph`, 12-cell pad |
@@ -414,7 +414,7 @@ Adopting a navmesh is **not** a from-scratch rewrite. It swaps the **representat
 | Flow fields (grid BFS) | **Replaced or dropped** | flow fields are cell-native; navmesh favors per-agent paths (or continuum crowds) |
 | `AStar.js` search | **Mostly survives** | A* over polygon adjacency ≈ your `runAbstractAStarFlat` — same heap, different graph |
 | SAB worker host + protocol | **Survives** | off-thread planning is representation-agnostic |
-| `NavigationService` + replan policy | **Survives** | epoch invalidation, stuck/off-path, coalescing all carry over |
+| `NavRuntime` + replan policy | **Survives** | epoch invalidation, stuck/off-path, coalescing all carry over |
 | Path follow + `kineticRollActuator` | **Survives** | following waypoints and rolling toward them is unchanged |
 | Funnel / string-pull smoothing | **Survives (transfers ~80%)** | same apex-tightening logic; only the visibility test changes (grid LOS → portal edges) |
 
@@ -472,11 +472,11 @@ Three things in this stack are at or above what most indie/hobby engines ship:
 
 Ordered by payoff-per-effort. The first two are also the cheapest down-payments on an eventual navmesh.
 
-1. **Flee / pursue for snake predator–prey** — snake death trilogy PR2: flee target away from larger visible heads; pursue = HPA seek on smaller heads. Reuses vision + memory penalty pattern before full Tier 7 separation/ORCA.
-2. **Path smoothing (funnel / string-pull)** — biggest feel win for the least work; post-process the octile cell path before follow.
-3. **Local separation steering** — cheap neighbor push-apart; unblocks crowd movement beyond hunt/flee.
-4. **Single-cell belt edit → guaranteed nav resync** — close the Tier 8 partial so editor belt placement always patches the graph.
-5. **Worker resilience** — recover from `graphPatchError` instead of log-only.
+1. **Path smoothing (funnel / string-pull)** — biggest feel win for the least work; post-process the octile cell path before follow.
+2. **Local separation steering** — cheap neighbor push-apart; unblocks crowd movement beyond hunt/flee.
+3. **Single-cell belt edit → guaranteed nav resync** — close the Tier 8 partial so editor belt placement always patches the graph.
+4. **Worker resilience** — recover from `graphPatchError` instead of log-only.
+5. **Variable agent radius / navmesh layer** — long-term representation upgrade once smoothing + avoidance prove the need.
 
 > **On the navmesh question:** it's the likely long-term direction (variable agent radius is the real prize), but it's a *layer beside* the puzzle grid, not a teardown — see the migration note above. Do 1–2 first; they're not throwaway.
 
@@ -498,11 +498,13 @@ Libraries/Workers/Navigation/       — HpaWorkerEntry.js, FlowFieldWorkerEntry.
 Libraries/Sandbox/groundNav/        — direct / flow / HPA ground-nav behaviors
 Libraries/Sandbox/kineticRollActuator.js — the one movement actuator
 Libraries/Spatial/grid/WorldObstacleGrid.js — nav grid, canStep, epochs
-Systems/Navigation/NavigationService.js — obstacle sync orchestration
+Libraries/Navigation/NavRuntime.js, NavTopology.js — runtime topology + worker sync
+Libraries/Navigation/steering/exploreSteering.js — EQS-scored explore candidate pick
 Libraries/Game/snake/               — snake autosim (HPA head nav)
-tests/hpaGroundNavReplan.test.js, corridor*.test.js, snake*.test.js
+tests/hpaGroundNavReplan.test.js, gridNavContext.test.js, eqsScoreOptions.test.js,
+  corridor*.test.js, snake*.test.js
 ```
 
 ---
 
-*Last updated: pathfinding tree + fundamentals checklist + navmesh migration note (mirrors `physics.md` after trilogy B). Planning core is the mature half; Tier 7 local avoidance + path smoothing are the headline gaps to a Recast/Detour-class stack. Navmesh is the long-term anchor (Tier 12) but lands as a layer beside the puzzle grid, not a rewrite. Revisit percentages when smoothing or a crowd layer lands.*
+*Last updated: roadmap sync after `NavRuntime`/`NavTopology` naming, EQS-scored explore, and current AI extraction work. Planning core is the mature half; Tier 7 local avoidance + path smoothing are the headline gaps to a Recast/Detour-class stack. Navmesh is the long-term anchor (Tier 12) but lands as a layer beside the puzzle grid, not a rewrite.*

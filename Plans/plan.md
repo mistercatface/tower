@@ -11,3 +11,22 @@
 5. Morton Codes and Hierarchical Bitsets for Broadphase The current grid broadphase relies on looping over AABBs and merging candidate arrays. We can revolutionize this spatial querying by mapping the 2D world grid into a 1D array using Morton Codes (Z-order curves), which mathematically guarantees that objects physically close in the world sit next to each other in RAM. If we back this up with a Hierarchical Bitset (a tree of 32-bit integers where a single bit represents grid chunk occupancy), broadphase culling becomes virtually instantaneous. Finding wall candidates or overlapping neighbors bypasses standard looping entirely, dropping down to raw CPU bitwise operations (&, |, and Math.clz32) to skip massive empty spaces in true O(1) time.
 
 ## VARIOUS
+
+4. Leverage Shared Atomics in SabSlotWorkerHost
+   The Advanced Feature: The worker infrastructure relies on SharedArrayBuffer pools to share nav topology, predecessor grids, and path pools without message-passing copies.
+   The Underutilized Area: The slot state-management handshake in
+
+SabSlotWorkerHost.js
+still sends job completion notifications via standard main-thread worker postMessage loops.
+The Easy Win: Use Atomics.wait and Atomics.notify (or lock-free polling of the shared buffers) on slotReadyId and slotRequestId inside SabSlotWorkerHost. This completely eliminates main-thread event loop message-handling overhead for pathfinding updates, lowering latency for multi-agent updates.
+
+1. Incremental Eviction in FlowCacheManager using LruMap
+   The Advanced Feature: A fully featured
+
+LruMap
+class is used for sprite caching and AI memory.
+The Underutilized Area:
+
+FlowCacheManager
+handles cache eviction by calling this.invalidate(protocol) which completely wipes the lookup array and resets the slot counter to 0 whenever it exceeds maxCacheSize.
+The Easy Win: Rewire FlowCacheManager to use the LruMap pattern to evict only the oldest unused flow field slot. Complete cache invalidation causes sudden CPU spikes and frame drops because all active agents using different flow fields are forced to re-request worker path recalculations at the same time.

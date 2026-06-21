@@ -436,10 +436,10 @@ This is the headline roadmap for *your* vision. All **overhead** modes share Tie
 ## Recommended next unlocks (short path)
 
 1. **Wire up projected drop shadows** — `shadowProjection.js` already has the math; routing it into the prop/wall pass is the highest visual-payoff-per-effort win and sells the radial look.
-2. **Finish top-down 2D** — make `flat2d` a true orthographic mode (kill the radial lean, draw props flat), completing rung 2 of your ladder.
-3. **Configurable light direction/color** — unhardcode the `-3π/4` angle; cheap, and unblocks day-night / per-game mood later.
+2. **Render cache-pressure telemetry** — hit/miss/eviction and unique-key counts for dense snake/sandbox scenes.
+3. **Finish top-down 2D** — make `flat2d` a true orthographic mode (kill the radial lean, draw props flat), completing rung 2 of your ladder.
 4. **Projection + viewport unit tests** — Tier 13 has zero coverage of the literal core math; lock it down before adding modes.
-5. **Fixed isometric mode** — rung 3; mostly a projection + sprite-key change since angle bucketing already exists.
+5. **Configurable light direction/color** — unhardcode the `-3π/4` angle; cheap, and unblocks day-night / per-game mood later.
 
 > **On first-person (Build/DOOM):** it's a *divergent branch* (Tier 14), not the top of the ladder — a separate raycaster that reuses your grid + wall atlas but replaces the entire draw path. Worth it as a "wow" mode later, but don't sequence it as "after isometric"; sequence it as "a second renderer when you want it."
 
@@ -462,6 +462,7 @@ Libraries/Render/Props3D/           — PropRenderer, sphere/box/flipper/pipe me
 Libraries/Render/Structure3D/       — projected wall faces, rails, atlas (pipeline 3)
 Libraries/Render/overlays/          — overlay command pipeline (pipeline 4)
 Libraries/Render/SurfaceTexturing/  — sphere/cell affine texture mapping
+Libraries/World/                    — wall/grid bake helpers for render + surfaces
 Libraries/Spatial/iso/shadowProjection.js — shadow math (UNWIRED — Tier 10)
 Libraries/Render/vectorProp.js      — vector silhouette mode
 Apps/Editor/engine.js, ui/preview.js — RAF loop + frame draw entry
@@ -470,4 +471,4 @@ tests/vectorProp.test.js, drawShapeParity.test.js, mockCanvas2d.js
 
 ---
 
-*Last updated: initial rendering tree (mirrors `physics.md` / `pathfinding.md`). Core radial-elevation projection + four pipelines are the mature half; lighting/shadows (Tier 10) and the perspective-mode ladder (Tier 11) are the headline gaps. First-person Build/DOOM is tracked as a divergent branch (Tier 14), not a linear upgrade. Revisit percentages when shadows wire up or a second perspective mode ships.*
+*Last updated: roadmap sync after library audit refresh. Core radial-elevation projection + four pipelines are the mature half; lighting/shadows, cache telemetry, and the perspective-mode ladder are the headline gaps. First-person Build/DOOM remains a divergent branch, not a linear upgrade.*
