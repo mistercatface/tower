@@ -262,9 +262,12 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "seek_prey");
         assert.equal(autosim.getTargetId(), prey.head.id);
         assert.deepEqual(autosim.getDestination(), lastSeenDest);
-        const memory = autosim.getFsmSnapshot().intentMemory;
+        const snapshot = autosim.getFsmSnapshot();
+        const memory = snapshot.intentMemory;
         assert.equal(memory.prey.id, prey.head.id);
         assert.equal(memory.prey.ageTicks, 1);
+        assert.equal(snapshot.decision.chosenIntent.mode, "seek_prey");
+        assert.ok(snapshot.decision.events.includes("PREY_LAST_SEEN_ACTIVE"));
     });
 
     it("drops last-seen prey after memory expires and falls back to visible food", async () => {

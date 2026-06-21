@@ -1,7 +1,8 @@
 import { createAgentIntent } from "../../AI/agentIntent/createAgentIntent.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { createSnakeDecisionBlackboard, perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "./snakeIntent.js";
+import { buildSnakeDecisionContext } from "./snakeDecisionModel.js";
+import { perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "./snakeIntent.js";
 import { createSnakeIntentMemory } from "./snakeIntentMemory.js";
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "./snakeIntentStates.js";
 export function createSnakeForageIntent({
@@ -23,6 +24,7 @@ export function createSnakeForageIntent({
     const locomotion = createCellTargetLocomotion(headNav);
     let intent = null;
     let lastBlackboard = null;
+    let lastDecisionSnapshot = null;
     let lastArrivalCol = null;
     let lastArrivalRow = null;
     const stampArrivalOnCellEnter = (agent, grid) => {
@@ -50,15 +52,17 @@ export function createSnakeForageIntent({
         const visible = perceiveSnakeIntentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
-        const blackboard = createSnakeDecisionBlackboard({
+        const decisionContext = buildSnakeDecisionContext({
             visibleWorld: visible,
             memoryWorld,
             memorySource: memoryWorld.memorySource,
             committedTarget: intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null,
             routeStatus: readRouteStatus(agent, state),
+            pickPolicy: pickSnakeIntentPolicy,
         });
-        lastBlackboard = blackboard;
-        return { blackboard, events: blackboard.events };
+        lastBlackboard = decisionContext.blackboard;
+        lastDecisionSnapshot = decisionContext.decisionSnapshot;
+        return decisionContext;
     };
     const resolveCommittedTarget = (id, world) => {
         if (id == null) return null;
@@ -105,7 +109,7 @@ export function createSnakeForageIntent({
         },
         perceiveWorld: perceiveWithMemory,
         pickPolicy: (world) => {
-            return pickSnakeIntentPolicy(world.blackboard);
+            return world.decisionSnapshot.chosenIntent;
         },
         transitionReason: (prevMode, nextMode, policy) => {
             if (policy?.reason) return policy.reason;
@@ -156,6 +160,7 @@ export function createSnakeForageIntent({
                 lastTransition: intent.getLastTransitionReason(),
                 intentMemory: intentMemory.snapshot(),
                 intentEvents: lastBlackboard?.events ?? [],
+                decision: lastDecisionSnapshot,
             };
         },
         resetMemory() {

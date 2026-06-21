@@ -21,7 +21,8 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
-import { createSnakeDecisionBlackboard, perceiveSnakeIntentWorld, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeIntent.js";
+import { createSnakeDecisionBlackboard } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { perceiveSnakeIntentWorld, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeIntent.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 loadPropAssets();
 async function createIntentTestState(cols = 32, rows = 32) {

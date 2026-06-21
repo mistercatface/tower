@@ -11,7 +11,8 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { cellChebyshevDistance } from "../Libraries/Navigation/steering/exploreSteering.js";
-import { createSnakeDecisionBlackboard, findNearestVisibleThreat, pickFleeCell, pickSnakeIntentPolicy, pickSnakeIntentTarget, perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
+import { createSnakeDecisionBlackboard } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { findNearestVisibleThreat, pickFleeCell, pickSnakeIntentPolicy, pickSnakeIntentTarget, perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision, registerSnakeTestInstance, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
