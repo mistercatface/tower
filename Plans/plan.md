@@ -12,8 +12,71 @@
 
 ## PATHFINDING
 
-PR 1: Pathfinding Worker Protocol Cleanup. Extract a tiny pathfinding-only worker helper for the shared HPA/flow shape: module worker creation, postMessage, SabSlotWorkerHost slot posting/readiness, onmessage/onerror binding, invalidation, and shutdown. Keep HPA and flow message semantics domain-owned with small local message constants/factories, not a global worker framework. In the same pass, move HPA replan payloads from loose startCol/startRow/targetCol/targetRow fields to a serialized GridPathQuery, so the worker boundary matches the planner/search API.
+Refactor Voronoi Regions to Typed Arrays
 
-PR 2: Grid/Search View Consolidation. Add a lightweight FlatGridView for index-first grid work: cols, rows, cellCount, idx(col,row), contains(col,row), cell(idx), and optional attached arrays like blocked, neighbors, or flowToNavIdx. Use it where it improves clarity in HPA local search setup, flow reachability/BFS setup, and patch/corridor routing, while keeping inner loops dense and allocation-light. Then introduce an HpaReplanContext that groups frame, topology view, graph view, penalty lookup, and cell-to-region view so HpaReplanPlanner stops manually assembling all those pieces.
+Where:
 
-PR 3: Flow Worker Ownership Pass. Finish flow-specific cleanup without merging it into HPA classes. Move flow target-to-cache-slot behavior out of FlowFieldGrid into a small flow request/cache object that owns target conversion, slot lookup, cache invalidation, and worker payload creation. Refactor FlowFieldWorkerEntry.js from module-level mutable state into worker-side manager classes, mirroring the clarity of HPA’s worker entry but staying flow-specific. End state: FlowFieldGrid is mostly a facade over FlowFieldWindow, flow cache/request ownership, and the flow worker protocol.
+VoronoiRegions.js
+Win: The region nodes are represented as loose JS objects (RegionNode) with dynamic array properties (edges, cells). Converting this structure to a VoronoiRegionView backed by flat Int16Array buffers will drastically reduce object header overhead and memory footprint.
+Allocation-Free MinHeap for Abstract Search
+
+Where:
+
+FlatAbstractGraphSearch.run
+Win: The abstract graph search creates a standard MinHeap and pushes { id, f } objects onto it. Changing this to utilize the existing index-based IdxMinHeap (which runs on flat arrays without object allocations) makes abstract graph routing completely allocation-free.
+Encapsulate Persisted CSR Graphs
+
+Where:
+
+HpaWorkerEntry.js
+Win: The CSR graph node count, edge offsets, and targets are written manually into parallel buffers. Creating a PersistedCSRGraph class that manages buffer views, writes, and offsets will clean up the manual indexing logic in HpaRegionGraphManager.
+Consolidate Corridor Points to Typed Arrays
+
+Where:
+
+CorridorGridPathfinder.js
+Win: Found paths are constructed using arrays of individual { c, r } objects. Passing these paths between functions as flat Int16Array coordinates ([c0, r0, c1, r1, ...]) will reduce heap allocations during layout validation.
+Standardize CellIndexLayout coordinate conversions
+
+Where:
+
+GridUtils.js
+Win: Coordinate mappings like layoutAbsToLocalCell are repeated in various formats across corridor, rail maze, and HPA systems. Promoting CellIndexLayout as the unified coordinate grid layout wrapper will enforce DRY rules across all localized subgrids.
+SearchState Recycling & Pooling
+
+Where:
+
+SearchState.js
+Win: When resizing grids or allocating worker state, new Float32Array buffers are created. Transitioning to a pooled/reusable SearchState model allows reusing backing arrays via Subarray slices instead of re-allocating.
+Clean up duplicate isBlocked checks
+
+Where:
+
+CorridorGridPathfinder.isBlocked
+Win: The bounds containment checks, room-blocked queries, and reserved indices lookups are repeated across isBlocked and isBlockedGlobal. Unifying these under the FlatGridView boundary makes boundary query logic DRY.
+Extract passage-edge serialization
+
+Where:
+
+HpaPathWorker.\_packNavEdgePoolForWorker
+Win: Packing edge pools for shared array buffer synchronization is done via direct array writes. Encapsulating this behavior into NavEdgePoolSerializer will isolate the edge memory layouts.
+Centralize Flow Neighbor Grid updates
+
+Where:
+
+flowFieldWindow.js
+Win: The neighbor grid generation uses a hardcoded 8 index multiplication mapping in rebuildFlowNeighborGrid. Introducing a neighbor layout definition class allows defining traversal offsets (8-way vs 4-way) in one place.
+
+##
+
+PR 1 — Pathfinding cleanup (DRY and low-risk allocation fixes)
+This pass stays entirely within existing APIs and removes repeated logic before any buffer-layout migrations land. Start with CorridorGridPathfinder: fold isBlocked and isBlockedGlobal into a single boundary query routed through FlatGridView.contains plus one layoutIndex / roomBlocked / reservedIndices path, so callers that pass local vs absolute coordinates only differ at the entry shim. In the same PR, swap FlatAbstractGraphSearch.run from MinHeap + { id, f } pushes to the existing IdxMinHeap pattern already used by FlatGridSearch — a straight behavioral parity change with a targeted AStar.test.js addition asserting abstract routing still matches. Round it out by standardizing CellIndexLayout: audit corridor, rail-maze, and procedural maze code for hand-rolled (col - originCol) math and replace it with createCellIndexLayout, layoutAbsToLocalCell, layoutCellIndex, and layoutContainsAbsCell from GridUtils.js, deleting any duplicate local-index helpers that crept in alongside the layout typedef. No new classes yet; the goal is a smaller, consistent surface area that PRs 2–4 can build on without fighting two coordinate dialects.
+
+PR 2 — Typed region graph and persisted CSR (first feature pass)
+With coordinates unified, the first structural pass targets the HPA region graph memory model end to end. Replace loose RegionNode objects (edges, cells arrays, string ids) in VoronoiRegions.js with a VoronoiRegionView backed by flat Int16Array/Int32Array buffers: node metadata (col, row, sector), CSR-style cellOffsets/cellIndices for membership, and edgeOffsets/edgeTargets/edgeCosts for adjacency. Update hpaRegionGraph.js (floodFillRegion, mergeSmallRegions, repositionRegionCentroids, packRegionGraphFlat, damage rebuild) to read/write through the view rather than mutating node.cells.push. Introduce PersistedCSRGraph as the write/read façade over the worker SAB views currently hand-assembled in HpaRegionGraphManager.buildPersistGraphCsr and writeRegionGraphToSab — node count, edge offsets, targets, costs, and the prefix-sum CSR build become methods on one object bound to hpaPersist\*View slices. HpaRegionGraphManager should shrink to orchestration: bake regions → pack flat → persistedGraph.sync(nodeCount, edgeWrite) → expose a FlatGraphView for FlatAbstractGraphSearch. Tests: extend AStar.test.js for CSR round-trip, add a small Voronoi pack/unpack fixture if none exists.
+
+PR 3 — Allocation-free hot paths (second feature pass)
+The second feature pass attacks per-query heap churn on the paths that run most often during layout validation and replanning. In CorridorGridPathfinder, change findQuery/findPath to return flat Int16Array coordinates [c0, r0, c1, r1, …] (absolute cells in layout space) instead of { c, r }[]; thread that format through corridorFootprint.js, corridorWalkGrid.js, corridorLanePath.js, collectCorridorPathPolylines.js, and roomGraphCorridorBelts.js, adding thin decode helpers only where a polyline truly needs paired objects. Pair this with SearchState pooling: grow-once backing Float32Array/Int32Array slabs owned by HpaWorkerEntry and CorridorGridPathfinder, with resize() reusing via subarray(0, size) and prepare() incrementing runId as today — worker graph resize and corridor layout resize should stop allocating fresh search buffers on every bounds change. Optionally expose a FlatGridSearch path mode that writes into a caller-provided Int16Array ring to avoid the { col, row }[] reconstruction in reconstructGridPath for corridor-local searches. Verification stays targeted: corridorGridPathfinder consumers, AStar.test.js, and one rail-maze corridor path smoke test.
+
+PR 4 — Worker serialization and flow-neighbor cleanup (final consolidation)
+After region graphs and corridor paths speak typed arrays, the last pass isolates remaining manual buffer writes and hardcoded traversal constants. Extract HpaPathWorker.\_packNavEdgePoolForWorker into NavEdgePoolSerializer (colocated with navEdgePoolSab.js): owns byte-length sizing, packEdgePoolToSab, and the ref metadata HpaPathWorker needs for rebind detection, so the worker class only calls serializer.ensure(size) / serializer.pack(grid.edgeStore). In flowFieldWindow.js, replace the idx _ 8 / navIdx _ 8 duplication in rebuildFlowNeighborGrid with a NeighborGridLayout (or similar) that defines stride, direction count (8-way octile today, 4-way cardinal later), and the mapping from flow index → neighbor slot; FlowFieldWorkerEntry.syncFlowWindow binds layouts once per arena size. Use this PR to delete transitional shims from PRs 2–3: remove object-based corridor path exports if any remain, collapse duplicate SAB write loops in HpaBufferManager where PersistedCSRGraph and flat path writers now own their slices, and align writeCellPath with the Int16Array path format if PR 3 left a split between abstract index paths and cell coordinate paths. The bar for done: no pathfinding hot loop allocates per search, region graphs never materialize RegionNode instances on the worker, and flow/HPA edge packing each have a single serializer entry point.
