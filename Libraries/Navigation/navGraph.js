@@ -12,10 +12,12 @@ import { bakeNavTopologyLocal } from "../Pathfinding/bakeNavTopology.js";
  *
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {{ cardinalOpen?: Uint8Array, vertexPassability?: Uint8Array }} [baked]
+ * @param {import("./NavTopology.js").NavTopology | null} [navTopology]
  */
-export function createNavGraphView(grid, baked = null) {
-    const frame = grid.navGridFrame;
-    const topology = grid.navTopology;
+export function createNavGraphView(grid, baked = null, navTopology = null) {
+    const topologyRef = navTopology ?? grid._navTopologyRef;
+    const frame = topologyRef?.frame ?? null;
+    const topology = topologyRef?.topology ?? null;
     return {
         grid,
         frame,
@@ -112,9 +114,9 @@ export function validateBeltChain(graph, cells) {
     }
     return { ok: true };
 }
-/** Worker-synced nav context → graph view (map-gen, vision, belt endpoints). */
+/** Worker-synced nav topology → graph view (map-gen, vision, belt endpoints). */
 export function createNavGraphViewFromContext(gridNavContext) {
-    return createNavGraphView(gridNavContext.grid, { cardinalOpen: gridNavContext.navCardinalOpen, vertexPassability: gridNavContext.vertexPassability });
+    return createNavGraphView(gridNavContext.grid, { cardinalOpen: gridNavContext.navCardinalOpen, vertexPassability: gridNavContext.vertexPassability }, gridNavContext);
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
 export function canStepForAuthoring(grid, fromCol, fromRow, toCol, toRow, damageBounds = null) {
@@ -132,5 +134,5 @@ export function canStepPath(graph, cells) {
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function createNavGraphViewWithLocalBake(grid, damageBounds = null) {
     const baked = bakeNavTopologyLocal(grid, damageBounds);
-    return createNavGraphView(grid, baked);
+    return createNavGraphView(grid, { cardinalOpen: baked.cardinalOpen, vertexPassability: baked.vertexPassability }, baked.navTopology);
 }

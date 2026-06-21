@@ -16,8 +16,8 @@ describe("grid nav context", () => {
         await navigation.onObstaclesChanged({ startCol: 7, endCol: 9, startRow: 7, endRow: 9 });
         assert.ok(navigation.gridNavContext.wallRevision > revision0);
         assert.equal(navigation.obstacleGeneration, 2);
-        assert.ok(navigation.isNavTopologyReady());
-        assert.ok(grid.navTopology);
+        assert.ok(navigation.topology.isReady());
+        assert.ok(navigation.topology.topology);
         terminateWorkerNavigation(navigation);
     });
 });

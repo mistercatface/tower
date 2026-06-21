@@ -1,16 +1,9 @@
 import { clampCellBoundsToGrid } from "../DataStructures/CellRect.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { createNavSimView } from "./navSimView.js";
-import {
-    buildOctileNeighborsFromTopologyRect,
-    buildOctilePredecessorsFromForwardGrid,
-    createNavTopologySabArena,
-    expandNavTopologyBakeBounds,
-    navTopologyFromArena,
-    packNavTopologyFromGrid,
-    recomputeBlockedFromGridFill,
-} from "./navTopologySab.js";
+import { buildOctileNeighborsFromTopologyRect, buildOctilePredecessorsFromForwardGrid, navTopologyFromArena, expandNavTopologyBakeBounds, recomputeBlockedFromGridFill } from "./navTopologySab.js";
 import { recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto } from "../Spatial/grid/vertexPassability.js";
+import { NavTopology } from "../Navigation/NavTopology.js";
 /**
  * One bake pass: blocked → vertex → cardinal → octile → predecessors.
  * Shared by the HPA worker and in-process authoring/tests.
@@ -36,35 +29,15 @@ export function bakeNavTopologyIntoArena(simView, topology, cardinalOpen, vertex
     buildOctileNeighborsFromTopologyRect(topology.blocked, cardinalOpen, vertexPassability, cols, rows, topology.octileNeighbors, octCol0, octCol1, octRow0, octRow1);
     if (topology.octilePredecessors) buildOctilePredecessorsFromForwardGrid(topology.octileNeighbors, topology.octilePredecessors, cols, rows, bakeBounds);
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-function ensureLocalNavBakeArena(grid) {
-    const cellCount = grid.cols * grid.rows;
-    const vertCount = (grid.cols + 1) * (grid.rows + 1);
-    if (!grid._localNavBakeArena || grid._localNavBakeArena.cellCount !== cellCount) {
-        grid._localNavBakeArena = createNavTopologySabArena(cellCount, vertCount);
-        grid._localNavBakeFrame = null;
-    }
-    return grid._localNavBakeArena;
-}
 /**
  * Bake nav topology in-process from the live grid (cell + edge snapshot).
- * Sets grid.navGridFrame / grid.navTopology for grid.canStep without a worker round-trip.
  *
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds]
  */
 export function bakeNavTopologyLocal(grid, damageBounds = null) {
-    const arena = ensureLocalNavBakeArena(grid);
-    packNavTopologyFromGrid(grid, arena, damageBounds);
-    const frame = gridFrameFromGrid(grid);
-    grid._localNavBakeFrame = frame;
-    const simView = createNavSimView(frame, arena.gridFill, arena.floorKind, arena.floorFacing, arena.edgeSlots, grid.edgeStore.pool, grid.edgeStore.passageEdgeCount, arena.vertexPassability);
-    const topology = navTopologyFromArena(arena);
-    topology.octilePredecessors = arena.octilePredecessors;
-    bakeNavTopologyIntoArena(simView, topology, arena.cardinalOpen, arena.vertexPassability, damageBounds);
-    grid.navGridFrame = frame;
-    grid.navTopology = topology;
-    return { frame, topology, simView, cardinalOpen: arena.cardinalOpen, vertexPassability: arena.vertexPassability };
+    const navTopology = NavTopology.bakeLocal(grid, damageBounds);
+    return { frame: navTopology.frame, topology: navTopology.topology, simView: null, cardinalOpen: navTopology.navCardinalOpen, vertexPassability: navTopology.vertexPassability, navTopology };
 }
 /**
  * Capture the worker bake input snapshot from a live grid.
@@ -73,14 +46,5 @@ export function bakeNavTopologyLocal(grid, damageBounds = null) {
  * @param {import("../DataStructures/CellRect.js").CellBounds | null} [bounds]
  */
 export function captureNavGridSnapshot(grid, bounds = null) {
-    const arena = ensureLocalNavBakeArena(grid);
-    packNavTopologyFromGrid(grid, arena, bounds);
-    return {
-        gridFill: arena.gridFill,
-        floorKind: arena.floorKind,
-        floorFacing: arena.floorFacing,
-        edgeSlots: arena.edgeSlots,
-        edgePool: grid.edgeStore.pool,
-        passageEdgeCount: grid.edgeStore.passageEdgeCount,
-    };
+    return NavTopology.packSnapshot(grid, bounds);
 }

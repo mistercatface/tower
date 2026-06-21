@@ -4,11 +4,11 @@ import { cellEdgeEndpoints, blockingPassageEdgeAt, edgeRailCollisionShouldEmit, 
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
-import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary } from "./boundaryOccupancy.js";
+import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
 import { syncBeltCellToEdges, clearBeltCellEdges } from "./navGridMutations.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
-import { navCanStep } from "../../Pathfinding/navTopologySab.js";
+import { invalidateGridLocalNavBake } from "../../Navigation/NavTopology.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { clearWallCells } from "./wallGridBake.js";
 import { entityBroadphaseExtent } from "../collision/entityBroadphase.js";
@@ -36,17 +36,12 @@ export class WorldObstacleGrid {
         this._staticWallProxies = [];
         this._staticWallProxyCount = 0;
         this.floorNavEpoch = 0;
-        /** @type {import("../../Pathfinding/GridNavSnapshot.js").GridFrame | null} */
-        this.navGridFrame = null;
-        /** @type {import("../../Pathfinding/navTopologySab.js").NavTopology | null} */
-        this.navTopology = null;
         this.gridTopologyEpoch = 0;
         this._passagePowerNavKey = "";
+        this._navTopologyRef = null;
     }
     invalidateNavTopology() {
-        if (this.navTopology?.octileNeighbors?.buffer instanceof SharedArrayBuffer) return;
-        this.navGridFrame = null;
-        this.navTopology = null;
+        invalidateGridLocalNavBake(this);
     }
     invalidateStructureZLevelsCache() {
         this._structureZLevelsRevision = -1;
@@ -379,10 +374,13 @@ export class WorldObstacleGrid {
         const { col, row } = this.worldToGrid(x, y);
         return this.isBlocked(col, row);
     }
-    canStep(currCol, currRow, nextCol, nextRow, _gridNavContext) {
-        const { navGridFrame: frame, navTopology: topology } = this;
-        if (!frame || !topology) return false;
-        return navCanStep(frame, topology, currCol, currRow, nextCol, nextRow);
+    canStep(currCol, currRow, nextCol, nextRow, navTopology = null) {
+        if (!navTopology) return false;
+        if (typeof navTopology.canStep === "function") return navTopology.canStep(currCol, currRow, nextCol, nextRow);
+        const cardinalOpen = navTopology.navCardinalOpen ?? navTopology.cardinalOpen;
+        const vertexPassability = navTopology.vertexPassability;
+        if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(this, cardinalOpen, vertexPassability, currCol, currRow, nextCol, nextRow);
+        return false;
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

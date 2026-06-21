@@ -32,8 +32,8 @@ describe("nav topology parity", () => {
         const navigation = await createWorkerNavigation(grid);
         await navigation.awaitWorkerNavReady();
 
-        const workerFrame = grid.navGridFrame;
-        const workerTopology = grid.navTopology;
+        const workerFrame = navigation.topology.frame;
+        const workerTopology = navigation.topology.topology;
         assert.ok(workerFrame && workerTopology);
 
         const local = bakeNavTopologyLocal(grid);

@@ -1,36 +1,44 @@
 import { HPA_WORKER_URL } from "../../Render/WorldSurfaceBootstrap.js";
 import { HpaPathWorker } from "../Pathfinding/HpaPathWorker.js";
-import { NavigationService } from "../../Systems/Navigation/NavigationService.js";
+import { HpaPathSession } from "../Pathfinding/HpaPathSession.js";
+import { NavRuntime } from "./NavRuntime.js";
 const mockFlowFieldGrid = { invalidateNavTopology() {} };
-/** @type {Set<NavigationService> | null} */
+/** @type {Set<NavRuntime> | null} */
 let testNavigations = null;
 export function enableTestNavigationTracking() {
     if (!testNavigations) testNavigations = new Set();
 }
+/**
+ * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
+ * @param {{ flowFieldGrid?: import("../Pathfinding/FlowFieldGrid.js").FlowFieldGrid | { invalidateNavTopology(): void }, settings?: object }} [options]
+ */
+export function createNavRuntime(obstacleGrid, { flowFieldGrid = mockFlowFieldGrid, settings = {} } = {}) {
+    const worker = new HpaPathWorker(HPA_WORKER_URL, obstacleGrid);
+    const session = new HpaPathSession(worker);
+    const runtime = new NavRuntime({ grid: obstacleGrid, worker, session, flowFieldGrid, settings });
+    testNavigations?.add(runtime);
+    return runtime;
+}
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid */
 export function createWorkerNavigationService(obstacleGrid) {
-    const hpaPathWorker = new HpaPathWorker(HPA_WORKER_URL, obstacleGrid);
-    const navigation = new NavigationService(mockFlowFieldGrid, obstacleGrid, {}, hpaPathWorker);
-    testNavigations?.add(navigation);
-    return navigation;
+    return createNavRuntime(obstacleGrid);
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
 export async function createWorkerNavigation(obstacleGrid, damageBounds = null) {
-    const navigation = createWorkerNavigationService(obstacleGrid);
-    await navigation.onObstaclesChanged(damageBounds);
-    return navigation;
+    const runtime = createNavRuntime(obstacleGrid);
+    await runtime.onObstaclesChanged(damageBounds);
+    return runtime;
 }
-/** @param {NavigationService} navigation @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} [grid] @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
-export async function syncWorkerNavigationTopology(navigation, grid = navigation._hpaPathWorker.navGraph, damageBounds = null) {
-    await navigation._hpaPathWorker.scheduleNavTopologySyncAwait(grid, damageBounds);
+/** @param {NavRuntime} navigation @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} [grid] @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
+export async function syncWorkerNavigationTopology(navigation, grid = navigation.worker.navGraph, damageBounds = null) {
+    await navigation.worker.scheduleNavTopologySyncAwait(grid, damageBounds);
     navigation.obstacleGeneration++;
 }
-/** @param {NavigationService} navigation */
+/** @param {NavRuntime} navigation */
 export async function terminateWorkerNavigation(navigation) {
-    if (!navigation?._hpaPathWorker) return;
+    if (!navigation?.worker) return;
     testNavigations?.delete(navigation);
-    navigation._hpaPathWorker.shutdown();
-    await navigation._hpaPathWorker.host.worker.terminate();
+    await navigation.shutdown();
 }
 export async function terminateAllWorkerNavigations() {
     if (!testNavigations?.size) return;
@@ -38,3 +46,5 @@ export async function terminateAllWorkerNavigations() {
     testNavigations.clear();
     await Promise.allSettled(pending);
 }
+export { NavRuntime, resolveNavRuntime } from "./NavRuntime.js";
+export { NavTopology } from "./NavTopology.js";

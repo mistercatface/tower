@@ -2,6 +2,7 @@ import { cellBoundsAt, isEmptyCellBounds, unionCellBounds } from "../DataStructu
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { writeNavFloorCell, clearNavFloorCell } from "../Spatial/grid/navGridMutations.js";
+import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
 /** @param {import("../DataStructures/CellRect.js").CellBounds | import("../DataStructures/CellRect.js").CellBounds[] | null | undefined} bounds */
 function mergeNavEditBounds(bounds) {
     if (!bounds) return null;
@@ -27,7 +28,12 @@ export function commitGridNavEdit(state, bounds, { invalidateSurfaces = true, fu
         else state.worldSurfaces.invalidateGridBounds(merged, state);
     if (state.sandbox) markGridZoneSubscriptionsDirty(state);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
-    return state.navigation.onObstaclesChanged(fullNavSync ? null : merged);
+    const nav = resolveNavRuntime(state);
+    if (!nav) return Promise.resolve();
+    if (state.nav == null) state.nav = nav;
+    const damageBounds = fullNavSync ? null : merged;
+    if (typeof nav.commitEdit === "function") return nav.commitEdit(damageBounds, { fullNavSync });
+    return nav.onObstaclesChanged(damageBounds);
 }
 /** One resync for multiple dirty regions (rails + belts, clear + stamp, etc.). */
 export function commitGridNavEditUnion(state, ...boundsParts) {
