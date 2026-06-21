@@ -38,8 +38,8 @@ export function setupKineticTestFrame(bodies, cellSize = 50) {
         bodies[i]._physId = i;
     }
     frame._kineticBodies = bodies.slice();
-    frame._activeKineticBodies = bodies.slice();
     frame._nextPhysId = bodies.length;
+    frame.syncActiveKineticBodies();
     return frame;
 }
 
@@ -57,7 +57,7 @@ export function attachKineticTestTickFromState(state, props, cellSize = state.ob
         props[i]._physId = i;
     }
     frame._kineticBodies = props.slice();
-    frame._activeKineticBodies = props.slice();
     frame._nextPhysId = props.length;
+    frame.syncActiveKineticBodies();
     return createKineticTick(frame, worldSimFromState(state));
 }

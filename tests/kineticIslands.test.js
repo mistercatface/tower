@@ -62,7 +62,7 @@ function setupActiveFrame(bodies) {
         bodies[i]._physId = i;
     }
     frame._kineticBodies = bodies.slice();
-    frame._activeKineticBodies = bodies.slice();
+    frame.syncActiveKineticBodies();
     return frame;
 }
 

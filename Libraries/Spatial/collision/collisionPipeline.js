@@ -5,7 +5,7 @@ import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
 import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
-import { activeBodiesMatchKineticSlab, kineticBodySlab, writebackActiveKineticBodySlab } from "./kineticBodySlab.js";
+import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab } from "./kineticBodySlab.js";
 import { persistedKineticPairBuffer } from "./kineticPairStream.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
@@ -29,6 +29,17 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
         }
     }
     return false;
+}
+function bridgeActiveBodiesThroughLegacyWalls(activeBodies, frame, resolveWalls) {
+    writebackActiveKineticBodySlab(activeBodies);
+    for (let i = 0; i < activeBodies.length; i++) {
+        const prop = activeBodies[i];
+        if (!prop.strategy?.isKinetic) continue;
+        const wallCandidates = frame.getWallCandidates(prop);
+        if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
+        resolveWalls(prop);
+    }
+    snapshotActiveBroadphaseBounds(activeBodies);
 }
 /**
  * Kinetic collision substeps: contact solve + wall resolve.
@@ -64,42 +75,10 @@ export function runCollisionPipeline(
             resolveKineticContactPassWithPairs(tick, persistedKineticPairBuffer);
             applyContactSideEffects(tick, kineticContactBuffer);
             resolveGatheredKineticConstraintSlab(tick);
-            writebackActiveKineticBodySlab(activeBodies);
-            for (let i = 0; i < activeBodies.length; i++) {
-                const prop = activeBodies[i];
-                if (!prop.strategy?.isKinetic) continue;
-                const wallCandidates = frame.getWallCandidates(prop);
-                if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
-                resolveWalls(prop);
-            }
-            snapshotActiveBroadphaseBounds(activeBodies);
+            bridgeActiveBodiesThroughLegacyWalls(activeBodies, frame, resolveWalls);
             frame.flushScheduledKineticActivations(patchBodies);
-            const MAX_KINETIC_SPEED = 1000;
-            const MAX_KINETIC_SPEED_SQ = MAX_KINETIC_SPEED * MAX_KINETIC_SPEED;
-            for (let i = 0; i < activeBodies.length; i++) {
-                const body = activeBodies[i];
-                const vx = body.vx ?? 0;
-                const vy = body.vy ?? 0;
-                const speedSq = vx * vx + vy * vy;
-                if (speedSq > MAX_KINETIC_SPEED_SQ) {
-                    const speed = Math.sqrt(speedSq);
-                    body.vx = (vx / speed) * MAX_KINETIC_SPEED;
-                    body.vy = (vy / speed) * MAX_KINETIC_SPEED;
-                }
-                const physId = body._physId;
-                if (physId !== undefined && physId !== -1) {
-                    const svx = kineticBodySlab.vx[physId];
-                    const svy = kineticBodySlab.vy[physId];
-                    const sSpeedSq = svx * svx + svy * svy;
-                    if (sSpeedSq > MAX_KINETIC_SPEED_SQ) {
-                        const sSpeed = Math.sqrt(sSpeedSq);
-                        kineticBodySlab.vx[physId] = (svx / sSpeed) * MAX_KINETIC_SPEED;
-                        kineticBodySlab.vy[physId] = (svy / sSpeed) * MAX_KINETIC_SPEED;
-                    }
-                }
-            }
+            clampActiveKineticBodySlabSpeed(1000);
             writebackActiveKineticBodySlab(activeBodies);
-            if (!activeBodiesMatchKineticSlab(activeBodies)) continue;
             snapshotActiveBroadphaseBounds(activeBodies);
             const maxError = measureConstraintSlabMaxError();
             const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);

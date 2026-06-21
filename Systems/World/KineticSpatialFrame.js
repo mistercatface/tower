@@ -2,6 +2,7 @@ import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore
 import { wakeKineticBody } from "../../Libraries/Motion/kineticSleep.js";
 import { islandRootByPhysId } from "../../Libraries/Motion/kineticIslands.js";
 import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticTopology.js";
+import { appendActiveKineticBodySlabPhysId, clearActiveKineticBodySlab, kineticBodySlab } from "../../Libraries/Spatial/collision/kineticBodySlab.js";
 /**
  * Kinetic spatial frame — populates SpatialFrameCore from GameState.
  *
@@ -58,6 +59,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     syncActiveKineticBodies() {
         const active = this._activeKineticBodies;
         active.length = 0;
+        clearActiveKineticBodySlab();
         const all = this._kineticBodies;
         for (let i = 0; i < all.length; i++) {
             const prop = all[i];
@@ -65,9 +67,11 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 prop._activeSlot = -1;
                 continue;
             }
+            kineticBodySlab.asleep[prop._physId] = prop.isSleeping ? 1 : 0;
             if (!prop.isSleeping) {
                 prop._activeSlot = active.length;
                 active.push(prop);
+                appendActiveKineticBodySlabPhysId(prop._physId);
             } else prop._activeSlot = -1;
         }
     }
@@ -77,6 +81,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (prop._activeSlot >= 0 && active[prop._activeSlot] === prop) return;
         prop._activeSlot = active.length;
         active.push(prop);
+        kineticBodySlab.asleep[prop._physId] = 0;
+        appendActiveKineticBodySlabPhysId(prop._physId);
     }
     _removeFromActive(prop) {
         const slot = prop._activeSlot;
@@ -86,8 +92,12 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (last !== prop) {
             active[slot] = last;
             last._activeSlot = slot;
+            kineticBodySlab.activePhysIds[slot] = last._physId;
+            kineticBodySlab.activeSlot[last._physId] = slot;
         }
         prop._activeSlot = -1;
+        kineticBodySlab.activeSlot[prop._physId] = -1;
+        kineticBodySlab.activePhysCount = active.length;
     }
     scheduleKineticActivation(prop) {
         if (prop._physId === undefined) return;

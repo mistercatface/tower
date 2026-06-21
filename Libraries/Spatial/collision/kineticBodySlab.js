@@ -13,6 +13,11 @@ export const kineticBodySlab = {
     invMass: new Float32Array(MAX_PHYS_BODIES),
     invI: new Float32Array(MAX_PHYS_BODIES),
     pinned: new Uint8Array(MAX_PHYS_BODIES),
+    asleep: new Uint8Array(MAX_PHYS_BODIES),
+    activeSlot: new Int32Array(MAX_PHYS_BODIES),
+    activePhysIds: new Int32Array(MAX_PHYS_BODIES),
+    activePhysCount: 0,
+    islandRoot: new Int32Array(MAX_PHYS_BODIES),
     bpKind: new Uint8Array(MAX_PHYS_BODIES),
     r: new Float32Array(MAX_PHYS_BODIES),
     hx: new Float32Array(MAX_PHYS_BODIES),
@@ -20,6 +25,8 @@ export const kineticBodySlab = {
     cos: new Float32Array(MAX_PHYS_BODIES),
     sin: new Float32Array(MAX_PHYS_BODIES),
 };
+kineticBodySlab.activeSlot.fill(-1);
+kineticBodySlab.islandRoot.fill(-1);
 const SLAB_SCRATCH_A = createBroadphaseBounds();
 const SLAB_SCRATCH_B = createBroadphaseBounds();
 export function writeBroadphaseFromBounds(physId, bounds) {
@@ -48,6 +55,17 @@ export function writeKinematicBodySlabSlot(body) {
     const moment = body.momentOfInertia;
     slab.invI[physId] = moment ? 1 / moment : 0;
     slab.pinned[physId] = bodyPinnedForContact(body) ? 1 : 0;
+    slab.asleep[physId] = body.isSleeping ? 1 : 0;
+}
+export function clearActiveKineticBodySlab() {
+    const slab = kineticBodySlab;
+    for (let i = 0; i < slab.activePhysCount; i++) slab.activeSlot[slab.activePhysIds[i]] = -1;
+    slab.activePhysCount = 0;
+}
+export function appendActiveKineticBodySlabPhysId(physId) {
+    const slab = kineticBodySlab;
+    slab.activeSlot[physId] = slab.activePhysCount;
+    slab.activePhysIds[slab.activePhysCount++] = physId;
 }
 export function separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap) {
     const slab = kineticBodySlab;
@@ -118,6 +136,20 @@ export function writebackActiveKineticBodySlab(bodies) {
         body.vy = slab.vy[physId];
         body.angularVelocity = slab.w[physId];
         invalidateBodyBroadphase(body);
+    }
+}
+export function clampActiveKineticBodySlabSpeed(maxSpeed) {
+    const slab = kineticBodySlab;
+    const maxSpeedSq = maxSpeed * maxSpeed;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
+        const vx = slab.vx[physId];
+        const vy = slab.vy[physId];
+        const speedSq = vx * vx + vy * vy;
+        if (speedSq <= maxSpeedSq) continue;
+        const speed = Math.sqrt(speedSq);
+        slab.vx[physId] = (vx / speed) * maxSpeed;
+        slab.vy[physId] = (vy / speed) * maxSpeed;
     }
 }
 const SLAB_POSE_EPS = 1e-4;

@@ -27,6 +27,10 @@ export function contactWarmStartKey(bodyA, bodyB, featureA = 0, featureB = 0) {
     const featureKey = (f1 & 0x1f) | ((f2 & 0x1f) << 5);
     return pairContactKey(bodyA, bodyB) * WARM_START_FEATURE_STRIDE + featureKey;
 }
+export function contactWarmStartKeyFromPairKey(pairKey, featureA = 0, featureB = 0) {
+    const featureKey = (featureA & 0x1f) | ((featureB & 0x1f) << 5);
+    return pairKey * WARM_START_FEATURE_STRIDE + featureKey;
+}
 /** @param {number} warmStartKey */
 export function warmStartCacheIndex(warmStartKey) {
     return (Math.trunc(warmStartKey / PAIR_KEY_SCALE) ^ (warmStartKey % PAIR_KEY_SCALE)) & WARM_START_CACHE_MASK;

@@ -5,6 +5,7 @@ import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefa
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { advanceKineticSleep } from "../Libraries/Motion/kineticSleep.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { kineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 let mockPhysId = 0;
 function mockKineticBody(isSleeping = false) {
@@ -35,6 +36,8 @@ describe("active kinetic bodies", () => {
         frame.syncActiveKineticBodies();
         assert.equal(frame._activeKineticBodies.length, 1);
         assert.equal(frame._activeKineticBodies[0], awake);
+        assert.equal(kineticBodySlab.activePhysCount, 1);
+        assert.equal(kineticBodySlab.activePhysIds[0], awake._physId);
     });
     it("activateKineticBody wakes and appends once", () => {
         const frame = new KineticSpatialFrame(50);
@@ -46,6 +49,7 @@ describe("active kinetic bodies", () => {
         assert.equal(prop.isSleeping, false);
         assert.equal(frame._activeKineticBodies.length, 1);
         assert.equal(prop._activeSlot, 0);
+        assert.equal(kineticBodySlab.activeSlot[prop._physId], 0);
         frame.activateKineticBody(prop);
         assert.equal(frame._activeKineticBodies.length, 1);
         assert.equal(prop._activeSlot, 0);
@@ -74,6 +78,9 @@ describe("active kinetic bodies", () => {
         assert.equal(frame._activeKineticBodies.length, 2);
         assert.equal(head._activeSlot, 0);
         assert.equal(tail._activeSlot, 1);
+        assert.equal(kineticBodySlab.activePhysCount, 2);
+        assert.equal(kineticBodySlab.activePhysIds[0], head._physId);
+        assert.equal(kineticBodySlab.activePhysIds[1], tail._physId);
     });
     it("sleeping kinetic body drops out of active list on next sync", () => {
         const frame = new KineticSpatialFrame(50);
@@ -85,6 +92,7 @@ describe("active kinetic bodies", () => {
         assert.equal(prop.isSleeping, true);
         frame.syncActiveKineticBodies();
         assert.equal(frame._activeKineticBodies.length, 0);
+        assert.equal(kineticBodySlab.activePhysCount, 0);
     });
     it("admitKineticProp makes mid-frame spawns visible to neighbor queries", () => {
         const frame = new KineticSpatialFrame(50);
@@ -98,6 +106,7 @@ describe("active kinetic bodies", () => {
         const neighbors = frame.getNeighbors(anchor);
         assert.ok(neighbors.includes(fragment));
         assert.ok(frame._activeKineticBodies.includes(fragment));
+        assert.equal(kineticBodySlab.activeSlot[fragment._physId], fragment._activeSlot);
     });
     it("admitKineticProp reindexes props after geometry or position changes", () => {
         const frame = new KineticSpatialFrame(50);
@@ -128,6 +137,8 @@ describe("active kinetic bodies", () => {
         frame.activateKineticBody(head);
         assert.equal(frame._activeKineticBodies.length, 1);
         assert.equal(frame._activeKineticBodies[0], head);
+        assert.equal(kineticBodySlab.activePhysCount, 1);
+        assert.equal(kineticBodySlab.activePhysIds[0], head._physId);
         frame._activeKineticBodies.push(tail);
         frame.reindexKineticBodies(frame._activeKineticBodies);
         assert.equal(frame._activeKineticBodies.length, 1);
@@ -162,5 +173,6 @@ describe("active kinetic bodies", () => {
         assert.equal(mid.isSleeping, false);
         assert.equal(tail.isSleeping, true);
         assert.equal(frame._activeKineticBodies.length, 2);
+        assert.equal(kineticBodySlab.activePhysCount, 2);
     });
 });

@@ -17,7 +17,7 @@ import { kineticBodySlab, separateAlongNormalSlab, separateCoincidentCircleSlab 
 import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
 import { checkEntityPairCollisionAt } from "./SatCollision.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
-import { contactWarmStartKey, isRestingKineticContact, warmStartCacheIndex } from "./kineticContactManifold.js";
+import { contactWarmStartKeyFromPairKey, isRestingKineticContact, warmStartCacheIndex } from "./kineticContactManifold.js";
 const MAX_CONTACTS = 4096;
 const INNER_SOLVE_ITERATIONS = 4;
 const WARM_START_CACHE_SIZE = 16384;
@@ -75,23 +75,6 @@ export function circleCircleContactSlab(physIdA, physIdB) {
     const nx = dx / dist;
     const ny = dy / dist;
     return { overlap, nx, ny, coincident: false };
-}
-function pairMaterialFriction(body) {
-    const pair = body.strategy?.pairFriction;
-    if (pair != null) return pair;
-    return body.strategy?.wallPhysics?.friction ?? null;
-}
-function kineticPairRestitution(bodyA, bodyB) {
-    const r1 = bodyA.strategy?.pairRestitution;
-    const r2 = bodyB.strategy?.pairRestitution;
-    if (r1 != null && r2 != null) return (r1 + r2) * 0.5;
-    return r1 ?? r2 ?? getCollisionSettings().restitution.kineticPair;
-}
-function kineticPairFriction(bodyA, bodyB) {
-    const f1 = pairMaterialFriction(bodyA);
-    const f2 = pairMaterialFriction(bodyB);
-    if (f1 != null && f2 != null) return Math.sqrt(f1 * f2);
-    return f1 ?? f2 ?? getCollisionSettings().pairFriction;
 }
 function warmStartCacheLookup(key) {
     let idx = warmStartCacheIndex(key);
@@ -158,7 +141,7 @@ function storeKineticWarmStartCache(contacts) {
         }
     }
 }
-function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy, rax, ray, rbx, rby, featureA = 0, featureB = 0) {
+function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy, rax, ray, rbx, rby, restitution, friction, warmStartPairKey, featureA = 0, featureB = 0) {
     if (contacts.count >= MAX_CONTACTS) return;
     const i = contacts.count++;
     const slab = kineticBodySlab;
@@ -177,8 +160,11 @@ function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy,
     contacts.preDvy[i] = preDvy;
     contacts.preSpeedA[i] = Math.hypot(slab.vx[physIdA], slab.vy[physIdA]);
     contacts.preSpeedB[i] = Math.hypot(slab.vx[physIdB], slab.vy[physIdB]);
+    contacts.restitution[i] = restitution;
+    contacts.friction[i] = friction;
+    contacts.warmStartKey[i] = contactWarmStartKeyFromPairKey(warmStartPairKey, featureA, featureB);
 }
-function narrowPhaseCircleContact(physIdA, physIdB, preDvx, preDvy, contacts) {
+function narrowPhaseCircleContact(physIdA, physIdB, preDvx, preDvy, restitution, friction, warmStartPairKey, contacts) {
     const info = circleCircleContactSlab(physIdA, physIdB);
     if (!info) return;
     if (info.coincident) {
@@ -186,9 +172,9 @@ function narrowPhaseCircleContact(physIdA, physIdB, preDvx, preDvy, contacts) {
         return;
     }
     separateAlongNormalSlab(physIdA, physIdB, info.nx, info.ny, info.overlap);
-    appendContact(contacts, physIdA, physIdB, KINETIC_PAIR_TIER.CIRCLE_CIRCLE, info.nx, info.ny, preDvx, preDvy, 0, 0, 0, 0);
+    appendContact(contacts, physIdA, physIdB, KINETIC_PAIR_TIER.CIRCLE_CIRCLE, info.nx, info.ny, preDvx, preDvy, 0, 0, 0, 0, restitution, friction, warmStartPairKey);
 }
-function narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, preDvx, preDvy, contacts) {
+function narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, preDvx, preDvy, restitution, friction, warmStartPairKey, contacts) {
     const slab = kineticBodySlab;
     const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
     const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
@@ -216,6 +202,9 @@ function narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, preDvx, pre
             pt.cy - slab.y[physIdA],
             pt.cx - slab.x[physIdB],
             pt.cy - slab.y[physIdB],
+            restitution,
+            friction,
+            warmStartPairKey,
             pt.featureA ?? 0,
             pt.featureB ?? 0,
         );
@@ -228,8 +217,9 @@ function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
         const physIdB = pairs.physIdB[i];
         if (!kineticPairBodiesAt(spatialFrame, physIdA, physIdB)) continue;
         const tier = pairs.tier[i];
-        if (tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) narrowPhaseCircleContact(physIdA, physIdB, pairs.preDvx[i], pairs.preDvy[i], contacts);
-        else narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, pairs.preDvx[i], pairs.preDvy[i], contacts);
+        if (tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE)
+            narrowPhaseCircleContact(physIdA, physIdB, pairs.preDvx[i], pairs.preDvy[i], pairs.restitution[i], pairs.friction[i], pairs.warmStartPairKey[i], contacts);
+        else narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, pairs.preDvx[i], pairs.preDvy[i], pairs.restitution[i], pairs.friction[i], pairs.warmStartPairKey[i], contacts);
     }
 }
 function precomputeKineticContacts(spatialFrame, contacts) {
@@ -269,12 +259,6 @@ function precomputeKineticContacts(spatialFrame, contacts) {
         contacts.rBt[i] = rBt;
         contacts.kNormal[i] = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
         contacts.kTangent[i] = invMassA + invMassB + rAt * rAt * invIA + rBt * rBt * invIB;
-        const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
-        const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
-        if (!bodyA || !bodyB) continue;
-        contacts.restitution[i] = kineticPairRestitution(bodyA, bodyB);
-        contacts.friction[i] = kineticPairFriction(bodyA, bodyB);
-        contacts.warmStartKey[i] = contactWarmStartKey(bodyA, bodyB, contacts.featureA[i], contacts.featureB[i]);
     }
 }
 function applyContactImpulse(contacts, i, slab, iterMaxImpulse) {
