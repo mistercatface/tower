@@ -5,7 +5,7 @@ export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
     goalPropId: "goal_orb",
-    snakeCount: 120,
+    snakeCount: 250,
     goalCount: 200,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
@@ -34,12 +34,6 @@ export const SNAKE_GAME_DEFAULTS = {
     visionCone: { halfAngle: Math.PI / 3, range: 128, cellFill: "rgba(120, 220, 255, 0.04)", visibleGoalStroke: "rgba(255, 220, 80, 0.35)", lineWidth: 1 },
     /** Explore waypoints must be at least this many grid tiles away (Chebyshev). */
     exploreMinTiles: 8,
-    /** Fraction of explore repicks that target a nav-walkable belt cell in the rail maze. */
-    beltExploreChance: 0.7,
-    /** Min Chebyshev distance for belt explore picks (can be shorter than exploreMinTiles). */
-    beltExploreMinTiles: 4,
-    /** Fraction of food orbs spawned on belt cells when reachable. */
-    beltFoodSpawnChance: 0.35,
     /** LRU grid-cell memory window per snake (vision + arrival stamps). */
     spatialMemoryCapacity: 128,
     /** Oldest memory fraction treated as explore frontier when no fresh cells exist. */

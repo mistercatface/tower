@@ -14,7 +14,6 @@ import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
 import { ensureSnakeGoalIndex, registerSnakeGoal } from "./snakeGoalIndex.js";
 import { notifySnakeGoalRelocated } from "./snakeGoalRelocate.js";
-import { pickNavWalkableBeltCellAny } from "./snakeBeltCells.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
 import { applySnakeHeadGameplay, applySnakeSegmentGameplay } from "./snakeGameConfig.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
@@ -273,10 +272,7 @@ export function relocateGoalOrb(state, goal, cell, { skipHeadId = null } = {}) {
     return goal;
 }
 export function spawnGoalOrbOnOpenCell(state, navWalkable, { excludeIndices = null, faction = SANDBOX_DEFAULT_FACTION, rng = Math.random } = {}) {
-    const config = getSnakeGameConfig();
-    let cell = null;
-    if ((config.beltFoodSpawnChance ?? 0) > 0 && rng() < config.beltFoodSpawnChance) cell = pickNavWalkableBeltCellAny(state.obstacleGrid, navWalkable, { excludeIndices, rng });
-    if (!cell) cell = navWalkable.pick({ excludeIndices, rng });
+    let cell = navWalkable.pick({ excludeIndices, rng });
     if (!cell) {
         const boundsConfig = state.sandbox?.snakePlayableBounds ?? state.editor?.cavernConfig;
         const open = collectWalkableCells(state, boundsConfig);
