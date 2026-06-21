@@ -13,7 +13,7 @@ import {
 } from "./kineticPairStream.js";
 import { kineticPairTopologyStale } from "../../Motion/kineticTopology.js";
 import { stampKineticPairGatherTopology } from "../../Motion/kineticTopology.js";
-import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
+import { refreshActiveKineticBodySlabPose } from "./entityBroadphase.js";
 import { kineticDynamicSlab, kineticStaticSlab, separateAlongNormalSlab, separateCoincidentCircleSlab } from "./kineticBodySlab.js";
 import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
 import { checkEntityPairCollisionAt } from "./SatCollision.js";
@@ -373,7 +373,7 @@ function applyKineticContactWake(contacts, spatialFrame) {
     }
 }
 export function gatherKineticContactPairs(tick) {
-    snapshotActiveBroadphaseBounds(tick.frame._activeKineticBodies);
+    refreshActiveKineticBodySlabPose(tick.frame._activeKineticBodies);
     stampKineticPairGatherTopology(tick.frame, tick.world.kinetic);
     const pairs = kineticPairBuffer;
     gatherKineticCandidatePairs(tick.frame, pairs);
@@ -393,7 +393,7 @@ export function ensureKineticContactPairs(tick, outPairs) {
         bumpPairGatherStat(session, "full");
         return outPairs;
     }
-    snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
+    refreshActiveKineticBodySlabPose(frame._activeKineticBodies);
     stampKineticPairGatherTopology(frame, session);
     if (!compactSubstepKineticPairs(frame, outPairs)) {
         session.substepPairsValid = false;

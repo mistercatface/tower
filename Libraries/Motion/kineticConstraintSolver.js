@@ -6,14 +6,7 @@ import { getEntityCollisionParts } from "../Spatial/collision/SatCollision.js";
 import { applyPositionCorrection } from "../Spatial/collision/penetration.js";
 import { ensureKineticIslandPlan } from "./kineticIslands.js";
 import { wakeKineticBody } from "./kineticSleep.js";
-import {
-    kineticDynamicSlab,
-    kineticStaticSlab,
-    writeStaticKineticSlabSlot,
-    writeActiveKineticBodySlabPose,
-    writebackKineticBodySlabPhysIds,
-    separateAlongNormalSlab,
-} from "../Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab, kineticStaticSlab, writeActiveKineticBodySlabPose, writebackKineticBodySlabPhysIds, separateAlongNormalSlab } from "../Spatial/collision/kineticBodySlab.js";
 const LINK_CAPSULE_WALL_PASSES = 4;
 /** Reused per-island wall candidate list — cleared at the start of each awake island. */
 const islandLinkWallCandidates = [];
@@ -183,12 +176,10 @@ function syncConstraintSlabBodies(slab) {
         const physIdB = slab.physIdB[i];
         if (!constraintPhysSyncSeen.has(physIdA)) {
             constraintPhysSyncSeen.add(physIdA);
-            writeStaticKineticSlabSlot(slab.bodyA[i]);
             writeActiveKineticBodySlabPose(slab.bodyA[i]);
         }
         if (!constraintPhysSyncSeen.has(physIdB)) {
             constraintPhysSyncSeen.add(physIdB);
-            writeStaticKineticSlabSlot(slab.bodyB[i]);
             writeActiveKineticBodySlabPose(slab.bodyB[i]);
         }
     }

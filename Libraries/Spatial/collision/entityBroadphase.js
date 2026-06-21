@@ -2,7 +2,15 @@ import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
-import { pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose } from "./kineticBodySlab.js";
+import {
+    BP_KIND_CIRCLE,
+    kineticDynamicSlab,
+    pairBroadphaseOverlapSlab,
+    pairCircleCircleOverlapSlab,
+    writeBroadphaseFromBounds,
+    writeStaticKineticSlabSlot,
+    writeActiveKineticBodySlabPose,
+} from "./kineticBodySlab.js";
 import { getEntityCollisionParts } from "./SatCollision.js";
 function kineticActivity() {
     return getCollisionSettings().kineticActivity;
@@ -142,6 +150,15 @@ export function snapshotKineticBodySlab(bodies) {
 }
 export function snapshotActiveBroadphaseBounds(bodies) {
     snapshotKineticBodySlab(bodies);
+}
+export function refreshActiveKineticBodySlabPose(bodies) {
+    const slab = kineticDynamicSlab;
+    for (let i = 0; i < bodies.length; i++) {
+        const entity = bodies[i];
+        const physId = entity._physId;
+        writeActiveKineticBodySlabPose(entity);
+        if (slab.bpKind[physId] !== BP_KIND_CIRCLE) writeBroadphaseFromBounds(physId, getBroadphaseBounds(entity));
+    }
 }
 export function pairCircleCircleOverlapSnapshotted(a, b) {
     return pairCircleCircleOverlapSlab(a._physId, b._physId);

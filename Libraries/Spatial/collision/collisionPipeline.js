@@ -4,7 +4,7 @@ import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGath
 import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
 import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
-import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
+import { refreshActiveKineticBodySlabPose } from "./entityBroadphase.js";
 import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab } from "./kineticBodySlab.js";
 import { persistedKineticPairBuffer } from "./kineticPairStream.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
@@ -39,7 +39,7 @@ function bridgeActiveBodiesThroughLegacyWalls(activeBodies, frame, resolveWalls)
         if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
         resolveWalls(prop);
     }
-    snapshotActiveBroadphaseBounds(activeBodies);
+    refreshActiveKineticBodySlabPose(activeBodies);
 }
 /**
  * Kinetic collision substeps: contact solve + wall resolve.
@@ -79,7 +79,7 @@ export function runCollisionPipeline(
             frame.flushScheduledKineticActivations(patchBodies);
             clampActiveKineticBodySlabSpeed(1000);
             writebackActiveKineticBodySlab(activeBodies);
-            snapshotActiveBroadphaseBounds(activeBodies);
+            refreshActiveKineticBodySlabPose(activeBodies);
             const maxError = measureConstraintSlabMaxError();
             const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
             if (maxError <= constraintErrorEpsilon && maxSpeedSq <= velocityEpsilonSq) break;

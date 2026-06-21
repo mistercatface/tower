@@ -2,6 +2,7 @@ import { createKineticSession } from "../../GameState/KineticSession.js";
 import { createKineticTick } from "../../GameState/KineticTick.js";
 import { worldSimFromState } from "../../GameState/WorldSim.js";
 import { KineticSpatialFrame } from "../../Systems/World/KineticSpatialFrame.js";
+import { snapshotKineticBodySlab } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 
 export function createKineticTestRegistry(liveProps) {
     return {
@@ -39,6 +40,7 @@ export function setupKineticTestFrame(bodies, cellSize = 50) {
     }
     frame._kineticBodies = bodies.slice();
     frame._nextPhysId = bodies.length;
+    snapshotKineticBodySlab(frame._kineticBodies);
     frame.syncActiveKineticBodies();
     return frame;
 }
@@ -58,6 +60,7 @@ export function attachKineticTestTickFromState(state, props, cellSize = state.ob
     }
     frame._kineticBodies = props.slice();
     frame._nextPhysId = props.length;
+    snapshotKineticBodySlab(frame._kineticBodies);
     frame.syncActiveKineticBodies();
     return createKineticTick(frame, worldSimFromState(state));
 }

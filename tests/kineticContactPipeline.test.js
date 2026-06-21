@@ -53,7 +53,7 @@ describe("kinetic contact pipeline", () => {
         const tick = createKineticTestTick([ball, wedge]);
         resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(kineticContactBuffer.count, 1);
-        assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.CIRCLE_POLY);
+        assert.equal(kineticContactBuffer.static.tier[0], KINETIC_PAIR_TIER.CIRCLE_POLY);
         assert.equal(slabPairCollision(ball, wedge), null);
     });
 
@@ -63,7 +63,7 @@ describe("kinetic contact pipeline", () => {
         const tick = createKineticTestTick([a, b]);
         resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(kineticContactBuffer.count, 1);
-        assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.CIRCLE_CIRCLE);
+        assert.equal(kineticContactBuffer.static.tier[0], KINETIC_PAIR_TIER.CIRCLE_CIRCLE);
     });
 
     it("poly-poly pass fills buffer with poly-poly tier", () => {
@@ -74,8 +74,8 @@ describe("kinetic contact pipeline", () => {
         const tick = createKineticTestTick([left, right]);
         resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(kineticContactBuffer.count, 2);
-        assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.POLY_POLY);
-        assert.equal(kineticContactBuffer.tier[1], KINETIC_PAIR_TIER.POLY_POLY);
+        assert.equal(kineticContactBuffer.static.tier[0], KINETIC_PAIR_TIER.POLY_POLY);
+        assert.equal(kineticContactBuffer.static.tier[1], KINETIC_PAIR_TIER.POLY_POLY);
         assert.equal(slabPairCollision(left, right), null);
     });
 });

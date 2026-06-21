@@ -10,6 +10,11 @@ import {
     writeBroadphaseFromBounds,
     writeStaticKineticSlabSlot,
 } from "../../Libraries/Spatial/collision/kineticBodySlab.js";
+function writeKineticBodySlabSnapshot(prop) {
+    writeStaticKineticSlabSlot(prop);
+    writeActiveKineticBodySlabPose(prop);
+    writeBroadphaseFromBounds(prop._physId, getBroadphaseBounds(prop));
+}
 /**
  * Kinetic spatial frame — populates SpatialFrameCore from GameState.
  *
@@ -38,7 +43,10 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const prop = worldProps[i];
             if (prop.strategy?.spatialRole === "trigger") continue;
             this.insertEntity(prop, physIdCounter++);
-            if (prop.strategy?.isKinetic) this._kineticBodies.push(prop);
+            if (prop.strategy?.isKinetic) {
+                this._kineticBodies.push(prop);
+                writeKineticBodySlabSnapshot(prop);
+            }
         }
         this._nextPhysId = this._kineticBodies.length;
         this.syncActiveKineticBodies();
@@ -88,14 +96,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         prop._activeSlot = active.length;
         active.push(prop);
         appendActiveKineticBodySlabPhysId(prop._physId);
-        if (prop.mass != null) {
-            writeStaticKineticSlabSlot(prop);
-            writeActiveKineticBodySlabPose(prop);
-            writeBroadphaseFromBounds(prop._physId, getBroadphaseBounds(prop));
-        } else {
-            writeActiveKineticBodySlabPose(prop);
-            if (typeof prop.getShape === "function") writeBroadphaseFromBounds(prop._physId, getBroadphaseBounds(prop));
-        }
+        writeKineticBodySlabSnapshot(prop);
     }
     _removeFromActive(prop) {
         const slot = prop._activeSlot;
