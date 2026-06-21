@@ -48,6 +48,8 @@ export const SNAKE_GAME_DEFAULTS = {
     brainSyncOffScreenInterval: 4,
     /** Minimum chain segments to stay alive after split (head + 2 followers = 3). */
     minAliveSegmentCount: 3,
+    /** Hard cap on length; overfeeding past this is wasted. */
+    maxAliveSegmentCount: 12,
     /** Relative impact speed required to split a smaller snake at the struck segment. */
     splitImpulseThreshold: 35,
     /** Kinetic speed floor for striker snake cuts (shared with wallDamage.minStrikeSpeed). */
@@ -68,9 +70,15 @@ export const SNAKE_GAME_DEFAULTS = {
     lethalThreatRange: 48,
     /** Short-term intent memory after LOS loss, in FSM ticks. */
     intentMemory: { threatTtlTicks: 45, preyTtlTicks: 90, foodTtlTicks: 180 },
-    /** Milliseconds without food before a snake sheds one tail segment and shrinks. */
-    starvationIntervalMs: 30_000,
-    /** Food-timer fraction cutoffs for hunger facts (1 = just ate, 0 = about to shed). */
+    /**
+     * Metabolism — hunger and size are two separate meters.
+     * hungerDrainMs: time to drain the hunger bar from full (1) to empty (0) at normal speed.
+     * foodValue: hunger restored per food orb; overflow past full spills into growth.
+     * growthCost: overflow hunger units needed to build one new segment (overfeeding grows you).
+     * starveShedIntervalMs: once hunger is empty, time spent starving before losing each segment.
+     */
+    metabolism: { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 },
+    /** Hunger-bar cutoffs for the satisfied/hungry/desperate facts (1 = just ate, 0 = starving). */
     hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
     /**
      * Decision scoring base weights. Non-overlapping bands reproduce the legacy
@@ -89,6 +97,15 @@ export const SNAKE_GAME_DEFAULTS = {
         /** How much a snake discounts a (non-lethal) threat by hunger when scoring flee. 0 = always flee. */
         riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 },
     },
+    /**
+     * Sprint = burn hunger faster to move faster. Stamina IS hunger: sprinting drains the
+     * food timer faster and sheds tail segments faster, so a snake can sprint until it hits
+     * minAliveSegmentCount — a min-length snake has no tail left to burn and can never sprint.
+     * fleeSeverity is the threat severity at or above which a fleeing snake sprints to escape.
+     * speed/accel multipliers scale the head's ground nav while sprinting; hungerDrainMultiplier
+     * advances the food timer faster so sprinting eats into hunger and accelerates shedding.
+     */
+    sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 },
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
     showSnakeFsmDebug: true,
 };

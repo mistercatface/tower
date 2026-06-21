@@ -381,6 +381,49 @@ describe("snake FSM transitions", () => {
         assert.deepEqual(intent.getDestination(), latched);
     });
 
+    it("a hunting snake sprints, scaling head speed (PR10)", async () => {
+        applySnakeGameConfig({ fleeRange: 128 });
+        resetKineticConstraintIds(1);
+        const state = await createFsmTestState();
+        const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
+        const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
+        wireSnakeTestGame(state, [
+            { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
+            { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
+        ]);
+        applySnakeHeadGameplay(hunter.head);
+        hunter.head.facing = 0;
+        prey.head.x = hunter.head.x + 64;
+        prey.head.y = hunter.head.y;
+        const baseSpeed = hunter.head.strategy.groundNav.maxSpeed;
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
+        autosim.start();
+        assert.equal(autosim.getMode(), "seek_prey");
+        autosim.tick(FRAME_MS);
+        assert.equal(autosim.isSprinting(), true);
+        assert.equal(hunter.head.strategy.groundNav.maxSpeed, baseSpeed * getSnakeGameConfig().sprint.speedMultiplier);
+    });
+
+    it("a min-length snake never sprints, even fleeing a lethal threat (PR10)", async () => {
+        applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 64 });
+        resetKineticConstraintIds(1);
+        const state = await createFsmTestState();
+        const small = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
+        const threat = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(7));
+        wireSnakeTestGame(state, [
+            { headId: small.head.id, spawnGroupId: small.spawnGroupId },
+            { headId: threat.head.id, spawnGroupId: threat.spawnGroupId },
+        ]);
+        small.head.facing = 0;
+        threat.head.x = small.head.x + 30;
+        threat.head.y = small.head.y;
+        const autosim = createWiredSnakeAutosim(state, { headId: small.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
+        autosim.start();
+        assert.equal(autosim.getMode(), "flee");
+        autosim.tick(FRAME_MS);
+        assert.equal(autosim.isSprinting(), false);
+    });
+
     it("createSnakeAutosim requires a wired registry", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);

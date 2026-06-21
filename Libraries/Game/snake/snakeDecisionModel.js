@@ -14,6 +14,11 @@ export function deriveSnakeThreatState(visibleThreat, threatDist) {
     const severity = Math.max(0, Math.min(1, (fleeRange - threatDist) / fleeRange));
     return { dist: threatDist, severity, lethal: threatDist <= config.lethalThreatRange };
 }
+export function deriveSprintIntent(mode, threatState) {
+    if (mode === "flee" && threatState && (threatState.lethal || threatState.severity >= getSnakeGameConfig().sprint.fleeSeverity)) return { want: true, reason: "escape" };
+    if (mode === "seek_prey") return { want: true, reason: "chase" };
+    return { want: false, reason: "none" };
+}
 function pushTargetEvents(events, kind, visibleTarget, rememberedTarget) {
     const upper = kind.toUpperCase();
     if (visibleTarget) {
@@ -145,6 +150,7 @@ export function buildSnakeDecisionContext({
     const blackboard = createSnakeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures });
     const candidateScores = scoreSnakeIntentCandidates(blackboard);
     const chosenIntent = pickPolicy(blackboard, candidateScores);
+    const sprintIntent = deriveSprintIntent(chosenIntent.mode, threatState);
     const decisionSnapshot = {
         events: blackboard.events,
         hungerState,
@@ -155,6 +161,7 @@ export function buildSnakeDecisionContext({
         chosenIntent,
         chosenReason: chosenIntent.reason ?? null,
         targetId: chosenIntent.targetId ?? null,
+        sprintIntent,
     };
     return { blackboard, decisionSnapshot };
 }

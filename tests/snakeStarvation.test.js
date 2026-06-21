@@ -11,7 +11,7 @@ import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getSnakeChainRadius } from "../Libraries/Game/snake/snakeScale.js";
-import { createSnakeFoodTimer, getSnakeFoodTimerFraction, tickSnakeFoodTimer } from "../Libraries/Game/snake/snakeStarvation.js";
+import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "../Libraries/Game/snake/snakeStarvation.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
@@ -52,45 +52,97 @@ function chainOptions(segmentCount) {
         growDirY: config.growDirY,
     };
 }
-describe("snake starvation", () => {
-    it("tickSnakeFoodTimer sheds tail without changing radius after interval", async () => {
-        applySnakeGameConfig({ starvationIntervalMs: 30_000, minAliveSegmentCount: 3, startRadius: 2 });
+const META = { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 };
+function autosimBehaviors(state) {
+    return new Map([
+        [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
+        [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
+    ]);
+}
+describe("snake metabolism", () => {
+    it("setSnakeHunger clamps and getSnakeHunger reads the bar", () => {
+        const m = createSnakeMetabolism();
+        assert.equal(getSnakeHunger(m), 1);
+        setSnakeHunger(m, 0.5);
+        assert.equal(getSnakeHunger(m), 0.5);
+        setSnakeHunger(m, 2);
+        assert.equal(getSnakeHunger(m), 1);
+        setSnakeHunger(m, -1);
+        assert.equal(getSnakeHunger(m), 0);
+    });
+    it("eating refills hunger first, then spills overflow into growth", () => {
+        applySnakeGameConfig({ metabolism: META });
+        const m = createSnakeMetabolism();
+        setSnakeHunger(m, 0.2);
+        assert.equal(feedSnakeMetabolism(m), 0);
+        assert.equal(getSnakeHunger(m), 0.7);
+        setSnakeHunger(m, 1);
+        assert.equal(feedSnakeMetabolism(m), 0);
+        assert.equal(feedSnakeMetabolism(m), 1);
+        assert.equal(getSnakeHunger(m), 1);
+    });
+    it("drains hunger to empty then sheds a segment per starve interval", async () => {
+        applySnakeGameConfig({ metabolism: META, minAliveSegmentCount: 3, startRadius: 2 });
         resetKineticConstraintIds(1);
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(5));
         const headId = chain.head.id;
         const radiusBefore = getSnakeChainRadius(state, headId);
-        const timer = createSnakeFoodTimer(30_000);
-        timer.remainingMs = 100;
-        assert.ok(tickSnakeFoodTimer(state, headId, timer, 200));
+        const m = createSnakeMetabolism();
+        setSnakeHunger(m, 0);
+        assert.ok(tickSnakeMetabolism(state, headId, m, 10_000));
         assert.equal(getOrderedChainMemberIds(state, headId).length, 4);
         assert.equal(getSnakeChainRadius(state, headId), radiusBefore);
-        assert.ok(timer.remainingMs > 29_000);
+        assert.equal(getSnakeHunger(m), 0);
     });
-    it("does not shrink below minAliveSegmentCount", async () => {
-        applySnakeGameConfig({ starvationIntervalMs: 30_000, minAliveSegmentCount: 3 });
+    it("stays starving across sheds instead of bouncing to satisfied", async () => {
+        applySnakeGameConfig({ metabolism: META, minAliveSegmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = await createTestState();
+        const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(6));
+        const headId = chain.head.id;
+        const m = createSnakeMetabolism();
+        setSnakeHunger(m, 0);
+        assert.ok(tickSnakeMetabolism(state, headId, m, 10_000));
+        assert.equal(getOrderedChainMemberIds(state, headId).length, 5);
+        assert.equal(getSnakeHunger(m), 0);
+        assert.ok(tickSnakeMetabolism(state, headId, m, 10_000));
+        assert.equal(getOrderedChainMemberIds(state, headId).length, 4);
+        assert.equal(getSnakeHunger(m), 0);
+    });
+    it("a starved min-length snake reads desperate (hunger 0), not satisfied", async () => {
+        applySnakeGameConfig({ metabolism: META, minAliveSegmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(3));
         const headId = chain.head.id;
-        const timer = createSnakeFoodTimer(30_000);
-        timer.remainingMs = -1;
-        assert.equal(tickSnakeFoodTimer(state, headId, timer, 0), false);
+        const m = createSnakeMetabolism();
+        setSnakeHunger(m, 0);
+        assert.equal(tickSnakeMetabolism(state, headId, m, 30_000), false);
         assert.equal(getOrderedChainMemberIds(state, headId).length, 3);
-        assert.equal(timer.remainingMs, 30_000);
+        assert.equal(getSnakeHunger(m), 0);
     });
-    it("eating resets food timer via autosim", async () => {
-        applySnakeGameConfig({ starvationIntervalMs: 30_000, minAliveSegmentCount: 3 });
+    it("sprinting drains hunger faster and sheds sooner", async () => {
+        applySnakeGameConfig({ metabolism: META, minAliveSegmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = await createTestState();
+        const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(5));
+        const headId = chain.head.id;
+        const m = createSnakeMetabolism();
+        setSnakeHunger(m, 0);
+        assert.equal(tickSnakeMetabolism(state, headId, m, 5_000, null, 1), false);
+        assert.equal(getOrderedChainMemberIds(state, headId).length, 5);
+        assert.ok(tickSnakeMetabolism(state, headId, m, 5_000, null, 2.5));
+        assert.equal(getOrderedChainMemberIds(state, headId).length, 4);
+    });
+    it("eating refills the hunger bar via autosim", async () => {
+        applySnakeGameConfig({ metabolism: META, minAliveSegmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(4));
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 8 });
-        const behaviorById = new Map([
-            [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
-            [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
-        ]);
-        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById, eatRadius: 20, rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById: autosimBehaviors(state), eatRadius: 20, rng: () => 0 });
         autosim.start();
         autosim.tick(10_000);
         assert.ok(autosim.getFoodTimerFraction() < 1);
@@ -99,18 +151,28 @@ describe("snake starvation", () => {
         autosim.tick(FRAME_MS);
         assert.ok(autosim.getFoodTimerFraction() > 0.99);
     });
-    it("does not shed on the same frame as eating", async () => {
-        applySnakeGameConfig({ starvationIntervalMs: 30_000, minAliveSegmentCount: 3 });
+    it("overfeeding grows a new segment via autosim", async () => {
+        applySnakeGameConfig({ metabolism: { ...META, foodValue: 1.5 }, minAliveSegmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(3));
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 8 });
-        const behaviorById = new Map([
-            [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
-            [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
-        ]);
-        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById, eatRadius: 20, rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById: autosimBehaviors(state), eatRadius: 20, rng: () => 0 });
+        autosim.start();
+        chain.head.x = goal.x;
+        chain.head.y = goal.y;
+        autosim.tick(FRAME_MS);
+        assert.equal(getOrderedChainMemberIds(state, chain.head.id).length, 4);
+    });
+    it("does not shed on the same frame as eating", async () => {
+        applySnakeGameConfig({ metabolism: META, minAliveSegmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = await createTestState();
+        const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(4));
+        wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
+        const goal = spawnGoalOrbAtCell(state, { col: 14, row: 8 });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById: autosimBehaviors(state), eatRadius: 20, rng: () => 0, initialFoodFraction: 0 });
         autosim.start();
         const radiusBefore = getSnakeChainRadius(state, chain.head.id);
         chain.head.x = goal.x;
@@ -118,10 +180,5 @@ describe("snake starvation", () => {
         autosim.tick(FRAME_MS);
         assert.equal(getOrderedChainMemberIds(state, chain.head.id).length, 4);
         assert.equal(getSnakeChainRadius(state, chain.head.id), radiusBefore);
-    });
-    it("getSnakeFoodTimerFraction tracks remaining time", () => {
-        const timer = createSnakeFoodTimer(30_000);
-        timer.remainingMs = 15_000;
-        assert.equal(getSnakeFoodTimerFraction(timer), 0.5);
     });
 });

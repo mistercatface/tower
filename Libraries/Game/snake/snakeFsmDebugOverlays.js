@@ -11,7 +11,9 @@ export function formatSnakeFsmDebug(snapshot) {
     const hungerText = hunger ? ` | ${hunger.state}:${hunger.foodFraction.toFixed(2)}` : "";
     const threat = snapshot.decision?.threatState;
     const threatText = threat ? ` | threat=${threat.severity.toFixed(2)}${threat.lethal ? "!" : ""}` : "";
-    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${memoryText}${hungerText}${threatText}`;
+    const sprint = snapshot.decision?.sprintIntent;
+    const sprintText = sprint?.want ? ` | sprint:${sprint.reason}` : "";
+    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${memoryText}${hungerText}${threatText}${sprintText}`;
 }
 export function appendSnakeFsmDebugOverlayCommands(out, state, seeker, snapshot) {
     const grid = state.obstacleGrid;

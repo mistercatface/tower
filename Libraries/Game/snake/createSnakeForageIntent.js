@@ -144,6 +144,9 @@ export function createSnakeForageIntent({
         getIntentMemorySnapshot() {
             return intentMemory.snapshot();
         },
+        getDecisionSnapshot() {
+            return lastDecisionSnapshot;
+        },
         getFsmSnapshot(agent, state) {
             const loco = locomotion.getStatus(agent, state);
             const dest = locomotion.getDestination();
