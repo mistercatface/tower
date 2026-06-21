@@ -45,7 +45,7 @@ export function createFleeIntentState() {
                 ctx.effects.setFleeDestination(null);
                 return;
             }
-            if (ctx.locomotion.hasReachedDest(ctx.agent, ctx.grid) && ctx.world.threat) {
+            if (ctx.locomotion.hasReachedDest(ctx.agent, ctx.grid) && ctx.fleeTarget) {
                 const nextCell = ctx.effects.setFleeDestination(ctx.dest);
                 ctx.effects.setLastTransition(nextCell && (nextCell.col !== ctx.dest.col || nextCell.row !== ctx.dest.row) ? "flee_continue" : "held_latch");
                 return;
@@ -71,6 +71,7 @@ export function createAgentIntent({
     rng = Math.random,
     states = null,
     modeExitDelayTicks = {},
+    resolveFleeTarget = (world) => world.fleeTarget,
     resolveCommitTarget = (state, id, world) => {
         const prop = state.entityRegistry.getLive(id);
         if (!prop || prop.isDead) return null;
@@ -104,9 +105,9 @@ export function createAgentIntent({
     };
     const setFleeDestination = (agent, state, avoidCell = null, world = null) => {
         const perceived = world ?? perceiveWorld(agent, state);
-        const threat = perceived.threat;
-        if (!threat) return null;
-        const cell = resolveFleeCell(agent, threat, state, avoidCell);
+        const fleeTarget = resolveFleeTarget(perceived);
+        if (!fleeTarget) return null;
+        const cell = resolveFleeCell(agent, fleeTarget, state, avoidCell);
         if (cell) locomotion.setFlee(agent, state, cell);
         return cell;
     };
@@ -151,6 +152,7 @@ export function createAgentIntent({
             targetId,
             dest: locomotion.getDestination(),
             target: resolveCommittedTarget(state, world),
+            fleeTarget: resolveFleeTarget(world),
             ticks,
             lastModeChangeTick,
             locomotion,

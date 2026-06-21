@@ -21,7 +21,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
-import { perceiveSnakeIntentWorld, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeIntent.js";
+import { createSnakeDecisionBlackboard, perceiveSnakeIntentWorld, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeIntent.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 loadPropAssets();
 async function createIntentTestState(cols = 32, rows = 32) {
@@ -65,6 +65,9 @@ function snakeChainOptions() {
         growDirX: config.growDirX,
         growDirY: config.growDirY,
     };
+}
+function pickPolicyFromVisibleWorld(world) {
+    return pickSnakeIntentPolicy(createSnakeDecisionBlackboard({ visibleWorld: world }));
 }
 describe("explore steering", () => {
     it("pickExploreDestination respects minimum tile distance", async () => {
@@ -182,7 +185,7 @@ describe("snake intent FSM", () => {
         const world = perceiveSnakeIntentWorld(seeker, seeker.id, state, registry, () => null);
         assert.equal(world.prey.id, preyChain.head.id);
         assert.equal(world.threat.id, threatChain.head.id);
-        assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
+        assert.equal(pickPolicyFromVisibleWorld(world).mode, "flee");
     });
     it("prefers visible prey over food when no threat is visible", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
@@ -203,7 +206,7 @@ describe("snake intent FSM", () => {
         const world = perceiveSnakeIntentWorld(seeker, seeker.id, state, registry, () => goal);
         assert.equal(world.prey.id, preyChain.head.id);
         assert.equal(world.food.id, goal.id);
-        assert.deepEqual(pickSnakeIntentPolicy(world), { mode: "seek_prey", targetId: preyChain.head.id });
+        assert.deepEqual(pickPolicyFromVisibleWorld(world), { mode: "seek_prey", targetId: preyChain.head.id });
     });
     it("ignores smaller snakes hidden behind walls", async () => {
         applySnakeGameConfig({ fleeRange: 128 });

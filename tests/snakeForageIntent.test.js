@@ -11,7 +11,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { cellChebyshevDistance } from "../Libraries/Navigation/steering/exploreSteering.js";
-import { findNearestVisibleThreat, pickFleeCell, pickSnakeIntentPolicy, pickSnakeIntentTarget, perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
+import { createSnakeDecisionBlackboard, findNearestVisibleThreat, pickFleeCell, pickSnakeIntentPolicy, pickSnakeIntentTarget, perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision, registerSnakeTestInstance, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
@@ -72,6 +72,9 @@ function perceiveIntentWorld(state, seeker, headId, registry, resolveFood) {
     primeSnakeHeadVision(state, seeker);
     return perceiveSnakeIntentWorld(seeker, headId, state, registry, resolveFood);
 }
+function pickPolicyFromVisibleWorld(world) {
+    return pickSnakeIntentPolicy(createSnakeDecisionBlackboard({ visibleWorld: world }));
+}
 describe("snake forage intent", () => {
     it("pickSnakeIntentPolicy explores when no food or threat", async () => {
         resetKineticConstraintIds(1);
@@ -81,7 +84,7 @@ describe("snake forage intent", () => {
         registerIntentSnakes(state, [self]);
         const registry = state.sandbox.snakeGame.registry;
         const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => null);
-        assert.equal(pickSnakeIntentPolicy(world).mode, "explore");
+        assert.equal(pickPolicyFromVisibleWorld(world).mode, "explore");
     });
     it("pickSnakeIntentPolicy flees from a visible larger snake", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
@@ -96,7 +99,7 @@ describe("snake forage intent", () => {
         larger.head.x = self.head.x + 64;
         larger.head.y = self.head.y;
         const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => null);
-        assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
+        assert.equal(pickPolicyFromVisibleWorld(world).mode, "flee");
     });
     it("pickSnakeIntentPolicy flees from a larger snake behind the seeker", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
@@ -111,7 +114,7 @@ describe("snake forage intent", () => {
         larger.head.x = self.head.x - 64;
         larger.head.y = self.head.y;
         const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => null);
-        assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
+        assert.equal(pickPolicyFromVisibleWorld(world).mode, "flee");
     });
     it("pickSnakeIntentPolicy flees from a visible striker ball", async () => {
         applySnakeGameConfig({ fleeRange: 128, strikerPropId: "snake_striker" });
@@ -126,7 +129,7 @@ describe("snake forage intent", () => {
         striker.x = self.head.x + 64;
         striker.y = self.head.y;
         const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => null);
-        assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
+        assert.equal(pickPolicyFromVisibleWorld(world).mode, "flee");
         assert.equal(world.threat.id, striker.id);
     });
     it("pickSnakeIntentPolicy prefers flee over visible food", async () => {
@@ -143,7 +146,7 @@ describe("snake forage intent", () => {
         larger.head.y = self.head.y;
         const food = { id: 999, x: self.head.x + 32, y: self.head.y, isDead: false };
         const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => food);
-        assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
+        assert.equal(pickPolicyFromVisibleWorld(world).mode, "flee");
     });
     it("pickSnakeIntentTarget seeks visible food when no threat", async () => {
         resetKineticConstraintIds(1);

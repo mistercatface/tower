@@ -1,5 +1,5 @@
 import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
-import { perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "../../Game/snake/snakeIntent.js";
+import { createSnakeDecisionBlackboard, perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "../../Game/snake/snakeIntent.js";
 import { createSnakeIntentMemory } from "../../Game/snake/snakeIntentMemory.js";
 import { createAgentIntent, createExploreIntentState, createFleeIntentState, createSeekIntentState } from "./createAgentIntent.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
@@ -20,21 +20,42 @@ export function createSnakeForageIntent({
     const resolvedVision = visionCone ?? config.visionCone;
     const intentMemory = createSnakeIntentMemory(config.intentMemory);
     const locomotion = createCellTargetLocomotion(headNav);
+    let intent = null;
+    let lastBlackboard = null;
+    const readRouteStatus = (agent, state) => {
+        const dest = locomotion.getDestination();
+        const status = locomotion.getStatus(agent, state);
+        const grid = state.obstacleGrid;
+        return {
+            hasDestination: !!dest,
+            hasRoute: status.hasRoute,
+            replanPending: status.replanPending,
+            routeFailed: !!dest && locomotion.needsRetry(agent, state),
+            destReached: !!dest && (locomotion.hasArrivedAtDest(agent, grid) || locomotion.hasReachedDest(agent, grid)),
+            stuckFrames: status.stuckFrames,
+            pathLen: status.pathLen,
+        };
+    };
     const perceiveWithMemory = (agent, state) => {
         const visible = perceiveSnakeIntentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
-        return intentMemory.enrichWorld(state, visible);
+        const memoryWorld = intentMemory.enrichWorld(state, visible);
+        const blackboard = createSnakeDecisionBlackboard({
+            visibleWorld: visible,
+            memoryWorld,
+            memorySource: memoryWorld.memorySource,
+            committedTarget: intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null,
+            routeStatus: readRouteStatus(agent, state),
+        });
+        lastBlackboard = blackboard;
+        return { blackboard, events: blackboard.events };
     };
-    const intent = createAgentIntent({
+    intent = createAgentIntent({
         brain,
         sync,
         perceiveWorld: perceiveWithMemory,
         pickPolicy: (world) => {
-            const policy = pickSnakeIntentPolicy(world);
-            if (policy.mode === "flee" && world.memorySource?.threat) policy.reason = "threat_memory";
-            else if (policy.mode === "seek_prey" && world.memorySource?.prey) policy.reason = "prey_memory";
-            else if (policy.mode === "seek_food" && world.memorySource?.food) policy.reason = "food_memory";
-            return policy;
+            return pickSnakeIntentPolicy(world.blackboard);
         },
         transitionReason: (prevMode, nextMode, policy) => {
             if (policy?.reason) return policy.reason;
@@ -53,10 +74,12 @@ export function createSnakeForageIntent({
         seekArrivalRadius,
         states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), seek_prey: createSeekIntentState(), flee: createFleeIntentState() },
         modeExitDelayTicks: { flee: 30 },
+        resolveFleeTarget: (world) => world.blackboard.facts.known.threat,
         rng,
         resolveCommitTarget: (state, id, world) => {
-            if (world?.prey?.id === id) return world.prey;
-            if (world?.food?.id === id) return world.food;
+            const known = world.blackboard.facts.known;
+            if (known.prey?.id === id) return known.prey;
+            if (known.food?.id === id) return known.food;
             return null;
         },
     });
@@ -67,7 +90,7 @@ export function createSnakeForageIntent({
             return intentMemory.snapshot();
         },
         getFsmSnapshot(agent, state) {
-            return { ...intent.getFsmSnapshot(agent, state), intentMemory: intentMemory.snapshot() };
+            return { ...intent.getFsmSnapshot(agent, state), intentMemory: intentMemory.snapshot(), intentEvents: lastBlackboard?.events ?? [] };
         },
         resetMemory() {
             intent.resetMemory();
