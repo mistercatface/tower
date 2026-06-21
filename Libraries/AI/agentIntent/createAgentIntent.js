@@ -22,6 +22,8 @@ export function createAgentIntent({
     let lastArrivalCol = null;
     let lastArrivalRow = null;
     let lastTransitionReason = "init";
+    let ticks = 0;
+    let lastModeChangeTick = 0;
     const resolveCommittedTarget = (state, world = null) => {
         if (targetId == null) return null;
         return resolveCommitTarget(state, targetId, world);
@@ -67,16 +69,25 @@ export function createAgentIntent({
         stampArrivalOnCellEnter(agent, state.obstacleGrid);
     };
     const transition = (agent, state) => {
+        ticks++;
         const grid = state.obstacleGrid;
         const world = perceiveWorld(agent, state);
-        const policy = pickPolicy(world);
+        const policy = { ...pickPolicy(world) };
         if (mode === seekMode && !resolveCommittedTarget(state, world)) {
             commit(agent, state, policy.mode, policy.targetId, "target_lost", world);
             return { mode, target: resolveCommittedTarget(state, world) };
         }
         if (policy.mode !== mode || policy.targetId !== targetId) {
-            commit(agent, state, policy.mode, policy.targetId, transitionReason(mode, policy.mode), world);
-            return { mode, target: resolveCommittedTarget(state, world) };
+            if (mode === fleeMode && policy.mode !== fleeMode)
+                if (ticks - lastModeChangeTick < 30) {
+                    policy.mode = fleeMode;
+                    policy.targetId = null;
+                }
+            if (policy.mode !== mode || policy.targetId !== targetId) {
+                if (policy.mode !== mode) lastModeChangeTick = ticks;
+                commit(agent, state, policy.mode, policy.targetId, transitionReason(mode, policy.mode), world);
+                return { mode, target: resolveCommittedTarget(state, world) };
+            }
         }
         if (locomotion.getDestination() && locomotion.needsRetry(agent, state)) {
             lastTransitionReason = "route_failed_retry";
@@ -148,6 +159,8 @@ export function createAgentIntent({
             lastArrivalCol = null;
             lastArrivalRow = null;
             lastTransitionReason = "reset";
+            ticks = 0;
+            lastModeChangeTick = 0;
             if (clearLocomotion) locomotion.clearDestination(agent, state);
         },
         holdSeek(agent, state, target) {

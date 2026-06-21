@@ -32,6 +32,7 @@ const GRAPH_PATCH_ERROR = "graphPatchError";
  */
 export class HpaPathWorker {
     constructor(workerUrl, navGraph) {
+        this.workerUrl = workerUrl;
         this.navGraph = navGraph;
         this.host = createSabSlotWorkerHost(workerUrl, MAX_HPA_REPLAN_SLOTS);
         this._syncedNavCacheKey = "";
@@ -407,9 +408,113 @@ export class HpaPathWorker {
         await this.awaitGraphReady();
         return this._graphEpoch >= graphEpoch && this.graphNodeCount > 0;
     }
+    recycleWorker() {
+        console.warn("HpaPathWorker: Web Worker hung or timed out. Recycling worker thread...");
+        try {
+            this.host.worker.terminate();
+        } catch (e) {}
+        const worker = new Worker(this.workerUrl, { type: "module" });
+        this.host.worker = worker;
+        worker.onmessage = (e) => {
+            const { type, slot, requestId } = e.data;
+            if (type === SYNC_NAV_DONE) {
+                this._syncedNavCacheKey = this._inFlightNavCacheKey || gridNavCacheKey(this.navGraph);
+                this._inFlightNavCacheKey = "";
+                const topologyHandle = this.getNavTopology();
+                if (this._topologySyncTarget) this._topologySyncTarget.bindWorkerSync(this._gridFrame, topologyHandle);
+                const resolve = this._navSyncResolve;
+                this._navSyncResolve = null;
+                this._navSyncPromise = null;
+                resolve?.();
+                if (this._deferFullNavSync) {
+                    this._deferFullNavSync = false;
+                    this.scheduleNavTopologySync(this.navGraph, this._deferNavBounds);
+                    this._deferNavBounds = null;
+                }
+                return;
+            }
+            if (type === GRAPH_PATCH_DONE) {
+                this.graphNodeCount = e.data.nodeCount;
+                this.graphNodeIds = e.data.nodeIds ?? [];
+                this.graphIdToIdx = new Map();
+                for (let i = 0; i < this.graphNodeIds.length; i++) this.graphIdToIdx.set(this.graphNodeIds[i], i);
+                this._graphEpoch = this._graphPatchTargetEpoch;
+                const expectedSize = this.navGraph.cols * this.navGraph.rows;
+                if (expectedSize > 0 && this._graphSize !== expectedSize) this._ensureGraphCellBuffers(expectedSize);
+                const resolve = this._graphPatchResolve;
+                this._graphPatchResolve = null;
+                resolve?.();
+                return;
+            }
+            if (type === GRAPH_PATCH_ERROR) {
+                console.error("HPA region graph patch failed:", e.data.message);
+                const resolve = this._graphPatchResolve;
+                this._graphPatchResolve = null;
+                resolve?.();
+                return;
+            }
+            if (type === HPA_DONE) {
+                this._replanResults[slot] = e.data.replanResult ?? null;
+                this.host.markReady(slot, requestId);
+                return;
+            }
+        };
+        worker.onerror = (err) => console.error("HpaPathWorker error:", err.message);
+        this._workerNavArenaBound = false;
+        this._syncedNavCacheKey = "";
+        this._inFlightNavCacheKey = "";
+        this._graphEpoch = -1;
+        this._graphPatchTargetEpoch = -1;
+        this.host.invalidateSlots();
+        if (this._navSyncResolve) {
+            this._navSyncResolve();
+            this._navSyncResolve = null;
+        }
+        if (this._graphPatchResolve) {
+            this._graphPatchResolve();
+            this._graphPatchResolve = null;
+        }
+        worker.postMessage({
+            type: "init",
+            data: {
+                maxSlots: MAX_HPA_REPLAN_SLOTS,
+                maxPathLen: MAX_HPA_PATH_LEN,
+                maxAbstractLen: MAX_HPA_ABSTRACT_LEN,
+                maxGraphNodes: MAX_HPA_GRAPH_NODES,
+                maxGraphEdges: MAX_GRAPH_EDGES,
+                maxCellsPerChunk: gridSettings.maxCellsPerChunk,
+                minCellsPerChunk: gridSettings.minCellsPerChunk,
+                sabPathMetaPool: this.sabPathMetaPool,
+                sabPathColsPool: this.sabPathColsPool,
+                sabPathRowsPool: this.sabPathRowsPool,
+                sabAbstractIdxPool: this.sabAbstractIdxPool,
+                sabPersistGraphNodeCol: this.sabPersistGraphNodeCol,
+                sabPersistGraphNodeRow: this.sabPersistGraphNodeRow,
+                sabPersistGraphEdgeOffsets: this.sabPersistGraphEdgeOffsets,
+                sabPersistGraphEdgeTargets: this.sabPersistGraphEdgeTargets,
+                sabPersistGraphEdgeCosts: this.sabPersistGraphEdgeCosts,
+                sabPersistGraphEdgeSources: this.sabPersistGraphEdgeSources,
+                sabCellToRegionIdx: this.sabCellToRegionIdx,
+            },
+        });
+    }
     async _dispatchAndWait(slot, type, extra) {
         const requestId = this.host.post(slot, { type, ...extra });
-        await this.host.waitForSlot(slot, requestId);
+        let timer;
+        const mainPromise = this.host.waitForSlot(slot, requestId);
+        const timeoutPromise = new Promise((_, reject) => {
+            timer = setTimeout(() => {
+                reject(new Error("Worker request timeout"));
+            }, 2500);
+        });
+        try {
+            await Promise.race([mainPromise, timeoutPromise]);
+        } catch (err) {
+            if (err.message === "Worker request timeout") this.recycleWorker();
+            throw err;
+        } finally {
+            clearTimeout(timer);
+        }
     }
     async runOneShotReplan(slot, startCol, startRow, targetCol, targetRow, stepPenalty = null) {
         await this._dispatchAndWait(slot, "replan", { startCol, startRow, targetCol, targetRow, stepPenaltyKeys: stepPenalty?.keys ?? null, stepPenaltyCosts: stepPenalty?.costs ?? null });

@@ -9,6 +9,7 @@ export class HpaPathSession {
         this._nextRequestId = 1;
         this._pendingParams = new WeakMap();
         this._replanPriority = new WeakMap();
+        this._lastReplanFrame = new WeakMap();
         this._draining = new WeakSet();
         this._queuedNavStates = new WeakSet();
         this._waitQueue = [];
@@ -39,11 +40,15 @@ export class HpaPathSession {
         this._pumpQueue();
     }
     requestReplan(navState, params, priority = 0) {
+        const lastFrame = this._lastReplanFrame.get(navState) ?? -9999;
+        if (this._frameId - lastFrame < 15) return false;
+        this._lastReplanFrame.set(navState, this._frameId);
         this._pendingParams.set(navState, params);
         this._replanPriority.set(navState, priority);
         navState.hpaReplanRequestId = this._nextRequestId++;
-        if (this._draining.has(navState)) return;
+        if (this._draining.has(navState)) return true;
         this._enqueue(navState);
+        return true;
     }
     _canStartDrain() {
         return this._activeWorkerCount < this._peakInflightCap && this._frameStartsUsed < this._frameStartBudget;
@@ -99,6 +104,7 @@ export class HpaPathSession {
         try {
             while (navState.hpaReplanRequestId !== 0) {
                 await this._awaitWorkerSlot();
+                if (navState.hpaReplanRequestId === 0) break;
                 const requestId = navState.hpaReplanRequestId;
                 const params = this._pendingParams.get(navState);
                 this._activeWorkerCount++;

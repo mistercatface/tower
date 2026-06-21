@@ -41,6 +41,10 @@ export function createSabSlotWorkerHost(workerUrl, slotCount) {
         invalidateSlots() {
             slotRequestId.fill(0);
             slotReadyId.fill(0);
+            for (const waiter of waiters.values())
+                try {
+                    waiter.resolve();
+                } catch (e) {}
             waiters.clear();
         },
     };

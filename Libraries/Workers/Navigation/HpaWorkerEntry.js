@@ -116,8 +116,9 @@ function bindNavArena(data) {
     navTopology = navTopologyFromSab(data.sabBlocked, data.sabOctileNeighbors, data.sabOctilePredecessors);
     navView = createNavLocalView(requireGridFrame(), navTopology);
     const size = requireGridFrame().cols * requireGridFrame().rows;
-    if (!searchState) searchState = new SearchState(size);
-    else searchState.resize(size);
+    const searchStateSize = Math.max(size, (maxGraphNodes || 4096) + 2);
+    if (!searchState) searchState = new SearchState(searchStateSize);
+    else searchState.resize(searchStateSize);
     navArenaBound = true;
 }
 function syncNavSimEdgePool() {
