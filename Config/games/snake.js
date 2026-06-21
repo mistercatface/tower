@@ -66,8 +66,10 @@ export const SNAKE_GAME_DEFAULTS = {
     fleeTiles: 8,
     /** Max world distance to react to a larger snake; null uses visionCone.range. */
     fleeRange: null,
+    /** Short-term intent memory after LOS loss, in FSM ticks. */
+    intentMemory: { threatTtlTicks: 45, preyTtlTicks: 90, foodTtlTicks: 180 },
     /** Milliseconds without food before a snake sheds one tail segment and shrinks. */
     starvationIntervalMs: 30_000,
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
-    showSnakeFsmDebug: false,
+    showSnakeFsmDebug: true,
 };

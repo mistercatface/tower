@@ -133,7 +133,7 @@ describe("snake FSM transitions", () => {
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
         const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
-        spawnGoalOrbAtCell(state, { col: 12, row: 10 });
+        spawnGoalOrbAtCell(state, { col: 11, row: 10 });
         wireSnakeTestGame(state, [
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
@@ -225,6 +225,64 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "seek_food");
         assert.equal(autosim.getLastTransitionReason(), "target_lost");
         assert.equal(autosim.getDestination().col, state.obstacleGrid.worldToGrid(goal.x, goal.y).col);
+    });
+
+    it("keeps chasing last-seen prey briefly when LOS drops and food is visible", async () => {
+        applySnakeGameConfig({ fleeRange: 128, intentMemory: { threatTtlTicks: 2, preyTtlTicks: 4, foodTtlTicks: 4 } });
+        resetKineticConstraintIds(1);
+        const state = await createFsmTestState();
+        const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
+        const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
+        spawnGoalOrbAtCell(state, { col: 12, row: 10 });
+        wireSnakeTestGame(state, [
+            { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
+            { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
+        ]);
+        hunter.head.facing = 0;
+        prey.head.x = hunter.head.x + 64;
+        prey.head.y = hunter.head.y;
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosim.start();
+        assert.equal(autosim.getMode(), "seek_prey");
+        const lastSeenDest = autosim.getDestination();
+
+        stampWall(state.obstacleGrid, 12, 10);
+        autosim.tick(FRAME_MS);
+
+        assert.equal(autosim.getMode(), "seek_prey");
+        assert.equal(autosim.getTargetId(), prey.head.id);
+        assert.deepEqual(autosim.getDestination(), lastSeenDest);
+        const memory = autosim.getFsmSnapshot().intentMemory;
+        assert.equal(memory.prey.id, prey.head.id);
+        assert.equal(memory.prey.ageTicks, 1);
+    });
+
+    it("drops last-seen prey after memory expires and falls back to visible food", async () => {
+        applySnakeGameConfig({ fleeRange: 128, intentMemory: { threatTtlTicks: 1, preyTtlTicks: 1, foodTtlTicks: 4 } });
+        resetKineticConstraintIds(1);
+        const state = await createFsmTestState();
+        const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
+        const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
+        const goal = spawnGoalOrbAtCell(state, { col: 11, row: 10 });
+        wireSnakeTestGame(state, [
+            { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
+            { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
+        ]);
+        hunter.head.facing = 0;
+        prey.head.x = hunter.head.x + 64;
+        prey.head.y = hunter.head.y;
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosim.start();
+        assert.equal(autosim.getMode(), "seek_prey");
+
+        stampWall(state.obstacleGrid, 12, 10);
+        autosim.tick(FRAME_MS);
+        assert.equal(autosim.getMode(), "seek_prey");
+        autosim.tick(FRAME_MS);
+
+        assert.equal(autosim.getMode(), "seek_food");
+        assert.equal(autosim.getLastTransitionReason(), "target_lost");
+        assert.equal(autosim.getTargetId(), goal.id);
     });
 
     it("seek_food transitions to flee when a larger snake appears", async () => {

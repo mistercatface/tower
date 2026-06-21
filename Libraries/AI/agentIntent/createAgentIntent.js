@@ -39,9 +39,9 @@ export function createAgentIntent({
         lastArrivalRow = row;
         brain.stampArrival(col, row);
     };
-    const setFleeDestination = (agent, state, avoidCell = null) => {
-        const world = perceiveWorld(agent, state);
-        const threat = world.threat;
+    const setFleeDestination = (agent, state, avoidCell = null, world = null) => {
+        const perceived = world ?? perceiveWorld(agent, state);
+        const threat = perceived.threat;
         if (!threat) return null;
         const cell = resolveFleeCell(agent, threat, state, avoidCell);
         if (cell) locomotion.setFlee(agent, state, cell);
@@ -54,7 +54,7 @@ export function createAgentIntent({
             return;
         }
         if (mode === fleeMode) {
-            setFleeDestination(agent, state);
+            setFleeDestination(agent, state, null, world);
             return;
         }
         const perceived = world ?? perceiveWorld(agent, state);
@@ -92,7 +92,7 @@ export function createAgentIntent({
                 }
             if (policy.mode !== mode || policy.targetId !== targetId) {
                 if (policy.mode !== mode) lastModeChangeTick = ticks;
-                commit(agent, state, policy.mode, policy.targetId, transitionReason(mode, policy.mode), world);
+                commit(agent, state, policy.mode, policy.targetId, policy.reason ?? transitionReason(mode, policy.mode, policy, world), world);
                 return { mode, target: resolveCommittedTarget(state, world) };
             }
         }
@@ -122,11 +122,11 @@ export function createAgentIntent({
         if (mode === fleeMode) {
             if (!dest) {
                 lastTransitionReason = "repick_dest";
-                setFleeDestination(agent, state);
+                setFleeDestination(agent, state, null, world);
                 return { mode, target: null };
             }
             if (locomotion.hasReachedDest(agent, grid) && world.threat) {
-                const nextCell = setFleeDestination(agent, state, dest);
+                const nextCell = setFleeDestination(agent, state, dest, world);
                 lastTransitionReason = nextCell && (nextCell.col !== dest.col || nextCell.row !== dest.row) ? "flee_continue" : "held_latch";
                 return { mode, target: null };
             }

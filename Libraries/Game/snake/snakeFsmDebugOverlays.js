@@ -4,7 +4,10 @@ export function formatSnakeFsmDebug(snapshot) {
     const dest = snapshot.destCell ? `${snapshot.destCell.col},${snapshot.destCell.row}` : "—";
     const replan = snapshot.replanReason;
     const speed = Math.hypot(snapshot.vx, snapshot.vy).toFixed(1);
-    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}`;
+    const memory = snapshot.intentMemory;
+    const memoryKind = memory?.threat ? "threat" : memory?.prey ? "prey" : memory?.food ? "food" : null;
+    const memoryText = memoryKind ? ` | mem=${memoryKind}:${memory[memoryKind].ageTicks}/${memory[memoryKind].ttlTicks}` : "";
+    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${memoryText}`;
 }
 export function appendSnakeFsmDebugOverlayCommands(out, state, seeker, snapshot) {
     const grid = state.obstacleGrid;
