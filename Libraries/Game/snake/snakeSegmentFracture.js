@@ -3,6 +3,7 @@ import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { WorldProp } from "../../../Entities/WorldProp.js";
 import { transformPoint2DInto } from "../../Math/Poly2D.js";
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
+import { kineticBodySlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { applyShardGeometryToProp } from "../../Props/propFracture.js";
 import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS, shatterGlassPolygon } from "../../Props/glassFracture.js";
@@ -47,16 +48,13 @@ function defaultSegmentLocalHit(radius, index) {
 }
 function resolveSegmentImpact(segment, radius, deathImpact, index) {
     const baseForce = deathImpact?.impactForce ?? deathImpact?.force ?? FALLBACK_IMPACT_FORCE;
-    const struck = deathImpact?.struckSegmentId == null || deathImpact.struckSegmentId === segment.id;
     if (deathImpact?.worldX != null && deathImpact?.worldY != null) {
         const local = worldToSegmentLocal(segment, deathImpact.worldX, deathImpact.worldY);
         const dist = Math.hypot(local.x, local.y);
         const scale = dist > radius && dist > 1e-6 ? radius / dist : 1;
         const hit = { x: local.x * scale, y: local.y * scale };
         const worldHit = segmentLocalToWorld(segment, hit.x, hit.y);
-        const segmentDist = Math.hypot(segment.x - deathImpact.worldX, segment.y - deathImpact.worldY);
-        const falloff = struck ? 1 : clamp(1 - segmentDist / Math.max(radius * 10, 1), 0.45, 0.85);
-        return { localHit: hit, worldHit, impactForce: Math.max(8, baseForce * falloff) };
+        return { localHit: hit, worldHit, impactForce: Math.max(8, baseForce) };
     }
     const localHit = defaultSegmentLocalHit(radius, index);
     return { localHit, worldHit: segmentLocalToWorld(segment, localHit.x, localHit.y), impactForce: baseForce };
@@ -88,24 +86,17 @@ export function fractureSnakeSegmentGeometry(segment, impact, random = Math.rand
     const glassShards = shatterGlassPolygon(flat, impact.localHit.x, impact.localHit.y, impact.impactForce, random);
     return glassShards.length >= 2 ? glassShards : fallbackCircleShards(radius, impact.localHit, impact.impactForce);
 }
-function shardBurstVelocity(segment, worldPos, impactWorld, impactForce) {
-    let dx = worldPos.x - impactWorld.x;
-    let dy = worldPos.y - impactWorld.y;
-    let dist = Math.hypot(dx, dy);
-    if (dist <= 1e-6) {
-        dx = worldPos.x - segment.x;
-        dy = worldPos.y - segment.y;
-        dist = Math.hypot(dx, dy);
-    }
-    if (dist <= 1e-6) return { x: 0, y: 0 };
-    const burst = Math.min(42, 10 + impactForce * 0.16);
-    return { x: (dx / dist) * burst, y: (dy / dist) * burst };
+function currentSegmentMotion(segment) {
+    const physId = segment._physId;
+    if (physId !== undefined) return { vx: kineticBodySlab.vx[physId], vy: kineticBodySlab.vy[physId], w: kineticBodySlab.w[physId] };
+    return { vx: segment.vx ?? 0, vy: segment.vy ?? 0, w: segment.angularVelocity ?? 0 };
 }
 export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = null, random = Math.random) {
     const geometries = fractureSnakeSegmentGeometry(segment, impact, random);
     const facing = propFacing(segment);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
+    const motion = currentSegmentMotion(segment);
     const spawned = [];
     for (let i = 0; i < geometries.length; i++) {
         const geom = geometries[i];
@@ -114,12 +105,9 @@ export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = n
         applyShardGeometryToProp(shard, geom);
         copyVisualOverride(segment, shard);
         shard.faction = segment.faction;
-        shard.vx = segment.vx ?? 0;
-        shard.vy = segment.vy ?? 0;
-        const burst = shardBurstVelocity(segment, worldPos, impact.worldHit, impact.impactForce);
-        shard.vx += burst.x;
-        shard.vy += burst.y;
-        shard.angularVelocity = (segment.angularVelocity ?? 0) + (random() - 0.5) * 0.5;
+        shard.vx = motion.vx;
+        shard.vy = motion.vy;
+        shard.angularVelocity = motion.w;
         shard._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
         addWorldPropToState(state, shard);
         wakeKineticBody(shard);
@@ -129,10 +117,12 @@ export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = n
     return spawned;
 }
 export function shatterSnakeSegments(state, spatialFrame, memberIds, deathImpact = null, random = Math.random) {
+    if (deathImpact?.struckSegmentId == null) return { spawned: [], removedSegments: [] };
     const meta = getSandboxEntityMeta(state);
     const spawned = [];
     const removedSegments = [];
     for (let i = 0; i < memberIds.length; i++) {
+        if (memberIds[i] !== deathImpact.struckSegmentId) continue;
         const segment = state.entityRegistry.get(memberIds[i]);
         if (!segment) continue;
         const radius = getCirclePropRadius(segment) ?? segment.radius ?? 0;

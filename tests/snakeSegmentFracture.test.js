@@ -64,55 +64,64 @@ function snakeShards(state) {
 }
 
 describe("snake segment fracture", () => {
-    it("dead snake segments are replaced by tinted kinetic polygon shards", () => {
+    it("non-impact death leaves retired segment props intact", () => {
         applySnakeGameConfig({ startRadius: 2, minAliveSegmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         wireSnakeGame(state, snake);
         const originalIds = snake.chain.members.map((prop) => prop.id);
-        const tint = getPropVisualTint(snake.chain.head);
 
         killSnake(state, state.sandbox.snakeGame, snake.chain.head.id);
 
-        for (const id of originalIds) assert.equal(state.entityRegistry.get(id), null);
-        const shards = snakeShards(state);
-        assert.ok(shards.length >= originalIds.length * 2);
-        for (const shard of shards) {
-            assert.equal(shard.shape.type, "Polygon");
-            assert.equal(shard.strategy.isKinetic, true);
-            assert.equal(getPropVisualTint(shard), tint);
-        }
+        for (const id of originalIds) assert.ok(state.entityRegistry.get(id));
+        assert.equal(snakeShards(state).length, 0);
     });
 
-    it("impact deaths bias shard velocity away from the contact point", () => {
+    it("impact deaths fracture only the struck segment and inherit parent motion", () => {
         applySnakeGameConfig({ startRadius: 2, minAliveSegmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         wireSnakeGame(state, snake);
         const struck = snake.chain.members[1];
+        const tint = getPropVisualTint(struck);
+        struck.vx = 7;
+        struck.vy = 3;
+        struck.angularVelocity = 0.25;
         const impact = { worldX: struck.x - struck.radius, worldY: struck.y, impactForce: 90, struckSegmentId: struck.id };
 
         killSnake(state, state.sandbox.snakeGame, snake.chain.head.id, null, impact);
 
         const shards = snakeShards(state);
-        assert.ok(shards.some((shard) => shard.vx > 10));
-        const averageVx = shards.reduce((sum, shard) => sum + shard.vx, 0) / shards.length;
-        assert.ok(averageVx > 0);
+        assert.ok(shards.length >= 2);
+        assert.equal(state.entityRegistry.get(struck.id), null);
+        assert.ok(state.entityRegistry.get(snake.chain.head.id));
+        assert.ok(state.entityRegistry.get(snake.chain.tail.id));
+        for (const shard of shards) {
+            assert.equal(shard.shape.type, "Polygon");
+            assert.equal(shard.strategy.isKinetic, true);
+            assert.equal(getPropVisualTint(shard), tint);
+            assert.equal(shard.vx, struck.vx);
+            assert.equal(shard.vy, struck.vy);
+            assert.equal(shard.angularVelocity, struck.angularVelocity);
+        }
     });
 
-    it("tiny segments use fallback shards instead of failing fracture", () => {
+    it("tiny struck segments use fallback shards instead of failing fracture", () => {
         applySnakeGameConfig({ startRadius: 1, minAliveSegmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         wireSnakeGame(state, snake);
+        const struck = snake.chain.members[1];
 
-        killSnake(state, state.sandbox.snakeGame, snake.chain.head.id);
+        killSnake(state, state.sandbox.snakeGame, snake.chain.head.id, null, { worldX: struck.x, worldY: struck.y, impactForce: 30, struckSegmentId: struck.id });
 
         assert.ok(snakeShards(state).length > 0);
-        for (const member of snake.chain.members) assert.equal(state.entityRegistry.get(member.id), null);
+        assert.equal(state.entityRegistry.get(struck.id), null);
+        assert.ok(state.entityRegistry.get(snake.chain.head.id));
+        assert.ok(state.entityRegistry.get(snake.chain.tail.id));
     });
 
     it("striker contact deaths produce snake shards", () => {
@@ -137,7 +146,9 @@ describe("snake segment fracture", () => {
 
         assert.equal(state.sandbox.snakeGame.registry.deadHeadIds.has(snake.chain.head.id), true);
         assert.ok(snakeShards(state).length > 0);
-        for (const member of snake.chain.members) assert.equal(state.entityRegistry.get(member.id), null);
+        assert.equal(state.entityRegistry.get(struck.id), null);
+        assert.ok(state.entityRegistry.get(snake.chain.head.id));
+        assert.ok(state.entityRegistry.get(snake.chain.tail.id));
     });
 
     it("same-frame constraint writeback tolerates shattered snake segment removal", () => {
