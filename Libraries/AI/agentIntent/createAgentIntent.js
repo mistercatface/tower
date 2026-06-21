@@ -1,79 +1,29 @@
 export function createAgentIntent({
-    brain,
-    sync,
+    initialMode,
+    sync = () => {},
     perceiveWorld,
     pickPolicy,
     transitionReason,
-    resolveExploreCell,
-    resolveFleeCell,
-    locomotion,
-    seekMode = "seek",
-    seekModes = null,
-    fleeMode = "flee",
-    exploreMode = "explore",
-    seekArrivalRadius = null,
-    rng = Math.random,
     states,
     modeExitDelayTicks = {},
-    resolveFleeTarget = (world) => world.fleeTarget,
-    resolveCommitTarget = (state, id, world) => {
-        const prop = state.entityRegistry.getLive(id);
-        if (!prop || prop.isDead) return null;
-        return prop;
-    },
+    createEffects = () => ({}),
+    createContext = (ctx) => ctx,
+    onClear = null,
+    onResetMode = null,
 }) {
-    let mode = exploreMode;
+    let mode = initialMode;
     let targetId = null;
-    let lastArrivalCol = null;
-    let lastArrivalRow = null;
     let lastTransitionReason = "init";
     let ticks = 0;
     let lastModeChangeTick = 0;
-    const seekModeSet = new Set(seekModes ?? [seekMode]);
-    const isSeekMode = (value) => seekModeSet.has(value);
     const stateByMode = states;
-    const resolveCommittedTarget = (state, world = null) => {
-        if (targetId == null) return null;
-        return resolveCommitTarget(state, targetId, world);
-    };
-    const stampArrivalOnCellEnter = (agent, grid) => {
-        const { col, row } = grid.worldToGrid(agent.x, agent.y);
-        if (col === lastArrivalCol && row === lastArrivalRow) return;
-        lastArrivalCol = col;
-        lastArrivalRow = row;
-        brain.stampArrival(col, row);
-    };
-    const setFleeDestination = (agent, state, avoidCell = null, world = null) => {
-        const perceived = world ?? perceiveWorld(agent, state);
-        const fleeTarget = resolveFleeTarget(perceived);
-        if (!fleeTarget) return null;
-        const cell = resolveFleeCell(agent, fleeTarget, state, avoidCell);
-        if (cell) locomotion.setFlee(agent, state, cell);
-        return cell;
-    };
-    const setExploreDestination = (agent, state) => {
-        const cell = resolveExploreCell(agent, state, brain.spatial, rng);
-        if (cell) locomotion.setExplore(agent, state, cell);
-        return cell;
-    };
-    const setSeekDestination = (agent, state, target) => {
-        if (!target) return;
-        const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(mode, agent, target, state) : seekArrivalRadius;
-        locomotion.setSeek(agent, state, target, typeof seekOptions === "object" && seekOptions !== null ? seekOptions : { arrivalRadius: seekOptions });
-    };
     const makeContext = (agent, state, world, policy) => {
+        const baseContext = { agent, state, world, policy, mode, targetId, ticks, lastModeChangeTick };
+        const domainEffects = createEffects(baseContext);
         const effects = {
+            ...domainEffects,
             transitionTo(nextMode, reason, nextTargetId = null) {
                 commit(agent, state, nextMode, nextTargetId, reason, world);
-            },
-            setExploreDestination() {
-                return setExploreDestination(agent, state);
-            },
-            setSeekDestination(target) {
-                setSeekDestination(agent, state, target);
-            },
-            setFleeDestination(avoidCell = null) {
-                return setFleeDestination(agent, state, avoidCell, world);
             },
             setLastTransition(reason) {
                 lastTransitionReason = reason;
@@ -82,22 +32,7 @@ export function createAgentIntent({
                 lastTransitionReason = reason;
             },
         };
-        return {
-            agent,
-            state,
-            grid: state.obstacleGrid,
-            world,
-            policy,
-            mode,
-            targetId,
-            dest: locomotion.getDestination(),
-            target: resolveCommittedTarget(state, world),
-            fleeTarget: resolveFleeTarget(world),
-            ticks,
-            lastModeChangeTick,
-            locomotion,
-            effects,
-        };
+        return createContext({ ...baseContext, effects });
     };
     const enterCurrentState = (agent, state, world, policy) => {
         const current = stateByMode[mode];
@@ -109,70 +44,50 @@ export function createAgentIntent({
         targetId = nextTargetId;
         lastTransitionReason = reason;
         if (prevMode !== nextMode) lastModeChangeTick = ticks;
-        locomotion.clearDestination(agent, state);
-        enterCurrentState(agent, state, world ?? perceiveWorld(agent, state), { mode: nextMode, targetId: nextTargetId });
+        const enterWorld = world ?? perceiveWorld(agent, state);
+        const enterContext = makeContext(agent, state, enterWorld, { mode: nextMode, targetId: nextTargetId });
+        enterContext.effects.clearDestination?.();
+        enterCurrentState(agent, state, enterWorld, { mode: nextMode, targetId: nextTargetId });
     };
     const perceive = (agent, state) => {
         sync(agent, state);
-        stampArrivalOnCellEnter(agent, state.obstacleGrid);
     };
     const chooseTransition = (agent, state, world, policy) => {
-        if (isSeekMode(mode) && !resolveCommittedTarget(state, world)) {
-            commit(agent, state, policy.mode, policy.targetId, "target_lost", world);
-            return true;
-        }
         if (policy.mode === mode && policy.targetId === targetId) return false;
         const exitDelayTicks = modeExitDelayTicks[mode] ?? 0;
         if (policy.mode !== mode && ticks - lastModeChangeTick < exitDelayTicks) return false;
         commit(agent, state, policy.mode, policy.targetId, policy.reason ?? transitionReason(mode, policy.mode, policy, world), world);
         return true;
     };
-    const retryRouteFailure = (agent, state, world, policy) => {
-        if (!locomotion.getDestination() || !locomotion.needsRetry(agent, state)) return false;
-        lastTransitionReason = "route_failed_retry";
-        const status = locomotion.getStatus(agent, state);
-        if (!status.replanPending && locomotion.retryOnRouteFailure(mode, { seekMode, seekModes: seekModeSet, fleeMode, exploreMode })) enterCurrentState(agent, state, world, policy);
-        return true;
-    };
     const transition = (agent, state) => {
         ticks++;
         const world = perceiveWorld(agent, state);
         const policy = { ...pickPolicy(world) };
-        if (chooseTransition(agent, state, world, policy)) return { mode, target: resolveCommittedTarget(state, world) };
-        if (retryRouteFailure(agent, state, world, policy)) return { mode, target: resolveCommittedTarget(state, world) };
+        if (chooseTransition(agent, state, world, policy)) return makeContext(agent, state, world, policy);
         const current = stateByMode[mode];
-        if (current?.update) current.update(makeContext(agent, state, world, policy));
-        return { mode, target: resolveCommittedTarget(state, world) };
+        const context = makeContext(agent, state, world, policy);
+        if (current?.update) current.update(context);
+        return makeContext(agent, state, world, policy);
     };
     return {
         perceive,
         transition,
         refresh(agent, state) {
             perceive(agent, state);
-            transition(agent, state);
-            const world = perceiveWorld(agent, state);
-            return resolveCommittedTarget(state, world);
+            return transition(agent, state);
         },
         clear(agent, state) {
-            lastArrivalCol = null;
-            lastArrivalRow = null;
             lastTransitionReason = "cleared";
             targetId = null;
-            locomotion.clear(agent, state);
-            if (agent) agent.navStepPenalty = null;
+            onClear?.(agent, state);
         },
-        resetMemory() {
-            brain.clearMemory();
-        },
-        resetMode(agent, state, { clearLocomotion = true } = {}) {
-            mode = exploreMode;
+        resetMode(agent, state) {
+            mode = initialMode;
             targetId = null;
-            lastArrivalCol = null;
-            lastArrivalRow = null;
             lastTransitionReason = "reset";
             ticks = 0;
             lastModeChangeTick = 0;
-            if (clearLocomotion) locomotion.clearDestination(agent, state);
+            onResetMode?.(agent, state);
         },
         getMode() {
             return mode;
@@ -180,41 +95,11 @@ export function createAgentIntent({
         getTargetId() {
             return targetId;
         },
-        getTrackedGoalId() {
-            return targetId;
-        },
-        clearTrackedGoal() {
+        clearTargetId() {
             targetId = null;
-        },
-        getDestination() {
-            return locomotion.getDestination();
         },
         getLastTransitionReason() {
             return lastTransitionReason;
         },
-        getLocomotionStatus(agent, state) {
-            return locomotion.getStatus(agent, state);
-        },
-        getFsmSnapshot(agent, state) {
-            const loco = locomotion.getStatus(agent, state);
-            const dest = locomotion.getDestination();
-            let replanReason = null;
-            if (loco.replanPending) replanReason = "pending";
-            else if (dest && !loco.hasRoute) replanReason = "no_route";
-            return {
-                mode,
-                destCell: dest ? { col: dest.col, row: dest.row } : null,
-                pathLen: loco.pathLen,
-                replanReason,
-                stuckFrames: loco.stuckFrames,
-                vx: agent.vx,
-                vy: agent.vy,
-                lastTransition: lastTransitionReason,
-            };
-        },
-        hasMoveTarget(agent, state) {
-            return locomotion.hasMoveTarget(agent, state);
-        },
-        locomotion,
     };
 }
