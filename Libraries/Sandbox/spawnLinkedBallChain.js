@@ -58,13 +58,13 @@ export function growChainSegment(state, tailProp, options) {
     addChainLink(state, tailProp.id, segment.id, linkSlack);
     return segment;
 }
-export function linkedChainOccupiedCellKeys(members, grid) {
-    const keys = new Set();
+export function linkedChainOccupiedCellIndices(members, grid) {
+    const indices = new Set();
     for (let i = 0; i < members.length; i++) {
         const { col, row } = grid.worldToGrid(members[i].x, members[i].y);
-        keys.add(colRowToIndex(col, row, grid.cols));
+        indices.add(colRowToIndex(col, row, grid.cols));
     }
-    return keys;
+    return indices;
 }
 export function tryExportLinkedBallChainSpawnGroup(members, meta) {
     const exportType = meta.getSpawnGroupExportType(members[0].id);

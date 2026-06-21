@@ -130,14 +130,14 @@ describe("walkableCells", () => {
         assert.ok(access.has(picked.col, picked.row));
         terminateWorkerNavigation(state.navigation);
     });
-    it("pickWalkableCell respects exclude keys", () => {
+    it("pickWalkableCell respects exclude indices", () => {
         const cells = [
             { col: 1, row: 1 },
             { col: 2, row: 2 },
             { col: 3, row: 3 },
         ];
-        const excludeKeys = new Set([colRowToIndex(2, 2, 8)]);
-        const picked = pickWalkableCell(cells, { cols: 8, excludeKeys, rng: () => 0.99 });
+        const excludeIndices = new Set([colRowToIndex(2, 2, 8)]);
+        const picked = pickWalkableCell(cells, { cols: 8, excludeIndices, rng: () => 0.99 });
         assert.equal(picked.col, 3);
         assert.equal(picked.row, 3);
     });
@@ -149,8 +149,8 @@ describe("walkableCells", () => {
         config.boundsRows = 4;
         const state = await createWalkableCellsTestState(config);
         const open = collectWalkableCells(state);
-        const excludeKeys = new Set(open.map((cell) => colRowToIndex(cell.col, cell.row, state.obstacleGrid.cols)));
-        assert.equal(pickRandomWalkableCell(state, { excludeKeys }), null);
+        const excludeIndices = new Set(open.map((cell) => colRowToIndex(cell.col, cell.row, state.obstacleGrid.cols)));
+        assert.equal(pickRandomWalkableCell(state, { excludeIndices }), null);
         terminateWorkerNavigation(state.navigation);
     });
 });

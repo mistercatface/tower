@@ -7,7 +7,7 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getChainMemberIds, isChainSteeringTarget } from "../Libraries/Sandbox/chainLinks.js";
-import { growChainSegment, linkedChainOccupiedCellKeys, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
+import { growChainSegment, linkedChainOccupiedCellIndices, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 loadPropAssets();
@@ -49,16 +49,16 @@ describe("spawnLinkedBallChain", () => {
         assert.equal(exported.x, chain.head.x);
         assert.equal(exported.y, chain.head.y);
     });
-    it("linkedChainOccupiedCellKeys lists unique grid cells occupied by members", () => {
+    it("linkedChainOccupiedCellIndices lists unique grid cells occupied by members", () => {
         resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, CHAIN_OPTIONS);
-        const keys = linkedChainOccupiedCellKeys(chain.members, state.obstacleGrid);
-        assert.ok(keys.size >= 2);
-        assert.ok(keys.has(colRowToIndex(10, 10, state.obstacleGrid.cols)));
+        const indices = linkedChainOccupiedCellIndices(chain.members, state.obstacleGrid);
+        assert.ok(indices.size >= 2);
+        assert.ok(indices.has(colRowToIndex(10, 10, state.obstacleGrid.cols)));
         for (let i = 0; i < chain.members.length; i++) {
             const { col, row } = state.obstacleGrid.worldToGrid(chain.members[i].x, chain.members[i].y);
-            assert.ok(keys.has(colRowToIndex(col, row, state.obstacleGrid.cols)));
+            assert.ok(indices.has(colRowToIndex(col, row, state.obstacleGrid.cols)));
         }
     });
     it("growChainSegment links a new tail segment at spacing", () => {

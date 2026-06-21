@@ -1,6 +1,20 @@
 export function colRowToIndex(col, row, cols) {
     return row * cols + col;
 }
+/** @typedef {number} GlobalCellIdx Dense index on the obstacle grid: colRowToIndex(col, row, grid.cols). */
+/** @typedef {number} LayoutCellIdx Dense index within a {@link CellIndexLayout} rect (local to origin/stride). */
+/** @param {number} col @param {number} row @param {number} gridCols @returns {GlobalCellIdx} */
+export function globalCellIdx(col, row, gridCols) {
+    return colRowToIndex(col, row, gridCols);
+}
+/** @param {number} originCol @param {number} originRow @param {number} patchCols @param {number} patchRows @returns {CellIndexLayout} */
+export function createPatchLayout(originCol, originRow, patchCols, patchRows) {
+    return { originCol, originRow, strideCols: patchCols, cellCount: patchCols * patchRows };
+}
+/** @param {LayoutCellIdx} idx @param {CellIndexLayout} layout */
+export function layoutIndexToAbsColRow(idx, layout) {
+    return { col: (idx % layout.strideCols) + layout.originCol, row: Math.floor(idx / layout.strideCols) + layout.originRow };
+}
 /** Dense index for absolute (col, row) within a bounded layout rect. */
 export function layoutCellIndex(absCol, absRow, originCol, originRow, strideCols) {
     return colRowToIndex(absCol - originCol, absRow - originRow, strideCols);

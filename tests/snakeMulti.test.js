@@ -73,10 +73,10 @@ describe("snake multi-spawn", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
         const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3, rng: () => 0.1 });
-        const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, excludeKeys: first.occupiedKeys, rng: () => 0.9 });
+        const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, excludeIndices: first.occupiedIndices, rng: () => 0.9 });
         assert.notEqual(first.tintHex, second.tintHex);
         const navWalkable = createSnakeNavWalkable(state);
-        const goals = spawnSnakeGoalPool(state, 3, navWalkable, { excludeKeys: first.occupiedKeys, rng: () => 0.5 });
+        const goals = spawnSnakeGoalPool(state, 3, navWalkable, { excludeIndices: first.occupiedIndices, rng: () => 0.5 });
         assert.equal(goals.length, 3);
     });
 

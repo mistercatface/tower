@@ -1,6 +1,6 @@
 import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
-import { CARDINAL_OFFSETS, indexToColRow, layoutCellIndex } from "../../Spatial/grid/GridUtils.js";
-function cellIndex(col, row, layout) {
+import { CARDINAL_OFFSETS, layoutCellIndex, layoutIndexToAbsColRow } from "../../Spatial/grid/GridUtils.js";
+function layoutIdx(col, row, layout) {
     return layoutCellIndex(col, row, layout.originCol, layout.originRow, layout.strideCols);
 }
 function neighborForSide(col, row, side) {
@@ -12,56 +12,70 @@ function oppositeSide(side) {
 }
 /** @param {{ col: number, row: number, kind: number, facingIndex: number }[]} belts @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
 export function beltFootprintIndices(belts, layout) {
+    /** @type {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} */
     const footprint = new Set();
-    for (let i = 0; i < belts.length; i++) footprint.add(cellIndex(belts[i].col, belts[i].row, layout));
+    for (let i = 0; i < belts.length; i++) footprint.add(layoutIdx(belts[i].col, belts[i].row, layout));
     return footprint;
 }
 /** @param {{ col: number, row: number, kind: number, facingIndex: number }[]} belts @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
 export function beltMapFromFloorBelts(belts, layout) {
+    /** @type {Map<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx, { col: number, row: number, kind: number, facingIndex: number }>} */
     const map = new Map();
     for (let i = 0; i < belts.length; i++) {
         const belt = belts[i];
-        map.set(cellIndex(belt.col, belt.row, layout), belt);
+        map.set(layoutIdx(belt.col, belt.row, layout), belt);
     }
     return map;
 }
-/** @param {Set<number>} footprint @param {Map<number, { col: number, row: number, kind: number, facingIndex: number }>} beltsByCell @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
-function formatCellIdx(idx, layout) {
-    const { col, row } = indexToColRow(idx, layout.strideCols);
-    return `(${col + layout.originCol},${row + layout.originRow})`;
+/** Human-readable coords for validation errors only — not a lookup key. */
+function formatLayoutCellForError(idx, layout) {
+    const { col, row } = layoutIndexToAbsColRow(idx, layout);
+    return `(${col},${row})`;
 }
+/**
+ * @param {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} footprint
+ * @param {Map<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx, { col: number, row: number, kind: number, facingIndex: number }>} beltsByCell
+ * @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout
+ * @param {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} [mouthExteriorIndices]
+ */
 export function assertBeltChains(footprint, beltsByCell, layout, label, mouthExteriorIndices = new Set()) {
-    for (const idx of footprint) if (!beltsByCell.get(idx)) throw new Error(`${label}: missing belt at ${formatCellIdx(idx, layout)}`);
+    for (const idx of footprint) if (!beltsByCell.get(idx)) throw new Error(`${label}: missing belt at ${formatLayoutCellForError(idx, layout)}`);
     for (const idx of footprint) {
         const belt = beltsByCell.get(idx);
         const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
         const entry = neighborForSide(belt.col, belt.row, entrySide);
         const exit = neighborForSide(belt.col, belt.row, exitSide);
-        const entryIdx = cellIndex(entry.col, entry.row, layout);
-        const exitIdx = cellIndex(exit.col, exit.row, layout);
+        const entryIdx = layoutIdx(entry.col, entry.row, layout);
+        const exitIdx = layoutIdx(exit.col, exit.row, layout);
         const entryInFootprint = footprint.has(entryIdx);
         const exitInFootprint = footprint.has(exitIdx);
         if (entryInFootprint) {
             const entryBelt = beltsByCell.get(entryIdx);
             const entryExit = floorBeltEntryExitSides(entryBelt.kind, entryBelt.facingIndex).exitSide;
             if (entryExit !== oppositeSide(entrySide))
-                throw new Error(`${label}: belt chain break ${formatCellIdx(entryIdx, layout)} -> ${formatCellIdx(idx, layout)} (entry side ${entrySide}, upstream exit ${entryExit})`);
+                throw new Error(
+                    `${label}: belt chain break ${formatLayoutCellForError(entryIdx, layout)} -> ${formatLayoutCellForError(idx, layout)} (entry side ${entrySide}, upstream exit ${entryExit})`,
+                );
         }
         if (exitInFootprint) {
             const exitBelt = beltsByCell.get(exitIdx);
             const exitEntry = floorBeltEntryExitSides(exitBelt.kind, exitBelt.facingIndex).entrySide;
             if (exitEntry !== oppositeSide(exitSide))
-                throw new Error(`${label}: belt chain break ${formatCellIdx(idx, layout)} -> ${formatCellIdx(exitIdx, layout)} (exit side ${exitSide}, downstream entry ${exitEntry})`);
+                throw new Error(
+                    `${label}: belt chain break ${formatLayoutCellForError(idx, layout)} -> ${formatLayoutCellForError(exitIdx, layout)} (exit side ${exitSide}, downstream entry ${exitEntry})`,
+                );
         }
-        if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) throw new Error(`${label}: dead-end belt at ${formatCellIdx(idx, layout)}`);
+        if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) throw new Error(`${label}: dead-end belt at ${formatLayoutCellForError(idx, layout)}`);
     }
 }
+/** @param {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} [mouthExteriorIndices] */
 export function validateBeltChains(belts, layout, mouthExteriorIndices = new Set()) {
     const footprint = beltFootprintIndices(belts, layout);
     const beltsByCell = beltMapFromFloorBelts(belts, layout);
     assertBeltChains(footprint, beltsByCell, layout, "belt plan", mouthExteriorIndices);
     return { ok: true, footprint, beltsByCell };
 }
+/** @param {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} [mouthExteriorIndices] */
 export function tryValidateBeltChains(belts, layout, mouthExteriorIndices = new Set()) {
     try {
         return { ...validateBeltChains(belts, layout, mouthExteriorIndices), error: null };

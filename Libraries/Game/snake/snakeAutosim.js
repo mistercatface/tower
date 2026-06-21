@@ -1,5 +1,5 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
-import { linkedChainOccupiedCellKeys, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
+import { linkedChainOccupiedCellIndices, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createBrain } from "../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../AI/brain/syncSpatialBrain.js";
@@ -35,8 +35,8 @@ function replenishSnakeGoals(state, headId, rng, navWalkable) {
     const config = getSnakeGameConfig();
     const live = countLiveSnakeGoals(state);
     if (live >= config.goalCount) return;
-    const occupied = linkedChainOccupiedCellKeys(chainMemberProps(state, headId), state.obstacleGrid);
-    spawnGoalOrbOnOpenCell(state, navWalkable, { excludeKeys: occupied, rng });
+    const occupied = linkedChainOccupiedCellIndices(chainMemberProps(state, headId), state.obstacleGrid);
+    spawnGoalOrbOnOpenCell(state, navWalkable, { excludeIndices: occupied, rng });
 }
 function runSnakeFsmTick(intent, seeker, state, dt) {
     const snakeGame = state.sandbox.snakeGame;

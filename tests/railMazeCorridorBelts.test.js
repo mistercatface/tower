@@ -85,7 +85,7 @@ describe("rail maze corridor belts", () => {
             gridNavContext: preview.gridNavContext,
             railConfig: preview.railConfig,
             northReserveRows: preview.layout.northReserveRows,
-            walkableKeys: preview.walkableIndices,
+            walkableIndices: preview.walkableIndices,
             mapSeed: preview.layout.mapSeed,
         };
         const allRailed = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 0 });

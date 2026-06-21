@@ -22,14 +22,14 @@ export function filterNavWalkableBeltCells(grid, openCells, navWalkable) {
  * @param {{ col: number, row: number }[]} beltCells
  * @param {number} minTiles
  * @param {number} cols
- * @param {Set<number> | null} [excludeKeys]
+ * @param {Set<number> | null} [excludeIndices]
  */
-export function filterBeltCellsNearOrigin(origin, beltCells, minTiles, cols, excludeKeys = null) {
+export function filterBeltCellsNearOrigin(origin, beltCells, minTiles, cols, excludeIndices = null) {
     const out = [];
     for (let i = 0; i < beltCells.length; i++) {
         const cell = beltCells[i];
         if (cell.col === origin.col && cell.row === origin.row) continue;
-        if (excludeKeys?.has(colRowToIndex(cell.col, cell.row, cols))) continue;
+        if (excludeIndices?.has(colRowToIndex(cell.col, cell.row, cols))) continue;
         if (cellChebyshevDistance(origin.col, origin.row, cell.col, cell.row) < minTiles) continue;
         out.push(cell);
     }
@@ -40,19 +40,19 @@ export function filterBeltCellsNearOrigin(origin, beltCells, minTiles, cols, exc
  * @param {{ cells(): { col: number, row: number }[], has(col: number, row: number): boolean }} navWalkable
  * @param {{ col: number, row: number }} origin
  * @param {number} minTiles
- * @param {{ excludeKeys?: Set<number> | null, rng?: () => number }} [options]
+ * @param {{ excludeIndices?: Set<number> | null, rng?: () => number }} [options]
  */
-export function pickNavWalkableBeltCell(grid, navWalkable, origin, minTiles, { excludeKeys = null, rng = Math.random } = {}) {
+export function pickNavWalkableBeltCell(grid, navWalkable, origin, minTiles, { excludeIndices = null, rng = Math.random } = {}) {
     const beltCells = filterNavWalkableBeltCells(grid, navWalkable.cells(), navWalkable);
-    const candidates = filterBeltCellsNearOrigin(origin, beltCells, minTiles, grid.cols, excludeKeys);
-    return pickWalkableCell(candidates, { cols: grid.cols, excludeKeys, rng });
+    const candidates = filterBeltCellsNearOrigin(origin, beltCells, minTiles, grid.cols, excludeIndices);
+    return pickWalkableCell(candidates, { cols: grid.cols, excludeIndices, rng });
 }
 /**
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {{ cells(): { col: number, row: number }[], has(col: number, row: number): boolean }} navWalkable
- * @param {{ excludeKeys?: Set<number> | null, rng?: () => number }} [options]
+ * @param {{ excludeIndices?: Set<number> | null, rng?: () => number }} [options]
  */
-export function pickNavWalkableBeltCellAny(grid, navWalkable, { excludeKeys = null, rng = Math.random } = {}) {
+export function pickNavWalkableBeltCellAny(grid, navWalkable, { excludeIndices = null, rng = Math.random } = {}) {
     const beltCells = filterNavWalkableBeltCells(grid, navWalkable.cells(), navWalkable);
-    return pickWalkableCell(beltCells, { cols: grid.cols, excludeKeys, rng });
+    return pickWalkableCell(beltCells, { cols: grid.cols, excludeIndices, rng });
 }

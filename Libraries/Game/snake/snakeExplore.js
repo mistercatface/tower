@@ -29,6 +29,6 @@ export function resolveSnakeExploreCell(seeker, state, memory, rng, navWalkable)
     let cell = pickExploreDestination(grid, col, row, { ...explorePick, minTiles: config.exploreMinTiles });
     if (!cell && config.exploreMinTiles > config.exploreFallbackMinTiles) cell = pickExploreDestination(grid, col, row, { ...explorePick, minTiles: config.exploreFallbackMinTiles });
     if (!cell) cell = pickWalkableCell(openCells, { cols: grid.cols, rng });
-    if (cell && cell.col === col && cell.row === row) cell = pickWalkableCell(openCells, { cols: grid.cols, excludeKeys: new Set([colRowToIndex(col, row, grid.cols)]), rng });
+    if (cell && cell.col === col && cell.row === row) cell = pickWalkableCell(openCells, { cols: grid.cols, excludeIndices: new Set([colRowToIndex(col, row, grid.cols)]), rng });
     return cell;
 }

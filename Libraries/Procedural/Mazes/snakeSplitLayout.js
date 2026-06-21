@@ -153,7 +153,7 @@ export async function bakeSnakeSplitLayoutPreview({ mapSeed, playAreaCols, playA
             gridNavContext: navigation.gridNavContext,
             railConfig: applied.railConfig,
             northReserveRows: layout.northReserveRows,
-            walkableKeys: walkableIndices,
+            walkableIndices,
             mapSeed: layout.mapSeed,
         });
         stampFloorBeltsOnGrid(grid, beltPlan.floorBelts);
