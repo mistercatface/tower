@@ -50,6 +50,11 @@ describe("Color visualOverride", () => {
         assert.deepEqual(resolveVisualOverridePanels(prop, base), base);
     });
 
+    it("ball visuals avoid near-white panels that overpower tint", () => {
+        const visuals = getPropAsset("ball").visuals;
+        assert.ok(visuals.panels.every((hex) => Number.parseInt(hex.slice(1, 3), 16) < 0xee));
+    });
+
     it("visualOverrideCacheKey keys tinted props by hex", () => {
         const prop = {};
         assert.equal(visualOverrideCacheKey(prop), "");
