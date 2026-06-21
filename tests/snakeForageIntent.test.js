@@ -11,8 +11,8 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { cellChebyshevDistance } from "../Libraries/Navigation/steering/exploreSteering.js";
-import { createSnakeDecisionBlackboard } from "../Libraries/Game/snake/snakeDecisionModel.js";
-import { findNearestVisibleThreat, pickFleeCell, pickSnakeIntentPolicy, pickSnakeIntentTarget, perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
+import { createSnakeDecisionBlackboard, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { findNearestVisibleThreat, pickFleeCell, perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision, registerSnakeTestInstance, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
@@ -149,7 +149,7 @@ describe("snake forage intent", () => {
         const world = perceiveIntentWorld(state, self.head, self.head.id, registry, () => food);
         assert.equal(pickPolicyFromVisibleWorld(world).mode, "flee");
     });
-    it("pickSnakeIntentTarget seeks visible food when no threat", async () => {
+    it("decision policy seeks visible food when no threat", async () => {
         resetKineticConstraintIds(1);
         const state = await createTestState();
         wireSnakeIntentPerception(state);
@@ -160,9 +160,10 @@ describe("snake forage intent", () => {
         state.worldProps.push(food);
         state.entityRegistry.register("worldProp", food);
         primeSnakeHeadVision(state, self.head);
-        const choice = pickSnakeIntentTarget(self.head, self.head.id, state, registry, () => food);
-        assert.equal(choice.mode, "seek_food");
-        assert.equal(choice.target.id, 999);
+        const world = perceiveSnakeIntentWorld(self.head, self.head.id, state, registry, () => food);
+        const policy = pickPolicyFromVisibleWorld(world);
+        assert.equal(policy.mode, "seek_food");
+        assert.equal(policy.targetId, 999);
     });
     it("pickFleeCell steps away from the threat", async () => {
         applySnakeGameConfig({ fleeTiles: 3 });

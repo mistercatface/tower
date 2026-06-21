@@ -2,7 +2,7 @@ import { createAgentIntent } from "../../AI/agentIntent/createAgentIntent.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { buildSnakeDecisionContext } from "./snakeDecisionModel.js";
-import { perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "./snakeIntent.js";
+import { perceiveSnakeIntentWorld, pickFleeCell } from "./snakeIntent.js";
 import { createSnakeIntentMemory } from "./snakeIntentMemory.js";
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "./snakeIntentStates.js";
 export function createSnakeForageIntent({
@@ -58,7 +58,6 @@ export function createSnakeForageIntent({
             memorySource: memoryWorld.memorySource,
             committedTarget: intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null,
             routeStatus: readRouteStatus(agent, state),
-            pickPolicy: pickSnakeIntentPolicy,
         });
         lastBlackboard = decisionContext.blackboard;
         lastDecisionSnapshot = decisionContext.decisionSnapshot;

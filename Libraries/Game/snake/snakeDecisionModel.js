@@ -49,6 +49,24 @@ export function createSnakeDecisionBlackboard({
         events,
     };
 }
+function policyReasonForTarget(blackboard, kind) {
+    if (blackboard.facts.remembered[kind]) return `${kind}_memory`;
+    return null;
+}
+function intentPolicy(mode, targetId, reason = null) {
+    const policy = { mode, targetId };
+    if (reason) policy.reason = reason;
+    return policy;
+}
+export function pickSnakeIntentPolicy(blackboard) {
+    const threat = blackboard.facts.known.threat;
+    const prey = blackboard.facts.known.prey;
+    const food = blackboard.facts.known.food;
+    if (threat) return intentPolicy("flee", null, policyReasonForTarget(blackboard, "threat"));
+    if (prey) return intentPolicy("seek_prey", prey.id, policyReasonForTarget(blackboard, "prey"));
+    if (food) return intentPolicy("seek_food", food.id, policyReasonForTarget(blackboard, "food"));
+    return { mode: "explore", targetId: null };
+}
 export function buildSnakeDecisionContext({
     visibleWorld,
     memoryWorld = null,
@@ -58,7 +76,7 @@ export function buildSnakeDecisionContext({
     hungerState = null,
     safetyState = null,
     recentFailures = [],
-    pickPolicy,
+    pickPolicy = pickSnakeIntentPolicy,
 }) {
     const blackboard = createSnakeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, safetyState, recentFailures });
     const chosenIntent = pickPolicy(blackboard);

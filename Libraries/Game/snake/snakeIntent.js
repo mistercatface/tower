@@ -3,7 +3,6 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { findNearestVisibleSnakeGoalFromVision } from "./snakeGoals.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
-import { createSnakeDecisionBlackboard } from "./snakeDecisionModel.js";
 function visibleTargetInRange(seeker, target, rangeSq, navTopology, originCol, originRow, visionSession) {
     if (!target || target.isDead) return null;
     const dx = target.x - seeker.x;
@@ -68,24 +67,6 @@ export function perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, re
     const snakes = classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry, frame, vision, cone);
     return { threat: snakes.threat, prey: snakes.prey, food: resolveVisibleFood(seeker, state, visionContext) };
 }
-function policyReasonForTarget(blackboard, kind) {
-    if (blackboard.facts.remembered[kind]) return `${kind}_memory`;
-    return null;
-}
-function intentPolicy(mode, targetId, reason = null) {
-    const policy = { mode, targetId };
-    if (reason) policy.reason = reason;
-    return policy;
-}
-export function pickSnakeIntentPolicy(blackboard) {
-    const threat = blackboard.facts.known.threat;
-    const prey = blackboard.facts.known.prey;
-    const food = blackboard.facts.known.food;
-    if (threat) return intentPolicy("flee", null, policyReasonForTarget(blackboard, "threat"));
-    if (prey) return intentPolicy("seek_prey", prey.id, policyReasonForTarget(blackboard, "prey"));
-    if (food) return intentPolicy("seek_food", food.id, policyReasonForTarget(blackboard, "food"));
-    return { mode: "explore", targetId: null };
-}
 export function pickFleeCell(seeker, threat, grid, navWalkable, fleeTiles = getSnakeGameConfig().fleeTiles, avoidCell = null) {
     const sameCell = (a, b) => a && b && a.col === b.col && a.row === b.row;
     const selfCell = grid.worldToGrid(seeker.x, seeker.y);
@@ -99,15 +80,4 @@ export function pickFleeCell(seeker, threat, grid, navWalkable, fleeTiles = getS
     const ideal = { col: awayCol, row: awayRow };
     if (navWalkable.has(awayCol, awayRow) && !sameCell(ideal, avoidCell)) return ideal;
     return null;
-}
-function policyToIntentChoice(state, policy) {
-    if (policy.mode === "explore" || policy.mode === "flee") return { mode: policy.mode, target: null };
-    const target = state.entityRegistry.getLive(policy.targetId);
-    if (!target || target.isDead) return { mode: "explore", target: null };
-    return { mode: policy.mode, target };
-}
-export function pickSnakeIntentTarget(seeker, selfHeadId, state, registry, resolveVisibleFood, visionCone) {
-    const world = perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, visionCone);
-    const blackboard = createSnakeDecisionBlackboard({ visibleWorld: world });
-    return policyToIntentChoice(state, pickSnakeIntentPolicy(blackboard));
 }
