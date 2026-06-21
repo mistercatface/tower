@@ -1,7 +1,7 @@
 import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
 import { perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "../../Game/snake/snakeIntent.js";
 import { createSnakeIntentMemory } from "../../Game/snake/snakeIntentMemory.js";
-import { createAgentIntent } from "./createAgentIntent.js";
+import { createAgentIntent, createExploreIntentState, createFleeIntentState, createSeekIntentState } from "./createAgentIntent.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 export function createSnakeForageIntent({
     brain,
@@ -51,6 +51,8 @@ export function createSnakeForageIntent({
         fleeMode: "flee",
         exploreMode: "explore",
         seekArrivalRadius,
+        states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), seek_prey: createSeekIntentState(), flee: createFleeIntentState() },
+        modeExitDelayTicks: { flee: 30 },
         rng,
         resolveCommitTarget: (state, id, world) => {
             if (world?.prey?.id === id) return world.prey;

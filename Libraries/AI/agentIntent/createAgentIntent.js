@@ -1,3 +1,59 @@
+export function createExploreIntentState() {
+    return {
+        enter(ctx) {
+            ctx.effects.setExploreDestination();
+        },
+        update(ctx) {
+            if (!ctx.dest || ctx.locomotion.hasArrivedAtDest(ctx.agent, ctx.grid)) {
+                ctx.effects.setLastTransition(ctx.locomotion.hasArrivedAtDest(ctx.agent, ctx.grid) ? "arrived" : "repick_dest");
+                ctx.effects.setExploreDestination();
+                return;
+            }
+            ctx.effects.holdDestination();
+        },
+    };
+}
+export function createSeekIntentState() {
+    return {
+        enter(ctx) {
+            ctx.effects.setSeekDestination(ctx.target);
+        },
+        update(ctx) {
+            if (!ctx.target) {
+                ctx.effects.transitionTo(ctx.policy.mode, "target_lost", ctx.policy.targetId);
+                return;
+            }
+            const targetCell = ctx.grid.worldToGrid(ctx.target.x, ctx.target.y);
+            const targetMovedInCell = ctx.dest?.lockOnTarget && ctx.dest.world && (ctx.dest.world.x !== ctx.target.x || ctx.dest.world.y !== ctx.target.y);
+            if (!ctx.dest || ctx.locomotion.hasArrivedAtDest(ctx.agent, ctx.grid) || ctx.dest.col !== targetCell.col || ctx.dest.row !== targetCell.row || targetMovedInCell) {
+                ctx.effects.setLastTransition(ctx.locomotion.hasArrivedAtDest(ctx.agent, ctx.grid) ? "arrived" : "repick_dest");
+                ctx.effects.setSeekDestination(ctx.target);
+                return;
+            }
+            ctx.effects.holdDestination();
+        },
+    };
+}
+export function createFleeIntentState() {
+    return {
+        enter(ctx) {
+            ctx.effects.setFleeDestination(null);
+        },
+        update(ctx) {
+            if (!ctx.dest) {
+                ctx.effects.setLastTransition("repick_dest");
+                ctx.effects.setFleeDestination(null);
+                return;
+            }
+            if (ctx.locomotion.hasReachedDest(ctx.agent, ctx.grid) && ctx.world.threat) {
+                const nextCell = ctx.effects.setFleeDestination(ctx.dest);
+                ctx.effects.setLastTransition(nextCell && (nextCell.col !== ctx.dest.col || nextCell.row !== ctx.dest.row) ? "flee_continue" : "held_latch");
+                return;
+            }
+            ctx.effects.holdDestination();
+        },
+    };
+}
 export function createAgentIntent({
     brain,
     sync,
@@ -13,6 +69,8 @@ export function createAgentIntent({
     exploreMode = "explore",
     seekArrivalRadius = null,
     rng = Math.random,
+    states = null,
+    modeExitDelayTicks = {},
     resolveCommitTarget = (state, id, world) => {
         const prop = state.entityRegistry.getLive(id);
         if (!prop || prop.isDead) return null;
@@ -28,6 +86,11 @@ export function createAgentIntent({
     let lastModeChangeTick = 0;
     const seekModeSet = new Set(seekModes ?? [seekMode]);
     const isSeekMode = (value) => seekModeSet.has(value);
+    const stateByMode = states ?? {
+        [exploreMode]: createExploreIntentState(),
+        [fleeMode]: createFleeIntentState(),
+        ...Object.fromEntries([...seekModeSet].map((value) => [value, createSeekIntentState()])),
+    };
     const resolveCommittedTarget = (state, world = null) => {
         if (targetId == null) return null;
         return resolveCommitTarget(state, targetId, world);
@@ -47,99 +110,97 @@ export function createAgentIntent({
         if (cell) locomotion.setFlee(agent, state, cell);
         return cell;
     };
-    const setDestinationForCommit = (agent, state, world = null) => {
-        if (mode === exploreMode) {
-            const cell = resolveExploreCell(agent, state, brain.spatial, rng);
-            if (cell) locomotion.setExplore(agent, state, cell);
-            return;
-        }
-        if (mode === fleeMode) {
-            setFleeDestination(agent, state, null, world);
-            return;
-        }
-        const perceived = world ?? perceiveWorld(agent, state);
-        const target = resolveCommittedTarget(state, perceived);
-        if (target) {
-            const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(mode, agent, target, state) : seekArrivalRadius;
-            locomotion.setSeek(agent, state, target, typeof seekOptions === "object" && seekOptions !== null ? seekOptions : { arrivalRadius: seekOptions });
-        }
+    const setExploreDestination = (agent, state) => {
+        const cell = resolveExploreCell(agent, state, brain.spatial, rng);
+        if (cell) locomotion.setExplore(agent, state, cell);
+        return cell;
+    };
+    const setSeekDestination = (agent, state, target) => {
+        if (!target) return;
+        const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(mode, agent, target, state) : seekArrivalRadius;
+        locomotion.setSeek(agent, state, target, typeof seekOptions === "object" && seekOptions !== null ? seekOptions : { arrivalRadius: seekOptions });
+    };
+    const makeContext = (agent, state, world, policy) => {
+        const effects = {
+            transitionTo(nextMode, reason, nextTargetId = null) {
+                commit(agent, state, nextMode, nextTargetId, reason, world);
+            },
+            setExploreDestination() {
+                return setExploreDestination(agent, state);
+            },
+            setSeekDestination(target) {
+                setSeekDestination(agent, state, target);
+            },
+            setFleeDestination(avoidCell = null) {
+                return setFleeDestination(agent, state, avoidCell, world);
+            },
+            setLastTransition(reason) {
+                lastTransitionReason = reason;
+            },
+            holdDestination(reason = "held_latch") {
+                lastTransitionReason = reason;
+            },
+        };
+        return {
+            agent,
+            state,
+            grid: state.obstacleGrid,
+            world,
+            policy,
+            mode,
+            targetId,
+            dest: locomotion.getDestination(),
+            target: resolveCommittedTarget(state, world),
+            ticks,
+            lastModeChangeTick,
+            locomotion,
+            effects,
+        };
+    };
+    const enterCurrentState = (agent, state, world, policy) => {
+        const current = stateByMode[mode];
+        if (current?.enter) current.enter(makeContext(agent, state, world, policy));
     };
     const commit = (agent, state, nextMode, nextTargetId, reason, world = null) => {
+        const prevMode = mode;
         mode = nextMode;
         targetId = nextTargetId;
         lastTransitionReason = reason;
+        if (prevMode !== nextMode) lastModeChangeTick = ticks;
         locomotion.clearDestination(agent, state);
-        setDestinationForCommit(agent, state, world);
+        enterCurrentState(agent, state, world ?? perceiveWorld(agent, state), { mode: nextMode, targetId: nextTargetId });
     };
     const perceive = (agent, state) => {
         sync(agent, state);
         stampArrivalOnCellEnter(agent, state.obstacleGrid);
     };
-    const transition = (agent, state) => {
-        ticks++;
-        const grid = state.obstacleGrid;
-        const world = perceiveWorld(agent, state);
-        const policy = { ...pickPolicy(world) };
+    const chooseTransition = (agent, state, world, policy) => {
         if (isSeekMode(mode) && !resolveCommittedTarget(state, world)) {
             commit(agent, state, policy.mode, policy.targetId, "target_lost", world);
-            return { mode, target: resolveCommittedTarget(state, world) };
+            return true;
         }
-        if (policy.mode !== mode || policy.targetId !== targetId) {
-            if (mode === fleeMode && policy.mode !== fleeMode)
-                if (ticks - lastModeChangeTick < 30) {
-                    policy.mode = fleeMode;
-                    policy.targetId = null;
-                }
-            if (policy.mode !== mode || policy.targetId !== targetId) {
-                if (policy.mode !== mode) lastModeChangeTick = ticks;
-                commit(agent, state, policy.mode, policy.targetId, policy.reason ?? transitionReason(mode, policy.mode, policy, world), world);
-                return { mode, target: resolveCommittedTarget(state, world) };
-            }
-        }
-        if (locomotion.getDestination() && locomotion.needsRetry(agent, state)) {
-            lastTransitionReason = "route_failed_retry";
-            const status = locomotion.getStatus(agent, state);
-            if (!status.replanPending && locomotion.retryOnRouteFailure(mode, { seekMode, seekModes: seekModeSet, fleeMode, exploreMode })) setDestinationForCommit(agent, state, world);
-            return { mode, target: resolveCommittedTarget(state, world) };
-        }
-        const dest = locomotion.getDestination();
-        const target = resolveCommittedTarget(state, world);
-        if (isSeekMode(mode)) {
-            if (!target) {
-                commit(agent, state, policy.mode, policy.targetId, "target_lost", world);
-                return { mode, target: null };
-            }
-            const targetCell = grid.worldToGrid(target.x, target.y);
-            const targetMovedInCell = dest?.lockOnTarget && dest.world && (dest.world.x !== target.x || dest.world.y !== target.y);
-            if (!dest || locomotion.hasArrivedAtDest(agent, grid) || dest.col !== targetCell.col || dest.row !== targetCell.row || targetMovedInCell) {
-                lastTransitionReason = locomotion.hasArrivedAtDest(agent, grid) ? "arrived" : "repick_dest";
-                setDestinationForCommit(agent, state, world);
-                return { mode, target };
-            }
-            lastTransitionReason = "held_latch";
-            return { mode, target };
-        }
-        if (mode === fleeMode) {
-            if (!dest) {
-                lastTransitionReason = "repick_dest";
-                setFleeDestination(agent, state, null, world);
-                return { mode, target: null };
-            }
-            if (locomotion.hasReachedDest(agent, grid) && world.threat) {
-                const nextCell = setFleeDestination(agent, state, dest, world);
-                lastTransitionReason = nextCell && (nextCell.col !== dest.col || nextCell.row !== dest.row) ? "flee_continue" : "held_latch";
-                return { mode, target: null };
-            }
-            lastTransitionReason = "held_latch";
-            return { mode, target: null };
-        }
-        if (!dest || locomotion.hasArrivedAtDest(agent, grid)) {
-            lastTransitionReason = locomotion.hasArrivedAtDest(agent, grid) ? "arrived" : "repick_dest";
-            setDestinationForCommit(agent, state, world);
-            return { mode, target: null };
-        }
-        lastTransitionReason = "held_latch";
-        return { mode, target: null };
+        if (policy.mode === mode && policy.targetId === targetId) return false;
+        const exitDelayTicks = modeExitDelayTicks[mode] ?? 0;
+        if (policy.mode !== mode && ticks - lastModeChangeTick < exitDelayTicks) return false;
+        commit(agent, state, policy.mode, policy.targetId, policy.reason ?? transitionReason(mode, policy.mode, policy, world), world);
+        return true;
+    };
+    const retryRouteFailure = (agent, state, world, policy) => {
+        if (!locomotion.getDestination() || !locomotion.needsRetry(agent, state)) return false;
+        lastTransitionReason = "route_failed_retry";
+        const status = locomotion.getStatus(agent, state);
+        if (!status.replanPending && locomotion.retryOnRouteFailure(mode, { seekMode, seekModes: seekModeSet, fleeMode, exploreMode })) enterCurrentState(agent, state, world, policy);
+        return true;
+    };
+    const transition = (agent, state) => {
+        ticks++;
+        const world = perceiveWorld(agent, state);
+        const policy = { ...pickPolicy(world) };
+        if (chooseTransition(agent, state, world, policy)) return { mode, target: resolveCommittedTarget(state, world) };
+        if (retryRouteFailure(agent, state, world, policy)) return { mode, target: resolveCommittedTarget(state, world) };
+        const current = stateByMode[mode];
+        if (current?.update) current.update(makeContext(agent, state, world, policy));
+        return { mode, target: resolveCommittedTarget(state, world) };
     };
     return {
         perceive,
