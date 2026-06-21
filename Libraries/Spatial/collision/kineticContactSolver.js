@@ -1,13 +1,21 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
-import { bodyPinnedForContact, massFromBody } from "../../Motion/bodyMass.js";
-import { gatherKineticCandidatePairs, kineticPairBuffer, kineticPairBodiesAt, kineticPairBodyAt, refreshKineticPairRelativeVelocities, compactSubstepKineticPairs, patchKineticPairsForBodies, copyKineticPairBuffer } from "./kineticPairStream.js";
+import {
+    gatherKineticCandidatePairs,
+    kineticPairBuffer,
+    kineticPairBodiesAt,
+    kineticPairBodyAt,
+    refreshKineticPairRelativeVelocities,
+    compactSubstepKineticPairs,
+    patchKineticPairsForBodies,
+    copyKineticPairBuffer,
+} from "./kineticPairStream.js";
 import { kineticPairTopologyStale } from "../../Motion/kineticTopology.js";
 import { stampKineticPairGatherTopology } from "../../Motion/kineticTopology.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
-import { kineticBodySlab, writebackKineticBodySlabPhysIds, separateAlongNormalSlab, separateCoincidentCircleSlab } from "./kineticBodySlab.js";
-import { separateAlongNormal, separateCoincidentCirclePair, COINCIDENT_CIRCLE_EPS } from "./penetration.js";
-import { checkEntityPairCollision } from "./SatCollision.js";
+import { kineticBodySlab, separateAlongNormalSlab, separateCoincidentCircleSlab } from "./kineticBodySlab.js";
+import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
+import { checkEntityPairCollisionAt } from "./SatCollision.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 import { contactWarmStartKey, isRestingKineticContact, warmStartCacheIndex } from "./kineticContactManifold.js";
 const MAX_CONTACTS = 4096;
@@ -67,13 +75,6 @@ export function circleCircleContactSlab(physIdA, physIdB) {
     const nx = dx / dist;
     const ny = dy / dist;
     return { overlap, nx, ny, coincident: false };
-}
-function syncBodyPoseToSlab(physIdA, physIdB, bodyA, bodyB) {
-    const slab = kineticBodySlab;
-    slab.x[physIdA] = bodyA.x;
-    slab.y[physIdA] = bodyA.y;
-    slab.x[physIdB] = bodyB.x;
-    slab.y[physIdB] = bodyB.y;
 }
 function pairMaterialFriction(body) {
     const pair = body.strategy?.pairFriction;
@@ -188,26 +189,36 @@ function narrowPhaseCircleContact(physIdA, physIdB, preDvx, preDvy, contacts) {
     appendContact(contacts, physIdA, physIdB, KINETIC_PAIR_TIER.CIRCLE_CIRCLE, info.nx, info.ny, preDvx, preDvy, 0, 0, 0, 0);
 }
 function narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, preDvx, preDvy, contacts) {
+    const slab = kineticBodySlab;
     const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
     const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
-    const hit = checkEntityPairCollision(bodyA, bodyB);
+    const hit = checkEntityPairCollisionAt(bodyA, slab.x[physIdA], slab.y[physIdA], bodyB, slab.x[physIdB], slab.y[physIdB]);
     if (!hit) return;
-    const massA = massFromBody(bodyA);
-    const massB = massFromBody(bodyB);
-    const pinnedA = bodyPinnedForContact(bodyA);
-    const pinnedB = bodyPinnedForContact(bodyB);
     const info = hit.info;
     if (info.coincident) {
-        separateCoincidentCirclePair(bodyA, bodyB, info.overlap, massA, massB, pinnedA, pinnedB);
-        syncBodyPoseToSlab(physIdA, physIdB, bodyA, bodyB);
+        separateCoincidentCircleSlab(physIdA, physIdB, info.overlap);
         return;
     }
-    separateAlongNormal(bodyA, bodyB, info.nx, info.ny, info.overlap, massA, massB, pinnedA, pinnedB);
-    syncBodyPoseToSlab(physIdA, physIdB, bodyA, bodyB);
+    separateAlongNormalSlab(physIdA, physIdB, info.nx, info.ny, info.overlap);
     const points = info.points ?? [{ cx: info.cx, cy: info.cy, featureA: info.featureA ?? 0, featureB: info.featureB ?? 0 }];
     for (let p = 0; p < points.length; p++) {
         const pt = points[p];
-        appendContact(contacts, physIdA, physIdB, tier, info.nx, info.ny, preDvx, preDvy, pt.cx - bodyA.x, pt.cy - bodyA.y, pt.cx - bodyB.x, pt.cy - bodyB.y, pt.featureA ?? 0, pt.featureB ?? 0);
+        appendContact(
+            contacts,
+            physIdA,
+            physIdB,
+            tier,
+            info.nx,
+            info.ny,
+            preDvx,
+            preDvy,
+            pt.cx - slab.x[physIdA],
+            pt.cy - slab.y[physIdA],
+            pt.cx - slab.x[physIdB],
+            pt.cy - slab.y[physIdB],
+            pt.featureA ?? 0,
+            pt.featureB ?? 0,
+        );
     }
 }
 function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
@@ -341,14 +352,6 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
     }
     return { innerIterations: iterationsRun, maxImpulse: solveMaxImpulse, restingCount };
 }
-function collectContactPhysIds(contacts) {
-    const touched = new Set();
-    for (let i = 0; i < contacts.count; i++) {
-        touched.add(contacts.physIdA[i]);
-        touched.add(contacts.physIdB[i]);
-    }
-    return [...touched];
-}
 function applyKineticContactWake(contacts, spatialFrame) {
     for (let i = 0; i < contacts.count; i++) {
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
@@ -404,6 +407,5 @@ export function resolveKineticContactPassWithPairs(tick, pairs) {
     const restingCount = warmStartKineticContacts(contacts);
     tick.world.kinetic.kineticContactStats = solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS, restingCount);
     storeKineticWarmStartCache(contacts);
-    writebackKineticBodySlabPhysIds(frame, collectContactPhysIds(contacts));
     applyKineticContactWake(contacts, frame);
 }

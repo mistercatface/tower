@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { SatCollision, checkEntityPairCollision } from "../Libraries/Spatial/collision/SatCollision.js";
+import { SatCollision, checkEntityPairCollision, checkEntityPairCollisionAt } from "../Libraries/Spatial/collision/SatCollision.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { KINETIC_PAIR_TIER } from "../Libraries/Spatial/collision/kineticNarrowPhase.js";
+import { kineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
@@ -39,6 +40,9 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
         },
     };
 }
+function slabPairCollision(a, b) {
+    return checkEntityPairCollisionAt(a, kineticBodySlab.x[a._physId], kineticBodySlab.y[a._physId], b, kineticBodySlab.x[b._physId], kineticBodySlab.y[b._physId]);
+}
 
 describe("kinetic contact pipeline", () => {
     it("circle and poly contacts share one buffer in a mixed pass", () => {
@@ -50,7 +54,7 @@ describe("kinetic contact pipeline", () => {
         resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(kineticContactBuffer.count, 1);
         assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.CIRCLE_POLY);
-        assert.ok(!SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
+        assert.equal(slabPairCollision(ball, wedge), null);
     });
 
     it("circle-only pass fills buffer with circle-circle tier", () => {
@@ -72,6 +76,6 @@ describe("kinetic contact pipeline", () => {
         assert.equal(kineticContactBuffer.count, 2);
         assert.equal(kineticContactBuffer.tier[0], KINETIC_PAIR_TIER.POLY_POLY);
         assert.equal(kineticContactBuffer.tier[1], KINETIC_PAIR_TIER.POLY_POLY);
-        assert.equal(checkEntityPairCollision(left, right), null);
+        assert.equal(slabPairCollision(left, right), null);
     });
 });

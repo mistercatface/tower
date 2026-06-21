@@ -11,6 +11,52 @@ const manifoldPoints = [
     { cx: 0, cy: 0, featureA: 0, featureB: 0 },
     { cx: 0, cy: 0, featureA: 0, featureB: 0 },
 ];
+const slabPoseA = {
+    source: null,
+    x: 0,
+    y: 0,
+    get collisionParts() {
+        return this.source.collisionParts;
+    },
+    get shape() {
+        return this.source.shape;
+    },
+    get _collisionFacing() {
+        return this.source._collisionFacing;
+    },
+    get facing() {
+        return this.source.facing;
+    },
+    get angle() {
+        return this.source.angle;
+    },
+    getShape() {
+        return this.source.getShape?.() ?? this.source.shape;
+    },
+};
+const slabPoseB = {
+    source: null,
+    x: 0,
+    y: 0,
+    get collisionParts() {
+        return this.source.collisionParts;
+    },
+    get shape() {
+        return this.source.shape;
+    },
+    get _collisionFacing() {
+        return this.source._collisionFacing;
+    },
+    get facing() {
+        return this.source.facing;
+    },
+    get angle() {
+        return this.source.angle;
+    },
+    getShape() {
+        return this.source.getShape?.() ?? this.source.shape;
+    },
+};
 function worldVertexInto(out, vertex, pos, cos, sin) {
     out.x = pos.x + vertex.x * cos - vertex.y * sin;
     out.y = pos.y + vertex.x * sin + vertex.y * cos;
@@ -177,6 +223,15 @@ export function checkEntityPairCollision(bodyA, bodyB) {
             if (!best || info.overlap > best.info.overlap) best = { info, shapeA: partsA[i], shapeB: partsB[j] };
         }
     return best;
+}
+export function checkEntityPairCollisionAt(bodyA, xA, yA, bodyB, xB, yB) {
+    slabPoseA.source = bodyA;
+    slabPoseA.x = xA;
+    slabPoseA.y = yA;
+    slabPoseB.source = bodyB;
+    slabPoseB.x = xB;
+    slabPoseB.y = yB;
+    return checkEntityPairCollision(slabPoseA, slabPoseB);
 }
 export class SatCollision {
     static checkCollision(posA, shapeA, posB, shapeB) {
