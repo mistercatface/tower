@@ -1,26 +1,13 @@
 import { bfsIndices } from "../DataStructures/gridBfs.js";
 import { colRowToIndex, forEachCardinalNeighbor } from "../Spatial/grid/GridUtils.js";
 import { findNearestOpenCellBlocked } from "./hpaPathRequest.js";
-import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
-import { worldToGridAtOrigin } from "../Spatial/grid/GridCoords.js";
-import {
-    RegionNode,
-    computeDistanceTransform,
-    generateVoronoiRegions,
-    repositionNodeCentroid,
-    repositionRegionCentroids,
-    mergeSmallRegions,
-    floodFillRegion,
-} from "./VoronoiRegions.js";
+import { cellBoundsForGrid, forEachDenseCellInBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
+import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
+import { RegionNode, computeDistanceTransform, generateVoronoiRegions, repositionNodeCentroid, repositionRegionCentroids, mergeSmallRegions, floodFillRegion } from "./VoronoiRegions.js";
 export const REGION_CELL_UNASSIGNED = -1;
 /** @param {import("../DataStructures/CellRect.js").CellBounds} bounds @param {import("./GridNavSnapshot.js").GridFrame} frame @param {number} [padding] */
 export function expandRegionDamageBounds(bounds, frame, padding = 12) {
-    return {
-        startCol: Math.max(0, bounds.startCol - padding),
-        endCol: Math.min(frame.cols - 1, bounds.endCol + padding),
-        startRow: Math.max(0, bounds.startRow - padding),
-        endRow: Math.min(frame.rows - 1, bounds.endRow + padding),
-    };
+    return padCellBoundsToGrid(bounds, frame.cols, frame.rows, padding);
 }
 /** @param {import("./VoronoiRegions.js").RegionNode} nodeA @param {import("./VoronoiRegions.js").RegionNode} nodeB */
 function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
@@ -83,9 +70,9 @@ function reconnectRegionEdges(navGraph, blocked, frame, node, cellToNode, nodesM
         if (regionsShareDirectedPassableLink(navGraph, frame, other, node)) connectRegionEdge(other, node);
     }
 }
-function collectRegionIdsInBox(cellToNode, cols, startCol, endCol, startRow, endRow) {
+function collectRegionIdsInBounds(cellToNode, cols, bounds) {
     const ids = new Set();
-    forEachDenseCellInRect(startCol, endCol, startRow, endRow, cols, (_col, _row, idx) => {
+    forEachDenseCellInBounds(bounds, cols, (_col, _row, idx) => {
         const node = cellToNode[idx];
         if (node) ids.add(node.id);
     });
@@ -122,10 +109,10 @@ function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCells
     repositionRegionCentroids(nodesMap, blocked, frame, cellToNode);
     return { newIds, nodeIdCounter, distToWall };
 }
-function stripBlockedCellsFromRegions(blocked, frame, startCol, endCol, startRow, endRow, cellToNode, nodesMap) {
+function stripBlockedCellsFromRegions(blocked, frame, bounds, cellToNode, nodesMap) {
     const { cols } = frame;
     const touched = new Set();
-    forEachDenseCellInRect(startCol, endCol, startRow, endRow, cols, (_col, _row, idx) => {
+    forEachDenseCellInBounds(bounds, cols, (_col, _row, idx) => {
         if (!blocked[idx]) return;
         const node = cellToNode[idx];
         if (!node) return;
@@ -143,9 +130,9 @@ function stripBlockedCellsFromRegions(blocked, frame, startCol, endCol, startRow
         repositionNodeCentroid(node, cellToNode, blocked, frame);
     }
 }
-function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, cellToNode, nodesMap, nodeIdCounter, startCol, endCol, startRow, endRow) {
+function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, cellToNode, nodesMap, nodeIdCounter, bounds) {
     const { cols } = frame;
-    const regionIds = collectRegionIdsInBox(cellToNode, cols, startCol, endCol, startRow, endRow);
+    const regionIds = collectRegionIdsInBounds(cellToNode, cols, bounds);
     const cells = new Set();
     for (const id of regionIds) {
         const node = nodesMap[id];
@@ -153,7 +140,7 @@ function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, n
         for (let i = 0; i < node.cells.length; i++) cells.add(node.cells[i]);
         removeRegionNode(node, cellToNode, nodesMap);
     }
-    forEachDenseCellInRect(startCol, endCol, startRow, endRow, cols, (_col, _row, idx) => {
+    forEachDenseCellInBounds(bounds, cols, (_col, _row, idx) => {
         if (!blocked[idx]) cells.add(idx);
     });
     if (cells.size === 0) return { repackedIds: [], nodeIdCounter, distToWall };
@@ -168,31 +155,29 @@ function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, n
 function connectAllNodes(navGraph, blocked, frame, cellToNode, nodesMap) {
     for (const node of Object.values(nodesMap)) node.edges = [];
     const { cols, rows } = frame;
-    for (let row = 0; row < rows; row++)
-        for (let col = 0; col < cols; col++) {
-            const idx = colRowToIndex(col, row, cols);
-            const node = cellToNode[idx];
-            if (!node) continue;
-            if (col + 1 < cols) {
-                const right = cellToNode[idx + 1];
-                if (right && right.id !== node.id) {
-                    if (navGraph.canStep(col, row, col + 1, row)) connectRegionEdge(node, right);
-                    if (navGraph.canStep(col + 1, row, col, row)) connectRegionEdge(right, node);
-                }
-            }
-            if (row + 1 < rows) {
-                const down = cellToNode[idx + cols];
-                if (down && down.id !== node.id) {
-                    if (navGraph.canStep(col, row, col, row + 1)) connectRegionEdge(node, down);
-                    if (navGraph.canStep(col, row + 1, col, row)) connectRegionEdge(down, node);
-                }
+    forEachDenseCellInBounds(cellBoundsForGrid(cols, rows), cols, (col, row, idx) => {
+        const node = cellToNode[idx];
+        if (!node) return;
+        if (col + 1 < cols) {
+            const right = cellToNode[idx + 1];
+            if (right && right.id !== node.id) {
+                if (navGraph.canStep(col, row, col + 1, row)) connectRegionEdge(node, right);
+                if (navGraph.canStep(col + 1, row, col, row)) connectRegionEdge(right, node);
             }
         }
+        if (row + 1 < rows) {
+            const down = cellToNode[idx + cols];
+            if (down && down.id !== node.id) {
+                if (navGraph.canStep(col, row, col, row + 1)) connectRegionEdge(node, down);
+                if (navGraph.canStep(col, row + 1, col, row)) connectRegionEdge(down, node);
+            }
+        }
+    });
     for (const id in nodesMap) validateRegionEdges(navGraph, frame, nodesMap[id], nodesMap);
 }
 function pruneUnreachableRegions(navGraph, blocked, frame, cellToNode, nodesMap, seedWorldX, seedWorldY) {
-    const { cols, rows, minX, minY, cellSize } = frame;
-    const { col, row } = worldToGridAtOrigin(seedWorldX, seedWorldY, minX, minY, cellSize);
+    const { cols, rows } = frame;
+    const { col, row } = snapshotWorldToGrid(frame, seedWorldX, seedWorldY);
     const start = findNearestOpenCellBlocked(blocked, cols, rows, col, row);
     const startIdx = colRowToIndex(start.col, start.row, cols);
     const reachable = new Uint8Array(cols * rows);
@@ -265,30 +250,16 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     if (!bounds || cols === 0 || rows === 0) return state;
     let distToWall = state.distToWall;
     const box = expandRegionDamageBounds(bounds, frame, damagePadding);
-    stripBlockedCellsFromRegions(blocked, frame, box.startCol, box.endCol, box.startRow, box.endRow, state.cellToNode, state.nodesMap);
+    stripBlockedCellsFromRegions(blocked, frame, box, state.cellToNode, state.nodesMap);
     const {
         repackedIds,
         nodeIdCounter,
         distToWall: dist,
-    } = repackHullRegions(
-        blocked,
-        frame,
-        maxCellsPerChunk,
-        minCellsPerChunk,
-        navGraph,
-        distToWall,
-        state.cellToNode,
-        state.nodesMap,
-        state.nodeIdCounter,
-        box.startCol,
-        box.endCol,
-        box.startRow,
-        box.endRow,
-    );
+    } = repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, state.cellToNode, state.nodesMap, state.nodeIdCounter, box);
     state.nodeIdCounter = nodeIdCounter;
     state.distToWall = dist;
     const reconnectIds = new Set(repackedIds);
-    for (const id of collectRegionIdsInBox(state.cellToNode, cols, box.startCol, box.endCol, box.startRow, box.endRow)) reconnectIds.add(id);
+    for (const id of collectRegionIdsInBounds(state.cellToNode, cols, box)) reconnectIds.add(id);
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, frame, state.nodesMap[id], state.cellToNode, state.nodesMap);
     for (const id in state.nodesMap) validateRegionEdges(navGraph, frame, state.nodesMap[id], state.nodesMap);
     if (seedWorldX != null && seedWorldY != null) pruneUnreachableRegions(navGraph, blocked, frame, state.cellToNode, state.nodesMap, seedWorldX, seedWorldY);

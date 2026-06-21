@@ -92,7 +92,7 @@ export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, query) {
     const startRegion = cellToRegion[startIdx];
     const targetRegion = cellToRegion[targetIdx];
     const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);
-    if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", startCol, startRow, targetCol, targetRow };
+    if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", query };
     const { nodeIds, nodeCol, nodeRow } = graphMeta;
-    return { mode: "hpa", startCol, startRow, targetCol, targetRow, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN };
+    return { mode: "hpa", query, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN };
 }

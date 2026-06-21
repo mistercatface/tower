@@ -29,13 +29,15 @@ export class HpaPathStitcher {
         ];
     }
     endpointCells(aIdx, bIdx) {
-        const { nodeCol, nodeRow, startCol, startRow, targetCol, targetRow, nodeCount } = this.prep;
+        const { nodeCol, nodeRow, nodeCount } = this.prep;
+        const start = this.prep.query?.start ?? { col: this.prep.startCol, row: this.prep.startRow };
+        const target = this.prep.query?.target ?? { col: this.prep.targetCol, row: this.prep.targetRow };
         const startTemp = nodeCount;
         const targetTemp = nodeCount + 1;
-        const aCol = aIdx === startTemp ? startCol : aIdx === targetTemp ? targetCol : nodeCol[aIdx];
-        const aRow = aIdx === startTemp ? startRow : aIdx === targetTemp ? targetRow : nodeRow[aIdx];
-        const bCol = bIdx === startTemp ? startCol : bIdx === targetTemp ? targetCol : nodeCol[bIdx];
-        const bRow = bIdx === startTemp ? startRow : bIdx === targetTemp ? targetRow : nodeRow[bIdx];
+        const aCol = aIdx === startTemp ? start.col : aIdx === targetTemp ? target.col : nodeCol[aIdx];
+        const aRow = aIdx === startTemp ? start.row : aIdx === targetTemp ? target.row : nodeRow[aIdx];
+        const bCol = bIdx === startTemp ? start.col : bIdx === targetTemp ? target.col : nodeCol[bIdx];
+        const bRow = bIdx === startTemp ? start.row : bIdx === targetTemp ? target.row : nodeRow[bIdx];
         return { aCol, aRow, bCol, bRow };
     }
     appendLeg(fullPath, leg) {

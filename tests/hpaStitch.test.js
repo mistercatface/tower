@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { GridPathQuery } from "../Libraries/Pathfinding/AStar.js";
 import { HpaPathStitcher, stitchAbstractCellPath } from "../Libraries/Pathfinding/hpaStitch.js";
 
 describe("HPA Path Stitching Suite", () => {
@@ -56,10 +57,7 @@ describe("HPA Path Stitching Suite", () => {
             nodeCount: 1,
             nodeCol: [10],
             nodeRow: [10],
-            startCol: 1,
-            startRow: 1,
-            targetCol: 20,
-            targetRow: 20,
+            query: GridPathQuery.fromCells(1, 1, 20, 20),
         };
 
         const tempLegs = new Map();
