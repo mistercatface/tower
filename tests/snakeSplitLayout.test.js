@@ -81,7 +81,7 @@ describe("snakeSplitLayout preview bake", () => {
         const started = performance.now();
         const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 256, playAreaRows: 256, cavern: config.cavern, rail: config.rail });
         const elapsed = performance.now() - started;
-        assert.ok(preview.walkableKeys.size > 1000);
+        assert.ok(preview.walkableIndices.size > 1000);
         assert.ok(elapsed < 4000, `256 bake took ${elapsed.toFixed(0)} ms`);
     });
 });

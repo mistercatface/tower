@@ -2,7 +2,7 @@ import { gridSettings } from "../../../Config/world.js";
 import { withSeededRandom } from "../../Random/index.js";
 import { createWorkerNavigationService, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../../Navigation/WorkerNavigationFactory.js";
 import { forEachGlobalCellInMapGenBounds, getMapGenBoundsAabb, getMapGenBoundsStampExtent, migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
-import { cellInRect } from "../../Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../../Spatial/grid/WorldObstacleGrid.js";
 import { clampStampWallHeightLevel } from "../../WorldSurface/stampWallHeight.js";
 import { WORLD_SURFACE_DEFAULTS } from "../../../Config/world.js";
@@ -146,19 +146,19 @@ export async function bakeSnakeSplitLayoutPreview({ mapSeed, playAreaCols, playA
         const applied = await applySnakeSplitLayoutToGrid(grid, layout, navigation);
         const walkableState = { obstacleGrid: grid, navigation, sandbox: {}, editor: { cavernConfig: applied.playableBounds } };
         const navWalkable = collectNavWalkableCells(walkableState, applied.playableBounds, applied.floodSeedBounds);
-        const walkableKeys = new Set();
-        for (let i = 0; i < navWalkable.length; i++) walkableKeys.add(`${navWalkable[i].col},${navWalkable[i].row}`);
+        const walkableIndices = new Set();
+        for (let i = 0; i < navWalkable.length; i++) walkableIndices.add(colRowToIndex(navWalkable[i].col, navWalkable[i].row, grid.cols));
         const beltPlan = planRailMazeCorridorBelts({
             grid,
             gridNavContext: navigation.gridNavContext,
             railConfig: applied.railConfig,
             northReserveRows: layout.northReserveRows,
-            walkableKeys,
+            walkableKeys: walkableIndices,
             mapSeed: layout.mapSeed,
         });
         stampFloorBeltsOnGrid(grid, beltPlan.floorBelts);
         await syncWorkerNavigationTopology(navigation, grid, null);
-        return { layout, grid, gridNavContext: navigation.gridNavContext, navWalkable, walkableKeys, beltPlan, ...applied };
+        return { layout, grid, gridNavContext: navigation.gridNavContext, navWalkable, walkableIndices, beltPlan, ...applied };
     } finally {
         terminateWorkerNavigation(navigation);
     }

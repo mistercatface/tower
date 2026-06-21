@@ -1,4 +1,5 @@
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
+import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 /**
  * Nav-walkable belt cells from an open-cell pool (same connectivity as snake explore).
@@ -17,18 +18,18 @@ export function filterNavWalkableBeltCells(grid, openCells, navWalkable) {
     return beltCells;
 }
 /**
- * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {{ col: number, row: number }} origin
  * @param {{ col: number, row: number }[]} beltCells
  * @param {number} minTiles
- * @param {Set<string> | null} [excludeKeys]
+ * @param {number} cols
+ * @param {Set<number> | null} [excludeKeys]
  */
-export function filterBeltCellsNearOrigin(origin, beltCells, minTiles, excludeKeys = null) {
+export function filterBeltCellsNearOrigin(origin, beltCells, minTiles, cols, excludeKeys = null) {
     const out = [];
     for (let i = 0; i < beltCells.length; i++) {
         const cell = beltCells[i];
         if (cell.col === origin.col && cell.row === origin.row) continue;
-        if (excludeKeys?.has(`${cell.col},${cell.row}`)) continue;
+        if (excludeKeys?.has(colRowToIndex(cell.col, cell.row, cols))) continue;
         if (cellChebyshevDistance(origin.col, origin.row, cell.col, cell.row) < minTiles) continue;
         out.push(cell);
     }
@@ -39,19 +40,19 @@ export function filterBeltCellsNearOrigin(origin, beltCells, minTiles, excludeKe
  * @param {{ cells(): { col: number, row: number }[], has(col: number, row: number): boolean }} navWalkable
  * @param {{ col: number, row: number }} origin
  * @param {number} minTiles
- * @param {{ excludeKeys?: Set<string> | null, rng?: () => number }} [options]
+ * @param {{ excludeKeys?: Set<number> | null, rng?: () => number }} [options]
  */
 export function pickNavWalkableBeltCell(grid, navWalkable, origin, minTiles, { excludeKeys = null, rng = Math.random } = {}) {
     const beltCells = filterNavWalkableBeltCells(grid, navWalkable.cells(), navWalkable);
-    const candidates = filterBeltCellsNearOrigin(origin, beltCells, minTiles, excludeKeys);
-    return pickWalkableCell(candidates, { excludeKeys, rng });
+    const candidates = filterBeltCellsNearOrigin(origin, beltCells, minTiles, grid.cols, excludeKeys);
+    return pickWalkableCell(candidates, { cols: grid.cols, excludeKeys, rng });
 }
 /**
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {{ cells(): { col: number, row: number }[], has(col: number, row: number): boolean }} navWalkable
- * @param {{ excludeKeys?: Set<string> | null, rng?: () => number }} [options]
+ * @param {{ excludeKeys?: Set<number> | null, rng?: () => number }} [options]
  */
 export function pickNavWalkableBeltCellAny(grid, navWalkable, { excludeKeys = null, rng = Math.random } = {}) {
     const beltCells = filterNavWalkableBeltCells(grid, navWalkable.cells(), navWalkable);
-    return pickWalkableCell(beltCells, { excludeKeys, rng });
+    return pickWalkableCell(beltCells, { cols: grid.cols, excludeKeys, rng });
 }

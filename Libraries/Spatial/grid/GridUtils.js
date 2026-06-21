@@ -1,9 +1,31 @@
 export function colRowToIndex(col, row, cols) {
     return row * cols + col;
 }
-/** Stable string key for Set/Map lookups over grid cells. */
-export function gridCellKey(col, row) {
-    return `${col},${row}`;
+/** Dense index for absolute (col, row) within a bounded layout rect. */
+export function layoutCellIndex(absCol, absRow, originCol, originRow, strideCols) {
+    return colRowToIndex(absCol - originCol, absRow - originRow, strideCols);
+}
+/** @param {number} idx @param {CellIndexLayout} layout @param {number} gridCols */
+export function layoutIndexToGlobalIndex(idx, layout, gridCols) {
+    const col = (idx % layout.strideCols) + layout.originCol;
+    const row = Math.floor(idx / layout.strideCols) + layout.originRow;
+    return colRowToIndex(col, row, gridCols);
+}
+/** @param {Iterable<number>} indices @param {CellIndexLayout} layout @param {number} gridCols */
+export function layoutIndicesToGlobalIndices(indices, layout, gridCols) {
+    /** @type {number[]} */
+    const out = [];
+    for (const idx of indices) out.push(layoutIndexToGlobalIndex(idx, layout, gridCols));
+    return out;
+}
+/** @param {number} aIdx @param {number} bIdx @param {number} cellCount */
+export function undirectedPairIndex(aIdx, bIdx, cellCount) {
+    return aIdx < bIdx ? aIdx * cellCount + bIdx : bIdx * cellCount + aIdx;
+}
+/** @typedef {{ originCol: number, originRow: number, strideCols: number, cellCount: number }} CellIndexLayout */
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid */
+export function gridCellLayout(grid) {
+    return { originCol: 0, originRow: 0, strideCols: grid.cols, cellCount: grid.cols * grid.rows };
 }
 /** @param {number} col @param {number} row @param {number} cols @param {number} rows */
 export function cellInRect(col, row, cols, rows) {

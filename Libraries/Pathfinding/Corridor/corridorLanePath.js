@@ -1,7 +1,7 @@
 import { gridSideNeighborCell } from "../../Spatial/grid/GridUtils.js";
-import { corridorPathHitsOccupied, corridorPathIntersectsPaths, corridorPathOccupiedCellKeys, corridorPathsToOccupiedKeysWithWidths } from "./corridorFootprint.js";
+import { corridorPathHitsOccupied, corridorPathIntersectsPaths, corridorPathOccupiedCellIndices, corridorPathsToOccupiedCellIndices } from "./corridorFootprint.js";
 import { createCorridorGridPathfinder } from "./corridorGridPathfinder.js";
-import { buildRoomInteriorBlockedGridLocal, cellInsideAnyRoom, corridorPathFootprintInsideAnyRoom, corridorSearchBounds } from "./corridorWalkGrid.js";
+import { buildRoomInteriorBlockedGridLocal, cellInsideAnyRoom, corridorPathFootprintInsideAnyRoom, corridorSearchBounds, corridorSearchLayout } from "./corridorWalkGrid.js";
 /** @typedef {{ c: number, r: number, side: number }} WallHole */
 /** @typedef {{ c: number, r: number }} CorridorCell */
 /** @typedef {{ c0: number, c1: number, r0: number, r1: number }} RoomRect */
@@ -10,7 +10,7 @@ export function createCorridorLaneRouter(rooms, pad = 12) {
     const bounds = corridorSearchBounds(rooms, pad);
     const pathfinder = createCorridorGridPathfinder(bounds);
     pathfinder.setRoomBlocked(buildRoomInteriorBlockedGridLocal(bounds.originCol, bounds.originRow, bounds.cols, bounds.rows, rooms));
-    return pathfinder;
+    return { pathfinder, layout: corridorSearchLayout(bounds) };
 }
 /** @param {CorridorCell} cell @param {number} side */
 function stepAcrossSide(cell, side) {
@@ -45,24 +45,25 @@ function assembleCorridorPath(corridorFrom, egress, midPath) {
  * @param {number} egressCells
  * @param {number} corridorWidth
  * @param {CorridorCell[][]} lanePaths
- * @param {Set<string>} baseOccupied
+ * @param {Set<number>} baseOccupied
  * @param {import("./corridorGridPathfinder.js").CorridorGridPathfinder} pathfinder
+ * @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout
  * @param {{ maxPathLen?: number, laneWidths?: number[], footprint?: { interiorOnly?: boolean } }} [options]
  * @returns {CorridorCell[] | null}
  */
-export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, options = {}) {
+export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, layout, options = {}) {
     const footprint = options.footprint;
     const corridorFrom = stepAcrossSide(parentHole, parentHole.side);
     const corridorTo = stepAcrossSide(childHole, childHole.side);
     const approachEnd = stepAcrossSide(corridorTo, childHole.side);
     const egress = walkEgress(corridorFrom, parentHole.side, egressCells, rooms);
     const egressEnd = egress.end;
-    /** @type {Set<string>} */
+    /** @type {Set<number>} */
     const reserved = new Set(baseOccupied);
     const laneWidths = options.laneWidths ?? lanePaths.map(() => corridorWidth);
-    const laneKeys = corridorPathsToOccupiedKeysWithWidths(lanePaths, laneWidths, footprint);
-    for (const key of laneKeys) reserved.add(key);
-    pathfinder.setReservedKeys(reserved);
+    const laneIndices = corridorPathsToOccupiedCellIndices(lanePaths, laneWidths, layout, footprint);
+    for (const idx of laneIndices) reserved.add(idx);
+    pathfinder.setReservedIndices(reserved);
     const midPath = pathfinder.findPath(egressEnd.c, egressEnd.r, approachEnd.c, approachEnd.r, options.maxPathLen ?? 512);
     if (!midPath) return null;
     /** @type {CorridorCell[]} */
@@ -70,18 +71,18 @@ export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells,
     const ingressPath = pathfinder.findPath(path[path.length - 1].c, path[path.length - 1].r, corridorTo.c, corridorTo.r, options.maxPathLen ?? 512);
     if (!ingressPath || ingressPath.length < 2) return null;
     for (let i = 1; i < ingressPath.length; i++) path.push(ingressPath[i]);
-    if (corridorPathFootprintInsideAnyRoom(rooms, path, corridorWidth)) return null;
-    if (lanePaths.length) if (corridorPathIntersectsPaths(path, corridorWidth, lanePaths, laneWidths, footprint)) return null;
-    if (corridorPathHitsOccupied(path, baseOccupied, corridorWidth, footprint)) return null;
+    if (corridorPathFootprintInsideAnyRoom(rooms, path, corridorWidth, layout)) return null;
+    if (lanePaths.length) if (corridorPathIntersectsPaths(path, corridorWidth, lanePaths, laneWidths, layout, footprint)) return null;
+    if (corridorPathHitsOccupied(path, baseOccupied, corridorWidth, layout, footprint)) return null;
     return path;
 }
-/** @param {CorridorCell[]} path @param {Set<string>} occupied @param {number} corridorWidth @param {{ interiorOnly?: boolean }} [options] */
-export function addCorridorPathToOccupied(path, occupied, corridorWidth, options = {}) {
-    const keys = corridorPathOccupiedCellKeys(path, corridorWidth, options);
-    for (const key of keys) occupied.add(key);
+/** @param {CorridorCell[]} path @param {Set<number>} occupied @param {number} corridorWidth @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout @param {{ interiorOnly?: boolean }} [options] */
+export function addCorridorPathToOccupied(path, occupied, corridorWidth, layout, options = {}) {
+    const indices = corridorPathOccupiedCellIndices(path, corridorWidth, layout, options);
+    for (const idx of indices) occupied.add(idx);
 }
-/** @param {CorridorCell[]} path @param {Set<string>} occupied @param {number} corridorWidth @param {{ interiorOnly?: boolean }} [options] */
-export function removeCorridorPathFromOccupied(path, occupied, corridorWidth, options = {}) {
-    const keys = corridorPathOccupiedCellKeys(path, corridorWidth, options);
-    for (const key of keys) occupied.delete(key);
+/** @param {CorridorCell[]} path @param {Set<number>} occupied @param {number} corridorWidth @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout @param {{ interiorOnly?: boolean }} [options] */
+export function removeCorridorPathFromOccupied(path, occupied, corridorWidth, layout, options = {}) {
+    const indices = corridorPathOccupiedCellIndices(path, corridorWidth, layout, options);
+    for (const idx of indices) occupied.delete(idx);
 }

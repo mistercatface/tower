@@ -1,4 +1,5 @@
 import { corridorSearchBounds, solveCorridorBundle } from "../Pathfinding/Corridor/index.js";
+import { corridorSearchLayout } from "../Pathfinding/Corridor/corridorWalkGrid.js";
 import { buildCorridorBeltsFromPaths } from "./roomGraphCorridorBelts.js";
 import { applyCorridorHoleGroupsToRooms } from "./roomGraphClosedRooms.js";
 import { buildCorridorRailWallsFromPaths, DEFAULT_CORRIDOR_EGRESS_CELLS } from "./roomGraphCorridorRails.js";
@@ -23,7 +24,8 @@ export function stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, 
  * @param {import("./roomGraphCorridorTypes.js").CorridorType} corridorType
  */
 export function stampCorridorBundleBelts(bundle, rooms) {
-    return buildCorridorBeltsFromPaths(bundle.paths, bundle.corridorWidths, rooms, bundle.parentAnchors, bundle.childAnchors);
+    const layout = corridorSearchLayout(corridorSearchBounds(rooms, DEFAULT_CORRIDOR_EGRESS_CELLS + 6));
+    return buildCorridorBeltsFromPaths(bundle.paths, bundle.corridorWidths, rooms, bundle.parentAnchors, bundle.childAnchors, layout);
 }
 /**
  * @param {import("./roomGraphClosedRooms.js").GraphNode} roomA

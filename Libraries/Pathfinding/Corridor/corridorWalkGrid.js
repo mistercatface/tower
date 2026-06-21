@@ -1,8 +1,6 @@
 /** @typedef {{ c0: number, c1: number, r0: number, r1: number }} RoomRect */
 /** @typedef {{ originCol: number, originRow: number, cols: number, rows: number }} CorridorSearchBounds */
-
 import { collectCorridorPathPointCells } from "./corridorFootprint.js";
-
 /** @param {RoomRect[]} rooms @param {number} [pad] */
 export function corridorSearchBounds(rooms, pad = 12) {
     let c0 = Infinity;
@@ -22,7 +20,6 @@ export function corridorSearchBounds(rooms, pad = 12) {
     r1 += pad;
     return { originCol: c0, originRow: r0, cols: c1 - c0 + 1, rows: r1 - r0 + 1 };
 }
-
 /** @param {number} originCol @param {number} originRow @param {number} cols @param {number} rows @param {RoomRect[]} rooms */
 export function buildRoomInteriorBlockedGridLocal(originCol, originRow, cols, rows, rooms) {
     const grid = new Uint8Array(cols * rows);
@@ -32,12 +29,10 @@ export function buildRoomInteriorBlockedGridLocal(originCol, originRow, cols, ro
         const cEnd = Math.min(node.c1, originCol + cols - 1);
         const rStart = Math.max(node.r0, originRow);
         const rEnd = Math.min(node.r1, originRow + rows - 1);
-        for (let r = rStart; r <= rEnd; r++)
-            for (let c = cStart; c <= cEnd; c++) grid[(r - originRow) * cols + (c - originCol)] = 1;
+        for (let r = rStart; r <= rEnd; r++) for (let c = cStart; c <= cEnd; c++) grid[(r - originRow) * cols + (c - originCol)] = 1;
     }
     return grid;
 }
-
 /** @param {RoomRect[]} rooms @param {number} c @param {number} r */
 export function cellInsideAnyRoom(rooms, c, r) {
     for (let i = 0; i < rooms.length; i++) {
@@ -46,22 +41,23 @@ export function cellInsideAnyRoom(rooms, c, r) {
     }
     return false;
 }
-
 /** @param {import("./corridorFootprint.js").CorridorCell[]} path @param {RoomRect[]} rooms */
 export function corridorPathMidCellsClear(rooms, path) {
     for (let i = 1; i < path.length - 1; i++) if (cellInsideAnyRoom(rooms, path[i].c, path[i].r)) return false;
     return true;
 }
-
-/** @param {import("./corridorFootprint.js").CorridorCell[]} path @param {RoomRect[]} rooms @param {number} corridorWidth */
-export function corridorPathFootprintInsideAnyRoom(rooms, path, corridorWidth) {
+/** @param {import("./corridorFootprint.js").CorridorCell[]} path @param {RoomRect[]} rooms @param {number} corridorWidth @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
+export function corridorPathFootprintInsideAnyRoom(rooms, path, corridorWidth, layout) {
     for (let i = 0; i < path.length; i++) {
-        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, false, i, path.length);
+        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, false, i, path.length, layout);
         for (let ci = 0; ci < cells.length; ci++) if (cellInsideAnyRoom(rooms, cells[ci].c, cells[ci].r)) return true;
     }
     return false;
 }
-
+/** @param {CorridorSearchBounds} bounds */
+export function corridorSearchLayout(bounds) {
+    return { originCol: bounds.originCol, originRow: bounds.originRow, strideCols: bounds.cols, cellCount: bounds.cols * bounds.rows };
+}
 /** @param {number} cols @param {number} rows @param {RoomRect[]} rooms */
 export function buildRoomInteriorBlockedGrid(cols, rows, rooms) {
     const bounds = corridorSearchBounds(rooms, 0);

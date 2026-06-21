@@ -1,8 +1,9 @@
 import { runCardinalAStarFlat } from "../AStar.js";
 import { SearchState } from "../SearchState.js";
+import { layoutCellIndex } from "../../Spatial/grid/GridUtils.js";
 /**
  * Reusable grid A* for corridor mid-routing. Room interiors live in `roomBlocked`;
- * reserved corridor footprints live in `reservedKeys` ("col,row").
+ * reserved corridor footprints live in `reservedIndices` (layout cell indices).
  */
 export class CorridorGridPathfinder {
     /** @param {number} cols @param {number} rows @param {number} [originCol] @param {number} [originRow] */
@@ -14,8 +15,12 @@ export class CorridorGridPathfinder {
         const size = cols * rows;
         this.roomBlocked = new Uint8Array(size);
         this.searchState = new SearchState(size);
-        /** @type {Set<string>} */
-        this.reservedKeys = new Set();
+        /** @type {Set<number>} */
+        this.reservedIndices = new Set();
+    }
+    /** @param {number} col @param {number} row */
+    layoutIndex(col, row) {
+        return layoutCellIndex(col, row, this.originCol, this.originRow, this.cols);
     }
     /** @param {number} col @param {number} row */
     globalToLocal(col, row) {
@@ -28,22 +33,22 @@ export class CorridorGridPathfinder {
         if (localCol < 0 || localRow < 0 || localCol >= this.cols || localRow >= this.rows) return true;
         const idx = localRow * this.cols + localCol;
         if (this.roomBlocked[idx]) return true;
-        return this.reservedKeys.has(`${col},${row}`);
+        return this.reservedIndices.has(this.layoutIndex(col, row));
     }
     /** @param {number} col @param {number} row */
     isBlocked(col, row) {
         if (col < 0 || row < 0 || col >= this.cols || row >= this.rows) return true;
         const idx = row * this.cols + col;
         if (this.roomBlocked[idx]) return true;
-        return this.reservedKeys.has(`${col + this.originCol},${row + this.originRow}`);
+        return this.reservedIndices.has(this.layoutIndex(col + this.originCol, row + this.originRow));
     }
     /** @param {Uint8Array} roomBlocked */
     setRoomBlocked(roomBlocked) {
         this.roomBlocked = roomBlocked;
     }
-    /** @param {Set<string>} keys */
-    setReservedKeys(keys) {
-        this.reservedKeys = keys;
+    /** @param {Set<number>} indices */
+    setReservedIndices(indices) {
+        this.reservedIndices = indices;
     }
     /** @param {number} startCol @param {number} startRow @param {number} goalCol @param {number} goalRow @param {number} [maxPathLen] */
     findPath(startCol, startRow, goalCol, goalRow, maxPathLen = 512) {

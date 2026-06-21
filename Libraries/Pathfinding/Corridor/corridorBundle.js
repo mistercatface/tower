@@ -1,4 +1,4 @@
-import { corridorPathsToOccupiedKeysWithWidths } from "./corridorFootprint.js";
+import { corridorPathsToOccupiedCellIndices } from "./corridorFootprint.js";
 import { addCorridorPathToOccupied, buildCorridorLanePath, createCorridorLaneRouter, removeCorridorPathFromOccupied } from "./corridorLanePath.js";
 import { listRoomWallHoleGroups, wallHoleGroupsOverlap } from "./corridorWallSlots.js";
 /** @typedef {{ c: number, r: number, side: number }} WallHole */
@@ -69,8 +69,8 @@ function orderedAttachmentPairs(parentGroups, childGroups, rng) {
  */
 export function solveCorridorBundle(params) {
     const { roomA, roomB, allRooms, corridorWidths, egressCells, existingPaths = [], existingPathWidths = [], rng, options = {} } = params;
-    const pathfinder = createCorridorLaneRouter(allRooms, 12);
-    const foreignOccupied = corridorPathsToOccupiedKeysWithWidths(existingPaths, existingPathWidths, FULL_FOOTPRINT);
+    const { pathfinder, layout } = createCorridorLaneRouter(allRooms, 12);
+    const foreignOccupied = corridorPathsToOccupiedCellIndices(existingPaths, existingPathWidths, layout, FULL_FOOTPRINT);
     /** @type {WallHoleGroup[]} */
     const pickedParent = [];
     /** @type {WallHoleGroup[]} */
@@ -79,7 +79,7 @@ export function solveCorridorBundle(params) {
     const paths = [];
     /** @type {number[]} */
     const pathWidths = [];
-    /** @type {Set<string>} */
+    /** @type {Set<number>} */
     const bundleOccupied = new Set(foreignOccupied);
     /** @param {number} lane @returns {CorridorBundle | null} */
     function backtrack(lane) {
@@ -99,7 +99,7 @@ export function solveCorridorBundle(params) {
         const pairs = orderedAttachmentPairs(parentGroups, childGroups, rng);
         for (let i = 0; i < pairs.length; i++) {
             const { pg, cg } = pairs[i];
-            const path = buildCorridorLanePath(pg.anchor, cg.anchor, allRooms, egressCells, corridorWidth, paths, bundleOccupied, pathfinder, {
+            const path = buildCorridorLanePath(pg.anchor, cg.anchor, allRooms, egressCells, corridorWidth, paths, bundleOccupied, pathfinder, layout, {
                 maxPathLen: options.maxPathLen,
                 laneWidths: pathWidths,
                 footprint: FULL_FOOTPRINT,
@@ -109,10 +109,10 @@ export function solveCorridorBundle(params) {
             pickedChild.push(cg);
             paths.push(path);
             pathWidths.push(corridorWidth);
-            addCorridorPathToOccupied(path, bundleOccupied, corridorWidth, FULL_FOOTPRINT);
+            addCorridorPathToOccupied(path, bundleOccupied, corridorWidth, layout, FULL_FOOTPRINT);
             const result = backtrack(lane + 1);
             if (result) return result;
-            removeCorridorPathFromOccupied(path, bundleOccupied, corridorWidth, FULL_FOOTPRINT);
+            removeCorridorPathFromOccupied(path, bundleOccupied, corridorWidth, layout, FULL_FOOTPRINT);
             pathWidths.pop();
             paths.pop();
             pickedChild.pop();

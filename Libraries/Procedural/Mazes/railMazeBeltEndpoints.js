@@ -1,8 +1,11 @@
 import { gridSideFromCellToNeighbor } from "../../Spatial/grid/FloorCell.js";
-import { cellInRect, gridCellKey, gridSideNeighborCell } from "../../Spatial/grid/GridUtils.js";
+import { cellInRect, gridCellLayout, gridSideNeighborCell, layoutCellIndex } from "../../Spatial/grid/GridUtils.js";
 import { createNavGraphViewFromContext } from "../../Navigation/navGraph.js";
 function oppositeSide(side) {
     return (side + 2) % 4;
+}
+function cellIndex(col, row, layout) {
+    return layoutCellIndex(col, row, layout.originCol, layout.originRow, layout.strideCols);
 }
 function navStepOpen(grid, gridNavContext, fromCol, fromRow, toCol, toRow) {
     return createNavGraphViewFromContext(gridNavContext).canStep(fromCol, fromRow, toCol, toRow);
@@ -44,16 +47,14 @@ export function beltPathMouthExteriorCells(path) {
     return { entryExterior: { col: entryNeighbor.col, row: entryNeighbor.row }, exitExterior: { col: exitNeighbor.col, row: exitNeighbor.row } };
 }
 /**
- * Belt path endpoints must open to exterior cells that are not rail-blocked on the
- * entry/exit sides implied by the routed polyline.
- *
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {object} gridNavContext
  * @param {{ c: number, r: number }[]} path
- * @param {Set<string>} [occupied]
+ * @param {Set<number>} [occupied]
  */
 export function validateBeltPathMouthAccess(grid, gridNavContext, path, occupied = new Set()) {
     if (path.length < 2) return false;
+    const layout = gridCellLayout(grid);
     const start = path[0];
     const end = path[path.length - 1];
     const { entryExterior, exitExterior } = beltPathMouthExteriorCells(path);
@@ -61,23 +62,24 @@ export function validateBeltPathMouthAccess(grid, gridNavContext, path, occupied
     if (!cellInRect(exitExterior.col, exitExterior.row, grid.cols, grid.rows)) return false;
     if (grid.isBlocked(entryExterior.col, entryExterior.row)) return false;
     if (grid.isBlocked(exitExterior.col, exitExterior.row)) return false;
-    if (occupied.has(gridCellKey(entryExterior.col, entryExterior.row))) return false;
-    if (occupied.has(gridCellKey(exitExterior.col, exitExterior.row))) return false;
+    if (occupied.has(cellIndex(entryExterior.col, entryExterior.row, layout))) return false;
+    if (occupied.has(cellIndex(exitExterior.col, exitExterior.row, layout))) return false;
     if (!navStepOpen(grid, gridNavContext, entryExterior.col, entryExterior.row, start.c, start.r)) return false;
     if (!navStepOpen(grid, gridNavContext, end.c, end.r, exitExterior.col, exitExterior.row)) return false;
     return true;
 }
-/** @param {{ c: number, r: number }[][]} paths */
-export function collectPathMouthExteriorKeys(paths) {
+/** @param {{ c: number, r: number }[][]} paths @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
+export function collectPathMouthExteriorIndices(paths, grid) {
+    const layout = gridCellLayout(grid);
     const mouths = new Set();
     for (let i = 0; i < paths.length; i++) {
         const path = paths[i];
         if (path.length < 2) continue;
-        mouths.add(gridCellKey(path[0].c, path[0].r));
-        mouths.add(gridCellKey(path[path.length - 1].c, path[path.length - 1].r));
+        mouths.add(cellIndex(path[0].c, path[0].r, layout));
+        mouths.add(cellIndex(path[path.length - 1].c, path[path.length - 1].r, layout));
         const { entryExterior, exitExterior } = beltPathMouthExteriorCells(path);
-        mouths.add(gridCellKey(entryExterior.col, entryExterior.row));
-        mouths.add(gridCellKey(exitExterior.col, exitExterior.row));
+        mouths.add(cellIndex(entryExterior.col, entryExterior.row, layout));
+        mouths.add(cellIndex(exitExterior.col, exitExterior.row, layout));
     }
     return mouths;
 }

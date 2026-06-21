@@ -1,4 +1,4 @@
-import { cellInRect, CARDINAL_OFFSETS } from "../Libraries/Spatial/grid/GridUtils.js";
+import { cellInRect, CARDINAL_OFFSETS, colRowToIndex, gridCellLayout } from "../Libraries/Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides, floorBeltElbowTurn } from "../Libraries/Spatial/grid/FloorCell.js";
 const C = {
     void: "#09090b", // Zinc-950 (Out of bounds void background)
@@ -23,7 +23,7 @@ export function autoPxPerCell(playAreaCols, playAreaRows) {
     return Math.max(8, Math.min(20, fit));
 }
 export function drawSnakeSplitLayout(ctx, preview, options) {
-    const { grid, layout, walkableKeys, playableBounds, beltPlan } = preview;
+    const { grid, layout, walkableIndices, playableBounds, beltPlan } = preview;
     const { zones } = layout;
     const cellSize = grid.cellSize;
     const px = options.pxPerCell;
@@ -38,7 +38,7 @@ export function drawSnakeSplitLayout(ctx, preview, options) {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = C.void;
     ctx.fillRect(0, 0, w, h);
-    paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, walkableKeys, layers);
+    paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, walkableIndices, layers);
     if (layers.zones) paintZoneSeparators(ctx, zones, oCol, oRow, px, cols);
     if (layers.northReserve) paintNorthStrip(ctx, zones.railConfig, layout.northReserveRows, oCol, oRow, px);
     if (layers.rails) paintRails(ctx, grid, layout.rails, oCol, oRow, cols, rows, px, cellSize);
@@ -47,7 +47,7 @@ export function drawSnakeSplitLayout(ctx, preview, options) {
 function rect(gc, gr, oCol, oRow, px) {
     return { x: (gc - oCol) * px, y: (gr - oRow) * px, s: px };
 }
-function paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, walkableKeys, layers) {
+function paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, walkableIndices, layers) {
     const gap = px >= 8 ? 1 : 0;
     for (let gr = oRow; gr < oRow + rows; gr++)
         for (let gc = oCol; gc < oCol + cols; gc++) {
@@ -56,7 +56,7 @@ function paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, walk
             let fill = C.floor;
             if (!cellInRect(col, row, grid.cols, grid.rows)) fill = C.void;
             else if (layers.voxels && grid.isBlocked(col, row)) fill = C.wall;
-            else if (layers.walkable && walkableKeys.has(`${col},${row}`)) fill = "#1e3a8a"; // Beautiful deep navy for walkable
+            else if (layers.walkable && walkableIndices.has(colRowToIndex(col, row, grid.cols))) fill = "#1e3a8a"; // Beautiful deep navy for walkable
             ctx.fillStyle = fill;
             ctx.fillRect(r.x, r.y, r.s - gap, r.s - gap);
         }
@@ -124,9 +124,10 @@ function paintRails(ctx, grid, rails, oCol, oRow, cols, rows, px, cellSize) {
 }
 function paintBelts(ctx, grid, beltPlan, oCol, oRow, cols, rows, px, cellSize) {
     const belts = beltPlan.floorBelts;
-    const footprint = beltPlan.validation?.footprint ?? new Set(belts.map((b) => `${b.col},${b.row}`));
-    const beltsByCell = beltPlan.validation?.beltsByCell ?? new Map(belts.map((b) => [`${b.col},${b.row}`, b]));
-    const mouthExteriorKeys = beltPlan.mouthExteriorKeys ?? new Set();
+    const layout = gridCellLayout(grid);
+    const footprint = beltPlan.validation?.footprint ?? new Set(belts.map((b) => colRowToIndex(b.col, b.row, grid.cols)));
+    const beltsByCell = beltPlan.validation?.beltsByCell ?? new Map(belts.map((b) => [colRowToIndex(b.col, b.row, grid.cols), b]));
+    const mouthExteriorIndices = beltPlan.mouthExteriorIndices ?? new Set();
     const gap = px >= 8 ? 1 : 0;
     for (let i = 0; i < belts.length; i++) {
         const belt = belts[i];
@@ -138,26 +139,26 @@ function paintBelts(ctx, grid, beltPlan, oCol, oRow, cols, rows, px, cellSize) {
         const turn = floorBeltElbowTurn(belt.kind);
         // Check per-cell validation so we only color-code broken/dead-end belts red,
         // rather than painting the entire grid of belts red.
-        const key = `${belt.col},${belt.row}`;
+        const idx = colRowToIndex(belt.col, belt.row, grid.cols);
         const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
         const entry = { col: belt.col + CARDINAL_OFFSETS[entrySide].dc, row: belt.row + CARDINAL_OFFSETS[entrySide].dr };
         const exit = { col: belt.col + CARDINAL_OFFSETS[exitSide].dc, row: belt.row + CARDINAL_OFFSETS[exitSide].dr };
-        const entryKey = `${entry.col},${entry.row}`;
-        const exitKey = `${exit.col},${exit.row}`;
-        const entryInFootprint = footprint.has(entryKey);
-        const exitInFootprint = footprint.has(exitKey);
+        const entryIdx = colRowToIndex(entry.col, entry.row, grid.cols);
+        const exitIdx = colRowToIndex(exit.col, exit.row, grid.cols);
+        const entryInFootprint = footprint.has(entryIdx);
+        const exitInFootprint = footprint.has(exitIdx);
         let isBad = false;
         if (entryInFootprint) {
-            const entryBelt = beltsByCell.get(entryKey);
+            const entryBelt = beltsByCell.get(entryIdx);
             const entryExit = floorBeltEntryExitSides(entryBelt.kind, entryBelt.facingIndex).exitSide;
             if (entryExit !== (entrySide + 2) % 4) isBad = true;
         }
         if (exitInFootprint) {
-            const exitBelt = beltsByCell.get(exitKey);
+            const exitBelt = beltsByCell.get(exitIdx);
             const exitEntry = floorBeltEntryExitSides(exitBelt.kind, exitBelt.facingIndex).entrySide;
             if (exitEntry !== (exitSide + 2) % 4) isBad = true;
         }
-        if (!entryInFootprint && !exitInFootprint && !mouthExteriorKeys.has(key)) isBad = true;
+        if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) isBad = true;
         ctx.fillStyle = isBad ? C.beltBad : turn === "left" ? C.beltLeft : turn === "right" ? C.beltRight : C.beltStraight;
         ctx.fillRect(r.x, r.y, r.s - gap, r.s - gap);
         // Vector Arrow Drawing - scaled to fit perfectly within the cell padding
@@ -210,7 +211,7 @@ export function suggestedPxPerCell(playAreaCols) {
     return autoPxPerCell(playAreaCols, playAreaCols);
 }
 export function layoutStats(preview) {
-    const { grid, layout, walkableKeys, playableBounds, beltPlan } = preview;
+    const { grid, layout, walkableIndices, playableBounds, beltPlan } = preview;
     const cellSize = grid.cellSize;
     let voxelCells = 0;
     let openCells = 0;
@@ -234,7 +235,7 @@ export function layoutStats(preview) {
         voxelCells,
         openCells,
         railEdges: layout.rails.length,
-        navWalkable: walkableKeys.size,
+        navWalkable: walkableIndices.size,
         beltCells: beltPlan?.floorBelts.length ?? 0,
         beltStraight: straightCount,
         beltElbows: elbowCount,

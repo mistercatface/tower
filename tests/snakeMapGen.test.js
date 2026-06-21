@@ -13,7 +13,7 @@ import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCell
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { createNavGraphViewFromContext } from "../Libraries/Navigation/navGraph.js";
-import { cellInRect, gridCellKey } from "../Libraries/Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 loadPropAssets();
@@ -74,7 +74,7 @@ function floodFillWalkable(state, startCol, startRow) {
     ];
     while (queue.length) {
         const { col, row } = queue.pop();
-        const key = gridCellKey(col, row);
+        const key = colRowToIndex(col, row, grid.cols);
         if (visited.has(key)) continue;
         if (!cellInRect(col, row, grid.cols, grid.rows) || grid.isBlocked(col, row)) continue;
         visited.add(key);
@@ -96,7 +96,7 @@ function countVisitedInBounds(visited, state, config) {
         const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
         total++;
-        if (visited.has(gridCellKey(col, row))) reached++;
+        if (visited.has(colRowToIndex(col, row, grid.cols))) reached++;
     });
     return { total, reached, ratio: total ? reached / total : 0 };
 }

@@ -38,8 +38,9 @@ function dedupeRailWallsByEdge(rails) {
 }
 /** @param {Uint8Array} mask @param {{ originCol: number, originRow: number, cols: number, rows: number }} bounds @param {Cell[]} path @param {number} corridorWidth @param {GraphNode[]} rooms */
 function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms) {
+    const layout = { originCol: bounds.originCol, originRow: bounds.originRow, strideCols: bounds.cols, cellCount: bounds.cols * bounds.rows };
     for (let i = 0; i < path.length; i++) {
-        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, false, i, path.length);
+        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, false, i, path.length, layout);
         for (let ci = 0; ci < cells.length; ci++) {
             if (cellInsideAnyRoom(rooms, cells[ci].c, cells[ci].r)) continue;
             const lc = cells[ci].c - bounds.originCol;

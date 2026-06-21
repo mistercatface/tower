@@ -12,7 +12,7 @@ import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/
 import { wireSnakeGameRegistry, createSnakeLifecycleRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
-import { walkableCellKey } from "../Libraries/Procedural/Mazes/walkableCells.js";
+import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { gridSettings } from "../Config/world.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
@@ -68,7 +68,7 @@ describe("snake navWalkable session", () => {
         const grid = state.obstacleGrid;
         for (let i = 0; i < cells.length; i++) {
             const cell = cells[i];
-            assert.ok(isNavWalkableCell(grid, state.navigation.gridNavContext, cell.col, cell.row), `cell ${walkableCellKey(cell.col, cell.row)} not nav-walkable`);
+            assert.ok(isNavWalkableCell(grid, state.navigation.gridNavContext, cell.col, cell.row), `cell ${colRowToIndex(cell.col, cell.row, grid.cols)} not nav-walkable`);
         }
     });
     it("baked navWalkable drops disconnected cells on the split map", async () => {

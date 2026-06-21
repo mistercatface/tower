@@ -1,12 +1,11 @@
 export {
-    corridorCellKey,
     corridorPathFootprintsOverlap,
     corridorPathHitsOccupied,
     corridorPathIntersectsAny,
-    corridorPathOccupiedCellKeys,
+    corridorPathOccupiedCellIndices,
     corridorPathIntersectsPaths,
-    corridorPathsToOccupiedKeys,
-    corridorPathsToOccupiedKeysWithWidths,
+    corridorPathsToOccupiedCellIndices,
+    corridorPathsToOccupiedCellIndicesUniform,
     corridorPerpendicularOffsets,
     collectCorridorPathPointCells,
 } from "./corridorFootprint.js";
@@ -34,6 +33,7 @@ export {
     corridorPathFootprintInsideAnyRoom,
     corridorPathMidCellsClear,
     corridorSearchBounds,
+    corridorSearchLayout,
 } from "./corridorWalkGrid.js";
 export { CorridorGridPathfinder, createCorridorGridPathfinder } from "./corridorGridPathfinder.js";
 export { addCorridorPathToOccupied, buildCorridorLanePath, createCorridorLaneRouter, removeCorridorPathFromOccupied } from "./corridorLanePath.js";

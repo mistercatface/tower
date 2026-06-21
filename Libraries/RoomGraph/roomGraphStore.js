@@ -4,7 +4,7 @@ import { CORRIDOR_TYPE_EMPTY, CORRIDOR_TYPE_OPEN, CORRIDOR_TYPE_LOCKED_ROOM, nor
 import { normalizeAuthoredSurfaceProfileId } from "./roomGraphSurfaceProfile.js";
 /** @typedef {{ id: number, col: number, row: number, width: number, height: number, kind?: string, surfaceProfileId?: string | null, railWallHeightLevel?: number, railWallThicknessLevel?: number }} RoomNode */
 /** @typedef {{ id: number, a: number, b: number, corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, seed?: number, surfaceProfileId?: string | null, railWallHeightLevel?: number, railWallThicknessLevel?: number }} RoomLink */
-/** @typedef {{ linkId: number, cellKeys: string[] }} BakedCorridorFloorCells */
+/** @typedef {{ linkId: number, cellIndices: number[] }} BakedCorridorFloorCells */
 /** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[], bakedFloorBelts?: { col: number, row: number, kind: number, facingIndex: number }[], bakedCorridorFloorCells?: BakedCorridorFloorCells[] }} RoomGraphDoc */
 /** @param {object} state @returns {RoomGraphDoc} */
 export function getRoomGraph(state) {

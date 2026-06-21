@@ -4,6 +4,7 @@ import { bakePixelsForWorldSpan, drawBakedTexture, getSurfaceBakeScale } from ".
 import { bakeFrameRange } from "../WorldSurface/AnimationFrameBake.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/SurfaceProfileRevision.js";
 import { TileWorkerCoordinator } from "../WorldSurface/TileWorkerCoordinator.js";
+import { indexToColRow } from "../Spatial/grid/GridUtils.js";
 import { getRoomGraph, getRoomLink, listRoomNodes } from "./roomGraphStore.js";
 import { roomNodeWorldAabb } from "./roomGraphSurfaceProfile.js";
 /** @param {import("../WorldSurface/WorldSurfaceEngine.js").WorldSurfaceEngine} engine @param {string} key @param {object} payload */
@@ -15,16 +16,16 @@ function scheduleHorizontalPatch(engine, key, payload) {
     });
     return placeholder;
 }
-/** @param {string} key @param {string[]} cellKeys */
-function corridorMaskCacheKey(linkId, cellKeys) {
-    return `corridorFloorMask:${linkId}:${cellKeys.join(";")}`;
+/** @param {number} linkId @param {number[]} cellIndices */
+function corridorMaskCacheKey(linkId, cellIndices) {
+    return `corridorFloorMask:${linkId}:${cellIndices.join(";")}`;
 }
 /** @param {number} linkId @param {string} profileId @param {number} rev */
 function corridorDrawCacheKey(linkId, profileId, rev) {
     return `corridorFloorDraw:${linkId}:${rev}:${profileId}`;
 }
-/** @param {string} key @param {string[]} cellKeys @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} originX @param {number} originY @param {number} worldW @param {number} worldH @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
-function buildCorridorFloorMaskCanvas(cellKeys, grid, originX, originY, worldW, worldH, settings) {
+/** @param {number[]} cellIndices @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} originX @param {number} originY @param {number} worldW @param {number} worldH @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
+function buildCorridorFloorMaskCanvas(cellIndices, grid, originX, originY, worldW, worldH, settings) {
     const surfaceBakeScale = getSurfaceBakeScale(settings);
     const bakeW = bakePixelsForWorldSpan(worldW, surfaceBakeScale);
     const bakeH = bakePixelsForWorldSpan(worldH, surfaceBakeScale);
@@ -33,10 +34,8 @@ function buildCorridorFloorMaskCanvas(cellKeys, grid, originX, originY, worldW, 
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     let any = false;
-    for (let i = 0; i < cellKeys.length; i++) {
-        const comma = cellKeys[i].indexOf(",");
-        const col = Number(cellKeys[i].slice(0, comma));
-        const row = Number(cellKeys[i].slice(comma + 1));
+    for (let i = 0; i < cellIndices.length; i++) {
+        const { col, row } = indexToColRow(cellIndices[i], grid.cols);
         const bounds = grid.getCellBounds(col, row);
         const x = Math.round((bounds.minX - originX) * surfaceBakeScale);
         const y = Math.round((bounds.minY - originY) * surfaceBakeScale);
@@ -71,9 +70,9 @@ function getRoomFloorCanvas(engine, state, node) {
     });
     return null;
 }
-/** @param {import("../WorldSurface/WorldSurfaceEngine.js").WorldSurfaceEngine} engine @param {object} state @param {number} linkId @param {string[]} cellKeys @param {string} profileId */
-function getCorridorFloorCanvas(engine, state, linkId, cellKeys, profileId) {
-    if (!cellKeys.length) return null;
+/** @param {import("../WorldSurface/WorldSurfaceEngine.js").WorldSurfaceEngine} engine @param {object} state @param {number} linkId @param {number[]} cellIndices @param {string} profileId */
+function getCorridorFloorCanvas(engine, state, linkId, cellIndices, profileId) {
+    if (!cellIndices.length) return null;
     const rev = getSurfaceProfileRevision(profileId);
     const grid = state.obstacleGrid;
     const settings = engine.settings;
@@ -81,10 +80,8 @@ function getCorridorFloorCanvas(engine, state, linkId, cellKeys, profileId) {
     let minRow = Infinity;
     let maxCol = -Infinity;
     let maxRow = -Infinity;
-    for (let i = 0; i < cellKeys.length; i++) {
-        const comma = cellKeys[i].indexOf(",");
-        const col = Number(cellKeys[i].slice(0, comma));
-        const row = Number(cellKeys[i].slice(comma + 1));
+    for (let i = 0; i < cellIndices.length; i++) {
+        const { col, row } = indexToColRow(cellIndices[i], grid.cols);
         if (col < minCol) minCol = col;
         if (row < minRow) minRow = row;
         if (col > maxCol) maxCol = col;
@@ -99,11 +96,11 @@ function getCorridorFloorCanvas(engine, state, linkId, cellKeys, profileId) {
     const maxY = w1.y + half;
     const worldW = maxX - minX;
     const worldH = maxY - minY;
-    const maskKey = corridorMaskCacheKey(linkId, cellKeys);
+    const maskKey = corridorMaskCacheKey(linkId, cellIndices);
     const drawKey = corridorDrawCacheKey(linkId, profileId, rev);
     let maskEntry = engine.surfaceCache.get(maskKey);
     if (!maskEntry) {
-        const maskCanvas = buildCorridorFloorMaskCanvas(cellKeys, grid, minX, minY, worldW, worldH, settings);
+        const maskCanvas = buildCorridorFloorMaskCanvas(cellIndices, grid, minX, minY, worldW, worldH, settings);
         if (!maskCanvas) {
             engine.surfaceCache.delete(drawKey);
             return null;
@@ -161,8 +158,8 @@ export function drawRoomGraphFloorPatches(ctx, engine, state, viewport) {
     for (let i = 0; i < corridors.length; i++) {
         const entry = corridors[i];
         const link = getRoomLink(state, entry.linkId);
-        if (!link?.surfaceProfileId || !entry.cellKeys.length) continue;
-        const draw = getCorridorFloorCanvas(engine, state, entry.linkId, entry.cellKeys, link.surfaceProfileId);
+        if (!link?.surfaceProfileId || !entry.cellIndices.length) continue;
+        const draw = getCorridorFloorCanvas(engine, state, entry.linkId, entry.cellIndices, link.surfaceProfileId);
         if (!draw) continue;
         const patchAabb = { minX: draw.minX, minY: draw.minY, maxX: draw.minX + draw.worldW, maxY: draw.minY + draw.worldH };
         if (!viewport.aabbInBounds(patchAabb, "props")) continue;

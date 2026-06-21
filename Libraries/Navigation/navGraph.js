@@ -53,8 +53,8 @@ export function createNavGraphView(grid, baked = null) {
         },
         /** Baked octile step when topology is ready; otherwise cardinal-only authoring check. */
         canStep(fromCol, fromRow, toCol, toRow) {
-            if (frame && topology) return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);
             if (this.cardinalOpen && this.vertexPassability) return !boundaryBlocksStepFrom(grid, this.cardinalOpen, this.vertexPassability, fromCol, fromRow, toCol, toRow);
+            if (frame && topology) return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);
             return false;
         },
         /** Wrong-way belt entry blocked (upstream of exit). */

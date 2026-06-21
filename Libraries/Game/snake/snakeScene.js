@@ -1,5 +1,6 @@
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../../Sandbox/sandboxSceneSnapshot.js";
-import { walkableCellKey, pickWalkableCell, createNavWalkableAccess, collectNavWalkableCells } from "../../Procedural/Mazes/walkableCells.js";
+import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
+import { pickWalkableCell, createNavWalkableAccess, collectNavWalkableCells } from "../../Procedural/Mazes/walkableCells.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { linkedChainOccupiedCellKeys, spawnLinkedBallChain } from "../../Sandbox/spawnLinkedBallChain.js";
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
@@ -48,7 +49,7 @@ function isValidSnakeChainAnchorCell(navWalkable, grid, anchorCell, { segmentCou
     for (let i = 0; i < cells.length; i++) {
         const { col, row } = cells[i];
         if (!navWalkable.has(col, row)) return false;
-        if (excludeKeys?.has(walkableCellKey(col, row))) return false;
+        if (excludeKeys?.has(colRowToIndex(col, row, grid.cols))) return false;
     }
     return true;
 }
@@ -76,7 +77,7 @@ function pickSnakeChainSpawnCell(spawnPool, navWalkable, state, { segmentCount, 
         if (isValidSnakeChainAnchorCell(navWalkable, grid, cell, { segmentCount, spacing, growDirX, growDirY, excludeKeys })) valid.push(cell);
     }
     if (!valid.length) throw new Error("No walkable snake spawn cell with full chain clearance");
-    return pickWalkableCell(valid, { excludeKeys, rng });
+    return pickWalkableCell(valid, { cols: grid.cols, excludeKeys, rng });
 }
 function shuffleInPlace(items) {
     for (let i = items.length - 1; i > 0; i--) {
@@ -141,14 +142,14 @@ export async function generateSnakeSplitMap(state) {
     const playable = resolveSnakePlayableBounds(state);
     const floodSeed = resolveSnakeNavWalkableFloodSeedBounds(state);
     const navWalkable = collectNavWalkableCells(state, playable, floodSeed);
-    const walkableKeys = new Set();
-    for (let i = 0; i < navWalkable.length; i++) walkableKeys.add(walkableCellKey(navWalkable[i].col, navWalkable[i].row));
+    const walkableIndices = new Set();
+    for (let i = 0; i < navWalkable.length; i++) walkableIndices.add(colRowToIndex(navWalkable[i].col, navWalkable[i].row, state.obstacleGrid.cols));
     const beltPlan = planRailMazeCorridorBelts({
         grid: state.obstacleGrid,
         gridNavContext: state.navigation.gridNavContext,
         railConfig,
         northReserveRows: cavern.openBoundaryRows ?? 3,
-        walkableKeys,
+        walkableKeys: walkableIndices,
         mapSeed: state.mapSeed,
     });
     const { bounds: beltBounds } = stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
@@ -232,7 +233,7 @@ export function spawnSnakeGoalPool(state, goalCount, navWalkable, { excludeKeys 
         const goal = spawnGoalOrbOnOpenCell(state, navWalkable, { excludeKeys: keys, rng });
         goals.push(goal);
         const cell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
-        keys.add(walkableCellKey(cell.col, cell.row));
+        keys.add(colRowToIndex(cell.col, cell.row, state.obstacleGrid.cols));
     }
     return goals;
 }

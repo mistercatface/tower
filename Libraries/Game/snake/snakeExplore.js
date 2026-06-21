@@ -1,4 +1,5 @@
-import { walkableCellKey, pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
+import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
+import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { pickNavWalkableBeltCell } from "./snakeBeltCells.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
@@ -27,7 +28,7 @@ export function resolveSnakeExploreCell(seeker, state, memory, rng, navWalkable)
     }
     let cell = pickExploreDestination(grid, col, row, { ...explorePick, minTiles: config.exploreMinTiles });
     if (!cell && config.exploreMinTiles > config.exploreFallbackMinTiles) cell = pickExploreDestination(grid, col, row, { ...explorePick, minTiles: config.exploreFallbackMinTiles });
-    if (!cell) cell = pickWalkableCell(openCells, { rng });
-    if (cell && cell.col === col && cell.row === row) cell = pickWalkableCell(openCells, { excludeKeys: new Set([walkableCellKey(col, row)]), rng });
+    if (!cell) cell = pickWalkableCell(openCells, { cols: grid.cols, rng });
+    if (cell && cell.col === col && cell.row === row) cell = pickWalkableCell(openCells, { cols: grid.cols, excludeKeys: new Set([colRowToIndex(col, row, grid.cols)]), rng });
     return cell;
 }

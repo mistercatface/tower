@@ -1,11 +1,13 @@
 import { gridNavCacheKey, isNavTopologyReady } from "../../Spatial/grid/gridNavEpoch.js";
-import { cellInRect, colRowToIndex, gridCellKey } from "../../Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { floodConnectedNavWalkableCells, isNavWalkableCell } from "../../Spatial/grid/navWalkableCell.js";
 import { forEachGlobalCellInMapGenBounds, isGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { expandNavTopologyBakeBounds } from "../../Pathfinding/navTopologySab.js";
 import { clampCellBoundsToGrid, forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { createNavWalkableCandidateMask, createNavWalkableReachedMask, readNavWalkableFlag, writeNavWalkableFlags } from "./navWalkableIndex.js";
-export const walkableCellKey = gridCellKey;
+function cellIndex(col, row, cols) {
+    return colRowToIndex(col, row, cols);
+}
 function navWalkableCacheKey(state) {
     const grid = state.obstacleGrid;
     const worker = state.navigation?._hpaPathWorker;
@@ -182,15 +184,15 @@ export function patchNavWalkableCellIndex(state, damageBounds = null) {
     if (!damageBounds || !cache.candidates) return bakeNavWalkableCellIndex(state, cache.boundsConfig, cache.floodSeedBounds);
     return patchNavWalkableCellIndexRegion(state, cache, damageBounds);
 }
-export function pickWalkableCell(openCells, { excludeKeys = null, rng = Math.random } = {}) {
-    const candidates = excludeKeys ? openCells.filter((cell) => !excludeKeys.has(walkableCellKey(cell.col, cell.row))) : openCells;
+export function pickWalkableCell(openCells, { cols, excludeKeys = null, rng = Math.random } = {}) {
+    const candidates = excludeKeys ? openCells.filter((cell) => !excludeKeys.has(cellIndex(cell.col, cell.row, cols))) : openCells;
     if (!candidates.length) return null;
     return candidates[Math.floor(rng() * candidates.length)];
 }
 export function pickNavWalkableCell(state, { boundsConfig = state.editor.cavernConfig, floodSeedBounds = null, excludeKeys = null, filterBoundsConfig = null, rng = Math.random } = {}) {
     let cells = getNavWalkableCells(state, boundsConfig, floodSeedBounds);
     if (filterBoundsConfig) cells = filterWalkableCellsInBounds(cells, state.obstacleGrid, filterBoundsConfig);
-    return pickWalkableCell(cells, { excludeKeys, rng });
+    return pickWalkableCell(cells, { cols: state.obstacleGrid.cols, excludeKeys, rng });
 }
 export function createNavWalkableAccess(state, boundsConfig, { floodSeedBounds = null } = {}) {
     let live = null;
@@ -226,5 +228,5 @@ export function createNavWalkableAccess(state, boundsConfig, { floodSeedBounds =
 }
 export function pickRandomWalkableCell(state, { excludeKeys = null, boundsConfig = state.editor.cavernConfig, rng = Math.random } = {}) {
     const openCells = collectWalkableCells(state, boundsConfig);
-    return pickWalkableCell(openCells, { excludeKeys, rng });
+    return pickWalkableCell(openCells, { cols: state.obstacleGrid.cols, excludeKeys, rng });
 }

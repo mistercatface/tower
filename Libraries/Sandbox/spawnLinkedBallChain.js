@@ -2,7 +2,7 @@ import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { addChainLink, setChainHead } from "./chainLinks.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { resolveSandboxFaction, sandboxFactions } from "./sandboxFaction.js";
-import { walkableCellKey } from "../Procedural/Mazes/walkableCells.js";
+import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
 function segmentOffset(index, spacing, growDirX, growDirY) {
     return { x: index * spacing * growDirX, y: index * spacing * growDirY };
@@ -62,7 +62,7 @@ export function linkedChainOccupiedCellKeys(members, grid) {
     const keys = new Set();
     for (let i = 0; i < members.length; i++) {
         const { col, row } = grid.worldToGrid(members[i].x, members[i].y);
-        keys.add(walkableCellKey(col, row));
+        keys.add(colRowToIndex(col, row, grid.cols));
     }
     return keys;
 }

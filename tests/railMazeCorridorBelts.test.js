@@ -9,6 +9,7 @@ import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snake
 import { createWorkerNavigationService, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
+import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 describe("rail maze corridor belts", () => {
     it("collects corridor polylines on a T-junction fixture", () => {
@@ -18,7 +19,8 @@ describe("rail maze corridor belts", () => {
             { col: 1, row: 1 },
             { col: 2, row: 1 },
         ];
-        const memberSet = new Set(cells.map((c) => `${c.col},${c.row}`));
+        const layout = { originCol: 0, originRow: 0, strideCols: 4, cellCount: 12 };
+        const memberSet = new Set(cells.map((c) => colRowToIndex(c.col, c.row, layout.strideCols)));
         const neighborAt = (col, row) => {
             const out = [];
             const candidates = [
@@ -29,11 +31,11 @@ describe("rail maze corridor belts", () => {
             ];
             for (let i = 0; i < candidates.length; i++) {
                 const n = candidates[i];
-                if (memberSet.has(`${n.col},${n.row}`)) out.push(n);
+                if (memberSet.has(colRowToIndex(n.col, n.row, layout.strideCols))) out.push(n);
             }
             return out;
         };
-        const paths = collectCorridorPathPolylines(cells, neighborAt);
+        const paths = collectCorridorPathPolylines(cells, neighborAt, layout);
         assert.ok(paths.length >= 2);
         const armLengths = paths.map((path) => path.length);
         assert.ok(armLengths.some((len) => len >= 2));
@@ -83,7 +85,7 @@ describe("rail maze corridor belts", () => {
             gridNavContext: preview.gridNavContext,
             railConfig: preview.railConfig,
             northReserveRows: preview.layout.northReserveRows,
-            walkableKeys: preview.walkableKeys,
+            walkableKeys: preview.walkableIndices,
             mapSeed: preview.layout.mapSeed,
         };
         const allRailed = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 0 });

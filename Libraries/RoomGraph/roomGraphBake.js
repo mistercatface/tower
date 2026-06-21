@@ -1,4 +1,4 @@
-import { unionCellBounds } from "../DataStructures/CellRect.js";
+import { layoutIndicesToGlobalIndices } from "../Spatial/grid/GridUtils.js";
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
 import { commitGridNavEditUnion } from "../Sandbox/gridNavEdit.js";
 import { clearRailWallsQuiet, stampRailWallsQuiet } from "../Sandbox/gridWallEdit.js";
@@ -19,8 +19,8 @@ import { normalizeCorridorType, isConveyorCorridorType, isOpenCorridorType, isLo
 import { clearBakedFloorBeltsQuiet, stampBakedFloorBeltsQuiet } from "./roomGraphFloorBelts.js";
 import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle, stampCorridorBundleBelts, stampCorridorBundleRails } from "./roomGraphCorridorApply.js";
 import { clearLockedRoomBakes, syncLockedRoomBakes } from "./roomGraphLockedRoom.js";
-import { corridorPathsToOccupiedKeysWithWidths } from "../Pathfinding/Corridor/corridorFootprint.js";
-import { corridorSearchBounds } from "../Pathfinding/Corridor/corridorWalkGrid.js";
+import { corridorSearchBounds, corridorSearchLayout } from "../Pathfinding/Corridor/corridorWalkGrid.js";
+import { corridorPathsToOccupiedCellIndices } from "../Pathfinding/Corridor/corridorFootprint.js";
 import { DEFAULT_CORRIDOR_EGRESS_CELLS } from "./roomGraphCorridorRails.js";
 /** @typedef {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }} BakedRail */
 /** @typedef {{ id: number, c0: number, c1: number, r0: number, r1: number, centerC: number, centerR: number, width: number, height: number }} AuthoredGraphNode */
@@ -123,8 +123,8 @@ function restoreClosedRoomState(closedRoom, snap) {
     closedRoom.gaps = new Set(snap.gaps);
     closedRoom.holes = snap.holes.slice();
 }
-/** @param {ReturnType<typeof buildAuthoredBakeLayout>} layout @returns {{ rails: BakedRail[], belts: import("./roomGraphFloorBelts.js").BakedFloorBelt[] }} */
-function computeRoomGraphBake(layout) {
+/** @param {ReturnType<typeof buildAuthoredBakeLayout>} layout @param {number} gridCols @returns {{ rails: BakedRail[], belts: import("./roomGraphFloorBelts.js").BakedFloorBelt[] }} */
+function computeRoomGraphBake(layout, gridCols) {
     const originCol = 0;
     const originRow = 0;
     const { rooms, graphEdges, closedRooms, links } = layout;
@@ -159,7 +159,11 @@ function computeRoomGraphBake(layout) {
             continue;
         }
         applyCorridorBundleToRooms(bundle, roomA, roomB);
-        corridorFloorCells.push({ linkId: link.id, cellKeys: [...corridorPathsToOccupiedKeysWithWidths(bundle.paths, bundle.corridorWidths, { interiorOnly: false })] });
+        const corridorLayout = corridorSearchLayout(corridorSearchBounds(rooms, DEFAULT_CORRIDOR_EGRESS_CELLS + 6));
+        corridorFloorCells.push({
+            linkId: link.id,
+            cellIndices: layoutIndicesToGlobalIndices(corridorPathsToOccupiedCellIndices(bundle.paths, bundle.corridorWidths, corridorLayout, { interiorOnly: false }), corridorLayout, gridCols),
+        });
         for (let pi = 0; pi < bundle.paths.length; pi++) {
             placedPaths.push(bundle.paths[pi]);
             placedPathWidths.push(bundle.corridorWidths[pi]);
@@ -200,7 +204,7 @@ export function syncRoomGraphBake(state) {
     expandGridForGraphNodes(state, layout.rooms);
     expandGridForCorridorSearch(state, layout.rooms);
     layout = buildAuthoredBakeLayout(state);
-    const bake = computeRoomGraphBake(layout);
+    const bake = computeRoomGraphBake(layout, state.obstacleGrid.cols);
     const { bounds: railBounds, stamped: stampedRails } = stampRailWallsQuiet(state, bake.rails);
     const { bounds: beltBounds, stamped: stampedBelts } = stampBakedFloorBeltsQuiet(state, bake.belts);
     setBakedRails(state, stampedRails);

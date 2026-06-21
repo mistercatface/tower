@@ -9,7 +9,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getChainMemberIds, isChainSteeringTarget } from "../Libraries/Sandbox/chainLinks.js";
 import { growChainSegment, linkedChainOccupiedCellKeys, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
-import { walkableCellKey } from "../Libraries/Procedural/Mazes/walkableCells.js";
+import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 loadPropAssets();
 const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1 };
 function createChainSpawnTestState(cols = 32, rows = 32) {
@@ -55,10 +55,10 @@ describe("spawnLinkedBallChain", () => {
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, CHAIN_OPTIONS);
         const keys = linkedChainOccupiedCellKeys(chain.members, state.obstacleGrid);
         assert.ok(keys.size >= 2);
-        assert.ok(keys.has(walkableCellKey(10, 10)));
+        assert.ok(keys.has(colRowToIndex(10, 10, state.obstacleGrid.cols)));
         for (let i = 0; i < chain.members.length; i++) {
             const { col, row } = state.obstacleGrid.worldToGrid(chain.members[i].x, chain.members[i].y);
-            assert.ok(keys.has(walkableCellKey(col, row)));
+            assert.ok(keys.has(colRowToIndex(col, row, state.obstacleGrid.cols)));
         }
     });
     it("growChainSegment links a new tail segment at spacing", () => {

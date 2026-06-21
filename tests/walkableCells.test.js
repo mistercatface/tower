@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import {
-    walkableCellKey,
     collectWalkableCells,
     collectNavWalkableCells,
     createNavWalkableAccess,
@@ -137,8 +136,8 @@ describe("walkableCells", () => {
             { col: 2, row: 2 },
             { col: 3, row: 3 },
         ];
-        const excludeKeys = new Set([walkableCellKey(2, 2)]);
-        const picked = pickWalkableCell(cells, { excludeKeys, rng: () => 0.99 });
+        const excludeKeys = new Set([colRowToIndex(2, 2, 8)]);
+        const picked = pickWalkableCell(cells, { cols: 8, excludeKeys, rng: () => 0.99 });
         assert.equal(picked.col, 3);
         assert.equal(picked.row, 3);
     });
@@ -150,7 +149,7 @@ describe("walkableCells", () => {
         config.boundsRows = 4;
         const state = await createWalkableCellsTestState(config);
         const open = collectWalkableCells(state);
-        const excludeKeys = new Set(open.map((cell) => walkableCellKey(cell.col, cell.row)));
+        const excludeKeys = new Set(open.map((cell) => colRowToIndex(cell.col, cell.row, state.obstacleGrid.cols)));
         assert.equal(pickRandomWalkableCell(state, { excludeKeys }), null);
         terminateWorkerNavigation(state.navigation);
     });
