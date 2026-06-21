@@ -22,9 +22,14 @@ export function applySnakeGameConfig(overrides) {
 export function getSnakeGameConfig() {
     return activeSnakeGameConfig;
 }
-export function resolveSnakeSpawnSpecs(config = getSnakeGameConfig()) {
+function randomIntInclusive(min, max, rng) {
+    return min + Math.floor(rng() * (max - min + 1));
+}
+export function resolveSnakeSpawnSpecs(config = getSnakeGameConfig(), rng = Math.random) {
     const specs = [];
-    for (let i = 0; i < config.snakeCount; i++) specs.push({ segmentCount: config.segmentCount });
+    const min = Math.max(1, Math.round(config.minAliveSegmentCount));
+    const max = Math.max(min, Math.round(config.maxAliveSegmentCount));
+    for (let i = 0; i < config.snakeCount; i++) specs.push({ segmentCount: randomIntInclusive(min, max, rng) });
     return specs;
 }
 export function resolveSnakePropRadius(propId) {
@@ -36,7 +41,7 @@ export function resolveSnakeSegmentSpacing(config = getSnakeGameConfig(), segmen
 }
 export function resolveSnakeEatRadius(config = getSnakeGameConfig(), segmentRadius = null) {
     const radius = segmentRadius ?? resolveSnakePropRadius(config.segmentPropId);
-    return radius + resolveSnakePropRadius(config.goalPropId) + config.eatMargin;
+    return radius + config.foodPickupRadius + config.eatMargin;
 }
 export function resolveSnakeStartRadius(config = getSnakeGameConfig()) {
     return config.startRadius;

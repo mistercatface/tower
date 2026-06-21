@@ -1,6 +1,5 @@
 import { hasGridCellLineOfSightCached } from "../../Navigation/perception/gridCellVision.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { findNearestVisibleSnakeGoalFromVision } from "./snakeGoals.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 function visibleTargetInRange(seeker, target, rangeSq, navTopology, originCol, originRow, visionSession) {

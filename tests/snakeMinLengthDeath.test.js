@@ -17,6 +17,7 @@ import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactP
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
 import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts, killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { kineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { SNAKE_SHARD_PROP_ID } from "../Libraries/Game/snake/snakeSegmentFracture.js";
 
 loadPropAssets();
 
@@ -157,8 +158,7 @@ describe("snake combat min length", () => {
         assert.equal(autosimsByHeadId.has(prey.chain.head.id), false);
         assert.equal(registry.inertByLeadId.size, 0);
         assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 6);
-        assert.equal(predatorAutosim.flushPendingPreyFoodRewards(), true);
-        assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 7);
+        assert.equal(state.worldProps.some((prop) => prop.type === SNAKE_SHARD_PROP_ID), true);
     });
 
     it("seek_prey contact restores hunter drive after contact impulse", () => {

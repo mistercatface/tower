@@ -14,13 +14,11 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Li
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/hex.js";
 import { pickSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
-import { wireSnakeGameForHead, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { spawnGoalOrbAtCell, spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
-import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
-import { SNAKE_GAME_DEFAULTS } from "../Config/games/snake.js";
 
 loadPropAssets();
 
@@ -39,17 +37,25 @@ function createSnakeSceneTestState(cols = 32, rows = 32) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        nav: { settings: {}, commitEdit: async () => {}, topologyKey: () => "", syncedTopologyKey: () => "", graphSyncGeneration: 0, worker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} }, session: { isReplanInFlight: () => false }, topology: null },
+        nav: {
+            settings: {},
+            commitEdit: async () => {},
+            topologyKey: () => "",
+            syncedTopologyKey: () => "",
+            graphSyncGeneration: 0,
+            worker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
+            session: { isReplanInFlight: () => false, beginFrame: () => {}, flushFrame: () => {}, requestReplan: () => {} },
+            topology: { grid, wallRevision: 0 },
+        },
     };
 }
 
 describe("snake multi-spawn", () => {
     it("derives one spawn spec per snakeCount entry", () => {
-        applySnakeGameConfig();
-        const specs = resolveSnakeSpawnSpecs();
-        assert.equal(specs.length, SNAKE_GAME_DEFAULTS.snakeCount);
-        assert.equal(specs[0].segmentCount, SNAKE_GAME_DEFAULTS.segmentCount);
-        assert.equal(specs[1].segmentCount, SNAKE_GAME_DEFAULTS.segmentCount);
+        applySnakeGameConfig({ snakeCount: 3, minAliveSegmentCount: 3, maxAliveSegmentCount: 5 });
+        const rolls = [0, 0.5, 0.999];
+        const specs = resolveSnakeSpawnSpecs(getSnakeGameConfig(), () => rolls.shift());
+        assert.deepEqual(specs.map((spec) => spec.segmentCount), [3, 4, 5]);
     });
 
     it("spawnSnakeChain tints every segment with the same visualOverride tint", () => {
@@ -67,39 +73,35 @@ describe("snake multi-spawn", () => {
         }
     });
 
-    it("two chains get different random tints and goal pool respects goalCount", () => {
-        applySnakeGameConfig({ goalCount: 3 });
+    it("two chains get different random tints", () => {
+        applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
         const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3, rng: () => 0.1 });
         const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, excludeIndices: first.occupiedIndices, rng: () => 0.9 });
         assert.notEqual(first.tintHex, second.tintHex);
-        const navWalkable = createSnakeNavWalkable(state);
-        const goals = spawnSnakeGoalPool(state, 3, navWalkable, { excludeIndices: first.occupiedIndices, rng: () => 0.5 });
-        assert.equal(goals.length, 3);
     });
 
     it("new segment inherits head tint after eating", () => {
-        applySnakeGameConfig({ goalCount: 1 });
+        applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
         const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.5 });
         wireSnakeGameForHead(state, pack.chain.head.id, pack.chain.spawnGroupId);
-        const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
+        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().metabolism.growthCost });
         const behaviorById = new Map([
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
             [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
         ]);
         const autosim = createWiredSnakeAutosim(state, {
             headId: pack.chain.head.id,
-            goalPropId: goal.id,
             behaviorById,
             eatRadius: 20,
             rng: () => 0,
         });
         autosim.start();
-        pack.chain.head.x = goal.x;
-        pack.chain.head.y = goal.y;
+        pack.chain.head.x = food.x;
+        pack.chain.head.y = food.y;
         autosim.tick(FRAME_MS);
         const memberIds = getChainMemberIds(state, pack.chain.head.id);
         const tail = state.entityRegistry.getLive(memberIds[memberIds.length - 1]);
@@ -108,10 +110,9 @@ describe("snake multi-spawn", () => {
 });
 
 describe("snake config counts", () => {
-    it("applySnakeGameConfig overrides snakeCount and goalCount", () => {
-        applySnakeGameConfig({ snakeCount: 30, goalCount: 15, segmentCount: 3 });
+    it("applySnakeGameConfig overrides snakeCount", () => {
+        applySnakeGameConfig({ snakeCount: 30, segmentCount: 3 });
         assert.equal(getSnakeGameConfig().snakeCount, 30);
-        assert.equal(getSnakeGameConfig().goalCount, 15);
         assert.equal(resolveSnakeSpawnSpecs().length, 30);
         applySnakeGameConfig();
     });

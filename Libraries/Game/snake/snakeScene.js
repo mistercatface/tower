@@ -1,10 +1,8 @@
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../../Sandbox/sandboxSceneSnapshot.js";
-import { colRowToIndex, cellInRect } from "../../Spatial/grid/GridUtils.js";
-import { getNavWalkableCellIndex, pickWalkableCell, createNavWalkableAccess, collectWalkableCells } from "../../Procedural/Mazes/walkableCells.js";
+import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
+import { getNavWalkableCellIndex, pickWalkableCell, createNavWalkableAccess } from "../../Procedural/Mazes/walkableCells.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { linkedChainOccupiedCellIndices, spawnLinkedBallChain } from "../../Sandbox/spawnLinkedBallChain.js";
-import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
-import { SANDBOX_DEFAULT_FACTION } from "../../Sandbox/sandboxFaction.js";
 import { withSeededRandom } from "../../Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns, generateLabRailDfsMaze, clearSnakeRegionPaddingStrip } from "../../../Apps/Editor/world/mapWorld.js";
 import { planRailMazeCorridorBelts } from "../../Procedural/Mazes/railMazeCorridorBelts.js";
@@ -12,8 +10,6 @@ import { stampGlobalRailMazeBelts } from "../../Procedural/Mazes/stampGlobalRail
 import { commitGridNavEdit, commitGridNavEditUnion } from "../../Sandbox/gridNavEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
-import { ensureSnakeGoalIndex, registerSnakeGoal } from "./snakeGoalIndex.js";
-import { notifySnakeGoalRelocated } from "./snakeGoalRelocate.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
 import { applySnakeHeadGameplay, applySnakeSegmentGameplay } from "./snakeGameConfig.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
@@ -183,104 +179,6 @@ export function resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount
 async function spawnSnakeCavernMap(state) {
     await generateSnakeSplitMap(state);
 }
-export function spawnGoalOrb(state, worldX, worldY, faction = SANDBOX_DEFAULT_FACTION) {
-    const prop = spawnPlacedSandboxProp(state, worldX, worldY, getSnakeGameConfig().goalPropId, faction);
-    const index = ensureSnakeGoalIndex(state);
-    if (index) registerSnakeGoal(index, prop, state.obstacleGrid);
-    return prop;
-}
-export function spawnGoalOrbAtCell(state, cell, faction = SANDBOX_DEFAULT_FACTION) {
-    const { x, y } = state.obstacleGrid.gridToWorld(cell.col, cell.row);
-    return spawnGoalOrb(state, x, y, faction);
-}
-/**
- * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {{ cells(): { col: number, row: number }[] }} navWalkable
- * @param {{ col: number, row: number }} origin
- * @param {number} minTiles
- */
-export function pickNavWalkableCellAwayFrom(grid, navWalkable, origin, minTiles, { excludeIndices = null, rng = Math.random } = {}) {
-    const cols = grid.cols;
-    const cells = navWalkable.cells();
-    const candidates = [];
-    for (let i = 0; i < cells.length; i++) {
-        const cell = cells[i];
-        if (excludeIndices?.has(colRowToIndex(cell.col, cell.row, cols))) continue;
-        if (cellChebyshevDistance(origin.col, origin.row, cell.col, cell.row) < minTiles) continue;
-        candidates.push(cell);
-    }
-    if (!candidates.length) return null;
-    return pickWalkableCell(candidates, { cols, excludeIndices, rng });
-}
-/** Pick a nav-walkable cell at least goalRelocateMinTiles from origin; fall back to any open cell. */
-export function pickGoalRelocateCell(state, navWalkable, origin, { excludeIndices = null, rng = Math.random } = {}) {
-    const config = getSnakeGameConfig();
-    const grid = state.obstacleGrid;
-    const cols = grid.cols;
-    const isOrigin = (cell) => cell.col === origin.col && cell.row === origin.row;
-    const pickAway = (cells, minTiles) => {
-        const pool = { cells: () => cells };
-        return pickNavWalkableCellAwayFrom(grid, pool, origin, minTiles, { excludeIndices, rng });
-    };
-    let cell = pickAway(navWalkable.cells(), config.goalRelocateMinTiles);
-    if (!cell && config.goalRelocateFallbackMinTiles < config.goalRelocateMinTiles) cell = pickAway(navWalkable.cells(), config.goalRelocateFallbackMinTiles);
-    if (!cell) cell = navWalkable.pick({ excludeIndices, rng });
-    if (!cell) {
-        const boundsConfig = state.sandbox?.snakePlayableBounds ?? state.editor?.cavernConfig;
-        const open = collectWalkableCells(state, boundsConfig);
-        cell = pickAway(open, config.goalRelocateFallbackMinTiles);
-        if (!cell) cell = pickWalkableCell(open, { cols, excludeIndices, rng });
-    }
-    if (!cell || isOrigin(cell)) {
-        const cells = navWalkable.cells();
-        for (let i = 0; i < cells.length; i++) {
-            const candidate = cells[i];
-            if (isOrigin(candidate)) continue;
-            if (excludeIndices?.has(colRowToIndex(candidate.col, candidate.row, cols))) continue;
-            cell = candidate;
-            break;
-        }
-    }
-    if (!cell || isOrigin(cell)) {
-        const cardinals = [
-            [1, 0],
-            [-1, 0],
-            [0, 1],
-            [0, -1],
-        ];
-        for (let i = 0; i < cardinals.length; i++) {
-            const col = origin.col + cardinals[i][0];
-            const row = origin.row + cardinals[i][1];
-            if (!cellInRect(col, row, cols, grid.rows)) continue;
-            if (grid.isBlocked(col, row)) continue;
-            if (excludeIndices?.has(colRowToIndex(col, row, cols))) continue;
-            cell = { col, row };
-            break;
-        }
-    }
-    return cell;
-}
-/** Move an existing goal orb to a grid cell, refresh the spatial index, and retarget other seekers. */
-export function relocateGoalOrb(state, goal, cell, { skipHeadId = null } = {}) {
-    if (!goal || !cell) return null;
-    const { x, y } = state.obstacleGrid.gridToWorld(cell.col, cell.row);
-    goal.x = x;
-    goal.y = y;
-    const index = ensureSnakeGoalIndex(state);
-    if (index) registerSnakeGoal(index, goal, state.obstacleGrid);
-    notifySnakeGoalRelocated(state, goal, skipHeadId);
-    return goal;
-}
-export function spawnGoalOrbOnOpenCell(state, navWalkable, { excludeIndices = null, faction = SANDBOX_DEFAULT_FACTION, rng = Math.random } = {}) {
-    let cell = navWalkable.pick({ excludeIndices, rng });
-    if (!cell) {
-        const boundsConfig = state.sandbox?.snakePlayableBounds ?? state.editor?.cavernConfig;
-        const open = collectWalkableCells(state, boundsConfig);
-        cell = pickWalkableCell(open, { cols: state.obstacleGrid.cols, excludeIndices, rng });
-    }
-    if (!cell) return null;
-    return spawnGoalOrbAtCell(state, cell, faction);
-}
 export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segmentCount, rng = Math.random } = {}) {
     const config = getSnakeGameConfig();
     const startRadius = resolveSnakeStartRadius(config);
@@ -305,18 +203,6 @@ export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segm
     for (const idx of occupied) occupiedIndices.add(idx);
     return { chain, tintHex, occupiedIndices };
 }
-export function spawnSnakeGoalPool(state, goalCount, navWalkable, { excludeIndices = null, rng = Math.random } = {}) {
-    const indices = new Set(excludeIndices ?? []);
-    const goals = [];
-    for (let i = 0; i < goalCount; i++) {
-        const goal = spawnGoalOrbOnOpenCell(state, navWalkable, { excludeIndices: indices, rng });
-        if (!goal) break;
-        goals.push(goal);
-        const cell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
-        indices.add(colRowToIndex(cell.col, cell.row, state.obstacleGrid.cols));
-    }
-    return goals;
-}
 export async function spawnSnakeCavernScene(state) {
     const config = getSnakeGameConfig();
     await spawnSnakeCavernMap(state);
@@ -324,29 +210,28 @@ export async function spawnSnakeCavernScene(state) {
     navWalkable.rebake();
     const spawnCells = navWalkable.cells();
     const snakes = [];
-    let goals = [];
+    const goals = [];
     withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset, () => {
-        const specs = resolveSnakeSpawnSpecs(config);
-        const segmentCount = config.segmentCount;
+        const specs = resolveSnakeSpawnSpecs(config, Math.random);
         const spacing = resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config));
         const growDirX = config.growDirX;
         const growDirY = config.growDirY;
-        const chainSpawnParams = { segmentCount, spacing, growDirX, growDirY };
         let excludeIndices = null;
-        const centerAnchor = resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount, excludeIndices });
-        const centerPack = spawnSnakeChain(state, centerAnchor, { excludeIndices, segmentCount });
+        const centerSegmentCount = specs[0].segmentCount;
+        const centerAnchor = resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount: centerSegmentCount, excludeIndices });
+        const centerPack = spawnSnakeChain(state, centerAnchor, { excludeIndices, segmentCount: centerSegmentCount });
         snakes.push(centerPack);
         excludeIndices = centerPack.occupiedIndices;
         const shuffledSpawnCells = spawnCells.slice();
         shuffleInPlace(shuffledSpawnCells);
         for (let i = 1; i < specs.length; i++) {
             const spec = specs[i];
-            const anchorCell = pickSnakeChainSpawnCell(shuffledSpawnCells, navWalkable, state, { ...chainSpawnParams, segmentCount: spec.segmentCount ?? segmentCount, excludeIndices });
+            const segmentCount = spec.segmentCount;
+            const anchorCell = pickSnakeChainSpawnCell(shuffledSpawnCells, navWalkable, state, { segmentCount, spacing, growDirX, growDirY, excludeIndices });
             const pack = spawnSnakeChain(state, anchorCell, { excludeIndices, segmentCount: spec.segmentCount });
             snakes.push(pack);
             excludeIndices = pack.occupiedIndices;
         }
-        goals = spawnSnakeGoalPool(state, config.goalCount, navWalkable, { excludeIndices });
     });
     return { snakes, goals, navWalkable };
 }

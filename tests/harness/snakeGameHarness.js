@@ -1,9 +1,11 @@
 ﻿import "../nodeCanvasSetup.js";
 import { loadPropAssets } from "../../Libraries/Props/loadPropAssets.js";
-import { EntityRegistry } from "../../GameState/EntityRegistry.js";
+import { EntityRegistry, addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { KineticSession } from "../../GameState/KineticSession.js";
 import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import { CircleShape } from "../../Libraries/Spatial/collision/Shapes.js";
+import { WorldProp } from "../../Entities/WorldProp.js";
 import { createDefaultMapGenBoundsConfig } from "../../Libraries/Sandbox/mapGenBounds.js";
 import { resetKineticConstraintIds } from "../../Libraries/Motion/kineticConstraints.js";
 import { spawnLinkedBallChain } from "../../Libraries/Sandbox/spawnLinkedBallChain.js";
@@ -12,7 +14,8 @@ import { createHpaGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/hp
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
-import { resolveSnakeNavWalkableFloodSeedBounds, spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
+import { resolveSnakeNavWalkableFloodSeedBounds } from "../../Libraries/Game/snake/snakeScene.js";
+import { SNAKE_SHARD_PROP_ID } from "../../Libraries/Game/snake/snakeSegmentFracture.js";
 import { createWorkerNavigation } from "../../Libraries/Navigation/WorkerNavigationFactory.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
 import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
@@ -113,6 +116,15 @@ export function primeSnakeHeadVision(state, seeker, visionCone) {
     beginSnakePerceptionFrame(state);
     return getObserverVisionFrame(state).ensureHeadVision(seeker, visionCone);
 }
+export function spawnSnakeFoodShardAtCell(state, cell, { foodValue = null } = {}) {
+    const { x, y } = state.obstacleGrid.gridToWorld(cell.col, cell.row);
+    const shard = new WorldProp(x, y, SNAKE_SHARD_PROP_ID, 0);
+    shard.shape = new CircleShape(2);
+    shard.radius = 2;
+    shard.snakeFoodValue = foodValue ?? getSnakeGameConfig().metabolism.foodValue;
+    addWorldPropToState(state, shard);
+    return shard;
+}
 export async function buildSnakeGameSession(state) {
     applySnakeGameConfig();
     resetKineticConstraintIds(1);
@@ -131,12 +143,12 @@ export async function buildSnakeGameSession(state) {
         },
     );
     wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
-    const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
+    const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 });
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
-    const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById, eatRadius: 20, rng: () => 0 });
+    const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, behaviorById, eatRadius: 20, rng: () => 0 });
     autosim.start();
     return {
-        goal,
+        food,
         cameraTarget: chain.head,
         tick(dt) {
             autosim.tick(dt);

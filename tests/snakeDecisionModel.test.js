@@ -36,11 +36,11 @@ describe("snake hunger facts (PR1)", () => {
     });
 });
 describe("snake intent scoring parity (PR2)", () => {
-    it("scored policy reproduces the legacy threat>prey>food>explore cascade", () => {
-        applySnakeGameConfig({ decisionWeights: { flee: 400, prey: 300, food: 200, explore: 100 } });
+    it("scored policy prefers shard food over prey while preserving threat and explore ordering", () => {
+        applySnakeGameConfig({ decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } });
         const cases = [
             { in: world({ threat: snake(1), prey: snake(2), food: snake(3) }), mode: "flee" },
-            { in: world({ prey: snake(2), food: snake(3) }), mode: "seek_prey" },
+            { in: world({ prey: snake(2), food: snake(3) }), mode: "seek_food" },
             { in: world({ food: snake(3) }), mode: "seek_food" },
             { in: world(), mode: "explore" },
         ];
@@ -50,9 +50,9 @@ describe("snake intent scoring parity (PR2)", () => {
         }
     });
     it("stores candidate scores and chosen reason on the snapshot", () => {
-        applySnakeGameConfig({ decisionWeights: { flee: 400, prey: 300, food: 200, explore: 100 } });
+        applySnakeGameConfig({ decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } });
         const { decisionSnapshot } = context(world({ food: snake(9) }));
-        assert.deepEqual(decisionSnapshot.candidateScores, { flee: -Infinity, seek_prey: -Infinity, seek_food: 200, explore: 100 });
+        assert.deepEqual(decisionSnapshot.candidateScores, { flee: -Infinity, seek_prey: -Infinity, seek_food: 340, explore: 100 });
         assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
         assert.equal(decisionSnapshot.chosenReason, null);
     });
@@ -119,8 +119,8 @@ describe("committed target effort uses route length", () => {
     it("surfaces effort fields on the decision snapshot", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
         const { decisionSnapshot } = context(world({ food: snake(3), foodDist: 4 }), { foodFraction: 0.5 });
-        assert.deepEqual(decisionSnapshot.candidateScoreDetails.seek_food, { value: 260, reach: 4, cost: 80, net: 180 });
-        assert.equal(decisionSnapshot.candidateScores.seek_food, 180);
+        assert.deepEqual(decisionSnapshot.candidateScoreDetails.seek_food, { value: 490, reach: 4, cost: 80, net: 410 });
+        assert.equal(decisionSnapshot.candidateScores.seek_food, 410);
     });
 });
 describe("threat severity facts (PR6)", () => {
@@ -134,7 +134,7 @@ describe("threat severity facts (PR6)", () => {
         assert.equal(deriveSnakeThreatState(snake(1), 64).lethal, false);
     });
     it("surfaces threatState on the snapshot without changing the chosen mode", () => {
-        applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 48, decisionWeights: { flee: 400, prey: 300, food: 200, explore: 100 } });
+        applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 48, decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } });
         const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2), threatDist: 64 }));
         assert.equal(decisionSnapshot.threatState.severity, 0.5);
         assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
@@ -143,8 +143,8 @@ describe("threat severity facts (PR6)", () => {
 function applyScoringConfig() {
     applySnakeGameConfig({
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
-        decisionWeights: { flee: 400, prey: 300, food: 200, explore: 100 },
-        decisionPressure: { foodHungerBonus: 120, preyDesperationBonus: 250 },
+        decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 },
+        decisionPressure: { foodHungerBonus: 300, preyDesperationBonus: 250 },
     });
 }
 describe("hunger pressure and route-awareness (PR5)", () => {
@@ -169,10 +169,10 @@ describe("hunger pressure and route-awareness (PR5)", () => {
         const { decisionSnapshot } = context(world({ prey: snake(2), food: snake(3), preyDist: 50, foodDist: 1 }), { foodFraction: 0.1, routeStatus: { routeFailed: false } });
         assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
     });
-    it("a merely hungry snake still prefers prey over reachable food", () => {
+    it("a merely hungry snake prefers reachable shard food over prey", () => {
         applyScoringConfig();
         const { decisionSnapshot } = context(world({ prey: snake(2), food: snake(3), preyDist: 1, foodDist: 1 }), { foodFraction: 0.5, routeStatus: { routeFailed: false } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
+        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
     });
 });
 function applyRiskConfig() {
@@ -180,8 +180,8 @@ function applyRiskConfig() {
         fleeRange: 128,
         lethalThreatRange: 48,
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
-        decisionWeights: { flee: 400, prey: 300, food: 200, explore: 100 },
-        decisionPressure: { foodHungerBonus: 120, preyDesperationBonus: 250, riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 } },
+        decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 },
+        decisionPressure: { foodHungerBonus: 300, preyDesperationBonus: 250, riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 } },
     });
 }
 describe("hunger overrides flee for food (PR7)", () => {
@@ -242,7 +242,11 @@ describe("sprint intent facts (PR9)", () => {
     it("sprints to chase prey", () => {
         assert.deepEqual(deriveSprintIntent("seek_prey", null), { want: true, reason: "chase" });
     });
-    it("never sprints while seeking food or exploring", () => {
+    it("sprints to grab food under a serious non-lethal threat", () => {
+        applySnakeGameConfig({ sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 } });
+        assert.deepEqual(deriveSprintIntent("seek_food", { severity: 0.8, lethal: false }), { want: true, reason: "feed" });
+    });
+    it("does not sprint for safe food or exploring", () => {
         assert.equal(deriveSprintIntent("seek_food", null).want, false);
         assert.equal(deriveSprintIntent("explore", null).want, false);
     });

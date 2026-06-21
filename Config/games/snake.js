@@ -4,13 +4,12 @@ export const SNAKE_KINETIC_MIN_STRIKE_SPEED = 28;
 export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
-    goalPropId: "goal_orb",
-    snakeCount: 250,
-    goalCount: 500,
+    snakeCount: 100,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,
     eatMargin: 2,
+    foodPickupRadius: 2,
     growDirX: -1,
     growDirY: 0,
     /** Optional cap on head roll speed; null uses global groundNavRoll.maxSpeed. */
@@ -39,9 +38,6 @@ export const SNAKE_GAME_DEFAULTS = {
     navMemoryStepFalloff: 0.65,
     /** When no cell meets exploreMinTiles, retry with this minimum distance. */
     exploreFallbackMinTiles: 1,
-    /** Min Chebyshev distance when teleporting an eaten goal to a new cell (fallback if none). */
-    goalRelocateMinTiles: 8,
-    goalRelocateFallbackMinTiles: 1,
     showMemoryHeatmap: false,
     memoryHeatmap: { bucketCount: 8, fillRgb: "180, 100, 255", fillAlphaMax: 0.12, fillAlphaMin: 0.02 },
     /** Off-screen snakes run full FOV sync every N ticks (on-screen = every tick). */
@@ -80,11 +76,8 @@ export const SNAKE_GAME_DEFAULTS = {
     metabolism: { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 },
     /** Hunger-bar cutoffs for the satisfied/hungry/desperate facts (1 = just ate, 0 = starving). */
     hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
-    /**
-     * Decision scoring base weights. Non-overlapping bands reproduce the legacy
-     * threat > prey > food > explore cascade; hunger/route pressure adjusts on top.
-     */
-    decisionWeights: { flee: 400, prey: 300, food: 200, explore: 100 },
+    /** Decision scoring base weights. Shard food is safer than live prey, with threat and route pressure layered on top. */
+    decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 },
     /**
      * Hunger/route pressure layered on top of the base weights.
      * foodHungerBonus scales the food score by how empty the food timer is.
@@ -92,7 +85,7 @@ export const SNAKE_GAME_DEFAULTS = {
      * food is unknown or its route recently failed.
      */
     decisionPressure: {
-        foodHungerBonus: 120,
+        foodHungerBonus: 300,
         preyDesperationBonus: 250,
         /** How much a snake discounts a (non-lethal) threat by hunger when scoring flee. 0 = always flee. */
         riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 },

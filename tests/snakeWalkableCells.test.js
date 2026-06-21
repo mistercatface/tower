@@ -42,14 +42,14 @@ async function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
 }
 describe("snake navWalkable session", () => {
     it("spawnSnakeCavernScene returns navWalkable bound to playable bounds", async () => {
-        applySnakeGameConfig({ snakeCount: 2, goalCount: 3 });
+        applySnakeGameConfig({ snakeCount: 2 });
         const state = await createSnakeWalkableTestState(48, 1337);
         const scene = await spawnSnakeCavernScene(state);
         assert.ok(scene.navWalkable);
         assert.ok(scene.navWalkable.cells().length >= 80);
     });
     it("wired navWalkable serves explore picks after wireSnakeGameRegistry", async () => {
-        applySnakeGameConfig({ snakeCount: 2, goalCount: 3 });
+        applySnakeGameConfig({ snakeCount: 2 });
         const state = await createSnakeWalkableTestState(48, 1337);
         const scene = await spawnSnakeCavernScene(state);
         wireSnakeGameRegistry(state, createSnakeLifecycleRegistry(), new Map(), scene.navWalkable);

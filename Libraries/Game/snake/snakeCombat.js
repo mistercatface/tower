@@ -47,15 +47,6 @@ export function snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSeg
     const hit = contactWorldPointForBody(spatialFrame, contacts, i, struckBody);
     return { worldX: hit.x, worldY: hit.y, impactForce: impactForce ?? Math.hypot(contacts.preDvx[i], contacts.preDvy[i]), struckSegmentId, spatialFrame };
 }
-function rewardPredatorForKill(state, snakeGame, predatorHeadId, preyHeadId, preyHeadProp = null) {
-    if (!snakeGame.registry.deadHeadIds.has(preyHeadId)) return;
-    const autosim = snakeGame.autosimsByHeadId.get(predatorHeadId);
-    if (!autosim?.onPreyKilled) return;
-    const { foodValue, growthCost } = getSnakeGameConfig().metabolism;
-    const rewardCount = Math.max(1, Math.ceil(growthCost / Math.max(foodValue, 1e-6)));
-    const preyHead = preyHeadProp ?? state.entityRegistry.get(preyHeadId);
-    for (let i = 0; i < rewardCount; i++) autosim.onPreyKilled(preyHead);
-}
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
     const config = getSnakeGameConfig();
@@ -88,11 +79,8 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         const linkKey = `${victimMembers[strikeIndex]}:${victimMembers[strikeIndex + 1]}`;
         if (splitLinks.has(linkKey)) continue;
         splitLinks.add(linkKey);
-        const preyWasDead = snakeGame.registry.deadHeadIds.has(smallerHead);
-        const preyHeadProp = state.entityRegistry.get(smallerHead);
         const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId, smallerBody, relSpeed);
         splitSnakeAtStruckSegment(state, snakeGame, smallerHead, struckSegmentId, victimMembers, deathImpact);
-        if (!preyWasDead) rewardPredatorForKill(state, snakeGame, largerHead, smallerHead, preyHeadProp);
     }
 }
 function restoreHunterContactDrive(hunterHead, hunterPhysId, preyHead) {

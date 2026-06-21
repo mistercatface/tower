@@ -1,5 +1,5 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
-import { linkedChainOccupiedCellIndices, growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
+import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createBrain } from "../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../AI/brain/syncSpatialBrain.js";
@@ -8,17 +8,17 @@ import { formatSnakeFsmDebug } from "./snakeFsmDebugOverlays.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius, applySnakeSegmentGameplay } from "./snakeGameConfig.js";
-import { SNAKE_CHAIN_EXPORT_TYPE, pickGoalRelocateCell, relocateGoalOrb } from "./snakeScene.js";
+import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainTintFromHead, resolveSnakeChainTintHex, tintSnakeChain } from "./snakeChainColor.js";
 import { deriveSnakeHungerState } from "./snakeDecisionModel.js";
-import { findNearestVisibleSnakeGoal, findNearestVisibleSnakeGoalFromVision } from "./snakeGoals.js";
+import { findNearestVisibleSnakeFood, findNearestVisibleSnakeFoodFromVision } from "./snakeFood.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
 import { enforceSnakeMinLength } from "./snakeCombat.js";
 import { getSnakeInstance } from "./SnakeInstance.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
-export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
+export { findSnakeFoodProp, collectSnakeFoodProps, countLiveSnakeFood, findNearestSnakeFood, findNearestVisibleSnakeFood } from "./snakeFood.js";
 export function createSnakeBrain(visionConeOverride) {
     const config = getSnakeGameConfig();
     const brain = createBrain({ spatialMemoryCapacity: config.spatialMemoryCapacity });
@@ -47,10 +47,9 @@ function runSnakeFsmTick(intent, seeker, state, dt, beforeNav = null) {
     if (soloTick) endSnakePerceptionFrame(state);
     return choice;
 }
-export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkable, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null, initialFoodFraction = 1 }) {
+export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null, initialFoodFraction = 1 }) {
     const config = getSnakeGameConfig();
     let tailId = null;
-    let pinnedGoalId = goalPropId;
     const members = chainMemberProps(state, headId);
     tailId = members[members.length - 1].id;
     const resolvedBallType = ballType ?? config.segmentPropId;
@@ -64,16 +63,9 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
     const resolvedVisionCone = visionCone ?? config.visionCone;
     const metabolism = createSnakeMetabolism();
     const resolveVisibleFood = (seeker, gameState, visionContext = null) => {
-        const nearest = visionContext
-            ? findNearestVisibleSnakeGoalFromVision(gameState, seeker, visionContext.frame, visionContext.vision, visionContext.visionCone)
-            : findNearestVisibleSnakeGoal(gameState, seeker, resolvedVisionCone);
-        if (pinnedGoalId != null) {
-            const pinned = gameState.entityRegistry.getLive(pinnedGoalId);
-            if (pinned) {
-                if (nearest && nearest.id === pinned.id) return pinned;
-            } else pinnedGoalId = null;
-        }
-        return nearest;
+        return visionContext
+            ? findNearestVisibleSnakeFoodFromVision(gameState, seeker, visionContext.frame, visionContext.vision, visionContext.visionCone)
+            : findNearestVisibleSnakeFood(gameState, seeker, resolvedVisionCone);
     };
     const intent = createSnakeForageIntent({
         brain,
@@ -97,7 +89,6 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
     let sprinting = false;
     let baseMaxSpeed = null;
     let baseAccel = null;
-    const pendingPreyFoodRewards = [];
     const applySprintState = (seeker, segmentCount) => {
         if (baseMaxSpeed === null) {
             const baseRoll = getKineticRollConfig(seeker);
@@ -139,44 +130,21 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         applySnakeSegmentGameplay(newTail);
         tailId = newTail.id;
     };
-    const feedAndGrow = (members = null) => {
-        let pending = feedSnakeMetabolism(metabolism);
+    const feedAndGrow = (foodValue, members = null) => {
+        let pending = feedSnakeMetabolism(metabolism, foodValue);
         while (pending > 0 && chainMemberProps(state, headId).length < config.maxAliveSegmentCount) {
             growOneSegment(members);
             pending--;
         }
     };
-    const eatGoal = (seeker, goal, _dt, members = null) => {
+    const eatFoodShard = (seeker, food, _dt, members = null) => {
         const grid = state.obstacleGrid;
-        const goalCell = grid.worldToGrid(goal.x, goal.y);
-        brain.stampArrival(goalCell.col, goalCell.row);
-        if (pinnedGoalId === goal.id) pinnedGoalId = null;
+        const foodCell = grid.worldToGrid(food.x, food.y);
+        brain.stampArrival(foodCell.col, foodCell.row);
         intent.clearTrackedGoal();
         intent.headNav.clearDestination();
-        feedAndGrow(members);
-        const seekerCell = grid.worldToGrid(seeker.x, seeker.y);
-        const occupied = linkedChainOccupiedCellIndices(chainMemberProps(state, headId), grid);
-        const newCell = pickGoalRelocateCell(state, navWalkable, seekerCell, { excludeIndices: occupied, rng });
-        if (!newCell) return;
-        relocateGoalOrb(state, goal, newCell, { skipHeadId: headId });
-    };
-    const applyPendingPreyFoodRewards = () => {
-        if (!pendingPreyFoodRewards.length) return false;
-        while (pendingPreyFoodRewards.length) {
-            const preyCell = pendingPreyFoodRewards.shift();
-            if (preyCell) brain.stampArrival(preyCell.col, preyCell.row);
-            feedAndGrow();
-        }
-        intent.clearTrackedGoal();
-        intent.headNav.clearDestination();
-        return true;
-    };
-    const onGoalRelocated = (goal) => {
-        if (!active || intent.getTargetId() !== goal.id || intent.getMode() !== "seek_food") return;
-        const seeker = resolveSeeker();
-        if (!seeker) return;
-        const cell = state.obstacleGrid.worldToGrid(goal.x, goal.y);
-        intent.headNav.setDestination(state.obstacleGrid, cell.col, cell.row);
+        removeSandboxWorldProp(state, food);
+        feedAndGrow(food.snakeFoodValue ?? config.metabolism.foodValue, members);
     };
     return {
         headId,
@@ -222,12 +190,6 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         isSprinting() {
             return sprinting;
         },
-        onPreyKilled(preyHead) {
-            pendingPreyFoodRewards.push(preyHead ? state.obstacleGrid.worldToGrid(preyHead.x, preyHead.y) : null);
-        },
-        flushPendingPreyFoodRewards() {
-            return applyPendingPreyFoodRewards();
-        },
         getFsmDebugLine() {
             return formatSnakeFsmDebug(this.getFsmSnapshot());
         },
@@ -247,14 +209,13 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
                 return;
             }
             if (enforceSnakeMinLength(state, snakeGame, headId, members)) return;
-            if (applyPendingPreyFoodRewards()) return;
             if (intent.getMode() === "seek_food" && intent.getTargetId() != null) {
-                const goal = state.entityRegistry.getLive(intent.getTargetId());
-                if (goal && !goal.isDead) {
-                    const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
+                const food = state.entityRegistry.getLive(intent.getTargetId());
+                if (food && !food.isDead) {
+                    const dist = Math.hypot(food.x - seeker.x, food.y - seeker.y);
                     const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
                     if (dist <= radius) {
-                        eatGoal(seeker, goal, dtMs, members);
+                        eatFoodShard(seeker, food, dtMs, members);
                         return;
                     }
                 }
@@ -263,17 +224,16 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
             syncIntentTint();
             let fedThisTick = false;
             if (choice.mode === "seek_food" && choice.target) {
-                const goal = choice.target;
-                const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
+                const food = choice.target;
+                const dist = Math.hypot(food.x - seeker.x, food.y - seeker.y);
                 const radius = typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius;
                 if (dist <= radius) {
-                    eatGoal(seeker, goal, dtMs, members);
+                    eatFoodShard(seeker, food, dtMs, members);
                     fedThisTick = true;
                 }
             }
             const drainMultiplier = sprinting ? config.sprint.hungerDrainMultiplier : 1;
             if (!fedThisTick && tickSnakeMetabolism(state, headId, metabolism, dtMs, members, drainMultiplier)) syncTailId();
         },
-        onGoalRelocated,
     };
 }

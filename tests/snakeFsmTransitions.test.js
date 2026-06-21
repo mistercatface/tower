@@ -19,10 +19,9 @@ import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT } from "../Libraries/Game/snake/snakeChainColor.js";
-import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
-import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireSnakeTestGame, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 
@@ -138,7 +137,6 @@ describe("snake FSM transitions", () => {
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
         const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
-        spawnGoalOrbAtCell(state, { col: 16, row: 13 });
         wireSnakeTestGame(state, [
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
@@ -186,8 +184,8 @@ describe("snake FSM transitions", () => {
         const state = await createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 4, row: 8 }, chainOptions());
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
-        spawnGoalOrbAtCell(state, { col: 7, row: 8 });
-        spawnGoalOrbAtCell(state, { col: 14, row: 8 });
+        spawnSnakeFoodShardAtCell(state, { col: 7, row: 8 });
+        spawnSnakeFoodShardAtCell(state, { col: 14, row: 8 });
         stampWall(state.obstacleGrid, 5, 8);
         stampWall(state.obstacleGrid, 6, 8);
         stampWall(state.obstacleGrid, 7, 8);
@@ -239,7 +237,6 @@ describe("snake FSM transitions", () => {
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
         const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
-        const goal = spawnGoalOrbAtCell(state, { col: 12, row: 10 });
         wireSnakeTestGame(state, [
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
@@ -250,11 +247,12 @@ describe("snake FSM transitions", () => {
         const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
+        const food = spawnSnakeFoodShardAtCell(state, { col: 12, row: 10 });
         prey.head.isDead = true;
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "seek_food");
         assert.equal(autosim.getLastTransitionReason(), "target_lost");
-        assert.equal(autosim.getDestination().col, state.obstacleGrid.worldToGrid(goal.x, goal.y).col);
+        assert.equal(autosim.getDestination().col, state.obstacleGrid.worldToGrid(food.x, food.y).col);
     });
 
     it("keeps chasing last-seen prey briefly when LOS drops and food is visible", async () => {
@@ -263,7 +261,6 @@ describe("snake FSM transitions", () => {
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
         const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
-        spawnGoalOrbAtCell(state, { col: 12, row: 10 });
         wireSnakeTestGame(state, [
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
@@ -275,6 +272,7 @@ describe("snake FSM transitions", () => {
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
         const lastSeenDest = autosim.getDestination();
+        spawnSnakeFoodShardAtCell(state, { col: 12, row: 10 });
 
         stampWall(state.obstacleGrid, 12, 10);
         autosim.tick(FRAME_MS);
@@ -296,7 +294,6 @@ describe("snake FSM transitions", () => {
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
         const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
-        const goal = spawnGoalOrbAtCell(state, { col: 14, row: 13 });
         wireSnakeTestGame(state, [
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
@@ -307,15 +304,13 @@ describe("snake FSM transitions", () => {
         const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
+        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 13 });
 
         stampWall(state.obstacleGrid, 12, 10);
         autosim.tick(FRAME_MS);
-        assert.equal(autosim.getMode(), "seek_prey");
-        autosim.tick(FRAME_MS);
-
         assert.equal(autosim.getMode(), "seek_food");
         assert.equal(autosim.getLastTransitionReason(), "target_lost");
-        assert.equal(autosim.getTargetId(), goal.id);
+        assert.equal(autosim.getTargetId(), food.id);
     });
 
     it("seek_food transitions to flee when a larger snake appears", async () => {
@@ -328,7 +323,7 @@ describe("snake FSM transitions", () => {
             { headId: small.head.id, spawnGroupId: small.spawnGroupId },
             { headId: large.head.id, spawnGroupId: large.spawnGroupId },
         ]);
-        spawnGoalOrbAtCell(state, { col: 8, row: 10 });
+        spawnSnakeFoodShardAtCell(state, { col: 8, row: 10 });
         small.head.facing = 0;
         large.head.x = small.head.x + 200;
         large.head.y = small.head.y;

@@ -98,6 +98,7 @@ export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = n
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const motion = currentSegmentMotion(segment);
+    const foodValue = getSnakeGameConfig().metabolism.growthCost / geometries.length;
     const spawned = [];
     for (let i = 0; i < geometries.length; i++) {
         const geom = geometries[i];
@@ -109,6 +110,7 @@ export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = n
         shard.vx = motion.vx;
         shard.vy = motion.vy;
         shard.angularVelocity = motion.w;
+        shard.snakeFoodValue = foodValue;
         shard._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
         addWorldPropToState(state, shard);
         wakeKineticBody(shard);

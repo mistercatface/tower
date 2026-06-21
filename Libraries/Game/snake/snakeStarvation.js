@@ -22,11 +22,11 @@ export function setSnakeHunger(metabolism, fraction) {
     metabolism.hunger = Math.max(0, Math.min(1, fraction));
     metabolism.starveMs = 0;
 }
-/** Eat one food: refill hunger first, spill the overflow into growth. Returns segments to grow. */
-export function feedSnakeMetabolism(metabolism) {
+/** Eat food: refill hunger first, spill the overflow into growth. Returns segments to grow. */
+export function feedSnakeMetabolism(metabolism, value = getSnakeGameConfig().metabolism.foodValue) {
     const { foodValue, growthCost } = getSnakeGameConfig().metabolism;
     metabolism.starveMs = 0;
-    metabolism.hunger += foodValue;
+    metabolism.hunger += value ?? foodValue;
     if (metabolism.hunger <= 1) return 0;
     metabolism.growth += metabolism.hunger - 1;
     metabolism.hunger = 1;

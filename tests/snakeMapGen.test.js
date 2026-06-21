@@ -7,7 +7,6 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { collectSnakeGoalProps } from "../Libraries/Game/snake/snakeGoals.js";
 import { generateSnakeSplitMap, resolveCenterSnakeSpawnAnchor, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
@@ -148,23 +147,16 @@ describe("snake split map generation", () => {
         const state = await createSnakeMapGenTestState(64, 42);
         const scene = await spawnSnakeCavernScene(state);
         const centerSnake = scene.snakes[0];
-        const expectedAnchor = resolveCenterSnakeSpawnAnchor(state, scene.navWalkable, { segmentCount: getSnakeGameConfig().segmentCount });
+        const expectedAnchor = resolveCenterSnakeSpawnAnchor(state, scene.navWalkable, { segmentCount: centerSnake.chain.members.length });
         const headCell = state.obstacleGrid.worldToGrid(centerSnake.chain.head.x, centerSnake.chain.head.y);
         assert.equal(headCell.col, expectedAnchor.col);
         assert.equal(headCell.row, expectedAnchor.row);
     });
-    it("places food in the lower rail maze, not only the upper cavern", async () => {
-        applySnakeGameConfig({ snakeCount: 1, goalCount: 40 });
+    it("does not spawn goal_orb food in snake mode", async () => {
+        applySnakeGameConfig({ snakeCount: 1 });
         const state = await createSnakeMapGenTestState(64, 42);
-        await spawnSnakeCavernScene(state);
-        const { railConfig } = state.editor;
-        const railRow0 = railConfig.boundsRow;
-        const railRow1 = railConfig.boundsRow + railConfig.boundsRows - 1;
-        let inRail = 0;
-        for (const goal of collectSnakeGoalProps(state)) {
-            const { row } = state.obstacleGrid.worldToGrid(goal.x, goal.y);
-            if (row >= railRow0 && row <= railRow1) inRail++;
-        }
-        assert.ok(inRail >= 5, `expected food in rail zone, got ${inRail} of 40 goals`);
+        const scene = await spawnSnakeCavernScene(state);
+        assert.deepEqual(scene.goals, []);
+        assert.equal(state.worldProps.some((prop) => prop.type === "goal_orb"), false);
     });
 });

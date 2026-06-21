@@ -15,7 +15,7 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Li
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { wireSnakeTestGame, createWiredSnakeAutosim, createSnakeNavWalkable, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
-import { spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
+import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { HPA_REPLAN_PEAK_INFLIGHT_CAP } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
@@ -75,14 +75,13 @@ function buildMultiSnakeSession(state) {
     const config = getSnakeGameConfig();
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
     const { autosimsByHeadId, snakeGame } = wireSnakeTestGame(state);
-    const navWalkable = snakeGame.navWalkable;
     const autosims = [];
     let excludeIndices = null;
     const specs = resolveSnakeSpawnSpecs(config);
     for (let i = 0; i < specs.length; i++) {
         const col = 4 + (i % 8) * 3;
         const row = 4 + Math.floor(i / 8) * 3;
-        const pack = spawnSnakeChain(state, { col, row }, { excludeIndices, segmentCount: config.segmentCount, rng: () => (i * 0.13) % 1 });
+        const pack = spawnSnakeChain(state, { col, row }, { excludeIndices, segmentCount: specs[i].segmentCount, rng: () => (i * 0.13) % 1 });
         excludeIndices = pack.occupiedIndices;
         registerSnakeTestInstance(state, state.sandbox.snakeGame, {
             headId: pack.chain.head.id,
@@ -93,12 +92,11 @@ function buildMultiSnakeSession(state) {
         autosimsByHeadId.set(pack.chain.head.id, autosim);
         autosims.push({ autosim, head: pack.chain.head });
     }
-    spawnSnakeGoalPool(state, config.goalCount, navWalkable, { excludeIndices, rng: () => 0.42 });
     return { autosims };
 }
 describe("snakePerfBudget", () => {
     it("50 snakes with brains stay within wall-clock and replan budget", async () => {
-        applySnakeGameConfig({ snakeCount: 50, goalCount: 100, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4 });
+        applySnakeGameConfig({ snakeCount: 50, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4 });
         resetKineticConstraintIds(1);
         resetVisionFullBuildCount();
         const state = await createPerfState();

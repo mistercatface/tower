@@ -17,6 +17,7 @@ export function deriveSnakeThreatState(visibleThreat, threatDist) {
 }
 export function deriveSprintIntent(mode, threatState) {
     if (mode === "flee" && threatState && (threatState.lethal || threatState.severity >= getSnakeGameConfig().sprint.fleeSeverity)) return { want: true, reason: "escape" };
+    if (mode === "seek_food" && threatState && !threatState.lethal && threatState.severity >= getSnakeGameConfig().sprint.fleeSeverity) return { want: true, reason: "feed" };
     if (mode === "seek_prey") return { want: true, reason: "chase" };
     return { want: false, reason: "none" };
 }
