@@ -12,6 +12,8 @@ import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snak
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { SnakeInstance, createAliveSnakeInstance, registerAliveSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
+import { steerRollToward, applyGroundRollDrive } from "../Libraries/Sandbox/kineticRollActuator.js";
+import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../Libraries/Game/snake/snakeSteeringLease.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
@@ -64,8 +66,37 @@ describe("SnakeInstance", () => {
             autosim: { stop() { delete head._groundRollDrive; } },
             lifecycle: "alive",
         });
-        instance.stopSteering();
+        instance.stopSteering(state);
         assert.equal(head._groundRollDrive, undefined);
+        assert.ok(head._snakeSteering);
+        assert.notEqual(head._snakeSteering.epoch, instance.steeringEpoch);
+    });
+
+    it("steering lease blocks roll drive after revoke", () => {
+        applySnakeGameConfig({ segmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
+        const head = pack.chain.head;
+        const registry = createSnakeLifecycleRegistry();
+        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+        const instance = new SnakeInstance({
+            headId: head.id,
+            spawnGroupId: pack.chain.spawnGroupId,
+            autosim: { start() {}, stop() {} },
+            lifecycle: "alive",
+        });
+        registerAliveSnakeInstance(state.sandbox.snakeGame, instance);
+        grantSnakeSteeringLease(instance, state);
+        steerRollToward(head, 1, 0, { accel: 600, maxSpeed: 180 }, state);
+        assert.ok(head._groundRollDrive);
+        revokeSnakeSteeringLease(instance, state);
+        steerRollToward(head, 1, 0, { accel: 600, maxSpeed: 180 }, state);
+        assert.equal(head._groundRollDrive, undefined);
+        head._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 600, maxSpeed: 180 };
+        applyGroundRollDrive(head, 1 / 60, state);
+        assert.equal(head._groundRollDrive, undefined);
+        assert.equal(head.vx, 0);
     });
 
     it("retireAllSegments clears roll drive on every member", () => {

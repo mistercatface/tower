@@ -2,6 +2,7 @@ import { applyKineticAcceleration } from "../Motion/applyAcceleration.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getPhysicsSettings } from "../../Core/GamePhysicsSettings.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
+import { isSnakeSteeringLeaseValid } from "../Game/snake/snakeSteeringLease.js";
 export function snapMoveTargetToCellCenter(grid, world) {
     const { col, row } = grid.worldToGrid(world.x, world.y);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
@@ -41,16 +42,22 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
     applyRollSpin(prop);
     wakeKineticBody(prop);
 }
-export function steerRollToward(prop, dirX, dirY, config) {
-    if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config);
+export function steerRollToward(prop, dirX, dirY, config, world = null) {
+    if (prop._snakeSteering && (!world || !isSnakeSteeringLeaseValid(world, prop))) return;
+    if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config, world);
     prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: config.maxSpeed };
     wakeKineticBody(prop);
 }
-export function decelerateRoll(prop, config) {
+export function decelerateRoll(prop, config, world = null) {
+    if (prop._snakeSteering && (!world || !isSnakeSteeringLeaseValid(world, prop))) return;
     prop._groundRollDrive = { kind: "brake", accel: config.accel };
     wakeKineticBody(prop);
 }
-export function applyGroundRollDrive(prop, dtSec) {
+export function applyGroundRollDrive(prop, dtSec, world = null) {
+    if (prop._snakeSteering && world && !isSnakeSteeringLeaseValid(world, prop)) {
+        clearGroundRollDrive(prop);
+        return false;
+    }
     const drive = prop._groundRollDrive;
     if (!drive) return false;
     if (drive.kind === "brake") return applyRollBrake(prop, dtSec, drive.accel);

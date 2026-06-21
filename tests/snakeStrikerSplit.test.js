@@ -10,7 +10,8 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { SnakeInstance, registerAliveSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "../Libraries/Game/snake/snakeStriker.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
@@ -56,10 +57,18 @@ function snakeChainOptions(segmentCount) {
     };
 }
 
-function wireSnakeGame(state, registry, headId) {
+function wireSnakeGame(state, registry, snake) {
     const autosimsByHeadId = new Map();
-    autosimsByHeadId.set(headId, { stop() {} });
+    autosimsByHeadId.set(snake.headId, { stop() {} });
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
+    const instance = new SnakeInstance({
+        headId: snake.headId,
+        spawnGroupId: snake.spawnGroupId,
+        autosim: autosimsByHeadId.get(snake.headId),
+        lifecycle: "alive",
+    });
+    instance.syncMembersFromGraph(state);
+    registerAliveSnakeInstance(state.sandbox.snakeGame, instance);
     return autosimsByHeadId;
 }
 
@@ -85,8 +94,7 @@ describe("snake striker ball", () => {
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
         const registry = createSnakeLifecycleRegistry();
-        registerAliveSnake(registry, snake.chain.head.id);
-        wireSnakeGame(state, registry, snake.chain.head.id);
+        wireSnakeGame(state, registry, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
         const striker = spawnSnakeStriker(state, snake.chain.head);
         state.sandbox.snakeGame.strikerBall = striker;
         const struck = snake.chain.members[2];
@@ -112,8 +120,7 @@ describe("snake striker ball", () => {
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
         const registry = createSnakeLifecycleRegistry();
-        registerAliveSnake(registry, snake.chain.head.id);
-        wireSnakeGame(state, registry, snake.chain.head.id);
+        wireSnakeGame(state, registry, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
         const striker = spawnSnakeStriker(state, snake.chain.head);
         const head = snake.chain.head;
         striker.vx = 0;
@@ -138,8 +145,7 @@ describe("snake striker ball", () => {
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
         const registry = createSnakeLifecycleRegistry();
-        registerAliveSnake(registry, snake.chain.head.id);
-        wireSnakeGame(state, registry, snake.chain.head.id);
+        wireSnakeGame(state, registry, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
         const striker = spawnSnakeStriker(state, snake.chain.head);
         const struck = snake.chain.members[2];
         striker.vx = 5;

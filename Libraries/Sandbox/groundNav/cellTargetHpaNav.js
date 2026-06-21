@@ -146,13 +146,13 @@ export function createCellTargetHpaNav(state) {
         else strandedFrames++;
         const giveUpFrames = state.nav.settings.stuckReplanFrames;
         if (strandedFrames >= giveUpFrames) {
-            decelerateRoll(prop, config);
+            decelerateRoll(prop, config, state);
             clearDestination();
             return;
         }
         const allowNavUpdate = status.hasRoute || status.replanPending || strandedFrames <= 1;
         if (!allowNavUpdate) {
-            decelerateRoll(prop, config);
+            decelerateRoll(prop, config, state);
             return;
         }
         const { vx, vy, steering, beltWasOnBelt } = driveGroundNav({
@@ -170,10 +170,10 @@ export function createCellTargetHpaNav(state) {
         wasOnBelt = beltWasOnBelt;
         if (!steering) return;
         if (vx === 0 && vy === 0) {
-            decelerateRoll(prop, config);
+            decelerateRoll(prop, config, state);
             return;
         }
-        steerRollToward(prop, vx, vy, config);
+        steerRollToward(prop, vx, vy, config, state);
     };
     const getStatus = () => {
         const nav = hpaNav.navState;

@@ -11,6 +11,7 @@ import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeLifecycleRegistry, isAliveSnakeHead, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { SnakeInstance, registerAliveSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
 import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength, syncSnakeGameLifecycle } from "../Libraries/Game/snake/snakeCombat.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { steerRollToward } from "../Libraries/Sandbox/kineticRollActuator.js";
@@ -56,15 +57,25 @@ function stubAutosim() {
     return { start() {}, stop() {} };
 }
 
-function mockSnakeGame(state, headIds) {
+function mockSnakeGame(state, headIds, spawnGroupIdByHeadId = null) {
     const registry = createSnakeLifecycleRegistry();
     const autosimsByHeadId = new Map();
-    for (let i = 0; i < headIds.length; i++) {
-        registerAliveSnake(registry, headIds[i]);
-        autosimsByHeadId.set(headIds[i], stubAutosim());
-    }
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
-    return { registry, autosimsByHeadId };
+    const snakeGame = state.sandbox.snakeGame;
+    for (let i = 0; i < headIds.length; i++) {
+        const headId = headIds[i];
+        const autosim = stubAutosim();
+        autosimsByHeadId.set(headId, autosim);
+        const instance = new SnakeInstance({
+            headId,
+            spawnGroupId: spawnGroupIdByHeadId?.get(headId) ?? `test:${headId}`,
+            autosim,
+            lifecycle: "alive",
+        });
+        instance.syncMembersFromGraph(state);
+        registerAliveSnakeInstance(snakeGame, instance);
+    }
+    return snakeGame;
 }
 
 describe("snake split on impact", () => {

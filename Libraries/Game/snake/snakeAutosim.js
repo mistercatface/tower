@@ -14,6 +14,7 @@ import { findNearestVisibleSnakeGoal, findNearestVisibleSnakeGoalFromVision } fr
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
 import { enforceSnakeMinLength, killSnake } from "./snakeCombat.js";
+import { getSnakeInstance } from "./SnakeInstance.js";
 import { isValidAliveSnakeHead } from "./snakeLifecycle.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
@@ -173,7 +174,9 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
             const snakeGame = state.sandbox.snakeGame;
             const seeker = resolveSeeker();
             const members = getConnectedBodyIds(state.kinetic, headId);
-            if (!seeker || !isValidAliveSnakeHead(state, snakeGame.registry, headId)) {
+            const instance = getSnakeInstance(snakeGame, headId);
+            const steerable = instance ? instance.isSteerable(state, snakeGame.registry) : isValidAliveSnakeHead(state, snakeGame.registry, headId);
+            if (!seeker || !steerable) {
                 killSnake(state, snakeGame, headId, members);
                 return;
             }

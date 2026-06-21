@@ -30,7 +30,7 @@ export async function setupSnakeGame(state) {
         const snake = scene.snakes[i];
         const instance = createAliveSnakeInstance(state, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId, navWalkable: scene.navWalkable });
         registerAliveSnakeInstance(state.sandbox.snakeGame, instance);
-        instance.start();
+        instance.start(state);
     }
     const centerSnake = scene.snakes[0];
     let focusedHeadId = centerSnake.chain.head.id;

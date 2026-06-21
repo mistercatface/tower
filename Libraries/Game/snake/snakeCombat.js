@@ -2,7 +2,7 @@ import { removeChainLinkBetween, clearChainLinksForMembers } from "../../Sandbox
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
-import { getSnakeInstance } from "./SnakeInstance.js";
+import { getSnakeInstance, buildSnakeMemberToInstanceMap } from "./SnakeInstance.js";
 import {
     markSnakeDead,
     registerInertSnake,
@@ -70,18 +70,34 @@ export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struck
     if (instance) return instance.splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers);
     return splitSnakeAtStruckSegmentWithoutInstance(state, snakeGame, victimHeadId, struckSegmentId, victimMembers);
 }
+function resolveCombatInstances(state, snakeGame) {
+    const memberToInstance = buildSnakeMemberToInstanceMap(state, snakeGame);
+    if (memberToInstance.size > 0) return { memberToInstance, useInstances: true };
+    const registry = snakeGame.registry;
+    const memberToHead = buildAliveSnakeMemberHeadMap(registry, (headId) => orderedMembers(state, headId));
+    return { memberToHead, useInstances: false };
+}
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
     const config = getSnakeGameConfig();
-    const registry = snakeGame.registry;
-    const memberToHead = buildAliveSnakeMemberHeadMap(registry, (headId) => orderedMembers(state, headId));
+    const lookup = resolveCombatInstances(state, snakeGame);
     const splitLinks = new Set();
     for (let i = 0; i < contacts.count; i++) {
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
         if (!pair) continue;
-        const snakeHeadA = memberToHead.get(pair.bodyA.id);
-        const snakeHeadB = memberToHead.get(pair.bodyB.id);
-        if (snakeHeadA == null || snakeHeadB == null || snakeHeadA === snakeHeadB) continue;
+        let snakeHeadA;
+        let snakeHeadB;
+        if (lookup.useInstances) {
+            const instanceA = lookup.memberToInstance.get(pair.bodyA.id);
+            const instanceB = lookup.memberToInstance.get(pair.bodyB.id);
+            if (!instanceA || !instanceB || instanceA === instanceB) continue;
+            snakeHeadA = instanceA.headId;
+            snakeHeadB = instanceB.headId;
+        } else {
+            snakeHeadA = lookup.memberToHead.get(pair.bodyA.id);
+            snakeHeadB = lookup.memberToHead.get(pair.bodyB.id);
+            if (snakeHeadA == null || snakeHeadB == null || snakeHeadA === snakeHeadB) continue;
+        }
         const membersA = orderedMembers(state, snakeHeadA);
         const membersB = orderedMembers(state, snakeHeadB);
         const sizeA = snakeSizeScore(state, snakeHeadA, membersA);
@@ -106,6 +122,20 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
 }
 export function syncSnakeGameLifecycle(state, snakeGame) {
     const registry = snakeGame.registry;
+    const instances = snakeGame.instancesByHeadId;
+    if (instances?.size) {
+        for (const instance of instances.values()) instance.validate(state, snakeGame);
+        for (const entry of registry.inertByLeadId.values()) retireSnakeSegmentsFromNav(state, entry.memberIds);
+        sweepOrphanSnakeChains(state, snakeGame);
+        for (const headId of [...snakeGame.autosimsByHeadId.keys()]) {
+            if (registry.aliveByHeadId.has(headId)) continue;
+            const instance = getSnakeInstance(snakeGame, headId);
+            if (instance) instance.stopSteering(state);
+            else snakeGame.autosimsByHeadId.get(headId)?.stop?.();
+            snakeGame.autosimsByHeadId.delete(headId);
+        }
+        return;
+    }
     for (const entry of registry.inertByLeadId.values()) retireSnakeSegmentsFromNav(state, entry.memberIds);
     for (const headId of [...registry.aliveByHeadId.keys()]) {
         if (isValidAliveSnakeHead(state, registry, headId)) continue;

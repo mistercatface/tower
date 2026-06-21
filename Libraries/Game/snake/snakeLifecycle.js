@@ -4,6 +4,7 @@ import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { createSnakeGoalIndex, rebuildSnakeGoalIndex } from "./snakeGoalIndex.js";
 import { getSnakeGameConfig, resolveSnakeHeadBodyMaxDistance } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
+import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 export function isSnakeHeadPhysicallyAttached(state, headId) {
     const maxDistance = resolveSnakeHeadBodyMaxDistance();
     const members = getConnectedComponentPath(state.kinetic, headId);
@@ -19,10 +20,11 @@ export function isSnakeHeadPhysicallyAttached(state, headId) {
 export function retireSnakeSegmentsFromNav(state, memberIds) {
     const meta = getSandboxEntityMeta(state);
     for (let i = 0; i < memberIds.length; i++) {
-        const prop = state.entityRegistry.getLive(memberIds[i]);
+        const prop = state.entityRegistry.get(memberIds[i]);
         if (!prop) continue;
         meta.setChainHead(memberIds[i], false);
-        clearGroundRollDrive(prop);
+        if (prop._snakeSteering) clearSnakeSteeringLeaseFromProp(prop);
+        else clearGroundRollDrive(prop);
         prop.navStepPenalty = null;
     }
 }
@@ -110,13 +112,6 @@ export function sweepOrphanSnakeChains(state, snakeGame) {
         if (hasValidSteeredHead) continue;
         retireSnakeSegmentsFromNav(state, members);
     }
-}
-export function resolveAliveSnakeHeadId(registry, orderedMemberIdsForHead, propId) {
-    for (const headId of registry.aliveByHeadId.keys()) {
-        const members = orderedMemberIdsForHead(headId);
-        for (let i = 0; i < members.length; i++) if (members[i] === propId) return headId;
-    }
-    return null;
 }
 export function buildAliveSnakeMemberHeadMap(registry, orderedMemberIdsForHead) {
     const memberToHead = new Map();
