@@ -1,5 +1,6 @@
 import { cellInRect, CARDINAL_OFFSETS, colRowToIndex, gridCellLayout } from "../Libraries/Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides, floorBeltElbowTurn } from "../Libraries/Spatial/grid/FloorCell.js";
+import { countNavWalkableFlags, readNavWalkableFlag } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 const C = {
     void: "#09090b", // Zinc-950 (Out of bounds void background)
     floor: "#27272a", // Zinc-800 (Walkable floor tiles)
@@ -23,7 +24,7 @@ export function autoPxPerCell(playAreaCols, playAreaRows) {
     return Math.max(8, Math.min(20, fit));
 }
 export function drawSnakeSplitLayout(ctx, preview, options) {
-    const { grid, layout, walkableIndices, playableBounds, beltPlan } = preview;
+    const { grid, layout, navWalkableIndex, playableBounds, beltPlan } = preview;
     const { zones } = layout;
     const cellSize = grid.cellSize;
     const px = options.pxPerCell;
@@ -38,7 +39,7 @@ export function drawSnakeSplitLayout(ctx, preview, options) {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = C.void;
     ctx.fillRect(0, 0, w, h);
-    paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, walkableIndices, layers);
+    paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, navWalkableIndex, layers);
     if (layers.zones) paintZoneSeparators(ctx, zones, oCol, oRow, px, cols);
     if (layers.northReserve) paintNorthStrip(ctx, zones.railConfig, layout.northReserveRows, oCol, oRow, px);
     if (layers.rails) paintRails(ctx, grid, layout.rails, oCol, oRow, cols, rows, px, cellSize);
@@ -47,7 +48,7 @@ export function drawSnakeSplitLayout(ctx, preview, options) {
 function rect(gc, gr, oCol, oRow, px) {
     return { x: (gc - oCol) * px, y: (gr - oRow) * px, s: px };
 }
-function paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, walkableIndices, layers) {
+function paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, navWalkableIndex, layers) {
     const gap = px >= 8 ? 1 : 0;
     for (let gr = oRow; gr < oRow + rows; gr++)
         for (let gc = oCol; gc < oCol + cols; gc++) {
@@ -56,7 +57,7 @@ function paintCells(ctx, grid, zones, oCol, oRow, cols, rows, px, cellSize, walk
             let fill = C.floor;
             if (!cellInRect(col, row, grid.cols, grid.rows)) fill = C.void;
             else if (layers.voxels && grid.isBlocked(col, row)) fill = C.wall;
-            else if (layers.walkable && walkableIndices.has(colRowToIndex(col, row, grid.cols))) fill = "#1e3a8a"; // Beautiful deep navy for walkable
+            else if (layers.walkable && readNavWalkableFlag(navWalkableIndex.flags, navWalkableIndex.cols, col, row)) fill = "#1e3a8a"; // Beautiful deep navy for walkable
             ctx.fillStyle = fill;
             ctx.fillRect(r.x, r.y, r.s - gap, r.s - gap);
         }
@@ -211,7 +212,7 @@ export function suggestedPxPerCell(playAreaCols) {
     return autoPxPerCell(playAreaCols, playAreaCols);
 }
 export function layoutStats(preview) {
-    const { grid, layout, walkableIndices, playableBounds, beltPlan } = preview;
+    const { grid, layout, navWalkableIndex, playableBounds, beltPlan } = preview;
     const cellSize = grid.cellSize;
     let voxelCells = 0;
     let openCells = 0;
@@ -235,7 +236,7 @@ export function layoutStats(preview) {
         voxelCells,
         openCells,
         railEdges: layout.rails.length,
-        navWalkable: walkableIndices.size,
+        navWalkable: countNavWalkableFlags(navWalkableIndex.flags),
         beltCells: beltPlan?.floorBelts.length ?? 0,
         beltStraight: straightCount,
         beltElbows: elbowCount,

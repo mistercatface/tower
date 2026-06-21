@@ -4,6 +4,7 @@ import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { CARDINAL_OFFSETS, cellInRect, globalCellIdx, gridCellLayout, layoutCellIndex } from "../../Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
+import { isNavWalkableAt } from "./navWalkableIndex.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
 import { collectPathMouthExteriorIndices, filterNavBeltEndpointCandidates, validateBeltPathMouthAccess } from "./railMazeBeltEndpoints.js";
 import { createRailMazeNavCorridorPathfinder, findRailMazeNavCorridorPath } from "./railMazeNavCorridorPath.js";
@@ -41,8 +42,8 @@ function navWalkableNeighbors(grid, gridNavContext, col, row) {
     }
     return out;
 }
-/** @param {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} walkableGlobalIndices */
-export function collectRailMazeBeltZoneCells(grid, gridNavContext, railConfig, northReserveRows, walkableGlobalIndices) {
+/** @param {import("./navWalkableIndex.js").NavWalkableIndex} navWalkableIndex */
+export function collectRailMazeBeltZoneCells(grid, gridNavContext, railConfig, northReserveRows, navWalkableIndex) {
     const cellSize = grid.cellSize;
     const beltStartGlobalRow = railConfig.boundsRow + Math.max(0, Math.round(northReserveRows));
     const cells = [];
@@ -50,7 +51,7 @@ export function collectRailMazeBeltZoneCells(grid, gridNavContext, railConfig, n
         if (globalRow < beltStartGlobalRow) return;
         const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
-        if (!walkableGlobalIndices.has(globalCellIdx(col, row, grid.cols))) return;
+        if (!isNavWalkableAt(navWalkableIndex, col, row)) return;
         cells.push({ col, row, globalCol, globalRow });
     });
     return cells;
@@ -152,14 +153,14 @@ function pickRandomEndInLengthBand(start, endpointCells, occupiedGlobalIndices, 
     if (!candidates.length) return pickRandomFreeCell(endpointCells, occupiedGlobalIndices, gridCols, rng);
     return candidates[Math.floor(rng() * candidates.length)];
 }
-function planRandomNavCorridorPaths({ grid, gridNavContext, railConfig, zoneCells, walkableGlobalIndices, northReserveRows, corridorCount, corridorWidth, pathLengthMin, pathLengthMax, rng }) {
+function planRandomNavCorridorPaths({ grid, gridNavContext, railConfig, zoneCells, navWalkableIndex, northReserveRows, corridorCount, corridorWidth, pathLengthMin, pathLengthMax, rng }) {
     const globalLayout = gridCellLayout(grid);
     const endpointCells = filterNavBeltEndpointCandidates(
         grid,
         gridNavContext,
         zoneCells.map((cell) => ({ col: cell.col, row: cell.row })),
     );
-    const pathfinder = createRailMazeNavCorridorPathfinder(grid, gridNavContext, railConfig, walkableGlobalIndices);
+    const pathfinder = createRailMazeNavCorridorPathfinder(grid, gridNavContext, railConfig, navWalkableIndex);
     /** @type {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} */
     const occupiedGlobalIndices = collectNorthReserveProtectedIndices(grid, railConfig, northReserveRows);
     /** @type {{ c: number, r: number }[][]} */
@@ -193,7 +194,7 @@ export function planRailMazeCorridorBelts({
     gridNavContext,
     railConfig,
     northReserveRows,
-    walkableIndices,
+    navWalkableIndex,
     corridorCount = DEFAULT_CORRIDOR_COUNT,
     corridorWidth = 1,
     pathLengthMin = DEFAULT_PATH_LENGTH_MIN,
@@ -203,14 +204,14 @@ export function planRailMazeCorridorBelts({
     rng = null,
 }) {
     const globalLayout = gridCellLayout(grid);
-    const zoneCells = collectRailMazeBeltZoneCells(grid, gridNavContext, railConfig, northReserveRows, walkableIndices);
+    const zoneCells = collectRailMazeBeltZoneCells(grid, gridNavContext, railConfig, northReserveRows, navWalkableIndex);
     const random = rng ?? createSeededRng((mapSeed ^ BELT_PLAN_SEED_SALT) >>> 0);
     const { paths, widths } = planRandomNavCorridorPaths({
         grid,
         gridNavContext,
         railConfig,
         zoneCells,
-        walkableGlobalIndices: walkableIndices,
+        navWalkableIndex,
         northReserveRows,
         corridorCount,
         corridorWidth,
@@ -236,7 +237,7 @@ export function planRailMazeCorridorBeltsFromPreview(preview) {
         gridNavContext: preview.gridNavContext,
         railConfig: preview.railConfig,
         northReserveRows: preview.layout.northReserveRows,
-        walkableIndices: preview.walkableIndices,
+        navWalkableIndex: preview.navWalkableIndex,
         mapSeed: preview.layout.mapSeed,
     });
 }

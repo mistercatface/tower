@@ -3,13 +3,14 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { FLOOR_CELL_KIND, floorBeltElbowTurn, isFloorBeltRailsKind } from "../Libraries/Spatial/grid/FloorCell.js";
-import { planRailMazeCorridorBelts } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
+import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
+import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 import { collectCorridorPathPolylines } from "../Libraries/Procedural/Mazes/collectCorridorPathPolylines.js";
 import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
 import { createWorkerNavigationService, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex, globalCellIdx, indexToColRow } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 describe("rail maze corridor belts", () => {
     it("collects corridor polylines on a T-junction fixture", () => {
@@ -76,6 +77,38 @@ describe("rail maze corridor belts", () => {
             assert.equal(plan.validation.ok, true, `seed ${seeds[i]}: ${plan.validation.error}`);
         }
     });
+    it("navWalkableIndex dense flags drive belt zone and global index round-trip", async () => {
+        applySnakeGameConfig();
+        const config = getSnakeGameConfig();
+        const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
+        const { navWalkableIndex, grid, gridNavContext, railConfig, layout } = preview;
+        const zoneCells = collectRailMazeBeltZoneCells(grid, gridNavContext, railConfig, layout.northReserveRows, navWalkableIndex);
+        assert.ok(zoneCells.length > 50);
+        for (let i = 0; i < zoneCells.length; i++) {
+            const { col, row } = zoneCells[i];
+            assert.ok(isNavWalkableAt(navWalkableIndex, col, row));
+            const idx = globalCellIdx(col, row, grid.cols);
+            const roundTrip = indexToColRow(idx, grid.cols);
+            assert.equal(roundTrip.col, col);
+            assert.equal(roundTrip.row, row);
+        }
+        const plan = planRailMazeCorridorBelts({
+            grid,
+            gridNavContext,
+            railConfig,
+            northReserveRows: layout.northReserveRows,
+            navWalkableIndex,
+            mapSeed: layout.mapSeed,
+        });
+        assert.equal(plan.validation.ok, true);
+        for (let bi = 0; bi < plan.floorBelts.length; bi++) {
+            const belt = plan.floorBelts[bi];
+            const idx = globalCellIdx(belt.col, belt.row, grid.cols);
+            const rt = indexToColRow(idx, grid.cols);
+            assert.equal(rt.col, belt.col);
+            assert.equal(rt.row, belt.row);
+        }
+    });
     it("rolls open vs railed belt kind per cell", async () => {
         applySnakeGameConfig();
         const config = getSnakeGameConfig();
@@ -85,7 +118,7 @@ describe("rail maze corridor belts", () => {
             gridNavContext: preview.gridNavContext,
             railConfig: preview.railConfig,
             northReserveRows: preview.layout.northReserveRows,
-            walkableIndices: preview.walkableIndices,
+            navWalkableIndex: preview.navWalkableIndex,
             mapSeed: preview.layout.mapSeed,
         };
         const allRailed = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 0 });

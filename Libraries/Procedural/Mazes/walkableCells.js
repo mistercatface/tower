@@ -4,7 +4,8 @@ import { floodConnectedNavWalkableCells, isNavWalkableCell } from "../../Spatial
 import { forEachGlobalCellInMapGenBounds, isGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { expandNavTopologyBakeBounds } from "../../Pathfinding/navTopologySab.js";
 import { clampCellBoundsToGrid, forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
-import { createNavWalkableCandidateMask, createNavWalkableReachedMask, readNavWalkableFlag, writeNavWalkableFlags } from "./navWalkableIndex.js";
+import { createNavWalkableCandidateMask, createNavWalkableReachedMask, isNavWalkableAt, readNavWalkableFlag, writeNavWalkableFlags } from "./navWalkableIndex.js";
+/** @typedef {import("./navWalkableIndex.js").NavWalkableIndex} NavWalkableIndex */
 function cellIndex(col, row, cols) {
     return colRowToIndex(col, row, cols);
 }
@@ -165,6 +166,10 @@ export function getNavWalkableCellIndex(state, boundsConfig = state.editor.caver
 }
 export function getNavWalkableCells(state, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
     return getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds).cells;
+}
+/** @param {NavWalkableIndex} navWalkableIndex @param {number} col @param {number} row */
+export function isNavWalkableCellAtIndex(navWalkableIndex, col, row) {
+    return isNavWalkableAt(navWalkableIndex, col, row);
 }
 export function isNavWalkableCellAt(state, col, row, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
     const index = getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds);

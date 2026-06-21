@@ -3,6 +3,7 @@ import { SearchState } from "../../Pathfinding/SearchState.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
 import { createPatchLayout, globalCellIdx, gridCellLayout, layoutCellIndex } from "../../Spatial/grid/GridUtils.js";
+import { readNavWalkableFlag } from "./navWalkableIndex.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} railConfig */
 export function railMazeBeltZoneGridBounds(grid, railConfig) {
@@ -18,9 +19,9 @@ export function railMazeBeltZoneGridBounds(grid, railConfig) {
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @param {object} gridNavContext
  * @param {object} railConfig
- * @param {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} walkableGlobalIndices
+ * @param {import("./navWalkableIndex.js").NavWalkableIndex} navWalkableIndex
  */
-export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railConfig, walkableGlobalIndices) {
+export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railConfig, navWalkableIndex) {
     const bounds = railMazeBeltZoneGridBounds(grid, railConfig);
     const patchCols = bounds.endCol - bounds.startCol + 1;
     const patchRows = bounds.endRow - bounds.startRow + 1;
@@ -30,7 +31,7 @@ export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railCo
     const walkable = new Uint8Array(size);
     for (let r = bounds.startRow; r <= bounds.endRow; r++)
         for (let c = bounds.startCol; c <= bounds.endCol; c++) {
-            if (!walkableGlobalIndices.has(globalCellIdx(c, r, grid.cols))) continue;
+            if (!readNavWalkableFlag(navWalkableIndex.flags, navWalkableIndex.cols, c, r)) continue;
             const patchIdx = layoutCellIndex(c, r, patchLayout.originCol, patchLayout.originRow, patchLayout.strideCols);
             walkable[patchIdx] = 1;
         }

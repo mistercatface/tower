@@ -2,11 +2,11 @@ import { gridSettings } from "../../../Config/world.js";
 import { withSeededRandom } from "../../Random/index.js";
 import { createWorkerNavigationService, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../../Navigation/WorkerNavigationFactory.js";
 import { forEachGlobalCellInMapGenBounds, getMapGenBoundsAabb, getMapGenBoundsStampExtent, migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
-import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
+import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../../Spatial/grid/WorldObstacleGrid.js";
 import { clampStampWallHeightLevel } from "../../WorldSurface/stampWallHeight.js";
 import { WORLD_SURFACE_DEFAULTS } from "../../../Config/world.js";
-import { collectNavWalkableCells } from "./walkableCells.js";
+import { getNavWalkableCellIndex } from "./walkableCells.js";
 import { generateCavernOccupancy } from "./cavernOccupancy.js";
 import { bakeRailMazeDfs } from "./railMazeDfs.js";
 import { planRailMazeCorridorBelts } from "./railMazeCorridorBelts.js";
@@ -145,20 +145,18 @@ export async function bakeSnakeSplitLayoutPreview({ mapSeed, playAreaCols, playA
     try {
         const applied = await applySnakeSplitLayoutToGrid(grid, layout, navigation);
         const walkableState = { obstacleGrid: grid, navigation, sandbox: {}, editor: { cavernConfig: applied.playableBounds } };
-        const navWalkable = collectNavWalkableCells(walkableState, applied.playableBounds, applied.floodSeedBounds);
-        const walkableIndices = new Set();
-        for (let i = 0; i < navWalkable.length; i++) walkableIndices.add(colRowToIndex(navWalkable[i].col, navWalkable[i].row, grid.cols));
+        const navWalkableIndex = getNavWalkableCellIndex(walkableState, applied.playableBounds, applied.floodSeedBounds);
         const beltPlan = planRailMazeCorridorBelts({
             grid,
             gridNavContext: navigation.gridNavContext,
             railConfig: applied.railConfig,
             northReserveRows: layout.northReserveRows,
-            walkableIndices,
+            navWalkableIndex,
             mapSeed: layout.mapSeed,
         });
         stampFloorBeltsOnGrid(grid, beltPlan.floorBelts);
         await syncWorkerNavigationTopology(navigation, grid, null);
-        return { layout, grid, gridNavContext: navigation.gridNavContext, navWalkable, walkableIndices, beltPlan, ...applied };
+        return { layout, grid, gridNavContext: navigation.gridNavContext, navWalkableIndex, beltPlan, ...applied };
     } finally {
         terminateWorkerNavigation(navigation);
     }

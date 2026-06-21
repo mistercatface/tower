@@ -1,7 +1,19 @@
 import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
+/** @typedef {{ flags: Uint8Array, cols: number, rows: number }} NavWalkableIndex */
 /** @param {Uint8Array} flags @param {number} cols @param {number} col @param {number} row */
 export function readNavWalkableFlag(flags, cols, col, row) {
     return flags[colRowToIndex(col, row, cols)] !== 0;
+}
+/** @param {NavWalkableIndex} index @param {number} col @param {number} row */
+export function isNavWalkableAt(index, col, row) {
+    if (!cellInRect(col, row, index.cols, index.rows)) return false;
+    return readNavWalkableFlag(index.flags, index.cols, col, row);
+}
+/** @param {Uint8Array} flags */
+export function countNavWalkableFlags(flags) {
+    let count = 0;
+    for (let i = 0; i < flags.length; i++) if (flags[i]) count++;
+    return count;
 }
 /** @param {Uint8Array} flags @param {number} cols @param {{ col: number, row: number }[]} cells */
 export function writeNavWalkableFlags(flags, cols, cells) {

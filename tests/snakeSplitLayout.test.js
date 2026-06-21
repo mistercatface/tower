@@ -8,6 +8,7 @@ import { bakeSnakeSplitLayoutPreview, centerPlayAreaBounds } from "../Libraries/
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { cellInRect } from "../Libraries/Spatial/grid/GridUtils.js";
+import { countNavWalkableFlags } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
@@ -81,7 +82,7 @@ describe("snakeSplitLayout preview bake", () => {
         const started = performance.now();
         const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 256, playAreaRows: 256, cavern: config.cavern, rail: config.rail });
         const elapsed = performance.now() - started;
-        assert.ok(preview.walkableIndices.size > 1000);
+        assert.ok(countNavWalkableFlags(preview.navWalkableIndex.flags) > 1000);
         assert.ok(elapsed < 4000, `256 bake took ${elapsed.toFixed(0)} ms`);
     });
 });

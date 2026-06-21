@@ -1,6 +1,6 @@
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../../Sandbox/sandboxSceneSnapshot.js";
 import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
-import { pickWalkableCell, createNavWalkableAccess, collectNavWalkableCells } from "../../Procedural/Mazes/walkableCells.js";
+import { getNavWalkableCellIndex, pickWalkableCell, createNavWalkableAccess } from "../../Procedural/Mazes/walkableCells.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { linkedChainOccupiedCellIndices, spawnLinkedBallChain } from "../../Sandbox/spawnLinkedBallChain.js";
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
@@ -141,15 +141,13 @@ export async function generateSnakeSplitMap(state) {
     const paddingBounds = clearSnakeRegionPaddingStrip(state, cavern.regionPaddingCells ?? 4);
     const playable = resolveSnakePlayableBounds(state);
     const floodSeed = resolveSnakeNavWalkableFloodSeedBounds(state);
-    const navWalkable = collectNavWalkableCells(state, playable, floodSeed);
-    const walkableIndices = new Set();
-    for (let i = 0; i < navWalkable.length; i++) walkableIndices.add(colRowToIndex(navWalkable[i].col, navWalkable[i].row, state.obstacleGrid.cols));
+    const navWalkableIndex = getNavWalkableCellIndex(state, playable, floodSeed);
     const beltPlan = planRailMazeCorridorBelts({
         grid: state.obstacleGrid,
         gridNavContext: state.navigation.gridNavContext,
         railConfig,
         northReserveRows: cavern.openBoundaryRows ?? 3,
-        walkableIndices,
+        navWalkableIndex,
         mapSeed: state.mapSeed,
     });
     const { bounds: beltBounds } = stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
