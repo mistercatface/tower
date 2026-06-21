@@ -19,7 +19,7 @@ Spoke docs stay authoritative for feature progress: [physics](./physics.md), [pa
 | `Libraries/Procedural/Mazes` | Geometry/layout helpers for rail mazes, belt corridors, split layouts, walkable indexes | Texture motifs under `Libraries/Procedural/Motifs` |
 | `Spatial/iso/IsometricProjection.js` | Camera-relative radial elevation projection | True fixed isometric mode, which is still future rendering work |
 | `prop.strategy` | WorldProp capability/config pattern: physics, render keys, sandbox affordances | AI strategy / GOAP / objectives, which are not implemented |
-| `goal` in `snakeGoals` or ground nav | A movement target or food prop | AI objective / strategic goal |
+| `target` in `snakeFood` or ground nav | A movement target or food/carcass prop | AI objective / strategic goal |
 | `Libraries/FSM/transition.js` | Generic enter/exit transition helper for prop lifecycle-style FSMs | Agent intent FSM, now `Libraries/AI/agentIntent/createAgentIntent.js` |
 | `Libraries/AI/brain` | Spatial cell memory plus nav-step penalty producer | Entity target memory, now `Libraries/AI/memory/targetMemory.js` |
 | `navStepPenalty.js` x2 | `AI/brain/navStepPenalty.js` builds penalties; `Pathfinding/navStepPenalty.js` consumes them in A* | A duplicate implementation |

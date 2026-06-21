@@ -210,7 +210,6 @@ export async function spawnSnakeCavernScene(state) {
     navWalkable.rebake();
     const spawnCells = navWalkable.cells();
     const snakes = [];
-    const goals = [];
     withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset, () => {
         const specs = resolveSnakeSpawnSpecs(config, Math.random);
         const spacing = resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config));
@@ -233,5 +232,5 @@ export async function spawnSnakeCavernScene(state) {
             excludeIndices = pack.occupiedIndices;
         }
     });
-    return { snakes, goals, navWalkable };
+    return { snakes, navWalkable };
 }

@@ -1,4 +1,5 @@
-import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { WorldProp } from "../../Entities/WorldProp.js";
 import { transformPoint2DInto, convexFootprintHalfExtents, polygonSignedArea2D } from "../Math/Poly2D.js";
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
@@ -7,7 +8,7 @@ import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { splitPoxels } from "./poxelFracture.js";
 import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts } from "./chunkFracture.js";
-import { GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon } from "./glassFracture.js";
+import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS, GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon } from "./glassFracture.js";
 export const FRACTURE_MIN_PIECE_SIZE = 5;
 export const FRACTURE_IMPACT_THRESHOLD = 12;
 function isGlassFracture(prop) {
@@ -78,6 +79,64 @@ export function applyChunkGeometryToProp(prop, geometry) {
 }
 export function applyShardGeometryToProp(prop, geometry) {
     applyFractureGeometryToProp(prop, geometry);
+}
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+function propFacing(prop) {
+    return prop.facing ?? prop.angle ?? 0;
+}
+function currentPropMotion(prop) {
+    const physId = prop._physId;
+    if (physId !== undefined) return { vx: kineticBodySlab.vx[physId], vy: kineticBodySlab.vy[physId], w: kineticBodySlab.w[physId] };
+    return { vx: prop.vx ?? 0, vy: prop.vy ?? 0, w: prop.angularVelocity ?? 0 };
+}
+function circleShardCount(impactForce, minShards, maxShards) {
+    return clamp(Math.round(3.5 + impactForce * 0.02), minShards, maxShards);
+}
+export function buildCircleImpactShards(radius, localHit, impactForce, { minShards = 4, maxShards = 5 } = {}) {
+    const count = circleShardCount(impactForce, minShards, maxShards);
+    const hitDist = Math.hypot(localHit.x, localHit.y);
+    const inset = hitDist > 1e-6 ? Math.min(radius * 0.42, hitDist * 0.45) / hitDist : 0;
+    const apex = { x: localHit.x * inset, y: localHit.y * inset };
+    const start = Math.atan2(localHit.y, localHit.x) - Math.PI / count;
+    const shards = [];
+    for (let i = 0; i < count; i++) {
+        const a0 = start + (i * Math.PI * 2) / count;
+        const a1 = start + ((i + 1) * Math.PI * 2) / count;
+        shards.push(
+            buildShardGeometry([
+                { x: apex.x, y: apex.y },
+                { x: Math.cos(a0) * radius, y: Math.sin(a0) * radius },
+                { x: Math.cos(a1) * radius, y: Math.sin(a1) * radius },
+            ]),
+        );
+    }
+    return shards;
+}
+export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shardPropId, spatialFrame = null, configureShard = null) {
+    const facing = propFacing(sourceProp);
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    const motion = currentPropMotion(sourceProp);
+    const spawned = [];
+    for (let i = 0; i < geometries.length; i++) {
+        const geom = geometries[i];
+        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, sourceProp.x, sourceProp.y, geom.centroid.cx, geom.centroid.cy, cos, sin);
+        const shard = new WorldProp(worldPos.x, worldPos.y, shardPropId, facing);
+        applyShardGeometryToProp(shard, geom);
+        shard.faction = sourceProp.faction;
+        shard.vx = motion.vx;
+        shard.vy = motion.vy;
+        shard.angularVelocity = motion.w;
+        shard._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
+        if (configureShard) configureShard(shard, geom, i);
+        addWorldPropToState(world, shard);
+        wakeKineticBody(shard);
+        if (spatialFrame?.admitKineticProp && spatialFrame.populatedMembershipGen >= 0) spatialFrame.admitKineticProp(shard, world);
+        spawned.push(shard);
+    }
+    return spawned;
 }
 function splitMeshComponents(cells, localHitX, localHitY, impactForce, forceExplode) {
     if (!cells?.length) return [];

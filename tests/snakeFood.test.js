@@ -43,6 +43,19 @@ function stampWall(grid, col, row) {
     grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
 }
 
+function chainOptions(config) {
+    return {
+        segmentCount: config.segmentCount,
+        spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
+        segmentRadius: config.startRadius,
+        linkSlack: config.linkSlack,
+        ballType: config.segmentPropId,
+        headBallType: config.headPropId,
+        growDirX: config.growDirX,
+        growDirY: config.growDirY,
+    };
+}
+
 describe("snake shard food query", () => {
     it("tracks spawn and removal through the registry query", async () => {
         const state = await createFoodQueryState();
@@ -58,16 +71,7 @@ describe("snake visible shard food parity", () => {
         applySnakeGameConfig();
         const state = await createFoodQueryState();
         const config = getSnakeGameConfig();
-        const chain = spawnLinkedBallChain(state, { col: 10, row: 8 }, {
-            segmentCount: config.segmentCount,
-            spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
-            segmentRadius: config.startRadius,
-            linkSlack: config.linkSlack,
-            ballType: config.segmentPropId,
-            headBallType: config.headPropId,
-            growDirX: config.growDirX,
-            growDirY: config.growDirY,
-        });
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 8 }, chainOptions(config));
         spawnSnakeFoodShardAtCell(state, { col: 12, row: 8 });
         const visible = spawnSnakeFoodShardAtCell(state, { col: 6, row: 8 });
         stampWall(state.obstacleGrid, 11, 8);
@@ -81,26 +85,8 @@ describe("snake visible shard food parity", () => {
         applySnakeGameConfig();
         const state = await createFoodQueryState();
         const config = getSnakeGameConfig();
-        const seekerChain = spawnLinkedBallChain(state, { col: 10, row: 8 }, {
-            segmentCount: config.segmentCount,
-            spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
-            segmentRadius: config.startRadius,
-            linkSlack: config.linkSlack,
-            ballType: config.segmentPropId,
-            headBallType: config.headPropId,
-            growDirX: config.growDirX,
-            growDirY: config.growDirY,
-        });
-        const carcassChain = spawnLinkedBallChain(state, { col: 6, row: 8 }, {
-            segmentCount: config.segmentCount,
-            spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
-            segmentRadius: config.startRadius,
-            linkSlack: config.linkSlack,
-            ballType: config.segmentPropId,
-            headBallType: config.headPropId,
-            growDirX: config.growDirX,
-            growDirY: config.growDirY,
-        });
+        const seekerChain = spawnLinkedBallChain(state, { col: 10, row: 8 }, chainOptions(config));
+        const carcassChain = spawnLinkedBallChain(state, { col: 6, row: 8 }, chainOptions(config));
         const carcassSegment = carcassChain.tail;
         markSnakeSegmentsFracturable(state, [carcassSegment.id]);
         const seeker = seekerChain.head;

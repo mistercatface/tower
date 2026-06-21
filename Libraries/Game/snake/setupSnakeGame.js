@@ -109,8 +109,6 @@ export async function setupSnakeGame(state) {
     hud.update();
     return {
         strikerBall,
-        goal: scene.goals[0],
-        goals: scene.goals,
         snakes: scene.snakes,
         getFocusedHeadId: () => focusedHeadId,
         getFocusedSnakeHead: resolveFocusedHeadProp,

@@ -126,7 +126,7 @@ async function analyzeSnakeSplitMap(mapSeed, playAreaCells = 64) {
     return { mapSeed, cavern, rail, padding, padReach, railReach, openCavernCount: openCavernCells.length };
 }
 describe("snake split map generation", () => {
-    it("keeps cavern floor open enough for snakes and goals", async () => {
+    it("keeps cavern floor open enough for snakes", async () => {
         const samples = [11, 42, 99, 256, 1337, 9001];
         for (let i = 0; i < samples.length; i++) {
             const stats = await analyzeSnakeSplitMap(samples[i]);
@@ -155,8 +155,7 @@ describe("snake split map generation", () => {
     it("does not spawn goal_orb food in snake mode", async () => {
         applySnakeGameConfig({ snakeCount: 1 });
         const state = await createSnakeMapGenTestState(64, 42);
-        const scene = await spawnSnakeCavernScene(state);
-        assert.deepEqual(scene.goals, []);
+        await spawnSnakeCavernScene(state);
         assert.equal(state.worldProps.some((prop) => prop.type === "goal_orb"), false);
     });
 });

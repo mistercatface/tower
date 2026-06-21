@@ -1,23 +1,17 @@
-import { addWorldPropToState, removeWorldPropFromState } from "../../../GameState/EntityRegistry.js";
+import { removeWorldPropFromState } from "../../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
-import { WorldProp } from "../../../Entities/WorldProp.js";
 import { transformPoint2DInto } from "../../Math/Poly2D.js";
-import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { kineticBodySlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-import { applyShardGeometryToProp } from "../../Props/propFracture.js";
-import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS } from "../../Props/glassFracture.js";
+import { buildCircleImpactShards, spawnShardPropsFromGeometry } from "../../Props/propFracture.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 export const SNAKE_SHARD_PROP_ID = "snake_shard";
 const FRACTURABLE_DEAD_SEGMENT_FLAG = "_snakeFracturableDeadSegment";
 const MIN_SNAKE_SHARDS = 4;
 const MAX_SNAKE_SHARDS = 5;
 const FALLBACK_IMPACT_FORCE = 26;
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
 function propFacing(prop) {
     return prop.facing ?? prop.angle ?? 0;
 }
@@ -62,65 +56,18 @@ function resolveSegmentImpact(segment, radius, deathImpact, index) {
     const localHit = defaultSegmentLocalHit(radius, index);
     return { localHit, worldHit: segmentLocalToWorld(segment, localHit.x, localHit.y), impactForce: baseForce };
 }
-function snakeShardCount(impactForce) {
-    return clamp(Math.round(3.5 + impactForce * 0.02), MIN_SNAKE_SHARDS, MAX_SNAKE_SHARDS);
-}
-function buildSnakeCircleShards(radius, localHit, impactForce) {
-    const count = snakeShardCount(impactForce);
-    const hitDist = Math.hypot(localHit.x, localHit.y);
-    const inset = hitDist > 1e-6 ? Math.min(radius * 0.42, hitDist * 0.45) / hitDist : 0;
-    const apex = { x: localHit.x * inset, y: localHit.y * inset };
-    const start = Math.atan2(localHit.y, localHit.x) - Math.PI / count;
-    const shards = [];
-    for (let i = 0; i < count; i++) {
-        const a0 = start + (i * Math.PI * 2) / count;
-        const a1 = start + ((i + 1) * Math.PI * 2) / count;
-        shards.push(
-            buildShardGeometry([
-                { x: apex.x, y: apex.y },
-                { x: Math.cos(a0) * radius, y: Math.sin(a0) * radius },
-                { x: Math.cos(a1) * radius, y: Math.sin(a1) * radius },
-            ]),
-        );
-    }
-    return shards;
-}
 export function fractureSnakeSegmentGeometry(segment, impact, random = Math.random) {
     const radius = getCirclePropRadius(segment) ?? segment.radius ?? 0;
     if (radius <= 0) return [];
-    return buildSnakeCircleShards(radius, impact.localHit, impact.impactForce);
-}
-function currentSegmentMotion(segment) {
-    const physId = segment._physId;
-    if (physId !== undefined) return { vx: kineticBodySlab.vx[physId], vy: kineticBodySlab.vy[physId], w: kineticBodySlab.w[physId] };
-    return { vx: segment.vx ?? 0, vy: segment.vy ?? 0, w: segment.angularVelocity ?? 0 };
+    return buildCircleImpactShards(radius, impact.localHit, impact.impactForce, { minShards: MIN_SNAKE_SHARDS, maxShards: MAX_SNAKE_SHARDS });
 }
 export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = null, random = Math.random) {
     const geometries = fractureSnakeSegmentGeometry(segment, impact, random);
-    const facing = propFacing(segment);
-    const cos = Math.cos(facing);
-    const sin = Math.sin(facing);
-    const motion = currentSegmentMotion(segment);
-    const foodValue = getSnakeGameConfig().metabolism.growthCost / geometries.length;
-    const spawned = [];
-    for (let i = 0; i < geometries.length; i++) {
-        const geom = geometries[i];
-        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, segment.x, segment.y, geom.centroid.cx, geom.centroid.cy, cos, sin);
-        const shard = new WorldProp(worldPos.x, worldPos.y, SNAKE_SHARD_PROP_ID, facing);
-        applyShardGeometryToProp(shard, geom);
+    const foodValue = geometries.length ? getSnakeGameConfig().metabolism.growthCost / geometries.length : 0;
+    return spawnShardPropsFromGeometry(state, segment, geometries, SNAKE_SHARD_PROP_ID, spatialFrame, (shard) => {
         copyVisualOverride(segment, shard);
-        shard.faction = segment.faction;
-        shard.vx = motion.vx;
-        shard.vy = motion.vy;
-        shard.angularVelocity = motion.w;
         shard.snakeFoodValue = foodValue;
-        shard._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
-        addWorldPropToState(state, shard);
-        wakeKineticBody(shard);
-        if (spatialFrame?.admitKineticProp && spatialFrame.populatedMembershipGen >= 0) spatialFrame.admitKineticProp(shard, state);
-        spawned.push(shard);
-    }
-    return spawned;
+    });
 }
 export function shatterSnakeSegments(state, spatialFrame, memberIds, deathImpact = null, random = Math.random) {
     markSnakeSegmentsFracturable(state, memberIds);
