@@ -143,6 +143,6 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     }
     const distToTarget = Math.hypot(targetX - x, targetY - y);
     if (step >= pathLen - 1 && distToTarget <= arrivalDistance) return { desiredX: 0, desiredY: 0, offPath: false };
-    if (dist < 0.01) return { desiredX: 0, desiredY: 0, offPath: false };
+    if (!(dist >= 0.01)) return { desiredX: 0, desiredY: 0, offPath: false };
     return { desiredX: dx / dist, desiredY: dy / dist, offPath: dist > offPathDistance };
 }

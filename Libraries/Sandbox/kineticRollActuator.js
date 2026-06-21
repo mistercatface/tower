@@ -42,6 +42,7 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
     wakeKineticBody(prop);
 }
 export function steerRollToward(prop, dirX, dirY, config) {
+    if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config);
     prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: config.maxSpeed };
     wakeKineticBody(prop);
 }
