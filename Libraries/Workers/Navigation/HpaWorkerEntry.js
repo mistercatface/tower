@@ -3,7 +3,7 @@ import { createNavStepPenaltyLookup } from "../../Pathfinding/navStepPenalty.js"
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/grid/navEdgePoolSab.js";
 import { stitchAbstractCellPath } from "../../Pathfinding/hpaStitch.js";
-import { collectPersistTempConnectCandidates, nearestRegionNodeIdx } from "../../Pathfinding/hpaReplanPrep.js";
+import { HpaAbstractGraph } from "../../Pathfinding/hpaReplanPrep.js";
 import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Pathfinding/hpaRegionGraph.js";
 import { createNavLocalView, navTopologyFromSab } from "../../Pathfinding/navTopologySab.js";
@@ -49,11 +49,6 @@ let persistNodeCount = 0;
 let persistEdgeWrite = 0;
 /** @type {string[]} */
 let persistNodeIds = [];
-let extNodeCol;
-let extNodeRow;
-let extEdgeOffsets;
-let extEdgeTargets;
-let extEdgeCosts;
 /** @type {import("../../Pathfinding/GridNavSnapshot.js").GridFrame | null} */
 let gridFrame = null;
 /** @type {ReturnType<typeof createNavSimView> | null} */
@@ -264,114 +259,6 @@ function writeAbstractPath(slot, pathIdx) {
     const abstractIdx = hpaPathSlotAbstractIdx(sabAbstractIdxPool, slot, maxAbstractLen);
     for (let i = 0; i < pathIdx.length; i++) abstractIdx[i] = pathIdx[i];
 }
-function buildExtendedEdges(nodeCount, edgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, resolveLegCost) {
-    const startTemp = nodeCount;
-    const targetTemp = nodeCount + 1;
-    const extCount = nodeCount + 2;
-    const baseCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, nodeCount);
-    const baseRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, nodeCount);
-    const baseOffsets = hpaPersistEdgeOffsetsView(sabPersistGraphEdgeOffsets, maxGraphNodes).subarray(0, nodeCount + 1);
-    const baseTargets = hpaPersistEdgeTargetsView(sabPersistGraphEdgeTargets, maxGraphEdges).subarray(0, edgeWrite);
-    const baseCosts = hpaPersistEdgeCostsView(sabPersistGraphEdgeCosts, maxGraphEdges).subarray(0, edgeWrite);
-    if (!extNodeCol || extNodeCol.length < extCount) {
-        extNodeCol = new Int16Array(maxGraphNodes + 2);
-        extNodeRow = new Int16Array(maxGraphNodes + 2);
-        extEdgeOffsets = new Int32Array(maxGraphNodes + 3);
-        extEdgeTargets = new Int16Array(maxGraphEdges + 64);
-        extEdgeCosts = new Uint16Array(maxGraphEdges + 64);
-    }
-    extNodeCol.set(baseCol);
-    extNodeRow.set(baseRow);
-    extNodeCol[startTemp] = startCol;
-    extNodeRow[startTemp] = startRow;
-    extNodeCol[targetTemp] = targetCol;
-    extNodeRow[targetTemp] = targetRow;
-    const tempLegs = new Map();
-    const targetConnectCost = new Int32Array(nodeCount);
-    for (let i = 0; i < targetCandidates.length; i++) {
-        const cIdx = targetCandidates[i];
-        const legKey = `${cIdx},${targetTemp}`;
-        const { cost, path } = resolveLegCost(extNodeCol[cIdx], extNodeRow[cIdx], targetCol, targetRow, legKey);
-        if (cost > 0) {
-            targetConnectCost[cIdx] = cost;
-            if (path) tempLegs.set(legKey, path);
-        }
-    }
-    const startEdges = [];
-    for (let i = 0; i < startCandidates.length; i++) {
-        const cIdx = startCandidates[i];
-        const legKey = `${startTemp},${cIdx}`;
-        const { cost, path } = resolveLegCost(startCol, startRow, extNodeCol[cIdx], extNodeRow[cIdx], legKey);
-        if (cost > 0) {
-            startEdges.push({ targetIdx: cIdx, cost });
-            if (path) tempLegs.set(legKey, path);
-        }
-    }
-    extEdgeOffsets[0] = 0;
-    for (let i = 0; i < nodeCount; i++) {
-        const baseCount = baseOffsets[i + 1] - baseOffsets[i];
-        const extraCount = targetConnectCost[i] > 0 ? 1 : 0;
-        extEdgeOffsets[i + 1] = extEdgeOffsets[i] + baseCount + extraCount;
-    }
-    extEdgeOffsets[startTemp + 1] = extEdgeOffsets[startTemp] + startEdges.length;
-    extEdgeOffsets[targetTemp + 1] = extEdgeOffsets[targetTemp];
-    for (let i = 0; i < nodeCount; i++) {
-        let write = extEdgeOffsets[i];
-        const baseStart = baseOffsets[i];
-        const baseEnd = baseOffsets[i + 1];
-        for (let e = baseStart; e < baseEnd; e++) {
-            extEdgeTargets[write] = baseTargets[e];
-            extEdgeCosts[write] = baseCosts[e];
-            write++;
-        }
-        if (targetConnectCost[i] > 0) {
-            extEdgeTargets[write] = targetTemp;
-            extEdgeCosts[write] = targetConnectCost[i];
-            write++;
-        }
-    }
-    let startWrite = extEdgeOffsets[startTemp];
-    for (let i = 0; i < startEdges.length; i++) {
-        extEdgeTargets[startWrite] = startEdges[i].targetIdx;
-        extEdgeCosts[startWrite] = startEdges[i].cost;
-        startWrite++;
-    }
-    const totalEdges = extEdgeOffsets[extCount];
-    return { extCount, startTemp, targetTemp, edgeWrite: totalEdges, tempLegs };
-}
-function collectReplanTempCandidates(startCol, startRow, targetCol, targetRow) {
-    const nodeCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, persistNodeCount);
-    const nodeRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, persistNodeCount);
-    const edgeOffsets = hpaPersistEdgeOffsetsView(sabPersistGraphEdgeOffsets, maxGraphNodes).subarray(0, persistNodeCount + 1);
-    const edgeTargets = hpaPersistEdgeTargetsView(sabPersistGraphEdgeTargets, maxGraphEdges).subarray(0, persistEdgeWrite);
-    const startRegionIdx = nearestRegionNodeIdx(nodeCol, nodeRow, persistNodeCount, startCol, startRow);
-    const targetRegionIdx = nearestRegionNodeIdx(nodeCol, nodeRow, persistNodeCount, targetCol, targetRow);
-    const startCandidates = collectPersistTempConnectCandidates({
-        gridCol: startCol,
-        gridRow: startRow,
-        isStart: true,
-        anchorRegionIdx: startRegionIdx,
-        nodeCol,
-        nodeRow,
-        nodeCount: persistNodeCount,
-        edgeOffsets,
-        edgeTargets,
-        maxCellsPerChunk,
-    });
-    const targetCandidates = collectPersistTempConnectCandidates({
-        gridCol: targetCol,
-        gridRow: targetRow,
-        isStart: false,
-        anchorRegionIdx: targetRegionIdx,
-        nodeCol,
-        nodeRow,
-        nodeCount: persistNodeCount,
-        edgeOffsets,
-        edgeTargets,
-        maxCellsPerChunk,
-    });
-    return { startCandidates, targetCandidates };
-}
 function buildReplanResult(slot) {
     const pathLen = hpaPathSlotMeta(sabPathMetaPool, slot)[0];
     return pathLen > 0 ? { pathLen } : null;
@@ -382,29 +269,36 @@ function runReplan(slot, data) {
     const stepPenaltyLookup = data.stepPenaltyKeys?.length > 0 ? createNavStepPenaltyLookup(cols, data.stepPenaltyKeys, data.stepPenaltyCosts) : null;
     const localAStar = (fromCol, fromRow, toCol, toRow, maxLen) => runLocalAStarFlat(fromCol, fromRow, toCol, toRow, navView, cols, rows, maxLen, searchState.prepare(), stepPenaltyLookup);
     const cellToRegion = hpaCellToRegionView(sabCellToRegionIdx, cols * rows);
-    const nodeCol = hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, persistNodeCount);
-    const nodeRow = hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, persistNodeCount);
-    const prep = prepareHpaReplanPrep(cols, cellToRegion, { nodeCount: persistNodeCount, nodeIds: persistNodeIds, nodeCol, nodeRow }, startCol, startRow, targetCol, targetRow);
+    const baseGraph = new HpaAbstractGraph(
+        hpaPersistNodeColView(sabPersistGraphNodeCol, maxGraphNodes).subarray(0, persistNodeCount),
+        hpaPersistNodeRowView(sabPersistGraphNodeRow, maxGraphNodes).subarray(0, persistNodeCount),
+        hpaPersistEdgeOffsetsView(sabPersistGraphEdgeOffsets, maxGraphNodes).subarray(0, persistNodeCount + 1),
+        hpaPersistEdgeTargetsView(sabPersistGraphEdgeTargets, maxGraphEdges).subarray(0, persistEdgeWrite),
+        hpaPersistEdgeCostsView(sabPersistGraphEdgeCosts, maxGraphEdges).subarray(0, persistEdgeWrite),
+        persistNodeCount,
+        persistEdgeWrite,
+        persistNodeIds,
+    );
+    const prep = prepareHpaReplanPrep(cols, cellToRegion, baseGraph, startCol, startRow, targetCol, targetRow);
     if (prep.mode === "local") {
         const path = localAStar(startCol, startRow, targetCol, targetRow, HPA_LOCAL_MAX_LEN);
         writeCellPath(slot, path);
         writeAbstractPath(slot, null);
         return buildReplanResult(slot);
     }
-    const { startCandidates, targetCandidates } = collectReplanTempCandidates(startCol, startRow, targetCol, targetRow);
-    const extended = buildExtendedEdges(persistNodeCount, persistEdgeWrite, startCol, startRow, targetCol, targetRow, startCandidates, targetCandidates, (fromCol, fromRow, toCol, toRow) => {
+    const { extendedGraph, startTemp, targetTemp, tempLegs } = baseGraph.buildExtended(startCol, startRow, targetCol, targetRow, maxCellsPerChunk, (fromCol, fromRow, toCol, toRow) => {
         const path = localAStar(fromCol, fromRow, toCol, toRow, prep.regionConnectMaxLen);
         return path ? { cost: path.length, path } : { cost: 0 };
     });
     const abstractPath = runAbstractAStarFlat(
-        extended.startTemp,
-        extended.targetTemp,
-        extNodeCol.subarray(0, extended.extCount),
-        extNodeRow.subarray(0, extended.extCount),
-        extEdgeOffsets.subarray(0, extended.extCount + 1),
-        extEdgeTargets.subarray(0, extended.edgeWrite),
-        extEdgeCosts.subarray(0, extended.edgeWrite),
-        extended.extCount,
+        startTemp,
+        targetTemp,
+        extendedGraph.nodeCol,
+        extendedGraph.nodeRow,
+        extendedGraph.edgeOffsets,
+        extendedGraph.edgeTargets,
+        extendedGraph.edgeCosts,
+        extendedGraph.nodeCount,
         searchState.prepare(),
     );
     writeAbstractPath(slot, abstractPath);
@@ -412,8 +306,8 @@ function runReplan(slot, data) {
         writeCellPath(slot, null);
         return buildReplanResult(slot);
     }
-    const resolveRegionLeg = (aIdx, bIdx) => localAStar(nodeCol[aIdx], nodeRow[aIdx], nodeCol[bIdx], nodeRow[bIdx], prep.regionConnectMaxLen);
-    const cellPath = stitchAbstractCellPath(abstractPath, prep, extended.tempLegs, resolveRegionLeg);
+    const resolveRegionLeg = (aIdx, bIdx) => localAStar(baseGraph.nodeCol[aIdx], baseGraph.nodeRow[aIdx], baseGraph.nodeCol[bIdx], baseGraph.nodeRow[bIdx], prep.regionConnectMaxLen);
+    const cellPath = stitchAbstractCellPath(abstractPath, prep, tempLegs, resolveRegionLeg);
     writeCellPath(slot, cellPath);
     return buildReplanResult(slot);
 }
