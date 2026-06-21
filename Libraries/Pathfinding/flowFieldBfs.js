@@ -1,4 +1,5 @@
 import { flowCellBlocked } from "./flowFieldWindow.js";
+import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";
 /**
  * BFS flow-field integrated backward from the goal on reverse nav adjacency (octile predecessors).
  *
@@ -8,7 +9,8 @@ import { flowCellBlocked } from "./flowFieldWindow.js";
  * @param {number} params.gridSize
  * @param {Int32Array} params.flowToNavIdx — flow cell → nav cell (-1 = out of nav window)
  * @param {Uint8Array} params.navBlocked — HPA nav blocked SAB
- * @param {Int32Array} params.neighborGrid — 8 flow-local neighbors per cell (-1 = none)
+ * @param {Int32Array} params.neighborGrid — flow-local neighbors per cell (-1 = none)
+ * @param {{ directionCount: number, cellOffset: (cellIdx: number, dirIdx: number) => number }} [params.neighborLayout]
  * @param {number} params.tx — target col
  * @param {number} params.ty — target row
  * @param {number} params.range
@@ -16,7 +18,10 @@ import { flowCellBlocked } from "./flowFieldWindow.js";
  * @param {Int32Array} params.bfsQueue — scratch, length gridSize
  * @param {Uint8Array} params.localVectorMap — scratch, length gridSize
  */
-export function computeFlowField(vectorMap, { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, tx, ty, range, bfsDistances, bfsQueue, localVectorMap }) {
+export function computeFlowField(
+    vectorMap,
+    { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT, tx, ty, range, bfsDistances, bfsQueue, localVectorMap },
+) {
     const isBlocked = (flowIdx) => flowCellBlocked(flowToNavIdx, navBlocked, flowIdx);
     bfsDistances.fill(-1);
     localVectorMap.fill(255);
@@ -33,9 +38,8 @@ export function computeFlowField(vectorMap, { gridWidth, gridSize, flowToNavIdx,
             if (currentDist >= range) continue;
             const cx = idx % gridWidth;
             const cy = (idx / gridWidth) | 0;
-            const base = idx << 3;
-            for (let i = 0; i < 8; i++) {
-                const nIdx = neighborGrid[base + i];
+            for (let i = 0; i < neighborLayout.directionCount; i++) {
+                const nIdx = neighborGrid[neighborLayout.cellOffset(idx, i)];
                 if (nIdx !== -1 && bfsDistances[nIdx] === -1 && !isBlocked(nIdx)) {
                     const nx = nIdx % gridWidth;
                     const ny = (nIdx / gridWidth) | 0;

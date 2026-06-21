@@ -10,6 +10,7 @@ import {
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
 import { FlatGridView } from "./FlatGridView.js";
+import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";
 export class FlowFieldWindow {
     constructor(cellSize, width, height) {
         this.frame = createCenteredGridFrame(cellSize, width, height);
@@ -72,7 +73,7 @@ export class FlowFieldWindow {
     }
     checkReachability(flowToNavIdx, navBlockedView, neighborGrid, startX, startY, targetX, targetY) {
         if (!this.ready || !navBlockedView) return false;
-        const grid = new FlatGridView(this.cols, this.rows, { blocked: null, neighbors: neighborGrid, flowToNavIdx });
+        const grid = new FlatGridView(this.cols, this.rows, { blocked: null, neighbors: neighborGrid, neighborLayout: OCTILE_NEIGHBOR_GRID_LAYOUT, flowToNavIdx });
         const start = this.worldToGrid(startX, startY);
         const target = this.worldToGrid(targetX, targetY);
         if (!grid.contains(start.col, start.row) || !grid.contains(target.col, target.row)) return false;
@@ -115,7 +116,7 @@ export function rebuildFlowToNavIdx(flowToNavIdx, flowFrame, navFrame) {
     }
     return { navCols, navRows };
 }
-export function rebuildFlowNeighborGrid(flowToNavIdx, octilePredecessors, neighborGrid, flowSize, navCols, navRows) {
+export function rebuildFlowNeighborGrid(flowToNavIdx, octilePredecessors, neighborGrid, flowSize, navCols, navRows, layout = OCTILE_NEIGHBOR_GRID_LAYOUT) {
     const navToFlow = new Int32Array(navCols * navRows).fill(-1);
     for (let idx = 0; idx < flowSize; idx++) {
         const navIdx = flowToNavIdx[idx];
@@ -123,15 +124,13 @@ export function rebuildFlowNeighborGrid(flowToNavIdx, octilePredecessors, neighb
     }
     for (let idx = 0; idx < flowSize; idx++) {
         const navIdx = flowToNavIdx[idx];
-        const base = idx * 8;
         if (navIdx < 0) {
-            for (let i = 0; i < 8; i++) neighborGrid[base + i] = -1;
+            layout.clearCell(neighborGrid, idx);
             continue;
         }
-        const navBase = navIdx * 8;
-        for (let i = 0; i < 8; i++) {
-            const navPredIdx = octilePredecessors[navBase + i];
-            neighborGrid[base + i] = navPredIdx >= 0 ? navToFlow[navPredIdx] : -1;
+        for (let i = 0; i < layout.directionCount; i++) {
+            const navPredIdx = octilePredecessors[layout.cellOffset(navIdx, i)];
+            neighborGrid[layout.cellOffset(idx, i)] = navPredIdx >= 0 ? navToFlow[navPredIdx] : -1;
         }
     }
 }

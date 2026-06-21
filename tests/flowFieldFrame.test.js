@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createCenteredGridFrame, gridToWorldInCenteredFrame, worldToGridInCenteredFrame } from "../Libraries/Spatial/grid/GridCoords.js";
-import { rebuildFlowToNavIdx } from "../Libraries/Pathfinding/flowFieldWindow.js";
+import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx } from "../Libraries/Pathfinding/flowFieldWindow.js";
 import { sampleFlowDirection } from "../Libraries/Pathfinding/sampleFlowDirection.js";
+import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../Libraries/Pathfinding/neighborGridLayout.js";
+import { gridReachabilityBfs } from "../Libraries/Pathfinding/gridReachabilityBfs.js";
+import { FlatGridView } from "../Libraries/Pathfinding/FlatGridView.js";
 
 describe("flow field centered grid frame", () => {
     it("converts between world and flow cells", () => {
@@ -26,5 +29,26 @@ describe("flow field centered grid frame", () => {
         assert.ok(dir);
         assert.ok(dir.x > 0.99);
         assert.ok(Math.abs(dir.y) < 0.01);
+    });
+
+    it("rebuilds flow predecessor neighbors through the octile layout", () => {
+        const flowToNavIdx = new Int32Array([0, 1]);
+        const octilePredecessors = new Int32Array(OCTILE_NEIGHBOR_GRID_LAYOUT.bufferByteLength(2) / 4).fill(-1);
+        const neighborGrid = new Int32Array(OCTILE_NEIGHBOR_GRID_LAYOUT.bufferByteLength(2) / 4).fill(-1);
+        octilePredecessors[OCTILE_NEIGHBOR_GRID_LAYOUT.cellOffset(0, 1)] = 1;
+        octilePredecessors[OCTILE_NEIGHBOR_GRID_LAYOUT.cellOffset(1, 3)] = 0;
+
+        rebuildFlowNeighborGrid(flowToNavIdx, octilePredecessors, neighborGrid, flowToNavIdx.length, 2, 1, OCTILE_NEIGHBOR_GRID_LAYOUT);
+
+        assert.equal(neighborGrid[OCTILE_NEIGHBOR_GRID_LAYOUT.cellOffset(0, 1)], 1);
+        assert.equal(neighborGrid[OCTILE_NEIGHBOR_GRID_LAYOUT.cellOffset(1, 3)], 0);
+    });
+
+    it("checks reachability through a neighbor layout instead of hardcoded stride", () => {
+        const neighborGrid = new Int32Array(OCTILE_NEIGHBOR_GRID_LAYOUT.bufferByteLength(2) / 4).fill(-1);
+        neighborGrid[OCTILE_NEIGHBOR_GRID_LAYOUT.cellOffset(0, 1)] = 1;
+        const grid = new FlatGridView(2, 1, { neighbors: neighborGrid, neighborLayout: OCTILE_NEIGHBOR_GRID_LAYOUT });
+
+        assert.equal(gridReachabilityBfs(grid, 0, 1, () => false), true);
     });
 });

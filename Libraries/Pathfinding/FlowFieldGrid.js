@@ -2,6 +2,7 @@ import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/grid/gridNavEpoc
 import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { FlowFieldWindow } from "./flowFieldWindow.js";
 import { FlowCacheManager } from "./flowCacheManager.js";
+import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";
 const MAX_CACHE = 100;
 const FLOW_DONE = "flowDone";
 const FLOW_WINDOW_DONE = "flowWindowDone";
@@ -21,7 +22,8 @@ export class FlowFieldGrid {
         this.flowToNavIdx = new Int32Array(this.sabFlowToNav).fill(-1);
         this.navCols = 0;
         this.navRows = 0;
-        this.sabNeighbors = new SharedArrayBuffer(size * 8 * 4);
+        this.neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT;
+        this.sabNeighbors = new SharedArrayBuffer(this.neighborLayout.bufferByteLength(size));
         this.neighborGrid = new Int32Array(this.sabNeighbors).fill(-1);
         this.sabFlowPool = new SharedArrayBuffer(size * MAX_CACHE);
         this.cache = new FlowCacheManager(MAX_CACHE, this.window);

@@ -1,11 +1,13 @@
 import { computeFlowField } from "../../Pathfinding/flowFieldBfs.js";
 import { rebuildFlowNeighborGrid } from "../../Pathfinding/flowFieldWindow.js";
+import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../../Pathfinding/neighborGridLayout.js";
 export class FlowBufferManager {
     constructor() {
         this.gridWidth = 0;
         this.gridSize = 0;
         this.flowToNavIdx = null;
         this.neighborGrid = null;
+        this.neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT;
         this.flowPool = null;
         this.bfsDistances = null;
         this.localVectorMap = null;
@@ -44,7 +46,7 @@ export class FlowTopologyArena {
     }
     syncFlowWindow(buffers) {
         if (!this.navArenaBound) throw new Error("syncFlowWindow requires bound flow nav arena");
-        rebuildFlowNeighborGrid(buffers.flowToNavIdx, this.octilePredecessors, buffers.neighborGrid, buffers.gridSize, this.navCols, this.navRows);
+        rebuildFlowNeighborGrid(buffers.flowToNavIdx, this.octilePredecessors, buffers.neighborGrid, buffers.gridSize, this.navCols, this.navRows, buffers.neighborLayout);
     }
 }
 export class FlowFieldWorker {
@@ -76,6 +78,7 @@ export class FlowFieldWorker {
                 flowToNavIdx: this.buffers.flowToNavIdx,
                 navBlocked: this.topology.navBlocked,
                 neighborGrid: this.buffers.neighborGrid,
+                neighborLayout: this.buffers.neighborLayout,
                 tx,
                 ty,
                 range,

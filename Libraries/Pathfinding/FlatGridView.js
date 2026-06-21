@@ -3,12 +3,13 @@
  * Groups dimensions, bounds checks, index conversion, and attached buffers.
  */
 export class FlatGridView {
-    constructor(cols, rows, { blocked = null, neighbors = null, flowToNavIdx = null, canStep = null } = {}) {
+    constructor(cols, rows, { blocked = null, neighbors = null, neighborLayout = null, flowToNavIdx = null, canStep = null } = {}) {
         this.cols = cols;
         this.rows = rows;
         this.cellCount = cols * rows;
         this.blocked = blocked;
         this.neighbors = neighbors;
+        this.neighborLayout = neighborLayout;
         this.flowToNavIdx = flowToNavIdx;
         this._canStep = canStep;
     }
