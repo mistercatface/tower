@@ -68,6 +68,20 @@ export const SNAKE_GAME_DEFAULTS = {
     intentMemory: { threatTtlTicks: 45, preyTtlTicks: 90, foodTtlTicks: 180 },
     /** Milliseconds without food before a snake sheds one tail segment and shrinks. */
     starvationIntervalMs: 30_000,
+    /** Food-timer fraction cutoffs for hunger facts (1 = just ate, 0 = about to shed). */
+    hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
+    /**
+     * Decision scoring base weights. Non-overlapping bands reproduce the legacy
+     * threat > prey > food > explore cascade; hunger/route pressure adjusts on top.
+     */
+    decisionWeights: { flee: 400, prey: 300, food: 200, explore: 100 },
+    /**
+     * Hunger/route pressure layered on top of the base weights.
+     * foodHungerBonus scales the food score by how empty the food timer is.
+     * preyDesperationBonus pushes a desperate snake to hunt smaller snakes when
+     * food is unknown or its route recently failed.
+     */
+    decisionPressure: { foodHungerBonus: 120, preyDesperationBonus: 250 },
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
     showSnakeFsmDebug: true,
 };

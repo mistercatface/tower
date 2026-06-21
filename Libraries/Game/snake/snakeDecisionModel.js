@@ -1,3 +1,12 @@
+import { getSnakeGameConfig } from "./snakeGameConfig.js";
+export function deriveSnakeHungerState(foodFraction) {
+    if (foodFraction == null) return null;
+    const { satisfiedAtOrAbove, desperateBelow } = getSnakeGameConfig().hunger;
+    let state = "hungry";
+    if (foodFraction >= satisfiedAtOrAbove) state = "satisfied";
+    else if (foodFraction < desperateBelow) state = "desperate";
+    return { foodFraction, state, satisfied: state === "satisfied", hungry: state === "hungry", desperate: state === "desperate" };
+}
 function pushTargetEvents(events, kind, visibleTarget, rememberedTarget) {
     const upper = kind.toUpperCase();
     if (visibleTarget) {
@@ -58,14 +67,52 @@ function intentPolicy(mode, targetId, reason = null) {
     if (reason) policy.reason = reason;
     return policy;
 }
-export function pickSnakeIntentPolicy(blackboard) {
-    const threat = blackboard.facts.known.threat;
-    const prey = blackboard.facts.known.prey;
-    const food = blackboard.facts.known.food;
-    if (threat) return intentPolicy("flee", null, policyReasonForTarget(blackboard, "threat"));
-    if (prey) return intentPolicy("seek_prey", prey.id, policyReasonForTarget(blackboard, "prey"));
-    if (food) return intentPolicy("seek_food", food.id, policyReasonForTarget(blackboard, "food"));
+function scoreFlee(blackboard, weights) {
+    return blackboard.facts.known.threat ? weights.flee : -Infinity;
+}
+function scorePrey(blackboard, weights, pressure) {
+    if (!blackboard.facts.known.prey) return -Infinity;
+    const hunger = blackboard.facts.hungerState;
+    if (hunger?.satisfied) return -Infinity;
+    let score = weights.prey;
+    const foodUnknown = !blackboard.facts.known.food;
+    const routeFailed = !!blackboard.facts.routeStatus?.routeFailed;
+    if (hunger?.desperate && (foodUnknown || routeFailed)) score += pressure.preyDesperationBonus;
+    return score;
+}
+function scoreFood(blackboard, weights, pressure) {
+    if (!blackboard.facts.known.food) return -Infinity;
+    const hunger = blackboard.facts.hungerState;
+    const deficit = hunger ? 1 - hunger.foodFraction : 0;
+    return weights.food + pressure.foodHungerBonus * deficit;
+}
+function scoreExplore(blackboard, weights) {
+    return weights.explore;
+}
+export function scoreSnakeIntentCandidates(blackboard, weights = getSnakeGameConfig().decisionWeights, pressure = getSnakeGameConfig().decisionPressure) {
+    return {
+        flee: scoreFlee(blackboard, weights),
+        seek_prey: scorePrey(blackboard, weights, pressure),
+        seek_food: scoreFood(blackboard, weights, pressure),
+        explore: scoreExplore(blackboard, weights),
+    };
+}
+const INTENT_SCORE_ORDER = ["flee", "seek_prey", "seek_food", "explore"];
+function policyForScoredMode(blackboard, mode) {
+    if (mode === "flee") return intentPolicy("flee", null, policyReasonForTarget(blackboard, "threat"));
+    if (mode === "seek_prey") return intentPolicy("seek_prey", blackboard.facts.known.prey.id, policyReasonForTarget(blackboard, "prey"));
+    if (mode === "seek_food") return intentPolicy("seek_food", blackboard.facts.known.food.id, policyReasonForTarget(blackboard, "food"));
     return { mode: "explore", targetId: null };
+}
+export function pickSnakeIntentPolicy(blackboard, scores = scoreSnakeIntentCandidates(blackboard)) {
+    let bestMode = "explore";
+    let bestScore = -Infinity;
+    for (const mode of INTENT_SCORE_ORDER)
+        if (scores[mode] > bestScore) {
+            bestScore = scores[mode];
+            bestMode = mode;
+        }
+    return policyForScoredMode(blackboard, bestMode);
 }
 export function buildSnakeDecisionContext({
     visibleWorld,
@@ -73,19 +120,21 @@ export function buildSnakeDecisionContext({
     memorySource = null,
     committedTarget = null,
     routeStatus = null,
-    hungerState = null,
+    foodFraction = null,
     safetyState = null,
     recentFailures = [],
     pickPolicy = pickSnakeIntentPolicy,
 }) {
+    const hungerState = deriveSnakeHungerState(foodFraction);
     const blackboard = createSnakeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, safetyState, recentFailures });
-    const chosenIntent = pickPolicy(blackboard);
+    const candidateScores = scoreSnakeIntentCandidates(blackboard);
+    const chosenIntent = pickPolicy(blackboard, candidateScores);
     const decisionSnapshot = {
         events: blackboard.events,
         hungerState,
         routeStatus,
         committedTarget,
-        candidateScores: null,
+        candidateScores,
         chosenIntent,
         chosenReason: chosenIntent.reason ?? null,
         targetId: chosenIntent.targetId ?? null,

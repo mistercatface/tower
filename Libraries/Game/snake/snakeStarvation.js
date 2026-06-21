@@ -14,6 +14,9 @@ export function getSnakeFoodTimerFraction(timer) {
     if (timer.intervalMs <= 0) return 1;
     return Math.max(0, Math.min(1, timer.remainingMs / timer.intervalMs));
 }
+export function setSnakeFoodTimerFraction(timer, fraction) {
+    timer.remainingMs = Math.max(0, Math.min(1, fraction)) * timer.intervalMs;
+}
 export function shrinkSnakeChainFromStarvation(state, headId, members = null) {
     const config = getSnakeGameConfig();
     const minSegments = config.minAliveSegmentCount;

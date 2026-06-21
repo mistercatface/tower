@@ -18,7 +18,7 @@ import { createSnakeAutosim, createSnakeBrain } from "../Libraries/Game/snake/sn
 import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
-import { SNAKE_INTENT_MODE_TINT } from "../Libraries/Game/snake/snakeChainColor.js";
+import { SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT } from "../Libraries/Game/snake/snakeChainColor.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
@@ -146,7 +146,7 @@ describe("snake FSM transitions", () => {
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
         prey.head.y = hunter.head.y;
-        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
         assertChainTint(hunter, SNAKE_INTENT_MODE_TINT.seek_prey);
@@ -175,7 +175,7 @@ describe("snake FSM transitions", () => {
         const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, behaviorById: snakeBehaviors(state), eatRadius: 20, rng: () => 0 });
         autosim.start();
         assert.equal(autosim.getMode(), "explore");
-        assertChainTint(chain, SNAKE_INTENT_MODE_TINT.explore);
+        assertChainTint(chain, SNAKE_SATISFIED_EXPLORE_TINT);
         chain.head.x = state.obstacleGrid.gridToWorld(10, 8).x;
         chain.head.y = state.obstacleGrid.gridToWorld(10, 8).y;
         autosim.tick(FRAME_MS);
@@ -203,7 +203,7 @@ describe("snake FSM transitions", () => {
         prey.head.y = hunter.head.y;
         threat.head.x = hunter.head.x + 200;
         threat.head.y = hunter.head.y;
-        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
         threat.head.x = hunter.head.x + 80;
@@ -227,7 +227,7 @@ describe("snake FSM transitions", () => {
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
         prey.head.y = hunter.head.y;
-        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
         prey.head.isDead = true;
@@ -251,7 +251,7 @@ describe("snake FSM transitions", () => {
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
         prey.head.y = hunter.head.y;
-        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
         const lastSeenDest = autosim.getDestination();
@@ -284,7 +284,7 @@ describe("snake FSM transitions", () => {
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
         prey.head.y = hunter.head.y;
-        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
 

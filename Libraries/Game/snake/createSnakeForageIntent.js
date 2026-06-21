@@ -16,6 +16,7 @@ export function createSnakeForageIntent({
     navWalkable,
     visionCone = null,
     seekArrivalRadius = null,
+    resolveHunger = null,
     rng = Math.random,
 }) {
     const config = getSnakeGameConfig();
@@ -58,6 +59,7 @@ export function createSnakeForageIntent({
             memorySource: memoryWorld.memorySource,
             committedTarget: intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null,
             routeStatus: readRouteStatus(agent, state),
+            foodFraction: resolveHunger ? resolveHunger() : null,
         });
         lastBlackboard = decisionContext.blackboard;
         lastDecisionSnapshot = decisionContext.decisionSnapshot;
