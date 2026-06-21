@@ -1,14 +1,15 @@
-import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { after } from "node:test";
+import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { installNodeWorkerShim, terminateAllTrackedWorkers } from "./harness/installNodeWorkerShim.js";
 import { terminateAllWorkerNavigations, enableTestNavigationTracking } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { withTestTimeout } from "./testTimeout.js";
 
 installNodeWorkerShim();
 enableTestNavigationTracking();
 
 after(async () => {
-    await terminateAllWorkerNavigations();
-    await terminateAllTrackedWorkers();
+    await withTestTimeout("worker nav teardown", () => terminateAllWorkerNavigations());
+    await withTestTimeout("tracked worker teardown", () => terminateAllTrackedWorkers());
 });
 
 if (typeof globalThis.OffscreenCanvas === "undefined")
