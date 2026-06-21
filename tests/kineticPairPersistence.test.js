@@ -4,11 +4,11 @@ import { applyGameCollisionSettings } from "../Core/GameCollisionSettings.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { persistedKineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
-import { activeBodiesMatchKineticSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { activeBodiesMatchKineticSlab, kineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
+import { SatCollision, checkEntityPairCollisionAt } from "../Libraries/Spatial/collision/SatCollision.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { runKineticPhysics } from "../Libraries/Motion/kineticPhysicsPass.js";
@@ -42,6 +42,9 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
         },
     };
 }
+function slabPairCollision(a, b) {
+    return checkEntityPairCollisionAt(a, kineticBodySlab.x[a._physId], kineticBodySlab.y[a._physId], b, kineticBodySlab.x[b._physId], kineticBodySlab.y[b._physId]);
+}
 
 describe("kinetic pair persistence", () => {
     it("reuses gathered pair list across outer iterations", () => {
@@ -59,6 +62,7 @@ describe("kinetic pair persistence", () => {
         assert.equal(tick.world.kinetic.kineticSolverStats.outerIterations, 3);
         assert.equal(persistedKineticPairBuffer.count, 1);
         assert.ok(a.x !== ax0 || b.x !== 14);
+        assert.ok(activeBodiesMatchKineticSlab(tick.frame._activeKineticBodies));
         applyGameCollisionSettings(null);
     });
 
@@ -97,7 +101,7 @@ describe("kinetic pair persistence", () => {
         runCollisionPipeline(tick, { resolveWalls: () => {} });
         wedge.vx = -25;
         runCollisionPipeline(tick, { resolveWalls: () => {} });
-        assert.ok(!SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
+        assert.equal(slabPairCollision(ball, wedge), null);
         applyGameCollisionSettings(null);
     });
 

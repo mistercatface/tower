@@ -5,7 +5,7 @@ import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
 import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
-import { activeBodiesMatchKineticSlab, kineticBodySlab } from "./kineticBodySlab.js";
+import { activeBodiesMatchKineticSlab, kineticBodySlab, writebackActiveKineticBodySlab } from "./kineticBodySlab.js";
 import { persistedKineticPairBuffer } from "./kineticPairStream.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
@@ -64,6 +64,7 @@ export function runCollisionPipeline(
             resolveKineticContactPassWithPairs(tick, persistedKineticPairBuffer);
             applyContactSideEffects(tick, kineticContactBuffer);
             resolveGatheredKineticConstraintSlab(tick);
+            writebackActiveKineticBodySlab(activeBodies);
             for (let i = 0; i < activeBodies.length; i++) {
                 const prop = activeBodies[i];
                 if (!prop.strategy?.isKinetic) continue;
@@ -71,6 +72,7 @@ export function runCollisionPipeline(
                 if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
                 resolveWalls(prop);
             }
+            snapshotActiveBroadphaseBounds(activeBodies);
             frame.flushScheduledKineticActivations(patchBodies);
             const MAX_KINETIC_SPEED = 1000;
             const MAX_KINETIC_SPEED_SQ = MAX_KINETIC_SPEED * MAX_KINETIC_SPEED;
@@ -96,6 +98,7 @@ export function runCollisionPipeline(
                     }
                 }
             }
+            writebackActiveKineticBodySlab(activeBodies);
             if (!activeBodiesMatchKineticSlab(activeBodies)) continue;
             snapshotActiveBroadphaseBounds(activeBodies);
             const maxError = measureConstraintSlabMaxError();

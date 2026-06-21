@@ -107,6 +107,19 @@ export function writebackKineticBodySlabPhysId(spatialFrame, physId) {
 export function writebackKineticBodySlabPhysIds(spatialFrame, physIds) {
     for (let i = 0; i < physIds.length; i++) writebackKineticBodySlabPhysId(spatialFrame, physIds[i]);
 }
+export function writebackActiveKineticBodySlab(bodies) {
+    const slab = kineticBodySlab;
+    for (let i = 0; i < bodies.length; i++) {
+        const body = bodies[i];
+        const physId = body._physId;
+        body.x = slab.x[physId];
+        body.y = slab.y[physId];
+        body.vx = slab.vx[physId];
+        body.vy = slab.vy[physId];
+        body.angularVelocity = slab.w[physId];
+        invalidateBodyBroadphase(body);
+    }
+}
 const SLAB_POSE_EPS = 1e-4;
 const SLAB_VEL_EPS = 1e-4;
 export function activeBodiesMatchKineticSlab(bodies) {
