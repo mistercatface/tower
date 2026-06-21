@@ -9,7 +9,7 @@ import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav
 import { getSnakeGameConfig, resolveSnakeEatRadius, applySnakeSegmentGameplay } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE, pickGoalRelocateCell, relocateGoalOrb } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
-import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
+import { copySnakeChainTintFromHead, tintSnakeChainForIntentMode } from "./snakeChainColor.js";
 import { findNearestVisibleSnakeGoal, findNearestVisibleSnakeGoalFromVision } from "./snakeGoals.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
@@ -88,6 +88,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         rng,
     });
     let active = false;
+    let tintedMode = null;
     const foodTimer = createSnakeFoodTimer(config.starvationIntervalMs);
     const pendingPreyFoodRewards = [];
     const syncTailId = () => {
@@ -95,6 +96,12 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         tailId = liveMembers[liveMembers.length - 1].id;
     };
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
+    const syncIntentTint = () => {
+        const mode = intent.getMode();
+        if (mode === tintedMode) return;
+        tintSnakeChainForIntentMode(state, headId, mode);
+        tintedMode = mode;
+    };
     const growAfterFoodReward = (members = null) => {
         const grow = growSnakeChainAfterMeal(state, headId, members);
         const tail = state.entityRegistry.getLive(tailId);
@@ -153,6 +160,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
             intent.resetMode();
             intent.resetMemory();
             runSnakeFsmTick(intent, resolveSeeker(), state, 0);
+            syncIntentTint();
         },
         stop() {
             active = false;
@@ -223,6 +231,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
                 }
             }
             const choice = runSnakeFsmTick(intent, seeker, state, dtMs);
+            syncIntentTint();
             let fedThisTick = false;
             if (choice.mode === "seek_food" && choice.target) {
                 const goal = choice.target;

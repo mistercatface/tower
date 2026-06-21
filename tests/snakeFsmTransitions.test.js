@@ -17,6 +17,8 @@ import { createSnakeForageIntent } from "../Libraries/Game/snake/createSnakeFora
 import { createSnakeAutosim, createSnakeBrain } from "../Libraries/Game/snake/snakeAutosim.js";
 import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
+import { SNAKE_INTENT_MODE_TINT } from "../Libraries/Game/snake/snakeChainColor.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
@@ -70,6 +72,9 @@ function chainOptions(segmentCount = getSnakeGameConfig().segmentCount) {
         growDirX: config.growDirX,
         growDirY: config.growDirY,
     };
+}
+function assertChainTint(chain, tint) {
+    for (const prop of chain.members) assert.equal(getPropVisualTint(prop), tint);
 }
 
 function mockHeadNav() {
@@ -144,6 +149,7 @@ describe("snake FSM transitions", () => {
         const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
+        assertChainTint(hunter, SNAKE_INTENT_MODE_TINT.seek_prey);
         assert.equal(autosim.getLastTransitionReason(), "mode_seek_prey");
         const dest = autosim.getDestination();
         assert.equal(dest.col, 14);
@@ -169,10 +175,12 @@ describe("snake FSM transitions", () => {
         const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, behaviorById: snakeBehaviors(state), eatRadius: 20, rng: () => 0 });
         autosim.start();
         assert.equal(autosim.getMode(), "explore");
+        assertChainTint(chain, SNAKE_INTENT_MODE_TINT.explore);
         chain.head.x = state.obstacleGrid.gridToWorld(10, 8).x;
         chain.head.y = state.obstacleGrid.gridToWorld(10, 8).y;
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "seek_food");
+        assertChainTint(chain, SNAKE_INTENT_MODE_TINT.seek_food);
         assert.equal(autosim.getLastTransitionReason(), "mode_seek_food");
         assert.equal(autosim.getDestination().arrivalRadius, 20);
         assert.equal(autosim.getDestination().lockOnTarget, true);
@@ -201,6 +209,7 @@ describe("snake FSM transitions", () => {
         threat.head.x = hunter.head.x + 80;
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "flee");
+        assertChainTint(hunter, SNAKE_INTENT_MODE_TINT.flee);
         assert.equal(autosim.getLastTransitionReason(), "threat_visible");
     });
 
