@@ -1,5 +1,6 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
 import { wakeKineticBody } from "../../Libraries/Motion/kineticSleep.js";
+import { islandRootByPhysId } from "../../Libraries/Motion/kineticIslands.js";
 import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticTopology.js";
 import { getBroadphaseBounds } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 import {
@@ -164,7 +165,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     evictKineticProp(prop, session) {
         if (!prop || prop._physId === undefined) return;
-        kineticDynamicSlab.islandRoot[prop._physId] = -1;
+        islandRootByPhysId[prop._physId] = -1;
         this.entityGrid.remove(prop);
         const all = this._kineticBodies;
         for (let i = all.length - 1; i >= 0; i--) if (all[i] === prop) all.splice(i, 1);

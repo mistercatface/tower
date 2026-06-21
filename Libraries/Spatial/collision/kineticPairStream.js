@@ -1,7 +1,8 @@
 import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
 import { allowsKineticCollisionPair, isKinematicallyActive, shouldResolveKineticPair } from "./entityBroadphase.js";
-import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, shareKineticIslandSlab } from "./kineticBodySlab.js";
+import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
 import { classifyKineticPairTier, KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
+import { shareKineticIsland } from "../../Motion/kineticIslands.js";
 import { kineticPairTopologyStale } from "../../Motion/kineticTopology.js";
 const MAX_KINETIC_PAIRS = 4096;
 const MAX_PHYS_BODIES = 4096;
@@ -93,10 +94,10 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
     for (let i = 0; i < pairs.count; i++) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
-        if (shareKineticIslandSlab(physIdA, physIdB)) continue;
         const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
         const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
         if (!bodyA || !bodyB) continue;
+        if (shareKineticIsland(bodyA, bodyB)) continue;
         const tier = pairs.static.tier[i];
         const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
         if (!overlaps) continue;
@@ -139,7 +140,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             const tier = classifyKineticPairTier(primary, neighbor);
             const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (neighbor.isSleeping && isKinematicallyActive(primary) && overlaps) spatialFrame.activateKineticBody(neighbor);
-            if (shareKineticIslandSlab(physIdA, physIdB)) continue;
+            if (shareKineticIsland(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) return added;
             const idx = pairs.count++;
@@ -183,7 +184,7 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             const tier = classifyKineticPairTier(primary, neighbor);
             const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (neighbor.isSleeping && isKinematicallyActive(primary) && overlaps) spatialFrame.activateKineticBody(neighbor);
-            if (shareKineticIslandSlab(physIdA, physIdB)) continue;
+            if (shareKineticIsland(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) continue;
             const idx = pairs.count++;
