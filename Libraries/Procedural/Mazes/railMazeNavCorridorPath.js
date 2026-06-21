@@ -2,7 +2,7 @@ import { FlatGridSearch, GridPathQuery } from "../../Pathfinding/AStar.js";
 import { SearchState } from "../../Pathfinding/SearchState.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
-import { createPatchLayout, globalCellIdx, gridCellLayout, layoutAbsToLocalCell, layoutCellIndex, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
+import { createCellIndexLayout, globalCellIdx, gridCellLayout, layoutAbsToLocalCell, layoutCellIndex, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
 import { readNavWalkableFlag } from "./navWalkableIndex.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
 export function railMazeBeltZoneGridBounds(grid, railConfig) {
@@ -15,7 +15,7 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
     const bounds = railMazeBeltZoneGridBounds(grid, railConfig);
     const patchCols = bounds.endCol - bounds.startCol + 1;
     const patchRows = bounds.endRow - bounds.startRow + 1;
-    const patchLayout = createPatchLayout(bounds.startCol, bounds.startRow, patchCols, patchRows);
+    const patchLayout = createCellIndexLayout(bounds.startCol, bounds.startRow, patchCols, patchRows);
     const globalLayout = gridCellLayout(grid);
     const size = patchLayout.cellCount;
     const walkable = new Uint8Array(size);

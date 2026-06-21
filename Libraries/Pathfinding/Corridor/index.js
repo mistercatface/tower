@@ -35,6 +35,6 @@ export {
     corridorSearchBounds,
     corridorSearchLayout,
 } from "./corridorWalkGrid.js";
-export { CorridorGridPathfinder, createCorridorGridPathfinder } from "./corridorGridPathfinder.js";
+export { CorridorGridPathfinder } from "./corridorGridPathfinder.js";
 export { addCorridorPathToOccupied, buildCorridorLanePath, createCorridorLaneRouter, removeCorridorPathFromOccupied } from "./corridorLanePath.js";
 export { solveCorridorBundle, solveUniformCorridorBundle } from "./corridorBundle.js";

@@ -1,13 +1,11 @@
 import { FlatGridSearch, GridPathQuery } from "../AStar.js";
 import { SearchState } from "../SearchState.js";
-import { createCellIndexLayout, layoutAbsToLocalCell, layoutCellIndex, layoutCellRows, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
+import { layoutAbsToLocalCell, layoutCellIndex, layoutCellRows, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
 export class CorridorGridPathfinder {
     constructor(layout) {
         this.layout = layout;
         this.cols = layout.strideCols;
         this.rows = layoutCellRows(layout);
-        this.originCol = layout.originCol;
-        this.originRow = layout.originRow;
         const size = layout.cellCount;
         this.roomBlocked = new Uint8Array(size);
         this.searchState = new SearchState(size);
@@ -73,7 +71,4 @@ export class CorridorGridPathfinder {
     findPath(startCol, startRow, goalCol, goalRow, maxPathLen = 512) {
         return this.findQuery(GridPathQuery.fromCells(startCol, startRow, goalCol, goalRow), maxPathLen);
     }
-}
-export function createCorridorGridPathfinder(bounds) {
-    return new CorridorGridPathfinder(createCellIndexLayout(bounds.originCol, bounds.originRow, bounds.cols, bounds.rows));
 }

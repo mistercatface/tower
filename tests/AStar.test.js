@@ -1,14 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+    FlatAbstractGraphSearch,
+    FlatGraphView,
     FlatGridSearch,
     GridPathQuery,
-    runCardinalAStarFlat,
-    runLocalAStarFlat,
-    runDijkstraFlat,
-    runGreedyBestFirstFlat,
-    runAbstractAStar,
-    runAbstractAStarFlat
 } from "../Libraries/Pathfinding/AStar.js";
 import { SearchState } from "../Libraries/Pathfinding/SearchState.js";
 
@@ -17,7 +13,7 @@ describe("AStar Engine Search Suite", () => {
     const rows = 5;
     const size = cols * rows;
 
-    it("runCardinalAStarFlat finds orthogonal-only path avoiding simple wall", () => {
+    it("FlatGridSearch.cardinal finds orthogonal-only path avoiding simple wall", () => {
         const searchState = new SearchState(size);
         const isWall = (c, r) => (c === 2 && r === 1) || (c === 2 && r === 2);
         const navGraph = {
@@ -27,7 +23,8 @@ describe("AStar Engine Search Suite", () => {
             }
         };
 
-        const path = navGraph.canStep ? runCardinalAStarFlat(0, 2, 4, 2, navGraph, cols, rows, 20, searchState.prepare()) : null;
+        const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
+        const path = search.cardinal(GridPathQuery.fromCells(0, 2, 4, 2), 20);
         assert.ok(path);
         for (let i = 1; i < path.length; i++) {
             const dc = Math.abs(path[i].col - path[i - 1].col);
@@ -39,26 +36,14 @@ describe("AStar Engine Search Suite", () => {
         assert.deepEqual(path[path.length - 1], { col: 4, row: 2 });
     });
 
-    it("runLocalAStarFlat finds octile path cutting corners diagonally", () => {
+    it("FlatGridSearch.local finds octile path cutting corners diagonally", () => {
         const searchState = new SearchState(size);
         const navGraph = { canStep: () => true };
 
-        const path = runLocalAStarFlat(0, 0, 2, 2, navGraph, cols, rows, 20, searchState.prepare());
-        assert.ok(path);
-        assert.equal(path.length, 3);
-        assert.deepEqual(path, [
-            { col: 0, row: 0 },
-            { col: 1, row: 1 },
-            { col: 2, row: 2 }
-        ]);
-    });
-
-    it("FlatGridSearch runs local search from a query object", () => {
-        const searchState = new SearchState(size);
-        const navGraph = { canStep: () => true };
         const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
         const path = search.local(GridPathQuery.fromCells(0, 0, 2, 2), 20);
         assert.ok(path);
+        assert.equal(path.length, 3);
         assert.deepEqual(path, [
             { col: 0, row: 0 },
             { col: 1, row: 1 },
@@ -66,11 +51,12 @@ describe("AStar Engine Search Suite", () => {
         ]);
     });
 
-    it("runDijkstraFlat finds shortest path (uniform-cost)", () => {
+    it("FlatGridSearch.dijkstra finds shortest path (uniform-cost)", () => {
         const searchState = new SearchState(size);
         const navGraph = { canStep: () => true };
 
-        const path = runDijkstraFlat(0, 0, 2, 2, navGraph, cols, rows, 20, searchState.prepare());
+        const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
+        const path = search.dijkstra(GridPathQuery.fromCells(0, 0, 2, 2), 20);
         assert.ok(path);
         assert.equal(path.length, 3);
         assert.deepEqual(path, [
@@ -80,29 +66,17 @@ describe("AStar Engine Search Suite", () => {
         ]);
     });
 
-    it("runGreedyBestFirstFlat finds a fast heuristic-focused path", () => {
+    it("FlatGridSearch.greedy finds a fast heuristic-focused path", () => {
         const searchState = new SearchState(size);
         const navGraph = { canStep: () => true };
 
-        const path = runGreedyBestFirstFlat(0, 0, 2, 2, navGraph, cols, rows, 20, searchState.prepare());
+        const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
+        const path = search.greedy(GridPathQuery.fromCells(0, 0, 2, 2), 20);
         assert.ok(path);
         assert.deepEqual(path[path.length - 1], { col: 2, row: 2 });
     });
 
-    it("runAbstractAStar solves simple object-based graph", () => {
-        const nodesMap = {
-            A: { id: "A", col: 0, row: 0, edges: [{ targetId: "B", cost: 10 }, { targetId: "C", cost: 100 }] },
-            B: { id: "B", col: 2, row: 0, edges: [{ targetId: "C", cost: 5 }] },
-            C: { id: "C", col: 4, row: 0, edges: [] }
-        };
-
-        const path = runAbstractAStar("A", "C", nodesMap);
-        assert.ok(path);
-        const ids = path.map(n => n.id);
-        assert.deepEqual(ids, ["A", "B", "C"], "Should take the cheaper A -> B -> C route despite extra node");
-    });
-
-    it("runAbstractAStarFlat solves simple flat CSR graph", () => {
+    it("FlatAbstractGraphSearch solves simple flat CSR graph", () => {
         const searchState = new SearchState(3);
         const nodeCol = new Int16Array([0, 2, 4]);
         const nodeRow = new Int16Array([0, 0, 0]);
@@ -110,7 +84,9 @@ describe("AStar Engine Search Suite", () => {
         const edgeTargets = new Int32Array([1, 2, 2]);
         const edgeCosts = new Float32Array([10, 100, 5]);
 
-        const path = runAbstractAStarFlat(0, 2, nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, 3, searchState.prepare());
+        const graph = new FlatGraphView({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount: 3 });
+        const search = new FlatAbstractGraphSearch({ graph, searchState });
+        const path = search.run(0, 2);
         assert.ok(path);
         assert.deepEqual(Array.from(path), [0, 1, 2], "Should resolve flat indices 0 -> 1 -> 2");
     });

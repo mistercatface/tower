@@ -7,10 +7,6 @@ export function colRowToIndex(col, row, cols) {
 export function globalCellIdx(col, row, gridCols) {
     return colRowToIndex(col, row, gridCols);
 }
-/** @param {number} originCol @param {number} originRow @param {number} patchCols @param {number} patchRows @returns {CellIndexLayout} */
-export function createPatchLayout(originCol, originRow, patchCols, patchRows) {
-    return createCellIndexLayout(originCol, originRow, patchCols, patchRows);
-}
 export function createCellIndexLayout(originCol, originRow, cols, rows) {
     return { originCol, originRow, strideCols: cols, cellCount: cols * rows };
 }
