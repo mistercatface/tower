@@ -2,7 +2,7 @@ import { applyKineticAcceleration } from "../Motion/applyAcceleration.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getPhysicsSettings } from "../../Core/GamePhysicsSettings.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { isSnakeSteeringLeaseValid } from "../Game/snake/snakeSteeringLease.js";
+import { maySnakeHeadReceiveRoll } from "../Game/snake/snakeSteeringLease.js";
 export function snapMoveTargetToCellCenter(grid, world) {
     const { col, row } = grid.worldToGrid(world.x, world.y);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
@@ -42,19 +42,24 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
     applyRollSpin(prop);
     wakeKineticBody(prop);
 }
+function snakeRollBlocked(world, prop) {
+    if (prop._snakeSteering && !world) return true;
+    if (!world) return false;
+    return !maySnakeHeadReceiveRoll(world, prop);
+}
 export function steerRollToward(prop, dirX, dirY, config, world = null) {
-    if (prop._snakeSteering && (!world || !isSnakeSteeringLeaseValid(world, prop))) return;
+    if (snakeRollBlocked(world, prop)) return;
     if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config, world);
     prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: config.maxSpeed };
     wakeKineticBody(prop);
 }
 export function decelerateRoll(prop, config, world = null) {
-    if (prop._snakeSteering && (!world || !isSnakeSteeringLeaseValid(world, prop))) return;
+    if (snakeRollBlocked(world, prop)) return;
     prop._groundRollDrive = { kind: "brake", accel: config.accel };
     wakeKineticBody(prop);
 }
 export function applyGroundRollDrive(prop, dtSec, world = null) {
-    if (prop._snakeSteering && world && !isSnakeSteeringLeaseValid(world, prop)) {
+    if (world && prop._groundRollDrive && !maySnakeHeadReceiveRoll(world, prop)) {
         clearGroundRollDrive(prop);
         return false;
     }

@@ -17,6 +17,7 @@ import { createWorkerNavigation } from "../../Libraries/Navigation/WorkerNavigat
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
 import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
 import { SnakeInstance, registerAliveSnakeInstance, getSnakeInstance } from "../../Libraries/Game/snake/SnakeInstance.js";
+import { grantSnakeSteeringLease } from "../../Libraries/Game/snake/snakeSteeringLease.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
 loadPropAssets();
@@ -50,6 +51,7 @@ export function registerSnakeTestInstance(state, snakeGame, { headId, spawnGroup
     const instance = new SnakeInstance({ headId, spawnGroupId, autosim: resolvedAutosim, lifecycle: "alive" });
     instance.syncMembersFromGraph(state);
     registerAliveSnakeInstance(snakeGame, instance);
+    grantSnakeSteeringLease(instance, state);
     return instance;
 }
 export function wireSnakeTestGame(state, snakes = []) {

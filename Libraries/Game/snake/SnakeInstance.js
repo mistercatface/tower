@@ -1,9 +1,10 @@
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { clearChainLinksForMembers, removeChainLinkBetween } from "../../Sandbox/chainLinks.js";
+import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createSnakeAutosim } from "./snakeAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "./snakeSteeringLease.js";
-import { registerAliveSnake, registerInertSnake, markSnakeDead, retireSnakeSegmentsFromNav, collectSnakeInstanceMemberIds, purgeInertSnakesForHead, isValidAliveSnakeHead } from "./snakeLifecycle.js";
+import { grantSnakeSteeringLease, revokeSnakeSteeringLease, clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
+import { registerAliveSnake, registerInertSnake, markSnakeDead, retireSnakeSegmentsFromNav, purgeInertSnakesForHead } from "./snakeLifecycle.js";
 export class SnakeInstance {
     constructor({ headId, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
         this.headId = headId;
@@ -22,7 +23,14 @@ export class SnakeInstance {
         this.autosim.stop();
     }
     isSteerable(state, registry) {
-        return isValidAliveSnakeHead(state, registry, this.headId);
+        if (this.lifecycle !== "alive" || !registry.aliveByHeadId.has(this.headId)) return false;
+        const head = state.entityRegistry.getLive(this.headId);
+        if (!head) return false;
+        if (!getSandboxEntityMeta(state).isChainHead(this.headId)) return false;
+        const members = getConnectedComponentPath(state.kinetic, this.headId);
+        if (members[0] !== this.headId) return false;
+        if (members.length < getSnakeGameConfig().minAliveSegmentCount) return false;
+        return true;
     }
     validate(state, snakeGame) {
         if (this.lifecycle !== "alive") return;
@@ -36,9 +44,17 @@ export class SnakeInstance {
     retireMemberSegments(state, memberIds) {
         retireSnakeSegmentsFromNav(state, memberIds);
     }
+    memberIdsForTeardown(snakeGame, connectedMembers) {
+        const ids = new Set(connectedMembers);
+        for (const entry of snakeGame.registry.inertByLeadId.values()) {
+            if (entry.sourceHeadId !== this.headId) continue;
+            for (let i = 0; i < entry.memberIds.length; i++) ids.add(entry.memberIds[i]);
+        }
+        return [...ids];
+    }
     retireAllSegments(state, snakeGame, connectedMembers = null) {
         const members = connectedMembers ?? this.syncMembersFromGraph(state);
-        const resolvedMembers = collectSnakeInstanceMemberIds(state, snakeGame, this.headId, members);
+        const resolvedMembers = this.memberIdsForTeardown(snakeGame, members);
         this.retireMemberSegments(state, resolvedMembers);
         return resolvedMembers;
     }
@@ -47,6 +63,7 @@ export class SnakeInstance {
         registerInertSnake(snakeGame.registry, tailIds[0], tailIds, this.headId);
     }
     die(state, snakeGame, members = null) {
+        this.lifecycle = "dead";
         this.stopSteering(state);
         snakeGame.autosimsByHeadId.delete(this.headId);
         const connectedMembers = members ?? getConnectedComponentPath(state.kinetic, this.headId);
@@ -54,8 +71,9 @@ export class SnakeInstance {
         clearChainLinksForMembers(state, resolvedMembers);
         purgeInertSnakesForHead(snakeGame.registry, this.headId);
         markSnakeDead(snakeGame.registry, this.headId);
-        this.lifecycle = "dead";
         snakeGame.instancesByHeadId.delete(this.headId);
+        const head = state.entityRegistry.get(this.headId);
+        if (head) clearSnakeSteeringLeaseFromProp(head);
         if (snakeGame.onHeadDied) snakeGame.onHeadDied(this.headId);
     }
     splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers = null) {
@@ -85,13 +103,11 @@ export function registerAliveSnakeInstance(snakeGame, instance) {
     snakeGame.autosimsByHeadId.set(instance.headId, instance.autosim);
 }
 export function getSnakeInstance(snakeGame, headId) {
-    return snakeGame.instancesByHeadId?.get(headId) ?? null;
+    return snakeGame.instancesByHeadId.get(headId);
 }
 export function buildSnakeMemberToInstanceMap(state, snakeGame) {
     const map = new Map();
-    const instances = snakeGame.instancesByHeadId;
-    if (!instances) return map;
-    for (const instance of instances.values()) {
+    for (const instance of snakeGame.instancesByHeadId.values()) {
         if (instance.lifecycle !== "alive") continue;
         const members = getConnectedComponentPath(state.kinetic, instance.headId);
         instance.memberIds = members;
@@ -102,6 +118,14 @@ export function buildSnakeMemberToInstanceMap(state, snakeGame) {
 export function resolveSnakeInstanceForMember(state, snakeGame, memberId) {
     const instance = getSnakeInstance(snakeGame, memberId);
     if (instance && instance.lifecycle === "alive") return instance;
-    const map = buildSnakeMemberToInstanceMap(state, snakeGame);
-    return map.get(memberId) ?? null;
+    return buildSnakeMemberToInstanceMap(state, snakeGame).get(memberId) ?? null;
+}
+export function syncAliveSnakeInstances(state, snakeGame) {
+    for (const instance of [...snakeGame.instancesByHeadId.values()]) instance.validate(state, snakeGame);
+}
+export function tickAliveSnakeInstances(state, snakeGame, dtMs) {
+    for (const instance of snakeGame.instancesByHeadId.values()) {
+        if (instance.lifecycle !== "alive") continue;
+        instance.autosim.tick(dtMs);
+    }
 }

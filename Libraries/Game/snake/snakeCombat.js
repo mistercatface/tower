@@ -2,7 +2,6 @@ import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.j
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { getSnakeInstance, buildSnakeMemberToInstanceMap } from "./SnakeInstance.js";
-import { retireSnakeSegmentsFromNav, sweepOrphanSnakeChains } from "./snakeLifecycle.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 function snakeSegmentCount(state, headId, members = null) {
     return (members || getConnectedComponentPath(state.kinetic, headId)).length;
@@ -58,17 +57,5 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         if (splitLinks.has(linkKey)) continue;
         splitLinks.add(linkKey);
         splitSnakeAtStruckSegment(state, snakeGame, smallerHead, struckSegmentId, victimMembers);
-    }
-}
-export function syncSnakeGameLifecycle(state, snakeGame) {
-    const registry = snakeGame.registry;
-    for (const instance of snakeGame.instancesByHeadId.values()) instance.validate(state, snakeGame);
-    for (const entry of registry.inertByLeadId.values()) retireSnakeSegmentsFromNav(state, entry.memberIds);
-    sweepOrphanSnakeChains(state, snakeGame);
-    for (const headId of [...snakeGame.autosimsByHeadId.keys()]) {
-        if (registry.aliveByHeadId.has(headId)) continue;
-        const instance = getSnakeInstance(snakeGame, headId);
-        if (instance) instance.stopSteering(state);
-        snakeGame.autosimsByHeadId.delete(headId);
     }
 }

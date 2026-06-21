@@ -14,6 +14,7 @@ import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Librarie
 import { SnakeInstance, createAliveSnakeInstance, registerAliveSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
 import { steerRollToward, applyGroundRollDrive } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../Libraries/Game/snake/snakeSteeringLease.js";
+import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
@@ -146,5 +147,28 @@ describe("SnakeInstance", () => {
         assert.equal(snakeGame.autosimsByHeadId.get(pack.chain.head.id), instance.autosim);
         assert.equal(snakeGame.registry.aliveByHeadId.has(pack.chain.head.id), true);
         assert.equal(instance.memberIds.length, 3);
+    });
+
+    it("physics clears roll drive on dead chain heads", () => {
+        applySnakeGameConfig({ segmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
+        const registry = createSnakeLifecycleRegistry();
+        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+        const instance = new SnakeInstance({
+            headId: pack.chain.head.id,
+            spawnGroupId: pack.chain.spawnGroupId,
+            autosim: { start() {}, stop() {} },
+            lifecycle: "alive",
+        });
+        registerAliveSnakeInstance(state.sandbox.snakeGame, instance);
+        grantSnakeSteeringLease(instance, state);
+        const head = pack.chain.head;
+        head._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 5, maxSpeed: 10 };
+        killSnake(state, state.sandbox.snakeGame, head.id);
+        applyGroundRollDrive(head, 1 / 60, state);
+        assert.equal(head._groundRollDrive, undefined);
+        assert.equal(head.vx, 0);
     });
 });

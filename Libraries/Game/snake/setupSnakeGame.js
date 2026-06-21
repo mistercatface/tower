@@ -2,7 +2,7 @@ import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
 import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "./snakeLifecycle.js";
-import { createAliveSnakeInstance, registerAliveSnakeInstance } from "./SnakeInstance.js";
+import { createAliveSnakeInstance, registerAliveSnakeInstance, getSnakeInstance, syncAliveSnakeInstances, tickAliveSnakeInstances } from "./SnakeInstance.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { mountSnakeHud } from "./snakeHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
@@ -12,7 +12,7 @@ import { selectionPropIds } from "../../Sandbox/sandboxSelectionInspectors.js";
 import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
-import { resolveSnakeCombatFromContacts, syncSnakeGameLifecycle } from "./snakeCombat.js";
+import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
@@ -139,13 +139,10 @@ export async function setupSnakeGame(state) {
         getSegmentCount,
         tick(dtMs) {
             const snakeGame = state.sandbox.snakeGame;
-            syncSnakeGameLifecycle(state, snakeGame);
+            syncAliveSnakeInstances(state, snakeGame);
             snakeGame._batchingPerception = true;
             beginSnakePerceptionFrame(state);
-            for (const [headId, autosim] of autosimsByHeadId) {
-                if (!registry.aliveByHeadId.has(headId)) continue;
-                autosim.tick(dtMs);
-            }
+            tickAliveSnakeInstances(state, snakeGame, dtMs);
             endSnakePerceptionFrame(state);
             snakeGame._batchingPerception = false;
             hud.update();
@@ -154,7 +151,7 @@ export async function setupSnakeGame(state) {
             applyKineticContactSideEffects(tick, contacts);
             resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
             resolveStrikerBallSnakeSplitsFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame, strikerBall);
-            syncSnakeGameLifecycle(state, state.sandbox.snakeGame);
+            syncAliveSnakeInstances(state, state.sandbox.snakeGame);
         },
         stop() {
             for (const autosim of autosimsByHeadId.values()) autosim.stop();
