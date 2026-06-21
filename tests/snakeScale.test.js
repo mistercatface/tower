@@ -10,7 +10,7 @@ import { getChainMemberIds, resolveChainLinkRestLength } from "../Libraries/Sand
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { getSnakeChainRadius, growSnakeChainAfterMeal, stepSnakeChainRadius } from "../Libraries/Game/snake/snakeScale.js";
+import { getSnakeChainRadius, growSnakeChainAfterMeal } from "../Libraries/Game/snake/snakeScale.js";
 
 loadPropAssets();
 
@@ -48,7 +48,7 @@ describe("snakeScale", () => {
         assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(chain.members[0], chain.members[1], config.linkSlack));
     });
 
-    it("steps the whole chain from startRadius to maxRadius across meals", () => {
+    it("keeps chain radius fixed across meals", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeScaleTestState();
@@ -59,19 +59,14 @@ describe("snakeScale", () => {
             segmentRadius: config.startRadius,
             linkSlack: config.linkSlack,
         });
-        assert.equal(stepSnakeChainRadius(state, chain.head.id), 2.25);
-        assert.equal(stepSnakeChainRadius(state, chain.head.id), 2.5);
-        assert.equal(stepSnakeChainRadius(state, chain.head.id), 2.75);
-        assert.equal(stepSnakeChainRadius(state, chain.head.id), 3);
-        for (let i = 0; i < 4; i++) stepSnakeChainRadius(state, chain.head.id);
-        assert.equal(stepSnakeChainRadius(state, chain.head.id), 4);
-        assert.equal(stepSnakeChainRadius(state, chain.head.id), 4);
+        growSnakeChainAfterMeal(state, chain.head.id);
+        growSnakeChainAfterMeal(state, chain.head.id);
         const members = getChainMemberIds(state, chain.head.id).map((id) => state.entityRegistry.getLive(id));
-        for (let i = 0; i < members.length; i++) assert.equal(getCirclePropRadius(members[i]), 4);
+        for (let i = 0; i < members.length; i++) assert.equal(getCirclePropRadius(members[i]), config.startRadius);
         assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(members[0], members[1], config.linkSlack));
     });
 
-    it("growSnakeChainAfterMeal returns spacing for the updated radius", () => {
+    it("growSnakeChainAfterMeal returns spacing for the current radius", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeScaleTestState();
@@ -83,8 +78,8 @@ describe("snakeScale", () => {
             linkSlack: config.linkSlack,
         });
         const grow = growSnakeChainAfterMeal(state, chain.head.id);
-        assert.equal(grow.segmentRadius, 2.25);
-        assert.equal(grow.spacing, resolveSnakeSegmentSpacing(config, 2.25));
+        assert.equal(grow.segmentRadius, config.startRadius);
+        assert.equal(grow.spacing, resolveSnakeSegmentSpacing(config, config.startRadius));
         assert.equal(grow.linkSlack, config.linkSlack);
     });
 });

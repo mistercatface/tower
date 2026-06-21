@@ -2,7 +2,7 @@ import { removeChainLinkBetween, clearChainLinksForProp } from "../../Sandbox/ch
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { getSnakeSegmentCount, stepSnakeChainRadiusDown } from "./snakeScale.js";
+import { getSnakeSegmentCount } from "./snakeScale.js";
 export function createSnakeFoodTimer(intervalMs = getSnakeGameConfig().starvationIntervalMs) {
     return { remainingMs: intervalMs, intervalMs };
 }
@@ -25,7 +25,6 @@ export function shrinkSnakeChainFromStarvation(state, headId, members = null) {
     removeChainLinkBetween(state, prevId, tailId);
     clearChainLinksForProp(state, tailId);
     removeSandboxWorldProp(state, tail);
-    stepSnakeChainRadiusDown(state, headId, resolvedMembers.slice(0, -1));
     return true;
 }
 /** @param {number} dtMs */
