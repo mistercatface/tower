@@ -8,6 +8,7 @@ export function createAgentIntent({
     resolveFleeCell,
     locomotion,
     seekMode = "seek",
+    seekModes = null,
     fleeMode = "flee",
     exploreMode = "explore",
     seekArrivalRadius = null,
@@ -25,6 +26,8 @@ export function createAgentIntent({
     let lastTransitionReason = "init";
     let ticks = 0;
     let lastModeChangeTick = 0;
+    const seekModeSet = new Set(seekModes ?? [seekMode]);
+    const isSeekMode = (value) => seekModeSet.has(value);
     const resolveCommittedTarget = (state, world = null) => {
         if (targetId == null) return null;
         return resolveCommitTarget(state, targetId, world);
@@ -74,7 +77,7 @@ export function createAgentIntent({
         const grid = state.obstacleGrid;
         const world = perceiveWorld(agent, state);
         const policy = { ...pickPolicy(world) };
-        if (mode === seekMode && !resolveCommittedTarget(state, world)) {
+        if (isSeekMode(mode) && !resolveCommittedTarget(state, world)) {
             commit(agent, state, policy.mode, policy.targetId, "target_lost", world);
             return { mode, target: resolveCommittedTarget(state, world) };
         }
@@ -93,12 +96,12 @@ export function createAgentIntent({
         if (locomotion.getDestination() && locomotion.needsRetry(agent, state)) {
             lastTransitionReason = "route_failed_retry";
             const status = locomotion.getStatus(agent, state);
-            if (!status.replanPending && locomotion.retryOnRouteFailure(mode, { seekMode, fleeMode, exploreMode })) setDestinationForCommit(agent, state, world);
+            if (!status.replanPending && locomotion.retryOnRouteFailure(mode, { seekMode, seekModes: seekModeSet, fleeMode, exploreMode })) setDestinationForCommit(agent, state, world);
             return { mode, target: resolveCommittedTarget(state, world) };
         }
         const dest = locomotion.getDestination();
         const target = resolveCommittedTarget(state, world);
-        if (mode === seekMode) {
+        if (isSeekMode(mode)) {
             if (!target) {
                 commit(agent, state, policy.mode, policy.targetId, "target_lost", world);
                 return { mode, target: null };

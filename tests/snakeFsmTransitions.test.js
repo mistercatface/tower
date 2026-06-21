@@ -127,6 +127,31 @@ function createMockIntent(state, selfHeadId, registry) {
 }
 
 describe("snake FSM transitions", () => {
+    it("explore transitions to seek_prey when a smaller snake is visible", async () => {
+        applySnakeGameConfig({ fleeRange: 128 });
+        resetKineticConstraintIds(1);
+        const state = await createFsmTestState();
+        const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
+        const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
+        spawnGoalOrbAtCell(state, { col: 12, row: 10 });
+        wireSnakeTestGame(state, [
+            { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
+            { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
+        ]);
+        hunter.head.facing = 0;
+        prey.head.x = hunter.head.x + 64;
+        prey.head.y = hunter.head.y;
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosim.start();
+        assert.equal(autosim.getMode(), "seek_prey");
+        assert.equal(autosim.getLastTransitionReason(), "mode_seek_prey");
+        const dest = autosim.getDestination();
+        assert.equal(dest.col, 14);
+        assert.equal(dest.row, 10);
+        assert.deepEqual(dest.world, { x: prey.head.x, y: prey.head.y });
+        assert.equal(dest.exactArrival, true);
+    });
+
     it("explore transitions to seek_food when food enters vision", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
@@ -148,6 +173,32 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "seek_food");
         assert.equal(autosim.getLastTransitionReason(), "mode_seek_food");
         assert.ok(autosim.getDestination());
+    });
+
+    it("seek_prey transitions to flee when a larger snake appears", async () => {
+        applySnakeGameConfig({ fleeRange: 128 });
+        resetKineticConstraintIds(1);
+        const state = await createFsmTestState();
+        const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
+        const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
+        const threat = spawnLinkedBallChain(state, { col: 24, row: 10 }, chainOptions(7));
+        wireSnakeTestGame(state, [
+            { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
+            { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
+            { headId: threat.head.id, spawnGroupId: threat.spawnGroupId },
+        ]);
+        hunter.head.facing = 0;
+        prey.head.x = hunter.head.x + 64;
+        prey.head.y = hunter.head.y;
+        threat.head.x = hunter.head.x + 200;
+        threat.head.y = hunter.head.y;
+        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        autosim.start();
+        assert.equal(autosim.getMode(), "seek_prey");
+        threat.head.x = hunter.head.x + 80;
+        autosim.tick(FRAME_MS);
+        assert.equal(autosim.getMode(), "flee");
+        assert.equal(autosim.getLastTransitionReason(), "threat_visible");
     });
 
     it("seek_food transitions to flee when a larger snake appears", async () => {

@@ -69,6 +69,7 @@ export function perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, re
 }
 export function pickSnakeIntentPolicy(world) {
     if (world.threat) return { mode: "flee", targetId: null };
+    if (world.prey) return { mode: "seek_prey", targetId: world.prey.id };
     if (world.food) return { mode: "seek_food", targetId: world.food.id };
     return { mode: "explore", targetId: null };
 }

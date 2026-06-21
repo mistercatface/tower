@@ -25,13 +25,14 @@ export function createSnakeForageIntent({
         transitionReason: (prevMode, nextMode) => {
             if (nextMode === "flee") return "threat_visible";
             if (prevMode === "flee") return "threat_clear";
-            if (prevMode === "seek_food" && nextMode !== prevMode) return "target_lost";
+            if ((prevMode === "seek_food" || prevMode === "seek_prey") && nextMode !== prevMode) return "target_lost";
             return `mode_${nextMode}`;
         },
         resolveExploreCell,
         resolveFleeCell: (agent, threat, state, avoidCell) => pickFleeCell(agent, threat, state.obstacleGrid, navWalkable, undefined, avoidCell),
         locomotion,
         seekMode: "seek_food",
+        seekModes: ["seek_food", "seek_prey"],
         fleeMode: "flee",
         exploreMode: "explore",
         seekArrivalRadius,

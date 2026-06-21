@@ -184,7 +184,7 @@ describe("snake intent FSM", () => {
         assert.equal(world.threat.id, threatChain.head.id);
         assert.equal(pickSnakeIntentPolicy(world).mode, "flee");
     });
-    it("exposes prey without changing the current food-seeking policy", async () => {
+    it("prefers visible prey over food when no threat is visible", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = await createIntentTestState();
@@ -203,7 +203,7 @@ describe("snake intent FSM", () => {
         const world = perceiveSnakeIntentWorld(seeker, seeker.id, state, registry, () => goal);
         assert.equal(world.prey.id, preyChain.head.id);
         assert.equal(world.food.id, goal.id);
-        assert.deepEqual(pickSnakeIntentPolicy(world), { mode: "seek_food", targetId: goal.id });
+        assert.deepEqual(pickSnakeIntentPolicy(world), { mode: "seek_prey", targetId: preyChain.head.id });
     });
     it("ignores smaller snakes hidden behind walls", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
