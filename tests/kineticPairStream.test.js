@@ -13,7 +13,7 @@ import {
     snapshotActiveBroadphaseBounds,
 } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
-import { kineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 loadPropAssets();
@@ -144,8 +144,8 @@ describe("kinetic pair stream on proof props", () => {
         const a = mockCircleBody(0, 0, 10, 50, 0);
         const b = mockCircleBody(15, 0, 10, -30, 0);
         resolveKineticContactPass(createKineticTestTick([a, b]));
-        assert.ok(kineticBodySlab.x[a._physId] < 0);
-        assert.ok(kineticBodySlab.x[b._physId] > 15);
+        assert.ok(kineticDynamicSlab.x[a._physId] < 0);
+        assert.ok(kineticDynamicSlab.x[b._physId] > 15);
     });
     it("contact pass still ignores resting overlapping circles", () => {
         const a = mockCircleBody(0, 0, 10, 0, 0);

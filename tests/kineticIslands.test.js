@@ -4,7 +4,7 @@ import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
-import { bakeKineticIslandPlan, islandRootByPhysId, shareKineticIsland } from "../Libraries/Motion/kineticIslands.js";
+import { bakeKineticIslandPlan, shareKineticIsland } from "../Libraries/Motion/kineticIslands.js";
 import {
     advanceKineticSleep,
     evaluateKineticIslandSleepEligible,
@@ -12,6 +12,7 @@ import {
 } from "../Libraries/Motion/kineticSleep.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 
 let nextId = 1;
@@ -89,6 +90,21 @@ describe("kinetic islands", () => {
         bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
         snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
+        assert.equal(kineticPairBuffer.count, 0);
+    });
+
+    it("linked moving body wakes sleeping neighbor before skipping internal pair", () => {
+        const mover = mockCircleBody(0, 0, 10, 40, 0);
+        const sleeper = mockCircleBody(18, 0, 10, 0, 0);
+        sleeper.isSleeping = true;
+        const bodies = [mover, sleeper];
+        const state = createState(bodies);
+        linkChain(state, bodies, 18);
+        const frame = setupActiveFrame(bodies);
+        bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
+        snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
+        gatherKineticCandidatePairs(frame, kineticPairBuffer);
+        assert.equal(sleeper.isSleeping, false);
         assert.equal(kineticPairBuffer.count, 0);
     });
 
@@ -182,7 +198,7 @@ describe("kinetic islands", () => {
         assert.equal(c._kineticLinkNeighbors[0], b);
     });
 
-    it("bakeKineticIslandPlan fills islandRootByPhysId for in-frame bodies", () => {
+    it("bakeKineticIslandPlan fills slab island roots for in-frame bodies", () => {
         const a = mockCircleBody(0, 0, 10);
         const b = mockCircleBody(18, 0, 10);
         const c = mockCircleBody(36, 0, 10);
@@ -191,9 +207,9 @@ describe("kinetic islands", () => {
         linkChain(state, bodies, 18);
         const frame = setupActiveFrame(bodies);
         bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
-        assert.equal(islandRootByPhysId[a._physId], a.id);
-        assert.equal(islandRootByPhysId[b._physId], a.id);
-        assert.equal(islandRootByPhysId[c._physId], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[a._physId], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[b._physId], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[c._physId], a.id);
     });
 
     it("addDistanceConstraint marks island topology dirty", () => {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { addDistanceConstraint, pruneKineticConstraintsForBody, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab, kineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
-import { kineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
@@ -40,7 +40,7 @@ describe("kinetic constraint solver", () => {
         bodyB.x = 50;
         gatherKineticConstraintSlab(tick);
         for (let pass = 0; pass < 8; pass++) resolveGatheredKineticConstraintSlab(tick);
-        const dist = Math.hypot(kineticBodySlab.x[bodyB._physId] - kineticBodySlab.x[bodyA._physId], kineticBodySlab.y[bodyB._physId] - kineticBodySlab.y[bodyA._physId]);
+        const dist = Math.hypot(kineticDynamicSlab.x[bodyB._physId] - kineticDynamicSlab.x[bodyA._physId], kineticDynamicSlab.y[bodyB._physId] - kineticDynamicSlab.y[bodyA._physId]);
         assert.ok(Math.abs(dist - restLength) < 0.5, `expected ~${restLength}, got ${dist}`);
     });
     it("leaves unlinked bodies unchanged when contact pass runs", () => {

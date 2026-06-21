@@ -214,7 +214,7 @@ export function gatherKineticConstraintSlab(tick) {
     slab.reset();
     const { frame, world } = tick;
     const session = world.kinetic;
-    const plan = ensureKineticIslandPlan(session, frame._kineticBodies);
+    ensureKineticIslandPlan(session, frame._kineticBodies);
     const list = session.kineticConstraints;
     const buckets = new Map();
     for (let i = 0; i < list.length; i++) {
@@ -224,7 +224,7 @@ export function gatherKineticConstraintSlab(tick) {
         const bodyB = entry.bodyB;
         if (bodyA.isDead || bodyB.isDead) continue;
         if (!bodyA.strategy?.isKinetic || !bodyB.strategy?.isKinetic) continue;
-        const root = plan.bodyIdToIslandRoot.get(bodyA.id) ?? bodyA.id;
+        const root = bodyA._kineticIslandRoot ?? bodyA.id;
         if (!buckets.has(root)) buckets.set(root, []);
         buckets.get(root).push({ entry, bodyA, bodyB });
     }

@@ -16,7 +16,7 @@ import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js"
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
 import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts, killSnake } from "../Libraries/Game/snake/snakeCombat.js";
-import { kineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { SNAKE_SHARD_PROP_ID } from "../Libraries/Game/snake/snakeSegmentFracture.js";
 
 loadPropAssets();
@@ -194,8 +194,8 @@ describe("snake combat min length", () => {
         resolveKineticContactPassWithPairs(tick, pairs);
         assert.ok(kineticContactBuffer.count >= 1);
         applySnakeHuntContactDrive(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
-        assert.equal(Math.round(kineticBodySlab.vx[hunterHead._physId]), 120);
-        assert.equal(Math.round(kineticBodySlab.vy[hunterHead._physId]), 0);
+        assert.equal(Math.round(kineticDynamicSlab.vx[hunterHead._physId]), 120);
+        assert.equal(Math.round(kineticDynamicSlab.vy[hunterHead._physId]), 0);
     });
 
     it("killSnake only tears down the defeated snake spawn group", () => {

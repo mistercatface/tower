@@ -1,9 +1,6 @@
-import { getKineticConstraintGraph } from "./kineticConstraintGraph.js";
+import { getConstraintIslands, getKineticConstraintGraph } from "./kineticConstraintGraph.js";
 import { getKineticConstraintsVersion } from "./kineticConstraints.js";
 import { kineticDynamicSlab } from "../Spatial/collision/kineticBodySlab.js";
-const MAX_PHYS_BODIES = 4096;
-export const islandRootByPhysId = new Int32Array(MAX_PHYS_BODIES);
-islandRootByPhysId.fill(-1);
 function clearBodyIslandFields(body) {
     delete body._kineticLinkNeighbors;
     delete body._kineticIslandPeers;
@@ -16,12 +13,9 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
         const body = kineticBodies[i];
         bodyById.set(body.id, body);
         clearBodyIslandFields(body);
-        if (body._physId !== undefined) {
-            islandRootByPhysId[body._physId] = -1;
-            kineticDynamicSlab.islandRoot[body._physId] = -1;
-        }
+        body._kineticIslandRoot = body.id;
+        if (body._physId !== undefined) kineticDynamicSlab.islandRoot[body._physId] = body.id;
     }
-    const bodyIdToIslandRoot = new Map();
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
         const neighborIds = adjacent.get(body.id);
@@ -35,42 +29,26 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
             }
         if (linkNeighbors) body._kineticLinkNeighbors = linkNeighbors;
     }
-    const assigned = new Set();
-    for (let i = 0; i < kineticBodies.length; i++) {
-        const start = kineticBodies[i];
-        if (assigned.has(start.id)) continue;
+    const islands = getConstraintIslands(session);
+    for (let i = 0; i < islands.length; i++) {
+        const ids = islands[i];
         const memberBodies = [];
-        const seen = new Set([start.id]);
-        const stack = [start.id];
-        while (stack.length > 0) {
-            const id = stack.pop();
+        for (let j = 0; j < ids.length; j++) {
+            const id = ids[j];
             const body = bodyById.get(id);
             if (body) memberBodies.push(body);
-            const neighborIds = adjacent.get(id);
-            if (!neighborIds) continue;
-            for (let k = 0; k < neighborIds.length; k++) {
-                const neighborId = neighborIds[k];
-                if (!seen.has(neighborId)) {
-                    seen.add(neighborId);
-                    stack.push(neighborId);
-                }
-            }
         }
+        if (memberBodies.length === 0) continue;
         const root = memberBodies[0].id;
         const multiBody = memberBodies.length > 1;
         for (let m = 0; m < memberBodies.length; m++) {
             const body = memberBodies[m];
-            assigned.add(body.id);
             body._kineticIslandRoot = root;
-            bodyIdToIslandRoot.set(body.id, root);
-            if (body._physId !== undefined) {
-                islandRootByPhysId[body._physId] = root;
-                kineticDynamicSlab.islandRoot[body._physId] = root;
-            }
+            if (body._physId !== undefined) kineticDynamicSlab.islandRoot[body._physId] = root;
             if (multiBody) body._kineticIslandPeers = memberBodies;
         }
     }
-    session._kineticIslandPlan = { version: getKineticConstraintsVersion(session), bodyIdToIslandRoot };
+    session._kineticIslandPlan = { version: getKineticConstraintsVersion(session) };
 }
 export function ensureKineticIslandPlan(session, kineticBodies) {
     const version = getKineticConstraintsVersion(session);

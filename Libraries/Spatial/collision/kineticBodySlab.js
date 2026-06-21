@@ -196,6 +196,10 @@ export function pairCircleCircleOverlapSlab(physIdA, physIdB) {
     const radii = slab.r[physIdA] + slab.r[physIdB];
     return dx * dx + dy * dy < radii * radii;
 }
+export function shareKineticIslandSlab(physIdA, physIdB) {
+    const rootA = kineticDynamicSlab.islandRoot[physIdA];
+    return rootA >= 0 && rootA === kineticDynamicSlab.islandRoot[physIdB];
+}
 export function pairBroadphaseOverlapSlab(physIdA, physIdB) {
     const slab = kineticDynamicSlab;
     if (slab.bpKind[physIdA] === BP_KIND_CIRCLE && slab.bpKind[physIdB] === BP_KIND_CIRCLE) return pairCircleCircleOverlapSlab(physIdA, physIdB);

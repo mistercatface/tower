@@ -6,7 +6,7 @@ import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { SatCollision, checkEntityPairCollision, checkEntityPairCollisionAt } from "../Libraries/Spatial/collision/SatCollision.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { KINETIC_PAIR_TIER } from "../Libraries/Spatial/collision/kineticNarrowPhase.js";
-import { kineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
@@ -41,7 +41,7 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
     };
 }
 function slabPairCollision(a, b) {
-    return checkEntityPairCollisionAt(a, kineticBodySlab.x[a._physId], kineticBodySlab.y[a._physId], b, kineticBodySlab.x[b._physId], kineticBodySlab.y[b._physId]);
+    return checkEntityPairCollisionAt(a, kineticDynamicSlab.x[a._physId], kineticDynamicSlab.y[a._physId], b, kineticDynamicSlab.x[b._physId], kineticDynamicSlab.y[b._physId]);
 }
 
 describe("kinetic contact pipeline", () => {

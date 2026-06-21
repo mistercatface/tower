@@ -4,7 +4,7 @@ import { applyGameCollisionSettings } from "../Core/GameCollisionSettings.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { persistedKineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
-import { activeBodiesMatchKineticSlab, kineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { activeBodiesMatchKineticSlab, kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
@@ -43,7 +43,7 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
     };
 }
 function slabPairCollision(a, b) {
-    return checkEntityPairCollisionAt(a, kineticBodySlab.x[a._physId], kineticBodySlab.y[a._physId], b, kineticBodySlab.x[b._physId], kineticBodySlab.y[b._physId]);
+    return checkEntityPairCollisionAt(a, kineticDynamicSlab.x[a._physId], kineticDynamicSlab.y[a._physId], b, kineticDynamicSlab.x[b._physId], kineticDynamicSlab.y[b._physId]);
 }
 
 describe("kinetic pair persistence", () => {
