@@ -28,6 +28,7 @@ function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
         vy,
         angularVelocity: 0,
         isSleeping: false,
+        currentState: {},
         strategy: { isKinetic: true },
         mass: radius,
         get momentOfInertia() {
