@@ -181,3 +181,98 @@ export function runAbstractAStarFlat(startIdx, targetIdx, nodeCol, nodeRow, edge
     }
     return null;
 }
+
+export function runDijkstraFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, searchState, stepPenaltyLookup = null) {
+    const startIdx = startRow * cols + startCol;
+    const targetIdx = targetRow * cols + targetCol;
+    if (startIdx === targetIdx) return [{ col: startCol, row: startRow }];
+    const openSet = new IdxMinHeap();
+    const { gScore, cameFrom, visited, runId } = searchState;
+    gScore[startIdx] = 0;
+    visited[startIdx] = runId;
+    cameFrom[startIdx] = -1;
+    openSet.push(startIdx, 0);
+    while (openSet.size > 0) {
+        const curr = openSet.pop();
+        const currIdx = curr.idx;
+        const currCol = currIdx % cols;
+        const currRow = (currIdx / cols) | 0;
+        const currentG = gScore[currIdx];
+        if (curr.f > currentG + STALE_F_EPSILON) continue;
+        if (currentG > maxPathLen) continue;
+        if (currIdx === targetIdx) {
+            const path = [];
+            let currNode = currIdx;
+            while (currNode !== -1) {
+                path.push({ col: currNode % cols, row: (currNode / cols) | 0 });
+                currNode = cameFrom[currNode];
+            }
+            path.reverse();
+            return path;
+        }
+        for (const offset of OCTILE_OFFSETS) {
+            const nc = currCol + offset.dc;
+            const nr = currRow + offset.dr;
+            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                if (!navGraph.canStep(currCol, currRow, nc, nr)) continue;
+                const nIdx = nr * cols + nc;
+                const stepExtra = stepPenaltyLookup ? stepPenaltyLookup.extraCostForIdx(nIdx) : 0;
+                const tentativeG = currentG + offset.cost + stepExtra;
+                if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
+                    visited[nIdx] = runId;
+                    gScore[nIdx] = tentativeG;
+                    cameFrom[nIdx] = currIdx;
+                    openSet.push(nIdx, tentativeG);
+                }
+            }
+        }
+    }
+    return null;
+}
+
+export function runGreedyBestFirstFlat(startCol, startRow, targetCol, targetRow, navGraph, cols, rows, maxPathLen, searchState, stepPenaltyLookup = null) {
+    const startIdx = startRow * cols + startCol;
+    const targetIdx = targetRow * cols + targetCol;
+    if (startIdx === targetIdx) return [{ col: startCol, row: startRow }];
+    const openSet = new IdxMinHeap();
+    const { gScore, cameFrom, visited, runId } = searchState;
+    gScore[startIdx] = 0;
+    visited[startIdx] = runId;
+    cameFrom[startIdx] = -1;
+    openSet.push(startIdx, octileDistance(startCol, startRow, targetCol, targetRow));
+    while (openSet.size > 0) {
+        const curr = openSet.pop();
+        const currIdx = curr.idx;
+        const currCol = currIdx % cols;
+        const currRow = (currIdx / cols) | 0;
+        const currentG = gScore[currIdx];
+        if (currentG > maxPathLen) continue;
+        if (currIdx === targetIdx) {
+            const path = [];
+            let currNode = currIdx;
+            while (currNode !== -1) {
+                path.push({ col: currNode % cols, row: (currNode / cols) | 0 });
+                currNode = cameFrom[currNode];
+            }
+            path.reverse();
+            return path;
+        }
+        for (const offset of OCTILE_OFFSETS) {
+            const nc = currCol + offset.dc;
+            const nr = currRow + offset.dr;
+            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                if (!navGraph.canStep(currCol, currRow, nc, nr)) continue;
+                const nIdx = nr * cols + nc;
+                const stepExtra = stepPenaltyLookup ? stepPenaltyLookup.extraCostForIdx(nIdx) : 0;
+                const tentativeG = currentG + offset.cost + stepExtra;
+                if (visited[nIdx] !== runId || tentativeG < gScore[nIdx]) {
+                    visited[nIdx] = runId;
+                    gScore[nIdx] = tentativeG;
+                    cameFrom[nIdx] = currIdx;
+                    openSet.push(nIdx, octileDistance(nc, nr, targetCol, targetRow));
+                }
+            }
+        }
+    }
+    return null;
+}
