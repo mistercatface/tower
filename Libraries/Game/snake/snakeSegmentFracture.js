@@ -4,25 +4,19 @@ import { WorldProp } from "../../../Entities/WorldProp.js";
 import { transformPoint2DInto } from "../../Math/Poly2D.js";
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { kineticBodySlab } from "../../Spatial/collision/kineticBodySlab.js";
+import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
+import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { applyShardGeometryToProp } from "../../Props/propFracture.js";
-import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS, shatterGlassPolygon } from "../../Props/glassFracture.js";
+import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS } from "../../Props/glassFracture.js";
+import { getSnakeGameConfig } from "./snakeGameConfig.js";
 export const SNAKE_SHARD_PROP_ID = "snake_shard";
-const CIRCLE_FRACTURE_VERTICES = 16;
-const FALLBACK_MIN_SHARDS = 4;
-const FALLBACK_MAX_SHARDS = 7;
+const FRACTURABLE_DEAD_SEGMENT_FLAG = "_snakeFracturableDeadSegment";
+const MIN_SNAKE_SHARDS = 4;
+const MAX_SNAKE_SHARDS = 5;
 const FALLBACK_IMPACT_FORCE = 26;
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
-}
-function circleFlatFootprint(radius, sides = CIRCLE_FRACTURE_VERTICES) {
-    const flat = new Float32Array(sides * 2);
-    for (let i = 0; i < sides; i++) {
-        const angle = -Math.PI / 2 + (i * Math.PI * 2) / sides;
-        flat[i * 2] = Math.cos(angle) * radius;
-        flat[i * 2 + 1] = Math.sin(angle) * radius;
-    }
-    return flat;
 }
 function propFacing(prop) {
     return prop.facing ?? prop.angle ?? 0;
@@ -42,6 +36,12 @@ function segmentLocalToWorld(segment, localX, localY) {
 function copyVisualOverride(from, to) {
     if (from.visualOverride) to.visualOverride = { ...from.visualOverride };
 }
+function markDeadSegmentFracturable(segment) {
+    if (segment) segment[FRACTURABLE_DEAD_SEGMENT_FLAG] = true;
+}
+export function markSnakeSegmentsFracturable(state, memberIds) {
+    for (let i = 0; i < memberIds.length; i++) markDeadSegmentFracturable(state.entityRegistry.get(memberIds[i]));
+}
 function defaultSegmentLocalHit(radius, index) {
     const angle = index * 1.61803398875;
     return { x: Math.cos(angle) * radius * 0.3, y: Math.sin(angle) * radius * 0.3 };
@@ -59,8 +59,11 @@ function resolveSegmentImpact(segment, radius, deathImpact, index) {
     const localHit = defaultSegmentLocalHit(radius, index);
     return { localHit, worldHit: segmentLocalToWorld(segment, localHit.x, localHit.y), impactForce: baseForce };
 }
-function fallbackCircleShards(radius, localHit, impactForce) {
-    const count = clamp(Math.round(4 + impactForce * 0.04), FALLBACK_MIN_SHARDS, FALLBACK_MAX_SHARDS);
+function snakeShardCount(impactForce) {
+    return clamp(Math.round(3.5 + impactForce * 0.02), MIN_SNAKE_SHARDS, MAX_SNAKE_SHARDS);
+}
+function buildSnakeCircleShards(radius, localHit, impactForce) {
+    const count = snakeShardCount(impactForce);
     const hitDist = Math.hypot(localHit.x, localHit.y);
     const inset = hitDist > 1e-6 ? Math.min(radius * 0.42, hitDist * 0.45) / hitDist : 0;
     const apex = { x: localHit.x * inset, y: localHit.y * inset };
@@ -82,9 +85,7 @@ function fallbackCircleShards(radius, localHit, impactForce) {
 export function fractureSnakeSegmentGeometry(segment, impact, random = Math.random) {
     const radius = getCirclePropRadius(segment) ?? segment.radius ?? 0;
     if (radius <= 0) return [];
-    const flat = circleFlatFootprint(radius);
-    const glassShards = shatterGlassPolygon(flat, impact.localHit.x, impact.localHit.y, impact.impactForce, random);
-    return glassShards.length >= 2 ? glassShards : fallbackCircleShards(radius, impact.localHit, impact.impactForce);
+    return buildSnakeCircleShards(radius, impact.localHit, impact.impactForce);
 }
 function currentSegmentMotion(segment) {
     const physId = segment._physId;
@@ -117,6 +118,7 @@ export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = n
     return spawned;
 }
 export function shatterSnakeSegments(state, spatialFrame, memberIds, deathImpact = null, random = Math.random) {
+    markSnakeSegmentsFracturable(state, memberIds);
     if (deathImpact?.struckSegmentId == null) return { spawned: [], removedSegments: [] };
     const meta = getSandboxEntityMeta(state);
     const spawned = [];
@@ -132,4 +134,37 @@ export function shatterSnakeSegments(state, spatialFrame, memberIds, deathImpact
         removedSegments.push(segment);
     }
     return { spawned, removedSegments };
+}
+function contactWorldPointForBody(contacts, i, targetBody) {
+    const physIdA = contacts.physIdA[i];
+    const physIdB = contacts.physIdB[i];
+    const nx = contacts.nx[i];
+    const ny = contacts.ny[i];
+    if (contacts.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
+        if (targetBody._physId === physIdB) return { x: kineticBodySlab.x[physIdB] + nx * kineticBodySlab.r[physIdB], y: kineticBodySlab.y[physIdB] + ny * kineticBodySlab.r[physIdB] };
+        return { x: kineticBodySlab.x[physIdA] - nx * kineticBodySlab.r[physIdA], y: kineticBodySlab.y[physIdA] - ny * kineticBodySlab.r[physIdA] };
+    }
+    if (targetBody._physId === physIdB) return { x: kineticBodySlab.x[physIdB] + contacts.rbx[i], y: kineticBodySlab.y[physIdB] + contacts.rby[i] };
+    return { x: kineticBodySlab.x[physIdA] + contacts.rax[i], y: kineticBodySlab.y[physIdA] + contacts.ray[i] };
+}
+function tryFractureRetiredSegment(state, spatialFrame, contacts, i, segment, fracturedIds) {
+    if (!segment?.[FRACTURABLE_DEAD_SEGMENT_FLAG]) return false;
+    if (fracturedIds.has(segment.id)) return false;
+    const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
+    if (relSpeed < getSnakeGameConfig().splitImpulseThreshold) return false;
+    const hit = contactWorldPointForBody(contacts, i, segment);
+    const fracture = shatterSnakeSegments(state, spatialFrame, [segment.id], { worldX: hit.x, worldY: hit.y, impactForce: relSpeed, struckSegmentId: segment.id, spatialFrame });
+    if (fracture.spawned.length === 0) return false;
+    fracturedIds.add(segment.id);
+    return true;
+}
+export function fractureRetiredSnakeSegmentsFromContacts(state, spatialFrame, contacts) {
+    if (contacts.count === 0) return;
+    const fracturedIds = new Set();
+    for (let i = 0; i < contacts.count; i++) {
+        const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
+        if (!pair) continue;
+        if (tryFractureRetiredSegment(state, spatialFrame, contacts, i, pair.bodyA, fracturedIds)) continue;
+        tryFractureRetiredSegment(state, spatialFrame, contacts, i, pair.bodyB, fracturedIds);
+    }
 }

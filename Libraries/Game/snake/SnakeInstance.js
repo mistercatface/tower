@@ -5,7 +5,7 @@ import { createSnakeAutosim } from "./snakeAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease, clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { registerAliveSnake, registerInertSnake, markSnakeDead, retireSnakeSegmentsFromNav, purgeInertSnakesForHead } from "./snakeLifecycle.js";
-import { shatterSnakeSegments } from "./snakeSegmentFracture.js";
+import { markSnakeSegmentsFracturable, shatterSnakeSegments } from "./snakeSegmentFracture.js";
 export class SnakeInstance {
     constructor({ headId, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
         this.headId = headId;
@@ -61,6 +61,7 @@ export class SnakeInstance {
     }
     severInertTail(state, snakeGame, tailIds) {
         this.retireMemberSegments(state, tailIds);
+        markSnakeSegmentsFracturable(state, tailIds);
         registerInertSnake(snakeGame.registry, tailIds[0], tailIds, this.headId);
     }
     die(state, snakeGame, members = null, deathImpact = null) {

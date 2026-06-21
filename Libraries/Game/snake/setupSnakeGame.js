@@ -14,6 +14,7 @@ import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
 import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
+import { fractureRetiredSnakeSegmentsFromContacts } from "./snakeSegmentFracture.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 export async function setupSnakeGame(state) {
@@ -152,6 +153,7 @@ export async function setupSnakeGame(state) {
             resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
             applySnakeHuntContactDrive(state, tick.frame, contacts, state.sandbox.snakeGame);
             resolveStrikerBallSnakeSplitsFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame, strikerBall);
+            fractureRetiredSnakeSegmentsFromContacts(state, tick.frame, contacts);
             syncAliveSnakeInstances(state, state.sandbox.snakeGame);
         },
         stop() {
