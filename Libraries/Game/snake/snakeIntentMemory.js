@@ -1,89 +1,47 @@
-function makeEmptyRecords() {
-    return { threat: null, prey: null, food: null };
-}
-function makeRecord(kind, target, seeker, grid, ttlTicks) {
-    if (!target) return null;
-    const cell = grid.worldToGrid(target.x, target.y);
-    const dx = target.x - seeker.x;
-    const dy = target.y - seeker.y;
-    return {
-        kind,
-        id: target.id ?? null,
-        x: target.x,
-        y: target.y,
-        cell,
-        ageTicks: 0,
-        ttlTicks,
-        confidence: 1,
-        lastDistance: Math.hypot(dx, dy),
-        lastDistanceCells: Math.hypot(dx, dy) / grid.cellSize,
-    };
-}
-function ageRecord(record) {
-    if (!record) return null;
-    record.ageTicks++;
-    record.confidence = Math.max(0, 1 - record.ageTicks / Math.max(record.ttlTicks, 1));
-    return record.ageTicks <= record.ttlTicks ? record : null;
-}
+import { createTargetMemory, targetFromMemoryRecord } from "../../AI/memory/targetMemory.js";
+const SNAKE_MEMORY_KINDS = ["threat", "prey", "food"];
 function targetFromRecord(record, state) {
     if (!record) return null;
     if (record.id != null) {
         const live = state.entityRegistry.getLive(record.id);
         if (!live || live.isDead) return null;
     }
-    return { id: record.id, x: record.x, y: record.y, memoryRecord: record };
-}
-function snapshotRecord(record) {
-    if (!record) return null;
-    return {
-        kind: record.kind,
-        id: record.id,
-        cell: { ...record.cell },
-        ageTicks: record.ageTicks,
-        ttlTicks: record.ttlTicks,
-        confidence: record.confidence,
-        lastDistance: record.lastDistance,
-        lastDistanceCells: record.lastDistanceCells,
-    };
+    return targetFromMemoryRecord(record);
 }
 export function createSnakeIntentMemory({ threatTtlTicks = 45, preyTtlTicks = 90, foodTtlTicks = 180 } = {}) {
-    const records = makeEmptyRecords();
-    function observe(kind, target, seeker, grid, ttlTicks) {
-        if (target) records[kind] = makeRecord(kind, target, seeker, grid, ttlTicks);
-        else records[kind] = ageRecord(records[kind]);
-    }
+    const memory = createTargetMemory(SNAKE_MEMORY_KINDS, { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks });
     return {
         update(seeker, state, visibleWorld) {
             const grid = state.obstacleGrid;
-            observe("threat", visibleWorld.threat, seeker, grid, threatTtlTicks);
-            observe("prey", visibleWorld.prey, seeker, grid, preyTtlTicks);
-            observe("food", visibleWorld.food, seeker, grid, foodTtlTicks);
+            memory.observe("threat", visibleWorld.threat, seeker, grid);
+            memory.observe("prey", visibleWorld.prey, seeker, grid);
+            memory.observe("food", visibleWorld.food, seeker, grid);
         },
         enrichWorld(state, visibleWorld) {
-            const threat = visibleWorld.threat ?? targetFromRecord(records.threat, state);
-            const prey = visibleWorld.prey ?? targetFromRecord(records.prey, state);
-            const food = visibleWorld.food ?? targetFromRecord(records.food, state);
+            const preyRecord = memory.record("prey");
+            const foodRecord = memory.record("food");
+            const threat = visibleWorld.threat ?? targetFromRecord(memory.record("threat"), state);
+            const prey = visibleWorld.prey ?? targetFromRecord(preyRecord, state);
+            const food = visibleWorld.food ?? targetFromRecord(foodRecord, state);
             return {
                 ...visibleWorld,
                 threat,
                 prey,
                 food,
-                preyDist: visibleWorld.prey ? visibleWorld.preyDist : (records.prey?.lastDistanceCells ?? null),
-                foodDist: visibleWorld.food ? visibleWorld.foodDist : (records.food?.lastDistanceCells ?? null),
+                preyDist: visibleWorld.prey ? visibleWorld.preyDist : (preyRecord?.lastDistanceCells ?? null),
+                foodDist: visibleWorld.food ? visibleWorld.foodDist : (foodRecord?.lastDistanceCells ?? null),
                 memory: this.snapshot(),
                 memorySource: { threat: !visibleWorld.threat && !!threat, prey: !visibleWorld.prey && !!prey, food: !visibleWorld.food && !!food },
             };
         },
         snapshot() {
-            return { threat: snapshotRecord(records.threat), prey: snapshotRecord(records.prey), food: snapshotRecord(records.food) };
+            return memory.snapshot();
         },
         clear() {
-            records.threat = null;
-            records.prey = null;
-            records.food = null;
+            memory.clear();
         },
         clearTarget(id) {
-            for (const kind of Object.keys(records)) if (records[kind]?.id === id) records[kind] = null;
+            memory.clearTarget(id);
         },
     };
 }

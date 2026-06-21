@@ -99,12 +99,18 @@ describe("explore steering", () => {
     it("falls back to a remembered candidate when samples find no fresh cells", async () => {
         const state = await createIntentTestState();
         const grid = state.obstacleGrid;
-        const openCells = [{ col: 12, row: 10 }];
+        const openCells = [
+            { col: 12, row: 10 },
+            { col: 18, row: 10 },
+        ];
         const memory = createSpatialCellMemory({ capacity: 8 });
         memory.stamp(12, 10);
-        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 1, memory, openCells, rng: () => 0 });
+        memory.stamp(18, 10);
+        let call = 0;
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 1, memory, openCells, rng: () => (call++ === 0 ? 0 : 0.75) });
         assert.ok(cell);
         assert.ok(memory.has(cell.col, cell.row));
+        assert.deepEqual(cell, { col: 12, row: 10 });
     });
 });
 describe("snake intent FSM", () => {
