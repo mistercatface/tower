@@ -3,7 +3,16 @@ import { SearchState } from "../../Pathfinding/SearchState.js";
 import { FlatGridView } from "../../Pathfinding/FlatGridView.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
-import { createCellIndexLayout, globalCellIdx, gridCellLayout, layoutAbsToLocalCell, layoutCellIndex, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
+import {
+    createCellIndexLayout,
+    globalCellIdx,
+    gridCellLayout,
+    layoutAbsCellIndex,
+    layoutAbsToLocalCell,
+    layoutContainsAbsCell,
+    layoutLocalCellIndex,
+    layoutLocalToAbsCell,
+} from "../../Spatial/grid/GridUtils.js";
 import { readNavWalkableFlag } from "./navWalkableIndex.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
 export function railMazeBeltZoneGridBounds(grid, railConfig) {
@@ -23,22 +32,18 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
     for (let r = bounds.startRow; r <= bounds.endRow; r++)
         for (let c = bounds.startCol; c <= bounds.endCol; c++) {
             if (!readNavWalkableFlag(navWalkableIndex.flags, navWalkableIndex.cols, c, r)) continue;
-            const patchIdx = layoutCellIndex(c, r, patchLayout.originCol, patchLayout.originRow, patchLayout.strideCols);
-            walkable[patchIdx] = 1;
+            walkable[layoutAbsCellIndex(patchLayout, c, r)] = 1;
         }
     const searchState = new SearchState(size);
     let reservedGlobalIndices = new Set();
     const gridView = new FlatGridView(patchCols, patchRows, {
         blocked: null,
         canStep(c0, r0, c1, r1) {
-            const patchIdx = r1 * patchCols + c1;
-            if (!walkable[patchIdx]) return false;
-            const gc0 = c0 + patchLayout.originCol;
-            const gr0 = r0 + patchLayout.originRow;
-            const gc1 = c1 + patchLayout.originCol;
-            const gr1 = r1 + patchLayout.originRow;
-            if (reservedGlobalIndices.has(globalCellIdx(gc1, gr1, grid.cols))) return false;
-            return grid.canStep(gc0, gr0, gc1, gr1, navTopology);
+            if (!walkable[layoutLocalCellIndex(patchLayout, c1, r1)]) return false;
+            const from = layoutLocalToAbsCell(patchLayout, c0, r0);
+            const to = layoutLocalToAbsCell(patchLayout, c1, r1);
+            if (reservedGlobalIndices.has(globalCellIdx(to.col, to.row, grid.cols))) return false;
+            return grid.canStep(from.col, from.row, to.col, to.row, navTopology);
         },
     });
     const gridSearch = new FlatGridSearch({ grid: gridView, searchState });
@@ -54,8 +59,8 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
             if (!layoutContainsAbsCell(patchLayout, query.target.col, query.target.row)) return null;
             const start = layoutAbsToLocalCell(patchLayout, query.start.col, query.start.row);
             const goal = layoutAbsToLocalCell(patchLayout, query.target.col, query.target.row);
-            const si = start.row * patchCols + start.col;
-            const gi = goal.row * patchCols + goal.col;
+            const si = layoutLocalCellIndex(patchLayout, start.col, start.row);
+            const gi = layoutLocalCellIndex(patchLayout, goal.col, goal.row);
             if (!walkable[si] || !walkable[gi]) return null;
             if (reservedGlobalIndices.has(globalCellIdx(query.start.col, query.start.row, grid.cols)) || reservedGlobalIndices.has(globalCellIdx(query.target.col, query.target.row, grid.cols)))
                 return null;

@@ -1,9 +1,6 @@
-import { layoutCellIndex, undirectedPairIndex } from "../../Spatial/grid/GridUtils.js";
+import { layoutAbsCellIndex, undirectedPairIndex } from "../../Spatial/grid/GridUtils.js";
 /** @typedef {{ c: number, r: number }} CorridorCell */
 /** @typedef {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} CellIndexLayout */
-function corridorCellIndex(c, r, layout) {
-    return layoutCellIndex(c, r, layout.originCol, layout.originRow, layout.strideCols);
-}
 /** @param {number} width */
 export function corridorPerpendicularOffsets(width) {
     const offsets = new Array(width);
@@ -33,8 +30,8 @@ export function collectCorridorPathPointCells(p, prev, next, corridorWidth, inte
         for (let oi = 0; oi < offsets.length; oi++) {
             const h = { c: p.c, r: p.r + offsets[oi] };
             const v = { c: p.c + offsets[oi], r: p.r };
-            const hk = corridorCellIndex(h.c, h.r, layout);
-            const vk = corridorCellIndex(v.c, v.r, layout);
+            const hk = layoutAbsCellIndex(layout, h.c, h.r);
+            const vk = layoutAbsCellIndex(layout, v.c, v.r);
             if (!seen.has(hk)) {
                 seen.add(hk);
                 cells.push(h);
@@ -64,7 +61,7 @@ export function corridorPathOccupiedCellIndices(path, corridorWidth, layout, opt
     const indices = new Set();
     for (let i = 0; i < path.length; i++) {
         const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, interiorOnly, i, path.length, layout);
-        for (let ci = 0; ci < cells.length; ci++) indices.add(corridorCellIndex(cells[ci].c, cells[ci].r, layout));
+        for (let ci = 0; ci < cells.length; ci++) indices.add(layoutAbsCellIndex(layout, cells[ci].c, cells[ci].r));
     }
     return indices;
 }

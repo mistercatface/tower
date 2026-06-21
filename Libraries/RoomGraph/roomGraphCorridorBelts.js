@@ -1,7 +1,7 @@
 import { collectCorridorPathPointCells } from "../Pathfinding/Corridor/corridorFootprint.js";
 import { cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
 import { gridSideFromCellToNeighbor, resolveRailedBeltFromSides, unrailedBeltKindFromRailed } from "../Spatial/grid/FloorCell.js";
-import { gridSideNeighborCell, layoutCellIndex } from "../Spatial/grid/GridUtils.js";
+import { gridSideNeighborCell, layoutAbsCellIndex } from "../Spatial/grid/GridUtils.js";
 /** @typedef {import("./roomGraphClosedRooms.js").Cell} Cell */
 /** @typedef {import("./roomGraphClosedRooms.js").GraphNode} GraphNode */
 /** @typedef {{ col: number, row: number, kind: number, facingIndex: number }} BakedFloorBelt */
@@ -9,9 +9,6 @@ import { gridSideNeighborCell, layoutCellIndex } from "../Spatial/grid/GridUtils
 /** @typedef {import("../Spatial/grid/GridUtils.js").CellIndexLayout} CellIndexLayout */
 function oppositeSide(side) {
     return (side + 2) % 4;
-}
-function cellIndex(c, r, layout) {
-    return layoutCellIndex(c, r, layout.originCol, layout.originRow, layout.strideCols);
 }
 /** @param {WallHole} hole */
 export function roomInteriorCellFromWallHole(hole) {
@@ -29,7 +26,7 @@ export function collapsePathRevisits(path, layout) {
     const indexByKey = new Map();
     for (let i = 0; i < path.length; i++) {
         const p = path[i];
-        const key = cellIndex(p.c, p.r, layout);
+        const key = layoutAbsCellIndex(layout, p.c, p.r);
         if (indexByKey.has(key)) out.length = indexByKey.get(key);
         indexByKey.set(key, out.length);
         out.push({ c: p.c, r: p.r });
@@ -62,7 +59,7 @@ export function beltsForPathPolyline(path, width, rooms, parentAnchor, childAnch
         for (let ci = 0; ci < cells.length; ci++) {
             const cell = cells[ci];
             if (cellInsideAnyRoom(rooms, cell.c, cell.r)) continue;
-            byCell.set(cellIndex(cell.c, cell.r, layout), { col: cell.c, row: cell.r, kind: spec.kind, facingIndex: spec.facingIndex });
+            byCell.set(layoutAbsCellIndex(layout, cell.c, cell.r), { col: cell.c, row: cell.r, kind: spec.kind, facingIndex: spec.facingIndex });
         }
     }
     return byCell;

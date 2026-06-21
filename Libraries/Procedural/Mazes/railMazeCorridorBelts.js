@@ -2,7 +2,7 @@ import { addCorridorPathToOccupied } from "../../Pathfinding/Corridor/corridorLa
 import { buildCorridorBeltsFromPaths } from "../../RoomGraph/roomGraphCorridorBelts.js";
 import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
-import { CARDINAL_OFFSETS, cellInRect, globalCellIdx, gridCellLayout, layoutCellIndex } from "../../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, cellInRect, globalCellIdx, gridCellLayout, layoutAbsCellIndex } from "../../Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
 import { isNavWalkableAt } from "./navWalkableIndex.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
@@ -15,9 +15,6 @@ const DEFAULT_PATH_LENGTH_MAX = 24;
 const MAX_PAIR_ATTEMPTS_PER_CORRIDOR = 96;
 const BELT_PLAN_SEED_SALT = 0xbe1a5afe;
 const DEFAULT_OPEN_BELT_CHANCE = 0.1;
-function layoutIdx(col, row, layout) {
-    return layoutCellIndex(col, row, layout.originCol, layout.originRow, layout.strideCols);
-}
 function manhattanCells(a, b) {
     return Math.abs(a.col - b.col) + Math.abs(a.row - b.row);
 }
@@ -91,7 +88,7 @@ function collectNorthSeamMouthIndices(cells, northReserveRows, footprint, layout
     for (let i = 0; i < cells.length; i++) {
         const cell = cells[i];
         if (cell.globalRow !== minGlobalRow) continue;
-        const idx = layoutIdx(cell.col, cell.row, layout);
+        const idx = layoutAbsCellIndex(layout, cell.col, cell.row);
         if (!footprint.has(idx)) continue;
         mouths.add(idx);
     }
@@ -110,8 +107,8 @@ function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
             const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
             const entry = { col: belt.col + CARDINAL_OFFSETS[entrySide].dc, row: belt.row + CARDINAL_OFFSETS[entrySide].dr };
             const exit = { col: belt.col + CARDINAL_OFFSETS[exitSide].dc, row: belt.row + CARDINAL_OFFSETS[exitSide].dr };
-            const entryIdx = layoutIdx(entry.col, entry.row, layout);
-            const exitIdx = layoutIdx(exit.col, exit.row, layout);
+            const entryIdx = layoutAbsCellIndex(layout, entry.col, entry.row);
+            const exitIdx = layoutAbsCellIndex(layout, exit.col, exit.row);
             const entryInFootprint = footprint.has(entryIdx);
             const exitInFootprint = footprint.has(exitIdx);
             if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) removeIndices.add(idx);
@@ -127,7 +124,7 @@ function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
             }
         }
         if (removeIndices.size === 0) return { floorBelts: belts, validation };
-        belts = belts.filter((belt) => !removeIndices.has(layoutIdx(belt.col, belt.row, layout)));
+        belts = belts.filter((belt) => !removeIndices.has(layoutAbsCellIndex(layout, belt.col, belt.row)));
         if (belts.length === 0) return { floorBelts: belts, validation: tryValidateBeltChains(belts, layout, mouthExteriorIndices) };
     }
     return { floorBelts: belts, validation: tryValidateBeltChains(belts, layout, mouthExteriorIndices) };

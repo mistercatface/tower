@@ -8,7 +8,7 @@ import { buildCorridorBeltsFromPaths, collapsePathRevisits, corridorExteriorCell
 import { assertBeltChains, beltMapFromFloorBelts } from "../Libraries/Procedural/Mazes/beltChainValidation.js";
 import { DEFAULT_CORRIDOR_EGRESS_CELLS } from "../Libraries/RoomGraph/roomGraphCorridorRails.js";
 import { floorBeltEntryExitSides } from "../Libraries/Spatial/grid/FloorCell.js";
-import { layoutCellIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { layoutAbsCellIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 export function makeRoomRect(c0, r0, width, height) {
     const c1 = c0 + width - 1;
     const r1 = r0 + height - 1;
@@ -50,9 +50,6 @@ function oppositeSide(side) {
 function fixtureLayout(fixture) {
     return corridorSearchLayout(corridorSearchBounds([fixture.roomA, fixture.roomB], 12));
 }
-function cellIndex(c, r, layout) {
-    return layoutCellIndex(c, r, layout.originCol, layout.originRow, layout.strideCols);
-}
 export function footprintIndicesForPath(path, width, layout) {
     return corridorPathOccupiedCellIndices(path, width, layout, { interiorOnly: false });
 }
@@ -72,7 +69,7 @@ export function assertLaneReachesRoomMouths(fixture, bundle, laneIndex, label = 
     const belts = buildCorridorBeltsFromPaths([bundle.paths[laneIndex]], [bundle.corridorWidths[laneIndex]], rooms, [bundle.parentAnchors[laneIndex]], [bundle.childAnchors[laneIndex]], layout);
     const beltsByCell = beltMap(belts, layout);
     const corridorFootprint = corridorOnlyFootprint(bundle.paths[laneIndex], bundle.corridorWidths[laneIndex], layout);
-    const mouthExteriorIndices = new Set([cellIndex(exteriorA.c, exteriorA.r, layout), cellIndex(exteriorB.c, exteriorB.r, layout)]);
+    const mouthExteriorIndices = new Set([layoutAbsCellIndex(layout, exteriorA.c, exteriorA.r), layoutAbsCellIndex(layout, exteriorB.c, exteriorB.r)]);
     for (const idx of mouthExteriorIndices) {
         const { col, row } = { col: (idx % layout.strideCols) + layout.originCol, row: Math.floor(idx / layout.strideCols) + layout.originRow };
         if (cellInsideAnyRoom(rooms, col, row)) continue;
@@ -98,7 +95,7 @@ export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label
         [childHole, exteriorB, "child", "exit"],
     ]) {
         if (cellInsideAnyRoom(rooms, exterior.c, exterior.r)) continue;
-        const idx = cellIndex(exterior.c, exterior.r, layout);
+        const idx = layoutAbsCellIndex(layout, exterior.c, exterior.r);
         const belt = beltsByCell.get(idx);
         if (!belt) throw new Error(`${label}: missing belt at ${role} mouth ${exterior.c},${exterior.r}`);
         const sides = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
@@ -106,7 +103,7 @@ export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label
         const actual = check === "entry" ? sides.entrySide : sides.exitSide;
         if (actual !== wantIntoRoom) throw new Error(`${label}: ${role} mouth belt at ${exterior.c},${exterior.r} ${check} side ${actual}, expected ${wantIntoRoom} into room`);
     }
-    const childIdx = cellIndex(exteriorB.c, exteriorB.r, layout);
+    const childIdx = layoutAbsCellIndex(layout, exteriorB.c, exteriorB.r);
     if (!cellInsideAnyRoom(rooms, exteriorB.c, exteriorB.r)) {
         const childBelt = beltsByCell.get(childIdx);
         const { entrySide, exitSide } = floorBeltEntryExitSides(childBelt.kind, childBelt.facingIndex);

@@ -1,11 +1,8 @@
 import { gridSideFromCellToNeighbor } from "../../Spatial/grid/FloorCell.js";
-import { cellInRect, gridCellLayout, gridSideNeighborCell, layoutCellIndex } from "../../Spatial/grid/GridUtils.js";
+import { cellInRect, gridCellLayout, gridSideNeighborCell, layoutAbsCellIndex } from "../../Spatial/grid/GridUtils.js";
 import { createNavGraphViewFromTopology } from "../../Navigation/navGraph.js";
 function oppositeSide(side) {
     return (side + 2) % 4;
-}
-function cellIndex(col, row, layout) {
-    return layoutCellIndex(col, row, layout.originCol, layout.originRow, layout.strideCols);
 }
 function navStepOpen(grid, navTopology, fromCol, fromRow, toCol, toRow) {
     return createNavGraphViewFromTopology(navTopology).canStep(fromCol, fromRow, toCol, toRow);
@@ -62,8 +59,8 @@ export function validateBeltPathMouthAccess(grid, navTopology, path, occupiedGlo
     if (!cellInRect(exitExterior.col, exitExterior.row, grid.cols, grid.rows)) return false;
     if (grid.isBlocked(entryExterior.col, entryExterior.row)) return false;
     if (grid.isBlocked(exitExterior.col, exitExterior.row)) return false;
-    if (occupiedGlobalIndices.has(cellIndex(entryExterior.col, entryExterior.row, layout))) return false;
-    if (occupiedGlobalIndices.has(cellIndex(exitExterior.col, exitExterior.row, layout))) return false;
+    if (occupiedGlobalIndices.has(layoutAbsCellIndex(layout, entryExterior.col, entryExterior.row))) return false;
+    if (occupiedGlobalIndices.has(layoutAbsCellIndex(layout, exitExterior.col, exitExterior.row))) return false;
     if (!navStepOpen(grid, navTopology, entryExterior.col, entryExterior.row, start.c, start.r)) return false;
     if (!navStepOpen(grid, navTopology, end.c, end.r, exitExterior.col, exitExterior.row)) return false;
     return true;
@@ -76,11 +73,11 @@ export function collectPathMouthExteriorIndices(paths, grid) {
     for (let i = 0; i < paths.length; i++) {
         const path = paths[i];
         if (path.length < 2) continue;
-        mouths.add(cellIndex(path[0].c, path[0].r, layout));
-        mouths.add(cellIndex(path[path.length - 1].c, path[path.length - 1].r, layout));
+        mouths.add(layoutAbsCellIndex(layout, path[0].c, path[0].r));
+        mouths.add(layoutAbsCellIndex(layout, path[path.length - 1].c, path[path.length - 1].r));
         const { entryExterior, exitExterior } = beltPathMouthExteriorCells(path);
-        mouths.add(cellIndex(entryExterior.col, entryExterior.row, layout));
-        mouths.add(cellIndex(exitExterior.col, exitExterior.row, layout));
+        mouths.add(layoutAbsCellIndex(layout, entryExterior.col, entryExterior.row));
+        mouths.add(layoutAbsCellIndex(layout, exitExterior.col, exitExterior.row));
     }
     return mouths;
 }

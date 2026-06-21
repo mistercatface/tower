@@ -1,7 +1,7 @@
 import { FlatGridSearch, GridPathQuery } from "../AStar.js";
 import { SearchState } from "../SearchState.js";
 import { FlatGridView } from "../FlatGridView.js";
-import { layoutAbsToLocalCell, layoutCellIndex, layoutCellRows, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
+import { layoutAbsCellIndex, layoutAbsToLocalCell, layoutCellRows, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
 export class CorridorGridPathfinder {
     constructor(layout) {
         this.layout = layout;
@@ -21,25 +21,20 @@ export class CorridorGridPathfinder {
         });
         this.gridSearch = new FlatGridSearch({ grid: this.grid, searchState: this.searchState });
     }
-    layoutIndex(col, row) {
-        return layoutCellIndex(col, row, this.layout.originCol, this.layout.originRow, this.layout.strideCols);
-    }
-    globalToLocal(col, row) {
-        return layoutAbsToLocalCell(this.layout, col, row);
-    }
-    isBlockedGlobal(col, row) {
-        if (!layoutContainsAbsCell(this.layout, col, row)) return true;
-        const local = this.globalToLocal(col, row);
+    blockedAtAbs(absCol, absRow) {
+        if (!layoutContainsAbsCell(this.layout, absCol, absRow)) return true;
+        const local = layoutAbsToLocalCell(this.layout, absCol, absRow);
+        if (!this.grid.contains(local.col, local.row)) return true;
         const idx = this.grid.idx(local.col, local.row);
         if (this.roomBlocked[idx]) return true;
-        return this.reservedIndices.has(this.layoutIndex(col, row));
+        return this.reservedIndices.has(layoutAbsCellIndex(this.layout, absCol, absRow));
+    }
+    isBlockedGlobal(col, row) {
+        return this.blockedAtAbs(col, row);
     }
     isBlocked(col, row) {
-        if (!this.grid.contains(col, row)) return true;
-        const idx = this.grid.idx(col, row);
-        if (this.roomBlocked[idx]) return true;
         const abs = layoutLocalToAbsCell(this.layout, col, row);
-        return this.reservedIndices.has(this.layoutIndex(abs.col, abs.row));
+        return this.blockedAtAbs(abs.col, abs.row);
     }
     setRoomBlocked(roomBlocked) {
         this.roomBlocked = roomBlocked;
@@ -49,8 +44,8 @@ export class CorridorGridPathfinder {
         this.reservedIndices = indices;
     }
     findQuery(query, maxPathLen = 512) {
-        const start = this.globalToLocal(query.start.col, query.start.row);
-        const goal = this.globalToLocal(query.target.col, query.target.row);
+        const start = layoutAbsToLocalCell(this.layout, query.start.col, query.start.row);
+        const goal = layoutAbsToLocalCell(this.layout, query.target.col, query.target.row);
         if (this.isBlocked(start.col, start.row) || this.isBlocked(goal.col, goal.row)) return null;
         const flat = this.gridSearch.cardinal(new GridPathQuery(start, goal), maxPathLen);
         if (!flat) return null;

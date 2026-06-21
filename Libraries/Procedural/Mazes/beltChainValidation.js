@@ -1,8 +1,5 @@
 import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
-import { CARDINAL_OFFSETS, layoutCellIndex, layoutIndexToAbsColRow } from "../../Spatial/grid/GridUtils.js";
-function layoutIdx(col, row, layout) {
-    return layoutCellIndex(col, row, layout.originCol, layout.originRow, layout.strideCols);
-}
+import { CARDINAL_OFFSETS, layoutAbsCellIndex, layoutIndexToAbsColRow } from "../../Spatial/grid/GridUtils.js";
 function neighborForSide(col, row, side) {
     const off = CARDINAL_OFFSETS[side];
     return { col: col + off.dc, row: row + off.dr };
@@ -14,7 +11,7 @@ function oppositeSide(side) {
 export function beltFootprintIndices(belts, layout) {
     /** @type {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} */
     const footprint = new Set();
-    for (let i = 0; i < belts.length; i++) footprint.add(layoutIdx(belts[i].col, belts[i].row, layout));
+    for (let i = 0; i < belts.length; i++) footprint.add(layoutAbsCellIndex(layout, belts[i].col, belts[i].row));
     return footprint;
 }
 /** @param {{ col: number, row: number, kind: number, facingIndex: number }[]} belts @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
@@ -23,7 +20,7 @@ export function beltMapFromFloorBelts(belts, layout) {
     const map = new Map();
     for (let i = 0; i < belts.length; i++) {
         const belt = belts[i];
-        map.set(layoutIdx(belt.col, belt.row, layout), belt);
+        map.set(layoutAbsCellIndex(layout, belt.col, belt.row), belt);
     }
     return map;
 }
@@ -45,8 +42,8 @@ export function assertBeltChains(footprint, beltsByCell, layout, label, mouthExt
         const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
         const entry = neighborForSide(belt.col, belt.row, entrySide);
         const exit = neighborForSide(belt.col, belt.row, exitSide);
-        const entryIdx = layoutIdx(entry.col, entry.row, layout);
-        const exitIdx = layoutIdx(exit.col, exit.row, layout);
+        const entryIdx = layoutAbsCellIndex(layout, entry.col, entry.row);
+        const exitIdx = layoutAbsCellIndex(layout, exit.col, exit.row);
         const entryInFootprint = footprint.has(entryIdx);
         const exitInFootprint = footprint.has(exitIdx);
         if (entryInFootprint) {

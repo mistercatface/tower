@@ -90,4 +90,18 @@ describe("AStar Engine Search Suite", () => {
         assert.ok(path);
         assert.deepEqual(Array.from(path), [0, 1, 2], "Should resolve flat indices 0 -> 1 -> 2");
     });
+
+    it("FlatAbstractGraphSearch prefers cheaper multi-hop route over direct edge", () => {
+        const searchState = new SearchState(3);
+        const nodeCol = new Int16Array([0, 1, 2]);
+        const nodeRow = new Int16Array([0, 0, 0]);
+        const edgeOffsets = new Int32Array([0, 2, 3, 4]);
+        const edgeTargets = new Int32Array([1, 2, 2]);
+        const edgeCosts = new Float32Array([1, 10, 1]);
+        const graph = new FlatGraphView({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount: 3 });
+        const search = new FlatAbstractGraphSearch({ graph, searchState });
+        const path = search.run(0, 2);
+        assert.ok(path);
+        assert.deepEqual(Array.from(path), [0, 1, 2]);
+    });
 });

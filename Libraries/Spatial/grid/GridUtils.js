@@ -30,6 +30,12 @@ export function layoutIndexToAbsColRow(idx, layout) {
 export function layoutCellIndex(absCol, absRow, originCol, originRow, strideCols) {
     return colRowToIndex(absCol - originCol, absRow - originRow, strideCols);
 }
+export function layoutAbsCellIndex(layout, absCol, absRow) {
+    return colRowToIndex(absCol - layout.originCol, absRow - layout.originRow, layout.strideCols);
+}
+export function layoutLocalCellIndex(layout, localCol, localRow) {
+    return colRowToIndex(localCol, localRow, layout.strideCols);
+}
 /** @param {number} idx @param {CellIndexLayout} layout @param {number} gridCols */
 export function layoutIndexToGlobalIndex(idx, layout, gridCols) {
     const col = (idx % layout.strideCols) + layout.originCol;

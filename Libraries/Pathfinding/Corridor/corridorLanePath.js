@@ -1,7 +1,7 @@
 import { gridSideNeighborCell } from "../../Spatial/grid/GridUtils.js";
 import { corridorPathHitsOccupied, corridorPathIntersectsPaths, corridorPathOccupiedCellIndices, corridorPathsToOccupiedCellIndices } from "./corridorFootprint.js";
 import { CorridorGridPathfinder } from "./corridorGridPathfinder.js";
-import { buildRoomInteriorBlockedGridLocal, cellInsideAnyRoom, corridorPathFootprintInsideAnyRoom, corridorSearchBounds, corridorSearchLayout } from "./corridorWalkGrid.js";
+import { buildRoomInteriorBlockedGridForLayout, cellInsideAnyRoom, corridorPathFootprintInsideAnyRoom, corridorSearchBounds, corridorSearchLayout } from "./corridorWalkGrid.js";
 /** @typedef {{ c: number, r: number, side: number }} WallHole */
 /** @typedef {{ c: number, r: number }} CorridorCell */
 /** @typedef {{ c0: number, c1: number, r0: number, r1: number }} RoomRect */
@@ -10,7 +10,7 @@ export function createCorridorLaneRouter(rooms, pad = 12) {
     const bounds = corridorSearchBounds(rooms, pad);
     const layout = corridorSearchLayout(bounds);
     const pathfinder = new CorridorGridPathfinder(layout);
-    pathfinder.setRoomBlocked(buildRoomInteriorBlockedGridLocal(bounds.originCol, bounds.originRow, bounds.cols, bounds.rows, rooms));
+    pathfinder.setRoomBlocked(buildRoomInteriorBlockedGridForLayout(layout, rooms));
     return { pathfinder, layout };
 }
 /** @param {CorridorCell} cell @param {number} side */

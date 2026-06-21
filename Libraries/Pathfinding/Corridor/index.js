@@ -28,7 +28,7 @@ export {
 } from "./corridorWallSlots.js";
 export {
     buildRoomInteriorBlockedGrid,
-    buildRoomInteriorBlockedGridLocal,
+    buildRoomInteriorBlockedGridForLayout,
     cellInsideAnyRoom,
     corridorPathFootprintInsideAnyRoom,
     corridorPathMidCellsClear,

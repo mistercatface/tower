@@ -1,4 +1,4 @@
-import { MinHeap, IdxMinHeap } from "../DataStructures/MinHeap.js";
+import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { CARDINAL_OFFSETS, OCTILE_OFFSETS, octileDistance } from "../Spatial/grid/GridUtils.js";
 import { FlatGridView } from "./FlatGridView.js";
 const STALE_F_EPSILON = 1e-4;
@@ -132,15 +132,15 @@ export class FlatAbstractGraphSearch {
         if (startIdx === targetIdx) return [startIdx];
         const targetCol = graph.nodeCol[targetIdx];
         const targetRow = graph.nodeRow[targetIdx];
-        const openSet = new MinHeap((a, b) => a.f - b.f);
+        const openSet = new IdxMinHeap();
         const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
         gScore[startIdx] = 0;
         visited[startIdx] = runId;
         cameFrom[startIdx] = -1;
-        openSet.push({ id: startIdx, f: octileDistance(graph.nodeCol[startIdx], graph.nodeRow[startIdx], targetCol, targetRow) });
+        openSet.push(startIdx, octileDistance(graph.nodeCol[startIdx], graph.nodeRow[startIdx], targetCol, targetRow));
         while (openSet.size > 0) {
             const curr = openSet.pop();
-            const currentIdx = curr.id;
+            const currentIdx = curr.idx;
             const currentG = gScore[currentIdx];
             const bestF = currentG + octileDistance(graph.nodeCol[currentIdx], graph.nodeRow[currentIdx], targetCol, targetRow);
             if (curr.f > bestF + STALE_F_EPSILON) continue;
@@ -154,7 +154,7 @@ export class FlatAbstractGraphSearch {
                 visited[neighborIdx] = runId;
                 cameFrom[neighborIdx] = currentIdx;
                 gScore[neighborIdx] = tentativeG;
-                openSet.push({ id: neighborIdx, f: tentativeG + octileDistance(graph.nodeCol[neighborIdx], graph.nodeRow[neighborIdx], targetCol, targetRow) });
+                openSet.push(neighborIdx, tentativeG + octileDistance(graph.nodeCol[neighborIdx], graph.nodeRow[neighborIdx], targetCol, targetRow));
             }
         }
         return null;
