@@ -99,8 +99,8 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
     };
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
     const syncIntentTint = () => {
-        const satisfied = deriveSnakeHungerState(getSnakeFoodTimerFraction(foodTimer))?.satisfied ?? false;
-        const tint = resolveSnakeChainTintHex(intent.getMode(), satisfied);
+        const hungerState = deriveSnakeHungerState(getSnakeFoodTimerFraction(foodTimer));
+        const tint = resolveSnakeChainTintHex(intent.getMode(), hungerState);
         if (!tint || tint === tintedTint) return;
         tintSnakeChain(state, headId, tint);
         tintedTint = tint;

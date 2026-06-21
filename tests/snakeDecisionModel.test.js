@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT, resolveSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
+import { SNAKE_HUNGRY_EXPLORE_TINT, SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT, resolveSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
 import { buildSnakeDecisionContext, createSnakeDecisionBlackboard, deriveSnakeHungerState, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
 function world({ threat = null, prey = null, food = null } = {}) {
     return { threat, prey, food };
@@ -132,16 +132,22 @@ describe("hunger pressure and route-awareness (PR5)", () => {
         assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
     });
 });
-describe("satisfied appearance is a condition (PR4)", () => {
+describe("hunger appearance is a condition (PR4)", () => {
     it("explore + satisfied resolves to purple", () => {
-        assert.equal(resolveSnakeChainTintHex("explore", true), SNAKE_SATISFIED_EXPLORE_TINT);
+        assert.equal(resolveSnakeChainTintHex("explore", { satisfied: true }), SNAKE_SATISFIED_EXPLORE_TINT);
     });
-    it("explore while not satisfied stays the normal explore tint", () => {
-        assert.equal(resolveSnakeChainTintHex("explore", false), SNAKE_INTENT_MODE_TINT.explore);
+    it("explore + hungry resolves to orange", () => {
+        assert.equal(resolveSnakeChainTintHex("explore", { satisfied: false, hungry: true }), SNAKE_HUNGRY_EXPLORE_TINT);
     });
-    it("flee/seek_food/seek_prey override satisfied with their mode tint", () => {
-        assert.equal(resolveSnakeChainTintHex("flee", true), SNAKE_INTENT_MODE_TINT.flee);
-        assert.equal(resolveSnakeChainTintHex("seek_food", true), SNAKE_INTENT_MODE_TINT.seek_food);
-        assert.equal(resolveSnakeChainTintHex("seek_prey", true), SNAKE_INTENT_MODE_TINT.seek_prey);
+    it("explore + desperate also reads as the hungry orange tint", () => {
+        assert.equal(resolveSnakeChainTintHex("explore", { satisfied: false, desperate: true }), SNAKE_HUNGRY_EXPLORE_TINT);
+    });
+    it("explore with no hunger info stays the normal explore tint", () => {
+        assert.equal(resolveSnakeChainTintHex("explore", null), SNAKE_INTENT_MODE_TINT.explore);
+    });
+    it("flee/seek_food/seek_prey override hunger with their mode tint", () => {
+        assert.equal(resolveSnakeChainTintHex("flee", { satisfied: true }), SNAKE_INTENT_MODE_TINT.flee);
+        assert.equal(resolveSnakeChainTintHex("seek_food", { hungry: true }), SNAKE_INTENT_MODE_TINT.seek_food);
+        assert.equal(resolveSnakeChainTintHex("seek_prey", { desperate: true }), SNAKE_INTENT_MODE_TINT.seek_prey);
     });
 });
