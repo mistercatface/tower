@@ -58,7 +58,6 @@ export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struck
 }
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
-    snakeGame._lastCombatContactCount = contacts.count;
     const config = getSnakeGameConfig();
     const registry = snakeGame.registry;
     const memberToHead = buildAliveSnakeMemberHeadMap(registry, (headId) => orderedMembers(state, headId));

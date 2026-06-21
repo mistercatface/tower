@@ -29,7 +29,6 @@ export function resolveSnakeStartRadius(config = getSnakeGameConfig()) {
     return config.startRadius;
 }
 export function resolveSnakeHeadBodyMaxDistance(config = getSnakeGameConfig()) {
-    if (config.headSeparationLogDistance != null) return config.headSeparationLogDistance;
     return resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config)) * 2;
 }
 /** Runtime wall-damage tuning for snake mode (shared kinetic floor + striker speed ceiling). */

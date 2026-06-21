@@ -4,39 +4,16 @@ import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { createSnakeGoalIndex, rebuildSnakeGoalIndex } from "./snakeGoalIndex.js";
 import { getSnakeGameConfig, resolveSnakeHeadBodyMaxDistance } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
-export function measureSnakePhysicalSeparation(state, headId) {
-    const head = state.entityRegistry.getLive(headId);
-    if (!head) return { maxLinkSpan: Infinity, nearestBodyDist: Infinity };
+export function isSnakeHeadPhysicallyAttached(state, headId) {
+    const maxDistance = resolveSnakeHeadBodyMaxDistance();
     const members = getConnectedComponentPath(state.kinetic, headId);
-    let maxLinkSpan = 0;
+    if (members.length < getSnakeGameConfig().minAliveSegmentCount) return false;
     for (let i = 0; i < members.length - 1; i++) {
         const a = state.entityRegistry.getLive(members[i]);
         const b = state.entityRegistry.getLive(members[i + 1]);
-        if (!a || !b) continue;
-        maxLinkSpan = Math.max(maxLinkSpan, Math.hypot(b.x - a.x, b.y - a.y));
+        if (!a || !b) return false;
+        if (Math.hypot(b.x - a.x, b.y - a.y) > maxDistance) return false;
     }
-    let nearestBodyDist = Infinity;
-    let nearestBodyId = null;
-    const spawnGroupIds = collectSnakeSpawnGroupMemberIds(state, headId);
-    for (let i = 0; i < spawnGroupIds.length; i++) {
-        const segmentId = spawnGroupIds[i];
-        if (segmentId === headId) continue;
-        const segment = state.entityRegistry.getLive(segmentId);
-        if (!segment) continue;
-        const dist = Math.hypot(segment.x - head.x, segment.y - head.y);
-        if (dist < nearestBodyDist) {
-            nearestBodyDist = dist;
-            nearestBodyId = segmentId;
-        }
-    }
-    return { maxLinkSpan, nearestBodyDist, nearestBodyId, orderedMembers: members };
-}
-export function isSnakeHeadPhysicallyAttached(state, headId) {
-    const maxDistance = resolveSnakeHeadBodyMaxDistance();
-    const { maxLinkSpan, nearestBodyDist, orderedMembers } = measureSnakePhysicalSeparation(state, headId);
-    if (orderedMembers.length < getSnakeGameConfig().minAliveSegmentCount) return false;
-    if (maxLinkSpan > maxDistance) return false;
-    if (nearestBodyDist !== Infinity && nearestBodyDist > maxDistance) return false;
     return true;
 }
 export function retireSnakeSegmentsFromNav(state, memberIds) {

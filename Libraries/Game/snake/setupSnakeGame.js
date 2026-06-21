@@ -16,8 +16,6 @@ import { resolveSnakeCombatFromContacts, syncSnakeGameLifecycle } from "./snakeC
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
-import { flushSnakeCollisionDebugLog, initSnakeCollisionDebug, recordSnakeAutosimDebug, recordSnakeContactSideEffects } from "./snakeCollisionDebug.js";
-import { probeSnakeLoneHeadMovement } from "./snakeLoneHeadDebug.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -25,7 +23,6 @@ export async function setupSnakeGame(state) {
     const registry = createSnakeLifecycleRegistry();
     const autosimsByHeadId = new Map();
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
-    initSnakeCollisionDebug(state.sandbox.snakeGame);
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     await commitGridNavEdit(state, null, { fullNavSync: true });
     scene.navWalkable.rebake();
@@ -144,14 +141,12 @@ export async function setupSnakeGame(state) {
         tick(dtMs) {
             const snakeGame = state.sandbox.snakeGame;
             syncSnakeGameLifecycle(state, snakeGame);
-            probeSnakeLoneHeadMovement(state, snakeGame);
             snakeGame._batchingPerception = true;
             beginSnakePerceptionFrame(state);
             for (const [headId, autosim] of autosimsByHeadId) {
                 if (!registry.aliveByHeadId.has(headId)) continue;
                 autosim.tick(dtMs);
             }
-            recordSnakeAutosimDebug(state, autosimsByHeadId);
             endSnakePerceptionFrame(state);
             snakeGame._batchingPerception = false;
             hud.update();
@@ -161,11 +156,6 @@ export async function setupSnakeGame(state) {
             resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
             resolveStrikerBallSnakeSplitsFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame, strikerBall);
             syncSnakeGameLifecycle(state, state.sandbox.snakeGame);
-            probeSnakeLoneHeadMovement(state, state.sandbox.snakeGame);
-            recordSnakeContactSideEffects(state.sandbox.snakeGame, contacts);
-        },
-        afterKineticPhysics() {
-            flushSnakeCollisionDebugLog(state);
         },
         stop() {
             for (const autosim of autosimsByHeadId.values()) autosim.stop();
