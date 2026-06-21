@@ -21,3 +21,69 @@ The first fix should be the final-approach handoff, because the code already sho
 The second fix is target/path hysteresis, because snakeIntentStates.js currently repicks a seek destination whenever target cell changes, target world changes inside the cell, destination is missing, or arrival is detected. For moving shards/carcasses/snakes and physics nudges, that can cause “target moved” churn and repeated HPA replans, especially if hpaGroundNavSession also triggers off-path or target-moved replans. Add a latch policy for seek targets: once a snake commits to a food/carcass/prey target, keep the same target id and current route for a minimum number of ticks or until a real invalidation happens, such as target dead/removed, target leaving vision plus memory expiry, route impossible for N frames, or a clearly better target beyond a score margin. Also add route-change hysteresis: do not accept a new route if it immediately reverses the snake’s current path/progress unless the new score is significantly better or the old route is actually stuck. This belongs mostly in the generic createAgentIntent/locomotion boundary or a small path-follow policy module, with snake providing thresholds; it should not become a one-off “if snake then don’t replan” branch.
 
 The third fix is the longer path-threading/path-follow stability pass, separate from the final LOS handoff. The repeated “start down one path, replan, turn around, repeat until bumped” sounds like HPA path progress and local steering are not anchored strongly enough to the current corridor. cellTargetHpaNav.js calls driveGroundNav() every tick and lets hpaGroundNavSession request replans for epoch, sandbox, idle, and off-path reasons; without a corridor/thread commitment, small physics displacement can make a different route look better and flip direction. The plan is to introduce path threading or corridor commitment in the path follower: keep a current path segment/corridor id, advance monotonically along it, tolerate lateral physics drift within a corridor width, and only replan when the target changed meaningfully, the path is blocked, or progress has failed for a sustained window. Pair that with better status instrumentation from the HUD plan: expose “homing,” “following path,” “stuck,” “route changed,” and “near food” so you can tell whether a snake is failing because final homing did not engage, hysteresis rejected/accepted the wrong route, or the HPA route itself is bad."
+
+##
+
+---
+
+name: Snake Nav Stabilization
+overview: "Stabilize snake food pickup and route behavior in conservative increments: first make near-food pickup deterministic, then reduce replan churn, then consider deeper path-threading only if the remaining loop mode persists."
+todos:
+
+- id: phase-1-terminal-homing
+  content: Add locked-target terminal LOS homing and debug phase reporting in the cell-target nav stack.
+  status: pending
+- id: phase-1-tests
+  content: Cover near-target homing and blocked-LOS non-homing with targeted snake/cell nav tests.
+  status: pending
+- id: phase-2-target-hysteresis
+  content: Latch same-target seek destinations and debounce small same-cell target movement before marking HPA target changes.
+  status: pending
+- id: phase-2-route-status
+  content: Expose granular replan status and make route retry/failure meaningful for the snake decision model.
+  status: pending
+- id: phase-3-route-acceptance
+  content: Add discretionary route replacement hysteresis and backwards-route rejection if replans still cause loops.
+  status: pending
+- id: phase-4-threading-decision
+  content: Only design corridor/path threading after measuring the remaining failures from the first three phases.
+  status: pending
+  isProject: false
+
+---
+
+# Snake Nav Stabilization Plan
+
+## Split Recommendation
+
+Treat this as three implementations, not one large pathfinding rewrite. Start with terminal homing because it is the smallest change and directly targets the “right next to food but oscillating” bug. Then add target/replan hysteresis around existing route ownership. Only after those are verified should we touch path threading or corridor commitment, because that is broader and affects shared HPA behavior.
+
+## Phase 1: Terminal LOS Homing
+
+Implement a locked-target final approach in [`Libraries/Sandbox/groundNav/cellTargetHpaNav.js`](Libraries/Sandbox/groundNav/cellTargetHpaNav.js). Today `createCellTargetLocomotion().hasArrivedAtDest()` returns false for `lockOnTarget`, and `tick()` still calls `driveGroundNav()` before falling back to direct steering only when HPA has no steering. Add a `terminal_homing` phase for `lockOnTarget && exactArrival` when the head is within a derived handoff radius and has clear LOS to `destWorld` via [`Libraries/Spatial/query/lineOfSight.js`](Libraries/Spatial/query/lineOfSight.js). In that phase, skip HPA path steering/replans for the tick and steer directly with `steerRollToward()` until the existing consume/hit logic clears the destination.
+
+Keep the surface small: add snake tuning under [`Config/games/snake.js`](Config/games/snake.js), likely `terminalHoming.enabled`, optional handoff radius, and a short hold duration so LOS flicker does not instantly drop back to HPA. Derive defaults from existing eat/arrival radii where possible rather than adding many knobs. Wire status through `getStatus()` and [`Libraries/Game/snake/createSnakeForageIntent.js`](Libraries/Game/snake/createSnakeForageIntent.js) so HUD/debug can show `navPhase: "hpa" | "terminal_homing" | "direct_locked" | "stranded"` plus `lastReplanReason`.
+
+Targeted verification for this phase should stay narrow: extend [`tests/snakeNavArrival.test.js`](tests/snakeNavArrival.test.js) or [`tests/cellTargetHpaNav.test.js`](tests/cellTargetHpaNav.test.js) with a locked target near the head where an existing route would steer away, and assert terminal homing drives toward `destWorld` without requesting a new HPA route. Add one wall/LOS-negative case so homing does not activate through geometry.
+
+## Phase 2: Target And Replan Hysteresis
+
+Once terminal homing is in place, reduce route churn without changing the path planner. The first target is [`Libraries/Game/snake/snakeIntentStates.js`](Libraries/Game/snake/snakeIntentStates.js), where seek currently repicks whenever a locked target’s world position changes inside the same cell. Change that policy to hold the same target id and destination cell for a minimum tick window, updating sub-cell target world position only when movement exceeds a meaningful threshold or the target changes cell. This keeps prey/carcass/food nudges from becoming `targetChange` replans every tick.
+
+Then add matching locomotion-level debounce in [`Libraries/Sandbox/groundNav/cellTargetHpaNav.js`](Libraries/Sandbox/groundNav/cellTargetHpaNav.js): `setDestination()` should avoid `markTargetChanged()` for same-cell, small world deltas. Preserve immediate invalidation for real target cell changes, missing targets, mode changes, topology epoch changes, and sustained no-route/stuck conditions. Also fix `needsRetry()` so route failure can actually flow into the decision model when a destination exists, no route is pending, and no route has been available for a sustained window.
+
+Tests for this phase should focus on replan counts and state latching: add same-cell target nudge cases to [`tests/cellTargetHpaNav.test.js`](tests/cellTargetHpaNav.test.js), update [`tests/hpaGroundNavReplan.test.js`](tests/hpaGroundNavReplan.test.js) if policy thresholds move, and add a seek-state case in [`tests/snakeFsmTransitions.test.js`](tests/snakeFsmTransitions.test.js) proving the same target id is held instead of repicked on tiny world movement.
+
+## Phase 3: Route Acceptance Hysteresis
+
+If snakes still reverse repeatedly after Phases 1-2, add route-change hysteresis around HPA route acceptance rather than rewriting HPA. The likely boundary is [`Libraries/Sandbox/groundNav/hpaGroundNavSession.js`](Libraries/Sandbox/groundNav/hpaGroundNavSession.js) plus the path progress helpers in [`Libraries/Pathfinding/hpaPathSlot.js`](Libraries/Pathfinding/hpaPathSlot.js). Track the current route’s forward bearing/progress and reject discretionary replans whose first segment points mostly backward unless the reason is strong: `epoch`, target cell change, no route, or stuck beyond threshold.
+
+Keep this generic and conservative. Add a sticky window after accepting a route so `offPath` or `targetMoved` cannot immediately replace it, while still allowing hard invalidations. Preserve monotonic progress where possible: when a replacement path is accepted, seed progress so it does not restart behind the current cell unless there is no safe forward match. This should reduce “start down a path, replan, turn around, repeat” without requiring full corridor threading.
+
+Verification here should be policy/unit heavy. Extend [`tests/hpaPathSlot.test.js`](tests/hpaPathSlot.test.js) for progress seeding and reversal detection, and add a focused session test that feeds alternating candidate routes and asserts discretionary backwards replacements are rejected while hard invalidations still replan.
+
+## Phase 4: Path Threading Only If Needed
+
+Defer corridor/path threading until the smaller fixes are measured. If needed, extend `navSession` state with a committed segment/corridor concept and make [`Libraries/Pathfinding/hpaPathSlot.js`](Libraries/Pathfinding/hpaPathSlot.js) advance monotonically along that commitment while tolerating lateral physics drift. This is the larger implementation because it changes shared path-follow semantics, overlays, and likely worker/session assumptions.
+
+The success criteria before taking this phase should be concrete: terminal homing engages near visible food, same-target replan counts are bounded, and remaining loops are demonstrably caused by route replacement rather than pickup handoff or target jitter. At that point, borrow ideas from the existing corridor pathfinding modules as reference, but do not directly wire that subsystem into snakes as part of the first pass.
