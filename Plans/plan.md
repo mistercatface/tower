@@ -10,41 +10,24 @@
 
 5. Morton Codes and Hierarchical Bitsets for Broadphase The current grid broadphase relies on looping over AABBs and merging candidate arrays. We can revolutionize this spatial querying by mapping the 2D world grid into a 1D array using Morton Codes (Z-order curves), which mathematically guarantees that objects physically close in the world sit next to each other in RAM. If we back this up with a Hierarchical Bitset (a tree of 32-bit integers where a single bit represents grid chunk occupancy), broadphase culling becomes virtually instantaneous. Finding wall candidates or overlapping neighbors bypasses standard looping entirely, dropping down to raw CPU bitwise operations (&, |, and Math.clz32) to skip massive empty spaces in true O(1) time.
 
-## AI
+## VARIOUS
 
-PR 1 — Make The FSM Explicit Again
-First, split createAgentIntent into clear phases: perceive -> updateMemory -> chooseTransition -> enterState/updateState -> applyLocomotion. Right now it mixes policy picking, mode transitions, destination repicks, route retries, and locomotion effects in one loop, which is why the FSM feels like it is drifting. Keep the same modes, but make each mode own its update rules: explore.update, seek_food.update, seek_prey.update, flee.update. The output should be explicit events/effects like transitionTo("flee", reason), setSeekTarget(target), repickFleeCell, holdDestination, not hidden checks scattered through the generic loop.
+Extract the snake scorer into a tiny utility-decision package. The effort work proved candidateScores, value/reach/cost/net, and snapshots. Move the generic shape out of Libraries/Game/snake/snakeDecisionModel.js into something like Libraries/AI/utility/, then leave snake with only domain scorers.
 
-PR 2 — Promote Snake Memory Into A Blackboard
-Move the new snakeIntentMemory idea into a proper snake decision blackboard: visible facts, remembered facts, committed target, route status, hunger state, safety state, and recent failures. snakeIntent.js should stop being just threat > prey > food > explore; instead it should build/read this blackboard and return state events like THREAT_SEEN, PREY_LAST_SEEN_ACTIVE, FOOD_KNOWN, ROUTE_FAILED, DEST_REACHED, TARGET_LOST. This is where flee/chase/food persistence belongs, not inside ad hoc policy reasons or destination checks. Once this exists, “lost LOS” is just a fact with confidence/TTL, not a weird special case.
+Turn explore picking into an EQS-style query. Plans/AI.md calls this out, and it would cover AI + pathfinding + procedural later. Start with “score candidate cells by freshness, distance, visibility, risk,” then snake explore becomes the first consumer.
 
-PR 3 — Add A Decision Layer That Feeds The FSM
-Only after the FSM and blackboard are clean, add a simple decision layer for real choices: flee vs eat, chase vs conserve, sit/wait vs explore. Don’t make it a giant behavior tree yet; use small scorers like scoreFlee, scoreFood, scorePrey, scoreExplore, scoreIdle, and have them propose transitions/effects to the FSM. The FSM still controls commitment and movement; the scorer only answers “what is worth doing now?” This sets up stamina cleanly: stamina becomes one input to the scorer, not a hack inside flee/seek movement.
+Add path smoothing next if you want visible payoff. Plans/pathfinding.md and Plans/ROADMAP.md both point at funnel/string-pull smoothing. Snake would instantly show less grid-snappy chasing, and the work transfers to a future navmesh instead of being throwaway.
 
-##
+Make target memory a real generic concept. Snake now has remembered prey/food distances in snakeIntentMemory.js; that’s close to a reusable “last-known target” memory package. This is a clean bridge from spatial memory to actual blackboard facts.
 
-PR 1 should refactor createAgentIntent into a generic, explicit FSM runner while keeping snake-specific logic in the snake adapter: the library layer should own the phase pipeline (perceive -> updateMemory/blackboard hook -> chooseTransition -> enterState/updateState -> applyLocomotion) and expose small generic primitives like transitionTo, setTarget, clearTarget, holdDestination, repickDestination, routeFailed, and destinationReached, but it should not know what “prey,” “food,” or “flee” mean. Each mode should be registered as a state object with enter(context) and update(context) methods, so explore, seek_food, seek_prey, and flee are just snake-provided states using generic FSM effects. For this first PR, preserve current behavior as closely as possible: threat still interrupts into flee, seek modes still latch their target, explore still repicks on arrival, flee still chains retreat cells while a threat remains, route failure still retries only for explore/flee according to current locomotion rules, and debug output still reports the same mode/destination/replan/last-transition concepts. The real goal is not smarter behavior yet; it is making the control flow auditable so every tick produces explicit events/effects instead of hidden checks scattered through one generic loop.
+Clean up stale roadmap language before it misleads you. Plans/AI.md still describes utility scoring/flee/pursue as absent in places, while the current snake FSM has much of that. Updating docs is an easy clarity win and prevents future plans from redoing shipped work.
 
-##
+Audit snake-only names for reusable engine concepts. Anything named snakeDecision*, snakeIntentMemory, or snakeFsmDebug* that now describes generic AI facts, utility details, or debug snapshots is a candidate to split: generic core in Libraries/AI/, snake adapter in Libraries/Game/snake/.
 
-PR 1: Add hunger/fullness facts to the snake blackboard without changing behavior. Feed foodTimerFraction or equivalent remaining-food-time data from snakeAutosim into createSnakeForageIntent, store it in the blackboard as hungerState, and expose simple derived facts like satisfied, hungry, and desperate using thresholds such as >= 0.6, < 0.6, and maybe < 0.2. Keep pickSnakeIntentPolicy behavior identical for now, but add tests proving the blackboard reports the right hunger facts.
+Unify root seed before deeper procedural work. Plans/procedural.md and Plans/ROADMAP.md both say this is cheap and foundational. It would make snake maps, room graphs, placement, and future regression tests reproducible from one number.
 
-PR 2: Replace the direct priority policy with a small scoring layer while preserving current outcomes. Add scoreFlee, scorePrey, scoreFood, and scoreExplore, and have pickSnakeIntentPolicy choose the highest-scoring option. Initially tune scores so behavior stays the same: flee beats everything, prey beats food, food beats explore. This gives you the decision structure without changing gameplay yet.
+Add render cache telemetry if 100+ snakes remain a target. This is a contained engine feature: measure hit/miss/eviction pressure in the existing bake caches instead of guessing LRU sizes. It supports snake stress scenes without becoming snake-specific.
 
-PR 3: Use hunger to suppress prey chasing when satisfied. Adjust scorePrey so visible/remembered smaller snakes are ignored or heavily downweighted when hungerState.satisfied is true, while scoreFlee still wins for larger threats. The outcome: big snakes are still dangerous, smaller snakes still flee from bigger ones, but a well-fed snake won’t bother chasing prey and will continue exploring or seeking food depending on the scores.
+Wire projected shadows when you want the biggest visual win. Plans/rendering.md says the math exists in shadowProjection.js. This is probably the most satisfying “one PR, engine looks better” task, and snake gives you lots of moving props to validate it.
 
-PR 4: Add satisfied visual feedback. Extend the snake tint logic so a snake that is effectively exploring while hungerState.satisfied appears purple instead of normal explore blue. Keep this as appearance, not a new FSM state, unless you want the snake to actually stop or behave differently. Tests should assert that satisfied explore gets purple while flee/food/prey colors still override it.
-
-PR 5: Add desperation tuning for “maybe I should chase before I run out.” Raise scorePrey and/or scoreFood as hunger drops, especially when food is not visible. This is where the in-between behavior becomes real: satisfied snakes ignore prey, hungry snakes consider food/prey, desperate snakes become more willing to chase prey because survival pressure is high.
-
-##
-
-PR 1: Add hunger facts to the decision model with no behavior change. Feed food timer fraction from snakeAutosim into createSnakeForageIntent, pass it into buildSnakeDecisionContext, and derive hungerState in snakeDecisionModel: satisfied, hungry, desperate, plus raw foodFraction. Surface that in decisionSnapshot and FSM debug. Policy should still pick the same modes as today.
-
-PR 2: Add scoring without changing outcomes. Move current threat > prey > food > explore priority into scoreFlee, scorePrey, scoreFood, and scoreExplore, with fixed weights that preserve current behavior exactly. Store candidateScores and chosen reason in decisionSnapshot. This gives observability before gameplay changes.
-
-PR 3: Make satisfied snakes ignore prey. If hungerState.satisfied, scorePrey should drop to zero or below explore unless there is a threat relationship requiring flee. Larger threats still force flee; smaller snakes still see bigger snakes as threats and flee through their own blackboard. This changes only decision scoring, not pathfinding or state movement rules.
-
-PR 4: Add satisfied appearance as a condition, not a state. Extend tint selection so explore + satisfied appears purple, while flee, seek_food, and seek_prey still override with yellow/green/red. Use the decision snapshot/blackboard hunger facts as the source of truth. No new FSM mode yet.
-
-PR 5: Add hunger pressure tuning and route-awareness to scoring. As hunger drops, raise scoreFood; when food is unknown or routes have recently failed, raise scorePrey enough that desperate snakes hunt smaller snakes. Route status should remain a blackboard fact like ROUTE_FAILED or routeStatus, not a fallback pathfinding system. The chosen mode still feeds the existing FSM and HPA locomotion.
+Avoid physics v2 until gameplay forces it. Revolute/motor joints and CCD are real, but the plans frame physics v1 as maintenance-ready. I’d only go there after a snake/sandbox feature specifically needs joints, breakable links, or fast-body tunneling fixes.
