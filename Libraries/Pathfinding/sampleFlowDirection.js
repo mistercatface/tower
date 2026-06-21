@@ -8,26 +8,9 @@ export function decodeFlowFieldCell(byte) {
     if (len <= 0) return null;
     return { x: vx / len, y: vy / len };
 }
-/**
- * Bilinear sample of a flow-field byte grid → normalized world direction, or null.
- *
- * @param {number} x — world x
- * @param {number} y — world y
- * @param {Uint8Array} flowField
- * @param {{
- *   cellSize: number,
- *   cols: number,
- *   rows: number,
- *   centerX: number,
- *   centerY: number,
- *   offsetX: number,
- *   offsetY: number,
- * }} layout
- * @returns {{ x: number, y: number } | null}
- */
-export function sampleFlowDirection(x, y, flowField, layout) {
+export function sampleFlowDirectionInto(out, x, y, flowField, frame) {
     if (!flowField) return null;
-    const { cellSize, cols, rows, centerX, centerY, offsetX, offsetY } = layout;
+    const { cellSize, cols, rows, centerX, centerY, offsetX, offsetY } = frame;
     const halfCell = cellSize / 2;
     const gx = (x - (centerX - offsetX + halfCell)) / cellSize;
     const gy = (y - (centerY - offsetY + halfCell)) / cellSize;
@@ -87,17 +70,14 @@ export function sampleFlowDirection(x, y, flowField, layout) {
     if (totalWeight <= 0) return null;
     const len = Math.sqrt(flowX * flowX + flowY * flowY);
     if (len <= 0) return null;
-    return { x: flowX / len, y: flowY / len };
+    out.x = flowX / len;
+    out.y = flowY / len;
+    return out;
+}
+export function sampleFlowDirection(x, y, flowField, frame) {
+    return sampleFlowDirectionInto({ x: 0, y: 0 }, x, y, flowField, frame);
 }
 /** @param {import("./FlowFieldGrid.js").FlowFieldGrid} grid */
 export function sampleFlowDirectionOnGrid(x, y, flowField, grid) {
-    return sampleFlowDirection(x, y, flowField, {
-        cellSize: grid.cellSize,
-        cols: grid.cols,
-        rows: grid.rows,
-        centerX: grid.centerX,
-        centerY: grid.centerY,
-        offsetX: grid.offsetX,
-        offsetY: grid.offsetY,
-    });
+    return sampleFlowDirection(x, y, flowField, grid.frame);
 }

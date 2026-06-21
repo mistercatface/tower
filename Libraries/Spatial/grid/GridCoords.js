@@ -8,17 +8,39 @@ export function gridToWorldAtOrigin(col, row, minX, minY, cellSize) {
     return { x: minX + col * cellSize + cellSize / 2, y: minY + row * cellSize + cellSize / 2 };
 }
 /** Grid centered on a world point with pixel offsets (FlowFieldGrid). */
+export function createCenteredGridFrame(cellSize, width, height, centerX = 0, centerY = 0) {
+    const cols = Math.ceil(width / cellSize);
+    const rows = Math.ceil(height / cellSize);
+    return { cellSize, width, height, cols, rows, offsetX: width / 2, offsetY: height / 2, centerX, centerY };
+}
+export function setCenteredGridFrameCenter(frame, centerX, centerY) {
+    frame.centerX = centerX;
+    frame.centerY = centerY;
+    return frame;
+}
+export function centeredGridFrameKey(frame) {
+    return `${frame.cols}:${frame.rows}:${frame.cellSize}:${frame.centerX}:${frame.centerY}`;
+}
 export function worldToGridCentered(x, y, centerX, centerY, offsetX, offsetY, cellSize) {
     return { col: Math.floor((x - centerX + offsetX) / cellSize), row: Math.floor((y - centerY + offsetY) / cellSize) };
 }
+export function worldToGridInCenteredFrame(frame, x, y) {
+    return worldToGridCentered(x, y, frame.centerX, frame.centerY, frame.offsetX, frame.offsetY, frame.cellSize);
+}
 export function gridToWorldCentered(col, row, centerX, centerY, offsetX, offsetY, cellSize) {
     return { x: col * cellSize + centerX - offsetX + cellSize / 2, y: row * cellSize + centerY - offsetY + cellSize / 2 };
+}
+export function gridToWorldInCenteredFrame(frame, col, row) {
+    return gridToWorldCentered(col, row, frame.centerX, frame.centerY, frame.offsetX, frame.offsetY, frame.cellSize);
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
 export function getCellBoundsCenteredInto(out, col, row, centerX, centerY, offsetX, offsetY, cellSize) {
     const minX = col * cellSize + centerX - offsetX;
     const minY = row * cellSize + centerY - offsetY;
     return minCornerAabbInto(out, minX, minY, cellSize, cellSize);
+}
+export function getCellBoundsInCenteredFrameInto(out, frame, col, row) {
+    return getCellBoundsCenteredInto(out, col, row, frame.centerX, frame.centerY, frame.offsetX, frame.offsetY, frame.cellSize);
 }
 export function getCellBoundsCentered(col, row, centerX, centerY, offsetX, offsetY, cellSize) {
     return getCellBoundsCenteredInto(createAabb(), col, row, centerX, centerY, offsetX, offsetY, cellSize);

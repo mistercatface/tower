@@ -1,6 +1,13 @@
 import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
-import { worldToGridCentered, gridToWorldCentered, getCellBoundsCenteredInto } from "../Spatial/grid/GridCoords.js";
+import {
+    centeredGridFrameKey,
+    createCenteredGridFrame,
+    getCellBoundsInCenteredFrameInto,
+    gridToWorldInCenteredFrame,
+    setCenteredGridFrameCenter,
+    worldToGridInCenteredFrame,
+} from "../Spatial/grid/GridCoords.js";
 import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
 import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 import { rebuildFlowToNavIdx, flowCellBlocked } from "./flowFieldWindow.js";
@@ -9,13 +16,14 @@ const FLOW_DONE = "flowDone";
 const FLOW_WINDOW_DONE = "flowWindowDone";
 export class FlowFieldGrid {
     constructor(cellSize, width, height, navGraph, workerUrl, hpaPathWorker = null) {
-        this.cellSize = cellSize;
-        this.width = width;
-        this.height = height;
+        this.frame = createCenteredGridFrame(cellSize, width, height);
+        this.cellSize = this.frame.cellSize;
+        this.width = this.frame.width;
+        this.height = this.frame.height;
         this.navGraph = navGraph;
         this.hpaPathWorker = hpaPathWorker;
-        this.cols = Math.ceil(width / cellSize);
-        this.rows = Math.ceil(height / cellSize);
+        this.cols = this.frame.cols;
+        this.rows = this.frame.rows;
         const size = this.cols * this.rows;
         this.sabFlowToNav = new SharedArrayBuffer(size * 4);
         this.flowToNavIdx = new Int32Array(this.sabFlowToNav).fill(-1);
@@ -41,11 +49,16 @@ export class FlowFieldGrid {
             type: "init",
             data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabFlowToNav: this.sabFlowToNav, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool },
         });
-        this.offsetX = width / 2;
-        this.offsetY = height / 2;
-        this.centerX = 0;
-        this.centerY = 0;
+        this.offsetX = this.frame.offsetX;
+        this.offsetY = this.frame.offsetY;
+        this.centerX = this.frame.centerX;
+        this.centerY = this.frame.centerY;
         this.cellBounds = createAabb();
+    }
+    _setCenter(centerX, centerY) {
+        setCenteredGridFrameCenter(this.frame, centerX, centerY);
+        this.centerX = this.frame.centerX;
+        this.centerY = this.frame.centerY;
     }
     invalidateLocalTopology() {
         this._topologyKey = "";
@@ -87,7 +100,7 @@ export class FlowFieldGrid {
         this._workerHost.worker.postMessage({ type: "syncFlowWindow" });
     }
     rebuildFlowToNavMap(navFrame) {
-        const mapped = rebuildFlowToNavIdx(this.flowToNavIdx, this.cols, this.centerX, this.centerY, this.offsetX, this.offsetY, this.cellSize, navFrame);
+        const mapped = rebuildFlowToNavIdx(this.flowToNavIdx, this.frame, navFrame);
         this.navCols = mapped.navCols;
         this.navRows = mapped.navRows;
     }
@@ -95,7 +108,7 @@ export class FlowFieldGrid {
         return flowCellBlocked(this.flowToNavIdx, this._navBlockedView, flowIdx);
     }
     ensureLocalTopology(navCacheKey, navFrame) {
-        const key = `${navCacheKey}:${this.centerX}:${this.centerY}`;
+        const key = `${navCacheKey}:${centeredGridFrameKey(this.frame)}`;
         if (key === this._topologyKey && this._windowReady) return false;
         this._topologyKey = key;
         this.rebuildFlowToNavMap(navFrame);
@@ -121,8 +134,7 @@ export class FlowFieldGrid {
         this.invalidateNavTopology();
     }
     shiftCenter(newCenterX, newCenterY) {
-        this.centerX = newCenterX;
-        this.centerY = newCenterY;
+        this._setCenter(newCenterX, newCenterY);
         this.invalidateLocalTopology();
         this.syncLocalTopology();
     }
@@ -132,8 +144,7 @@ export class FlowFieldGrid {
         const needsRecenter =
             !this.containsWorldPoint(propX, propY) || !this.containsWorldPoint(targetX, targetY) || Math.max(Math.abs(focusX - this.centerX), Math.abs(focusY - this.centerY)) > recenterThreshold;
         if (needsRecenter) {
-            this.centerX = focusX;
-            this.centerY = focusY;
+            this._setCenter(focusX, focusY);
             this.invalidateLocalTopology();
         }
         this.syncLocalTopology();
@@ -190,17 +201,17 @@ export class FlowFieldGrid {
         this.invalidateFlowSlots();
     }
     worldToGrid(x, y) {
-        return worldToGridCentered(x, y, this.centerX, this.centerY, this.offsetX, this.offsetY, this.cellSize);
+        return worldToGridInCenteredFrame(this.frame, x, y);
     }
     containsWorldPoint(x, y) {
         const { col, row } = this.worldToGrid(x, y);
         return col >= 0 && col < this.cols && row >= 0 && row < this.rows;
     }
     gridToWorld(col, row) {
-        return gridToWorldCentered(col, row, this.centerX, this.centerY, this.offsetX, this.offsetY, this.cellSize);
+        return gridToWorldInCenteredFrame(this.frame, col, row);
     }
     getCellBounds(col, row) {
-        return getCellBoundsCenteredInto(this.cellBounds, col, row, this.centerX, this.centerY, this.offsetX, this.offsetY, this.cellSize);
+        return getCellBoundsInCenteredFrameInto(this.cellBounds, this.frame, col, row);
     }
     entityIntersectsCell(x, y, radius, col, row) {
         return circleIntersectsAabb(x, y, radius, this.getCellBounds(col, row));

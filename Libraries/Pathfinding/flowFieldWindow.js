@@ -1,17 +1,16 @@
 import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
-/** @param {Int32Array} flowToNavIdx @param {number} flowCols @param {number} centerX @param {number} centerY @param {number} offsetX @param {number} offsetY @param {number} cellSize @param {import("./GridNavSnapshot.js").GridFrame} navFrame */
-export function rebuildFlowToNavIdx(flowToNavIdx, flowCols, centerX, centerY, offsetX, offsetY, cellSize, navFrame) {
+export function rebuildFlowToNavIdx(flowToNavIdx, flowFrame, navFrame) {
     const flowSize = flowToNavIdx.length;
     const navCols = navFrame.cols;
     const navRows = navFrame.rows;
-    const half = cellSize / 2;
-    const wxBase = centerX - offsetX + half;
-    const wyBase = centerY - offsetY + half;
+    const half = flowFrame.cellSize / 2;
+    const wxBase = flowFrame.centerX - flowFrame.offsetX + half;
+    const wyBase = flowFrame.centerY - flowFrame.offsetY + half;
     for (let idx = 0; idx < flowSize; idx++) {
-        const col = idx % flowCols;
-        const row = (idx / flowCols) | 0;
-        const worldX = col * cellSize + wxBase;
-        const worldY = row * cellSize + wyBase;
+        const col = idx % flowFrame.cols;
+        const row = (idx / flowFrame.cols) | 0;
+        const worldX = col * flowFrame.cellSize + wxBase;
+        const worldY = row * flowFrame.cellSize + wyBase;
         const worldCell = snapshotWorldToGrid(navFrame, worldX, worldY);
         if (worldCell.col >= 0 && worldCell.col < navCols && worldCell.row >= 0 && worldCell.row < navRows) flowToNavIdx[idx] = worldCell.row * navCols + worldCell.col;
         else flowToNavIdx[idx] = -1;

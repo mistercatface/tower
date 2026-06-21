@@ -1,7 +1,7 @@
 import { CELL_EDGE_SLOT_BYTES, CELL_EDGE_SIDES, cellEdgeSlotBase } from "../Spatial/grid/cellEdgeSlots.js";
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
-import { clampCellBoundsToGrid, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
+import { clampCellBoundsToGrid, forEachDenseCellInBounds, forEachDenseCellInRect, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 /** Octile step slots per cell in nav snapshot CSR. */
 export const OCTILE_DIRS_PER_CELL = 8;
 export const OCTILE_NEIGHBOR_BYTES = OCTILE_DIRS_PER_CELL * 4;
@@ -100,14 +100,8 @@ export function growNavTopologyVertexSab(arena, vertCount) {
     arena.sabVertexPassability = new SharedArrayBuffer(vertBytes);
     arena.vertexPassability = new Uint8Array(arena.sabVertexPassability);
 }
-/** @param {import("../DataStructures/CellRect.js").CellBounds} bounds @param {number} cols @param {number} rows @param {number} [padding] */
 export function expandNavTopologyBakeBounds(bounds, cols, rows, padding = 1) {
-    return {
-        startCol: Math.max(0, bounds.startCol - padding),
-        endCol: Math.min(cols - 1, bounds.endCol + padding),
-        startRow: Math.max(0, bounds.startRow - padding),
-        endRow: Math.min(rows - 1, bounds.endRow + padding),
-    };
+    return padCellBoundsToGrid(bounds, cols, rows, padding);
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {NavTopologySabArena} arena @param {import("../DataStructures/CellRect.js").CellBounds | null} damageBounds */
 export function packNavTopologyFromGrid(grid, arena, damageBounds = null) {
@@ -143,8 +137,8 @@ export function recomputeBlockedFromGridFill(gridFill, blocked, cols, damageBoun
         blocked[idx] = gridFill[idx] !== 0 ? 1 : 0;
     });
 }
-export function buildOctileNeighborsFromTopologyRect(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, startCol, endCol, startRow, endRow) {
-    forEachDenseCellInRect(startCol, endCol, startRow, endRow, cols, (col, row, idx) => {
+export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, bounds) {
+    forEachDenseCellInBounds(bounds, cols, (col, row, idx) => {
         const base = octileNeighborBase(idx);
         if (blocked[idx]) {
             for (let i = 0; i < OCTILE_OFFSETS.length; i++) octileNeighbors[base + i] = -1;

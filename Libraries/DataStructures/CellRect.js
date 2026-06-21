@@ -16,6 +16,17 @@ export function clampCellBoundsToGrid(bounds, cols, rows) {
         endRow: Math.min(rows - 1, bounds.endRow),
     };
 }
+export function cellBoundsForGrid(cols, rows) {
+    return { startCol: 0, endCol: cols - 1, startRow: 0, endRow: rows - 1 };
+}
+export function padCellBoundsToGrid(bounds, cols, rows, padding = 0) {
+    return {
+        startCol: Math.max(0, bounds.startCol - padding),
+        endCol: Math.min(cols - 1, bounds.endCol + padding),
+        startRow: Math.max(0, bounds.startRow - padding),
+        endRow: Math.min(rows - 1, bounds.endRow + padding),
+    };
+}
 /** @param {CellBounds} bounds @param {number} col @param {number} row @returns {CellBounds} */
 export function growCellBounds(bounds, col, row) {
     if (col < bounds.startCol) bounds.startCol = col;
@@ -53,4 +64,7 @@ export function forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, cols, fn)
         const rowOffset = r * cols;
         for (let c = minCol; c <= maxCol; c++) fn(c, r, rowOffset + c);
     }
+}
+export function forEachDenseCellInBounds(bounds, cols, fn) {
+    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, fn);
 }

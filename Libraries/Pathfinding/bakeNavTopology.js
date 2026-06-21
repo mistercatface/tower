@@ -1,7 +1,7 @@
-import { clampCellBoundsToGrid } from "../DataStructures/CellRect.js";
+import { cellBoundsForGrid, clampCellBoundsToGrid } from "../DataStructures/CellRect.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { createNavSimView } from "./navSimView.js";
-import { buildOctileNeighborsFromTopologyRect, buildOctilePredecessorsFromForwardGrid, navTopologyFromArena, expandNavTopologyBakeBounds, recomputeBlockedFromGridFill } from "./navTopologySab.js";
+import { buildOctileNeighborsFromTopologyBounds, buildOctilePredecessorsFromForwardGrid, navTopologyFromArena, expandNavTopologyBakeBounds, recomputeBlockedFromGridFill } from "./navTopologySab.js";
 import { recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto } from "../Spatial/grid/vertexPassability.js";
 import { NavTopology } from "../Navigation/NavTopology.js";
 /**
@@ -22,11 +22,7 @@ export function bakeNavTopologyIntoArena(simView, topology, cardinalOpen, vertex
     recomputeBlockedFromGridFill(simView.grid, topology.blocked, cols, copyBounds);
     recomputeVertexPassabilityInto(simView, vertexPassability, bakeBounds);
     recomputeNavCardinalOpenInto(simView, cardinalOpen, vertexPassability, bakeBounds);
-    const octCol0 = bakeBounds ? bakeBounds.startCol : 0;
-    const octCol1 = bakeBounds ? bakeBounds.endCol : cols - 1;
-    const octRow0 = bakeBounds ? bakeBounds.startRow : 0;
-    const octRow1 = bakeBounds ? bakeBounds.endRow : rows - 1;
-    buildOctileNeighborsFromTopologyRect(topology.blocked, cardinalOpen, vertexPassability, cols, rows, topology.octileNeighbors, octCol0, octCol1, octRow0, octRow1);
+    buildOctileNeighborsFromTopologyBounds(topology.blocked, cardinalOpen, vertexPassability, cols, rows, topology.octileNeighbors, bakeBounds ?? cellBoundsForGrid(cols, rows));
     if (topology.octilePredecessors) buildOctilePredecessorsFromForwardGrid(topology.octileNeighbors, topology.octilePredecessors, cols, rows, bakeBounds);
 }
 /**
