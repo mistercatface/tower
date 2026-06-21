@@ -1,5 +1,6 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
+import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
 import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { createAliveSnakeInstance, registerAliveSnakeInstance, getSnakeInstance, syncAliveSnakeInstances, tickAliveSnakeInstances } from "./SnakeInstance.js";
@@ -40,36 +41,74 @@ export async function setupSnakeGame(state) {
     const strikerBall = spawnSnakeStriker(state, centerSnake.chain.head);
     state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config));
     state.sandbox.snakeGame.strikerBall = strikerBall;
-    function pickNextFocusedHeadId(skipHeadId = null) {
-        for (const headId of registry.aliveByHeadId.keys()) if (headId !== skipHeadId) return headId;
-        return null;
+    function getCameraTargetIds() {
+        const ids = [];
+        for (const headId of registry.aliveByHeadId.keys()) {
+            const prop = state.entityRegistry.getLive(headId);
+            if (prop && !prop.isDead) ids.push(headId);
+        }
+        if (strikerBall) {
+            const prop = state.entityRegistry.getLive(strikerBall.id);
+            if (prop && !prop.isDead) ids.push(strikerBall.id);
+        }
+        return ids;
     }
     function resolveFocusedHeadProp() {
+        if (focusedHeadId === strikerBall?.id) return strikerBall;
         if (!registry.aliveByHeadId.has(focusedHeadId)) return null;
         return state.entityRegistry.getLive(focusedHeadId);
     }
     function resolveFocusedAutosim() {
+        if (focusedHeadId === strikerBall?.id) return null;
         if (!registry.aliveByHeadId.has(focusedHeadId)) return null;
         return autosimsByHeadId.get(focusedHeadId) ?? null;
     }
-    function retargetFocusedSnake(skipHeadId = null) {
-        const nextHeadId = pickNextFocusedHeadId(skipHeadId);
-        focusedHeadId = nextHeadId;
-        if (nextHeadId == null) return null;
-        const head = state.entityRegistry.getLive(nextHeadId);
-        if (cameraFocus === "snake") {
-            setSandboxCameraTarget(state, strikerBall, false);
-            setSandboxCameraTarget(state, head, true);
+    function retargetCameraFocus(skipId = null) {
+        const ids = getCameraTargetIds().filter((id) => id !== skipId);
+        const oldId = focusedHeadId;
+        if (ids.length === 0) {
+            focusedHeadId = null;
+            const oldProp = oldId ? state.entityRegistry.getLive(oldId) : null;
+            if (oldProp) setSandboxCameraTarget(state, oldProp, false);
+            hud.update();
+            return;
         }
-        return head;
+        focusedHeadId = ids[0];
+        const oldProp = oldId ? state.entityRegistry.getLive(oldId) : null;
+        const newProp = state.entityRegistry.getLive(focusedHeadId);
+        if (oldProp) setSandboxCameraTarget(state, oldProp, false);
+        if (newProp) {
+            setSandboxCameraTarget(state, newProp, true);
+            state.viewport.snapTo(newProp.x, newProp.y);
+        }
+        hud.update();
+    }
+    function cycleCameraFocus() {
+        const ids = getCameraTargetIds();
+        if (ids.length === 0) {
+            focusedHeadId = null;
+            hud.update();
+            return;
+        }
+        const oldId = focusedHeadId;
+        const currentIndex = ids.indexOf(focusedHeadId);
+        const nextIndex = (currentIndex + 1) % ids.length;
+        focusedHeadId = ids[nextIndex];
+        const oldProp = oldId ? state.entityRegistry.getLive(oldId) : null;
+        const newProp = state.entityRegistry.getLive(focusedHeadId);
+        if (oldProp) setSandboxCameraTarget(state, oldProp, false);
+        if (newProp) {
+            setSandboxCameraTarget(state, newProp, true);
+            state.viewport.snapTo(newProp.x, newProp.y);
+        }
+        hud.update();
     }
     function onHeadDied(headId) {
-        if (focusedHeadId !== headId) return;
-        if (retargetFocusedSnake(headId)) return;
-        if (cameraFocus === "snake") focusStrikerCamera();
+        if (focusedHeadId === headId) retargetCameraFocus(headId);
     }
     state.sandbox.snakeGame.onHeadDied = onHeadDied;
     const getSegmentCount = () => {
+        if (focusedHeadId === strikerBall?.id) return 0;
         if (!registry.aliveByHeadId.has(focusedHeadId)) return 0;
         return getConnectedBodyIds(state.kinetic, focusedHeadId).length;
     };
@@ -85,27 +124,19 @@ export async function setupSnakeGame(state) {
               return autosim.getFsmDebugLine();
           }
         : null;
-    const hud = mountSnakeHud(getSegmentCount, { getFoodTimerFraction, getFsmDebugLine, onToggleCameraFocus: toggleCameraFocus });
-    let cameraFocus = "snake";
-    function focusSnakeCamera() {
-        const head = resolveFocusedHeadProp() ?? retargetFocusedSnake();
-        if (!head) return;
-        setSandboxCameraTarget(state, strikerBall, false);
-        setSandboxCameraTarget(state, head, true);
-        cameraFocus = "snake";
-        hud.setCameraFocus("snake");
-    }
-    function focusStrikerCamera() {
-        const head = resolveFocusedHeadProp();
-        if (head) setSandboxCameraTarget(state, head, false);
-        setSandboxCameraTarget(state, strikerBall, true);
-        cameraFocus = "ball";
-        hud.setCameraFocus("ball");
-    }
-    function toggleCameraFocus() {
-        if (cameraFocus === "snake") focusStrikerCamera();
-        else focusSnakeCamera();
-    }
+    const getFocusedSnakeName = () => {
+        if (!focusedHeadId) return "No Target";
+        if (focusedHeadId === strikerBall?.id) return "Striker";
+        return resolveAgentName(focusedHeadId, "Snake");
+    };
+    const hud = mountSnakeHud({ getFoodTimerFraction, getFsmDebugLine, onCycleCamera: cycleCameraFocus, getFocusedSnakeName });
+    const handleKeyDown = (e) => {
+        if (e.code === "Tab") {
+            e.preventDefault();
+            cycleCameraFocus();
+        }
+    };
+    window.addEventListener("keydown", handleKeyDown);
     hud.update();
     return {
         strikerBall,
@@ -113,9 +144,7 @@ export async function setupSnakeGame(state) {
         getFocusedHeadId: () => focusedHeadId,
         getFocusedSnakeHead: resolveFocusedHeadProp,
         cameraTarget: centerSnake.chain.head,
-        focusSnakeCamera,
-        focusStrikerCamera,
-        toggleCameraFocus,
+        cycleCameraFocus,
         appendOverlayCommands(out, gameState) {
             const behaviorById = gameState.sandbox.controller?.getBehaviorByIdMap?.();
             if (behaviorById) {
@@ -123,7 +152,7 @@ export async function setupSnakeGame(state) {
                 const strikerSelected = sel?.kind === "prop" && selectionPropIds(sel).includes(strikerBall.id);
                 if (!strikerSelected) appendPropGroundNavPathOverlay(out, gameState, strikerBall, behaviorById, resolveSandboxPathVisual(gameState, strikerBall));
             }
-            if (cameraFocus === "ball") return;
+            if (focusedHeadId === strikerBall.id) return;
             const focusedAutosim = resolveFocusedAutosim();
             if (!focusedAutosim) return;
             appendSnakeGameOverlayCommands(out, gameState, {
@@ -155,6 +184,7 @@ export async function setupSnakeGame(state) {
             syncAliveSnakeInstances(state, state.sandbox.snakeGame);
         },
         stop() {
+            window.removeEventListener("keydown", handleKeyDown);
             for (const autosim of autosimsByHeadId.values()) autosim.stop();
             hud.destroy();
         },

@@ -12,6 +12,7 @@ import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
 import { applySnakeHeadGameplay, applySnakeSegmentGameplay } from "./snakeGameConfig.js";
+import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentity.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
     const grid = state.obstacleGrid;
@@ -183,6 +184,7 @@ export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segm
     const config = getSnakeGameConfig();
     const startRadius = resolveSnakeStartRadius(config);
     const resolvedSegmentCount = segmentCount ?? config.segmentCount;
+    const name = pickRandomName(rng);
     const tintHex = pickSnakeChainTintHex(rng);
     const chain = spawnLinkedBallChain(state, anchorCell, {
         segmentCount: resolvedSegmentCount,
@@ -195,6 +197,7 @@ export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segm
         growDirY: config.growDirY,
         exportType: SNAKE_CHAIN_EXPORT_TYPE,
     });
+    setAgentIdentity(chain.head.id, { name, color: tintHex });
     applySnakeChainTint(chain.members, tintHex);
     applySnakeHeadGameplay(chain.head);
     for (let i = 1; i < chain.members.length; i++) applySnakeSegmentGameplay(chain.members[i]);
