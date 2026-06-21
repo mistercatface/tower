@@ -3,7 +3,7 @@ import { removeChainLinkBetween, clearChainLinksForMembers } from "../../Sandbox
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
-import { markSnakeDead, registerInertSnake, resolveAliveSnakeHeadId } from "./snakeLifecycle.js";
+import { markSnakeDead, registerInertSnake } from "./snakeLifecycle.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 function snakeSegmentCount(state, headId, members = null) {
     return (members || getConnectedComponentPath(state.kinetic, headId)).length;
@@ -13,9 +13,6 @@ function snakeSizeScore(state, headId, members = null) {
 }
 function orderedMembers(state, headId) {
     return getConnectedComponentPath(state.kinetic, headId);
-}
-function resolveHead(registry, state, propId) {
-    return resolveAliveSnakeHeadId(registry, (headId) => orderedMembers(state, headId), propId);
 }
 export function enforceSnakeMinLength(state, snakeGame, headId, members = null) {
     const config = getSnakeGameConfig();
@@ -53,6 +50,7 @@ export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struck
 }
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
+    snakeGame._lastCombatContactCount = contacts.count;
     const config = getSnakeGameConfig();
     const registry = snakeGame.registry;
     const splitLinks = new Set();
@@ -60,24 +58,25 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
         if (!pair) continue;
         const { bodyA, bodyB } = pair;
-        const headA = resolveHead(registry, state, bodyA.id);
-        const headB = resolveHead(registry, state, bodyB.id);
-        if (headA == null || headB == null || headA === headB) continue;
-        if (bodyA.id !== headA || bodyB.id !== headB) continue;
-        const sizeA = snakeSizeScore(state, headA, orderedMembers(state, headA));
-        const sizeB = snakeSizeScore(state, headB, orderedMembers(state, headB));
+        const headA = bodyA.id;
+        const headB = bodyB.id;
+        if (!registry.aliveByHeadId.has(headA) || !registry.aliveByHeadId.has(headB) || headA === headB) continue;
+        const membersA = orderedMembers(state, headA);
+        const membersB = orderedMembers(state, headB);
+        const sizeA = snakeSizeScore(state, headA, membersA);
+        const sizeB = snakeSizeScore(state, headB, membersB);
         if (sizeA === sizeB) continue;
-        const victimHead = sizeA > sizeB ? headB : headA;
-        const victimMembers = orderedMembers(state, victimHead);
-        const victimBody = victimMembers.includes(bodyA.id) ? bodyA : bodyB;
-        if (!victimMembers.includes(victimBody.id)) continue;
+        const smallerWins = sizeA > sizeB;
+        const victimHead = smallerWins ? headB : headA;
+        const victimMembers = smallerWins ? membersB : membersA;
+        const victimBodyId = victimHead;
         const relSpeed = Math.hypot(contacts.preDvx[i], contacts.preDvy[i]);
         if (relSpeed < config.splitImpulseThreshold) continue;
-        const strikeIndex = victimMembers.indexOf(victimBody.id);
+        const strikeIndex = victimMembers.indexOf(victimBodyId);
         if (strikeIndex < 0 || strikeIndex >= victimMembers.length - 1) continue;
         const linkKey = `${victimMembers[strikeIndex]}:${victimMembers[strikeIndex + 1]}`;
         if (splitLinks.has(linkKey)) continue;
         splitLinks.add(linkKey);
-        splitSnakeAtStruckSegment(state, snakeGame, victimHead, victimBody.id, victimMembers);
+        splitSnakeAtStruckSegment(state, snakeGame, victimHead, victimBodyId, victimMembers);
     }
 }

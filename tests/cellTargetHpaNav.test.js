@@ -4,6 +4,8 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { createCellTargetHpaNav } from "../Libraries/Sandbox/groundNav/cellTargetHpaNav.js";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
+import { writeNavFloorCell } from "../Libraries/Spatial/grid/navGridMutations.js";
+import { FLOOR_CELL_KIND, floorBeltFacingFromIndex } from "../Libraries/Spatial/grid/FloorCell.js";
 import { FRAME_MS } from "./frameMs.js";
 loadPropAssets();
 function createNavTestState() {
@@ -60,6 +62,63 @@ describe("cellTargetHpaNav", () => {
         nav.setDestination(state.obstacleGrid, 2, 3);
         nav.tick(testSeeker(), FRAME_MS);
         assert.equal(nav.needsRetry(), false);
+    });
+    it("gives up after frames without a route and stops replan spam", () => {
+        const state = createNavTestState();
+        const nav = createCellTargetHpaNav(state);
+        const grid = state.obstacleGrid;
+        const seeker = testSeeker();
+        nav.setDestination(grid, 2, 3);
+        nav.tick(seeker, FRAME_MS);
+        const replansAfterFirstTick = state.replanCalls;
+        assert.ok(replansAfterFirstTick >= 1);
+        for (let i = 0; i < state.nav.settings.stuckReplanFrames; i++) nav.tick(seeker, FRAME_MS);
+        assert.equal(nav.getDestination(), null);
+        const replansAfterGiveUp = state.replanCalls;
+        for (let i = 0; i < 5; i++) nav.tick(seeker, FRAME_MS);
+        assert.equal(state.replanCalls, replansAfterGiveUp);
+    });
+    it("does not give up while riding a belt without a route", () => {
+        const state = createNavTestState();
+        const nav = createCellTargetHpaNav(state);
+        const grid = state.obstacleGrid;
+        const seeker = testSeeker();
+        const beltCol = 2;
+        const beltRow = 3;
+        writeNavFloorCell(grid, beltCol, beltRow, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        const beltWorld = grid.gridToWorld(beltCol, beltRow);
+        seeker.x = beltWorld.x;
+        seeker.y = beltWorld.y;
+        nav.setDestination(grid, 8, 8);
+        for (let i = 0; i < state.nav.settings.stuckReplanFrames + 5; i++) nav.tick(seeker, FRAME_MS);
+        assert.ok(nav.getDestination());
+    });
+    it("throttles belt handoff replans", () => {
+        const state = createNavTestState();
+        const nav = createCellTargetHpaNav(state);
+        const grid = state.obstacleGrid;
+        const seeker = testSeeker();
+        const beltCol = 2;
+        const beltRow = 3;
+        writeNavFloorCell(grid, beltCol, beltRow, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        const beltWorld = grid.gridToWorld(beltCol, beltRow);
+        const offBeltWorld = grid.gridToWorld(3, 3);
+        seeker.x = beltWorld.x;
+        seeker.y = beltWorld.y;
+        nav.setDestination(grid, 8, 8);
+        nav.tick(seeker, FRAME_MS);
+        seeker.x = offBeltWorld.x;
+        seeker.y = offBeltWorld.y;
+        nav.tick(seeker, FRAME_MS);
+        const replansAfterHandoff = state.replanCalls;
+        assert.ok(replansAfterHandoff >= 1);
+        seeker.x = beltWorld.x;
+        seeker.y = beltWorld.y;
+        nav.tick(seeker, FRAME_MS);
+        seeker.x = offBeltWorld.x;
+        seeker.y = offBeltWorld.y;
+        nav.tick(seeker, FRAME_MS);
+        assert.equal(state.replanCalls, replansAfterHandoff);
     });
     it("clear removes destination and ground roll drive", () => {
         const state = createNavTestState();

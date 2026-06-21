@@ -12,7 +12,7 @@ export function createHpaGroundNavBehavior(state) {
     const getRun = (prop) => {
         let run = propRuns.get(prop.id);
         if (!run) {
-            run = { targetWorld: null, targetCellCol: null, targetCellRow: null, dragging: false, wasOnBelt: false, hpaNav: createHpaGroundNavSession() };
+            run = { targetWorld: null, targetCellCol: null, targetCellRow: null, dragging: false, wasOnBelt: false, beltHandoffCooldown: { frames: 0 }, hpaNav: createHpaGroundNavSession() };
             propRuns.set(prop.id, run);
         }
         return run;
@@ -23,6 +23,7 @@ export function createHpaGroundNavBehavior(state) {
         run.targetCellRow = null;
         run.dragging = false;
         run.wasOnBelt = false;
+        run.beltHandoffCooldown.frames = 0;
         run.hpaNav.reset(state);
     };
     const releaseMoveTarget = (prop, run) => {
@@ -53,6 +54,7 @@ export function createHpaGroundNavBehavior(state) {
             targetCellRow: run.targetCellRow,
             nav: run.hpaNav,
             beltWasOnBelt: run.wasOnBelt,
+            beltHandoffCooldown: run.beltHandoffCooldown,
             state,
             dtMs: dtMs,
             pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),

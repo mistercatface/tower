@@ -93,7 +93,7 @@ function mockHeadNav() {
         needsRetry() {
             if (!dest) return true;
             if (replanPending) return false;
-            return !hasRoute;
+            return false;
         },
         replan() {},
         tick() {},
@@ -209,7 +209,7 @@ describe("snake FSM transitions", () => {
         assert.notDeepEqual(next, latched);
     });
 
-    it("route failure retries the same latched cell", async () => {
+    it("route failure keeps the latched cell until nav gives up", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
@@ -229,11 +229,11 @@ describe("snake FSM transitions", () => {
         beginSnakePerceptionFrame(state);
         intent.perceive(seeker, state);
         intent.transition(seeker, state);
-        assert.equal(intent.getLastTransitionReason(), "route_failed_retry");
+        assert.equal(intent.getLastTransitionReason(), "held_latch");
         assert.deepEqual(intent.getDestination(), latched);
     });
 
-    it("createSnakeAutosim requires a wired registry", () => {
+    it("createSnakeAutosim requires a wired registry", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();

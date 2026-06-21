@@ -8,7 +8,7 @@ import { getPropAsset } from "../../Props/PropCatalog.js";
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { getSnakeGameConfig, resolveSnakeStartRadius } from "./snakeGameConfig.js";
-import { resolveAliveSnakeHeadId } from "./snakeLifecycle.js";
+import { buildAliveSnakeMemberHeadMap } from "./snakeLifecycle.js";
 import { splitSnakeAtStruckSegment } from "./snakeCombat.js";
 const STRIKER_BEHAVIOR_OVERRIDES = { inputGates: { [DRAG_LAUNCH_WAIT_BEHAVIOR_ID]: [{ scope: "self", until: "atRest" }] } };
 export function spawnSnakeStriker(state, anchorProp) {
@@ -33,7 +33,7 @@ export function resolveStrikerBallSnakeSplitsFromContacts(state, spatialFrame, c
     const registry = snakeGame.registry;
     const strikerId = strikerBall.id;
     const splitLinks = new Set();
-    const resolveHead = (propId) => resolveAliveSnakeHeadId(registry, (headId) => orderedMembers(state, headId), propId);
+    const memberToHead = buildAliveSnakeMemberHeadMap(registry, (headId) => orderedMembers(state, headId));
     for (let i = 0; i < contacts.count; i++) {
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
         if (!pair) continue;
@@ -41,7 +41,7 @@ export function resolveStrikerBallSnakeSplitsFromContacts(state, spatialFrame, c
         if (pair.bodyA.id === strikerId) snakeBody = pair.bodyB;
         else if (pair.bodyB.id === strikerId) snakeBody = pair.bodyA;
         else continue;
-        const victimHeadId = resolveHead(snakeBody.id);
+        const victimHeadId = memberToHead.get(snakeBody.id);
         if (victimHeadId == null) continue;
         const strikerPreSpeed = pair.bodyA.id === strikerId ? contacts.preSpeedA[i] : contacts.preSpeedB[i];
         if (strikerPreSpeed < config.kineticMinStrikeSpeed) continue;

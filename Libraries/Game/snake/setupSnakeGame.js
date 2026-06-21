@@ -16,6 +16,7 @@ import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
+import { flushSnakeCollisionDebugLog, initSnakeCollisionDebug, recordSnakeAutosimDebug, recordSnakeContactSideEffects } from "./snakeCollisionDebug.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -23,6 +24,7 @@ export async function setupSnakeGame(state) {
     const registry = createSnakeLifecycleRegistry();
     const autosimsByHeadId = new Map();
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
+    initSnakeCollisionDebug(state.sandbox.snakeGame);
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     await commitGridNavEdit(state, null, { fullNavSync: true });
     scene.navWalkable.rebake();
@@ -143,6 +145,7 @@ export async function setupSnakeGame(state) {
             snakeGame._batchingPerception = true;
             beginSnakePerceptionFrame(state);
             for (const [, autosim] of autosimsByHeadId) autosim.tick(dtMs);
+            recordSnakeAutosimDebug(state, autosimsByHeadId);
             endSnakePerceptionFrame(state);
             snakeGame._batchingPerception = false;
             hud.update();
@@ -151,6 +154,10 @@ export async function setupSnakeGame(state) {
             applyKineticContactSideEffects(tick, contacts);
             resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
             resolveStrikerBallSnakeSplitsFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame, strikerBall);
+            recordSnakeContactSideEffects(state.sandbox.snakeGame, contacts);
+        },
+        afterKineticPhysics() {
+            flushSnakeCollisionDebugLog(state);
         },
         stop() {
             for (const autosim of autosimsByHeadId.values()) autosim.stop();

@@ -29,19 +29,26 @@ export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
  *   targetCellRow?: number | null,
  *   nav: ReturnType<import("./hpaGroundNavSession.js").createHpaGroundNavSession>,
  *   beltWasOnBelt: boolean,
+ *   beltHandoffCooldown?: { frames: number },
  *   state: object,
  *   dtMs: number,
  *   pathSettings: object,
  * }} opts
  * @returns {{ vx: number, vy: number, steering: object | null, replanReason: string | null, beltWasOnBelt: boolean }}
  */
-export function driveGroundNav({ prop, targetWorld, targetCellCol = null, targetCellRow = null, nav, beltWasOnBelt, state, dtMs, pathSettings }) {
+export function driveGroundNav({ prop, targetWorld, targetCellCol = null, targetCellRow = null, nav, beltWasOnBelt, beltHandoffCooldown = null, state, dtMs, pathSettings }) {
     const grid = state.obstacleGrid;
     if (isEntityOnFloorBelt(grid, prop.x, prop.y)) return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: true };
     const steerTarget = snapNavGoalWorld(grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
     if (beltWasOnBelt) {
+        const cooldownFrames = beltHandoffCooldown?.frames ?? 0;
+        if (cooldownFrames > 0) {
+            beltHandoffCooldown.frames = cooldownFrames - 1;
+            return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: false };
+        }
         nav.reset(state);
         nav.replan(prop, steerTarget.x, steerTarget.y, state);
+        if (beltHandoffCooldown) beltHandoffCooldown.frames = state.nav.settings.stuckReplanFrames;
         return { vx: 0, vy: 0, steering: null, replanReason: "beltHandoff", beltWasOnBelt: false };
     }
     const { steering, replanReason } = nav.update(prop, steerTarget.x, steerTarget.y, state, dtMs, pathSettings);

@@ -64,7 +64,14 @@ describe("rail maze corridor belts", () => {
         const seeds = [11, 42, 256, 1337];
         for (let i = 0; i < seeds.length; i++) {
             const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: seeds[i], playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
-            const plan = preview.beltPlan;
+            const plan = planRailMazeCorridorBelts({
+                grid: preview.grid,
+                navTopology: preview.navTopology,
+                railConfig: preview.railConfig,
+                northReserveRows: preview.layout.northReserveRows,
+                navWalkableIndex: preview.navWalkableIndex,
+                mapSeed: preview.layout.mapSeed,
+            });
             assert.ok(plan.pathCount >= 15, `seed ${seeds[i]}: only ${plan.pathCount} corridor paths`);
             for (let pi = 0; pi < plan.paths.length; pi++) {
                 const len = plan.paths[pi].length;

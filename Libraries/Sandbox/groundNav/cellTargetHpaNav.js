@@ -73,9 +73,13 @@ export function createCellTargetHpaNav(state) {
     let destRow = null;
     let destWorld = null;
     let wasOnBelt = false;
+    let strandedFrames = 0;
+    const beltHandoffCooldown = { frames: 0 };
     const hpaNav = createHpaGroundNavSession();
     const resetSession = () => {
         wasOnBelt = false;
+        strandedFrames = 0;
+        beltHandoffCooldown.frames = 0;
         hpaNav.reset(state);
     };
     const clearDestination = () => {
@@ -89,13 +93,16 @@ export function createCellTargetHpaNav(state) {
         destCol = col;
         destRow = row;
         destWorld = grid.gridToWorld(col, row);
-        if (changed) hpaNav.markTargetChanged();
+        if (changed) {
+            strandedFrames = 0;
+            hpaNav.markTargetChanged();
+        }
         return changed;
     };
     const needsRetry = () => {
         if (destCol == null) return true;
         if (hpaNav.isRoutePending()) return false;
-        return !navHasPath(hpaNav.navState);
+        return false;
     };
     const replan = (prop) => {
         if (!destWorld) return;
@@ -104,8 +111,40 @@ export function createCellTargetHpaNav(state) {
     /** @param {number} dtMs */
     const tick = (prop, dtMs) => {
         if (destCol == null || !destWorld) return;
-        if (needsRetry()) replan(prop);
         const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
+        const grid = state.obstacleGrid;
+        const onBelt = isEntityOnFloorBelt(grid, prop.x, prop.y);
+        if (onBelt) {
+            strandedFrames = 0;
+            const { beltWasOnBelt } = driveGroundNav({
+                prop,
+                targetWorld: destWorld,
+                targetCellCol: destCol,
+                targetCellRow: destRow,
+                nav: hpaNav,
+                beltWasOnBelt: wasOnBelt,
+                beltHandoffCooldown,
+                state,
+                dtMs: dtMs,
+                pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
+            });
+            wasOnBelt = beltWasOnBelt;
+            return;
+        }
+        const status = getStatus();
+        if (status.hasRoute) strandedFrames = 0;
+        else strandedFrames++;
+        const giveUpFrames = state.nav.settings.stuckReplanFrames;
+        if (strandedFrames >= giveUpFrames) {
+            decelerateRoll(prop, config);
+            clearDestination();
+            return;
+        }
+        const allowNavUpdate = status.hasRoute || status.replanPending || strandedFrames <= 1;
+        if (!allowNavUpdate) {
+            decelerateRoll(prop, config);
+            return;
+        }
         const { vx, vy, steering, beltWasOnBelt } = driveGroundNav({
             prop,
             targetWorld: destWorld,
@@ -113,6 +152,7 @@ export function createCellTargetHpaNav(state) {
             targetCellRow: destRow,
             nav: hpaNav,
             beltWasOnBelt: wasOnBelt,
+            beltHandoffCooldown,
             state,
             dtMs: dtMs,
             pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
