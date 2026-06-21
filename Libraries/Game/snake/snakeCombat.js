@@ -3,6 +3,7 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { getSnakeInstance, buildSnakeMemberToInstanceMap } from "./SnakeInstance.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
+import { kineticBodySlab } from "../../Spatial/collision/kineticBodySlab.js";
 function snakeSegmentCount(state, headId, members = null) {
     return (members || getConnectedComponentPath(state.kinetic, headId)).length;
 }
@@ -57,5 +58,40 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         if (splitLinks.has(linkKey)) continue;
         splitLinks.add(linkKey);
         splitSnakeAtStruckSegment(state, snakeGame, smallerHead, struckSegmentId, victimMembers);
+    }
+}
+function restoreHunterContactDrive(hunterHead, hunterPhysId, preyHead) {
+    const dx = preyHead.x - hunterHead.x;
+    const dy = preyHead.y - hunterHead.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist <= 0) return;
+    const speed = getSnakeGameConfig().headMaxSpeed ?? Math.hypot(kineticBodySlab.vx[hunterPhysId], kineticBodySlab.vy[hunterPhysId]);
+    const vx = (dx / dist) * speed;
+    const vy = (dy / dist) * speed;
+    kineticBodySlab.vx[hunterPhysId] = vx;
+    kineticBodySlab.vy[hunterPhysId] = vy;
+    hunterHead.vx = vx;
+    hunterHead.vy = vy;
+}
+function applyHuntContactDriveForPair(state, snakeGame, hunterInstance, hunterBody, hunterPhysId, preyInstance) {
+    if (hunterBody.id !== hunterInstance.headId) return;
+    const autosim = snakeGame.autosimsByHeadId.get(hunterInstance.headId);
+    if (autosim?.getMode?.() !== "seek_prey") return;
+    if (autosim.getTargetId?.() !== preyInstance.headId) return;
+    const preyHead = state.entityRegistry.getLive(preyInstance.headId);
+    if (!preyHead) return;
+    restoreHunterContactDrive(hunterBody, hunterPhysId, preyHead);
+}
+export function applySnakeHuntContactDrive(state, spatialFrame, contacts, snakeGame) {
+    if (contacts.count === 0) return;
+    const memberToInstance = buildSnakeMemberToInstanceMap(state, snakeGame);
+    for (let i = 0; i < contacts.count; i++) {
+        const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
+        if (!pair) continue;
+        const instanceA = memberToInstance.get(pair.bodyA.id);
+        const instanceB = memberToInstance.get(pair.bodyB.id);
+        if (!instanceA || !instanceB || instanceA === instanceB) continue;
+        applyHuntContactDriveForPair(state, snakeGame, instanceA, pair.bodyA, contacts.physIdA[i], instanceB);
+        applyHuntContactDriveForPair(state, snakeGame, instanceB, pair.bodyB, contacts.physIdB[i], instanceA);
     }
 }

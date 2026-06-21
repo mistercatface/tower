@@ -63,6 +63,22 @@ describe("cellTargetHpaNav", () => {
         nav.tick(testSeeker(), FRAME_MS);
         assert.equal(nav.needsRetry(), false);
     });
+    it("locked target does not clear when already inside arrival range", () => {
+        const state = createNavTestState();
+        const nav = createCellTargetHpaNav(state);
+        const grid = state.obstacleGrid;
+        const seeker = testSeeker();
+        const world = grid.gridToWorld(2, 3);
+        seeker.x = world.x;
+        seeker.y = world.y;
+        nav.setDestination(grid, 2, 3, { world, exactArrival: true, arrivalRadius: 20, lockOnTarget: true });
+        nav.tick(seeker, FRAME_MS);
+        const dest = nav.getDestination();
+        assert.ok(dest);
+        assert.equal(dest.lockOnTarget, true);
+        assert.equal(dest.col, 2);
+        assert.equal(dest.row, 3);
+    });
     it("gives up after frames without a route and stops replan spam", () => {
         const state = createNavTestState();
         const nav = createCellTargetHpaNav(state);

@@ -23,6 +23,7 @@ export function createCellTargetLocomotion(headNav) {
     const hasArrivedAtDest = (agent, grid) => {
         const dest = headNav.getDestination();
         if (!dest) return false;
+        if (dest.lockOnTarget) return false;
         if (dest.exactArrival) return exactCellTargetHasArrived(agent, grid, dest.col, dest.row, dest.world, dest.arrivalRadius ?? Math.max(agent.radius, 2) * 2);
         const cell = grid.worldToGrid(agent.x, agent.y);
         return cellTargetHasArrivedAtDestCell(grid, cell.col, cell.row, dest.col, dest.row);
@@ -41,7 +42,12 @@ export function createCellTargetLocomotion(headNav) {
         },
         setSeek(agent, state, target, options = {}) {
             const cell = state.obstacleGrid.worldToGrid(target.x, target.y);
-            headNav.setDestination(state.obstacleGrid, cell.col, cell.row, { world: { x: target.x, y: target.y }, exactArrival: true, arrivalRadius: options.arrivalRadius });
+            headNav.setDestination(state.obstacleGrid, cell.col, cell.row, {
+                world: { x: target.x, y: target.y },
+                exactArrival: true,
+                arrivalRadius: options.arrivalRadius,
+                lockOnTarget: options.lockOnTarget === true,
+            });
         },
         setFlee(agent, state, cell) {
             headNav.setDestination(state.obstacleGrid, cell.col, cell.row);
@@ -82,6 +88,7 @@ export function createCellTargetHpaNav(state) {
     let destRow = null;
     let destWorld = null;
     let arrivalRadius = null;
+    let lockOnTarget = false;
     let wasOnBelt = false;
     let strandedFrames = 0;
     const beltHandoffCooldown = { frames: 0 };
@@ -97,6 +104,7 @@ export function createCellTargetHpaNav(state) {
         destRow = null;
         destWorld = null;
         arrivalRadius = null;
+        lockOnTarget = false;
         exactArrival = false;
         resetSession();
     };
@@ -110,6 +118,7 @@ export function createCellTargetHpaNav(state) {
         destWorld = world;
         exactArrival = nextExactArrival;
         arrivalRadius = options.arrivalRadius ?? null;
+        lockOnTarget = options.lockOnTarget === true;
         if (changed) {
             strandedFrames = 0;
             hpaNav.markTargetChanged();
@@ -133,7 +142,7 @@ export function createCellTargetHpaNav(state) {
         const arrived = exactArrival
             ? exactCellTargetHasArrived(prop, grid, destCol, destRow, destWorld, arrivalRadius ?? config.stopRadius)
             : shouldReleaseCellTargetHpaNav(prop, grid, destCol, destRow, destWorld, config.stopRadius);
-        if (arrived) {
+        if (arrived && !lockOnTarget) {
             clearGroundRollDrive(prop);
             clearDestination();
             return;
@@ -183,8 +192,24 @@ export function createCellTargetHpaNav(state) {
             pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
         });
         wasOnBelt = beltWasOnBelt;
+        if (!steering && lockOnTarget) {
+            const dx = destWorld.x - prop.x;
+            const dy = destWorld.y - prop.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 0) steerRollToward(prop, dx / dist, dy / dist, config, state);
+            return;
+        }
         if (!steering) return;
         if (vx === 0 && vy === 0) {
+            if (lockOnTarget) {
+                const dx = destWorld.x - prop.x;
+                const dy = destWorld.y - prop.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 0) {
+                    steerRollToward(prop, dx / dist, dy / dist, config, state);
+                    return;
+                }
+            }
             decelerateRoll(prop, config, state);
             return;
         }
@@ -220,6 +245,7 @@ export function createCellTargetHpaNav(state) {
             const dest = { col: destCol, row: destRow, world: destWorld };
             if (exactArrival) dest.exactArrival = true;
             if (arrivalRadius != null) dest.arrivalRadius = arrivalRadius;
+            if (lockOnTarget) dest.lockOnTarget = true;
             return dest;
         },
         setDestination,

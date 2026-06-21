@@ -59,7 +59,10 @@ export function createAgentIntent({
         }
         const perceived = world ?? perceiveWorld(agent, state);
         const target = resolveCommittedTarget(state, perceived);
-        if (target) locomotion.setSeek(agent, state, target, { arrivalRadius: typeof seekArrivalRadius === "function" ? seekArrivalRadius(agent, target, state) : seekArrivalRadius });
+        if (target) {
+            const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(mode, agent, target, state) : seekArrivalRadius;
+            locomotion.setSeek(agent, state, target, typeof seekOptions === "object" && seekOptions !== null ? seekOptions : { arrivalRadius: seekOptions });
+        }
     };
     const commit = (agent, state, nextMode, nextTargetId, reason, world = null) => {
         mode = nextMode;
@@ -107,7 +110,8 @@ export function createAgentIntent({
                 return { mode, target: null };
             }
             const targetCell = grid.worldToGrid(target.x, target.y);
-            if (!dest || locomotion.hasArrivedAtDest(agent, grid) || dest.col !== targetCell.col || dest.row !== targetCell.row) {
+            const targetMovedInCell = dest?.lockOnTarget && dest.world && (dest.world.x !== target.x || dest.world.y !== target.y);
+            if (!dest || locomotion.hasArrivedAtDest(agent, grid) || dest.col !== targetCell.col || dest.row !== targetCell.row || targetMovedInCell) {
                 lastTransitionReason = locomotion.hasArrivedAtDest(agent, grid) ? "arrived" : "repick_dest";
                 setDestinationForCommit(agent, state, world);
                 return { mode, target };

@@ -54,6 +54,7 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
     const resolvedGrowDirX = growDirX ?? config.growDirX;
     const resolvedGrowDirY = growDirY ?? config.growDirY;
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
+    const resolveHuntArrivalRadius = () => Math.max(2, getSnakeChainRadius(state, headId) * 0.25);
     const registry = state.sandbox.snakeGame.registry;
     const { brain, sync } = createSnakeBrain(visionCone);
     const headNav = createCellTargetHpaNav(state);
@@ -80,7 +81,8 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         registry,
         navWalkable,
         visionCone: resolvedVisionCone,
-        seekArrivalRadius: () => (typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius),
+        seekArrivalRadius: (mode) =>
+            mode === "seek_prey" ? { arrivalRadius: resolveHuntArrivalRadius(), lockOnTarget: true } : typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius,
         rng,
     });
     let active = false;
@@ -145,6 +147,9 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         },
         getMode() {
             return intent.getMode();
+        },
+        getTargetId() {
+            return intent.getTargetId();
         },
         getDestination() {
             return intent.getDestination();

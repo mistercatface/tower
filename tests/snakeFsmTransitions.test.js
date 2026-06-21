@@ -150,6 +150,8 @@ describe("snake FSM transitions", () => {
         assert.equal(dest.row, 10);
         assert.deepEqual(dest.world, { x: prey.head.x, y: prey.head.y });
         assert.equal(dest.exactArrival, true);
+        assert.equal(dest.lockOnTarget, true);
+        assert.equal(dest.arrivalRadius, Math.max(2, hunter.head.radius * 0.25));
     });
 
     it("explore transitions to seek_food when food enters vision", async () => {
@@ -172,7 +174,7 @@ describe("snake FSM transitions", () => {
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "seek_food");
         assert.equal(autosim.getLastTransitionReason(), "mode_seek_food");
-        assert.ok(autosim.getDestination());
+        assert.equal(autosim.getDestination().arrivalRadius, 20);
     });
 
     it("seek_prey transitions to flee when a larger snake appears", async () => {
