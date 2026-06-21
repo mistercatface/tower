@@ -10,13 +10,11 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { SnakeInstance, registerAliveSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
+import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts, killSnake } from "../Libraries/Game/snake/snakeCombat.js";
-import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
 
@@ -55,22 +53,8 @@ function snakeChainOptions(segmentCount) {
     };
 }
 
-function stubAutosim() {
-    return { stop() {} };
-}
-function wireCombatSnakeGame(state, registry, snakes) {
-    const autosimsByHeadId = new Map();
-    wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
-    const snakeGame = state.sandbox.snakeGame;
-    for (let i = 0; i < snakes.length; i++) {
-        const { headId, spawnGroupId } = snakes[i];
-        const autosim = stubAutosim();
-        autosimsByHeadId.set(headId, autosim);
-        const instance = new SnakeInstance({ headId, spawnGroupId, autosim, lifecycle: "alive" });
-        instance.syncMembersFromGraph(state);
-        registerAliveSnakeInstance(snakeGame, instance);
-    }
-    return autosimsByHeadId;
+function wireCombatSnakeGame(state, snakes) {
+    return wireSnakeTestGame(state, snakes.map(({ headId, spawnGroupId }) => ({ headId, spawnGroupId })));
 }
 
 describe("snake combat min length", () => {
@@ -80,8 +64,7 @@ describe("snake combat min length", () => {
         const state = createTestState();
         const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(6));
         const prey = spawnSnakeChain(state, { col: 20, row: 8 }, snakeChainOptions(5));
-        const registry = createSnakeLifecycleRegistry();
-        wireCombatSnakeGame(state, registry, [
+        wireCombatSnakeGame(state, [
             { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId },
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
         ]);
@@ -99,6 +82,7 @@ describe("snake combat min length", () => {
         applyKineticContactSideEffects(tick, kineticContactBuffer);
         resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
         assert.ok(kineticContactBuffer.count >= 1);
+        const registry = state.sandbox.snakeGame.registry;
         const preyHeadId = prey.chain.head.id;
         const splitHappened = registry.inertByLeadId.size > 0;
         const preyDead = registry.deadHeadIds.has(preyHeadId);
@@ -114,8 +98,7 @@ describe("snake combat min length", () => {
         const state = createTestState();
         const big = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(6));
         const small = spawnSnakeChain(state, { col: 20, row: 8 }, snakeChainOptions(3));
-        const registry = createSnakeLifecycleRegistry();
-        wireCombatSnakeGame(state, registry, [
+        wireCombatSnakeGame(state, [
             { headId: big.chain.head.id, spawnGroupId: big.chain.spawnGroupId },
             { headId: small.chain.head.id, spawnGroupId: small.chain.spawnGroupId },
         ]);
@@ -134,6 +117,7 @@ describe("snake combat min length", () => {
         applyKineticContactSideEffects(tick, kineticContactBuffer);
         resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
         assert.ok(kineticContactBuffer.count >= 1);
+        const registry = state.sandbox.snakeGame.registry;
         assert.equal(registry.inertByLeadId.size, 0);
         assert.equal(registry.deadHeadIds.size, 0);
         assert.equal(getOrderedChainMemberIds(state, small.chain.head.id).length, 3);
@@ -145,11 +129,11 @@ describe("snake combat min length", () => {
         const state = createTestState();
         const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(6));
         const prey = spawnSnakeChain(state, { col: 20, row: 8 }, snakeChainOptions(3));
-        const registry = createSnakeLifecycleRegistry();
-        const autosimsByHeadId = wireCombatSnakeGame(state, registry, [
+        const { autosimsByHeadId } = wireCombatSnakeGame(state, [
             { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId },
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
         ]);
+        const registry = state.sandbox.snakeGame.registry;
         const preyMembers = getOrderedChainMemberIds(state, prey.chain.head.id);
         const struckBody = state.entityRegistry.getLive(preyMembers[1]);
         predator.chain.head.vx = 80;
@@ -178,8 +162,7 @@ describe("snake combat min length", () => {
         const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const prey = spawnSnakeChain(state, { col: 20, row: 8 }, snakeChainOptions(3));
         assert.notEqual(predator.chain.spawnGroupId, prey.chain.spawnGroupId);
-        const registry = createSnakeLifecycleRegistry();
-        wireCombatSnakeGame(state, registry, [
+        wireCombatSnakeGame(state, [
             { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId },
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
         ]);

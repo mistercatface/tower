@@ -10,10 +10,9 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { spawnSnakeStriker } from "../Libraries/Game/snake/snakeStriker.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { setSandboxCameraTarget, findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCameraTarget.js";
-import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
 
@@ -80,12 +79,13 @@ describe("snake camera focus", () => {
         applySnakeGameConfig({ segmentCount: 3, strikerPropId: "snake_striker" });
         resetKineticConstraintIds(1);
         const state = createTestState();
-        const registry = createSnakeLifecycleRegistry();
-        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
         const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3 });
         const second = spawnSnakeChain(state, { col: 14, row: 8 }, { segmentCount: 3 });
-        registerAliveSnake(registry, first.chain.head.id);
-        registerAliveSnake(registry, second.chain.head.id);
+        wireSnakeTestGame(state, [
+            { headId: first.chain.head.id, spawnGroupId: first.chain.spawnGroupId },
+            { headId: second.chain.head.id, spawnGroupId: second.chain.spawnGroupId },
+        ]);
+        const registry = state.sandbox.snakeGame.registry;
         const strikerBall = spawnSnakeStriker(state, first.chain.head);
         state.sandbox.snakeGame.strikerBall = strikerBall;
         const focus = wireCameraFocusOnHeadDied(state, registry, strikerBall);

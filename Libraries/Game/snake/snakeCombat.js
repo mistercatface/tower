@@ -1,18 +1,8 @@
-import { removeChainLinkBetween, clearChainLinksForMembers } from "../../Sandbox/chainLinks.js";
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { getSnakeInstance, buildSnakeMemberToInstanceMap } from "./SnakeInstance.js";
-import {
-    markSnakeDead,
-    registerInertSnake,
-    retireSnakeSegmentsFromNav,
-    collectSnakeInstanceMemberIds,
-    purgeInertSnakesForHead,
-    isValidAliveSnakeHead,
-    sweepOrphanSnakeChains,
-    buildAliveSnakeMemberHeadMap,
-} from "./snakeLifecycle.js";
+import { retireSnakeSegmentsFromNav, sweepOrphanSnakeChains } from "./snakeLifecycle.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 function snakeSegmentCount(state, headId, members = null) {
     return (members || getConnectedComponentPath(state.kinetic, headId)).length;
@@ -23,34 +13,6 @@ function snakeSizeScore(state, headId, members = null) {
 function orderedMembers(state, headId) {
     return getConnectedComponentPath(state.kinetic, headId);
 }
-function killSnakeWithoutInstance(state, snakeGame, headId, members = null) {
-    const autosim = snakeGame.autosimsByHeadId.get(headId);
-    if (autosim) {
-        autosim.stop();
-        snakeGame.autosimsByHeadId.delete(headId);
-    }
-    const connectedMembers = members || orderedMembers(state, headId);
-    const resolvedMembers = collectSnakeInstanceMemberIds(state, snakeGame, headId, connectedMembers);
-    retireSnakeSegmentsFromNav(state, resolvedMembers);
-    clearChainLinksForMembers(state, resolvedMembers);
-    purgeInertSnakesForHead(snakeGame.registry, headId);
-    markSnakeDead(snakeGame.registry, headId);
-    if (snakeGame.onHeadDied) snakeGame.onHeadDied(headId);
-}
-function splitSnakeAtStruckSegmentWithoutInstance(state, snakeGame, victimHeadId, struckSegmentId, victimMembers = null) {
-    const members = victimMembers || orderedMembers(state, victimHeadId);
-    const strikeIndex = members.indexOf(struckSegmentId);
-    if (strikeIndex < 0 || strikeIndex >= members.length - 1) return null;
-    const linkA = members[strikeIndex];
-    const linkB = members[strikeIndex + 1];
-    if (!removeChainLinkBetween(state, linkA, linkB)) return null;
-    const aliveIds = members.slice(0, strikeIndex + 1);
-    const tailIds = members.slice(strikeIndex + 1);
-    retireSnakeSegmentsFromNav(state, tailIds);
-    registerInertSnake(snakeGame.registry, tailIds[0], tailIds, victimHeadId);
-    enforceSnakeMinLength(state, snakeGame, victimHeadId);
-    return { aliveHeadId: victimHeadId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
-}
 export function enforceSnakeMinLength(state, snakeGame, headId, members = null) {
     const config = getSnakeGameConfig();
     if (snakeSegmentCount(state, headId, members) >= config.minAliveSegmentCount) return false;
@@ -58,46 +20,24 @@ export function enforceSnakeMinLength(state, snakeGame, headId, members = null) 
     return true;
 }
 export function killSnake(state, snakeGame, headId, members = null) {
-    const instance = getSnakeInstance(snakeGame, headId);
-    if (instance) {
-        instance.die(state, snakeGame, members);
-        return;
-    }
-    killSnakeWithoutInstance(state, snakeGame, headId, members);
+    getSnakeInstance(snakeGame, headId).die(state, snakeGame, members);
 }
 export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struckSegmentId, victimMembers = null) {
-    const instance = getSnakeInstance(snakeGame, victimHeadId);
-    if (instance) return instance.splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers);
-    return splitSnakeAtStruckSegmentWithoutInstance(state, snakeGame, victimHeadId, struckSegmentId, victimMembers);
-}
-function resolveCombatInstances(state, snakeGame) {
-    const memberToInstance = buildSnakeMemberToInstanceMap(state, snakeGame);
-    if (memberToInstance.size > 0) return { memberToInstance, useInstances: true };
-    const registry = snakeGame.registry;
-    const memberToHead = buildAliveSnakeMemberHeadMap(registry, (headId) => orderedMembers(state, headId));
-    return { memberToHead, useInstances: false };
+    return getSnakeInstance(snakeGame, victimHeadId).splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers);
 }
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
     const config = getSnakeGameConfig();
-    const lookup = resolveCombatInstances(state, snakeGame);
+    const memberToInstance = buildSnakeMemberToInstanceMap(state, snakeGame);
     const splitLinks = new Set();
     for (let i = 0; i < contacts.count; i++) {
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
         if (!pair) continue;
-        let snakeHeadA;
-        let snakeHeadB;
-        if (lookup.useInstances) {
-            const instanceA = lookup.memberToInstance.get(pair.bodyA.id);
-            const instanceB = lookup.memberToInstance.get(pair.bodyB.id);
-            if (!instanceA || !instanceB || instanceA === instanceB) continue;
-            snakeHeadA = instanceA.headId;
-            snakeHeadB = instanceB.headId;
-        } else {
-            snakeHeadA = lookup.memberToHead.get(pair.bodyA.id);
-            snakeHeadB = lookup.memberToHead.get(pair.bodyB.id);
-            if (snakeHeadA == null || snakeHeadB == null || snakeHeadA === snakeHeadB) continue;
-        }
+        const instanceA = memberToInstance.get(pair.bodyA.id);
+        const instanceB = memberToInstance.get(pair.bodyB.id);
+        if (!instanceA || !instanceB || instanceA === instanceB) continue;
+        const snakeHeadA = instanceA.headId;
+        const snakeHeadB = instanceB.headId;
         const membersA = orderedMembers(state, snakeHeadA);
         const membersB = orderedMembers(state, snakeHeadB);
         const sizeA = snakeSizeScore(state, snakeHeadA, membersA);
@@ -122,29 +62,13 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
 }
 export function syncSnakeGameLifecycle(state, snakeGame) {
     const registry = snakeGame.registry;
-    const instances = snakeGame.instancesByHeadId;
-    if (instances?.size) {
-        for (const instance of instances.values()) instance.validate(state, snakeGame);
-        for (const entry of registry.inertByLeadId.values()) retireSnakeSegmentsFromNav(state, entry.memberIds);
-        sweepOrphanSnakeChains(state, snakeGame);
-        for (const headId of [...snakeGame.autosimsByHeadId.keys()]) {
-            if (registry.aliveByHeadId.has(headId)) continue;
-            const instance = getSnakeInstance(snakeGame, headId);
-            if (instance) instance.stopSteering(state);
-            else snakeGame.autosimsByHeadId.get(headId)?.stop?.();
-            snakeGame.autosimsByHeadId.delete(headId);
-        }
-        return;
-    }
+    for (const instance of snakeGame.instancesByHeadId.values()) instance.validate(state, snakeGame);
     for (const entry of registry.inertByLeadId.values()) retireSnakeSegmentsFromNav(state, entry.memberIds);
-    for (const headId of [...registry.aliveByHeadId.keys()]) {
-        if (isValidAliveSnakeHead(state, registry, headId)) continue;
-        killSnake(state, snakeGame, headId);
-    }
     sweepOrphanSnakeChains(state, snakeGame);
     for (const headId of [...snakeGame.autosimsByHeadId.keys()]) {
         if (registry.aliveByHeadId.has(headId)) continue;
-        snakeGame.autosimsByHeadId.get(headId)?.stop?.();
+        const instance = getSnakeInstance(snakeGame, headId);
+        if (instance) instance.stopSteering(state);
         snakeGame.autosimsByHeadId.delete(headId);
     }
 }

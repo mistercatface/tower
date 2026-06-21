@@ -113,11 +113,3 @@ export function sweepOrphanSnakeChains(state, snakeGame) {
         retireSnakeSegmentsFromNav(state, members);
     }
 }
-export function buildAliveSnakeMemberHeadMap(registry, orderedMemberIdsForHead) {
-    const memberToHead = new Map();
-    for (const headId of registry.aliveByHeadId.keys()) {
-        const members = orderedMemberIdsForHead(headId);
-        for (let i = 0; i < members.length; i++) memberToHead.set(members[i], headId);
-    }
-    return memberToHead;
-}

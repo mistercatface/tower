@@ -10,12 +10,10 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { SnakeInstance, registerAliveSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
+import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "../Libraries/Game/snake/snakeStriker.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
-import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { evaluateInputGates } from "../Libraries/Sandbox/inputGates.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
 import { DRAG_LAUNCH_WAIT_BEHAVIOR_ID } from "../Libraries/Sandbox/dragLaunch.js";
@@ -57,19 +55,8 @@ function snakeChainOptions(segmentCount) {
     };
 }
 
-function wireSnakeGame(state, registry, snake) {
-    const autosimsByHeadId = new Map();
-    autosimsByHeadId.set(snake.headId, { stop() {} });
-    wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
-    const instance = new SnakeInstance({
-        headId: snake.headId,
-        spawnGroupId: snake.spawnGroupId,
-        autosim: autosimsByHeadId.get(snake.headId),
-        lifecycle: "alive",
-    });
-    instance.syncMembersFromGraph(state);
-    registerAliveSnakeInstance(state.sandbox.snakeGame, instance);
-    return autosimsByHeadId;
+function wireSnakeGame(state, snake) {
+    wireSnakeTestGame(state, [{ headId: snake.headId, spawnGroupId: snake.spawnGroupId }]);
 }
 
 describe("snake striker ball", () => {
@@ -93,8 +80,8 @@ describe("snake striker ball", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
-        const registry = createSnakeLifecycleRegistry();
-        wireSnakeGame(state, registry, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
+        wireSnakeGame(state, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
+        const registry = state.sandbox.snakeGame.registry;
         const striker = spawnSnakeStriker(state, snake.chain.head);
         state.sandbox.snakeGame.strikerBall = striker;
         const struck = snake.chain.members[2];
@@ -119,8 +106,8 @@ describe("snake striker ball", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
-        const registry = createSnakeLifecycleRegistry();
-        wireSnakeGame(state, registry, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
+        wireSnakeGame(state, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
+        const registry = state.sandbox.snakeGame.registry;
         const striker = spawnSnakeStriker(state, snake.chain.head);
         const head = snake.chain.head;
         striker.vx = 0;
@@ -144,8 +131,8 @@ describe("snake striker ball", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
-        const registry = createSnakeLifecycleRegistry();
-        wireSnakeGame(state, registry, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
+        wireSnakeGame(state, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
+        const registry = state.sandbox.snakeGame.registry;
         const striker = spawnSnakeStriker(state, snake.chain.head);
         const struck = snake.chain.members[2];
         striker.vx = 5;

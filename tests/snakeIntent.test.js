@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { cellChebyshevDistance, pickExploreDestination, exploreFringeMinRankFromNewest } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
-import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "../Libraries/Game/snake/snakeGoals.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
@@ -121,7 +121,7 @@ describe("snake intent FSM", () => {
         resetKineticConstraintIds(1);
         const state = await createIntentTestState();
         const chain = spawnLinkedBallChain(state, { col: 4, row: 8 }, snakeChainOptions());
-        wireSnakeGameForHead(state, chain.head.id);
+        wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         spawnGoalOrbAtCell(state, { col: 7, row: 8 });
         spawnGoalOrbAtCell(state, { col: 14, row: 8 });
         stampWall(state.obstacleGrid, 5, 8);
@@ -145,10 +145,10 @@ describe("snake intent FSM", () => {
         const state = await createIntentTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });
         const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, { ...snakeChainOptions(), segmentCount: 5 });
-        const registry = createSnakeLifecycleRegistry();
-        registerAliveSnake(registry, small.head.id);
-        registerAliveSnake(registry, large.head.id);
-        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+        wireSnakeTestGame(state, [
+            { headId: small.head.id, spawnGroupId: small.spawnGroupId },
+            { headId: large.head.id, spawnGroupId: large.spawnGroupId },
+        ]);
         small.head.facing = 0;
         large.head.x = small.head.x + 80;
         large.head.y = small.head.y;

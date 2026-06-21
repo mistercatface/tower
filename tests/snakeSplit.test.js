@@ -10,10 +10,10 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeLifecycleRegistry, isAliveSnakeHead, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { SnakeInstance, registerAliveSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
-import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength, syncSnakeGameLifecycle } from "../Libraries/Game/snake/snakeCombat.js";
-import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { isAliveSnakeHead } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength } from "../Libraries/Game/snake/snakeCombat.js";
+import { getSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
+import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { steerRollToward } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
 
@@ -53,29 +53,12 @@ function snakeChainOptions(segmentCount) {
     };
 }
 
-function stubAutosim() {
-    return { start() {}, stop() {} };
-}
-
 function mockSnakeGame(state, headIds, spawnGroupIdByHeadId = null) {
-    const registry = createSnakeLifecycleRegistry();
-    const autosimsByHeadId = new Map();
-    wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
-    const snakeGame = state.sandbox.snakeGame;
-    for (let i = 0; i < headIds.length; i++) {
-        const headId = headIds[i];
-        const autosim = stubAutosim();
-        autosimsByHeadId.set(headId, autosim);
-        const instance = new SnakeInstance({
-            headId,
-            spawnGroupId: spawnGroupIdByHeadId?.get(headId) ?? `test:${headId}`,
-            autosim,
-            lifecycle: "alive",
-        });
-        instance.syncMembersFromGraph(state);
-        registerAliveSnakeInstance(snakeGame, instance);
-    }
-    return snakeGame;
+    const snakes = headIds.map((headId) => ({
+        headId,
+        spawnGroupId: spawnGroupIdByHeadId?.get(headId) ?? `test:${headId}`,
+    }));
+    return wireSnakeTestGame(state, snakes).snakeGame;
 }
 
 describe("snake split on impact", () => {
@@ -223,18 +206,19 @@ describe("snake min length death", () => {
         assert.equal(head._groundRollDrive, undefined);
     });
 
-    it("syncSnakeGameLifecycle kills a head orphaned below min segment count", () => {
+    it("instance validate kills a head orphaned below min segment count", () => {
         applySnakeGameConfig({ minAliveSegmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
+        const instance = getSnakeInstance(snakeGame, headId);
         const members = getOrderedChainMemberIds(state, headId);
         removeChainLinkBetween(state, members[0], members[1]);
         removeChainLinkBetween(state, members[1], members[2]);
-        syncSnakeGameLifecycle(state, snakeGame);
-        assert.equal(isAliveSnakeHead(snakeGame.registry, headId), false);
+        instance.validate(state, snakeGame);
+        assert.equal(instance.lifecycle, "dead");
         assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
         assert.equal(pack.chain.head._groundRollDrive, undefined);
     });

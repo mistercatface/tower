@@ -84,7 +84,7 @@ describe("snake multi-spawn", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
         const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.5 });
-        wireSnakeGameForHead(state, pack.chain.head.id);
+        wireSnakeGameForHead(state, pack.chain.head.id, pack.chain.spawnGroupId);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
         const behaviorById = new Map([
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],

@@ -18,9 +18,9 @@ import { createSnakeAutosim, createSnakeBrain } from "../Libraries/Game/snake/sn
 import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnGoalOrbAtCell } from "../Libraries/Game/snake/snakeScene.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
-import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 
@@ -132,7 +132,7 @@ describe("snake FSM transitions", () => {
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 4, row: 8 }, chainOptions());
-        wireSnakeGameForHead(state, chain.head.id);
+        wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         spawnGoalOrbAtCell(state, { col: 7, row: 8 });
         spawnGoalOrbAtCell(state, { col: 14, row: 8 });
         stampWall(state.obstacleGrid, 5, 8);
@@ -156,10 +156,10 @@ describe("snake FSM transitions", () => {
         const state = await createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, chainOptions(3));
         const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
-        const registry = createSnakeLifecycleRegistry();
-        registerAliveSnake(registry, small.head.id);
-        registerAliveSnake(registry, large.head.id);
-        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+        wireSnakeTestGame(state, [
+            { headId: small.head.id, spawnGroupId: small.spawnGroupId },
+            { headId: large.head.id, spawnGroupId: large.spawnGroupId },
+        ]);
         spawnGoalOrbAtCell(state, { col: 8, row: 10 });
         small.head.facing = 0;
         large.head.x = small.head.x + 200;
@@ -179,10 +179,11 @@ describe("snake FSM transitions", () => {
         const state = await createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 24, row: 20 }, chainOptions(3));
         const large = spawnLinkedBallChain(state, { col: 28, row: 20 }, chainOptions(5));
-        const registry = createSnakeLifecycleRegistry();
-        registerAliveSnake(registry, small.head.id);
-        registerAliveSnake(registry, large.head.id);
-        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+        wireSnakeTestGame(state, [
+            { headId: small.head.id, spawnGroupId: small.spawnGroupId },
+            { headId: large.head.id, spawnGroupId: large.spawnGroupId },
+        ]);
+        const registry = state.sandbox.snakeGame.registry;
         large.head.x = small.head.x + 64;
         large.head.y = small.head.y;
         const { intent } = createMockIntent(state, small.head.id, registry);
@@ -214,9 +215,8 @@ describe("snake FSM transitions", () => {
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
-        const registry = createSnakeLifecycleRegistry();
-        registerAliveSnake(registry, chain.head.id);
-        wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
+        wireSnakeTestGame(state, [{ headId: chain.head.id, spawnGroupId: chain.spawnGroupId }]);
+        const registry = state.sandbox.snakeGame.registry;
         const { intent, headNav } = createMockIntent(state, chain.head.id, registry);
         const seeker = chain.head;
         beginSnakePerceptionFrame(state);

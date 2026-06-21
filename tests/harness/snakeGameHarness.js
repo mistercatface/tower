@@ -15,7 +15,8 @@ import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
 import { resolveSnakeNavWalkableFloodSeedBounds, spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
 import { createWorkerNavigation } from "../../Libraries/Navigation/WorkerNavigationFactory.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
+import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
+import { SnakeInstance, registerAliveSnakeInstance, getSnakeInstance } from "../../Libraries/Game/snake/SnakeInstance.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
 loadPropAssets();
@@ -41,9 +42,38 @@ export function createSnakeNavWalkable(state) {
 export function snakeGameNavWalkable(state) {
     return state.sandbox.snakeGame.navWalkable;
 }
+export function stubSnakeAutosim() {
+    return { start() {}, stop() {} };
+}
+export function registerSnakeTestInstance(state, snakeGame, { headId, spawnGroupId, autosim = null }) {
+    const resolvedAutosim = autosim ?? stubSnakeAutosim();
+    const instance = new SnakeInstance({ headId, spawnGroupId, autosim: resolvedAutosim, lifecycle: "alive" });
+    instance.syncMembersFromGraph(state);
+    registerAliveSnakeInstance(snakeGame, instance);
+    return instance;
+}
+export function wireSnakeTestGame(state, snakes = []) {
+    if (state.nav?.session) wireSnakeTestNavSession(state);
+    const registry = createSnakeLifecycleRegistry();
+    const autosimsByHeadId = new Map();
+    wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
+    const snakeGame = state.sandbox.snakeGame;
+    for (const snake of snakes) {
+        const autosim = snake.autosim ?? stubSnakeAutosim();
+        autosimsByHeadId.set(snake.headId, autosim);
+        registerSnakeTestInstance(state, snakeGame, { ...snake, autosim });
+    }
+    return { registry, autosimsByHeadId, snakeGame };
+}
 export function createWiredSnakeAutosim(state, options) {
     wireSnakeTestNavSession(state);
-    return createSnakeAutosim(state, { ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
+    const autosim = createSnakeAutosim(state, { ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
+    const instance = getSnakeInstance(state.sandbox.snakeGame, options.headId);
+    if (instance) {
+        instance.autosim = autosim;
+        state.sandbox.snakeGame.autosimsByHeadId.set(options.headId, autosim);
+    }
+    return autosim;
 }
 export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -74,12 +104,8 @@ export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
     wireSnakeTestNavSession(state);
     return { state, behaviorById, hpaBehavior };
 }
-export function wireSnakeGameForHead(state, headId) {
-    wireSnakeTestNavSession(state);
-    const registry = createSnakeLifecycleRegistry();
-    registerAliveSnake(registry, headId);
-    wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
-    return registry;
+export function wireSnakeGameForHead(state, headId, spawnGroupId = `test:${headId}`) {
+    return wireSnakeTestGame(state, [{ headId, spawnGroupId }]).registry;
 }
 export function primeSnakeHeadVision(state, seeker, visionCone) {
     beginSnakePerceptionFrame(state);
@@ -102,7 +128,7 @@ export async function buildSnakeGameSession(state) {
             growDirY: config.growDirY,
         },
     );
-    wireSnakeGameForHead(state, chain.head.id);
+    wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
     const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
     const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, goalPropId: goal.id, behaviorById, eatRadius: 20, rng: () => 0 });

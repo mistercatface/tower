@@ -78,7 +78,7 @@ describe("snakeAutosim", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeAutosimTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
-        wireSnakeGameForHead(state, chain.head.id);
+        wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
         const behaviorById = snakeBehaviorById(state);
         const autosim = createWiredSnakeAutosim(state, {
@@ -105,7 +105,7 @@ describe("snakeAutosim", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeAutosimTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
-        wireSnakeGameForHead(state, chain.head.id);
+        wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
         const behaviorById = snakeBehaviorById(state);
         const autosim = createWiredSnakeAutosim(state, {
@@ -128,7 +128,7 @@ describe("snakeAutosim", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeAutosimTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
-        wireSnakeGameForHead(state, chain.head.id);
+        wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 10 });
         const autosim = createWiredSnakeAutosim(state, {
             headId: chain.head.id,

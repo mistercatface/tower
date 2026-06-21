@@ -14,8 +14,7 @@ import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGr
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { wireSnakeTestGame, createWiredSnakeAutosim, createSnakeNavWalkable, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain, spawnSnakeGoalPool } from "../Libraries/Game/snake/snakeScene.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
@@ -75,10 +74,8 @@ async function createPerfState(cols = 48, rows = 48) {
 function buildMultiSnakeSession(state) {
     const config = getSnakeGameConfig();
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
-    const registry = createSnakeLifecycleRegistry();
-    const autosimsByHeadId = new Map();
-    const navWalkable = createSnakeNavWalkable(state);
-    wireSnakeGameRegistry(state, registry, autosimsByHeadId, navWalkable);
+    const { autosimsByHeadId, snakeGame } = wireSnakeTestGame(state);
+    const navWalkable = snakeGame.navWalkable;
     const autosims = [];
     let excludeIndices = null;
     const specs = resolveSnakeSpawnSpecs(config);
@@ -87,10 +84,13 @@ function buildMultiSnakeSession(state) {
         const row = 4 + Math.floor(i / 8) * 3;
         const pack = spawnSnakeChain(state, { col, row }, { excludeIndices, segmentCount: config.segmentCount, rng: () => (i * 0.13) % 1 });
         excludeIndices = pack.occupiedIndices;
-        registerAliveSnake(registry, pack.chain.head.id);
+        registerSnakeTestInstance(state, state.sandbox.snakeGame, {
+            headId: pack.chain.head.id,
+            spawnGroupId: pack.chain.spawnGroupId,
+        });
         const autosim = createWiredSnakeAutosim(state, { headId: pack.chain.head.id, behaviorById, rng: () => ((i + 1) * 0.17) % 1 });
         autosim.start();
-        state.sandbox.snakeGame.autosimsByHeadId.set(pack.chain.head.id, autosim);
+        autosimsByHeadId.set(pack.chain.head.id, autosim);
         autosims.push({ autosim, head: pack.chain.head });
     }
     spawnSnakeGoalPool(state, config.goalCount, navWalkable, { excludeIndices, rng: () => 0.42 });

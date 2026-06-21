@@ -83,7 +83,7 @@ describe("snake starvation", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(4));
-        wireSnakeGameForHead(state, chain.head.id);
+        wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 8 });
         const behaviorById = new Map([
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
@@ -103,7 +103,7 @@ describe("snake starvation", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(3));
-        wireSnakeGameForHead(state, chain.head.id);
+        wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const goal = spawnGoalOrbAtCell(state, { col: 14, row: 8 });
         const behaviorById = new Map([
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
