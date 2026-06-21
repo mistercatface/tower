@@ -11,6 +11,7 @@ export function applyHpaReplanResult(navState, result, { obstacleGrid, worker, s
         clearHpaNavPath(navState, worker);
         return;
     }
+    worker.releaseOwnedPathSlot(navState);
     navState.pathSlot = result.pathSlot;
     navState.pathLen = result.pathLen;
     navState.pathProgressIdx = findSabPathProgressIdx(startX, startY, worker, result.pathSlot, result.pathLen, obstacleGrid, navTopology);

@@ -60,10 +60,7 @@ export function createHpaGroundNavSession() {
         const stuckFrames = navState.stuckFrames;
         const stuckReplanFrames = settings.stuckReplanFrames;
         if (!inFlight && obstacleEpochReplanDue(navState, nav.topologyKey()))
-            if (obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) {
-                if (navHasPath(navState)) clearHpaNavPath(navState, nav.worker);
-                return requestReplan(prop, targetX, targetY, state, replanPriorityFor("epoch", isVisible), "epoch");
-            }
+            if (obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) return requestReplan(prop, targetX, targetY, state, replanPriorityFor("epoch", isVisible), "epoch");
         const sandboxReason = sandboxReplanReason(navState, pendingTargetReplan, inFlight, targetX, targetY);
         if (sandboxReason && sandboxReplanAllowed(sandboxReason, isVisible, stuckFrames, stuckReplanFrames))
             return requestReplan(prop, targetX, targetY, state, replanPriorityFor(sandboxReason, isVisible), sandboxReason);
