@@ -12,11 +12,12 @@ import { selectionPropIds } from "../../Sandbox/sandboxSelectionInspectors.js";
 import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
-import { resolveSnakeCombatFromContacts } from "./snakeCombat.js";
+import { resolveSnakeCombatFromContacts, syncSnakeGameLifecycle } from "./snakeCombat.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 import { flushSnakeCollisionDebugLog, initSnakeCollisionDebug, recordSnakeAutosimDebug, recordSnakeContactSideEffects } from "./snakeCollisionDebug.js";
+import { probeSnakeLoneHeadMovement } from "./snakeLoneHeadDebug.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -142,6 +143,8 @@ export async function setupSnakeGame(state) {
         getSegmentCount,
         tick(dtMs) {
             const snakeGame = state.sandbox.snakeGame;
+            syncSnakeGameLifecycle(state, snakeGame);
+            probeSnakeLoneHeadMovement(state, snakeGame);
             snakeGame._batchingPerception = true;
             beginSnakePerceptionFrame(state);
             for (const [headId, autosim] of autosimsByHeadId) {
@@ -157,6 +160,8 @@ export async function setupSnakeGame(state) {
             applyKineticContactSideEffects(tick, contacts);
             resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
             resolveStrikerBallSnakeSplitsFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame, strikerBall);
+            syncSnakeGameLifecycle(state, state.sandbox.snakeGame);
+            probeSnakeLoneHeadMovement(state, state.sandbox.snakeGame);
             recordSnakeContactSideEffects(state.sandbox.snakeGame, contacts);
         },
         afterKineticPhysics() {

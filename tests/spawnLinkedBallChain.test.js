@@ -86,4 +86,11 @@ describe("spawnLinkedBallChain", () => {
         assert.equal(chain.tail.radius, 2);
         assert.equal(state.kinetic.kineticConstraints[0].restLength, 4.2);
     });
+    it("assigns a unique spawn group id per chain", () => {
+        resetKineticConstraintIds(1);
+        const state = createChainSpawnTestState();
+        const first = spawnLinkedBallChain(state, { col: 4, row: 4 }, CHAIN_OPTIONS);
+        const second = spawnLinkedBallChain(state, { col: 12, row: 12 }, CHAIN_OPTIONS);
+        assert.notEqual(first.spawnGroupId, second.spawnGroupId);
+    });
 });

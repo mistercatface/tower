@@ -11,9 +11,10 @@ import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeLifecycleRegistry, isAliveSnakeHead, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength } from "../Libraries/Game/snake/snakeCombat.js";
+import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength, syncSnakeGameLifecycle } from "../Libraries/Game/snake/snakeCombat.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { steerRollToward } from "../Libraries/Sandbox/kineticRollActuator.js";
+import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
 
 loadPropAssets();
 
@@ -107,7 +108,7 @@ describe("snake split on impact", () => {
         splitSnakeAtStruckSegment(state, snakeGame, headId, members[0]);
         assert.equal(isAliveSnakeHead(snakeGame.registry, headId), false);
         assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
-        assert.equal(state.kinetic.kineticConstraints.length, 1);
+        assert.equal(state.kinetic.kineticConstraints.length, 0);
     });
 });
 
@@ -209,5 +210,37 @@ describe("snake min length death", () => {
         assert.equal(head.vx, 0);
         assert.equal(head.vy, 0);
         assert.equal(head._groundRollDrive, undefined);
+    });
+
+    it("syncSnakeGameLifecycle kills a head orphaned below min segment count", () => {
+        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
+        const headId = pack.chain.head.id;
+        const snakeGame = mockSnakeGame(state, [headId]);
+        const members = getOrderedChainMemberIds(state, headId);
+        removeChainLinkBetween(state, members[0], members[1]);
+        removeChainLinkBetween(state, members[1], members[2]);
+        syncSnakeGameLifecycle(state, snakeGame);
+        assert.equal(isAliveSnakeHead(snakeGame.registry, headId), false);
+        assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
+        assert.equal(pack.chain.head._groundRollDrive, undefined);
+    });
+
+    it("killSnake retires split-off inert tail from the same snake instance", () => {
+        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
+        const headId = pack.chain.head.id;
+        const snakeGame = mockSnakeGame(state, [headId]);
+        const members = getOrderedChainMemberIds(state, headId);
+        splitSnakeAtStruckSegment(state, snakeGame, headId, members[2]);
+        const inertLead = state.entityRegistry.getLive(members[3]);
+        inertLead._groundRollDrive = { kind: "thrust", dirX: 0, dirY: 1, accel: 5, maxSpeed: 10 };
+        killSnake(state, snakeGame, headId);
+        assert.equal(inertLead._groundRollDrive, undefined);
+        assert.equal(snakeGame.registry.inertByLeadId.size, 0);
     });
 });

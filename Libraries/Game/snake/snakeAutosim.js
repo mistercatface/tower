@@ -13,6 +13,8 @@ import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { findNearestVisibleSnakeGoal, findNearestVisibleSnakeGoalFromVision } from "./snakeGoals.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeFoodTimer, getSnakeFoodTimerFraction, resetSnakeFoodTimer, tickSnakeFoodTimer } from "./snakeStarvation.js";
+import { enforceSnakeMinLength, killSnake } from "./snakeCombat.js";
+import { isValidAliveSnakeHead } from "./snakeLifecycle.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 export { findSnakeGoalProp, collectSnakeGoalProps, countLiveSnakeGoals, findNearestSnakeGoal, findNearestVisibleSnakeGoal } from "./snakeGoals.js";
 export function createSnakeBrain(visionConeOverride) {
@@ -133,7 +135,9 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         },
         stop() {
             active = false;
-            intent.clear(resolveSeeker(), state);
+            const seeker = resolveSeeker();
+            intent.headNav.clear(seeker);
+            intent.clear(seeker, state);
         },
         isActive() {
             return active;
@@ -166,9 +170,14 @@ export function createSnakeAutosim(state, { headId, goalPropId = null, navWalkab
         /** @param {number} dtMs */
         tick(dtMs) {
             if (!active) return;
+            const snakeGame = state.sandbox.snakeGame;
             const seeker = resolveSeeker();
-            if (!seeker) return;
             const members = getConnectedBodyIds(state.kinetic, headId);
+            if (!seeker || !isValidAliveSnakeHead(state, snakeGame.registry, headId)) {
+                killSnake(state, snakeGame, headId, members);
+                return;
+            }
+            if (enforceSnakeMinLength(state, snakeGame, headId, members)) return;
             if (intent.getMode() === "seek_food" && intent.getTargetId() != null) {
                 const goal = state.entityRegistry.getLive(intent.getTargetId());
                 if (goal && !goal.isDead) {

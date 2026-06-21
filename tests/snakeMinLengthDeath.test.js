@@ -14,7 +14,7 @@ import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
-import { resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
+import { resolveSnakeCombatFromContacts, killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
@@ -126,5 +126,52 @@ describe("snake combat min length", () => {
         assert.equal(registry.inertByLeadId.size, 0);
         assert.equal(registry.deadHeadIds.size, 0);
         assert.equal(getOrderedChainMemberIds(state, small.chain.head.id).length, 3);
+    });
+
+    it("larger snake head strike on smaller body splits the victim and stops its autosim when it dies", () => {
+        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(6));
+        const prey = spawnSnakeChain(state, { col: 20, row: 8 }, snakeChainOptions(3));
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, predator.chain.head.id);
+        registerAliveSnake(registry, prey.chain.head.id);
+        const autosimsByHeadId = wireCombatSnakeGame(state, registry, [predator.chain.head.id, prey.chain.head.id]);
+        const preyMembers = getOrderedChainMemberIds(state, prey.chain.head.id);
+        const struckBody = state.entityRegistry.getLive(preyMembers[1]);
+        predator.chain.head.vx = 80;
+        predator.chain.head.vy = 0;
+        struckBody.vx = -5;
+        struckBody.vy = 0;
+        predator.chain.head.x = struckBody.x - predator.chain.head.radius - struckBody.radius + 2;
+        predator.chain.head.y = struckBody.y;
+        const props = [...predator.chain.members, ...prey.chain.members];
+        const tick = attachKineticTestTickFromState(state, props, 50);
+        const pairs = gatherKineticContactPairs(tick);
+        resolveKineticContactPassWithPairs(tick, pairs);
+        applyKineticContactSideEffects(tick, kineticContactBuffer);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
+        assert.ok(kineticContactBuffer.count >= 1);
+        assert.equal(registry.deadHeadIds.has(prey.chain.head.id), true);
+        assert.equal(autosimsByHeadId.has(prey.chain.head.id), false);
+        assert.equal(registry.inertByLeadId.size, 0);
+        assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 6);
+    });
+
+    it("killSnake only tears down the defeated snake spawn group", () => {
+        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
+        const prey = spawnSnakeChain(state, { col: 20, row: 8 }, snakeChainOptions(3));
+        assert.notEqual(predator.chain.spawnGroupId, prey.chain.spawnGroupId);
+        const registry = createSnakeLifecycleRegistry();
+        registerAliveSnake(registry, predator.chain.head.id);
+        registerAliveSnake(registry, prey.chain.head.id);
+        wireCombatSnakeGame(state, registry, [predator.chain.head.id, prey.chain.head.id]);
+        killSnake(state, state.sandbox.snakeGame, prey.chain.head.id);
+        assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 3);
+        assert.equal(getOrderedChainMemberIds(state, prey.chain.head.id).length, 1);
     });
 });

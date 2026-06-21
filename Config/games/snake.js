@@ -78,4 +78,8 @@ export const SNAKE_GAME_DEFAULTS = {
     starvationIntervalMs: 30_000,
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
     showSnakeFsmDebug: false,
+    /** console.warn when a single-segment snake head is moving or still steered. */
+    logLoneHeadMovement: false,
+    /** World units — warn when a registry head is farther than this from its nearest live body segment. null uses 2× segment spacing. */
+    headSeparationLogDistance: null,
 };

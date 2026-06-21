@@ -17,7 +17,6 @@ export function spawnLinkedBallChain(state, anchorCell, options) {
     const growDirY = options.growDirY ?? 0;
     const grid = state.obstacleGrid;
     const meta = getSandboxEntityMeta(state);
-    const spawnGroupId = options.spawnGroupId ?? `linkedBallChain:${Date.now()}`;
     const exportType = options.exportType ?? null;
     const linkSlack = options.linkSlack ?? 1;
     const segmentRadius = options.segmentRadius ?? null;
@@ -28,10 +27,13 @@ export function spawnLinkedBallChain(state, anchorCell, options) {
         const segmentType = i === 0 ? headBallType : ballType;
         const prop = spawnPlacedSandboxProp(state, anchorWorld.x + offset.x, anchorWorld.y + offset.y, segmentType, faction);
         if (segmentRadius != null) setCirclePropRadius(prop, segmentRadius);
-        meta.setSpawnGroupId(prop.id, spawnGroupId);
-        if (exportType) meta.setSpawnGroupExportType(prop.id, exportType);
-        if (i === 0) meta.setSpawnGroupAnchor(prop.id);
         props.push(prop);
+    }
+    const spawnGroupId = options.spawnGroupId ?? `linkedBallChain:${props[0].id}`;
+    for (let i = 0; i < props.length; i++) {
+        meta.setSpawnGroupId(props[i].id, spawnGroupId);
+        if (exportType) meta.setSpawnGroupExportType(props[i].id, exportType);
+        if (i === 0) meta.setSpawnGroupAnchor(props[i].id);
     }
     for (let i = 0; i < props.length - 1; i++) addChainLink(state, props[i].id, props[i + 1].id, linkSlack);
     setChainHead(state, meta, props[0].id);

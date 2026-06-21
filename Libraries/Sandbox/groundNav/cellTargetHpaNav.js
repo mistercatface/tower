@@ -3,13 +3,18 @@ import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { createHpaGroundNavSession } from "./hpaGroundNavSession.js";
-import { buildHpaGroundNavPathSettings, driveGroundNav } from "./driveGroundNav.js";
+import { buildHpaGroundNavPathSettings, driveGroundNav, groundNavArrivedAtTarget } from "./driveGroundNav.js";
 import { decelerateRoll, getKineticRollConfig, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 export function cellTargetHasArrivedAtDestCell(grid, col, row, destCol, destRow) {
     if (isFloorBeltCell(grid, destCol, destRow)) return col === destCol && row === destRow;
     return cellChebyshevDistance(col, row, destCol, destRow) <= 1;
+}
+export function shouldReleaseCellTargetHpaNav(prop, grid, destCol, destRow, destWorld, stopRadius) {
+    const cell = grid.worldToGrid(prop.x, prop.y);
+    if (cellTargetHasArrivedAtDestCell(grid, cell.col, cell.row, destCol, destRow)) return true;
+    return groundNavArrivedAtTarget(prop, destWorld, destCol, destRow, grid, stopRadius);
 }
 export function createCellTargetLocomotion(headNav) {
     const hasArrivedAtDest = (agent, grid) => {
@@ -113,6 +118,11 @@ export function createCellTargetHpaNav(state) {
         if (destCol == null || !destWorld) return;
         const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
         const grid = state.obstacleGrid;
+        if (shouldReleaseCellTargetHpaNav(prop, grid, destCol, destRow, destWorld, config.stopRadius)) {
+            clearGroundRollDrive(prop);
+            clearDestination();
+            return;
+        }
         const onBelt = isEntityOnFloorBelt(grid, prop.x, prop.y);
         if (onBelt) {
             strandedFrames = 0;

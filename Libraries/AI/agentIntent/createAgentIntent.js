@@ -148,7 +148,7 @@ export function createAgentIntent({
             lastTransitionReason = "cleared";
             targetId = null;
             locomotion.clear(agent, state);
-            agent.navStepPenalty = null;
+            if (agent) agent.navStepPenalty = null;
         },
         resetMemory() {
             brain.clearMemory();
