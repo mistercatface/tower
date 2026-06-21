@@ -1,4 +1,5 @@
 import { layoutIndicesToGlobalIndices } from "../Spatial/grid/GridUtils.js";
+import { unionCellBounds } from "../DataStructures/CellRect.js";
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
 import { commitGridNavEditUnion } from "../Sandbox/gridNavEdit.js";
 import { clearRailWallsQuiet, stampRailWallsQuiet } from "../Sandbox/gridWallEdit.js";

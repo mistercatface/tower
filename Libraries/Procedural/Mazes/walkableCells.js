@@ -11,7 +11,7 @@ function cellIndex(col, row, cols) {
 }
 function navWalkableCacheKey(state) {
     const grid = state.obstacleGrid;
-    const worker = state.navigation?._hpaPathWorker;
+    const worker = state.nav?.worker;
     if (!worker || !isNavTopologyReady(worker, grid)) return null;
     return gridNavCacheKey(grid);
 }
@@ -47,12 +47,12 @@ export function collectWalkableCells(state, boundsConfig = state.editor.cavernCo
 }
 function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
     const grid = state.obstacleGrid;
-    const gridNavContext = state.navigation.gridNavContext;
+    const navTopology = state.nav.topology;
     const boundsConfig = cache.boundsConfig;
     const { cols } = grid;
     cache.candidates = cache.candidates.filter((cell) => {
         if (cell.col < patchBounds.startCol || cell.col > patchBounds.endCol || cell.row < patchBounds.startRow || cell.row > patchBounds.endRow) return true;
-        const walkable = isNavWalkableCell(grid, gridNavContext, cell.col, cell.row);
+        const walkable = isNavWalkableCell(grid, navTopology, cell.col, cell.row);
         const idx = colRowToIndex(cell.col, cell.row, cols);
         cache.candidateMask[idx] = walkable ? 1 : 0;
         return walkable;
@@ -67,7 +67,7 @@ function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
         }
         const idx = colRowToIndex(col, row, cols);
         if (seen.has(idx)) return;
-        if (!isNavWalkableCell(grid, gridNavContext, col, row)) {
+        if (!isNavWalkableCell(grid, navTopology, col, row)) {
             cache.candidateMask[idx] = 0;
             return;
         }
@@ -87,14 +87,14 @@ function writeNavWalkableFlagsInRect(flags, cols, cells, patchBounds) {
 }
 function patchNavWalkableCellIndexRegion(state, cache, damageBounds) {
     const grid = state.obstacleGrid;
-    const gridNavContext = state.navigation.gridNavContext;
+    const navTopology = state.nav.topology;
     const patchBounds = expandNavTopologyBakeBounds(clampCellBoundsToGrid(damageBounds, grid.cols, grid.rows), grid.cols, grid.rows, 2);
     ensureNavWalkableBuffers(cache, grid);
     updateNavWalkableCandidatesInPatch(state, cache, patchBounds);
     let seedCells = cache.floodSeedBounds ? filterWalkableCellsInBounds(cache.candidates, grid, cache.floodSeedBounds) : cache.candidates;
     if (!seedCells.length) seedCells = cache.candidates;
     const reachedMask = createNavWalkableReachedMask(grid.cols, grid.rows, cache.reachedMask);
-    const connected = cache.candidates.length ? floodConnectedNavWalkableCells(grid, gridNavContext, cache.candidates, cache.candidateMask, grid.cols, grid.rows, seedCells, reachedMask) : [];
+    const connected = cache.candidates.length ? floodConnectedNavWalkableCells(grid, navTopology, cache.candidates, cache.candidateMask, grid.cols, grid.rows, seedCells, reachedMask) : [];
     writeNavWalkableFlagsInRect(cache.flags, grid.cols, connected, patchBounds);
     cache.cells = connected;
     cache.reachedMask = reachedMask;
@@ -115,14 +115,14 @@ function ensureNavWalkableBuffers(cache, grid) {
 }
 function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
     const grid = state.obstacleGrid;
-    const gridNavContext = state.navigation.gridNavContext;
+    const navTopology = state.nav.topology;
     const navCacheKey = navWalkableCacheKey(state);
     const cellSize = grid.cellSize;
     const candidates = [];
     const seen = new Uint8Array(grid.cols * grid.rows);
     forEachGlobalCellInMapGenBounds(boundsConfig, (globalCol, globalRow) => {
         const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
-        if (!isNavWalkableCell(grid, gridNavContext, col, row)) return;
+        if (!isNavWalkableCell(grid, navTopology, col, row)) return;
         const idx = colRowToIndex(col, row, grid.cols);
         if (seen[idx]) return;
         seen[idx] = 1;
@@ -140,7 +140,7 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
     );
     const candidateMask = createNavWalkableCandidateMask(grid, candidates, cache.candidateMask);
     const reachedMask = createNavWalkableReachedMask(grid.cols, grid.rows, cache.reachedMask);
-    const cells = candidates.length ? floodConnectedNavWalkableCells(grid, gridNavContext, candidates, candidateMask, grid.cols, grid.rows, seedCells, reachedMask) : [];
+    const cells = candidates.length ? floodConnectedNavWalkableCells(grid, navTopology, candidates, candidateMask, grid.cols, grid.rows, seedCells, reachedMask) : [];
     writeNavWalkableFlags(cache.flags, grid.cols, cells);
     cache.cells = cells;
     cache.candidates = candidates;

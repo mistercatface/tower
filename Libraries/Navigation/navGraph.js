@@ -5,7 +5,7 @@ import { navCanStep } from "../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyLocal } from "../Pathfinding/bakeNavTopology.js";
 /** @typedef {{ col: number, row: number }} NavGraphCell */
 /** @typedef {{ col: number, row: number, side: number }} NavGraphEdgeRef */
-/** @typedef {{ grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, navCardinalOpen: Uint8Array, vertexPassability: Uint8Array }} GridNavContextLike */
+/** @typedef {{ grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, navCardinalOpen: Uint8Array, vertexPassability: Uint8Array }} NavTopologyLike */
 /**
  * Logical nav graph view over one grid — cell nodes + cardinal step edges.
  * Authoring reads floorStore + edgeStore; pathfinding reads baked arena when present.
@@ -115,8 +115,8 @@ export function validateBeltChain(graph, cells) {
     return { ok: true };
 }
 /** Worker-synced nav topology → graph view (map-gen, vision, belt endpoints). */
-export function createNavGraphViewFromContext(gridNavContext) {
-    return createNavGraphView(gridNavContext.grid, { cardinalOpen: gridNavContext.navCardinalOpen, vertexPassability: gridNavContext.vertexPassability }, gridNavContext);
+export function createNavGraphViewFromTopology(navTopology) {
+    return createNavGraphView(navTopology.grid, { cardinalOpen: navTopology.navCardinalOpen, vertexPassability: navTopology.vertexPassability }, navTopology);
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
 export function canStepForAuthoring(grid, fromCol, fromRow, toCol, toRow, damageBounds = null) {

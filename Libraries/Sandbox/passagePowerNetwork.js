@@ -193,5 +193,5 @@ export function syncPassagePowerNetwork(state) {
     const { bounds, needsNavSync } = applyPassagePowerGridState(state);
     if (!needsNavSync) return Promise.resolve();
     const navBounds = isEmptyCellBounds(bounds) ? null : bounds;
-    return state.navigation.onObstaclesChanged(navBounds);
+    return state.nav.commitEdit(navBounds);
 }

@@ -22,7 +22,6 @@ import {
     releaseLockedRoomButton,
 } from "./lockedRoomHarness.js";
 import { makeHorizontalFixture } from "./corridorHarness.js";
-import { syncWorkerNavigationTopology } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 describe("locked room egress layout", () => {
     it("places power on the wall beside the mouth and forcefield on the exit edge", async () => {
         const fixture = makeHorizontalFixture(8, 8, 8, 8, 8);
@@ -49,13 +48,13 @@ describe("locked room seals and unseals", () => {
         const bake = getLockedRoomBake(state, locked.id);
         assert.ok(bake?.egresses.length >= 1);
         const grid = state.obstacleGrid;
-        assertLockedRoomSealed(grid, state.navigation.gridNavContext, bake, true, "idle");
+        assertLockedRoomSealed(grid, state.nav.topology, bake, true, "idle");
         holdLockedRoomButton(state, bake.buttonId);
         refreshPassagePower(state);
-        assertLockedRoomSealed(grid, state.navigation.gridNavContext, bake, false, "held");
+        assertLockedRoomSealed(grid, state.nav.topology, bake, false, "held");
         releaseLockedRoomButton(state, bake.buttonId);
         refreshPassagePower(state);
-        assertLockedRoomSealed(grid, state.navigation.gridNavContext, bake, true, "released");
+        assertLockedRoomSealed(grid, state.nav.topology, bake, true, "released");
     });
     it("wires the baked button to wall-adjacent power cells only", async () => {
         const fixture = makeHorizontalFixture(8, 8, 8, 8, 8);
@@ -86,7 +85,7 @@ describe("passage power inverted hold suppress", () => {
         setBoundary(grid, layout.forcefield.col, layout.forcefield.row, layout.forcefield.side, { kind: "passage", mode: PASSAGE_MODE.Solid, allowedSide: layout.forcefield.side, powered: false });
         grid.floorStore.setPassagePowerSourceAtIdx(colRowToIndex(layout.power.col, layout.power.row, grid.cols), true);
         grid.edgeStore.recomputePassageEdgeCount();
-        await syncWorkerNavigationTopology(state.navigation, grid, { startCol: 7, endCol: 9, startRow: 11, endRow: 13 });
+        await state.nav.syncTopology({ startCol: 7, endCol: 9, startRow: 11, endRow: 13 }, grid);
         const { x, y } = grid.gridToWorld(14, 14);
         const button = new WorldProp(x, y, "button_floor", 0);
         button.inputMode = "massHold";
@@ -95,10 +94,10 @@ describe("passage power inverted hold suppress", () => {
         const { globalCol, globalRow } = cellToGlobalColRow(grid, layout.power.col, layout.power.row);
         addButtonLink(state, button.id, { type: "gridCell", globalCol, globalRow });
         refreshPassagePower(state);
-        assertLockedExitSealed(grid, state.navigation.gridNavContext, layout, true, "idle");
+        assertLockedExitSealed(grid, state.nav.topology, layout, true, "idle");
         holdLockedRoomButton(state, button.id);
         refreshPassagePower(state);
-        assertLockedExitSealed(grid, state.navigation.gridNavContext, layout, false, "held");
+        assertLockedExitSealed(grid, state.nav.topology, layout, false, "held");
     });
 });
 describe("locked room bake across corridor layouts", () => {
@@ -113,10 +112,10 @@ describe("locked room bake across corridor layouts", () => {
                 if (!bake?.egresses.length) continue;
                 assertLockedRoomEgressPlacements(state, bake);
                 const grid = state.obstacleGrid;
-                assertLockedRoomSealed(grid, state.navigation.gridNavContext, bake, true, `seed ${seed}`);
+                assertLockedRoomSealed(grid, state.nav.topology, bake, true, `seed ${seed}`);
                 holdLockedRoomButton(state, bake.buttonId);
                 refreshPassagePower(state);
-                assertLockedRoomSealed(grid, state.navigation.gridNavContext, bake, false, `seed ${seed} held`);
+                assertLockedRoomSealed(grid, state.nav.topology, bake, false, `seed ${seed} held`);
                 passed = true;
                 break;
             }

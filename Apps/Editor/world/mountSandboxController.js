@@ -29,11 +29,11 @@ export function mountSandboxController(state, { playMode = false } = {}) {
         state.editor.showRoomNodesAlways = false;
     } else
         state.sandbox.simulationFrameHooks = {
-            beforePhysics(state) {
-                state.hpaPathSession.beginFrame();
+            beforePhysics() {
+                state.nav.session.beginFrame();
             },
-            afterPhysics(state) {
-                state.hpaPathSession.flushFrame();
+            afterPhysics() {
+                state.nav.session.flushFrame();
             },
         };
     const getCanvas = () => state.editor.canvas;

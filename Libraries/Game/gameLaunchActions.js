@@ -37,7 +37,7 @@ export function snapCameraToTargetAction(state, ctx) {
 }
 /** @param {object} state */
 export async function refreshWorldAfterGameLaunch(state) {
-    await state.navigation.onObstaclesChanged(null);
+    await state.nav.commitEdit(null, { fullNavSync: true });
     state.worldSurfaces.clearBakeCache();
     await rebuildLabMapCaches(state);
 }

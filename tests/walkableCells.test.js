@@ -24,7 +24,7 @@ async function createWalkableCellsTestState(config) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, config.boundsCols * 16, config.boundsRows * 16);
     const navigation = await createWorkerNavigation(grid);
-    return { obstacleGrid: grid, editor: { cavernConfig: config }, sandbox: {}, navigation };
+    return { obstacleGrid: grid, editor: { cavernConfig: config }, sandbox: {}, nav: navigation };
 }
 describe("walkableCells", () => {
     it("collectWalkableCells skips blocked grid cells inside bounds", async () => {
@@ -40,7 +40,7 @@ describe("walkableCells", () => {
         const open = collectWalkableCells(state);
         assert.ok(open.length > 0);
         assert.ok(!open.some((cell) => cell.col === blockedCol && cell.row === blockedRow));
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
     it("collectNavWalkableCells skips blocked voxels", async () => {
         const config = createDefaultMapGenBoundsConfig();
@@ -52,7 +52,7 @@ describe("walkableCells", () => {
         state.obstacleGrid.grid[colRowToIndex(3, 3, state.obstacleGrid.cols)] = 1;
         collectNavWalkableCells(state);
         assert.ok(!isNavWalkableCellAt(state, 3, 3));
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
     it("collectNavWalkableCells rebakes when navigation epoch changes", async () => {
         const config = createDefaultMapGenBoundsConfig();
@@ -65,11 +65,11 @@ describe("walkableCells", () => {
         const before = getNavWalkableCells(state).length;
         state.obstacleGrid.grid[colRowToIndex(2, 2, state.obstacleGrid.cols)] = 1;
         bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
-        await state.navigation.onObstaclesChanged({ startCol: 2, endCol: 2, startRow: 2, endRow: 2 });
+        await state.nav.commitEdit({ startCol: 2, endCol: 2, startRow: 2, endRow: 2 });
         collectNavWalkableCells(state);
         assert.ok(getNavWalkableCells(state).length <= before);
         assert.ok(!isNavWalkableCellAt(state, 2, 2));
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
     it("stores nav-walkable cells in a dense flag grid", async () => {
         const config = createDefaultMapGenBoundsConfig();
@@ -83,7 +83,7 @@ describe("walkableCells", () => {
         assert.equal(index.flags.length, state.obstacleGrid.cols * state.obstacleGrid.rows);
         const picked = pickNavWalkableCell(state, { rng: () => 0 });
         assert.ok(readNavWalkableFlag(index.flags, index.cols, picked.col, picked.row));
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
     it("patchNavWalkableCellIndex rebakes cached bounds after obstacle epoch bump", async () => {
         const config = createDefaultMapGenBoundsConfig();
@@ -92,15 +92,15 @@ describe("walkableCells", () => {
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
-        state.navigation.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
+        state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
         collectNavWalkableCells(state);
         const picked = pickNavWalkableCell(state, { rng: () => 0 });
         assert.ok(picked);
         assert.ok(isNavWalkableCellAt(state, picked.col, picked.row));
         state.obstacleGrid.grid[colRowToIndex(picked.col, picked.row, state.obstacleGrid.cols)] = 1;
-        await state.navigation.onObstaclesChanged({ startCol: picked.col, endCol: picked.col, startRow: picked.row, endRow: picked.row });
+        await state.nav.commitEdit({ startCol: picked.col, endCol: picked.col, startRow: picked.row, endRow: picked.row });
         assert.ok(!isNavWalkableCellAt(state, picked.col, picked.row));
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
     it("pickNavWalkableCell only returns baked nav-walkable cells", async () => {
         const config = createDefaultMapGenBoundsConfig();
@@ -113,8 +113,8 @@ describe("walkableCells", () => {
         const picked = pickNavWalkableCell(state, { rng: () => 0 });
         assert.ok(picked);
         assert.ok(isNavWalkableCellAt(state, picked.col, picked.row));
-        assert.ok(isNavWalkableCell(state.obstacleGrid, state.navigation.gridNavContext, picked.col, picked.row));
-        terminateWorkerNavigation(state.navigation);
+        assert.ok(isNavWalkableCell(state.obstacleGrid, state.nav.topology, picked.col, picked.row));
+        terminateWorkerNavigation(state.nav);
     });
     it("createNavWalkableAccess binds state and bounds for pick/has/rebake", async () => {
         const config = createDefaultMapGenBoundsConfig();
@@ -128,7 +128,7 @@ describe("walkableCells", () => {
         const picked = access.pick({ rng: () => 0 });
         assert.ok(picked);
         assert.ok(access.has(picked.col, picked.row));
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
     it("pickWalkableCell respects exclude indices", () => {
         const cells = [
@@ -151,6 +151,6 @@ describe("walkableCells", () => {
         const open = collectWalkableCells(state);
         const excludeIndices = new Set(open.map((cell) => colRowToIndex(cell.col, cell.row, state.obstacleGrid.cols)));
         assert.equal(pickRandomWalkableCell(state, { excludeIndices }), null);
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
 });

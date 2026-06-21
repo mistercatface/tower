@@ -7,7 +7,7 @@
  * @property {number | null} lastY
  * @property {number} stuckFrames
  * @property {number} pathProgressIdx
- * @property {number} obstacleGeneration
+ * @property {string} topologyKey — gridNavCacheKey at last successful replan
  * @property {number | null} lastTargetX
  * @property {number | null} lastTargetY
  * @property {number} lastOffPathReplan
@@ -26,7 +26,7 @@ export function createNavState() {
         lastY: null,
         stuckFrames: 0,
         pathProgressIdx: 0,
-        obstacleGeneration: -1,
+        topologyKey: "",
         lastTargetX: null,
         lastTargetY: null,
         lastOffPathReplan: 0,

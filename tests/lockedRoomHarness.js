@@ -8,8 +8,8 @@ import ball from "../Assets/props/ball/ball.asset.js";
 import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { createWorkerNavigationService, syncWorkerNavigationTopology } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { createNavGraphViewFromContext } from "../Libraries/Navigation/navGraph.js";
+import { createNavRuntime } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createNavGraphViewFromTopology } from "../Libraries/Navigation/navGraph.js";
 import { isPassagePowered } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { applyPassagePowerGridState } from "../Libraries/Sandbox/passagePowerNetwork.js";
@@ -51,14 +51,14 @@ export async function createRoomBakeTestState(cols = 64, rows = 64) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {} },
-        navigation: createWorkerNavigationService(grid),
+        nav: createNavRuntime(grid),
     };
 }
-export function assertLockedExitSealed(grid, gridNavContext, egress, sealed, label = "exit") {
+export function assertLockedExitSealed(grid, navTopology, egress, sealed, label = "exit") {
     const exterior = lockedRoomCorridorExteriorCell(egress);
     const holeCell = lockedRoomHoleCell(egress);
     const powered = isPassagePowered(grid, egress.forcefield.col, egress.forcefield.row, egress.forcefield.side);
-    const graph = createNavGraphViewFromContext(gridNavContext);
+    const graph = createNavGraphViewFromTopology(navTopology);
     const corridorToHole = !graph.canStep(exterior.col, exterior.row, holeCell.col, holeCell.row);
     const holeToCorridor = !graph.canStep(holeCell.col, holeCell.row, exterior.col, exterior.row);
     if (sealed) {
@@ -73,8 +73,8 @@ export function assertLockedExitSealed(grid, gridNavContext, egress, sealed, lab
     if (corridorToHole) throw new Error(`${label}: corridor (${exterior.col},${exterior.row}) should enter hole (${holeCell.col},${holeCell.row})`);
     if (holeToCorridor) throw new Error(`${label}: hole (${holeCell.col},${holeCell.row}) should reach corridor (${exterior.col},${exterior.row})`);
 }
-export function assertLockedRoomSealed(grid, gridNavContext, bake, sealed, label = "room") {
-    for (let i = 0; i < bake.egresses.length; i++) assertLockedExitSealed(grid, gridNavContext, bake.egresses[i], sealed, `${label} lane ${i}`);
+export function assertLockedRoomSealed(grid, navTopology, bake, sealed, label = "room") {
+    for (let i = 0; i < bake.egresses.length; i++) assertLockedExitSealed(grid, navTopology, bake.egresses[i], sealed, `${label} lane ${i}`);
 }
 /** @param {object} state @param {import("../Libraries/RoomGraph/roomGraphLockedRoom.js").BakedLockedRoom} bake */
 export function assertLockedRoomEgressPlacements(state, bake) {
@@ -103,7 +103,7 @@ export async function bakeLinkedLockedRoomFixture(state, fixture, linkSeed = 0) 
     const link = listRoomLinks(state)[0];
     link.seed = linkSeed;
     syncRoomGraphBake(state);
-    await syncWorkerNavigationTopology(state.navigation, state.obstacleGrid, null);
+    await state.nav.syncTopology(null, state.obstacleGrid);
     return { locked, open, link };
 }
 /** @param {object} state @param {number} nodeId */

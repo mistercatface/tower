@@ -63,7 +63,7 @@ describe("navGraph belt chain", () => {
         grid.rebuildFixed(0, 0, 12 * 16, 12 * 16);
         const state = createBeltChainTestState(grid);
         const navigation = await createWorkerNavigation(grid);
-        state.navigation = navigation;
+        state.nav = navigation;
 
         writeNavFloorCell(grid, 2, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
         writeNavFloorCell(grid, 3, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));

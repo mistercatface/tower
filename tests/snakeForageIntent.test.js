@@ -37,8 +37,7 @@ async function createTestState(cols = 32, rows = 32) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation,
-        hpaPathWorker: navigation._hpaPathWorker,
+        nav: navigation,
         viewport: { circleInBounds: () => true },
     };
 }

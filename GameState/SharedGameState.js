@@ -16,11 +16,10 @@ export class SharedGameState {
         this.scheduler = new Scheduler();
         this.phase = "simulation";
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);
-        this.hpaPathWorker = new HpaPathWorker(HPA_WORKER_URL, this.obstacleGrid);
-        this.hpaPathSession = new HpaPathSession(this.hpaPathWorker);
-        this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows), this.obstacleGrid, FLOW_FIELD_WORKER_URL, this.hpaPathWorker);
-        this.nav = new NavRuntime({ grid: this.obstacleGrid, worker: this.hpaPathWorker, session: this.hpaPathSession, flowFieldGrid: this.flowFieldGrid, settings: navigationSettings });
-        this.navigation = this.nav;
+        const worker = new HpaPathWorker(HPA_WORKER_URL, this.obstacleGrid);
+        const session = new HpaPathSession(worker);
+        this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows), this.obstacleGrid, FLOW_FIELD_WORKER_URL, worker);
+        this.nav = new NavRuntime({ grid: this.obstacleGrid, worker, session, flowFieldGrid: this.flowFieldGrid, settings: navigationSettings });
         this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());
         this.viewport = null;
         this.lastTime = 0;
@@ -34,6 +33,6 @@ export class SharedGameState {
         this.kinetic = new KineticSession();
         this.wallResolver = new WallCollisionResolver();
         this.obstacleGrid.rebuildFixed(0, 0, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows));
-        void this.nav.onObstaclesChanged(null);
+        void this.nav.commitEdit(null, { fullNavSync: true });
     }
 }

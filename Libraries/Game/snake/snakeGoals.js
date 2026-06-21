@@ -31,10 +31,10 @@ export function collectSnakeGoalProps(state) {
 }
 export function findNearestVisibleSnakeGoalFromVision(state, seeker, frame, vision, visionCone = frame.visionCone) {
     if (!vision) return null;
-    const gridNavContext = frame.gridNavContext;
+    const navTopology = frame.navTopology;
     const visionSession = frame.visionSession;
     const candidates = collectSnakeGoalCandidates(state, seeker, visionCone, vision);
-    const grid = gridNavContext.grid;
+    const grid = navTopology.grid;
     let nearest = null;
     let bestDist = Infinity;
     for (let i = 0; i < candidates.length; i++) {
@@ -42,7 +42,7 @@ export function findNearestVisibleSnakeGoalFromVision(state, seeker, frame, visi
         if (goal === seeker || goal.isDead) continue;
         if (!isWorldPointInVisionCone(seeker.x, seeker.y, vision.heading, visionCone.halfAngle, visionCone.range, goal.x, goal.y)) continue;
         const { col, row } = grid.worldToGrid(goal.x, goal.y);
-        if (!hasGridCellLineOfSightCached(visionSession, gridNavContext, vision.originCol, vision.originRow, col, row)) continue;
+        if (!hasGridCellLineOfSightCached(visionSession, navTopology, vision.originCol, vision.originRow, col, row)) continue;
         const dist = Math.hypot(goal.x - seeker.x, goal.y - seeker.y);
         if (dist < bestDist) {
             bestDist = dist;

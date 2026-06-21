@@ -110,7 +110,7 @@ export class FlowFieldGrid {
         this._flowNavBoundSize = 0;
         this._navBlockedView = null;
     }
-    /** Nav topology must already be synced via NavigationService — never schedules worker nav here. */
+    /** Nav topology must already be synced via NavRuntime — never schedules worker nav here. */
     syncLocalTopology() {
         const cacheKey = gridNavCacheKey(this.navGraph);
         const navFrame = this.hpaPathWorker?.getGridFrame();

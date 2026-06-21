@@ -29,11 +29,8 @@ export function commitGridNavEdit(state, bounds, { invalidateSurfaces = true, fu
     if (state.sandbox) markGridZoneSubscriptionsDirty(state);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     const nav = resolveNavRuntime(state);
-    if (!nav) return Promise.resolve();
-    if (state.nav == null) state.nav = nav;
     const damageBounds = fullNavSync ? null : merged;
-    if (typeof nav.commitEdit === "function") return nav.commitEdit(damageBounds, { fullNavSync });
-    return nav.onObstaclesChanged(damageBounds);
+    return nav.commitEdit(damageBounds, { fullNavSync });
 }
 /** One resync for multiple dirty regions (rails + belts, clear + stamp, etc.). */
 export function commitGridNavEditUnion(state, ...boundsParts) {

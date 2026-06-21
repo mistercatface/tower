@@ -21,7 +21,7 @@ describe("node worker shim", () => {
         hpa.shutdown();
         await hpa.host.worker.terminate();
     });
-    it("createWorkerNavigation wires NavigationService to worker", async () => {
+    it("createWorkerNavigation wires NavRuntime to worker", async () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 256, 256);
         const navigation = await createWorkerNavigation(grid);

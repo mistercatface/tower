@@ -15,8 +15,8 @@ function createNavEditTestState() {
         obstacleGrid: grid,
         sandbox: {},
         worldSurfaces: { invalidateGridBounds(bounds) { syncBounds = bounds; } },
-        navigation: {
-            onObstaclesChanged(bounds) {
+        nav: {
+            commitEdit(bounds) {
                 syncCount++;
                 syncBounds = bounds;
                 return Promise.resolve();
@@ -32,7 +32,7 @@ function createNavEditTestState() {
 }
 
 describe("gridNavEdit", () => {
-    it("applyFloorCellEdit calls onObstaclesChanged with the edited cell bounds", async () => {
+    it("applyFloorCellEdit calls commitEdit with the edited cell bounds", async () => {
         const state = createNavEditTestState();
         await applyFloorCellEdit(state, 2, 2, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
         assert.deepEqual(state.syncBounds, { startCol: 2, endCol: 2, startRow: 2, endRow: 2 });

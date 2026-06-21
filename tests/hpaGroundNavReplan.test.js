@@ -17,12 +17,12 @@ import {
 } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
 const navSettings = { stuckReplanFrames: 20, stuckMoveThreshold: 1.5 };
 describe("hpa ground nav replan policy", () => {
-    it("obstacleEpochReplanDue when path epoch lags navigation graph", () => {
+    it("obstacleEpochReplanDue when path topology lags grid", () => {
         const nav = createNavState();
-        assert.equal(obstacleEpochReplanDue(nav, 0), true);
-        nav.obstacleGeneration = 3;
-        assert.equal(obstacleEpochReplanDue(nav, 3), false);
-        assert.equal(obstacleEpochReplanDue(nav, 4), true);
+        assert.equal(obstacleEpochReplanDue(nav, "key-a"), true);
+        nav.topologyKey = "key-a";
+        assert.equal(obstacleEpochReplanDue(nav, "key-a"), false);
+        assert.equal(obstacleEpochReplanDue(nav, "key-b"), true);
     });
     it("idlePathReplanReason requests noPath when idle without a route", () => {
         const nav = createNavState();

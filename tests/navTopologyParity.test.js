@@ -49,7 +49,7 @@ describe("nav topology parity", () => {
         assert.equal(navCanStep(local.frame, local.topology, 4, 4, 5, 4), true);
         assert.equal(navCanStep(local.frame, local.topology, 5, 4, 4, 4), false);
         assert.equal(navCanStep(local.frame, local.topology, 4, 4, 4, 5), false);
-        assert.ok(isRailWallEdge(grid.edgeStore.get(3, 5, 0, grid.cols)) || grid.canStep(3, 4, 3, 5, navigation.gridNavContext) === false);
+        assert.ok(isRailWallEdge(grid.edgeStore.get(3, 5, 0, grid.cols)) || grid.canStep(3, 4, 3, 5, navigation.topology) === false);
 
         terminateWorkerNavigation(navigation);
     });

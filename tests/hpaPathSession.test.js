@@ -8,7 +8,18 @@ import { HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP, REPLAN_PRI
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 async function replanParams(grid) {
     const navigation = await createWorkerNavigation(grid);
-    return { obstacleGrid: grid, startX: 40, startY: 40, targetX: 120, targetY: 120, graphEpoch: 0, stepPenalty: null, gridNavContext: navigation.gridNavContext, _navigation: navigation };
+    return {
+        obstacleGrid: grid,
+        startX: 40,
+        startY: 40,
+        targetX: 120,
+        targetY: 120,
+        graphEpoch: navigation.graphSyncGeneration,
+        stepPenalty: null,
+        navTopology: navigation.topology,
+        topologyKey: navigation.syncedTopologyKey(),
+        _navigation: navigation,
+    };
 }
 describe("HpaPathSession frame budget", () => {
     it("starts at most one frame budget of drains per flush", async () => {

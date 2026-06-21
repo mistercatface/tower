@@ -7,7 +7,7 @@ import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells } from "../Libr
 import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 import { collectCorridorPathPolylines } from "../Libraries/Procedural/Mazes/collectCorridorPathPolylines.js";
 import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
-import { createWorkerNavigationService, syncWorkerNavigationTopology, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createNavRuntime, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
 import { colRowToIndex, globalCellIdx, indexToColRow } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -44,19 +44,19 @@ describe("rail maze corridor belts", () => {
     it("rejects belt paths whose mouths are rail-blocked", async () => {
         const grid = new WorldObstacleGrid(gridSettings.cellSize);
         grid.rebuildFixed(0, 0, 5 * gridSettings.cellSize, 5 * gridSettings.cellSize);
-        const navigation = createWorkerNavigationService(grid);
+        const nav = createNavRuntime(grid);
         for (let c = 0; c < 5; c++) for (let r = 0; r < 5; r++) grid.grid[c + r * grid.cols] = 0;
         grid.stampCellEdge(2, 0, 2, 1, 1);
-        await syncWorkerNavigationTopology(navigation, grid, { startCol: 1, endCol: 3, startRow: 0, endRow: 2 });
+        await nav.syncTopology({ startCol: 1, endCol: 3, startRow: 0, endRow: 2 }, grid);
         const path = [
             { c: 2, r: 1 },
             { c: 2, r: 2 },
         ];
-        assert.equal(validateBeltPathMouthAccess(grid, navigation.gridNavContext, path), false);
+        assert.equal(validateBeltPathMouthAccess(grid, nav.topology, path), false);
         grid.clearCellEdges(2, 0);
-        await syncWorkerNavigationTopology(navigation, grid, { startCol: 1, endCol: 3, startRow: 0, endRow: 2 });
-        assert.equal(validateBeltPathMouthAccess(grid, navigation.gridNavContext, path), true);
-        terminateWorkerNavigation(navigation);
+        await nav.syncTopology({ startCol: 1, endCol: 3, startRow: 0, endRow: 2 }, grid);
+        assert.equal(validateBeltPathMouthAccess(grid, nav.topology, path), true);
+        terminateWorkerNavigation(nav);
     });
     it("plans belt chains on snake split map samples", async () => {
         applySnakeGameConfig();
@@ -81,8 +81,8 @@ describe("rail maze corridor belts", () => {
         applySnakeGameConfig();
         const config = getSnakeGameConfig();
         const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
-        const { navWalkableIndex, grid, gridNavContext, railConfig, layout } = preview;
-        const zoneCells = collectRailMazeBeltZoneCells(grid, gridNavContext, railConfig, layout.northReserveRows, navWalkableIndex);
+        const { navWalkableIndex, grid, navTopology, railConfig, layout } = preview;
+        const zoneCells = collectRailMazeBeltZoneCells(grid, navTopology, railConfig, layout.northReserveRows, navWalkableIndex);
         assert.ok(zoneCells.length > 50);
         for (let i = 0; i < zoneCells.length; i++) {
             const { col, row } = zoneCells[i];
@@ -94,7 +94,7 @@ describe("rail maze corridor belts", () => {
         }
         const plan = planRailMazeCorridorBelts({
             grid,
-            gridNavContext,
+            navTopology,
             railConfig,
             northReserveRows: layout.northReserveRows,
             navWalkableIndex,
@@ -115,7 +115,7 @@ describe("rail maze corridor belts", () => {
         const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
         const baseArgs = {
             grid: preview.grid,
-            gridNavContext: preview.gridNavContext,
+            navTopology: preview.navTopology,
             railConfig: preview.railConfig,
             northReserveRows: preview.layout.northReserveRows,
             navWalkableIndex: preview.navWalkableIndex,

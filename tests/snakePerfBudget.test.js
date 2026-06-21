@@ -13,7 +13,6 @@ import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/di
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
@@ -37,15 +36,13 @@ async function createPerfState(cols = 48, rows = 48) {
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
     let replanRequests = 0;
-    const mockWorker = { getPathSlot: () => -1, releaseOwnedPathSlot: () => {}, releaseSlot: () => {}, requestPath: async () => ({ result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } }) };
-    const hpaPathSession = new HpaPathSession(mockWorker);
-    const origReplan = hpaPathSession.requestReplan.bind(hpaPathSession);
-    hpaPathSession.requestReplan = (...args) => {
+    const testNav = await createWorkerNavigation(grid);
+    testNav.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000 };
+    const origReplan = testNav.session.requestReplan.bind(testNav.session);
+    testNav.session.requestReplan = (...args) => {
         replanRequests++;
         return origReplan(...args);
     };
-    const testNav = await createWorkerNavigation(grid);
-    testNav.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000 };
     const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
@@ -53,9 +50,7 @@ async function createPerfState(cols = 48, rows = 48) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation: testNav,
-        hpaPathWorker: mockWorker,
-        hpaPathSession,
+        nav: testNav,
         viewport: {
             snapTo() {},
             circleInBounds() {
@@ -107,7 +102,7 @@ describe("snakePerfBudget", () => {
         resetKineticConstraintIds(1);
         resetVisionFullBuildCount();
         const state = await createPerfState();
-        state.hpaPathSession.resetPeakInflightReplans();
+        state.nav.session.resetPeakInflightReplans();
         const { autosims } = buildMultiSnakeSession(state);
         const snakeGame = state.sandbox.snakeGame;
         const aliveSnakes = autosims.length;
@@ -125,8 +120,8 @@ describe("snakePerfBudget", () => {
         assert.ok(state.replanRequests <= REPLAN_REQUEST_CEILING, `replan requests ${state.replanRequests} exceed ${REPLAN_REQUEST_CEILING}`);
         assert.ok(visionFullBuilds <= aliveSnakes * PERF_TICKS, `vision full builds ${visionFullBuilds} exceed ${aliveSnakes} snakes × ${PERF_TICKS} ticks`);
         assert.ok(
-            state.hpaPathSession.getPeakInflightReplans() <= HPA_REPLAN_PEAK_INFLIGHT_CAP,
-            `peak in-flight replans ${state.hpaPathSession.getPeakInflightReplans()} exceed ${HPA_REPLAN_PEAK_INFLIGHT_CAP}`,
+            state.nav.session.getPeakInflightReplans() <= HPA_REPLAN_PEAK_INFLIGHT_CAP,
+            `peak in-flight replans ${state.nav.session.getPeakInflightReplans()} exceed ${HPA_REPLAN_PEAK_INFLIGHT_CAP}`,
         );
         applySnakeGameConfig();
     });

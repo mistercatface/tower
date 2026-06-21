@@ -17,7 +17,7 @@ export class TileLabGameState extends SharedGameState {
         this.floorSeed = rand;
         this.worldRenderMode = "radial";
         this.viewport = new Viewport(0, 0, 1);
-        this.navigation.setPruneSeedResolver((grid, bounds) => {
+        this.nav.setPruneSeedResolver((grid, bounds) => {
             if (bounds && !isEmptyCellBounds(bounds)) {
                 const midCol = (bounds.startCol + bounds.endCol) >> 1;
                 const midRow = (bounds.startRow + bounds.endRow) >> 1;

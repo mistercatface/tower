@@ -1,34 +1,34 @@
 import { gridSideFromCellToNeighbor } from "../../Spatial/grid/FloorCell.js";
 import { cellInRect, gridCellLayout, gridSideNeighborCell, layoutCellIndex } from "../../Spatial/grid/GridUtils.js";
-import { createNavGraphViewFromContext } from "../../Navigation/navGraph.js";
+import { createNavGraphViewFromTopology } from "../../Navigation/navGraph.js";
 function oppositeSide(side) {
     return (side + 2) % 4;
 }
 function cellIndex(col, row, layout) {
     return layoutCellIndex(col, row, layout.originCol, layout.originRow, layout.strideCols);
 }
-function navStepOpen(grid, gridNavContext, fromCol, fromRow, toCol, toRow) {
-    return createNavGraphViewFromContext(gridNavContext).canStep(fromCol, fromRow, toCol, toRow);
+function navStepOpen(grid, navTopology, fromCol, fromRow, toCol, toRow) {
+    return createNavGraphViewFromTopology(navTopology).canStep(fromCol, fromRow, toCol, toRow);
 }
 /** True when at least one cardinal side has an open, bidirectional step to a walkable neighbor. */
-export function hasOpenBeltMouthSide(grid, gridNavContext, col, row) {
+export function hasOpenBeltMouthSide(grid, navTopology, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows) || grid.isBlocked(col, row)) return false;
     for (let side = 0; side < 4; side++) {
         const neighbor = gridSideNeighborCell(col, row, side);
         if (!cellInRect(neighbor.col, neighbor.row, grid.cols, grid.rows)) continue;
         if (grid.isBlocked(neighbor.col, neighbor.row)) continue;
-        if (!navStepOpen(grid, gridNavContext, neighbor.col, neighbor.row, col, row)) continue;
-        if (!navStepOpen(grid, gridNavContext, col, row, neighbor.col, neighbor.row)) continue;
+        if (!navStepOpen(grid, navTopology, neighbor.col, neighbor.row, col, row)) continue;
+        if (!navStepOpen(grid, navTopology, col, row, neighbor.col, neighbor.row)) continue;
         return true;
     }
     return false;
 }
 /** @param {{ col: number, row: number }[]} cells */
-export function filterNavBeltEndpointCandidates(grid, gridNavContext, cells) {
+export function filterNavBeltEndpointCandidates(grid, navTopology, cells) {
     const out = [];
     for (let i = 0; i < cells.length; i++) {
         const cell = cells[i];
-        if (hasOpenBeltMouthSide(grid, gridNavContext, cell.col, cell.row)) out.push(cell);
+        if (hasOpenBeltMouthSide(grid, navTopology, cell.col, cell.row)) out.push(cell);
     }
     return out;
 }
@@ -48,11 +48,11 @@ export function beltPathMouthExteriorCells(path) {
 }
 /**
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {object} gridNavContext
+ * @param {import("../../Navigation/NavTopology.js").NavTopology} navTopology
  * @param {{ c: number, r: number }[]} path
  * @param {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} [occupiedGlobalIndices]
  */
-export function validateBeltPathMouthAccess(grid, gridNavContext, path, occupiedGlobalIndices = new Set()) {
+export function validateBeltPathMouthAccess(grid, navTopology, path, occupiedGlobalIndices = new Set()) {
     if (path.length < 2) return false;
     const layout = gridCellLayout(grid);
     const start = path[0];
@@ -64,8 +64,8 @@ export function validateBeltPathMouthAccess(grid, gridNavContext, path, occupied
     if (grid.isBlocked(exitExterior.col, exitExterior.row)) return false;
     if (occupiedGlobalIndices.has(cellIndex(entryExterior.col, entryExterior.row, layout))) return false;
     if (occupiedGlobalIndices.has(cellIndex(exitExterior.col, exitExterior.row, layout))) return false;
-    if (!navStepOpen(grid, gridNavContext, entryExterior.col, entryExterior.row, start.c, start.r)) return false;
-    if (!navStepOpen(grid, gridNavContext, end.c, end.r, exitExterior.col, exitExterior.row)) return false;
+    if (!navStepOpen(grid, navTopology, entryExterior.col, entryExterior.row, start.c, start.r)) return false;
+    if (!navStepOpen(grid, navTopology, end.c, end.r, exitExterior.col, exitExterior.row)) return false;
     return true;
 }
 /** @param {{ c: number, r: number }[][]} paths @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */

@@ -9,7 +9,7 @@ export function createFlowGroundNavBehavior(state) {
     const getRun = (prop) => {
         let run = propRuns.get(prop.id);
         if (!run) {
-            run = { targetWorld: null, dragging: false, lastNavGeneration: -1 };
+            run = { targetWorld: null, dragging: false, lastTopologyKey: "" };
             propRuns.set(prop.id, run);
         }
         return run;
@@ -17,7 +17,7 @@ export function createFlowGroundNavBehavior(state) {
     const clearRunTarget = (run) => {
         run.targetWorld = null;
         run.dragging = false;
-        run.lastNavGeneration = -1;
+        run.lastTopologyKey = "";
     };
     const applyMoveTarget = (run, world) => {
         const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
@@ -25,16 +25,16 @@ export function createFlowGroundNavBehavior(state) {
     };
     const resolveSteerTarget = (run, prop) => snapNavGoalWorld(state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
     const syncFlowWindow = (prop, steerTarget) => {
-        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, state.navigation.settings.recenterThreshold);
+        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, state.nav.settings.recenterThreshold);
     };
     const tickProp = (prop, run, dt) => {
         if (!run.targetWorld) return;
         const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
         const steerTarget = resolveSteerTarget(run, prop);
         const flowFieldGrid = state.flowFieldGrid;
-        const navGeneration = state.navigation.obstacleGeneration;
-        if (navGeneration !== run.lastNavGeneration) {
-            run.lastNavGeneration = navGeneration;
+        const topologyKey = state.nav.topologyKey();
+        if (topologyKey !== run.lastTopologyKey) {
+            run.lastTopologyKey = topologyKey;
             flowFieldGrid.refresh();
         }
         syncFlowWindow(prop, steerTarget);

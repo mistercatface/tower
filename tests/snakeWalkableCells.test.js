@@ -37,8 +37,7 @@ async function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
         entityRegistry: new EntityRegistry(),
         worldProps: [],
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {}, clearBakeCache: () => {} },
-        navigation,
-        hpaPathWorker: navigation._hpaPathWorker,
+        nav: navigation,
     };
 }
 describe("snake navWalkable session", () => {
@@ -68,7 +67,7 @@ describe("snake navWalkable session", () => {
         const grid = state.obstacleGrid;
         for (let i = 0; i < cells.length; i++) {
             const cell = cells[i];
-            assert.ok(isNavWalkableCell(grid, state.navigation.gridNavContext, cell.col, cell.row), `cell ${colRowToIndex(cell.col, cell.row, grid.cols)} not nav-walkable`);
+            assert.ok(isNavWalkableCell(grid, state.nav.topology, cell.col, cell.row), `cell ${colRowToIndex(cell.col, cell.row, grid.cols)} not nav-walkable`);
         }
     });
     it("baked navWalkable drops disconnected cells on the split map", async () => {
@@ -84,7 +83,7 @@ describe("snake navWalkable session", () => {
         const cellSize = grid.cellSize;
         forEachGlobalCellInMapGenBounds(playable, (globalCol, globalRow) => {
             const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
-            if (isNavWalkableCell(grid, state.navigation.gridNavContext, col, row)) localPassCount++;
+            if (isNavWalkableCell(grid, state.nav.topology, col, row)) localPassCount++;
         });
         assert.ok(scene.navWalkable.cells().length < localPassCount);
     });

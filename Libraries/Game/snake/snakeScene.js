@@ -144,7 +144,7 @@ export async function generateSnakeSplitMap(state) {
     const navWalkableIndex = getNavWalkableCellIndex(state, playable, floodSeed);
     const beltPlan = planRailMazeCorridorBelts({
         grid: state.obstacleGrid,
-        gridNavContext: state.navigation.gridNavContext,
+        navTopology: state.nav.topology,
         railConfig,
         northReserveRows: cavern.openBoundaryRows ?? 3,
         navWalkableIndex,

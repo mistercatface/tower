@@ -40,8 +40,7 @@ async function createIntentTestState(cols = 32, rows = 32) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation,
-        hpaPathWorker: navigation._hpaPathWorker,
+        nav: navigation,
         viewport: { circleInBounds: () => true },
     };
 }
@@ -109,7 +108,7 @@ describe("snake intent FSM", () => {
         const nearBehindWall = spawnGoalOrbAtCell(state, { col: 12, row: 8 });
         const farVisible = spawnGoalOrbAtCell(state, { col: 6, row: 8 });
         stampWall(state.obstacleGrid, 11, 8);
-        await state.navigation.onObstaclesChanged({ startCol: 10, endCol: 12, startRow: 7, endRow: 9 });
+        await state.nav.commitEdit({ startCol: 10, endCol: 12, startRow: 7, endRow: 9 });
         const seeker = chain.head;
         seeker.facing = Math.PI;
         wireSnakeGameRegistry(state, createSnakeLifecycleRegistry(), new Map(), createSnakeNavWalkable(state));
@@ -129,7 +128,7 @@ describe("snake intent FSM", () => {
         stampWall(state.obstacleGrid, 6, 8);
         stampWall(state.obstacleGrid, 7, 8);
         stampWall(state.obstacleGrid, 8, 8);
-        await state.navigation.onObstaclesChanged({ startCol: 4, endCol: 9, startRow: 7, endRow: 9 });
+        await state.nav.commitEdit({ startCol: 4, endCol: 9, startRow: 7, endRow: 9 });
         const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20, rng: () => 0 });
         autosim.start();
         assert.equal(autosim.getMode(), "explore");

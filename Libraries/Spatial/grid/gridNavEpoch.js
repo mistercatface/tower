@@ -1,12 +1,17 @@
 /**
- * Nav invalidation spine.
+ * Nav invalidation spine
  *
- * Grid edits bump channels via `bumpGridNavEpoch`. They fold into `gridNavCacheKey(grid)`.
- * Topology readiness: `isNavTopologyReady(hpaPathWorker, grid)` — the only staleness check.
+ * Edits → bumpGridNavEpoch(grid, channel) → gridNavCacheKey(grid) changes.
  *
- * `HpaPathWorker._syncedNavCacheKey` is the sole synced-key store (set on worker ack).
- * Replan epoch (`NavigationService.obstacleGeneration`) is separate — not topology readiness.
- * Live grid edits must call `commitGridNavEdit` / `commitGridNavEditUnion` (Libraries/Sandbox/gridNavEdit.js) after writes.
+ * | Cache / consumer              | Readiness check                          |
+ * |-------------------------------|------------------------------------------|
+ * | Worker topology arena         | gridNavCacheKey === worker._syncedNavCacheKey, no _navSyncPromise |
+ * | NavRuntime.isTopologyCurrent()| same via NavRuntime.syncedTopologyKey()  |
+ * | Per-agent replan (navSession) | navState.topologyKey !== nav.topologyKey() |
+ * | Flow-field topology           | keys off gridNavCacheKey in FlowFieldGrid |
+ * | HPA region graph (worker)     | worker._graphEpoch >= nav.graphSyncGeneration |
+ *
+ * Live edits must finish with nav.commitEdit(bounds) (Libraries/Sandbox/gridNavEdit.js).
  */
 export const GRID_NAV_EPOCH = { Wall: "wall", Floor: "floor", Topology: "topology" };
 /**
@@ -30,7 +35,7 @@ export function bumpGridNavEpoch(grid, channel) {
     }
     throw new Error(`unknown grid nav epoch channel: ${channel}`);
 }
-/** Live nav-topology key — all invalidation channels + passage power. */
+/** Canonical live topology key — every staleness check derives from this. */
 export function gridNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
 }

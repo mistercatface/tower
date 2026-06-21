@@ -39,8 +39,7 @@ function createSnakeSceneTestState(cols = 32, rows = 32) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation: { settings: {}, onObstaclesChanged: async () => {} },
-        hpaPathWorker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} },
+        nav: { settings: {}, commitEdit: async () => {}, topologyKey: () => "", syncedTopologyKey: () => "", graphSyncGeneration: 0, worker: { getPathSlot: () => null, releaseOwnedPathSlot: () => {} }, session: { isReplanInFlight: () => false }, topology: null },
     };
 }
 

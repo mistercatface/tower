@@ -17,12 +17,11 @@ function createNavState(prop) {
         releaseSlot: () => {},
         requestPath: async () => ({ result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } }),
     };
+    const session = new HpaPathSession(mockWorker);
     return {
         obstacleGrid: grid,
         sandbox: { entityMeta: new SandboxEntityMetaStore() },
-        navigation: { obstacleGeneration: 0, settings: { recenterThreshold: 64 } },
-        hpaPathWorker: mockWorker,
-        hpaPathSession: new HpaPathSession(mockWorker),
+        nav: { settings: { recenterThreshold: 64 }, topologyKey: () => "", syncedTopologyKey: () => "", graphSyncGeneration: 0, commitEdit: async () => {}, worker: mockWorker, session, topology: null },
         flowFieldGrid: { ensureRollTargetWindow() {}, refresh() {}, getReadyFlowField: () => null },
         entityRegistry: {
             getLive(id) {

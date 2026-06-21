@@ -32,7 +32,7 @@ function createTestState(cols = 32, rows = 32) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation: { settings: {}, onObstaclesChanged: async () => {} },
+        nav: { settings: {}, commitEdit: async () => {}, topologyKey: () => "" },
     };
 }
 

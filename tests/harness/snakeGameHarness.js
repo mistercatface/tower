@@ -15,17 +15,14 @@ import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
 import { resolveSnakeNavWalkableFloodSeedBounds, spawnGoalOrbAtCell } from "../../Libraries/Game/snake/snakeScene.js";
 import { createWorkerNavigation } from "../../Libraries/Navigation/WorkerNavigationFactory.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
-import { HpaPathSession } from "../../Libraries/Pathfinding/HpaPathSession.js";
 import { createSnakeLifecycleRegistry, registerAliveSnake, wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
 loadPropAssets();
 export function wireSnakeTestNavSession(state) {
-    if (state.hpaPathSession) return;
-    state.hpaPathWorker = state.navigation._hpaPathWorker;
-    state.hpaPathSession = new HpaPathSession(state.hpaPathWorker);
+    if (!state.nav?.session) throw new Error("wireSnakeTestNavSession: state.nav with session is required");
+    state.nav.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000, ...state.nav.settings };
     state.viewport = state.viewport ?? { circleInBounds: () => true, snapTo() {} };
-    state.navigation.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000, ...state.navigation.settings };
 }
 function ensureSnakePlayableBounds(state) {
     if (state.sandbox.snakePlayableBounds) return;
@@ -56,7 +53,7 @@ export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    const navigation = await createWorkerNavigation(grid);
+    const nav = await createWorkerNavigation(grid);
     const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
@@ -64,8 +61,7 @@ export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation,
-        hpaPathWorker: navigation._hpaPathWorker,
+        nav,
         viewport: { circleInBounds: () => true, snapTo() {} },
     };
     const hpaBehavior = createHpaGroundNavBehavior(state);

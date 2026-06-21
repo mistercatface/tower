@@ -3,10 +3,10 @@ import { createObserverVisionFrame, getObserverVisionFrame } from "../../Navigat
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 function refreshObserverVisionFrame(state) {
     const config = getSnakeGameConfig();
-    state.navigation.observerVisionFrame = createObserverVisionFrame({
+    state.nav.observerVisionFrame = createObserverVisionFrame({
         tickId: state.sandbox.snakeGame.simTick,
-        gridNavContext: state.navigation.gridNavContext,
-        visionSession: state.navigation.gridCellVisionSession,
+        navTopology: state.nav.topology,
+        visionSession: state.nav.gridCellVisionSession,
         visionCone: config.visionCone,
         viewport: state.viewport,
         brainSyncOffScreenInterval: config.brainSyncOffScreenInterval,
@@ -32,11 +32,11 @@ export function nextSnakePerceptionTickId(state) {
 export function beginSnakePerceptionFrame(state) {
     const tickId = nextSnakePerceptionTickId(state);
     beginSnakePerceptionTick(state, tickId);
-    state.hpaPathSession?.beginFrame(tickId);
+    state.nav.session?.beginFrame(tickId);
     return tickId;
 }
 export function endSnakePerceptionFrame(state) {
-    state.hpaPathSession?.flushFrame();
+    state.nav.session?.flushFrame();
 }
 export function ensureSnakePerceptionTick(state) {
     const snakeGame = state.sandbox.snakeGame;

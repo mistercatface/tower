@@ -117,7 +117,7 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
 /** @param {object} state */
 export function labPathDebugCacheKey(state) {
     const grid = state.obstacleGrid;
-    return `${gridNavCacheKey(grid)}:${state.navigation.obstacleGeneration}:${grid.cols}x${grid.rows}`;
+    return `${gridNavCacheKey(grid)}:${state.nav.graphSyncGeneration}:${grid.cols}x${grid.rows}`;
 }
 /** @param {object} state */
 export async function ensureLabPathDebugCache(state) {
@@ -126,8 +126,8 @@ export async function ensureLabPathDebugCache(state) {
     if (state._labPathDebugBake) return state._labPathDebugBake;
     state._labPathDebugBake = (async () => {
         const grid = state.obstacleGrid;
-        await state.navigation.awaitWorkerNavReady();
-        const debugView = state.hpaPathWorker.getRegionGraphDebugView(grid);
+        await state.nav.awaitWorkerNavReady();
+        const debugView = state.nav.worker.getRegionGraphDebugView(grid);
         state.mapPathDebugCache = debugView ? bakePathDebugLayer(debugView, grid.minX, grid.minY, grid.maxX, grid.maxY) : null;
         state._labPathDebugKey = key;
         state._labPathDebugBake = null;

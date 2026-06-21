@@ -34,8 +34,7 @@ async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
         entityRegistry: new EntityRegistry(),
         worldProps: [],
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {}, clearBakeCache: () => {} },
-        navigation,
-        hpaPathWorker: navigation._hpaPathWorker,
+        nav: navigation,
     };
 }
 function gridSignature(grid, playableBounds) {

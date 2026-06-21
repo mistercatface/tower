@@ -13,10 +13,10 @@ async function createVisionGrid(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
     const navigation = await createWorkerNavigation(grid);
-    return { grid, gridNavContext: navigation.gridNavContext, navigation };
+    return { grid, navTopology: navigation.topology, nav: navigation };
 }
 async function syncNavBounds(ctx, startCol, endCol, startRow, endRow) {
-    await ctx.navigation.onObstaclesChanged({ startCol, endCol, startRow, endRow });
+    await ctx.nav.commitEdit({ startCol, endCol, startRow, endRow });
 }
 async function stampWall(ctx, col, row) {
     const grid = ctx.grid;
@@ -37,30 +37,30 @@ describe("grid cell line of sight", () => {
     it("blocks sight through a filled voxel column", async () => {
         const ctx = await createVisionGrid();
         await stampWall(ctx, 6, 8);
-        assert.equal(hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 10, 8), false);
-        assert.equal(hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 4, 8), true);
-        terminateWorkerNavigation(ctx.navigation);
+        assert.equal(hasGridCellLineOfSight(ctx.navTopology, 2, 8, 10, 8), false);
+        assert.equal(hasGridCellLineOfSight(ctx.navTopology, 2, 8, 4, 8), true);
+        terminateWorkerNavigation(ctx.nav);
     });
     it("blocks diagonal sight through a solid wall patch", async () => {
         const ctx = await createVisionGrid();
         await fillRectWalls(ctx, 5, 4, 7, 10);
-        assert.equal(hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 10, 6), false);
-        assert.equal(hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 4, 8), true);
-        terminateWorkerNavigation(ctx.navigation);
+        assert.equal(hasGridCellLineOfSight(ctx.navTopology, 2, 8, 10, 6), false);
+        assert.equal(hasGridCellLineOfSight(ctx.navTopology, 2, 8, 4, 8), true);
+        terminateWorkerNavigation(ctx.nav);
     });
     it("blocks sight through a rail wall on the shared edge graph", async () => {
         const ctx = await createVisionGrid();
         setBoundary(ctx.grid, 6, 8, 1, { kind: "railWall", capHeightLevel: 1, thicknessLevel: 1 }, { bumpRevision: true });
         await syncNavBounds(ctx, 5, 7, 7, 9);
-        assert.equal(hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 10, 8), false);
-        assert.equal(hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 4, 8), true);
+        assert.equal(hasGridCellLineOfSight(ctx.navTopology, 2, 8, 10, 8), false);
+        assert.equal(hasGridCellLineOfSight(ctx.navTopology, 2, 8, 4, 8), true);
         const observer = { id: 1, ...cellCenter(ctx.grid, 2, 8), vx: 10, vy: 0, facing: 0 };
         const behind = { id: 2, ...cellCenter(ctx.grid, 10, 8), radius: 6, isDead: false };
         const ahead = { id: 3, ...cellCenter(ctx.grid, 4, 8), radius: 6, isDead: false };
-        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, gridNavContext: ctx.gridNavContext });
+        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, navTopology: ctx.navTopology });
         assert.equal(vision.visible.length, 1);
         assert.equal(vision.visible[0].id, 3);
-        terminateWorkerNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.nav);
     });
 });
 describe("grid cell vision cone", () => {
@@ -68,11 +68,11 @@ describe("grid cell vision cone", () => {
         const ctx = await createVisionGrid();
         for (let row = 0; row < ctx.grid.rows; row++) await stampWall(ctx, 10, row);
         const origin = cellCenter(ctx.grid, 2, 8);
-        const cells = collectVisibleGridCells(ctx.gridNavContext, origin.x, origin.y, 0, Math.PI / 3, 200);
+        const cells = collectVisibleGridCells(ctx.navTopology, origin.x, origin.y, 0, Math.PI / 3, 200);
         assert.ok(cells.length > 0);
         assert.ok(!cells.some((cell) => cell.col > 10));
         assert.ok(cells.some((cell) => cell.col === 9));
-        terminateWorkerNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.nav);
     });
     it("queryGridCellVision hides goal behind wall and keeps open corridor goal", async () => {
         const ctx = await createVisionGrid();
@@ -80,11 +80,11 @@ describe("grid cell vision cone", () => {
         const observer = { id: 1, x: cellCenter(ctx.grid, 2, 8).x, y: cellCenter(ctx.grid, 2, 8).y, vx: 10, vy: 0, facing: 0 };
         const behind = { id: 2, x: cellCenter(ctx.grid, 14, 8).x, y: cellCenter(ctx.grid, 14, 8).y, radius: 6, isDead: false };
         const ahead = { id: 3, x: cellCenter(ctx.grid, 6, 8).x, y: cellCenter(ctx.grid, 6, 8).y, radius: 6, isDead: false };
-        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, gridNavContext: ctx.gridNavContext });
+        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, navTopology: ctx.navTopology });
         assert.equal(vision.visible.length, 1);
         assert.equal(vision.visible[0].id, 3);
         assert.ok(vision.cells.length > 0);
-        terminateWorkerNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.nav);
     });
     it("cannot see around an L-shaped corner", async () => {
         const ctx = await createVisionGrid();
@@ -95,11 +95,11 @@ describe("grid cell vision cone", () => {
         const vision = queryGridCellVision({ id: 1, x: observer.x, y: observer.y, vx: 10, vy: 0, facing: 0 }, [{ id: 2, x: aroundCorner.x, y: aroundCorner.y, radius: 6, isDead: false }], {
             halfAngle: Math.PI / 2,
             range: 300,
-            gridNavContext: ctx.gridNavContext,
+            navTopology: ctx.navTopology,
         });
         assert.equal(vision.visible.length, 0);
         assert.ok(!vision.cells.some((cell) => cell.col === 12 && cell.row === 4));
-        terminateWorkerNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.nav);
     });
     it("goal outside arc is rejected even with clear grid LOS", async () => {
         const ctx = await createVisionGrid();
@@ -109,10 +109,10 @@ describe("grid cell vision cone", () => {
         const vision = queryGridCellVision({ id: 1, x: observer.x, y: observer.y, vx: 0, vy: -10, facing: -Math.PI / 2 }, [{ id: 2, x: offAxis.x, y: offAxis.y, radius: 6, isDead: false }], {
             halfAngle: Math.PI / 8,
             range: 200,
-            gridNavContext: ctx.gridNavContext,
+            navTopology: ctx.navTopology,
         });
         assert.equal(vision.visible.length, 0);
-        terminateWorkerNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.nav);
     });
     it("queryGridCellVision filters visible goals by wall and arc", async () => {
         const ctx = await createVisionGrid();
@@ -120,11 +120,11 @@ describe("grid cell vision cone", () => {
         const observer = { id: 1, ...cellCenter(ctx.grid, 2, 8), vx: 10, vy: 0, facing: 0 };
         const visible = { id: 2, ...cellCenter(ctx.grid, 6, 8), radius: 6, isDead: false };
         const blocked = { id: 3, ...cellCenter(ctx.grid, 14, 8), radius: 6, isDead: false };
-        const cone = queryGridCellVision(observer, [visible, blocked], { halfAngle: Math.PI / 2, range: 200, gridNavContext: ctx.gridNavContext });
+        const cone = queryGridCellVision(observer, [visible, blocked], { halfAngle: Math.PI / 2, range: 200, navTopology: ctx.navTopology });
         assert.equal(cone.visible.length, 1);
         assert.equal(cone.visible[0].id, 2);
         assert.ok(cone.cells.length > 0);
-        terminateWorkerNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.nav);
     });
     it("observer vision frame reuses one full build per tick", async () => {
         resetVisionFullBuildCount();
@@ -132,7 +132,7 @@ describe("grid cell vision cone", () => {
         const visionCone = { halfAngle: Math.PI / 3, range: 200 };
         const frame = createObserverVisionFrame({
             tickId: 9,
-            gridNavContext: ctx.gridNavContext,
+            navTopology: ctx.navTopology,
             visionSession: null,
             visionCone,
             viewport: { circleInBounds: () => true },
@@ -145,7 +145,7 @@ describe("grid cell vision cone", () => {
         assert.equal(getVisionFullBuildCount(), 1);
         const nextFrame = createObserverVisionFrame({
             tickId: 10,
-            gridNavContext: ctx.gridNavContext,
+            navTopology: ctx.navTopology,
             visionSession: null,
             visionCone,
             viewport: { circleInBounds: () => true },
@@ -153,14 +153,14 @@ describe("grid cell vision cone", () => {
         });
         nextFrame.ensureHeadVision(observer);
         assert.equal(getVisionFullBuildCount(), 2);
-        terminateWorkerNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.nav);
     });
 });
 describe("grid cell vision overlay", () => {
     it("emits one cached highlight per visible cell", async () => {
         const ctx = await createVisionGrid();
         const origin = cellCenter(ctx.grid, 4, 8);
-        const cells = collectVisibleGridCells(ctx.gridNavContext, origin.x, origin.y, 0, Math.PI / 2, 96);
+        const cells = collectVisibleGridCells(ctx.navTopology, origin.x, origin.y, 0, Math.PI / 2, 96);
         const out = [];
         appendGridCellVisionOverlayCommands(out, { grid: ctx.grid, cells });
         assert.equal(out.length, cells.length);
@@ -170,7 +170,7 @@ describe("grid cell vision overlay", () => {
             assert.equal(out[i].maxY - out[i].minY, ctx.grid.cellSize);
             assert.ok(!out[i].cache);
         }
-        terminateWorkerNavigation(ctx.navigation);
+        terminateWorkerNavigation(ctx.nav);
     });
 });
 describe("vision cone helpers", () => {
@@ -191,11 +191,11 @@ describe("grid nav context", () => {
     it("does not mutate nav caches on repeated LOS queries when grid revision is unchanged", async () => {
         const ctx = await createVisionGrid();
         await stampWall(ctx, 6, 8);
-        const revisionAfterStamp = ctx.gridNavContext.wallRevision;
-        const openBefore = ctx.gridNavContext.navCardinalOpen.slice();
-        for (let i = 0; i < 20; i++) hasGridCellLineOfSight(ctx.gridNavContext, 2, 8, 4, 8);
-        assert.equal(ctx.gridNavContext.wallRevision, revisionAfterStamp);
-        assert.deepEqual(Array.from(ctx.gridNavContext.navCardinalOpen), Array.from(openBefore));
-        terminateWorkerNavigation(ctx.navigation);
+        const revisionAfterStamp = ctx.navTopology.wallRevision;
+        const openBefore = ctx.navTopology.navCardinalOpen.slice();
+        for (let i = 0; i < 20; i++) hasGridCellLineOfSight(ctx.navTopology, 2, 8, 4, 8);
+        assert.equal(ctx.navTopology.wallRevision, revisionAfterStamp);
+        assert.deepEqual(Array.from(ctx.navTopology.navCardinalOpen), Array.from(openBefore));
+        terminateWorkerNavigation(ctx.nav);
     });
 });

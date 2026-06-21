@@ -1,16 +1,15 @@
 import { isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
-import { isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
+import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
 import { NavTopology } from "./NavTopology.js";
+
 /** @typedef {import("../DataStructures/CellRect.js").CellBounds} CellBounds */
 /** @typedef {import("../Pathfinding/FlowFieldGrid.js").FlowFieldGrid} FlowFieldGrid */
 /** @typedef {import("../Pathfinding/HpaPathWorker.js").HpaPathWorker} HpaPathWorker */
 /** @typedef {import("../Pathfinding/HpaPathSession.js").HpaPathSession} HpaPathSession */
 /** @typedef {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
 /** @typedef {(damageBounds: CellBounds | null) => void} NavWalkableSyncHook */
-/**
- * Live nav runtime — worker, path session, and baked topology in one place.
- * Replaces reaching through state.navigation + state.hpaPathWorker + state.hpaPathSession.
- */
+
+/** Live nav runtime — worker, path session, topology, and one invalidation spine. */
 export class NavRuntime {
     /**
      * @param {object} options
@@ -31,50 +30,60 @@ export class NavRuntime {
         worker.ensureNavArenaForGrid(grid);
         this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
         this._workerNavGraphSyncChain = Promise.resolve();
-        this.obstacleGeneration = 0;
+        this._graphSyncGeneration = 0;
         /** @type {NavWalkableSyncHook | null} */
         this._navWalkableSyncHook = null;
         /** @type {((grid: WorldObstacleGrid, bounds: CellBounds | null) => { x: number, y: number }) | null} */
         this._resolvePruneWorld = null;
         grid._navTopologyRef = this.topology;
     }
-    /** @deprecated Use `topology` — same object, legacy name. */
-    get gridNavContext() {
-        return this.topology;
+
+    /** Current grid topology key (changes on every nav-affecting edit). */
+    topologyKey() {
+        return gridNavCacheKey(this.grid);
     }
-    /** @deprecated Use `worker` — test harness compat. */
-    get _hpaPathWorker() {
-        return this.worker;
+
+    /** Worker-acknowledged topology key (null before first sync). */
+    syncedTopologyKey() {
+        return this.worker._syncedNavCacheKey || "";
     }
-    isNavTopologyReady() {
+
+    isTopologyCurrent() {
         return isNavTopologyReady(this.worker, this.grid);
     }
+
+    /** Topology arena sync only — no HPA region-graph patch (map-gen preview between belt passes). */
+    syncTopology(damageBounds = null, grid = this.grid) {
+        return this.worker.scheduleNavTopologySyncAwait(grid, damageBounds);
+    }
+
+    /** HPA region-graph generation — bumps after each completed worker graph sync. */
+    get graphSyncGeneration() {
+        return this._graphSyncGeneration;
+    }
+
     /** @param {NavWalkableSyncHook | null} hook */
     setNavWalkableSyncHook(hook) {
         this._navWalkableSyncHook = hook;
     }
+
     /** @param {(grid: WorldObstacleGrid, bounds: CellBounds | null) => { x: number, y: number }} fn */
     setPruneSeedResolver(fn) {
         this._resolvePruneWorld = fn;
     }
+
     /**
-     * Schedule worker nav resync after grid edits.
-     *
      * @param {CellBounds | CellBounds[] | null} bounds
      * @param {{ fullNavSync?: boolean }} [options]
      */
     commitEdit(bounds, { fullNavSync = false } = {}) {
         const merged = fullNavSync ? null : mergeNavEditBounds(bounds);
         if (!fullNavSync && (!merged || isEmptyCellBounds(merged))) return Promise.resolve();
-        return this.onObstaclesChanged(fullNavSync ? null : merged);
+        return this._scheduleObstacleSync(fullNavSync ? null : merged);
     }
-    /** @param {CellBounds | CellBounds[] | null | undefined} bounds */
-    commitEditUnion(...boundsParts) {
-        const parts = boundsParts.filter(Boolean);
-        if (!parts.length) return Promise.resolve();
-        return this.commitEdit(parts);
-    }
-    onObstaclesChanged(damageBounds) {
+
+    /** @param {CellBounds | null} damageBounds */
+    _scheduleObstacleSync(damageBounds) {
         const topologyChanged = this.grid.gridTopologyEpoch !== this._lastGridTopologyEpoch;
         if (topologyChanged) this._lastGridTopologyEpoch = this.grid.gridTopologyEpoch;
         this.flowFieldGrid.invalidateNavTopology();
@@ -82,9 +91,11 @@ export class NavRuntime {
         this._workerNavGraphSyncChain = this._workerNavGraphSyncChain.then(run, run);
         return this._workerNavGraphSyncChain;
     }
+
     awaitWorkerNavReady() {
         return this._workerNavGraphSyncChain;
     }
+
     /** @param {CellBounds | null} damageBounds */
     _resolvePruneSeed(grid, damageBounds) {
         if (this._resolvePruneWorld) return this._resolvePruneWorld(grid, damageBounds);
@@ -95,20 +106,23 @@ export class NavRuntime {
         }
         return { x: (grid.minX + grid.maxX) / 2, y: (grid.minY + grid.maxY) / 2 };
     }
+
     async _syncWorkerNavGraph(grid, damageBounds, topologyChanged) {
-        const graphEpoch = this.obstacleGeneration + 1;
+        const graphEpoch = this._graphSyncGeneration + 1;
         const seed = this._resolvePruneSeed(grid, damageBounds);
         const fullGraph = topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds);
         await this.worker.syncObstacleNavGraph(grid, damageBounds, graphEpoch, seed.x, seed.y, fullGraph);
-        this.obstacleGeneration = graphEpoch;
+        this._graphSyncGeneration = graphEpoch;
         this._navWalkableSyncHook?.(damageBounds);
     }
+
     async shutdown() {
         this.worker.shutdown();
         await this._workerNavGraphSyncChain.catch(() => {});
         await this.worker.host.worker.terminate();
     }
 }
+
 /** @param {CellBounds | CellBounds[] | null | undefined} bounds */
 function mergeNavEditBounds(bounds) {
     if (!bounds) return null;
@@ -117,7 +131,9 @@ function mergeNavEditBounds(bounds) {
     for (let i = 0; i < regions.length; i++) if (regions[i]) merged = unionCellBounds(merged, regions[i]);
     return merged;
 }
+
 /** @param {object} state */
 export function resolveNavRuntime(state) {
-    return state.nav ?? state.navigation;
+    if (!state?.nav) throw new Error("resolveNavRuntime: state.nav is required");
+    return state.nav;
 }

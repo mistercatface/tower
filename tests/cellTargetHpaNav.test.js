@@ -11,17 +11,24 @@ function createNavTestState() {
     grid.rebuildFixed(0, 0, 32 * 16, 32 * 16);
     let replanCalls = 0;
     const mockWorker = { getPathSlot: () => -1, releaseOwnedPathSlot: () => {}, releaseSlot: () => {}, requestPath: async () => ({ result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } }) };
-    const hpaPathSession = new HpaPathSession(mockWorker);
-    const origReplan = hpaPathSession.requestReplan.bind(hpaPathSession);
-    hpaPathSession.requestReplan = (...args) => {
+    const session = new HpaPathSession(mockWorker);
+    const origReplan = session.requestReplan.bind(session);
+    session.requestReplan = (...args) => {
         replanCalls++;
         return origReplan(...args);
     };
     return {
         obstacleGrid: grid,
-        navigation: { obstacleGeneration: 0, settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000 } },
-        hpaPathWorker: mockWorker,
-        hpaPathSession,
+        nav: {
+            settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000 },
+            topologyKey: () => "",
+            syncedTopologyKey: () => "",
+            graphSyncGeneration: 0,
+            commitEdit: async () => {},
+            worker: mockWorker,
+            session,
+            topology: null,
+        },
         viewport: { circleInBounds: () => true },
         get replanCalls() {
             return replanCalls;

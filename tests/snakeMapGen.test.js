@@ -12,7 +12,7 @@ import { generateSnakeSplitMap, resolveCenterSnakeSpawnAnchor, spawnSnakeCavernS
 import { collectWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { createNavGraphViewFromContext } from "../Libraries/Navigation/navGraph.js";
+import { createNavGraphViewFromTopology } from "../Libraries/Navigation/navGraph.js";
 import { cellInRect, colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
@@ -37,8 +37,7 @@ async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
         entityRegistry: new EntityRegistry(),
         worldProps: [],
         worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {}, clearBakeCache: () => {} },
-        navigation,
-        hpaPathWorker: navigation._hpaPathWorker,
+        nav: navigation,
     };
 }
 function countWalkableInBounds(state, config) {
@@ -63,7 +62,7 @@ function paddingBounds(state) {
 }
 function floodFillWalkable(state, startCol, startRow) {
     const grid = state.obstacleGrid;
-    const graph = createNavGraphViewFromContext(state.navigation.gridNavContext);
+    const graph = createNavGraphViewFromTopology(state.nav.topology);
     const visited = new Set();
     const queue = [{ col: startCol, row: startRow }];
     const cardinals = [

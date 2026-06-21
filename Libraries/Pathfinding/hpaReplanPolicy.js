@@ -9,10 +9,10 @@ export const HPA_REPLAN_FRAME_START_BUDGET = 12;
 export const HPA_REPLAN_PEAK_INFLIGHT_CAP = 16;
 /**
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
- * @returns {{ obstacleGrid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, startX: number, startY: number, targetX: number, targetY: number, graphEpoch: number }}
+ * @param {import("../Navigation/NavRuntime.js").NavRuntime} nav
  */
-export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, graphEpoch, stepPenalty, gridNavContext) {
-    return { obstacleGrid, startX, startY, targetX, targetY, graphEpoch, stepPenalty: stepPenalty ?? null, gridNavContext };
+export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, nav, stepPenalty) {
+    return { obstacleGrid, startX, startY, targetX, targetY, graphEpoch: nav.graphSyncGeneration, topologyKey: nav.syncedTopologyKey(), navTopology: nav.topology, stepPenalty: stepPenalty ?? null };
 }
 /** @param {import("./navSession.js").NavSessionState} navState */
 export function trackNavStuck(navState, x, y, stuckMoveThreshold) {
@@ -25,8 +25,9 @@ export function trackNavStuck(navState, x, y, stuckMoveThreshold) {
 export function obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames) {
     return isVisible || stuckFrames > stuckReplanFrames;
 }
-export function obstacleEpochReplanDue(navState, graphEpoch) {
-    return navState.obstacleGeneration < graphEpoch;
+/** @param {import("./navSession.js").NavSessionState} navState @param {string} currentTopologyKey */
+export function obstacleEpochReplanDue(navState, currentTopologyKey) {
+    return navState.topologyKey !== currentTopologyKey;
 }
 /** @param {import("./navSession.js").NavSessionState} navState */
 export function idlePathReplanReason(navState, settings, inFlight) {

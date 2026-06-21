@@ -19,30 +19,21 @@ export function createNavRuntime(obstacleGrid, { flowFieldGrid = mockFlowFieldGr
     testNavigations?.add(runtime);
     return runtime;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid */
-export function createWorkerNavigationService(obstacleGrid) {
-    return createNavRuntime(obstacleGrid);
-}
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
 export async function createWorkerNavigation(obstacleGrid, damageBounds = null) {
     const runtime = createNavRuntime(obstacleGrid);
-    await runtime.onObstaclesChanged(damageBounds);
+    await runtime.commitEdit(damageBounds, { fullNavSync: damageBounds == null });
     return runtime;
 }
-/** @param {NavRuntime} navigation @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} [grid] @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
-export async function syncWorkerNavigationTopology(navigation, grid = navigation.worker.navGraph, damageBounds = null) {
-    await navigation.worker.scheduleNavTopologySyncAwait(grid, damageBounds);
-    navigation.obstacleGeneration++;
-}
-/** @param {NavRuntime} navigation */
-export async function terminateWorkerNavigation(navigation) {
-    if (!navigation?.worker) return;
-    testNavigations?.delete(navigation);
-    await navigation.shutdown();
+/** @param {NavRuntime} nav */
+export async function terminateWorkerNavigation(nav) {
+    if (!nav?.worker) return;
+    testNavigations?.delete(nav);
+    await nav.shutdown();
 }
 export async function terminateAllWorkerNavigations() {
     if (!testNavigations?.size) return;
-    const pending = [...testNavigations].map((navigation) => terminateWorkerNavigation(navigation));
+    const pending = [...testNavigations].map((nav) => terminateWorkerNavigation(nav));
     testNavigations.clear();
     await Promise.allSettled(pending);
 }

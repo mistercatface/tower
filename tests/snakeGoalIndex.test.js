@@ -28,7 +28,7 @@ function createGoalIndexState() {
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
-        navigation: {},
+        nav: {},
         viewport: { circleInBounds: () => true },
     };
     wireSnakeTestNavSession(state);

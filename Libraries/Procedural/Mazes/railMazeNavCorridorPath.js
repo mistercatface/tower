@@ -17,11 +17,11 @@ export function railMazeBeltZoneGridBounds(grid, railConfig) {
  * Patch-local indices exist only inside this pathfinder; all external sets use {@link GlobalCellIdx}.
  *
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {object} gridNavContext
+ * @param {object} navTopology
  * @param {object} railConfig
  * @param {import("./navWalkableIndex.js").NavWalkableIndex} navWalkableIndex
  */
-export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railConfig, navWalkableIndex) {
+export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfig, navWalkableIndex) {
     const bounds = railMazeBeltZoneGridBounds(grid, railConfig);
     const patchCols = bounds.endCol - bounds.startCol + 1;
     const patchRows = bounds.endRow - bounds.startRow + 1;
@@ -49,7 +49,7 @@ export function createRailMazeNavCorridorPathfinder(grid, gridNavContext, railCo
             const gc1 = c1 + patchLayout.originCol;
             const gr1 = r1 + patchLayout.originRow;
             if (reservedGlobalIndices.has(globalCellIdx(gc1, gr1, grid.cols))) return false;
-            return grid.canStep(gc0, gr0, gc1, gr1, gridNavContext);
+            return grid.canStep(gc0, gr0, gc1, gr1, navTopology);
         },
     };
     return {

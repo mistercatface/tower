@@ -29,7 +29,7 @@ async function createWallDamageTestState() {
     grid.rebuildFixed(0, 0, 128, 128);
     const navigation = await createWorkerNavigation(grid);
     const state = { obstacleGrid: grid, sandbox: {}, worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {} }, navigation };
-    state.navigation.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
+    state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     return state;
 }
 function stampVoxel(grid, col, row, level = 1) {
@@ -64,7 +64,7 @@ describe("kinetic wall damage", () => {
         assert.equal(state.sandbox.gridWallDamage.session.pendingDamage.get("v:6,6"), 45);
         flushPendingWallDamage(state);
         assert.ok(state.sandbox.gridWallDamage.session.entries.get("v:6,6").hp < 100);
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
     it("resolveWallDamageTarget distinguishes voxel and rail segments", async () => {
         const state = await createWallDamageTestState();
@@ -75,7 +75,7 @@ describe("kinetic wall damage", () => {
         const railSeg = { gridCol: 4, gridRow: 4, gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
         assert.equal(resolveWallDamageTarget(grid, voxelSeg)?.kind, "voxel");
         assert.equal(resolveWallDamageTarget(grid, railSeg)?.kind, "rail");
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
     it("three max-power head-on hits destroy a voxel wall", async () => {
         const state = await createWallDamageTestState();
@@ -90,7 +90,7 @@ describe("kinetic wall damage", () => {
         }
         assert.ok(!cellIsStaticWall(grid, 3, 3));
         assert.equal(wallDamage.session.entries.size, 0);
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
     it("three max-power head-on hits destroy a rail wall", async () => {
         const state = await createWallDamageTestState();
@@ -104,7 +104,7 @@ describe("kinetic wall damage", () => {
             await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit, WALL_DAMAGE);
         }
         assert.ok(!isRailWallEdge(grid.edgeStore.get(5, 5, 0, grid.cols)));
-        terminateWorkerNavigation(state.navigation);
+        terminateWorkerNavigation(state.nav);
     });
     it("wallDamageKey round-trips voxel and rail targets", () => {
         assert.equal(wallDamageKey({ kind: "voxel", col: 1, row: 2 }), "v:1,2");
