@@ -1,5 +1,6 @@
 import { MinHeap, IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { CARDINAL_OFFSETS, OCTILE_OFFSETS, octileDistance } from "../Spatial/grid/GridUtils.js";
+import { FlatGridView } from "./FlatGridView.js";
 const STALE_F_EPSILON = 1e-4;
 function manhattanDistance(c0, r0, c1, r1) {
     return Math.abs(c0 - c1) + Math.abs(r0 - r1);
@@ -37,10 +38,8 @@ export class GridPathQuery {
     }
 }
 export class FlatGridSearch {
-    constructor({ navGraph, cols, rows, searchState, stepPenaltyLookup = null }) {
-        this.navGraph = navGraph;
-        this.cols = cols;
-        this.rows = rows;
+    constructor({ grid, navGraph, cols, rows, searchState, stepPenaltyLookup = null }) {
+        this.grid = grid || new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => (navGraph ? navGraph.canStep(c0, r0, c1, r1) : true) });
         this.searchState = searchState;
         this.stepPenaltyLookup = stepPenaltyLookup;
     }
@@ -58,9 +57,11 @@ export class FlatGridSearch {
     }
     runGrid(query, maxPathLen, policy) {
         const { start, target } = query;
-        const { cols, rows, navGraph } = this;
-        const startIdx = start.row * cols + start.col;
-        const targetIdx = target.row * cols + target.col;
+        const grid = this.grid;
+        const cols = grid.cols;
+        const rows = grid.rows;
+        const startIdx = grid.idx(start.col, start.row);
+        const targetIdx = grid.idx(target.col, target.row);
         if (startIdx === targetIdx) return [{ col: start.col, row: start.row }];
         const openSet = new IdxMinHeap();
         const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
@@ -83,9 +84,9 @@ export class FlatGridSearch {
             for (const offset of policy.offsets) {
                 const nc = currCol + offset.dc;
                 const nr = currRow + offset.dr;
-                if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
-                if (!navGraph.canStep(currCol, currRow, nc, nr)) continue;
-                const nIdx = nr * cols + nc;
+                if (!grid.contains(nc, nr)) continue;
+                if (!grid.canStep(currCol, currRow, nc, nr)) continue;
+                const nIdx = grid.idx(nc, nr);
                 const stepExtra = policy.stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCostForIdx(nIdx) : 0;
                 const tentativeG = currentG + (offset.cost ?? 1) + stepExtra;
                 if (visited[nIdx] === runId && tentativeG >= gScore[nIdx]) continue;

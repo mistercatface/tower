@@ -1,5 +1,6 @@
 import { FlatGridSearch, GridPathQuery } from "../../Pathfinding/AStar.js";
 import { SearchState } from "../../Pathfinding/SearchState.js";
+import { FlatGridView } from "../../Pathfinding/FlatGridView.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
 import { createCellIndexLayout, globalCellIdx, gridCellLayout, layoutAbsToLocalCell, layoutCellIndex, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
@@ -27,9 +28,8 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
         }
     const searchState = new SearchState(size);
     let reservedGlobalIndices = new Set();
-    const navGraph = {
-        cols: patchCols,
-        rows: patchRows,
+    const gridView = new FlatGridView(patchCols, patchRows, {
+        blocked: null,
         canStep(c0, r0, c1, r1) {
             const patchIdx = r1 * patchCols + c1;
             if (!walkable[patchIdx]) return false;
@@ -40,8 +40,8 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
             if (reservedGlobalIndices.has(globalCellIdx(gc1, gr1, grid.cols))) return false;
             return grid.canStep(gc0, gr0, gc1, gr1, navTopology);
         },
-    };
-    const gridSearch = new FlatGridSearch({ navGraph, cols: patchCols, rows: patchRows, searchState });
+    });
+    const gridSearch = new FlatGridSearch({ grid: gridView, searchState });
     return {
         globalLayout,
         patchLayout,

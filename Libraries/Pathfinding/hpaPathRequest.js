@@ -21,7 +21,11 @@ export class HpaReplanRequest {
     }
     toWorkerPayload() {
         const endpoints = this.resolveEndpoints();
-        return { ...endpoints, stepPenaltyKeys: this.stepPenalty?.keys ?? null, stepPenaltyCosts: this.stepPenalty?.costs ?? null };
+        return {
+            query: { start: { col: endpoints.startCol, row: endpoints.startRow }, target: { col: endpoints.targetCol, row: endpoints.targetRow } },
+            stepPenaltyKeys: this.stepPenalty?.keys ?? null,
+            stepPenaltyCosts: this.stepPenalty?.costs ?? null,
+        };
     }
     applyResult(navState, worker, result) {
         navState.topologyKey = this.topologyKey;

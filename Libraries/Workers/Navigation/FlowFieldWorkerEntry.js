@@ -1,62 +1,91 @@
 import { computeFlowField } from "../../Pathfinding/flowFieldBfs.js";
 import { rebuildFlowNeighborGrid } from "../../Pathfinding/flowFieldWindow.js";
-let GRID_WIDTH;
-let GRID_SIZE;
-let FlowToNavIdx;
-let NavBlocked;
-let OctilePredecessors;
-let NavCols;
-let NavRows;
-let NeighborGrid;
-let FlowPool;
-let bfsDistances;
-let bfsQueue;
-let localVectorMap;
-let navArenaBound = false;
-self.onmessage = function (e) {
-    const { type, data, slot, requestId, tx, ty, range } = e.data;
-    if (type === "init") {
-        GRID_WIDTH = data.GRID_WIDTH;
-        GRID_SIZE = data.GRID_SIZE;
-        FlowToNavIdx = new Int32Array(data.sabFlowToNav);
-        NeighborGrid = new Int32Array(data.sabNeighbors);
-        FlowPool = new Uint8Array(data.sabFlowPool);
-        bfsDistances = new Int32Array(GRID_SIZE);
-        localVectorMap = new Uint8Array(GRID_SIZE);
-        bfsQueue = new Int32Array(GRID_SIZE);
-        return;
+export class FlowBufferManager {
+    constructor() {
+        this.gridWidth = 0;
+        this.gridSize = 0;
+        this.flowToNavIdx = null;
+        this.neighborGrid = null;
+        this.flowPool = null;
+        this.bfsDistances = null;
+        this.localVectorMap = null;
+        this.bfsQueue = null;
     }
-    if (type === "bindFlowNavArena") {
-        NavBlocked = new Uint8Array(data.sabBlocked);
-        OctilePredecessors = new Int32Array(data.sabOctilePredecessors);
-        NavCols = data.navCols;
-        NavRows = data.navRows;
-        navArenaBound = true;
-        return;
+    init(data) {
+        this.gridWidth = data.GRID_WIDTH;
+        this.gridSize = data.GRID_SIZE;
+        this.flowToNavIdx = new Int32Array(data.sabFlowToNav);
+        this.neighborGrid = new Int32Array(data.sabNeighbors);
+        this.flowPool = new Uint8Array(data.sabFlowPool);
+        // Scratch allocations
+        this.bfsDistances = new Int32Array(this.gridSize);
+        this.localVectorMap = new Uint8Array(this.gridSize);
+        this.bfsQueue = new Int32Array(this.gridSize);
     }
-    if (type === "syncFlowWindow") {
-        if (!navArenaBound) throw new Error("syncFlowWindow requires bound flow nav arena");
-        rebuildFlowNeighborGrid(FlowToNavIdx, OctilePredecessors, NeighborGrid, GRID_SIZE, NavCols, NavRows);
-        self.postMessage({ type: "flowWindowDone" });
-        return;
+    getVectorMap(slot) {
+        const offset = slot * this.gridSize;
+        return this.flowPool.subarray(offset, offset + this.gridSize);
     }
-    if (type === "updateFlow") {
-        if (!navArenaBound) throw new Error("updateFlow requires bound flow nav arena");
-        const offset = slot * GRID_SIZE;
-        const vectorMap = FlowPool.subarray(offset, offset + GRID_SIZE);
-        computeFlowField(vectorMap, {
-            gridWidth: GRID_WIDTH,
-            gridSize: GRID_SIZE,
-            flowToNavIdx: FlowToNavIdx,
-            navBlocked: NavBlocked,
-            neighborGrid: NeighborGrid,
-            tx,
-            ty,
-            range,
-            bfsDistances,
-            bfsQueue,
-            localVectorMap,
-        });
-        self.postMessage({ type: "flowDone", slot, requestId });
+}
+export class FlowTopologyArena {
+    constructor() {
+        this.navBlocked = null;
+        this.octilePredecessors = null;
+        this.navCols = 0;
+        this.navRows = 0;
+        this.navArenaBound = false;
     }
-};
+    bind(data) {
+        this.navBlocked = new Uint8Array(data.sabBlocked);
+        this.octilePredecessors = new Int32Array(data.sabOctilePredecessors);
+        this.navCols = data.navCols;
+        this.navRows = data.navRows;
+        this.navArenaBound = true;
+    }
+    syncFlowWindow(buffers) {
+        if (!this.navArenaBound) throw new Error("syncFlowWindow requires bound flow nav arena");
+        rebuildFlowNeighborGrid(buffers.flowToNavIdx, this.octilePredecessors, buffers.neighborGrid, buffers.gridSize, this.navCols, this.navRows);
+    }
+}
+export class FlowFieldWorker {
+    constructor() {
+        this.buffers = new FlowBufferManager();
+        this.topology = new FlowTopologyArena();
+    }
+    onMessage(e) {
+        const { type, data, slot, requestId, tx, ty, range } = e.data;
+        if (type === "init") {
+            this.buffers.init(data);
+            return;
+        }
+        if (type === "bindFlowNavArena") {
+            this.topology.bind(data);
+            return;
+        }
+        if (type === "syncFlowWindow") {
+            this.topology.syncFlowWindow(this.buffers);
+            self.postMessage({ type: "flowWindowDone" });
+            return;
+        }
+        if (type === "updateFlow") {
+            if (!this.topology.navArenaBound) throw new Error("updateFlow requires bound flow nav arena");
+            const vectorMap = this.buffers.getVectorMap(slot);
+            computeFlowField(vectorMap, {
+                gridWidth: this.buffers.gridWidth,
+                gridSize: this.buffers.gridSize,
+                flowToNavIdx: this.buffers.flowToNavIdx,
+                navBlocked: this.topology.navBlocked,
+                neighborGrid: this.buffers.neighborGrid,
+                tx,
+                ty,
+                range,
+                bfsDistances: this.buffers.bfsDistances,
+                bfsQueue: this.buffers.bfsQueue,
+                localVectorMap: this.buffers.localVectorMap,
+            });
+            self.postMessage({ type: "flowDone", slot, requestId });
+        }
+    }
+}
+const worker = new FlowFieldWorker();
+self.onmessage = (e) => worker.onMessage(e);

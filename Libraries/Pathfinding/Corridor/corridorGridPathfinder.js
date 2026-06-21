@@ -1,5 +1,6 @@
 import { FlatGridSearch, GridPathQuery } from "../AStar.js";
 import { SearchState } from "../SearchState.js";
+import { FlatGridView } from "../FlatGridView.js";
 import { layoutAbsToLocalCell, layoutCellIndex, layoutCellRows, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
 export class CorridorGridPathfinder {
     constructor(layout) {
@@ -10,23 +11,15 @@ export class CorridorGridPathfinder {
         this.roomBlocked = new Uint8Array(size);
         this.searchState = new SearchState(size);
         this.reservedIndices = new Set();
-        this.navGraph = {
-            cols: this.cols,
-            rows: this.rows,
-            cellSize: 1,
-            minX: 0,
-            minY: 0,
-            grid: this.roomBlocked,
-            worldToGrid: (x, y) => ({ col: x, row: y }),
-            gridToWorld: (col, row) => ({ x: col, y: row }),
-            isBlocked: (col, row) => this.isBlocked(col, row),
+        this.grid = new FlatGridView(this.cols, this.rows, {
+            blocked: this.roomBlocked,
             canStep: (c0, r0, c1, r1) => {
                 if (c0 === c1 && r0 === r1) return false;
                 if (c0 !== c1 && r0 !== r1) return false;
                 return !this.isBlocked(c1, r1);
             },
-        };
-        this.gridSearch = new FlatGridSearch({ navGraph: this.navGraph, cols: this.cols, rows: this.rows, searchState: this.searchState });
+        });
+        this.gridSearch = new FlatGridSearch({ grid: this.grid, searchState: this.searchState });
     }
     layoutIndex(col, row) {
         return layoutCellIndex(col, row, this.layout.originCol, this.layout.originRow, this.layout.strideCols);
@@ -37,20 +30,20 @@ export class CorridorGridPathfinder {
     isBlockedGlobal(col, row) {
         if (!layoutContainsAbsCell(this.layout, col, row)) return true;
         const local = this.globalToLocal(col, row);
-        const idx = local.row * this.cols + local.col;
+        const idx = this.grid.idx(local.col, local.row);
         if (this.roomBlocked[idx]) return true;
         return this.reservedIndices.has(this.layoutIndex(col, row));
     }
     isBlocked(col, row) {
-        if (col < 0 || row < 0 || col >= this.cols || row >= this.rows) return true;
-        const idx = row * this.cols + col;
+        if (!this.grid.contains(col, row)) return true;
+        const idx = this.grid.idx(col, row);
         if (this.roomBlocked[idx]) return true;
         const abs = layoutLocalToAbsCell(this.layout, col, row);
         return this.reservedIndices.has(this.layoutIndex(abs.col, abs.row));
     }
     setRoomBlocked(roomBlocked) {
         this.roomBlocked = roomBlocked;
-        this.navGraph.grid = roomBlocked;
+        this.grid.blocked = roomBlocked;
     }
     setReservedIndices(indices) {
         this.reservedIndices = indices;

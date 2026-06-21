@@ -1,44 +1,10 @@
 import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
-import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
+import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { FlowFieldWindow } from "./flowFieldWindow.js";
+import { FlowCacheManager } from "./flowCacheManager.js";
 const MAX_CACHE = 100;
 const FLOW_DONE = "flowDone";
 const FLOW_WINDOW_DONE = "flowWindowDone";
-class FlowFieldWorkerProtocol {
-    constructor(workerUrl, owner, initData) {
-        this.owner = owner;
-        this.host = createSabSlotWorkerHost(workerUrl, MAX_CACHE);
-        this.bindWorkerHandlers();
-        this.postInit(initData);
-    }
-    bindWorkerHandlers() {
-        this.host.worker.onmessage = (e) => this.owner._handleWorkerMessage(e.data);
-        this.host.worker.onerror = (err) => console.error("FlowFieldGrid error:", err.message);
-    }
-    postInit(initData) {
-        this.postMessage({ type: "init", data: initData });
-    }
-    postMessage(message) {
-        this.host.worker.postMessage(message);
-    }
-    postSlot(slot, payload) {
-        return this.host.post(slot, payload);
-    }
-    markReady(slot, requestId) {
-        this.host.markReady(slot, requestId);
-    }
-    isReady(slot) {
-        return this.host.isReady(slot);
-    }
-    invalidateSlots() {
-        this.host.invalidateSlots();
-    }
-    shutdown() {
-        this.invalidateSlots();
-        this.host.worker.onmessage = null;
-        this.host.worker.onerror = null;
-    }
-}
 export class FlowFieldGrid {
     constructor(cellSize, width, height, navGraph, workerUrl, hpaPathWorker = null) {
         this.window = new FlowFieldWindow(cellSize, width, height);
@@ -58,22 +24,16 @@ export class FlowFieldGrid {
         this.sabNeighbors = new SharedArrayBuffer(size * 8 * 4);
         this.neighborGrid = new Int32Array(this.sabNeighbors).fill(-1);
         this.sabFlowPool = new SharedArrayBuffer(size * MAX_CACHE);
-        this.cacheLookup = new Int32Array(size).fill(-1);
-        this.cacheCounter = 0;
+        this.cache = new FlowCacheManager(MAX_CACHE, this.window);
         this._topologyKey = "";
         this._windowReady = false;
         this._flowNavBound = false;
         this._flowNavBoundSize = 0;
         this._navBlockedView = null;
         if (!workerUrl) throw new Error("FlowFieldGrid requires an injected workerUrl");
-        this.protocol = new FlowFieldWorkerProtocol(workerUrl, this, {
-            GRID_WIDTH: this.cols,
-            GRID_SIZE: size,
-            sabFlowToNav: this.sabFlowToNav,
-            sabNeighbors: this.sabNeighbors,
-            sabFlowPool: this.sabFlowPool,
-        });
+        this.protocol = new PathfindingWorkerClient(workerUrl, MAX_CACHE, "FlowFieldGrid", (data) => this._handleWorkerMessage(data));
         this._workerHost = this.protocol.host;
+        this.protocol.postMessage({ type: "init", data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabFlowToNav: this.sabFlowToNav, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool } });
         this._syncWindowAliases();
     }
     _syncWindowAliases() {
@@ -92,6 +52,7 @@ export class FlowFieldGrid {
         this._topologyKey = this.window.topologyKey;
         this._windowReady = this.window.ready;
         this.cellBounds = this.window.cellBounds;
+        this.cache?.resize(this.cols, this.rows);
     }
     _handleWorkerMessage(data) {
         if (data.type === FLOW_DONE) {
@@ -109,9 +70,7 @@ export class FlowFieldGrid {
         this._syncWindowAliases();
     }
     invalidateFlowSlots() {
-        this.cacheLookup.fill(-1);
-        this.cacheCounter = 0;
-        this.protocol.invalidateSlots();
+        this.cache.invalidate(this.protocol);
     }
     _onFlowWindowDone() {
         this.window.markReady();
@@ -200,25 +159,8 @@ export class FlowFieldGrid {
         const size = this.cols * this.rows;
         return new Uint8Array(this.sabFlowPool, slot * size, size);
     }
-    allocateFlowSlot() {
-        if (this.cacheCounter >= MAX_CACHE) this.invalidateFlowSlots();
-        const slot = this.cacheCounter++;
-        return slot;
-    }
-    postFlowRequest(slot, tx, ty, range) {
-        this.protocol.postSlot(slot, { type: "updateFlow", tx, ty, range });
-    }
     ensureFlowRequest(targetX, targetY, range = 999999) {
-        if (!this.window.ready) return null;
-        const request = this.window.flowRequest(targetX, targetY, range);
-        if (!request) return null;
-        let slot = this.cacheLookup[request.targetIdx];
-        if (slot === -1) {
-            slot = this.allocateFlowSlot();
-            this.cacheLookup[request.targetIdx] = slot;
-            this.protocol.postSlot(slot, request.toWorkerPayload());
-        }
-        return slot;
+        return this.cache.getOrRequestSlot(targetX, targetY, range, this.protocol);
     }
     getReadyFlowField(targetX, targetY, range = 999999) {
         this.syncLocalTopology();

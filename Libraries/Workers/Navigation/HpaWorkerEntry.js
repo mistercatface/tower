@@ -1,5 +1,6 @@
 import { FlatAbstractGraphSearch, FlatGridSearch, GridPathQuery } from "../../Pathfinding/AStar.js";
 import { createNavStepPenaltyLookup } from "../../Pathfinding/navStepPenalty.js";
+import { FlatGridView } from "../../Pathfinding/FlatGridView.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/grid/navEdgePoolSab.js";
 import { stitchAbstractCellPath } from "../../Pathfinding/hpaStitch.js";
@@ -252,40 +253,28 @@ export class HpaRegionGraphManager {
         return this.writeRegionGraphToSab(gridFrame);
     }
 }
-export class HpaReplanPlanner {
-    constructor(buffers, topology, graph, searchState) {
-        this.buffers = buffers;
+export class HpaReplanContext {
+    constructor({ frame, topology, navView, graph, penaltyLookup, cellToRegion }) {
+        this.frame = frame;
         this.topology = topology;
+        this.navView = navView;
         this.graph = graph;
+        this.penaltyLookup = penaltyLookup;
+        this.cellToRegion = cellToRegion;
+        this.grid = new FlatGridView(frame.cols, frame.rows, { blocked: topology.blocked, canStep: (c0, r0, c1, r1) => navView.canStep(c0, r0, c1, r1) });
+    }
+}
+export class HpaReplanPlanner {
+    constructor(buffers, searchState) {
+        this.buffers = buffers;
         this.searchState = searchState;
     }
-    run(slot, data) {
-        const frame = this.topology.requireGridFrame();
-        const query = GridPathQuery.fromCells(data.startCol, data.startRow, data.targetCol, data.targetRow);
-        const gridSearch = this.createGridSearch(frame, data);
-        const baseGraph = this.createBaseGraph();
-        const prep = prepareHpaReplanPrep(frame.cols, this.cellToRegion(frame), baseGraph, query);
+    run(slot, context, data) {
+        const query = new GridPathQuery(data.query.start, data.query.target);
+        const gridSearch = new FlatGridSearch({ grid: context.grid, searchState: this.searchState, stepPenaltyLookup: context.penaltyLookup });
+        const prep = prepareHpaReplanPrep(context.frame.cols, context.cellToRegion, context.graph, query);
         if (prep.mode === "local") return this.writeLocalResult(slot, gridSearch, query);
-        return this.writeHpaResult(slot, gridSearch, baseGraph, prep, query);
-    }
-    createGridSearch(frame, data) {
-        const stepPenaltyLookup = data.stepPenaltyKeys?.length > 0 ? createNavStepPenaltyLookup(frame.cols, data.stepPenaltyKeys, data.stepPenaltyCosts) : null;
-        return new FlatGridSearch({ navGraph: this.topology.navView, cols: frame.cols, rows: frame.rows, searchState: this.searchState, stepPenaltyLookup });
-    }
-    cellToRegion(frame) {
-        return hpaCellToRegionView(this.buffers.sabCellToRegionIdx, frame.cols * frame.rows);
-    }
-    createBaseGraph() {
-        return new HpaAbstractGraph(
-            hpaPersistNodeColView(this.buffers.sabPersistGraphNodeCol, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
-            hpaPersistNodeRowView(this.buffers.sabPersistGraphNodeRow, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
-            hpaPersistEdgeOffsetsView(this.buffers.sabPersistGraphEdgeOffsets, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount + 1),
-            hpaPersistEdgeTargetsView(this.buffers.sabPersistGraphEdgeTargets, this.buffers.maxGraphEdges).subarray(0, this.graph.persistEdgeWrite),
-            hpaPersistEdgeCostsView(this.buffers.sabPersistGraphEdgeCosts, this.buffers.maxGraphEdges).subarray(0, this.graph.persistEdgeWrite),
-            this.graph.persistNodeCount,
-            this.graph.persistEdgeWrite,
-            this.graph.persistNodeIds,
-        );
+        return this.writeHpaResult(slot, gridSearch, context.graph, prep, query);
     }
     writeLocalResult(slot, gridSearch, query) {
         const path = gridSearch.local(query, HPA_LOCAL_MAX_LEN);
@@ -337,7 +326,21 @@ export class HpaPathfindingWorker {
         }
     }
     runReplan(slot, data) {
-        return new HpaReplanPlanner(this.buffers, this.topology, this.graph, this.searchState).run(slot, data);
+        const frame = this.topology.requireGridFrame();
+        const stepPenaltyLookup = data.stepPenaltyKeys?.length > 0 ? createNavStepPenaltyLookup(frame.cols, data.stepPenaltyKeys, data.stepPenaltyCosts) : null;
+        const cellToRegion = hpaCellToRegionView(this.buffers.sabCellToRegionIdx, frame.cols * frame.rows);
+        const baseGraph = new HpaAbstractGraph(
+            hpaPersistNodeColView(this.buffers.sabPersistGraphNodeCol, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
+            hpaPersistNodeRowView(this.buffers.sabPersistGraphNodeRow, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
+            hpaPersistEdgeOffsetsView(this.buffers.sabPersistGraphEdgeOffsets, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount + 1),
+            hpaPersistEdgeTargetsView(this.buffers.sabPersistGraphEdgeTargets, this.buffers.maxGraphEdges).subarray(0, this.graph.persistEdgeWrite),
+            hpaPersistEdgeCostsView(this.buffers.sabPersistGraphEdgeCosts, this.buffers.maxGraphEdges).subarray(0, this.graph.persistEdgeWrite),
+            this.graph.persistNodeCount,
+            this.graph.persistEdgeWrite,
+            this.graph.persistNodeIds,
+        );
+        const context = new HpaReplanContext({ frame, topology: this.topology.requireNavTopology(), navView: this.topology.navView, graph: baseGraph, penaltyLookup: stepPenaltyLookup, cellToRegion });
+        return new HpaReplanPlanner(this.buffers, this.searchState).run(slot, context, data);
     }
     onMessage(e) {
         const { type, slot, requestId } = e.data;

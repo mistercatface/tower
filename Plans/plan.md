@@ -12,68 +12,8 @@
 
 ## PATHFINDING
 
-Unify “cell bounds” handling around CellBounds. Pathfinding has several { startCol, endCol, startRow, endRow }-like flows, but some still pass startCol, endCol, startRow, endRow, cols, rows as loose scalars. navTopologySab.js is a clear candidate: buildOctileNeighborsFromTopologyRect() should probably take a CellBounds plus a grid/frame object.
+PR 1: Pathfinding Worker Protocol Cleanup. Extract a tiny pathfinding-only worker helper for the shared HPA/flow shape: module worker creation, postMessage, SabSlotWorkerHost slot posting/readiness, onmessage/onerror binding, invalidation, and shutdown. Keep HPA and flow message semantics domain-owned with small local message constants/factories, not a global worker framework. In the same pass, move HPA replan payloads from loose startCol/startRow/targetCol/targetRow fields to a serialized GridPathQuery, so the worker boundary matches the planner/search API.
 
-Use GridFrame more aggressively. There is already GridNavSnapshot.js with { minX, minY, cellSize, cols, rows, key }. A lot of pathfinding functions still pass cols, rows, minX, minY, cellSize separately. Anything that needs indexing plus world/grid conversion probably wants frame.
+PR 2: Grid/Search View Consolidation. Add a lightweight FlatGridView for index-first grid work: cols, rows, cellCount, idx(col,row), contains(col,row), cell(idx), and optional attached arrays like blocked, neighbors, or flowToNavIdx. Use it where it improves clarity in HPA local search setup, flow reachability/BFS setup, and patch/corridor routing, while keeping inner loops dense and allocation-light. Then introduce an HpaReplanContext that groups frame, topology view, graph view, penalty lookup, and cell-to-region view so HpaReplanPlanner stops manually assembling all those pieces.
 
-Make GridPathQuery the standard start/target object. We added it for HPA, but AStar.js, corridor pathfinding, and tests still use scalar startCol, startRow, targetCol, targetRow. Converting call sites gradually would remove a lot of coordinate noise.
-
-Introduce or extend a local grid layout object. GridUtils.js already has CellIndexLayout and patch layout helpers. Corridor code has its own { originCol, originRow, cols, rows } concept. Those should likely converge so corridor, rail maze, and patch-local searches use one layout API.
-
-Replace repeated { col, row } allocations in hot loops with index-first APIs. Some object creation is clarity-friendly, but A\* path reconstruction and region graph scans create lots of small cell objects. A good split is: internal hot loops use dense indices/views, public/planner boundaries use GridPathQuery/cell objects.
-
-Move flat A internals behind FlatGridSearch more fully.\* The wrapper exists now, but the old scalar functions still own most implementation. A later pass could make the flat functions thin compatibility exports and let the class own reconstruction, bounds checks, neighbor policy, and penalty lookup.
-
-Create a FlatGraphView/CSR graph object. FlatAbstractGraphSearch still receives nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount. That is screaming for one object representing the CSR graph, especially since HpaAbstractGraph already almost is that object.
-
-Consolidate region graph frame/bounds plumbing. hpaRegionGraph.js repeatedly destructures cols, rows, minX, minY, cellSize and passes blocked, frame, navGraph, cellToNode, nodesMap. A RegionGraphBuildContext could be a major clarity win.
-
-Reuse CellRect iteration helpers everywhere bounds are rectangular. Some code already uses forEachDenseCellInRect, but others manually loop rows/cols. Standardizing that would reduce off-by-one risk and make “inclusive cell bounds” consistent.
-
-Clean up corridor pathfinding separately. corridorGridPathfinder.js and corridorWalkGrid.js have visible unfinished/duplicated layout ideas, including a broken-looking createCorridorGridPathfinder(bounds) stub. That looks like an easy, isolated win after the HPA cleanup.
-
-Create a shared GridFrame/GridWindow concept instead of parallel flow/HPA layouts. HPA already has GridFrame; flow fields have centerX, centerY, offsetX, offsetY, cellSize, cols, rows. If existing GridFrame is origin-based only, add a centered-window variant to GridCoords.js rather than letting flow fields keep their own layout language.
-
-Give FlowFieldGrid the same protocol treatment as HpaPathWorker. It still wires \_workerHost.worker.onmessage, init payloads, bind messages, and window sync inline. A FlowFieldWorkerProtocol would mirror the HPA cleanup and reduce drift between the two worker styles.
-
-Extract FlowFieldWindow as an object. Right now the flow window is scattered across centerX/centerY, offsets, flowToNavIdx, \_windowReady, \_windowSyncPromise, and rebuildFlowToNavMap(). A window object could own recentering, world/grid conversion, target containment, nav mapping, and topology keying.
-
-Reuse GridCoords.js but extend it if needed. Flow sampling, FlowFieldGrid.worldToGrid(), gridToWorld(), getCellBounds(), and flowFieldWindow.rebuildFlowToNavIdx() all repeat centered-grid math. If current helpers are too scalar-heavy, add centered frame helpers that take a layout object.
-
-Promote flow target requests to a FlowFieldRequest. ensureFlowRequest(targetX, targetY, range) repeats the same world-to-grid, bounds check, target index, cache slot, and worker payload logic. This is similar to HpaReplanRequest, just smaller.
-
-Use CellBounds for topology bake rectangles. bakeNavTopology.js computes octCol0/octCol1/octRow0/octRow1 only to pass them into buildOctileNeighborsFromTopologyRect(). That function should probably take CellBounds, using existing CellRect helpers.
-
-Add a grid index/view object where arrays and dimensions travel together. flowToNavIdx + navBlocked + neighborGrid + cols/rows/navCols/navRows recur across flow window and BFS. A small view class could own idx(cell), cell(idx), contains(cell), and avoid repeating width math.
-
-Unify dense neighbor iteration. HPA uses forEachCardinalNeighbor / forEachDenseCellInRect; flow BFS manually decodes idx % gridWidth and walks neighborGrid. Some of that is performance-sensitive, but an object wrapper can keep hot loops flat while centralizing the index conventions.
-
-Audit object allocation boundaries, not every object. Keep objects at API/planner boundaries (GridPathQuery, FlowFieldRequest, CellBounds), but use Into/scratch patterns for hot sampling and path loops. Flow sampling currently returns fresh { x, y }; if it is hot, add sampleFlowDirectionInto(out, ...).
-
-Treat corridor/local patch grids as the same family. Corridor code has { originCol, originRow, cols, rows }, flow has centered local grids, HPA has origin frames. A shared “local cell layout” API in GridUtils.js would likely replace several almost-the-same coordinate transforms without inventing unrelated utilities.
-
-##
-
-Shared grid language pass. First PR should tighten the shared primitives without coupling HPA and flow fields directly: extend existing GridFrame, GridCoords, GridUtils, and CellRect APIs so callers can pass frame/layout/bounds objects instead of loose cols, rows, col, row, minX, minY, cellSize groups. This should cover origin-based nav frames, centered flow windows, local patch layouts, and dense cell iteration. The goal is one small shared vocabulary: frame/window, cell query, cell bounds, layout index.
-
-HPA cleanup pass. Second PR should apply that shared vocabulary to the HPA stack: AStar, hpaRegionGraph, hpaPathRequest, hpaReplanPrep, hpaStitch, and navTopologySab. Convert rectangular bake/rebuild calls to CellBounds, use GridFrame where world/grid conversion is needed, wrap CSR graph arrays in a graph view, and reduce scalar coordinate threading in region graph and abstract search. This is mostly consolidation after the request/protocol/planner backbone we already added.
-
-Flow-field parity pass. Third PR should give flow fields the same backbone treatment without forcing them into HPA classes. Extract a FlowFieldWindow for centered layout, recentering, world/grid conversion, target containment, nav mapping, and cache keys. Add a FlowFieldWorkerProtocol for init, bind, window sync, and slot ready handling. Add a FlowFieldRequest for target/range/cache-slot worker payloads. This makes flow fields maintainable on their own while reusing the shared grid primitives from pass 1.
-
-Hot-path and corridor pass. Fourth PR should clean up remaining drift: convert corridor/local patch grids to the shared layout API, replace manual rect loops with CellRect helpers where appropriate, and add Into/scratch variants for hot object creation spots like flow sampling or repeated path reconstruction. Keep compatibility exports for old flat search calls until callers are migrated, but make the object-oriented APIs the primary path. This pass is where we remove leftovers and make the new structure feel complete rather than layered on top.
-
-##
-
-PR 1: Flow parity without over-abstracting. Clean up flow fields first because that is where the current duplication/inline state is most visible. Extract FlowFieldWindow as the owner of centered frame, recentering, containment, world/grid conversion, flow-to-nav mapping, topology keying, and reachability helpers. Add FlowFieldRequest for target/range/cache-slot payload construction. If worker boilerplate still feels duplicated after that, extract only a small composition helper around SabSlotWorkerHost for slot posting, ready messages, invalidation, error/shutdown binding, and init posting. Do not generalize graph patching or window sync into a shared superclass.
-
-PR 2: HPA/search ownership pass. Keep HPA domain-specific, but make the object APIs own more of the work. FlatGridSearch should become the main path for grid search, with scalar A\* exports reduced to compatibility wrappers. Add a FlatGraphView/CSR object so abstract graph search receives one coherent graph instead of parallel arrays. Convert HPA patch/topology rebuild plumbing to pass CellBounds, GridFrame, GridPathQuery, and graph views directly where possible. This leaves HPA easier to debug because the big concepts are named objects, while hot loops can stay flat and index-based inside the search implementations.
-
-PR 3: Layout/corridor consolidation and leftovers. Use the shared vocabulary at the remaining edges: corridor routing, rail-maze patch routing, local patch searches, and repeated rectangular loops. Converge { originCol, originRow, cols, rows } concepts into CellIndexLayout or a slightly extended layout API, use CellRect helpers for rectangular bounds where it improves clarity, and keep allocation-heavy { col, row } creation at public/planner boundaries rather than inside BFS/A\* internals. This is the cleanup pass that makes the system feel finished: flow, HPA, flat search, corridor, and patch-local code all speak the same frame/query/bounds/layout language without adding a heavyweight architecture.
-
-##
-
-Yes, I’d split the remaining cleanup into two passes. The final “layout/corridor” pass is one concern, but removing compatibility wrappers cleanly is a second concern because it touches tests, corridor, rail maze, and any direct scalar A\* callers.
-
-Pass 3: Layout and local-grid convergence. Convert corridor routing, rail-maze patch routing, and other local patch searches to the shared layout/query vocabulary first. CorridorGridPathfinder should take a CellIndexLayout or local layout object instead of owning its own { originCol, originRow, cols, rows } dialect, and rail maze should use the same API. Move caller-facing path requests to GridPathQuery, while keeping internal search index-first. Use CellRect helpers for rectangular room/patch loops where they improve clarity. End state: corridor, rail, HPA, and flat grid search all speak the same layout/query language.
-
-Pass 4: Remove scalar compatibility and obsolete paths. Once the callers are migrated, delete the pass-through scalar A\* exports or reduce them only to test-local helpers if needed, update tests to exercise FlatGridSearch/FlatAbstractGraphSearch directly, and remove stale naming or duplicated local/global conversion helpers. This is also where I’d clean up any leftover facade fields that only exist for old call sites, as long as external gameplay callers no longer use them. End state: object APIs are the real API, hot loops stay flat internally, and there are no legacy wrappers hanging around “just in case.”
+PR 3: Flow Worker Ownership Pass. Finish flow-specific cleanup without merging it into HPA classes. Move flow target-to-cache-slot behavior out of FlowFieldGrid into a small flow request/cache object that owns target conversion, slot lookup, cache invalidation, and worker payload creation. Refactor FlowFieldWorkerEntry.js from module-level mutable state into worker-side manager classes, mirroring the clarity of HPA’s worker entry but staying flow-specific. End state: FlowFieldGrid is mostly a facade over FlowFieldWindow, flow cache/request ownership, and the flow worker protocol.

@@ -1,4 +1,4 @@
-import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
+import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
@@ -26,48 +26,6 @@ const HPA_DONE = "hpaDone";
 const SYNC_NAV_DONE = "syncNavDone";
 const GRAPH_PATCH_DONE = "graphPatchDone";
 const GRAPH_PATCH_ERROR = "graphPatchError";
-class HpaWorkerProtocol {
-    constructor(workerUrl, owner) {
-        this.workerUrl = workerUrl;
-        this.owner = owner;
-        this.host = createSabSlotWorkerHost(workerUrl, MAX_HPA_REPLAN_SLOTS);
-        this.bindWorkerHandlers();
-    }
-    bindWorkerHandlers() {
-        this.host.worker.onmessage = (e) => this.owner._handleWorkerMessage(e.data);
-        this.host.worker.onerror = (err) => console.error("HpaPathWorker error:", err.message);
-    }
-    postInit() {
-        this.postMessage({ type: "init", data: this.owner._workerInitData() });
-    }
-    postMessage(message) {
-        this.host.worker.postMessage(message);
-    }
-    postSlot(slot, payload) {
-        return this.host.post(slot, payload);
-    }
-    waitForSlot(slot, requestId) {
-        return this.host.waitForSlot(slot, requestId);
-    }
-    markReady(slot, requestId) {
-        this.host.markReady(slot, requestId);
-    }
-    invalidateSlots() {
-        this.host.invalidateSlots();
-    }
-    recycleWorker() {
-        try {
-            this.host.worker.terminate();
-        } catch (e) {}
-        this.host.worker = new Worker(this.workerUrl, { type: "module" });
-        this.bindWorkerHandlers();
-    }
-    shutdown() {
-        this.invalidateSlots();
-        this.host.worker.onmessage = null;
-        this.host.worker.onerror = null;
-    }
-}
 /**
  * Multi-slot HPA worker — persistent nav topology + abstract graph on worker thread.
  */
@@ -114,9 +72,9 @@ export class HpaPathWorker {
         for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
         /** @type {(object | null)[]} */
         this._replanResults = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
-        this.protocol = new HpaWorkerProtocol(workerUrl, this);
+        this.protocol = new PathfindingWorkerClient(workerUrl, MAX_HPA_REPLAN_SLOTS, "HpaPathWorker", (data) => this._handleWorkerMessage(data));
         this.host = this.protocol.host;
-        this.protocol.postInit();
+        this.protocol.postMessage({ type: "init", data: this._workerInitData() });
     }
     _workerInitData() {
         return {
@@ -457,7 +415,7 @@ export class HpaPathWorker {
             this._graphPatchResolve();
             this._graphPatchResolve = null;
         }
-        this.protocol.postInit();
+        this.protocol.postMessage({ type: "init", data: this._workerInitData() });
     }
     async _dispatchAndWait(slot, type, extra) {
         const requestId = this.protocol.postSlot(slot, { type, ...extra });

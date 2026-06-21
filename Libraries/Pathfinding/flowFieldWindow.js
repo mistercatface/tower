@@ -9,6 +9,7 @@ import {
 } from "../Spatial/grid/GridCoords.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
+import { FlatGridView } from "./FlatGridView.js";
 export class FlowFieldWindow {
     constructor(cellSize, width, height) {
         this.frame = createCenteredGridFrame(cellSize, width, height);
@@ -71,13 +72,13 @@ export class FlowFieldWindow {
     }
     checkReachability(flowToNavIdx, navBlockedView, neighborGrid, startX, startY, targetX, targetY) {
         if (!this.ready || !navBlockedView) return false;
+        const grid = new FlatGridView(this.cols, this.rows, { blocked: null, neighbors: neighborGrid, flowToNavIdx });
         const start = this.worldToGrid(startX, startY);
         const target = this.worldToGrid(targetX, targetY);
-        if (start.col < 0 || start.col >= this.cols || start.row < 0 || start.row >= this.rows) return false;
-        if (target.col < 0 || target.col >= this.cols || target.row < 0 || target.row >= this.rows) return false;
-        const startIdx = start.row * this.cols + start.col;
-        const targetIdx = target.row * this.cols + target.col;
-        return gridReachabilityBfs(startIdx, targetIdx, (idx) => this.isFlowCellBlocked(flowToNavIdx, navBlockedView, idx), neighborGrid);
+        if (!grid.contains(start.col, start.row) || !grid.contains(target.col, target.row)) return false;
+        const startIdx = grid.idx(start.col, start.row);
+        const targetIdx = grid.idx(target.col, target.row);
+        return gridReachabilityBfs(grid, startIdx, targetIdx, (idx) => this.isFlowCellBlocked(flowToNavIdx, navBlockedView, idx));
     }
 }
 export class FlowFieldRequest {

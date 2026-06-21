@@ -1,8 +1,9 @@
 import { bfsTypedIndices } from "../DataStructures/gridBfs.js";
-export function gridReachabilityBfs(startIdx, targetIdx, isBlocked, neighborGrid, gridWidth) {
+export function gridReachabilityBfs(grid, startIdx, targetIdx, isBlocked) {
     if (startIdx === targetIdx) return !isBlocked(startIdx);
     if (isBlocked(startIdx) || isBlocked(targetIdx)) return false;
-    const gridSize = neighborGrid.length >> 3;
+    const neighborGrid = grid.neighbors;
+    const gridSize = grid.cellCount;
     return (
         bfsTypedIndices(startIdx, gridSize, (currIdx, visited, enqueue) => {
             if (currIdx === targetIdx) return true;
