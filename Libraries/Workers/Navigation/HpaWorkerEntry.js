@@ -252,6 +252,70 @@ export class HpaRegionGraphManager {
         return this.writeRegionGraphToSab(gridFrame);
     }
 }
+export class HpaReplanPlanner {
+    constructor(buffers, topology, graph, searchState) {
+        this.buffers = buffers;
+        this.topology = topology;
+        this.graph = graph;
+        this.searchState = searchState;
+    }
+    run(slot, data) {
+        const frame = this.topology.requireGridFrame();
+        const query = GridPathQuery.fromCells(data.startCol, data.startRow, data.targetCol, data.targetRow);
+        const gridSearch = this.createGridSearch(frame, data);
+        const baseGraph = this.createBaseGraph();
+        const prep = prepareHpaReplanPrep(frame.cols, this.cellToRegion(frame), baseGraph, query);
+        if (prep.mode === "local") return this.writeLocalResult(slot, gridSearch, query);
+        return this.writeHpaResult(slot, gridSearch, baseGraph, prep, query);
+    }
+    createGridSearch(frame, data) {
+        const stepPenaltyLookup = data.stepPenaltyKeys?.length > 0 ? createNavStepPenaltyLookup(frame.cols, data.stepPenaltyKeys, data.stepPenaltyCosts) : null;
+        return new FlatGridSearch({ navGraph: this.topology.navView, cols: frame.cols, rows: frame.rows, searchState: this.searchState, stepPenaltyLookup });
+    }
+    cellToRegion(frame) {
+        return hpaCellToRegionView(this.buffers.sabCellToRegionIdx, frame.cols * frame.rows);
+    }
+    createBaseGraph() {
+        return new HpaAbstractGraph(
+            hpaPersistNodeColView(this.buffers.sabPersistGraphNodeCol, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
+            hpaPersistNodeRowView(this.buffers.sabPersistGraphNodeRow, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
+            hpaPersistEdgeOffsetsView(this.buffers.sabPersistGraphEdgeOffsets, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount + 1),
+            hpaPersistEdgeTargetsView(this.buffers.sabPersistGraphEdgeTargets, this.buffers.maxGraphEdges).subarray(0, this.graph.persistEdgeWrite),
+            hpaPersistEdgeCostsView(this.buffers.sabPersistGraphEdgeCosts, this.buffers.maxGraphEdges).subarray(0, this.graph.persistEdgeWrite),
+            this.graph.persistNodeCount,
+            this.graph.persistEdgeWrite,
+            this.graph.persistNodeIds,
+        );
+    }
+    writeLocalResult(slot, gridSearch, query) {
+        const path = gridSearch.local(query, HPA_LOCAL_MAX_LEN);
+        this.buffers.writeCellPath(slot, path);
+        this.buffers.writeAbstractPath(slot, null);
+        return this.buffers.buildReplanResult(slot);
+    }
+    writeHpaResult(slot, gridSearch, baseGraph, prep, query) {
+        const { extendedGraph, startTemp, targetTemp, tempLegs } = baseGraph.buildExtended(query, this.buffers.maxCellsPerChunk, (legQuery) => {
+            const path = gridSearch.local(legQuery, prep.regionConnectMaxLen);
+            return path ? { cost: path.length, path } : { cost: 0 };
+        });
+        const abstractSearch = new FlatAbstractGraphSearch({ ...extendedGraph, searchState: this.searchState });
+        const abstractPath = abstractSearch.run(startTemp, targetTemp);
+        this.buffers.writeAbstractPath(slot, abstractPath);
+        if (!abstractPath) {
+            this.buffers.writeCellPath(slot, null);
+            return this.buffers.buildReplanResult(slot);
+        }
+        const cellPath = stitchAbstractCellPath(abstractPath, prep, tempLegs, (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx));
+        this.buffers.writeCellPath(slot, cellPath);
+        return this.buffers.buildReplanResult(slot);
+    }
+    resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx) {
+        return gridSearch.local(
+            new GridPathQuery({ col: baseGraph.nodeCol[aIdx], row: baseGraph.nodeRow[aIdx] }, { col: baseGraph.nodeCol[bIdx], row: baseGraph.nodeRow[bIdx] }),
+            prep.regionConnectMaxLen,
+        );
+    }
+}
 export class HpaPathfindingWorker {
     constructor() {
         this.buffers = new HpaBufferManager();
@@ -273,47 +337,7 @@ export class HpaPathfindingWorker {
         }
     }
     runReplan(slot, data) {
-        const query = GridPathQuery.fromCells(data.startCol, data.startRow, data.targetCol, data.targetRow);
-        const { cols, rows } = this.topology.requireGridFrame();
-        const stepPenaltyLookup = data.stepPenaltyKeys?.length > 0 ? createNavStepPenaltyLookup(cols, data.stepPenaltyKeys, data.stepPenaltyCosts) : null;
-        const gridSearch = new FlatGridSearch({ navGraph: this.topology.navView, cols, rows, searchState: this.searchState, stepPenaltyLookup });
-        const cellToRegion = hpaCellToRegionView(this.buffers.sabCellToRegionIdx, cols * rows);
-        const baseGraph = new HpaAbstractGraph(
-            hpaPersistNodeColView(this.buffers.sabPersistGraphNodeCol, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
-            hpaPersistNodeRowView(this.buffers.sabPersistGraphNodeRow, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount),
-            hpaPersistEdgeOffsetsView(this.buffers.sabPersistGraphEdgeOffsets, this.buffers.maxGraphNodes).subarray(0, this.graph.persistNodeCount + 1),
-            hpaPersistEdgeTargetsView(this.buffers.sabPersistGraphEdgeTargets, this.buffers.maxGraphEdges).subarray(0, this.graph.persistEdgeWrite),
-            hpaPersistEdgeCostsView(this.buffers.sabPersistGraphEdgeCosts, this.buffers.maxGraphEdges).subarray(0, this.graph.persistEdgeWrite),
-            this.graph.persistNodeCount,
-            this.graph.persistEdgeWrite,
-            this.graph.persistNodeIds,
-        );
-        const prep = prepareHpaReplanPrep(cols, cellToRegion, baseGraph, query);
-        if (prep.mode === "local") {
-            const path = gridSearch.local(query, HPA_LOCAL_MAX_LEN);
-            this.buffers.writeCellPath(slot, path);
-            this.buffers.writeAbstractPath(slot, null);
-            return this.buffers.buildReplanResult(slot);
-        }
-        const { extendedGraph, startTemp, targetTemp, tempLegs } = baseGraph.buildExtended(query, this.buffers.maxCellsPerChunk, (legQuery) => {
-            const path = gridSearch.local(legQuery, prep.regionConnectMaxLen);
-            return path ? { cost: path.length, path } : { cost: 0 };
-        });
-        const abstractSearch = new FlatAbstractGraphSearch({ ...extendedGraph, searchState: this.searchState });
-        const abstractPath = abstractSearch.run(startTemp, targetTemp);
-        this.buffers.writeAbstractPath(slot, abstractPath);
-        if (!abstractPath) {
-            this.buffers.writeCellPath(slot, null);
-            return this.buffers.buildReplanResult(slot);
-        }
-        const resolveRegionLeg = (aIdx, bIdx) =>
-            gridSearch.local(
-                new GridPathQuery({ col: baseGraph.nodeCol[aIdx], row: baseGraph.nodeRow[aIdx] }, { col: baseGraph.nodeCol[bIdx], row: baseGraph.nodeRow[bIdx] }),
-                prep.regionConnectMaxLen,
-            );
-        const cellPath = stitchAbstractCellPath(abstractPath, prep, tempLegs, resolveRegionLeg);
-        this.buffers.writeCellPath(slot, cellPath);
-        return this.buffers.buildReplanResult(slot);
+        return new HpaReplanPlanner(this.buffers, this.topology, this.graph, this.searchState).run(slot, data);
     }
     onMessage(e) {
         const { type, slot, requestId } = e.data;
