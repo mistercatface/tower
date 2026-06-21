@@ -1,8 +1,8 @@
-import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
-import { createSnakeDecisionBlackboard, perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "../../Game/snake/snakeIntent.js";
-import { createSnakeIntentMemory } from "../../Game/snake/snakeIntentMemory.js";
-import { createAgentIntent, createExploreIntentState, createFleeIntentState, createSeekIntentState } from "./createAgentIntent.js";
+import { createAgentIntent, createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/createAgentIntent.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
+import { getSnakeGameConfig } from "./snakeGameConfig.js";
+import { createSnakeDecisionBlackboard, perceiveSnakeIntentWorld, pickFleeCell, pickSnakeIntentPolicy } from "./snakeIntent.js";
+import { createSnakeIntentMemory } from "./snakeIntentMemory.js";
 export function createSnakeForageIntent({
     brain,
     sync,

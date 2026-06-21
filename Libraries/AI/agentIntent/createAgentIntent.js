@@ -234,26 +234,6 @@ export function createAgentIntent({
             lastModeChangeTick = 0;
             if (clearLocomotion) locomotion.clearDestination(agent, state);
         },
-        holdSeek(agent, state, target) {
-            if (mode === seekMode && targetId === target.id && locomotion.hasMoveTarget(agent, state)) return;
-            mode = seekMode;
-            targetId = target.id;
-            lastTransitionReason = "mode_seek";
-            locomotion.setSeek(agent, state, target);
-        },
-        holdExplore(agent, state) {
-            const grid = state.obstacleGrid;
-            const { col, row } = grid.worldToGrid(agent.x, agent.y);
-            brain.stampArrival(col, row);
-            const cell = resolveExploreCell(agent, state, brain.spatial, rng);
-            if (!cell) return;
-            const dest = locomotion.getDestination();
-            if (mode === exploreMode && dest && dest.col === cell.col && dest.row === cell.row && locomotion.hasMoveTarget(agent, state)) return;
-            mode = exploreMode;
-            targetId = null;
-            lastTransitionReason = "mode_explore";
-            locomotion.setExplore(agent, state, cell);
-        },
         getMode() {
             return mode;
         },

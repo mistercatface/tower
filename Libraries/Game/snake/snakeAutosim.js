@@ -3,7 +3,7 @@ import { linkedChainOccupiedCellIndices, growChainSegment } from "../../Sandbox/
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createBrain } from "../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../AI/brain/syncSpatialBrain.js";
-import { createSnakeForageIntent } from "../../AI/agentIntent/createSnakeForageIntent.js";
+import { createSnakeForageIntent } from "./createSnakeForageIntent.js";
 import { formatSnakeFsmDebug } from "./snakeFsmDebugOverlays.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius, applySnakeSegmentGameplay } from "./snakeGameConfig.js";

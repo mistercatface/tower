@@ -13,7 +13,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { createSnakeForageIntent } from "../Libraries/AI/agentIntent/createSnakeForageIntent.js";
+import { createSnakeForageIntent } from "../Libraries/Game/snake/createSnakeForageIntent.js";
 import { createSnakeAutosim, createSnakeBrain } from "../Libraries/Game/snake/snakeAutosim.js";
 import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
