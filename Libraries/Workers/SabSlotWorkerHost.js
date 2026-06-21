@@ -10,9 +10,14 @@ export function createSabSlotWorkerHost(workerUrl, slotCount) {
     const slotReadyId = new Int32Array(slotCount);
     /** @type {Map<number, { want: number, resolve: () => void }>} */
     const waiters = new Map();
-    const worker = new Worker(workerUrl, { type: "module" });
+    let worker = new Worker(workerUrl, { type: "module" });
     return {
-        worker,
+        get worker() {
+            return worker;
+        },
+        set worker(nextWorker) {
+            worker = nextWorker;
+        },
         slotRequestId,
         slotReadyId,
         markReady(slot, requestId) {

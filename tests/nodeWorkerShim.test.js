@@ -21,6 +21,20 @@ describe("node worker shim", () => {
         hpa.shutdown();
         await hpa.host.worker.terminate();
     });
+    it("keeps posting to the active worker after recycle", async () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 512, 512);
+        const hpa = new HpaPathWorker(HPA_WORKER_URL, grid);
+        const topology = NavTopology.bindWorker(grid, hpa);
+        hpa.setTopologySyncTarget(topology);
+        await hpa.scheduleNavTopologySyncAwait(grid, null);
+        hpa._recycleWorkerThread();
+        await hpa.scheduleNavTopologySyncAwait(grid, null);
+        assert.ok(topology.isReady());
+        assert.ok(topology.topology);
+        hpa.shutdown();
+        await hpa.host.worker.terminate();
+    });
     it("createWorkerNavigation wires NavRuntime to worker", async () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 256, 256);
