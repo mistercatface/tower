@@ -9,7 +9,9 @@ export function formatSnakeFsmDebug(snapshot) {
     const memoryText = memoryKind ? ` | mem=${memoryKind}:${memory[memoryKind].ageTicks}/${memory[memoryKind].ttlTicks}` : "";
     const hunger = snapshot.decision?.hungerState;
     const hungerText = hunger ? ` | ${hunger.state}:${hunger.foodFraction.toFixed(2)}` : "";
-    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${memoryText}${hungerText}`;
+    const threat = snapshot.decision?.threatState;
+    const threatText = threat ? ` | threat=${threat.severity.toFixed(2)}${threat.lethal ? "!" : ""}` : "";
+    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${memoryText}${hungerText}${threatText}`;
 }
 export function appendSnakeFsmDebugOverlayCommands(out, state, seeker, snapshot) {
     const grid = state.obstacleGrid;

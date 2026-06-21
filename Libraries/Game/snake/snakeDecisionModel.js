@@ -7,6 +7,13 @@ export function deriveSnakeHungerState(foodFraction) {
     else if (foodFraction < desperateBelow) state = "desperate";
     return { foodFraction, state, satisfied: state === "satisfied", hungry: state === "hungry", desperate: state === "desperate" };
 }
+export function deriveSnakeThreatState(visibleThreat, threatDist) {
+    if (!visibleThreat || threatDist == null) return null;
+    const config = getSnakeGameConfig();
+    const fleeRange = config.fleeRange ?? config.visionCone.range;
+    const severity = Math.max(0, Math.min(1, (fleeRange - threatDist) / fleeRange));
+    return { dist: threatDist, severity, lethal: threatDist <= config.lethalThreatRange };
+}
 function pushTargetEvents(events, kind, visibleTarget, rememberedTarget) {
     const upper = kind.toUpperCase();
     if (visibleTarget) {
@@ -29,6 +36,7 @@ export function createSnakeDecisionBlackboard({
     committedTarget = null,
     routeStatus = null,
     hungerState = null,
+    threatState = null,
     safetyState = null,
     recentFailures = [],
 }) {
@@ -52,6 +60,7 @@ export function createSnakeDecisionBlackboard({
             committedTarget,
             routeStatus,
             hungerState,
+            threatState,
             safetyState,
             recentFailures,
         },
@@ -67,8 +76,14 @@ function intentPolicy(mode, targetId, reason = null) {
     if (reason) policy.reason = reason;
     return policy;
 }
-function scoreFlee(blackboard, weights) {
-    return blackboard.facts.known.threat ? weights.flee : -Infinity;
+function scoreFlee(blackboard, weights, pressure) {
+    if (!blackboard.facts.known.threat) return -Infinity;
+    const threat = blackboard.facts.threatState;
+    if (!threat || threat.lethal) return Infinity;
+    const hunger = blackboard.facts.hungerState;
+    const riskTolerance = hunger ? (pressure.riskTolerance[hunger.state] ?? 0) : 0;
+    if (riskTolerance <= 0) return Infinity;
+    return weights.flee * threat.severity * (1 - riskTolerance);
 }
 function scorePrey(blackboard, weights, pressure) {
     if (!blackboard.facts.known.prey) return -Infinity;
@@ -91,7 +106,7 @@ function scoreExplore(blackboard, weights) {
 }
 export function scoreSnakeIntentCandidates(blackboard, weights = getSnakeGameConfig().decisionWeights, pressure = getSnakeGameConfig().decisionPressure) {
     return {
-        flee: scoreFlee(blackboard, weights),
+        flee: scoreFlee(blackboard, weights, pressure),
         seek_prey: scorePrey(blackboard, weights, pressure),
         seek_food: scoreFood(blackboard, weights, pressure),
         explore: scoreExplore(blackboard, weights),
@@ -126,12 +141,14 @@ export function buildSnakeDecisionContext({
     pickPolicy = pickSnakeIntentPolicy,
 }) {
     const hungerState = deriveSnakeHungerState(foodFraction);
-    const blackboard = createSnakeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, safetyState, recentFailures });
+    const threatState = deriveSnakeThreatState(visibleWorld.threat, visibleWorld.threatDist);
+    const blackboard = createSnakeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures });
     const candidateScores = scoreSnakeIntentCandidates(blackboard);
     const chosenIntent = pickPolicy(blackboard, candidateScores);
     const decisionSnapshot = {
         events: blackboard.events,
         hungerState,
+        threatState,
         routeStatus,
         committedTarget,
         candidateScores,

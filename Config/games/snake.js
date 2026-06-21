@@ -64,6 +64,8 @@ export const SNAKE_GAME_DEFAULTS = {
     fleeTiles: 8,
     /** Max world distance to react to a larger snake; null uses visionCone.range. */
     fleeRange: null,
+    /** Within this world distance a larger threat always forces flee, regardless of hunger. */
+    lethalThreatRange: 48,
     /** Short-term intent memory after LOS loss, in FSM ticks. */
     intentMemory: { threatTtlTicks: 45, preyTtlTicks: 90, foodTtlTicks: 180 },
     /** Milliseconds without food before a snake sheds one tail segment and shrinks. */
@@ -81,7 +83,12 @@ export const SNAKE_GAME_DEFAULTS = {
      * preyDesperationBonus pushes a desperate snake to hunt smaller snakes when
      * food is unknown or its route recently failed.
      */
-    decisionPressure: { foodHungerBonus: 120, preyDesperationBonus: 250 },
+    decisionPressure: {
+        foodHungerBonus: 120,
+        preyDesperationBonus: 250,
+        /** How much a snake discounts a (non-lethal) threat by hunger when scoring flee. 0 = always flee. */
+        riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 },
+    },
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
     showSnakeFsmDebug: true,
 };

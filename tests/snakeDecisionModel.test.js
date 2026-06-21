@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { SNAKE_HUNGRY_EXPLORE_TINT, SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT, resolveSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
-import { buildSnakeDecisionContext, createSnakeDecisionBlackboard, deriveSnakeHungerState, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
-function world({ threat = null, prey = null, food = null } = {}) {
-    return { threat, prey, food };
+import { buildSnakeDecisionContext, createSnakeDecisionBlackboard, deriveSnakeHungerState, deriveSnakeThreatState, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
+function world({ threat = null, prey = null, food = null, threatDist = null } = {}) {
+    return { threat, prey, food, threatDist };
 }
 function snake(id, extra = {}) {
     return { id, x: 0, y: 0, isDead: false, ...extra };
@@ -97,6 +97,23 @@ describe("satisfied snakes ignore prey (PR3)", () => {
         assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
     });
 });
+describe("threat severity facts (PR6)", () => {
+    it("derives severity from distance and flags lethal range", () => {
+        applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 48 });
+        assert.equal(deriveSnakeThreatState(null, 10), null);
+        assert.equal(deriveSnakeThreatState(snake(1), null), null);
+        assert.equal(deriveSnakeThreatState(snake(1), 64).severity, 0.5);
+        assert.equal(deriveSnakeThreatState(snake(1), 128).severity, 0);
+        assert.equal(deriveSnakeThreatState(snake(1), 30).lethal, true);
+        assert.equal(deriveSnakeThreatState(snake(1), 64).lethal, false);
+    });
+    it("surfaces threatState on the snapshot without changing the chosen mode", () => {
+        applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 48, decisionWeights: { flee: 400, prey: 300, food: 200, explore: 100 } });
+        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2), threatDist: 64 }));
+        assert.equal(decisionSnapshot.threatState.severity, 0.5);
+        assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
+    });
+});
 function applyScoringConfig() {
     applySnakeGameConfig({
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
@@ -130,6 +147,42 @@ describe("hunger pressure and route-awareness (PR5)", () => {
         applyScoringConfig();
         const { decisionSnapshot } = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.5, routeStatus: { routeFailed: false } });
         assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
+    });
+});
+function applyRiskConfig() {
+    applySnakeGameConfig({
+        fleeRange: 128,
+        lethalThreatRange: 48,
+        hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
+        decisionWeights: { flee: 400, prey: 300, food: 200, explore: 100 },
+        decisionPressure: { foodHungerBonus: 120, preyDesperationBonus: 250, riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 } },
+    });
+}
+describe("hunger overrides flee for food (PR7)", () => {
+    it("a well-fed snake flees a mid-range threat instead of grabbing food", () => {
+        applyRiskConfig();
+        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2), threatDist: 80 }), { foodFraction: 1 });
+        assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
+    });
+    it("a hungry snake risks a mid-range threat to reach food", () => {
+        applyRiskConfig();
+        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2), threatDist: 80 }), { foodFraction: 0.5 });
+        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
+    });
+    it("a desperate snake risks the threat even harder", () => {
+        applyRiskConfig();
+        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2), threatDist: 80 }), { foodFraction: 0.1 });
+        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
+    });
+    it("a lethal-range threat always forces flee, even when desperate", () => {
+        applyRiskConfig();
+        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2), threatDist: 30 }), { foodFraction: 0.1 });
+        assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
+    });
+    it("with no hunger info the snake still hard-flees any visible threat", () => {
+        applyRiskConfig();
+        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2), threatDist: 80 }));
+        assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
     });
 });
 describe("hunger appearance is a condition (PR4)", () => {

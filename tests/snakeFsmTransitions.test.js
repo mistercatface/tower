@@ -206,7 +206,7 @@ describe("snake FSM transitions", () => {
         const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
-        threat.head.x = hunter.head.x + 80;
+        threat.head.x = hunter.head.x + 30;
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "flee");
         assertChainTint(hunter, SNAKE_INTENT_MODE_TINT.flee);
