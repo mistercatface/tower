@@ -3,8 +3,21 @@ import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../../../Co
 import { mergePartial } from "../../Config/mergePartial.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
 let activeSnakeGameConfig = SNAKE_GAME_DEFAULTS;
+function mergeDecisionPressure(overrides) {
+    if (!overrides) return SNAKE_GAME_DEFAULTS.decisionPressure;
+    const base = SNAKE_GAME_DEFAULTS.decisionPressure;
+    const merged = { ...base, ...overrides };
+    if (overrides.riskTolerance) merged.riskTolerance = { ...base.riskTolerance, ...overrides.riskTolerance };
+    if (overrides.effort) {
+        merged.effort = { ...base.effort, ...overrides.effort };
+        if (overrides.effort.costPerCell) merged.effort.costPerCell = { ...base.effort.costPerCell, ...overrides.effort.costPerCell };
+        if (overrides.effort.preyValue) merged.effort.preyValue = { ...base.effort.preyValue, ...overrides.effort.preyValue };
+    }
+    return merged;
+}
 export function applySnakeGameConfig(overrides) {
     activeSnakeGameConfig = mergePartial(SNAKE_GAME_DEFAULTS, overrides);
+    activeSnakeGameConfig.decisionPressure = mergeDecisionPressure(overrides?.decisionPressure);
 }
 export function getSnakeGameConfig() {
     return activeSnakeGameConfig;

@@ -207,6 +207,8 @@ describe("snake intent FSM", () => {
         const world = perceiveSnakeIntentWorld(seeker, seeker.id, state, registry, () => goal);
         assert.equal(world.prey.id, preyChain.head.id);
         assert.equal(world.food.id, goal.id);
+        assert.equal(world.preyDist, 4);
+        assert.equal(world.foodDist, 2);
         assert.deepEqual(pickPolicyFromVisibleWorld(world), { mode: "seek_prey", targetId: preyChain.head.id });
     });
     it("ignores smaller snakes hidden behind walls", async () => {

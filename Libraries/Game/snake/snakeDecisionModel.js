@@ -45,32 +45,69 @@ export function createSnakeDecisionBlackboard({
     safetyState = null,
     recentFailures = [],
 }) {
+    const visible = {
+        threat: visibleWorld.threat,
+        prey: visibleWorld.prey,
+        food: visibleWorld.food,
+        threatDist: visibleWorld.threatDist ?? null,
+        preyDist: visibleWorld.prey ? (visibleWorld.preyDist ?? null) : null,
+        foodDist: visibleWorld.food ? (visibleWorld.foodDist ?? null) : null,
+    };
     const remembered = {
         threat: memorySource?.threat ? (memoryWorld?.threat ?? null) : null,
         prey: memorySource?.prey ? (memoryWorld?.prey ?? null) : null,
         food: memorySource?.food ? (memoryWorld?.food ?? null) : null,
+        preyDist: memorySource?.prey ? (memoryWorld?.preyDist ?? null) : null,
+        foodDist: memorySource?.food ? (memoryWorld?.foodDist ?? null) : null,
     };
-    const known = { threat: visibleWorld.threat ?? remembered.threat, prey: visibleWorld.prey ?? remembered.prey, food: visibleWorld.food ?? remembered.food };
+    const known = {
+        threat: visibleWorld.threat ?? remembered.threat,
+        prey: visibleWorld.prey ?? remembered.prey,
+        food: visibleWorld.food ?? remembered.food,
+        threatDist: visible.threatDist,
+        preyDist: visible.prey ? visible.preyDist : remembered.preyDist,
+        foodDist: visible.food ? visible.foodDist : remembered.foodDist,
+    };
     const events = routeEvents(routeStatus);
     pushTargetEvents(events, "threat", visibleWorld.threat, remembered.threat);
     pushTargetEvents(events, "prey", visibleWorld.prey, remembered.prey);
     pushTargetEvents(events, "food", visibleWorld.food, remembered.food);
     if (!known.prey && committedTarget?.mode === "seek_prey") events.push("TARGET_LOST");
     if (!known.food && committedTarget?.mode === "seek_food") events.push("TARGET_LOST");
-    return {
-        facts: {
-            visible: { threat: visibleWorld.threat, prey: visibleWorld.prey, food: visibleWorld.food },
-            remembered,
-            known,
-            committedTarget,
-            routeStatus,
-            hungerState,
-            threatState,
-            safetyState,
-            recentFailures,
-        },
-        events,
-    };
+    return { facts: { visible, remembered, known, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures }, events };
+}
+function hungerKey(hungerState) {
+    return hungerState?.state ?? "hungry";
+}
+function effortConfig(pressure) {
+    return pressure.effort ?? getSnakeGameConfig().decisionPressure.effort;
+}
+function costPerCellForHunger(pressure, hungerState) {
+    const effort = effortConfig(pressure);
+    return effort.costPerCell[hungerKey(hungerState)];
+}
+function preyValueForHunger(weights, pressure, hungerState) {
+    const effort = effortConfig(pressure);
+    return effort.preyValue[hungerKey(hungerState)] ?? weights.prey;
+}
+function committedTargetMatches(blackboard, mode, target) {
+    const committed = blackboard.facts.committedTarget;
+    return committed?.mode === mode && committed.targetId === target?.id;
+}
+function reachForCandidate(blackboard, mode, kind) {
+    const target = blackboard.facts.known[kind];
+    if (!target) return null;
+    if (committedTargetMatches(blackboard, mode, target)) {
+        const pathLen = blackboard.facts.routeStatus?.pathLen;
+        if (Number.isFinite(pathLen)) return pathLen;
+    }
+    const dist = blackboard.facts.known[`${kind}Dist`];
+    return Number.isFinite(dist) ? dist : null;
+}
+function netScoreDetail(value, reach, costPerCell) {
+    const cost = reach == null ? 0 : costPerCell * reach;
+    const net = value - cost;
+    return { value, reach, cost, net };
 }
 function policyReasonForTarget(blackboard, kind) {
     if (blackboard.facts.remembered[kind]) return `${kind}_memory`;
@@ -90,21 +127,27 @@ function scoreFlee(blackboard, weights, pressure) {
     if (riskTolerance <= 0) return Infinity;
     return weights.flee * threat.severity * (1 - riskTolerance);
 }
-function scorePrey(blackboard, weights, pressure) {
-    if (!blackboard.facts.known.prey) return -Infinity;
+function scorePreyDetail(blackboard, weights, pressure) {
+    if (!blackboard.facts.known.prey) return { net: -Infinity };
     const hunger = blackboard.facts.hungerState;
-    if (hunger?.satisfied) return -Infinity;
-    let score = weights.prey;
+    let value = preyValueForHunger(weights, pressure, hunger);
     const foodUnknown = !blackboard.facts.known.food;
     const routeFailed = !!blackboard.facts.routeStatus?.routeFailed;
-    if (hunger?.desperate && (foodUnknown || routeFailed)) score += pressure.preyDesperationBonus;
-    return score;
+    if (hunger?.desperate && (foodUnknown || routeFailed)) value += pressure.preyDesperationBonus;
+    return netScoreDetail(value, reachForCandidate(blackboard, "seek_prey", "prey"), costPerCellForHunger(pressure, hunger));
 }
-function scoreFood(blackboard, weights, pressure) {
-    if (!blackboard.facts.known.food) return -Infinity;
+function scorePrey(blackboard, weights, pressure) {
+    return scorePreyDetail(blackboard, weights, pressure).net;
+}
+function scoreFoodDetail(blackboard, weights, pressure) {
+    if (!blackboard.facts.known.food) return { net: -Infinity };
     const hunger = blackboard.facts.hungerState;
     const deficit = hunger ? 1 - hunger.foodFraction : 0;
-    return weights.food + pressure.foodHungerBonus * deficit;
+    const value = weights.food + pressure.foodHungerBonus * deficit;
+    return netScoreDetail(value, reachForCandidate(blackboard, "seek_food", "food"), costPerCellForHunger(pressure, hunger));
+}
+function scoreFood(blackboard, weights, pressure) {
+    return scoreFoodDetail(blackboard, weights, pressure).net;
 }
 function scoreExplore(blackboard, weights) {
     return weights.explore;
@@ -115,6 +158,14 @@ export function scoreSnakeIntentCandidates(blackboard, weights = getSnakeGameCon
         seek_prey: scorePrey(blackboard, weights, pressure),
         seek_food: scoreFood(blackboard, weights, pressure),
         explore: scoreExplore(blackboard, weights),
+    };
+}
+export function scoreSnakeIntentCandidateDetails(blackboard, weights = getSnakeGameConfig().decisionWeights, pressure = getSnakeGameConfig().decisionPressure) {
+    return {
+        flee: { net: scoreFlee(blackboard, weights, pressure) },
+        seek_prey: scorePreyDetail(blackboard, weights, pressure),
+        seek_food: scoreFoodDetail(blackboard, weights, pressure),
+        explore: { value: weights.explore, reach: null, cost: 0, net: scoreExplore(blackboard, weights) },
     };
 }
 const INTENT_SCORE_ORDER = ["flee", "seek_prey", "seek_food", "explore"];
@@ -148,7 +199,13 @@ export function buildSnakeDecisionContext({
     const hungerState = deriveSnakeHungerState(foodFraction);
     const threatState = deriveSnakeThreatState(visibleWorld.threat, visibleWorld.threatDist);
     const blackboard = createSnakeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures });
-    const candidateScores = scoreSnakeIntentCandidates(blackboard);
+    const candidateScoreDetails = scoreSnakeIntentCandidateDetails(blackboard);
+    const candidateScores = {
+        flee: candidateScoreDetails.flee.net,
+        seek_prey: candidateScoreDetails.seek_prey.net,
+        seek_food: candidateScoreDetails.seek_food.net,
+        explore: candidateScoreDetails.explore.net,
+    };
     const chosenIntent = pickPolicy(blackboard, candidateScores);
     const sprintIntent = deriveSprintIntent(chosenIntent.mode, threatState);
     const decisionSnapshot = {
@@ -158,6 +215,7 @@ export function buildSnakeDecisionContext({
         routeStatus,
         committedTarget,
         candidateScores,
+        candidateScoreDetails,
         chosenIntent,
         chosenReason: chosenIntent.reason ?? null,
         targetId: chosenIntent.targetId ?? null,

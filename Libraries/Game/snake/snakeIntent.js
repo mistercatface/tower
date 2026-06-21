@@ -51,7 +51,7 @@ function classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry
             bestThreatDist = strikerDist;
         }
     }
-    return { threat, prey, threatDist: threat ? bestThreatDist : null };
+    return { threat, prey, threatDist: threat ? bestThreatDist : null, preyDist: prey ? bestPreyDist / navTopology.grid.cellSize : null };
 }
 function findNearestVisibleThreatFromVision(seeker, selfHeadId, state, registry, frame, vision, visionCone = frame.visionCone) {
     return classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry, frame, vision, visionCone).threat;
@@ -68,7 +68,9 @@ export function perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, re
     const vision = frame.readHeadVision(seeker, cone);
     const visionContext = { frame, vision, visionCone: cone };
     const snakes = classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry, frame, vision, cone);
-    return { threat: snakes.threat, prey: snakes.prey, food: resolveVisibleFood(seeker, state, visionContext), threatDist: snakes.threatDist };
+    const food = resolveVisibleFood(seeker, state, visionContext);
+    const foodDist = food ? Math.hypot(food.x - seeker.x, food.y - seeker.y) / frame.navTopology.grid.cellSize : null;
+    return { threat: snakes.threat, prey: snakes.prey, food, threatDist: snakes.threatDist, preyDist: snakes.preyDist, foodDist };
 }
 export function pickFleeCell(seeker, threat, grid, navWalkable, fleeTiles = getSnakeGameConfig().fleeTiles, avoidCell = null) {
     const sameCell = (a, b) => a && b && a.col === b.col && a.row === b.row;

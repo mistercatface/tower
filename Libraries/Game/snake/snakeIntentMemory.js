@@ -6,7 +6,18 @@ function makeRecord(kind, target, seeker, grid, ttlTicks) {
     const cell = grid.worldToGrid(target.x, target.y);
     const dx = target.x - seeker.x;
     const dy = target.y - seeker.y;
-    return { kind, id: target.id ?? null, x: target.x, y: target.y, cell, ageTicks: 0, ttlTicks, confidence: 1, lastDistance: Math.hypot(dx, dy) };
+    return {
+        kind,
+        id: target.id ?? null,
+        x: target.x,
+        y: target.y,
+        cell,
+        ageTicks: 0,
+        ttlTicks,
+        confidence: 1,
+        lastDistance: Math.hypot(dx, dy),
+        lastDistanceCells: Math.hypot(dx, dy) / grid.cellSize,
+    };
 }
 function ageRecord(record) {
     if (!record) return null;
@@ -24,7 +35,16 @@ function targetFromRecord(record, state) {
 }
 function snapshotRecord(record) {
     if (!record) return null;
-    return { kind: record.kind, id: record.id, cell: { ...record.cell }, ageTicks: record.ageTicks, ttlTicks: record.ttlTicks, confidence: record.confidence, lastDistance: record.lastDistance };
+    return {
+        kind: record.kind,
+        id: record.id,
+        cell: { ...record.cell },
+        ageTicks: record.ageTicks,
+        ttlTicks: record.ttlTicks,
+        confidence: record.confidence,
+        lastDistance: record.lastDistance,
+        lastDistanceCells: record.lastDistanceCells,
+    };
 }
 export function createSnakeIntentMemory({ threatTtlTicks = 45, preyTtlTicks = 90, foodTtlTicks = 180 } = {}) {
     const records = makeEmptyRecords();
@@ -48,6 +68,8 @@ export function createSnakeIntentMemory({ threatTtlTicks = 45, preyTtlTicks = 90
                 threat,
                 prey,
                 food,
+                preyDist: visibleWorld.prey ? visibleWorld.preyDist : (records.prey?.lastDistanceCells ?? null),
+                foodDist: visibleWorld.food ? visibleWorld.foodDist : (records.food?.lastDistanceCells ?? null),
                 memory: this.snapshot(),
                 memorySource: { threat: !visibleWorld.threat && !!threat, prey: !visibleWorld.prey && !!prey, food: !visibleWorld.food && !!food },
             };

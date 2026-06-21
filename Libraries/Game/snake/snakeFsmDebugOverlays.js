@@ -1,5 +1,16 @@
 import { overlayGridCellHighlight, overlayCachedSelectionRing } from "../../Render/overlays/overlayCommands.js";
 const FSM_MODE_RING = { explore: "rgba(120, 220, 255, 0.85)", seek_food: "rgba(255, 220, 80, 0.9)", seek_prey: "rgba(255, 150, 60, 0.9)", flee: "rgba(255, 80, 120, 0.9)" };
+function formatScorePart(value) {
+    if (value == null) return "—";
+    if (!Number.isFinite(value)) return String(value);
+    return value.toFixed(1);
+}
+function formatEffortDebug(decision) {
+    const mode = decision?.chosenIntent?.mode;
+    const detail = mode ? decision.candidateScoreDetails?.[mode] : null;
+    if (!detail || detail.value == null) return "";
+    return ` | ${mode}:v${formatScorePart(detail.value)} r${formatScorePart(detail.reach)} c${formatScorePart(detail.cost)} n${formatScorePart(detail.net)}`;
+}
 export function formatSnakeFsmDebug(snapshot) {
     const dest = snapshot.destCell ? `${snapshot.destCell.col},${snapshot.destCell.row}` : "—";
     const replan = snapshot.replanReason;
@@ -13,7 +24,8 @@ export function formatSnakeFsmDebug(snapshot) {
     const threatText = threat ? ` | threat=${threat.severity.toFixed(2)}${threat.lethal ? "!" : ""}` : "";
     const sprint = snapshot.decision?.sprintIntent;
     const sprintText = sprint?.want ? ` | sprint:${sprint.reason}` : "";
-    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${memoryText}${hungerText}${threatText}${sprintText}`;
+    const effortText = formatEffortDebug(snapshot.decision);
+    return `${snapshot.mode} | ${dest} | plen=${snapshot.pathLen} | ${replan} | v=${speed} | ${snapshot.lastTransition}${memoryText}${hungerText}${threatText}${sprintText}${effortText}`;
 }
 export function appendSnakeFsmDebugOverlayCommands(out, state, seeker, snapshot) {
     const grid = state.obstacleGrid;

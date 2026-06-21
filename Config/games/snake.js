@@ -6,7 +6,7 @@ export const SNAKE_GAME_DEFAULTS = {
     headPropId: "snake_head",
     goalPropId: "goal_orb",
     snakeCount: 250,
-    goalCount: 300,
+    goalCount: 500,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,
@@ -96,6 +96,7 @@ export const SNAKE_GAME_DEFAULTS = {
         preyDesperationBonus: 250,
         /** How much a snake discounts a (non-lethal) threat by hunger when scoring flee. 0 = always flee. */
         riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 },
+        effort: { costPerCell: { satisfied: 25, hungry: 20, desperate: 6 }, preyValue: { satisfied: 140, hungry: 300, desperate: 550 } },
     },
     /**
      * Sprint = burn hunger faster to move faster. Stamina IS hunger: sprinting drains the
@@ -107,5 +108,5 @@ export const SNAKE_GAME_DEFAULTS = {
      */
     sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 },
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
-    showSnakeFsmDebug: true,
+    showSnakeFsmDebug: false,
 };
