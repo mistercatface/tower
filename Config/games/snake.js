@@ -102,5 +102,5 @@ export const SNAKE_GAME_DEFAULTS = {
      */
     sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 },
     /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
-    showSnakeFsmDebug: false,
+    showSnakeFsmDebug: true,
 };

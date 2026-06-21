@@ -21,6 +21,7 @@ import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT } from "../Libraries/Game/snake/snakeChainColor.js";
 import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
+import { createSeekIntentState } from "../Libraries/Game/snake/snakeIntentStates.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireSnakeTestGame, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
@@ -94,6 +95,9 @@ function mockHeadNav() {
         getDestination() {
             return dest;
         },
+        updateTerminalTarget() {
+            return false;
+        },
         needsRetry() {
             if (!dest) return true;
             if (replanPending) return false;
@@ -131,6 +135,58 @@ function createMockIntent(state, selfHeadId, registry) {
 }
 
 describe("snake FSM transitions", () => {
+    it("holds same-target seek route while updating same-cell terminal target", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 32 * 16, 32 * 16);
+        const cell = grid.gridToWorld(8, 8);
+        const state = createSeekIntentState();
+        const calls = { seek: 0, hold: 0, update: 0 };
+        const ctx = {
+            agent: { id: "snake", x: cell.x, y: cell.y, radius: 2 },
+            grid,
+            target: { id: "food", x: cell.x - 2, y: cell.y },
+            dest: {
+                col: 8,
+                row: 8,
+                world: { x: cell.x - 6, y: cell.y },
+                lockOnTarget: true,
+                targetId: "food",
+            },
+            ticks: 20,
+            lastModeChangeTick: 0,
+            locomotion: { hasArrivedAtDest: () => false },
+            effects: {
+                setSeekDestination() {
+                    calls.seek++;
+                },
+                holdDestination() {
+                    calls.hold++;
+                },
+                updateSeekTarget() {
+                    calls.update++;
+                },
+                setLastTransition() {},
+            },
+        };
+
+        state.update(ctx);
+        assert.equal(calls.seek, 0);
+        assert.equal(calls.hold, 1);
+        assert.equal(calls.update, 1);
+
+        ctx.target.x = cell.x + 7;
+        state.update(ctx);
+        assert.equal(calls.seek, 0);
+        assert.equal(calls.hold, 2);
+        assert.equal(calls.update, 2);
+
+        const nextCell = grid.gridToWorld(9, 8);
+        ctx.target.x = nextCell.x;
+        ctx.target.y = nextCell.y;
+        state.update(ctx);
+        assert.equal(calls.seek, 1);
+    });
+
     it("explore transitions to seek_prey when a smaller snake is visible", async () => {
         applySnakeGameConfig({ fleeRange: 128, showSnakeFsmDebug: true });
         resetKineticConstraintIds(1);

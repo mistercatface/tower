@@ -127,6 +127,43 @@ describe("cellTargetHpaNav", () => {
         assert.equal(nav.getStatus().targetLos, false);
         assert.ok(state.replanCalls >= 1);
     });
+    it("updates same-cell locked terminal target without marking route changed", () => {
+        const state = createNavTestState();
+        const nav = createCellTargetHpaNav(state);
+        const grid = state.obstacleGrid;
+        const cell = grid.gridToWorld(6, 5);
+        const firstWorld = { x: cell.x - 4, y: cell.y };
+        const secondWorld = { x: cell.x + 4, y: cell.y };
+
+        assert.equal(
+            nav.setDestination(grid, 6, 5, {
+                world: firstWorld,
+                exactArrival: true,
+                lockOnTarget: true,
+                targetId: "food",
+            }),
+            true
+        );
+        assert.equal(nav.updateTerminalTarget(grid, { id: "food", ...secondWorld }, "food"), true);
+        assert.deepEqual(nav.getDestination().world, secondWorld);
+        assert.deepEqual(nav.getDestination().routeWorld, cell);
+    });
+    it("reports retry after sustained no-route frames before giving up", async () => {
+        const state = createNavTestState();
+        state.nav.settings.stuckReplanFrames = 4;
+        const nav = createCellTargetHpaNav(state);
+        const seeker = testSeeker();
+        nav.setDestination(state.obstacleGrid, 2, 3);
+
+        nav.tick(seeker, FRAME_MS);
+        state.nav.session.flushFrame();
+        await Promise.resolve();
+        await Promise.resolve();
+        nav.tick(seeker, FRAME_MS);
+
+        assert.equal(nav.getDestination() != null, true);
+        assert.equal(nav.needsRetry(), true);
+    });
     it("gives up after frames without a route and stops replan spam", () => {
         const state = createNavTestState();
         const nav = createCellTargetHpaNav(state);

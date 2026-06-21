@@ -15,6 +15,8 @@ import {
     REPLAN_PRIORITY_VISIBLE,
     REPLAN_PRIORITY_STUCK_OFFSCREEN,
 } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
+import { createHpaGroundNavSession } from "../Libraries/Sandbox/groundNav/hpaGroundNavSession.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 const navSettings = { stuckReplanFrames: 20, stuckMoveThreshold: 1.5 };
 describe("hpa ground nav replan policy", () => {
     it("obstacleEpochReplanDue when path topology lags grid", () => {
@@ -84,5 +86,49 @@ describe("hpa ground nav replan policy", () => {
         assert.equal(replanPriorityFor("targetChange", false), REPLAN_PRIORITY_TARGET);
         assert.equal(replanPriorityFor("noPath", true), REPLAN_PRIORITY_VISIBLE);
         assert.equal(replanPriorityFor("epoch", false), REPLAN_PRIORITY_STUCK_OFFSCREEN);
+    });
+    it("keeps committed off-path routes while the agent is still making progress", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);
+        let replans = 0;
+        const worker = {
+            releaseOwnedPathSlot() {},
+            pathCol(_slot, i) {
+                return i === 0 ? 4 : 5;
+            },
+            pathRow() {
+                return 4;
+            },
+        };
+        const state = {
+            obstacleGrid: grid,
+            viewport: { circleInBounds: () => true },
+            nav: {
+                settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 6, pathOffPathDistance: 4 },
+                topologyKey: () => "",
+                syncedTopologyKey: () => "",
+                graphSyncGeneration: 0,
+                worker,
+                topology: null,
+                session: {
+                    isReplanInFlight: () => false,
+                    requestReplan() {
+                        replans++;
+                        return true;
+                    },
+                },
+            },
+        };
+        const session = createHpaGroundNavSession();
+        Object.assign(session.navState, { pathSlot: 0, pathLen: 2, topologyKey: "", lastOffPathReplan: -999 });
+        const prop = { x: 16, y: 160, radius: 2 };
+        const target = grid.gridToWorld(5, 4);
+        const pathSettings = { pathWaypointArrival: 1, arrivalDistance: 4, pathOffPathDistance: 4 };
+
+        session.update(prop, target.x, target.y, state, 300, pathSettings);
+        assert.equal(replans, 0);
+
+        for (let i = 0; i < 5; i++) session.update(prop, target.x, target.y, state, 300, pathSettings);
+        assert.equal(replans, 1);
     });
 });

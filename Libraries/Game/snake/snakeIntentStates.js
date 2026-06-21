@@ -14,6 +14,14 @@ export function createExploreIntentState() {
     };
 }
 export function createSeekIntentState() {
+    const shouldRefreshSeekDestination = (ctx, targetCell) => {
+        if (!ctx.dest) return true;
+        if (ctx.locomotion.hasArrivedAtDest(ctx.agent, ctx.grid)) return true;
+        if (ctx.dest.col !== targetCell.col || ctx.dest.row !== targetCell.row) return true;
+        if (!ctx.dest.lockOnTarget || !ctx.dest.world) return false;
+        const sameTarget = ctx.dest.targetId != null && ctx.dest.targetId === ctx.target.id;
+        return !sameTarget;
+    };
     return {
         enter(ctx) {
             ctx.effects.setSeekDestination(ctx.target);
@@ -24,12 +32,12 @@ export function createSeekIntentState() {
                 return;
             }
             const targetCell = ctx.grid.worldToGrid(ctx.target.x, ctx.target.y);
-            const targetMovedInCell = ctx.dest?.lockOnTarget && ctx.dest.world && (ctx.dest.world.x !== ctx.target.x || ctx.dest.world.y !== ctx.target.y);
-            if (!ctx.dest || ctx.locomotion.hasArrivedAtDest(ctx.agent, ctx.grid) || ctx.dest.col !== targetCell.col || ctx.dest.row !== targetCell.row || targetMovedInCell) {
+            if (shouldRefreshSeekDestination(ctx, targetCell)) {
                 ctx.effects.setLastTransition(ctx.locomotion.hasArrivedAtDest(ctx.agent, ctx.grid) ? "arrived" : "repick_dest");
                 ctx.effects.setSeekDestination(ctx.target);
                 return;
             }
+            ctx.effects.updateSeekTarget?.(ctx.target);
             ctx.effects.holdDestination();
         },
     };

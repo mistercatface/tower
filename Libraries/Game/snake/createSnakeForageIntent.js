@@ -72,7 +72,7 @@ export function createSnakeForageIntent({
         if (known.food?.id === id) return known.food;
         return null;
     };
-    const createSnakeEffects = ({ agent, state, mode, world }) => ({
+    const createSnakeEffects = ({ agent, state, mode, world, targetId }) => ({
         clearDestination() {
             locomotion.clearDestination(agent, state);
         },
@@ -84,7 +84,12 @@ export function createSnakeForageIntent({
         setSeekDestination(target) {
             if (!target) return;
             const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(mode, agent, target, state) : seekArrivalRadius;
-            locomotion.setSeek(agent, state, target, typeof seekOptions === "object" && seekOptions !== null ? seekOptions : { arrivalRadius: seekOptions });
+            const options = typeof seekOptions === "object" && seekOptions !== null ? seekOptions : { arrivalRadius: seekOptions };
+            locomotion.setSeek(agent, state, target, { ...options, targetId });
+        },
+        updateSeekTarget(target) {
+            if (!target) return;
+            locomotion.updateSeekTarget(agent, state, target, { targetId });
         },
         setFleeDestination(avoidCell = null) {
             const threat = world.blackboard.facts.known.threat;
@@ -160,6 +165,9 @@ export function createSnakeForageIntent({
                 pathLen: loco.pathLen,
                 replanReason,
                 navPhase: loco.navPhase,
+                routeGoal: loco.routeGoal,
+                terminalGoal: loco.terminalGoal,
+                routeCommitFrames: loco.routeCommitFrames,
                 targetDistance: loco.targetDistance,
                 targetLos: loco.targetLos,
                 stuckFrames: loco.stuckFrames,
