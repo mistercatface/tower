@@ -5,7 +5,7 @@ import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { snapshotActiveBroadphaseBounds } from "./entityBroadphase.js";
-import { activeBodiesMatchKineticSlab } from "./kineticBodySlab.js";
+import { activeBodiesMatchKineticSlab, kineticBodySlab } from "./kineticBodySlab.js";
 import { copyKineticPairBuffer, kineticPairBuffer, persistedKineticPairBuffer } from "./kineticPairStream.js";
 import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
@@ -72,6 +72,30 @@ export function runCollisionPipeline(
                 resolveWalls(prop);
             }
             frame.flushScheduledKineticActivations();
+            const MAX_KINETIC_SPEED = 1000;
+            const MAX_KINETIC_SPEED_SQ = MAX_KINETIC_SPEED * MAX_KINETIC_SPEED;
+            for (let i = 0; i < activeBodies.length; i++) {
+                const body = activeBodies[i];
+                const vx = body.vx ?? 0;
+                const vy = body.vy ?? 0;
+                const speedSq = vx * vx + vy * vy;
+                if (speedSq > MAX_KINETIC_SPEED_SQ) {
+                    const speed = Math.sqrt(speedSq);
+                    body.vx = (vx / speed) * MAX_KINETIC_SPEED;
+                    body.vy = (vy / speed) * MAX_KINETIC_SPEED;
+                }
+                const physId = body._physId;
+                if (physId !== undefined && physId !== -1) {
+                    const svx = kineticBodySlab.vx[physId];
+                    const svy = kineticBodySlab.vy[physId];
+                    const sSpeedSq = svx * svx + svy * svy;
+                    if (sSpeedSq > MAX_KINETIC_SPEED_SQ) {
+                        const sSpeed = Math.sqrt(sSpeedSq);
+                        kineticBodySlab.vx[physId] = (svx / sSpeed) * MAX_KINETIC_SPEED;
+                        kineticBodySlab.vy[physId] = (svy / sSpeed) * MAX_KINETIC_SPEED;
+                    }
+                }
+            }
             if (!activeBodiesMatchKineticSlab(activeBodies)) continue;
             snapshotActiveBroadphaseBounds(activeBodies);
             const maxError = measureConstraintSlabMaxError();

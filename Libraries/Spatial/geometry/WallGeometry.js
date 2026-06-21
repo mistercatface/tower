@@ -81,7 +81,7 @@ export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
 export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
     const segLen = Math.hypot(bx - ax, by - ay);
     if (segLen < 0.01) return { x: ax, y: ay, t: 0, dist: distanceToSegment(wall, ax, ay) };
-    const samples = Math.max(16, Math.ceil(segLen));
+    const samples = Math.min(256, Math.max(16, Math.ceil(segLen)));
     let bestT = 0;
     let bestDist = Infinity;
     for (let i = 0; i <= samples; i++) {
