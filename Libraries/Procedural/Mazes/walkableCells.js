@@ -12,8 +12,9 @@ function cellIndex(col, row, cols) {
 function navWalkableCacheKey(state) {
     const grid = state.obstacleGrid;
     const worker = state.nav?.worker;
-    if (!worker || !isNavTopologyReady(worker, grid)) return null;
-    return gridNavCacheKey(grid);
+    const key = gridNavCacheKey(grid);
+    if (!worker || !isNavTopologyReady(worker, grid)) return `${key}:pending`;
+    return key;
 }
 function globalCellForGridCell(grid, col, row) {
     const cellSize = grid.cellSize;
