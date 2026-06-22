@@ -4,14 +4,12 @@ import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createBrain } from "../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../AI/brain/syncSpatialBrain.js";
 import { createSnakeForageIntent } from "./createSnakeForageIntent.js";
-import { formatSnakeFsmDebug } from "./snakeFsmDebugOverlays.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
 import { getSnakeGameConfig, resolveSnakeEatRadius, applySnakeSegmentGameplay } from "./snakeGameConfig.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
-import { copySnakeChainTintFromHead, resolveSnakeChainTintHex, tintSnakeChain } from "./snakeChainColor.js";
-import { deriveSnakeHungerState } from "./snakeDecisionModel.js";
+import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { findNearestVisibleSnakeFood, findNearestVisibleSnakeFoodFromVision, isSnakeShardFood } from "./snakeFood.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
@@ -97,7 +95,6 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
         rng,
     });
     let active = false;
-    let tintedTint = null;
     let sprinting = false;
     let baseMaxSpeed = null;
     let baseAccel = null;
@@ -117,14 +114,6 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
         tailId = resolveChainTailProp(state, headId).id;
     };
     const resolveSeeker = () => state.entityRegistry.getLive(headId);
-    const syncIntentTint = () => {
-        if (!getSnakeGameConfig().showSnakeFsmDebug) return;
-        const hungerState = deriveSnakeHungerState(getSnakeHunger(metabolism));
-        const tint = resolveSnakeChainTintHex(intent.getMode(), hungerState);
-        if (!tint || tint === tintedTint) return;
-        tintSnakeChain(state, headId, tint);
-        tintedTint = tint;
-    };
     const growOneSegment = (members = null) => {
         const grow = growSnakeChainAfterMeal(state, headId, members);
         const tail = resolveChainTailProp(state, headId);
@@ -165,7 +154,6 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
             intent.resetMode();
             intent.resetMemory();
             runSnakeFsmTick(intent, resolveSeeker(), state, 0);
-            syncIntentTint();
         },
         stop() {
             active = false;
@@ -201,9 +189,6 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
         isSprinting() {
             return sprinting;
         },
-        getFsmDebugLine() {
-            return formatSnakeFsmDebug(this.getFsmSnapshot());
-        },
         getPathOverlay() {
             return intent.headNav.getPathOverlay(resolveSeeker());
         },
@@ -232,7 +217,6 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
                 }
             }
             const choice = runSnakeFsmTick(intent, seeker, state, dtMs, (s) => applySprintState(s, members.length));
-            syncIntentTint();
             let fedThisTick = false;
             if (choice.mode === "seek_food" && choice.target) {
                 const food = choice.target;

@@ -142,7 +142,7 @@ flowchart TB
 | Per-state effects/context | ✅ | 70 | snake + flee effects/context |
 | Mode exit delay / interruption | ✅ | 65 | flee hysteresis (snake + flee), policy latch |
 | Hierarchical / nested states | ⬜ | 0 | future |
-| Generic slot pipeline refactor | ⬜ | 0 | deferred; duplicate perception/memory paths today |
+| Generic slot pipeline refactor | ⬜ | 0 | deferred; snake perception unified via `perceiveSnakeIntentWorld` |
 
 **Branch progress: 68%**
 
@@ -194,7 +194,7 @@ flowchart TB
 | Flee treats all snakes as threat | ✅ | 75 | flee never hunts snakes |
 | Flee same-faction regroup (`seek_ally`) | ✅ | 65 | safe + satisfied; large friendly arrival radius |
 | Snake size-scaled regroup (`seek_ally`) | ✅ | 70 | satisfied-only; `referenceSegmentCount` / `maxSegmentScale` |
-| Flee pack vector while fleeing | ⬜ | 0 | phase 4d — blend flee direction toward ally centroid |
+| Flee pack vector while fleeing | ✅ | 65 | `fleePackBlend` + distance falloff in `pickFleeCell` |
 | Friendly-fire / team filtering in combat | 🟡 | 40 | relationships filter perception; kinetic ram still faction-blind |
 | Target priority scoring across teams | 🟡 | 45 | config prey value; no multi-target utility catalog |
 
@@ -211,7 +211,7 @@ flowchart TB
 | Role assignment | ⬜ | 0 | |
 | Formations | ⬜ | 0 | depends on pathfinding group movement |
 | Shared squad blackboard | ⬜ | 0 | ally memory is per-agent today |
-| Pack flee blend | ⬜ | 0 | phase 4d |
+| Pack flee blend | ✅ | 65 | phase 4d — `resolveFleePackOptions` |
 
 **Branch progress: 8%**
 
@@ -242,10 +242,10 @@ Phases completed on the snake game proving ground:
 | **Prep Ally memory + blackboard** | ✅ | TTL ally slot, `known.ally`, `allyState`, `ALLY_SEEN` / `ALLY_REMEMBERED` |
 | **4b Flee `seek_ally`** | ✅ | Regroup when safe + satisfied; faction cohesion config; friendly arrival radius |
 | **4c Snake regroup (`seek_ally`)** | ✅ | Satisfied-only; size-scaled; friendly arrival radius |
-| **4d Flee pack flee** | ⬜ | Blend flee vector toward ally centroid while in flee mode |
+| **4d Flee pack flee** | ✅ | `fleePackBlend` steers flee retreat toward ally centroid |
 | **Slot pipeline refactor** | ⬜ | Generic perception→memory→blackboard pipeline (deferred) |
 
-Locomotion for both species still uses **per-agent HPA** (`cellTargetHpaNav`). Flow fields exist globally for sandbox drag-nav but are **not** wired into snake/flee intent steering yet.
+Locomotion for both species still uses **per-agent HPA** (`cellTargetHpaNav`). Flow fields exist globally for sandbox drag-nav but are **not** wired into snake/flee intent steering yet. Snake visible-world perception is a single entry point: `perceiveSnakeIntentWorld` → `perceiveAgentWorld` (FSM, HUD, tests).
 
 ---
 

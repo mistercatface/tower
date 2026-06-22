@@ -5,9 +5,7 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { buildSnakeDecisionContext, deriveSprintIntent } from "./snakeDecisionModel.js";
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/intentStates.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
-import { perceiveAgentWorld } from "../../AI/perception/agentWorldPerception.js";
-import { requireSnakeVisionFrame } from "./snakePerception.js";
-import { resolveAgentRelationship } from "./snakeAgentSession.js";
+import { perceiveSnakeIntentWorld } from "./snakeIntent.js";
 import { createSnakeIntentMemory } from "./snakeIntentMemory.js";
 export function createSnakeForageIntent({
     brain,
@@ -69,11 +67,7 @@ export function createSnakeForageIntent({
         };
     };
     const perceiveWithMemory = (agent, state) => {
-        const visible = perceiveAgentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision, {
-            readVisionFrame: requireSnakeVisionFrame,
-            agentRange: config.fleeRange ?? resolvedVision.range,
-            resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(state.sandbox.snakeGame, selfHeadId, headId, state),
-        });
+        const visible = perceiveSnakeIntentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
         const decisionContext = buildSnakeDecisionContext({

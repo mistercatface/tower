@@ -22,7 +22,7 @@ export const SNAKE_GAME_DEFAULTS = {
         sprint: { fleeSeverity: 0.5, speedMultiplier: 1.75, accelMultiplier: 1.5, hungerDrainMultiplier: 2.0, sprintFleeMinHunger: 0.1 },
         decisionWeights: { flee: 400, food: 360, seek_ally: 280, explore: 100 },
         /** Same-faction flee ball regroup when safe (seek_ally mode). */
-        factionCohesion: { arrivalRadius: 24, idealStopDist: 2.5, packBonus: 20, satisfiedBonus: 60 },
+        factionCohesion: { arrivalRadius: 24, idealStopDist: 2.5, packBonus: 20, satisfiedBonus: 60, fleePackBlend: 0.35, maxPackDistCells: 16 },
         decisionPressure: {
             foodHungerBonus: 280,
             sprintFleeMinHunger: 0.1,
@@ -132,6 +132,4 @@ export const SNAKE_GAME_DEFAULTS = {
      * advances the food timer faster so sprinting eats into hunger and accelerates shedding.
      */
     sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 },
-    /** HUD FSM line + selected-snake world overlay for mode/dest/path debug. */
-    showSnakeFsmDebug: false,
 };

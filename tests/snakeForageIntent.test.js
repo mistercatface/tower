@@ -12,10 +12,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { cellChebyshevDistance } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSnakeDecisionBlackboard, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
-import { perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
-import { findNearestVisibleThreat, perceiveAgentWorld } from "../Libraries/AI/perception/agentWorldPerception.js";
-import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
-import { resolveAgentRelationship } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { perceiveSnakeIntentWorld, findNearestVisibleThreat } from "../Libraries/Game/snake/snakeIntent.js";
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision, registerSnakeTestInstance, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
@@ -77,12 +74,7 @@ function registerIntentSnakes(state, chains) {
 }
 function perceiveIntentWorld(state, seeker, headId, registry, resolveFood) {
     primeSnakeHeadVision(state, seeker);
-    const config = getSnakeGameConfig();
-    return perceiveAgentWorld(seeker, headId, state, registry, resolveFood, config.visionCone, {
-        readVisionFrame: requireSnakeVisionFrame,
-        agentRange: config.fleeRange ?? config.visionCone.range,
-        resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(state.sandbox.snakeGame, selfHeadId, headId, state),
-    });
+    return perceiveSnakeIntentWorld(seeker, headId, state, registry, resolveFood, getSnakeGameConfig().visionCone);
 }
 function pickPolicyFromVisibleWorld(world) {
     return pickSnakeIntentPolicy(createSnakeDecisionBlackboard({ visibleWorld: world }));
@@ -192,11 +184,7 @@ describe("snake forage intent", () => {
         larger.head.y = self.head.y;
         primeSnakeHeadVision(state, self.head);
         const config = getSnakeGameConfig();
-        const threat = findNearestVisibleThreat(self.head, self.head.id, state, registry, config.visionCone, {
-            readVisionFrame: requireSnakeVisionFrame,
-            agentRange: config.fleeRange ?? config.visionCone.range,
-            resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(state.sandbox.snakeGame, selfHeadId, headId, state),
-        });
+        const threat = findNearestVisibleThreat(self.head, self.head.id, state, registry, config.visionCone);
         const cell = pickFleeCell(self.head, threat, grid, navWalkable, getSnakeGameConfig().fleeTiles);
         assert.ok(cell);
         const selfCell = grid.worldToGrid(self.head.x, self.head.y);

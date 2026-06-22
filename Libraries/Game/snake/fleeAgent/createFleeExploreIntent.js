@@ -2,6 +2,7 @@ import { createAgentIntent } from "../../../AI/agentIntent/createAgentIntent.js"
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../../AI/agentIntent/intentStates.js";
 import { createModePolicyLatch } from "../../../AI/agentIntent/policyHysteresis.js";
 import { pickFleeCell } from "../../../AI/steering/pickFleeCell.js";
+import { resolveFleePackOptions } from "./resolveFleePackOptions.js";
 import { createCellTargetLocomotion } from "../../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { perceiveFleeAgentWorld } from "./fleeWorldPerception.js";
@@ -116,7 +117,8 @@ export function createFleeExploreIntent({
         setFleeDestination(avoidCell = null) {
             const threat = world.blackboard.facts.known.threat;
             if (!threat) return null;
-            const cell = pickFleeCell(agent, threat, state.obstacleGrid, navWalkable, config.fleeTiles, avoidCell);
+            const packOptions = resolveFleePackOptions(world.blackboard);
+            const cell = pickFleeCell(agent, threat, state.obstacleGrid, navWalkable, config.fleeTiles, avoidCell, packOptions);
             if (cell) {
                 locomotion.setFlee(agent, state, cell);
                 return cell;

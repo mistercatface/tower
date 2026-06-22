@@ -17,8 +17,6 @@ import { createSnakeForageIntent } from "../Libraries/Game/snake/createSnakeFora
 import { createSnakeAutosim, createSnakeBrain } from "../Libraries/Game/snake/snakeAutosim.js";
 import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
-import { SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT } from "../Libraries/Game/snake/snakeChainColor.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
@@ -75,9 +73,6 @@ function chainOptions(segmentCount = getSnakeGameConfig().segmentCount) {
 }
 function assignTeamFactions(assignments) {
     for (const { chain, faction } of assignments) chain.head.faction = faction;
-}
-function assertChainTint(chain, tint) {
-    for (const prop of chain.members) assert.equal(getPropVisualTint(prop), tint);
 }
 function mockHeadNav() {
     let dest = null;
@@ -178,7 +173,7 @@ describe("snake FSM transitions", () => {
         assert.equal(calls.seek, 1);
     });
     it("explore transitions to seek_prey when a smaller snake is visible", async () => {
-        applySnakeGameConfig({ fleeRange: 128, showSnakeFsmDebug: true });
+        applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -197,7 +192,6 @@ describe("snake FSM transitions", () => {
         const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
-        assertChainTint(hunter, SNAKE_INTENT_MODE_TINT.seek_prey);
         assert.equal(autosim.getLastTransitionReason(), "mode_seek_prey");
         const dest = autosim.getDestination();
         assert.equal(dest.col, 14);
@@ -207,31 +201,8 @@ describe("snake FSM transitions", () => {
         assert.equal(dest.lockOnTarget, true);
         assert.equal(dest.arrivalRadius, Math.max(2, hunter.head.radius * 0.25));
     });
-    it("does not recolor the chain when FSM debug is disabled", async () => {
-        applySnakeGameConfig({ fleeRange: 128, showSnakeFsmDebug: false });
-        resetKineticConstraintIds(1);
-        const state = await createFsmTestState();
-        const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
-        const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
-        wireSnakeTestGame(state, [
-            { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
-            { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
-        ]);
-        assignTeamFactions([
-            { chain: hunter, faction: "red" },
-            { chain: prey, faction: "blue" },
-        ]);
-        hunter.head.facing = 0;
-        prey.head.x = hunter.head.x + 64;
-        prey.head.y = hunter.head.y;
-        const beforeTint = getPropVisualTint(hunter.head);
-        const autosim = createWiredSnakeAutosim(state, { headId: hunter.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 0.5 });
-        autosim.start();
-        assert.equal(autosim.getMode(), "seek_prey");
-        assert.equal(getPropVisualTint(hunter.head), beforeTint);
-    });
     it("explore transitions to seek_food when food enters vision", async () => {
-        applySnakeGameConfig({ showSnakeFsmDebug: true });
+        applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 4, row: 8 }, chainOptions());
@@ -245,18 +216,16 @@ describe("snake FSM transitions", () => {
         const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, behaviorById: snakeBehaviors(state), eatRadius: 20, rng: () => 0 });
         autosim.start();
         assert.equal(autosim.getMode(), "explore");
-        assertChainTint(chain, SNAKE_SATISFIED_EXPLORE_TINT);
         chain.head.x = state.obstacleGrid.gridToWorld(10, 8).x;
         chain.head.y = state.obstacleGrid.gridToWorld(10, 8).y;
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "seek_food");
-        assertChainTint(chain, SNAKE_INTENT_MODE_TINT.seek_food);
         assert.equal(autosim.getLastTransitionReason(), "mode_seek_food");
         assert.equal(autosim.getDestination().arrivalRadius, 20);
         assert.equal(autosim.getDestination().lockOnTarget, true);
     });
     it("seek_prey transitions to flee when a larger snake appears", async () => {
-        applySnakeGameConfig({ fleeRange: 128, showSnakeFsmDebug: true });
+        applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -283,7 +252,6 @@ describe("snake FSM transitions", () => {
         threat.head.x = hunter.head.x + 30;
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "flee");
-        assertChainTint(hunter, SNAKE_INTENT_MODE_TINT.flee);
         assert.equal(autosim.getLastTransitionReason(), "threat_visible");
     });
     it("holds flee briefly after threat severity drops before returning to food", async () => {
@@ -540,7 +508,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.isSprinting(), false);
     });
     it("equal rivals both seek prey when visible", async () => {
-        applySnakeGameConfig({ fleeRange: 128, showSnakeFsmDebug: true });
+        applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(50);
         const state = await createFsmTestState();
         const red = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
