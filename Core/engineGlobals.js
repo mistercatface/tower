@@ -1,8 +1,8 @@
 import { SURFACE_PROFILE_ID } from "../Config/procedural/profileIds.js";
 import { applyGamePerspective, getActivePerspective } from "./GamePerspective.js";
 import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
-import { applyGameCollisionSettings } from "./GameCollisionSettings.js";
-import { applyGamePhysicsSettings } from "./GamePhysicsSettings.js";
+import { applyGameCollisionSettings } from "../Libraries/Collision/collisionDefaults.js";
+import { applyGamePhysicsSettings } from "../Libraries/Motion/physicsDefaults.js";
 import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
 import { applyGamePropQuantizeSettings } from "./GamePropQuantizeSettings.js";
 import { installGameSurfaceProfileProvider } from "../Config/procedural/bootstrap.js";

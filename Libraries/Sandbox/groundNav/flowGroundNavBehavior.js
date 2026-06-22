@@ -1,4 +1,4 @@
-import { getPhysicsSettings } from "../../../Core/GamePhysicsSettings.js";
+import { getPhysicsSettings } from "../../Motion/physicsDefaults.js";
 import { sampleFlowDirectionOnGrid } from "../../Pathfinding/sampleFlowDirection.js";
 import { snapNavGoalWorld } from "../../Navigation/snapNavGoal.js";
 import { driveFlowGroundNav } from "./driveFlowGroundNav.js";

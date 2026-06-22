@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyGameCollisionSettings, getCollisionSettings } from "../Core/GameCollisionSettings.js";
+import { applyGameCollisionSettings, getCollisionSettings } from "../Libraries/Collision/collisionDefaults.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
 describe("game collision settings merge", () => {
     it("deep-merges nested overrides without dropping sibling defaults", () => {

@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
+import { getCollisionSettings } from "../../../Collision/collisionDefaults.js";
 import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";

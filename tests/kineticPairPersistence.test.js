@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyGameCollisionSettings } from "../Core/GameCollisionSettings.js";
+import { applyGameCollisionSettings } from "../Libraries/Collision/collisionDefaults.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { persistedKineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";

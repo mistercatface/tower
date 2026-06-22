@@ -1,6 +1,6 @@
 import { applyKineticAcceleration } from "../Motion/applyAcceleration.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
-import { getPhysicsSettings } from "../../Core/GamePhysicsSettings.js";
+import { getPhysicsSettings } from "../Motion/physicsDefaults.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { maySnakeHeadReceiveRoll } from "../Game/snake/snakeSteeringLease.js";
 export function snapMoveTargetToCellCenter(grid, world) {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyGameCollisionSettings } from "../Core/GameCollisionSettings.js";
+import { applyGameCollisionSettings } from "../Libraries/Collision/collisionDefaults.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";

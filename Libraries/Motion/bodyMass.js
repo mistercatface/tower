@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../../Core/GameCollisionSettings.js";
+import { getCollisionSettings } from "../Collision/collisionDefaults.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Math/Poly2D.js";
 function polygonShapeArea(shape) {
     const verts = shape.vertices;

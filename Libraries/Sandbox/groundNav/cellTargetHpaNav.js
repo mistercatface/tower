@@ -1,4 +1,4 @@
-import { getPhysicsSettings } from "../../../Core/GamePhysicsSettings.js";
+import { getPhysicsSettings } from "../../Motion/physicsDefaults.js";
 import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";

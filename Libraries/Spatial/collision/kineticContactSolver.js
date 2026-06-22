@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
+import { getCollisionSettings } from "../../../Collision/collisionDefaults.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import {
     gatherKineticCandidatePairs,

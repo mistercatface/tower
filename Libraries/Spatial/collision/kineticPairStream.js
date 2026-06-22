@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../../../Core/GameCollisionSettings.js";
+import { getCollisionSettings } from "../../../Collision/collisionDefaults.js";
 import { allowsKineticCollisionPair, isKinematicallyActive, shouldResolveKineticPair } from "./entityBroadphase.js";
 import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
 import { classifyKineticPairTier, KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";

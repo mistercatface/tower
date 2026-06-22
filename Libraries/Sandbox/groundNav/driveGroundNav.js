@@ -1,5 +1,5 @@
 import { snapNavGoalWorld } from "../../Navigation/snapNavGoal.js";
-import { getPhysicsSettings } from "../../../Core/GamePhysicsSettings.js";
+import { getPhysicsSettings } from "../../Motion/physicsDefaults.js";
 import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
 /**
  * @param {object} prop
