@@ -4,7 +4,7 @@ import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { CameraTargetCycler } from "../../Sandbox/CameraTargetCycler.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
 import { createAgentPopulationRegistry } from "../../AI/agents/agentPopulationRegistry.js";
-import { createSnakeAgentSession, registerAgentInstance, validateAliveAgents, tickAliveAgents, syncAgentsAfterPhysics, stopAllAgents } from "./snakeAgentSession.js";
+import { createSnakeAgentSession, spawnSpeciesBatch, validateAliveAgents, tickAliveAgents, syncAgentsAfterPhysics, stopAllAgents } from "./snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "./species/index.js";
 import { getSnakeInstance } from "./SnakeInstance.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
@@ -32,13 +32,6 @@ export async function setupSnakeGame(state) {
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     await commitGridNavEdit(state, null, { fullNavSync: true });
     scene.navWalkable.rebake();
-    const snakeDef = SNAKE_GAME_SPECIES.get("snake");
-    for (let i = 0; i < scene.snakes.length; i++) {
-        const snake = scene.snakes[i];
-        const instance = snakeDef.createInstance(state, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId, navWalkable: scene.navWalkable });
-        registerAgentInstance(session, "snake", instance);
-        snakeDef.start(instance, state);
-    }
     let fleeSpawnExclude = new Set();
     for (let i = 0; i < scene.snakes.length; i++) {
         const occupied = scene.snakes[i].occupiedIndices;
@@ -46,11 +39,14 @@ export async function setupSnakeGame(state) {
         for (const idx of occupied) fleeSpawnExclude.add(idx);
     }
     const fleeAgents = spawnFleeAgentsScene(state, scene.navWalkable, fleeSpawnExclude.size ? fleeSpawnExclude : null);
-    const fleeDef = SNAKE_GAME_SPECIES.get("flee_agent");
-    for (let i = 0; i < fleeAgents.length; i++) {
-        const instance = fleeAgents[i].instance;
-        registerAgentInstance(session, "flee_agent", instance);
-        fleeDef.start(instance, state);
+
+    const spawnPlan = [
+        { species: "snake", spawnCtxs: scene.snakes.map((s) => ({ headId: s.chain.head.id, spawnGroupId: s.chain.spawnGroupId, navWalkable: scene.navWalkable })) },
+        { species: "flee_agent", spawnCtxs: fleeAgents.map((f) => ({ headId: f.pack.head.id, wedgeId: f.pack.body.id, spawnGroupId: f.pack.spawnGroupId })) },
+    ];
+    for (let i = 0; i < spawnPlan.length; i++) {
+        const { species, spawnCtxs } = spawnPlan[i];
+        spawnSpeciesBatch(session, state, species, spawnCtxs);
     }
     const centerSnake = scene.snakes[0];
     let focusedHeadId = centerSnake.chain.head.id;

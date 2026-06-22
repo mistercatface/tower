@@ -5,24 +5,6 @@ import { clearChainLinksForMembers } from "../../Sandbox/chainLinks.js";
 import { shatterSnakeSegments } from "./snakeSegmentFracture.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { markAgentDead, purgeInertAgentsForHead } from "../../AI/agents/agentPopulationRegistry.js";
-export function getAgentRelationship(seekerId, targetId, state, registry) {
-    const seekerMeta = registry.aliveByHeadId.get(seekerId);
-    const targetMeta = registry.aliveByHeadId.get(targetId);
-    if (!seekerMeta || !targetMeta) return "neutral";
-    const seekerSpecies = seekerMeta.species;
-    const targetSpecies = targetMeta.species;
-    if (seekerSpecies === "snake") {
-        if (targetSpecies === "snake") {
-            const seekerScore = getSnakeSizeScore(state, seekerId);
-            const targetScore = getSnakeSizeScore(state, targetId);
-            if (targetScore > seekerScore) return "threat";
-            if (targetScore < seekerScore) return "prey";
-            return "neutral";
-        }
-        if (targetSpecies === "flee_agent") return "prey";
-    } else if (seekerSpecies === "flee_agent") if (targetSpecies === "snake") return "threat";
-    return "neutral";
-}
 export function buildAgentMemberToInstanceMap(state, snakeGame) {
     const map = new Map();
     for (const instance of snakeGame.instancesByHeadId.values()) {

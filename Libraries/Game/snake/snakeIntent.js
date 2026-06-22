@@ -1,11 +1,15 @@
 import { perceiveAgentWorld, findNearestVisibleThreat as findNearestVisibleThreatCore } from "../../AI/perception/agentWorldPerception.js";
-import { getAgentRelationship } from "./snakeAgentPopulation.js";
+import { resolveAgentRelationship } from "./snakeAgentSession.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 function snakePerceptionOptions(visionCone) {
     const config = getSnakeGameConfig();
     const cone = visionCone ?? config.visionCone;
-    return { readVisionFrame: requireSnakeVisionFrame, agentRange: config.fleeRange ?? cone.range, resolveRelationship: getAgentRelationship };
+    return {
+        readVisionFrame: requireSnakeVisionFrame,
+        agentRange: config.fleeRange ?? cone.range,
+        resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(state.sandbox.snakeGame, selfHeadId, headId, state),
+    };
 }
 export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, visionCone) {
     return findNearestVisibleThreatCore(seeker, selfHeadId, state, registry, visionCone, snakePerceptionOptions(visionCone));

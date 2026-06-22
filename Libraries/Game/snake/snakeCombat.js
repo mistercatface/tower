@@ -2,7 +2,8 @@ import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.j
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { getSnakeInstance, SnakeInstance } from "./SnakeInstance.js";
-import { buildAgentMemberToInstanceMap, getAgentRelationship } from "./snakeAgentPopulation.js";
+import { buildAgentMemberToInstanceMap } from "./snakeAgentPopulation.js";
+import { resolveAgentRelationship } from "./snakeAgentSession.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
@@ -61,8 +62,8 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         if (!instanceA || !instanceB || instanceA === instanceB) continue;
         // Handle predator-prey combat between any species
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
-        const relationshipAB = getAgentRelationship(instanceA.headId, instanceB.headId, state, snakeGame.registry);
-        const relationshipBA = getAgentRelationship(instanceB.headId, instanceA.headId, state, snakeGame.registry);
+        const relationshipAB = resolveAgentRelationship(snakeGame, instanceA.headId, instanceB.headId, state);
+        const relationshipBA = resolveAgentRelationship(snakeGame, instanceB.headId, instanceA.headId, state);
         if (relationshipAB === "prey" || relationshipBA === "prey") {
             const predatorInstance = relationshipAB === "prey" ? instanceA : instanceB;
             const preyInstance = relationshipAB === "prey" ? instanceB : instanceA;

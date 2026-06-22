@@ -1,6 +1,5 @@
 import { createFleeAgentInstance } from "../fleeAgent/FleeAgentInstance.js";
 import { registerAliveAgent } from "../../../AI/agents/agentPopulationRegistry.js";
-
 export const fleeAgentSpecies = {
     id: "flee_agent",
     createInstance(state, ctx) {
@@ -27,5 +26,9 @@ export const fleeAgentSpecies = {
     },
     syncPresentation(instance, state) {
         if (typeof instance.syncWedgeFacing === "function") instance.syncWedgeFacing(state);
-    }
+    },
+    resolveRelationship(targetSpecies) {
+        if (targetSpecies === "snake") return "threat";
+        return "neutral";
+    },
 };

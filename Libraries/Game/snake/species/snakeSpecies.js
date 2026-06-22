@@ -1,6 +1,6 @@
+import { getSnakeSizeScore } from "../snakeScale.js";
 import { createAliveSnakeInstance } from "../SnakeInstance.js";
 import { registerAliveAgent } from "../../../AI/agents/agentPopulationRegistry.js";
-
 export const snakeSpecies = {
     id: "snake",
     createInstance(state, ctx) {
@@ -25,5 +25,16 @@ export const snakeSpecies = {
     },
     updateDiagnostics(instance, state) {
         if (typeof instance.updatePressureDiagnostics === "function") instance.updatePressureDiagnostics(state);
-    }
+    },
+    resolveRelationship(targetSpecies, seekerId, targetId, state) {
+        if (targetSpecies === "snake") {
+            const seekerScore = getSnakeSizeScore(state, seekerId);
+            const targetScore = getSnakeSizeScore(state, targetId);
+            if (targetScore > seekerScore) return "threat";
+            if (targetScore < seekerScore) return "prey";
+            return "neutral";
+        }
+        if (targetSpecies === "flee_agent") return "prey";
+        return "neutral";
+    },
 };
