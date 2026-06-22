@@ -142,7 +142,9 @@ export class EntityRegistry {
     }
     /** @param {object | string | number} refOrId */
     unregister(refOrId) {
-        const id = typeof refOrId === "object" && refOrId != null ? refOrId.id : refOrId;
+        let id;
+        if (typeof refOrId === "object" && refOrId != null) id = refOrId.id;
+        else id = refOrId;
         if (id == null) return;
         const entry = this._entries.get(id);
         if (!entry) return;
@@ -172,7 +174,8 @@ export class EntityRegistry {
     }
     /** @param {string | number} id @returns {object | null} */
     getLive(id) {
-        const ref = this.get(id);
+        const entry = this._entries.get(id);
+        const ref = entry?.ref;
         return ref && !ref.isDead ? ref : null;
     }
     /** @param {string} kind @param {(ref: object) => void} fn */
