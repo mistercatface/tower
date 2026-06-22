@@ -16,7 +16,7 @@ import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { findSnakeFoodProp } from "../Libraries/Game/snake/snakeFood.js";
 import { FRAME_MS } from "./frameMs.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
-import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { SNAKE_SHARD_PROP_ID } from "../Libraries/Game/snake/snakeSegmentFracture.js";

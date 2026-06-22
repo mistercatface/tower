@@ -1,7 +1,6 @@
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
-import { createFleeAgentRegistry } from "./fleeAgent/fleeAgentLifecycle.js";
 export function retireSnakeSegmentsFromNav(state, memberIds) {
     const meta = getSandboxEntityMeta(state);
     for (let i = 0; i < memberIds.length; i++) {
@@ -14,25 +13,5 @@ export function retireSnakeSegmentsFromNav(state, memberIds) {
     }
 }
 export function wireSnakeGameRegistry(state, registry, autosimsByHeadId, navWalkable) {
-    state.sandbox.snakeGame = { registry, autosimsByHeadId, instancesByHeadId: new Map(), fleeAgents: createFleeAgentRegistry(), navWalkable, simTick: 0, lastVisionBeginTick: -1 };
-}
-export function createSnakeLifecycleRegistry() {
-    return { aliveByHeadId: new Map(), inertByLeadId: new Map(), deadHeadIds: new Set() };
-}
-export function registerAliveSnake(registry, headId) {
-    registry.aliveByHeadId.set(headId, { headId, lifecycle: "alive" });
-    registry.deadHeadIds.delete(headId);
-}
-export function registerInertSnake(registry, leadSegmentId, memberIds, sourceHeadId) {
-    registry.inertByLeadId.set(leadSegmentId, { leadSegmentId, memberIds, sourceHeadId, lifecycle: "inert" });
-}
-export function markSnakeDead(registry, headId) {
-    registry.aliveByHeadId.delete(headId);
-    registry.deadHeadIds.add(headId);
-}
-export function isAliveSnakeHead(registry, headId) {
-    return registry.aliveByHeadId.has(headId);
-}
-export function purgeInertSnakesForHead(registry, headId) {
-    for (const [leadId, entry] of registry.inertByLeadId) if (entry.sourceHeadId === headId) registry.inertByLeadId.delete(leadId);
+    state.sandbox.snakeGame = { registry, autosimsByHeadId, instancesByHeadId: registry.instancesByHeadId, navWalkable, simTick: 0, lastVisionBeginTick: -1 };
 }

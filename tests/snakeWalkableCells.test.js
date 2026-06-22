@@ -9,7 +9,8 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
-import { wireSnakeGameRegistry, createSnakeLifecycleRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createAgentPopulationRegistry } from "../Libraries/Game/snake/agentPopulationRegistry.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -52,7 +53,7 @@ describe("snake navWalkable session", () => {
         applySnakeGameConfig({ snakeCount: 2 });
         const state = await createSnakeWalkableTestState(48, 1337);
         const scene = await spawnSnakeCavernScene(state);
-        wireSnakeGameRegistry(state, createSnakeLifecycleRegistry(), new Map(), scene.navWalkable);
+        wireSnakeGameRegistry(state, createAgentPopulationRegistry(), new Map(), scene.navWalkable);
         const picked = state.sandbox.snakeGame.navWalkable.pick({ rng: () => 0 });
         assert.ok(picked);
         assert.ok(state.sandbox.snakeGame.navWalkable.has(picked.col, picked.row));
@@ -61,7 +62,7 @@ describe("snake navWalkable session", () => {
         applySnakeGameConfig();
         const state = await createSnakeWalkableTestState(48, 1337);
         await generateSnakeSplitMap(state);
-        wireSnakeGameRegistry(state, createSnakeLifecycleRegistry(), new Map(), createSnakeNavWalkable(state));
+        wireSnakeGameRegistry(state, createAgentPopulationRegistry(), new Map(), createSnakeNavWalkable(state));
         const cells = state.sandbox.snakeGame.navWalkable.cells();
         assert.ok(cells.length >= 80);
         const grid = state.obstacleGrid;

@@ -4,7 +4,8 @@ import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createSnakeAutosim } from "./snakeAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease, clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
-import { registerAliveSnake, registerInertSnake, markSnakeDead, retireSnakeSegmentsFromNav, purgeInertSnakesForHead } from "./snakeLifecycle.js";
+import { registerAliveAgent, registerInertAgent, markAgentDead, purgeInertAgentsForHead } from "./agentPopulationRegistry.js";
+import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
 import { markSnakeSegmentsFracturable, shatterSnakeSegments } from "./snakeSegmentFracture.js";
 export class SnakeInstance {
     constructor({ headId, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
@@ -140,7 +141,7 @@ export class SnakeInstance {
     severInertTail(state, snakeGame, tailIds) {
         this.retireMemberSegments(state, tailIds);
         markSnakeSegmentsFracturable(state, tailIds);
-        registerInertSnake(snakeGame.registry, tailIds[0], tailIds, this.headId);
+        registerInertAgent(snakeGame.registry, tailIds[0], tailIds, this.headId);
     }
     die(state, snakeGame, members = null, deathImpact = null) {
         this.lifecycle = "dead";
@@ -150,8 +151,8 @@ export class SnakeInstance {
         const resolvedMembers = this.retireAllSegments(state, snakeGame, connectedMembers);
         clearChainLinksForMembers(state, resolvedMembers);
         shatterSnakeSegments(state, deathImpact?.spatialFrame ?? null, resolvedMembers, deathImpact);
-        purgeInertSnakesForHead(snakeGame.registry, this.headId);
-        markSnakeDead(snakeGame.registry, this.headId);
+        purgeInertAgentsForHead(snakeGame.registry, this.headId);
+        markAgentDead(snakeGame.registry, this.headId);
         snakeGame.instancesByHeadId.delete(this.headId);
         const head = state.entityRegistry.get(this.headId);
         if (head) clearSnakeSteeringLeaseFromProp(head);
@@ -179,7 +180,7 @@ export function createAliveSnakeInstance(state, { headId, spawnGroupId, navWalka
     return instance;
 }
 export function registerAliveSnakeInstance(snakeGame, instance) {
-    registerAliveSnake(snakeGame.registry, instance.headId);
+    registerAliveAgent(snakeGame.registry, instance.headId, "snake", instance);
     snakeGame.instancesByHeadId.set(instance.headId, instance);
     snakeGame.autosimsByHeadId.set(instance.headId, instance.autosim);
 }
@@ -189,7 +190,7 @@ export function getSnakeInstance(snakeGame, headId) {
 export function buildSnakeMemberToInstanceMap(state, snakeGame) {
     const map = new Map();
     for (const instance of snakeGame.instancesByHeadId.values()) {
-        if (instance.lifecycle !== "alive") continue;
+        if (instance.lifecycle !== "alive" || !(instance instanceof SnakeInstance)) continue;
         const members = getConnectedComponentPath(state.kinetic, instance.headId);
         instance.memberIds = members;
         for (let i = 0; i < members.length; i++) map.set(members[i], instance);
@@ -198,15 +199,15 @@ export function buildSnakeMemberToInstanceMap(state, snakeGame) {
 }
 export function resolveSnakeInstanceForMember(state, snakeGame, memberId) {
     const instance = getSnakeInstance(snakeGame, memberId);
-    if (instance && instance.lifecycle === "alive") return instance;
+    if (instance && instance.lifecycle === "alive" && instance instanceof SnakeInstance) return instance;
     return buildSnakeMemberToInstanceMap(state, snakeGame).get(memberId) ?? null;
 }
 export function syncAliveSnakeInstances(state, snakeGame) {
-    for (const instance of [...snakeGame.instancesByHeadId.values()]) instance.validate(state, snakeGame);
+    for (const instance of [...snakeGame.instancesByHeadId.values()]) if (typeof instance.validate === "function") instance.validate(state, snakeGame);
 }
 export function tickAliveSnakeInstances(state, snakeGame, dtMs) {
     for (const instance of snakeGame.instancesByHeadId.values()) {
-        if (instance.lifecycle !== "alive") continue;
+        if (instance.lifecycle !== "alive" || !(instance instanceof SnakeInstance)) continue;
         instance.autosim.tick(dtMs);
     }
 }

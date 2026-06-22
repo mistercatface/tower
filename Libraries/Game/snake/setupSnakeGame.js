@@ -3,7 +3,8 @@ import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { CameraTargetCycler } from "../../Sandbox/CameraTargetCycler.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
-import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "./snakeLifecycle.js";
+import { wireSnakeGameRegistry } from "./snakeLifecycle.js";
+import { createAgentPopulationRegistry } from "./agentPopulationRegistry.js";
 import { createAliveSnakeInstance, registerAliveSnakeInstance, getSnakeInstance, syncAliveSnakeInstances, tickAliveSnakeInstances } from "./SnakeInstance.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { mountSnakeHud } from "./snakeHud.js";
@@ -25,7 +26,7 @@ export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
     const scene = await spawnSnakeCavernScene(state);
-    const registry = createSnakeLifecycleRegistry();
+    const registry = createAgentPopulationRegistry();
     const autosimsByHeadId = new Map();
     wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
@@ -56,7 +57,6 @@ export async function setupSnakeGame(state) {
         getTargetIds: () => {
             const ids = [];
             for (const headId of registry.aliveByHeadId.keys()) ids.push(headId);
-            for (const headId of state.sandbox.snakeGame.fleeAgents.aliveByHeadId.keys()) ids.push(headId);
             if (strikerBall) ids.push(strikerBall.id);
             return ids;
         },
@@ -150,7 +150,7 @@ export async function setupSnakeGame(state) {
             if (snakeGame) {
                 syncFleeAgentInstances(state, snakeGame);
                 syncFleeAgentWedgeFacings(state, snakeGame);
-                for (const instance of snakeGame.instancesByHeadId.values()) instance.updatePressureDiagnostics(state);
+                for (const instance of snakeGame.instancesByHeadId.values()) if (typeof instance.updatePressureDiagnostics === "function") instance.updatePressureDiagnostics(state);
             }
         },
         stop() {

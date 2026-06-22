@@ -19,7 +19,7 @@ import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT } from "../Libraries/Game/snake/snakeChainColor.js";
-import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
 import { createSeekIntentState } from "../Libraries/Game/snake/snakeIntentStates.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireSnakeTestGame, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";

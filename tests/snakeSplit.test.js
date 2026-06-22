@@ -10,7 +10,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { isAliveSnakeHead } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { isAliveAgentHead } from "../Libraries/Game/snake/agentPopulationRegistry.js";
 import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength } from "../Libraries/Game/snake/snakeCombat.js";
 import { getSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
@@ -87,7 +87,7 @@ describe("snake split on impact", () => {
         assert.equal(result.aliveIds.length, 3);
         assert.equal(result.inertIds.length, 2);
         assert.equal(state.kinetic.kineticConstraints.length, 3);
-        assert.ok(isAliveSnakeHead(snakeGame.registry, headId));
+        assert.ok(isAliveAgentHead(snakeGame.registry, headId));
         assert.equal(snakeGame.registry.inertByLeadId.size, 1);
     });
 
@@ -100,7 +100,7 @@ describe("snake split on impact", () => {
         const snakeGame = mockSnakeGame(state, [headId]);
         const members = getOrderedChainMemberIds(state, headId);
         splitSnakeAtStruckSegment(state, snakeGame, headId, members[0]);
-        assert.equal(isAliveSnakeHead(snakeGame.registry, headId), false);
+        assert.equal(isAliveAgentHead(snakeGame.registry, headId), false);
         assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
         assert.equal(state.kinetic.kineticConstraints.length, 0);
     });
@@ -115,7 +115,7 @@ describe("snake min length death", () => {
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
         assert.ok(enforceSnakeMinLength(state, snakeGame, headId));
-        assert.equal(isAliveSnakeHead(snakeGame.registry, headId), false);
+        assert.equal(isAliveAgentHead(snakeGame.registry, headId), false);
     });
 
     it("enforceSnakeMinLength kills head plus one segment", () => {

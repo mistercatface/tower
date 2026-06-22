@@ -10,7 +10,8 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeLifecycleRegistry, wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
+import { createAgentPopulationRegistry } from "../Libraries/Game/snake/agentPopulationRegistry.js";
 import { SnakeInstance, createAliveSnakeInstance, registerAliveSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
 import { steerRollToward, applyGroundRollDrive } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../Libraries/Game/snake/snakeSteeringLease.js";
@@ -79,7 +80,7 @@ describe("SnakeInstance", () => {
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const head = pack.chain.head;
-        const registry = createSnakeLifecycleRegistry();
+        const registry = createAgentPopulationRegistry();
         wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
         const instance = new SnakeInstance({
             headId: head.id,
@@ -106,7 +107,7 @@ describe("SnakeInstance", () => {
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const headId = pack.chain.head.id;
-        const registry = createSnakeLifecycleRegistry();
+        const registry = createAgentPopulationRegistry();
         const autosimsByHeadId = new Map();
         wireSnakeGameRegistry(state, registry, autosimsByHeadId, createSnakeNavWalkable(state));
         const instance = new SnakeInstance({
@@ -134,7 +135,7 @@ describe("SnakeInstance", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
-        const registry = createSnakeLifecycleRegistry();
+        const registry = createAgentPopulationRegistry();
         wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
         const instance = createAliveSnakeInstance(state, {
             headId: pack.chain.head.id,
@@ -154,7 +155,7 @@ describe("SnakeInstance", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
-        const registry = createSnakeLifecycleRegistry();
+        const registry = createAgentPopulationRegistry();
         wireSnakeGameRegistry(state, registry, new Map(), createSnakeNavWalkable(state));
         const instance = new SnakeInstance({
             headId: pack.chain.head.id,
