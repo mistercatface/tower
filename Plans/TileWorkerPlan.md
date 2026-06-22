@@ -1,12 +1,40 @@
-The tile path is the outlier: HPA and flow fields use a domain class → PathfindingWorkerClient → worker entry class, while tiles are a 237-line module singleton with pool/queue/focus/profile gating all in module scope, and a flat HANDLERS map in TileWorkerEntry.js. There is also dead scaffolding — inFlightByKey, chunkDedupeKey, and patchDedupeKey are defined but never wired, which is likely the “easy win” you remembered.
+# Tile worker OOP refactor
 
-Part 1 — Extract a reusable promise-based worker pool host
-Introduce something like Libraries/Workers/PromiseWorkerPoolHost.js (or BitmapWorkerPoolHost.js) that owns what HPA gets from PathfindingWorkerClient without the SAB slot machinery: lazy pool creation from an injected workerUrl, per-worker busy flags, postJob(workerIndex, message), unified onmessage/onerror binding, and shutdown() / recycleWorker(). This is intentionally thinner than SabSlotWorkerHost — tile jobs are { id, type, payload } → { id, bitmaps | error } with transferable ImageBitmaps, not slot-indexed shared buffers. The host should expose hooks (onJobComplete(workerIndex, result)) so scheduling logic stays outside. Bootstrap stays the same: configureTileWorker({ workerUrl }) in engineGlobals.js, but it constructs one pool host instead of module-level workers[] / workerBusy[] arrays. Acceptance: pool lifecycle and message routing live in one testable class; no scheduling or profile logic in this layer.
+Tile surface bakes now follow the same shape as HPA / flow-field workers: **pool host → scheduler/client → worker entry class**.
 
-Part 2 — Move scheduling into a TileBakeScheduler class
-Lift the MinHeap queue, tier constants (REGISTRATION / STATIC / ANIMATION), focus-based resort, animation concurrency cap, revision obsolete-drop, and the pending id→Promise map into a dedicated scheduler class that takes the pool host as a dependency. This is where you wire the easy win: activate chunkDedupeKey / patchDedupeKey and inFlightByKey so duplicate chunk/patch requests coalesce to one in-flight promise instead of N identical worker posts (today WorldSurfaceEngine dedupes at the cache-placeholder layer, but the coordinator still queues redundant jobs). Keep tier ordering and focus resort behavior identical — the profile showed worker callback overhead, and coalescing plus obsolete-rev drop are low-risk cuts. The scheduler exposes enqueue(type, payload, tier) → Promise<ImageBitmap[]> and updateFocus(x, y); dispatch() runs when a worker frees or focus moves enough to resort. Acceptance: scheduler unit-testable with a mock pool; duplicate keys share one promise; stale revision jobs resolve empty without hitting a worker.
+## Status
 
-Part 3 — TileSurfaceWorkerClient facade + OOP worker entry
-On the main thread, add TileSurfaceWorkerClient (mirroring HpaPathWorker / FlowFieldGrid shape): constructor wires pool + scheduler, owns workerReady registration chain, registeredRuntimeProfileIds, and the public API currently on the TileWorkerCoordinator object (requestGroundChunkBake, requestWallAtlasBake, requestHorizontalPatchBake, registerRuntimeProfile, syncBakeConstants, updateFocus). Callers (WorldSurfaceEngine, preview.js, animatedSurfaceFlipbook.js) either hold a client instance or import a thin module singleton that delegates to it — same pattern as nav workers injected at bootstrap. On the worker side, refactor TileWorkerEntry.js into a TileSurfaceWorker class with an onMessage(e) method and the existing handler table as methods or a private dispatch map, matching HpaPathfindingWorker in HpaWorkerEntry.js. Profile normalization (withBakeFrameRange, ensureRuntimeProfileOnWorkers) stays on the client; paint stays in WorldSurfacePainter.js. Acceptance: TileWorkerCoordinator.js shrinks to re-exports or a ~20-line singleton wrapper; worker entry is a class + const worker = new TileSurfaceWorker(); self.onmessage = (e) => worker.onMessage(e); no behavior change in bake output, only structure + dedupe.
+| Part | Module                                                                   | Status |
+| ---- | ------------------------------------------------------------------------ | ------ |
+| 1    | `Libraries/Workers/PromiseWorkerPoolHost.js`                             | ✅     |
+| 2    | `Libraries/WorldSurface/TileBakeScheduler.js` (queue, dedupe, `stats()`) | ✅     |
+| 3    | `TileSurfaceWorkerClient` + `TileSurfaceWorker` + coordinator shim       | ✅     |
 
-Suggested PR split: (1) pool host + worker entry class, no caller changes; (2) scheduler + dedupe wiring; (3) client facade + migrate imports, delete module-level globals. That keeps each diff reviewable and lets you land the dedupe win in PR 2 without waiting for the full rename.
+## Architecture
+
+```text
+TileWorkerCoordinator (shim)
+  └── TileSurfaceWorkerClient
+        ├── PromiseWorkerPoolHost
+        └── TileBakeScheduler
+
+TileWorkerEntry.js
+  └── TileSurfaceWorker.onMessage → WorldSurfacePainter
+```
+
+Message types: `Libraries/WorldSurface/TileWorkerMessages.js`
+
+## Telemetry
+
+- `TileBakeScheduler.stats()` — `{ queueSize, pendingCount, inFlightDedupeCount, busyWorkers }`
+- `TileWorkerCoordinator.bakeSchedulerStats()` — delegates to client; zeros before bootstrap
+
+## Next (worker perf — not Part 3)
+
+Profile hot path: `TileSurfaceWorker.onMessage` → `composeSurfaceImage` → `Perlin2D` → motif filters. Part 3 only structured the entry point; perf work targets `WorldSurfacePainter` / `SurfaceTextureComposer` / `Perlin2D` with bake session state on `TileSurfaceWorker`.
+
+## Tests
+
+- `tests/promiseWorkerPoolHost.test.js`
+- `tests/tileBakeScheduler.test.js`
+- `tests/tileSurfaceWorkerClient.test.js`
