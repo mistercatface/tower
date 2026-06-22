@@ -28,6 +28,12 @@ export function addDistanceConstraint(session, { bodyA, bodyB, anchorA = { x: 0,
     markKineticConstraintsDirty(session);
     return constraint;
 }
+export function addAngleConstraint(session, { bodyA, bodyB, referenceAngle }) {
+    const constraint = { id: nextKineticConstraintId++, type: "angle", bodyAId: bodyA.id, bodyBId: bodyB.id, bodyA, bodyB, referenceAngle, accumulatedImpulse: 0 };
+    session.kineticConstraints.push(constraint);
+    markKineticConstraintsDirty(session);
+    return constraint;
+}
 export function removeKineticConstraint(session, constraintId) {
     const list = session.kineticConstraints;
     const index = list.findIndex((entry) => entry.id === constraintId);
@@ -64,27 +70,31 @@ export function collectKineticConstraintsSnapshot(session, propIdToIndex) {
         const bodyA = propIdToIndex.get(constraint.bodyAId);
         const bodyB = propIdToIndex.get(constraint.bodyBId);
         if (bodyA == null || bodyB == null) continue;
-        entries.push({
-            bodyA,
-            bodyB,
-            restLength: constraint.restLength,
-            anchorA: { x: constraint.anchorA.x, y: constraint.anchorA.y },
-            anchorB: { x: constraint.anchorB.x, y: constraint.anchorB.y },
-            accumulatedImpulse: constraint.accumulatedImpulse,
-        });
+        const entry = { type: constraint.type ?? "distance", bodyA, bodyB, accumulatedImpulse: constraint.accumulatedImpulse };
+        if (constraint.type === "angle") entry.referenceAngle = constraint.referenceAngle;
+        else {
+            entry.restLength = constraint.restLength;
+            entry.anchorA = { x: constraint.anchorA.x, y: constraint.anchorA.y };
+            entry.anchorB = { x: constraint.anchorB.x, y: constraint.anchorB.y };
+        }
+        entries.push(entry);
     }
     return entries;
 }
 export function applyKineticConstraintsFromSnapshot(session, entries, propRefsByIndex) {
     for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
-        const constraint = addDistanceConstraint(session, {
-            bodyA: propRefsByIndex[entry.bodyA],
-            bodyB: propRefsByIndex[entry.bodyB],
-            restLength: entry.restLength,
-            anchorA: entry.anchorA,
-            anchorB: entry.anchorB,
-        });
+        const type = entry.type ?? "distance";
+        let constraint;
+        if (type === "angle") constraint = addAngleConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], referenceAngle: entry.referenceAngle });
+        else
+            constraint = addDistanceConstraint(session, {
+                bodyA: propRefsByIndex[entry.bodyA],
+                bodyB: propRefsByIndex[entry.bodyB],
+                restLength: entry.restLength,
+                anchorA: entry.anchorA,
+                anchorB: entry.anchorB,
+            });
         constraint.accumulatedImpulse = entry.accumulatedImpulse || 0;
     }
 }

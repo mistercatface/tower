@@ -27,8 +27,8 @@ export function spawnAgentChain(state, anchorCell, spec) {
     const headProp = spawnPlacedSandboxProp(state, anchorWorld.x, anchorWorld.y, headPropId, faction);
     if (headScaleFn) headScaleFn(headProp, segmentRadius);
     else if (segmentRadius != null) {
-        const asset = getPropAsset(headPropId);
-        if (asset?.physics?.shape === "Polygon") setPolygonPropBoundingRadius(headProp, segmentRadius);
+        const shape = headProp.getShape?.() ?? headProp.shape;
+        if (shape?.type === "Polygon") setPolygonPropBoundingRadius(headProp, segmentRadius);
         else setCirclePropRadius(headProp, segmentRadius);
     }
     props.push(headProp);
@@ -37,7 +37,11 @@ export function spawnAgentChain(state, anchorCell, spec) {
     let lastProp = headProp;
     for (let i = 1; i < segmentCount; i++) {
         const bodyProp = spawnPlacedSandboxProp(state, lastProp.x, lastProp.y, bodyPropId, faction);
-        if (segmentRadius != null) setCirclePropRadius(bodyProp, segmentRadius);
+        if (segmentRadius != null) {
+            const shape = bodyProp.getShape?.() ?? bodyProp.shape;
+            if (shape?.type === "Polygon") setPolygonPropBoundingRadius(bodyProp, segmentRadius);
+            else setCirclePropRadius(bodyProp, segmentRadius);
+        }
         if (onSegmentSpawned) onSegmentSpawned(bodyProp, i);
         const dist = spacing ?? resolveChainLinkRestLength(lastProp, bodyProp, linkSlack);
         bodyProp.x = lastProp.x + growDirX * dist;

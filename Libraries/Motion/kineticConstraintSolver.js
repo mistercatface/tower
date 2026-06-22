@@ -7,6 +7,8 @@ import { applyPositionCorrection } from "../Spatial/collision/penetration.js";
 import { ensureKineticIslandPlan } from "./kineticIslands.js";
 import { wakeKineticBody } from "./kineticSleep.js";
 import { kineticDynamicSlab, kineticStaticSlab, writeActiveKineticBodySlabPose, writebackKineticBodySlabPhysIds, separateAlongNormalSlab } from "../Spatial/collision/kineticBodySlab.js";
+import { normalizeAngle } from "../Math/Angle.js";
+import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 const LINK_CAPSULE_WALL_PASSES = 4;
 /** Reused per-island wall candidate list — cleared at the start of each awake island. */
 const islandLinkWallCandidates = [];
@@ -22,6 +24,7 @@ export const kineticConstraintSlab = {
     activeCount: 0,
     groupCount: 0,
     groupCounts: new Int32Array(MAX_ISLAND_GROUPS),
+    type: new Array(MAX_KINETIC_CONSTRAINTS),
     bodyA: new Array(MAX_KINETIC_CONSTRAINTS),
     bodyB: new Array(MAX_KINETIC_CONSTRAINTS),
     physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS),
@@ -41,6 +44,7 @@ export const kineticConstraintSlab = {
         anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
         anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS),
         restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS),
+        referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS),
         massA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
         massB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
         invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
@@ -130,15 +134,28 @@ function appendConstraintEntry(slab, item) {
     const idx = slab.count++;
     const bodyA = item.bodyA;
     const bodyB = item.bodyB;
+    slab.type[idx] = item.entry.type ?? "distance";
     slab.bodyA[idx] = bodyA;
     slab.bodyB[idx] = bodyB;
     slab.physIdA[idx] = bodyA._physId;
     slab.physIdB[idx] = bodyB._physId;
-    slab.static.anchorAx[idx] = item.entry.anchorA.x;
-    slab.static.anchorAy[idx] = item.entry.anchorA.y;
-    slab.static.anchorBx[idx] = item.entry.anchorB.x;
-    slab.static.anchorBy[idx] = item.entry.anchorB.y;
-    slab.static.restLength[idx] = item.entry.restLength;
+    if (slab.type[idx] === "angle") {
+        slab.static.referenceAngle[idx] = item.entry.referenceAngle ?? 0;
+        slab.static.anchorAx[idx] = 0;
+        slab.static.anchorAy[idx] = 0;
+        slab.static.anchorBx[idx] = 0;
+        slab.static.anchorBy[idx] = 0;
+        slab.static.restLength[idx] = 0;
+        slab.static.capsuleRadius[idx] = 0;
+    } else {
+        slab.static.referenceAngle[idx] = 0;
+        slab.static.anchorAx[idx] = item.entry.anchorA?.x ?? 0;
+        slab.static.anchorAy[idx] = item.entry.anchorA?.y ?? 0;
+        slab.static.anchorBx[idx] = item.entry.anchorB?.x ?? 0;
+        slab.static.anchorBy[idx] = item.entry.anchorB?.y ?? 0;
+        slab.static.restLength[idx] = item.entry.restLength ?? 0;
+        slab.static.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
+    }
     slab.static.massA[idx] = massFromBody(bodyA);
     slab.static.massB[idx] = massFromBody(bodyB);
     slab.static.invMassA[idx] = inverseMassFromBody(bodyA);
@@ -147,7 +164,6 @@ function appendConstraintEntry(slab, item) {
     slab.static.invIB[idx] = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
     slab.static.pinnedA[idx] = bodyPinnedForContact(bodyA) ? 1 : 0;
     slab.static.pinnedB[idx] = bodyPinnedForContact(bodyB) ? 1 : 0;
-    slab.static.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
     slab.dynamic.accumulatedImpulse[idx] = item.entry.accumulatedImpulse || 0;
     slab.entry[idx] = item.entry;
 }
@@ -210,7 +226,7 @@ export function gatherKineticConstraintSlab(tick) {
     const buckets = new Map();
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
-        if (entry.type !== "distance") continue;
+        if (entry.type !== "distance" && entry.type !== "angle") continue;
         const bodyA = entry.bodyA;
         const bodyB = entry.bodyB;
         if (bodyA.isDead || bodyB.isDead) continue;
@@ -346,6 +362,7 @@ function projectIslandLinkCapsulesAgainstWalls(tick) {
         if (!islandWalls.length) continue;
         for (let pass = 0; pass < 2; pass++)
             for (let i = start; i < start + count; i++) {
+                if (slab.type[i] === "angle") continue;
                 const bodyA = slab.bodyA[i];
                 const bodyB = slab.bodyB[i];
                 if (
@@ -394,6 +411,34 @@ function projectDistanceConstraint(slab, index) {
     if (Math.abs(error) < 1e-5) return;
     separateAlongNormalSlab(physIdA, physIdB, nx, ny, -error);
 }
+function projectAngleConstraint(slab, index) {
+    const bodyA = slab.bodyA[index];
+    const bodyB = slab.bodyB[index];
+    if (bodyA.isSleeping && bodyB.isSleeping) return;
+    const facingA = bodyA.facing ?? 0;
+    const facingB = bodyB.facing ?? 0;
+    const refAngle = slab.static.referenceAngle[index];
+    const error = normalizeAngle(facingB - facingA - refAngle);
+    if (Math.abs(error) < 1e-4) return;
+    const invIA = slab.static.invIA[index];
+    const invIB = slab.static.invIB[index];
+    const sum = invIA + invIB;
+    if (sum <= 1e-12) return;
+    const ratioA = invIA / sum;
+    const ratioB = invIB / sum;
+    const correctionA = error * ratioA;
+    const correctionB = error * ratioB;
+    bodyA.facing = normalizeAngle(facingA + correctionA);
+    bodyB.facing = normalizeAngle(facingB - correctionB);
+    bodyA.stateTimer = (bodyA.stateTimer ?? 0) + 1;
+    bodyB.stateTimer = (bodyB.stateTimer ?? 0) + 1;
+    invalidateBroadphaseBounds(bodyA);
+    invalidateBroadphaseBounds(bodyB);
+}
+function projectConstraint(slab, index) {
+    if (slab.type[index] === "angle") projectAngleConstraint(slab, index);
+    else projectDistanceConstraint(slab, index);
+}
 function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias) {
     const k = slab.dynamic.k[index];
     if (k <= 1e-12) return 0;
@@ -427,66 +472,120 @@ function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias
     spatialFrame.scheduleKineticActivation(bodyB);
     return Math.abs(lambda);
 }
+function solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias) {
+    const k = slab.dynamic.k[index];
+    if (k <= 1e-12) return 0;
+    const bodyA = slab.bodyA[index];
+    const bodyB = slab.bodyB[index];
+    const physIdA = slab.physIdA[index];
+    const physIdB = slab.physIdB[index];
+    const dynSlab = kineticDynamicSlab;
+    const error = slab.dynamic.error[index];
+    const vRelN = dynSlab.w[physIdB] - dynSlab.w[physIdA];
+    const lambda = -(vRelN + velocityBias * error) / k;
+    if (lambda === 0) return 0;
+    slab.dynamic.accumulatedImpulse[index] += lambda;
+    const invIA = slab.static.invIA[index];
+    const invIB = slab.static.invIB[index];
+    dynSlab.w[physIdA] -= lambda * invIA;
+    dynSlab.w[physIdB] += lambda * invIB;
+    spatialFrame.scheduleKineticActivation(bodyA);
+    spatialFrame.scheduleKineticActivation(bodyB);
+    return Math.abs(lambda);
+}
+function solveConstraintVelocity(slab, index, spatialFrame, velocityBias) {
+    if (slab.type[index] === "angle") return solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias);
+    else return solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias);
+}
 function projectKineticConstraintSlab() {
     const slab = kineticConstraintSlab;
-    for (let i = 0; i < slab.activeCount; i += 2) projectDistanceConstraint(slab, i);
-    for (let i = 1; i < slab.activeCount; i += 2) projectDistanceConstraint(slab, i);
+    for (let i = 0; i < slab.activeCount; i += 2) projectConstraint(slab, i);
+    for (let i = 1; i < slab.activeCount; i += 2) projectConstraint(slab, i);
+}
+function warmStartDistanceConstraint(slab, i, dynSlab) {
+    const bodyA = slab.bodyA[i];
+    const bodyB = slab.bodyB[i];
+    const physIdA = slab.physIdA[i];
+    const physIdB = slab.physIdB[i];
+    const wa = worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab);
+    const wb = worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab);
+    const dx = wb.x - wa.x;
+    const dy = wb.y - wa.y;
+    const dist = Math.hypot(dx, dy);
+    let nx = 0,
+        ny = 0,
+        error = 0,
+        rAn = 0,
+        rBn = 0,
+        k = 0;
+    if (dist >= 1e-8) {
+        nx = dx / dist;
+        ny = dy / dist;
+        error = dist - slab.static.restLength[i];
+        const invMassA = slab.static.invMassA[i];
+        const invMassB = slab.static.invMassB[i];
+        const invIA = slab.static.invIA[i];
+        const invIB = slab.static.invIB[i];
+        const rax = wa.x - dynSlab.x[physIdA];
+        const ray = wa.y - dynSlab.y[physIdA];
+        const rbx = wb.x - dynSlab.x[physIdB];
+        const rby = wb.y - dynSlab.y[physIdB];
+        rAn = rax * ny - ray * nx;
+        rBn = rbx * ny - rby * nx;
+        k = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
+    }
+    slab.dynamic.nx[i] = nx;
+    slab.dynamic.ny[i] = ny;
+    slab.dynamic.error[i] = error;
+    slab.dynamic.rAn[i] = rAn;
+    slab.dynamic.rBn[i] = rBn;
+    slab.dynamic.k[i] = k;
+    const lambda = slab.dynamic.accumulatedImpulse[i];
+    if (lambda !== 0 && dist >= 1e-8) {
+        const invMassA = slab.static.invMassA[i];
+        const invMassB = slab.static.invMassB[i];
+        const invIA = slab.static.invIA[i];
+        const invIB = slab.static.invIB[i];
+        dynSlab.vx[physIdA] -= lambda * nx * invMassA;
+        dynSlab.vy[physIdA] -= lambda * ny * invMassA;
+        dynSlab.vx[physIdB] += lambda * nx * invMassB;
+        dynSlab.vy[physIdB] += lambda * ny * invMassB;
+        dynSlab.w[physIdA] -= lambda * rAn * invIA;
+        dynSlab.w[physIdB] += lambda * rBn * invIB;
+    }
+}
+function warmStartAngleConstraint(slab, i, dynSlab) {
+    const bodyA = slab.bodyA[i];
+    const bodyB = slab.bodyB[i];
+    const physIdA = slab.physIdA[i];
+    const physIdB = slab.physIdB[i];
+    const facingA = bodyA.facing ?? 0;
+    const facingB = bodyB.facing ?? 0;
+    const refAngle = slab.static.referenceAngle[i];
+    const error = normalizeAngle(facingB - facingA - refAngle);
+    const invIA = slab.static.invIA[i];
+    const invIB = slab.static.invIB[i];
+    const k = invIA + invIB;
+    slab.dynamic.nx[i] = 0;
+    slab.dynamic.ny[i] = 0;
+    slab.dynamic.error[i] = error;
+    slab.dynamic.rAn[i] = 1;
+    slab.dynamic.rBn[i] = 1;
+    slab.dynamic.k[i] = k;
+    const lambda = slab.dynamic.accumulatedImpulse[i];
+    if (lambda !== 0) {
+        dynSlab.w[physIdA] -= lambda * invIA;
+        dynSlab.w[physIdB] += lambda * invIB;
+    }
+}
+function warmStartConstraint(slab, i, dynSlab) {
+    if (slab.type[i] === "angle") warmStartAngleConstraint(slab, i, dynSlab);
+    else warmStartDistanceConstraint(slab, i, dynSlab);
 }
 function warmStartKineticConstraintSlab() {
     const slab = kineticConstraintSlab;
     const dynSlab = kineticDynamicSlab;
-    for (let i = 0; i < slab.activeCount; i++) {
-        const bodyA = slab.bodyA[i];
-        const bodyB = slab.bodyB[i];
-        const physIdA = slab.physIdA[i];
-        const physIdB = slab.physIdB[i];
-        const wa = worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab);
-        const wb = worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab);
-        const dx = wb.x - wa.x;
-        const dy = wb.y - wa.y;
-        const dist = Math.hypot(dx, dy);
-        let nx = 0,
-            ny = 0,
-            error = 0,
-            rAn = 0,
-            rBn = 0,
-            k = 0;
-        if (dist >= 1e-8) {
-            nx = dx / dist;
-            ny = dy / dist;
-            error = dist - slab.static.restLength[i];
-            const invMassA = slab.static.invMassA[i];
-            const invMassB = slab.static.invMassB[i];
-            const invIA = slab.static.invIA[i];
-            const invIB = slab.static.invIB[i];
-            const rax = wa.x - dynSlab.x[physIdA];
-            const ray = wa.y - dynSlab.y[physIdA];
-            const rbx = wb.x - dynSlab.x[physIdB];
-            const rby = wb.y - dynSlab.y[physIdB];
-            rAn = rax * ny - ray * nx;
-            rBn = rbx * ny - rby * nx;
-            k = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
-        }
-        slab.dynamic.nx[i] = nx;
-        slab.dynamic.ny[i] = ny;
-        slab.dynamic.error[i] = error;
-        slab.dynamic.rAn[i] = rAn;
-        slab.dynamic.rBn[i] = rBn;
-        slab.dynamic.k[i] = k;
-        const lambda = slab.dynamic.accumulatedImpulse[i];
-        if (lambda !== 0 && dist >= 1e-8) {
-            const invMassA = slab.static.invMassA[i];
-            const invMassB = slab.static.invMassB[i];
-            const invIA = slab.static.invIA[i];
-            const invIB = slab.static.invIB[i];
-            dynSlab.vx[physIdA] -= lambda * nx * invMassA;
-            dynSlab.vy[physIdA] -= lambda * ny * invMassA;
-            dynSlab.vx[physIdB] += lambda * nx * invMassB;
-            dynSlab.vy[physIdB] += lambda * ny * invMassB;
-            dynSlab.w[physIdA] -= lambda * rAn * invIA;
-            dynSlab.w[physIdB] += lambda * rBn * invIB;
-        }
-    }
+    for (let i = 0; i < slab.activeCount; i++) warmStartConstraint(slab, i, dynSlab);
 }
 function solveKineticConstraintSlab(tick) {
     const slab = kineticConstraintSlab;
@@ -498,11 +597,11 @@ function solveKineticConstraintSlab(tick) {
     for (let iter = 0; iter < constraintSettings.iterations; iter++) {
         let maxImpulse = 0;
         for (let i = 0; i < slab.activeCount; i += 2) {
-            const impulse = solveDistanceConstraintVelocity(slab, i, spatialFrame, constraintSettings.velocityBias);
+            const impulse = solveConstraintVelocity(slab, i, spatialFrame, constraintSettings.velocityBias);
             if (impulse > maxImpulse) maxImpulse = impulse;
         }
         for (let i = 1; i < slab.activeCount; i += 2) {
-            const impulse = solveDistanceConstraintVelocity(slab, i, spatialFrame, constraintSettings.velocityBias);
+            const impulse = solveConstraintVelocity(slab, i, spatialFrame, constraintSettings.velocityBias);
             if (impulse > maxImpulse) maxImpulse = impulse;
         }
         if (maxImpulse <= contactImpulseEpsilon) break;
@@ -538,6 +637,7 @@ export function measureConstraintSlabMaxError() {
     const dynSlab = kineticDynamicSlab;
     let max = 0;
     for (let i = 0; i < slab.activeCount; i++) {
+        if (slab.type[i] === "angle") continue;
         const bodyA = slab.bodyA[i];
         const bodyB = slab.bodyB[i];
         const wa = worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab);

@@ -7,6 +7,7 @@ import { getCirclePropRadius, getPolygonPropBoundingRadius, setCirclePropRadius,
 import { getSnakeGameConfig, resolveSnakeStartRadius, applySnakeSegmentGameplay } from "../snakeGameConfig.js";
 import { syncFleeAgentWedgeFacing } from "./syncFleeAgentWedgeFacing.js";
 import { spawnAgentChain } from "../../../Sandbox/spawnAgentChain.js";
+import { addAngleConstraint } from "../../../Motion/kineticConstraints.js";
 export const FLEE_AGENT_EXPORT_TYPE = "flee_agent";
 export const FLEE_AGENT_CHAIN_MEMBER_COUNT = 2;
 export function resolveFleeAgentForwardDir(config = getSnakeGameConfig()) {
@@ -28,16 +29,16 @@ export function spawnFleeAgent(state, anchorCell, options = {}) {
     const fleeConfig = config.fleeAgent;
     const bodyRadius = options.segmentRadius ?? resolveSnakeStartRadius(config);
     const forward = options.forwardDir ?? resolveFleeAgentForwardDir(config);
-    const growDirX = -forward.x;
-    const growDirY = -forward.y;
+    const growDirX = forward.x;
+    const growDirY = forward.y;
     const linkSlack = options.linkSlack ?? config.linkSlack;
     const bodyType = options.bodyPropId ?? fleeConfig.bodyPropId;
     const wedgeType = options.wedgePropId ?? fleeConfig.wedgePropId;
     const faction = options.faction ?? fleeConfig.faction ?? sandboxFactions.bravo;
     const exportType = options.exportType ?? FLEE_AGENT_EXPORT_TYPE;
     const pack = spawnAgentChain(state, anchorCell, {
-        headPropId: wedgeType,
-        bodyPropId: bodyType,
+        headPropId: bodyType,
+        bodyPropId: wedgeType,
         segmentCount: FLEE_AGENT_CHAIN_MEMBER_COUNT,
         faction,
         exportType,
@@ -45,13 +46,17 @@ export function spawnFleeAgent(state, anchorCell, options = {}) {
         segmentRadius: bodyRadius,
         growDirX,
         growDirY,
-        headScaleFn: (wedge, radius) => scaleFleeAgentWedgeToBody(wedge, radius, wedgeType, config),
+        headScaleFn: null,
         onSegmentSpawned: (prop, index) => {
-            if (index > 0) applySnakeSegmentGameplay(prop);
+            if (index === 0) {
+                applySnakeSegmentGameplay(prop);
+                prop.strategy.canChain = true;
+            } else if (index === 1) scaleFleeAgentWedgeToBody(prop, bodyRadius, wedgeType, config);
         },
         spawnGroupId: options.spawnGroupId,
     });
     const forwardHeading = Math.atan2(forward.y, forward.x);
-    syncFleeAgentWedgeFacing(pack.head, pack.head, forwardHeading);
+    syncFleeAgentWedgeFacing(pack.head, pack.members[1], forwardHeading);
+    addAngleConstraint(state.kinetic, { bodyA: pack.head, bodyB: pack.members[1], referenceAngle: -Math.PI / 2 });
     return { head: pack.head, body: pack.members[1], members: pack.members, spawnGroupId: pack.spawnGroupId };
 }
