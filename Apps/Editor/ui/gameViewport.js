@@ -19,6 +19,9 @@ export function mountGameViewport(state, onStageResize) {
             state.viewport.snapTo(x, y);
             state.viewport.zoom = zoom;
         },
+        onRightDragStart: () => {
+            state.appLaunch?.session?.releaseCameraFocus?.();
+        },
     });
     resetGameCanvasStageFit();
     const stage = document.getElementById("gameStage");

@@ -1,6 +1,5 @@
 import { hasGridCellLineOfSightCached } from "../../../Navigation/perception/gridCellVision.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
-import { getPreySnakeSegmentCount } from "./fleeHuntTargeting.js";
 function threatSeverityForDist(dist, fleeRange) {
     return Math.max(0, Math.min(1, (fleeRange - dist) / fleeRange));
 }
@@ -12,9 +11,7 @@ export function classifyFleeVisibleAgentsFromVision(seeker, selfHeadId, state, r
     const originCol = vision?.originCol ?? navTopology.grid.worldToGrid(seeker.x, seeker.y).col;
     const originRow = vision?.originRow ?? navTopology.grid.worldToGrid(seeker.x, seeker.y).row;
     let threat = null;
-    let prey = null;
     let bestThreatDistSq = Infinity;
-    let bestPreyDistSq = Infinity;
     let threatCount = 0;
     let aggregateThreatSeverity = 0;
     for (const headId of registry.aliveByHeadId.keys()) {
@@ -26,29 +23,20 @@ export function classifyFleeVisibleAgentsFromVision(seeker, selfHeadId, state, r
         const distSq = dx * dx + dy * dy;
         if (distSq > rangeSq) continue;
         const relationship = resolveRelationship(selfHeadId, headId, state, registry);
-        if (relationship === "neutral" || relationship === "ally") continue;
+        if (relationship !== "threat") continue;
         const targetCell = navTopology.grid.worldToGrid(head.x, head.y);
         if (!hasGridCellLineOfSightCached(visionSession, navTopology, originCol, originRow, targetCell.col, targetCell.row)) continue;
         const dist = Math.sqrt(distSq);
-        if (relationship === "threat") {
-            threatCount++;
-            aggregateThreatSeverity += threatSeverityForDist(dist, fleeRange);
-            if (distSq < bestThreatDistSq) {
-                bestThreatDistSq = distSq;
-                threat = head;
-            }
-            continue;
+        threatCount++;
+        aggregateThreatSeverity += threatSeverityForDist(dist, fleeRange);
+        if (distSq < bestThreatDistSq) {
+            bestThreatDistSq = distSq;
+            threat = head;
         }
-        if (distSq >= bestPreyDistSq) continue;
-        bestPreyDistSq = distSq;
-        prey = head;
     }
     return {
         threat,
-        prey,
         threatDist: threat ? Math.sqrt(bestThreatDistSq) : null,
-        preyDist: prey ? Math.sqrt(bestPreyDistSq) / navTopology.grid.cellSize : null,
-        preySegmentCount: prey ? getPreySnakeSegmentCount(state, prey.id) : null,
         threatCount,
         aggregateThreatSeverity,
     };

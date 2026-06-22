@@ -33,7 +33,7 @@ function isCameraMoveBlockedTarget(target) {
     return false;
 }
 const CAMERA_MOVE_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
-export function setupLabViewportNavigation(canvasId, { getCamera, setCamera }) {
+export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onRightDragStart = null }) {
     const canvases = () => {
         const idList = Array.isArray(canvasId) ? canvasId : [canvasId];
         return idList.map((id) => document.getElementById(id));
@@ -64,6 +64,7 @@ export function setupLabViewportNavigation(canvasId, { getCamera, setCamera }) {
         canvas.addEventListener("contextmenu", (e) => e.preventDefault(), true);
         canvas.addEventListener("pointerdown", (e) => {
             if (e.button !== 2) return;
+            onRightDragStart?.();
             const cam = getCamera();
             dragState = { canvas, startX: e.clientX, startY: e.clientY, camX: cam.x, camY: cam.y, zoom: cam.zoom || 1 };
             canvas.setPointerCapture(e.pointerId);

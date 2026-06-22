@@ -121,7 +121,7 @@ describe("flee agent spawn", () => {
         assert.equal(state.entityRegistry.getLive(pack.head.id), null);
     });
 
-    it("sprinting flee survives predator snake head ram", async () => {
+    it("sprinting flee dies to predator snake head ram", async () => {
         applySnakeGameConfig({ splitImpulseThreshold: 30 });
         resetKineticConstraintIds(6);
         const { state } = await createSnakeGameHarnessState();
@@ -152,12 +152,12 @@ describe("flee agent spawn", () => {
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
         resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
-        assert.equal(instance.lifecycle, "alive");
-        assert.ok(snakeGame.registry.aliveByHeadId.has(pack.head.id));
-        assert.ok(state.entityRegistry.getLive(pack.head.id));
+        assert.equal(instance.lifecycle, "dead");
+        assert.ok(snakeGame.registry.deadHeadIds.has(pack.head.id));
+        assert.equal(state.entityRegistry.getLive(pack.head.id), null);
     });
 
-    it("sprinting flee rams snake body and splits the victim", async () => {
+    it("sprinting flee in flee mode rams snake body and splits the victim", async () => {
         applySnakeGameConfig({ splitImpulseThreshold: 30, minAliveSegmentCount: 3 });
         resetKineticConstraintIds(7);
         const { state } = await createSnakeGameHarnessState();
@@ -168,6 +168,7 @@ describe("flee agent spawn", () => {
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         instance.sprinting = true;
+        instance.intent = { getMode: () => "flee" };
         const victim = spawnSnakeChain(state, { col: 20, row: 10 }, { segmentCount: 5, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: victim.chain.head.id, spawnGroupId: victim.chain.spawnGroupId });
         const victimMembers = getOrderedChainMemberIds(state, victim.chain.head.id);

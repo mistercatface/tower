@@ -16,7 +16,7 @@ import { selectionPropIds } from "../../Sandbox/sandboxSelectionInspectors.js";
 import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
-import { applySnakeHuntContactDrive, applyFleeHuntContactDrive, resolveSnakeCombatFromContacts } from "./snakeCombat.js";
+import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./snakeStriker.js";
 import { fractureRetiredSnakeSegmentsFromContacts } from "./snakeSegmentFracture.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
@@ -108,6 +108,11 @@ export async function setupSnakeGame(state) {
         getFocusedSnakeHead: resolveFocusedHeadProp,
         cameraTarget: centerSnake.chain.head,
         cycleCameraFocus: () => cameraCycler.cycle(),
+        releaseCameraFocus() {
+            cameraCycler.setFocusedId(null);
+            state.sandbox.controller?.session?.clearSelection();
+            hud.update();
+        },
         appendOverlayCommands(out, gameState) {
             const behaviorById = gameState.sandbox.controller?.getBehaviorByIdMap?.();
             if (behaviorById) {
@@ -142,7 +147,6 @@ export async function setupSnakeGame(state) {
             applyKineticContactSideEffects(tick, contacts);
             resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
             applySnakeHuntContactDrive(state, tick.frame, contacts, state.sandbox.snakeGame);
-            applyFleeHuntContactDrive(state, tick.frame, contacts, state.sandbox.snakeGame);
             resolveStrikerBallSnakeSplitsFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame, strikerBall);
             fractureRetiredSnakeSegmentsFromContacts(state, tick.frame, contacts);
             validateAliveAgents(state.sandbox.snakeGame, state);

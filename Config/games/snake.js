@@ -4,9 +4,9 @@ export const SNAKE_KINETIC_MIN_STRIKE_SPEED = 28;
 export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
-    snakeCount: 48,
+    snakeCount: 64,
     /** Rolling ball flee agents spawned after snakes (0 disables). */
-    boidCount: 128,
+    boidCount: 160,
     fleeAgent: {
         bodyPropId: "flee_ball",
         faction: "bravo",
@@ -21,22 +21,15 @@ export const SNAKE_GAME_DEFAULTS = {
         combatSizeBonus: 2500,
         metabolism: { hungerDrainMs: 90_000, foodValue: 0.35 },
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
-        sprint: { fleeSeverity: 0.5, speedMultiplier: 1.45, accelMultiplier: 1.45, hungerDrainMultiplier: 2.5, tint: "#ff3b30", sprintFleeMinHunger: 0.1 },
-        /** Hold hunt mode briefly so flee balls commit to a strike like snakes. */
-        huntHysteresis: { minTicks: 45 },
-        decisionWeights: { flee: 400, hunt: 380, food: 360, explore: 100 },
+        sprint: { fleeSeverity: 0.5, speedMultiplier: 1.75, accelMultiplier: 1.5, hungerDrainMultiplier: 2.0, tint: "#ff3b30", sprintFleeMinHunger: 0.1 },
+        decisionWeights: { flee: 400, food: 360, explore: 100 },
         decisionPressure: {
             foodHungerBonus: 280,
-            huntMinHunger: 0.25,
             sprintFleeMinHunger: 0.1,
             outnumberedFleeBonus: 0.4,
-            huntThreatPenalty: 120,
-            /** Extra hunt value when prey is minimum-length (easy clip). */
-            easyPreyBonus: 380,
-            easyPreyMaxSegments: 3,
             sprintFoodCostPenalty: 40,
             riskTolerance: { satisfied: 0, hungry: 0.35, desperate: 0.65 },
-            effort: { costPerCell: { satisfied: 22, hungry: 18, desperate: 8 }, huntValue: { satisfied: 280, hungry: 240, desperate: 320 } },
+            effort: { costPerCell: { satisfied: 22, hungry: 18, desperate: 8 } },
         },
     },
     segmentCount: 3,

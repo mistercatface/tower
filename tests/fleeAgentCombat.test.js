@@ -1,0 +1,51 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
+import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
+import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
+import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
+import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
+import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
+import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
+import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
+import { resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
+import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
+
+loadPropAssets();
+
+describe("flee agent escape combat", () => {
+    it("sprinting flee outside flee mode does not split snake body on contact", async () => {
+        applySnakeGameConfig({ splitImpulseThreshold: 30, minAliveSegmentCount: 3 });
+        resetKineticConstraintIds(60);
+        const { state } = await createSnakeGameHarnessState();
+        wireSnakeTestGame(state);
+        const snakeGame = state.sandbox.snakeGame;
+        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", instance);
+        instance.start(state);
+        instance.sprinting = true;
+        instance.intent = { getMode: () => "explore" };
+        const victim = spawnSnakeChain(state, { col: 20, row: 10 }, { segmentCount: 5, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
+        registerSnakeTestInstance(state, snakeGame, { headId: victim.chain.head.id, spawnGroupId: victim.chain.spawnGroupId });
+        const victimMembers = getOrderedChainMemberIds(state, victim.chain.head.id);
+        const struckBody = state.entityRegistry.getLive(victimMembers[2]);
+        const fleeHead = pack.head;
+        fleeHead.vx = 80;
+        fleeHead.vy = 0;
+        struckBody.vx = -5;
+        struckBody.vy = 0;
+        fleeHead.x = struckBody.x - fleeHead.radius - struckBody.radius + 2;
+        fleeHead.y = struckBody.y;
+        const props = [...victim.chain.members, fleeHead];
+        const tick = attachKineticTestTickFromState(state, props, 50);
+        const pairs = gatherKineticContactPairs(tick);
+        resolveKineticContactPassWithPairs(tick, pairs);
+        applyKineticContactSideEffects(tick, kineticContactBuffer);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
+        assert.equal(getOrderedChainMemberIds(state, victim.chain.head.id).length, victimMembers.length);
+    });
+});
