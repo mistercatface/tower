@@ -30,6 +30,13 @@ function motifMatchesBake(config, bake) {
     if (mask === "wallCell") return bake.wallCell === true;
     return true;
 }
+function motifUsesWarpedCoords(config) {
+    const space = config.coordinateSpace;
+    if (space === "warped") return true;
+    if (space === "eval") return false;
+    if (config.type === "circuitPanels") return true;
+    return false;
+}
 function createTranslateContext() {
     return { x: 0, y: 0, mode: TRANSLATE_COORDINATE_MODES.evalAndWarped, active: false };
 }
@@ -61,6 +68,25 @@ function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, 
     scratch.lookupX = warped.x;
     scratch.lookupY = warped.y;
 }
+function buildMotifPasses(motifs, motifStartIndex, endIdx, bake) {
+    const passes = [];
+    let needsPrecomputedLookup = false;
+    for (let m = motifStartIndex; m < endIdx; m++) {
+        const motifConfig = motifs[m];
+        if (motifConfig.type === "translate") continue;
+        if (!motifMatchesBake(motifConfig, bake)) continue;
+        if (motifUsesWarpedCoords(motifConfig)) needsPrecomputedLookup = true;
+        passes.push({ motifConfig, motifImpl: getMotif(motifConfig.type), blendMode: motifConfig.blendMode ?? "add" });
+    }
+    return { passes, needsPrecomputedLookup };
+}
+function writeLookupForPixel(samples, index, warp, warpAmp, noise) {
+    if (warpAmp > 0) writeDomainWarp(samples.evalX[index], samples.evalY[index], warp, samples.lookupX, samples.lookupY, index, noise);
+    else {
+        samples.lookupX[index] = samples.evalX[index];
+        samples.lookupY[index] = samples.evalY[index];
+    }
+}
 export function composeSurfaceImage(samples, profile, seed, bakeSession = null, bake = { useWallBase: false }, rgbBuffer = null, motifStartIndex = 0, motifEndIndex = undefined) {
     const noise = bakeSession.noiseEvaluator;
     noise.setSeed(seed);
@@ -78,19 +104,17 @@ export function composeSurfaceImage(samples, profile, seed, bakeSession = null, 
         const motifConfig = motifs[m];
         if (motifConfig.type === "translate") pushTranslateLayer(translateContext, motifConfig);
     }
-    const motifPasses = [];
-    for (let m = motifStartIndex; m < endIdx; m++) {
-        const motifConfig = motifs[m];
-        if (motifConfig.type === "translate") continue;
-        if (!motifMatchesBake(motifConfig, bake)) continue;
-        motifPasses.push({ motifConfig, motifImpl: getMotif(motifConfig.type), blendMode: motifConfig.blendMode ?? "add" });
-    }
+    const { passes: motifPasses, needsPrecomputedLookup: warpedMotifs } = buildMotifPasses(motifs, motifStartIndex, endIdx, bake);
+    const translateReWarp = translateContext.active && translateContext.mode === TRANSLATE_COORDINATE_MODES.evalAndWarped;
+    const needsPrecomputedLookup = warpedMotifs && !translateReWarp;
+    const warpAmp = warp?.amplitude ?? 0;
     for (let i = 0; i < numPixels; i++) {
         if (motifStartIndex === 0) {
-            rgbBuffer[i * 3] = base[0];
-            rgbBuffer[i * 3 + 1] = base[1];
-            rgbBuffer[i * 3 + 2] = base[2];
-            writeDomainWarp(samples.evalX[i], samples.evalY[i], warp, samples.lookupX, samples.lookupY, i, noise);
+            const idx = i * 3;
+            rgbBuffer[idx] = base[0];
+            rgbBuffer[idx + 1] = base[1];
+            rgbBuffer[idx + 2] = base[2];
+            if (needsPrecomputedLookup) writeLookupForPixel(samples, i, warp, warpAmp, noise);
         }
         if (motifPasses.length === 0) continue;
         noise.beginPixel();

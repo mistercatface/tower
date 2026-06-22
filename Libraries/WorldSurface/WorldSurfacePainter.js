@@ -26,6 +26,7 @@ import { createEmptyBakePhases, createTileBakeMetrics, isTileBakeMetricsEnabled 
 class TileMemoryPool {
     constructor() {
         this.buffers = new Map();
+        this.rgbBuffers = new Map();
     }
     getSamples(numPixels) {
         if (!this.buffers.has(numPixels)) this.buffers.set(numPixels, []);
@@ -43,6 +44,17 @@ class TileMemoryPool {
     release(samples, numPixels) {
         const pool = this.buffers.get(numPixels);
         if (pool) pool.push(samples);
+    }
+    getRgbBuffer(numPixels) {
+        const size = numPixels * 3;
+        if (!this.rgbBuffers.has(size)) this.rgbBuffers.set(size, []);
+        const pool = this.rgbBuffers.get(size);
+        if (pool.length > 0) return pool.pop();
+        return new Float32Array(size);
+    }
+    releaseRgbBuffer(buffer, numPixels) {
+        const pool = this.rgbBuffers.get(numPixels * 3);
+        if (pool) pool.push(buffer);
     }
 }
 export class BakeSession {
@@ -273,7 +285,10 @@ export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSes
     const firstAnimIdx = useResolver ? getFirstAnimatedMotifIndex(baseProfile) : null;
     if (!metricsOn) {
         let staticBuffer = null;
-        if (useResolver && firstAnimIdx !== null && firstAnimIdx > 0) staticBuffer = composeSurfaceImage(samples, baseProfile, seed, bakeSession, bake, null, 0, firstAnimIdx);
+        if (useResolver && firstAnimIdx !== null && firstAnimIdx > 0) {
+            staticBuffer = bakeSession.memoryPool.getRgbBuffer(numPixels);
+            composeSurfaceImage(samples, baseProfile, seed, bakeSession, bake, staticBuffer, 0, firstAnimIdx);
+        }
         const canvases = [];
         const sourceTotal = getAnimationFrames(baseProfile.animation);
         const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
@@ -282,16 +297,22 @@ export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSes
             const frameProfile = useResolver ? resolveBakeProfile(baseProfile, profileId, payload) : resolvePaintProfile(profileId);
             let frameBuffer;
             if (staticBuffer) {
-                frameBuffer = new Float32Array(staticBuffer);
+                frameBuffer = bakeSession.memoryPool.getRgbBuffer(numPixels);
+                frameBuffer.set(staticBuffer);
                 composeSurfaceImage(samples, frameProfile, seed, bakeSession, bake, frameBuffer, firstAnimIdx, undefined);
-            } else frameBuffer = composeSurfaceImage(samples, frameProfile, seed, bakeSession, bake);
+            } else {
+                frameBuffer = bakeSession.memoryPool.getRgbBuffer(numPixels);
+                composeSurfaceImage(samples, frameProfile, seed, bakeSession, bake, frameBuffer);
+            }
             const canvas = createOffscreenCanvas(widthPx, heightPx);
             const ctx = canvas.getContext("2d");
             const imgData = ctx.createImageData(widthPx, heightPx);
             copyRgbTripletsToRgba(imgData.data, frameBuffer, numPixels);
             ctx.putImageData(imgData, 0, 0);
             canvases.push(canvas);
+            bakeSession.memoryPool.releaseRgbBuffer(frameBuffer, numPixels);
         }
+        if (staticBuffer) bakeSession.memoryPool.releaseRgbBuffer(staticBuffer, numPixels);
         bakeSession.memoryPool.release(pooled, numPixels);
         bakeSession.lastMetrics = null;
         return canvases;
@@ -301,7 +322,8 @@ export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSes
     let staticBuffer = null;
     if (useResolver && firstAnimIdx !== null && firstAnimIdx > 0) {
         phaseStart = performance.now();
-        staticBuffer = composeSurfaceImage(samples, baseProfile, seed, bakeSession, bake, null, 0, firstAnimIdx);
+        staticBuffer = bakeSession.memoryPool.getRgbBuffer(numPixels);
+        composeSurfaceImage(samples, baseProfile, seed, bakeSession, bake, staticBuffer, 0, firstAnimIdx);
         phases.composeStaticMs = performance.now() - phaseStart;
     }
     const canvases = [];
@@ -313,11 +335,13 @@ export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSes
         let frameBuffer;
         phaseStart = performance.now();
         if (staticBuffer) {
-            frameBuffer = new Float32Array(staticBuffer);
+            frameBuffer = bakeSession.memoryPool.getRgbBuffer(numPixels);
+            frameBuffer.set(staticBuffer);
             composeSurfaceImage(samples, frameProfile, seed, bakeSession, bake, frameBuffer, firstAnimIdx, undefined);
             phases.composeFrameMs += performance.now() - phaseStart;
         } else {
-            frameBuffer = composeSurfaceImage(samples, frameProfile, seed, bakeSession, bake);
+            frameBuffer = bakeSession.memoryPool.getRgbBuffer(numPixels);
+            composeSurfaceImage(samples, frameProfile, seed, bakeSession, bake, frameBuffer);
             const composeMs = performance.now() - phaseStart;
             if (frameCount === 1) phases.composeStaticMs += composeMs;
             else phases.composeFrameMs += composeMs;
@@ -330,7 +354,9 @@ export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSes
         ctx.putImageData(imgData, 0, 0);
         phases.rgbaCopyMs += performance.now() - phaseStart;
         canvases.push(canvas);
+        bakeSession.memoryPool.releaseRgbBuffer(frameBuffer, numPixels);
     }
+    if (staticBuffer) bakeSession.memoryPool.releaseRgbBuffer(staticBuffer, numPixels);
     bakeSession.memoryPool.release(pooled, numPixels);
     bakeSession.lastMetrics = createTileBakeMetrics("bakeHorizontalPatch", numPixels, phases, bakeSession.noiseEvaluator.profile);
     return canvases;

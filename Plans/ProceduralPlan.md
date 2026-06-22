@@ -23,15 +23,13 @@ Worker logs resume; main-thread `stats().bakeTiming` accumulates over the last 3
 
 **Pass 2 — `SeededNoise2D`** — done: module-global `activeNoiseMemo` / `noise2D` removed. `BakeSession` owns `memoryPool + noiseEvaluator`. `composeSurfaceImage`, `DomainWarp`, and all motifs sample via `sample.noise.sample2D`. `static fromDerived(rootSeed, salt)` ready for Tier 10 sub-seeds.
 
+**Pass 3 — compose phase 2** — done: skip domain-warp noise when the active stack has no warped motifs (or warp amplitude is 0 — eval copy only); horizontal-patch frame RGB pooled on `BakeSession.memoryPool`. Post-filter split removed — zero noise savings, added hot-path overhead.
+
 **Naming trap:** `Plans/Procedural.md` = geometry authorship. `Libraries/Procedural/` = surface synthesis. Shared **Fields** layer is the bridge.
 
 **Voronoi:** `VoronoiRegions.js` (HPA grid partition) ≠ `VoronoiEdge.js` (Worley texture noise). Share **seeded spatial hash** primitives only, not partition algorithms.
 
 ---
-
-## Pass 3 — Compose phase 2 (fewer evaluations)
-
-Motif audit for duplicate samples per pixel; zero-amplitude warp inline (`lookup = eval`); motif classification (eval / warped / HSV-post); defer HSV where stack order allows; pool horizontal-patch frame RGB on `BakeSession`. Do not touch `surfaceBakeScale`. Exit: lower `composeStatic` on profiled ground chunks with zero visual drift. Re-enable metrics to verify.
 
 ## Pass 4 — Fields foundation
 
