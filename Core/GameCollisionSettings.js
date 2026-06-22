@@ -1,5 +1,5 @@
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
-import { mergePartial } from "../Libraries/Config/mergePartial.js";
+import { mergeObjectTree } from "../Libraries/Config/mergePartial.js";
 /** @type {typeof LIBRARY_COLLISION_DEFAULTS} */
 let activeCollisionSettings = LIBRARY_COLLISION_DEFAULTS;
 /** @returns {typeof LIBRARY_COLLISION_DEFAULTS} */
@@ -8,5 +8,5 @@ export function getCollisionSettings() {
 }
 /** @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition */
 export function applyGameCollisionSettings(definition) {
-    activeCollisionSettings = mergePartial(LIBRARY_COLLISION_DEFAULTS, definition?.collisionSettings);
+    activeCollisionSettings = mergeObjectTree(LIBRARY_COLLISION_DEFAULTS, definition?.collisionSettings);
 }

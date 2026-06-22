@@ -1,28 +1,3 @@
-/**
- * Deep-merge partial overrides onto a defaults object (known nested keys only).
- * See `.cursor/rules/defaults-override-chain.mdc` for library → game → entity layering.
- *
- * @template {Record<string, unknown>} T
- * @param {T} base
- * @param {...Partial<T> | null | undefined} overrides
- * @returns {T}
- */
-export function mergePartial(base, overrides = {}, ...more) {
-    /** @type {T} */
-    let result = { ...base };
-    const layers = [overrides, ...more];
-    for (let i = 0; i < layers.length; i++) {
-        const o = layers[i];
-        if (!o) continue;
-        result = { ...result, ...o };
-        if (o.restitution && typeof o.restitution === "object") result.restitution = { ...(result.restitution ?? {}), ...o.restitution };
-        if (o.motionSubsteps && typeof o.motionSubsteps === "object") result.motionSubsteps = { ...(result.motionSubsteps ?? {}), ...o.motionSubsteps };
-        if (o.groundNavRoll && typeof o.groundNavRoll === "object") result.groundNavRoll = { ...(result.groundNavRoll ?? {}), ...o.groundNavRoll };
-        if (o.groundNavHpa && typeof o.groundNavHpa === "object") result.groundNavHpa = { ...(result.groundNavHpa ?? {}), ...o.groundNavHpa };
-        if (o.cavern && typeof o.cavern === "object") result.cavern = { ...(result.cavern ?? {}), ...o.cavern };
-    }
-    return result;
-}
 function isPlainObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
