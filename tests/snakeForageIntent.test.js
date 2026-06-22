@@ -12,7 +12,8 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { cellChebyshevDistance } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSnakeDecisionBlackboard, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
-import { findNearestVisibleThreat, pickFleeCell, perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
+import { findNearestVisibleThreat, perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
+import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision, registerSnakeTestInstance, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
@@ -181,7 +182,7 @@ describe("snake forage intent", () => {
         larger.head.y = self.head.y;
         primeSnakeHeadVision(state, self.head);
         const threat = findNearestVisibleThreat(self.head, self.head.id, state, registry);
-        const cell = pickFleeCell(self.head, threat, grid, navWalkable);
+        const cell = pickFleeCell(self.head, threat, grid, navWalkable, getSnakeGameConfig().fleeTiles);
         assert.ok(cell);
         const selfCell = grid.worldToGrid(self.head.x, self.head.y);
         const threatCell = grid.worldToGrid(larger.head.x, larger.head.y);

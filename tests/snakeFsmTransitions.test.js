@@ -21,7 +21,7 @@ import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT } from "../Libraries/Game/snake/snakeChainColor.js";
 import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
-import { createSeekIntentState } from "../Libraries/Game/snake/snakeIntentStates.js";
+import { createSeekIntentState } from "../Libraries/AI/agentIntent/intentStates.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireSnakeTestGame, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";

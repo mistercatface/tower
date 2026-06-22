@@ -1,12 +1,13 @@
 import { getConnectedComponentPath } from "../../../Motion/kineticConstraintGraph.js";
-import { registerAliveAgent, markAgentDead, tickAgentBrainAndLocomotion, reapAgentInstance } from "../agentPopulationRegistry.js";
+import { registerAliveAgent, markAgentDead, tickAgentBrainAndLocomotion, reapAgentInstance } from "../../agents/agentPopulationRegistry.js";
 import { syncFleeAgentWedgeFacing } from "./syncFleeAgentWedgeFacing.js";
 import { createBrain } from "../../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../../AI/brain/syncSpatialBrain.js";
 import { createCellTargetHpaNav, createCellTargetLocomotion } from "../../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../snakeSteeringLease.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
-import { perceiveSnakeIntentWorld, pickFleeCell } from "../snakeIntent.js";
+import { pickFleeCell } from "../../../AI/steering/pickFleeCell.js";
+import { perceiveSnakeIntentWorld } from "../snakeIntent.js";
 import { resolveSnakeExploreCell } from "../snakeExplore.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
 import { shatterSnakeSegments } from "../snakeSegmentFracture.js";

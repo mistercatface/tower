@@ -10,7 +10,7 @@ import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
 import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { createAgentPopulationRegistry } from "../Libraries/Game/snake/agentPopulationRegistry.js";
+import { createAgentPopulationRegistry } from "../Libraries/Game/agents/agentPopulationRegistry.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";

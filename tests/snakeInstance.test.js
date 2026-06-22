@@ -11,7 +11,7 @@ import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { createAgentPopulationRegistry } from "../Libraries/Game/snake/agentPopulationRegistry.js";
+import { createAgentPopulationRegistry } from "../Libraries/Game/agents/agentPopulationRegistry.js";
 import { SnakeInstance, createAliveSnakeInstance, registerAliveSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
 import { steerRollToward, applyGroundRollDrive } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../Libraries/Game/snake/snakeSteeringLease.js";

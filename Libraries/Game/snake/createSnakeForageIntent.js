@@ -3,9 +3,10 @@ import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js"
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { buildSnakeDecisionContext, deriveSprintIntent } from "./snakeDecisionModel.js";
-import { perceiveSnakeIntentWorld, pickFleeCell } from "./snakeIntent.js";
+import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/intentStates.js";
+import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
+import { perceiveSnakeIntentWorld } from "./snakeIntent.js";
 import { createSnakeIntentMemory } from "./snakeIntentMemory.js";
-import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "./snakeIntentStates.js";
 export function createSnakeForageIntent({
     brain,
     sync,
@@ -110,7 +111,7 @@ export function createSnakeForageIntent({
         setFleeDestination(avoidCell = null) {
             const threat = world.blackboard.facts.known.threat;
             if (!threat) return null;
-            const cell = pickFleeCell(agent, threat, state.obstacleGrid, navWalkable, undefined, avoidCell);
+            const cell = pickFleeCell(agent, threat, state.obstacleGrid, navWalkable, config.fleeTiles, avoidCell);
             if (cell) locomotion.setFlee(agent, state, cell);
             return cell;
         },

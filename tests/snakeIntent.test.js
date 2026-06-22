@@ -8,7 +8,7 @@ import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { findNearestSnakeFood, findNearestVisibleSnakeFood } from "../Libraries/Game/snake/snakeFood.js";
 import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { createAgentPopulationRegistry } from "../Libraries/Game/snake/agentPopulationRegistry.js";
+import { createAgentPopulationRegistry } from "../Libraries/Game/agents/agentPopulationRegistry.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";

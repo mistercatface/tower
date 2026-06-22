@@ -17,7 +17,7 @@ import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
 import { enforceSnakeMinLength } from "./snakeCombat.js";
 import { getSnakeInstance } from "./SnakeInstance.js";
-import { tickAgentBrainAndLocomotion } from "./agentPopulationRegistry.js";
+import { tickAgentBrainAndLocomotion } from "../agents/agentPopulationRegistry.js";
 export function createSnakeBrain(visionConeOverride) {
     const config = getSnakeGameConfig();
     const brain = createBrain({ spatialMemoryCapacity: config.spatialMemoryCapacity });

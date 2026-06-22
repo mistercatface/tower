@@ -1,18 +1,14 @@
-import { getSnakeSizeScore } from "./snakeScale.js";
+import { getSnakeSizeScore } from "../snake/snakeScale.js";
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
-import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
+import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "../snake/snakePerception.js";
 import { clearChainLinksForMembers } from "../../Sandbox/chainLinks.js";
-import { shatterSnakeSegments } from "./snakeSegmentFracture.js";
-import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
+import { shatterSnakeSegments } from "../snake/snakeSegmentFracture.js";
+import { clearSnakeSteeringLeaseFromProp } from "../snake/snakeSteeringLease.js";
 export function createAgentPopulationRegistry() {
     return {
-        // Maps headId -> AgentInstance (SnakeInstance, FleeAgentInstance, etc.)
         instancesByHeadId: new Map(),
-        // Maps headId -> { headId, species, lifecycle: "alive" }
         aliveByHeadId: new Map(),
-        // Set of dead head IDs
         deadHeadIds: new Set(),
-        // Maps leadSegmentId -> { leadSegmentId, memberIds, sourceHeadId, lifecycle: "inert" }
         inertByLeadId: new Map(),
     };
 }
