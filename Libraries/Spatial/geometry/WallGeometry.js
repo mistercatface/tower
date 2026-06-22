@@ -1,6 +1,6 @@
 import { distanceToAabb } from "../../Math/Aabb2D.js";
 import { rectCorners, rotateXY, transformPoint2DInto } from "../../Math/Poly2D.js";
-import { distanceSegmentToSegment, segmentsIntersect } from "../../Math/Segment2D.js";
+import { distanceSqToLineSegment } from "../../Math/Segment2D.js";
 export function getWallReach(wall, padding = wall.padding) {
     return (wall.size / 2) * Math.SQRT2 + padding;
 }
@@ -44,30 +44,59 @@ export function distanceToSegment(wall, x, y) {
     return distSq === Infinity ? Infinity : Math.sqrt(distSq);
 }
 function segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
-    if (distanceToAabb(ax, ay, minX, minY, maxX, maxY) === 0) return true;
-    if (distanceToAabb(bx, by, minX, minY, maxX, maxY) === 0) return true;
-    const edges = [
-        [minX, minY, maxX, minY],
-        [maxX, minY, maxX, maxY],
-        [maxX, maxY, minX, maxY],
-        [minX, maxY, minX, minY],
-    ];
-    for (const [ex0, ey0, ex1, ey1] of edges) if (segmentsIntersect(ax, ay, bx, by, ex0, ey0, ex1, ey1)) return true;
+    let codeA = 0;
+    if (ax < minX) codeA |= 1;
+    else if (ax > maxX) codeA |= 2;
+    if (ay < minY) codeA |= 4;
+    else if (ay > maxY) codeA |= 8;
+    let codeB = 0;
+    if (bx < minX) codeB |= 1;
+    else if (bx > maxX) codeB |= 2;
+    if (by < minY) codeB |= 4;
+    else if (by > maxY) codeB |= 8;
+    if ((codeA | codeB) === 0) return true;
+    if ((codeA & codeB) !== 0) return false;
+    const dx = bx - ax;
+    const dy = by - ay;
+    if (dx !== 0) {
+        let t = (minX - ax) / dx;
+        if (t >= 0 && t <= 1) {
+            let y = ay + t * dy;
+            if (y >= minY && y <= maxY) return true;
+        }
+        t = (maxX - ax) / dx;
+        if (t >= 0 && t <= 1) {
+            let y = ay + t * dy;
+            if (y >= minY && y <= maxY) return true;
+        }
+    }
+    if (dy !== 0) {
+        let t = (minY - ay) / dy;
+        if (t >= 0 && t <= 1) {
+            let x = ax + t * dx;
+            if (x >= minX && x <= maxX) return true;
+        }
+        t = (maxY - ay) / dy;
+        if (t >= 0 && t <= 1) {
+            let x = ax + t * dx;
+            if (x >= minX && x <= maxX) return true;
+        }
+    }
     return false;
 }
 function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
     if (segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY)) return 0;
-    let minDist = Infinity;
-    const edges = [
-        [minX, minY, maxX, minY],
-        [maxX, minY, maxX, maxY],
-        [maxX, maxY, minX, maxY],
-        [minX, maxY, minX, minY],
-    ];
-    for (const [ex0, ey0, ex1, ey1] of edges) minDist = Math.min(minDist, distanceSegmentToSegment(ax, ay, bx, by, ex0, ey0, ex1, ey1));
-    minDist = Math.min(minDist, distanceToAabb(ax, ay, minX, minY, maxX, maxY));
-    minDist = Math.min(minDist, distanceToAabb(bx, by, minX, minY, maxX, maxY));
-    return minDist;
+    const distA = distanceToAabb(ax, ay, minX, minY, maxX, maxY);
+    const distB = distanceToAabb(bx, by, minX, minY, maxX, maxY);
+    let minSq = Math.min(
+        distA * distA,
+        distB * distB,
+        distanceSqToLineSegment(minX, minY, ax, ay, bx, by),
+        distanceSqToLineSegment(maxX, minY, ax, ay, bx, by),
+        distanceSqToLineSegment(maxX, maxY, ax, ay, bx, by),
+        distanceSqToLineSegment(minX, maxY, ax, ay, bx, by),
+    );
+    return Math.sqrt(minSq);
 }
 /** Minimum distance between a path segment and a wall's collision box. */
 export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {

@@ -4,7 +4,7 @@ export const SNAKE_KINETIC_MIN_STRIKE_SPEED = 28;
 export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
-    snakeCount: 400,
+    snakeCount: 320,
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,
