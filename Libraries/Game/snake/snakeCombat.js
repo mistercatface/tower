@@ -2,7 +2,17 @@ import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.j
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { getSnakeInstance, SnakeInstance } from "./SnakeInstance.js";
-import { buildAgentMemberToInstanceMap } from "./snakeAgentPopulation.js";
+export function buildAgentMemberToInstanceMap(state, snakeGame) {
+    const map = new Map();
+    for (const instance of snakeGame.instancesByHeadId.values()) {
+        if (instance.lifecycle !== "alive") continue;
+        const meta = snakeGame.registry.aliveByHeadId.get(instance.headId);
+        const def = meta ? snakeGame.speciesById.get(meta.species) : null;
+        const members = def?.syncMembers ? def.syncMembers(instance, state) : getConnectedComponentPath(state.kinetic, instance.headId);
+        for (let i = 0; i < members.length; i++) map.set(members[i], instance);
+    }
+    return map;
+}
 import { resolveAgentRelationship } from "./snakeAgentSession.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";

@@ -1,6 +1,6 @@
 import { getConnectedComponentPath } from "../../../Motion/kineticConstraintGraph.js";
 import { registerAliveAgent } from "../../../AI/agents/agentPopulationRegistry.js";
-import { tickAgentBrainAndLocomotion, reapAgentInstance } from "../snakeAgentPopulation.js";
+import { tickAgentIntent, reapAgentInstance } from "../snakeAgentLifecycle.js";
 import { syncFleeAgentWedgeFacing } from "./syncFleeAgentWedgeFacing.js";
 import { createFleeExploreIntent } from "./createFleeExploreIntent.js";
 import { createBrain } from "../../../AI/brain/createBrain.js";
@@ -43,7 +43,7 @@ export class FleeAgentInstance {
     }
     tick(state, dtMs) {
         if (this.lifecycle !== "alive" || !this.intent) return;
-        tickAgentBrainAndLocomotion(state, this.intent, dtMs, (head) => {
+        tickAgentIntent(state, this.intent, dtMs, (head) => {
             this.intent.tick(head, state);
         });
     }

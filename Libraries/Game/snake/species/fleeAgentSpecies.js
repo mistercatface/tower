@@ -1,5 +1,8 @@
 import { createFleeAgentInstance } from "../fleeAgent/FleeAgentInstance.js";
-import { registerAliveAgent } from "../../../AI/agents/agentPopulationRegistry.js";
+import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
+import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
+import { shatterSnakeSegments } from "../snakeSegmentFracture.js";
+import { clearSnakeSteeringLeaseFromProp } from "../snakeSteeringLease.js";
 export const fleeAgentSpecies = {
     id: "flee_agent",
     createInstance(state, ctx) {
@@ -15,17 +18,30 @@ export const fleeAgentSpecies = {
     stop(instance, state) {
         instance.stopSteering(state);
     },
+    die(instance, state, session, deathImpact = null) {
+        instance.lifecycle = "dead";
+        instance.stopSteering(state);
+        const connectedMembers = instance.syncMembersFromGraph(state);
+        clearChainLinksForMembers(state, connectedMembers);
+        shatterSnakeSegments(state, deathImpact?.spatialFrame ?? null, connectedMembers, deathImpact);
+        purgeInertAgentsForHead(session.registry, instance.headId);
+        markAgentDead(session.registry, instance.headId);
+        session.instancesByHeadId.delete(instance.headId);
+        const head = state.entityRegistry.get(instance.headId);
+        if (head) clearSnakeSteeringLeaseFromProp(head);
+        if (session.onHeadDied) session.onHeadDied(instance.headId);
+    },
     validate(instance, state, session) {
-        if (typeof instance.validate === "function") instance.validate(state, session);
+        instance.validate(state, session);
     },
     tick(instance, state, dtMs) {
-        if (typeof instance.tick === "function") instance.tick(state, dtMs);
+        instance.tick(state, dtMs);
     },
     syncMembers(instance, state) {
-        if (typeof instance.syncMembersFromGraph === "function") instance.syncMembersFromGraph(state);
+        return instance.syncMembersFromGraph(state);
     },
     syncPresentation(instance, state) {
-        if (typeof instance.syncWedgeFacing === "function") instance.syncWedgeFacing(state);
+        instance.syncWedgeFacing(state);
     },
     resolveRelationship(targetSpecies) {
         if (targetSpecies === "snake") return "threat";

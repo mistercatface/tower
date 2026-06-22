@@ -4,7 +4,9 @@ import { createModePolicyLatch } from "../../../AI/agentIntent/policyHysteresis.
 import { pickFleeCell } from "../../../AI/steering/pickFleeCell.js";
 import { createCellTargetLocomotion } from "../../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
-import { perceiveSnakeIntentWorld } from "../snakeIntent.js";
+import { perceiveAgentWorld } from "../../../AI/perception/agentWorldPerception.js";
+import { requireSnakeVisionFrame } from "../snakePerception.js";
+import { resolveAgentRelationship } from "../snakeAgentSession.js";
 export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCell, selfHeadId, registry, navWalkable, visionCone = null, rng = Math.random }) {
     const config = getSnakeGameConfig();
     const resolvedVision = visionCone ?? config.visionCone;
@@ -28,7 +30,11 @@ export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCe
         brain.stampArrival(col, row);
     };
     const perceiveFleeWorld = (agent, state) => {
-        const visible = perceiveSnakeIntentWorld(agent, selfHeadId, state, registry, () => null, resolvedVision);
+        const visible = perceiveAgentWorld(agent, selfHeadId, state, registry, () => null, resolvedVision, {
+            readVisionFrame: requireSnakeVisionFrame,
+            agentRange: config.fleeRange ?? resolvedVision.range,
+            resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(state.sandbox.snakeGame, selfHeadId, headId, state),
+        });
         const threat = visible.threat;
         return { threat, blackboard: { facts: { known: { threat } } } };
     };

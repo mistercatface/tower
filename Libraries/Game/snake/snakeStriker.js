@@ -1,8 +1,7 @@
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { getSnakeGameConfig, resolveSnakeStartRadius } from "./snakeGameConfig.js";
-import { buildAgentMemberToInstanceMap } from "./snakeAgentPopulation.js";
-import { splitSnakeAtStruckSegment } from "./snakeCombat.js";
+import { buildAgentMemberToInstanceMap, splitSnakeAtStruckSegment } from "./snakeCombat.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { SANDBOX_DEFAULT_FACTION } from "../../Sandbox/sandboxFaction.js";

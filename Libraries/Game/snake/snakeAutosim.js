@@ -17,7 +17,7 @@ import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
 import { enforceSnakeMinLength } from "./snakeCombat.js";
 import { getSnakeInstance } from "./SnakeInstance.js";
-import { tickAgentBrainAndLocomotion } from "./snakeAgentPopulation.js";
+import { tickAgentIntent } from "./snakeAgentLifecycle.js";
 export function createSnakeBrain(visionConeOverride) {
     const config = getSnakeGameConfig();
     const brain = createBrain({ spatialMemoryCapacity: config.spatialMemoryCapacity });
@@ -45,7 +45,8 @@ function resolveChainTailProp(state, headId) {
 }
 function runSnakeFsmTick(intent, seeker, state, dt, beforeNav = null) {
     let choice;
-    tickAgentBrainAndLocomotion(state, intent, dt, (head) => {
+    tickAgentIntent(state, intent, dt, (head) => {
+        intent.perceive(head, state);
         choice = intent.transition(head, state);
         if (beforeNav) beforeNav(head);
     });

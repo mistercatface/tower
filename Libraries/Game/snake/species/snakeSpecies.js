@@ -1,6 +1,9 @@
 import { getSnakeSizeScore } from "../snakeScale.js";
 import { createAliveSnakeInstance } from "../SnakeInstance.js";
-import { registerAliveAgent } from "../../../AI/agents/agentPopulationRegistry.js";
+import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
+import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
+import { shatterSnakeSegments } from "../snakeSegmentFracture.js";
+import { clearSnakeSteeringLeaseFromProp } from "../snakeSteeringLease.js";
 export const snakeSpecies = {
     id: "snake",
     createInstance(state, ctx) {
@@ -17,14 +20,29 @@ export const snakeSpecies = {
     stop(instance, state) {
         instance.stopSteering(state);
     },
+    die(instance, state, session, deathImpact = null) {
+        instance.lifecycle = "dead";
+        instance.stopSteering(state);
+        session.autosimsByHeadId.delete(instance.headId);
+        const connectedMembers = instance.syncMembersFromGraph(state);
+        const resolvedMembers = instance.retireAllSegments(state, session, connectedMembers);
+        clearChainLinksForMembers(state, resolvedMembers);
+        shatterSnakeSegments(state, deathImpact?.spatialFrame ?? null, resolvedMembers, deathImpact);
+        purgeInertAgentsForHead(session.registry, instance.headId);
+        markAgentDead(session.registry, instance.headId);
+        session.instancesByHeadId.delete(instance.headId);
+        const head = state.entityRegistry.get(instance.headId);
+        if (head) clearSnakeSteeringLeaseFromProp(head);
+        if (session.onHeadDied) session.onHeadDied(instance.headId);
+    },
     validate(instance, state, session) {
-        if (typeof instance.validate === "function") instance.validate(state, session);
+        instance.validate(state, session);
     },
     tick(instance, state, dtMs) {
-        if (typeof instance.tick === "function") instance.tick(state, dtMs);
+        instance.tick(state, dtMs);
     },
     updateDiagnostics(instance, state) {
-        if (typeof instance.updatePressureDiagnostics === "function") instance.updatePressureDiagnostics(state);
+        instance.updatePressureDiagnostics(state);
     },
     resolveRelationship(targetSpecies, seekerId, targetId, state) {
         if (targetSpecies === "snake") {

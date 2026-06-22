@@ -5,7 +5,7 @@ import { createSnakeAutosim } from "./snakeAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease, clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { registerAliveAgent, registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
-import { reapAgentInstance } from "./snakeAgentPopulation.js";
+import { reapAgentInstance } from "./snakeAgentLifecycle.js";
 import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
 import { markSnakeSegmentsFracturable, shatterSnakeSegments } from "./snakeSegmentFracture.js";
 export class SnakeInstance {
