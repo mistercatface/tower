@@ -2,6 +2,7 @@ import { tickAgentIntent, reapAgentInstance } from "../snakeAgentLifecycle.js";
 import { createHornSatelliteIntent } from "./createHornSatelliteIntent.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../snakeSteeringLease.js";
 import { getSnakeGameConfig, applyHornSatelliteGameplay } from "../snakeGameConfig.js";
+
 export class HornSatelliteInstance {
     constructor({ headId, spawnGroupId, mountBallId = null }) {
         this.headId = headId;
@@ -30,11 +31,6 @@ export class HornSatelliteInstance {
     syncMembers(state) {
         return [this.headId];
     }
-    syncAfterPhysics(state) {
-        if (this.lifecycle !== "alive" || !this.intent) return;
-        const horn = state.entityRegistry.getLive(this.headId);
-        if (horn) this.intent.applyRimHold(horn, state);
-    }
     validate(state, snakeGame) {
         if (this.lifecycle !== "alive") return;
         const horn = state.entityRegistry.getLive(this.headId);
@@ -54,9 +50,11 @@ export class HornSatelliteInstance {
         reapAgentInstance(state, snakeGame, this, deathImpact);
     }
 }
+
 export function createHornSatelliteInstance(state, { headId, spawnGroupId, mountBallId = null }) {
     return new HornSatelliteInstance({ headId, spawnGroupId, mountBallId });
 }
+
 export function getHornSatelliteInstance(snakeGame, headId) {
     return snakeGame.instancesByHeadId.get(headId) ?? null;
 }

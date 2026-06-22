@@ -11,11 +11,18 @@ export function buildFleeHornWedgeFootprint(bodyRadius, wedgeScale = 1) {
     const scaledRadius = bodyRadius * wedgeScale;
     const halfLength = scaledRadius * FLEE_HORN_WEDGE_LENGTH_RATIO * 0.5;
     const halfWidth = scaledRadius * FLEE_HORN_WEDGE_HALF_WIDTH_RATIO;
+    const centroidX = -halfLength / 3;
     return [
-        { x: halfLength, y: 0 },
-        { x: -halfLength, y: -halfWidth },
-        { x: -halfLength, y: halfWidth },
+        { x: halfLength - centroidX, y: 0 },
+        { x: -halfLength - centroidX, y: -halfWidth },
+        { x: -halfLength - centroidX, y: halfWidth },
     ];
+}
+
+export function fleeHornWedgeTipOffsetFromCentroid(bodyRadius, wedgeScale = 1) {
+    const scaledRadius = bodyRadius * wedgeScale;
+    const halfLength = scaledRadius * FLEE_HORN_WEDGE_LENGTH_RATIO * 0.5;
+    return (halfLength * 4) / 3;
 }
 export function fleeHornWedgeWorldHeight(bodyRadius, wedgeScale = 1) {
     const scaledRadius = bodyRadius * wedgeScale;
@@ -24,7 +31,8 @@ export function fleeHornWedgeWorldHeight(bodyRadius, wedgeScale = 1) {
 export function fleeHornMountOffsetFromBallCenter(bodyRadius, wedgeScale = 1) {
     const scaledRadius = bodyRadius * wedgeScale;
     const halfLength = scaledRadius * FLEE_HORN_WEDGE_LENGTH_RATIO * 0.5;
-    return bodyRadius + bodyRadius * FLEE_HORN_WEDGE_MOUNT_GAP_RATIO + halfLength;
+    const length = halfLength * 2;
+    return bodyRadius + bodyRadius * FLEE_HORN_WEDGE_MOUNT_GAP_RATIO + length - fleeHornWedgeTipOffsetFromCentroid(bodyRadius, wedgeScale);
 }
 export function fleeHornChainRestLength(bodyRadius, wedgeScale = 1, linkSlack = 1) {
     return fleeHornMountOffsetFromBallCenter(bodyRadius, wedgeScale) * linkSlack;

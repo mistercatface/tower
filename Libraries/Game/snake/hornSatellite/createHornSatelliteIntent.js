@@ -1,62 +1,41 @@
 import { createAgentIntent } from "../../../AI/agentIntent/createAgentIntent.js";
 import { addChainLink, hasChainLinkBetween } from "../../../Sandbox/chainLinks.js";
 import { decelerateRoll, getKineticRollConfig, steerRollToward, clearGroundRollDrive } from "../../../Sandbox/kineticRollActuator.js";
-import { fleeHornMountOffsetFromBallCenter } from "../../../Props/fleeHornWedge.js";
+import { fleeHornChainRestLength } from "../../../Props/fleeHornWedge.js";
 import { getCirclePropRadius } from "../../../Props/propScale.js";
+import { resolvePropQuantizeSteps } from "../../../Props/propStrategy.js";
+import { quantizeAngle } from "../../../Math/Angle.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { perceiveHornSatelliteWorld } from "./resolveHornMountBall.js";
-function resolveMountForwardDir(mount, minSpeed) {
+
+function syncHornFacingFromMount(horn, mount) {
     const drive = mount._groundRollDrive;
+    let dirX = 0;
+    let dirY = 0;
     if (drive?.kind === "thrust") {
-        const thrustLen = Math.hypot(drive.dirX, drive.dirY);
-        if (thrustLen > 1e-6) return { x: drive.dirX / thrustLen, y: drive.dirY / thrustLen };
-    }
-    const vx = mount.vx ?? 0;
-    const vy = mount.vy ?? 0;
-    const speed = Math.hypot(vx, vy);
-    if (speed > minSpeed) return { x: vx / speed, y: vy / speed };
-    const facing = mount.facing ?? 0;
-    return { x: Math.cos(facing), y: Math.sin(facing) };
-}
-export function resolveHornRimSlotWorld(mount, wedgeScale, minSpeed) {
-    const bodyRadius = getCirclePropRadius(mount);
-    const forward = resolveMountForwardDir(mount, minSpeed);
-    const offset = fleeHornMountOffsetFromBallCenter(bodyRadius, wedgeScale);
-    return { x: mount.x + forward.x * offset, y: mount.y + forward.y * offset };
-}
-function buildRimHoldContext(agent, state, instance, registry, hornConfig) {
-    const world = perceiveHornSatelliteWorld(agent, instance, state, registry, hornConfig);
-    return { agent, state, world, instance, wedgeScale: hornConfig.wedgeScale ?? 1, rimHoldMinSpeed: hornConfig.rimHoldMinSpeed ?? 8, rimHoldStopRadius: hornConfig.rimHoldStopRadius ?? null };
-}
-function steerHornTowardRimSlot(ctx) {
-    const mount = ctx.world.mountBall;
-    if (!mount) return;
-    const rim = resolveHornRimSlotWorld(mount, ctx.wedgeScale, ctx.rimHoldMinSpeed);
-    const dx = rim.x - ctx.agent.x;
-    const dy = rim.y - ctx.agent.y;
-    const dist = Math.hypot(dx, dy);
-    const arriveRadius = ctx.rimHoldStopRadius ?? Math.max(ctx.agent.radius * 0.4, 1.5);
-    const rollConfig = getKineticRollConfig(ctx.agent);
-    if (dist <= arriveRadius) {
-        decelerateRoll(ctx.agent, rollConfig, ctx.state);
-        return;
-    }
-    const forward = resolveMountForwardDir(mount, ctx.rimHoldMinSpeed);
-    const offset = fleeHornMountOffsetFromBallCenter(getCirclePropRadius(mount), ctx.wedgeScale);
-    const leadAlongForward = (ctx.agent.x - mount.x) * forward.x + (ctx.agent.y - mount.y) * forward.y;
-    let steerX = dx / dist;
-    let steerY = dy / dist;
-    if (leadAlongForward < offset * 0.85) {
-        steerX = forward.x * 0.65 + steerX * 0.35;
-        steerY = forward.y * 0.65 + steerY * 0.35;
-        const steerLen = Math.hypot(steerX, steerY);
-        if (steerLen > 1e-6) {
-            steerX /= steerLen;
-            steerY /= steerLen;
+        dirX = drive.dirX;
+        dirY = drive.dirY;
+    } else {
+        const vx = mount.vx ?? 0;
+        const vy = mount.vy ?? 0;
+        const speed = Math.hypot(vx, vy);
+        if (speed > 8) {
+            dirX = vx / speed;
+            dirY = vy / speed;
+        } else {
+            const facing = mount.facing ?? 0;
+            dirX = Math.cos(facing);
+            dirY = Math.sin(facing);
         }
     }
-    steerRollToward(ctx.agent, steerX, steerY, rollConfig, ctx.state);
+    const len = Math.hypot(dirX, dirY);
+    if (len < 1e-6) return;
+    const facing = quantizeAngle(Math.atan2(dirY, dirX), resolvePropQuantizeSteps(horn).facing);
+    if (Math.abs((horn.facing ?? 0) - facing) < 1e-4) return;
+    horn.facing = facing;
+    horn.stateTimer = (horn.stateTimer ?? 0) + 1;
 }
+
 function createSeekingMountState() {
     return {
         update(ctx) {
@@ -77,6 +56,7 @@ function createSeekingMountState() {
         },
     };
 }
+
 function createBoundMountState() {
     return {
         enter(ctx) {
@@ -90,10 +70,12 @@ function createBoundMountState() {
                 ctx.effects.transitionTo("seeking", "mount_lost");
                 return;
             }
-            steerHornTowardRimSlot(ctx);
+            syncHornFacingFromMount(ctx.agent, mount);
+            decelerateRoll(ctx.agent, getKineticRollConfig(ctx.agent), ctx.state);
         },
     };
 }
+
 export function createHornSatelliteIntent({ selfHeadId, spawnGroupId, registry, instance }) {
     const config = getSnakeGameConfig();
     const hornConfig = config.hornSatellite;
@@ -110,7 +92,11 @@ export function createHornSatelliteIntent({ selfHeadId, spawnGroupId, registry, 
             tryBindMount(ball) {
                 const horn = state.entityRegistry.getLive(selfHeadId);
                 if (!horn || !ball) return;
-                if (!hasChainLinkBetween(state, ball.id, horn.id)) addChainLink(state, ball.id, horn.id, hornConfig.linkSlack);
+                if (!hasChainLinkBetween(state, ball.id, horn.id)) {
+                    const bodyRadius = getCirclePropRadius(ball);
+                    const wedgeScale = horn._fleeHornWedgeScale ?? hornConfig.wedgeScale ?? 1;
+                    addChainLink(state, ball.id, horn.id, hornConfig.linkSlack, fleeHornChainRestLength(bodyRadius, wedgeScale, hornConfig.linkSlack));
+                }
                 instance.mountBallId = ball.id;
             },
             releaseMount() {
@@ -123,9 +109,6 @@ export function createHornSatelliteIntent({ selfHeadId, spawnGroupId, registry, 
             ...ctx,
             instance,
             bindDistance: hornConfig.bindDistance,
-            wedgeScale: hornConfig.wedgeScale ?? 1,
-            rimHoldMinSpeed: hornConfig.rimHoldMinSpeed ?? 8,
-            rimHoldStopRadius: hornConfig.rimHoldStopRadius ?? null,
         }),
         onClear(agent, state) {
             instance.mountBallId = null;
@@ -142,12 +125,6 @@ export function createHornSatelliteIntent({ selfHeadId, spawnGroupId, registry, 
         tick(agent, state) {
             intent.perceive(agent, state);
             return intent.transition(agent, state);
-        },
-        applyRimHold(agent, state) {
-            if (intent.getMode() !== "bound") return;
-            const ctx = buildRimHoldContext(agent, state, instance, registry, hornConfig);
-            if (!ctx.world.mountBall) return;
-            steerHornTowardRimSlot(ctx);
         },
         clearIntent(agent, state) {
             intent.clear(agent, state);

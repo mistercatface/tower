@@ -56,8 +56,14 @@ export function spawnAgentChain(state, anchorCell, spec) {
         if (exportType) meta.setSpawnGroupExportType(props[i].id, exportType);
         if (i === 0) meta.setSpawnGroupAnchor(props[i].id);
     }
-    // 4. Establish kinetic distance constraints
-    for (let i = 0; i < props.length - 1; i++) addChainLink(state, props[i].id, props[i + 1].id, linkSlack);
+    // 4. Establish kinetic distance constraints (rest length matches segment placement)
+    for (let i = 0; i < props.length - 1; i++) {
+        const a = props[i];
+        const b = props[i + 1];
+        const segDist = Math.hypot(b.x - a.x, b.y - a.y);
+        const restLength = spacing != null ? segDist * linkSlack : segDist;
+        addChainLink(state, a.id, b.id, linkSlack, restLength);
+    }
     // 5. Set chain head
     setChainHead(state, meta, props[0].id);
     return { head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };

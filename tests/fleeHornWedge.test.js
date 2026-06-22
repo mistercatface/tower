@@ -22,9 +22,9 @@ describe("flee horn wedge", () => {
         const halfWidth = bodyRadius * FLEE_HORN_WEDGE_HALF_WIDTH_RATIO;
         assert.equal(verts.length, 3);
         assert.ok(Math.abs(verts[0].y) < 1e-6);
-        assert.equal(verts[0].x, halfLength);
-        assert.equal(verts[1].x, -halfLength);
-        assert.equal(verts[2].x, -halfLength);
+        assert.equal(verts[0].x, (halfLength * 4) / 3);
+        assert.ok(Math.abs(verts[1].x - (-halfLength * 2) / 3) < 1e-6);
+        assert.ok(Math.abs(verts[2].x - (-halfLength * 2) / 3) < 1e-6);
         assert.equal(verts[1].y, -halfWidth);
         assert.equal(verts[2].y, halfWidth);
     });
@@ -36,8 +36,8 @@ describe("flee horn wedge", () => {
         const halfW = bodyRadius * FLEE_HORN_WEDGE_HALF_WIDTH_RATIO;
         const rimTipX = mountX + length;
         const verts = buildFleeHornWedgeFootprint(bodyRadius);
-        assert.equal(verts[0].x, length * 0.5);
-        assert.equal(verts[1].x, -length * 0.5);
+        assert.equal(verts[0].x, length * 0.5 * (4 / 3));
+        assert.ok(Math.abs(verts[1].x + length * 0.5 * (2 / 3)) < 1e-6);
         assert.ok(Math.abs(verts[1].y + halfW) < 1e-6);
         assert.ok(Math.abs(rimTipX - (mountX + verts[0].x - verts[1].x)) < 1e-6);
     });
@@ -59,7 +59,8 @@ describe("flee horn wedge", () => {
     it("exposes rim mount offset for ball pairing", () => {
         const bodyRadius = 2;
         const halfLength = bodyRadius * FLEE_HORN_WEDGE_LENGTH_RATIO * 0.5;
-        const expected = bodyRadius + bodyRadius * FLEE_HORN_WEDGE_MOUNT_GAP_RATIO + halfLength;
+        const length = halfLength * 2;
+        const expected = bodyRadius + bodyRadius * FLEE_HORN_WEDGE_MOUNT_GAP_RATIO + length / 3;
         assert.equal(fleeHornMountOffsetFromBallCenter(bodyRadius), expected);
     });
 });
