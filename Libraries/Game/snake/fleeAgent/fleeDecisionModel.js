@@ -1,5 +1,5 @@
 import { netScoreDetail, pickBestScoreKey, scoreCandidateSet } from "../../../AI/utility/utilityScoring.js";
-import { deriveSnakeThreatState } from "../snakeDecisionModel.js";
+import { deriveSnakeThreatState, deriveAllyState } from "../snakeDecisionModel.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 export function deriveFleeAgentThreatState(threat, threatDist) {
     return deriveSnakeThreatState(threat, threatDist);
@@ -86,25 +86,38 @@ function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memory
         foodDist: visibleWorld.food ? (visibleWorld.foodDist ?? null) : null,
         threatCount: visibleWorld.threatCount ?? 0,
         aggregateThreatSeverity: visibleWorld.aggregateThreatSeverity ?? 0,
+        ally: memorySource?.ally ? null : (visibleWorld.ally ?? null),
+        allyDist: memorySource?.ally ? null : visibleWorld.ally ? (visibleWorld.allyDist ?? null) : null,
+        allyCount: memorySource?.ally ? 0 : (visibleWorld.allyCount ?? 0),
+        allyCentroid: memorySource?.ally ? null : (visibleWorld.allyCentroid ?? null),
     };
     const remembered = {
         threat: memorySource?.threat ? (memoryWorld?.threat ?? null) : null,
         food: memorySource?.food ? (memoryWorld?.food ?? null) : null,
+        ally: memorySource?.ally ? (memoryWorld?.ally ?? null) : null,
         foodDist: memorySource?.food ? (memoryWorld?.foodDist ?? null) : null,
+        allyDist: memorySource?.ally ? (memoryWorld?.allyDist ?? null) : null,
+        allyCount: memorySource?.ally ? (memoryWorld?.allyCount ?? 1) : 0,
+        allyCentroid: null,
     };
     const known = {
         threat: visibleWorld.threat ?? remembered.threat,
         food: visibleWorld.food ?? remembered.food,
+        ally: visibleWorld.ally ?? remembered.ally,
         threatDist: visible.threatDist,
         foodDist: visible.food ? visible.foodDist : remembered.foodDist,
+        allyDist: visible.ally ? visible.allyDist : remembered.allyDist,
         threatCount: visible.threatCount ?? 0,
         aggregateThreatSeverity: visible.aggregateThreatSeverity ?? 0,
+        allyCount: visible.ally ? visible.allyCount : remembered.allyCount,
+        allyCentroid: visible.allyCentroid,
     };
     const events = routeEvents(routeStatus);
     pushTargetEvents(events, "threat", visibleWorld.threat, remembered.threat);
     pushTargetEvents(events, "food", visibleWorld.food, remembered.food);
+    pushTargetEvents(events, "ally", visible.ally ?? visibleWorld.ally, remembered.ally);
     if (!known.food && committedTarget?.mode === "seek_food") events.push("TARGET_LOST");
-    return { facts: { visible, remembered, known, committedTarget, routeStatus, hungerState, threatState }, events };
+    return { facts: { visible, remembered, known, committedTarget, routeStatus, hungerState, threatState, allyState: deriveAllyState(visibleWorld, known, memorySource) }, events };
 }
 function scoreFlee(blackboard, weights, pressure) {
     if (!blackboard.facts.known.threat) return -Infinity;
@@ -167,6 +180,7 @@ export function buildFleeDecisionContext({
         events: blackboard.events,
         hungerState,
         threatState,
+        allyState: blackboard.facts.allyState,
         routeStatus,
         committedTarget,
         candidateScores: scoredCandidates.candidateScores,

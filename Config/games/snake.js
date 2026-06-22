@@ -53,7 +53,7 @@ export const SNAKE_GAME_DEFAULTS = {
     headAccel: 200,
     startRadius: 2,
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1, regionPaddingCells: 4, fillChance: 0.48, iterations: 4, openBoundaryRows: 3 },
-    rail: { wallHeightLevel: 1, edgeThickness: 1, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
+    rail: { wallHeightLevel: 1, edgeThickness: 4, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
     showVisionCones: false,
     showAllSnakeVisionCones: false,
     visionCone: { halfAngle: Math.PI / 3, range: 128, cellFill: "rgba(120, 220, 255, 0.04)", visibleGoalStroke: "rgba(255, 220, 80, 0.35)", lineWidth: 1 },
@@ -89,7 +89,7 @@ export const SNAKE_GAME_DEFAULTS = {
     /** Flee has separate enter/exit thresholds so snakes do not yo-yo around threat vision. */
     fleeHysteresis: { minTicks: 45, exitThreatSeverity: 0.15, refreshAtSeverity: 0.35 },
     /** Short-term intent memory after LOS loss, in FSM ticks. */
-    intentMemory: { threatTtlTicks: 45, preyTtlTicks: 90, foodTtlTicks: 180 },
+    intentMemory: { threatTtlTicks: 45, preyTtlTicks: 90, foodTtlTicks: 180, allyTtlTicks: 60 },
     /** Locked seek targets switch from HPA pathing to direct steering once close and visible. */
     terminalHoming: { enabled: true, handoffRadius: null, requireWorldLos: true, minHoldTicks: 6 },
     /**

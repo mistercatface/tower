@@ -7,8 +7,6 @@ import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, 
 import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { findNearestSnakeFood, findNearestVisibleSnakeFood } from "../Libraries/Game/snake/snakeFood.js";
-import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { createAgentPopulationRegistry } from "../Libraries/AI/agents/agentPopulationRegistry.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
@@ -124,7 +122,7 @@ describe("snake intent FSM", () => {
         await state.nav.commitEdit({ startCol: 10, endCol: 12, startRow: 7, endRow: 9 });
         const seeker = chain.head;
         seeker.facing = Math.PI;
-        wireSnakeGameRegistry(state, createAgentPopulationRegistry(), new Map(), createSnakeNavWalkable(state));
+        wireSnakeTestGame(state);
         primeSnakeHeadVision(state, seeker);
         assert.equal(findNearestSnakeFood(state, seeker.x, seeker.y).id, nearBehindWall.id);
         assert.equal(findNearestVisibleSnakeFood(state, seeker).id, farVisible.id);
@@ -157,11 +155,13 @@ describe("snake intent FSM", () => {
         resetKineticConstraintIds(1);
         const state = await createIntentTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });
-        const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, { ...snakeChainOptions(), segmentCount: 5 });
+        const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, { ...snakeChainOptions(), segmentCount: 6 });
         wireSnakeTestGame(state, [
             { headId: small.head.id, spawnGroupId: small.spawnGroupId },
             { headId: large.head.id, spawnGroupId: large.spawnGroupId },
         ]);
+        small.head.faction = "red";
+        large.head.faction = "blue";
         small.head.facing = 0;
         large.head.x = small.head.x + 80;
         large.head.y = small.head.y;
@@ -208,6 +208,8 @@ describe("snake intent FSM", () => {
             { headId: seekerChain.head.id, spawnGroupId: seekerChain.spawnGroupId },
             { headId: preyChain.head.id, spawnGroupId: preyChain.spawnGroupId },
         ]);
+        seekerChain.head.faction = "red";
+        preyChain.head.faction = "blue";
         const seeker = seekerChain.head;
         seeker.facing = 0;
         preyChain.head.x = seeker.x + 64;
@@ -230,6 +232,8 @@ describe("snake intent FSM", () => {
             { headId: seekerChain.head.id, spawnGroupId: seekerChain.spawnGroupId },
             { headId: preyChain.head.id, spawnGroupId: preyChain.spawnGroupId },
         ]);
+        seekerChain.head.faction = "red";
+        preyChain.head.faction = "blue";
         const seeker = seekerChain.head;
         seeker.facing = 0;
         preyChain.head.x = seeker.x + 32;

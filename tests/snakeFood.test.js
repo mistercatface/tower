@@ -5,10 +5,8 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { createAgentPopulationRegistry } from "../Libraries/AI/agents/agentPopulationRegistry.js";
 import { countLiveSnakeFood, findNearestVisibleSnakeFood } from "../Libraries/Game/snake/snakeFood.js";
-import { createSnakeNavWalkable, wireSnakeTestNavSession, primeSnakeHeadVision, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
+import { wireSnakeTestGame, wireSnakeTestNavSession, primeSnakeHeadVision, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -35,8 +33,7 @@ async function createFoodQueryState() {
         viewport: { circleInBounds: () => true },
     };
     wireSnakeTestNavSession(state);
-    const navWalkable = createSnakeNavWalkable(state);
-    wireSnakeGameRegistry(state, createAgentPopulationRegistry(), new Map(), navWalkable);
+    wireSnakeTestGame(state);
     return state;
 }
 

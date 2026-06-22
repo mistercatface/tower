@@ -9,9 +9,8 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { createDefaultMapGenBoundsConfig, forEachGlobalCellInMapGenBounds } from "../Libraries/Sandbox/mapGenBounds.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { generateSnakeSplitMap, spawnSnakeCavernScene } from "../Libraries/Game/snake/snakeScene.js";
-import { wireSnakeGameRegistry } from "../Libraries/Game/snake/snakeLifecycle.js";
-import { createAgentPopulationRegistry } from "../Libraries/AI/agents/agentPopulationRegistry.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
@@ -49,11 +48,11 @@ describe("snake navWalkable session", () => {
         assert.ok(scene.navWalkable);
         assert.ok(scene.navWalkable.cells().length >= 80);
     });
-    it("wired navWalkable serves explore picks after wireSnakeGameRegistry", async () => {
+    it("wired navWalkable serves explore picks after wireSnakeTestGame", async () => {
         applySnakeGameConfig({ snakeCount: 2 });
         const state = await createSnakeWalkableTestState(48, 1337);
         const scene = await spawnSnakeCavernScene(state);
-        wireSnakeGameRegistry(state, createAgentPopulationRegistry(), new Map(), scene.navWalkable);
+        wireSnakeTestGame(state, [], { navWalkable: scene.navWalkable });
         const picked = state.sandbox.snakeGame.navWalkable.pick({ rng: () => 0 });
         assert.ok(picked);
         assert.ok(state.sandbox.snakeGame.navWalkable.has(picked.col, picked.row));
@@ -62,7 +61,7 @@ describe("snake navWalkable session", () => {
         applySnakeGameConfig();
         const state = await createSnakeWalkableTestState(48, 1337);
         await generateSnakeSplitMap(state);
-        wireSnakeGameRegistry(state, createAgentPopulationRegistry(), new Map(), createSnakeNavWalkable(state));
+        wireSnakeTestGame(state, [], { navWalkable: createSnakeNavWalkable(state) });
         const cells = state.sandbox.snakeGame.navWalkable.cells();
         assert.ok(cells.length >= 80);
         const grid = state.obstacleGrid;

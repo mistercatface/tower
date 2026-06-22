@@ -59,10 +59,11 @@ export function registerSnakeTestInstance(state, snakeGame, { headId, spawnGroup
     grantSnakeSteeringLease(instance, state);
     return instance;
 }
-export function wireSnakeTestGame(state, snakes = []) {
+export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {}) {
     if (state.nav?.session) wireSnakeTestNavSession(state);
     const registry = createAgentPopulationRegistry();
-    const snakeGame = createSnakeAgentSession(state, { registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
+    const resolvedNavWalkable = navWalkable ?? createSnakeNavWalkable(state);
+    const snakeGame = createSnakeAgentSession(state, { registry, navWalkable: resolvedNavWalkable, speciesById: SNAKE_GAME_SPECIES });
     state.sandbox.snakeGame = snakeGame;
     for (const snake of snakes) {
         const autosim = snake.autosim ?? stubSnakeAutosim();

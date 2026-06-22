@@ -1,0 +1,94 @@
+import "./nodeCanvasSetup.js";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
+import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
+import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
+import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
+import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
+import { createSnakeIntentMemory } from "../Libraries/Game/snake/snakeIntentMemory.js";
+import { createFleeIntentMemory } from "../Libraries/Game/snake/fleeAgent/fleeIntentMemory.js";
+import { buildSnakeDecisionContext } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { buildFleeDecisionContext } from "../Libraries/Game/snake/fleeAgent/fleeDecisionModel.js";
+import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
+loadPropAssets();
+function chainOptions(segmentCount) {
+    const config = getSnakeGameConfig();
+    return {
+        segmentCount,
+        spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
+        segmentRadius: config.startRadius,
+        linkSlack: config.linkSlack,
+        ballType: config.segmentPropId,
+        headBallType: config.headPropId,
+        growDirX: config.growDirX,
+        growDirY: config.growDirY,
+    };
+}
+describe("ally intent memory and blackboard", () => {
+    it("snake intent memory retains ally after line of sight is lost", async () => {
+        applySnakeGameConfig({ intentMemory: { allyTtlTicks: 2 } });
+        resetKineticConstraintIds(1);
+        const { state } = await createSnakeGameHarnessState();
+        const seeker = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
+        const ally = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
+        wireSnakeTestGame(state, [
+            { headId: seeker.head.id, spawnGroupId: seeker.spawnGroupId },
+            { headId: ally.head.id, spawnGroupId: ally.spawnGroupId },
+        ]);
+        seeker.head.faction = "red";
+        ally.head.faction = "red";
+        const memory = createSnakeIntentMemory(getSnakeGameConfig().intentMemory);
+        const visible = { threat: null, prey: null, food: null, ally: ally.head, allyDist: 64, allyCount: 1, allyCentroid: { x: ally.head.x, y: ally.head.y } };
+        const empty = { ...visible, ally: null, allyCount: 0, allyCentroid: null };
+        memory.update(seeker.head, state, visible);
+        memory.update(seeker.head, state, empty);
+        let enriched = memory.enrichWorld(state, empty);
+        assert.equal(enriched.ally.id, ally.head.id);
+        assert.equal(enriched.memorySource.ally, true);
+        memory.update(seeker.head, state, empty);
+        enriched = memory.enrichWorld(state, empty);
+        assert.equal(enriched.ally.id, ally.head.id);
+        memory.update(seeker.head, state, empty);
+        enriched = memory.enrichWorld(state, empty);
+        assert.equal(enriched.ally, null);
+    });
+    it("snake decision snapshot surfaces allyState from memory", () => {
+        applySnakeGameConfig();
+        const visibleWorld = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null };
+        const memoryWorld = { ally: { id: 42, x: 100, y: 80 }, allyDist: 90, allyCount: 1, allyCentroid: null };
+        const { decisionSnapshot, blackboard } = buildSnakeDecisionContext({ visibleWorld, memoryWorld, memorySource: { ally: true } });
+        assert.equal(blackboard.facts.known.ally.id, 42);
+        assert.equal(decisionSnapshot.allyState.remembered, true);
+        assert.equal(decisionSnapshot.allyState.visible, false);
+        assert.ok(decisionSnapshot.events.includes("ALLY_REMEMBERED"));
+    });
+    it("flee intent memory and decision snapshot retain ally facts", async () => {
+        applySnakeGameConfig({ intentMemory: { allyTtlTicks: 3 } });
+        resetKineticConstraintIds(2);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        const seekerPack = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "bravo" });
+        const allyPack = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "bravo" });
+        registerAgentInstance(snakeGame, "flee_agent", createFleeAgentInstance(state, { headId: seekerPack.head.id, spawnGroupId: seekerPack.spawnGroupId }));
+        registerAgentInstance(snakeGame, "flee_agent", createFleeAgentInstance(state, { headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
+        const memory = createFleeIntentMemory(getSnakeGameConfig().intentMemory);
+        const visible = {
+            threat: null,
+            food: null,
+            ally: allyPack.head,
+            allyDist: 64,
+            allyCount: 1,
+            allyCentroid: { x: allyPack.head.x, y: allyPack.head.y },
+            threatCount: 0,
+            aggregateThreatSeverity: 0,
+        };
+        memory.update(seekerPack.head, state, visible);
+        const enriched = memory.enrichWorld(state, { ...visible, ally: null, allyCount: 0, allyCentroid: null });
+        const { decisionSnapshot } = buildFleeDecisionContext({ visibleWorld: enriched, memoryWorld: enriched, memorySource: enriched.memorySource });
+        assert.equal(decisionSnapshot.allyState.ally.id, allyPack.head.id);
+        assert.equal(decisionSnapshot.allyState.remembered, true);
+    });
+});

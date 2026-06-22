@@ -15,6 +15,18 @@ export function deriveSnakeThreatState(visibleThreat, threatDist) {
     const severity = Math.max(0, Math.min(1, (fleeRange - threatDist) / fleeRange));
     return { dist: threatDist, severity, lethal: threatDist <= config.lethalThreatRange };
 }
+export function deriveAllyState(visibleWorld, known, memorySource = null) {
+    const visibleAlly = memorySource?.ally ? null : (visibleWorld?.ally ?? null);
+    const knownAlly = known?.ally ?? null;
+    return {
+        ally: knownAlly,
+        dist: known?.allyDist ?? null,
+        count: known?.allyCount ?? 0,
+        centroid: visibleAlly ? (visibleWorld.allyCentroid ?? null) : null,
+        visible: !!visibleAlly,
+        remembered: !!memorySource?.ally && !!knownAlly,
+    };
+}
 export function deriveSprintIntent(mode, threatState) {
     if (mode === "flee" && threatState && (threatState.lethal || threatState.severity >= getSnakeGameConfig().sprint.fleeSeverity)) return { want: true, reason: "escape" };
     if (mode === "seek_food" && threatState && !threatState.lethal && threatState.severity >= getSnakeGameConfig().sprint.fleeSeverity) return { want: true, reason: "feed" };
@@ -52,32 +64,60 @@ export function createSnakeDecisionBlackboard({
         threat: visibleWorld.threat,
         prey: visibleWorld.prey,
         food: visibleWorld.food,
+        ally: visibleWorld.ally,
         threatDist: visibleWorld.threatDist ?? null,
         preyDist: visibleWorld.prey ? (visibleWorld.preyDist ?? null) : null,
         foodDist: visibleWorld.food ? (visibleWorld.foodDist ?? null) : null,
+        allyDist: visibleWorld.ally ? (visibleWorld.allyDist ?? null) : null,
+        allyCount: visibleWorld.allyCount ?? 0,
+        allyCentroid: visibleWorld.allyCentroid ?? null,
     };
     const remembered = {
         threat: memorySource?.threat ? (memoryWorld?.threat ?? null) : null,
         prey: memorySource?.prey ? (memoryWorld?.prey ?? null) : null,
         food: memorySource?.food ? (memoryWorld?.food ?? null) : null,
+        ally: memorySource?.ally ? (memoryWorld?.ally ?? null) : null,
         preyDist: memorySource?.prey ? (memoryWorld?.preyDist ?? null) : null,
         foodDist: memorySource?.food ? (memoryWorld?.foodDist ?? null) : null,
+        allyDist: memorySource?.ally ? (memoryWorld?.allyDist ?? null) : null,
+        allyCount: memorySource?.ally ? (memoryWorld?.allyCount ?? 1) : 0,
+        allyCentroid: null,
     };
     const known = {
         threat: visibleWorld.threat ?? remembered.threat,
         prey: visibleWorld.prey ?? remembered.prey,
         food: visibleWorld.food ?? remembered.food,
+        ally: visibleWorld.ally ?? remembered.ally,
         threatDist: visible.threatDist,
         preyDist: visible.prey ? visible.preyDist : remembered.preyDist,
         foodDist: visible.food ? visible.foodDist : remembered.foodDist,
+        allyDist: visible.ally ? visible.allyDist : remembered.allyDist,
+        allyCount: visible.ally ? visible.allyCount : remembered.allyCount,
+        allyCentroid: visible.allyCentroid,
     };
     const events = routeEvents(routeStatus);
     pushTargetEvents(events, "threat", visibleWorld.threat, remembered.threat);
     pushTargetEvents(events, "prey", visibleWorld.prey, remembered.prey);
     pushTargetEvents(events, "food", visibleWorld.food, remembered.food);
+    pushTargetEvents(events, "ally", visibleWorld.ally, remembered.ally);
     if (!known.prey && committedTarget?.mode === "seek_prey") events.push("TARGET_LOST");
     if (!known.food && committedTarget?.mode === "seek_food") events.push("TARGET_LOST");
-    return { facts: { visible, remembered, known, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures, seekerFaction }, events };
+    return {
+        facts: {
+            visible,
+            remembered,
+            known,
+            committedTarget,
+            routeStatus,
+            hungerState,
+            threatState,
+            safetyState,
+            recentFailures,
+            seekerFaction,
+            allyState: deriveAllyState(visibleWorld, known, memorySource),
+        },
+        events,
+    };
 }
 function hungerKey(hungerState) {
     return hungerState?.state ?? "hungry";
@@ -190,6 +230,7 @@ export function buildSnakeDecisionContext({
         events: blackboard.events,
         hungerState,
         threatState,
+        allyState: blackboard.facts.allyState,
         routeStatus,
         committedTarget,
         candidateScores: scoredCandidates.candidateScores,
