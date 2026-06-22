@@ -1,13 +1,3 @@
-##
-
-First, orchestrating the perception and locomotion tick can be centralized. Currently, both SnakeInstance (via createSnakeAutosim) and FleeAgentInstance manually handle the boilerplate for managing perception frames (ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame), syncing their spatial memory, and ticking their locomotion actuators. This repetition means any new species introduced in the future would have to copy-paste this exact control-flow sequence. An easy win is to introduce a unified tickAgentBrainAndLocomotion(state, instance, dtMs) helper in the population registry. This helper would encapsulate the entire perception-frame lifecycle, spatial memory sync, and locomotion ticking, leaving the individual agent instances to focus purely on their unique FSM state transition logic.
-
-Second, chain assembly and physical spawning can be unified into a single factory. Right now, spawnSnakeChain (in snakeScene.js) and spawnFleeAgent (in spawnFleeAgent.js) independently invoke spawnPlacedSandboxProp, scale radii, establish kinetic distance constraints, set chain heads, and register spawn group metadata. We can consolidate this into a generic spawnAgentChain(state, anchorCell, spec) utility. This factory would accept a declarative specification—defining the head prop type, body segment prop types, segment count, faction, and scaling parameters—and handle all the physical joint linking and metadata registration under the hood. This would drastically simplify scene setup and make spawning any multi-segment agent a single-line declaration.
-
-Third, the agent death and segment shattering sequence can be fully standardized. While we generalized predator-prey combat in snakeCombat.js, the actual destruction sequence remains split: FleeAgentInstance defines a custom die method that clears chain links and shatters segments, while SnakeInstance implements a more complex die method that also retires segments from navigation and cleans up active steering leases. We can consolidate this by moving the core destruction sequence into a generic reapAgentInstance(state, snakeGame, instance, deathImpact) function. This function would automatically resolve the agent's connected members, retire them from navigation, clear their physical constraints, shatter them into shards, and mark the head as dead in the registry. Individual species would then only need to provide optional lifecycle hooks (like onBeforeDie or onDeath) for any custom cleanup, making the combat resolution completely clean and uniform.
-
-##
-
 ## Plan: plain balls → satellite horn agent
 
 ### Part 1 — Tear down integrated turret (balls are balls again)

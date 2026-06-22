@@ -1,6 +1,5 @@
 import { getConnectedComponentPath } from "../../../Motion/kineticConstraintGraph.js";
 import { tickAgentIntent, reapAgentInstance } from "../snakeAgentLifecycle.js";
-import { syncFleeBallTurretFacing } from "./fleeBallTurret.js";
 import { createFleeExploreIntent } from "./createFleeExploreIntent.js";
 import { createBrain } from "../../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../../AI/brain/syncSpatialBrain.js";
@@ -43,7 +42,6 @@ export class FleeAgentInstance {
         if (this.lifecycle !== "alive" || !this.intent) return;
         tickAgentIntent(state, this.intent, dtMs, (head) => {
             this.intent.tick(head, state);
-            syncFleeBallTurretFacing(head, dtMs);
         });
     }
     syncMembersFromGraph(state) {

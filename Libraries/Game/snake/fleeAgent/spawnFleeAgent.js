@@ -25,7 +25,6 @@ export function spawnFleeAgent(state, anchorCell, options = {}) {
     applyFleeAgentGameplay(head);
     head.strategy.canChain = true;
     head.facing = Math.atan2(forward.y, forward.x);
-    head.turretFacing = head.facing;
     const spawnGroupId = options.spawnGroupId ?? `${exportType}:${head.id}`;
     meta.setSpawnGroupId(head.id, spawnGroupId);
     meta.setSpawnGroupExportType(head.id, exportType);

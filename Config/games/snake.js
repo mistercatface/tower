@@ -16,8 +16,6 @@ export const SNAKE_GAME_DEFAULTS = {
         accel: 200,
         /** Kinetic friction; null keeps flee_ball asset default. */
         friction: null,
-        /** Baked turret wedge facing buckets; null uses flee_ball asset default (48). */
-        turretFacingSteps: null,
     },
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
