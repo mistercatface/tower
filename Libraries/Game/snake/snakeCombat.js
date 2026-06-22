@@ -2,6 +2,7 @@ import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.j
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { getSnakeInstance, SnakeInstance } from "./SnakeInstance.js";
+import { FleeAgentInstance } from "./fleeAgent/FleeAgentInstance.js";
 export function buildAgentMemberToInstanceMap(state, snakeGame) {
     const map = new Map();
     for (const instance of snakeGame.instancesByHeadId.values()) {
@@ -59,6 +60,25 @@ export function snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSeg
     const hit = contactWorldPointForBody(spatialFrame, contacts, i, struckBody);
     return { worldX: hit.x, worldY: hit.y, impactForce: impactForce ?? Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]), struckSegmentId, spatialFrame };
 }
+function fleeSnakeContactPair(instanceA, instanceB, bodyA, bodyB) {
+    if (instanceA instanceof FleeAgentInstance && instanceB instanceof SnakeInstance) return { fleeInstance: instanceA, snakeInstance: instanceB, fleeBody: bodyA, snakeBody: bodyB };
+    if (instanceB instanceof FleeAgentInstance && instanceA instanceof SnakeInstance) return { fleeInstance: instanceB, snakeInstance: instanceA, fleeBody: bodyB, snakeBody: bodyA };
+    return null;
+}
+function tryResolveFleeBerserkRam(state, snakeGame, spatialFrame, contacts, i, fleeInstance, snakeInstance, fleeBody, snakeBody, relSpeed, config, splitLinks) {
+    if (!fleeInstance.sprinting || relSpeed < config.splitImpulseThreshold) return false;
+    if (fleeBody.id !== fleeInstance.headId || snakeBody.id === snakeInstance.headId) return false;
+    const victimMembers = orderedMembers(state, snakeInstance.headId);
+    const struckSegmentId = snakeBody.id;
+    const strikeIndex = victimMembers.indexOf(struckSegmentId);
+    if (strikeIndex < 0 || strikeIndex >= victimMembers.length - 1) return false;
+    const linkKey = `${victimMembers[strikeIndex]}:${victimMembers[strikeIndex + 1]}`;
+    if (splitLinks.has(linkKey)) return false;
+    splitLinks.add(linkKey);
+    const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId, snakeBody, relSpeed);
+    splitSnakeAtStruckSegment(state, snakeGame, snakeInstance.headId, struckSegmentId, victimMembers, deathImpact);
+    return true;
+}
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
     const config = getSnakeGameConfig();
@@ -70,8 +90,26 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         const instanceA = memberToInstance.get(pair.bodyA.id);
         const instanceB = memberToInstance.get(pair.bodyB.id);
         if (!instanceA || !instanceB || instanceA === instanceB) continue;
-        // Handle predator-prey combat between any species
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
+        const fleeSnakePair = fleeSnakeContactPair(instanceA, instanceB, pair.bodyA, pair.bodyB);
+        if (
+            fleeSnakePair &&
+            tryResolveFleeBerserkRam(
+                state,
+                snakeGame,
+                spatialFrame,
+                contacts,
+                i,
+                fleeSnakePair.fleeInstance,
+                fleeSnakePair.snakeInstance,
+                fleeSnakePair.fleeBody,
+                fleeSnakePair.snakeBody,
+                relSpeed,
+                config,
+                splitLinks,
+            )
+        )
+            continue;
         const relationshipAB = resolveAgentRelationship(snakeGame, instanceA.headId, instanceB.headId, state);
         const relationshipBA = resolveAgentRelationship(snakeGame, instanceB.headId, instanceA.headId, state);
         if (relationshipAB === "prey" || relationshipBA === "prey") {
@@ -79,7 +117,7 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
             const preyInstance = relationshipAB === "prey" ? instanceB : instanceA;
             const predatorBody = relationshipAB === "prey" ? pair.bodyA : pair.bodyB;
             const preyBody = relationshipAB === "prey" ? pair.bodyB : pair.bodyA;
-            // Only trigger damage/kill if predator's head hits the prey and speed is above threshold
+            if (preyInstance instanceof FleeAgentInstance && preyInstance.sprinting) continue;
             if (predatorBody.id === predatorInstance.headId && relSpeed >= config.splitImpulseThreshold) {
                 const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, preyBody.id, preyBody, relSpeed);
                 preyInstance.die(state, snakeGame, null, deathImpact);
