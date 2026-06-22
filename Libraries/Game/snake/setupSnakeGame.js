@@ -72,13 +72,6 @@ export async function setupSnakeGame(state) {
         if (!registry.aliveByHeadId.has(focusedId)) return 0;
         return getConnectedBodyIds(state.kinetic, focusedId).length;
     };
-    const getFoodTimerFraction = config.showSnakeFsmDebug
-        ? () => {
-              const autosim = resolveFocusedAutosim();
-              if (!autosim) return 0;
-              return autosim.getFoodTimerFraction();
-          }
-        : null;
     const getFsmDebugLine = config.showSnakeFsmDebug
         ? () => {
               const autosim = resolveFocusedAutosim();
@@ -92,7 +85,7 @@ export async function setupSnakeGame(state) {
         if (focusedId === strikerBall?.id) return "Striker";
         return resolveAgentName(focusedId, "Snake");
     };
-    const hud = mountSnakeHud({ getFoodTimerFraction, getFsmDebugLine, onCycleCamera: () => cameraCycler.cycle(), getFocusedSnakeName });
+    const hud = mountSnakeHud({ getFsmDebugLine, onCycleCamera: () => cameraCycler.cycle(), getFocusedSnakeName });
     cameraCycler.setFocusedId(centerSnake.chain.head.id);
     cameraCycler.bindInput();
     hud.update();
