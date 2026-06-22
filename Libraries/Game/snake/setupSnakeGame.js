@@ -3,9 +3,10 @@ import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { CameraTargetCycler } from "../../Sandbox/CameraTargetCycler.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
-import { wireSnakeGameRegistry } from "./snakeLifecycle.js";
 import { createAgentPopulationRegistry } from "../../AI/agents/agentPopulationRegistry.js";
-import { createAliveSnakeInstance, registerAliveSnakeInstance, getSnakeInstance, syncAliveSnakeInstances, tickAliveSnakeInstances } from "./SnakeInstance.js";
+import { createSnakeAgentSession, registerAgentInstance, validateAliveAgents, tickAliveAgents, syncAgentsAfterPhysics, stopAllAgents } from "./snakeAgentSession.js";
+import { SNAKE_GAME_SPECIES } from "./species/index.js";
+import { getSnakeInstance } from "./SnakeInstance.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { mountSnakeHud } from "./snakeHud.js";
 import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
@@ -21,22 +22,22 @@ import { fractureRetiredSnakeSegmentsFromContacts } from "./snakeSegmentFracture
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 import { spawnFleeAgentsScene } from "./fleeAgent/spawnFleeAgentsInScene.js";
-import { registerFleeAgentInstance, syncFleeAgentInstances, syncFleeAgentWedgeFacings } from "./fleeAgent/FleeAgentInstance.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
     const scene = await spawnSnakeCavernScene(state);
     const registry = createAgentPopulationRegistry();
-    const autosimsByHeadId = new Map();
-    wireSnakeGameRegistry(state, registry, autosimsByHeadId, scene.navWalkable);
+    const session = createSnakeAgentSession(state, { registry, navWalkable: scene.navWalkable, speciesById: SNAKE_GAME_SPECIES });
+    state.sandbox.snakeGame = session;
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     await commitGridNavEdit(state, null, { fullNavSync: true });
     scene.navWalkable.rebake();
+    const snakeDef = SNAKE_GAME_SPECIES.get("snake");
     for (let i = 0; i < scene.snakes.length; i++) {
         const snake = scene.snakes[i];
-        const instance = createAliveSnakeInstance(state, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId, navWalkable: scene.navWalkable });
-        registerAliveSnakeInstance(state.sandbox.snakeGame, instance);
-        instance.start(state);
+        const instance = snakeDef.createInstance(state, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId, navWalkable: scene.navWalkable });
+        registerAgentInstance(session, "snake", instance);
+        snakeDef.start(instance, state);
     }
     let fleeSpawnExclude = new Set();
     for (let i = 0; i < scene.snakes.length; i++) {
@@ -45,10 +46,11 @@ export async function setupSnakeGame(state) {
         for (const idx of occupied) fleeSpawnExclude.add(idx);
     }
     const fleeAgents = spawnFleeAgentsScene(state, scene.navWalkable, fleeSpawnExclude.size ? fleeSpawnExclude : null);
+    const fleeDef = SNAKE_GAME_SPECIES.get("flee_agent");
     for (let i = 0; i < fleeAgents.length; i++) {
         const instance = fleeAgents[i].instance;
-        registerFleeAgentInstance(state.sandbox.snakeGame, instance);
-        instance.start(state);
+        registerAgentInstance(session, "flee_agent", instance);
+        fleeDef.start(instance, state);
     }
     const centerSnake = scene.snakes[0];
     let focusedHeadId = centerSnake.chain.head.id;
@@ -75,7 +77,7 @@ export async function setupSnakeGame(state) {
         const focusedId = cameraCycler.focusedId;
         if (focusedId === strikerBall?.id) return null;
         if (!registry.aliveByHeadId.has(focusedId)) return null;
-        return autosimsByHeadId.get(focusedId) ?? null;
+        return session.autosimsByHeadId.get(focusedId) ?? null;
     }
     function onHeadDied(headId) {
         if (cameraCycler.focusedId === headId) cameraCycler.retarget(headId);
@@ -122,7 +124,7 @@ export async function setupSnakeGame(state) {
             const focusedAutosim = resolveFocusedAutosim();
             if (!focusedAutosim) return;
             appendSnakeGameOverlayCommands(out, gameState, {
-                autosimsByHeadId,
+                autosimsByHeadId: session.autosimsByHeadId,
                 focusedAutosim,
                 showVisionCones: config.showVisionCones,
                 showMemoryHeatmap: config.showMemoryHeatmap,
@@ -133,10 +135,10 @@ export async function setupSnakeGame(state) {
         getSegmentCount,
         tick(dtMs) {
             const snakeGame = state.sandbox.snakeGame;
-            syncAliveSnakeInstances(state, snakeGame);
+            validateAliveAgents(snakeGame, state);
             snakeGame._batchingPerception = true;
             beginSnakePerceptionFrame(state);
-            tickAliveSnakeInstances(state, snakeGame, dtMs);
+            tickAliveAgents(snakeGame, state, dtMs);
             endSnakePerceptionFrame(state);
             snakeGame._batchingPerception = false;
             hud.update();
@@ -147,21 +149,16 @@ export async function setupSnakeGame(state) {
             applySnakeHuntContactDrive(state, tick.frame, contacts, state.sandbox.snakeGame);
             resolveStrikerBallSnakeSplitsFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame, strikerBall);
             fractureRetiredSnakeSegmentsFromContacts(state, tick.frame, contacts);
-            syncAliveSnakeInstances(state, state.sandbox.snakeGame);
+            validateAliveAgents(state.sandbox.snakeGame, state);
         },
         afterKineticPhysics() {
             const snakeGame = state.sandbox.snakeGame;
-            if (snakeGame) {
-                syncFleeAgentInstances(state, snakeGame);
-                syncFleeAgentWedgeFacings(state, snakeGame);
-                for (const instance of snakeGame.instancesByHeadId.values()) if (typeof instance.updatePressureDiagnostics === "function") instance.updatePressureDiagnostics(state);
-            }
+            if (snakeGame) syncAgentsAfterPhysics(snakeGame, state);
         },
         stop() {
             cameraCycler.destroy();
             const snakeGame = state.sandbox.snakeGame;
-            if (snakeGame) for (const instance of snakeGame.instancesByHeadId.values()) if (typeof instance.stopSteering === "function") instance.stopSteering(state);
-            for (const autosim of autosimsByHeadId.values()) autosim.stop();
+            if (snakeGame) stopAllAgents(snakeGame, state);
             hud.destroy();
         },
     };

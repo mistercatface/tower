@@ -72,18 +72,6 @@ export function createFleeAgentInstance(state, { headId, wedgeId, spawnGroupId }
     instance.syncMembersFromGraph(state);
     return instance;
 }
-export function registerFleeAgentInstance(snakeGame, instance) {
-    registerAliveAgent(snakeGame.registry, instance.headId, "flee_agent", instance);
-}
 export function getFleeAgentInstance(snakeGame, headId) {
     return snakeGame.instancesByHeadId.get(headId) ?? null;
-}
-export function syncFleeAgentInstances(state, snakeGame) {
-    for (const instance of snakeGame.instancesByHeadId.values()) {
-        if (instance.lifecycle !== "alive" || instance.validate === undefined) continue;
-        if (typeof instance.syncMembersFromGraph === "function") instance.syncMembersFromGraph(state);
-    }
-}
-export function syncFleeAgentWedgeFacings(state, snakeGame) {
-    for (const instance of snakeGame.instancesByHeadId.values()) if (instance.lifecycle === "alive" && typeof instance.syncWedgeFacing === "function") instance.syncWedgeFacing(state);
 }

@@ -4,6 +4,7 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getOrderedChainMemberIds, resolveChainLinkRestLength } from "../Libraries/Sandbox/chainLinks.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { getCirclePropRadius, getPolygonPropBoundingRadius } from "../Libraries/Props/propScale.js";
 import { spawnFleeAgent, resolveFleeAgentForwardDir } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { syncFleeAgentWedgeFacing, fleeAgentWedgeFacingFromHeading } from "../Libraries/Game/snake/fleeAgent/syncFleeAgentWedgeFacing.js";
@@ -80,8 +81,7 @@ describe("flee agent spawn", () => {
         // Spawn a flee agent
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         const instance = createFleeAgentInstance(state, { headId: pack.head.id, wedgeId: pack.body.id, spawnGroupId: pack.spawnGroupId });
-        snakeGame.registry.instancesByHeadId.set(pack.head.id, instance);
-        snakeGame.registry.aliveByHeadId.set(pack.head.id, { headId: pack.head.id, species: "flee_agent", lifecycle: "alive" });
+        registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         assert.equal(instance.intent.getMode(), "explore");
         instance.tick(state, 16);
@@ -104,8 +104,7 @@ describe("flee agent spawn", () => {
         // Spawn a flee agent
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         const instance = createFleeAgentInstance(state, { headId: pack.head.id, wedgeId: pack.body.id, spawnGroupId: pack.spawnGroupId });
-        snakeGame.registry.instancesByHeadId.set(pack.head.id, instance);
-        snakeGame.registry.aliveByHeadId.set(pack.head.id, { headId: pack.head.id, species: "flee_agent", lifecycle: "alive" });
+        registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         // Spawn a predator snake chain
         const predator = spawnSnakeChain(state, { col: 8, row: 10 }, { segmentCount: 5, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });

@@ -12,6 +12,3 @@ export function retireSnakeSegmentsFromNav(state, memberIds) {
         prop.navStepPenalty = null;
     }
 }
-export function wireSnakeGameRegistry(state, registry, autosimsByHeadId, navWalkable) {
-    state.sandbox.snakeGame = { registry, autosimsByHeadId, instancesByHeadId: registry.instancesByHeadId, navWalkable, simTick: 0, lastVisionBeginTick: -1 };
-}

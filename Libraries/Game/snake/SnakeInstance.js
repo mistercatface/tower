@@ -171,20 +171,6 @@ export function createAliveSnakeInstance(state, { headId, spawnGroupId, navWalka
     instance.syncMembersFromGraph(state);
     return instance;
 }
-export function registerAliveSnakeInstance(snakeGame, instance) {
-    registerAliveAgent(snakeGame.registry, instance.headId, "snake", instance);
-    snakeGame.instancesByHeadId.set(instance.headId, instance);
-    snakeGame.autosimsByHeadId.set(instance.headId, instance.autosim);
-}
 export function getSnakeInstance(snakeGame, headId) {
     return snakeGame.instancesByHeadId.get(headId);
-}
-export function syncAliveSnakeInstances(state, snakeGame) {
-    for (const instance of [...snakeGame.instancesByHeadId.values()]) if (typeof instance.validate === "function") instance.validate(state, snakeGame);
-}
-export function tickAliveSnakeInstances(state, snakeGame, dtMs) {
-    for (const instance of snakeGame.instancesByHeadId.values()) {
-        if (instance.lifecycle !== "alive") continue;
-        if (typeof instance.tick === "function") instance.tick(state, dtMs);
-    }
 }
