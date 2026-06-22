@@ -19,7 +19,6 @@ export function applySnakeGameConfig(overrides) {
     activeSnakeGameConfig = mergePartial(SNAKE_GAME_DEFAULTS, overrides);
     activeSnakeGameConfig.decisionPressure = mergeDecisionPressure(overrides?.decisionPressure);
     if (overrides?.fleeAgent) activeSnakeGameConfig.fleeAgent = { ...SNAKE_GAME_DEFAULTS.fleeAgent, ...overrides.fleeAgent };
-    if (overrides?.hornSatellite) activeSnakeGameConfig.hornSatellite = { ...SNAKE_GAME_DEFAULTS.hornSatellite, ...overrides.hornSatellite };
 }
 export function getSnakeGameConfig() {
     return activeSnakeGameConfig;
@@ -74,10 +73,4 @@ export function applyFleeAgentGameplay(head) {
     if (flee.maxSpeed != null) head.strategy.groundNav = { ...head.strategy.groundNav, maxSpeed: flee.maxSpeed };
     if (flee.accel != null) head.strategy.groundNav = { ...head.strategy.groundNav, accel: flee.accel };
     if (flee.friction != null) head.strategy.friction = flee.friction;
-}
-export function applyHornSatelliteGameplay(horn) {
-    const hornConfig = getSnakeGameConfig().hornSatellite;
-    if (hornConfig.maxSpeed != null) horn.strategy.groundNav = { ...horn.strategy.groundNav, maxSpeed: hornConfig.maxSpeed };
-    if (hornConfig.accel != null) horn.strategy.groundNav = { ...horn.strategy.groundNav, accel: hornConfig.accel };
-    if (hornConfig.friction != null) horn.strategy.friction = hornConfig.friction;
 }

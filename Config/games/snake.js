@@ -17,17 +17,6 @@ export const SNAKE_GAME_DEFAULTS = {
         /** Kinetic friction; null keeps flee_ball asset default. */
         friction: null,
     },
-    hornSatellite: {
-        hornPropId: "flee_wedge",
-        bodyPropId: "flee_ball",
-        acquireRange: 160,
-        bindDistance: 20,
-        linkSlack: 1.15,
-        wedgeScale: 1.25,
-        maxSpeed: 150,
-        accel: 520,
-        friction: 8,
-    },
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,
