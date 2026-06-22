@@ -8,6 +8,8 @@ import { quantizeAngleIndex } from "../Canvas/viewQuantize.js";
 const FLEE_BALL_WEDGE_MOUNT_GAP_RATIO = 0.15;
 const FLEE_BALL_WEDGE_LENGTH_RATIO = 0.7;
 const FLEE_BALL_WEDGE_HALF_WIDTH_RATIO = 0.4;
+/** Turret wedge sprite buckets (independent of hull roll); higher = smoother rim rotation. */
+export const FLEE_BALL_TURRET_FACING_STEPS = 48;
 export function buildFleeBallWedgeLocalVerts(bodyRadius) {
     const mountX = bodyRadius + bodyRadius * FLEE_BALL_WEDGE_MOUNT_GAP_RATIO;
     const length = bodyRadius * FLEE_BALL_WEDGE_LENGTH_RATIO;

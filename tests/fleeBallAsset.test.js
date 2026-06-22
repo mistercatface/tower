@@ -4,7 +4,8 @@ import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
-import { buildFleeBallWedgeLocalVerts, getFleeBallSpriteCacheKey } from "../Libraries/Render/createFleeBallDraw.js";
+import { buildFleeBallWedgeLocalVerts, getFleeBallSpriteCacheKey, FLEE_BALL_TURRET_FACING_STEPS } from "../Libraries/Render/createFleeBallDraw.js";
+import { resolvePropQuantizeSteps } from "../Libraries/Props/propStrategy.js";
 import { quantizeAngleIndex } from "../Libraries/Canvas/viewQuantize.js";
 
 loadPropAssets();
@@ -20,13 +21,15 @@ describe("flee_ball asset", () => {
         assert.equal(prop.shape.type, "Circle");
         assert.equal(prop.collisionParts, undefined);
         setCirclePropRadius(prop, 2);
+        const steps = resolvePropQuantizeSteps(prop).facing;
+        assert.equal(steps, FLEE_BALL_TURRET_FACING_STEPS);
         prop.turretFacing = 0;
         const key0 = getFleeBallSpriteCacheKey(prop);
         prop.turretFacing = Math.PI / 2;
         const key90 = getFleeBallSpriteCacheKey(prop);
         assert.notEqual(key0, key90);
-        assert.equal(key0, `r8_h${quantizeAngleIndex(0, 16)}`);
-        assert.equal(key90, `r8_h${quantizeAngleIndex(Math.PI / 2, 16)}`);
+        assert.equal(key0, `r8_h${quantizeAngleIndex(0, steps)}`);
+        assert.equal(key90, `r8_h${quantizeAngleIndex(Math.PI / 2, steps)}`);
     });
 
     it("places wedge verts on the ball rim in local space", () => {

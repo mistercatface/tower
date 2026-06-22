@@ -1,7 +1,7 @@
 import { blendAngle } from "../../../Math/Angle.js";
 import { quantizeAngleIndex } from "../../../Canvas/viewQuantize.js";
 import { resolvePropQuantizeSteps } from "../../../Props/propStrategy.js";
-const FLEE_BALL_TURRET_SLEW = 32;
+const FLEE_BALL_TURRET_SLEW = 24;
 export function resolveFleeBallTurretTarget(head) {
     const drive = head._groundRollDrive;
     if (drive?.kind === "thrust") {

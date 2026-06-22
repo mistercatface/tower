@@ -2,6 +2,7 @@ import { syncKineticRigidBody } from "../../Motion/bodyMass.js";
 import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../../../Config/games/snake.js";
 import { mergePartial } from "../../Config/mergePartial.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
+import { FLEE_BALL_TURRET_FACING_STEPS } from "../../Render/createFleeBallDraw.js";
 let activeSnakeGameConfig = SNAKE_GAME_DEFAULTS;
 function mergeDecisionPressure(overrides) {
     if (!overrides) return SNAKE_GAME_DEFAULTS.decisionPressure;
@@ -73,4 +74,6 @@ export function applyFleeAgentGameplay(head) {
     if (flee.maxSpeed != null) head.strategy.groundNav = { ...head.strategy.groundNav, maxSpeed: flee.maxSpeed };
     if (flee.accel != null) head.strategy.groundNav = { ...head.strategy.groundNav, accel: flee.accel };
     if (flee.friction != null) head.strategy.friction = flee.friction;
+    const facingSteps = flee.turretFacingSteps ?? FLEE_BALL_TURRET_FACING_STEPS;
+    head.strategy.quantizeSteps = { ...head.strategy.quantizeSteps, facing: facingSteps };
 }

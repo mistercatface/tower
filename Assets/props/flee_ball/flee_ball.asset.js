@@ -1,12 +1,10 @@
-import { createFleeBallDraw, getFleeBallSpriteCacheKey } from "../../../Libraries/Render/createFleeBallDraw.js";
+import { createFleeBallDraw, getFleeBallSpriteCacheKey, FLEE_BALL_TURRET_FACING_STEPS } from "../../../Libraries/Render/createFleeBallDraw.js";
 import { NEUTRAL_BOX_COLORS, NEUTRAL_POLYGON_STROKE, NEUTRAL_SPHERE_VISUALS } from "../shared/neutralCoats.js";
-
 const fleeBallWedgeVisuals = {
     colors: { side: NEUTRAL_BOX_COLORS.side, sideShadow: NEUTRAL_BOX_COLORS.sideShadow, top: NEUTRAL_BOX_COLORS.top, stroke: NEUTRAL_POLYGON_STROKE },
     world: { height: 2.33 },
     lineWidth: 0.4,
 };
-
 export default {
     id: "flee_ball",
     draw: createFleeBallDraw(NEUTRAL_SPHERE_VISUALS, fleeBallWedgeVisuals),
@@ -20,6 +18,7 @@ export default {
         friction: 4,
         wallPhysics: { restitution: 0.35, friction: 0.4 },
         getCustomSpriteCacheKey: getFleeBallSpriteCacheKey,
+        quantizeSteps: { facing: FLEE_BALL_TURRET_FACING_STEPS },
     },
     visuals: NEUTRAL_SPHERE_VISUALS,
 };

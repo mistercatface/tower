@@ -53,7 +53,6 @@ export function steerRollToward(prop, dirX, dirY, config, world = null) {
     if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config, world);
     prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: config.maxSpeed };
     wakeKineticBody(prop);
-    if (prop.type === "flee_ball") syncFleeBallTurretFacing(prop, 48);
 }
 export function decelerateRoll(prop, config, world = null) {
     if (snakeRollBlocked(world, prop)) return;

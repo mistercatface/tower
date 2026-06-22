@@ -51,6 +51,7 @@ describe("flee agent spawn", () => {
         pack.head.vx = 0;
         pack.head.vy = 0;
         steerRollToward(pack.head, 0, 1, { accel: 600, maxSpeed: 180 });
+        for (let i = 0; i < 12; i++) applyGroundRollDrive(pack.head, 1 / 60);
         assert.ok(Math.abs(pack.head.turretFacing - Math.PI / 2) < 0.35);
     });
 
