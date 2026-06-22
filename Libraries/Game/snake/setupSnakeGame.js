@@ -75,7 +75,7 @@ export async function setupSnakeGame(state) {
         return session.autosimsByHeadId.get(focusedId) ?? null;
     }
     function onHeadDied(headId) {
-        if (cameraCycler.focusedId === headId) cameraCycler.retarget(headId);
+        if (cameraCycler.focusedId === headId) cameraCycler.setFocusedId(null);
     }
     state.sandbox.snakeGame.onHeadDied = onHeadDied;
     const getSegmentCount = () => {

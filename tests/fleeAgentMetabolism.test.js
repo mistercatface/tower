@@ -137,27 +137,22 @@ describe("flee agent metabolism", () => {
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
     });
-    it("turns red only while sprinting flee", async () => {
+    it("keeps base color while sprinting flee", async () => {
         resetKineticConstraintIds(31);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, fleeAgent: { sprint: { tint: "#ff3b30", fleeSeverity: 0.3 } } });
+        applySnakeGameConfig({ startRadius: 2, fleeAgent: { sprint: { fleeSeverity: 0.3 } } });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         setAgentIdentity(pack.head.id, { name: "Bolt", color: "#7ad4ff" });
         const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         assert.equal(getPropVisualTint(pack.head), "#7ad4ff");
-        const threat = spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 13 }, 6);
+        spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 13 }, 6);
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
-        assert.equal(getPropVisualTint(pack.head), "#ff3b30");
-        snakeGame.registry.aliveByHeadId.delete(threat.chain.head.id);
-        for (let i = 0; i < 120; i++) instance.tick(state, 16);
-        assert.equal(instance.intent.getMode(), "explore");
-        assert.equal(instance.sprinting, false);
         assert.equal(getPropVisualTint(pack.head), "#7ad4ff");
     });
     it("deriveFleeSprintIntent wants sprint on lethal flee when hunger allows", () => {

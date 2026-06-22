@@ -36,9 +36,7 @@ export class FleeAgentInstance {
         const resolvedVisionCone = config.visionCone;
         const terminalHoming = config.terminalHoming;
         const resolveSeekArrivalOptions = (mode, agent, target) => {
-            if (!isSnakeShardFood(target)) {
-                return { arrivalRadius: Math.max(2, getCirclePropRadius(agent) * 0.25), lockOnTarget: true, terminalHoming };
-            }
+            if (!isSnakeShardFood(target)) return { arrivalRadius: Math.max(2, getCirclePropRadius(agent) * 0.25), lockOnTarget: true, terminalHoming };
             return { arrivalRadius: resolveFleeAgentEatRadius(agent), lockOnTarget: true, terminalHoming };
         };
         const resolveVisibleFood = (seeker, gameState, visionContext = null) => {
@@ -62,7 +60,7 @@ export class FleeAgentInstance {
         });
         this.intent.resetMode();
         const head = state.entityRegistry.getLive(this.headId);
-        if (head) syncFleeAgentPresentation(head, { sprinting: false, baseTint: this.baseTint, sprintTint: config.fleeAgent.sprint.tint });
+        if (head) syncFleeAgentPresentation(head, { baseTint: this.baseTint });
     }
     stopSteering(state) {
         revokeSnakeSteeringLease(this, state);
@@ -85,8 +83,7 @@ export class FleeAgentInstance {
         nav.accel = this.sprinting ? this.baseAccel * sprint.accelMultiplier : this.baseAccel;
     }
     syncPresentation(head) {
-        const config = getSnakeGameConfig();
-        syncFleeAgentPresentation(head, { sprinting: this.sprinting, baseTint: this.baseTint, sprintTint: config.fleeAgent.sprint.tint });
+        syncFleeAgentPresentation(head, { baseTint: this.baseTint });
     }
     tick(state, dtMs) {
         if (this.lifecycle !== "alive" || !this.intent) return;

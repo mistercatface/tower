@@ -11,7 +11,8 @@ import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { spawnSnakeStriker } from "../Libraries/Game/snake/snakeStriker.js";
 import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
-import { setSandboxCameraTarget, findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCameraTarget.js";
+import { findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCameraTarget.js";
+import { CameraTargetCycler } from "../Libraries/Sandbox/CameraTargetCycler.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
@@ -32,50 +33,12 @@ function createTestState(cols = 32, rows = 32) {
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig },
         nav: { settings: {}, commitEdit: async () => {}, topologyKey: () => "" },
-    };
-}
-
-function wireCameraFocusOnHeadDied(state, registry, strikerBall) {
-    let focusedHeadId = null;
-    let cameraFocus = "snake";
-    function pickNextFocusedHeadId(skipHeadId = null) {
-        for (const headId of registry.aliveByHeadId.keys()) {
-            if (headId !== skipHeadId) return headId;
-        }
-        return null;
-    }
-    function retargetFocusedSnake(skipHeadId = null) {
-        const nextHeadId = pickNextFocusedHeadId(skipHeadId);
-        focusedHeadId = nextHeadId;
-        if (nextHeadId == null) return null;
-        const head = state.entityRegistry.getLive(nextHeadId);
-        if (cameraFocus === "snake") {
-            setSandboxCameraTarget(state, strikerBall, false);
-            setSandboxCameraTarget(state, head, true);
-        }
-        return head;
-    }
-    state.sandbox.snakeGame.onHeadDied = (headId) => {
-        if (focusedHeadId !== headId) return;
-        if (retargetFocusedSnake(headId)) return;
-        if (cameraFocus === "snake") {
-            setSandboxCameraTarget(state, state.entityRegistry.getLive(headId), false);
-            setSandboxCameraTarget(state, strikerBall, true);
-            cameraFocus = "ball";
-        }
-    };
-    return {
-        focusHead(headId) {
-            focusedHeadId = headId;
-            setSandboxCameraTarget(state, strikerBall, false);
-            setSandboxCameraTarget(state, state.entityRegistry.getLive(headId), true);
-        },
-        getFocusedHeadId: () => focusedHeadId,
+        viewport: { snapTo() {}, follow() {} },
     };
 }
 
 describe("snake camera focus", () => {
-    it("retargets to another alive snake when the focused head dies", () => {
+    it("stops following when the focused head dies", () => {
         applySnakeGameConfig({ segmentCount: 3, strikerPropId: "snake_striker" });
         resetKineticConstraintIds(1);
         const state = createTestState();
@@ -88,11 +51,20 @@ describe("snake camera focus", () => {
         const registry = state.sandbox.snakeGame.registry;
         const strikerBall = spawnSnakeStriker(state, first.chain.head);
         state.sandbox.snakeGame.strikerBall = strikerBall;
-        const focus = wireCameraFocusOnHeadDied(state, registry, strikerBall);
-        focus.focusHead(first.chain.head.id);
+        const cameraCycler = new CameraTargetCycler(state, {
+            getTargetIds: () => {
+                const ids = [];
+                for (const headId of registry.aliveByHeadId.keys()) ids.push(headId);
+                if (strikerBall) ids.push(strikerBall.id);
+                return ids;
+            },
+        });
+        state.sandbox.snakeGame.onHeadDied = (headId) => {
+            if (cameraCycler.focusedId === headId) cameraCycler.setFocusedId(null);
+        };
+        cameraCycler.setFocusedId(first.chain.head.id);
         killSnake(state, state.sandbox.snakeGame, first.chain.head.id);
-        assert.equal(focus.getFocusedHeadId(), second.chain.head.id);
-        const target = findSandboxCameraTargetWorldProp(state, state.entityRegistry);
-        assert.equal(target.id, second.chain.head.id);
+        assert.equal(cameraCycler.focusedId, null);
+        assert.equal(findSandboxCameraTargetWorldProp(state, state.entityRegistry), null);
     });
 });

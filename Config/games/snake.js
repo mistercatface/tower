@@ -21,7 +21,7 @@ export const SNAKE_GAME_DEFAULTS = {
         combatSizeBonus: 2500,
         metabolism: { hungerDrainMs: 90_000, foodValue: 0.35 },
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
-        sprint: { fleeSeverity: 0.5, speedMultiplier: 1.75, accelMultiplier: 1.5, hungerDrainMultiplier: 2.0, tint: "#ff3b30", sprintFleeMinHunger: 0.1 },
+        sprint: { fleeSeverity: 0.5, speedMultiplier: 1.75, accelMultiplier: 1.5, hungerDrainMultiplier: 2.0, sprintFleeMinHunger: 0.1 },
         decisionWeights: { flee: 400, food: 360, explore: 100 },
         decisionPressure: {
             foodHungerBonus: 280,

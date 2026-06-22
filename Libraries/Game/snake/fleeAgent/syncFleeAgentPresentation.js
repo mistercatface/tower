@@ -1,6 +1,6 @@
 import { clearPropVisualOverride, getPropVisualTint, setPropVisualTint } from "../../../Color/visualOverride.js";
-export function syncFleeAgentPresentation(prop, { sprinting, baseTint, sprintTint }) {
-    const wantTint = sprinting ? sprintTint : baseTint;
+export function syncFleeAgentPresentation(prop, { baseTint }) {
+    const wantTint = baseTint;
     const current = getPropVisualTint(prop);
     if (wantTint) {
         if (current === wantTint) return;
