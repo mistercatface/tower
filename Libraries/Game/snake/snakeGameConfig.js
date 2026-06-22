@@ -1,46 +1,10 @@
 import { syncKineticRigidBody } from "../../Motion/bodyMass.js";
 import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../../../Config/games/snake.js";
-import { mergePartial } from "../../Config/mergePartial.js";
+import { mergeObjectTree } from "../../Config/mergePartial.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
 let activeSnakeGameConfig = SNAKE_GAME_DEFAULTS;
-function mergeDecisionPressure(overrides) {
-    if (!overrides) return SNAKE_GAME_DEFAULTS.decisionPressure;
-    const base = SNAKE_GAME_DEFAULTS.decisionPressure;
-    const merged = { ...base, ...overrides };
-    if (overrides.riskTolerance) merged.riskTolerance = { ...base.riskTolerance, ...overrides.riskTolerance };
-    if (overrides.effort) {
-        merged.effort = { ...base.effort, ...overrides.effort };
-        if (overrides.effort.costPerCell) merged.effort.costPerCell = { ...base.effort.costPerCell, ...overrides.effort.costPerCell };
-        if (overrides.effort.preyValue) merged.effort.preyValue = { ...base.effort.preyValue, ...overrides.effort.preyValue };
-    }
-    return merged;
-}
 export function applySnakeGameConfig(overrides) {
-    activeSnakeGameConfig = mergePartial(SNAKE_GAME_DEFAULTS, overrides);
-    activeSnakeGameConfig.decisionPressure = mergeDecisionPressure(overrides?.decisionPressure);
-    if (overrides?.fleeAgent) {
-        activeSnakeGameConfig.fleeAgent = { ...SNAKE_GAME_DEFAULTS.fleeAgent, ...overrides.fleeAgent };
-        if (overrides.fleeAgent.metabolism) activeSnakeGameConfig.fleeAgent.metabolism = { ...SNAKE_GAME_DEFAULTS.fleeAgent.metabolism, ...overrides.fleeAgent.metabolism };
-        if (overrides.fleeAgent.hunger) activeSnakeGameConfig.fleeAgent.hunger = { ...SNAKE_GAME_DEFAULTS.fleeAgent.hunger, ...overrides.fleeAgent.hunger };
-        if (overrides.fleeAgent.sprint) activeSnakeGameConfig.fleeAgent.sprint = { ...SNAKE_GAME_DEFAULTS.fleeAgent.sprint, ...overrides.fleeAgent.sprint };
-        if (overrides.fleeAgent.decisionWeights) activeSnakeGameConfig.fleeAgent.decisionWeights = { ...SNAKE_GAME_DEFAULTS.fleeAgent.decisionWeights, ...overrides.fleeAgent.decisionWeights };
-        if (overrides.fleeAgent.decisionPressure) {
-            activeSnakeGameConfig.fleeAgent.decisionPressure = { ...SNAKE_GAME_DEFAULTS.fleeAgent.decisionPressure, ...overrides.fleeAgent.decisionPressure };
-            if (overrides.fleeAgent.decisionPressure.riskTolerance)
-                activeSnakeGameConfig.fleeAgent.decisionPressure.riskTolerance = {
-                    ...SNAKE_GAME_DEFAULTS.fleeAgent.decisionPressure.riskTolerance,
-                    ...overrides.fleeAgent.decisionPressure.riskTolerance,
-                };
-            if (overrides.fleeAgent.decisionPressure.effort) {
-                activeSnakeGameConfig.fleeAgent.decisionPressure.effort = { ...SNAKE_GAME_DEFAULTS.fleeAgent.decisionPressure.effort, ...overrides.fleeAgent.decisionPressure.effort };
-                if (overrides.fleeAgent.decisionPressure.effort.costPerCell)
-                    activeSnakeGameConfig.fleeAgent.decisionPressure.effort.costPerCell = {
-                        ...SNAKE_GAME_DEFAULTS.fleeAgent.decisionPressure.effort.costPerCell,
-                        ...overrides.fleeAgent.decisionPressure.effort.costPerCell,
-                    };
-            }
-        }
-    }
+    activeSnakeGameConfig = mergeObjectTree(SNAKE_GAME_DEFAULTS, overrides);
 }
 export function getSnakeGameConfig() {
     return activeSnakeGameConfig;
