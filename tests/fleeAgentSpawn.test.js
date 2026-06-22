@@ -6,7 +6,7 @@ import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
-import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
+import { resolveFleeAgentForwardDir, spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
@@ -16,18 +16,28 @@ import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/k
 import { resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
 loadPropAssets();
 describe("flee agent spawn", () => {
-    it("spawns one ball with chain head", async () => {
+    it("spawns one flee_ball with chain head", async () => {
         resetKineticConstraintIds(1);
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2 });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         assert.equal(pack.members.length, 1);
-        assert.equal(pack.head.type, "ball");
+        assert.equal(pack.head.type, "flee_ball");
         assert.equal(pack.head.shape.type, "Circle");
         assert.ok(pack.head.strategy?.canChain);
         assert.deepEqual(getOrderedChainMemberIds(state, pack.head.id), [pack.head.id]);
         assert.equal(state.kinetic.kineticConstraints.length, 0);
+    });
+
+    it("initializes turretFacing to flee forward", async () => {
+        resetKineticConstraintIds(5);
+        const { state } = await createSnakeGameHarnessState();
+        wireSnakeTestGame(state);
+        applySnakeGameConfig({ startRadius: 2, growDirX: -1, growDirY: 0 });
+        const forward = resolveFleeAgentForwardDir();
+        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        assert.ok(Math.abs(pack.head.turretFacing - Math.atan2(forward.y, forward.x)) < 1e-4);
     });
     it("scales ball radius to snake start radius", async () => {
         resetKineticConstraintIds(2);

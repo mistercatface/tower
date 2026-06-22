@@ -7,7 +7,7 @@ export const SNAKE_GAME_DEFAULTS = {
     snakeCount: 48,
     /** Rolling ball flee agents spawned after snakes (0 disables). */
     boidCount: 32,
-    fleeAgent: { bodyPropId: "ball", faction: "bravo" },
+    fleeAgent: { bodyPropId: "flee_ball", faction: "bravo" },
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,
