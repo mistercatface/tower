@@ -10,8 +10,9 @@ import { resolveSnakeExploreCell } from "../snakeExplore.js";
 import { getKineticRollConfig } from "../../../Sandbox/kineticRollActuator.js";
 import { getAgentIdentity } from "../../../AI/identity/agentIdentity.js";
 import { createFleeMetabolism, setFleeHunger, tickFleeMetabolism, getFleeHunger } from "./fleeMetabolism.js";
-import { tryEatFleeAgentFood } from "./eatFleeAgentFood.js";
+import { eatFleeAgentFoodShard, resolveFleeAgentEatRadius } from "./eatFleeAgentFood.js";
 import { syncFleeAgentPresentation } from "./syncFleeAgentPresentation.js";
+import { findNearestVisibleSnakeFood, findNearestVisibleSnakeFoodFromVision, isSnakeShardFood } from "../snakeFood.js";
 export class FleeAgentInstance {
     constructor({ headId, spawnGroupId }) {
         this.headId = headId;
@@ -31,15 +32,25 @@ export class FleeAgentInstance {
         this.brain = createBrain({ spatialMemoryCapacity: config.spatialMemoryCapacity });
         const brainSync = createSpatialBrainSync(this.brain, { visionCone: config.visionCone, navMemoryStepPenalty: config.navMemoryStepPenalty, navMemoryStepFalloff: config.navMemoryStepFalloff });
         this.headNav = createCellTargetHpaNav(state);
+        const resolvedVisionCone = config.visionCone;
+        const resolveVisibleFood = (seeker, gameState, visionContext = null) => {
+            return visionContext
+                ? findNearestVisibleSnakeFoodFromVision(gameState, seeker, visionContext.frame, visionContext.vision, visionContext.visionCone)
+                : findNearestVisibleSnakeFood(gameState, seeker, resolvedVisionCone);
+        };
         this.intent = createFleeExploreIntent({
             brain: this.brain,
             sync: (agent, gameState) => brainSync(agent, gameState),
             headNav: this.headNav,
+            resolveVisibleFood,
             resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, snakeGame.navWalkable),
             selfHeadId: this.headId,
             registry: snakeGame.registry,
             navWalkable: snakeGame.navWalkable,
-            visionCone: config.visionCone,
+            visionCone: resolvedVisionCone,
+            seekArrivalRadius: () => resolveFleeAgentEatRadius(state.entityRegistry.getLive(this.headId)),
+            resolveHunger: () => getFleeHunger(this.metabolism),
+            terminalHoming: config.terminalHoming,
         });
         this.intent.resetMode();
         const head = state.entityRegistry.getLive(this.headId);
@@ -74,12 +85,19 @@ export class FleeAgentInstance {
         const head = state.entityRegistry.getLive(this.headId);
         if (!head) return;
         const config = getSnakeGameConfig();
-        const fedThisTick = tryEatFleeAgentFood(state, head, this.metabolism, this.brain);
+        let fedThisTick = false;
         tickAgentIntent(state, this.intent, dtMs, (agent) => {
             this.intent.tick(agent, state);
             this.applySprintState(agent);
             this.syncPresentation(agent);
         });
+        if (this.intent.getMode() === "seek_food" && this.intent.getTargetId() != null) {
+            const food = state.entityRegistry.getLive(this.intent.getTargetId());
+            if (food && !food.isDead && isSnakeShardFood(food)) {
+                const dist = Math.hypot(food.x - head.x, food.y - head.y);
+                if (dist <= resolveFleeAgentEatRadius(head)) fedThisTick = eatFleeAgentFoodShard(state, head, food, this.metabolism, this.brain, this.intent);
+            }
+        }
         const drainMultiplier = this.sprinting ? config.fleeAgent.sprint.hungerDrainMultiplier : 1;
         if (!fedThisTick) tickFleeMetabolism(this.metabolism, dtMs, drainMultiplier);
     }

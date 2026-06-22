@@ -6,11 +6,17 @@ import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
-import { createSnakeGameHarnessState, wireSnakeTestGame, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getAgentIdentity, setAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
-import { createFleeMetabolism, feedFleeMetabolism, getFleeHunger, setFleeHunger, tickFleeMetabolism } from "../Libraries/Game/snake/fleeAgent/fleeMetabolism.js";
+import { createFleeMetabolism, getFleeHunger, setFleeHunger, tickFleeMetabolism } from "../Libraries/Game/snake/fleeAgent/fleeMetabolism.js";
 import { deriveFleeSprintIntent } from "../Libraries/Game/snake/fleeAgent/fleeDecisionModel.js";
+import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { createSnakeGameHarnessState, wireSnakeTestGame, spawnSnakeFoodShardAtCell, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
+import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+
+function stampWall(grid, col, row) {
+    grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
+}
 
 loadPropAssets();
 
@@ -33,18 +39,79 @@ describe("flee agent metabolism", () => {
         assert.ok(getFleeHunger(metabolism) < 0.5);
     });
 
-    it("refills hunger from shard pickup", async () => {
+    it("refills hunger from shard pickup while seeking food", async () => {
         resetKineticConstraintIds(30);
         const { state } = await createSnakeGameHarnessState();
-        wireSnakeTestGame(state);
+        const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2, fleeAgent: { metabolism: { hungerDrainMs: 60_000, foodValue: 0.4 } } });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         setFleeHunger(instance.metabolism, 0.2);
         spawnSnakeFoodShardAtCell(state, { col: 10, row: 10 }, { foodValue: 0.4 });
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
         instance.tick(state, 16);
+        assert.equal(instance.intent.getMode(), "seek_food");
         assert.ok(getFleeHunger(instance.metabolism) >= 0.6);
+    });
+
+    it("seeks visible food when hungry", async () => {
+        resetKineticConstraintIds(32);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig({ startRadius: 2 });
+        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", instance);
+        instance.start(state);
+        setFleeHunger(instance.metabolism, 0.2);
+        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 });
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
+        instance.tick(state, 16);
+        assert.equal(instance.intent.getMode(), "seek_food");
+        assert.equal(instance.intent.getTargetId(), food.id);
+    });
+
+    it("does not seek food hidden behind walls", async () => {
+        resetKineticConstraintIds(33);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig({ startRadius: 2, fleeAgent: { initialHunger: 1 } });
+        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", instance);
+        instance.start(state);
+        for (let col = 11; col <= 17; col++) stampWall(state.obstacleGrid, col, 10);
+        const food = spawnSnakeFoodShardAtCell(state, { col: 18, row: 10 });
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
+        instance.tick(state, 16);
+        assert.equal(instance.intent.getMode(), "explore");
+        assert.ok(state.entityRegistry.getLive(food.id));
+        assert.ok(getFleeHunger(instance.metabolism) > 0.99);
+    });
+
+    it("flee overrides seek_food when threat is severe", async () => {
+        resetKineticConstraintIds(34);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig({ startRadius: 2, fleeAgent: { sprint: { fleeSeverity: 0.3 } } });
+        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", instance);
+        instance.start(state);
+        setFleeHunger(instance.metabolism, 0.2);
+        spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 });
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
+        instance.tick(state, 16);
+        assert.equal(instance.intent.getMode(), "seek_food");
+        const mockSnakeId = "mock_snake_head";
+        const mockSnake = { id: mockSnakeId, x: pack.head.x, y: pack.head.y + 24, type: "snake_head", isDead: false };
+        state.entityRegistry.register("prop", mockSnake);
+        snakeGame.registry.aliveByHeadId.set(mockSnakeId, { headId: mockSnakeId, species: "snake", lifecycle: "alive" });
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
+        instance.tick(state, 16);
+        assert.equal(instance.intent.getMode(), "flee");
     });
 
     it("turns red only while sprinting flee", async () => {

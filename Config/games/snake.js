@@ -20,6 +20,8 @@ export const SNAKE_GAME_DEFAULTS = {
         metabolism: { hungerDrainMs: 45_000, foodValue: 0.35 },
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
         sprint: { fleeSeverity: 0.5, speedMultiplier: 1.45, accelMultiplier: 1.45, hungerDrainMultiplier: 2.5, tint: "#ff3b30" },
+        decisionWeights: { flee: 400, food: 360, explore: 100 },
+        decisionPressure: { foodHungerBonus: 280, riskTolerance: { satisfied: 0, hungry: 0.35, desperate: 0.65 }, effort: { costPerCell: { satisfied: 22, hungry: 18, desperate: 8 } } },
     },
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */

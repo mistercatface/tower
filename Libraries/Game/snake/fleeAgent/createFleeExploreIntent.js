@@ -1,5 +1,5 @@
 import { createAgentIntent } from "../../../AI/agentIntent/createAgentIntent.js";
-import { createExploreIntentState, createFleeIntentState } from "../../../AI/agentIntent/intentStates.js";
+import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../../AI/agentIntent/intentStates.js";
 import { createModePolicyLatch } from "../../../AI/agentIntent/policyHysteresis.js";
 import { pickFleeCell } from "../../../AI/steering/pickFleeCell.js";
 import { createCellTargetLocomotion } from "../../../Sandbox/groundNav/cellTargetHpaNav.js";
@@ -7,20 +7,42 @@ import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { perceiveAgentWorld } from "../../../AI/perception/agentWorldPerception.js";
 import { requireSnakeVisionFrame } from "../snakePerception.js";
 import { resolveAgentRelationship } from "../snakeAgentSession.js";
-import { deriveFleeAgentThreatState, deriveFleeSprintIntent } from "./fleeDecisionModel.js";
-export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCell, selfHeadId, registry, navWalkable, visionCone = null, rng = Math.random }) {
+import { buildFleeDecisionContext, deriveFleeSprintIntent } from "./fleeDecisionModel.js";
+import { createFleeIntentMemory } from "./fleeIntentMemory.js";
+export function createFleeExploreIntent({
+    brain,
+    sync,
+    headNav,
+    resolveVisibleFood,
+    resolveExploreCell,
+    selfHeadId,
+    registry,
+    navWalkable,
+    visionCone = null,
+    seekArrivalRadius = null,
+    resolveHunger = null,
+    rng = Math.random,
+}) {
     const config = getSnakeGameConfig();
     const resolvedVision = visionCone ?? config.visionCone;
     const locomotion = createCellTargetLocomotion(headNav);
     const fleeHysteresis = config.fleeHysteresis;
+    const intentMemory = createFleeIntentMemory(config.intentMemory);
     const fleeLatch = createModePolicyLatch({
         mode: "flee",
         minTicks: fleeHysteresis.minTicks,
         holdReason: "flee_hysteresis",
-        refreshWhen: ({ world }) => !!world.threat,
-        canRelease: ({ world }) => !world.threat,
+        refreshWhen: ({ world }) => {
+            const threat = world.blackboard?.facts?.threatState ?? world.decisionSnapshot?.threatState;
+            return threat?.lethal || threat?.severity >= fleeHysteresis.refreshAtSeverity;
+        },
+        canRelease: ({ world }) => {
+            const threat = world.blackboard?.facts?.threatState ?? world.decisionSnapshot?.threatState;
+            return !threat || (!threat.lethal && threat.severity <= fleeHysteresis.exitThreatSeverity);
+        },
     });
     let intent = null;
+    let lastBlackboard = null;
     let lastDecisionSnapshot = null;
     let lastArrivalCol = null;
     let lastArrivalRow = null;
@@ -31,17 +53,47 @@ export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCe
         lastArrivalRow = row;
         brain.stampArrival(col, row);
     };
-    const perceiveFleeWorld = (agent, state) => {
-        const visible = perceiveAgentWorld(agent, selfHeadId, state, registry, () => null, resolvedVision, {
+    const readRouteStatus = (agent, state) => {
+        const dest = locomotion.getDestination();
+        const status = locomotion.getStatus(agent, state);
+        const grid = state.obstacleGrid;
+        return {
+            hasDestination: !!dest,
+            hasRoute: status.hasRoute,
+            replanPending: status.replanPending,
+            routeFailed: !!dest && locomotion.needsRetry(agent, state),
+            destReached: !!dest && (locomotion.hasArrivedAtDest(agent, grid) || locomotion.hasReachedDest(agent, grid)),
+            stuckFrames: status.stuckFrames,
+            pathLen: status.pathLen,
+        };
+    };
+    const resolveCommittedTarget = (id, world) => {
+        if (id == null) return null;
+        const known = world.blackboard.facts.known;
+        if (known.food?.id === id) return known.food;
+        return null;
+    };
+    const perceiveWithMemory = (agent, state) => {
+        const visible = perceiveAgentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision, {
             readVisionFrame: requireSnakeVisionFrame,
             agentRange: config.fleeRange ?? resolvedVision.range,
             resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(state.sandbox.snakeGame, selfHeadId, headId, state),
         });
-        const threat = visible.threat;
-        const threatState = deriveFleeAgentThreatState(threat, visible.threatDist);
-        return { threat, threatDist: visible.threatDist, threatState, blackboard: { facts: { known: { threat } } } };
+        intentMemory.update(agent, state, visible);
+        const memoryWorld = intentMemory.enrichWorld(state, visible);
+        const decisionContext = buildFleeDecisionContext({
+            visibleWorld: memoryWorld,
+            memoryWorld,
+            memorySource: memoryWorld.memorySource,
+            committedTarget: intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null,
+            routeStatus: readRouteStatus(agent, state),
+            foodFraction: resolveHunger ? resolveHunger() : null,
+        });
+        lastBlackboard = decisionContext.blackboard;
+        lastDecisionSnapshot = decisionContext.decisionSnapshot;
+        return { ...memoryWorld, blackboard: decisionContext.blackboard, decisionSnapshot: decisionContext.decisionSnapshot };
     };
-    const createFleeEffects = ({ agent, state, world }) => ({
+    const createFleeEffects = ({ agent, state, mode, world, targetId }) => ({
         clearDestination() {
             locomotion.clearDestination(agent, state);
         },
@@ -49,6 +101,16 @@ export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCe
             const cell = resolveExploreCell(agent, state, brain.spatial, rng);
             if (cell) locomotion.setExplore(agent, state, cell);
             return cell;
+        },
+        setSeekDestination(target) {
+            if (!target) return;
+            const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(mode, agent, target, state) : seekArrivalRadius;
+            const options = typeof seekOptions === "object" && seekOptions !== null ? seekOptions : { arrivalRadius: seekOptions };
+            locomotion.setSeek(agent, state, target, { ...options, targetId });
+        },
+        updateSeekTarget(target) {
+            if (!target) return;
+            locomotion.updateSeekTarget(agent, state, target, { targetId });
         },
         setFleeDestination(avoidCell = null) {
             const threat = world.blackboard.facts.known.threat;
@@ -63,33 +125,52 @@ export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCe
             return exploreCell;
         },
     });
-    const createFleeContext = (ctx) => ({ ...ctx, grid: ctx.state.obstacleGrid, dest: locomotion.getDestination(), fleeTarget: ctx.world.blackboard.facts.known.threat, locomotion });
+    const createFleeContext = (ctx) => ({
+        ...ctx,
+        grid: ctx.state.obstacleGrid,
+        dest: locomotion.getDestination(),
+        target: resolveCommittedTarget(ctx.targetId, ctx.world),
+        fleeTarget: ctx.world.blackboard.facts.known.threat,
+        locomotion,
+    });
     intent = createAgentIntent({
         initialMode: "explore",
         sync(agent, state) {
             sync(agent, state);
             stampArrivalOnCellEnter(agent, state.obstacleGrid);
         },
-        perceiveWorld: perceiveFleeWorld,
+        perceiveWorld: perceiveWithMemory,
         pickPolicy: (world) => {
-            const policy = world.threat ? { mode: "flee", targetId: null, reason: "threat_visible" } : { mode: "explore", targetId: null, reason: "patrol" };
+            const policy = world.decisionSnapshot.chosenIntent;
             const latched = fleeLatch.apply(policy, { world, currentMode: intent.getMode() });
-            lastDecisionSnapshot = { threatState: world.threatState, sprintIntent: deriveFleeSprintIntent(latched.mode, world.threatState) };
+            if (latched !== policy) {
+                world.blackboard.events.push("FLEE_HELD");
+                world.decisionSnapshot.events = world.blackboard.events;
+                world.decisionSnapshot.chosenIntent = latched;
+                world.decisionSnapshot.chosenReason = latched.reason ?? null;
+                world.decisionSnapshot.targetId = latched.targetId ?? null;
+                world.decisionSnapshot.sprintIntent = deriveFleeSprintIntent(latched.mode, world.decisionSnapshot.threatState);
+            }
+            world.decisionSnapshot.policyLatch = { flee: fleeLatch.snapshot() };
+            lastDecisionSnapshot = world.decisionSnapshot;
             return latched;
         },
         transitionReason: (prevMode, nextMode, policy) => {
             if (policy?.reason) return policy.reason;
             if (nextMode === "flee") return "threat_visible";
             if (prevMode === "flee") return "threat_clear";
+            if (prevMode === "seek_food" && nextMode !== prevMode) return "target_lost";
             return `mode_${nextMode}`;
         },
-        states: { explore: createExploreIntentState(), flee: createFleeIntentState() },
+        states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), flee: createFleeIntentState() },
+        modeExitDelayTicks: { flee: 30 },
         createEffects: createFleeEffects,
         createContext: createFleeContext,
         onClear(agent, state) {
             lastArrivalCol = null;
             lastArrivalRow = null;
             fleeLatch.clear();
+            intentMemory.clear();
             locomotion.clear(agent, state);
             if (agent) agent.navStepPenalty = null;
         },
@@ -110,12 +191,22 @@ export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCe
         getDecisionSnapshot() {
             return lastDecisionSnapshot;
         },
+        resetMemory() {
+            brain.clearMemory();
+            intentMemory.clear();
+        },
+        clearTrackedGoal() {
+            const id = intent.getTargetId();
+            intent.clearTargetId();
+            if (id != null) intentMemory.clearTarget(id);
+        },
         tick(agent, state) {
             intent.perceive(agent, state);
             return intent.transition(agent, state);
         },
         clearIntent(agent, state) {
             intent.clear(agent, state);
+            intentMemory.clear();
         },
     };
 }

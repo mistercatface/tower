@@ -23,6 +23,23 @@ export function applySnakeGameConfig(overrides) {
         if (overrides.fleeAgent.metabolism) activeSnakeGameConfig.fleeAgent.metabolism = { ...SNAKE_GAME_DEFAULTS.fleeAgent.metabolism, ...overrides.fleeAgent.metabolism };
         if (overrides.fleeAgent.hunger) activeSnakeGameConfig.fleeAgent.hunger = { ...SNAKE_GAME_DEFAULTS.fleeAgent.hunger, ...overrides.fleeAgent.hunger };
         if (overrides.fleeAgent.sprint) activeSnakeGameConfig.fleeAgent.sprint = { ...SNAKE_GAME_DEFAULTS.fleeAgent.sprint, ...overrides.fleeAgent.sprint };
+        if (overrides.fleeAgent.decisionWeights) activeSnakeGameConfig.fleeAgent.decisionWeights = { ...SNAKE_GAME_DEFAULTS.fleeAgent.decisionWeights, ...overrides.fleeAgent.decisionWeights };
+        if (overrides.fleeAgent.decisionPressure) {
+            activeSnakeGameConfig.fleeAgent.decisionPressure = { ...SNAKE_GAME_DEFAULTS.fleeAgent.decisionPressure, ...overrides.fleeAgent.decisionPressure };
+            if (overrides.fleeAgent.decisionPressure.riskTolerance)
+                activeSnakeGameConfig.fleeAgent.decisionPressure.riskTolerance = {
+                    ...SNAKE_GAME_DEFAULTS.fleeAgent.decisionPressure.riskTolerance,
+                    ...overrides.fleeAgent.decisionPressure.riskTolerance,
+                };
+            if (overrides.fleeAgent.decisionPressure.effort) {
+                activeSnakeGameConfig.fleeAgent.decisionPressure.effort = { ...SNAKE_GAME_DEFAULTS.fleeAgent.decisionPressure.effort, ...overrides.fleeAgent.decisionPressure.effort };
+                if (overrides.fleeAgent.decisionPressure.effort.costPerCell)
+                    activeSnakeGameConfig.fleeAgent.decisionPressure.effort.costPerCell = {
+                        ...SNAKE_GAME_DEFAULTS.fleeAgent.decisionPressure.effort.costPerCell,
+                        ...overrides.fleeAgent.decisionPressure.effort.costPerCell,
+                    };
+            }
+        }
     }
 }
 export function getSnakeGameConfig() {
