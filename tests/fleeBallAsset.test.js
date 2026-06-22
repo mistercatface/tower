@@ -32,9 +32,9 @@ describe("flee_ball asset", () => {
     it("places wedge verts on the ball rim in local space", () => {
         const verts = buildFleeBallWedgeLocalVerts(2);
         assert.equal(verts.length, 3);
-        let maxX = verts[0].x;
-        for (let i = 1; i < verts.length; i++) if (verts[i].x > maxX) maxX = verts[i].x;
-        assert.ok(maxX > 2);
-        assert.ok(maxX < 5);
+        assert.ok(Math.abs(verts[0].y) < 1e-6);
+        assert.ok(verts[0].x > verts[1].x);
+        assert.ok(verts[0].x < 4);
+        assert.ok(Math.abs(verts[1].y + verts[2].y) < 1e-6);
     });
 });

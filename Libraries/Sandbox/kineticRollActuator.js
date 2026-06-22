@@ -3,6 +3,7 @@ import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getPhysicsSettings } from "../../Core/GamePhysicsSettings.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { maySnakeHeadReceiveRoll } from "../Game/snake/snakeSteeringLease.js";
+import { syncFleeBallTurretFacing } from "../Game/snake/fleeAgent/fleeBallTurret.js";
 export function snapMoveTargetToCellCenter(grid, world) {
     const { col, row } = grid.worldToGrid(world.x, world.y);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
@@ -52,6 +53,7 @@ export function steerRollToward(prop, dirX, dirY, config, world = null) {
     if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config, world);
     prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: config.maxSpeed };
     wakeKineticBody(prop);
+    if (prop.type === "flee_ball") syncFleeBallTurretFacing(prop, 48);
 }
 export function decelerateRoll(prop, config, world = null) {
     if (snakeRollBlocked(world, prop)) return;
@@ -65,8 +67,14 @@ export function applyGroundRollDrive(prop, dtSec, world = null) {
     }
     const drive = prop._groundRollDrive;
     if (!drive) return false;
-    if (drive.kind === "brake") return applyRollBrake(prop, dtSec, drive.accel);
+    const dtMs = dtSec * 1000;
+    if (drive.kind === "brake") {
+        const braked = applyRollBrake(prop, dtSec, drive.accel);
+        syncFleeBallTurretFacing(prop, dtMs);
+        return braked;
+    }
     applyRollThrust(prop, dtSec, drive.dirX, drive.dirY, drive.accel, drive.maxSpeed);
+    syncFleeBallTurretFacing(prop, dtMs);
     return true;
 }
 export function clearGroundRollDrive(prop) {

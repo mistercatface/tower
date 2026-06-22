@@ -18,6 +18,7 @@ function mergeDecisionPressure(overrides) {
 export function applySnakeGameConfig(overrides) {
     activeSnakeGameConfig = mergePartial(SNAKE_GAME_DEFAULTS, overrides);
     activeSnakeGameConfig.decisionPressure = mergeDecisionPressure(overrides?.decisionPressure);
+    if (overrides?.fleeAgent) activeSnakeGameConfig.fleeAgent = { ...SNAKE_GAME_DEFAULTS.fleeAgent, ...overrides.fleeAgent };
 }
 export function getSnakeGameConfig() {
     return activeSnakeGameConfig;
@@ -66,4 +67,10 @@ export function applySnakeSegmentGameplay(segment) {
         segment.strategy.density = config.segmentDensity;
         if (segment.strategy.isKinetic) syncKineticRigidBody(segment);
     }
+}
+export function applyFleeAgentGameplay(head) {
+    const flee = getSnakeGameConfig().fleeAgent;
+    if (flee.maxSpeed != null) head.strategy.groundNav = { ...head.strategy.groundNav, maxSpeed: flee.maxSpeed };
+    if (flee.accel != null) head.strategy.groundNav = { ...head.strategy.groundNav, accel: flee.accel };
+    if (flee.friction != null) head.strategy.friction = flee.friction;
 }

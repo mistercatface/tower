@@ -7,7 +7,16 @@ export const SNAKE_GAME_DEFAULTS = {
     snakeCount: 48,
     /** Rolling ball flee agents spawned after snakes (0 disables). */
     boidCount: 32,
-    fleeAgent: { bodyPropId: "flee_ball", faction: "bravo" },
+    fleeAgent: {
+        bodyPropId: "flee_ball",
+        faction: "bravo",
+        /** Roll top speed; null uses global groundNavRoll.maxSpeed (180). */
+        maxSpeed: 100,
+        /** Roll thrust; null uses global groundNavRoll.accel (600). */
+        accel: 200,
+        /** Kinetic friction; null keeps flee_ball asset default. */
+        friction: null,
+    },
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,

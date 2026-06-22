@@ -3,7 +3,7 @@ import { setChainHead } from "../../../Sandbox/chainLinks.js";
 import { spawnPlacedSandboxProp } from "../../../Sandbox/sandboxPlacedSpawn.js";
 import { resolveSandboxFaction, sandboxFactions } from "../../../Sandbox/sandboxFaction.js";
 import { setCirclePropRadius } from "../../../Props/propScale.js";
-import { getSnakeGameConfig, resolveSnakeStartRadius, applySnakeSegmentGameplay } from "../snakeGameConfig.js";
+import { getSnakeGameConfig, resolveSnakeStartRadius, applyFleeAgentGameplay } from "../snakeGameConfig.js";
 export const FLEE_AGENT_EXPORT_TYPE = "flee_agent";
 export const FLEE_AGENT_MEMBER_COUNT = 1;
 export function resolveFleeAgentForwardDir(config = getSnakeGameConfig()) {
@@ -22,7 +22,7 @@ export function spawnFleeAgent(state, anchorCell, options = {}) {
     const anchorWorld = grid.gridToWorld(anchorCell.col, anchorCell.row);
     const head = spawnPlacedSandboxProp(state, anchorWorld.x, anchorWorld.y, propType, faction);
     setCirclePropRadius(head, bodyRadius);
-    applySnakeSegmentGameplay(head);
+    applyFleeAgentGameplay(head);
     head.strategy.canChain = true;
     head.facing = Math.atan2(forward.y, forward.x);
     head.turretFacing = head.facing;
