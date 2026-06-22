@@ -84,6 +84,7 @@ export function createCellTargetLocomotion(headNav) {
                 arrivalRadius: options.arrivalRadius,
                 lockOnTarget: options.lockOnTarget === true,
                 terminalHoming: options.terminalHoming,
+                targetId: options.targetId,
             });
         },
         updateSeekTarget(agent, state, target, options = {}) {

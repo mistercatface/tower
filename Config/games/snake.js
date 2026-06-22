@@ -4,9 +4,9 @@ export const SNAKE_KINETIC_MIN_STRIKE_SPEED = 28;
 export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
-    snakeCount: 64,
+    snakeCount: 96,
     /** Ball + tri-wedge flee agents spawned after snakes (0 disables). */
-    boidCount: 256,
+    boidCount: 32,
     fleeAgent: { bodyPropId: "ball", wedgePropId: "flee_wedge", faction: "bravo" },
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */

@@ -114,6 +114,8 @@ describe("flee agent spawn", () => {
         const predator = spawnSnakeChain(state, { col: 8, row: 10 }, { segmentCount: 5, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId });
         snakeGame.registry.aliveByHeadId.set(predator.chain.head.id, { headId: predator.chain.head.id, species: "snake", lifecycle: "alive" });
+        // Set faction explicitly on predator head
+        predator.chain.head.faction = "snake";
         // Position predator head to ram the flee agent's body
         const predatorHead = predator.chain.head;
         const preyBody = pack.body;
