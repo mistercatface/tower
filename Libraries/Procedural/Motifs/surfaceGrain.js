@@ -1,4 +1,3 @@
-import { noise2D } from "../Noise/Perlin2D.js";
 import { applyTint } from "../util/motifUtilities.js";
 export const surfaceGrainMotif = {
     metadata: {
@@ -18,7 +17,7 @@ export const surfaceGrainMotif = {
         let ny = sample.evalY;
         if (config.axis === "horizontal") ny *= config.axisStretch ?? 0.25;
         else if (config.axis === "vertical") nx *= config.axisStretch ?? 0.25;
-        const grain = noise2D(nx * freq, ny * freq, config.octaves ?? 1) * config.amplitude;
+        const grain = sample.noise.sample2D(nx * freq, ny * freq, config.octaves ?? 1) * config.amplitude;
         applyTint(rgb, grain, config.tint);
     },
 };

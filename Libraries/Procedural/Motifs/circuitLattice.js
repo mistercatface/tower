@@ -1,8 +1,7 @@
-import { noise2D } from "../Noise/Perlin2D.js";
 import { rotateXY } from "../../Math/Poly2D.js";
 import { sampleCoords, applyTint } from "../util/motifUtilities.js";
-function ridgedNoise(x, y, octaves) {
-    return Math.abs(noise2D(x, y, octaves));
+function ridgedNoise(noise, x, y, octaves) {
+    return Math.abs(noise.sample2D(x, y, octaves));
 }
 /**
  * Intersecting ridged veins form panel seams; glow concentrates on veins and brighter at crossings.
@@ -44,8 +43,8 @@ export const circuitLatticeMotif = {
         const rotated = rotateXY(x, y, cos, sin);
         const ax = rotated.x;
         const ay = rotated.y;
-        const r1 = ridgedNoise((ax + offsetX) * freq, (ay + offsetY) * freq, octaves);
-        const r2 = ridgedNoise((ay + offsetX) * freq, (ax + offsetY) * freq, octaves);
+        const r1 = ridgedNoise(sample.noise, (ax + offsetX) * freq, (ay + offsetY) * freq, octaves);
+        const r2 = ridgedNoise(sample.noise, (ay + offsetX) * freq, (ax + offsetY) * freq, octaves);
         const lattice = Math.min(r1, r2);
         const ridgeThreshold = config.ridgeThreshold;
         if (lattice < ridgeThreshold) {
@@ -66,7 +65,7 @@ export const circuitLatticeMotif = {
         }
         const interior = config.interiorVariation;
         if (interior && interior.tint) {
-            const variation = noise2D(x * interior.frequency, y * interior.frequency, interior.octaves ?? 1);
+            const variation = sample.noise.sample2D(x * interior.frequency, y * interior.frequency, interior.octaves ?? 1);
             applyTint(rgb, variation * interior.amplitude, interior.tint);
         }
     },

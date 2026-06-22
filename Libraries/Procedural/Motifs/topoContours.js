@@ -1,4 +1,3 @@
-import { noise2D } from "../Noise/Perlin2D.js";
 import { sampleCoords, applyTint } from "../util/motifUtilities.js";
 /**
  * Topographical contour lines based on noise. When warped, looks like terraced armor plating or holographic fingerprint ridges.
@@ -19,7 +18,7 @@ export const topoContoursMotif = {
     },
     apply(sample, rgb, config) {
         const { x, y } = sampleCoords(sample, config.coordinateSpace);
-        const noiseVal = noise2D(x * config.frequency + (config.offset?.[0] ?? 0), y * config.frequency + (config.offset?.[1] ?? 0), config.octaves ?? 2);
+        const noiseVal = sample.noise.sample2D(x * config.frequency + (config.offset?.[0] ?? 0), y * config.frequency + (config.offset?.[1] ?? 0), config.octaves ?? 2);
         const normalizedNoise = (noiseVal + 1) / 2; // ~0 to 1
         const bandPhase = normalizedNoise * config.bands;
         const distToBand = Math.abs(bandPhase - Math.round(bandPhase));

@@ -1,4 +1,3 @@
-import { noise2D } from "../Noise/Perlin2D.js";
 import { sampleCoords, applyTint } from "../util/motifUtilities.js";
 export const ridgeLinesMotif = {
     metadata: {
@@ -13,7 +12,7 @@ export const ridgeLinesMotif = {
     apply(sample, rgb, config) {
         const { x, y } = sampleCoords(sample, config.coordinateSpace);
         const [offsetX, offsetY] = config.offset ?? [0, 0];
-        let value = noise2D((x + offsetX) * config.frequency, (y + offsetY) * config.frequency, config.octaves);
+        let value = sample.noise.sample2D((x + offsetX) * config.frequency, (y + offsetY) * config.frequency, config.octaves);
         if (config.ridged) value = Math.abs(value);
         if (value >= config.threshold) return;
         const intensity = (1.0 - value / config.threshold) * config.peak;

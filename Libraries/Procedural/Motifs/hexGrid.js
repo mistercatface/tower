@@ -1,4 +1,3 @@
-import { noise2D } from "../Noise/Perlin2D.js";
 import { applyTint } from "../util/motifUtilities.js";
 const SQRT3 = Math.sqrt(3);
 /** Flat-top hex: circumradius `size` (center to vertex). */
@@ -79,9 +78,9 @@ function applyWarmAccent(rgb, edgeDist, config) {
     const tint = config.accentTint ?? [4, 1, -2];
     applyTint(rgb, t, tint);
 }
-function applyCellFill(rgb, q, r, config) {
+function applyCellFill(rgb, q, r, config, noise) {
     const [jx, jy] = config.jitterOffset ?? [0, 0];
-    const jitter = noise2D(q * 0.63 + jx, r * 0.47 + jy, 1);
+    const jitter = noise.sample2D(q * 0.63 + jx, r * 0.47 + jy, 1);
     const delta = jitter * (config.cellVariation ?? 2);
     applyTint(rgb, delta, [1, 0.98, 1.02]);
 }
@@ -120,7 +119,7 @@ export const hexGridMotif = {
     },
     apply(sample, rgb, config) {
         const { q, r, edgeDist, lx, ly } = hexMetrics(sample, config);
-        applyCellFill(rgb, q, r, config);
+        applyCellFill(rgb, q, r, config, sample.noise);
         applyBevel(rgb, lx, ly, edgeDist, config);
         applyGrout(rgb, edgeDist, config);
         applyWarmAccent(rgb, edgeDist, config);

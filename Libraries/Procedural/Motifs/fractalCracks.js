@@ -1,12 +1,10 @@
-import { noise2D } from "../Noise/Perlin2D.js";
 import { sampleCoords, applyTint } from "../util/motifUtilities.js";
-function fbmRidged(x, y, octaves) {
+function fbmRidged(x, y, octaves, noise) {
     let sum = 0;
     let amp = 1;
     let freq = 1;
     for (let i = 0; i < octaves; i++) {
-        // Noise is typically -1 to 1
-        let n = noise2D(x * freq, y * freq, 1);
+        let n = noise.sample2D(x * freq, y * freq, 1);
         n = 1.0 - Math.abs(n);
         // Sharpen the ridge
         n = n * n;
@@ -35,7 +33,7 @@ export const fractalCracksMotif = {
         const freq = config.frequency ?? 0.01;
         const octaves = config.octaves ?? 3;
         const [ox, oy] = config.offset ?? [0, 0];
-        const v = fbmRidged((x + ox) * freq, (y + oy) * freq, octaves);
+        const v = fbmRidged((x + ox) * freq, (y + oy) * freq, octaves, sample.noise);
         const threshold = config.threshold ?? 0.8;
         if (v < threshold) return;
         // Normalize 0 to 1 over the ridge peak

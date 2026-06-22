@@ -1,16 +1,10 @@
-import { noise2D } from "../Noise/Perlin2D.js";
-
 const sWarpOut = { x: 0, y: 0 };
-
-/** Write warped lookup coords into arrays without allocating per pixel. */
-export function writeDomainWarp(evalX, evalY, warp, lookupX, lookupY, index) {
-    warpPointInto(sWarpOut, evalX, evalY, warp);
+export function writeDomainWarp(evalX, evalY, warp, lookupX, lookupY, index, noise) {
+    warpPointInto(sWarpOut, evalX, evalY, warp, noise);
     lookupX[index] = sWarpOut.x;
     lookupY[index] = sWarpOut.y;
 }
-
-/** @param {{ x: number, y: number }} out */
-export function warpPointInto(out, evalX, evalY, warp) {
+export function warpPointInto(out, evalX, evalY, warp, noise) {
     if (!warp || (warp.amplitude ?? 0) === 0) {
         out.x = evalX;
         out.y = evalY;
@@ -20,12 +14,10 @@ export function warpPointInto(out, evalX, evalY, warp) {
     const freq = warp.frequency ?? 0;
     const amp = warp.amplitude ?? 0;
     const oct = warp.octaves ?? 1;
-    out.x = evalX + noise2D(evalX * freq, evalY * freq, oct) * amp;
-    out.y = evalY + noise2D((evalX + offX) * freq, (evalY + offY) * freq, oct) * amp;
+    out.x = evalX + noise.sample2D(evalX * freq, evalY * freq, oct) * amp;
+    out.y = evalY + noise.sample2D((evalX + offX) * freq, (evalY + offY) * freq, oct) * amp;
     return out;
 }
-
-/** Scalar warp — allocates; prefer `warpPointInto` in hot loops. */
-export function warpPoint(evalX, evalY, warp) {
-    return warpPointInto({ x: 0, y: 0 }, evalX, evalY, warp);
+export function warpPoint(evalX, evalY, warp, noise) {
+    return warpPointInto({ x: 0, y: 0 }, evalX, evalY, warp, noise);
 }

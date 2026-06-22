@@ -1,9 +1,8 @@
 import { blendMotifRgb } from "./util/blend.js";
-import { ensureNoiseInitialized, setActiveNoiseMemo } from "./Noise/Perlin2D.js";
 import { warpPointInto, writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
 import { readTranslateConfig, TRANSLATE_COORDINATE_MODES } from "./Motifs/translate.js";
-const sampleScratch = { evalX: 0, evalY: 0, lookupX: 0, lookupY: 0, wallU: 0, wallV: 0, seed: 0 };
+const sampleScratch = { evalX: 0, evalY: 0, lookupX: 0, lookupY: 0, wallU: 0, wallV: 0, seed: 0, noise: null };
 const sWarpScratch = { x: 0, y: 0 };
 const beforeRgb = { r: 0, g: 0, b: 0 };
 const layerRgb = { r: 0, g: 0, b: 0 };
@@ -22,7 +21,6 @@ function resolveMotifStack(profile) {
     }
     return stack;
 }
-/** Profile surfaceMask "floor" means ground (non-wall) pixels. */
 function motifMatchesBake(config, bake) {
     const mask = config.surfaceMask ?? "all";
     if (mask === "all") return true;
@@ -42,7 +40,7 @@ function pushTranslateLayer(context, config) {
     context.mode = layer.mode;
     context.active = true;
 }
-function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, warp) {
+function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, warp, noise) {
     if (!translateContext.active) {
         scratch.evalX = samples.evalX[pixelIndex];
         scratch.evalY = samples.evalY[pixelIndex];
@@ -59,19 +57,19 @@ function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, 
         scratch.lookupY = samples.lookupY[pixelIndex] - ty;
         return;
     }
-    const warped = warpPointInto(sWarpScratch, scratch.evalX, scratch.evalY, warp);
+    const warped = warpPointInto(sWarpScratch, scratch.evalX, scratch.evalY, warp, noise);
     scratch.lookupX = warped.x;
     scratch.lookupY = warped.y;
 }
 export function composeSurfaceImage(samples, profile, seed, bakeSession = null, bake = { useWallBase: false }, rgbBuffer = null, motifStartIndex = 0, motifEndIndex = undefined) {
-    ensureNoiseInitialized(seed);
-    if (bakeSession && bakeSession.noiseMemo) setActiveNoiseMemo(bakeSession.noiseMemo);
-    else setActiveNoiseMemo(null);
+    const noise = bakeSession.noiseEvaluator;
+    noise.setSeed(seed);
     const numPixels = samples.width * samples.height;
     if (!rgbBuffer) rgbBuffer = new Float32Array(numPixels * 3);
     const base = resolvePaletteBase(profile, bake.useWallBase);
     const warp = profile.warp;
     sampleScratch.seed = seed;
+    sampleScratch.noise = noise;
     const motifs = resolveMotifStack(profile);
     const endIdx = motifEndIndex ?? motifs.length;
     const translateContext = createTranslateContext();
@@ -86,17 +84,16 @@ export function composeSurfaceImage(samples, profile, seed, bakeSession = null, 
         if (!motifMatchesBake(motifConfig, bake)) continue;
         motifPasses.push({ motifConfig, motifImpl: getMotif(motifConfig.type), blendMode: motifConfig.blendMode ?? "add" });
     }
-    const memo = bakeSession?.noiseMemo;
     for (let i = 0; i < numPixels; i++) {
         if (motifStartIndex === 0) {
             rgbBuffer[i * 3] = base[0];
             rgbBuffer[i * 3 + 1] = base[1];
             rgbBuffer[i * 3 + 2] = base[2];
-            writeDomainWarp(samples.evalX[i], samples.evalY[i], warp, samples.lookupX, samples.lookupY, i);
+            writeDomainWarp(samples.evalX[i], samples.evalY[i], warp, samples.lookupX, samples.lookupY, i, noise);
         }
         if (motifPasses.length === 0) continue;
-        if (memo) memo.count = 0;
-        applyTranslateToSample(sampleScratch, samples, i, translateContext, warp);
+        noise.beginPixel();
+        applyTranslateToSample(sampleScratch, samples, i, translateContext, warp, noise);
         sampleScratch.wallU = samples.wallU[i];
         sampleScratch.wallV = samples.wallV[i];
         const idx = i * 3;
@@ -115,6 +112,6 @@ export function composeSurfaceImage(samples, profile, seed, bakeSession = null, 
             rgbBuffer[idx + 2] = blendOut.b;
         }
     }
-    setActiveNoiseMemo(null);
+    sampleScratch.noise = null;
     return rgbBuffer;
 }

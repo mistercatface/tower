@@ -1,4 +1,3 @@
-import { noise2D } from "../Noise/Perlin2D.js";
 import { applyTint } from "../util/motifUtilities.js";
 export const panelGridMotif = {
     metadata: {
@@ -18,7 +17,7 @@ export const panelGridMotif = {
         const v = localY / cellSize;
         const edgeDist = Math.min(u, 1 - u, v, 1 - v);
         if (edgeDist >= config.groutWidth) return;
-        const variation = noise2D(sample.evalX * config.variationFrequency, sample.evalY * config.variationFrequency, 1) * config.variationAmplitude;
+        const variation = sample.noise.sample2D(sample.evalX * config.variationFrequency, sample.evalY * config.variationFrequency, 1) * config.variationAmplitude;
         const t = (1.0 - edgeDist / config.groutWidth) * (config.peak + variation);
         applyTint(rgb, t, config.tint);
     },

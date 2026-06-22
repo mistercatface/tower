@@ -1,4 +1,3 @@
-import { noise2D } from "../Noise/Perlin2D.js";
 import { applyTint } from "../util/motifUtilities.js";
 function plateMetrics(sample, config) {
     const cell = config.cellWorldSize;
@@ -28,9 +27,9 @@ function applyWarmAccent(rgb, edgeDist, config) {
     const tint = config.accentTint ?? [4, 1, -2];
     applyTint(rgb, t, tint);
 }
-function applyPlateFill(rgb, plateCol, plateRow, config) {
+function applyPlateFill(rgb, plateCol, plateRow, config, noise) {
     const [jx, jy] = config.jitterOffset ?? [0, 0];
-    const jitter = noise2D(plateCol * 0.71 + jx, plateRow * 0.53 + jy, 1);
+    const jitter = noise.sample2D(plateCol * 0.71 + jx, plateRow * 0.53 + jy, 1);
     const delta = jitter * (config.plateVariation ?? 3);
     applyTint(rgb, delta, [1, 0.95, 1.05]);
 }
@@ -87,7 +86,7 @@ export const deckPlatesMotif = {
     },
     apply(sample, rgb, config) {
         const { plateCol, plateRow, localX, localY, plateW, plateH, edgeDist } = plateMetrics(sample, config);
-        applyPlateFill(rgb, plateCol, plateRow, config);
+        applyPlateFill(rgb, plateCol, plateRow, config, sample.noise);
         applyGrout(rgb, edgeDist, config);
         applyWarmAccent(rgb, edgeDist, config);
         applyRivets(rgb, localX, localY, plateW, plateH, config);

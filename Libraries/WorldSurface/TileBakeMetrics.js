@@ -1,4 +1,4 @@
-import { setNoiseProfileEnabled } from "../Procedural/Noise/Perlin2D.js";
+import { setNoiseProfileEnabled } from "../Procedural/Noise/SeededNoise2D.js";
 export const EMPTY_BAKE_TIMING_STATS = {
     sampleCount: 0,
     sampleFillMs: 0,

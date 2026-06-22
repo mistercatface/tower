@@ -1,7 +1,6 @@
-import { noise2D } from "../Noise/Perlin2D.js";
 import { applyTint } from "../util/motifUtilities.js";
-function snakeOffset(wallU, bandIndex, seed, config, spacing) {
-    const wobble = noise2D(wallU * (config.snakeAlong ?? 2.5) + seed * 0.001, bandIndex * 0.41, config.snakeOctaves ?? 2);
+function snakeOffset(wallU, bandIndex, seed, config, spacing, noise) {
+    const wobble = noise.sample2D(wallU * (config.snakeAlong ?? 2.5) + seed * 0.001, bandIndex * 0.41, config.snakeOctaves ?? 2);
     return (wobble - 0.5) * 2 * (config.snakeStrength ?? 0.35) * spacing;
 }
 /**
@@ -37,7 +36,7 @@ export const wallHorizontalBevelMotif = {
         const spacing = 1 / bandCount;
         const bandIndex = Math.floor(sample.wallV / spacing);
         const bandCenter = (bandIndex + 0.5) * spacing;
-        const snake = snakeOffset(sample.wallU, bandIndex, sample.seed, config, spacing);
+        const snake = snakeOffset(sample.wallU, bandIndex, sample.seed, config, spacing, sample.noise);
         const centerV = bandCenter + snake;
         const ribHalf = spacing * (config.ribFill ?? 0.5) * 0.5;
         const dist = Math.abs(sample.wallV - centerV);

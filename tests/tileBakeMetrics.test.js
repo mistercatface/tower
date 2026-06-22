@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ensureNoiseInitialized, createNoiseMemo, noise2D, resetNoiseProfile, setActiveNoiseMemo, setNoiseProfileEnabled } from "../Libraries/Procedural/Noise/Perlin2D.js";
+import { SeededNoise2D } from "../Libraries/Procedural/Noise/SeededNoise2D.js";
 import { EMPTY_BAKE_TIMING_STATS, TileBakeMetricsAccumulator, createNoiseProfileSnapshot, setTileBakeMetricsEnabled } from "../Libraries/WorldSurface/TileBakeMetrics.js";
 import { TileBakeScheduler } from "../Libraries/WorldSurface/TileBakeScheduler.js";
 import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHost.js";
@@ -8,20 +8,17 @@ import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHos
 describe("tile bake metrics", () => {
     it("tracks noise hits, calls, and memo overflows when enabled", () => {
         setTileBakeMetricsEnabled(true);
-        ensureNoiseInitialized(42);
-        const memo = createNoiseMemo(2);
-        setActiveNoiseMemo(memo);
-        resetNoiseProfile(memo);
-        noise2D(1, 2, 2, memo);
-        noise2D(1, 2, 2, memo);
-        noise2D(3, 4, 2, memo);
-        noise2D(5, 6, 2, memo);
-        noise2D(7, 8, 2, memo);
-        setActiveNoiseMemo(null);
-        assert.equal(memo.profile.calls, 5);
-        assert.equal(memo.profile.hits, 1);
-        assert.equal(memo.profile.overflows, 2);
-        const snapshot = createNoiseProfileSnapshot(memo.profile, 100);
+        const noise = new SeededNoise2D(42, 2);
+        noise.resetProfile();
+        noise.sample2D(1, 2, 2);
+        noise.sample2D(1, 2, 2);
+        noise.sample2D(3, 4, 2);
+        noise.sample2D(5, 6, 2);
+        noise.sample2D(7, 8, 2);
+        assert.equal(noise.profile.calls, 5);
+        assert.equal(noise.profile.hits, 1);
+        assert.equal(noise.profile.overflows, 2);
+        const snapshot = createNoiseProfileSnapshot(noise.profile, 100);
         assert.equal(snapshot.callsPerPixel, 0.05);
         assert.equal(snapshot.hitRate, 0.2);
         assert.ok(Math.abs(snapshot.overflowRate - 0.4) < 1e-9);
@@ -29,15 +26,12 @@ describe("tile bake metrics", () => {
     });
     it("does not count noise profile when disabled", () => {
         setTileBakeMetricsEnabled(false);
-        ensureNoiseInitialized(7);
-        const memo = createNoiseMemo(4);
-        setActiveNoiseMemo(memo);
-        noise2D(1, 1, 1, memo);
-        noise2D(2, 2, 1, memo);
-        setActiveNoiseMemo(null);
-        assert.equal(memo.profile.calls, 0);
-        assert.equal(memo.profile.hits, 0);
-        assert.equal(memo.profile.overflows, 0);
+        const noise = new SeededNoise2D(7, 4);
+        noise.sample2D(1, 1, 1);
+        noise.sample2D(2, 2, 1);
+        assert.equal(noise.profile.calls, 0);
+        assert.equal(noise.profile.hits, 0);
+        assert.equal(noise.profile.overflows, 0);
     });
     it("accumulates rolling bake timing averages", () => {
         const accumulator = new TileBakeMetricsAccumulator(2);

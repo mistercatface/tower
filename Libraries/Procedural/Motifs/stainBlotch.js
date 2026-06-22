@@ -1,4 +1,3 @@
-import { noise2D } from "../Noise/Perlin2D.js";
 import { sampleCoords, applyTint } from "../util/motifUtilities.js";
 export const stainBlotchMotif = {
     metadata: {
@@ -13,7 +12,7 @@ export const stainBlotchMotif = {
     apply(sample, rgb, config) {
         const { x, y } = sampleCoords(sample, config.coordinateSpace);
         const [offsetX, offsetY] = config.offset ?? [0, 0];
-        const value = noise2D((x + offsetX) * config.frequency, (y + offsetY) * config.frequency, config.octaves);
+        const value = sample.noise.sample2D((x + offsetX) * config.frequency, (y + offsetY) * config.frequency, config.octaves);
         if (value <= config.threshold) return;
         const span = 1.0 - config.threshold;
         const intensity = ((value - config.threshold) / span) * config.peak;

@@ -1,5 +1,5 @@
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
-import { createNoiseMemo, resetNoiseProfile } from "../Procedural/Noise/Perlin2D.js";
+import { SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
@@ -48,7 +48,7 @@ class TileMemoryPool {
 export class BakeSession {
     constructor() {
         this.memoryPool = new TileMemoryPool();
-        this.noiseMemo = createNoiseMemo(8);
+        this.noiseEvaluator = new SeededNoise2D(0);
         this.lastMetrics = null;
     }
 }
@@ -73,7 +73,7 @@ export function bakeRequestToCanvas(req, bakeSession = globalBakeSession) {
 }
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileOrId, bakeSession = globalBakeSession) {
     const metricsOn = isTileBakeMetricsEnabled();
-    if (metricsOn) resetNoiseProfile(bakeSession.noiseMemo);
+    if (metricsOn) bakeSession.noiseEvaluator.resetProfile();
     const profile = resolvePaintProfile(profileOrId);
     const cellSize = options.cellSize;
     if (cellSize == null) throw new Error("paintPixelArea requires options.cellSize");
@@ -152,7 +152,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     ctx.putImageData(imgData, 0, 0);
     phases.rgbaCopyMs = performance.now() - phaseStart;
     bakeSession.memoryPool.release(pooled, numPixels);
-    bakeSession.lastMetrics = createTileBakeMetrics("paintPixelArea", numPixels, phases, bakeSession.noiseMemo.profile);
+    bakeSession.lastMetrics = createTileBakeMetrics("paintPixelArea", numPixels, phases, bakeSession.noiseEvaluator.profile);
 }
 function resolvePaintCellSize(optionsPayload) {
     const cellSize = optionsPayload?.wallWidth ?? getTileWorkerBakeConstants().cellSize;
@@ -240,7 +240,7 @@ export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession
 /** Bake a world-aligned horizontal patch (animated surface playfield / rail band). */
 export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSession) {
     const metricsOn = isTileBakeMetricsEnabled();
-    if (metricsOn) resetNoiseProfile(bakeSession.noiseMemo);
+    if (metricsOn) bakeSession.noiseEvaluator.resetProfile();
     const provider = getSurfaceProfileProvider();
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
@@ -332,6 +332,6 @@ export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSes
         canvases.push(canvas);
     }
     bakeSession.memoryPool.release(pooled, numPixels);
-    bakeSession.lastMetrics = createTileBakeMetrics("bakeHorizontalPatch", numPixels, phases, bakeSession.noiseMemo.profile);
+    bakeSession.lastMetrics = createTileBakeMetrics("bakeHorizontalPatch", numPixels, phases, bakeSession.noiseEvaluator.profile);
     return canvases;
 }
