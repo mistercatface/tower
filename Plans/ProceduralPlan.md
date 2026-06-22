@@ -33,15 +33,46 @@ Worker logs resume; main-thread `stats().bakeTiming` accumulates over the last 3
 
 ## Pass 4 — Fields foundation
 
-Extract `hashCell` from `VoronoiEdge.js` into `SeededFeatureHash.js`; wrap `WorleyEdgeField`; sit beside `SeededNoise2D` under one seed+salt contract. Exit: one hash implementation, no duplicated jitter blocks.
+Stay the course here before any motif-runtime rewrite. The current code state is:
+
+- `SeededNoise2D` is session-owned and profileable.
+- `SurfaceTextureComposer` is already pixel-outer and uses pooled sample/RGB arrays.
+- `VoronoiEdge.js` still owns a local `hashCell`.
+- `generateVoronoiRegions` is still its own HPA partition path and should not be merged with Worley.
+
+Next steps:
+
+1. Add `Libraries/Procedural/Fields/SeededFeatureHash.js` with the current cell hash/jitter primitive from `VoronoiEdge.js`.
+2. Update `VoronoiEdge.js` to import the shared hash and keep `voronoiEdgeMetric` behavior byte-for-byte equivalent.
+3. Wrap the Worley edge sampler as a small field API (`WorleyEdgeField`) that accepts a root seed + salt and exposes the same edge metric used by `voronoiCell`.
+4. Add focused golden tests for hash determinism and `voronoiEdgeMetric` parity.
+
+Exit: one seeded spatial hash implementation, no duplicated jitter blocks, and a Fields layer that texture bakes and generation code can both consume.
 
 ## Pass 5 — Pathfinding + Fields
 
-Keep `generateVoronoiRegions`; import shared hash; add optional `GridSiteField` for HPA seed ordering and Tier 7 placement. Exit: nav tests unchanged, documented hook for shared primitives.
+Keep `generateVoronoiRegions` as the HPA partition algorithm. Do not route HPA through Worley and do not change region topology for this pass.
+
+Next steps:
+
+1. Import the shared hash only where HPA needs deterministic site ordering or placement jitter.
+2. Add an optional `GridSiteField` helper for generation placement and seed ordering, not for replacing region growth.
+3. Keep nav behavior stable; any test coverage should be targeted to the new field helper or existing Voronoi-region parity.
+
+Exit: nav tests unchanged, documented hook for shared primitives, and a deterministic grid-site field ready for Tier 7 placement.
 
 ## Pass 6 — Unified root seed
 
-`ProceduralSeed` → derived seeds for cavern, graph, corridors, tile bakes, nav, biomes. Wire chunk/atlas seeds through one table. Exit: documented sub-seed map + one integration test.
+`ProceduralSeed` → derived seeds for cavern, graph, corridors, tile bakes, nav, biomes. Wire chunk/atlas seeds through one table.
+
+Next steps:
+
+1. Define the root-seed module and salt names once.
+2. Replace ad hoc `worldSurfaceSeed ?? 0` handoffs with derived seeds at bake payload boundaries.
+3. Document the sub-seed map in this plan or `Plans/Procedural.md`.
+4. Add one integration test that proves a root seed deterministically reaches a tile bake and one generation field.
+
+Exit: documented sub-seed map + one integration test.
 
 ## Pass 7 — Generation consumption
 
@@ -53,6 +84,14 @@ Tile RGB checksums; noise/Fields unit goldens; nav region golden; room-graph v1 
 
 ---
 
+## Parked — Motif runtime SoA/compiler spike
+
+Do **not** pivot the main plan to a whole motif SoA rewrite yet. The current hot path already stores sample coordinates and RGB in typed arrays; the remaining cost is mostly heterogeneous motif execution and noise/field evaluation inside `composeStatic`.
+
+Revisit only after Pass 4–6 are stable and metrics still show `composeStatic` as the limiting cost. If revisited, start with a narrow compiled-kernel spike for one common stack (`baseMetal` + one structural motif + one filter), hoisting config/default/blend decisions out of the pixel loop. Promote it only if the metrics beat the current composer without visual checksum drift.
+
+---
+
 ## Skip
 
 | Item                               | Why                     |
@@ -61,6 +100,7 @@ Tile RGB checksums; noise/Fields unit goldens; nav region golden; room-graph v1 
 | Merging Voronoi partition + Worley | Different algorithms    |
 | Lowering `surfaceBakeScale`        | Changes look            |
 | More worker-boundary OOP           | Stack is settled        |
+| Whole-system motif SoA pivot       | Measure after Fields/root-seed work |
 
 ---
 
