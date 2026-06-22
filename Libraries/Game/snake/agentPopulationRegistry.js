@@ -1,4 +1,5 @@
 import { getSnakeSizeScore } from "./snakeScale.js";
+import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 export function createAgentPopulationRegistry() {
     return {
         // Maps headId -> AgentInstance (SnakeInstance, FleeAgentInstance, etc.)
@@ -47,4 +48,18 @@ export function getAgentRelationship(seekerId, targetId, state, registry) {
         if (targetSpecies === "flee_agent") return "prey";
     } else if (seekerSpecies === "flee_agent") if (targetSpecies === "snake") return "threat";
     return "neutral";
+}
+export function buildAgentMemberToInstanceMap(state, snakeGame) {
+    const map = new Map();
+    for (const instance of snakeGame.instancesByHeadId.values()) {
+        if (instance.lifecycle !== "alive") continue;
+        const members = typeof instance.syncMembersFromGraph === "function" ? instance.syncMembersFromGraph(state) : getConnectedComponentPath(state.kinetic, instance.headId);
+        for (let i = 0; i < members.length; i++) map.set(members[i], instance);
+    }
+    return map;
+}
+export function resolveAgentInstanceForMember(state, snakeGame, memberId) {
+    const instance = snakeGame.instancesByHeadId.get(memberId);
+    if (instance && instance.lifecycle === "alive") return instance;
+    return buildAgentMemberToInstanceMap(state, snakeGame).get(memberId) ?? null;
 }

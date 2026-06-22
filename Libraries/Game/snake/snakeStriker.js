@@ -1,7 +1,7 @@
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { getSnakeGameConfig, resolveSnakeStartRadius } from "./snakeGameConfig.js";
-import { buildSnakeMemberToInstanceMap } from "./SnakeInstance.js";
+import { buildAgentMemberToInstanceMap } from "./agentPopulationRegistry.js";
 import { splitSnakeAtStruckSegment } from "./snakeCombat.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
@@ -29,7 +29,7 @@ function orderedMembers(state, headId) {
     return getConnectedComponentPath(state.kinetic, headId);
 }
 function resolveStrikerVictim(state, snakeGame, snakeBodyId) {
-    const instance = buildSnakeMemberToInstanceMap(state, snakeGame).get(snakeBodyId);
+    const instance = buildAgentMemberToInstanceMap(state, snakeGame).get(snakeBodyId);
     if (!instance) return null;
     return { victimHeadId: instance.headId, members: orderedMembers(state, instance.headId) };
 }

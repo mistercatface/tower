@@ -1,7 +1,8 @@
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
-import { getSnakeInstance, buildSnakeMemberToInstanceMap } from "./SnakeInstance.js";
+import { getSnakeInstance } from "./SnakeInstance.js";
+import { buildAgentMemberToInstanceMap } from "./agentPopulationRegistry.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
@@ -50,7 +51,7 @@ export function snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSeg
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
     const config = getSnakeGameConfig();
-    const memberToInstance = buildSnakeMemberToInstanceMap(state, snakeGame);
+    const memberToInstance = buildAgentMemberToInstanceMap(state, snakeGame);
     const splitLinks = new Set();
     for (let i = 0; i < contacts.count; i++) {
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
@@ -107,7 +108,7 @@ function applyHuntContactDriveForPair(state, snakeGame, hunterInstance, hunterBo
 }
 export function applySnakeHuntContactDrive(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
-    const memberToInstance = buildSnakeMemberToInstanceMap(state, snakeGame);
+    const memberToInstance = buildAgentMemberToInstanceMap(state, snakeGame);
     for (let i = 0; i < contacts.count; i++) {
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
         if (!pair) continue;

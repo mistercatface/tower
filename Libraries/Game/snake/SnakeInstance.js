@@ -190,21 +190,6 @@ export function registerAliveSnakeInstance(snakeGame, instance) {
 export function getSnakeInstance(snakeGame, headId) {
     return snakeGame.instancesByHeadId.get(headId);
 }
-export function buildSnakeMemberToInstanceMap(state, snakeGame) {
-    const map = new Map();
-    for (const instance of snakeGame.instancesByHeadId.values()) {
-        if (instance.lifecycle !== "alive" || !(instance instanceof SnakeInstance)) continue;
-        const members = getConnectedComponentPath(state.kinetic, instance.headId);
-        instance.memberIds = members;
-        for (let i = 0; i < members.length; i++) map.set(members[i], instance);
-    }
-    return map;
-}
-export function resolveSnakeInstanceForMember(state, snakeGame, memberId) {
-    const instance = getSnakeInstance(snakeGame, memberId);
-    if (instance && instance.lifecycle === "alive" && instance instanceof SnakeInstance) return instance;
-    return buildSnakeMemberToInstanceMap(state, snakeGame).get(memberId) ?? null;
-}
 export function syncAliveSnakeInstances(state, snakeGame) {
     for (const instance of [...snakeGame.instancesByHeadId.values()]) if (typeof instance.validate === "function") instance.validate(state, snakeGame);
 }
