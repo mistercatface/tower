@@ -7,7 +7,7 @@ function refreshObserverVisionFrame(state) {
         tickId: state.sandbox.snakeGame.simTick,
         navTopology: state.nav.topology,
         visionSession: state.nav.gridCellVisionSession,
-        visionCone: config.visionCone,
+        visionRange: config.visionRange,
         viewport: state.viewport,
         brainSyncOffScreenInterval: config.brainSyncOffScreenInterval,
     });

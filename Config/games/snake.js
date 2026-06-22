@@ -54,12 +54,10 @@ export const SNAKE_GAME_DEFAULTS = {
     startRadius: 2,
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1, regionPaddingCells: 4, fillChance: 0.48, iterations: 4, openBoundaryRows: 3 },
     rail: { wallHeightLevel: 1, edgeThickness: 4, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
-    showVisionCones: false,
-    showAllSnakeVisionCones: false,
     /** When true (default), camera-focused agent draws vision, spatial memory, and path debug overlays. */
     showFocusedAgentDebug: true,
     focusedAgentDebug: { vision: true, spatialMemory: true, path: true, agentSlots: {}, pathPreview: { cellCount: 3 }, targetRing: {} },
-    visionCone: { halfAngle: Math.PI / 3, range: 128, cellFill: "rgba(120, 220, 255, 0.04)", visibleGoalStroke: "rgba(255, 220, 80, 0.35)", lineWidth: 1 },
+    visionRange: { range: 128, cellFill: "rgba(120, 220, 255, 0.04)", visibleGoalStroke: "rgba(255, 220, 80, 0.35)", lineWidth: 1 },
     /** Explore waypoints must be at least this many grid tiles away (Chebyshev). */
     exploreMinTiles: 8,
     /** LRU grid-cell memory window per snake (vision + arrival stamps). */
@@ -85,7 +83,7 @@ export const SNAKE_GAME_DEFAULTS = {
     wallDamage: { maxHp: 100, maxHitDamage: 45, minAngleFactor: 0.2, referenceMaxSpeed: 560 },
     /** Grid tiles to flee away from a visible larger snake (Chebyshev step). */
     fleeTiles: 8,
-    /** Max world distance to react to a larger snake; null uses visionCone.range. */
+    /** Max world distance to react to a larger snake; null uses visionRange.range. */
     fleeRange: null,
     /** Within this world distance a larger threat always forces flee, regardless of hunger. */
     lethalThreatRange: 48,

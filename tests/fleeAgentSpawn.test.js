@@ -82,7 +82,7 @@ describe("flee agent spawn", () => {
         instance.tick(state, 16);
         assert.ok(instance.intent.getDestination());
         spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 14 }, 6);
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
     });

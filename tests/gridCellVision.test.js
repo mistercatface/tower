@@ -1,7 +1,7 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { collectVisibleGridCells, hasGridCellLineOfSight, isWorldPointInVisionCone, normalizeAngleDelta, resolveObserverHeading } from "../Libraries/Navigation/perception/gridCellVision.js";
+import { collectVisibleGridCells, hasGridCellLineOfSight, resolveObserverHeading } from "../Libraries/Navigation/perception/gridCellVision.js";
 import { createObserverVisionFrame, getVisionFullBuildCount, queryGridCellVision, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -57,18 +57,18 @@ describe("grid cell line of sight", () => {
         const observer = { id: 1, ...cellCenter(ctx.grid, 2, 8), vx: 10, vy: 0, facing: 0 };
         const behind = { id: 2, ...cellCenter(ctx.grid, 10, 8), radius: 6, isDead: false };
         const ahead = { id: 3, ...cellCenter(ctx.grid, 4, 8), radius: 6, isDead: false };
-        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, navTopology: ctx.navTopology });
+        const vision = queryGridCellVision(observer, [behind, ahead], { range: 200, navTopology: ctx.navTopology });
         assert.equal(vision.visible.length, 1);
         assert.equal(vision.visible[0].id, 3);
         terminateWorkerNavigation(ctx.nav);
     });
 });
-describe("grid cell vision cone", () => {
+describe("grid cell vision", () => {
     it("collectVisibleGridCells stops at a wall column ahead", async () => {
         const ctx = await createVisionGrid();
         for (let row = 0; row < ctx.grid.rows; row++) await stampWall(ctx, 10, row);
         const origin = cellCenter(ctx.grid, 2, 8);
-        const cells = collectVisibleGridCells(ctx.navTopology, origin.x, origin.y, 0, Math.PI / 3, 200);
+        const cells = collectVisibleGridCells(ctx.navTopology, origin.x, origin.y, 200);
         assert.ok(cells.length > 0);
         assert.ok(!cells.some((cell) => cell.col > 10));
         assert.ok(cells.some((cell) => cell.col === 9));
@@ -80,7 +80,7 @@ describe("grid cell vision cone", () => {
         const observer = { id: 1, x: cellCenter(ctx.grid, 2, 8).x, y: cellCenter(ctx.grid, 2, 8).y, vx: 10, vy: 0, facing: 0 };
         const behind = { id: 2, x: cellCenter(ctx.grid, 14, 8).x, y: cellCenter(ctx.grid, 14, 8).y, radius: 6, isDead: false };
         const ahead = { id: 3, x: cellCenter(ctx.grid, 6, 8).x, y: cellCenter(ctx.grid, 6, 8).y, radius: 6, isDead: false };
-        const vision = queryGridCellVision(observer, [behind, ahead], { halfAngle: Math.PI / 3, range: 200, navTopology: ctx.navTopology });
+        const vision = queryGridCellVision(observer, [behind, ahead], { range: 200, navTopology: ctx.navTopology });
         assert.equal(vision.visible.length, 1);
         assert.equal(vision.visible[0].id, 3);
         assert.ok(vision.cells.length > 0);
@@ -93,7 +93,6 @@ describe("grid cell vision cone", () => {
         const observer = cellCenter(ctx.grid, 4, 8);
         const aroundCorner = cellCenter(ctx.grid, 12, 4);
         const vision = queryGridCellVision({ id: 1, x: observer.x, y: observer.y, vx: 10, vy: 0, facing: 0 }, [{ id: 2, x: aroundCorner.x, y: aroundCorner.y, radius: 6, isDead: false }], {
-            halfAngle: Math.PI / 2,
             range: 300,
             navTopology: ctx.navTopology,
         });
@@ -101,40 +100,39 @@ describe("grid cell vision cone", () => {
         assert.ok(!vision.cells.some((cell) => cell.col === 12 && cell.row === 4));
         terminateWorkerNavigation(ctx.nav);
     });
-    it("goal outside arc is rejected even with clear grid LOS", async () => {
+    it("goal with clear grid LOS is visible in full circle", async () => {
         const ctx = await createVisionGrid();
         const observer = cellCenter(ctx.grid, 4, 8);
         const offAxis = cellCenter(ctx.grid, 8, 2);
-        assert.equal(isWorldPointInVisionCone(observer.x, observer.y, -Math.PI / 2, Math.PI / 8, 200, offAxis.x, offAxis.y), false);
         const vision = queryGridCellVision({ id: 1, x: observer.x, y: observer.y, vx: 0, vy: -10, facing: -Math.PI / 2 }, [{ id: 2, x: offAxis.x, y: offAxis.y, radius: 6, isDead: false }], {
-            halfAngle: Math.PI / 8,
             range: 200,
             navTopology: ctx.navTopology,
         });
-        assert.equal(vision.visible.length, 0);
+        assert.equal(vision.visible.length, 1);
+        assert.equal(vision.visible[0].id, 2);
         terminateWorkerNavigation(ctx.nav);
     });
-    it("queryGridCellVision filters visible goals by wall and arc", async () => {
+    it("queryGridCellVision filters visible goals by wall only", async () => {
         const ctx = await createVisionGrid();
         await stampWall(ctx, 10, 8);
         const observer = { id: 1, ...cellCenter(ctx.grid, 2, 8), vx: 10, vy: 0, facing: 0 };
         const visible = { id: 2, ...cellCenter(ctx.grid, 6, 8), radius: 6, isDead: false };
         const blocked = { id: 3, ...cellCenter(ctx.grid, 14, 8), radius: 6, isDead: false };
-        const cone = queryGridCellVision(observer, [visible, blocked], { halfAngle: Math.PI / 2, range: 200, navTopology: ctx.navTopology });
-        assert.equal(cone.visible.length, 1);
-        assert.equal(cone.visible[0].id, 2);
-        assert.ok(cone.cells.length > 0);
+        const result = queryGridCellVision(observer, [visible, blocked], { range: 200, navTopology: ctx.navTopology });
+        assert.equal(result.visible.length, 1);
+        assert.equal(result.visible[0].id, 2);
+        assert.ok(result.cells.length > 0);
         terminateWorkerNavigation(ctx.nav);
     });
     it("observer vision frame reuses one full build per tick", async () => {
         resetVisionFullBuildCount();
         const ctx = await createVisionGrid();
-        const visionCone = { halfAngle: Math.PI / 3, range: 200 };
+        const visionRange = { range: 200 };
         const frame = createObserverVisionFrame({
             tickId: 9,
             navTopology: ctx.navTopology,
             visionSession: null,
-            visionCone,
+            visionRange,
             viewport: { circleInBounds: () => true },
             brainSyncOffScreenInterval: 1,
         });
@@ -147,7 +145,7 @@ describe("grid cell vision cone", () => {
             tickId: 10,
             navTopology: ctx.navTopology,
             visionSession: null,
-            visionCone,
+            visionRange,
             viewport: { circleInBounds: () => true },
             brainSyncOffScreenInterval: 1,
         });
@@ -160,7 +158,7 @@ describe("grid cell vision overlay", () => {
     it("emits one cached highlight per visible cell", async () => {
         const ctx = await createVisionGrid();
         const origin = cellCenter(ctx.grid, 4, 8);
-        const cells = collectVisibleGridCells(ctx.navTopology, origin.x, origin.y, 0, Math.PI / 2, 96);
+        const cells = collectVisibleGridCells(ctx.navTopology, origin.x, origin.y, 96);
         const out = [];
         appendGridCellVisionOverlayCommands(out, { grid: ctx.grid, cells });
         assert.equal(out.length, cells.length);
@@ -173,16 +171,7 @@ describe("grid cell vision overlay", () => {
         terminateWorkerNavigation(ctx.nav);
     });
 });
-describe("vision cone helpers", () => {
-    it("normalizeAngleDelta wraps to [-pi, pi]", () => {
-        assert.ok(Math.abs(normalizeAngleDelta(Math.PI * 3) - Math.PI) < 1e-6);
-        assert.ok(Math.abs(normalizeAngleDelta(-Math.PI * 3) + Math.PI) < 1e-6);
-    });
-    it("isWorldPointInVisionCone rejects points outside arc and range", () => {
-        assert.equal(isWorldPointInVisionCone(0, 0, 0, Math.PI / 4, 100, 50, 0), true);
-        assert.equal(isWorldPointInVisionCone(0, 0, 0, Math.PI / 4, 100, 0, 80), false);
-        assert.equal(isWorldPointInVisionCone(0, 0, 0, Math.PI / 4, 40, 100, 0), false);
-    });
+describe("observer heading", () => {
     it("resolveObserverHeading prefers velocity over facing", () => {
         assert.ok(Math.abs(resolveObserverHeading({ vx: 0, vy: 10, facing: 0 }) - Math.PI / 2) < 1e-6);
     });

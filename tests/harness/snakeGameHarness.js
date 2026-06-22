@@ -1,4 +1,4 @@
-﻿import "../nodeCanvasSetup.js";
+import "../nodeCanvasSetup.js";
 import { loadPropAssets } from "../../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry, addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { KineticSession } from "../../GameState/KineticSession.js";
@@ -114,9 +114,9 @@ export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
 export function wireSnakeGameForHead(state, headId, spawnGroupId = `test:${headId}`) {
     return wireSnakeTestGame(state, [{ headId, spawnGroupId }]).registry;
 }
-export function primeSnakeHeadVision(state, seeker, visionCone) {
+export function primeSnakeHeadVision(state, seeker, visionRange) {
     beginSnakePerceptionFrame(state);
-    return getObserverVisionFrame(state).ensureHeadVision(seeker, visionCone);
+    return getObserverVisionFrame(state).ensureHeadVision(seeker, visionRange);
 }
 export function spawnSnakeFoodShardAtCell(state, cell, { foodValue = null } = {}) {
     const { x, y } = state.obstacleGrid.gridToWorld(cell.col, cell.row);

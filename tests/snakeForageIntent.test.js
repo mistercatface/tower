@@ -74,7 +74,7 @@ function registerIntentSnakes(state, chains) {
 }
 function perceiveIntentWorld(state, seeker, headId, registry, resolveFood) {
     primeSnakeHeadVision(state, seeker);
-    return perceiveSnakeIntentWorld(seeker, headId, state, registry, resolveFood, getSnakeGameConfig().visionCone);
+    return perceiveSnakeIntentWorld(seeker, headId, state, registry, resolveFood, getSnakeGameConfig().visionRange);
 }
 function pickPolicyFromVisibleWorld(world) {
     return pickSnakeIntentPolicy(createSnakeDecisionBlackboard({ visibleWorld: world }));
@@ -184,7 +184,7 @@ describe("snake forage intent", () => {
         larger.head.y = self.head.y;
         primeSnakeHeadVision(state, self.head);
         const config = getSnakeGameConfig();
-        const threat = findNearestVisibleThreat(self.head, self.head.id, state, registry, config.visionCone);
+        const threat = findNearestVisibleThreat(self.head, self.head.id, state, registry, config.visionRange);
         const cell = pickFleeCell(self.head, threat, grid, navWalkable, getSnakeGameConfig().fleeTiles);
         assert.ok(cell);
         const selfCell = grid.worldToGrid(self.head.x, self.head.y);

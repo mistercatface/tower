@@ -65,7 +65,7 @@ describe("snake shard food query", () => {
 });
 
 describe("snake visible shard food parity", () => {
-    it("matches cone and LOS visibility through the dynamic food query", async () => {
+    it("matches 360 range and LOS visibility through the dynamic food query", async () => {
         applySnakeGameConfig();
         const state = await createFoodQueryState();
         const config = getSnakeGameConfig();

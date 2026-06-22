@@ -16,14 +16,14 @@ export function createSnakeForageIntent({
     selfHeadId,
     registry,
     navWalkable,
-    visionCone = null,
+    visionRange = null,
     seekArrivalRadius = null,
     resolveHunger = null,
     resolveSegmentCount = null,
     rng = Math.random,
 }) {
     const config = getSnakeGameConfig();
-    const resolvedVision = visionCone ?? config.visionCone;
+    const resolvedVision = visionRange ?? config.visionRange;
     const intentMemory = createSnakeIntentMemory(config.intentMemory);
     const locomotion = createCellTargetLocomotion(headNav);
     const fleeHysteresis = config.fleeHysteresis;

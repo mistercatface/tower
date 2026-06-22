@@ -26,17 +26,17 @@ function perceiveFocusedAgentWorld(state, ctx) {
     const { head, headId, species } = ctx;
     const registry = state.sandbox.snakeGame.registry;
     const config = getSnakeGameConfig();
-    const cone = config.visionCone;
-    if (species === "flee_agent") return perceiveFleeAgentWorld(head, headId, state, registry, () => null, cone, resolveFleeAgentPerceptionOptions(state, cone));
-    return perceiveSnakeIntentWorld(head, headId, state, registry, () => null, cone);
+    const visionRange = config.visionRange;
+    if (species === "flee_agent") return perceiveFleeAgentWorld(head, headId, state, registry, () => null, visionRange, resolveFleeAgentPerceptionOptions(state, visionRange));
+    return perceiveSnakeIntentWorld(head, headId, state, registry, () => null, visionRange);
 }
 export function appendFocusedAgentVisionOverlayCommands(out, state, ctx) {
     if (!ctx?.head) return;
     const config = getSnakeGameConfig();
-    const cone = config.visionCone;
+    const visionRange = config.visionRange;
     const frame = requireSnakeVisionFrame(state);
-    const vision = frame.ensureHeadVision(ctx.head, cone);
-    appendGridCellVisionOverlayCommands(out, { grid: state.obstacleGrid, cells: vision.cells, cellFill: cone.cellFill });
+    const vision = frame.ensureHeadVision(ctx.head, visionRange);
+    appendGridCellVisionOverlayCommands(out, { grid: state.obstacleGrid, cells: vision.cells, cellFill: visionRange.cellFill });
     const world = perceiveFocusedAgentWorld(state, ctx);
     const intentTarget = ctx.getIntentTarget?.();
     const committedTargetId = intentTarget?.targetId ?? null;

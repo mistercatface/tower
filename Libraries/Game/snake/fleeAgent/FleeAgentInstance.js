@@ -31,9 +31,9 @@ export class FleeAgentInstance {
         this.baseAccel = null;
         this.baseTint = getAgentIdentity(this.headId)?.color ?? null;
         this.brain = createBrain({ spatialMemoryCapacity: config.spatialMemoryCapacity });
-        const brainSync = createSpatialBrainSync(this.brain, { visionCone: config.visionCone, navMemoryStepPenalty: config.navMemoryStepPenalty, navMemoryStepFalloff: config.navMemoryStepFalloff });
+        const brainSync = createSpatialBrainSync(this.brain, { visionRange: config.visionRange, navMemoryStepPenalty: config.navMemoryStepPenalty, navMemoryStepFalloff: config.navMemoryStepFalloff });
         this.headNav = createCellTargetHpaNav(state);
-        const resolvedVisionCone = config.visionCone;
+        const resolvedVisionRange = config.visionRange;
         const terminalHoming = config.terminalHoming;
         const resolveSeekArrivalOptions = (mode, agent, target) => {
             if (mode === "seek_ally") {
@@ -45,8 +45,8 @@ export class FleeAgentInstance {
         };
         const resolveVisibleFood = (seeker, gameState, visionContext = null) => {
             return visionContext
-                ? findNearestVisibleSnakeFoodFromVision(gameState, seeker, visionContext.frame, visionContext.vision, visionContext.visionCone)
-                : findNearestVisibleSnakeFood(gameState, seeker, resolvedVisionCone);
+                ? findNearestVisibleSnakeFoodFromVision(gameState, seeker, visionContext.frame, visionContext.vision, visionContext.visionRange)
+                : findNearestVisibleSnakeFood(gameState, seeker, resolvedVisionRange);
         };
         this.intent = createFleeExploreIntent({
             brain: this.brain,
@@ -57,7 +57,7 @@ export class FleeAgentInstance {
             selfHeadId: this.headId,
             registry: snakeGame.registry,
             navWalkable: snakeGame.navWalkable,
-            visionCone: resolvedVisionCone,
+            visionRange: resolvedVisionRange,
             seekArrivalRadius: resolveSeekArrivalOptions,
             resolveHunger: () => getFleeHunger(this.metabolism),
             terminalHoming,

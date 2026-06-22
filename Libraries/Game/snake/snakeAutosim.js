@@ -16,11 +16,11 @@ import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHun
 import { enforceSnakeMinLength } from "./snakeCombat.js";
 import { getSnakeInstance } from "./SnakeInstance.js";
 import { tickAgentIntent } from "./snakeAgentLifecycle.js";
-export function createSnakeBrain(visionConeOverride) {
+export function createSnakeBrain(visionRangeOverride) {
     const config = getSnakeGameConfig();
     const brain = createBrain({ spatialMemoryCapacity: config.spatialMemoryCapacity });
     const sync = createSpatialBrainSync(brain, {
-        visionCone: visionConeOverride ?? config.visionCone,
+        visionRange: visionRangeOverride ?? config.visionRange,
         navMemoryStepPenalty: config.navMemoryStepPenalty,
         navMemoryStepFalloff: config.navMemoryStepFalloff,
     });
@@ -50,7 +50,7 @@ function runSnakeFsmTick(intent, seeker, state, dt, beforeNav = null) {
     });
     return choice;
 }
-export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null, initialFoodFraction = 1 }) {
+export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionRange = null, initialFoodFraction = 1 }) {
     const config = getSnakeGameConfig();
     let tailId = null;
     const members = chainMemberProps(state, headId);
@@ -61,14 +61,14 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
     const resolvedEatRadius = eatRadius ?? (() => resolveSnakeEatRadius(config, getSnakeChainRadius(state, headId)));
     const resolveHuntArrivalRadius = () => Math.max(2, getSnakeChainRadius(state, headId) * 0.25);
     const registry = state.sandbox.snakeGame.registry;
-    const { brain, sync } = createSnakeBrain(visionCone);
+    const { brain, sync } = createSnakeBrain(visionRange);
     const headNav = createCellTargetHpaNav(state);
-    const resolvedVisionCone = visionCone ?? config.visionCone;
+    const resolvedVisionRange = visionRange ?? config.visionRange;
     const metabolism = createSnakeMetabolism();
     const resolveVisibleFood = (seeker, gameState, visionContext = null) => {
         return visionContext
-            ? findNearestVisibleSnakeFoodFromVision(gameState, seeker, visionContext.frame, visionContext.vision, visionContext.visionCone)
-            : findNearestVisibleSnakeFood(gameState, seeker, resolvedVisionCone);
+            ? findNearestVisibleSnakeFoodFromVision(gameState, seeker, visionContext.frame, visionContext.vision, visionContext.visionRange)
+            : findNearestVisibleSnakeFood(gameState, seeker, resolvedVisionRange);
     };
     const intent = createSnakeForageIntent({
         brain,
@@ -79,7 +79,7 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
         selfHeadId: headId,
         registry,
         navWalkable,
-        visionCone: resolvedVisionCone,
+        visionRange: resolvedVisionRange,
         seekArrivalRadius: (mode, agent, target) => {
             const terminalHoming = config.terminalHoming;
             if (mode === "seek_ally") {

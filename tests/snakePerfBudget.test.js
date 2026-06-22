@@ -96,7 +96,7 @@ function buildMultiSnakeSession(state) {
 }
 describe("snakePerfBudget", () => {
     it("50 snakes with brains stay within wall-clock and replan budget", async () => {
-        applySnakeGameConfig({ snakeCount: 50, showAllSnakeVisionCones: false, brainSyncOffScreenInterval: 4 });
+        applySnakeGameConfig({ snakeCount: 50, brainSyncOffScreenInterval: 4 });
         resetKineticConstraintIds(1);
         resetVisionFullBuildCount();
         const state = await createPerfState();

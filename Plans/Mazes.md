@@ -188,4 +188,4 @@ tests/snakeMapGen.test.js
 | ~~`corridorBundle` `searchBounds` param~~            | ✅ Removed                                                         |
 | ~~`collectOpenCavernCells` / `cavernFloorCells.js`~~ | ✅ → `walkableCells.js`                                            |
 | Corridor-maze / `snakeRailCorridorMaze`              | **Deleted** — do not resurrect without floor-mask + grid stamp fix |
-| ~~`visionCone.stroke`~~                              | ✅ Removed — fill-only overlays                                    |
+| ~~`visionRange.stroke`~~                              | ✅ Removed — fill-only overlays                                    |

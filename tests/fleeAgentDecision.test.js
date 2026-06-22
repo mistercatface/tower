@@ -86,7 +86,7 @@ describe("flee agent decision model", () => {
         allyPack.head.x = seekerPack.head.x + 64;
         allyPack.head.y = seekerPack.head.y;
         registerAgentInstance(snakeGame, "flee_agent", createFleeAgentInstance(state, { headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
-        primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().visionCone);
+        primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().visionRange);
         seeker.tick(state, 16);
         assert.equal(seeker.intent.getMode(), "seek_ally");
         assert.equal(seeker.intent.getTargetId(), allyPack.head.id);
@@ -135,7 +135,7 @@ describe("flee agent decision model", () => {
         const threat = spawnSnakeChain(state, { col: 10, row: 14 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
@@ -154,7 +154,7 @@ describe("flee agent decision model", () => {
         const threat = spawnSnakeChain(state, { col: 10, row: 14 }, { segmentCount: 6, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);

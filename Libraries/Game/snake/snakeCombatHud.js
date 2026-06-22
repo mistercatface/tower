@@ -7,14 +7,14 @@ export function resolveSnakeCombatHud(snakeHeadId, state, registry, autosimsByHe
     const hunting = mode === "seek_prey";
     let hunted = mode === "flee";
     if (!hunted) {
-        const visionCone = getSnakeGameConfig().visionCone;
+        const visionRange = getSnakeGameConfig().visionRange;
         for (const [headId, otherAutosim] of autosimsByHeadId) {
             if (headId === snakeHeadId) continue;
             if (!isAliveAgentHead(registry, headId)) continue;
             if (otherAutosim.getMode?.() !== "seek_prey") continue;
             const hunter = state.entityRegistry.getLive(headId);
             if (!hunter || hunter.isDead) continue;
-            const prey = perceiveSnakeIntentWorld(hunter, headId, state, registry, () => null, visionCone).prey;
+            const prey = perceiveSnakeIntentWorld(hunter, headId, state, registry, () => null, visionRange).prey;
             if (prey?.id === snakeHeadId) {
                 hunted = true;
                 break;

@@ -19,13 +19,13 @@ export function createFleeExploreIntent({
     selfHeadId,
     registry,
     navWalkable,
-    visionCone = null,
+    visionRange = null,
     seekArrivalRadius = null,
     resolveHunger = null,
     rng = Math.random,
 }) {
     const config = getSnakeGameConfig();
-    const resolvedVision = visionCone ?? config.visionCone;
+    const resolvedVision = visionRange ?? config.visionRange;
     const locomotion = createCellTargetLocomotion(headNav);
     const fleeHysteresis = config.fleeHysteresis;
     const intentMemory = createFleeIntentMemory(config.intentMemory);

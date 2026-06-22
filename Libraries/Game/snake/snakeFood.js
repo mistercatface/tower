@@ -1,5 +1,5 @@
 import { centerReachAabbInto, createAabb } from "../../Math/Aabb2D.js";
-import { hasGridCellLineOfSightCached, isWorldPointInVisionCone } from "../../Navigation/perception/gridCellVision.js";
+import { buildVisionCellSet, isPointVisibleFromHeadVision } from "../../Navigation/perception/gridCellVision.js";
 import { kineticSpatial } from "../../../Systems/World/KineticSpatialFrame.js";
 import { isSnakeFracturableDeadSegment, SNAKE_SHARD_PROP_ID } from "./snakeSegmentFracture.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
@@ -25,24 +25,20 @@ export function collectSnakeFoodPropsInBounds(state, bounds, spatialFrame = kine
 export function collectSnakeFoodProps(state, spatialFrame = kineticSpatial) {
     return collectSnakeFoodPropsInBounds(state, snakeWorldBoundsInto(ALL_FOOD_QUERY_BOUNDS, state), spatialFrame);
 }
-function collectSnakeFoodCandidates(state, seeker, visionCone, spatialFrame = kineticSpatial) {
-    centerReachAabbInto(FOOD_QUERY_BOUNDS, seeker.x, seeker.y, visionCone.range);
+function collectSnakeFoodCandidates(state, seeker, visionRange, spatialFrame = kineticSpatial) {
+    centerReachAabbInto(FOOD_QUERY_BOUNDS, seeker.x, seeker.y, visionRange.range);
     return collectSnakeFoodPropsInBounds(state, FOOD_QUERY_BOUNDS, spatialFrame);
 }
-export function findNearestVisibleSnakeFoodFromVision(state, seeker, frame, vision, visionCone = frame.visionCone) {
+export function findNearestVisibleSnakeFoodFromVision(state, seeker, frame, vision, visionRange = frame.visionRange) {
     if (!vision) return null;
-    const navTopology = frame.navTopology;
-    const visionSession = frame.visionSession;
-    const candidates = collectSnakeFoodCandidates(state, seeker, visionCone);
-    const grid = navTopology.grid;
+    const cellSet = buildVisionCellSet(vision.cells, frame.navTopology.grid.cols);
+    const candidates = collectSnakeFoodCandidates(state, seeker, visionRange);
     let nearest = null;
     let bestDist = Infinity;
     for (let i = 0; i < candidates.length; i++) {
         const food = candidates[i];
         if (food === seeker || food.isDead) continue;
-        if (!isWorldPointInVisionCone(seeker.x, seeker.y, vision.heading, visionCone.halfAngle, visionCone.range, food.x, food.y)) continue;
-        const { col, row } = grid.worldToGrid(food.x, food.y);
-        if (!hasGridCellLineOfSightCached(visionSession, navTopology, vision.originCol, vision.originRow, col, row)) continue;
+        if (!isPointVisibleFromHeadVision(food.x, food.y, seeker.x, seeker.y, vision.originCol, vision.originRow, visionRange.range, cellSet, frame.navTopology, frame.visionSession)) continue;
         const dist = Math.hypot(food.x - seeker.x, food.y - seeker.y);
         if (dist < bestDist) {
             bestDist = dist;
@@ -51,28 +47,24 @@ export function findNearestVisibleSnakeFoodFromVision(state, seeker, frame, visi
     }
     return nearest;
 }
-export function collectVisibleSnakeFoodFromVision(state, seeker, frame, vision, visionCone = frame.visionCone) {
+export function collectVisibleSnakeFoodFromVision(state, seeker, frame, vision, visionRange = frame.visionRange) {
     if (!vision) return [];
-    const navTopology = frame.navTopology;
-    const visionSession = frame.visionSession;
-    const candidates = collectSnakeFoodCandidates(state, seeker, visionCone);
-    const grid = navTopology.grid;
+    const cellSet = buildVisionCellSet(vision.cells, frame.navTopology.grid.cols);
+    const candidates = collectSnakeFoodCandidates(state, seeker, visionRange);
     const visible = [];
     for (let i = 0; i < candidates.length; i++) {
         const food = candidates[i];
         if (food === seeker || food.isDead) continue;
-        if (!isWorldPointInVisionCone(seeker.x, seeker.y, vision.heading, visionCone.halfAngle, visionCone.range, food.x, food.y)) continue;
-        const { col, row } = grid.worldToGrid(food.x, food.y);
-        if (!hasGridCellLineOfSightCached(visionSession, navTopology, vision.originCol, vision.originRow, col, row)) continue;
+        if (!isPointVisibleFromHeadVision(food.x, food.y, seeker.x, seeker.y, vision.originCol, vision.originRow, visionRange.range, cellSet, frame.navTopology, frame.visionSession)) continue;
         visible.push(food);
     }
     return visible;
 }
-export function findNearestVisibleSnakeFood(state, seeker, visionCone) {
+export function findNearestVisibleSnakeFood(state, seeker, visionRange) {
     const frame = requireSnakeVisionFrame(state);
-    const cone = visionCone ?? frame.visionCone;
-    const vision = frame.readHeadVision(seeker, cone);
-    return findNearestVisibleSnakeFoodFromVision(state, seeker, frame, vision, cone);
+    const resolved = visionRange ?? frame.visionRange;
+    const vision = frame.readHeadVision(seeker, resolved);
+    return findNearestVisibleSnakeFoodFromVision(state, seeker, frame, vision, resolved);
 }
 export function countLiveSnakeFood(state) {
     return collectSnakeFoodProps(state).length;

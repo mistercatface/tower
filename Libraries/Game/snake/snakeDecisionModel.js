@@ -11,7 +11,7 @@ export function deriveSnakeHungerState(foodFraction) {
 export function deriveSnakeThreatState(visibleThreat, threatDist) {
     if (!visibleThreat || threatDist == null) return null;
     const config = getSnakeGameConfig();
-    const fleeRange = config.fleeRange ?? config.visionCone.range;
+    const fleeRange = config.fleeRange ?? config.visionRange.range;
     const severity = Math.max(0, Math.min(1, (fleeRange - threatDist) / fleeRange));
     return { dist: threatDist, severity, lethal: threatDist <= config.lethalThreatRange };
 }

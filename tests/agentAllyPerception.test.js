@@ -95,8 +95,8 @@ describe("ally perception", () => {
         allyPack.head.y = seekerPack.head.y;
         strangerPack.head.x = seekerPack.head.x + 64;
         strangerPack.head.y = seekerPack.head.y + 64;
-        primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().visionCone);
-        const world = perceiveFleeAgentWorld(seekerPack.head, seekerPack.head.id, state, registry, () => null, getSnakeGameConfig().visionCone, {
+        primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().visionRange);
+        const world = perceiveFleeAgentWorld(seekerPack.head, seekerPack.head.id, state, registry, () => null, getSnakeGameConfig().visionRange, {
             readVisionFrame: requireSnakeVisionFrame,
             agentRange: getSnakeGameConfig().fleeRange,
             resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(snakeGame, selfHeadId, headId, state),

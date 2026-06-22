@@ -6,10 +6,18 @@ function threatSeverityForDist(dist, fleeRange) {
  * Single vision pass over alive agent heads — threat, prey/rival, and ally slots.
  * Allies are same-faction friendlies; they never occupy prey/threat.
  */
-export function classifyAgentVision(seeker, selfHeadId, state, registry, frame, vision, { visionCone = frame.visionCone, agentRange = visionCone.range, resolveRelationship, trackPrey = true } = {}) {
+export function classifyAgentVision(
+    seeker,
+    selfHeadId,
+    state,
+    registry,
+    frame,
+    vision,
+    { visionRange = frame.visionRange, agentRange = visionRange.range, resolveRelationship, trackPrey = true } = {},
+) {
     const navTopology = frame.navTopology;
     const visionSession = frame.visionSession;
-    const range = agentRange ?? visionCone.range;
+    const range = agentRange ?? visionRange.range;
     const rangeSq = range * range;
     const originCol = vision?.originCol ?? navTopology.grid.worldToGrid(seeker.x, seeker.y).col;
     const originRow = vision?.originRow ?? navTopology.grid.worldToGrid(seeker.x, seeker.y).row;

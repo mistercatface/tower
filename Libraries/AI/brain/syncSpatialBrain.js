@@ -1,12 +1,12 @@
 import { buildNavStepPenaltyFromSpatialMemory } from "./navStepPenalty.js";
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
-export function createSpatialBrainSync(brain, { visionCone, navMemoryStepPenalty, navMemoryStepFalloff }) {
+export function createSpatialBrainSync(brain, { visionRange, navMemoryStepPenalty, navMemoryStepFalloff }) {
     let lastPenaltyGeneration = -1;
     let lastPenalty = null;
     return function syncSpatialBrain(agent, state) {
         const frame = getObserverVisionFrame(state);
         if (frame.shouldSyncBrain(agent)) {
-            const vision = frame.ensureHeadVision(agent, visionCone);
+            const vision = frame.ensureHeadVision(agent, visionRange);
             brain.stampSeenCells(vision.cells);
         }
         const generation = brain.spatial.generation;
