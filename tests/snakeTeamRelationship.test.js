@@ -6,7 +6,10 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { resolveAgentRelationship } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
+import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
+import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
+import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
 
@@ -49,7 +52,7 @@ describe("resolveAgentRelationship team hunting", () => {
         assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "ally");
     });
 
-    it("opposite faction smaller snake is prey", async () => {
+    it("opposite faction within rival band is rival", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(2);
         const { state } = await createSnakeGameHarnessState();
@@ -59,15 +62,29 @@ describe("resolveAgentRelationship team hunting", () => {
             { chain: seeker, faction: "red" },
             { chain: target, faction: "blue" },
         ]);
-        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "prey");
+        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "rival");
+        assert.equal(resolveAgentRelationship(snakeGame, target.head.id, seeker.head.id, state), "rival");
     });
 
-    it("opposite faction larger snake is threat", async () => {
+    it("opposite faction outside rival band smaller snake is prey", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(3);
         const { state } = await createSnakeGameHarnessState();
+        const seeker = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(6));
+        const target = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
+        const snakeGame = wireRelationshipSnakes(state, [
+            { chain: seeker, faction: "red" },
+            { chain: target, faction: "blue" },
+        ]);
+        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "prey");
+    });
+
+    it("opposite faction outside rival band larger snake is threat", async () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(4);
+        const { state } = await createSnakeGameHarnessState();
         const seeker = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
-        const target = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
+        const target = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(6));
         const snakeGame = wireRelationshipSnakes(state, [
             { chain: seeker, faction: "red" },
             { chain: target, faction: "blue" },
@@ -75,9 +92,9 @@ describe("resolveAgentRelationship team hunting", () => {
         assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "threat");
     });
 
-    it("opposite faction equal size is neutral", async () => {
+    it("opposite faction equal size is rival", async () => {
         applySnakeGameConfig();
-        resetKineticConstraintIds(4);
+        resetKineticConstraintIds(5);
         const { state } = await createSnakeGameHarnessState();
         const seeker = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
         const target = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
@@ -85,12 +102,26 @@ describe("resolveAgentRelationship team hunting", () => {
             { chain: seeker, faction: "red" },
             { chain: target, faction: "blue" },
         ]);
-        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "neutral");
+        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "rival");
+    });
+
+    it("flee agent treats any snake as threat", async () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(6);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const fleeInstance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        const smallSnake = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
+        registerSnakeTestInstance(state, snakeGame, { headId: smallSnake.head.id, spawnGroupId: smallSnake.spawnGroupId });
+        smallSnake.head.faction = "blue";
+        assert.equal(resolveAgentRelationship(snakeGame, pack.head.id, smallSnake.head.id, state), "threat");
     });
 
     it("missing faction is neutral", async () => {
         applySnakeGameConfig();
-        resetKineticConstraintIds(5);
+        resetKineticConstraintIds(7);
         const { state } = await createSnakeGameHarnessState();
         const seeker = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
         const target = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));

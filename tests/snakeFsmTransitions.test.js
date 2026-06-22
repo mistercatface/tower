@@ -261,7 +261,7 @@ describe("snake FSM transitions", () => {
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
         const prey = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
-        const threat = spawnLinkedBallChain(state, { col: 24, row: 10 }, chainOptions(7));
+        const threat = spawnLinkedBallChain(state, { col: 24, row: 10 }, chainOptions(8));
         wireSnakeTestGame(state, [
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
@@ -291,7 +291,7 @@ describe("snake FSM transitions", () => {
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
-        const threat = spawnLinkedBallChain(state, { col: 13, row: 10 }, chainOptions(7));
+        const threat = spawnLinkedBallChain(state, { col: 13, row: 10 }, chainOptions(8));
         wireSnakeTestGame(state, [
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: threat.head.id, spawnGroupId: threat.spawnGroupId },
@@ -407,7 +407,7 @@ describe("snake FSM transitions", () => {
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, chainOptions(3));
-        const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
+        const large = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(6));
         wireSnakeTestGame(state, [
             { headId: small.head.id, spawnGroupId: small.spawnGroupId },
             { headId: large.head.id, spawnGroupId: large.spawnGroupId },
@@ -433,7 +433,7 @@ describe("snake FSM transitions", () => {
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 24, row: 20 }, chainOptions(3));
-        const large = spawnLinkedBallChain(state, { col: 28, row: 20 }, chainOptions(5));
+        const large = spawnLinkedBallChain(state, { col: 28, row: 20 }, chainOptions(6));
         wireSnakeTestGame(state, [
             { headId: small.head.id, spawnGroupId: small.spawnGroupId },
             { headId: large.head.id, spawnGroupId: large.spawnGroupId },
@@ -538,6 +538,32 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "flee");
         autosim.tick(FRAME_MS);
         assert.equal(autosim.isSprinting(), false);
+    });
+    it("equal rivals both seek prey when visible", async () => {
+        applySnakeGameConfig({ fleeRange: 128, showSnakeFsmDebug: true });
+        resetKineticConstraintIds(50);
+        const state = await createFsmTestState();
+        const red = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
+        const blue = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(5));
+        wireSnakeTestGame(state, [
+            { headId: red.head.id, spawnGroupId: red.spawnGroupId },
+            { headId: blue.head.id, spawnGroupId: blue.spawnGroupId },
+        ]);
+        assignTeamFactions([
+            { chain: red, faction: "red" },
+            { chain: blue, faction: "blue" },
+        ]);
+        red.head.facing = 0;
+        blue.head.x = red.head.x + 64;
+        blue.head.y = red.head.y;
+        const redAutosim = createWiredSnakeAutosim(state, { headId: red.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 1.0 });
+        const blueAutosim = createWiredSnakeAutosim(state, { headId: blue.head.id, behaviorById: snakeBehaviors(state), rng: () => 0, initialFoodFraction: 1.0 });
+        redAutosim.start();
+        blueAutosim.start();
+        assert.equal(redAutosim.getMode(), "seek_prey");
+        assert.equal(blueAutosim.getMode(), "seek_prey");
+        assert.equal(redAutosim.getDestination().targetId, blue.head.id);
+        assert.equal(blueAutosim.getDestination().targetId, red.head.id);
     });
     it("createSnakeAutosim requires a wired registry", async () => {
         applySnakeGameConfig();

@@ -21,7 +21,7 @@ describe("snakeGameConfig", () => {
         assert.equal(resolveSnakeEatRadius(getSnakeGameConfig(), 2), 2 + 2 + SNAKE_GAME_DEFAULTS.eatMargin);
     });
 
-    it("resolveSnakeWallDamageConfig links kinetic floor to striker drag-launch ceiling", () => {
+    it("resolveSnakeWallDamageConfig links kinetic floor to reference speed ceiling", () => {
         applySnakeGameConfig();
         const wallDamage = resolveSnakeWallDamageConfig();
         assert.equal(wallDamage.minStrikeSpeed, SNAKE_KINETIC_MIN_STRIKE_SPEED);

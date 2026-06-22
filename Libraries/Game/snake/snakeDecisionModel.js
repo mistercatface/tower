@@ -130,17 +130,11 @@ function scorePreyDetail(blackboard, weights, pressure) {
     if (!prey) return { net: -Infinity };
     const hunger = blackboard.facts.hungerState;
     let value = preyValueForHunger(weights, pressure, hunger);
-    // Check if prey is a snake on the opposite team
     const isPreySnake = prey.type === "snake_head";
-    const isEnemySnake = isPreySnake && blackboard.facts.seekerFaction && prey.faction !== blackboard.facts.seekerFaction;
-    if (isEnemySnake)
-        // Attack no matter what! Massive value boost
-        value = weights.prey + 1000;
-    else {
-        const foodUnknown = !blackboard.facts.known.food;
-        const routeFailed = !!blackboard.facts.routeStatus?.routeFailed;
-        if (hunger?.desperate && (foodUnknown || routeFailed)) value += pressure.preyDesperationBonus;
-    }
+    const seekerFaction = blackboard.facts.seekerFaction;
+    const isEnemySnake = isPreySnake && seekerFaction && prey.faction && prey.faction !== seekerFaction;
+    if (isEnemySnake) value = pressure.enemySnakePreyValue ?? weights.prey + 1000;
+    else if (hunger?.desperate && (!blackboard.facts.known.food || blackboard.facts.routeStatus?.routeFailed)) value += pressure.preyDesperationBonus;
     return netScoreDetail(value, reachForCandidate(blackboard, "seek_prey", "prey"), costPerCellForHunger(pressure, hunger));
 }
 function scoreFoodDetail(blackboard, weights, pressure) {

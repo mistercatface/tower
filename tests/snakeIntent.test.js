@@ -176,12 +176,15 @@ describe("snake intent FSM", () => {
         const state = await createIntentTestState();
         const seekerChain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...snakeChainOptions(), segmentCount: 5 });
         const preyChain = spawnLinkedBallChain(state, { col: 14, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });
-        const threatChain = spawnLinkedBallChain(state, { col: 16, row: 10 }, { ...snakeChainOptions(), segmentCount: 7 });
+        const threatChain = spawnLinkedBallChain(state, { col: 16, row: 10 }, { ...snakeChainOptions(), segmentCount: 8 });
         const { registry } = wireSnakeTestGame(state, [
             { headId: seekerChain.head.id, spawnGroupId: seekerChain.spawnGroupId },
             { headId: preyChain.head.id, spawnGroupId: preyChain.spawnGroupId },
             { headId: threatChain.head.id, spawnGroupId: threatChain.spawnGroupId },
         ]);
+        seekerChain.head.faction = "red";
+        preyChain.head.faction = "blue";
+        threatChain.head.faction = "blue";
         const seeker = seekerChain.head;
         seeker.facing = 0;
         preyChain.head.x = seeker.x + 64;

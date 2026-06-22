@@ -1,4 +1,5 @@
-import { getSnakeSizeScore } from "../snakeScale.js";
+import { getSnakeSegmentCount } from "../snakeScale.js";
+import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { createAliveSnakeInstance } from "../SnakeInstance.js";
 import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
@@ -52,10 +53,12 @@ export const snakeSpecies = {
             const targetFaction = targetHead?.faction ?? null;
             if (!seekerFaction || !targetFaction) return "neutral";
             if (seekerFaction === targetFaction) return "ally";
-            const seekerScore = getSnakeSizeScore(state, seekerId);
-            const targetScore = getSnakeSizeScore(state, targetId);
-            if (targetScore > seekerScore) return "threat";
-            if (targetScore < seekerScore) return "prey";
+            const maxGap = getSnakeGameConfig().rivalBand?.maxSegmentGap ?? 2;
+            const seekerSegs = getSnakeSegmentCount(state, seekerId);
+            const targetSegs = getSnakeSegmentCount(state, targetId);
+            if (Math.abs(seekerSegs - targetSegs) <= maxGap) return "rival";
+            if (targetSegs > seekerSegs) return "threat";
+            if (targetSegs < seekerSegs) return "prey";
             return "neutral";
         }
         if (targetSpecies === "flee_agent") return "prey";

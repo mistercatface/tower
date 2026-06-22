@@ -21,7 +21,6 @@ import puzzle_belt_crate from "./puzzle_belt_crate/puzzle_belt_crate.asset.js";
 import corridor from "./corridor/corridor.asset.js";
 import goal_orb from "./goal_orb/goal_orb.asset.js";
 import snake_head from "./snake_head/snake_head.asset.js";
-import snake_striker from "./snake_striker/snake_striker.asset.js";
 import snake_shard from "./snake_shard/snake_shard.asset.js";
 import poolBalls from "./poolBalls.js";
 const catalog = {
@@ -48,7 +47,6 @@ const catalog = {
     corridor,
     goal_orb,
     snake_head,
-    snake_striker,
     snake_shard,
     ...poolBalls,
 };

@@ -80,6 +80,25 @@ describe("flee agent decision model", () => {
         assert.ok(scores.flee.net > scores.explore.net);
     });
 
+    it("flees from a visible smaller snake instead of exploring", async () => {
+        resetKineticConstraintIds(41);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig({ startRadius: 2, fleeAgent: { sprint: { fleeSeverity: 0.3 } } });
+        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", instance);
+        instance.start(state);
+        setFleeHunger(instance.metabolism, 0.7);
+        const threat = spawnSnakeChain(state, { col: 10, row: 14 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
+        registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
+        threat.chain.head.faction = "snake";
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
+        instance.tick(state, 16);
+        assert.equal(instance.intent.getMode(), "flee");
+        assert.equal(instance.sprinting, true);
+    });
+
     it("flees from a visible larger snake instead of exploring", async () => {
         resetKineticConstraintIds(40);
         const { state } = await createSnakeGameHarnessState();

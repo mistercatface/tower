@@ -1,4 +1,4 @@
-/** Minimum pre-impact speed for kinetic wall chips and striker snake cuts. */
+/** Minimum pre-impact speed for kinetic wall chips and snake splits. */
 export const SNAKE_KINETIC_MIN_STRIKE_SPEED = 28;
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
@@ -76,16 +76,10 @@ export const SNAKE_GAME_DEFAULTS = {
     maxAliveSegmentCount: 12,
     /** Relative impact speed required to split a smaller snake at the struck segment. */
     splitImpulseThreshold: 35,
-    /** Kinetic speed floor for striker snake cuts (shared with wallDamage.minStrikeSpeed). */
+    /** Kinetic speed floor for snake splits and wall chips (shared with wallDamage.minStrikeSpeed). */
     kineticMinStrikeSpeed: SNAKE_KINETIC_MIN_STRIKE_SPEED,
-    /**
-     * Wall breakage — flat HP; height level is visual only.
-     * minStrikeSpeed and referenceMaxSpeed are filled by resolveSnakeWallDamageConfig.
-     * referenceMaxSpeed tracks striker drag-launch max; headMaxSpeed caps snake chip rate in practice.
-     */
-    wallDamage: { maxHp: 100, maxHitDamage: 45, minAngleFactor: 0.2 },
-    /** Placed beside the center-start snake; drag-launch with at-rest gate. */
-    strikerPropId: "snake_striker",
+    /** Wall breakage — flat HP; height level is visual only. minStrikeSpeed filled by resolveSnakeWallDamageConfig. */
+    wallDamage: { maxHp: 100, maxHitDamage: 45, minAngleFactor: 0.2, referenceMaxSpeed: 560 },
     /** Grid tiles to flee away from a visible larger snake (Chebyshev step). */
     fleeTiles: 8,
     /** Max world distance to react to a larger snake; null uses visionCone.range. */
@@ -108,6 +102,8 @@ export const SNAKE_GAME_DEFAULTS = {
     metabolism: { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 },
     /** Hunger-bar cutoffs for the satisfied/hungry/desperate facts (1 = just ate, 0 = starving). */
     hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
+    /** Opposite-faction snakes within this segment gap duel (both hunt) instead of hunt/flee. */
+    rivalBand: { maxSegmentGap: 2 },
     /** Decision scoring base weights. Shard food is safer than live prey, with threat and route pressure layered on top. */
     decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 },
     /**
@@ -119,6 +115,8 @@ export const SNAKE_GAME_DEFAULTS = {
     decisionPressure: {
         foodHungerBonus: 300,
         preyDesperationBonus: 250,
+        /** Flat seek_prey score for visible enemy snake targets (prey or rival). */
+        enemySnakePreyValue: 1300,
         /** How much a snake discounts a (non-lethal) threat by hunger when scoring flee. 0 = always flee. */
         riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 },
         effort: { costPerCell: { satisfied: 25, hungry: 20, desperate: 6 }, preyValue: { satisfied: 140, hungry: 300, desperate: 550 } },

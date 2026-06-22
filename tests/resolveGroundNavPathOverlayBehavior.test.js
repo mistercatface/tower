@@ -14,7 +14,7 @@ test("resolveGroundNavPathOverlayBehavior uses stamped ground nav even when spaw
         [hpaBehavior.id, hpaBehavior],
         [dragLaunchWait.id, dragLaunchWait],
     ]);
-    const prop = { id: 1, x: 24, y: 24, radius: 2, type: "snake_striker" };
+    const prop = { id: 1, x: 24, y: 24, radius: 2, type: "ball" };
     state.sandbox.entityMeta.setActiveBehaviorId(prop.id, HPA_GROUND_NAV_BEHAVIOR_ID);
 
     const resolved = resolveGroundNavPathOverlayBehavior(state, prop, behaviorById);
@@ -25,7 +25,7 @@ test("resolveGroundNavPathOverlayBehavior returns null without active ground nav
     const state = { sandbox: { entityMeta: new SandboxEntityMetaStore() } };
     const hpaBehavior = createHpaGroundNavBehavior(state);
     const behaviorById = new Map([[hpaBehavior.id, hpaBehavior]]);
-    const prop = { id: 1, x: 24, y: 24, radius: 2, type: "snake_striker" };
+    const prop = { id: 1, x: 24, y: 24, radius: 2, type: "ball" };
 
     assert.equal(resolveGroundNavPathOverlayBehavior(state, prop, behaviorById), null);
 });

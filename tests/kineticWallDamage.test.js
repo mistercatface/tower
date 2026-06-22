@@ -36,7 +36,7 @@ function stampVoxel(grid, col, row, level = 1) {
     grid.grid[colRowToIndex(col, row, grid.cols)] = level;
 }
 describe("kinetic wall damage", () => {
-    it("resolveSnakeWallDamageConfig shares kinetic floor and striker speed ceiling", () => {
+    it("resolveSnakeWallDamageConfig shares kinetic floor and reference speed ceiling", () => {
         assert.equal(WALL_DAMAGE.minStrikeSpeed, SNAKE_KINETIC_MIN_STRIKE_SPEED);
         assert.equal(WALL_DAMAGE.referenceMaxSpeed, 560);
     });

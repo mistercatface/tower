@@ -33,10 +33,9 @@ export function resolveSnakeEatRadius(config = getSnakeGameConfig(), segmentRadi
 export function resolveSnakeStartRadius(config = getSnakeGameConfig()) {
     return config.startRadius;
 }
-/** Runtime wall-damage tuning for snake mode (shared kinetic floor + striker speed ceiling). */
+/** Runtime wall-damage tuning for snake mode (shared kinetic floor + reference speed ceiling). */
 export function resolveSnakeWallDamageConfig(config = getSnakeGameConfig()) {
-    const strikerMax = getPropAsset(config.strikerPropId)?.sandbox?.dragLaunch?.maxPower ?? 560;
-    return { ...config.wallDamage, minStrikeSpeed: SNAKE_KINETIC_MIN_STRIKE_SPEED, referenceMaxSpeed: strikerMax };
+    return { ...config.wallDamage, minStrikeSpeed: SNAKE_KINETIC_MIN_STRIKE_SPEED, referenceMaxSpeed: config.wallDamage.referenceMaxSpeed };
 }
 export function applySnakeHeadGameplay(head) {
     const config = getSnakeGameConfig();

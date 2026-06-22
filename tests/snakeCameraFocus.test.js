@@ -9,7 +9,6 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
-import { spawnSnakeStriker } from "../Libraries/Game/snake/snakeStriker.js";
 import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCameraTarget.js";
 import { CameraTargetCycler } from "../Libraries/Sandbox/CameraTargetCycler.js";
@@ -39,7 +38,7 @@ function createTestState(cols = 32, rows = 32) {
 
 describe("snake camera focus", () => {
     it("stops following when the focused head dies", () => {
-        applySnakeGameConfig({ segmentCount: 3, strikerPropId: "snake_striker" });
+        applySnakeGameConfig({ segmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3 });
@@ -49,13 +48,10 @@ describe("snake camera focus", () => {
             { headId: second.chain.head.id, spawnGroupId: second.chain.spawnGroupId },
         ]);
         const registry = state.sandbox.snakeGame.registry;
-        const strikerBall = spawnSnakeStriker(state, first.chain.head);
-        state.sandbox.snakeGame.strikerBall = strikerBall;
         const cameraCycler = new CameraTargetCycler(state, {
             getTargetIds: () => {
                 const ids = [];
                 for (const headId of registry.aliveByHeadId.keys()) ids.push(headId);
-                if (strikerBall) ids.push(strikerBall.id);
                 return ids;
             },
         });
