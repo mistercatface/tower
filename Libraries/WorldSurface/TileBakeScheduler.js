@@ -1,37 +1,19 @@
 import { MinHeap } from "../DataStructures/MinHeap.js";
+import { groundChunkWorkerDedupeKey, horizontalPatchWorkerDedupeKey } from "./bake/SurfaceBakeHelpers.js";
+import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
+import { wallAtlasWorkerDedupeKey } from "./WallSurfaceCache.js";
 export const TILE_BAKE_TIER = { REGISTRATION: -1, STATIC: 0, ANIMATION: 1 };
 const FOCUS_RESORT_DIST_SQ = 16 * 16;
 function compareJobs(a, b) {
     if (a.tier !== b.tier) return a.tier - b.tier;
     return a.distSq - b.distSq;
 }
-function horizontalZCacheTag(zLevel = 0) {
-    return zLevel > 0 ? `z${zLevel}roof` : `z${zLevel}`;
-}
-function bakeFrameTag(payload) {
-    const start = payload.frameStart ?? 0;
-    const count = payload.frameCount ?? 1;
-    return `${start}+${count}`;
-}
-function chunkDedupeKey(payload, rev) {
-    const zTag = horizontalZCacheTag(payload.zLevel);
-    return `chunk:${payload.profileId}:${rev}:${zTag}:${payload.chunkCol},${payload.chunkRow}:${payload.seed ?? 0}:${bakeFrameTag(payload)}`;
-}
-function patchDedupeKey(payload, rev) {
-    const zTag = horizontalZCacheTag(payload.zLevel);
-    return `patch:${payload.profileId}:${rev}:${zTag}:${payload.originX.toFixed(1)},${payload.originY.toFixed(1)}:${payload.worldWidth.toFixed(1)}x${payload.worldHeight.toFixed(1)}:${payload.seed ?? 0}:${bakeFrameTag(payload)}`;
-}
-function wallAtlasDedupeKey(payload, rev) {
-    const p1 = payload.p1;
-    const p2 = payload.p2;
-    return `wall:${payload.profileId}:${rev}:${p1.x.toFixed(1)},${p1.y.toFixed(1)}-${p2.x.toFixed(1)},${p2.y.toFixed(1)}:${payload.width}x${payload.height}:${payload.wallHeight ?? 0}:${payload.seed ?? 0}:${bakeFrameTag(payload)}`;
-}
 function dedupeKeyFor(type, payload, tier, getProfileRevision) {
     if (tier === TILE_BAKE_TIER.REGISTRATION) return null;
     const rev = getProfileRevision(payload?.profileId);
-    if (type === "bakeGroundChunk") return chunkDedupeKey(payload, rev);
-    if (type === "bakeHorizontalPatch") return patchDedupeKey(payload, rev);
-    if (type === "bakeWallAtlas") return wallAtlasDedupeKey(payload, rev);
+    if (type === TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK) return groundChunkWorkerDedupeKey(payload, rev);
+    if (type === TILE_WORKER_MESSAGE.BAKE_HORIZONTAL_PATCH) return horizontalPatchWorkerDedupeKey(payload, rev);
+    if (type === TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS) return wallAtlasWorkerDedupeKey(payload, rev);
     return null;
 }
 /**
@@ -50,7 +32,6 @@ export class TileBakeScheduler {
         this.focusY = 0;
         this.sortFocusX = 0;
         this.sortFocusY = 0;
-        this.queueNeedsSort = false;
     }
     updateFocus(x, y) {
         this.focusX = x;
@@ -94,11 +75,10 @@ export class TileBakeScheduler {
         return (cx - this.focusX) ** 2 + (cy - this.focusY) ** 2;
     }
     _resortQueueIfNeeded() {
-        if (!this.queueNeedsSort && this.queue.size > 1) {
+        if (this.queue.size > 1) {
             const movedSq = (this.focusX - this.sortFocusX) ** 2 + (this.focusY - this.sortFocusY) ** 2;
             if (movedSq < FOCUS_RESORT_DIST_SQ) return;
         }
-        this.queueNeedsSort = false;
         this.sortFocusX = this.focusX;
         this.sortFocusY = this.focusY;
         const data = this.queue.data;

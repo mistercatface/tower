@@ -1,4 +1,4 @@
-/** Session-frozen tile bake tuning — installed on workers via TileWorkerCoordinator, read during paint. */
+/** Session-frozen tile bake tuning — installed on workers via TileSurfaceWorkerClient, read during paint. */
 let bakeConstants = null;
 /** @param {{ cellSize: number, cellsPerChunk: number, surfaceBakeScale: number }} constants */
 export function installTileWorkerBakeConstants(constants) {

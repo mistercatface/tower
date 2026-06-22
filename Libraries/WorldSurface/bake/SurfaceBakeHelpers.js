@@ -23,8 +23,20 @@ export function resolveAnimationBakeFrameCounts(profile, settings) {
 export function horizontalZCacheTag(zLevel = 0) {
     return zLevel > 0 ? `z${zLevel}roof` : `z${zLevel}`;
 }
+export function bakeFrameTag(payload) {
+    const start = payload.frameStart ?? 0;
+    const count = payload.frameCount ?? 1;
+    return `${start}+${count}`;
+}
 export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRevision, zLevel = 0) {
     return `chunk:${profileRevision}:${profileId}:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
+}
+export function groundChunkWorkerDedupeKey(payload, profileRevision) {
+    return `${groundChunkCachePrefix(payload.chunkCol, payload.chunkRow, payload.profileId, profileRevision, payload.zLevel ?? 0)}:${payload.seed ?? 0}:${bakeFrameTag(payload)}`;
+}
+export function horizontalPatchWorkerDedupeKey(payload, profileRevision) {
+    const zTag = horizontalZCacheTag(payload.zLevel);
+    return `patch:${profileRevision}:${payload.profileId}:${zTag}:${payload.originX.toFixed(1)},${payload.originY.toFixed(1)}:${payload.worldWidth.toFixed(1)}x${payload.worldHeight.toFixed(1)}:${payload.seed ?? 0}:${bakeFrameTag(payload)}`;
 }
 export function staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel) {
     return `staticRoofMask:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;

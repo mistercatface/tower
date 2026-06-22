@@ -26,8 +26,8 @@ Message types: `Libraries/WorldSurface/TileWorkerMessages.js`
 
 ## Telemetry
 
-- `TileBakeScheduler.stats()` — `{ queueSize, pendingCount, inFlightDedupeCount, busyWorkers }`
-- `TileWorkerCoordinator.bakeSchedulerStats()` — delegates to client; zeros before bootstrap
+- `TileBakeScheduler.stats()` / `TileWorkerCoordinator.stats()` — `{ queueSize, pendingCount, inFlightDedupeCount, busyWorkers }`
+- Worker dedupe keys live in `SurfaceBakeHelpers.js` / `WallSurfaceCache.js` (aligned with cache prefix helpers)
 
 ## Next (worker perf — not Part 3)
 

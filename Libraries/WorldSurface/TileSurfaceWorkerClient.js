@@ -6,7 +6,7 @@ import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { TILE_BAKE_TIER, TileBakeScheduler } from "./TileBakeScheduler.js";
 import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
 import { getSurfaceBakeScale } from "./WorldSurfaceResolution.js";
-const EMPTY_STATS = { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0 };
+export const EMPTY_TILE_BAKE_STATS = { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0 };
 function withBakeFrameRange(payload, profile) {
     const sourceTotal = getAnimationFrames(profile?.animation);
     const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
@@ -49,10 +49,6 @@ export class TileSurfaceWorkerClient {
         this._ensureStarted();
         return this.scheduler.broadcast(type, payload);
     }
-    _requestBake(type, payload, isAnimated) {
-        const tier = isAnimated && !isFirstFrameRange(payload) ? TILE_BAKE_TIER.ANIMATION : TILE_BAKE_TIER.STATIC;
-        return this._sendRequest(type, payload, tier);
-    }
     _ensureRuntimeProfileOnWorkers(profileId) {
         if (!profileId) return this._whenWorkersReady(() => {});
         const provider = getSurfaceProfileProvider();
@@ -61,39 +57,35 @@ export class TileSurfaceWorkerClient {
         if (this.registeredRuntimeProfileIds.has(profileId)) return this.workerReady;
         return this.registerRuntimeProfile(profileId, provider.getProfile(profileId));
     }
+    _requestProfileBake(type, payload, tier) {
+        const profileId = payload.profileId;
+        return this._ensureRuntimeProfileOnWorkers(profileId).then(() => {
+            const profile = getSurfaceProfileProvider().getProfile(profileId);
+            const normalized = withBakeFrameRange(payload, profile);
+            return this._sendRequest(type, normalized, tier);
+        });
+    }
     updateFocus(x, y) {
         this.pendingFocusX = x;
         this.pendingFocusY = y;
         if (this._started) this.scheduler.updateFocus(x, y);
     }
     stats() {
-        return this._started ? this.scheduler.stats() : { ...EMPTY_STATS };
-    }
-    getProfileRevision(profileId) {
-        return getSurfaceProfileRevision(profileId);
+        return this._started ? this.scheduler.stats() : { ...EMPTY_TILE_BAKE_STATS };
     }
     requestGroundChunkBake(payload) {
-        const profileId = payload.profileId;
-        return this._ensureRuntimeProfileOnWorkers(profileId).then(() => {
-            const profile = getSurfaceProfileProvider().getProfile(profileId);
-            const normalized = withBakeFrameRange(payload, profile);
-            return this._sendRequest(TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK, normalized, TILE_BAKE_TIER.STATIC);
-        });
+        return this._requestProfileBake(TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK, payload, TILE_BAKE_TIER.STATIC);
     }
     requestWallAtlasBake(payload) {
-        const profileId = payload.profileId;
-        return this._ensureRuntimeProfileOnWorkers(profileId).then(() => {
-            const profile = getSurfaceProfileProvider().getProfile(profileId);
-            const normalized = withBakeFrameRange(payload, profile);
-            return this._sendRequest(TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS, normalized, TILE_BAKE_TIER.STATIC);
-        });
+        return this._requestProfileBake(TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS, payload, TILE_BAKE_TIER.STATIC);
     }
     requestHorizontalPatchBake(payload) {
         const profileId = payload.profileId;
         return this._ensureRuntimeProfileOnWorkers(profileId).then(() => {
             const profile = getSurfaceProfileProvider().getProfile(profileId);
             const normalized = withBakeFrameRange(payload, profile);
-            return this._requestBake(TILE_WORKER_MESSAGE.BAKE_HORIZONTAL_PATCH, normalized, (normalized.frameCount ?? 1) > 1);
+            const tier = (normalized.frameCount ?? 1) > 1 && !isFirstFrameRange(normalized) ? TILE_BAKE_TIER.ANIMATION : TILE_BAKE_TIER.STATIC;
+            return this._sendRequest(TILE_WORKER_MESSAGE.BAKE_HORIZONTAL_PATCH, normalized, tier);
         });
     }
     registerRuntimeProfile(profileId, profile) {
@@ -109,10 +101,6 @@ export class TileSurfaceWorkerClient {
         this._ensureStarted();
         this.workerReady = this.workerReady.then(() => this._broadcastRequest(TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS, constants));
         return this.workerReady;
-    }
-    recycleWorkers() {
-        if (!this._started) return;
-        for (let i = 0; i < this.pool.size; i++) this.pool.recycleWorker(i);
     }
     shutdown() {
         if (!this._started) return;

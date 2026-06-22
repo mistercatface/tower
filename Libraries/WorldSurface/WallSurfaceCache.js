@@ -1,3 +1,4 @@
+import { bakeFrameTag } from "./bake/SurfaceBakeHelpers.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 /**
  * @typedef {Object} WallAtlasBakeContext
@@ -11,6 +12,11 @@ import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
  * @param {number} atlasHeight
  * @param {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} [settings]
  */
+export function wallAtlasWorkerDedupeKey(payload, profileRevision) {
+    const p1 = payload.p1;
+    const p2 = payload.p2;
+    return `wall:${profileRevision}:${payload.profileId}:${p1.x.toFixed(1)},${p1.y.toFixed(1)}-${p2.x.toFixed(1)},${p2.y.toFixed(1)}:${payload.width}x${payload.height}:${payload.wallHeight ?? 0}:${payload.seed ?? 0}:${bakeFrameTag(payload)}`;
+}
 export function buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId, atlasHeight, settings) {
     const chunkWorldSize = settings.chunkWorldSize;
     const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
