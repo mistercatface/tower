@@ -115,9 +115,6 @@ export function separateCoincidentCircleSlab(physIdA, physIdB, overlap) {
     dynSlab.x[physIdA] -= overlap * (massB / totalMass);
     dynSlab.x[physIdB] += overlap * (massA / totalMass);
 }
-function invalidateBodyBroadphase(body) {
-    if (body.broadphaseSnapshot) body.broadphaseSnapshot.x = NaN;
-}
 export function writebackKineticBodySlabPhysId(spatialFrame, physId) {
     const slab = kineticDynamicSlab;
     const body = spatialFrame.entityGrid.entities[physId];
@@ -126,7 +123,7 @@ export function writebackKineticBodySlabPhysId(spatialFrame, physId) {
     body.vx = slab.vx[physId];
     body.vy = slab.vy[physId];
     body.angularVelocity = slab.w[physId];
-    invalidateBodyBroadphase(body);
+    if (body.broadphaseSnapshot) body.broadphaseSnapshot.x = NaN;
 }
 export function writebackKineticBodySlabPhysIds(spatialFrame, physIds) {
     for (let i = 0; i < physIds.length; i++) writebackKineticBodySlabPhysId(spatialFrame, physIds[i]);
@@ -141,7 +138,7 @@ export function writebackActiveKineticBodySlab(bodies) {
         body.vx = slab.vx[physId];
         body.vy = slab.vy[physId];
         body.angularVelocity = slab.w[physId];
-        invalidateBodyBroadphase(body);
+        if (body.broadphaseSnapshot) body.broadphaseSnapshot.x = NaN;
     }
 }
 export function clampActiveKineticBodySlabSpeed(maxSpeed) {
