@@ -83,20 +83,17 @@ describe("flee agent spawn", () => {
         snakeGame.registry.instancesByHeadId.set(pack.head.id, instance);
         snakeGame.registry.aliveByHeadId.set(pack.head.id, { headId: pack.head.id, species: "flee_agent", lifecycle: "alive" });
         instance.start(state);
-        assert.equal(instance.mode, "explore");
-        // Tick once to pick an explore destination
+        assert.equal(instance.intent.getMode(), "explore");
         instance.tick(state, 16);
-        assert.ok(instance.locomotion.getDestination());
+        assert.ok(instance.intent.getDestination());
         // Now spawn a snake nearby (e.g., at col 10, row 12)
         const snakeHead = state.entityRegistry.getLive(state.worldProps[0]?.id); // Let's just mock a snake head
         const mockSnakeId = "mock_snake_head";
         const mockSnake = { id: mockSnakeId, x: pack.head.x, y: pack.head.y + 32, type: "snake_head", isDead: false };
         state.entityRegistry.register("prop", mockSnake);
         snakeGame.registry.aliveByHeadId.set(mockSnakeId, { headId: mockSnakeId, species: "snake", lifecycle: "alive" });
-        // Tick again; the flee agent should perceive the snake as a threat and transition to flee mode
         instance.tick(state, 16);
-        assert.equal(instance.mode, "flee");
-        assert.ok(instance.fleeTicks > 0);
+        assert.equal(instance.intent.getMode(), "flee");
     });
     it("shatters flee agent on predator snake head ram", async () => {
         applySnakeGameConfig({ splitImpulseThreshold: 30 });
