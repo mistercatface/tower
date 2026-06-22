@@ -1,3 +1,4 @@
+import { clampByte } from "../Color/hex.js";
 import { blendMotifRgb } from "./util/blend.js";
 import { warpPointInto, writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
@@ -7,6 +8,14 @@ const sWarpScratch = { x: 0, y: 0 };
 const beforeRgb = { r: 0, g: 0, b: 0 };
 const layerRgb = { r: 0, g: 0, b: 0 };
 const blendOut = { r: 0, g: 0, b: 0 };
+const BLEND_KIND_FALLBACK = 0;
+const BLEND_KIND_ADD = 1;
+const BLEND_KIND_REPLACE = 2;
+function resolveBlendKind(blendMode) {
+    if (blendMode === "add") return BLEND_KIND_ADD;
+    if (blendMode === "replace") return BLEND_KIND_REPLACE;
+    return BLEND_KIND_FALLBACK;
+}
 function resolvePaletteBase(profile, useWallBase) {
     if (useWallBase && profile.palette.wallBase) return profile.palette.wallBase;
     if (!useWallBase && profile.palette.floorBase) return profile.palette.floorBase;
@@ -76,7 +85,9 @@ function buildMotifPasses(motifs, motifStartIndex, endIdx, bake) {
         if (motifConfig.type === "translate") continue;
         if (!motifMatchesBake(motifConfig, bake)) continue;
         if (motifUsesWarpedCoords(motifConfig)) needsPrecomputedLookup = true;
-        passes.push({ motifConfig, motifImpl: getMotif(motifConfig.type), blendMode: motifConfig.blendMode ?? "add" });
+        const motifImpl = getMotif(motifConfig.type);
+        const blendMode = motifConfig.blendMode ?? "add";
+        passes.push({ motifConfig, motifImpl, runner: motifImpl.compile?.(motifConfig) ?? null, blendMode, blendKind: resolveBlendKind(blendMode) });
     }
     return { passes, needsPrecomputedLookup };
 }
@@ -130,11 +141,22 @@ export function composeSurfaceImage(samples, profile, seed, bakeSession = null, 
             layerRgb.r = beforeRgb.r;
             layerRgb.g = beforeRgb.g;
             layerRgb.b = beforeRgb.b;
-            pass.motifImpl.apply(sampleScratch, layerRgb, pass.motifConfig);
-            blendMotifRgb(blendOut, beforeRgb, layerRgb, pass.blendMode);
-            rgbBuffer[idx] = blendOut.r;
-            rgbBuffer[idx + 1] = blendOut.g;
-            rgbBuffer[idx + 2] = blendOut.b;
+            if (pass.runner) pass.runner(sampleScratch, layerRgb);
+            else pass.motifImpl.apply(sampleScratch, layerRgb, pass.motifConfig);
+            if (pass.blendKind === BLEND_KIND_ADD) {
+                rgbBuffer[idx] = clampByte(beforeRgb.r + layerRgb.r);
+                rgbBuffer[idx + 1] = clampByte(beforeRgb.g + layerRgb.g);
+                rgbBuffer[idx + 2] = clampByte(beforeRgb.b + layerRgb.b);
+            } else if (pass.blendKind === BLEND_KIND_REPLACE) {
+                rgbBuffer[idx] = clampByte(layerRgb.r);
+                rgbBuffer[idx + 1] = clampByte(layerRgb.g);
+                rgbBuffer[idx + 2] = clampByte(layerRgb.b);
+            } else {
+                blendMotifRgb(blendOut, beforeRgb, layerRgb, pass.blendMode);
+                rgbBuffer[idx] = blendOut.r;
+                rgbBuffer[idx + 1] = blendOut.g;
+                rgbBuffer[idx + 2] = blendOut.b;
+            }
         }
     }
     sampleScratch.noise = null;

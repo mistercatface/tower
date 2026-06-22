@@ -9,6 +9,29 @@ function grainCoords(sample, grain) {
     const freqY = grain.frequencyY ?? grain.frequency;
     return { x: sample.evalX * freqX, y: sample.evalY * freqY };
 }
+function compileBaseMetal(config) {
+    const { structure, grain } = config;
+    const structureFreqX = structure.frequencyX ?? structure.frequency;
+    const structureFreqY = structure.frequencyY ?? structure.frequency;
+    const structureOctaves = structure.octaves;
+    const structureDeltaR = structure.rgbDelta[0];
+    const structureDeltaG = structure.rgbDelta[1];
+    const structureDeltaB = structure.rgbDelta[2];
+    const grainFreqX = grain.frequencyX ?? grain.frequency;
+    const grainFreqY = grain.frequencyY ?? grain.frequency;
+    const grainOctaves = grain.octaves;
+    const grainAmplitude = grain.amplitude;
+    return (sample, rgb) => {
+        const structureNoise = sample.noise.sample2D(sample.evalX * structureFreqX, sample.evalY * structureFreqY, structureOctaves);
+        rgb.r = clampByte(rgb.r + structureNoise * structureDeltaR);
+        rgb.g = clampByte(rgb.g + structureNoise * structureDeltaG);
+        rgb.b = clampByte(rgb.b + structureNoise * structureDeltaB);
+        const fineNoise = sample.noise.sample2D(sample.evalX * grainFreqX, sample.evalY * grainFreqY, grainOctaves) * grainAmplitude;
+        rgb.r = clampByte(rgb.r + fineNoise);
+        rgb.g = clampByte(rgb.g + fineNoise);
+        rgb.b = clampByte(rgb.b + fineNoise);
+    };
+}
 export const baseMetalMotif = {
     metadata: {
         label: "Base metal",
@@ -36,4 +59,5 @@ export const baseMetalMotif = {
         rgb.g = clampByte(rgb.g + fineNoise);
         rgb.b = clampByte(rgb.b + fineNoise);
     },
+    compile: compileBaseMetal,
 };

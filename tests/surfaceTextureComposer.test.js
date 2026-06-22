@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { baseMetalMotif } from "../Libraries/Procedural/Motifs/baseMetal.js";
+import { deckPlatesMotif } from "../Libraries/Procedural/Motifs/deckPlates.js";
+import { filterHSVMotif } from "../Libraries/Procedural/Motifs/Filters/filterHSV.js";
 import { SeededNoise2D, setNoiseProfileEnabled } from "../Libraries/Procedural/Noise/SeededNoise2D.js";
 import { composeSurfaceImage } from "../Libraries/Procedural/SurfaceTextureComposer.js";
 
@@ -70,5 +73,45 @@ describe("composeSurfaceImage pass 3", () => {
         assert.equal(noise.profile.calls / 16, 1);
         assert.equal(rgb.length, 16 * 3);
         setNoiseProfileEnabled(false);
+    });
+    it("matches fallback output for compiled hot motif runners", () => {
+        const samples = makeSamples(8, 8);
+        const profile = {
+            palette: { base: [12, 10, 8], floorBase: [12, 10, 8] },
+            motifs: [
+                { type: "baseMetal", structure: { frequency: 0.006, octaves: 2, rgbDelta: [3, 2, 1] }, grain: { frequency: 0.4, octaves: 2, amplitude: 0.8 }, blendMode: "add" },
+                {
+                    type: "deckPlates",
+                    cellWorldSize: 32,
+                    plateCells: 2,
+                    plateRows: 2,
+                    groutWidth: 0.04,
+                    groutPeak: 12,
+                    groutTint: [-10, -10, -8],
+                    plateVariation: 6,
+                    jitterOffset: [0, 0],
+                    rivetSpacing: 16,
+                    rivetInset: 4,
+                    rivetRadius: 0.018,
+                    rivetPeak: 8,
+                    rivetTint: [1.2, 0.8, 0.5],
+                    blendMode: "multiply",
+                },
+                { type: "filterHSV", hueShift: 15, saturation: 1.4, value: 0.85, blendMode: "replace" },
+            ],
+        };
+        const compiled = composeSurfaceImage(samples, profile, 42, { noiseEvaluator: new SeededNoise2D(99) }, { useWallBase: false });
+        const compilers = [baseMetalMotif.compile, deckPlatesMotif.compile, filterHSVMotif.compile];
+        delete baseMetalMotif.compile;
+        delete deckPlatesMotif.compile;
+        delete filterHSVMotif.compile;
+        try {
+            const fallback = composeSurfaceImage(samples, profile, 42, { noiseEvaluator: new SeededNoise2D(99) }, { useWallBase: false });
+            assert.deepEqual(Array.from(compiled), Array.from(fallback));
+        } finally {
+            baseMetalMotif.compile = compilers[0];
+            deckPlatesMotif.compile = compilers[1];
+            filterHSVMotif.compile = compilers[2];
+        }
     });
 });

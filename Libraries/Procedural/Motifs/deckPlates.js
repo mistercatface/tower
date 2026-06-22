@@ -1,3 +1,4 @@
+import { clampByte } from "../../Color/hex.js";
 import { applyTint, applyCellJitter, applyGroutBand, applyWarmSeamBand } from "../util/motifUtilities.js";
 function plateMetrics(sample, config) {
     const cell = config.cellWorldSize;
@@ -32,6 +33,58 @@ function applyRivets(rgb, localX, localY, plateW, plateH, config) {
     const dy = Math.min(ny, spacing - ny) / (radius * spacing);
     const t = (1 - Math.max(dx, dy)) * peak;
     applyTint(rgb, t, tint);
+}
+function tintRgb(rgb, intensity, tint) {
+    rgb.r = clampByte(rgb.r + intensity * tint[0]);
+    rgb.g = clampByte(rgb.g + intensity * tint[1]);
+    rgb.b = clampByte(rgb.b + intensity * tint[2]);
+}
+function compileDeckPlates(config) {
+    const cell = config.cellWorldSize;
+    const plateW = cell * (config.plateCells ?? 2);
+    const plateH = cell * (config.plateRows ?? config.plateCells ?? 2);
+    const invPlateW = 1 / plateW;
+    const invPlateH = 1 / plateH;
+    const jitterOffset = config.jitterOffset ?? [0, 0];
+    const jitterX = jitterOffset[0];
+    const jitterY = jitterOffset[1];
+    const plateVariation = config.plateVariation ?? 3;
+    const plateTint = [1, 0.95, 1.05];
+    const groutWidth = config.groutWidth ?? 0.05;
+    const groutPeak = config.groutPeak ?? 10;
+    const groutTint = config.groutTint ?? [-5, -5, -4];
+    const accentWidth = config.accentWidth;
+    const accentPeak = config.accentPeak ?? 5;
+    const accentTint = config.accentTint ?? [4, 1, -2];
+    const rivetSpacing = config.rivetSpacing;
+    const rivetsEnabled = Boolean(rivetSpacing && rivetSpacing > 0);
+    const rivetInset = config.rivetInset ?? rivetSpacing * 0.5;
+    const rivetRadius = config.rivetRadius ?? 0.02;
+    const rivetPeak = config.rivetPeak ?? 5;
+    const rivetTint = config.rivetTint ?? [2, 3, 4];
+    const rivetRadiusSpacing = rivetRadius * rivetSpacing;
+    return (sample, rgb) => {
+        const plateCol = Math.floor(sample.evalX / plateW);
+        const plateRow = Math.floor(sample.evalY / plateH);
+        const localX = sample.evalX - plateCol * plateW;
+        const localY = sample.evalY - plateRow * plateH;
+        const u = localX * invPlateW;
+        const v = localY * invPlateH;
+        const edgeDist = Math.min(u, 1 - u, v, 1 - v);
+        const jitter = sample.noise.sample2D(plateCol * 0.71 + jitterX, plateRow * 0.53 + jitterY, 1);
+        tintRgb(rgb, jitter * plateVariation, plateTint);
+        if (edgeDist < groutWidth) tintRgb(rgb, (1 - edgeDist / groutWidth) * groutPeak, groutTint);
+        if (accentWidth != null && accentWidth > 0 && edgeDist < accentWidth) tintRgb(rgb, (1 - edgeDist / accentWidth) * accentPeak, accentTint);
+        if (!rivetsEnabled) return;
+        const nx = (((localX - rivetInset) % rivetSpacing) + rivetSpacing) % rivetSpacing;
+        const ny = (((localY - rivetInset) % rivetSpacing) + rivetSpacing) % rivetSpacing;
+        const nearX = nx < rivetRadiusSpacing || nx > rivetSpacing - rivetRadiusSpacing;
+        const nearY = ny < rivetRadiusSpacing || ny > rivetSpacing - rivetRadiusSpacing;
+        if (!nearX || !nearY) return;
+        const dx = Math.min(nx, rivetSpacing - nx) / rivetRadiusSpacing;
+        const dy = Math.min(ny, rivetSpacing - ny) / rivetRadiusSpacing;
+        tintRgb(rgb, (1 - Math.max(dx, dy)) * rivetPeak, rivetTint);
+    };
 }
 /** World-aligned deck plates (grout, fill jitter, optional rivets). */
 export const deckPlatesMotif = {
@@ -74,4 +127,5 @@ export const deckPlatesMotif = {
         applyWarmSeamBand(rgb, edgeDist, config);
         applyRivets(rgb, localX, localY, plateW, plateH, config);
     },
+    compile: compileDeckPlates,
 };

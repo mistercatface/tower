@@ -31,6 +31,8 @@ Worker logs resume; main-thread `stats().bakeTiming` accumulates over the last 3
 
 **Post-Pass-4 profiling note:** latest worker profile still points at `composeSurfaceImage`, `SeededNoise2D.sample2D` / `rawNoise2D`, `blendMotifRgb`, `deckPlates.applyRivets`, `filterHSV.rgbToHsv`, and `baseMetal.apply`. `VoronoiEdge`, `WorleyEdgeField`, and `SeededFeatureHash` do not show up as hot frames, so Pass 4 should be treated as infrastructure progress, not a bake-time regression source. Keep the SoA/compiler idea parked until Fields/root-seed work is complete and metrics still justify it.
 
+**Bake hot-path pass** — done: `composeSurfaceImage` now resolves compiled motif runners and common blend kinds once per bake pass. `add` and `replace` blends avoid `blendMotifRgb` in the pixel loop; `baseMetal`, `deckPlates`, and `filterHSV` expose compiled runners that hoist config/default reads while preserving fallback output exactly.
+
 **Naming trap:** `Plans/Procedural.md` = geometry authorship. `Libraries/Procedural/` = surface synthesis. Shared **Fields** layer is the bridge.
 
 **Voronoi:** `VoronoiRegions.js` (HPA grid partition) ≠ `VoronoiEdge.js` (Worley texture noise). Share **seeded spatial hash** primitives only, not partition algorithms.
@@ -74,6 +76,21 @@ Next steps:
 4. Add one integration test that proves a root seed deterministically reaches a tile bake and one generation field.
 
 Exit: documented sub-seed map + one integration test.
+
+## Bake hot-path pass — motif runner specialization
+
+Done. This pass responds to the worker CPU profile rather than the longer procedural infrastructure roadmap.
+
+Implemented:
+
+1. `SurfaceTextureComposer` resolves each motif pass into an optional compiled runner plus a small blend kind.
+2. `add` and `replace` blend modes are inlined in the hot pixel loop; complex blend modes still use `blendMotifRgb`.
+3. `baseMetal` compiles structure/grain frequencies, octaves, deltas, and amplitudes once per pass.
+4. `deckPlates` compiles plate dimensions, grout/seam constants, jitter offsets, and rivet settings once per pass.
+5. `filterHSV` compiles HSV constants and avoids per-pixel helper array allocation in the compiled path.
+6. `tests/surfaceTextureComposer.test.js` compares compiled output against fallback output for the hot motif stack.
+
+Next performance work should be measured against a fresh worker profile. If `rawNoise2D` / `sample2D` still dominate, target actual noise-call reduction or cheaper noise evaluation next; do not resume seed/Fields infrastructure until the bake hot path stops being the urgent bottleneck.
 
 ## Pass 7 — Generation consumption
 
