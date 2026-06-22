@@ -7,6 +7,7 @@ import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { perceiveAgentWorld } from "../../../AI/perception/agentWorldPerception.js";
 import { requireSnakeVisionFrame } from "../snakePerception.js";
 import { resolveAgentRelationship } from "../snakeAgentSession.js";
+import { deriveFleeAgentThreatState, deriveFleeSprintIntent } from "./fleeDecisionModel.js";
 export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCell, selfHeadId, registry, navWalkable, visionCone = null, rng = Math.random }) {
     const config = getSnakeGameConfig();
     const resolvedVision = visionCone ?? config.visionCone;
@@ -20,6 +21,7 @@ export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCe
         canRelease: ({ world }) => !world.threat,
     });
     let intent = null;
+    let lastDecisionSnapshot = null;
     let lastArrivalCol = null;
     let lastArrivalRow = null;
     const stampArrivalOnCellEnter = (agent, grid) => {
@@ -36,7 +38,8 @@ export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCe
             resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(state.sandbox.snakeGame, selfHeadId, headId, state),
         });
         const threat = visible.threat;
-        return { threat, blackboard: { facts: { known: { threat } } } };
+        const threatState = deriveFleeAgentThreatState(threat, visible.threatDist);
+        return { threat, threatDist: visible.threatDist, threatState, blackboard: { facts: { known: { threat } } } };
     };
     const createFleeEffects = ({ agent, state, world }) => ({
         clearDestination() {
@@ -70,7 +73,9 @@ export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCe
         perceiveWorld: perceiveFleeWorld,
         pickPolicy: (world) => {
             const policy = world.threat ? { mode: "flee", targetId: null, reason: "threat_visible" } : { mode: "explore", targetId: null, reason: "patrol" };
-            return fleeLatch.apply(policy, { world, currentMode: intent.getMode() });
+            const latched = fleeLatch.apply(policy, { world, currentMode: intent.getMode() });
+            lastDecisionSnapshot = { threatState: world.threatState, sprintIntent: deriveFleeSprintIntent(latched.mode, world.threatState) };
+            return latched;
         },
         transitionReason: (prevMode, nextMode, policy) => {
             if (policy?.reason) return policy.reason;
@@ -101,6 +106,9 @@ export function createFleeExploreIntent({ brain, sync, headNav, resolveExploreCe
         headNav,
         getDestination() {
             return locomotion.getDestination();
+        },
+        getDecisionSnapshot() {
+            return lastDecisionSnapshot;
         },
         tick(agent, state) {
             intent.perceive(agent, state);

@@ -18,7 +18,12 @@ function mergeDecisionPressure(overrides) {
 export function applySnakeGameConfig(overrides) {
     activeSnakeGameConfig = mergePartial(SNAKE_GAME_DEFAULTS, overrides);
     activeSnakeGameConfig.decisionPressure = mergeDecisionPressure(overrides?.decisionPressure);
-    if (overrides?.fleeAgent) activeSnakeGameConfig.fleeAgent = { ...SNAKE_GAME_DEFAULTS.fleeAgent, ...overrides.fleeAgent };
+    if (overrides?.fleeAgent) {
+        activeSnakeGameConfig.fleeAgent = { ...SNAKE_GAME_DEFAULTS.fleeAgent, ...overrides.fleeAgent };
+        if (overrides.fleeAgent.metabolism) activeSnakeGameConfig.fleeAgent.metabolism = { ...SNAKE_GAME_DEFAULTS.fleeAgent.metabolism, ...overrides.fleeAgent.metabolism };
+        if (overrides.fleeAgent.hunger) activeSnakeGameConfig.fleeAgent.hunger = { ...SNAKE_GAME_DEFAULTS.fleeAgent.hunger, ...overrides.fleeAgent.hunger };
+        if (overrides.fleeAgent.sprint) activeSnakeGameConfig.fleeAgent.sprint = { ...SNAKE_GAME_DEFAULTS.fleeAgent.sprint, ...overrides.fleeAgent.sprint };
+    }
 }
 export function getSnakeGameConfig() {
     return activeSnakeGameConfig;
