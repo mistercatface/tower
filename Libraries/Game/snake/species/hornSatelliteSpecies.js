@@ -1,12 +1,12 @@
-import { createFleeAgentInstance } from "../fleeAgent/FleeAgentInstance.js";
+import { createHornSatelliteInstance } from "../hornSatellite/HornSatelliteInstance.js";
 import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
 import { shatterSnakeSegments } from "../snakeSegmentFracture.js";
 import { clearSnakeSteeringLeaseFromProp } from "../snakeSteeringLease.js";
-export const fleeAgentSpecies = {
-    id: "flee_agent",
+export const hornSatelliteSpecies = {
+    id: "horn_satellite",
     createInstance(state, ctx) {
-        return createFleeAgentInstance(state, ctx);
+        return createHornSatelliteInstance(state, ctx);
     },
     register(session, instance) {
         registerAliveAgent(session.registry, instance.headId, this.id, instance);
@@ -20,15 +20,14 @@ export const fleeAgentSpecies = {
     die(instance, state, session, deathImpact = null) {
         instance.lifecycle = "dead";
         instance.stopSteering(state);
-        const connectedMembers = instance.syncMembersFromGraph(state);
-        clearChainLinksForMembers(state, connectedMembers);
-        shatterSnakeSegments(state, deathImpact?.spatialFrame ?? null, connectedMembers, deathImpact);
+        const members = instance.syncMembers(state);
+        clearChainLinksForMembers(state, members);
+        shatterSnakeSegments(state, deathImpact?.spatialFrame ?? null, members, deathImpact);
         purgeInertAgentsForHead(session.registry, instance.headId);
         markAgentDead(session.registry, instance.headId);
         session.instancesByHeadId.delete(instance.headId);
         const head = state.entityRegistry.get(instance.headId);
         if (head) clearSnakeSteeringLeaseFromProp(head);
-        if (session.onHeadDied) session.onHeadDied(instance.headId);
     },
     validate(instance, state, session) {
         instance.validate(state, session);
@@ -37,10 +36,11 @@ export const fleeAgentSpecies = {
         instance.tick(state, dtMs);
     },
     syncMembers(instance, state) {
-        return instance.syncMembersFromGraph(state);
+        return instance.syncMembers(state);
     },
     resolveRelationship(targetSpecies) {
         if (targetSpecies === "snake") return "threat";
+        if (targetSpecies === "flee_agent" || targetSpecies === "horn_satellite") return "neutral";
         return "neutral";
     },
 };
