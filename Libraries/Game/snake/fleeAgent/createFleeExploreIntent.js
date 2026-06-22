@@ -4,7 +4,7 @@ import { createModePolicyLatch } from "../../../AI/agentIntent/policyHysteresis.
 import { pickFleeCell } from "../../../AI/steering/pickFleeCell.js";
 import { createCellTargetLocomotion } from "../../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
-import { perceiveAgentWorld } from "../../../AI/perception/agentWorldPerception.js";
+import { perceiveFleeAgentWorld } from "./fleeWorldPerception.js";
 import { requireSnakeVisionFrame } from "../snakePerception.js";
 import { resolveAgentRelationship } from "../snakeAgentSession.js";
 import { buildFleeDecisionContext, deriveFleeSprintIntent } from "./fleeDecisionModel.js";
@@ -70,11 +70,12 @@ export function createFleeExploreIntent({
     const resolveCommittedTarget = (id, world) => {
         if (id == null) return null;
         const known = world.blackboard.facts.known;
+        if (known.prey?.id === id) return known.prey;
         if (known.food?.id === id) return known.food;
         return null;
     };
     const perceiveWithMemory = (agent, state) => {
-        const visible = perceiveAgentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision, {
+        const visible = perceiveFleeAgentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision, {
             readVisionFrame: requireSnakeVisionFrame,
             agentRange: config.fleeRange ?? resolvedVision.range,
             resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(state.sandbox.snakeGame, selfHeadId, headId, state),
@@ -149,7 +150,7 @@ export function createFleeExploreIntent({
                 world.decisionSnapshot.chosenIntent = latched;
                 world.decisionSnapshot.chosenReason = latched.reason ?? null;
                 world.decisionSnapshot.targetId = latched.targetId ?? null;
-                world.decisionSnapshot.sprintIntent = deriveFleeSprintIntent(latched.mode, world.decisionSnapshot.threatState);
+                world.decisionSnapshot.sprintIntent = deriveFleeSprintIntent(latched.mode, world.decisionSnapshot.threatState, world.decisionSnapshot.hungerState);
             }
             world.decisionSnapshot.policyLatch = { flee: fleeLatch.snapshot() };
             lastDecisionSnapshot = world.decisionSnapshot;
@@ -159,10 +160,10 @@ export function createFleeExploreIntent({
             if (policy?.reason) return policy.reason;
             if (nextMode === "flee") return "threat_visible";
             if (prevMode === "flee") return "threat_clear";
-            if (prevMode === "seek_food" && nextMode !== prevMode) return "target_lost";
+            if ((prevMode === "seek_food" || prevMode === "hunt") && nextMode !== prevMode) return "target_lost";
             return `mode_${nextMode}`;
         },
-        states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), flee: createFleeIntentState() },
+        states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), hunt: createSeekIntentState(), flee: createFleeIntentState() },
         modeExitDelayTicks: { flee: 30 },
         createEffects: createFleeEffects,
         createContext: createFleeContext,

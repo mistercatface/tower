@@ -11,7 +11,8 @@ import { getAgentIdentity, setAgentIdentity } from "../Libraries/AI/identity/age
 import { createFleeMetabolism, getFleeHunger, setFleeHunger, tickFleeMetabolism } from "../Libraries/Game/snake/fleeAgent/fleeMetabolism.js";
 import { deriveFleeSprintIntent } from "../Libraries/Game/snake/fleeAgent/fleeDecisionModel.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeGameHarnessState, wireSnakeTestGame, spawnSnakeFoodShardAtCell, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
+import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
+import { createSnakeGameHarnessState, wireSnakeTestGame, spawnSnakeFoodShardAtCell, primeSnakeHeadVision, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 
 function stampWall(grid, col, row) {
@@ -19,6 +20,13 @@ function stampWall(grid, col, row) {
 }
 
 loadPropAssets();
+
+function spawnVisibleSnakeThreat(state, snakeGame, { col, row }, segmentCount = 6) {
+    const chain = spawnSnakeChain(state, { col, row }, { segmentCount, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
+    registerSnakeTestInstance(state, snakeGame, { headId: chain.chain.head.id, spawnGroupId: chain.chain.spawnGroupId });
+    chain.chain.head.faction = "snake";
+    return chain;
+}
 
 describe("flee agent metabolism", () => {
     it("pins hunger at zero instead of dying", () => {
@@ -105,10 +113,7 @@ describe("flee agent metabolism", () => {
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "seek_food");
-        const mockSnakeId = "mock_snake_head";
-        const mockSnake = { id: mockSnakeId, x: pack.head.x, y: pack.head.y + 24, type: "snake_head", isDead: false };
-        state.entityRegistry.register("prop", mockSnake);
-        snakeGame.registry.aliveByHeadId.set(mockSnakeId, { headId: mockSnakeId, species: "snake", lifecycle: "alive" });
+        spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 13 }, 6);
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
@@ -125,26 +130,24 @@ describe("flee agent metabolism", () => {
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         assert.equal(getPropVisualTint(pack.head), "#7ad4ff");
-        const mockSnakeId = "mock_snake_head";
-        const mockSnake = { id: mockSnakeId, x: pack.head.x, y: pack.head.y + 24, type: "snake_head", isDead: false };
-        state.entityRegistry.register("prop", mockSnake);
-        snakeGame.registry.aliveByHeadId.set(mockSnakeId, { headId: mockSnakeId, species: "snake", lifecycle: "alive" });
+        const threat = spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 13 }, 6);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
         assert.equal(getPropVisualTint(pack.head), "#ff3b30");
-        snakeGame.registry.aliveByHeadId.delete(mockSnakeId);
-        state.entityRegistry.unregister(mockSnake);
-        for (let i = 0; i < 80; i++) instance.tick(state, 16);
+        snakeGame.registry.aliveByHeadId.delete(threat.chain.head.id);
+        for (let i = 0; i < 120; i++) instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "explore");
         assert.equal(instance.sprinting, false);
         assert.equal(getPropVisualTint(pack.head), "#7ad4ff");
     });
 
-    it("deriveFleeSprintIntent wants sprint on lethal flee", () => {
-        applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5 } }, lethalThreatRange: 48 });
-        const sprint = deriveFleeSprintIntent("flee", { lethal: true, severity: 1 });
+    it("deriveFleeSprintIntent wants sprint on lethal flee when hunger allows", () => {
+        applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 } }, lethalThreatRange: 48 });
+        const fed = { foodFraction: 0.5, state: "hungry", hungry: true };
+        const sprint = deriveFleeSprintIntent("flee", { lethal: true, severity: 1 }, fed);
         assert.equal(sprint.want, true);
-        assert.equal(deriveFleeSprintIntent("explore", { lethal: true, severity: 1 }).want, false);
+        assert.equal(deriveFleeSprintIntent("explore", { lethal: true, severity: 1 }, fed).want, false);
     });
 });

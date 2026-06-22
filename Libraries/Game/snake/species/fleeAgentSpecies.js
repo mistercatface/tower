@@ -1,4 +1,5 @@
 import { createFleeAgentInstance } from "../fleeAgent/FleeAgentInstance.js";
+import { getFleeEffectiveSizeScore } from "../fleeAgent/fleeAgentScale.js";
 import { getSnakeSizeScore } from "../snakeScale.js";
 import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
@@ -42,9 +43,7 @@ export const fleeAgentSpecies = {
     },
     resolveRelationship(targetSpecies, seekerId, targetId, state) {
         if (targetSpecies !== "snake") return "neutral";
-        const fleeInstance = state.sandbox.snakeGame.instancesByHeadId.get(seekerId);
-        if (!fleeInstance?.sprinting) return "threat";
-        const seekerScore = getSnakeSizeScore(state, seekerId);
+        const seekerScore = getFleeEffectiveSizeScore(state, seekerId);
         const targetScore = getSnakeSizeScore(state, targetId);
         if (targetScore > seekerScore) return "threat";
         if (targetScore < seekerScore) return "prey";

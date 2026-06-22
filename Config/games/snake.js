@@ -17,11 +17,22 @@ export const SNAKE_GAME_DEFAULTS = {
         /** Kinetic friction; null keeps flee_ball asset default. */
         friction: null,
         initialHunger: 0.85,
+        /** Added to flee ball size score for threat/prey relationship vs snakes (~3 segment equivalent). */
+        combatSizeBonus: 2500,
         metabolism: { hungerDrainMs: 45_000, foodValue: 0.35 },
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
-        sprint: { fleeSeverity: 0.5, speedMultiplier: 1.45, accelMultiplier: 1.45, hungerDrainMultiplier: 2.5, tint: "#ff3b30" },
-        decisionWeights: { flee: 400, food: 360, explore: 100 },
-        decisionPressure: { foodHungerBonus: 280, riskTolerance: { satisfied: 0, hungry: 0.35, desperate: 0.65 }, effort: { costPerCell: { satisfied: 22, hungry: 18, desperate: 8 } } },
+        sprint: { fleeSeverity: 0.5, speedMultiplier: 1.45, accelMultiplier: 1.45, hungerDrainMultiplier: 2.5, tint: "#ff3b30", sprintFleeMinHunger: 0.1 },
+        decisionWeights: { flee: 400, hunt: 380, food: 360, explore: 100 },
+        decisionPressure: {
+            foodHungerBonus: 280,
+            huntMinHunger: 0.25,
+            sprintFleeMinHunger: 0.1,
+            outnumberedFleeBonus: 0.4,
+            huntThreatPenalty: 180,
+            sprintFoodCostPenalty: 40,
+            riskTolerance: { satisfied: 0, hungry: 0.35, desperate: 0.65 },
+            effort: { costPerCell: { satisfied: 22, hungry: 18, desperate: 8 }, huntValue: { satisfied: 120, hungry: 220, desperate: 320 } },
+        },
     },
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */

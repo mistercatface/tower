@@ -3,18 +3,26 @@ import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
-import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { resolveFleeAgentForwardDir, spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
-import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
+import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
 loadPropAssets();
+
+function spawnVisibleSnakeThreat(state, snakeGame, { col, row }, segmentCount = 6) {
+    const chain = spawnSnakeChain(state, { col, row }, { segmentCount, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
+    registerSnakeTestInstance(state, snakeGame, { headId: chain.chain.head.id, spawnGroupId: chain.chain.spawnGroupId });
+    chain.chain.head.faction = "snake";
+    return chain;
+}
+
 describe("flee agent spawn", () => {
     it("spawns one flee_ball with chain head", async () => {
         resetKineticConstraintIds(1);
@@ -73,10 +81,8 @@ describe("flee agent spawn", () => {
         assert.equal(instance.intent.getMode(), "explore");
         instance.tick(state, 16);
         assert.ok(instance.intent.getDestination());
-        const mockSnakeId = "mock_snake_head";
-        const mockSnake = { id: mockSnakeId, x: pack.head.x, y: pack.head.y + 32, type: "snake_head", isDead: false };
-        state.entityRegistry.register("prop", mockSnake);
-        snakeGame.registry.aliveByHeadId.set(mockSnakeId, { headId: mockSnakeId, species: "snake", lifecycle: "alive" });
+        spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 14 }, 6);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionCone);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
     });
