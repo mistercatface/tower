@@ -55,9 +55,12 @@ export class WorldProp extends Entity {
     }
     getShape() {
         if (typeof this.strategy.syncCollisionShape === "function") {
-            const shape = this.strategy.syncCollisionShape(this);
-            this.radius = shape.getBoundingRadius();
-            return shape;
+            if (this._cachedShapeRevision !== this.stateTimer || !this._cachedShape) {
+                this._cachedShape = this.strategy.syncCollisionShape(this);
+                this._cachedShapeRevision = this.stateTimer;
+                this.radius = this._cachedShape.getBoundingRadius();
+            }
+            return this._cachedShape;
         }
         return this.shape;
     }
