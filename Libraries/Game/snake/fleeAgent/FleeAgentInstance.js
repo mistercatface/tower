@@ -1,5 +1,6 @@
 import { getConnectedComponentPath } from "../../../Motion/kineticConstraintGraph.js";
-import { registerAliveAgent, markAgentDead, tickAgentBrainAndLocomotion, reapAgentInstance } from "../../agents/agentPopulationRegistry.js";
+import { registerAliveAgent } from "../../../AI/agents/agentPopulationRegistry.js";
+import { tickAgentBrainAndLocomotion, reapAgentInstance } from "../snakeAgentPopulation.js";
 import { syncFleeAgentWedgeFacing } from "./syncFleeAgentWedgeFacing.js";
 import { createBrain } from "../../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../../AI/brain/syncSpatialBrain.js";

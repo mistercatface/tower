@@ -4,7 +4,8 @@ import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createSnakeAutosim } from "./snakeAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease, clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
-import { registerAliveAgent, registerInertAgent, markAgentDead, purgeInertAgentsForHead, reapAgentInstance } from "../agents/agentPopulationRegistry.js";
+import { registerAliveAgent, registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
+import { reapAgentInstance } from "./snakeAgentPopulation.js";
 import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
 import { markSnakeSegmentsFracturable, shatterSnakeSegments } from "./snakeSegmentFracture.js";
 export class SnakeInstance {

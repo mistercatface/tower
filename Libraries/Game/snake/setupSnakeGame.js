@@ -4,7 +4,7 @@ import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { CameraTargetCycler } from "../../Sandbox/CameraTargetCycler.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
 import { wireSnakeGameRegistry } from "./snakeLifecycle.js";
-import { createAgentPopulationRegistry } from "../agents/agentPopulationRegistry.js";
+import { createAgentPopulationRegistry } from "../../AI/agents/agentPopulationRegistry.js";
 import { createAliveSnakeInstance, registerAliveSnakeInstance, getSnakeInstance, syncAliveSnakeInstances, tickAliveSnakeInstances } from "./SnakeInstance.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { mountSnakeHud } from "./snakeHud.js";

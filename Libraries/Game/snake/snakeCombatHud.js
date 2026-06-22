@@ -1,5 +1,5 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { isAliveAgentHead } from "../agents/agentPopulationRegistry.js";
+import { isAliveAgentHead } from "../../AI/agents/agentPopulationRegistry.js";
 import { perceiveSnakeIntentWorld } from "./snakeIntent.js";
 export function resolveSnakeCombatHud(snakeHeadId, state, registry, autosimsByHeadId) {
     const autosim = autosimsByHeadId.get(snakeHeadId);

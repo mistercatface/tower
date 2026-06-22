@@ -19,7 +19,7 @@ import { SNAKE_SHARD_PROP_ID } from "../../Libraries/Game/snake/snakeSegmentFrac
 import { createWorkerNavigation } from "../../Libraries/Navigation/WorkerNavigationFactory.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
 import { wireSnakeGameRegistry } from "../../Libraries/Game/snake/snakeLifecycle.js";
-import { createAgentPopulationRegistry } from "../../Libraries/Game/agents/agentPopulationRegistry.js";
+import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/agentPopulationRegistry.js";
 import { SnakeInstance, registerAliveSnakeInstance, getSnakeInstance } from "../../Libraries/Game/snake/SnakeInstance.js";
 import { grantSnakeSteeringLease } from "../../Libraries/Game/snake/snakeSteeringLease.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
