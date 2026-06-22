@@ -2,7 +2,8 @@ import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.j
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { getSnakeInstance, SnakeInstance } from "./SnakeInstance.js";
-import { buildAgentMemberToInstanceMap } from "./agentPopulationRegistry.js";
+import { buildAgentMemberToInstanceMap, getAgentRelationship } from "./agentPopulationRegistry.js";
+import { FleeAgentInstance } from "./fleeAgent/FleeAgentInstance.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
@@ -59,6 +60,23 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         const instanceA = memberToInstance.get(pair.bodyA.id);
         const instanceB = memberToInstance.get(pair.bodyB.id);
         if (!instanceA || !instanceB || instanceA === instanceB) continue;
+        // Handle predator-prey combat between any species
+        const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
+        const relationshipAB = getAgentRelationship(instanceA.headId, instanceB.headId, state, snakeGame.registry);
+        const relationshipBA = getAgentRelationship(instanceB.headId, instanceA.headId, state, snakeGame.registry);
+        if (relationshipAB === "prey" || relationshipBA === "prey") {
+            const predatorInstance = relationshipAB === "prey" ? instanceA : instanceB;
+            const preyInstance = relationshipAB === "prey" ? instanceB : instanceA;
+            const predatorBody = relationshipAB === "prey" ? pair.bodyA : pair.bodyB;
+            const preyBody = relationshipAB === "prey" ? pair.bodyB : pair.bodyA;
+            // Only trigger damage/kill if predator's head hits the prey and speed is above threshold
+            if (predatorBody.id === predatorInstance.headId && relSpeed >= config.splitImpulseThreshold) {
+                const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, preyBody.id, preyBody, relSpeed);
+                preyInstance.die(state, snakeGame, null, deathImpact);
+                continue;
+            }
+        }
+        // Fall back to traditional snake-vs-snake combat
         if (!(instanceA instanceof SnakeInstance) || !(instanceB instanceof SnakeInstance)) continue;
         const snakeHeadA = instanceA.headId;
         const snakeHeadB = instanceB.headId;
@@ -67,7 +85,6 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         const sizeA = snakeSizeScore(state, snakeHeadA, membersA);
         const sizeB = snakeSizeScore(state, snakeHeadB, membersB);
         if (sizeA === sizeB) continue;
-        const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
         if (relSpeed < config.splitImpulseThreshold) continue;
         const largerHead = sizeA > sizeB ? snakeHeadA : snakeHeadB;
         const smallerHead = sizeA > sizeB ? snakeHeadB : snakeHeadA;

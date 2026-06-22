@@ -9,6 +9,8 @@ import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { perceiveSnakeIntentWorld, pickFleeCell } from "../snakeIntent.js";
 import { resolveSnakeExploreCell } from "../snakeExplore.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "../snakePerception.js";
+import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
+import { shatterSnakeSegments } from "../snakeSegmentFracture.js";
 export class FleeAgentInstance {
     constructor({ headId, wedgeId, spawnGroupId }) {
         this.headId = headId;
@@ -107,10 +109,13 @@ export class FleeAgentInstance {
         const head = state.entityRegistry.getLive(this.headId);
         if (!head || head.isDead) this.die(state, snakeGame);
     }
-    die(state, snakeGame) {
+    die(state, snakeGame, members = null, deathImpact = null) {
         this.lifecycle = "dead";
         this.stopSteering(state);
         markAgentDead(snakeGame.registry, this.headId);
+        const resolvedMembers = members ?? this.syncMembersFromGraph(state);
+        clearChainLinksForMembers(state, resolvedMembers);
+        shatterSnakeSegments(state, deathImpact?.spatialFrame ?? null, resolvedMembers, deathImpact);
         if (snakeGame.onHeadDied) snakeGame.onHeadDied(this.headId);
     }
 }
