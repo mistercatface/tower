@@ -245,7 +245,7 @@ export class HpaReplanPlanner {
         return this.buffers.buildReplanResult(slot);
     }
     writeHpaResult(slot, gridSearch, baseGraph, prep, query) {
-        const { extendedGraph, startTemp, targetTemp, tempLegs } = baseGraph.buildExtended(query, this.buffers.maxCellsPerChunk, (legQuery) => {
+        const { extendedGraph, startTemp, targetTemp, tempLegs } = baseGraph.buildExtended(query, prep, this.buffers.maxCellsPerChunk, (legQuery) => {
             const path = gridSearch.local(legQuery, prep.regionConnectMaxLen);
             return path ? { cost: path.length, path } : { cost: 0 };
         });

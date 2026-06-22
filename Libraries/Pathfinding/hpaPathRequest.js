@@ -105,5 +105,5 @@ export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, query) {
     const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);
     if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", query };
     const { nodeIds, nodeCol, nodeRow } = graphMeta;
-    return { mode: "hpa", query, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN };
+    return { mode: "hpa", query, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN, startRegion, targetRegion };
 }

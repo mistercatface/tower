@@ -1,5 +1,5 @@
 import { CELL_EDGE_SLOT_BYTES, CELL_EDGE_SIDES, cellEdgeSlotBase } from "../Spatial/grid/cellEdgeSlots.js";
-import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex, OCTILE_OFFSETS, OCTILE_DIR_TO_IDX } from "../Spatial/grid/GridUtils.js";
 import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
 import { clampCellBoundsToGrid, forEachDenseCellInBounds, forEachDenseCellInRect, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 /** Octile step slots per cell in nav snapshot CSR. */
@@ -197,12 +197,13 @@ export function navCanStep(frame, topology, fromCol, fromRow, toCol, toRow) {
     if (!cellInRect(fromCol, fromRow, cols, rows) || !cellInRect(toCol, toRow, cols, rows)) return false;
     const fromIdx = colRowToIndex(fromCol, fromRow, cols);
     if (topology.blocked[fromIdx]) return false;
+    const dc = toCol - fromCol;
+    const dr = toRow - fromRow;
+    if (dc < -1 || dc > 1 || dr < -1 || dr > 1) return false;
+    const dirIdx = OCTILE_DIR_TO_IDX[dc + 1 + (dr + 1) * 3];
+    if (dirIdx === -1) return false;
     const toIdx = colRowToIndex(toCol, toRow, cols);
-    for (let i = 0; i < OCTILE_OFFSETS.length; i++) {
-        const { dc, dr } = OCTILE_OFFSETS[i];
-        if (fromCol + dc === toCol && fromRow + dr === toRow) return topology.octileNeighbors[octileNeighborOffset(fromIdx, i)] === toIdx;
-    }
-    return false;
+    return topology.octileNeighbors[octileNeighborOffset(fromIdx, dirIdx)] === toIdx;
 }
 /** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology */
 export function createNavLocalView(frame, topology) {

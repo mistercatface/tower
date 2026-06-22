@@ -4,6 +4,7 @@ export class HpaAbstractGraph extends FlatGraphView {
         super({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
     }
     nearestNodeIdx(col, row) {
+        // Obsolete, left for compatibility but no longer used in hot loops
         let best = -1;
         let bestD = Infinity;
         for (let i = 0; i < this.nodeCount; i++) {
@@ -15,7 +16,7 @@ export class HpaAbstractGraph extends FlatGraphView {
         }
         return best;
     }
-    collectTempConnectCandidates(gridCol, gridRow, isStart, maxCellsPerChunk) {
+    collectTempConnectCandidates(gridCol, gridRow, isStart, maxCellsPerChunk, anchorRegionIdx) {
         const searchRadius = Math.ceil(Math.sqrt(maxCellsPerChunk)) * 2;
         const out = [];
         const seen = new Set();
@@ -24,7 +25,6 @@ export class HpaAbstractGraph extends FlatGraphView {
             seen.add(idx);
             out.push(idx);
         };
-        const anchorRegionIdx = this.nearestNodeIdx(gridCol, gridRow);
         if (anchorRegionIdx >= 0) {
             add(anchorRegionIdx);
             if (isStart) {
@@ -49,10 +49,10 @@ export class HpaAbstractGraph extends FlatGraphView {
         }
         return out;
     }
-    buildExtended(query, maxCellsPerChunk, resolveLegCost) {
+    buildExtended(query, prep, maxCellsPerChunk, resolveLegCost) {
         const { start, target } = query;
-        const startCandidates = this.collectTempConnectCandidates(start.col, start.row, true, maxCellsPerChunk);
-        const targetCandidates = this.collectTempConnectCandidates(target.col, target.row, false, maxCellsPerChunk);
+        const startCandidates = this.collectTempConnectCandidates(start.col, start.row, true, maxCellsPerChunk, prep.startRegion);
+        const targetCandidates = this.collectTempConnectCandidates(target.col, target.row, false, maxCellsPerChunk, prep.targetRegion);
         const startTemp = this.nodeCount;
         const targetTemp = this.nodeCount + 1;
         const extCount = this.nodeCount + 2;
