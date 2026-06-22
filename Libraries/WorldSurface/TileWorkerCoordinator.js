@@ -18,6 +18,9 @@ export const TileWorkerCoordinator = {
     stats() {
         return client?.stats() ?? EMPTY_TILE_BAKE_STATS;
     },
+    enableTileBakeMetrics(enabled = true) {
+        return requireClient().enableTileBakeMetrics(enabled);
+    },
     requestGroundChunkBake(payload) {
         return requireClient().requestGroundChunkBake(payload);
     },

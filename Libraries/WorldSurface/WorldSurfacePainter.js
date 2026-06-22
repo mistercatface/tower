@@ -8,7 +8,7 @@ import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { getTileWorkerBakeConstants } from "./TileWorkerBakeConstants.js";
 import { getAnimationFrames, resolveBakeProfile } from "./ProfileBakeResolver.js";
 import { sourceFrameIndexForBakeSlot } from "./AnimationFrameBake.js";
-import { createEmptyBakePhases, createTileBakeMetrics } from "./TileBakeMetrics.js";
+import { createEmptyBakePhases, createTileBakeMetrics, isTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
 /**
  * @typedef {Object} BakeRequest
  * @property {CanvasRenderingContext2D} ctx
@@ -72,9 +72,8 @@ export function bakeRequestToCanvas(req, bakeSession = globalBakeSession) {
     return canvas;
 }
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileOrId, bakeSession = globalBakeSession) {
-    resetNoiseProfile(bakeSession.noiseMemo);
-    const phases = createEmptyBakePhases();
-    let phaseStart = performance.now();
+    const metricsOn = isTileBakeMetricsEnabled();
+    if (metricsOn) resetNoiseProfile(bakeSession.noiseMemo);
     const profile = resolvePaintProfile(profileOrId);
     const cellSize = options.cellSize;
     if (cellSize == null) throw new Error("paintPixelArea requires options.cellSize");
@@ -116,6 +115,25 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const numPixels = width * height;
     const pooled = bakeSession.memoryPool.getSamples(numPixels);
     const samples = { width, height, evalX: pooled.evalX, evalY: pooled.evalY, lookupX: pooled.lookupX, lookupY: pooled.lookupY, wallU: pooled.wallU, wallV: pooled.wallV };
+    if (!metricsOn) {
+        if (bake.wallFace) fillWallFaceRows(samples, width, height, mapCtx);
+        else {
+            let idx = 0;
+            for (let y = 0; y < height; y++)
+                for (let x = 0; x < width; x++) {
+                    writePixel(samples, idx, x, y, mapCtx);
+                    idx++;
+                }
+        }
+        const rgbBuffer = composeSurfaceImage(samples, profile, seed, bakeSession, bake);
+        copyRgbTripletsToRgba(data, rgbBuffer, numPixels);
+        ctx.putImageData(imgData, 0, 0);
+        bakeSession.memoryPool.release(pooled, numPixels);
+        bakeSession.lastMetrics = null;
+        return;
+    }
+    const phases = createEmptyBakePhases();
+    let phaseStart = performance.now();
     if (bake.wallFace) fillWallFaceRows(samples, width, height, mapCtx);
     else {
         let idx = 0;
@@ -221,9 +239,8 @@ export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession
 }
 /** Bake a world-aligned horizontal patch (animated surface playfield / rail band). */
 export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSession) {
-    resetNoiseProfile(bakeSession.noiseMemo);
-    const phases = createEmptyBakePhases();
-    let phaseStart = performance.now();
+    const metricsOn = isTileBakeMetricsEnabled();
+    if (metricsOn) resetNoiseProfile(bakeSession.noiseMemo);
     const provider = getSurfaceProfileProvider();
     const profileId = payload.profileId ?? provider.defaultId;
     const baseProfile = provider.getProfile(profileId);
@@ -247,13 +264,40 @@ export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSes
         bake = { useWallBase: true, wallCell: true };
     }
     let idx = 0;
+    let phaseStart = metricsOn ? performance.now() : 0;
     for (let y = 0; y < heightPx; y++)
         for (let x = 0; x < widthPx; x++) {
             writePixel(samples, idx, x, y, mapCtx);
             idx++;
         }
-    phases.sampleFillMs = performance.now() - phaseStart;
     const firstAnimIdx = useResolver ? getFirstAnimatedMotifIndex(baseProfile) : null;
+    if (!metricsOn) {
+        let staticBuffer = null;
+        if (useResolver && firstAnimIdx !== null && firstAnimIdx > 0) staticBuffer = composeSurfaceImage(samples, baseProfile, seed, bakeSession, bake, null, 0, firstAnimIdx);
+        const canvases = [];
+        const sourceTotal = getAnimationFrames(baseProfile.animation);
+        const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
+        for (let i = 0; i < frameCount; i++) {
+            payload.frameIndex = sourceFrameIndexForBakeSlot(frameStart + i, bakeTotal, sourceTotal);
+            const frameProfile = useResolver ? resolveBakeProfile(baseProfile, profileId, payload) : resolvePaintProfile(profileId);
+            let frameBuffer;
+            if (staticBuffer) {
+                frameBuffer = new Float32Array(staticBuffer);
+                composeSurfaceImage(samples, frameProfile, seed, bakeSession, bake, frameBuffer, firstAnimIdx, undefined);
+            } else frameBuffer = composeSurfaceImage(samples, frameProfile, seed, bakeSession, bake);
+            const canvas = createOffscreenCanvas(widthPx, heightPx);
+            const ctx = canvas.getContext("2d");
+            const imgData = ctx.createImageData(widthPx, heightPx);
+            copyRgbTripletsToRgba(imgData.data, frameBuffer, numPixels);
+            ctx.putImageData(imgData, 0, 0);
+            canvases.push(canvas);
+        }
+        bakeSession.memoryPool.release(pooled, numPixels);
+        bakeSession.lastMetrics = null;
+        return canvases;
+    }
+    const phases = createEmptyBakePhases();
+    phases.sampleFillMs = performance.now() - phaseStart;
     let staticBuffer = null;
     if (useResolver && firstAnimIdx !== null && firstAnimIdx > 0) {
         phaseStart = performance.now();

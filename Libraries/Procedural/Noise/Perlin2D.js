@@ -35,6 +35,10 @@ export function ensureNoiseInitialized(seed) {
     }
 }
 let activeNoiseMemo = null;
+let noiseProfileEnabled = false;
+export function setNoiseProfileEnabled(enabled) {
+    noiseProfileEnabled = Boolean(enabled);
+}
 export function setActiveNoiseMemo(memo) {
     activeNoiseMemo = memo;
 }
@@ -74,11 +78,13 @@ function rawNoise2D(x, y) {
 }
 export function noise2D(x, y, octaves = 2, memo = activeNoiseMemo) {
     if (memo !== null) {
-        const profile = memo.profile;
-        if (profile) profile.calls++;
+        if (noiseProfileEnabled) {
+            const profile = memo.profile;
+            if (profile) profile.calls++;
+        }
         for (let i = 0; i < memo.count; i++)
             if (memo.x[i] === x && memo.y[i] === y && memo.octaves[i] === octaves) {
-                if (profile) profile.hits++;
+                if (noiseProfileEnabled && memo.profile) memo.profile.hits++;
                 return memo.val[i];
             }
     }
@@ -101,6 +107,6 @@ export function noise2D(x, y, octaves = 2, memo = activeNoiseMemo) {
             memo.octaves[c] = octaves;
             memo.val[c] = val;
             memo.count++;
-        } else if (memo.profile) memo.profile.overflows++;
+        } else if (noiseProfileEnabled && memo.profile) memo.profile.overflows++;
     return val;
 }

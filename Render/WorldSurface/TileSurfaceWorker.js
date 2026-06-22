@@ -1,6 +1,6 @@
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { bakeGroundChunkCanvases, bakeHorizontalPatchCanvases, bakeWallAtlasCanvases, BakeSession } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
-import { formatTileBakeMetricsLog } from "../../Libraries/WorldSurface/TileBakeMetrics.js";
+import { formatTileBakeMetricsLog, installTileBakeMetricsEnabled, isTileBakeMetricsEnabled } from "../../Libraries/WorldSurface/TileBakeMetrics.js";
 import { installTileWorkerBakeConstants } from "../../Libraries/WorldSurface/TileWorkerBakeConstants.js";
 import { TILE_WORKER_MESSAGE } from "../../Libraries/WorldSurface/TileWorkerMessages.js";
 import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
@@ -22,6 +22,11 @@ export class TileSurfaceWorker {
             const handler = this.handlers[type];
             if (!handler) throw new Error(`Unknown TileWorker request type: ${type}`);
             const canvases = handler(payload);
+            if (!isTileBakeMetricsEnabled()) {
+                const bitmaps = canvases.map((c) => c.transferToImageBitmap());
+                self.postMessage({ id, bitmaps }, bitmaps);
+                return;
+            }
             const metrics = this.bakeSession.lastMetrics;
             const transferStart = performance.now();
             const bitmaps = canvases.map((c) => c.transferToImageBitmap());
@@ -36,7 +41,8 @@ export class TileSurfaceWorker {
         }
     }
     configureBakeConstants(payload) {
-        installTileWorkerBakeConstants(payload);
+        if (payload.metricsEnabled != null) installTileBakeMetricsEnabled(payload.metricsEnabled);
+        if (payload.cellSize != null) installTileWorkerBakeConstants(payload);
         return [];
     }
     bakeGroundChunk(payload) {

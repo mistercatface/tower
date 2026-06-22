@@ -3,7 +3,7 @@ import { PromiseWorkerPoolHost } from "../Workers/PromiseWorkerPoolHost.js";
 import { bumpSurfaceProfileRevision, getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { clampBakeFrameRange, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
-import { EMPTY_BAKE_TIMING_STATS } from "./TileBakeMetrics.js";
+import { EMPTY_BAKE_TIMING_STATS, setTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
 import { TILE_BAKE_TIER, TileBakeScheduler } from "./TileBakeScheduler.js";
 import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
 import { getSurfaceBakeScale } from "./WorldSurfaceResolution.js";
@@ -74,6 +74,11 @@ export class TileSurfaceWorkerClient {
     stats() {
         return this._started ? this.scheduler.stats() : { ...EMPTY_TILE_BAKE_STATS };
     }
+    enableTileBakeMetrics(enabled = true) {
+        setTileBakeMetricsEnabled(enabled);
+        if (!this._started) return Promise.resolve();
+        return this._broadcastRequest(TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS, { metricsEnabled: enabled });
+    }
     requestGroundChunkBake(payload) {
         return this._requestProfileBake(TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK, payload, TILE_BAKE_TIER.STATIC);
     }
@@ -98,7 +103,7 @@ export class TileSurfaceWorkerClient {
         return this.workerReady;
     }
     syncBakeConstants(settings) {
-        const constants = { cellSize: settings.cellSize, cellsPerChunk: settings.cellsPerChunk, surfaceBakeScale: getSurfaceBakeScale(settings) };
+        const constants = { cellSize: settings.cellSize, cellsPerChunk: settings.cellsPerChunk, surfaceBakeScale: getSurfaceBakeScale(settings), metricsEnabled: settings.metricsEnabled };
         this._ensureStarted();
         this.workerReady = this.workerReady.then(() => this._broadcastRequest(TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS, constants));
         return this.workerReady;

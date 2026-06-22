@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ensureNoiseInitialized, createNoiseMemo, noise2D, resetNoiseProfile, setActiveNoiseMemo } from "../Libraries/Procedural/Noise/Perlin2D.js";
-import { EMPTY_BAKE_TIMING_STATS, TileBakeMetricsAccumulator, createNoiseProfileSnapshot } from "../Libraries/WorldSurface/TileBakeMetrics.js";
+import { ensureNoiseInitialized, createNoiseMemo, noise2D, resetNoiseProfile, setActiveNoiseMemo, setNoiseProfileEnabled } from "../Libraries/Procedural/Noise/Perlin2D.js";
+import { EMPTY_BAKE_TIMING_STATS, TileBakeMetricsAccumulator, createNoiseProfileSnapshot, setTileBakeMetricsEnabled } from "../Libraries/WorldSurface/TileBakeMetrics.js";
 import { TileBakeScheduler } from "../Libraries/WorldSurface/TileBakeScheduler.js";
 import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHost.js";
 
 describe("tile bake metrics", () => {
-    it("tracks noise hits, calls, and memo overflows", () => {
+    it("tracks noise hits, calls, and memo overflows when enabled", () => {
+        setTileBakeMetricsEnabled(true);
         ensureNoiseInitialized(42);
         const memo = createNoiseMemo(2);
         setActiveNoiseMemo(memo);
@@ -23,7 +24,20 @@ describe("tile bake metrics", () => {
         const snapshot = createNoiseProfileSnapshot(memo.profile, 100);
         assert.equal(snapshot.callsPerPixel, 0.05);
         assert.equal(snapshot.hitRate, 0.2);
-        assert.equal(snapshot.overflowRate, 0.4);
+        assert.ok(Math.abs(snapshot.overflowRate - 0.4) < 1e-9);
+        setTileBakeMetricsEnabled(false);
+    });
+    it("does not count noise profile when disabled", () => {
+        setTileBakeMetricsEnabled(false);
+        ensureNoiseInitialized(7);
+        const memo = createNoiseMemo(4);
+        setActiveNoiseMemo(memo);
+        noise2D(1, 1, 1, memo);
+        noise2D(2, 2, 1, memo);
+        setActiveNoiseMemo(null);
+        assert.equal(memo.profile.calls, 0);
+        assert.equal(memo.profile.hits, 0);
+        assert.equal(memo.profile.overflows, 0);
     });
     it("accumulates rolling bake timing averages", () => {
         const accumulator = new TileBakeMetricsAccumulator(2);
@@ -53,6 +67,7 @@ describe("tile bake metrics", () => {
         assert.equal(accumulator.averages().sampleCount, 2);
     });
     it("scheduler stats include bakeTiming averages from worker metrics", () => {
+        setTileBakeMetricsEnabled(true);
         const pool = new PromiseWorkerPoolHost("fake-url", {
             poolSize: 1,
             createWorker: () => ({ onmessage: null, onerror: null, postMessage() {}, terminate() {} }),
@@ -72,5 +87,6 @@ describe("tile bake metrics", () => {
         assert.equal(stats.bakeTiming.sampleCount, 1);
         assert.equal(stats.bakeTiming.composeStaticMs, 8);
         assert.equal(stats.bakeTiming.noiseCallsPerPixel, 3);
+        setTileBakeMetricsEnabled(false);
     });
 });
