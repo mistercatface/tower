@@ -39,7 +39,6 @@ export async function setupSnakeGame(state) {
         for (const idx of occupied) fleeSpawnExclude.add(idx);
     }
     const fleeAgents = spawnFleeAgentsScene(state, scene.navWalkable, fleeSpawnExclude.size ? fleeSpawnExclude : null);
-
     const spawnPlan = [
         { species: "snake", spawnCtxs: scene.snakes.map((s) => ({ headId: s.chain.head.id, spawnGroupId: s.chain.spawnGroupId, navWalkable: scene.navWalkable })) },
         { species: "flee_agent", spawnCtxs: fleeAgents.map((f) => ({ headId: f.pack.head.id, wedgeId: f.pack.body.id, spawnGroupId: f.pack.spawnGroupId })) },
