@@ -17,7 +17,7 @@ import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
 import { enforceSnakeMinLength } from "./snakeCombat.js";
 import { getSnakeInstance } from "./SnakeInstance.js";
-import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
+import { tickAgentBrainAndLocomotion } from "./agentPopulationRegistry.js";
 export function createSnakeBrain(visionConeOverride) {
     const config = getSnakeGameConfig();
     const brain = createBrain({ spatialMemoryCapacity: config.spatialMemoryCapacity });
@@ -44,15 +44,11 @@ function resolveChainTailProp(state, headId) {
     return tail;
 }
 function runSnakeFsmTick(intent, seeker, state, dt, beforeNav = null) {
-    const snakeGame = state.sandbox.snakeGame;
-    const soloTick = !snakeGame._batchingPerception;
-    if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
-    else maybeBeginSnakeAutosimTick(state);
-    intent.perceive(seeker, state);
-    const choice = intent.transition(seeker, state);
-    if (beforeNav) beforeNav(seeker);
-    intent.headNav.tick(seeker, dt);
-    if (soloTick) endSnakePerceptionFrame(state);
+    let choice;
+    tickAgentBrainAndLocomotion(state, intent, dt, (head) => {
+        choice = intent.transition(head, state);
+        if (beforeNav) beforeNav(head);
+    });
     return choice;
 }
 export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ballType, growDirX, growDirY, rng = Math.random, visionCone = null, initialFoodFraction = 1 }) {

@@ -171,6 +171,7 @@ export function createSnakeForageIntent({
     });
     return {
         ...intent,
+        headId: selfHeadId,
         headNav,
         getDestination() {
             return locomotion.getDestination();

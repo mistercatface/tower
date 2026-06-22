@@ -4,40 +4,24 @@ import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { resolveSandboxFaction, sandboxFactions } from "./sandboxFaction.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
+import { spawnAgentChain } from "./spawnAgentChain.js";
 function segmentOffset(index, spacing, growDirX, growDirY) {
     return { x: index * spacing * growDirX, y: index * spacing * growDirY };
 }
 export function spawnLinkedBallChain(state, anchorCell, options) {
-    const segmentCount = options.segmentCount;
-    const spacing = options.spacing;
-    const ballType = options.ballType;
-    const headBallType = options.headBallType ?? ballType;
-    const faction = options.faction ?? sandboxFactions.alpha;
-    const growDirX = options.growDirX ?? -1;
-    const growDirY = options.growDirY ?? 0;
-    const grid = state.obstacleGrid;
-    const meta = getSandboxEntityMeta(state);
-    const exportType = options.exportType ?? null;
-    const linkSlack = options.linkSlack ?? 1;
-    const segmentRadius = options.segmentRadius ?? null;
-    const anchorWorld = grid.gridToWorld(anchorCell.col, anchorCell.row);
-    const props = [];
-    for (let i = 0; i < segmentCount; i++) {
-        const offset = segmentOffset(i, spacing, growDirX, growDirY);
-        const segmentType = i === 0 ? headBallType : ballType;
-        const prop = spawnPlacedSandboxProp(state, anchorWorld.x + offset.x, anchorWorld.y + offset.y, segmentType, faction);
-        if (segmentRadius != null) setCirclePropRadius(prop, segmentRadius);
-        props.push(prop);
-    }
-    const spawnGroupId = options.spawnGroupId ?? `linkedBallChain:${props[0].id}`;
-    for (let i = 0; i < props.length; i++) {
-        meta.setSpawnGroupId(props[i].id, spawnGroupId);
-        if (exportType) meta.setSpawnGroupExportType(props[i].id, exportType);
-        if (i === 0) meta.setSpawnGroupAnchor(props[i].id);
-    }
-    for (let i = 0; i < props.length - 1; i++) addChainLink(state, props[i].id, props[i + 1].id, linkSlack);
-    setChainHead(state, meta, props[0].id);
-    return { head: props[0], tail: props[props.length - 1], members: props, spawnGroupId };
+    return spawnAgentChain(state, anchorCell, {
+        headPropId: options.headBallType ?? options.ballType,
+        bodyPropId: options.ballType,
+        segmentCount: options.segmentCount,
+        faction: options.faction ?? sandboxFactions.alpha,
+        exportType: options.exportType,
+        linkSlack: options.linkSlack,
+        segmentRadius: options.segmentRadius,
+        growDirX: options.growDirX ?? -1,
+        growDirY: options.growDirY ?? 0,
+        spacing: options.spacing,
+        spawnGroupId: options.spawnGroupId,
+    });
 }
 export function growChainSegment(state, tailProp, options) {
     const spacing = options.spacing;

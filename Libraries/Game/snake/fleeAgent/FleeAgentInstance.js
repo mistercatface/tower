@@ -1,5 +1,5 @@
 import { getConnectedComponentPath } from "../../../Motion/kineticConstraintGraph.js";
-import { registerAliveAgent, markAgentDead } from "../agentPopulationRegistry.js";
+import { registerAliveAgent, markAgentDead, tickAgentBrainAndLocomotion } from "../agentPopulationRegistry.js";
 import { syncFleeAgentWedgeFacing } from "./syncFleeAgentWedgeFacing.js";
 import { createBrain } from "../../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../../AI/brain/syncSpatialBrain.js";
@@ -8,7 +8,6 @@ import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../snakeSteer
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { perceiveSnakeIntentWorld, pickFleeCell } from "../snakeIntent.js";
 import { resolveSnakeExploreCell } from "../snakeExplore.js";
-import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "../snakePerception.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
 import { shatterSnakeSegments } from "../snakeSegmentFracture.js";
 export class FleeAgentInstance {
@@ -37,61 +36,56 @@ export class FleeAgentInstance {
             if (head) this.headNav.clear(head);
         }
     }
-    tick(state, dtMs) {
-        if (this.lifecycle !== "alive") return;
-        const head = state.entityRegistry.getLive(this.headId);
-        if (!head) return;
-        const config = getSnakeGameConfig();
-        const grid = state.obstacleGrid;
-        const snakeGame = state.sandbox.snakeGame;
-        const navWalkable = snakeGame.navWalkable;
-        const soloTick = !snakeGame._batchingPerception;
-        if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
-        else maybeBeginSnakeAutosimTick(state);
-        // 1. Sync brain with vision
+    perceive(head, state) {
         this.brainSync(head, state);
-        // Stamp arrival on cell enter
+        const grid = state.obstacleGrid;
         const currentCell = grid.worldToGrid(head.x, head.y);
         if (currentCell.col !== this.lastArrivalCol || currentCell.row !== this.lastArrivalRow) {
             this.lastArrivalCol = currentCell.col;
             this.lastArrivalRow = currentCell.row;
             this.brain.stampArrival(currentCell.col, currentCell.row);
         }
-        // 2. Perceive threats (snakes)
-        const perception = perceiveSnakeIntentWorld(head, this.headId, state, snakeGame.registry, () => null, config.visionCone);
-        const threat = perception.threat;
-        // 3. FSM State Transitions
-        if (threat) {
-            this.mode = "flee";
-            this.fleeTicks = config.fleeHysteresis?.minTicks ?? 45;
-        } else if (this.mode === "flee") {
-            this.fleeTicks--;
-            if (this.fleeTicks <= 0) this.mode = "explore";
-        }
-        // 4. Execute FSM Actions
-        const dest = this.locomotion.getDestination();
-        const destReached = dest && (this.locomotion.hasArrivedAtDest(head, grid) || this.locomotion.hasReachedDest(head, grid));
-        const routeFailed = dest && this.locomotion.needsRetry(head, state);
-        if (this.mode === "flee") {
-            const needsNewFleeCell = !dest || destReached || routeFailed || threat;
-            if (needsNewFleeCell && threat) {
-                const fleeCell = pickFleeCell(head, threat, grid, navWalkable, config.fleeTiles);
-                if (fleeCell) this.locomotion.setFlee(head, state, fleeCell);
-                else {
+    }
+    tick(state, dtMs) {
+        if (this.lifecycle !== "alive") return;
+        const config = getSnakeGameConfig();
+        const grid = state.obstacleGrid;
+        const snakeGame = state.sandbox.snakeGame;
+        const navWalkable = snakeGame.navWalkable;
+        tickAgentBrainAndLocomotion(state, this, dtMs, (head) => {
+            // 2. Perceive threats (snakes)
+            const perception = perceiveSnakeIntentWorld(head, this.headId, state, snakeGame.registry, () => null, config.visionCone);
+            const threat = perception.threat;
+            // 3. FSM State Transitions
+            if (threat) {
+                this.mode = "flee";
+                this.fleeTicks = config.fleeHysteresis?.minTicks ?? 45;
+            } else if (this.mode === "flee") {
+                this.fleeTicks--;
+                if (this.fleeTicks <= 0) this.mode = "explore";
+            }
+            // 4. Execute FSM Actions
+            const dest = this.locomotion.getDestination();
+            const destReached = dest && (this.locomotion.hasArrivedAtDest(head, grid) || this.locomotion.hasReachedDest(head, grid));
+            const routeFailed = dest && this.locomotion.needsRetry(head, state);
+            if (this.mode === "flee") {
+                const needsNewFleeCell = !dest || destReached || routeFailed || threat;
+                if (needsNewFleeCell && threat) {
+                    const fleeCell = pickFleeCell(head, threat, grid, navWalkable, config.fleeTiles);
+                    if (fleeCell) this.locomotion.setFlee(head, state, fleeCell);
+                    else {
+                        const exploreCell = resolveSnakeExploreCell(head, state, this.brain.spatial, Math.random, navWalkable);
+                        if (exploreCell) this.locomotion.setExplore(head, state, exploreCell);
+                    }
+                }
+            } else {
+                const needsNewExploreCell = !dest || destReached || routeFailed;
+                if (needsNewExploreCell) {
                     const exploreCell = resolveSnakeExploreCell(head, state, this.brain.spatial, Math.random, navWalkable);
                     if (exploreCell) this.locomotion.setExplore(head, state, exploreCell);
                 }
             }
-        } else {
-            const needsNewExploreCell = !dest || destReached || routeFailed;
-            if (needsNewExploreCell) {
-                const exploreCell = resolveSnakeExploreCell(head, state, this.brain.spatial, Math.random, navWalkable);
-                if (exploreCell) this.locomotion.setExplore(head, state, exploreCell);
-            }
-        }
-        // 5. Tick locomotion
-        this.headNav.tick(head, dtMs);
-        if (soloTick) endSnakePerceptionFrame(state);
+        });
     }
     syncMembersFromGraph(state) {
         const members = getConnectedComponentPath(state.kinetic, this.headId);

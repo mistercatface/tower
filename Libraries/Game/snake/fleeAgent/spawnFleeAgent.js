@@ -1,12 +1,12 @@
 import { WorldProp } from "../../../../Entities/WorldProp.js";
 import { getSandboxEntityMeta } from "../../../../GameState/sandboxEntityMeta.js";
-import { addChainLink, resolveChainLinkRestLength, setChainHead } from "../../../Sandbox/chainLinks.js";
-import { spawnPlacedSandboxProp } from "../../../Sandbox/sandboxPlacedSpawn.js";
+import { resolveChainLinkRestLength } from "../../../Sandbox/chainLinks.js";
 import { resolveSandboxFaction, sandboxFactions } from "../../../Sandbox/sandboxFaction.js";
 import { getPropAsset } from "../../../Props/PropCatalog.js";
 import { getCirclePropRadius, getPolygonPropBoundingRadius, setCirclePropRadius, setPolygonPropBoundingRadius } from "../../../Props/propScale.js";
 import { getSnakeGameConfig, resolveSnakeStartRadius, applySnakeSegmentGameplay } from "../snakeGameConfig.js";
 import { syncFleeAgentWedgeFacing } from "./syncFleeAgentWedgeFacing.js";
+import { spawnAgentChain } from "../../../Sandbox/spawnAgentChain.js";
 export const FLEE_AGENT_EXPORT_TYPE = "flee_agent";
 export const FLEE_AGENT_CHAIN_MEMBER_COUNT = 2;
 export function resolveFleeAgentForwardDir(config = getSnakeGameConfig()) {
@@ -26,35 +26,32 @@ function scaleFleeAgentWedgeToBody(wedge, bodyRadius, wedgePropId, config) {
 export function spawnFleeAgent(state, anchorCell, options = {}) {
     const config = getSnakeGameConfig();
     const fleeConfig = config.fleeAgent;
-    const grid = state.obstacleGrid;
-    const meta = getSandboxEntityMeta(state);
     const bodyRadius = options.segmentRadius ?? resolveSnakeStartRadius(config);
     const forward = options.forwardDir ?? resolveFleeAgentForwardDir(config);
-    const growDirX = forward.x;
-    const growDirY = forward.y;
+    const growDirX = -forward.x;
+    const growDirY = -forward.y;
     const linkSlack = options.linkSlack ?? config.linkSlack;
     const bodyType = options.bodyPropId ?? fleeConfig.bodyPropId;
     const wedgeType = options.wedgePropId ?? fleeConfig.wedgePropId;
     const faction = options.faction ?? fleeConfig.faction ?? sandboxFactions.bravo;
     const exportType = options.exportType ?? FLEE_AGENT_EXPORT_TYPE;
-    const anchorWorld = grid.gridToWorld(anchorCell.col, anchorCell.row);
-    const wedge = spawnPlacedSandboxProp(state, anchorWorld.x, anchorWorld.y, wedgeType, faction);
-    scaleFleeAgentWedgeToBody(wedge, bodyRadius, wedgeType, config);
-    const body = spawnPlacedSandboxProp(state, anchorWorld.x, anchorWorld.y, bodyType, faction);
-    setCirclePropRadius(body, bodyRadius);
-    applySnakeSegmentGameplay(body);
-    const restLength = resolveChainLinkRestLength(wedge, body, linkSlack);
-    body.x = anchorWorld.x - growDirX * restLength;
-    body.y = anchorWorld.y - growDirY * restLength;
-    const forwardHeading = Math.atan2(growDirY, growDirX);
-    syncFleeAgentWedgeFacing(wedge, wedge, forwardHeading);
-    const spawnGroupId = options.spawnGroupId ?? `fleeAgent:${wedge.id}`;
-    meta.setSpawnGroupId(body.id, spawnGroupId);
-    meta.setSpawnGroupId(wedge.id, spawnGroupId);
-    meta.setSpawnGroupExportType(body.id, exportType);
-    meta.setSpawnGroupExportType(wedge.id, exportType);
-    meta.setSpawnGroupAnchor(wedge.id);
-    addChainLink(state, wedge.id, body.id, linkSlack);
-    setChainHead(state, meta, wedge.id);
-    return { head: wedge, body, members: [wedge, body], spawnGroupId };
+    const pack = spawnAgentChain(state, anchorCell, {
+        headPropId: wedgeType,
+        bodyPropId: bodyType,
+        segmentCount: FLEE_AGENT_CHAIN_MEMBER_COUNT,
+        faction,
+        exportType,
+        linkSlack,
+        segmentRadius: bodyRadius,
+        growDirX,
+        growDirY,
+        headScaleFn: (wedge, radius) => scaleFleeAgentWedgeToBody(wedge, radius, wedgeType, config),
+        onSegmentSpawned: (prop, index) => {
+            if (index > 0) applySnakeSegmentGameplay(prop);
+        },
+        spawnGroupId: options.spawnGroupId,
+    });
+    const forwardHeading = Math.atan2(forward.y, forward.x);
+    syncFleeAgentWedgeFacing(pack.head, pack.head, forwardHeading);
+    return { head: pack.head, body: pack.members[1], members: pack.members, spawnGroupId: pack.spawnGroupId };
 }

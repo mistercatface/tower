@@ -1,5 +1,6 @@
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
+import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 export function createAgentPopulationRegistry() {
     return {
         // Maps headId -> AgentInstance (SnakeInstance, FleeAgentInstance, etc.)
@@ -62,4 +63,17 @@ export function resolveAgentInstanceForMember(state, snakeGame, memberId) {
     const instance = snakeGame.instancesByHeadId.get(memberId);
     if (instance && instance.lifecycle === "alive") return instance;
     return buildAgentMemberToInstanceMap(state, snakeGame).get(memberId) ?? null;
+}
+export function tickAgentBrainAndLocomotion(state, instance, dtMs, tickFsmLogic) {
+    const snakeGame = state.sandbox.snakeGame;
+    const soloTick = !snakeGame._batchingPerception;
+    if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
+    else maybeBeginSnakeAutosimTick(state);
+    const head = state.entityRegistry.getLive(instance.headId);
+    if (head) {
+        if (typeof instance.perceive === "function") instance.perceive(head, state);
+        tickFsmLogic(head);
+        if (instance.headNav) instance.headNav.tick(head, dtMs);
+    }
+    if (soloTick) endSnakePerceptionFrame(state);
 }
