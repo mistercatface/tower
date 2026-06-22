@@ -6,9 +6,14 @@ function lcg(seed) {
     };
 }
 const PERM_SIZE = 512;
-const perm = new Uint8Array(PERM_SIZE);
+let perm = new Uint8Array(PERM_SIZE);
+const permCaches = new Map();
 let currentNoiseSeed = null;
 export function initNoiseTable(seed) {
+    if (permCaches.has(seed)) {
+        perm = permCaches.get(seed);
+        return;
+    }
     const rand = lcg(seed);
     const p = new Uint8Array(256);
     for (let i = 0; i < 256; i++) p[i] = i;
@@ -18,13 +23,23 @@ export function initNoiseTable(seed) {
         p[i] = p[j];
         p[j] = temp;
     }
-    for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+    const newPerm = new Uint8Array(512);
+    for (let i = 0; i < 512; i++) newPerm[i] = p[i & 255];
+    permCaches.set(seed, newPerm);
+    perm = newPerm;
 }
 export function ensureNoiseInitialized(seed) {
     if (currentNoiseSeed !== seed) {
         initNoiseTable(seed);
         currentNoiseSeed = seed;
     }
+}
+let activeNoiseMemo = null;
+export function setActiveNoiseMemo(memo) {
+    activeNoiseMemo = memo;
+}
+export function createNoiseMemo(capacity = 8) {
+    return { x: new Float32Array(capacity), y: new Float32Array(capacity), octaves: new Int32Array(capacity), val: new Float32Array(capacity), count: 0 };
 }
 function grad(hash, x, y) {
     const h = hash & 3;
@@ -41,15 +56,18 @@ function rawNoise2D(x, y) {
     const v = yf * yf * yf * (yf * (yf * 6 - 15) + 10);
     const X = xi & 255;
     const Y = yi & 255;
-    const g00 = grad(perm[X + perm[Y]], xf, yf);
-    const g10 = grad(perm[X + 1 + perm[Y]], xf - 1, yf);
-    const g01 = grad(perm[X + perm[Y + 1]], xf, yf - 1);
-    const g11 = grad(perm[X + 1 + perm[Y + 1]], xf - 1, yf - 1);
+    const pY = perm[Y];
+    const pY1 = perm[Y + 1];
+    const g00 = grad(perm[X + pY], xf, yf);
+    const g10 = grad(perm[X + 1 + pY], xf - 1, yf);
+    const g01 = grad(perm[X + pY1], xf, yf - 1);
+    const g11 = grad(perm[X + 1 + pY1], xf - 1, yf - 1);
     const ix0 = g00 + u * (g10 - g00);
     const ix1 = g01 + u * (g11 - g01);
     return ix0 + v * (ix1 - ix0);
 }
-export function noise2D(x, y, octaves = 2) {
+export function noise2D(x, y, octaves = 2, memo = activeNoiseMemo) {
+    if (memo !== null) for (let i = 0; i < memo.count; i++) if (memo.x[i] === x && memo.y[i] === y && memo.octaves[i] === octaves) return memo.val[i];
     let value = 0;
     let amplitude = 1.0;
     let frequency = 1.0;
@@ -60,5 +78,14 @@ export function noise2D(x, y, octaves = 2) {
         amplitude *= 0.5;
         frequency *= 2.0;
     }
-    return value / maxValue;
+    const val = value / maxValue;
+    if (memo !== null && memo.count < memo.x.length) {
+        const c = memo.count;
+        memo.x[c] = x;
+        memo.y[c] = y;
+        memo.octaves[c] = octaves;
+        memo.val[c] = val;
+        memo.count++;
+    }
+    return val;
 }

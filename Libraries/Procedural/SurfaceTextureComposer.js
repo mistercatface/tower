@@ -1,5 +1,5 @@
 import { blendMotifRgb } from "./util/blend.js";
-import { ensureNoiseInitialized } from "./Noise/Perlin2D.js";
+import { ensureNoiseInitialized, setActiveNoiseMemo } from "./Noise/Perlin2D.js";
 import { warpPointInto, writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
 import { readTranslateConfig, TRANSLATE_COORDINATE_MODES } from "./Motifs/translate.js";
@@ -63,51 +63,58 @@ function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, 
     scratch.lookupX = warped.x;
     scratch.lookupY = warped.y;
 }
-export function composeSurfaceImage(samples, profile, seed, bake = { useWallBase: false }) {
+export function composeSurfaceImage(samples, profile, seed, bakeSession = null, bake = { useWallBase: false }, rgbBuffer = null, motifStartIndex = 0, motifEndIndex = undefined) {
     ensureNoiseInitialized(seed);
+    if (bakeSession && bakeSession.noiseMemo) setActiveNoiseMemo(bakeSession.noiseMemo);
+    else setActiveNoiseMemo(null);
     const numPixels = samples.width * samples.height;
-    const rgbBuffer = new Float32Array(numPixels * 3);
+    if (!rgbBuffer) rgbBuffer = new Float32Array(numPixels * 3);
     const base = resolvePaletteBase(profile, bake.useWallBase);
     const warp = profile.warp;
     sampleScratch.seed = seed;
-    for (let i = 0; i < numPixels; i++) {
-        rgbBuffer[i * 3] = base[0];
-        rgbBuffer[i * 3 + 1] = base[1];
-        rgbBuffer[i * 3 + 2] = base[2];
-        writeDomainWarp(samples.evalX[i], samples.evalY[i], warp, samples.lookupX, samples.lookupY, i);
-    }
     const motifs = resolveMotifStack(profile);
+    const endIdx = motifEndIndex ?? motifs.length;
     const translateContext = createTranslateContext();
-    /** @type {{ motifConfig: object, motifImpl: object, blendMode: string }[]} */
-    const motifPasses = [];
     for (let m = 0; m < motifs.length; m++) {
         const motifConfig = motifs[m];
-        if (motifConfig.type === "translate") {
-            pushTranslateLayer(translateContext, motifConfig);
-            continue;
-        }
+        if (motifConfig.type === "translate") pushTranslateLayer(translateContext, motifConfig);
+    }
+    const motifPasses = [];
+    for (let m = motifStartIndex; m < endIdx; m++) {
+        const motifConfig = motifs[m];
+        if (motifConfig.type === "translate") continue;
         if (!motifMatchesBake(motifConfig, bake)) continue;
         motifPasses.push({ motifConfig, motifImpl: getMotif(motifConfig.type), blendMode: motifConfig.blendMode ?? "add" });
     }
-    for (let p = 0; p < motifPasses.length; p++) {
-        const { motifImpl, motifConfig, blendMode } = motifPasses[p];
-        for (let i = 0; i < numPixels; i++) {
-            applyTranslateToSample(sampleScratch, samples, i, translateContext, warp);
-            sampleScratch.wallU = samples.wallU[i];
-            sampleScratch.wallV = samples.wallV[i];
-            const idx = i * 3;
+    const memo = bakeSession?.noiseMemo;
+    for (let i = 0; i < numPixels; i++) {
+        if (motifStartIndex === 0) {
+            rgbBuffer[i * 3] = base[0];
+            rgbBuffer[i * 3 + 1] = base[1];
+            rgbBuffer[i * 3 + 2] = base[2];
+            writeDomainWarp(samples.evalX[i], samples.evalY[i], warp, samples.lookupX, samples.lookupY, i);
+        }
+        if (motifPasses.length === 0) continue;
+        if (memo) memo.count = 0;
+        applyTranslateToSample(sampleScratch, samples, i, translateContext, warp);
+        sampleScratch.wallU = samples.wallU[i];
+        sampleScratch.wallV = samples.wallV[i];
+        const idx = i * 3;
+        for (let p = 0; p < motifPasses.length; p++) {
+            const pass = motifPasses[p];
             beforeRgb.r = rgbBuffer[idx];
             beforeRgb.g = rgbBuffer[idx + 1];
             beforeRgb.b = rgbBuffer[idx + 2];
             layerRgb.r = beforeRgb.r;
             layerRgb.g = beforeRgb.g;
             layerRgb.b = beforeRgb.b;
-            motifImpl.apply(sampleScratch, layerRgb, motifConfig);
-            blendMotifRgb(blendOut, beforeRgb, layerRgb, blendMode);
+            pass.motifImpl.apply(sampleScratch, layerRgb, pass.motifConfig);
+            blendMotifRgb(blendOut, beforeRgb, layerRgb, pass.blendMode);
             rgbBuffer[idx] = blendOut.r;
             rgbBuffer[idx + 1] = blendOut.g;
             rgbBuffer[idx + 2] = blendOut.b;
         }
     }
+    setActiveNoiseMemo(null);
     return rgbBuffer;
 }

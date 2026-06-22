@@ -9,7 +9,24 @@ import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 let mockPhysId = 0;
 function mockKineticBody(isSleeping = false) {
-    return { isSleeping, isDead: false, strategy: { isKinetic: true }, _sleepFrames: 0, _physId: mockPhysId++ };
+    const radius = 10;
+    return {
+        x: 0,
+        y: 0,
+        radius,
+        isSleeping,
+        isDead: false,
+        strategy: { isKinetic: true },
+        _sleepFrames: 0,
+        _physId: mockPhysId++,
+        mass: radius,
+        get momentOfInertia() {
+            return this.mass * this.radius * this.radius * 0.5;
+        },
+        getShape() {
+            return new CircleShape(radius);
+        },
+    };
 }
 function mockCircleProp(x, y, radius) {
     return {
@@ -17,9 +34,13 @@ function mockCircleProp(x, y, radius) {
         x,
         y,
         radius,
+        mass: radius,
         isSleeping: false,
         isDead: false,
         strategy: { isKinetic: true },
+        get momentOfInertia() {
+            return this.mass * this.radius * this.radius * 0.5;
+        },
         getShape() {
             return new CircleShape(radius);
         },
