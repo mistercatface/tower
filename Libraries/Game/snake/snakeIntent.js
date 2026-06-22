@@ -2,16 +2,6 @@ import { hasGridCellLineOfSightCached } from "../../Navigation/perception/gridCe
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
-function visibleTargetInRange(seeker, target, rangeSq, navTopology, originCol, originRow, visionSession) {
-    if (!target || target.isDead) return null;
-    const dx = target.x - seeker.x;
-    const dy = target.y - seeker.y;
-    const distSq = dx * dx + dy * dy;
-    if (distSq > rangeSq) return null;
-    const targetCell = navTopology.grid.worldToGrid(target.x, target.y);
-    if (!hasGridCellLineOfSightCached(visionSession, navTopology, originCol, originRow, targetCell.col, targetCell.row)) return null;
-    return Math.sqrt(distSq);
-}
 function classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry, frame, vision, visionCone = frame.visionCone) {
     const navTopology = frame.navTopology;
     const visionSession = frame.visionSession;
@@ -29,12 +19,12 @@ function classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry
         if (headId === selfHeadId) continue;
         const head = state.entityRegistry.getLive(headId);
         if (!head || head.isDead) continue;
-        const score = getSnakeSizeScore(state, head.id);
-        if (score === selfScore) continue;
         const dx = head.x - seeker.x;
         const dy = head.y - seeker.y;
         const distSq = dx * dx + dy * dy;
         if (distSq > rangeSq) continue;
+        const score = getSnakeSizeScore(state, head.id);
+        if (score === selfScore) continue;
         const isThreat = score > selfScore;
         if (isThreat && distSq >= bestThreatDistSq) continue;
         if (!isThreat && distSq >= bestPreyDistSq) continue;
@@ -46,14 +36,6 @@ function classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry
         } else {
             bestPreyDistSq = distSq;
             prey = head;
-        }
-    }
-    const snakeGame = state.sandbox.snakeGame;
-    if (snakeGame) {
-        const strikerDist = visibleTargetInRange(seeker, snakeGame.strikerBall, rangeSq, navTopology, originCol, originRow, visionSession);
-        if (strikerDist != null && strikerDist * strikerDist < bestThreatDistSq) {
-            threat = snakeGame.strikerBall;
-            bestThreatDistSq = strikerDist * strikerDist;
         }
     }
     return { threat, prey, threatDist: threat ? Math.sqrt(bestThreatDistSq) : null, preyDist: prey ? Math.sqrt(bestPreyDistSq) / navTopology.grid.cellSize : null };
