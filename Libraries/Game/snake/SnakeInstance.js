@@ -4,7 +4,7 @@ import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createSnakeAutosim } from "./snakeAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease, clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
-import { registerAliveAgent, registerInertAgent, markAgentDead, purgeInertAgentsForHead } from "./agentPopulationRegistry.js";
+import { registerAliveAgent, registerInertAgent, markAgentDead, purgeInertAgentsForHead, reapAgentInstance } from "./agentPopulationRegistry.js";
 import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
 import { markSnakeSegmentsFracturable, shatterSnakeSegments } from "./snakeSegmentFracture.js";
 export class SnakeInstance {
@@ -147,19 +147,7 @@ export class SnakeInstance {
         registerInertAgent(snakeGame.registry, tailIds[0], tailIds, this.headId);
     }
     die(state, snakeGame, members = null, deathImpact = null) {
-        this.lifecycle = "dead";
-        this.stopSteering(state);
-        snakeGame.autosimsByHeadId.delete(this.headId);
-        const connectedMembers = members ?? getConnectedComponentPath(state.kinetic, this.headId);
-        const resolvedMembers = this.retireAllSegments(state, snakeGame, connectedMembers);
-        clearChainLinksForMembers(state, resolvedMembers);
-        shatterSnakeSegments(state, deathImpact?.spatialFrame ?? null, resolvedMembers, deathImpact);
-        purgeInertAgentsForHead(snakeGame.registry, this.headId);
-        markAgentDead(snakeGame.registry, this.headId);
-        snakeGame.instancesByHeadId.delete(this.headId);
-        const head = state.entityRegistry.get(this.headId);
-        if (head) clearSnakeSteeringLeaseFromProp(head);
-        if (snakeGame.onHeadDied) snakeGame.onHeadDied(this.headId);
+        reapAgentInstance(state, snakeGame, this, deathImpact);
     }
     splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers = null, deathImpact = null) {
         const members = victimMembers ?? getConnectedComponentPath(state.kinetic, this.headId);

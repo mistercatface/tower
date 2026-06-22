@@ -1,5 +1,5 @@
 import { getConnectedComponentPath } from "../../../Motion/kineticConstraintGraph.js";
-import { registerAliveAgent, markAgentDead, tickAgentBrainAndLocomotion } from "../agentPopulationRegistry.js";
+import { registerAliveAgent, markAgentDead, tickAgentBrainAndLocomotion, reapAgentInstance } from "../agentPopulationRegistry.js";
 import { syncFleeAgentWedgeFacing } from "./syncFleeAgentWedgeFacing.js";
 import { createBrain } from "../../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../../AI/brain/syncSpatialBrain.js";
@@ -104,13 +104,7 @@ export class FleeAgentInstance {
         if (!head || head.isDead) this.die(state, snakeGame);
     }
     die(state, snakeGame, members = null, deathImpact = null) {
-        this.lifecycle = "dead";
-        this.stopSteering(state);
-        markAgentDead(snakeGame.registry, this.headId);
-        const resolvedMembers = members ?? this.syncMembersFromGraph(state);
-        clearChainLinksForMembers(state, resolvedMembers);
-        shatterSnakeSegments(state, deathImpact?.spatialFrame ?? null, resolvedMembers, deathImpact);
-        if (snakeGame.onHeadDied) snakeGame.onHeadDied(this.headId);
+        reapAgentInstance(state, snakeGame, this, deathImpact);
     }
 }
 export function createFleeAgentInstance(state, { headId, wedgeId, spawnGroupId }) {

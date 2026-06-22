@@ -11,7 +11,12 @@ export function bakePixelsForWorldSpan(worldSpan, surfaceBakeScale) {
 /** @param {WorldSurfaceSettings} [settings] */
 export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorldH, _settings) {
     if (!canvas || canvas.isPlaceholder) return;
-    ctx.drawImage(canvas, destX, destY, destWorldW, destWorldH);
+    try {
+        ctx.drawImage(canvas, destX, destY, destWorldW, destWorldH);
+    } catch (e) {
+        // Handle detached or invalid canvas gracefully
+        console.log("onh");
+    }
 }
 /**
  * Blit a baked chunk onto projected horizontal corners via `drawImageQuad` (perspective-correct).
@@ -24,5 +29,10 @@ export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorl
 export function drawProjectedHorizontalChunk(ctx, canvas, corners, settings) {
     if (!canvas || canvas.isPlaceholder) return;
     const bleedPx = settings?.wallTextureBleedPx ?? 1;
-    drawImageQuad(ctx, { img: canvas, sx0: 0, sy0: 0, sx1: canvas.width, sy1: canvas.height, d0: corners[0], d1: corners[1], d2: corners[2], d3: corners[3] }, { bleedPx });
+    try {
+        drawImageQuad(ctx, { img: canvas, sx0: 0, sy0: 0, sx1: canvas.width, sy1: canvas.height, d0: corners[0], d1: corners[1], d2: corners[2], d3: corners[3] }, { bleedPx });
+    } catch (e) {
+        // Handle detached or invalid canvas gracefully
+        console.log("oh");
+    }
 }
