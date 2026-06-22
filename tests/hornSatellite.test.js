@@ -10,7 +10,9 @@ import { hasChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
 import { createHornSatelliteInstance } from "../Libraries/Game/snake/hornSatellite/HornSatelliteInstance.js";
-import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
+import { createSnakeGameHarnessState, wireSnakeTestGame, snakeGameNavWalkable } from "./harness/snakeGameHarness.js";
+import { spawnFleeAgentsInScene } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgentsInScene.js";
+import { spawnFleeHornSatelliteForBall } from "../Libraries/Game/snake/hornSatellite/spawnFleeHornSatellite.js";
 
 loadPropAssets();
 
@@ -18,6 +20,25 @@ describe("horn satellite species", () => {
     it("registers in snake game species map", async () => {
         const { SNAKE_GAME_SPECIES } = await import("../Libraries/Game/snake/species/index.js");
         assert.ok(SNAKE_GAME_SPECIES.has("horn_satellite"));
+    });
+
+    it("starts bound when spawned with mountBallId", async () => {
+        resetKineticConstraintIds(13);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const { horn } = spawnFleeHornSatelliteForBall(state, pack.head, {
+            spawnGroupId: pack.spawnGroupId,
+            bodyRadius: 2,
+            forwardDir: { x: 1, y: 0 },
+            faction: pack.head.faction,
+        });
+        const hornInstance = createHornSatelliteInstance(state, { headId: horn.id, spawnGroupId: pack.spawnGroupId, mountBallId: pack.head.id });
+        registerAgentInstance(snakeGame, "horn_satellite", hornInstance);
+        hornInstance.start(state);
+        hornInstance.tick(state, 16);
+        assert.equal(hornInstance.intent.getMode(), "bound");
+        assert.equal(hornInstance.mountBallId, pack.head.id);
     });
 
     it("seeks flee ball in spawn group and binds with chain link", async () => {
@@ -55,5 +76,18 @@ describe("horn satellite species", () => {
         const horn = spawnPlacedSandboxProp(state, pack.head.x + 8, pack.head.y, "flee_wedge");
         const hornInstance = createHornSatelliteInstance(state, { headId: horn.id, spawnGroupId: pack.spawnGroupId });
         assert.deepEqual(hornInstance.syncMembers(state), [horn.id]);
+    });
+
+    it("spawnFleeAgentsInScene pairs each flee ball with a linked horn", async () => {
+        resetKineticConstraintIds(20);
+        const { state } = await createSnakeGameHarnessState();
+        wireSnakeTestGame(state);
+        applySnakeGameConfig({ startRadius: 2, boidCount: 1 });
+        const agents = spawnFleeAgentsInScene(state, snakeGameNavWalkable(state));
+        assert.equal(agents.length, 1);
+        const { pack, horn } = agents[0];
+        assert.equal(pack.head.type, "flee_ball");
+        assert.equal(horn.type, "flee_wedge");
+        assert.ok(hasChainLinkBetween(state, pack.head.id, horn.id));
     });
 });

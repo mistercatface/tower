@@ -15,7 +15,6 @@ export class HornSatelliteInstance {
         this.intent = createHornSatelliteIntent({ selfHeadId: this.headId, spawnGroupId: this.spawnGroupId, registry: snakeGame.registry, instance: this });
         const horn = state.entityRegistry.getLive(this.headId);
         if (horn) applyHornSatelliteGameplay(horn);
-        if (this.mountBallId) this.intent.resetMode(horn, state);
     }
     stopSteering(state) {
         revokeSnakeSteeringLease(this, state);

@@ -42,6 +42,7 @@ export async function setupSnakeGame(state) {
     const spawnPlan = [
         { species: "snake", spawnCtxs: scene.snakes.map((s) => ({ headId: s.chain.head.id, spawnGroupId: s.chain.spawnGroupId, navWalkable: scene.navWalkable })) },
         { species: "flee_agent", spawnCtxs: fleeAgents.map((f) => ({ headId: f.pack.head.id, spawnGroupId: f.pack.spawnGroupId })) },
+        { species: "horn_satellite", spawnCtxs: fleeAgents.map((f) => ({ headId: f.horn.id, spawnGroupId: f.pack.spawnGroupId, mountBallId: f.pack.head.id })) },
     ];
     for (let i = 0; i < spawnPlan.length; i++) {
         const { species, spawnCtxs } = spawnPlan[i];

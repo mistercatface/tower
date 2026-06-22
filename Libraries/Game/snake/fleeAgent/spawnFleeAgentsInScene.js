@@ -6,7 +6,8 @@ import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { pickSnakeChainSpawnCell } from "../snakeScene.js";
 import { setAgentIdentity, pickRandomName } from "../../../AI/identity/agentIdentity.js";
 import { FLEE_AGENT_MEMBER_COUNT, resolveFleeAgentForwardDir, spawnFleeAgent } from "./spawnFleeAgent.js";
-import { createFleeAgentInstance } from "./FleeAgentInstance.js";
+import { spawnFleeHornSatelliteForBall } from "../hornSatellite/spawnFleeHornSatellite.js";
+import { getCirclePropRadius } from "../../../Props/propScale.js";
 function isValidFleeAgentAnchorCell(navWalkable, grid, anchorCell, { excludeIndices }) {
     const { col, row } = anchorCell;
     if (!navWalkable.has(col, row)) return false;
@@ -50,10 +51,12 @@ export function spawnFleeAgentsInScene(state, navWalkable, { excludeIndices = nu
                 rng,
             });
         const pack = spawnFleeAgent(state, anchorCell, { forwardDir });
+        const bodyRadius = getCirclePropRadius(pack.head);
+        const hornPack = spawnFleeHornSatelliteForBall(state, pack.head, { spawnGroupId: pack.spawnGroupId, bodyRadius, forwardDir, faction: pack.head.faction });
         setAgentIdentity(pack.head.id, { name: pickRandomName(rng), color: "#7ad4ff" });
-        const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
-        agents.push({ pack, instance });
-        for (const idx of linkedChainOccupiedCellIndices(pack.members, state.obstacleGrid)) occupied.add(idx);
+        agents.push({ pack, horn: hornPack.horn });
+        const occupiedMembers = [pack.head, hornPack.horn];
+        for (const idx of linkedChainOccupiedCellIndices(occupiedMembers, state.obstacleGrid)) occupied.add(idx);
     }
     return agents;
 }
