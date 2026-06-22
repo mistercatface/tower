@@ -23,34 +23,40 @@ function classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry
     const selfScore = getSnakeSizeScore(state, selfHeadId);
     let threat = null;
     let prey = null;
-    let bestThreatDist = Infinity;
-    let bestPreyDist = Infinity;
+    let bestThreatDistSq = Infinity;
+    let bestPreyDistSq = Infinity;
     for (const headId of registry.aliveByHeadId.keys()) {
         if (headId === selfHeadId) continue;
         const head = state.entityRegistry.getLive(headId);
         if (!head || head.isDead) continue;
         const score = getSnakeSizeScore(state, head.id);
         if (score === selfScore) continue;
-        const dist = visibleTargetInRange(seeker, head, rangeSq, navTopology, originCol, originRow, visionSession);
-        if (dist == null) continue;
-        if (score > selfScore) {
-            if (dist >= bestThreatDist) continue;
-            bestThreatDist = dist;
+        const dx = head.x - seeker.x;
+        const dy = head.y - seeker.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > rangeSq) continue;
+        const isThreat = score > selfScore;
+        if (isThreat && distSq >= bestThreatDistSq) continue;
+        if (!isThreat && distSq >= bestPreyDistSq) continue;
+        const targetCell = navTopology.grid.worldToGrid(head.x, head.y);
+        if (!hasGridCellLineOfSightCached(visionSession, navTopology, originCol, originRow, targetCell.col, targetCell.row)) continue;
+        if (isThreat) {
+            bestThreatDistSq = distSq;
             threat = head;
-        } else if (dist < bestPreyDist) {
-            bestPreyDist = dist;
+        } else {
+            bestPreyDistSq = distSq;
             prey = head;
         }
     }
     const snakeGame = state.sandbox.snakeGame;
     if (snakeGame) {
         const strikerDist = visibleTargetInRange(seeker, snakeGame.strikerBall, rangeSq, navTopology, originCol, originRow, visionSession);
-        if (strikerDist != null && strikerDist < bestThreatDist) {
+        if (strikerDist != null && strikerDist * strikerDist < bestThreatDistSq) {
             threat = snakeGame.strikerBall;
-            bestThreatDist = strikerDist;
+            bestThreatDistSq = strikerDist * strikerDist;
         }
     }
-    return { threat, prey, threatDist: threat ? bestThreatDist : null, preyDist: prey ? bestPreyDist / navTopology.grid.cellSize : null };
+    return { threat, prey, threatDist: threat ? Math.sqrt(bestThreatDistSq) : null, preyDist: prey ? Math.sqrt(bestPreyDistSq) / navTopology.grid.cellSize : null };
 }
 function findNearestVisibleThreatFromVision(seeker, selfHeadId, state, registry, frame, vision, visionCone = frame.visionCone) {
     return classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry, frame, vision, visionCone).threat;
