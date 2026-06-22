@@ -8,46 +8,48 @@ Third, the agent death and segment shattering sequence can be fully standardized
 
 ##
 
-Part 1 — Weld constraint in the physics core
-Goal: One joint type in the solver that pins relative position + relative angle in 2D, using the same facing + anchor math chains already use. No flee-agent code involved yet.
+## Plan: plain balls → satellite horn agent
 
-Ship:
+### Part 1 — Tear down integrated turret (balls are balls again)
 
-addWeldConstraint(session, { bodyA, bodyB, anchorA, anchorB, referenceAngle }) in kineticConstraints.js — either one registry entry or distance+angle treated as a single logical constraint with shared id for removal.
-Slab gather/solve in kineticConstraintSolver.js: position at anchors (restLength = 0), angle lock (what you already prototyped).
-Graph/island adjacency includes welds (same as distance/angle today).
-collectKineticConstraintsSnapshot / applyKineticConstraintsFromSnapshot for weld entries.
-Tests in tests/weldConstraint.test.js: two convex polys (or circle + poly), spawn offset wrong, run resolveGatheredKineticConstraintSlab, assert anchors coincide and relative angle holds across several ticks without any game sync.
-Prove with: two generic sandbox props in a harness — not flee wedge. Flee types are irrelevant to this PR.
+Delete `Libraries/Game/snake/fleeAgent/fleeBallTurret.js` and `Libraries/Render/createFleeBallDraw.js` entirely. Remove every import and call: `syncFleeBallTurretFacing` from `kineticRollActuator.js` and `FleeAgentInstance.js`; `FLEE_BALL_TURRET_FACING_STEPS` / `turretFacingSteps` from `snakeGameConfig.js` and `Config/games/snake.js`. Revert `Assets/props/flee_ball/flee_ball.asset.js` to a plain rolling sphere like `ball.asset.js` (`primitive: "sphere"`, `NEUTRAL_SPHERE_VISUALS`, no custom `draw`, no `getCustomSpriteCacheKey`, no custom `quantizeSteps`). Strip `turretFacing` assignment from `spawnFleeAgent.js`. Delete `Libraries/Game/snake/fleeAgent/syncFleeAgentWedgeFacing.js` if it’s still in the tree. Grep the repo for `turretFacing`, `fleeBallTurret`, `createFleeBallDraw`, `getFleeBallSpriteCacheKey`, `buildFleeBallWedgeLocalVerts` and leave zero hits. Rewrite tests: drop turret cases from `fleeAgentSpawn.test.js`, delete or replace `fleeBallAsset.test.js` with “flee_ball is a normal kinetic sphere” smoke only.
 
-Moves the needle: physics.md Fundamentals weld checkbox, Tier 5 “Weld / fixed joint” → 🟡, Trilogy C2 started.
+### Part 2 — Horn prop (separate wedge entity, weapon-ready)
 
-Part 2 — Authoring surface: spawn API, snapshot, debug draw
-Goal: Welds are placeable, persistent, inspectable like chain links — not hardcoded in one spawn function.
+Use or refine `flee_wedge` (or new id e.g. `flee_horn`) as a standalone kinetic prop: polygon footprint, neutral coat, `canChain: true`, `rolls: true` or false per tuning, no combined draw with a ball. Collision comes from the asset’s polygon primitive / `localFootprint` — no `collisionParts` hack on the ball. Editor palette keeps horn placeable; it is not spawned as part of flee_ball. Optional: `syncCollisionShape` only if horn angle must drive hitbox later (flipper pattern); for v1, `facing` + polygon rotation is enough.
 
-Ship:
+### Part 3 — Satellite agent species
 
-Spawn helper (e.g. addWeldLink in chainLinks.js or sibling weldLinks.js) that calls addWeldConstraint with resolved anchors from prop geometry.
-Scene snapshot schema: weld entries alongside distance constraints (type "weld", body indices, anchors, referenceAngle).
-Debug overlay in kineticConstraintOverlays.js — draw anchor points + weld icon (distinct from distance link).
-Optional: chain/wire tool extension or inspector field on existing link tool (“fixed” vs “distance”) — even a minimal “weld these two props” in editor is enough for v1.
-Prove with: load snapshot → weld survives save/load; overlay shows weld in sandbox.
+Add a new snake-game species (e.g. `horn_satellite` / `ball_turret`) alongside `flee_agent` and `snake` in `species/index.js`: `createInstance`, `register`, `start`, `tick`, `die`, `validate`, `syncMembers`, `resolveRelationship`. Instance owns the **horn prop id** as `headId` (horn is the agent’s kinetic body). State: `mountBallId`, lifecycle `seeking | bound | dead`. No flee logic here — only find ball, attach, orbit, aim. Flee agent stays one species on the ball; two instances, one spawn group.
 
-Moves the needle: Tier 9 constraints snapshot ✅, Tier 5 chain topology / editor 🟡→✅, ROADMAP.md Constraints → “distance + weld”.
+### Part 4 — Paired spawn and chain link
 
-Part 3 — Flee agent as first consumer; delete the bolt-on
-Goal: Flee spawn becomes declarative: ball head + flee_wedge welded in front at known angle. No syncPresentation pose override.
+Extend flee pack spawn (or parallel spawn in `spawnFleeAgentsInScene`) to spawn ball + horn at rim, `addChainLink(ball, horn, linkSlack)` with rest length ≈ ball radius + horn mount gap, shared `spawnGroupId`, ball remains chain head / flee `headId`. Register flee instance on ball, satellite instance on horn. On ball death: satellite `validate` sees dead mount → detach link and die or return to `seeking`. On horn death: flee ball keeps fleeing; optional respawn horn later.
 
-Ship:
+### Part 5 — Acquire + bind behavior
 
-spawnFleeAgent: replace angle constraint + post-physics sync with one weld:
-anchorA on ball: forward offset (along spawn/grow axis in head local space).
-anchorB on wedge: base center (local point opposite tip).
-referenceAngle: tip points forward (your current -π/2 relationship).
-Set head facing at spawn to forward axis (not random) so weld placement matches intent.
-Steering convention (small, generic): when \_groundRollDrive is active on a roller, update facing from drive direction (integrateFacing stays false; roll stays visual). That gives “triangle rotates with ball” in 2D without flee-specific sync — same rule could apply to any steered roller with welded oriented children.
-Remove / no-op FleeAgentInstance.syncWedgeFacing and fleeAgentSpecies.syncPresentation for wedge (or entire hook if nothing left).
-Update fleeAgentSpawn.test.js: assert weld constraint in registry, wedge pose after physics ticks without calling sync.
-Prove with: flee agent drives around in snake game; wedge stays glued ahead; combat still hits wedge body; no syncAgentsAfterPhysics wedge path.
+Satellite brain/perception: find nearest eligible ball (`flee_ball`, same spawn group, or tag/faction filter) within range. `seeking` → steer toward ball or roll into contact; on close enough, ensure distance link exists, set `mountBallId`, transition to `bound`. Re-bind if link broken. No ground-nav HPA required for v1 unless orbit needs it; direct roll toward ball center or rim point is fine.
 
-Moves the needle: Tier 10 reference consumer (like chain links for distance), flee bolt-on removed, physics.md weld → ✅ ~70%.
+### Part 6 — Orbit behavior (position on the ball)
+
+While `bound`, satellite steers the **horn prop** (not the ball): e.g. maintain orbit angle θ on ring radius R around ball center, advance θ each tick for orbit speed, `steerRollToward` horn toward tangential rim target `ball + R·(cos θ, sin θ)` or apply tangential thrust with the distance link providing centripetal hold. Tune link slack, horn mass, friction so belts and ball acceleration drag the horn without exploding the constraint. Orbit policy lives entirely in satellite intent — nothing on the ball.
+
+### Part 7 — Aim along ball movement (horn `facing`)
+
+While `bound`, each tick read mount ball’s `vx`/`vy` (post-physics values — satellite tick after sim or read live during tick with awareness of ordering). Slew horn `facing` toward `atan2(vy, vx)` when speed &gt; epsilon, else hold last bearing or toward ball thrust if you inject flee nav context later. Use `steerRollToward` on horn for roll coupling or direct `facing` + `blendAngle` if horn doesn’t roll. Horn draw and SAT polygon both use horn `facing` — no separate turret field. Belt case is free: horn tracks ball velocity after `tickFloorOccupancy` without any ball-side sync.
+
+### Part 8 — Combat: horn stabs snakes
+
+Extend `resolveSnakeCombatFromContacts` (or satellite-specific hook from contacts): when horn body (satellite instance member) hits snake segment at `relSpeed >= splitImpulseThreshold`, treat flee satellite as aggressor — `splitSnakeAtStruckSegment` or equivalent — inverse of today’s “snake head kills flee ball prey.” Keep existing rule: snake head vs flee **ball** can still kill flee if you want prey behavior on the hull. Strike identity is horn `body.id`, not ball circle. Adjust `fleeAgentSpecies` / satellite `resolveRelationship` so snake is target, not only threat to flee.
+
+### Part 9 — Tests and config
+
+Config: `fleeAgent.bodyPropId` stays `flee_ball`; add `fleeHorn` / `hornSatellite` block (prop id, orbit radius, orbit speed, link slack, aim slew, acquire range). Tests: spawn pair + link; satellite binds to ball; after physics + ticks, horn `facing` tracks injected ball velocity; horn-vs-snake contact triggers split (harness like existing snake combat tests). Targeted runs: `fleeAgentSpawn.test.js`, new `hornSatellite.test.js`, no `fleeBallAsset` wedge cache tests.
+
+### Part 10 — Cleanup and docs debt
+
+Remove or archive stale `Plans/wedgeplan.md` integrated-turret content so it doesn’t contradict satellite design. Confirm editor/sandbox: placing lone `flee_ball` is valid; horn can wire to any chain-capable ball via chain link tool. No `turretFacing` in snapshots, persistence, or inspector. Optional later: multiple horns per ball (multiple satellites / links), fixed horn (`addAngleConstraint` ball↔horn), aim at threat instead of velocity — all satellite behavior changes, ball asset untouched.
+
+---
+
+**Sequence:** Part 1 first (hard reset to plain balls), then Parts 2–4 (horn entity + spawn), then 5–7 (behavior), then 8 (combat), then 9–10. Don’t add satellite behavior until Part 1 grep is clean and flee tests pass on a dumb sphere.
