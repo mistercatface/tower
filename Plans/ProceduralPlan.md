@@ -25,6 +25,8 @@ Worker logs resume; main-thread `stats().bakeTiming` accumulates over the last 3
 
 **Pass 3 — compose phase 2** — done: skip domain-warp noise when the active stack has no warped motifs (or warp amplitude is 0 — eval copy only); horizontal-patch frame RGB pooled on `BakeSession.memoryPool`. Post-filter split removed — zero noise savings, added hot-path overhead.
 
+**Pass 4 — Fields foundation** — done: `SeededFeatureHash` owns deterministic cell jitter + salted seed derivation; `VoronoiEdge` imports the shared hash and exposes `WorleyEdgeField`; focused parity tests cover hash determinism and unchanged edge metrics.
+
 **Naming trap:** `Plans/Procedural.md` = geometry authorship. `Libraries/Procedural/` = surface synthesis. Shared **Fields** layer is the bridge.
 
 **Voronoi:** `VoronoiRegions.js` (HPA grid partition) ≠ `VoronoiEdge.js` (Worley texture noise). Share **seeded spatial hash** primitives only, not partition algorithms.
@@ -33,19 +35,13 @@ Worker logs resume; main-thread `stats().bakeTiming` accumulates over the last 3
 
 ## Pass 4 — Fields foundation
 
-Stay the course here before any motif-runtime rewrite. The current code state is:
+Done. Stay the course here before any motif-runtime rewrite. The implemented state is:
 
 - `SeededNoise2D` is session-owned and profileable.
 - `SurfaceTextureComposer` is already pixel-outer and uses pooled sample/RGB arrays.
-- `VoronoiEdge.js` still owns a local `hashCell`.
+- `SeededFeatureHash.js` owns deterministic cell hash/jitter.
+- `VoronoiEdge.js` imports the shared hash and exposes `WorleyEdgeField`.
 - `generateVoronoiRegions` is still its own HPA partition path and should not be merged with Worley.
-
-Next steps:
-
-1. Add `Libraries/Procedural/Fields/SeededFeatureHash.js` with the current cell hash/jitter primitive from `VoronoiEdge.js`.
-2. Update `VoronoiEdge.js` to import the shared hash and keep `voronoiEdgeMetric` behavior byte-for-byte equivalent.
-3. Wrap the Worley edge sampler as a small field API (`WorleyEdgeField`) that accepts a root seed + salt and exposes the same edge metric used by `voronoiCell`.
-4. Add focused golden tests for hash determinism and `voronoiEdgeMetric` parity.
 
 Exit: one seeded spatial hash implementation, no duplicated jitter blocks, and a Fields layer that texture bakes and generation code can both consume.
 
@@ -112,7 +108,8 @@ Render/WorldSurface/TileSurfaceWorker.js    — worker entry, metrics gate
 Libraries/WorldSurface/WorldSurfacePainter.js — BakeSession, phase timing when enabled
 Libraries/Procedural/Noise/SeededNoise2D.js — session-scoped noise + permCaches + per-pixel memo
 Libraries/Procedural/SurfaceTextureComposer.js — pixel-outer compose
-Libraries/Procedural/Fields/VoronoiEdge.js  — Worley edge (→ Pass 4)
+Libraries/Procedural/Fields/SeededFeatureHash.js — shared seeded spatial hash
+Libraries/Procedural/Fields/VoronoiEdge.js  — Worley edge + WorleyEdgeField
 Libraries/Pathfinding/VoronoiRegions.js     — HPA partition (Pass 5 hooks only)
 Plans/Procedural.md                         — geometry tree (sync Pass 8)
 Plans/TileWorkerPlan.md                     — worker OOP refactor (done)
