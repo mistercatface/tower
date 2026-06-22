@@ -16,9 +16,9 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 | **Pathfinding** | ~56% | pro-grade grid search + HPA/flow workers; missing smoothing and crowd layer | octile A*, HPA* Voronoi regions, flow-field BFS, SAB workers | funnel / string-pull smoothing | [pathfinding.md](./pathfinding.md) |
 | **Rendering** | ~52% | radial pseudo-3D core is strong; no shadows/lighting pass yet | camera-relative elevation projection, painter sort, bake/blit LRU | projected drop shadows | [rendering.md](./rendering.md) |
 | **Procedural** | ~42% | strong bake/resolution; weak authorship/generator layer | CA caves, room-graph bake, cardinal corridor A* | unified root seed | [procedural.md](./procedural.md) |
-| **AI** | ~46% | generic intent host, spatial + target memory, utility scoring, EQS explore, snake 4-mode FSM | FSM, utility scoring, TTL target memory, scored EQS options, vision/LOS | second non-snake consumer or behavior-tree skeleton | [AI.md](./AI.md) |
+| **AI** | ~52% | two intent consumers (snake + flee); team hunting, ally perception/memory, flee `seek_ally`; shared classifier + utility scoring | FSM, utility scoring, TTL target memory, faction relationships | cohesion 4c/4d; local flow horizons for reach/crowd | [AI.md](./AI.md) |
 
-**Overall engine maturity: ~54%** _(manual unweighted roll-up)._ The biggest recent shift is AI: snake is no longer just a game-specific experiment; several generic packages now live under `Libraries/AI`.
+**Overall engine maturity: ~56%** _(manual unweighted roll-up)._ Recent AI work: flee agents as a second full intent consumer, faction relationship rules, ally perception/memory, and flee regroup (`seek_ally`). Pathfinding flow fields remain strong but are not yet wired into snake/flee decision or locomotion loops.
 
 ---
 
@@ -41,7 +41,8 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 |---|---|---|---|
 | Search | ✅ octile/cardinal/abstract A* | A* over navmesh graph | parity on grid |
 | Hierarchy | ✅ HPA* Voronoi regions + CSR graph | Detour tiles | parity in grid representation |
-| Many agents / one goal | ✅ flow fields | bespoke | strong |
+| Many agents / one goal | ✅ flow fields (shared window) | bespoke | strong; per-agent local horizons not wired |
+| Local agent horizon | 🟡 infra exists | continuum crowds / local fields | `FlowFieldWindow` + range BFS; not per-agent yet |
 | Concurrency | ✅ SAB workers + slot leases | job system | parity |
 | Dynamic repair | ✅ epoch invalidation + localized region patch | tile-cache rebuild | parity |
 | Runtime topology | ✅ `NavRuntime` + `NavTopology` + worker navigation | nav service / tile cache | current naming is now documented |
@@ -54,12 +55,13 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 | Capability | This engine | Pro reference | Gap |
 |---|---|---|---|
 | Control dispatch | ✅ per-entity behavior + generic agent intent host | controller / behavior component | good plumbing |
-| Perception | ✅ vision cone + LOS driving decisions and nav memory | AI perception | sight only |
-| Memory | ✅ spatial cell memory + TTL target memory | blackboard / target memory | no shared squad blackboard |
-| FSM | ✅ generic host; snake uses explore, seek_food, seek_prey, flee | FSM / behavior tree | no hierarchy |
-| Utility scoring | 🟡 generic score core; snake mode scoring uses value/reach/cost/net | utility AI | not broad action library yet |
-| EQS | 🟡 generic option scorer; explore is first consumer | Unreal EQS | no authoring/debug UI |
-| Teams/factions | 🟡 metadata and persistence | team-aware targeting | hostility rules absent |
+| Perception | ✅ vision + LOS + ally/threat/prey classifier | AI perception | sight only |
+| Memory | ✅ spatial + TTL target memory (incl. ally) | blackboard / target memory | no shared squad blackboard |
+| FSM | ✅ generic host; snake + flee 4 modes each | FSM / behavior tree | no hierarchy |
+| Utility scoring | ✅ generic core; snake + flee scorers | utility AI | no authoring layer |
+| EQS | 🟡 generic option scorer; explore consumer | Unreal EQS | no debug UI |
+| Teams/factions | 🟡 relationships + flee regroup | team-aware targeting | snake regroup + pack flee pending |
+| Nav–AI bridge | 🟡 HPA locomotion; flow for sandbox only | local fields + global plan | decision reach still cell-distance proxy |
 | Strategy/game theory | ⬜ none | GOAP/HTN/MCTS/minimax | future |
 
 ### Rendering
@@ -118,6 +120,7 @@ flowchart TB
     tick --> ai
     procedural --> rendering
     pathfinding --> ai
+    ai -->|"local flow horizons (future)"| pathfinding
     ai --> sandbox
     sandbox --> snake
     ai --> snake
@@ -187,6 +190,7 @@ Physics/game hook boundary is peeled; render still reads live sim state without 
 - [x] Runtime topology now lives in `Libraries/Navigation` (`NavRuntime`, `NavTopology`).
 - [ ] ▶ Funnel/string-pull smoothing.
 - [ ] Local separation / RVO-style crowd.
+- [ ] **Per-agent local flow horizons** — sliding R-step window for utility reach, flee/cohesion steering, and crowd lanes (see [AI.md](./AI.md#future-local-flow-horizons)); infra exists, not wired to snake/flee.
 
 ### Rendering
 
@@ -207,8 +211,13 @@ Physics/game hook boundary is peeled; render still reads live sim state without 
 - [x] Generic agent intent host.
 - [x] Spatial memory, target memory, utility scoring, EQS option scoring.
 - [x] Snake 4-mode forage FSM with effort-aware decisions and debug snapshots.
-- [ ] ▶ Second non-snake consumer or behavior-tree skeleton.
-- [ ] Faction hostility and broader targeting rules.
+- [x] Flee agent second consumer — explore, seek_food, seek_ally, flee.
+- [x] Team hunting — faction relationships, rival band, config prey value, shared `classifyAgentVision`.
+- [x] Ally perception + memory + blackboard (`allyState`, TTL ally slot).
+- [x] Flee `seek_ally` regroup when safe and satisfied.
+- [ ] ▶ Cohesion **4c** (snake regroup) and **4d** (flee pack flee blend).
+- [ ] Local flow horizons for utility reach and crowd steering (decision-only first).
+- [ ] Behavior-tree skeleton over existing intent primitives.
 
 ---
 
@@ -232,18 +241,18 @@ The detailed map lives in [library-audit.md](./library-audit.md). Condensed:
 
 ### Highest strategic overlap
 
-1. **Funnel / string-pull path smoothing** — pathfinding feel win, transfers to future navmesh, visibly improves snake chase/explore.
-2. **Unified root seed** — procedural reproducibility, regression tests, future level generator.
-3. **Second agent intent consumer** — proves `AI/agentIntent`, utility scoring, target memory, and EQS are not snake-only.
-4. **Faction hostility** — turns persisted faction metadata into targeting behavior; bridge to squads/game theory.
+1. **Cohesion 4c/4d** — snake regroup + flee pack flee; builds on shipped ally memory and `seek_ally`.
+2. **Local flow horizons (decision-only first)** — true path-step reach for utility AI; bridges [pathfinding.md](./pathfinding.md) and [AI.md](./AI.md) without rewriting locomotion.
+3. **Funnel / string-pull path smoothing** — pathfinding feel win, visibly improves snake chase/explore.
+4. **Unified root seed** — procedural reproducibility, regression tests, future level generator.
 5. **Render cache telemetry** — supports dense snake/sandbox scenes and sizes caches from evidence.
 
 ### By domain
 
 | Domain | Grab-list |
 |---|---|
-| AI | second non-snake agent consumer; behavior-tree skeleton; faction hostility; target selection among multiple known entities; decision debug view |
-| Pathfinding | path smoothing; local separation steering; worker resilience; single-cell belt edit nav resync |
+| AI | cohesion 4c/4d; local flow reach in utility scorers; behavior-tree skeleton; decision debug view (ally field, score breakdown) |
+| Pathfinding | path smoothing; per-agent local flow window pool; local separation; hybrid HPA waypoint + flow execution; worker resilience |
 | Procedural | unified root seed; seed golden tests; room-graph generator v1; Poisson/min-distance placement |
 | Rendering | projected shadows; cache telemetry; projection/viewport tests; top-down 2D completion |
 | Physics | revolute/motor joints, CCD, breakable links only after a gameplay feature needs them |
@@ -263,4 +272,4 @@ The detailed map lives in [library-audit.md](./library-audit.md). Condensed:
 
 [physics.md](./physics.md) · [pathfinding.md](./pathfinding.md) · [rendering.md](./rendering.md) · [procedural.md](./procedural.md) · [AI.md](./AI.md) · [library-audit.md](./library-audit.md)
 
-*Last updated: roadmap/library-audit sync after generic AI intent, utility scoring, target memory, EQS explore, and effort-aware snake decisions.*
+*Last updated: team hunting + flee `seek_ally` (AI ~52%); local flow horizon direction documented in AI.md and pathfinding grab-list.*

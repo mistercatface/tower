@@ -117,6 +117,7 @@ function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memory
     pushTargetEvents(events, "food", visibleWorld.food, remembered.food);
     pushTargetEvents(events, "ally", visible.ally ?? visibleWorld.ally, remembered.ally);
     if (!known.food && committedTarget?.mode === "seek_food") events.push("TARGET_LOST");
+    if (!known.ally && committedTarget?.mode === "seek_ally") events.push("TARGET_LOST");
     return { facts: { visible, remembered, known, committedTarget, routeStatus, hungerState, threatState, allyState: deriveAllyState(visibleWorld, known, memorySource) }, events };
 }
 function scoreFlee(blackboard, weights, pressure) {
@@ -142,20 +143,38 @@ function scoreFoodDetail(blackboard, weights, pressure) {
     if (threat && !threat.lethal && threat.severity >= sprint.fleeSeverity) value -= pressure.sprintFoodCostPenalty ?? 0;
     return netScoreDetail(value, reachForCandidate(blackboard, "seek_food", "food"), costPerCellForHunger(pressure, hunger));
 }
+function scoreSeekAllyDetail(blackboard, weights, pressure) {
+    const ally = blackboard.facts.known.ally;
+    if (!ally) return { net: -Infinity };
+    if (blackboard.facts.known.threat) return { net: -Infinity };
+    const hunger = blackboard.facts.hungerState;
+    if (hunger?.desperate) return { net: -Infinity };
+    const cohesion = getSnakeGameConfig().fleeAgent.factionCohesion ?? {};
+    const allyDist = blackboard.facts.known.allyDist;
+    if (Number.isFinite(allyDist) && allyDist <= (cohesion.idealStopDist ?? 40)) return { net: -Infinity };
+    let value = weights.seek_ally ?? weights.explore;
+    if (hunger?.satisfied) value += cohesion.satisfiedBonus ?? pressure.allySatisfiedBonus ?? 60;
+    const allyCount = blackboard.facts.known.allyCount ?? 1;
+    if (allyCount > 1) value += (allyCount - 1) * (cohesion.packBonus ?? pressure.allyPackBonus ?? 20);
+    const reach = reachForCandidate(blackboard, "seek_ally", "ally") ?? (Number.isFinite(allyDist) ? allyDist : null);
+    return netScoreDetail(value, reach, costPerCellForHunger(pressure, hunger));
+}
 function scoreExplore(weights) {
     return weights.explore;
 }
-const FLEE_INTENT_SCORE_ORDER = ["flee", "seek_food", "explore"];
+const FLEE_INTENT_SCORE_ORDER = ["flee", "seek_food", "seek_ally", "explore"];
 export function scoreFleeIntentCandidateDetails(blackboard, weights = fleeWeights(), pressure = fleePressure()) {
     return {
         flee: { net: scoreFlee(blackboard, weights, pressure) },
         seek_food: scoreFoodDetail(blackboard, weights, pressure),
+        seek_ally: scoreSeekAllyDetail(blackboard, weights, pressure),
         explore: { value: weights.explore, reach: null, cost: 0, net: scoreExplore(weights) },
     };
 }
 function policyForScoredMode(blackboard, mode) {
     if (mode === "flee") return intentPolicy("flee", null, policyReasonForTarget(blackboard, "threat"));
     if (mode === "seek_food") return intentPolicy("seek_food", blackboard.facts.known.food.id, policyReasonForTarget(blackboard, "food"));
+    if (mode === "seek_ally") return intentPolicy("seek_ally", blackboard.facts.known.ally.id, policyReasonForTarget(blackboard, "ally"));
     return { mode: "explore", targetId: null };
 }
 export function pickFleeIntentPolicy(blackboard, scores = scoreCandidateSet(scoreFleeIntentCandidateDetails(blackboard)).candidateScores) {

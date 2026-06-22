@@ -229,8 +229,11 @@ A different lens from the feature tiers below: do the **CS-textbook building blo
 | Range-limited fields | ✅ | 70 | optional BFS `range` cap |
 | Reachability check | ✅ | 75 | `gridReachabilityBfs.js` |
 | Integration/cost-field blending | ⬜ | 0 | direction only, no potential-field cost blend |
+| Per-agent local flow window pool | ⬜ | 0 | sliding R-step horizon per agent; see [AI.md](./AI.md#future-local-flow-horizons) |
 
 **Branch progress: 78%**
+
+**Future direction — per-agent local horizons:** Today `FlowFieldGrid` is one shared rolling window (map-sized frame, recentered for drag-nav) with a 100-slot goal cache. Snake/flee use per-agent HPA instead. The planned extension is a **small window per agent** (or pooled slots), centered on the occupied cell, with BFS capped at `range` path steps — reusing `FlowFieldWindow`, `computeFlowField`, and `checkReachability`. Lowest-risk entry: **decision-only** reach distance for utility AI; then flee-ball locomotion; then hybrid HPA waypoint + local flow execution for snakes.
 
 ---
 

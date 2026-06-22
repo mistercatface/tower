@@ -36,6 +36,10 @@ export class FleeAgentInstance {
         const resolvedVisionCone = config.visionCone;
         const terminalHoming = config.terminalHoming;
         const resolveSeekArrivalOptions = (mode, agent, target) => {
+            if (mode === "seek_ally") {
+                const cohesion = config.fleeAgent.factionCohesion ?? {};
+                return { arrivalRadius: cohesion.arrivalRadius ?? 24, lockOnTarget: true, terminalHoming };
+            }
             if (!isSnakeShardFood(target)) return { arrivalRadius: Math.max(2, getCirclePropRadius(agent) * 0.25), lockOnTarget: true, terminalHoming };
             return { arrivalRadius: resolveFleeAgentEatRadius(agent), lockOnTarget: true, terminalHoming };
         };

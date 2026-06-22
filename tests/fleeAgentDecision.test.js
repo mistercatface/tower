@@ -43,11 +43,53 @@ describe("flee agent decision model", () => {
     it("explores when only smaller snakes are visible and no food", () => {
         applySnakeGameConfig();
         const { decisionSnapshot } = buildFleeDecisionContext({
-            visibleWorld: { threat: null, food: null, threatCount: 0, aggregateThreatSeverity: 0 },
+            visibleWorld: { threat: null, food: null, ally: null, allyCount: 0, threatCount: 0, aggregateThreatSeverity: 0 },
             foodFraction: 0.55,
         });
         assert.equal(decisionSnapshot.chosenIntent.mode, "explore");
         assert.equal(decisionSnapshot.sprintIntent.want, false);
+    });
+
+    it("seek_ally beats explore when a visible ally is present and hunger is satisfied", () => {
+        applySnakeGameConfig();
+        const ally = mockTarget("ally1");
+        const { decisionSnapshot } = buildFleeDecisionContext({
+            visibleWorld: {
+                threat: null,
+                food: null,
+                ally,
+                allyDist: 4,
+                allyCount: 1,
+                allyCentroid: { x: 64, y: 0 },
+                threatCount: 0,
+                aggregateThreatSeverity: 0,
+            },
+            foodFraction: 0.9,
+        });
+        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_ally");
+        assert.equal(decisionSnapshot.chosenIntent.targetId, "ally1");
+        assert.ok(decisionSnapshot.candidateScores.seek_ally > decisionSnapshot.candidateScores.explore);
+    });
+
+    it("regroups toward a visible ally instead of exploring", async () => {
+        resetKineticConstraintIds(42);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig({ startRadius: 2, fleeAgent: { sprint: { fleeSeverity: 0.5 } } });
+        const seekerPack = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "bravo" });
+        const allyPack = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "bravo" });
+        const seeker = createFleeAgentInstance(state, { headId: seekerPack.head.id, spawnGroupId: seekerPack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", seeker);
+        seeker.start(state);
+        setFleeHunger(seeker.metabolism, 0.9);
+        seekerPack.head.facing = 0;
+        allyPack.head.x = seekerPack.head.x + 64;
+        allyPack.head.y = seekerPack.head.y;
+        registerAgentInstance(snakeGame, "flee_agent", createFleeAgentInstance(state, { headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
+        primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().visionCone);
+        seeker.tick(state, 16);
+        assert.equal(seeker.intent.getMode(), "seek_ally");
+        assert.equal(seeker.intent.getTargetId(), allyPack.head.id);
     });
 
     it("flee beats explore when a visible threat is present", () => {

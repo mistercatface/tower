@@ -17,12 +17,12 @@ export const SNAKE_GAME_DEFAULTS = {
         /** Kinetic friction; null keeps flee_ball asset default. */
         friction: null,
         initialHunger: 0.85,
-        /** Added to flee ball size score for threat/prey relationship vs snakes (~3 segment equivalent). */
-        combatSizeBonus: 2500,
         metabolism: { hungerDrainMs: 90_000, foodValue: 0.35 },
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
         sprint: { fleeSeverity: 0.5, speedMultiplier: 1.75, accelMultiplier: 1.5, hungerDrainMultiplier: 2.0, sprintFleeMinHunger: 0.1 },
-        decisionWeights: { flee: 400, food: 360, explore: 100 },
+        decisionWeights: { flee: 400, food: 360, seek_ally: 280, explore: 100 },
+        /** Same-faction flee ball regroup when safe (seek_ally mode). */
+        factionCohesion: { arrivalRadius: 24, idealStopDist: 2.5, packBonus: 20, satisfiedBonus: 60 },
         decisionPressure: {
             foodHungerBonus: 280,
             sprintFleeMinHunger: 0.1,

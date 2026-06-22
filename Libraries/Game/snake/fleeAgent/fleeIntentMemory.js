@@ -30,7 +30,7 @@ export function createFleeIntentMemory({ threatTtlTicks = 45, foodTtlTicks = 180
                 ally,
                 threatDist: visibleWorld.threat ? visibleWorld.threatDist : (memory.record("threat")?.lastDistanceCells ?? null),
                 foodDist: visibleWorld.food ? visibleWorld.foodDist : (foodRecord?.lastDistanceCells ?? null),
-                allyDist: visibleWorld.ally ? visibleWorld.allyDist : (allyRecord?.lastDistance ?? null),
+                allyDist: visibleWorld.ally ? visibleWorld.allyDist : (allyRecord?.lastDistanceCells ?? null),
                 allyCount: visibleWorld.ally ? (visibleWorld.allyCount ?? 1) : ally ? 1 : 0,
                 allyCentroid: visibleWorld.ally ? (visibleWorld.allyCentroid ?? null) : null,
                 threatCount: visibleWorld.threatCount ?? 0,

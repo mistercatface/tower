@@ -34,7 +34,7 @@ export function createSnakeIntentMemory({ threatTtlTicks = 45, preyTtlTicks = 90
                 ally,
                 preyDist: visibleWorld.prey ? visibleWorld.preyDist : (preyRecord?.lastDistanceCells ?? null),
                 foodDist: visibleWorld.food ? visibleWorld.foodDist : (foodRecord?.lastDistanceCells ?? null),
-                allyDist: visibleWorld.ally ? visibleWorld.allyDist : (allyRecord?.lastDistance ?? null),
+                allyDist: visibleWorld.ally ? visibleWorld.allyDist : (allyRecord?.lastDistanceCells ?? null),
                 allyCount: visibleWorld.ally ? (visibleWorld.allyCount ?? 1) : ally ? 1 : 0,
                 allyCentroid: visibleWorld.ally ? (visibleWorld.allyCentroid ?? null) : null,
                 memory: this.snapshot(),

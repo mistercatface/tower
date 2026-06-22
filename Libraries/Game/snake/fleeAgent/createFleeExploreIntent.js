@@ -71,6 +71,7 @@ export function createFleeExploreIntent({
         if (id == null) return null;
         const known = world.blackboard.facts.known;
         if (known.food?.id === id) return known.food;
+        if (known.ally?.id === id) return known.ally;
         return null;
     };
     const perceiveWithMemory = (agent, state) => {
@@ -127,14 +128,7 @@ export function createFleeExploreIntent({
     });
     const createFleeContext = (ctx) => {
         const target = resolveCommittedTarget(ctx.targetId, ctx.world);
-        return {
-            ...ctx,
-            grid: ctx.state.obstacleGrid,
-            dest: locomotion.getDestination(),
-            target,
-            fleeTarget: ctx.world.blackboard.facts.known.threat,
-            locomotion,
-        };
+        return { ...ctx, grid: ctx.state.obstacleGrid, dest: locomotion.getDestination(), target, fleeTarget: ctx.world.blackboard.facts.known.threat, locomotion };
     };
     intent = createAgentIntent({
         initialMode: "explore",
@@ -146,9 +140,7 @@ export function createFleeExploreIntent({
         pickPolicy: (world) => {
             let policy = world.decisionSnapshot.chosenIntent;
             policy = fleeLatch.apply(policy, { world, currentMode: intent.getMode() });
-            if (policy !== world.decisionSnapshot.chosenIntent && policy.mode === "flee") {
-                world.blackboard.events.push("FLEE_HELD");
-            }
+            if (policy !== world.decisionSnapshot.chosenIntent && policy.mode === "flee") world.blackboard.events.push("FLEE_HELD");
             if (policy.mode !== world.decisionSnapshot.chosenIntent.mode || policy.reason !== world.decisionSnapshot.chosenIntent.reason) {
                 world.decisionSnapshot.events = world.blackboard.events;
                 world.decisionSnapshot.chosenIntent = policy;
@@ -165,9 +157,10 @@ export function createFleeExploreIntent({
             if (nextMode === "flee") return "threat_visible";
             if (prevMode === "flee") return "threat_clear";
             if (prevMode === "seek_food" && nextMode !== prevMode) return "target_lost";
+            if (prevMode === "seek_ally" && nextMode !== prevMode) return "target_lost";
             return `mode_${nextMode}`;
         },
-        states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), flee: createFleeIntentState() },
+        states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), seek_ally: createSeekIntentState(), flee: createFleeIntentState() },
         modeExitDelayTicks: { flee: 30 },
         createEffects: createFleeEffects,
         createContext: createFleeContext,
