@@ -1,7 +1,7 @@
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeSizeScore } from "./snakeScale.js";
-import { getSnakeInstance } from "./SnakeInstance.js";
+import { getSnakeInstance, SnakeInstance } from "./SnakeInstance.js";
 import { buildAgentMemberToInstanceMap } from "./agentPopulationRegistry.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
@@ -59,6 +59,7 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         const instanceA = memberToInstance.get(pair.bodyA.id);
         const instanceB = memberToInstance.get(pair.bodyB.id);
         if (!instanceA || !instanceB || instanceA === instanceB) continue;
+        if (!(instanceA instanceof SnakeInstance) || !(instanceB instanceof SnakeInstance)) continue;
         const snakeHeadA = instanceA.headId;
         const snakeHeadB = instanceB.headId;
         const membersA = orderedMembers(state, snakeHeadA);
