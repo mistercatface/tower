@@ -1,5 +1,6 @@
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { bakeGroundChunkCanvases, bakeHorizontalPatchCanvases, bakeWallAtlasCanvases, BakeSession } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
+import { formatTileBakeMetricsLog } from "../../Libraries/WorldSurface/TileBakeMetrics.js";
 import { installTileWorkerBakeConstants } from "../../Libraries/WorldSurface/TileWorkerBakeConstants.js";
 import { TILE_WORKER_MESSAGE } from "../../Libraries/WorldSurface/TileWorkerMessages.js";
 import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
@@ -20,14 +21,15 @@ export class TileSurfaceWorker {
         try {
             const handler = this.handlers[type];
             if (!handler) throw new Error(`Unknown TileWorker request type: ${type}`);
-            const t0 = performance.now();
             const canvases = handler(payload);
-            const t1 = performance.now();
+            const metrics = this.bakeSession.lastMetrics;
+            const transferStart = performance.now();
             const bitmaps = canvases.map((c) => c.transferToImageBitmap());
-            const t2 = performance.now();
-            if (type !== TILE_WORKER_MESSAGE.REGISTER_RUNTIME_PROFILE && type !== TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS)
-                console.log(`[TileWorker] ${type} | Compose: ${(t1 - t0).toFixed(2)}ms | Blit/Transfer: ${(t2 - t1).toFixed(2)}ms`);
-            self.postMessage({ id, bitmaps }, bitmaps);
+            const transferMs = performance.now() - transferStart;
+            if (metrics) metrics.phases.transferMs = transferMs;
+            if (type !== TILE_WORKER_MESSAGE.REGISTER_RUNTIME_PROFILE && type !== TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS && metrics)
+                console.log(formatTileBakeMetricsLog(type, metrics, transferMs));
+            self.postMessage({ id, bitmaps, metrics }, bitmaps);
         } catch (err) {
             console.error("TileWorker Error:", err);
             self.postMessage({ id, error: err.message });

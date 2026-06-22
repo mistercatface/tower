@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHost.js";
 import { TileBakeScheduler } from "../Libraries/WorldSurface/TileBakeScheduler.js";
 import { TILE_WORKER_MESSAGE } from "../Libraries/WorldSurface/TileWorkerMessages.js";
-import { TileSurfaceWorkerClient } from "../Libraries/WorldSurface/TileSurfaceWorkerClient.js";
+import { TileSurfaceWorkerClient, EMPTY_TILE_BAKE_STATS } from "../Libraries/WorldSurface/TileSurfaceWorkerClient.js";
 function createMockWorker() {
     return { onmessage: null, onerror: null, postMessage() {}, terminate() {} };
 }
@@ -23,7 +23,7 @@ function createTestClient() {
 describe("TileSurfaceWorkerClient", () => {
     it("returns empty stats before the pool starts", () => {
         const { client } = createTestClient();
-        assert.deepEqual(client.stats(), { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0 });
+        assert.deepEqual(client.stats(), { ...EMPTY_TILE_BAKE_STATS });
     });
     it("stores focus before the pool starts and applies it on first bake", () => {
         const { client } = createTestClient();
@@ -51,6 +51,6 @@ describe("TileSurfaceWorkerClient", () => {
         assert.equal(client._started, true);
         client.shutdown();
         assert.equal(client._started, false);
-        assert.deepEqual(client.stats(), { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0 });
+        assert.deepEqual(client.stats(), { ...EMPTY_TILE_BAKE_STATS });
     });
 });

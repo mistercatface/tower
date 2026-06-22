@@ -35,10 +35,10 @@ export class PromiseWorkerPoolHost {
         const worker = this.createWorker(this.workerUrl, index);
         const slot = { index, worker, busy: false, meta: null };
         worker.onmessage = (e) => {
-            const { id, bitmaps, error } = e.data ?? {};
+            const { id, bitmaps, error, metrics } = e.data ?? {};
             slot.busy = false;
             slot.meta = null;
-            this.onJobComplete(index, { id, bitmaps, error });
+            this.onJobComplete(index, { id, bitmaps, error, metrics });
         };
         worker.onerror = (err) => this.onWorkerError(err);
         return slot;

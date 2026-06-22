@@ -2,6 +2,7 @@ import { MinHeap } from "../DataStructures/MinHeap.js";
 import { groundChunkWorkerDedupeKey, horizontalPatchWorkerDedupeKey } from "./bake/SurfaceBakeHelpers.js";
 import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
 import { wallAtlasWorkerDedupeKey } from "./WallSurfaceCache.js";
+import { TileBakeMetricsAccumulator } from "./TileBakeMetrics.js";
 export const TILE_BAKE_TIER = { REGISTRATION: -1, STATIC: 0, ANIMATION: 1 };
 const FOCUS_RESORT_DIST_SQ = 16 * 16;
 function compareJobs(a, b) {
@@ -32,6 +33,7 @@ export class TileBakeScheduler {
         this.focusY = 0;
         this.sortFocusX = 0;
         this.sortFocusY = 0;
+        this.metricsAccumulator = new TileBakeMetricsAccumulator();
     }
     updateFocus(x, y) {
         this.focusX = x;
@@ -43,7 +45,7 @@ export class TileBakeScheduler {
             this.pool.forEachSlot((_index, slot) => {
                 if (slot.busy) busyWorkers++;
             });
-        return { queueSize: this.queue.size, pendingCount: this.pending.size, inFlightDedupeCount: this.inFlightByKey.size, busyWorkers };
+        return { queueSize: this.queue.size, pendingCount: this.pending.size, inFlightDedupeCount: this.inFlightByKey.size, busyWorkers, bakeTiming: this.metricsAccumulator.averages() };
     }
     enqueue(type, payload, tier) {
         const dedupeKey = dedupeKeyFor(type, payload, tier, this.getProfileRevision);
@@ -61,7 +63,8 @@ export class TileBakeScheduler {
         if (dedupeKey) this.inFlightByKey.set(dedupeKey, promise);
         return promise;
     }
-    finishJob(_workerIndex, { id, bitmaps, error }) {
+    finishJob(_workerIndex, { id, bitmaps, error, metrics }) {
+        if (metrics) this.metricsAccumulator.record(metrics);
         this._settle(id, bitmaps, error);
         this._dispatch();
     }

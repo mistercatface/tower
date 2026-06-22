@@ -3,10 +3,11 @@ import { PromiseWorkerPoolHost } from "../Workers/PromiseWorkerPoolHost.js";
 import { bumpSurfaceProfileRevision, getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { clampBakeFrameRange, isFirstFrameRange } from "./AnimationFrameBake.js";
 import { getAnimationFrames } from "./ProfileBakeResolver.js";
+import { EMPTY_BAKE_TIMING_STATS } from "./TileBakeMetrics.js";
 import { TILE_BAKE_TIER, TileBakeScheduler } from "./TileBakeScheduler.js";
 import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
 import { getSurfaceBakeScale } from "./WorldSurfaceResolution.js";
-export const EMPTY_TILE_BAKE_STATS = { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0 };
+export const EMPTY_TILE_BAKE_STATS = { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0, bakeTiming: { ...EMPTY_BAKE_TIMING_STATS } };
 function withBakeFrameRange(payload, profile) {
     const sourceTotal = getAnimationFrames(profile?.animation);
     const bakeTotal = payload.animationBakeFrames ?? sourceTotal;

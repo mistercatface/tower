@@ -39,7 +39,13 @@ export function setActiveNoiseMemo(memo) {
     activeNoiseMemo = memo;
 }
 export function createNoiseMemo(capacity = 8) {
-    return { x: new Float32Array(capacity), y: new Float32Array(capacity), octaves: new Int32Array(capacity), val: new Float32Array(capacity), count: 0 };
+    return { x: new Float32Array(capacity), y: new Float32Array(capacity), octaves: new Int32Array(capacity), val: new Float32Array(capacity), count: 0, profile: { calls: 0, hits: 0, overflows: 0 } };
+}
+export function resetNoiseProfile(memo) {
+    if (!memo?.profile) return;
+    memo.profile.calls = 0;
+    memo.profile.hits = 0;
+    memo.profile.overflows = 0;
 }
 function grad(hash, x, y) {
     const h = hash & 3;
@@ -67,7 +73,15 @@ function rawNoise2D(x, y) {
     return ix0 + v * (ix1 - ix0);
 }
 export function noise2D(x, y, octaves = 2, memo = activeNoiseMemo) {
-    if (memo !== null) for (let i = 0; i < memo.count; i++) if (memo.x[i] === x && memo.y[i] === y && memo.octaves[i] === octaves) return memo.val[i];
+    if (memo !== null) {
+        const profile = memo.profile;
+        if (profile) profile.calls++;
+        for (let i = 0; i < memo.count; i++)
+            if (memo.x[i] === x && memo.y[i] === y && memo.octaves[i] === octaves) {
+                if (profile) profile.hits++;
+                return memo.val[i];
+            }
+    }
     let value = 0;
     let amplitude = 1.0;
     let frequency = 1.0;
@@ -79,13 +93,14 @@ export function noise2D(x, y, octaves = 2, memo = activeNoiseMemo) {
         frequency *= 2.0;
     }
     const val = value / maxValue;
-    if (memo !== null && memo.count < memo.x.length) {
-        const c = memo.count;
-        memo.x[c] = x;
-        memo.y[c] = y;
-        memo.octaves[c] = octaves;
-        memo.val[c] = val;
-        memo.count++;
-    }
+    if (memo !== null)
+        if (memo.count < memo.x.length) {
+            const c = memo.count;
+            memo.x[c] = x;
+            memo.y[c] = y;
+            memo.octaves[c] = octaves;
+            memo.val[c] = val;
+            memo.count++;
+        } else if (memo.profile) memo.profile.overflows++;
     return val;
 }
