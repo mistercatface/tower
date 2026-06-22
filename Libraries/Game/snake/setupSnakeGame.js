@@ -72,11 +72,13 @@ export async function setupSnakeGame(state) {
         if (!registry.aliveByHeadId.has(focusedId)) return 0;
         return getConnectedBodyIds(state.kinetic, focusedId).length;
     };
-    const getFoodTimerFraction = () => {
-        const autosim = resolveFocusedAutosim();
-        if (!autosim) return 0;
-        return autosim.getFoodTimerFraction();
-    };
+    const getFoodTimerFraction = config.showSnakeFsmDebug
+        ? () => {
+              const autosim = resolveFocusedAutosim();
+              if (!autosim) return 0;
+              return autosim.getFoodTimerFraction();
+          }
+        : null;
     const getFsmDebugLine = config.showSnakeFsmDebug
         ? () => {
               const autosim = resolveFocusedAutosim();

@@ -27,6 +27,8 @@ Worker logs resume; main-thread `stats().bakeTiming` accumulates over the last 3
 
 **Pass 4 — Fields foundation** — done: `SeededFeatureHash` owns deterministic cell jitter + salted seed derivation; `VoronoiEdge` imports the shared hash and exposes `WorleyEdgeField`; focused parity tests cover hash determinism and unchanged edge metrics.
 
+**Post-Pass-4 profiling note:** latest worker profile still points at `composeSurfaceImage`, `SeededNoise2D.sample2D` / `rawNoise2D`, `blendMotifRgb`, `deckPlates.applyRivets`, `filterHSV.rgbToHsv`, and `baseMetal.apply`. `VoronoiEdge`, `WorleyEdgeField`, and `SeededFeatureHash` do not show up as hot frames, so Pass 4 should be treated as infrastructure progress, not a bake-time regression source. Keep the SoA/compiler idea parked until Fields/root-seed work is complete and metrics still justify it.
+
 **Naming trap:** `Plans/Procedural.md` = geometry authorship. `Libraries/Procedural/` = surface synthesis. Shared **Fields** layer is the bridge.
 
 **Voronoi:** `VoronoiRegions.js` (HPA grid partition) ≠ `VoronoiEdge.js` (Worley texture noise). Share **seeded spatial hash** primitives only, not partition algorithms.
@@ -51,9 +53,10 @@ Keep `generateVoronoiRegions` as the HPA partition algorithm. Do not route HPA t
 
 Next steps:
 
-1. Import the shared hash only where HPA needs deterministic site ordering or placement jitter.
-2. Add an optional `GridSiteField` helper for generation placement and seed ordering, not for replacing region growth.
-3. Keep nav behavior stable; any test coverage should be targeted to the new field helper or existing Voronoi-region parity.
+1. Add a small `GridSiteField` helper beside the other Fields modules. It should use `SeededFeatureHash` for deterministic per-cell jitter/ranking and expose generation-friendly site sampling; it should not know about HPA internals.
+2. Import the shared hash or `GridSiteField` only where HPA/generation needs deterministic site ordering or placement jitter.
+3. Keep `generateVoronoiRegions` behavior stable. Do not replace distance-transform ordering, flood fill, centroid repositioning, or adjacency discovery with Worley logic.
+4. Add targeted tests for `GridSiteField` determinism and, only if HPA imports it, a narrow parity check proving region topology is unchanged for the existing fixture.
 
 Exit: nav tests unchanged, documented hook for shared primitives, and a deterministic grid-site field ready for Tier 7 placement.
 
@@ -110,6 +113,7 @@ Libraries/Procedural/Noise/SeededNoise2D.js — session-scoped noise + permCache
 Libraries/Procedural/SurfaceTextureComposer.js — pixel-outer compose
 Libraries/Procedural/Fields/SeededFeatureHash.js — shared seeded spatial hash
 Libraries/Procedural/Fields/VoronoiEdge.js  — Worley edge + WorleyEdgeField
+Libraries/Procedural/Fields/GridSiteField.js — deterministic grid placement/order field (Pass 5)
 Libraries/Pathfinding/VoronoiRegions.js     — HPA partition (Pass 5 hooks only)
 Plans/Procedural.md                         — geometry tree (sync Pass 8)
 Plans/TileWorkerPlan.md                     — worker OOP refactor (done)
