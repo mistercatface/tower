@@ -56,6 +56,9 @@ export const SNAKE_GAME_DEFAULTS = {
     rail: { wallHeightLevel: 1, edgeThickness: 4, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
     showVisionCones: false,
     showAllSnakeVisionCones: false,
+    /** When true (default), camera-focused agent draws vision, spatial memory, and path debug overlays. */
+    showFocusedAgentDebug: true,
+    focusedAgentDebug: { vision: true, spatialMemory: true, path: true, agentSlots: {}, pathPreview: { cellCount: 3 }, targetRing: {} },
     visionCone: { halfAngle: Math.PI / 3, range: 128, cellFill: "rgba(120, 220, 255, 0.04)", visibleGoalStroke: "rgba(255, 220, 80, 0.35)", lineWidth: 1 },
     /** Explore waypoints must be at least this many grid tiles away (Chebyshev). */
     exploreMinTiles: 8,

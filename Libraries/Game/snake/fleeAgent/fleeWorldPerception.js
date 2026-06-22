@@ -1,5 +1,18 @@
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
+import { resolveAgentRelationship } from "../snakeAgentSession.js";
+import { requireSnakeVisionFrame } from "../snakePerception.js";
 import { classifyAgentVision } from "../../../AI/perception/classifyAgentVision.js";
+
+export function resolveFleeAgentPerceptionOptions(state, visionCone = null) {
+    const config = getSnakeGameConfig();
+    const cone = visionCone ?? config.visionCone;
+    const snakeGame = state.sandbox?.snakeGame;
+    return {
+        readVisionFrame: requireSnakeVisionFrame,
+        agentRange: config.fleeRange ?? cone.range,
+        resolveRelationship: (selfHeadId, headId, gameState) => (snakeGame ? resolveAgentRelationship(snakeGame, selfHeadId, headId, gameState) : "neutral"),
+    };
+}
 export function classifyFleeVisibleAgentsFromVision(seeker, selfHeadId, state, registry, frame, vision, { visionCone = frame.visionCone, agentRange = visionCone.range, resolveRelationship }) {
     return classifyAgentVision(seeker, selfHeadId, state, registry, frame, vision, { visionCone, agentRange, resolveRelationship, trackPrey: false });
 }

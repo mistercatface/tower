@@ -94,15 +94,7 @@ export async function setupSnakeGame(state) {
             hud.update();
         },
         appendOverlayCommands(out, gameState) {
-            const focusedAutosim = resolveFocusedAutosim();
-            if (!focusedAutosim) return;
-            appendSnakeGameOverlayCommands(out, gameState, {
-                autosimsByHeadId: session.autosimsByHeadId,
-                focusedAutosim,
-                showVisionCones: config.showVisionCones,
-                showMemoryHeatmap: config.showMemoryHeatmap,
-                showAllSnakeVisionCones: config.showAllSnakeVisionCones,
-            });
+            appendSnakeGameOverlayCommands(out, gameState, { focusedHeadId: cameraCycler.focusedId });
         },
         getSegmentCount,
         tick(dtMs) {

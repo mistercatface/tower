@@ -51,6 +51,23 @@ export function findNearestVisibleSnakeFoodFromVision(state, seeker, frame, visi
     }
     return nearest;
 }
+export function collectVisibleSnakeFoodFromVision(state, seeker, frame, vision, visionCone = frame.visionCone) {
+    if (!vision) return [];
+    const navTopology = frame.navTopology;
+    const visionSession = frame.visionSession;
+    const candidates = collectSnakeFoodCandidates(state, seeker, visionCone);
+    const grid = navTopology.grid;
+    const visible = [];
+    for (let i = 0; i < candidates.length; i++) {
+        const food = candidates[i];
+        if (food === seeker || food.isDead) continue;
+        if (!isWorldPointInVisionCone(seeker.x, seeker.y, vision.heading, visionCone.halfAngle, visionCone.range, food.x, food.y)) continue;
+        const { col, row } = grid.worldToGrid(food.x, food.y);
+        if (!hasGridCellLineOfSightCached(visionSession, navTopology, vision.originCol, vision.originRow, col, row)) continue;
+        visible.push(food);
+    }
+    return visible;
+}
 export function findNearestVisibleSnakeFood(state, seeker, visionCone) {
     const frame = requireSnakeVisionFrame(state);
     const cone = visionCone ?? frame.visionCone;
