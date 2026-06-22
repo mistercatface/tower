@@ -59,6 +59,7 @@ export function createSnakeDecisionBlackboard({
     safetyState = null,
     recentFailures = [],
     seekerFaction = null,
+    seekerSegmentCount = null,
 }) {
     const visible = {
         threat: visibleWorld.threat,
@@ -102,6 +103,7 @@ export function createSnakeDecisionBlackboard({
     pushTargetEvents(events, "ally", visibleWorld.ally, remembered.ally);
     if (!known.prey && committedTarget?.mode === "seek_prey") events.push("TARGET_LOST");
     if (!known.food && committedTarget?.mode === "seek_food") events.push("TARGET_LOST");
+    if (!known.ally && committedTarget?.mode === "seek_ally") events.push("TARGET_LOST");
     return {
         facts: {
             visible,
@@ -114,6 +116,7 @@ export function createSnakeDecisionBlackboard({
             safetyState,
             recentFailures,
             seekerFaction,
+            seekerSegmentCount,
             allyState: deriveAllyState(visibleWorld, known, memorySource),
         },
         events,
@@ -184,6 +187,32 @@ function scoreFoodDetail(blackboard, weights, pressure) {
     const value = weights.food + pressure.foodHungerBonus * deficit;
     return netScoreDetail(value, reachForCandidate(blackboard, "seek_food", "food"), costPerCellForHunger(pressure, hunger));
 }
+function regroupSizeFactor(segmentCount, cohesion) {
+    const count = segmentCount ?? cohesion.referenceSegmentCount ?? 3;
+    const ref = cohesion.referenceSegmentCount ?? 3;
+    const max = cohesion.maxSegmentScale ?? 12;
+    if (count <= ref) return 1;
+    if (count >= max) return 0;
+    return 1 - (count - ref) / (max - ref);
+}
+function scoreSeekAllyDetail(blackboard, weights, pressure) {
+    const ally = blackboard.facts.known.ally;
+    if (!ally) return { net: -Infinity };
+    if (blackboard.facts.known.threat) return { net: -Infinity };
+    const hunger = blackboard.facts.hungerState;
+    if (!hunger?.satisfied) return { net: -Infinity };
+    const cohesion = getSnakeGameConfig().factionCohesion ?? {};
+    const sizeFactor = regroupSizeFactor(blackboard.facts.seekerSegmentCount, cohesion);
+    if (sizeFactor <= 0) return { net: -Infinity };
+    const allyDist = blackboard.facts.known.allyDist;
+    if (Number.isFinite(allyDist) && allyDist <= (cohesion.idealStopDist ?? 3)) return { net: -Infinity };
+    let value = (weights.seek_ally ?? weights.explore) + (cohesion.satisfiedBonus ?? 50);
+    value *= sizeFactor;
+    const allyCount = blackboard.facts.known.allyCount ?? 1;
+    if (allyCount > 1) value += (allyCount - 1) * (cohesion.packBonus ?? 15) * sizeFactor;
+    const reach = reachForCandidate(blackboard, "seek_ally", "ally") ?? (Number.isFinite(allyDist) ? allyDist : null);
+    return netScoreDetail(value, reach, costPerCellForHunger(pressure, hunger));
+}
 function scoreExplore(blackboard, weights) {
     return weights.explore;
 }
@@ -195,14 +224,16 @@ export function scoreSnakeIntentCandidateDetails(blackboard, weights = getSnakeG
         flee: { net: scoreFlee(blackboard, weights, pressure) },
         seek_prey: scorePreyDetail(blackboard, weights, pressure),
         seek_food: scoreFoodDetail(blackboard, weights, pressure),
+        seek_ally: scoreSeekAllyDetail(blackboard, weights, pressure),
         explore: { value: weights.explore, reach: null, cost: 0, net: scoreExplore(blackboard, weights) },
     };
 }
-const INTENT_SCORE_ORDER = ["flee", "seek_prey", "seek_food", "explore"];
+const INTENT_SCORE_ORDER = ["flee", "seek_prey", "seek_food", "seek_ally", "explore"];
 function policyForScoredMode(blackboard, mode) {
     if (mode === "flee") return intentPolicy("flee", null, policyReasonForTarget(blackboard, "threat"));
     if (mode === "seek_prey") return intentPolicy("seek_prey", blackboard.facts.known.prey.id, policyReasonForTarget(blackboard, "prey"));
     if (mode === "seek_food") return intentPolicy("seek_food", blackboard.facts.known.food.id, policyReasonForTarget(blackboard, "food"));
+    if (mode === "seek_ally") return intentPolicy("seek_ally", blackboard.facts.known.ally.id, policyReasonForTarget(blackboard, "ally"));
     return { mode: "explore", targetId: null };
 }
 export function pickSnakeIntentPolicy(blackboard, scores = scoreSnakeIntentCandidates(blackboard)) {
@@ -218,11 +249,24 @@ export function buildSnakeDecisionContext({
     safetyState = null,
     recentFailures = [],
     seekerFaction = null,
+    seekerSegmentCount = null,
     pickPolicy = pickSnakeIntentPolicy,
 }) {
     const hungerState = deriveSnakeHungerState(foodFraction);
     const threatState = deriveSnakeThreatState(visibleWorld.threat, visibleWorld.threatDist);
-    const blackboard = createSnakeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures, seekerFaction });
+    const blackboard = createSnakeDecisionBlackboard({
+        visibleWorld,
+        memoryWorld,
+        memorySource,
+        committedTarget,
+        routeStatus,
+        hungerState,
+        threatState,
+        safetyState,
+        recentFailures,
+        seekerFaction,
+        seekerSegmentCount,
+    });
     const scoredCandidates = scoreCandidateSet(scoreSnakeIntentCandidateDetails(blackboard), INTENT_SCORE_ORDER);
     const chosenIntent = pickPolicy(blackboard, scoredCandidates.candidateScores);
     const sprintIntent = deriveSprintIntent(chosenIntent.mode, threatState);

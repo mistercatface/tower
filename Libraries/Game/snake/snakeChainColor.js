@@ -1,7 +1,7 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { getPropVisualTint, randomVisualTintHex, setPropVisualTint } from "../../Color/visualOverride.js";
 import { hueToPickerHex } from "../../Color/hex.js";
-export const SNAKE_INTENT_MODE_TINT = { explore: "#2d9cff", seek_food: "#2ecc71", seek_prey: "#ff3b30", flee: "#ffd23f" };
+export const SNAKE_INTENT_MODE_TINT = { explore: "#2d9cff", seek_food: "#2ecc71", seek_prey: "#ff3b30", seek_ally: "#c084fc", flee: "#ffd23f" };
 /** Condition tints for an exploring snake: well-fed reads purple, hungry reads orange. */
 export const SNAKE_SATISFIED_EXPLORE_TINT = "#a855f7";
 export const SNAKE_HUNGRY_EXPLORE_TINT = "#ff8c00";

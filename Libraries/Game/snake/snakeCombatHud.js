@@ -21,6 +21,6 @@ export function resolveSnakeCombatHud(snakeHeadId, state, registry, autosimsByHe
             }
         }
     }
-    const foraging = !hunting && !hunted && (mode === "seek_food" || mode === "explore" || mode === "seek");
+    const foraging = !hunting && !hunted && (mode === "seek_food" || mode === "seek_ally" || mode === "explore" || mode === "seek");
     return { hunting, hunted, foraging };
 }

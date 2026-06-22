@@ -60,7 +60,7 @@ describe("snake intent scoring parity (PR2)", () => {
     it("stores candidate scores and chosen reason on the snapshot", () => {
         applySnakeGameConfig({ decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } });
         const { decisionSnapshot } = context(world({ food: snake(9) }));
-        assert.deepEqual(decisionSnapshot.candidateScores, { flee: -Infinity, seek_prey: -Infinity, seek_food: 340, explore: 100 });
+        assert.deepEqual(decisionSnapshot.candidateScores, { flee: -Infinity, seek_prey: -Infinity, seek_food: 340, seek_ally: -Infinity, explore: 100 });
         assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
         assert.equal(decisionSnapshot.chosenReason, null);
     });
@@ -69,6 +69,7 @@ describe("snake intent scoring parity (PR2)", () => {
         assert.equal(scores.flee, -Infinity);
         assert.equal(scores.seek_prey, -Infinity);
         assert.equal(scores.seek_food, -Infinity);
+        assert.equal(scores.seek_ally, -Infinity);
         assert.ok(Number.isFinite(scores.explore));
     });
     it("keeps memory reasons for remembered targets", () => {
@@ -265,5 +266,49 @@ describe("sprint intent facts (PR9)", () => {
         const { decisionSnapshot } = context(world({ prey: snake(9) }), { foodFraction: 0.4 });
         assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
         assert.deepEqual(decisionSnapshot.sprintIntent, { want: true, reason: "chase" });
+    });
+});
+describe("snake seek_ally cohesion (4c)", () => {
+    function allyWorld(allyId = "ally1", allyDist = 4) {
+        return {
+            threat: null,
+            prey: null,
+            food: null,
+            ally: snake(allyId, { type: "snake_head", faction: "red" }),
+            allyDist,
+            allyCount: 1,
+            allyCentroid: { x: 64, y: 0 },
+        };
+    }
+    it("seek_ally beats explore when satisfied, safe, and a small snake", () => {
+        applySnakeGameConfig();
+        const { decisionSnapshot } = context(allyWorld(), { foodFraction: 0.9, seekerSegmentCount: 3, seekerFaction: "red" });
+        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_ally");
+        assert.equal(decisionSnapshot.chosenIntent.targetId, "ally1");
+        assert.ok(decisionSnapshot.candidateScores.seek_ally > decisionSnapshot.candidateScores.explore);
+    });
+    it("does not regroup when hungry or desperate", () => {
+        applySnakeGameConfig();
+        const hungry = context(allyWorld(), { foodFraction: 0.5, seekerSegmentCount: 3 });
+        assert.equal(hungry.decisionSnapshot.chosenIntent.mode, "explore");
+        const desperate = context(allyWorld(), { foodFraction: 0.1, seekerSegmentCount: 3 });
+        assert.equal(desperate.decisionSnapshot.chosenIntent.mode, "explore");
+    });
+    it("scales regroup drive down for long snakes", () => {
+        applySnakeGameConfig({ factionCohesion: { referenceSegmentCount: 3, maxSegmentScale: 10 } });
+        const small = context(allyWorld(), { foodFraction: 0.9, seekerSegmentCount: 3 });
+        assert.equal(small.decisionSnapshot.chosenIntent.mode, "seek_ally");
+        const large = context(allyWorld(), { foodFraction: 0.9, seekerSegmentCount: 10 });
+        assert.equal(large.decisionSnapshot.chosenIntent.mode, "explore");
+    });
+    it("prefers food over regroup when both are visible", () => {
+        applySnakeGameConfig();
+        const { decisionSnapshot } = context({ ...allyWorld(), food: snake(7) }, { foodFraction: 0.9, seekerSegmentCount: 3 });
+        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
+    });
+    it("does not regroup when already within ideal stop distance", () => {
+        applySnakeGameConfig({ factionCohesion: { idealStopDist: 3 } });
+        const { decisionSnapshot } = context(allyWorld("ally1", 2), { foodFraction: 0.9, seekerSegmentCount: 3 });
+        assert.equal(decisionSnapshot.chosenIntent.mode, "explore");
     });
 });

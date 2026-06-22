@@ -12,7 +12,7 @@ import { perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js
 import { perceiveFleeAgentWorld } from "../Libraries/Game/snake/fleeAgent/fleeWorldPerception.js";
 import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { resolveAgentRelationship } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
+import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
 
@@ -116,5 +116,26 @@ describe("ally perception", () => {
         registerFlee(state, snakeGame, a);
         registerFlee(state, snakeGame, b);
         assert.equal(resolveAgentRelationship(snakeGame, a.head.id, b.head.id, state), "ally");
+    });
+
+    it("satisfied snake regroups toward a visible ally", async () => {
+        applySnakeGameConfig({ fleeRange: 128, startRadius: 2 });
+        resetKineticConstraintIds(4);
+        const { state } = await createSnakeGameHarnessState();
+        const seeker = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
+        const ally = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
+        const { snakeGame } = wireSnakes(state, [
+            { chain: seeker, faction: "red" },
+            { chain: ally, faction: "red" },
+        ]);
+        const autosim = createWiredSnakeAutosim(state, { headId: seeker.head.id, initialFoodFraction: 0.9 });
+        seeker.head.facing = 0;
+        ally.head.x = seeker.head.x + 64;
+        ally.head.y = seeker.head.y;
+        primeSnakeHeadVision(state, seeker.head);
+        autosim.start();
+        autosim.tick(16);
+        assert.equal(autosim.getMode(), "seek_ally");
+        assert.equal(autosim.getTargetId(), ally.head.id);
     });
 });

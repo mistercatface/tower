@@ -84,11 +84,16 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
         visionCone: resolvedVisionCone,
         seekArrivalRadius: (mode, agent, target) => {
             const terminalHoming = config.terminalHoming;
+            if (mode === "seek_ally") {
+                const cohesion = config.factionCohesion ?? {};
+                return { arrivalRadius: cohesion.arrivalRadius ?? 32, lockOnTarget: true, terminalHoming };
+            }
             if (mode === "seek_prey") return { arrivalRadius: resolveHuntArrivalRadius(), lockOnTarget: true, terminalHoming };
             if (!isSnakeShardFood(target)) return { arrivalRadius: resolveHuntArrivalRadius(), lockOnTarget: true, terminalHoming };
             return { arrivalRadius: typeof resolvedEatRadius === "function" ? resolvedEatRadius() : resolvedEatRadius, lockOnTarget: true, terminalHoming };
         },
         resolveHunger: () => getSnakeHunger(metabolism),
+        resolveSegmentCount: () => chainMemberProps(state, headId).length,
         rng,
     });
     let active = false;

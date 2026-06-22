@@ -105,7 +105,9 @@ export const SNAKE_GAME_DEFAULTS = {
     /** Opposite-faction snakes within this segment gap duel (both hunt) instead of hunt/flee. */
     rivalBand: { maxSegmentGap: 2 },
     /** Decision scoring base weights. Shard food is safer than live prey, with threat and route pressure layered on top. */
-    decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 },
+    decisionWeights: { flee: 400, prey: 300, food: 340, seek_ally: 220, explore: 100 },
+    /** Same-faction snake regroup when satisfied and safe (seek_ally mode). Scales down with segment count. */
+    factionCohesion: { arrivalRadius: 32, idealStopDist: 3, packBonus: 15, satisfiedBonus: 50, referenceSegmentCount: 3, maxSegmentScale: 10 },
     /**
      * Hunger/route pressure layered on top of the base weights.
      * foodHungerBonus scales the food score by how empty the food timer is.

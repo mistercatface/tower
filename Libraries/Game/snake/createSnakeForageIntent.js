@@ -21,6 +21,7 @@ export function createSnakeForageIntent({
     visionCone = null,
     seekArrivalRadius = null,
     resolveHunger = null,
+    resolveSegmentCount = null,
     rng = Math.random,
 }) {
     const config = getSnakeGameConfig();
@@ -83,6 +84,7 @@ export function createSnakeForageIntent({
             routeStatus: readRouteStatus(agent, state),
             foodFraction: resolveHunger ? resolveHunger() : null,
             seekerFaction: agent.faction,
+            seekerSegmentCount: resolveSegmentCount ? resolveSegmentCount() : null,
         });
         lastBlackboard = decisionContext.blackboard;
         lastDecisionSnapshot = decisionContext.decisionSnapshot;
@@ -93,6 +95,7 @@ export function createSnakeForageIntent({
         const known = world.blackboard.facts.known;
         if (known.prey?.id === id) return known.prey;
         if (known.food?.id === id) return known.food;
+        if (known.ally?.id === id) return known.ally;
         return null;
     };
     const createSnakeEffects = ({ agent, state, mode, world, targetId }) => ({
@@ -155,10 +158,10 @@ export function createSnakeForageIntent({
             if (policy?.reason) return policy.reason;
             if (nextMode === "flee") return "threat_visible";
             if (prevMode === "flee") return "threat_clear";
-            if ((prevMode === "seek_food" || prevMode === "seek_prey") && nextMode !== prevMode) return "target_lost";
+            if ((prevMode === "seek_food" || prevMode === "seek_prey" || prevMode === "seek_ally") && nextMode !== prevMode) return "target_lost";
             return `mode_${nextMode}`;
         },
-        states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), seek_prey: createSeekIntentState(), flee: createFleeIntentState() },
+        states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), seek_prey: createSeekIntentState(), seek_ally: createSeekIntentState(), flee: createFleeIntentState() },
         modeExitDelayTicks: { flee: 30 },
         createEffects: createSnakeEffects,
         createContext: createSnakeContext,

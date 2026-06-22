@@ -173,7 +173,7 @@ flowchart TB
 | Memory-aware explore | ✅ | 75 | EQS-scored candidate cells |
 | Flee | ✅ | 70 | snake + flee; flee cells + threat-aware sprint |
 | Pursue | 🟡 | 55 | snake seeks prey; no intercept prediction |
-| Regroup / seek ally | 🟡 | 50 | flee `seek_ally` shipped; snake regroup (4c) not started |
+| Regroup / seek ally | ✅ | 65 | snake + flee `seek_ally` when safe and satisfied |
 | Wander | 🟡 | 30 | explore covers roaming, not smooth wander |
 | Separation / flocking | ⬜ | 0 | 🔗 pathfinding local avoidance / flow horizons |
 | Obstacle avoidance steering | ⬜ | 0 | beyond grid nav |
@@ -193,7 +193,7 @@ flowchart TB
 | Ally perception + memory | ✅ | 70 | shared classifier; TTL ally slot; `allyState` on snapshots |
 | Flee treats all snakes as threat | ✅ | 75 | flee never hunts snakes |
 | Flee same-faction regroup (`seek_ally`) | ✅ | 65 | safe + satisfied; large friendly arrival radius |
-| Snake size-scaled regroup | ⬜ | 0 | phase 4c — explore bias or light seek when satisfied |
+| Snake size-scaled regroup (`seek_ally`) | ✅ | 70 | satisfied-only; `referenceSegmentCount` / `maxSegmentScale` |
 | Flee pack vector while fleeing | ⬜ | 0 | phase 4d — blend flee direction toward ally centroid |
 | Friendly-fire / team filtering in combat | 🟡 | 40 | relationships filter perception; kinetic ram still faction-blind |
 | Target priority scoring across teams | 🟡 | 45 | config prey value; no multi-target utility catalog |
@@ -241,7 +241,7 @@ Phases completed on the snake game proving ground:
 | **4a Ally perception** | ✅ | `ally`, `allyCount`, `allyCentroid`, `allyDist` (cells) on world view |
 | **Prep Ally memory + blackboard** | ✅ | TTL ally slot, `known.ally`, `allyState`, `ALLY_SEEN` / `ALLY_REMEMBERED` |
 | **4b Flee `seek_ally`** | ✅ | Regroup when safe + satisfied; faction cohesion config; friendly arrival radius |
-| **4c Snake regroup** | ⬜ | Size-scaled explore bias or light seek when satisfied only |
+| **4c Snake regroup (`seek_ally`)** | ✅ | Satisfied-only; size-scaled; friendly arrival radius |
 | **4d Flee pack flee** | ⬜ | Blend flee vector toward ally centroid while in flee mode |
 | **Slot pipeline refactor** | ⬜ | Generic perception→memory→blackboard pipeline (deferred) |
 

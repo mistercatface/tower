@@ -1,5 +1,11 @@
 import { overlayGridCellHighlight, overlayCachedSelectionRing } from "../../Render/overlays/overlayCommands.js";
-const FSM_MODE_RING = { explore: "rgba(120, 220, 255, 0.85)", seek_food: "rgba(255, 220, 80, 0.9)", seek_prey: "rgba(255, 150, 60, 0.9)", flee: "rgba(255, 80, 120, 0.9)" };
+const FSM_MODE_RING = {
+    explore: "rgba(120, 220, 255, 0.85)",
+    seek_food: "rgba(255, 220, 80, 0.9)",
+    seek_prey: "rgba(255, 150, 60, 0.9)",
+    seek_ally: "rgba(192, 132, 252, 0.9)",
+    flee: "rgba(255, 80, 120, 0.9)",
+};
 function formatScorePart(value) {
     if (value == null) return "—";
     if (!Number.isFinite(value)) return String(value);
