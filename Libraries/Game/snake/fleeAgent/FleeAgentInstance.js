@@ -1,19 +1,15 @@
 import { getConnectedComponentPath } from "../../../Motion/kineticConstraintGraph.js";
-import { registerAliveAgent } from "../../../AI/agents/agentPopulationRegistry.js";
 import { tickAgentIntent, reapAgentInstance } from "../snakeAgentLifecycle.js";
-import { syncFleeAgentWedgeFacing } from "./syncFleeAgentWedgeFacing.js";
 import { createFleeExploreIntent } from "./createFleeExploreIntent.js";
 import { createBrain } from "../../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../../AI/brain/syncSpatialBrain.js";
 import { createCellTargetHpaNav } from "../../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../snakeSteeringLease.js";
-import { resolveChainLinkRestLength } from "../../../Sandbox/chainLinks.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { resolveSnakeExploreCell } from "../snakeExplore.js";
 export class FleeAgentInstance {
-    constructor({ headId, followerId, wedgeId, spawnGroupId }) {
+    constructor({ headId, spawnGroupId }) {
         this.headId = headId;
-        this.followerId = followerId ?? wedgeId;
         this.spawnGroupId = spawnGroupId;
         this.lifecycle = "alive";
     }
@@ -49,17 +45,7 @@ export class FleeAgentInstance {
         });
     }
     syncMembersFromGraph(state) {
-        const members = getConnectedComponentPath(state.kinetic, this.headId);
-        this.followerId = members[1] ?? this.followerId;
-        return members;
-    }
-    syncWedgeFacing(state) {
-        const head = state.entityRegistry.getLive(this.headId);
-        const wedge = state.entityRegistry.getLive(this.followerId);
-        if (!head || !wedge) return false;
-        const config = getSnakeGameConfig();
-        const restLength = resolveChainLinkRestLength(head, wedge, config.linkSlack);
-        return syncFleeAgentWedgeFacing(head, wedge, null, restLength);
+        return getConnectedComponentPath(state.kinetic, this.headId);
     }
     validate(state, snakeGame) {
         if (this.lifecycle !== "alive") return;
@@ -70,8 +56,8 @@ export class FleeAgentInstance {
         reapAgentInstance(state, snakeGame, this, deathImpact);
     }
 }
-export function createFleeAgentInstance(state, { headId, followerId, wedgeId, spawnGroupId }) {
-    const instance = new FleeAgentInstance({ headId, followerId: followerId ?? wedgeId, spawnGroupId });
+export function createFleeAgentInstance(state, { headId, spawnGroupId }) {
+    const instance = new FleeAgentInstance({ headId, spawnGroupId });
     instance.syncMembersFromGraph(state);
     return instance;
 }

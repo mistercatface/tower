@@ -5,24 +5,20 @@ import { linkedChainOccupiedCellIndices } from "../../../Sandbox/spawnLinkedBall
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { pickSnakeChainSpawnCell } from "../snakeScene.js";
 import { setAgentIdentity, pickRandomName } from "../../../AI/identity/agentIdentity.js";
-import { FLEE_AGENT_CHAIN_MEMBER_COUNT, resolveFleeAgentChainSpacing, resolveFleeAgentForwardDir, spawnFleeAgent } from "./spawnFleeAgent.js";
+import { FLEE_AGENT_MEMBER_COUNT, resolveFleeAgentForwardDir, spawnFleeAgent } from "./spawnFleeAgent.js";
 import { createFleeAgentInstance } from "./FleeAgentInstance.js";
-function isValidFleeAgentAnchorCell(navWalkable, grid, anchorCell, { spacing, forwardDir, excludeIndices }) {
-    const anchorWorld = grid.gridToWorld(anchorCell.col, anchorCell.row);
-    const cells = [anchorCell, grid.worldToGrid(anchorWorld.x + forwardDir.x * spacing, anchorWorld.y + forwardDir.y * spacing)];
-    for (let i = 0; i < cells.length; i++) {
-        const { col, row } = cells[i];
-        if (!navWalkable.has(col, row)) return false;
-        if (excludeIndices?.has(colRowToIndex(col, row, grid.cols))) return false;
-    }
+function isValidFleeAgentAnchorCell(navWalkable, grid, anchorCell, { excludeIndices }) {
+    const { col, row } = anchorCell;
+    if (!navWalkable.has(col, row)) return false;
+    if (excludeIndices?.has(colRowToIndex(col, row, grid.cols))) return false;
     return true;
 }
-function pickFleeAgentSpawnCell(spawnPool, navWalkable, state, { spacing, forwardDir, excludeIndices, rng = Math.random }) {
+function pickFleeAgentSpawnCell(spawnPool, navWalkable, state, { excludeIndices, rng = Math.random }) {
     const grid = state.obstacleGrid;
     const valid = [];
     for (let i = 0; i < spawnPool.length; i++) {
         const cell = spawnPool[i];
-        if (isValidFleeAgentAnchorCell(navWalkable, grid, cell, { spacing, forwardDir, excludeIndices })) valid.push(cell);
+        if (isValidFleeAgentAnchorCell(navWalkable, grid, cell, { excludeIndices })) valid.push(cell);
     }
     if (!valid.length) return null;
     return pickWalkableCell(valid, { cols: grid.cols, excludeIndices, rng });
@@ -32,7 +28,6 @@ export function spawnFleeAgentsInScene(state, navWalkable, { excludeIndices = nu
     const count = Math.max(0, Math.round(config.boidCount));
     if (count === 0) return [];
     const forwardDir = resolveFleeAgentForwardDir(config);
-    const spacing = resolveFleeAgentChainSpacing(config);
     const spawnCells = navWalkable.cells();
     const shuffledSpawnCells = spawnCells.slice();
     for (let i = shuffledSpawnCells.length - 1; i > 0; i--) {
@@ -44,11 +39,11 @@ export function spawnFleeAgentsInScene(state, navWalkable, { excludeIndices = nu
     let occupied = excludeIndices ? new Set(excludeIndices) : new Set();
     const agents = [];
     for (let i = 0; i < count; i++) {
-        let anchorCell = pickFleeAgentSpawnCell(shuffledSpawnCells, navWalkable, state, { spacing, forwardDir, excludeIndices: occupied, rng });
+        let anchorCell = pickFleeAgentSpawnCell(shuffledSpawnCells, navWalkable, state, { excludeIndices: occupied, rng });
         if (!anchorCell)
             anchorCell = pickSnakeChainSpawnCell(shuffledSpawnCells, navWalkable, state, {
-                segmentCount: FLEE_AGENT_CHAIN_MEMBER_COUNT,
-                spacing,
+                segmentCount: FLEE_AGENT_MEMBER_COUNT,
+                spacing: 0,
                 growDirX: forwardDir.x,
                 growDirY: forwardDir.y,
                 excludeIndices: occupied,
@@ -56,7 +51,7 @@ export function spawnFleeAgentsInScene(state, navWalkable, { excludeIndices = nu
             });
         const pack = spawnFleeAgent(state, anchorCell, { forwardDir });
         setAgentIdentity(pack.head.id, { name: pickRandomName(rng), color: "#7ad4ff" });
-        const instance = createFleeAgentInstance(state, { headId: pack.head.id, followerId: pack.body.id, spawnGroupId: pack.spawnGroupId });
+        const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         agents.push({ pack, instance });
         for (const idx of linkedChainOccupiedCellIndices(pack.members, state.obstacleGrid)) occupied.add(idx);
     }

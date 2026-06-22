@@ -40,9 +40,6 @@ export const fleeAgentSpecies = {
     syncMembers(instance, state) {
         return instance.syncMembersFromGraph(state);
     },
-    syncPresentation(instance, state) {
-        instance.syncWedgeFacing(state);
-    },
     resolveRelationship(targetSpecies) {
         if (targetSpecies === "snake") return "threat";
         return "neutral";

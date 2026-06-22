@@ -17,7 +17,7 @@ export function applyPropBoxFootprint(prop, hx, hy) {
 export function initWorldPropShape(prop) {
     if (typeof prop.strategy.syncCollisionShape === "function") {
         prop.strategy.syncCollisionShape(prop);
-        prop.radius = prop.shape.getBoundingRadius();
+        if (!prop.collisionParts?.length) prop.radius = prop.shape.getBoundingRadius();
         return;
     }
     const footprint = prop.strategy.localFootprint;

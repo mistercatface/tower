@@ -2,12 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
-import { getOrderedChainMemberIds, resolveChainLinkRestLength } from "../Libraries/Sandbox/chainLinks.js";
-import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
+import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { getCirclePropRadius, getPolygonPropBoundingRadius } from "../Libraries/Props/propScale.js";
-import { spawnFleeAgent, resolveFleeAgentForwardDir } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
-import { fleeAgentWedgeFacingFromHeading } from "../Libraries/Game/snake/fleeAgent/syncFleeAgentWedgeFacing.js";
+import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
+import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
@@ -17,85 +16,41 @@ import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/k
 import { resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
 loadPropAssets();
 describe("flee agent spawn", () => {
-    it("spawns a ball head linked to a tri wedge body with chain head on the ball", async () => {
-        applySnakeGameConfig({ startRadius: 2 });
+    it("spawns one ball with chain head", async () => {
         resetKineticConstraintIds(1);
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
-        const config = getSnakeGameConfig();
+        applySnakeGameConfig({ startRadius: 2 });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
-        assert.equal(pack.members.length, 2);
+        assert.equal(pack.members.length, 1);
         assert.equal(pack.head.type, "ball");
-        assert.equal(pack.body.type, "flee_wedge");
+        assert.equal(pack.head.shape.type, "Circle");
         assert.ok(pack.head.strategy?.canChain);
-        assert.deepEqual(getOrderedChainMemberIds(state, pack.head.id), [pack.head.id, pack.body.id]);
-        assert.equal(state.kinetic.kineticConstraints.length, 1);
-        const distConstraint = state.kinetic.kineticConstraints.find(c => c.type === "distance");
-        assert.ok(distConstraint);
-        assert.equal(distConstraint.restLength, resolveChainLinkRestLength(pack.head, pack.body, config.linkSlack));
+        assert.deepEqual(getOrderedChainMemberIds(state, pack.head.id), [pack.head.id]);
+        assert.equal(state.kinetic.kineticConstraints.length, 0);
     });
-    it("places the wedge body ahead of the ball along the forward axis", async () => {
-        applySnakeGameConfig({ startRadius: 2, growDirX: -1, growDirY: 0 });
+    it("scales ball radius to snake start radius", async () => {
         resetKineticConstraintIds(2);
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
-        const config = getSnakeGameConfig();
-        const forward = resolveFleeAgentForwardDir(config);
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
-        const dx = pack.body.x - pack.head.x;
-        const dy = pack.body.y - pack.head.y;
-        const dist = Math.hypot(dx, dy);
-        assert.ok(Math.abs(dx / dist - forward.x) < 0.01);
-        assert.ok(Math.abs(dy / dist - forward.y) < 0.01);
-        assert.ok(Math.abs(dist - resolveChainLinkRestLength(pack.head, pack.body, config.linkSlack)) < 0.01);
-    });
-    it("scales the flee wedge to the body radius", async () => {
         applySnakeGameConfig({ startRadius: 2 });
-        resetKineticConstraintIds(4);
-        const { state } = await createSnakeGameHarnessState();
-        wireSnakeTestGame(state);
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         assert.equal(getCirclePropRadius(pack.head), 2);
-        assert.ok(Math.abs(getPolygonPropBoundingRadius(pack.body) - 2) < 0.05);
-        assert.ok(pack.body.height < 12);
-    });
-    it("welds wedge position and facing to ball heading after physics sync", async () => {
-        applySnakeGameConfig();
-        resetKineticConstraintIds(8);
-        const { state } = await createSnakeGameHarnessState();
-        wireSnakeTestGame(state);
-        const config = getSnakeGameConfig();
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
-        const instance = createFleeAgentInstance(state, { headId: pack.head.id, followerId: pack.body.id, spawnGroupId: pack.spawnGroupId });
-        pack.head.x += 48;
-        pack.head.y += 24;
-        pack.head.vx = 40;
-        pack.head.vy = 20;
-        instance.syncWedgeFacing(state);
-        const restLength = resolveChainLinkRestLength(pack.head, pack.body, config.linkSlack);
-        const heading = Math.atan2(pack.head.vy, pack.head.vx);
-        const expectedX = pack.head.x + Math.cos(heading) * restLength;
-        const expectedY = pack.head.y + Math.sin(heading) * restLength;
-        assert.ok(Math.abs(pack.body.x - expectedX) < 1e-3);
-        assert.ok(Math.abs(pack.body.y - expectedY) < 1e-3);
-        assert.ok(Math.abs(pack.body.facing - fleeAgentWedgeFacingFromHeading(heading)) < 1e-4);
+        assert.equal(pack.head.radius, 2);
     });
     it("starts, ticks, and flees from a visible snake threat", async () => {
-        applySnakeGameConfig({ startRadius: 2 });
-        resetKineticConstraintIds(6);
+        resetKineticConstraintIds(3);
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
+        applySnakeGameConfig({ startRadius: 2 });
         const snakeGame = state.sandbox.snakeGame;
-        // Spawn a flee agent
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
-        const instance = createFleeAgentInstance(state, { headId: pack.head.id, followerId: pack.body.id, spawnGroupId: pack.spawnGroupId });
+        const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         assert.equal(instance.intent.getMode(), "explore");
         instance.tick(state, 16);
         assert.ok(instance.intent.getDestination());
-        // Now spawn a snake nearby (e.g., at col 10, row 12)
-        const snakeHead = state.entityRegistry.getLive(state.worldProps[0]?.id); // Let's just mock a snake head
         const mockSnakeId = "mock_snake_head";
         const mockSnake = { id: mockSnakeId, x: pack.head.x, y: pack.head.y + 32, type: "snake_head", isDead: false };
         state.entityRegistry.register("prop", mockSnake);
@@ -105,33 +60,29 @@ describe("flee agent spawn", () => {
     });
     it("shatters flee agent on predator snake head ram", async () => {
         applySnakeGameConfig({ splitImpulseThreshold: 30 });
-        resetKineticConstraintIds(7);
+        resetKineticConstraintIds(4);
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
-        // Spawn a flee agent
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
-        const instance = createFleeAgentInstance(state, { headId: pack.head.id, followerId: pack.body.id, spawnGroupId: pack.spawnGroupId });
+        const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
-        // Spawn a predator snake chain (temporarily setting growDirX to 1 so segments grow to the right, avoiding overlap)
         applySnakeGameConfig({ splitImpulseThreshold: 30, growDirX: 1 });
         const predator = spawnSnakeChain(state, { col: 12, row: 10 }, { segmentCount: 5, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         applySnakeGameConfig({ splitImpulseThreshold: 30, growDirX: -1 });
         registerSnakeTestInstance(state, snakeGame, { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId });
         snakeGame.registry.aliveByHeadId.set(predator.chain.head.id, { headId: predator.chain.head.id, species: "snake", lifecycle: "alive" });
-        // Set faction explicitly on predator head
         predator.chain.head.faction = "snake";
-        // Position predator head to ram the flee agent's body
         const predatorHead = predator.chain.head;
-        const preyBody = pack.body;
+        const prey = pack.head;
         predatorHead.vx = -80;
         predatorHead.vy = 0;
-        preyBody.vx = 10;
-        preyBody.vy = 0;
-        predatorHead.x = preyBody.x + predatorHead.radius + preyBody.radius - 2;
-        predatorHead.y = preyBody.y;
-        const props = [...predator.chain.members, ...pack.members];
+        prey.vx = 10;
+        prey.vy = 0;
+        predatorHead.x = prey.x + prey.radius + predatorHead.radius - 2;
+        predatorHead.y = prey.y;
+        const props = [...predator.chain.members, prey];
         const tick = attachKineticTestTickFromState(state, props, 50);
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
@@ -139,7 +90,6 @@ describe("flee agent spawn", () => {
         resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
         assert.equal(instance.lifecycle, "dead");
         assert.ok(snakeGame.registry.deadHeadIds.has(pack.head.id));
-        // Verify that the body segment was removed from the entity registry (shattered)
-        assert.equal(state.entityRegistry.getLive(pack.body.id), null);
+        assert.equal(state.entityRegistry.getLive(pack.head.id), null);
     });
 });

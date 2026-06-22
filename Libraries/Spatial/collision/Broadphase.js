@@ -64,7 +64,15 @@ export function broadphaseBoundsFromCollisionPartsInto(out, parts, cx, cy, angle
     let minY = Infinity;
     let maxY = -Infinity;
     for (let p = 0; p < parts.length; p++) {
-        const verts = parts[p].vertices;
+        const part = parts[p];
+        if (part.type === "Circle") {
+            minX = Math.min(minX, -part.radius);
+            maxX = Math.max(maxX, part.radius);
+            minY = Math.min(minY, -part.radius);
+            maxY = Math.max(maxY, part.radius);
+            continue;
+        }
+        const verts = part.vertices;
         for (let i = 0; i < verts.length; i++) {
             minX = Math.min(minX, verts[i].x);
             maxX = Math.max(maxX, verts[i].x);

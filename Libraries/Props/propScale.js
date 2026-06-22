@@ -1,6 +1,6 @@
 import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
-import { syncKineticRigidBody } from "../Motion/bodyMass.js";
+import { kineticMassFromFootprint, syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 export function getPolygonPropBoundingRadius(prop) {
     const shape = prop.getShape?.() ?? prop.shape;
@@ -35,6 +35,18 @@ export function getCirclePropRadius(prop) {
 }
 export function setCirclePropRadius(prop, radius) {
     if (radius <= 0) throw new Error(`Circle prop radius must be > 0, got ${radius}`);
+    if (prop.strategy?.syncCollisionShape) {
+        prop.strategy.radius = radius;
+        prop.strategy.syncCollisionShape(prop);
+        prop.stateTimer = (prop.stateTimer ?? 0) + 1;
+        delete prop._cachedShape;
+        invalidateBroadphaseBounds(prop);
+        if (prop.strategy?.isKinetic) {
+            prop.mass = kineticMassFromFootprint(prop);
+            wakeKineticBody(prop);
+        }
+        return;
+    }
     const shape = prop.getShape?.() ?? prop.shape;
     if (shape?.type !== "Circle") throw new Error(`setCirclePropRadius requires a circle prop, got ${shape?.type ?? "none"}`);
     prop.shape = new CircleShape(radius);

@@ -60,7 +60,7 @@ export class WorldProp extends Entity {
             if (this._cachedShapeRevision !== this.stateTimer || !this._cachedShape) {
                 this._cachedShape = this.strategy.syncCollisionShape(this);
                 this._cachedShapeRevision = this.stateTimer;
-                this.radius = this._cachedShape.getBoundingRadius();
+                if (!this.collisionParts?.length) this.radius = this._cachedShape.getBoundingRadius();
             }
             return this._cachedShape;
         }
