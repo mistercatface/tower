@@ -94,6 +94,7 @@ function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memory
         food: visibleWorld.food,
         threatDist: visibleWorld.threatDist ?? null,
         preyDist: visibleWorld.prey ? (visibleWorld.preyDist ?? null) : null,
+        preySegmentCount: visibleWorld.prey ? (visibleWorld.preySegmentCount ?? null) : null,
         foodDist: visibleWorld.food ? (visibleWorld.foodDist ?? null) : null,
         threatCount: visibleWorld.threatCount ?? 0,
         aggregateThreatSeverity: visibleWorld.aggregateThreatSeverity ?? 0,
@@ -105,12 +106,14 @@ function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memory
         preyDist: memorySource?.prey ? (memoryWorld?.preyDist ?? null) : null,
         foodDist: memorySource?.food ? (memoryWorld?.foodDist ?? null) : null,
     };
+    const knownPrey = visibleWorld.prey ?? remembered.prey;
     const known = {
         threat: visibleWorld.threat ?? remembered.threat,
-        prey: visibleWorld.prey ?? remembered.prey,
+        prey: knownPrey,
         food: visibleWorld.food ?? remembered.food,
         threatDist: visible.threatDist,
         preyDist: visible.prey ? visible.preyDist : remembered.preyDist,
+        preySegmentCount: visible.preySegmentCount ?? memoryWorld?.preySegmentCount ?? null,
         foodDist: visible.food ? visible.foodDist : remembered.foodDist,
         threatCount: visible.threatCount ?? 0,
         aggregateThreatSeverity: visible.aggregateThreatSeverity ?? 0,
@@ -141,6 +144,9 @@ function scoreHuntDetail(blackboard, weights, pressure) {
     const hunger = blackboard.facts.hungerState;
     if (!hunger || hunger.foodFraction < (pressure.huntMinHunger ?? 0.25)) return { net: -Infinity };
     let value = huntValueForHunger(weights, pressure, hunger);
+    const preySegments = blackboard.facts.known.preySegmentCount;
+    const easyPreyMax = pressure.easyPreyMaxSegments ?? 3;
+    if (Number.isFinite(preySegments) && preySegments <= easyPreyMax) value += pressure.easyPreyBonus ?? 0;
     const threat = blackboard.facts.threatState;
     if (blackboard.facts.known.threat && threat) {
         value -= (pressure.huntThreatPenalty ?? 0) * threat.severity;

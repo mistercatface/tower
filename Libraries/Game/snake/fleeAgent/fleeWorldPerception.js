@@ -1,5 +1,6 @@
 import { hasGridCellLineOfSightCached } from "../../../Navigation/perception/gridCellVision.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
+import { getPreySnakeSegmentCount } from "./fleeHuntTargeting.js";
 function threatSeverityForDist(dist, fleeRange) {
     return Math.max(0, Math.min(1, (fleeRange - dist) / fleeRange));
 }
@@ -47,6 +48,7 @@ export function classifyFleeVisibleAgentsFromVision(seeker, selfHeadId, state, r
         prey,
         threatDist: threat ? Math.sqrt(bestThreatDistSq) : null,
         preyDist: prey ? Math.sqrt(bestPreyDistSq) / navTopology.grid.cellSize : null,
+        preySegmentCount: prey ? getPreySnakeSegmentCount(state, prey.id) : null,
         threatCount,
         aggregateThreatSeverity,
     };

@@ -1,4 +1,5 @@
 import { createTargetMemory, targetFromMemoryRecord } from "../../../AI/memory/targetMemory.js";
+import { getPreySnakeSegmentCount } from "./fleeHuntTargeting.js";
 const FLEE_MEMORY_KINDS = ["threat", "prey", "food"];
 function targetFromRecord(record, state) {
     if (!record) return null;
@@ -30,6 +31,7 @@ export function createFleeIntentMemory({ threatTtlTicks = 45, preyTtlTicks = 90,
                 food,
                 threatDist: visibleWorld.threat ? visibleWorld.threatDist : (memory.record("threat")?.lastDistanceCells ?? null),
                 preyDist: visibleWorld.prey ? visibleWorld.preyDist : (preyRecord?.lastDistanceCells ?? null),
+                preySegmentCount: visibleWorld.prey ? visibleWorld.preySegmentCount : (prey ? getPreySnakeSegmentCount(state, prey.id) : null),
                 foodDist: visibleWorld.food ? visibleWorld.foodDist : (foodRecord?.lastDistanceCells ?? null),
                 threatCount: visibleWorld.threatCount ?? 0,
                 aggregateThreatSeverity: visibleWorld.aggregateThreatSeverity ?? 0,

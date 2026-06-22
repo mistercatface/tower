@@ -9,6 +9,7 @@ import { requireSnakeVisionFrame } from "../snakePerception.js";
 import { resolveAgentRelationship } from "../snakeAgentSession.js";
 import { buildFleeDecisionContext, deriveFleeSprintIntent } from "./fleeDecisionModel.js";
 import { createFleeIntentMemory } from "./fleeIntentMemory.js";
+import { resolveFleeHuntStrikeTarget } from "./fleeHuntTargeting.js";
 export function createFleeExploreIntent({
     brain,
     sync,
@@ -40,6 +41,14 @@ export function createFleeExploreIntent({
             const threat = world.blackboard?.facts?.threatState ?? world.decisionSnapshot?.threatState;
             return !threat || (!threat.lethal && threat.severity <= fleeHysteresis.exitThreatSeverity);
         },
+    });
+    const huntHysteresis = config.fleeAgent.huntHysteresis ?? { minTicks: 45 };
+    const huntLatch = createModePolicyLatch({
+        mode: "hunt",
+        minTicks: huntHysteresis.minTicks,
+        holdReason: "hunt_hysteresis",
+        refreshWhen: ({ world }) => !!world.blackboard?.facts?.known?.prey,
+        canRelease: ({ world }) => !world.blackboard?.facts?.known?.prey,
     });
     let intent = null;
     let lastBlackboard = null;
@@ -94,6 +103,10 @@ export function createFleeExploreIntent({
         lastDecisionSnapshot = decisionContext.decisionSnapshot;
         return { ...memoryWorld, blackboard: decisionContext.blackboard, decisionSnapshot: decisionContext.decisionSnapshot };
     };
+    const resolveSeekTarget = (mode, agent, state, target, preyHeadId) => {
+        if (mode === "hunt" && preyHeadId != null) return resolveFleeHuntStrikeTarget(agent, preyHeadId, state) ?? target;
+        return target;
+    };
     const createFleeEffects = ({ agent, state, mode, world, targetId }) => ({
         clearDestination() {
             locomotion.clearDestination(agent, state);
@@ -105,13 +118,15 @@ export function createFleeExploreIntent({
         },
         setSeekDestination(target) {
             if (!target) return;
-            const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(mode, agent, target, state) : seekArrivalRadius;
+            const seekTarget = resolveSeekTarget(mode, agent, state, target, targetId);
+            const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(mode, agent, seekTarget, state) : seekArrivalRadius;
             const options = typeof seekOptions === "object" && seekOptions !== null ? seekOptions : { arrivalRadius: seekOptions };
-            locomotion.setSeek(agent, state, target, { ...options, targetId });
+            locomotion.setSeek(agent, state, seekTarget, { ...options, targetId });
         },
         updateSeekTarget(target) {
-            if (!target) return;
-            locomotion.updateSeekTarget(agent, state, target, { targetId });
+            const seekTarget = resolveSeekTarget(mode, agent, state, target, targetId);
+            if (!seekTarget) return;
+            locomotion.updateSeekTarget(agent, state, seekTarget, { targetId });
         },
         setFleeDestination(avoidCell = null) {
             const threat = world.blackboard.facts.known.threat;
@@ -126,14 +141,18 @@ export function createFleeExploreIntent({
             return exploreCell;
         },
     });
-    const createFleeContext = (ctx) => ({
-        ...ctx,
-        grid: ctx.state.obstacleGrid,
-        dest: locomotion.getDestination(),
-        target: resolveCommittedTarget(ctx.targetId, ctx.world),
-        fleeTarget: ctx.world.blackboard.facts.known.threat,
-        locomotion,
-    });
+    const createFleeContext = (ctx) => {
+        const committed = resolveCommittedTarget(ctx.targetId, ctx.world);
+        const target = resolveSeekTarget(ctx.mode, ctx.agent, ctx.state, committed, ctx.targetId);
+        return {
+            ...ctx,
+            grid: ctx.state.obstacleGrid,
+            dest: locomotion.getDestination(),
+            target,
+            fleeTarget: ctx.world.blackboard.facts.known.threat,
+            locomotion,
+        };
+    };
     intent = createAgentIntent({
         initialMode: "explore",
         sync(agent, state) {
@@ -142,19 +161,29 @@ export function createFleeExploreIntent({
         },
         perceiveWorld: perceiveWithMemory,
         pickPolicy: (world) => {
-            const policy = world.decisionSnapshot.chosenIntent;
-            const latched = fleeLatch.apply(policy, { world, currentMode: intent.getMode() });
-            if (latched !== policy) {
+            let policy = world.decisionSnapshot.chosenIntent;
+            policy = fleeLatch.apply(policy, { world, currentMode: intent.getMode() });
+            if (policy !== world.decisionSnapshot.chosenIntent && policy.mode === "flee") {
                 world.blackboard.events.push("FLEE_HELD");
-                world.decisionSnapshot.events = world.blackboard.events;
-                world.decisionSnapshot.chosenIntent = latched;
-                world.decisionSnapshot.chosenReason = latched.reason ?? null;
-                world.decisionSnapshot.targetId = latched.targetId ?? null;
-                world.decisionSnapshot.sprintIntent = deriveFleeSprintIntent(latched.mode, world.decisionSnapshot.threatState, world.decisionSnapshot.hungerState);
             }
-            world.decisionSnapshot.policyLatch = { flee: fleeLatch.snapshot() };
+            policy = huntLatch.apply(policy, { world, currentMode: intent.getMode() });
+            if (policy !== world.decisionSnapshot.chosenIntent && policy.mode === "hunt") {
+                world.blackboard.events.push("HUNT_HELD");
+            }
+            if (policy.mode === "hunt" && policy.targetId == null) {
+                const preyId = intent.getTargetId() ?? world.blackboard?.facts?.known?.prey?.id ?? world.decisionSnapshot.chosenIntent.targetId;
+                if (preyId != null) policy = { ...policy, targetId: preyId };
+            }
+            if (policy.mode !== world.decisionSnapshot.chosenIntent.mode || policy.reason !== world.decisionSnapshot.chosenIntent.reason) {
+                world.decisionSnapshot.events = world.blackboard.events;
+                world.decisionSnapshot.chosenIntent = policy;
+                world.decisionSnapshot.chosenReason = policy.reason ?? null;
+                world.decisionSnapshot.targetId = policy.targetId ?? null;
+                world.decisionSnapshot.sprintIntent = deriveFleeSprintIntent(policy.mode, world.decisionSnapshot.threatState, world.decisionSnapshot.hungerState);
+            }
+            world.decisionSnapshot.policyLatch = { flee: fleeLatch.snapshot(), hunt: huntLatch.snapshot() };
             lastDecisionSnapshot = world.decisionSnapshot;
-            return latched;
+            return policy;
         },
         transitionReason: (prevMode, nextMode, policy) => {
             if (policy?.reason) return policy.reason;
@@ -164,13 +193,14 @@ export function createFleeExploreIntent({
             return `mode_${nextMode}`;
         },
         states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), hunt: createSeekIntentState(), flee: createFleeIntentState() },
-        modeExitDelayTicks: { flee: 30 },
+        modeExitDelayTicks: { flee: 30, hunt: 30 },
         createEffects: createFleeEffects,
         createContext: createFleeContext,
         onClear(agent, state) {
             lastArrivalCol = null;
             lastArrivalRow = null;
             fleeLatch.clear();
+            huntLatch.clear();
             intentMemory.clear();
             locomotion.clear(agent, state);
             if (agent) agent.navStepPenalty = null;
@@ -179,6 +209,7 @@ export function createFleeExploreIntent({
             lastArrivalCol = null;
             lastArrivalRow = null;
             fleeLatch.clear();
+            huntLatch.clear();
             locomotion.clearDestination(agent, state);
         },
     });
