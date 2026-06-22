@@ -73,6 +73,9 @@ function chainOptions(segmentCount = getSnakeGameConfig().segmentCount) {
         growDirY: config.growDirY,
     };
 }
+function assignTeamFactions(assignments) {
+    for (const { chain, faction } of assignments) chain.head.faction = faction;
+}
 function assertChainTint(chain, tint) {
     for (const prop of chain.members) assert.equal(getPropVisualTint(prop), tint);
 }
@@ -184,6 +187,10 @@ describe("snake FSM transitions", () => {
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
         ]);
+        assignTeamFactions([
+            { chain: hunter, faction: "red" },
+            { chain: prey, faction: "blue" },
+        ]);
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
         prey.head.y = hunter.head.y;
@@ -209,6 +216,10 @@ describe("snake FSM transitions", () => {
         wireSnakeTestGame(state, [
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
+        ]);
+        assignTeamFactions([
+            { chain: hunter, faction: "red" },
+            { chain: prey, faction: "blue" },
         ]);
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
@@ -256,6 +267,11 @@ describe("snake FSM transitions", () => {
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
             { headId: threat.head.id, spawnGroupId: threat.spawnGroupId },
         ]);
+        assignTeamFactions([
+            { chain: hunter, faction: "red" },
+            { chain: prey, faction: "blue" },
+            { chain: threat, faction: "blue" },
+        ]);
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
         prey.head.y = hunter.head.y;
@@ -279,6 +295,10 @@ describe("snake FSM transitions", () => {
         wireSnakeTestGame(state, [
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: threat.head.id, spawnGroupId: threat.spawnGroupId },
+        ]);
+        assignTeamFactions([
+            { chain: hunter, faction: "red" },
+            { chain: threat, faction: "blue" },
         ]);
         spawnSnakeFoodShardAtCell(state, { col: 12, row: 10 });
         hunter.head.facing = 0;
@@ -304,6 +324,10 @@ describe("snake FSM transitions", () => {
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
         ]);
+        assignTeamFactions([
+            { chain: hunter, faction: "red" },
+            { chain: prey, faction: "blue" },
+        ]);
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
         prey.head.y = hunter.head.y;
@@ -326,6 +350,10 @@ describe("snake FSM transitions", () => {
         wireSnakeTestGame(state, [
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
+        ]);
+        assignTeamFactions([
+            { chain: hunter, faction: "red" },
+            { chain: prey, faction: "blue" },
         ]);
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
@@ -357,6 +385,10 @@ describe("snake FSM transitions", () => {
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
         ]);
+        assignTeamFactions([
+            { chain: hunter, faction: "red" },
+            { chain: prey, faction: "blue" },
+        ]);
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
         prey.head.y = hunter.head.y;
@@ -380,6 +412,10 @@ describe("snake FSM transitions", () => {
             { headId: small.head.id, spawnGroupId: small.spawnGroupId },
             { headId: large.head.id, spawnGroupId: large.spawnGroupId },
         ]);
+        assignTeamFactions([
+            { chain: small, faction: "red" },
+            { chain: large, faction: "blue" },
+        ]);
         spawnSnakeFoodShardAtCell(state, { col: 8, row: 10 });
         small.head.facing = 0;
         large.head.x = small.head.x + 200;
@@ -401,6 +437,10 @@ describe("snake FSM transitions", () => {
         wireSnakeTestGame(state, [
             { headId: small.head.id, spawnGroupId: small.spawnGroupId },
             { headId: large.head.id, spawnGroupId: large.spawnGroupId },
+        ]);
+        assignTeamFactions([
+            { chain: small, faction: "red" },
+            { chain: large, faction: "blue" },
         ]);
         const registry = state.sandbox.snakeGame.registry;
         large.head.x = small.head.x + 64;
@@ -460,6 +500,10 @@ describe("snake FSM transitions", () => {
             { headId: hunter.head.id, spawnGroupId: hunter.spawnGroupId },
             { headId: prey.head.id, spawnGroupId: prey.spawnGroupId },
         ]);
+        assignTeamFactions([
+            { chain: hunter, faction: "red" },
+            { chain: prey, faction: "blue" },
+        ]);
         applySnakeHeadGameplay(hunter.head);
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
@@ -481,6 +525,10 @@ describe("snake FSM transitions", () => {
         wireSnakeTestGame(state, [
             { headId: small.head.id, spawnGroupId: small.spawnGroupId },
             { headId: threat.head.id, spawnGroupId: threat.spawnGroupId },
+        ]);
+        assignTeamFactions([
+            { chain: small, faction: "red" },
+            { chain: threat, faction: "blue" },
         ]);
         small.head.facing = 0;
         threat.head.x = small.head.x + 30;

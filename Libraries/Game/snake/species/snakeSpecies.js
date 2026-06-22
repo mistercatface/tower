@@ -46,6 +46,12 @@ export const snakeSpecies = {
     },
     resolveRelationship(targetSpecies, seekerId, targetId, state) {
         if (targetSpecies === "snake") {
+            const seekerHead = state.entityRegistry.getLive(seekerId);
+            const targetHead = state.entityRegistry.getLive(targetId);
+            const seekerFaction = seekerHead?.faction ?? null;
+            const targetFaction = targetHead?.faction ?? null;
+            if (!seekerFaction || !targetFaction) return "neutral";
+            if (seekerFaction === targetFaction) return "ally";
             const seekerScore = getSnakeSizeScore(state, seekerId);
             const targetScore = getSnakeSizeScore(state, targetId);
             if (targetScore > seekerScore) return "threat";

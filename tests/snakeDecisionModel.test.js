@@ -100,7 +100,7 @@ describe("satisfied snakes weigh prey effort", () => {
     });
     it("a hungry snake still chases prey", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ prey: snake(2), preyDist: 6 }), { foodFraction: 0.4 });
+        const { decisionSnapshot } = context(world({ prey: snake(2, { type: "snake_head", faction: "blue" }), preyDist: 6 }), { foodFraction: 0.4, seekerFaction: "red" });
         assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
     });
     it("a satisfied snake still flees a larger threat", () => {
