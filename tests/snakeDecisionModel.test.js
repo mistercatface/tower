@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { SNAKE_HUNGRY_EXPLORE_TINT, SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT, resolveSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
-import { buildSnakeDecisionContext, createSnakeDecisionBlackboard, deriveSnakeHungerState, deriveSnakeThreatState, deriveSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import {
+    buildSnakeDecisionContext,
+    createSnakeDecisionBlackboard,
+    deriveSnakeHungerState,
+    deriveSnakeThreatState,
+    deriveSprintIntent,
+    pickSnakeIntentPolicy,
+    scoreSnakeIntentCandidates,
+} from "../Libraries/Game/snake/snakeDecisionModel.js";
 function world({ threat = null, prey = null, food = null, threatDist = null, preyDist = null, foodDist = null } = {}) {
     return { threat, prey, food, threatDist, preyDist, foodDist };
 }
@@ -64,11 +72,7 @@ describe("snake intent scoring parity (PR2)", () => {
         assert.ok(Number.isFinite(scores.explore));
     });
     it("keeps memory reasons for remembered targets", () => {
-        const bb = createSnakeDecisionBlackboard({
-            visibleWorld: world(),
-            memoryWorld: { prey: snake(5) },
-            memorySource: { prey: true },
-        });
+        const bb = createSnakeDecisionBlackboard({ visibleWorld: world(), memoryWorld: { prey: snake(5) }, memorySource: { prey: true } });
         const policy = pickSnakeIntentPolicy(bb);
         assert.equal(policy.mode, "seek_prey");
         assert.equal(policy.reason, "prey_memory");
@@ -84,9 +88,15 @@ describe("satisfied snakes weigh prey effort", () => {
     });
     it("a satisfied snake explores instead of chasing far visible prey", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ prey: snake(2), preyDist: 2 }), { foodFraction: 0.9 });
+        const { decisionSnapshot } = context(world({ prey: snake(2, { type: "snake_head", faction: "red" }), preyDist: 2 }), { foodFraction: 0.9, seekerFaction: "red" });
         assert.equal(decisionSnapshot.chosenIntent.mode, "explore");
         assert.equal(decisionSnapshot.candidateScoreDetails.seek_prey.net, 90);
+    });
+    it("a satisfied snake still attacks an opposite-team snake prey", () => {
+        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        const { decisionSnapshot } = context(world({ prey: snake(2, { type: "snake_head", faction: "blue" }), preyDist: 8 }), { foodFraction: 0.9, seekerFaction: "red" });
+        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
+        assert.ok(decisionSnapshot.candidateScores.seek_prey > 1000);
     });
     it("a hungry snake still chases prey", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });

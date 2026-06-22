@@ -75,6 +75,7 @@ export function createSnakeForageIntent({
             committedTarget: intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null,
             routeStatus: readRouteStatus(agent, state),
             foodFraction: resolveHunger ? resolveHunger() : null,
+            seekerFaction: agent.faction,
         });
         lastBlackboard = decisionContext.blackboard;
         lastDecisionSnapshot = decisionContext.decisionSnapshot;

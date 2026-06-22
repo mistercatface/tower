@@ -46,6 +46,7 @@ export function createSnakeDecisionBlackboard({
     threatState = null,
     safetyState = null,
     recentFailures = [],
+    seekerFaction = null,
 }) {
     const visible = {
         threat: visibleWorld.threat,
@@ -76,7 +77,7 @@ export function createSnakeDecisionBlackboard({
     pushTargetEvents(events, "food", visibleWorld.food, remembered.food);
     if (!known.prey && committedTarget?.mode === "seek_prey") events.push("TARGET_LOST");
     if (!known.food && committedTarget?.mode === "seek_food") events.push("TARGET_LOST");
-    return { facts: { visible, remembered, known, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures }, events };
+    return { facts: { visible, remembered, known, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures, seekerFaction }, events };
 }
 function hungerKey(hungerState) {
     return hungerState?.state ?? "hungry";
@@ -125,12 +126,21 @@ function scoreFlee(blackboard, weights, pressure) {
     return weights.flee * threat.severity * (1 - riskTolerance);
 }
 function scorePreyDetail(blackboard, weights, pressure) {
-    if (!blackboard.facts.known.prey) return { net: -Infinity };
+    const prey = blackboard.facts.known.prey;
+    if (!prey) return { net: -Infinity };
     const hunger = blackboard.facts.hungerState;
     let value = preyValueForHunger(weights, pressure, hunger);
-    const foodUnknown = !blackboard.facts.known.food;
-    const routeFailed = !!blackboard.facts.routeStatus?.routeFailed;
-    if (hunger?.desperate && (foodUnknown || routeFailed)) value += pressure.preyDesperationBonus;
+    // Check if prey is a snake on the opposite team
+    const isPreySnake = prey.type === "snake_head";
+    const isEnemySnake = isPreySnake && blackboard.facts.seekerFaction && prey.faction !== blackboard.facts.seekerFaction;
+    if (isEnemySnake)
+        // Attack no matter what! Massive value boost
+        value = weights.prey + 1000;
+    else {
+        const foodUnknown = !blackboard.facts.known.food;
+        const routeFailed = !!blackboard.facts.routeStatus?.routeFailed;
+        if (hunger?.desperate && (foodUnknown || routeFailed)) value += pressure.preyDesperationBonus;
+    }
     return netScoreDetail(value, reachForCandidate(blackboard, "seek_prey", "prey"), costPerCellForHunger(pressure, hunger));
 }
 function scoreFoodDetail(blackboard, weights, pressure) {
@@ -173,11 +183,12 @@ export function buildSnakeDecisionContext({
     foodFraction = null,
     safetyState = null,
     recentFailures = [],
+    seekerFaction = null,
     pickPolicy = pickSnakeIntentPolicy,
 }) {
     const hungerState = deriveSnakeHungerState(foodFraction);
     const threatState = deriveSnakeThreatState(visibleWorld.threat, visibleWorld.threatDist);
-    const blackboard = createSnakeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures });
+    const blackboard = createSnakeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, threatState, safetyState, recentFailures, seekerFaction });
     const scoredCandidates = scoreCandidateSet(scoreSnakeIntentCandidateDetails(blackboard), INTENT_SCORE_ORDER);
     const chosenIntent = pickPolicy(blackboard, scoredCandidates.candidateScores);
     const sprintIntent = deriveSprintIntent(chosenIntent.mode, threatState);
