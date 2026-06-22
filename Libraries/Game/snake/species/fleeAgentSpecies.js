@@ -41,6 +41,13 @@ export const fleeAgentSpecies = {
     },
     resolveRelationship(targetSpecies, seekerId, targetId, state) {
         if (targetSpecies === "snake") return "threat";
+        if (targetSpecies === "flee_agent") {
+            const seekerHead = state.entityRegistry.getLive(seekerId);
+            const targetHead = state.entityRegistry.getLive(targetId);
+            const seekerFaction = seekerHead?.faction ?? null;
+            const targetFaction = targetHead?.faction ?? null;
+            if (seekerFaction && targetFaction && seekerFaction === targetFaction) return "ally";
+        }
         return "neutral";
     },
 };
