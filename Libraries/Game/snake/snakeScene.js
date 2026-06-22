@@ -180,12 +180,13 @@ export function resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount
 async function spawnSnakeCavernMap(state) {
     await generateSnakeSplitMap(state);
 }
-export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segmentCount, rng = Math.random } = {}) {
+export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segmentCount, faction = null, rng = Math.random } = {}) {
     const config = getSnakeGameConfig();
     const startRadius = resolveSnakeStartRadius(config);
     const resolvedSegmentCount = segmentCount ?? config.segmentCount;
     const name = pickRandomName(rng);
-    const tintHex = pickSnakeChainTintHex(rng);
+    const resolvedFaction = faction;
+    const tintHex = pickSnakeChainTintHex(resolvedFaction, rng);
     const chain = spawnLinkedBallChain(state, anchorCell, {
         segmentCount: resolvedSegmentCount,
         spacing: resolveSnakeSegmentSpacing(config, startRadius),
@@ -195,6 +196,7 @@ export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segm
         headBallType: config.headPropId,
         growDirX: config.growDirX,
         growDirY: config.growDirY,
+        faction: resolvedFaction,
         exportType: SNAKE_CHAIN_EXPORT_TYPE,
     });
     setAgentIdentity(chain.head.id, { name, color: tintHex });
@@ -221,7 +223,7 @@ export async function spawnSnakeCavernScene(state) {
         let excludeIndices = null;
         const centerSegmentCount = specs[0].segmentCount;
         const centerAnchor = resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount: centerSegmentCount, excludeIndices });
-        const centerPack = spawnSnakeChain(state, centerAnchor, { excludeIndices, segmentCount: centerSegmentCount });
+        const centerPack = spawnSnakeChain(state, centerAnchor, { excludeIndices, segmentCount: centerSegmentCount, faction: "red" });
         snakes.push(centerPack);
         excludeIndices = centerPack.occupiedIndices;
         const shuffledSpawnCells = spawnCells.slice();
@@ -230,7 +232,8 @@ export async function spawnSnakeCavernScene(state) {
             const spec = specs[i];
             const segmentCount = spec.segmentCount;
             const anchorCell = pickSnakeChainSpawnCell(shuffledSpawnCells, navWalkable, state, { segmentCount, spacing, growDirX, growDirY, excludeIndices });
-            const pack = spawnSnakeChain(state, anchorCell, { excludeIndices, segmentCount: spec.segmentCount });
+            const faction = i % 2 === 0 ? "red" : "blue";
+            const pack = spawnSnakeChain(state, anchorCell, { excludeIndices, segmentCount: spec.segmentCount, faction });
             snakes.push(pack);
             excludeIndices = pack.occupiedIndices;
         }

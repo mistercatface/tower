@@ -1,5 +1,6 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { getPropVisualTint, randomVisualTintHex, setPropVisualTint } from "../../Color/visualOverride.js";
+import { hueToPickerHex } from "../../Color/hex.js";
 export const SNAKE_INTENT_MODE_TINT = { explore: "#2d9cff", seek_food: "#2ecc71", seek_prey: "#ff3b30", flee: "#ffd23f" };
 /** Condition tints for an exploring snake: well-fed reads purple, hungry reads orange. */
 export const SNAKE_SATISFIED_EXPLORE_TINT = "#a855f7";
@@ -26,6 +27,24 @@ export function copySnakeChainTintFromHead(state, headId, prop) {
     const tint = getPropVisualTint(head);
     if (tint != null) setPropVisualTint(prop, tint);
 }
-export function pickSnakeChainTintHex(rng = Math.random) {
-    return randomVisualTintHex(rng);
+export function pickSnakeChainTintHex(faction = null, rng = Math.random) {
+    let resolvedFaction = faction;
+    let resolvedRng = rng;
+    if (typeof faction === "function") {
+        resolvedRng = faction;
+        resolvedFaction = null;
+    }
+    if (resolvedFaction === "red") {
+        const hue = (350 + resolvedRng() * 30) % 360;
+        const sat = 70 + resolvedRng() * 15;
+        const light = 45 + resolvedRng() * 12;
+        return hueToPickerHex(hue, sat, light);
+    }
+    if (resolvedFaction === "blue") {
+        const hue = 205 + resolvedRng() * 40;
+        const sat = 70 + resolvedRng() * 15;
+        const light = 45 + resolvedRng() * 12;
+        return hueToPickerHex(hue, sat, light);
+    }
+    return randomVisualTintHex(resolvedRng);
 }
