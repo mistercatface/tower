@@ -2,7 +2,7 @@ import { blendMotifRgb } from "./util/blend.js";
 import { warpPointInto, writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
 import { readTranslateConfig, TRANSLATE_COORDINATE_MODES } from "./Motifs/translate.js";
-const sampleScratch = { evalX: 0, evalY: 0, lookupX: 0, lookupY: 0, wallU: 0, wallV: 0, seed: 0, noise: null };
+const sampleScratch = { evalX: 0, evalY: 0, lookupX: 0, lookupY: 0, wallU: 0, wallV: 0, seed: 0, isWall: false, noise: null };
 const sWarpScratch = { x: 0, y: 0 };
 const beforeRgb = { r: 0, g: 0, b: 0 };
 const layerRgb = { r: 0, g: 0, b: 0 };
@@ -70,6 +70,7 @@ export function composeSurfaceImage(samples, profile, seed, bakeSession = null, 
     const warp = profile.warp;
     sampleScratch.seed = seed;
     sampleScratch.noise = noise;
+    sampleScratch.isWall = bake.useWallBase;
     const motifs = resolveMotifStack(profile);
     const endIdx = motifEndIndex ?? motifs.length;
     const translateContext = createTranslateContext();

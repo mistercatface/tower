@@ -1,8 +1,5 @@
 import { rotateXY } from "../../Math/Poly2D.js";
-import { sampleCoords, applyTint } from "../util/motifUtilities.js";
-function ridgedNoise(noise, x, y, octaves) {
-    return Math.abs(noise.sample2D(x, y, octaves));
-}
+import { sampleCoords, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
 /**
  * Intersecting ridged veins form panel seams; glow concentrates on veins and brighter at crossings.
  */
@@ -43,8 +40,8 @@ export const circuitLatticeMotif = {
         const rotated = rotateXY(x, y, cos, sin);
         const ax = rotated.x;
         const ay = rotated.y;
-        const r1 = ridgedNoise(sample.noise, (ax + offsetX) * freq, (ay + offsetY) * freq, octaves);
-        const r2 = ridgedNoise(sample.noise, (ay + offsetX) * freq, (ax + offsetY) * freq, octaves);
+        const r1 = sampleRidged2D(sample.noise, (ax + offsetX) * freq, (ay + offsetY) * freq, octaves);
+        const r2 = sampleRidged2D(sample.noise, (ay + offsetX) * freq, (ax + offsetY) * freq, octaves);
         const lattice = Math.min(r1, r2);
         const ridgeThreshold = config.ridgeThreshold;
         if (lattice < ridgeThreshold) {

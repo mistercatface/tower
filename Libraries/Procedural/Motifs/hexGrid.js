@@ -1,4 +1,4 @@
-import { applyTint } from "../util/motifUtilities.js";
+import { applyTint, applyCellJitter, applyGroutBand, applyWarmSeamBand } from "../util/motifUtilities.js";
 const SQRT3 = Math.sqrt(3);
 /** Flat-top hex: circumradius `size` (center to vertex). */
 function axialRound(q, r) {
@@ -63,26 +63,9 @@ function applyBevel(rgb, lx, ly, edgeDist, config) {
     const tint = config.bevelTint ?? [1, 1, 1];
     applyTint(rgb, t * peak, tint);
 }
-function applyGrout(rgb, edgeDist, config) {
-    const groutW = config.groutWidth ?? 0.08;
-    if (edgeDist >= groutW) return;
-    const t = (1 - edgeDist / groutW) * (config.groutPeak ?? 12);
-    const tint = config.groutTint ?? [4, 2, -2];
-    applyTint(rgb, t, tint);
-}
-function applyWarmAccent(rgb, edgeDist, config) {
-    const accentW = config.accentWidth;
-    if (accentW == null || accentW <= 0) return;
-    if (edgeDist >= accentW) return;
-    const t = (1 - edgeDist / accentW) * (config.accentPeak ?? 5);
-    const tint = config.accentTint ?? [4, 1, -2];
-    applyTint(rgb, t, tint);
-}
 function applyCellFill(rgb, q, r, config, noise) {
     const [jx, jy] = config.jitterOffset ?? [0, 0];
-    const jitter = noise.sample2D(q * 0.63 + jx, r * 0.47 + jy, 1);
-    const delta = jitter * (config.cellVariation ?? 2);
-    applyTint(rgb, delta, [1, 0.98, 1.02]);
+    applyCellJitter(rgb, noise, q * 0.63 + jx, r * 0.47 + jy, config.cellVariation ?? 2, [1, 0.98, 1.02]);
 }
 /** World-aligned flat-top hex grid — grout lines continue across floor and wall bases. */
 export const hexGridMotif = {
@@ -121,7 +104,7 @@ export const hexGridMotif = {
         const { q, r, edgeDist, lx, ly } = hexMetrics(sample, config);
         applyCellFill(rgb, q, r, config, sample.noise);
         applyBevel(rgb, lx, ly, edgeDist, config);
-        applyGrout(rgb, edgeDist, config);
-        applyWarmAccent(rgb, edgeDist, config);
+        applyGroutBand(rgb, edgeDist, config, { groutWidth: 0.08, groutPeak: 12, groutTint: [4, 2, -2] });
+        applyWarmSeamBand(rgb, edgeDist, config);
     },
 };

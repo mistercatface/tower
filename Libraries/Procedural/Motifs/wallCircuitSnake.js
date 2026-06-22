@@ -1,4 +1,4 @@
-import { applyTint } from "../util/motifUtilities.js";
+import { applyTint, sampleRidged2D } from "../util/motifUtilities.js";
 /**
  * Horizontal-ish circuit traces on walls. Uses world eval coords so the base edge
  * stays aligned with the floor; wallV is height (0 = floor seam).
@@ -22,8 +22,7 @@ export const wallCircuitSnakeMotif = {
         const wiggle = sample.noise.sample2D(x * (config.wiggleFrequency ?? 0.012), wallV * (config.wiggleScale ?? 10), 2) * (config.wiggleAmplitude ?? 30);
         const along = (x + wiggle) * config.frequency;
         const across = wallV * (config.verticalScale ?? 0.12) + y * (config.worldVerticalDrift ?? 0.008);
-        let value = sample.noise.sample2D(along, across, config.octaves ?? 2);
-        if (config.ridged !== false) value = Math.abs(value);
+        const value = config.ridged === false ? sample.noise.sample2D(along, across, config.octaves ?? 2) : sampleRidged2D(sample.noise, along, across, config.octaves ?? 2);
         if (value >= config.threshold) return;
         const intensity = (1.0 - value / config.threshold) * config.peak;
         applyTint(rgb, intensity, config.tint);

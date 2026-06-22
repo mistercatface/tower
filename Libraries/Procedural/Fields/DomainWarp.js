@@ -18,6 +18,3 @@ export function warpPointInto(out, evalX, evalY, warp, noise) {
     out.y = evalY + noise.sample2D((evalX + offX) * freq, (evalY + offY) * freq, oct) * amp;
     return out;
 }
-export function warpPoint(evalX, evalY, warp, noise) {
-    return warpPointInto({ x: 0, y: 0 }, evalX, evalY, warp, noise);
-}

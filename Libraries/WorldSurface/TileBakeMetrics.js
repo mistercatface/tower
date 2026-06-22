@@ -18,9 +18,6 @@ export function setTileBakeMetricsEnabled(enabled) {
     tileBakeMetricsEnabled = Boolean(enabled);
     setNoiseProfileEnabled(enabled);
 }
-export function installTileBakeMetricsEnabled(enabled) {
-    setTileBakeMetricsEnabled(enabled);
-}
 export function createEmptyBakePhases() {
     return { sampleFillMs: 0, composeStaticMs: 0, composeFrameMs: 0, rgbaCopyMs: 0, transferMs: 0 };
 }

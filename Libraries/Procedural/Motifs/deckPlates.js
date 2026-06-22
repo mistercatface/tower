@@ -1,4 +1,4 @@
-import { applyTint } from "../util/motifUtilities.js";
+import { applyTint, applyCellJitter, applyGroutBand, applyWarmSeamBand } from "../util/motifUtilities.js";
 function plateMetrics(sample, config) {
     const cell = config.cellWorldSize;
     const plateW = cell * (config.plateCells ?? 2);
@@ -12,26 +12,9 @@ function plateMetrics(sample, config) {
     const edgeDist = Math.min(u, 1 - u, v, 1 - v);
     return { plateCol, plateRow, localX, localY, plateW, plateH, u, v, edgeDist };
 }
-function applyGrout(rgb, edgeDist, config) {
-    const groutW = config.groutWidth ?? 0.05;
-    if (edgeDist >= groutW) return;
-    const t = (1 - edgeDist / groutW) * (config.groutPeak ?? 10);
-    const tint = config.groutTint ?? [-5, -5, -4];
-    applyTint(rgb, t, tint);
-}
-function applyWarmAccent(rgb, edgeDist, config) {
-    const accentW = config.accentWidth;
-    if (accentW == null || accentW <= 0) return;
-    if (edgeDist >= accentW) return;
-    const t = (1 - edgeDist / accentW) * (config.accentPeak ?? 5);
-    const tint = config.accentTint ?? [4, 1, -2];
-    applyTint(rgb, t, tint);
-}
 function applyPlateFill(rgb, plateCol, plateRow, config, noise) {
     const [jx, jy] = config.jitterOffset ?? [0, 0];
-    const jitter = noise.sample2D(plateCol * 0.71 + jx, plateRow * 0.53 + jy, 1);
-    const delta = jitter * (config.plateVariation ?? 3);
-    applyTint(rgb, delta, [1, 0.95, 1.05]);
+    applyCellJitter(rgb, noise, plateCol * 0.71 + jx, plateRow * 0.53 + jy, config.plateVariation ?? 3, [1, 0.95, 1.05]);
 }
 function applyRivets(rgb, localX, localY, plateW, plateH, config) {
     const spacing = config.rivetSpacing;
@@ -87,8 +70,8 @@ export const deckPlatesMotif = {
     apply(sample, rgb, config) {
         const { plateCol, plateRow, localX, localY, plateW, plateH, edgeDist } = plateMetrics(sample, config);
         applyPlateFill(rgb, plateCol, plateRow, config, sample.noise);
-        applyGrout(rgb, edgeDist, config);
-        applyWarmAccent(rgb, edgeDist, config);
+        applyGroutBand(rgb, edgeDist, config, { groutWidth: 0.05, groutPeak: 10, groutTint: [-5, -5, -4] });
+        applyWarmSeamBand(rgb, edgeDist, config);
         applyRivets(rgb, localX, localY, plateW, plateH, config);
     },
 };

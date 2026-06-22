@@ -1,6 +1,6 @@
 import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { bakeGroundChunkCanvases, bakeHorizontalPatchCanvases, bakeWallAtlasCanvases, BakeSession } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
-import { formatTileBakeMetricsLog, installTileBakeMetricsEnabled, isTileBakeMetricsEnabled } from "../../Libraries/WorldSurface/TileBakeMetrics.js";
+import { formatTileBakeMetricsLog, setTileBakeMetricsEnabled, isTileBakeMetricsEnabled } from "../../Libraries/WorldSurface/TileBakeMetrics.js";
 import { installTileWorkerBakeConstants } from "../../Libraries/WorldSurface/TileWorkerBakeConstants.js";
 import { TILE_WORKER_MESSAGE } from "../../Libraries/WorldSurface/TileWorkerMessages.js";
 import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
@@ -41,7 +41,7 @@ export class TileSurfaceWorker {
         }
     }
     configureBakeConstants(payload) {
-        if (payload.metricsEnabled != null) installTileBakeMetricsEnabled(payload.metricsEnabled);
+        if (payload.metricsEnabled != null) setTileBakeMetricsEnabled(payload.metricsEnabled);
         if (payload.cellSize != null) installTileWorkerBakeConstants(payload);
         return [];
     }
