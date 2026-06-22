@@ -61,12 +61,14 @@ function wireCombatSnakeGame(state, snakes) {
 }
 
 describe("snake combat min length", () => {
-    it("resolveSnakeCombatFromContacts splits smaller snake on hard head-to-head ram", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30 });
+    it("resolveSnakeCombatFromContacts is a draw on hard snake head-to-head ram", () => {
+        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, growDirX: -1 });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(6));
+        applySnakeGameConfig({ growDirX: 1 });
         const prey = spawnSnakeChain(state, { col: 20, row: 8 }, snakeChainOptions(5));
+        applySnakeGameConfig({ growDirX: -1 });
         wireCombatSnakeGame(state, [
             { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId },
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
@@ -86,13 +88,73 @@ describe("snake combat min length", () => {
         resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
         assert.ok(kineticContactBuffer.count >= 1);
         const registry = state.sandbox.snakeGame.registry;
-        const preyHeadId = prey.chain.head.id;
-        const splitHappened = registry.inertByLeadId.size > 0;
-        const preyDead = registry.deadHeadIds.has(preyHeadId);
-        assert.ok(splitHappened || preyDead);
-        if (registry.aliveByHeadId.has(preyHeadId)) {
-            assert.ok(getOrderedChainMemberIds(state, preyHeadId).length >= 3);
-        }
+        assert.equal(registry.inertByLeadId.size, 0);
+        assert.equal(registry.deadHeadIds.size, 0);
+        assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 6);
+        assert.equal(getOrderedChainMemberIds(state, prey.chain.head.id).length, 5);
+    });
+
+    it("equal-size rivals draw on hard head-to-head ram", () => {
+        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, growDirX: -1 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const red = spawnSnakeChain(state, { col: 8, row: 8 }, { ...snakeChainOptions(5), faction: "red" });
+        applySnakeGameConfig({ growDirX: 1 });
+        const blue = spawnSnakeChain(state, { col: 20, row: 8 }, { ...snakeChainOptions(5), faction: "blue" });
+        applySnakeGameConfig({ growDirX: -1 });
+        wireCombatSnakeGame(state, [
+            { headId: red.chain.head.id, spawnGroupId: red.chain.spawnGroupId },
+            { headId: blue.chain.head.id, spawnGroupId: blue.chain.spawnGroupId },
+        ]);
+        const redHead = red.chain.head;
+        const blueHead = blue.chain.head;
+        redHead.vx = 80;
+        redHead.vy = 0;
+        blueHead.vx = -80;
+        blueHead.vy = 0;
+        redHead.x = blueHead.x - redHead.radius - blueHead.radius + 2;
+        redHead.y = blueHead.y;
+        const props = [...red.chain.members, ...blue.chain.members];
+        const tick = attachKineticTestTickFromState(state, props, 50);
+        const pairs = gatherKineticContactPairs(tick);
+        resolveKineticContactPassWithPairs(tick, pairs);
+        applyKineticContactSideEffects(tick, kineticContactBuffer);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
+        assert.ok(kineticContactBuffer.count >= 1);
+        const registry = state.sandbox.snakeGame.registry;
+        assert.equal(registry.inertByLeadId.size, 0);
+        assert.equal(registry.deadHeadIds.size, 0);
+        assert.equal(getOrderedChainMemberIds(state, red.chain.head.id).length, 5);
+        assert.equal(getOrderedChainMemberIds(state, blue.chain.head.id).length, 5);
+    });
+
+    it("same-faction head strike splits ally body segment", () => {
+        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30 });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const striker = spawnSnakeChain(state, { col: 8, row: 8 }, { ...snakeChainOptions(5), faction: "red" });
+        const ally = spawnSnakeChain(state, { col: 20, row: 8 }, { ...snakeChainOptions(5), faction: "red" });
+        wireCombatSnakeGame(state, [
+            { headId: striker.chain.head.id, spawnGroupId: striker.chain.spawnGroupId },
+            { headId: ally.chain.head.id, spawnGroupId: ally.chain.spawnGroupId },
+        ]);
+        const allyMembers = getOrderedChainMemberIds(state, ally.chain.head.id);
+        const struckBody = state.entityRegistry.getLive(allyMembers[2]);
+        striker.chain.head.vx = 80;
+        striker.chain.head.vy = 0;
+        struckBody.vx = -5;
+        struckBody.vy = 0;
+        striker.chain.head.x = struckBody.x - striker.chain.head.radius - struckBody.radius + 2;
+        striker.chain.head.y = struckBody.y;
+        const props = [...striker.chain.members, ...ally.chain.members];
+        const tick = attachKineticTestTickFromState(state, props, 50);
+        const pairs = gatherKineticContactPairs(tick);
+        resolveKineticContactPassWithPairs(tick, pairs);
+        applyKineticContactSideEffects(tick, kineticContactBuffer);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
+        assert.ok(kineticContactBuffer.count >= 1);
+        const registry = state.sandbox.snakeGame.registry;
+        assert.ok(registry.inertByLeadId.size > 0 || getOrderedChainMemberIds(state, ally.chain.head.id).length < 5);
     });
 
     it("head into enemy tail does not split or kill the pursuer", () => {

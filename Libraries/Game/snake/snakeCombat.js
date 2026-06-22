@@ -1,6 +1,5 @@
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { getSnakeSizeScore } from "./snakeScale.js";
 import { getSnakeInstance, SnakeInstance } from "./SnakeInstance.js";
 import { FleeAgentInstance } from "./fleeAgent/FleeAgentInstance.js";
 export function buildAgentMemberToInstanceMap(state, snakeGame) {
@@ -20,9 +19,6 @@ import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
 function snakeSegmentCount(state, headId, members = null) {
     return (members || getConnectedComponentPath(state.kinetic, headId)).length;
-}
-function snakeSizeScore(state, headId, members = null) {
-    return getSnakeSizeScore(state, headId, members);
 }
 function orderedMembers(state, headId) {
     return getConnectedComponentPath(state.kinetic, headId);
@@ -80,6 +76,21 @@ function tryResolveFleeEscapeRam(state, snakeGame, spatialFrame, contacts, i, fl
     splitSnakeAtStruckSegment(state, snakeGame, snakeInstance.headId, struckSegmentId, victimMembers, deathImpact);
     return true;
 }
+function tryResolveSnakeHeadStrikeRam(state, snakeGame, spatialFrame, contacts, i, strikerInstance, strikerBody, victimInstance, victimBody, relSpeed, config, splitLinks) {
+    if (relSpeed < config.splitImpulseThreshold) return false;
+    if (strikerBody.id !== strikerInstance.headId) return false;
+    if (victimBody.id === victimInstance.headId) return false;
+    const victimMembers = orderedMembers(state, victimInstance.headId);
+    const struckSegmentId = victimBody.id;
+    const strikeIndex = victimMembers.indexOf(struckSegmentId);
+    if (strikeIndex < 0 || strikeIndex >= victimMembers.length - 1) return false;
+    const linkKey = `${victimMembers[strikeIndex]}:${victimMembers[strikeIndex + 1]}`;
+    if (splitLinks.has(linkKey)) return false;
+    splitLinks.add(linkKey);
+    const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId, victimBody, relSpeed);
+    splitSnakeAtStruckSegment(state, snakeGame, victimInstance.headId, struckSegmentId, victimMembers, deathImpact);
+    return true;
+}
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
     const config = getSnakeGameConfig();
@@ -111,6 +122,13 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
             )
         )
             continue;
+        if (
+            instanceA instanceof SnakeInstance &&
+            instanceB instanceof SnakeInstance &&
+            pair.bodyA.id === instanceA.headId &&
+            pair.bodyB.id === instanceB.headId
+        )
+            continue;
         const relationshipAB = resolveAgentRelationship(snakeGame, instanceA.headId, instanceB.headId, state);
         const relationshipBA = resolveAgentRelationship(snakeGame, instanceB.headId, instanceA.headId, state);
         if (relationshipAB === "prey" || relationshipBA === "prey") {
@@ -119,35 +137,17 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
             const predatorBody = relationshipAB === "prey" ? pair.bodyA : pair.bodyB;
             const preyBody = relationshipAB === "prey" ? pair.bodyB : pair.bodyA;
             if (predatorBody.id === predatorInstance.headId && relSpeed >= config.splitImpulseThreshold) {
-                const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, preyBody.id, preyBody, relSpeed);
-                preyInstance.die(state, snakeGame, null, deathImpact);
-                continue;
+                const snakeHeadOnHeadDraw = preyInstance instanceof SnakeInstance && preyBody.id === preyInstance.headId;
+                if (!snakeHeadOnHeadDraw) {
+                    const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, preyBody.id, preyBody, relSpeed);
+                    preyInstance.die(state, snakeGame, null, deathImpact);
+                    continue;
+                }
             }
         }
-        // Fall back to traditional snake-vs-snake combat
         if (!(instanceA instanceof SnakeInstance) || !(instanceB instanceof SnakeInstance)) continue;
-        const snakeHeadA = instanceA.headId;
-        const snakeHeadB = instanceB.headId;
-        const membersA = orderedMembers(state, snakeHeadA);
-        const membersB = orderedMembers(state, snakeHeadB);
-        const sizeA = snakeSizeScore(state, snakeHeadA, membersA);
-        const sizeB = snakeSizeScore(state, snakeHeadB, membersB);
-        if (sizeA === sizeB) continue;
-        if (relSpeed < config.splitImpulseThreshold) continue;
-        const largerHead = sizeA > sizeB ? snakeHeadA : snakeHeadB;
-        const smallerHead = sizeA > sizeB ? snakeHeadB : snakeHeadA;
-        const largerBody = sizeA > sizeB ? pair.bodyA : pair.bodyB;
-        const smallerBody = sizeA > sizeB ? pair.bodyB : pair.bodyA;
-        if (largerBody.id !== largerHead) continue;
-        const victimMembers = orderedMembers(state, smallerHead);
-        const struckSegmentId = smallerBody.id;
-        const strikeIndex = victimMembers.indexOf(struckSegmentId);
-        if (strikeIndex < 0 || strikeIndex >= victimMembers.length - 1) continue;
-        const linkKey = `${victimMembers[strikeIndex]}:${victimMembers[strikeIndex + 1]}`;
-        if (splitLinks.has(linkKey)) continue;
-        splitLinks.add(linkKey);
-        const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId, smallerBody, relSpeed);
-        splitSnakeAtStruckSegment(state, snakeGame, smallerHead, struckSegmentId, victimMembers, deathImpact);
+        tryResolveSnakeHeadStrikeRam(state, snakeGame, spatialFrame, contacts, i, instanceA, pair.bodyA, instanceB, pair.bodyB, relSpeed, config, splitLinks);
+        tryResolveSnakeHeadStrikeRam(state, snakeGame, spatialFrame, contacts, i, instanceB, pair.bodyB, instanceA, pair.bodyA, relSpeed, config, splitLinks);
     }
 }
 function restoreHunterContactDrive(hunterHead, hunterPhysId, preyTarget, speedOverride = null) {
