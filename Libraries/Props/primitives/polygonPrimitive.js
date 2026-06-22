@@ -11,9 +11,10 @@ export function createPolygonPrimitive(visuals) {
         const height = prop.height ?? world?.height ?? 12;
         const asset = getPropAsset(prop.type);
         let scale = 1.0;
-        if (asset?.physics?.localFootprint) {
+        const footprint = prop.strategy?.localFootprint ?? asset?.physics?.localFootprint;
+        if (footprint?.length) {
             let maxDist = 0;
-            for (const v of asset.physics.localFootprint) maxDist = Math.max(maxDist, Math.hypot(v.x, v.y));
+            for (let i = 0; i < footprint.length; i++) maxDist = Math.max(maxDist, Math.hypot(footprint[i].x, footprint[i].y));
             if (maxDist > 0 && prop.radius) scale = prop.radius / maxDist;
         }
         const baseLineWidth = lineWidth ?? 1.0;

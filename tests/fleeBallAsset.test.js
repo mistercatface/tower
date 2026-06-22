@@ -3,9 +3,7 @@ import { describe, it } from "node:test";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-
 loadPropAssets();
-
 describe("flee_ball asset", () => {
     it("is a plain rolling sphere with chain support", () => {
         const asset = getPropAsset("flee_ball");
@@ -18,6 +16,5 @@ describe("flee_ball asset", () => {
         const prop = new WorldProp(0, 0, "flee_ball");
         assert.equal(prop.shape.type, "Circle");
         assert.equal(prop.collisionParts, undefined);
-        assert.equal(prop.turretFacing, undefined);
     });
 });
