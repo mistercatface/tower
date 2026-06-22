@@ -1,4 +1,4 @@
-import { getDefaultPropQuantizeSteps } from "../../Core/GamePropQuantizeSettings.js";
+import { getDefaultPropQuantizeSteps } from "./propRenderDefaults.js";
 import { initFractureFootprint } from "./propFracture.js";
 import { boxLocalFootprint, convexFootprintHalfExtents } from "../Math/Poly2D.js";
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";

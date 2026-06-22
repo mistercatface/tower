@@ -1,8 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
-import { createKineticTestTick, createKineticTestWorld, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, createKineticTestWorld, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { bakeKineticIslandPlan, ensureKineticIslandPlan } from "../Libraries/Motion/kineticIslands.js";
 import { getKineticTopologyGeneration, stampKineticPairGatherTopology } from "../Libraries/Motion/kineticTopology.js";
@@ -18,29 +17,6 @@ import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHa
 
 loadPropAssets();
 
-let nextId = 1;
-
-function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
-    return {
-        id: nextId++,
-        x,
-        y,
-        radius,
-        vx,
-        vy,
-        angularVelocity: 0,
-        isSleeping: false,
-        strategy: { isKinetic: true },
-        mass: radius,
-        get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
-        },
-        getShape() {
-            return new CircleShape(this.radius);
-        },
-    };
-}
-
 function createTestWorld(initialProps, constraints = []) {
     return createKineticTestWorld(initialProps, { constraints, constraintsDirty: false });
 }
@@ -51,7 +27,7 @@ function chainLinkState(world) {
 
 describe("kinetic topology lifecycle", () => {
     it("removeWorldPropFromState removes prop from the passed spatial frame", () => {
-        const prop = mockCircleBody(0, 0, 10);
+        const prop = mockKineticCircle(0, 0, 10);
         const world = createTestWorld([prop]);
         const localFrame = setupKineticTestFrame([prop]);
         kineticSpatial._kineticBodies.length = 0;
@@ -63,13 +39,13 @@ describe("kinetic topology lifecycle", () => {
     });
 
     it("stale pair gather generation rejects bodies after topology bump", () => {
-        const a = mockCircleBody(0, 0, 10, 50, 0);
-        const b = mockCircleBody(15, 0, 10, -30, 0);
+        const a = mockKineticCircle(0, 0, 10, 50, 0);
+        const b = mockKineticCircle(15, 0, 10, -30, 0);
         const world = createTestWorld([a, b]);
         const frame = setupKineticTestFrame([a, b]);
         stampKineticPairGatherTopology(frame, world.kinetic);
         assert.ok(kineticPairBodiesAt(frame, 0, 1));
-        frame.admitKineticProp(mockCircleBody(40, 0, 10), world);
+        frame.admitKineticProp(mockKineticCircle(40, 0, 10), world);
         assert.equal(kineticPairBodiesAt(frame, 0, 1), null);
     });
 
@@ -80,7 +56,7 @@ describe("kinetic topology lifecycle", () => {
         ball.vx = -200;
         const tick = createKineticTestTick([glass, ball]);
         stampKineticPairGatherTopology(tick.frame, tick.world.kinetic);
-        tick.frame.admitKineticProp(mockCircleBody(40, 0, 10), tick.world);
+        tick.frame.admitKineticProp(mockKineticCircle(40, 0, 10), tick.world);
         assert.equal(kineticPairBodiesAt(tick.frame, glass._physId, ball._physId), null);
         resolveKineticContactPassWithEffects(tick);
         assert.ok(tick.world.worldProps.filter((p) => p.type === "glass_pane").length > 2);
@@ -93,7 +69,7 @@ describe("kinetic topology lifecycle", () => {
         ball.vx = -200;
         const tick = createKineticTestTick([crate, ball]);
         stampKineticPairGatherTopology(tick.frame, tick.world.kinetic);
-        tick.frame.admitKineticProp(mockCircleBody(40, 0, 10), tick.world);
+        tick.frame.admitKineticProp(mockKineticCircle(40, 0, 10), tick.world);
         assert.equal(kineticPairBodiesAt(tick.frame, crate._physId, ball._physId), null);
         resolveKineticContactPassWithEffects(tick);
         assert.ok(tick.world.worldProps.length > 2);
@@ -101,9 +77,9 @@ describe("kinetic topology lifecycle", () => {
 
     it("removeChainLinkBetween bumps topology and rebuilds island plan", () => {
         resetKineticConstraintIds(1);
-        const a = mockCircleBody(0, 0, 10);
-        const b = mockCircleBody(18, 0, 10);
-        const c = mockCircleBody(36, 0, 10);
+        const a = mockKineticCircle(0, 0, 10);
+        const b = mockKineticCircle(18, 0, 10);
+        const c = mockKineticCircle(36, 0, 10);
         const bodies = [a, b, c];
         const world = createTestWorld(bodies);
         const state = chainLinkState(world);

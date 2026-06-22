@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../../../Collision/collisionDefaults.js";
+import { getCollisionSettings } from "../../Collision/collisionDefaults.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab } from "../../Motion/kineticConstraintSolver.js";
 import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";

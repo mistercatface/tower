@@ -1,32 +1,15 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { getBroadphaseBounds, snapshotActiveBroadphaseBounds, snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose, activeBodiesMatchKineticSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { pairBroadphaseBoundsOverlap } from "../Libraries/Spatial/collision/Broadphase.js";
 import { circleCircleContactSlab } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { circleCircleContact } from "../Libraries/Spatial/collision/SatCollision.js";
 
-function mockCircleBody(x, y, radius) {
-    return {
-        id: 1,
-        x,
-        y,
-        radius,
-        mass: radius,
-        strategy: { isKinetic: true },
-        get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
-        },
-        getShape() {
-            return new CircleShape(radius);
-        },
-    };
-}
-
 describe("kinetic body slab", () => {
     it("broadphase slot uses body x/y as circle center", () => {
-        const body = mockCircleBody(12, -4, 9);
+        const body = mockKineticCircle(12, -4, 9);
         body._physId = 3;
         writeStaticKineticSlabSlot(body);
         writeActiveKineticBodySlabPose(body);
@@ -37,8 +20,8 @@ describe("kinetic body slab", () => {
     });
 
     it("slab overlap matches object overlap after snapshot", () => {
-        const a = mockCircleBody(0, 0, 10);
-        const b = mockCircleBody(18, 0, 10);
+        const a = mockKineticCircle(0, 0, 10);
+        const b = mockKineticCircle(18, 0, 10);
         a._physId = 0;
         b._physId = 1;
         snapshotKineticBodySlab([a, b]);
@@ -47,7 +30,7 @@ describe("kinetic body slab", () => {
     });
 
     it("snapshotActiveBroadphaseBounds fills kinematic and broadphase columns", () => {
-        const a = mockCircleBody(1, 2, 5,);
+        const a = mockKineticCircle(1, 2, 5,);
         a._physId = 4;
         a.vx = 3;
         a.vy = -1;
@@ -58,8 +41,8 @@ describe("kinetic body slab", () => {
     });
 
     it("slab circle contact matches SAT circle contact", () => {
-        const a = mockCircleBody(0, 0, 10);
-        const b = mockCircleBody(18, 0, 10);
+        const a = mockKineticCircle(0, 0, 10);
+        const b = mockKineticCircle(18, 0, 10);
         a._physId = 0;
         b._physId = 1;
         snapshotKineticBodySlab([a, b]);
@@ -73,7 +56,7 @@ describe("kinetic body slab", () => {
     });
 
     it("activeBodiesMatchKineticSlab detects pose drift after unsynced move", () => {
-        const a = mockCircleBody(0, 0, 10);
+        const a = mockKineticCircle(0, 0, 10);
         a._physId = 0;
         snapshotActiveBroadphaseBounds([a]);
         assert.ok(activeBodiesMatchKineticSlab([a]));

@@ -2,17 +2,14 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { SatCollision, checkEntityPairCollision, checkEntityPairCollisionAt } from "../Libraries/Spatial/collision/SatCollision.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { KINETIC_PAIR_TIER } from "../Libraries/Spatial/collision/kineticNarrowPhase.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
-import { createKineticTestTick } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 
 loadPropAssets();
-
-let nextId = 1;
 
 function largeBall(x, y) {
     const prop = new WorldProp(x, y, "ball", 0);
@@ -20,26 +17,6 @@ function largeBall(x, y) {
     return prop;
 }
 
-function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
-    return {
-        id: nextId++,
-        x,
-        y,
-        radius,
-        vx,
-        vy,
-        angularVelocity: 0,
-        isSleeping: false,
-        strategy: { isKinetic: true },
-        mass: radius,
-        get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
-        },
-        getShape() {
-            return new CircleShape(this.radius);
-        },
-    };
-}
 function slabPairCollision(a, b) {
     return checkEntityPairCollisionAt(a, kineticDynamicSlab.x[a._physId], kineticDynamicSlab.y[a._physId], b, kineticDynamicSlab.x[b._physId], kineticDynamicSlab.y[b._physId]);
 }
@@ -58,8 +35,8 @@ describe("kinetic contact pipeline", () => {
     });
 
     it("circle-only pass fills buffer with circle-circle tier", () => {
-        const a = mockCircleBody(0, 0, 10, 50, 0);
-        const b = mockCircleBody(15, 0, 10, -30, 0);
+        const a = mockKineticCircle(0, 0, 10, 50, 0);
+        const b = mockKineticCircle(15, 0, 10, -30, 0);
         const tick = createKineticTestTick([a, b]);
         resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(kineticContactBuffer.count, 1);

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
-import { createKineticTestTick, attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, attachKineticTestTickFromState, kineticPipelineStubs, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
@@ -16,32 +15,10 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 
 loadPropAssets();
 
-let nextId = 1;
+const wallCircle = (x, y, radius, vx = 0, vy = 0) => mockKineticCircle(x, y, radius, vx, vy, { needsWallCollision: true });
+
 function mockWallSegment(x, y, size = 16) {
     return { x, y, size, width: size, height: size, angle: 0, isDead: false };
-}
-function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
-    return {
-        id: nextId++,
-        x,
-        y,
-        radius,
-        vx,
-        vy,
-        angularVelocity: 0,
-        isSleeping: false,
-        strategy: { isKinetic: true },
-        mass: radius,
-        get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
-        },
-        getShape() {
-            return new CircleShape(this.radius);
-        },
-        needsWallCollision() {
-            return true;
-        },
-    };
 }
 function stampBlockedCell(grid, col, row) {
     grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
@@ -72,8 +49,8 @@ describe("link capsule wall projection", () => {
     it("projects a wedged distance link out of a wall segment", () => {
         resetKineticConstraintIds(1);
         const wall = mockWallSegment(58, 4, 16);
-        const bodyA = mockCircleBody(50, 14, 4);
-        const bodyB = mockCircleBody(66, 14, 4);
+        const bodyA = wallCircle(50, 14, 4);
+        const bodyB = wallCircle(66, 14, 4);
         const tick = createKineticTestTick([bodyA, bodyB]);
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
         tick.frame.getWallCandidates = () => [wall];
@@ -84,8 +61,8 @@ describe("link capsule wall projection", () => {
     });
     it("gathers wall candidates once per unique body in an island", () => {
         resetKineticConstraintIds(1);
-        const bodyA = mockCircleBody(10, 10, 4, 0, 0);
-        const bodyB = mockCircleBody(26, 10, 4, 0, 0);
+        const bodyA = wallCircle(10, 10, 4, 0, 0);
+        const bodyB = wallCircle(26, 10, 4, 0, 0);
         const tick = createKineticTestTick([bodyA, bodyB]);
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
         let wallQueries = 0;
@@ -99,9 +76,9 @@ describe("link capsule wall projection", () => {
     });
     it("dedupes wall gathers across a multi-link chain island", () => {
         resetKineticConstraintIds(1);
-        const bodyA = mockCircleBody(10, 10, 4, 0, 0);
-        const bodyB = mockCircleBody(26, 10, 4, 0, 0);
-        const bodyC = mockCircleBody(42, 10, 4, 0, 0);
+        const bodyA = wallCircle(10, 10, 4, 0, 0);
+        const bodyB = wallCircle(26, 10, 4, 0, 0);
+        const bodyC = wallCircle(42, 10, 4, 0, 0);
         const tick = createKineticTestTick([bodyA, bodyB, bodyC]);
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
         addDistanceConstraint(tick.world.kinetic, { bodyA: bodyB, bodyB: bodyC, restLength: 16 });
@@ -116,8 +93,8 @@ describe("link capsule wall projection", () => {
     });
     it("does not disturb a fast-moving link in open space with distant gathered walls", () => {
         resetKineticConstraintIds(1);
-        const bodyA = mockCircleBody(10, 10, 4, 40, 0);
-        const bodyB = mockCircleBody(26, 10, 4, 40, 0);
+        const bodyA = wallCircle(10, 10, 4, 40, 0);
+        const bodyB = wallCircle(26, 10, 4, 40, 0);
         const startAx = bodyA.x;
         const startBx = bodyB.x;
         const tick = createKineticTestTick([bodyA, bodyB]);
@@ -133,8 +110,8 @@ describe("link capsule wall projection", () => {
         resetKineticConstraintIds(1);
         const nearWall = mockWallSegment(58, 4, 16);
         const farWall = mockWallSegment(500, 500, 16);
-        const bodyA = mockCircleBody(50, 14, 4, 0, 0);
-        const bodyB = mockCircleBody(66, 14, 4, 0, 0);
+        const bodyA = wallCircle(50, 14, 4, 0, 0);
+        const bodyB = wallCircle(66, 14, 4, 0, 0);
         const tick = createKineticTestTick([bodyA, bodyB]);
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
         tick.frame.getWallCandidates = () => [nearWall, farWall];
@@ -146,8 +123,8 @@ describe("link capsule wall projection", () => {
     it("still projects a nearly-static wedged link", () => {
         resetKineticConstraintIds(1);
         const wall = mockWallSegment(58, 4, 16);
-        const bodyA = mockCircleBody(50, 14, 4, 0, 0);
-        const bodyB = mockCircleBody(66, 14, 4, 0, 0);
+        const bodyA = wallCircle(50, 14, 4, 0, 0);
+        const bodyB = wallCircle(66, 14, 4, 0, 0);
         const tick = createKineticTestTick([bodyA, bodyB]);
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
         tick.frame.getWallCandidates = () => [wall];
@@ -174,7 +151,7 @@ describe("link capsule wall projection", () => {
         let minClear = Infinity;
         for (let i = 0; i < walls.length; i++) minClear = Math.min(minClear, minDistanceSegmentToWall(head.x, head.y, neck.x, neck.y, walls[i]));
         assert.ok(minClear < radius, "fixture should start with link-capsule wall overlap");
-        runCollisionPipeline(tick, { resolveWalls: () => {}, kineticIterations: 4 });
+        runCollisionPipeline(tick, { ...kineticPipelineStubs, kineticIterations: 4 });
         minClear = Infinity;
         state.obstacleGrid.resetStaticWallProxyPool();
         state.obstacleGrid.appendStaticWallProxiesNearWorld((head.x + neck.x) * 0.5, (head.y + neck.y) * 0.5, 64, walls);

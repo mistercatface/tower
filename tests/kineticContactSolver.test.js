@@ -3,40 +3,15 @@ import assert from "node:assert/strict";
 import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { SatCollision, checkEntityPairCollision, checkEntityPairCollisionAt } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
-import { createKineticTestTick } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 loadPropAssets();
-let nextId = 1;
-function mockCircleBody(x, y, radius, vx = 0, vy = 0, pairFriction = null) {
-    const strategy = { isKinetic: true };
-    if (pairFriction != null) strategy.pairFriction = pairFriction;
-    return {
-        id: nextId++,
-        x,
-        y,
-        radius,
-        vx,
-        vy,
-        angularVelocity: 0,
-        isSleeping: false,
-        isDead: false,
-        strategy,
-        mass: radius,
-        get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
-        },
-        getShape() {
-            return new CircleShape(this.radius);
-        },
-    };
-}
 function pairStillOverlaps(a, b) {
     return SatCollision.checkCollision(a, a.getShape(), b, b.getShape()) != null;
 }
@@ -64,8 +39,8 @@ function resolveContactUntilClear(tick, maxPasses = 4) {
 }
 describe("kinetic contact solver", () => {
     it("separates overlapping circles and applies opposing impulses", () => {
-        const a = mockCircleBody(0, 0, 10, 50, 0);
-        const b = mockCircleBody(15, 0, 10, -30, 0);
+        const a = mockKineticCircle(0, 0, 10, 50, 0);
+        const b = mockKineticCircle(15, 0, 10, -30, 0);
         resolveKineticContactPass(createKineticTestTick([a, b]));
         assert.ok(kineticDynamicSlab.x[a._physId] < 0);
         assert.ok(kineticDynamicSlab.x[b._physId] > 15);
@@ -73,14 +48,14 @@ describe("kinetic contact solver", () => {
         assert.ok(kineticDynamicSlab.vx[b._physId] > -30);
     });
     it("friction reduces tangential slip between contacting circles", () => {
-        const a = mockCircleBody(0, 0, 10, 40, 0, 0.8);
-        const b = mockCircleBody(12, 0, 10, 0, 0, 0.8);
+        const a = mockKineticCircle(0, 0, 10, 40, 0, { pairFriction: 0.8 });
+        const b = mockKineticCircle(12, 0, 10, 0, 0, { pairFriction: 0.8 });
         resolveKineticContactPass(createKineticTestTick([a, b]));
         assert.ok(Math.abs(kineticDynamicSlab.vx[a._physId]) < 40);
     });
     it("resting overlapping circles are left alone until one moves", () => {
-        const a = mockCircleBody(0, 0, 10, 0, 0);
-        const b = mockCircleBody(15, 0, 10, 0, 0);
+        const a = mockKineticCircle(0, 0, 10, 0, 0);
+        const b = mockKineticCircle(15, 0, 10, 0, 0);
         const ax0 = a.x;
         const bx0 = b.x;
         resolveKineticContactPass(createKineticTestTick([a, b]));

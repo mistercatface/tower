@@ -3,6 +3,57 @@ import { createKineticTick } from "../../GameState/KineticTick.js";
 import { worldSimFromState } from "../../GameState/WorldSim.js";
 import { KineticSpatialFrame } from "../../Systems/World/KineticSpatialFrame.js";
 import { snapshotKineticBodySlab } from "../../Libraries/Spatial/collision/entityBroadphase.js";
+import { CircleShape } from "../../Libraries/Spatial/collision/Shapes.js";
+
+export const noop = () => {};
+export const kineticPipelineStubs = { resolveWalls: noop, applyContactSideEffects: noop };
+
+let nextMockKineticCircleId = 1;
+
+export function resetMockKineticCircleIds(next = 1) {
+    nextMockKineticCircleId = next;
+}
+
+export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
+    const strategy = { isKinetic: true, ...options.strategy };
+    if (options.pairFriction != null) strategy.pairFriction = options.pairFriction;
+    const shape = options.sharedShape ? new CircleShape(radius) : null;
+    const body = {
+        id: options.id ?? nextMockKineticCircleId++,
+        x,
+        y,
+        radius,
+        vx,
+        vy,
+        angularVelocity: options.angularVelocity ?? 0,
+        isSleeping: false,
+        _sleepFrames: 0,
+        strategy,
+        mass: radius,
+        get momentOfInertia() {
+            return this.mass * this.radius * this.radius * 0.5;
+        },
+        getShape() {
+            return shape ?? new CircleShape(this.radius);
+        },
+    };
+    if (shape) body.shape = shape;
+    if (options.facing != null) body.facing = options.facing;
+    if (options.isDead) body.isDead = true;
+    if (options.currentState) body.currentState = options.currentState === true ? {} : options.currentState;
+    if (options.needsWallCollision != null) body.needsWallCollision = () => options.needsWallCollision;
+    if (options.dampedMotion) {
+        body.update = function update(dt) {
+            this.x += (this.vx ?? 0) * (dt / 1000);
+            this.y += (this.vy ?? 0) * (dt / 1000);
+            this.vx *= 0.02;
+            this.vy *= 0.02;
+        };
+    } else if (options.update) {
+        body.update = options.update;
+    }
+    return body;
+}
 
 export function createKineticTestRegistry(liveProps) {
     return {

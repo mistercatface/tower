@@ -40,7 +40,7 @@ export async function mountGameShell(state, launcher) {
     bindWorldRenderModeToolbar(state, () => applyLabWorldRenderMode(state));
     syncWorldRenderModeUi(state);
     mountLabFrameRefresh(canvas);
-    seedRuntimeLabProfile(SURFACE_PROFILE_ID.tomatoGarden);
+    seedRuntimeLabProfile(SURFACE_PROFILE_ID.toxicSludge);
     await pushEditorProfile(state);
     mountGameViewport(state, () => resizeGameShell(state));
     tryLockPortraitOrientation(launcher.lockPortraitOrientation);

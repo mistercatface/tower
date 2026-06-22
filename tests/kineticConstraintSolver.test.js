@@ -1,39 +1,17 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { addDistanceConstraint, pruneKineticConstraintsForBody, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab, kineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
-import { createKineticTestTick } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 
-let nextId = 1;
-function mockCircleBody(x, y, radius, vx = 0, vy = 0) {
-    return {
-        id: nextId++,
-        x,
-        y,
-        radius,
-        vx,
-        vy,
-        angularVelocity: 0,
-        isSleeping: false,
-        strategy: { isKinetic: true },
-        mass: radius,
-        get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
-        },
-        getShape() {
-            return new CircleShape(this.radius);
-        },
-    };
-}
 
 describe("kinetic constraint solver", () => {
     it("pulls stretched distance joint back toward rest length", () => {
         resetKineticConstraintIds(1);
-        const bodyA = mockCircleBody(0, 0, 10);
-        const bodyB = mockCircleBody(30, 0, 10);
+        const bodyA = mockKineticCircle(0, 0, 10);
+        const bodyB = mockKineticCircle(30, 0, 10);
         const restLength = 30;
         const tick = createKineticTestTick([bodyA, bodyB]);
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength });
@@ -44,8 +22,8 @@ describe("kinetic constraint solver", () => {
         assert.ok(Math.abs(dist - restLength) < 0.5, `expected ~${restLength}, got ${dist}`);
     });
     it("leaves unlinked bodies unchanged when contact pass runs", () => {
-        const bodyA = mockCircleBody(0, 0, 10);
-        const bodyB = mockCircleBody(40, 0, 10);
+        const bodyA = mockKineticCircle(0, 0, 10);
+        const bodyB = mockKineticCircle(40, 0, 10);
         const tick = createKineticTestTick([bodyA, bodyB]);
         const ax = bodyA.x;
         const bx = bodyB.x;
@@ -57,8 +35,8 @@ describe("kinetic constraint solver", () => {
     });
     it("drops constraints when a linked body is removed", () => {
         resetKineticConstraintIds(1);
-        const bodyA = mockCircleBody(0, 0, 10);
-        const bodyB = mockCircleBody(30, 0, 10);
+        const bodyA = mockKineticCircle(0, 0, 10);
+        const bodyB = mockKineticCircle(30, 0, 10);
         const tick = createKineticTestTick([bodyA, bodyB]);
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 30 });
         assert.equal(tick.world.kinetic.kineticConstraints.length, 1);
@@ -67,10 +45,10 @@ describe("kinetic constraint solver", () => {
     });
     it("partitions sleeping link islands out of activeCount", () => {
         resetKineticConstraintIds(1);
-        const asleepA = mockCircleBody(0, 0, 10);
-        const asleepB = mockCircleBody(20, 0, 10);
-        const awakeA = mockCircleBody(0, 40, 10, 10, 0);
-        const awakeB = mockCircleBody(20, 40, 10);
+        const asleepA = mockKineticCircle(0, 0, 10);
+        const asleepB = mockKineticCircle(20, 0, 10);
+        const awakeA = mockKineticCircle(0, 40, 10, 10, 0);
+        const awakeB = mockKineticCircle(20, 40, 10);
         asleepA.isSleeping = true;
         asleepB.isSleeping = true;
         const tick = createKineticTestTick([asleepA, asleepB, awakeA, awakeB]);

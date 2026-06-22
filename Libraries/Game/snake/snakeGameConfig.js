@@ -1,10 +1,10 @@
 import { syncKineticRigidBody } from "../../Motion/bodyMass.js";
 import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../../../Config/games/snake.js";
-import { mergeObjectTree } from "../../Config/mergePartial.js";
+import { mergeObjectTree } from "../../Config/mergeConfig.js";
 import { getPropAsset } from "../../Props/PropCatalog.js";
-let activeSnakeGameConfig = SNAKE_GAME_DEFAULTS;
+let activeSnakeGameConfig = structuredClone(SNAKE_GAME_DEFAULTS);
 export function applySnakeGameConfig(overrides) {
-    activeSnakeGameConfig = mergeObjectTree(SNAKE_GAME_DEFAULTS, overrides);
+    activeSnakeGameConfig = structuredClone(mergeObjectTree(SNAKE_GAME_DEFAULTS, overrides));
 }
 export function getSnakeGameConfig() {
     return activeSnakeGameConfig;

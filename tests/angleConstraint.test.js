@@ -1,39 +1,15 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { addAngleConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
-import { createKineticTestTick } from "./harness/kineticTickHarness.js";
-
-let nextId = 1;
-function mockCircleBody(x, y, radius) {
-    return {
-        id: nextId++,
-        x,
-        y,
-        radius,
-        vx: 0,
-        vy: 0,
-        angularVelocity: 0,
-        facing: 0,
-        isSleeping: false,
-        strategy: { isKinetic: true },
-        mass: radius,
-        get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
-        },
-        getShape() {
-            return new CircleShape(this.radius);
-        },
-    };
-}
+import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 
 describe("angle constraint solver", () => {
     it("locks the angle of two connected bodies and propagates torque", () => {
         resetKineticConstraintIds(1);
-        const bodyA = mockCircleBody(0, 0, 10);
-        const bodyB = mockCircleBody(30, 0, 10);
+        const bodyA = mockKineticCircle(0, 0, 10);
+        const bodyB = mockKineticCircle(30, 0, 10);
         
         // Let's set initial angles and reference angle
         bodyA.facing = 0.5;
@@ -66,8 +42,8 @@ describe("angle constraint solver", () => {
     
     it("corrects angle offset during position projection pass", () => {
         resetKineticConstraintIds(1);
-        const bodyA = mockCircleBody(0, 0, 10);
-        const bodyB = mockCircleBody(30, 0, 10);
+        const bodyA = mockKineticCircle(0, 0, 10);
+        const bodyB = mockKineticCircle(30, 0, 10);
         
         bodyA.facing = 1.0;
         bodyB.facing = 0.0;

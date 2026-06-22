@@ -4,7 +4,7 @@ import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./Game
 import { applyGameCollisionSettings } from "../Libraries/Collision/collisionDefaults.js";
 import { applyGamePhysicsSettings } from "../Libraries/Motion/physicsDefaults.js";
 import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
-import { applyGamePropQuantizeSettings } from "./GamePropQuantizeSettings.js";
+import { applyGamePropQuantizeSettings } from "../Libraries/Props/propRenderDefaults.js";
 import { installGameSurfaceProfileProvider } from "../Config/procedural/bootstrap.js";
 import { getGameWorldSurfaceSettings, installGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator, TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
