@@ -31,6 +31,7 @@ export function syncAgentsAfterPhysics(session, state) {
         if (!speciesMeta) continue;
         const def = session.speciesById.get(speciesMeta.species);
         if (def?.syncMembers) def.syncMembers(instance, state);
+        if (def?.syncAfterPhysics) def.syncAfterPhysics(instance, state);
         if (def?.syncPresentation) def.syncPresentation(instance, state);
         if (def?.updateDiagnostics) def.updateDiagnostics(instance, state);
     }

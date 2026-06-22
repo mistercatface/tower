@@ -30,6 +30,11 @@ export class HornSatelliteInstance {
     syncMembers(state) {
         return [this.headId];
     }
+    syncAfterPhysics(state) {
+        if (this.lifecycle !== "alive" || !this.intent) return;
+        const horn = state.entityRegistry.getLive(this.headId);
+        if (horn) this.intent.applyRimHold(horn, state);
+    }
     validate(state, snakeGame) {
         if (this.lifecycle !== "alive") return;
         const horn = state.entityRegistry.getLive(this.headId);

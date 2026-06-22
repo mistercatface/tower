@@ -38,6 +38,9 @@ export const hornSatelliteSpecies = {
     syncMembers(instance, state) {
         return instance.syncMembers(state);
     },
+    syncAfterPhysics(instance, state) {
+        instance.syncAfterPhysics(state);
+    },
     resolveRelationship(targetSpecies) {
         if (targetSpecies === "snake") return "threat";
         if (targetSpecies === "flee_agent" || targetSpecies === "horn_satellite") return "neutral";

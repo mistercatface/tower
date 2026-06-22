@@ -69,13 +69,13 @@ export function clearChainLinksForMembers(state, memberIds) {
         if (members.has(entry.bodyAId) && members.has(entry.bodyBId)) removeKineticConstraint(state.kinetic, entry.id);
     }
 }
-export function addChainLink(state, fromPropId, toPropId, linkSlack = 1) {
+export function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLengthOverride = null) {
     if (fromPropId === toPropId) return false;
     const bodyA = state.entityRegistry.getLive(fromPropId);
     const bodyB = state.entityRegistry.getLive(toPropId);
     if (!isChainLinkBall(bodyA) || !isChainLinkBall(bodyB)) return false;
     if (hasChainLinkBetween(state, fromPropId, toPropId)) return true;
-    const restLength = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
+    const restLength = restLengthOverride != null ? restLengthOverride : resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
     addDistanceConstraint(state.kinetic, { bodyA, bodyB, restLength });
     return true;
 }

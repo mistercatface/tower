@@ -26,6 +26,9 @@ export function fleeHornMountOffsetFromBallCenter(bodyRadius, wedgeScale = 1) {
     const halfLength = scaledRadius * FLEE_HORN_WEDGE_LENGTH_RATIO * 0.5;
     return bodyRadius + bodyRadius * FLEE_HORN_WEDGE_MOUNT_GAP_RATIO + halfLength;
 }
+export function fleeHornChainRestLength(bodyRadius, wedgeScale = 1, linkSlack = 1) {
+    return fleeHornMountOffsetFromBallCenter(bodyRadius, wedgeScale) * linkSlack;
+}
 export function applyFleeHornWedgeScale(prop, bodyRadius, wedgeScale = 1) {
     const shapeKey = `${bodyRadius.toFixed(4)}_s${wedgeScale.toFixed(3)}`;
     if (prop._fleeHornBodyRadius === bodyRadius && prop._fleeHornWedgeScale === wedgeScale && prop._fleeHornShapeKey === shapeKey && prop.shape?.type === "Polygon") return;
