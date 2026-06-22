@@ -92,6 +92,24 @@ describe("chain links", () => {
         assert.ok(isChainSteeringTarget(state, state.sandbox.entityMeta, ball.id));
         assert.ok(!hasChainMembership(state, ball.id));
     });
+    it("addChainLink accepts tri wedges marked chain-link eligible", () => {
+        resetKineticConstraintIds(2);
+        const head = mockBall(0, 0);
+        const wedge = {
+            id: nextId++,
+            x: 20,
+            y: 0,
+            type: "tri_wedge",
+            radius: 10,
+            strategy: { isKinetic: true, canChain: true },
+            getShape() {
+                return new CircleShape(10);
+            },
+        };
+        const state = createState([head, wedge]);
+        assert.ok(addChainLink(state, head.id, wedge.id, 1.05));
+        assert.equal(state.kinetic.kineticConstraints.length, 1);
+    });
     it("getChainMemberIds walks transitive links", () => {
         resetKineticConstraintIds(1);
         const a = mockBall(0, 0);

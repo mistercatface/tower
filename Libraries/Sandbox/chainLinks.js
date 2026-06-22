@@ -7,6 +7,7 @@ import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { appendOverlayWireLink } from "../Render/overlays/overlayCommands.js";
 export function isChainLinkBall(prop) {
     if (!prop?.strategy?.isKinetic) return false;
+    if (prop.strategy?.canChain) return true;
     return sandboxAssetMatchesTagFilter(getPropAsset(prop.type), "nav");
 }
 export function hasChainMembership(state, propId) {

@@ -19,6 +19,8 @@ import { spawnSnakeStriker, resolveStrikerBallSnakeSplitsFromContacts } from "./
 import { fractureRetiredSnakeSegmentsFromContacts } from "./snakeSegmentFracture.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
+import { spawnFleeAgentsScene } from "./fleeAgent/spawnFleeAgentsInScene.js";
+import { registerFleeAgentInstance, syncFleeAgentInstances, syncFleeAgentWedgeFacings } from "./fleeAgent/FleeAgentInstance.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -35,6 +37,14 @@ export async function setupSnakeGame(state) {
         registerAliveSnakeInstance(state.sandbox.snakeGame, instance);
         instance.start(state);
     }
+    let fleeSpawnExclude = new Set();
+    for (let i = 0; i < scene.snakes.length; i++) {
+        const occupied = scene.snakes[i].occupiedIndices;
+        if (!occupied) continue;
+        for (const idx of occupied) fleeSpawnExclude.add(idx);
+    }
+    const fleeAgents = spawnFleeAgentsScene(state, scene.navWalkable, fleeSpawnExclude.size ? fleeSpawnExclude : null);
+    for (let i = 0; i < fleeAgents.length; i++) registerFleeAgentInstance(state.sandbox.snakeGame, fleeAgents[i].instance);
     const centerSnake = scene.snakes[0];
     let focusedHeadId = centerSnake.chain.head.id;
     setSandboxCameraTarget(state, centerSnake.chain.head, true);
@@ -46,6 +56,7 @@ export async function setupSnakeGame(state) {
         getTargetIds: () => {
             const ids = [];
             for (const headId of registry.aliveByHeadId.keys()) ids.push(headId);
+            for (const headId of state.sandbox.snakeGame.fleeAgents.aliveByHeadId.keys()) ids.push(headId);
             if (strikerBall) ids.push(strikerBall.id);
             return ids;
         },
@@ -136,7 +147,11 @@ export async function setupSnakeGame(state) {
         },
         afterKineticPhysics() {
             const snakeGame = state.sandbox.snakeGame;
-            if (snakeGame) for (const instance of snakeGame.instancesByHeadId.values()) instance.updatePressureDiagnostics(state);
+            if (snakeGame) {
+                syncFleeAgentInstances(state, snakeGame);
+                syncFleeAgentWedgeFacings(state, snakeGame);
+                for (const instance of snakeGame.instancesByHeadId.values()) instance.updatePressureDiagnostics(state);
+            }
         },
         stop() {
             cameraCycler.destroy();

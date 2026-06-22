@@ -7,7 +7,7 @@ export function createPolygonPrimitive(visuals) {
         const shape = prop.shape ?? prop.getShape?.();
         if (shape?.type !== "Polygon") return;
         const tinted = resolveVisualOverrideColorTree(prop, colors);
-        const height = world?.height ?? 12;
+        const height = prop.height ?? world?.height ?? 12;
         const drawOpts = {
             height,
             facing: prop.facing,

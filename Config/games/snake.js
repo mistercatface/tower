@@ -5,6 +5,9 @@ export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
     snakeCount: 64,
+    /** Ball + tri-wedge flee agents spawned after snakes (0 disables). */
+    boidCount: 12,
+    fleeAgent: { bodyPropId: "ball", wedgePropId: "flee_wedge", faction: "bravo" },
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
     linkSlack: 1.05,

@@ -6,9 +6,10 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
-import { getCirclePropRadius, setCirclePropRadius } from "../Libraries/Props/propScale.js";
+import { getCirclePropRadius, getPolygonPropBoundingRadius, setCirclePropRadius, setPolygonPropBoundingRadius } from "../Libraries/Props/propScale.js";
 import { getBaseSpriteCacheKey } from "../Libraries/Props/propStrategy.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { WorldProp } from "../Entities/WorldProp.js";
 
 loadPropAssets();
 
@@ -34,6 +35,15 @@ describe("propScale", () => {
         assert.equal(prop.shape.radius, 2);
         assert.ok(prop.mass > 0);
         assert.ok(prop.mass < spawnPlacedSandboxProp(state, 96, 96, "ball").mass);
+    });
+
+    it("setPolygonPropBoundingRadius rescales polygon props", () => {
+        const wedge = new WorldProp(0, 0, "tri_wedge", 0);
+        const baseline = getPolygonPropBoundingRadius(wedge);
+        setPolygonPropBoundingRadius(wedge, 2);
+        assert.ok(Math.abs(getPolygonPropBoundingRadius(wedge) - 2) < 0.01);
+        assert.ok(wedge.shape.vertices.every((vertex) => Math.abs(vertex.x) <= 2.5));
+        assert.ok(baseline > 9);
     });
 
     it("uses distinct sprite cache keys for quarter-step circle radii", () => {

@@ -1,6 +1,7 @@
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
+import { createFleeAgentRegistry } from "./fleeAgent/fleeAgentLifecycle.js";
 export function retireSnakeSegmentsFromNav(state, memberIds) {
     const meta = getSandboxEntityMeta(state);
     for (let i = 0; i < memberIds.length; i++) {
@@ -13,7 +14,7 @@ export function retireSnakeSegmentsFromNav(state, memberIds) {
     }
 }
 export function wireSnakeGameRegistry(state, registry, autosimsByHeadId, navWalkable) {
-    state.sandbox.snakeGame = { registry, autosimsByHeadId, instancesByHeadId: new Map(), navWalkable, simTick: 0, lastVisionBeginTick: -1 };
+    state.sandbox.snakeGame = { registry, autosimsByHeadId, instancesByHeadId: new Map(), fleeAgents: createFleeAgentRegistry(), navWalkable, simTick: 0, lastVisionBeginTick: -1 };
 }
 export function createSnakeLifecycleRegistry() {
     return { aliveByHeadId: new Map(), inertByLeadId: new Map(), deadHeadIds: new Set() };

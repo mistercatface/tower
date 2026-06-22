@@ -66,7 +66,7 @@ function pickSnakeChainSpawnCellNearestTo(spawnPool, navWalkable, state, targetC
     if (!best) throw new Error("No walkable snake spawn cell near map center");
     return best;
 }
-function pickSnakeChainSpawnCell(spawnPool, navWalkable, state, { segmentCount, spacing, growDirX, growDirY, excludeIndices, rng = Math.random }) {
+export function pickSnakeChainSpawnCell(spawnPool, navWalkable, state, { segmentCount, spacing, growDirX, growDirY, excludeIndices, rng = Math.random }) {
     const grid = state.obstacleGrid;
     const valid = [];
     for (let i = 0; i < spawnPool.length; i++) {
