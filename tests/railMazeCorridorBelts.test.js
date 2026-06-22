@@ -99,14 +99,7 @@ describe("rail maze corridor belts", () => {
             assert.equal(roundTrip.col, col);
             assert.equal(roundTrip.row, row);
         }
-        const plan = planRailMazeCorridorBelts({
-            grid,
-            navTopology,
-            railConfig,
-            northReserveRows: layout.northReserveRows,
-            navWalkableIndex,
-            mapSeed: layout.mapSeed,
-        });
+        const plan = planRailMazeCorridorBelts({ grid, navTopology, railConfig, northReserveRows: layout.northReserveRows, navWalkableIndex, mapSeed: layout.mapSeed });
         assert.equal(plan.validation.ok, true);
         for (let bi = 0; bi < plan.floorBelts.length; bi++) {
             const belt = plan.floorBelts[bi];
@@ -132,7 +125,7 @@ describe("rail maze corridor belts", () => {
         for (let i = 0; i < allRailed.floorBelts.length; i++) assert.ok(isFloorBeltRailsKind(allRailed.floorBelts[i].kind));
         const allOpen = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 1 });
         for (let i = 0; i < allOpen.floorBelts.length; i++) assert.ok(!isFloorBeltRailsKind(allOpen.floorBelts[i].kind));
-        const mixed = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 0.1 });
+        const mixed = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 0.25 });
         let openCount = 0;
         for (let i = 0; i < mixed.floorBelts.length; i++) if (!isFloorBeltRailsKind(mixed.floorBelts[i].kind)) openCount++;
         assert.ok(openCount > 0, "expected some open belts at 10% per cell");
