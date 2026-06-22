@@ -7,7 +7,6 @@ import { getCirclePropRadius, getPolygonPropBoundingRadius, setCirclePropRadius,
 import { getSnakeGameConfig, resolveSnakeStartRadius, applySnakeSegmentGameplay } from "../snakeGameConfig.js";
 import { syncFleeAgentWedgeFacing } from "./syncFleeAgentWedgeFacing.js";
 import { spawnAgentChain } from "../../../Sandbox/spawnAgentChain.js";
-import { addAngleConstraint } from "../../../Motion/kineticConstraints.js";
 export const FLEE_AGENT_EXPORT_TYPE = "flee_agent";
 export const FLEE_AGENT_CHAIN_MEMBER_COUNT = 2;
 export function resolveFleeAgentForwardDir(config = getSnakeGameConfig()) {
@@ -55,8 +54,9 @@ export function spawnFleeAgent(state, anchorCell, options = {}) {
         },
         spawnGroupId: options.spawnGroupId,
     });
+    const wedge = pack.members[1];
     const forwardHeading = Math.atan2(forward.y, forward.x);
-    syncFleeAgentWedgeFacing(pack.head, pack.members[1], forwardHeading);
-    addAngleConstraint(state.kinetic, { bodyA: pack.head, bodyB: pack.members[1], referenceAngle: -Math.PI / 2 });
-    return { head: pack.head, body: pack.members[1], members: pack.members, spawnGroupId: pack.spawnGroupId };
+    const restLength = resolveChainLinkRestLength(pack.head, wedge, linkSlack);
+    syncFleeAgentWedgeFacing(pack.head, wedge, forwardHeading, restLength);
+    return { head: pack.head, body: wedge, members: pack.members, spawnGroupId: pack.spawnGroupId };
 }

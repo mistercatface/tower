@@ -7,6 +7,7 @@ import { createBrain } from "../../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../../AI/brain/syncSpatialBrain.js";
 import { createCellTargetHpaNav } from "../../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../snakeSteeringLease.js";
+import { resolveChainLinkRestLength } from "../../../Sandbox/chainLinks.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { resolveSnakeExploreCell } from "../snakeExplore.js";
 export class FleeAgentInstance {
@@ -53,7 +54,12 @@ export class FleeAgentInstance {
         return members;
     }
     syncWedgeFacing(state) {
-        return false;
+        const head = state.entityRegistry.getLive(this.headId);
+        const wedge = state.entityRegistry.getLive(this.followerId);
+        if (!head || !wedge) return false;
+        const config = getSnakeGameConfig();
+        const restLength = resolveChainLinkRestLength(head, wedge, config.linkSlack);
+        return syncFleeAgentWedgeFacing(head, wedge, null, restLength);
     }
     validate(state, snakeGame) {
         if (this.lifecycle !== "alive") return;

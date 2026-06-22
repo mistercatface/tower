@@ -11,13 +11,28 @@ export function resolveFleeAgentBodyHeading(body) {
     if (drive?.kind === "thrust" && Number.isFinite(drive.dirX) && Number.isFinite(drive.dirY)) return Math.atan2(drive.dirY, drive.dirX);
     return null;
 }
-export function syncFleeAgentWedgeFacing(body, wedge, heading = null) {
+export function syncFleeAgentWedgeFacing(body, wedge, heading = null, restLength = null) {
     const resolvedHeading = heading ?? resolveFleeAgentBodyHeading(body);
     if (resolvedHeading == null) return false;
+    let changed = false;
     const facing = fleeAgentWedgeFacingFromHeading(resolvedHeading);
-    if (Math.abs((wedge.facing ?? 0) - facing) < 1e-4) return false;
-    wedge.facing = facing;
-    wedge.angularVelocity = 0;
+    if (Math.abs((wedge.facing ?? 0) - facing) >= 1e-4) {
+        wedge.facing = facing;
+        wedge.angularVelocity = 0;
+        changed = true;
+    }
+    if (restLength != null) {
+        const tx = body.x + Math.cos(resolvedHeading) * restLength;
+        const ty = body.y + Math.sin(resolvedHeading) * restLength;
+        if (Math.hypot(wedge.x - tx, wedge.y - ty) >= 1e-4) {
+            wedge.x = tx;
+            wedge.y = ty;
+            wedge.vx = body.vx ?? 0;
+            wedge.vy = body.vy ?? 0;
+            changed = true;
+        }
+    }
+    if (!changed) return false;
     wedge.stateTimer = (wedge.stateTimer ?? 0) + 1;
     invalidateBroadphaseBounds(wedge);
     wakeKineticBody(wedge);
