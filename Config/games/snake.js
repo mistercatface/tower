@@ -17,7 +17,7 @@ export const SNAKE_GAME_DEFAULTS = {
         /** Kinetic friction; null keeps flee_ball asset default. */
         friction: null,
         initialHunger: 0.85,
-        metabolism: { hungerDrainMs: 45_000, foodValue: 0.35, starveDeathIntervalMs: 8_000 },
+        metabolism: { hungerDrainMs: 45_000, foodValue: 0.35 },
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
         sprint: { fleeSeverity: 0.5, speedMultiplier: 1.45, accelMultiplier: 1.45, hungerDrainMultiplier: 2.5, tint: "#ff3b30" },
     },

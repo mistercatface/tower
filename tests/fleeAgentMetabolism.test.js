@@ -15,16 +15,18 @@ import { deriveFleeSprintIntent } from "../Libraries/Game/snake/fleeAgent/fleeDe
 loadPropAssets();
 
 describe("flee agent metabolism", () => {
-    it("drains hunger over time and dies after starve interval", () => {
-        applySnakeGameConfig({ fleeAgent: { metabolism: { hungerDrainMs: 1000, foodValue: 0.5, starveDeathIntervalMs: 500 } } });
+    it("pins hunger at zero instead of dying", () => {
+        applySnakeGameConfig({ fleeAgent: { metabolism: { hungerDrainMs: 1000, foodValue: 0.5 } } });
         const metabolism = createFleeMetabolism();
-        setFleeHunger(metabolism, 0);
-        assert.equal(tickFleeMetabolism(metabolism, 400, 1), false);
-        assert.equal(tickFleeMetabolism(metabolism, 200, 1), true);
+        setFleeHunger(metabolism, 0.1);
+        tickFleeMetabolism(metabolism, 500, 1);
+        assert.equal(getFleeHunger(metabolism), 0);
+        tickFleeMetabolism(metabolism, 500, 1);
+        assert.equal(getFleeHunger(metabolism), 0);
     });
 
     it("sprint multiplies hunger drain", () => {
-        applySnakeGameConfig({ fleeAgent: { metabolism: { hungerDrainMs: 1000, foodValue: 0.5, starveDeathIntervalMs: 5000 }, sprint: { hungerDrainMultiplier: 2 } } });
+        applySnakeGameConfig({ fleeAgent: { metabolism: { hungerDrainMs: 1000, foodValue: 0.5 }, sprint: { hungerDrainMultiplier: 2 } } });
         const metabolism = createFleeMetabolism();
         setFleeHunger(metabolism, 1);
         tickFleeMetabolism(metabolism, 500, 2);
@@ -35,7 +37,7 @@ describe("flee agent metabolism", () => {
         resetKineticConstraintIds(30);
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, fleeAgent: { metabolism: { hungerDrainMs: 60_000, foodValue: 0.4, starveDeathIntervalMs: 10_000 } } });
+        applySnakeGameConfig({ startRadius: 2, fleeAgent: { metabolism: { hungerDrainMs: 60_000, foodValue: 0.4 } } });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         instance.start(state);

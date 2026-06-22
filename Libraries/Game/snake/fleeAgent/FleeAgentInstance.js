@@ -81,7 +81,7 @@ export class FleeAgentInstance {
             this.syncPresentation(agent);
         });
         const drainMultiplier = this.sprinting ? config.fleeAgent.sprint.hungerDrainMultiplier : 1;
-        if (!fedThisTick && tickFleeMetabolism(this.metabolism, dtMs, drainMultiplier)) this.die(state, state.sandbox.snakeGame);
+        if (!fedThisTick) tickFleeMetabolism(this.metabolism, dtMs, drainMultiplier);
     }
     syncMembersFromGraph(state) {
         return getConnectedComponentPath(state.kinetic, this.headId);
