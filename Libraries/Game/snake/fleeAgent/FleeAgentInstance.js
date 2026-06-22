@@ -98,10 +98,9 @@ export class FleeAgentInstance {
     }
     syncWedgeFacing(state) {
         if (this.lifecycle !== "alive") return false;
-        const body = state.entityRegistry.getLive(this.headId);
-        const wedge = state.entityRegistry.getLive(this.wedgeId);
-        if (!body || !wedge || body.isDead || wedge.isDead) return false;
-        return syncFleeAgentWedgeFacing(body, wedge);
+        const wedge = state.entityRegistry.getLive(this.headId);
+        if (!wedge || wedge.isDead) return false;
+        return syncFleeAgentWedgeFacing(wedge, wedge);
     }
     validate(state, snakeGame) {
         if (this.lifecycle !== "alive") return;

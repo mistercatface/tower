@@ -56,7 +56,7 @@ export function spawnFleeAgentsInScene(state, navWalkable, { excludeIndices = nu
             });
         const pack = spawnFleeAgent(state, anchorCell, { forwardDir });
         setAgentIdentity(pack.head.id, { name: pickRandomName(rng), color: "#7ad4ff" });
-        const instance = createFleeAgentInstance(state, { headId: pack.head.id, wedgeId: pack.wedge.id, spawnGroupId: pack.spawnGroupId });
+        const instance = createFleeAgentInstance(state, { headId: pack.head.id, wedgeId: pack.body.id, spawnGroupId: pack.spawnGroupId });
         agents.push({ pack, instance });
         for (const idx of linkedChainOccupiedCellIndices(pack.members, state.obstacleGrid)) occupied.add(idx);
     }

@@ -14,5 +14,9 @@ export default {
             { x: 0, y: 1.94 },
         ],
     },
-    visuals: { colors: { side: NEUTRAL_BOX_COLORS.side, sideShadow: NEUTRAL_BOX_COLORS.sideShadow, top: NEUTRAL_BOX_COLORS.top, stroke: NEUTRAL_POLYGON_STROKE }, world: { height: 2.33 } },
+    visuals: {
+        colors: { side: NEUTRAL_BOX_COLORS.side, sideShadow: NEUTRAL_BOX_COLORS.sideShadow, top: NEUTRAL_BOX_COLORS.top, stroke: NEUTRAL_POLYGON_STROKE },
+        world: { height: 2.33 },
+        lineWidth: 0.4,
+    },
 };
