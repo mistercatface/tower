@@ -28,19 +28,31 @@ function polygonShapeInertiaFactor(shape) {
     if (area < 1e-10) return 0;
     return polygonSecondMomentAboutCentroid2D(verts) / area;
 }
+function collisionPartMassProperties(shape) {
+    if (shape.type === "Circle") {
+        const r = shape.radius;
+        const area = Math.PI * r * r;
+        return { area, cx: 0, cy: 0, inertiaPerArea: (r * r) / 2 };
+    }
+    const verts = shape.vertices;
+    const area = Math.abs(polygonSignedArea2D(verts));
+    if (area < 1e-10) return { area: 0, cx: 0, cy: 0, inertiaPerArea: 0 };
+    const { cx, cy } = polygonCentroid2D(verts);
+    return { area, cx, cy, inertiaPerArea: polygonSecondMomentAboutCentroid2D(verts) / area };
+}
 function compoundInertiaFactor(parts) {
-    if (parts.length === 1) return polygonShapeInertiaFactor(parts[0]);
+    if (parts.length === 1) return collisionPartMassProperties(parts[0]).inertiaPerArea;
     let totalArea = 0;
     let cx = 0;
     let cy = 0;
     const partAreas = [];
     const partCentroids = [];
+    const partInertiaPerArea = [];
     for (let i = 0; i < parts.length; i++) {
-        const verts = parts[i].vertices;
-        const area = Math.abs(polygonSignedArea2D(verts));
-        const { cx: px, cy: py } = polygonCentroid2D(verts);
+        const { area, cx: px, cy: py, inertiaPerArea } = collisionPartMassProperties(parts[i]);
         partAreas.push(area);
         partCentroids.push({ px, py });
+        partInertiaPerArea.push(inertiaPerArea);
         totalArea += area;
         cx += px * area;
         cy += py * area;
@@ -49,8 +61,7 @@ function compoundInertiaFactor(parts) {
     cy /= totalArea;
     let inertia = 0;
     for (let i = 0; i < parts.length; i++) {
-        const verts = parts[i].vertices;
-        const Icm = polygonSecondMomentAboutCentroid2D(verts);
+        const Icm = partInertiaPerArea[i] * partAreas[i];
         const dx = partCentroids[i].px - cx;
         const dy = partCentroids[i].py - cy;
         inertia += Icm + partAreas[i] * (dx * dx + dy * dy);
