@@ -8,7 +8,8 @@ export function getWallReach(wall, padding = wall.padding) {
 export function getSegmentFootprintCorners(segment) {
     return rectCorners(segment.x, segment.y, segment.size / 2, segment.angle);
 }
-export function toSegmentLocal(segment, x, y) {
+const LOCAL_SCRATCH = { localX: 0, localY: 0, halfX: 0, halfY: 0 };
+export function toSegmentLocal(segment, x, y, out = LOCAL_SCRATCH) {
     const dx = x - segment.x;
     const dy = y - segment.y;
     if (segment._cos === undefined || segment._sin === undefined || segment._cachedAngle !== segment.angle) {
@@ -16,10 +17,11 @@ export function toSegmentLocal(segment, x, y) {
         segment._cos = Math.cos(-segment.angle);
         segment._sin = Math.sin(-segment.angle);
     }
-    const halfX = segment.width !== undefined ? segment.width / 2 : segment.size / 2;
-    const halfY = segment.height !== undefined ? segment.height / 2 : segment.size / 2;
-    const local = rotateXY(dx, dy, segment._cos, segment._sin);
-    return { localX: local.x, localY: local.y, halfX, halfY };
+    out.halfX = (segment.width !== undefined ? segment.width : segment.size) * 0.5;
+    out.halfY = (segment.height !== undefined ? segment.height : segment.size) * 0.5;
+    out.localX = dx * segment._cos - dy * segment._sin;
+    out.localY = dx * segment._sin + dy * segment._cos;
+    return out;
 }
 export function closestPointOnSegment(wall, x, y) {
     let { localX, localY, halfX, halfY } = toSegmentLocal(wall, x, y);
@@ -69,8 +71,8 @@ function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
 }
 /** Minimum distance between a path segment and a wall's collision box. */
 export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
-    const halfX = wall.width !== undefined ? wall.width / 2 : wall.size / 2;
-    const halfY = wall.height !== undefined ? wall.height / 2 : wall.size / 2;
+    const halfX = (wall.width !== undefined ? wall.width : wall.size) * 0.5;
+    const halfY = (wall.height !== undefined ? wall.height : wall.size) * 0.5;
     const cos = Math.cos(-wall.angle);
     const sin = Math.sin(-wall.angle);
     const a = rotateXY(ax - wall.x, ay - wall.y, cos, sin);

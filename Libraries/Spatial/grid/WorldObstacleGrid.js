@@ -89,7 +89,24 @@ export class WorldObstacleGrid {
         const size = this.cellSize;
         let proxy = this._staticWallProxies[this._staticWallProxyCount];
         if (!proxy) {
-            proxy = { x: 0, y: 0, angle: 0, size, padding: 0, isDead: false, isStaticGridProxy: true, isStaticGridFace: false, isEdgeRail: false, gridCol: 0, gridRow: 0 };
+            proxy = {
+                _obstacleGrid: undefined,
+                x: 0,
+                y: 0,
+                angle: 0,
+                width: 0,
+                height: 0,
+                size: 0,
+                padding: 0,
+                isDead: false,
+                isStaticGridProxy: false,
+                isStaticGridFace: false,
+                isEdgeRail: false,
+                gridCol: 0,
+                gridRow: 0,
+                gridSide: 0,
+                shape: undefined,
+            };
             this._staticWallProxies[this._staticWallProxyCount] = proxy;
         }
         this._staticWallProxyCount++;
@@ -106,7 +123,7 @@ export class WorldObstacleGrid {
         proxy.isStaticGridProxy = true;
         proxy.isStaticGridFace = false;
         proxy.isEdgeRail = false;
-        if ("gridSide" in proxy) delete proxy.gridSide;
+        proxy.gridSide = 0;
         return proxy;
     }
     resetStaticWallProxyPool() {
@@ -139,6 +156,7 @@ export class WorldObstacleGrid {
                 let proxy = this._staticWallProxies[this._staticWallProxyCount];
                 if (!proxy) {
                     proxy = {
+                        _obstacleGrid: undefined,
                         x: 0,
                         y: 0,
                         angle: 0,
@@ -147,11 +165,12 @@ export class WorldObstacleGrid {
                         size: 0,
                         padding: 0,
                         isDead: false,
-                        isStaticGridFace: true,
-                        isEdgeRail: true,
-                        gridCol: col,
-                        gridRow: row,
-                        gridSide: side,
+                        isStaticGridProxy: false,
+                        isStaticGridFace: false,
+                        isEdgeRail: false,
+                        gridCol: 0,
+                        gridRow: 0,
+                        gridSide: 0,
                         shape: undefined,
                     };
                     this._staticWallProxies[this._staticWallProxyCount] = proxy;
