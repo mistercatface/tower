@@ -46,10 +46,11 @@ export function canStampFloorBeltAt(state, col, row) {
     if (findGridAnchoredFloorPropAtCell(state.worldProps, col, row)) return false;
     return true;
 }
-const RAILED_BELT_RAIL_COLORS = { shadow: "#92400E", mid: "#D97706", highlight: "#FBBF24" };
-const RAILED_BELT_RAIL_TOP_COLORS = { light: "#FDE68A", mid: "#F59E0B", dark: "#B45309" };
-const RAILED_BELT_RAIL_STROKE = "#78350F";
-const railDrawOpts = { railColors: RAILED_BELT_RAIL_COLORS, railTopColors: RAILED_BELT_RAIL_TOP_COLORS, railStroke: RAILED_BELT_RAIL_STROKE };
+const RAILED_BELT_RAIL_COLORS = { shadow: "#450A0A", mid: "#7F1D1D", highlight: "#991B1B" };
+const RAILED_BELT_RAIL_TOP_COLORS = { light: "#EF4444", mid: "#B91C1C", dark: "#7F1D1D" };
+const RAILED_BELT_RAIL_STROKE = "#3F0707";
+const RAILED_BELT_CHEVRON_COLORS = { fill: "#EF4444", stroke: "#7F1D1D" };
+const railDrawOpts = { railColors: RAILED_BELT_RAIL_COLORS, railTopColors: RAILED_BELT_RAIL_TOP_COLORS, railStroke: RAILED_BELT_RAIL_STROKE, chevronColors: RAILED_BELT_CHEVRON_COLORS };
 const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
 const beltRailsDrawByTurn = {
     straight: createConveyorDraw(railDrawOpts),

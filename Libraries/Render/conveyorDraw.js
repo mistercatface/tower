@@ -13,10 +13,11 @@ export function getConveyorSpriteCacheKey(prop) {
 }
 /** @returns {import("./Props3D/PropRenderer.js").PropDrawRecipe} */
 export function createConveyorDraw(options = {}) {
-    const { turnDirection = null, railColors: railColorsOverride, railTopColors: railTopColorsOverride, railStroke: railStrokeOverride } = options;
-    const railColors = railColorsOverride ?? { shadow: "#263238", mid: "#455A64", highlight: "#78909C" };
-    const railStroke = railStrokeOverride ?? "#1a2226";
-    const railTopColors = railTopColorsOverride ?? { light: "#CFD8DC", mid: "#90A4AE", dark: "#546E7A" };
+    const { turnDirection = null, railColors: railColorsOverride, railTopColors: railTopColorsOverride, railStroke: railStrokeOverride, chevronColors: chevronColorsOverride } = options;
+    const railColors = railColorsOverride ?? { shadow: "#1E293B", mid: "#334155", highlight: "#475569" };
+    const railStroke = railStrokeOverride ?? "#0F172A";
+    const railTopColors = railTopColorsOverride ?? { light: "#94A3B8", mid: "#64748B", dark: "#475569" };
+    const chevronColors = chevronColorsOverride ?? { fill: "#0EA5E9", stroke: "#0284C7" };
     // Dark rubber colors for the moving belt bed
     const beltColors = {
         shadow: "#141414", // dark shadow
@@ -85,9 +86,9 @@ export function createConveyorDraw(options = {}) {
                 ctx.lineTo(pEnd.x, pEnd.y);
                 ctx.stroke();
             }
-            // Draw bright amber/orange direction chevrons
-            ctx.fillStyle = "#FFB300"; // Factorio-like bright amber
-            ctx.strokeStyle = "#FF6F00"; // Orange stroke
+            // Draw direction chevrons
+            ctx.fillStyle = chevronColors.fill;
+            ctx.strokeStyle = chevronColors.stroke;
             ctx.lineWidth = 0.5 * lineScale;
             const numChevrons = Math.ceil((hx * 2) / spacing) + 2;
             for (let i = -2; i < numChevrons; i++) {
@@ -376,9 +377,9 @@ export function createConveyorDraw(options = {}) {
             ctx.lineTo(pEnd.x, pEnd.y);
             ctx.stroke();
         }
-        // Draw bright amber chevrons curved along path
-        ctx.fillStyle = "#FFB300";
-        ctx.strokeStyle = "#FF6F00";
+        // Draw chevrons curved along path
+        ctx.fillStyle = chevronColors.fill;
+        ctx.strokeStyle = chevronColors.stroke;
         ctx.lineWidth = 0.5 * lineScale;
         const numChevrons = Math.ceil(totalArcLength / spacing) + 2;
         for (let i = -1; i < numChevrons; i++) {
