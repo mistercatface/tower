@@ -45,7 +45,11 @@ export async function setupSnakeGame(state) {
         for (const idx of occupied) fleeSpawnExclude.add(idx);
     }
     const fleeAgents = spawnFleeAgentsScene(state, scene.navWalkable, fleeSpawnExclude.size ? fleeSpawnExclude : null);
-    for (let i = 0; i < fleeAgents.length; i++) registerFleeAgentInstance(state.sandbox.snakeGame, fleeAgents[i].instance);
+    for (let i = 0; i < fleeAgents.length; i++) {
+        const instance = fleeAgents[i].instance;
+        registerFleeAgentInstance(state.sandbox.snakeGame, instance);
+        instance.start(state);
+    }
     const centerSnake = scene.snakes[0];
     let focusedHeadId = centerSnake.chain.head.id;
     setSandboxCameraTarget(state, centerSnake.chain.head, true);
@@ -155,6 +159,8 @@ export async function setupSnakeGame(state) {
         },
         stop() {
             cameraCycler.destroy();
+            const snakeGame = state.sandbox.snakeGame;
+            if (snakeGame) for (const instance of snakeGame.instancesByHeadId.values()) if (typeof instance.stopSteering === "function") instance.stopSteering(state);
             for (const autosim of autosimsByHeadId.values()) autosim.stop();
             hud.destroy();
         },

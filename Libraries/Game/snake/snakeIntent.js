@@ -1,8 +1,8 @@
 import { hasGridCellLineOfSightCached } from "../../Navigation/perception/gridCellVision.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { getSnakeSizeScore } from "./snakeScale.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
-function classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry, frame, vision, visionCone = frame.visionCone) {
+import { getAgentRelationship } from "./agentPopulationRegistry.js";
+function classifyVisibleAgentsFromVision(seeker, selfHeadId, state, registry, frame, vision, visionCone = frame.visionCone) {
     const navTopology = frame.navTopology;
     const visionSession = frame.visionSession;
     const config = getSnakeGameConfig();
@@ -10,7 +10,6 @@ function classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry
     const rangeSq = range * range;
     const originCol = vision?.originCol ?? navTopology.grid.worldToGrid(seeker.x, seeker.y).col;
     const originRow = vision?.originRow ?? navTopology.grid.worldToGrid(seeker.x, seeker.y).row;
-    const selfScore = getSnakeSizeScore(state, selfHeadId);
     let threat = null;
     let prey = null;
     let bestThreatDistSq = Infinity;
@@ -23,9 +22,9 @@ function classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry
         const dy = head.y - seeker.y;
         const distSq = dx * dx + dy * dy;
         if (distSq > rangeSq) continue;
-        const score = getSnakeSizeScore(state, head.id);
-        if (score === selfScore) continue;
-        const isThreat = score > selfScore;
+        const relationship = getAgentRelationship(selfHeadId, headId, state, registry);
+        if (relationship === "neutral" || relationship === "ally") continue;
+        const isThreat = relationship === "threat";
         if (isThreat && distSq >= bestThreatDistSq) continue;
         if (!isThreat && distSq >= bestPreyDistSq) continue;
         const targetCell = navTopology.grid.worldToGrid(head.x, head.y);
@@ -41,7 +40,7 @@ function classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry
     return { threat, prey, threatDist: threat ? Math.sqrt(bestThreatDistSq) : null, preyDist: prey ? Math.sqrt(bestPreyDistSq) / navTopology.grid.cellSize : null };
 }
 function findNearestVisibleThreatFromVision(seeker, selfHeadId, state, registry, frame, vision, visionCone = frame.visionCone) {
-    return classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry, frame, vision, visionCone).threat;
+    return classifyVisibleAgentsFromVision(seeker, selfHeadId, state, registry, frame, vision, visionCone).threat;
 }
 export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, visionCone) {
     const frame = requireSnakeVisionFrame(state);
@@ -54,7 +53,7 @@ export function perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, re
     const cone = visionCone ?? frame.visionCone;
     const vision = frame.readHeadVision(seeker, cone);
     const visionContext = { frame, vision, visionCone: cone };
-    const snakes = classifyVisibleSnakeHeadsFromVision(seeker, selfHeadId, state, registry, frame, vision, cone);
+    const snakes = classifyVisibleAgentsFromVision(seeker, selfHeadId, state, registry, frame, vision, cone);
     const food = resolveVisibleFood(seeker, state, visionContext);
     const foodDist = food ? Math.hypot(food.x - seeker.x, food.y - seeker.y) / frame.navTopology.grid.cellSize : null;
     return { threat: snakes.threat, prey: snakes.prey, food, threatDist: snakes.threatDist, preyDist: snakes.preyDist, foodDist };

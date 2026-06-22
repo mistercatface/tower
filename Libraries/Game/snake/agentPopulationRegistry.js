@@ -1,3 +1,4 @@
+import { getSnakeSizeScore } from "./snakeScale.js";
 export function createAgentPopulationRegistry() {
     return {
         // Maps headId -> AgentInstance (SnakeInstance, FleeAgentInstance, etc.)
@@ -28,4 +29,22 @@ export function isAliveAgentHead(registry, headId) {
 }
 export function purgeInertAgentsForHead(registry, headId) {
     for (const [leadId, entry] of registry.inertByLeadId) if (entry.sourceHeadId === headId) registry.inertByLeadId.delete(leadId);
+}
+export function getAgentRelationship(seekerId, targetId, state, registry) {
+    const seekerMeta = registry.aliveByHeadId.get(seekerId);
+    const targetMeta = registry.aliveByHeadId.get(targetId);
+    if (!seekerMeta || !targetMeta) return "neutral";
+    const seekerSpecies = seekerMeta.species;
+    const targetSpecies = targetMeta.species;
+    if (seekerSpecies === "snake") {
+        if (targetSpecies === "snake") {
+            const seekerScore = getSnakeSizeScore(state, seekerId);
+            const targetScore = getSnakeSizeScore(state, targetId);
+            if (targetScore > seekerScore) return "threat";
+            if (targetScore < seekerScore) return "prey";
+            return "neutral";
+        }
+        if (targetSpecies === "flee_agent") return "prey";
+    } else if (seekerSpecies === "flee_agent") if (targetSpecies === "snake") return "threat";
+    return "neutral";
 }

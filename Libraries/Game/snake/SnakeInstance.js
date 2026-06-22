@@ -28,6 +28,9 @@ export class SnakeInstance {
         revokeSnakeSteeringLease(this, state);
         this.autosim.stop();
     }
+    tick(state, dtMs) {
+        if (this.autosim) this.autosim.tick(dtMs);
+    }
     isSteerable(state, registry) {
         if (this.lifecycle !== "alive" || !registry.aliveByHeadId.has(this.headId)) return false;
         const head = state.entityRegistry.getLive(this.headId);
@@ -207,7 +210,7 @@ export function syncAliveSnakeInstances(state, snakeGame) {
 }
 export function tickAliveSnakeInstances(state, snakeGame, dtMs) {
     for (const instance of snakeGame.instancesByHeadId.values()) {
-        if (instance.lifecycle !== "alive" || !(instance instanceof SnakeInstance)) continue;
-        instance.autosim.tick(dtMs);
+        if (instance.lifecycle !== "alive") continue;
+        if (typeof instance.tick === "function") instance.tick(state, dtMs);
     }
 }
