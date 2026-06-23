@@ -10,7 +10,6 @@ const SNAKE_INTENT = {
     committedSlots: ["prey", "food", "ally"],
     seekModes: ["seek_food", "seek_prey", "seek_ally"],
     huntMode: "seek_prey",
-    perceiveSource: "visible",
     fleeHeldOn: "any",
     clearMemoryOnIntentClear: false,
     filterAllyForEngagement: true,
@@ -18,7 +17,6 @@ const SNAKE_INTENT = {
     fleeExploreFallback: false,
     publishEngagement: true,
     returnShape: "fsmSnapshot",
-    attachDecisionToPerceiveWorld: false,
     decisionFields: { seekerFaction: true, seekerSegmentCount: true, session: true },
 };
 const SQUID_INTENT = {
@@ -26,7 +24,6 @@ const SQUID_INTENT = {
     committedSlots: ["prey", "food"],
     seekModes: ["seek_food", "seek_prey"],
     huntMode: "seek_prey",
-    perceiveSource: "visible",
     fleeHeldOn: "any",
     clearMemoryOnIntentClear: false,
     filterAllyForEngagement: false,
@@ -34,7 +31,6 @@ const SQUID_INTENT = {
     fleeExploreFallback: false,
     publishEngagement: false,
     returnShape: "fsmSnapshot",
-    attachDecisionToPerceiveWorld: false,
     decisionFields: { seekerFaction: true, seekerSegmentCount: true },
 };
 const FLEE_INTENT = {
@@ -47,7 +43,6 @@ const FLEE_INTENT = {
     committedSlots: ["food", "enemy", "ally"],
     seekModes: ["seek_enemy", "seek_food", "seek_ally"],
     huntMode: "seek_enemy",
-    perceiveSource: "memory",
     fleeHeldOn: "flee",
     clearMemoryOnIntentClear: true,
     filterAllyForEngagement: false,
@@ -55,14 +50,13 @@ const FLEE_INTENT = {
     fleeExploreFallback: true,
     publishEngagement: false,
     returnShape: "intentTick",
-    attachDecisionToPerceiveWorld: true,
     decisionFields: {},
 };
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
     snakeCount: 64,
-    boidCount: 128,
-    squidCount: 32,
+    boidCount: 64,
+    squidCount: 64,
     bodyPressureNudgeWeight: 0.5,
     bodyPressureSpeedDamp: 2.0,
     eatMargin: 2,

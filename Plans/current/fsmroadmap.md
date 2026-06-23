@@ -46,9 +46,13 @@ setupSnakeGame → scene spawners → spawnAgentChain.js → createAgentSpecies
 
 ## The plan (do in order)
 
-### 7 — Decision tick objects pass ← **NEXT**
+### 7 — Decision tick objects pass ← **IN PROGRESS**
 
-**Problem:** Step 6 unified *structure* (one engine, one config shape). The decision tick still *allocates* like Game Maker: fresh bags every agent every frame — `visible` → spread `memoryWorld` → `{ visible, remembered, known }` → full `decisionContext` → FSM world spread for flee. Reach is slab-grade; everything around it is `{}` and spreads.
+**7A — Collapse perceive → decide bag chain** ✅
+
+Shipped: intent adapter owns reused `visible`, `routeStatus`, `committed`, `reachSteps`, `perceiveWorld`; `createAgentIntentMemory` mutates stable `memoryWorld` + `memorySource`; `targetMemory` refreshes records in place; `perceiveAgentWorldInto` / `buildAgentReachStepsInto`; unified FSM world `{ decisionContext }` (dropped flee spread + `perceiveSource` / `attachDecisionToPerceiveWorld` config flags).
+
+**7B — Decision build — mutate, don't mint** ← **NEXT**
 
 This is not "add scratch objects everywhere." Wrong fix. Right fix matches [`frame.md`](frame.md) and [`objects.md`](objects.md):
 
@@ -60,20 +64,18 @@ This is not "add scratch objects everywhere." Wrong fix. Right fix matches [`fra
 | **Scalars / fixed keys** for reach steps and mode scores on the reused frame | Fresh `{}` maps from builders every tick |
 | **One world shape** for snake and flee | `{ ...memoryWorld, decisionContext }` flee dialect |
 
-**Per-tick smell today (one agent):**
+**Per-tick smell remaining (one agent):**
 
 ```text
-perceiveAgentWorld        → new visible bag
-enrichWorld               → spread + memorySource bag
-readAgentRouteStatus      → new 8-field object
-buildAgentReachSteps      → new {} map
 buildAgentDecisionContext → spread input, mergeSlots → 3 new slot bags,
                             routeEvents [], score maps, full ctx
 createAgentIntent         → makeContext ×2, policy spread, effects closures
-flee formatPerceiveWorld  → { ...memoryWorld, decisionContext }
+memory.snapshot()         → still allocates (cold/debug path ok later)
 ```
 
-**A. Collapse the bag chain (perceive → decide)**
+~~Fixed in 7A:~~ perceive visible bag, enrichWorld spread, routeStatus object, reachSteps map, flee world spread.
+
+**A. Collapse the bag chain (perceive → decide)** ✅
 
 | File | Change |
 |------|--------|
@@ -131,7 +133,7 @@ Manual: run snake + flee decision/FSM suites; no behavior change, allocation sha
 
 ### 8 — Flow locomotion
 
-**Gate:** Step 7 merged. Do not add flow steering on top of the current per-tick bag chain.
+**Gate:** Step 7 complete (7A ✅ · 7B/C pending). Flow blocked until then.
 
 **Problem:** Flee escape/regroup uses cell-pick heuristics; crowds want smooth local flow.
 

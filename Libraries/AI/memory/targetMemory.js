@@ -7,6 +7,14 @@ function makeRecord(kind, target, grid, ttlTicks) {
     const cell = { col: grid.worldCol(target.x), row: grid.worldRow(target.y) };
     return { kind, id: target.id ?? null, x: target.x, y: target.y, cell, ageTicks: 0, ttlTicks, confidence: 1 };
 }
+function refreshRecord(record, target, grid) {
+    record.x = target.x;
+    record.y = target.y;
+    record.cell.col = grid.worldCol(target.x);
+    record.cell.row = grid.worldRow(target.y);
+    record.ageTicks = 0;
+    record.confidence = 1;
+}
 function ageRecord(record) {
     if (!record) return null;
     record.ageTicks++;
@@ -29,8 +37,12 @@ export function createTargetMemory(kinds, ttlByKind) {
     const records = makeEmptyRecords(kinds);
     return {
         observe(kind, target, observer, grid) {
-            if (target) records[kind] = makeRecord(kind, target, grid, ttlByKind[kind]);
-            else records[kind] = ageRecord(records[kind]);
+            if (target) {
+                const id = target.id ?? null;
+                const existing = records[kind];
+                if (existing && existing.id === id) refreshRecord(existing, target, grid);
+                else records[kind] = makeRecord(kind, target, grid, ttlByKind[kind]);
+            } else records[kind] = ageRecord(records[kind]);
         },
         record(kind) {
             return records[kind];

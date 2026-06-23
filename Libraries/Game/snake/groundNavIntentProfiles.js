@@ -28,11 +28,11 @@ function resolveCommittedTarget(committedSlots, id, world) {
     }
     return null;
 }
-function buildDecisionInput(profileId, intent, input, deps) {
+function buildDecisionInput(profileId, input, deps) {
     const { agent, state, visible, memoryWorld, committed, routeStatus, reachSteps } = input;
     const { resolveHunger, resolveSegmentCount } = deps;
     const decisionInput = {
-        visibleWorld: intent.perceiveSource === "memory" ? memoryWorld : visible,
+        visibleWorld: visible,
         memoryWorld,
         memorySource: memoryWorld.memorySource,
         committedTarget: committed,
@@ -41,7 +41,7 @@ function buildDecisionInput(profileId, intent, input, deps) {
         cellSize: state.obstacleGrid.cellSize,
         foodFraction: resolveHunger ? resolveHunger() : null,
     };
-    const fields = intent.decisionFields ?? {};
+    const fields = getAgentProfile(profileId).intent.decisionFields ?? {};
     if (fields.seekerFaction) decisionInput.seekerFaction = agent.faction;
     if (fields.seekerSegmentCount) decisionInput.seekerSegmentCount = resolveSegmentCount ? resolveSegmentCount() : null;
     if (fields.session) decisionInput.session = state.sandbox?.snakeGame ?? null;
@@ -99,7 +99,7 @@ function buildAdapterOptions(profileId, deps) {
         reachSlots: intent.reachSlots,
         intentMemoryOptions: intentMemoryOptions(profileId, intent, shared),
         config: shared,
-        buildDecisionContext: (input) => buildDecisionInput(profileId, intent, input, deps),
+        buildDecisionContext: (input) => buildDecisionInput(profileId, input, deps),
         resolveCommittedTarget: (id, world) => resolveCommittedTarget(intent.committedSlots, id, world),
         setFleeDestination: (args) => setFleeDestination(intent, { ...args, navWalkable: deps.navWalkable, config: shared, brain, rng, resolveExploreCell }, profileId),
         sprintConfig: profile.sprint,
@@ -114,7 +114,6 @@ function buildAdapterOptions(profileId, deps) {
             const snakeGame = state.sandbox?.snakeGame;
             if (snakeGame) publishAgentEngagement(snakeGame, selfHeadId, decisionContext.engagementState);
         };
-    if (intent.attachDecisionToPerceiveWorld) adapter.formatPerceiveWorld = (decisionContext, memoryWorld) => ({ ...memoryWorld, decisionContext });
     return adapter;
 }
 export function buildGroundNavIntentAdapterOptions(profileId, deps) {

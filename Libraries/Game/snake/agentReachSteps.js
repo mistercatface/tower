@@ -11,8 +11,11 @@ export function reachStepsForMode(target, mode, committed, routeStatus) {
     }
     return navReachStepsTo(target.x, target.y);
 }
+export function buildAgentReachStepsInto(out, memoryWorld, committed, routeStatus, slots) {
+    for (const [key, { targetKey, mode }] of Object.entries(slots)) out[key] = reachStepsForMode(memoryWorld[targetKey], mode, committed, routeStatus);
+    return out;
+}
 export function buildAgentReachSteps(memoryWorld, committed, routeStatus, slots) {
     const reachSteps = {};
-    for (const [key, { targetKey, mode }] of Object.entries(slots)) reachSteps[key] = reachStepsForMode(memoryWorld[targetKey], mode, committed, routeStatus);
-    return reachSteps;
+    return buildAgentReachStepsInto(reachSteps, memoryWorld, committed, routeStatus, slots);
 }

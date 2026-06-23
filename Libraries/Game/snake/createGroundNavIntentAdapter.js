@@ -4,22 +4,21 @@ import { createAgentIntentMemory } from "../../AI/memory/createAgentIntentMemory
 import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
 import { syncNavReachHorizon } from "../../Navigation/navReachHorizon.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
-import { buildAgentReachSteps } from "./agentReachSteps.js";
-import { perceiveAgentIntentWorld } from "./agentIntentPerception.js";
+import { buildAgentReachStepsInto } from "./agentReachSteps.js";
+import { perceiveAgentIntentWorldInto } from "./agentIntentPerception.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
-function readAgentRouteStatus(locomotion, agent, state) {
+function readAgentRouteStatusInto(out, locomotion, agent, state) {
     const dest = locomotion.getDestination();
     const status = locomotion.getStatus(agent, state);
     const grid = state.obstacleGrid;
-    return {
-        hasDestination: !!dest,
-        hasRoute: status.hasRoute,
-        replanPending: status.replanPending,
-        routeFailed: !!dest && locomotion.needsRetry(agent, state),
-        destReached: !!dest && (locomotion.hasArrivedAtDest(agent, grid) || locomotion.hasReachedDest(agent, grid)),
-        stuckFrames: status.stuckFrames,
-        pathLen: status.pathLen,
-    };
+    out.hasDestination = !!dest;
+    out.hasRoute = status.hasRoute;
+    out.replanPending = status.replanPending;
+    out.routeFailed = !!dest && locomotion.needsRetry(agent, state);
+    out.destReached = !!dest && (locomotion.hasArrivedAtDest(agent, grid) || locomotion.hasReachedDest(agent, grid));
+    out.stuckFrames = status.stuckFrames;
+    out.pathLen = status.pathLen;
+    return out;
 }
 function createBrainArrivalStamper(brain) {
     let lastArrivalCol = null;
@@ -154,7 +153,6 @@ export function createGroundNavIntentAdapter({
     intentMemoryOptions,
     reachSlots,
     buildDecisionContext,
-    formatPerceiveWorld = (decisionContext) => ({ decisionContext }),
     afterPerceive = null,
     resolveCommittedTarget,
     setFleeDestination,
@@ -172,21 +170,33 @@ export function createGroundNavIntentAdapter({
     const intentMemory = createAgentIntentMemory(intentMemoryOptions);
     const fleeLatch = createFleeIntentLatch(config);
     const arrivalStamper = createBrainArrivalStamper(brain);
+    const visible = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0 };
+    const routeStatus = { hasDestination: false, hasRoute: false, replanPending: false, routeFailed: false, destReached: false, stuckFrames: 0, pathLen: null };
+    const committed = { mode: null, targetId: null };
+    const reachSteps = Object.fromEntries(Object.keys(reachSlots).map((key) => [key, null]));
+    const perceiveWorld = { decisionContext: null };
     let intent = null;
     let lastDecisionContext = null;
     const perceiveWithMemory = (agent, state) => {
-        const visible = perceiveAgentIntentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
+        perceiveAgentIntentWorldInto(visible, agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
         const nav = requireSnakeVisionFrame(state).navTopology;
         syncNavReachHorizon(nav, agent.x, agent.y, config.decisionReachHorizon ?? 32);
-        const committed = intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null;
-        const routeStatus = readAgentRouteStatus(locomotion, agent, state);
-        const reachSteps = buildAgentReachSteps(memoryWorld, committed, routeStatus, reachSlots);
+        if (intent) {
+            committed.mode = intent.getMode();
+            committed.targetId = intent.getTargetId();
+        } else {
+            committed.mode = null;
+            committed.targetId = null;
+        }
+        readAgentRouteStatusInto(routeStatus, locomotion, agent, state);
+        buildAgentReachStepsInto(reachSteps, memoryWorld, committed, routeStatus, reachSlots);
         const decisionContext = buildDecisionContext({ agent, state, visible, memoryWorld, committed, routeStatus, reachSteps });
         afterPerceive?.(decisionContext, agent, state);
         lastDecisionContext = decisionContext;
-        return formatPerceiveWorld(decisionContext, memoryWorld);
+        perceiveWorld.decisionContext = decisionContext;
+        return perceiveWorld;
     };
     const resetArrivalAndLatch = () => {
         arrivalStamper.reset();

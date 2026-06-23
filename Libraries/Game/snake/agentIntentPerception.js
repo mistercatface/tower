@@ -1,6 +1,6 @@
-import { perceiveAgentWorld, findNearestVisibleThreat as findAgentThreat } from "../../AI/perception/agentWorldPerception.js";
+import { perceiveAgentWorld, perceiveAgentWorldInto, findNearestVisibleThreat as findAgentThreat } from "../../AI/perception/agentWorldPerception.js";
 import { resolveAgentRelationship } from "./snakeAgentSession.js";
-import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
+import { getSharedConfig } from "./snakeGameConfig.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 export function resolveAgentPerceptionOptions(state, visionRange = null) {
     const shared = getSharedConfig();
@@ -11,6 +11,10 @@ export function resolveAgentPerceptionOptions(state, visionRange = null) {
         agentRange: shared.fleeRange ?? resolved.range,
         resolveRelationship: (selfHeadId, headId, gameState) => (snakeGame ? resolveAgentRelationship(snakeGame, selfHeadId, headId, gameState) : "neutral"),
     };
+}
+export function perceiveAgentIntentWorldInto(out, seeker, selfHeadId, state, registry, resolveVisibleFood, visionRange = null) {
+    const resolved = visionRange ?? getSharedConfig().visionRange;
+    return perceiveAgentWorldInto(out, seeker, selfHeadId, state, registry, resolveVisibleFood, resolved, resolveAgentPerceptionOptions(state, resolved));
 }
 export function perceiveAgentIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, visionRange = null) {
     const resolved = visionRange ?? getSharedConfig().visionRange;
