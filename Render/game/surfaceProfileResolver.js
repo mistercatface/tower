@@ -7,13 +7,23 @@ export function resolveSurfaceProfileAtCoords(state, x, y) {
     return getSurfaceProfileProvider().defaultId;
 }
 /** Worker-serializable ground-chunk bake payload from live game state. */
-export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 0) {
+export function buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel = 0, profileId = null) {
     const obstacleGrid = state.obstacleGrid;
     const settings = getGameWorldSurfaceSettings();
     const cellsPerChunk = settings.cellsPerChunk;
     const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
-    const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
-    const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
-    const profileId = resolveSurfaceProfileAtCoords(state, chunkCenterX, chunkCenterY);
-    return createGroundChunkBakePayload({ chunkCol, chunkRow, minX: obstacleGrid.minX, minY: obstacleGrid.minY, seed: state.worldSurfaces.worldSurfaceSeed ?? 0, profileId, zLevel });
+    const centerX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
+    const centerY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
+    const resolvedProfileId = profileId ?? resolveSurfaceProfileAtCoords(state, centerX, centerY);
+    return createGroundChunkBakePayload({
+        chunkCol,
+        chunkRow,
+        minX: obstacleGrid.minX,
+        minY: obstacleGrid.minY,
+        seed: state.worldSurfaces.worldSurfaceSeed ?? 0,
+        profileId: resolvedProfileId,
+        centerX,
+        centerY,
+        zLevel,
+    });
 }

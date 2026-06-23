@@ -8,6 +8,8 @@ import { getAnimationFrames } from "../ProfileBakeResolver.js";
  * @property {number} minY
  * @property {number} seed
  * @property {string} profileId
+ * @property {number} centerX
+ * @property {number} centerY
  * @property {number} [zLevel]
  */
 /**
@@ -55,6 +57,6 @@ export function getHorizontalSurfaceZLevels(settings) {
  * @returns {GroundChunkBakePayload}
  */
 export function createGroundChunkBakePayload(payload) {
-    const { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel } = payload;
-    return { chunkCol, chunkRow, minX, minY, seed, profileId, zLevel: zLevel ?? 0 };
+    const { chunkCol, chunkRow, minX, minY, seed, profileId, centerX, centerY, zLevel } = payload;
+    return { chunkCol, chunkRow, minX, minY, seed, profileId, centerX, centerY, zLevel: zLevel ?? 0 };
 }

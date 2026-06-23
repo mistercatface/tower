@@ -6,7 +6,7 @@ import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./su
 import { drawRoomGraphFloorPatches } from "../../Libraries/RoomGraph/roomGraphFloorDraw.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     constructor(settings = getGameWorldSurfaceSettings()) {
-        super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel) });
+        super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel, profileId) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel, profileId) });
         this.worldSurfaceSeed = 0;
         this.surfaceProfileOverride = null;
         this._profileResolveState = null;

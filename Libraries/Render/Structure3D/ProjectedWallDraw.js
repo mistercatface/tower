@@ -4,7 +4,7 @@
  */
 import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
 import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
-import { railWallCapUvCorners } from "../../World/wallGridBake.js";
+import { railWallCapUvCornersInto } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { getSurfaceBakeScale } from "../../WorldSurface/WorldSurfaceResolution.js";
@@ -192,6 +192,12 @@ const sCapSrc0 = { x: 0, y: 0 };
 const sCapSrc1 = { x: 0, y: 0 };
 const sCapSrc2 = { x: 0, y: 0 };
 const sCapSrc3 = { x: 0, y: 0 };
+const sCapSrc = [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3];
+const sCapUv0 = { x: 0, y: 0 };
+const sCapUv1 = { x: 0, y: 0 };
+const sCapUv2 = { x: 0, y: 0 };
+const sCapUv3 = { x: 0, y: 0 };
+const sCapUv = [sCapUv0, sCapUv1, sCapUv2, sCapUv3];
 /**
  * Top ring of a railWall box at wallCapHeight — same corners the long/end faces meet.
  * Order: outerP1 → outerP2 → innerP2 → innerP1.
@@ -217,16 +223,6 @@ function blitHorizontalCapSample(ctx, dest4, src4, canvas) {
     drawImageTriangle(ctx, canvas, src4[0], src4[1], src4[3], dest4[0], dest4[1], dest4[3]);
     drawImageTriangle(ctx, canvas, src4[1], src4[2], src4[3], dest4[1], dest4[2], dest4[3]);
 }
-function assignCapSampleSrc(sample) {
-    sCapSrc0.x = sample.src[0].x;
-    sCapSrc0.y = sample.src[0].y;
-    sCapSrc1.x = sample.src[1].x;
-    sCapSrc1.y = sample.src[1].y;
-    sCapSrc2.x = sample.src[2].x;
-    sCapSrc2.y = sample.src[2].y;
-    sCapSrc3.x = sample.src[3].x;
-    sCapSrc3.y = sample.src[3].y;
-}
 /**
  * railWall top cap — projects box top ring and samples/draws procedural texture cap.
  * @param {CanvasRenderingContext2D} ctx
@@ -242,15 +238,14 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
         return;
     }
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, wallCtx.cacheObj);
-    const uvCorners = railWallCapUvCorners(gameState.obstacleGrid, box);
-    const sample = worldSurfaces.getHorizontalCapDrawSample(uvCorners, box.wallCapHeight, gameState, profileId);
-    if (!sample) {
+    railWallCapUvCornersInto(sCapUv, gameState.obstacleGrid, box);
+    const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, box.wallCapHeight, gameState, profileId, sCapSrc);
+    if (!capCanvas) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
         return;
     }
-    assignCapSampleSrc(sample);
-    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas);
+    blitHorizontalCapSample(ctx, sCapCorners, sCapSrc, capCanvas);
     if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
 }
 /**
@@ -278,20 +273,21 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
     const cx = (minX + maxX) * 0.5;
     const cy = (minY + maxY) * 0.5;
     const profileId = resolveWallProfileId(proceduralSurfaceDraw, cx, cy, wallCtx.cacheObj);
-    const worldCorners = [
-        { x: minX, y: minY },
-        { x: maxX, y: minY },
-        { x: maxX, y: maxY },
-        { x: minX, y: maxY },
-    ];
-    const sample = worldSurfaces.getHorizontalCapDrawSample(worldCorners, z, gameState, profileId);
-    if (!sample) {
+    sCapUv0.x = minX;
+    sCapUv0.y = minY;
+    sCapUv1.x = maxX;
+    sCapUv1.y = minY;
+    sCapUv2.x = maxX;
+    sCapUv2.y = maxY;
+    sCapUv3.x = minX;
+    sCapUv3.y = maxY;
+    const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, z, gameState, profileId, sCapSrc);
+    if (!capCanvas) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
         return;
     }
-    assignCapSampleSrc(sample);
-    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas);
+    blitHorizontalCapSample(ctx, sCapCorners, sCapSrc, capCanvas);
     if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
 }
 /**

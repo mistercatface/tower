@@ -28,7 +28,7 @@ const ELEVATED_CHUNK_ROOF = 0;
 const ELEVATED_CHUNK_FLAT_RAIL = 1;
 /**
  * @typedef {Object} WorldSurfaceEngineHooks
- * @property {(state: object, chunkCol: number, chunkRow: number, zLevel?: number) => object} buildChunkPayload
+ * @property {(state: object, chunkCol: number, chunkRow: number, zLevel?: number, profileId?: string | null) => object} buildChunkPayload
  */
 export class WorldSurfaceEngine {
     constructor(settings, hooks = {}) {
@@ -111,17 +111,9 @@ export class WorldSurfaceEngine {
             }),
         );
     }
-    _resolveChunkPayload(state, chunkCol, chunkRow, zLevel = 0) {
+    _resolveChunkPayload(state, chunkCol, chunkRow, zLevel = 0, profileId = null) {
         if (!this._buildChunkPayload) throw new Error("WorldSurfaceEngine requires buildChunkPayload hook");
-        const payload = this._buildChunkPayload(state, chunkCol, chunkRow, zLevel);
-        const obstacleGrid = state.obstacleGrid;
-        const cellsPerChunk = this.settings.cellsPerChunk;
-        if (obstacleGrid && payload.centerX == null) {
-            const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
-            payload.centerX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
-            payload.centerY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
-        }
-        return payload;
+        return this._buildChunkPayload(state, chunkCol, chunkRow, zLevel, profileId);
     }
     hasPendingSurfaceBakes() {
         return this.surfaceCache.hasPlaceholders();
@@ -145,8 +137,20 @@ export class WorldSurfaceEngine {
             if (isDrawableBakedSurface(canvas)) return canvases;
             this.surfaceCache.delete(key);
         }
-        const bakePayload = { ...payload, ...bakeFrameRange.first() };
-        return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(bakePayload));
+        const workerPayload = {
+            chunkCol: payload.chunkCol,
+            chunkRow: payload.chunkRow,
+            minX: payload.minX,
+            minY: payload.minY,
+            seed: payload.seed,
+            profileId: payload.profileId,
+            centerX: payload.centerX,
+            centerY: payload.centerY,
+            zLevel: payload.zLevel ?? zLevel,
+            frameStart: 0,
+            frameCount: 1,
+        };
+        return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(workerPayload));
     }
     /**
      * @param {import("./ChunkDrawPass.js").ChunkDrawPass} pass
@@ -217,14 +221,11 @@ export class WorldSurfaceEngine {
         return resolved;
     }
     /**
-     * Per-corner chunk UV for a horizontal cap quad (world corners in draw order).
+     * Chunk UV for a horizontal cap quad — writes bake-space src corners into outSrc4, returns canvas or null.
      * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} worldCorners
-     * @param {number} zLevel
-     * @param {object} state
-     * @param {string} profileId
-     * @returns {{ canvas: CanvasImageSource & { width: number, height: number }, src: [{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }] } | null}
+     * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} outSrc4
      */
-    getHorizontalCapDrawSample(worldCorners, zLevel, state, profileId) {
+    fillHorizontalCapDrawSampleInto(worldCorners, zLevel, state, profileId, outSrc4) {
         const surfaceBakeScale = getSurfaceBakeScale(this.settings);
         const obstacleGrid = state.obstacleGrid;
         const cellsPerChunk = this.settings.cellsPerChunk;
@@ -239,13 +240,14 @@ export class WorldSurfaceEngine {
         const chunkRow = worldToChunkRow(minY, obstacleGrid.minY, chunkSizePx);
         const originX = obstacleGrid.minX + chunkCol * chunkSizePx;
         const originY = obstacleGrid.minY + chunkRow * chunkSizePx;
-        const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
-        payload.profileId = profileId;
-        const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel);
-        const canvas = canvases[0];
+        const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel, profileId);
+        const canvas = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel)[0];
         if (!canvas || canvas.isPlaceholder) return null;
-        const src = worldCorners.map((c) => ({ x: (c.x - originX) * surfaceBakeScale, y: (c.y - originY) * surfaceBakeScale }));
-        return { canvas, src };
+        for (let i = 0; i < 4; i++) {
+            outSrc4[i].x = (worldCorners[i].x - originX) * surfaceBakeScale;
+            outSrc4[i].y = (worldCorners[i].y - originY) * surfaceBakeScale;
+        }
+        return canvas;
     }
     bindGroundChunkDraw(ctx, obstacleGrid, viewport, state, playBounds, beforeDraw = null) {
         const d = this._chunkDraw;
@@ -359,9 +361,8 @@ export class WorldSurfaceEngine {
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
                 const originX = obstacleGrid.minX + chunkCol * chunkSizePx;
                 const originY = obstacleGrid.minY + chunkRow * chunkSizePx;
-                if (!chunkHasBlockedCells(obstacleGrid, originX, originY, chunkSizePx)) continue;
                 if (mode === ELEVATED_CHUNK_ROOF) {
-                    if (!chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel)) continue;
+                    if (!chunkHasBlockedCells(obstacleGrid, originX, originY, chunkSizePx) && !chunkHasStaticRoofAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel)) continue;
                 } else if (!chunkHasStaticStructureAtLevel(obstacleGrid, originX, originY, chunkSizePx, zLevel)) continue;
                 if (!this._fillDrawableGroundChunkCanvas(chunkCol, chunkRow, zLevel)) continue;
                 this._assignElevatedChunkPass(pass, chunkCol, chunkRow, originX, originY, chunkSizePx);
