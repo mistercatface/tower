@@ -1,15 +1,5 @@
-import { hashSaltString } from "../../Math/hash.js";
 import { writeSeededFeatureCell } from "./SeededFeatureHash.js";
 const featureScratch = { fx: 0, fy: 0 };
-export class WorleyEdgeField {
-    constructor(rootSeed, salt, density) {
-        this.seed = hashSaltString(rootSeed, salt);
-        this.density = density;
-    }
-    sampleEdge(worldX, worldY) {
-        return voronoiEdgeMetric(worldX, worldY, this.density, this.seed);
-    }
-}
 /** Returns edge metric (small on cell borders, larger in cell interiors). */
 export function voronoiEdgeMetric(worldX, worldY, density, seed) {
     const px = worldX * density;

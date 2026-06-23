@@ -7,10 +7,6 @@ let activeState = null;
 export function installGameState(state) {
     activeState = state;
 }
-/** @returns {GameState | null} */
-export function peekGameState() {
-    return activeState;
-}
 /** @returns {GameState} */
 export function getGameState() {
     if (!activeState) throw new Error("getGameState: no active state — call installGameState during boot first");

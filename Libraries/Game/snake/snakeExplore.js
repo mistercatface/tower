@@ -1,18 +1,7 @@
 import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
-import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { pickExploreDestination } from "../../Navigation/steering/exploreSteering.js";
-export function collectSnakeWaypointCandidates(grid, originCol, originRow, minTiles, openCells) {
-    const candidates = [];
-    for (let i = 0; i < openCells.length; i++) {
-        const cell = openCells[i];
-        if (cell.col === originCol && cell.row === originRow) continue;
-        if (cellChebyshevDistance(originCol, originRow, cell.col, cell.row) < minTiles) continue;
-        candidates.push(cell);
-    }
-    return candidates;
-}
 export function resolveSnakeExploreCell(seeker, state, memory, rng, navWalkable) {
     const config = getSnakeGameConfig();
     const grid = state.obstacleGrid;

@@ -1,6 +1,5 @@
-import { deriveThreatState } from "../../../AI/agents/deriveThreatState.js";
-import { buildAgentDecisionContext, buildAgentDecisionFrame, pickAgentIntentPolicy } from "../../../AI/agents/buildAgentDecisionContext.js";
-import { costPerCellForHunger, foodHungerScoreValue, netScoreDetail, scoreCandidateSet, scoreRiskAdjustedFlee } from "../../../AI/utility/utilityScoring.js";
+import { buildAgentDecisionContext } from "../../../AI/agents/buildAgentDecisionContext.js";
+import { costPerCellForHunger, foodHungerScoreValue, netScoreDetail, scoreRiskAdjustedFlee } from "../../../AI/utility/utilityScoring.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 const SCORE_ORDER = ["flee", "seek_enemy", "seek_food", "seek_ally", "explore"];
 export function deriveFleeHungerState(foodFraction) {
@@ -125,14 +124,6 @@ const fleeDecisionSpec = {
     deriveSprint: (mode, threatState, hungerState) => deriveFleeSprintIntent(mode, threatState, hungerState),
     scoreDetails: scoreFleeIntentCandidateDetails,
 };
-export function buildFleeDecisionFrame(input) {
-    const hungerState = deriveFleeHungerState(input.foodFraction);
-    const threatState = deriveThreatState(input.visibleWorld.threat, input.reachSteps?.threat, input.cellSize ?? 16, getSnakeGameConfig());
-    return buildAgentDecisionFrame(fleeDecisionSpec, { ...input, hungerState, threatState });
-}
-export function pickFleeIntentPolicy(ctx, scores = scoreCandidateSet(scoreFleeIntentCandidateDetails(ctx)).candidateScores) {
-    return pickAgentIntentPolicy(ctx, scores, fleeDecisionSpec);
-}
 export function buildFleeDecisionContext(input) {
     return buildAgentDecisionContext(fleeDecisionSpec, input);
 }

@@ -2,7 +2,7 @@ import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.j
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getSnakeInstance, SnakeInstance } from "./SnakeInstance.js";
 import { FleeAgentInstance } from "./fleeAgent/FleeAgentInstance.js";
-export function buildAgentMemberToInstanceMap(state, snakeGame) {
+function buildAgentMemberToInstanceMap(state, snakeGame) {
     const map = new Map();
     for (const instance of snakeGame.instancesByHeadId.values()) {
         if (instance.lifecycle !== "alive") continue;
@@ -52,7 +52,7 @@ function contactWorldPointForBody(spatialFrame, contacts, i, targetBody) {
     if (targetBody._physId === physIdB) return { x: kineticDynamicSlab.x[physIdB] + contacts.dynamic.rbx[i], y: kineticDynamicSlab.y[physIdB] + contacts.dynamic.rby[i] };
     return { x: kineticDynamicSlab.x[physIdA] + contacts.dynamic.rax[i], y: kineticDynamicSlab.y[physIdA] + contacts.dynamic.ray[i] };
 }
-export function snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId, struckBody, impactForce = null) {
+function snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId, struckBody, impactForce = null) {
     const hit = contactWorldPointForBody(spatialFrame, contacts, i, struckBody);
     return { worldX: hit.x, worldY: hit.y, impactForce: impactForce ?? Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]), struckSegmentId, spatialFrame };
 }

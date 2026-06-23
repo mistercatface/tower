@@ -1,5 +1,5 @@
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-import { clearKineticConstraints, pruneKineticConstraintsForBody } from "../Libraries/Motion/kineticConstraints.js";
+import { pruneKineticConstraintsForBody } from "../Libraries/Motion/kineticConstraints.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/Aabb2D.js";
 import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
@@ -352,14 +352,6 @@ export function removeWorldPropFromState(world, prop, spatialFrame = kineticSpat
     entityMeta?.delete(prop.id);
     pruneKineticConstraintsForBody(world.kinetic, prop.id);
     spatialFrame.evictKineticProp(prop, world.kinetic);
-}
-/** @param {object} state */
-export function clearWorldPropsInState(state) {
-    const meta = getSandboxEntityMeta(state);
-    for (let i = 0; i < state.worldProps.length; i++) meta?.delete(state.worldProps[i].id);
-    state.worldProps = [];
-    state.entityRegistry.clear("worldProp");
-    clearKineticConstraints(state.kinetic);
 }
 export function visitLiveWorldProps(worldProps, visit) {
     for (let i = 0; i < worldProps.length; i++) {
