@@ -172,7 +172,7 @@ One array per tick, cleared by reallocation. Module-level buffer with `length = 
 | `EntityRegistry` — `_candidateScratch`, `_kindSetScratch` | Correct for query filtering |
 | `StaticGridWallDraw` / face pool in `wallGridBake` | Correct: pool faces, reuse list |
 | `ProfileBakeResolver` / tile worker pools | Real pooling, not lipstick |
-| `navReachHorizon.js` — `distances`/`visitedGen`/`queue` + `visitGen` stamp | Correct — same generation-stamp BFS pattern as broadphase; see [`fsmbfs.md`](fsmbfs.md) |
+| `navReachHorizon.js` — `distances`/`visitedGen`/`queue` + `visitGen` stamp | Correct — same generation-stamp BFS pattern as broadphase; see [`fsm/history.md`](fsm/history.md) |
 
 ---
 

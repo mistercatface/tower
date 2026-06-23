@@ -233,7 +233,7 @@ A different lens from the feature tiers below: do the **CS-textbook building blo
 
 **Branch progress: 78%**
 
-**Future direction — per-agent local horizons:** Today `FlowFieldGrid` is one shared rolling window (map-sized frame, recentered for drag-nav) with a 100-slot goal cache. Snake/flee use per-agent HPA instead. Phase 1 utility reach is **`navReachHorizon.js`** ([`current/fsmbfs.md`](current/fsmbfs.md) ✅). Phase 2+: per-agent flow windows for flee/cohesion locomotion and hybrid HPA+flow execution.
+**Future direction — per-agent local horizons:** Today `FlowFieldGrid` is one shared rolling window (map-sized frame, recentered for drag-nav) with a 100-slot goal cache. Snake/flee use per-agent HPA instead. Phase 1 utility reach is **`navReachHorizon.js`** ([`current/fsm/fsmbfs.md`](current/fsm/fsmbfs.md) ✅). Phase 2+: per-agent flow windows for flee/cohesion locomotion and hybrid HPA+flow execution.
 
 ---
 

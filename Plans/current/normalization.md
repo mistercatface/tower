@@ -16,11 +16,23 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 
 **Do first:** [`stupid.md`](stupid.md) P3 prop catalog · [`passthrough.md`](passthrough.md) Tier 1 · [`library_defaults.md`](library_defaults.md)
 
-**Full outlines:** [`frame.md`](frame.md) · [`gamechangers.md`](gamechangers.md) (G1–G7) · [`fsmbfs.md`](fsmbfs.md) (AI reach)
+**Full outlines:** [`frame.md`](frame.md) · [`gamechangers.md`](gamechangers.md) (G1–G7) · [`fsm/fsmbfs.md`](fsm/fsmbfs.md) (AI reach)
 
 ---
 
-## Tier 2 — AI / decision reach ([`fsmbfs.md`](fsmbfs.md)) — **done** ✅
+## Tier 2 — AI consumer dedupe ([`fsm/fsmbfs.md`](fsm/fsmbfs.md) Part 1) — **next**
+
+**Where:** `createSnakeForageIntent` / `createFleeExploreIntent`, `*DecisionModel.js`, `*IntentMemory.js`, `snakeIntent.js` / `fleeWorldPerception.js`
+
+**Before:** flee imports generic derives from `snakeDecisionModel.js`; twin ~270-line intent adapters; duplicate memory/perception/decision helpers
+
+**After:** shared modules in `Libraries/AI/` (concrete files, no `decision/` package); species adapters thin; net −LOC
+
+**Gate:** Part 1 grep gates in [`fsm/fsmbfs.md`](fsm/fsmbfs.md) before Phase 2 flow locomotion.
+
+---
+
+## Tier 2 — AI / decision reach ([`fsm/history.md`](fsm/history.md) phase 1) — **done** ✅
 
 **Where:** `navReachHorizon.js`, intent adapters, `snakeDecisionModel` / `fleeDecisionModel`
 
@@ -115,8 +127,8 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 | Overlay command pooling | Real win in editor, but **different pipeline**. Do if editor perf matters. |
 | Delete `animatedSurfaceZone` registry | Dead scaffold — cleanup, not normalization. |
 | First-person / fixed iso modes | New renderer branch (`Plans/rendering.md`), not consolidating overhead path. |
-| Per-agent flow windows for utility reach | Phase 2 locomotion; phase 1 = sync BFS ([`fsmbfs.md`](fsmbfs.md)) |
-| Generic AI slot pipeline / `Libraries/AI/decision/` | Two consumers; inline in intent adapters |
+| Per-agent flow windows for utility reach | Phase 2 locomotion; phase 1 = sync BFS ([`fsm/fsmbfs.md`](fsm/fsmbfs.md)) |
+| Generic AI slot pipeline / `Libraries/AI/decision/` package | Two consumers — **Part 1** dedupes into concrete `Libraries/AI/*` files, not a framework folder ([`fsm/fsmbfs.md`](fsm/fsmbfs.md)) |
 
 ---
 
@@ -124,6 +136,7 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 
 | Order | Item | Why first |
 |-------|------|-----------|
+| **0** | **AI consumer dedupe** ([`fsm/fsmbfs.md`](fsm/fsmbfs.md) Part 1) | Gate for flow locomotion; flee must not import snake decision model |
 | **1** | **Prop catalog passthrough** ([`passthrough.md`](passthrough.md) Tier 1) | Kill twin maps + load/getter theater |
 | **2** | **Library defaults getters** ([`library_defaults.md`](library_defaults.md)) | Same pattern as deleted boot getters |
 | **3** | **#6 Floor epoch / draw bump** | Makes grid edits trustworthy |
@@ -140,13 +153,14 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 - [ ] New grid stamp feature adds **one sync key + proto proxy + draw entry** — not a new cache module
 - [ ] Hot grid iteration uses **scalars or `*Into`**, not `{ col, row }` / `{ x, y }`
 - [ ] Grid edit path ends in **`commitGridNavEdit(bounds)`** — draw/nav bumps not manual at each callsite
-- [x] Hot path reach uses **`syncNavReachHorizon` + `navReachStepsTo`**, not `*Dist` or horizon objects — [`fsmbfs.md`](fsmbfs.md) ✅
+- [ ] Hot path reach uses **`syncNavReachHorizon` + `navReachStepsTo`**, not `*Dist` or horizon objects — [`fsm/fsmbfs.md`](fsm/fsmbfs.md) phase 1 ✅
+- [ ] New agent species imports shared AI modules — not copy-paste from `Libraries/Game/snake/` — [`fsm/fsmbfs.md`](fsm/fsmbfs.md) Part 1
 
 ---
 
 ## Related docs
 
-- [`fsmbfs.md`](fsmbfs.md) — FSM reach / reachSteps dialect (**done** ✅)
+- [`fsm/fsmbfs.md`](fsm/fsmbfs.md) — active plan (Part 1 dedupe · Part 2 flow) · [`fsm/history.md`](fsm/history.md) — phase 1 reach
 - [`frame.md`](frame.md) — frame draw pass (done)
 - [`passthrough.md`](passthrough.md) — passthrough audit
 - [`stupid.md`](stupid.md) — broader stupid-shit queue
