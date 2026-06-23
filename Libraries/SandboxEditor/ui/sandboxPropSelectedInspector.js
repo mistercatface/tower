@@ -1,4 +1,4 @@
-import { worldPropAssets, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
+import { formatSandboxSpawnLabel  } from "../../Props/PropCatalog.js";
 import { resolveSandboxFaction } from "../../Sandbox/sandboxFaction.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../Sandbox/spawnerConfig.js";
 import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector, appendChainLinkInspector } from "./sandboxWorldPropInspector.js";
@@ -9,6 +9,7 @@ import { isChainLinkBall } from "../../Sandbox/chainLinks.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../Sandbox/sandboxPropMeta.js";
 import { appendCheckboxField, appendSelectField } from "../../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
+import propCatalog from "../../../Assets/props/index.js";
 export function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
     const behaviorIds = controller.listSelectedBehaviors();
     appendFactionSelect(body, {
@@ -19,7 +20,7 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
         },
     });
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
-    if (isShapeFamilyAsset(worldPropAssets[selectedProp.type])) appendShapeFamilySelectedFields(body, selectedProp);
+    if (isShapeFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, selectedProp);
     if (isButtonEntity(selectedProp))
         appendButtonWireInspector(body, {
             listLinks: () => controller.listSelectedButtonLinks(),
@@ -43,7 +44,7 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
     appendBehaviorModeField(body, behaviorIds, controller.getSelectedBehaviorId(), (value) => {
         controller.setSelectedBehaviorId(value);
     });
-    const selectedAsset = worldPropAssets[selectedProp.type];
+    const selectedAsset = propCatalog[selectedProp.type];
     if (isSpawnerProp(selectedAsset)) {
         const spawnPropIds = listSpawnerSpawnPropIds();
         if (spawnPropIds.length)

@@ -29,28 +29,16 @@ See also: [`passthrough.md`](passthrough.md) · [`frame.md`](frame.md) · [`libr
 | P2-6 | `WorldSceneRenderer(settings)` ctor | Static import `gameWorldSurfaceSettings` in wall draw. |
 | P2-1 | `worldSceneDrawInput` + `syncWorldSceneDrawInput` | `draw*(ctx, state, viewport)`; deleted sync bag. |
 | P2-2 | `proceduralSurfaceDraw` nested object | Wall bake reads `state.worldSurfaces` + seed; profile from override/default. |
+| P3-2 | Twin prop asset maps / aliases | Raw assets: `import propCatalog from Assets/props/index.js`. `PropCatalog.js` = definitions + recipes only. |
+| P3-1 | `getPropAsset(prop.type)` in draw bake | `propCatalog[prop.type]` at use sites. |
 | P3-4 | `drawForcefields.js` parallel path | Merged into `gridStampDrawCache.js`. |
+| P4-2 | `lockedRoomHarness` duplicate catalog boot | Uses full module-init catalog; no `setPropCatalog`. |
+| P4-4 | `createSandboxController` spawnAsset getter | `propCatalog[session.getSpawnPropId()]`. |
 | Frame | `ElevationCamera`, camera copies, overlay px/py | See [`frame.md`](frame.md) — Steps 1–4 complete. |
 
 ---
 
 ## Open — P3 asset / catalog duplication
-
-### P3-1 — `getPropAsset(prop.type)` in draw bake
-
-**Stupid:** hot draw closure calls getter for footprint fallback every bake miss.
-
-**Fix:** `worldPropAssets[prop.type]` at use sites, or store needed physics on `prop.strategy` at spawn.
-
-**Files:** `Libraries/Props/primitives/polygonPrimitive.js`, `Libraries/Render/Props3D/pipeElbow.js`, `flipperPaddle.js`
-
-### P3-2 — `Assets/props/index.js` AND `PropCatalog` maps
-
-**Stupid:** same prop objects in two maps — index catalog + `loadPropAssets` copies to `assetsById`.
-
-**Fix:** one source: import `Assets/props/index.js` once into `PropCatalog` module init. Not both.
-
-**Files:** `Assets/props/index.js`, `Libraries/Props/PropCatalog.js`, `Libraries/Props/loadPropAssets.js`
 
 ### P3-3 — `buildWorldPropStrategy` via `getWorldPropDefinitions()[type]`
 
@@ -72,21 +60,9 @@ See also: [`passthrough.md`](passthrough.md) · [`frame.md`](frame.md) · [`libr
 
 **Files:** `Libraries/Game/gameLaunchers.js`, `Apps/Editor/engine.js`
 
-### P4-2 — `lockedRoomHarness` duplicate catalog boot
+### P4-2 — ~~`lockedRoomHarness` duplicate catalog boot~~ **done** (with P3-2)
 
-**Stupid:** reimplements `assetDefinition + setPropCatalog + propsLoaded guard` for two props.
-
-**Fix:** import ball + button assets directly, or use full module-init catalog.
-
-**Files:** `tests/lockedRoomHarness.js`
-
-### P4-4 — `createSandboxController` `spawnAsset = () => getPropAsset(...)`
-
-**Stupid:** closure factory returning getter call.
-
-**Fix:** `worldPropAssets[session.getSpawnPropId()]` at use sites.
-
-**Files:** `Libraries/SandboxEditor/createSandboxController.js`
+### P4-4 — ~~`createSandboxController` spawnAsset getter~~ **done**
 
 ### P4-5 — `resolveSandboxBehaviors(asset, registeredBehaviors, …)`
 
@@ -107,7 +83,7 @@ See also: [`passthrough.md`](passthrough.md) · [`frame.md`](frame.md) · [`libr
 ## Suggested knock-down order
 
 ```text
-P3-2 → P3-3 → P3-1 → P4-5 → P4-1 → library_defaults LD-*
+P3-3 → P4-5 → P4-1 → library_defaults LD-*
 ```
 
 ---
@@ -123,5 +99,6 @@ rg worldSceneDrawInput
 rg proceduralSurfaceDraw
 rg elevationCameraFrom
 rg wallCtx
-rg PropRenderer
+rg worldPropAssets
+rg setPropCatalog
 ```

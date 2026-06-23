@@ -1,10 +1,10 @@
 import { clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint } from "../../Color/visualOverride.js";
 import { getCirclePropRadius, setCirclePropRadius } from "../../Props/propScale.js";
 import { applyPropBoxFootprint, propFootprintHalfExtents } from "../../Props/propStrategy.js";
-import { worldPropAssets } from "../../Props/PropCatalog.js";
 import { assetDefaultBallRadius, blockPresetUsesResizableFootprint, isBallFamilyAsset, isBlockFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
 import { appendActionRow, appendColorField, appendNumberField } from "../../UI/paramFields.js";
 import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
+import propCatalog from "../../../Assets/props/index.js";
 function brightnessToPercent(brightness) {
     return Math.round(brightness * 100);
 }
@@ -61,7 +61,7 @@ export function appendBlockSpawnFields(body, controller, spawnAsset) {
     });
 }
 export function appendShapeFamilySpawnFields(body, controller, spawnId) {
-    const spawnAsset = worldPropAssets[spawnId];
+    const spawnAsset = propCatalog[spawnId];
     if (isBallFamilyAsset(spawnAsset)) appendBallSpawnFields(body, controller, spawnAsset);
     else if (isBlockFamilyAsset(spawnAsset)) appendBlockSpawnFields(body, controller, spawnAsset);
 }
@@ -148,7 +148,7 @@ export function appendBlockSelectedFields(body, selectedProp, asset) {
 }
 export function appendShapeFamilySelectedFields(body, selectedProp) {
     if (!selectedProp) return;
-    const asset = worldPropAssets[selectedProp.type];
+    const asset = propCatalog[selectedProp.type];
     if (isBallFamilyAsset(asset)) appendBallSelectedFields(body, selectedProp, asset);
     else if (isBlockFamilyAsset(asset)) appendBlockSelectedFields(body, selectedProp, asset);
 }

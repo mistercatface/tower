@@ -1,7 +1,7 @@
-import { worldPropAssets } from "./PropCatalog.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { transformPoint2DInto } from "../Math/Poly2D.js";
 import { quantizeAngleIndex } from "../Math/Angle.js";
+import propCatalog from "../../Assets/props/index.js";
 const FACING_STEPS = 24;
 /** @param {object} prop @param {object | null | undefined} asset */
 export function getPipeElbowSpec(prop, asset) {
@@ -57,7 +57,7 @@ export function buildPipeElbowCollisionFootprint(spec) {
 }
 /** @param {object} prop */
 export function syncPipeElbowCollisionShape(prop) {
-    const asset = worldPropAssets[prop.type];
+    const asset = propCatalog[prop.type];
     const spec = getPipeElbowSpec(prop, asset);
     const footprint = buildPipeElbowCollisionFootprint(spec);
     const key = footprint.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("|");
@@ -80,7 +80,7 @@ export function getPipeElbowOutletWorld(prop, asset) {
 }
 /** @param {object} prop */
 export function getPipeElbowSpriteCacheKey(prop) {
-    const asset = worldPropAssets[prop.type];
+    const asset = propCatalog[prop.type];
     const spec = getPipeElbowSpec(prop, asset);
     return `pe_${Math.round(spec.outletLength)}_${Math.round(spec.bendRadius)}_f${quantizeAngleIndex(prop.facing ?? 0, FACING_STEPS)}`;
 }

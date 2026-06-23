@@ -2,9 +2,6 @@ import "./nodeCanvasSetup.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
-import button_floor from "../Assets/props/button_floor/button_floor.asset.js";
-import ball from "../Assets/props/ball/ball.asset.js";
-import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { createNavRuntime } from "../Libraries/Navigation/WorkerNavigationFactory.js";
@@ -18,29 +15,7 @@ import { CORRIDOR_TYPE_LOCKED_ROOM } from "../Libraries/RoomGraph/roomGraphCorri
 import { assertLockedRoomPowerOnPerimeterRail, lockedRoomCorridorExteriorCell, lockedRoomHoleCell, lockedRoomCellOnPerimeterWall } from "../Libraries/RoomGraph/roomGraphLockedRoom.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
-function assetDefinition(asset) {
-    const { id, physics } = asset;
-    const { spawn, renderMode, ...strategy } = physics;
-    return { render3DKey: id, renderMode: renderMode ?? "3d", spawn, inspectKey: null, ...strategy };
-}
-let propsLoaded = false;
-function ensurePropCatalog() {
-    if (propsLoaded) return;
-    const catalog = [button_floor, ball];
-    const definitions = {};
-    const recipes = {};
-    const assets = {};
-    for (let i = 0; i < catalog.length; i++) {
-        const asset = catalog[i];
-        definitions[asset.id] = assetDefinition(asset);
-        recipes[asset.id] = () => {};
-        assets[asset.id] = asset;
-    }
-    setPropCatalog({ definitions, recipes, assets });
-    propsLoaded = true;
-}
 export async function createRoomBakeTestState(cols = 64, rows = 64) {
-    ensurePropCatalog();
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
     return {

@@ -4,7 +4,6 @@ import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { applyShardGeometryToProp, canFracturePropSplit, fracturePropOnImpact, tryFractureKineticContact } from "../Libraries/Props/propFracture.js";
 import { GLASS_MAX_SHARDS_PER_SHATTER, GLASS_MAX_SLIVER_ASPECT, measureGlassShard, minShardAreaForPolygon, shatterGlassFootprint, shatterGlassPolygon } from "../Libraries/Props/glassFracture.js";
-import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
@@ -12,6 +11,7 @@ import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 
+import propCatalog from "../Assets/props/index.js";
 const deterministicRandom = () => 0.5;
 
 function shardWorldBody(originX, originY, facing, geom) {
@@ -73,7 +73,7 @@ function makeOverlappingGlassShards() {
 
 describe("glass fracture", () => {
     it("glass_pane asset uses glass fracture mode and resizable spawn", () => {
-        const asset = worldPropAssets["glass_pane"];
+        const asset = propCatalog["glass_pane"];
         assert.equal(asset.physics.fractureMode, "glass");
         assert.ok(asset.sandbox.resizableBox);
     });

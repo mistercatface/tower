@@ -1,4 +1,3 @@
-import { worldPropAssets } from "../Props/PropCatalog.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canStampFloorBeltAt, canStampPassagePowerSourceAt } from "./floorOccupancy.js";
@@ -7,6 +6,7 @@ import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isRoomNo
 import { resolveRoomNodePlacePreview } from "../RoomGraph/index.js";
 import { resolveBeltCratePuzzlePlacePreview } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { overlayGridCellHighlight } from "../Render/overlays/overlayCommands.js";
+import propCatalog from "../../Assets/props/index.js";
 const PREVIEW_CELL_BOUNDS = createAabb();
 export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
     if (session.isMapGenPlaceMode()) return null;
@@ -21,11 +21,11 @@ export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
         if (!hit) return null;
         return { kind: "edge", col: hit.col, row: hit.row, side: hit.side, edgeKind: mode, valid: true };
     }
-    const asset = worldPropAssets[session.getSpawnPropId()];
+    const asset = propCatalog[session.getSpawnPropId()];
     if (!asset) return null;
     if (isGridFloorBeltSpawnAsset(asset)) {
         const col = grid.worldCol(worldX);
-    const row = grid.worldRow(worldY);
+        const row = grid.worldRow(worldY);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
         return { kind: "cell", col, row, valid: canStampFloorBeltAt(state, col, row), tint: "floor" };
     }
@@ -35,12 +35,12 @@ export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
     }
     if (isRoomNodeSpawnAsset(asset)) {
         const col = grid.worldCol(worldX);
-    const row = grid.worldRow(worldY);
+        const row = grid.worldRow(worldY);
         return resolveRoomNodePlacePreview(state, col, row, session.getSpawnRoomNodeCols(), session.getSpawnRoomNodeRows());
     }
     if (isPuzzleTemplateSpawnAsset(asset)) {
         const col = grid.worldCol(worldX);
-    const row = grid.worldRow(worldY);
+        const row = grid.worldRow(worldY);
         return resolveBeltCratePuzzlePlacePreview(state, col, row, session.getSpawnPuzzleAreaCols(), session.getSpawnPuzzleAreaRows());
     }
     return null;
@@ -54,7 +54,7 @@ export function appendPlacePreviewOverlayCommands(out, preview, grid) {
     if (!preview) return;
     if (preview.kind === "cell") {
         const x = grid.gridCenterX(preview.col);
-    const y = grid.gridCenterY(preview.row);
+        const y = grid.gridCenterY(preview.row);
         const tint = preview.tint ?? "floor";
         const valid = preview.valid !== false;
         const { fill, stroke } = cellPreviewStyle(tint, valid);
@@ -65,7 +65,7 @@ export function appendPlacePreviewOverlayCommands(out, preview, grid) {
         for (let i = 0; i < preview.cells.length; i++) {
             const cell = preview.cells[i];
             const x = grid.gridCenterX(cell.col);
-    const y = grid.gridCenterY(cell.row);
+            const y = grid.gridCenterY(cell.row);
             const clear = cell.clear;
             let fill = clear ? "rgba(120, 180, 255, 0.14)" : "rgba(255, 96, 96, 0.16)";
             let stroke = clear ? "rgba(120, 180, 255, 0.85)" : "rgba(255, 96, 96, 0.9)";

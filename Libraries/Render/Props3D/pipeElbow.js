@@ -1,8 +1,8 @@
-import { worldPropAssets } from "../../Props/PropCatalog.js";
 import { buildPipeElbowCenterline3D, getPipeElbowSpec } from "../../Props/pipeElbowGeometry.js";
 import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
 import { rotateXY } from "../../Math/Poly2D.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
+import propCatalog from "../../../Assets/props/index.js";
 /** @param {number} lx @param {number} ly @param {number} lz @param {number} facing */
 function yawLocal(lx, ly, lz, facing) {
     const cos = Math.cos(facing);
@@ -115,7 +115,7 @@ function buildPipeElbowMesh(spec, facing) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} prop @param {number} px @param {number} py @param {object} options */
 export function drawPipeElbow(ctx, prop, viewport, options) {
-    const asset = worldPropAssets[prop.type];
+    const asset = propCatalog[prop.type];
     const spec = getPipeElbowSpec(prop, asset);
     const facing = prop.facing ?? 0;
     const colors = options.colors;

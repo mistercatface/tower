@@ -1,9 +1,9 @@
 import { applyCueStrikeCollision } from "../../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine } from "../../CueStick/cueStrikeAimPreview.js";
-import { worldPropAssets } from "../../Props/PropCatalog.js";
 import { createDragLaunchInteraction, DRAG_LAUNCH_DEFAULTS } from "../dragLaunch.js";
 import { evaluateInputGates } from "../inputGates.js";
 import { resolveWorldPropSandboxBehavior } from "../sandboxBehaviorConfig.js";
+import propCatalog from "../../../Assets/props/index.js";
 export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
 /** @param {object} state @param {object} prop @param {object} asset */
 function getCueStrikeConfig(state, prop, asset) {
@@ -13,9 +13,9 @@ function getCueStrikeConfig(state, prop, asset) {
 export function createCueStrikeBehavior(state) {
     return createDragLaunchInteraction({
         id: CUE_STRIKE_BEHAVIOR_ID,
-        getConfig: (prop) => getCueStrikeConfig(state, prop, worldPropAssets[prop.type]),
+        getConfig: (prop) => getCueStrikeConfig(state, prop, propCatalog[prop.type]),
         canStart(prop) {
-            return evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, prop, worldPropAssets[prop.type], state).allowed;
+            return evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, prop, propCatalog[prop.type], state).allowed;
         },
         onLaunch(prop, shot) {
             applyCueStrikeCollision(prop, shot);

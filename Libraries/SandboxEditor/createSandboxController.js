@@ -1,4 +1,3 @@
-import { worldPropAssets } from "../Props/PropCatalog.js";
 import { assetDefaultBallRadius, isBallFamilyAsset } from "../Sandbox/sandboxShapeFamilies.js";
 import { bindCanvasPointers, bindCanvasContextMenu } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
@@ -28,6 +27,7 @@ import { removeKineticConstraint } from "../Motion/kineticConstraints.js";
 import { clearChainLinksForProp, isChainLinkBall, listChainLinkEndpoints, resolveGroundNavSteeringProp, setChainHead } from "../Sandbox/chainLinks.js";
 import { countNavPropsInSelection, issueGroundNavToSelection } from "../Sandbox/groundNav/input/issueGroundNavToSelection.js";
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
+import propCatalog from "../../Assets/props/index.js";
 /**
  * @param {object} state
  * @param {{
@@ -50,7 +50,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     /** @type {{ x: number, y: number } | null} */
     let placePreviewWorld = null;
     const entityMeta = () => getSandboxEntityMeta(state);
-    const spawnAsset = () => worldPropAssets[session.getSpawnPropId()];
+    const spawnAsset = () => propCatalog[session.getSpawnPropId()];
     /** @param {string} id @param {string[]} allowed */
     const clampBehaviorId = (id, allowed) => {
         if (allowed.length === 0) return id;
@@ -63,7 +63,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     /** @param {object | null | undefined} prop */
     const listSelectedBehaviors = (prop = session.getSelectedProp()) => {
         if (!prop) return [];
-        return resolveSandboxBehaviors(worldPropAssets[prop.type], behaviors, state, prop);
+        return resolveSandboxBehaviors(propCatalog[prop.type], behaviors, state, prop);
     };
     /** @param {object} prop */
     const getPropBehaviorId = (prop) => {
@@ -379,7 +379,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             if (prevKey === key) return;
             if (key.startsWith("prop:")) {
                 clampSpawnBehavior();
-                const asset = worldPropAssets[key.slice(5)];
+                const asset = propCatalog[key.slice(5)];
                 if (isBallFamilyAsset(asset)) session.setSpawnBallRadius(assetDefaultBallRadius(asset));
                 if (isRoomLinkSpawnAsset(asset)) {
                     enterCorridorLinkWireMode();

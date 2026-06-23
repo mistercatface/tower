@@ -1,4 +1,3 @@
-import { worldPropAssets } from "../Props/PropCatalog.js";
 import { sampleAssetBaseTintHex } from "../Color/visualOverride.js";
 import { SANDBOX_DEFAULT_FACTION } from "./sandboxFaction.js";
 import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
@@ -8,6 +7,7 @@ import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROW
 import { DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT, DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH } from "./sandboxCapabilities.js";
 import { assetDefaultBallRadius, isShapeFamilyAsset } from "./sandboxShapeFamilies.js";
 import { spawnPlaceableAt } from "./sandboxScenePlaceables.js";
+import propCatalog from "../../Assets/props/index.js";
 export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection, notifyUi, placement }) {
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
     let spawnRoomNodeCols = DEFAULT_ROOM_NODE_COLS;
@@ -35,7 +35,7 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         spawnFaction,
         resolveSpawnPropTypeId: getSpawnPropId,
         resolveSpawnVisualOverride,
-        spawnBallRadius: spawnBallRadius ?? assetDefaultBallRadius(worldPropAssets[getSpawnPropId()]),
+        spawnBallRadius: spawnBallRadius ?? assetDefaultBallRadius(propCatalog[getSpawnPropId()]),
         spawnRoomNodeCols,
         spawnRoomNodeRows,
         spawnPuzzleAreaCols,
@@ -48,7 +48,7 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         selectSpawned: options.selectSpawned !== false,
     });
     const spawnAt = (worldX, worldY, options = {}) => {
-        const asset = worldPropAssets[getSpawnPropId()];
+        const asset = propCatalog[getSpawnPropId()];
         if (!asset) return false;
         return spawnPlaceableAt(state, worldX, worldY, asset, spawnCtx(options));
     };

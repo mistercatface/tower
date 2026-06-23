@@ -1,4 +1,3 @@
-import { worldPropAssets } from "../Props/PropCatalog.js";
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
 import { cellToGlobalColRow, isCanonicalEdgeRepresentative } from "../Spatial/grid/gridCellTopology.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
@@ -7,6 +6,7 @@ import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
 import { clearGridStampDrawCaches } from "./gridStampDrawCache.js";
+import propCatalog from "../../Assets/props/index.js";
 import {
     applyStampedForcefieldsFromGlobal,
     applyStampedGridWallsFromGlobal,
@@ -137,7 +137,7 @@ function clearSandboxSceneContent(state) {
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string, width?: number, height?: number }} entry */
 function spawnSnapshotProp(state, entry) {
-    const asset = worldPropAssets[entry.type];
+    const asset = propCatalog[entry.type];
     if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     if (isGridPassagePowerSourceSpawnAsset(asset)) return null;

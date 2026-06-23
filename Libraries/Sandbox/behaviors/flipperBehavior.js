@@ -1,14 +1,14 @@
-import { worldPropAssets } from "../../Props/PropCatalog.js";
 import { PolygonShape } from "../../Spatial/collision/Shapes.js";
 import { quantizeAngleIndex } from "../../Math/Angle.js";
 import { FLIPPER_LAYOUT } from "../../../Assets/props/flipper/flipperShared.js";
+import propCatalog from "../../../Assets/props/index.js";
 export const FLIPPER_BEHAVIOR_ID = "flipper";
 const SWING_SPEED_RAD = 20;
 const RETURN_SPEED_RAD = 8;
 const FLIPPER_ANGLE_STEPS = 24;
 /** @param {object} prop */
 export function isFlipperWorldProp(prop) {
-    return Boolean(worldPropAssets[prop?.type]?.flipper?.side);
+    return Boolean(propCatalog[prop?.type]?.flipper?.side);
 }
 /** @param {object} asset */
 function flipperConfig(asset) {
@@ -57,7 +57,7 @@ export function isFlipperButtonPressed(prop) {
 }
 /** @param {object} prop */
 export function getFlipperSpriteCacheKey(prop) {
-    const asset = worldPropAssets[prop.type];
+    const asset = propCatalog[prop.type];
     const cfg = flipperConfig(asset);
     const spec = getFlipperSpec(prop, asset);
     const angle = prop._flipperAngle ?? cfg.restAngle ?? 0.45;
@@ -66,7 +66,7 @@ export function getFlipperSpriteCacheKey(prop) {
 }
 /** @param {object} prop */
 export function syncFlipperCollisionShape(prop) {
-    const asset = worldPropAssets[prop.type];
+    const asset = propCatalog[prop.type];
     const spec = getFlipperSpec(prop, asset);
     if (prop._flipperAngle == null) prop._flipperAngle = spec.restAngle;
     const { length, width, extendDir } = spec;
@@ -120,7 +120,7 @@ function tickAllFlippers(state, dt) {
     for (let i = 0; i < worldProps.length; i++) {
         const prop = worldProps[i];
         if (prop.isDead || !isFlipperWorldProp(prop)) continue;
-        const asset = worldPropAssets[prop.type];
+        const asset = propCatalog[prop.type];
         if (!asset) continue;
         tickFlipperWorldProp(prop, asset, dt);
     }

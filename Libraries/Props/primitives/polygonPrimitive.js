@@ -1,7 +1,7 @@
 import { drawExtrudedConvexPolygon } from "../../Render/Props3D/SolidDraw.js";
 import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
 import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
-import { worldPropAssets } from "../PropCatalog.js";
+import propCatalog from "../../../Assets/props/index.js";
 export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
     return (ctx, prop, viewport) => {
@@ -9,7 +9,7 @@ export function createPolygonPrimitive(visuals) {
         if (shape?.type !== "Polygon") return;
         const tinted = resolveVisualOverrideColorTree(prop, colors);
         const height = prop.height ?? world?.height ?? 12;
-        const asset = worldPropAssets[prop.type];
+        const asset = propCatalog[prop.type];
         let scale = 1.0;
         const footprint = prop.strategy?.localFootprint ?? asset?.physics?.localFootprint;
         if (footprint?.length) {

@@ -1,8 +1,8 @@
-import { worldPropAssets } from "../Props/PropCatalog.js";
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { handleButtonPointerDown, hitTestFloorButton } from "../Sandbox/floorButtons.js";
 import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
+import propCatalog from "../../Assets/props/index.js";
 export function createSandboxPrimaryPointerTools(
     state,
     session,
@@ -38,7 +38,7 @@ export function createSandboxPrimaryPointerTools(
             const registry = state.entityRegistry;
             const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
             if (hit) {
-                const allowed = resolveSandboxBehaviors(worldPropAssets[hit.type], behaviors, state, hit);
+                const allowed = resolveSandboxBehaviors(propCatalog[hit.type], behaviors, state, hit);
                 if (allowed.length > 0) {
                     if (e.ctrlKey || e.metaKey) {
                         togglePropInSelection(hit.id);

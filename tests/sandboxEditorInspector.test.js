@@ -11,9 +11,9 @@ import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandboxSpawnSess
 import { appendShapeFamilySelectedFields } from "../Libraries/SandboxEditor/ui/sandboxShapeFamilyUi.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
-import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 
+import propCatalog from "../Assets/props/index.js";
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 512, 512);
@@ -182,7 +182,7 @@ describe("sandbox editor inspector wiring", () => {
     it("spawnPlaceableAt honors selectSpawned false in spawn context", () => {
         const state = createEditorTestState();
         let pickCount = 0;
-        const asset = worldPropAssets["ball"];
+        const asset = propCatalog["ball"];
         const ctx = {
             spawnPropId: "ball",
             spawnFaction: "neutral",

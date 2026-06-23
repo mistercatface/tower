@@ -1,4 +1,4 @@
-import { worldPropAssets, worldPropDefinitions, formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
+import { worldPropDefinitions, formatSandboxSpawnLabel  } from "../../../Libraries/Props/PropCatalog.js";
 import { isSandboxSpawnable, sandboxTagsMatchFilter } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
 import { orderSandboxPalettePropIds } from "../../../Libraries/Sandbox/sandboxShapeFamilies.js";
 import { wallPlaceInspector } from "../../../Libraries/Sandbox/sandboxScenePlaceables.js";
@@ -10,6 +10,7 @@ import { buildPlacePaletteItems, appendSandboxTagFilters, appendSpawnPaletteGrid
 import { appendEditorHint, appendInstanceList } from "../../../Libraries/UI/paramFields.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 import { wrapLabUiSync } from "./preview.js";
+import propCatalog from "../../../Assets/props/index.js";
 function appendPinnedSection(parent, id, title, build, headExtra = null) {
     const block = document.createElement("div");
     block.className = "editor-block editor-block-pinned";
@@ -32,7 +33,7 @@ function clearElement(el) {
 }
 export function mountSandboxToyUi(container, state, controller) {
     let paletteTagFilter = "all";
-    const propIds = orderSandboxPalettePropIds(Object.keys(worldPropDefinitions).filter((id) => isSandboxSpawnable(worldPropAssets[id])));
+    const propIds = orderSandboxPalettePropIds(Object.keys(worldPropDefinitions).filter((id) => isSandboxSpawnable(propCatalog[id])));
     const bootstrapPaletteItems = buildPlacePaletteItems(propIds);
     if (!controller.getPlacePaletteKey() && bootstrapPaletteItems.length > 0) {
         const firstProp = bootstrapPaletteItems.find((item) => item.kind === "prop") ?? bootstrapPaletteItems[0];

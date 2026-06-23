@@ -7,11 +7,11 @@ import { localBoxOutline, splitPoxels } from "../Libraries/Props/poxelFracture.j
 import { fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/propFracture.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
+import propCatalog from "../Assets/props/index.js";
 describe("chunk fracture", () => {
     it("crate asset uses chunk fracture mode", () => {
-        assert.equal(worldPropAssets["crate"].physics.fractureMode, "chunk");
-        assert.equal(worldPropAssets["custom_box"].physics.fractureMode, "chunk");
+        assert.equal(propCatalog["crate"].physics.fractureMode, "chunk");
+        assert.equal(propCatalog["custom_box"].physics.fractureMode, "chunk");
     });
     it("bakes rectilinear chunk grid from a box outline", () => {
         const geom = bakeChunkOutline(localBoxOutline(8, 8));

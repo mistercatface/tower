@@ -10,8 +10,8 @@ import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/Angle.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Libraries/Props/rollingMotion.js";
 import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/propVisualAttachments.js";
-import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
+import propCatalog from "../Assets/props/index.js";
 const cacheKeyDeps = { quantizeAngleIndex, buildRollOrientKey };
 const polygonVisuals = {
     colors: { side: "#888", sideShadow: "#666", top: "#aaa", bottom: "#444", stroke: "#222" },
@@ -93,7 +93,7 @@ describe("draw shape parity", () => {
         assert.equal(resolvePropQuantizeSteps(plank).facing, 128);
     });
     it("flee ball declares a render-only tri wedge facing attachment", () => {
-        const attachment = worldPropAssets["flee_ball"].visuals.attachments[0];
+        const attachment = propCatalog["flee_ball"].visuals.attachments[0];
         assert.equal(attachment.id, "movement_arrow");
         assert.equal(attachment.propId, "tri_wedge");
         assert.equal(attachment.heading, "velocity");
@@ -128,7 +128,7 @@ describe("draw shape parity", () => {
         assert.ok(Math.abs(largeChild.x - smallChild.x * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.radius - smallChild.radius * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.height - smallChild.height * 2) < 1e-6);
-        assert.ok(smallChild.height < worldPropAssets["tri_wedge"].visuals.world.height);
+        assert.ok(smallChild.height < propCatalog["tri_wedge"].visuals.world.height);
     });
     it("visual attachments expand bake bounds and facing cache keys", () => {
         const right = new WorldProp(0, 0, "flee_ball", 0);

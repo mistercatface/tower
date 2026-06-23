@@ -16,8 +16,10 @@
 | `wallCtx` 15-field bag | Merged viewport + input + per-face scratch + options into one mutable struct | `(viewport, state, wallFaceScratch)` |
 | `px, py, zoom` next to `viewport` | Same frame data threaded as scalars | Pass `viewport`; unpack in cache boundary only |
 | `createStructureDrawPass(mode, renderer)` | Factory returning `{ draw: fn }` that only called two renderer methods | Inline `if (flat2d)` in `Renderer.drawWorldSceneStructure` |
+| `worldPropAssets` re-export alias | Second name for `Assets/props/index.js` default export | **Deleted** — import `propCatalog` from `Assets/props/index.js` at asset lookup sites |
+| `setPropCatalog` / `loadPropAssets` | Second init path beside module import | **Deleted** |
 
-**Grep gate:** zero hits for `worldSceneDrawInput`, `syncWorldSceneDrawInput`, `proceduralSurfaceDraw`, `elevationCameraFrom`, `wallCtx`.
+**Grep gate:** zero hits for `worldSceneDrawInput`, `syncWorldSceneDrawInput`, `proceduralSurfaceDraw`, `elevationCameraFrom`, `wallCtx`, `loadPropAssets`, `setPropCatalog`.
 
 ---
 
@@ -27,13 +29,13 @@ These wrap module-level records filled once at import/boot. Caller already has t
 
 | Offender | Passthrough shape | Fix |
 |----------|-------------------|-----|
-| `loadPropAssets()` | "Load" that only loops static imports | Module top-level init in `PropCatalog.js`; delete loader |
-| `getPropAsset(id)` | `return worldPropAssets[id]` | Import `worldPropAssets` at use site |
-| `getWorldPropDefinitions()` | Second map mirroring assets | Build strategy from `asset.physics` at spawn |
+| ~~`loadPropAssets()`~~ | "Load" that only loops static imports | **Deleted** — `PropCatalog.js` module init |
+| ~~`getPropAsset(id)`~~ | `return worldPropAssets[id]` | **Deleted** — `worldPropAssets[id]` (P3-1) |
+| `getWorldPropDefinitions()` | Second map mirroring assets | Build strategy from `asset.physics` at spawn (P3-3) |
 | `getGameLauncher(id)` | `return GAME_LAUNCHERS[id]` | `GAME_LAUNCHERS[id]` + throw inline |
 | `getSurfaceProceduralProfile(id)` | Wraps `resolveSurfaceProfile` | Import profile map directly |
 
-**Still live:** `loadPropAssets`, `getPropAsset`, `getGameLauncher` — see [`stupid.md`](stupid.md) P3/P4.
+**Still live:** `getGameLauncher` — see [`stupid.md`](stupid.md) P4-1. Twin prop **definitions** map (P3-3) still open.
 
 ---
 
@@ -77,7 +79,7 @@ Same object or same derivation stored twice "for convenience":
 
 | Twin | Why dumb |
 |------|----------|
-| `Assets/props/index.js` + `PropCatalog.assetsById` | Same assets, two maps |
+| `Assets/props/index.js` + `PropCatalog.worldPropAssets` | Same catalog, second export name | **Fixed** — assets import index; PropCatalog = definitions + recipes only |
 | `worldPropRecipes` + `asset.draw` on module | Was copy-via-`registerPropDraw` |
 | `worldPropDefinitions` + `asset.physics` | Strategy built from stripped copy |
 | `resolveSurfaceProfileAtCoords` in `Render/game/` vs inline in draw | Profile resolution split across layers |

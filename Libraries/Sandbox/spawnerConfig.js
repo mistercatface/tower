@@ -1,18 +1,19 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { applyDragLaunchVelocity } from "./dragLaunch.js";
-import { worldPropAssets, worldPropDefinitions } from "../Props/PropCatalog.js";
+import { worldPropDefinitions  } from "../Props/PropCatalog.js";
 import { isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { DRAG_LAUNCH_DEFAULTS } from "./dragLaunch.js";
 import { stampPropVisualOverride } from "../Color/visualOverride.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
+import propCatalog from "../../Assets/props/index.js";
 /** @param {object | null | undefined} asset */
 export function isSpawnerProp(asset) {
     return asset?.sandbox?.spawner != null && typeof asset.sandbox.spawner === "object";
 }
 /** @param {object | null | undefined} prop */
 export function isSpawnerWorldProp(prop) {
-    return isSpawnerProp(worldPropAssets[prop?.type]);
+    return isSpawnerProp(propCatalog[prop?.type]);
 }
 /** @param {object | null | undefined} prop @param {object | null | undefined} asset */
 export function resolveSpawnerPropId(prop, asset) {
@@ -39,7 +40,7 @@ export function getSpawnerOutletWorld(prop, asset) {
  * @param {{ power?: number, nx?: number, ny?: number }} [options]
  */
 export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
-    const asset = worldPropAssets[spawnerWorldProp.type];
+    const asset = propCatalog[spawnerWorldProp.type];
     if (!isSpawnerProp(asset)) return null;
     const config = getSpawnerDragConfig(spawnerWorldProp, asset);
     const outlet = getSpawnerOutletWorld(spawnerWorldProp, asset);
@@ -59,7 +60,7 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
 export function listSpawnerSpawnPropIds() {
     return Object.keys(worldPropDefinitions)
         .filter((id) => {
-            const asset = worldPropAssets[id];
+            const asset = propCatalog[id];
             return isSandboxSpawnable(asset) && !isSpawnerProp(asset);
         })
         .sort();

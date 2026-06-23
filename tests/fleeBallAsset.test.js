@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 import { WorldProp } from "../Entities/WorldProp.js";
+import propCatalog from "../Assets/props/index.js";
 describe("flee_ball asset", () => {
     it("is a plain rolling sphere with chain support", () => {
-        const asset = worldPropAssets["flee_ball"];
+        const asset = propCatalog["flee_ball"];
         assert.equal(asset.id, "flee_ball");
         assert.equal(asset.primitive, "sphere");
         assert.equal(asset.draw, undefined);

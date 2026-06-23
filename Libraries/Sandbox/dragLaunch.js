@@ -1,10 +1,10 @@
 import { normalizeXY } from "../Math/Vec2.js";
 import { resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
-import { worldPropAssets } from "../Props/PropCatalog.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/overlays/overlayCommands.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
 import { evaluateInputGates, isEntityAtRest } from "./inputGates.js";
+import propCatalog from "../../Assets/props/index.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const DRAG_LAUNCH_DEFAULTS = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
@@ -188,7 +188,7 @@ export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
 export const DRAG_LAUNCH_WAIT_BEHAVIOR_ID = "dragLaunchWait";
 /** @param {object} prop */
 function dragLaunchConfigForProp(prop) {
-    return getDragLaunchConfig(worldPropAssets[prop?.type]);
+    return getDragLaunchConfig(propCatalog[prop?.type]);
 }
 /** @param {object} state @returns {(prop: object) => ReturnType<typeof buildDragLaunchAimLineContext>} */
 export function dragLaunchAimLineContextForState(state) {
@@ -206,7 +206,7 @@ export function createDragLaunchWaitBehavior(state) {
         buildAimLineContext: dragLaunchAimLineContextForState(state),
         canStart(prop) {
             if (!isEntityAtRest(prop)) return false;
-            return evaluateInputGates(DRAG_LAUNCH_WAIT_BEHAVIOR_ID, prop, worldPropAssets[prop?.type], state).allowed;
+            return evaluateInputGates(DRAG_LAUNCH_WAIT_BEHAVIOR_ID, prop, propCatalog[prop?.type], state).allowed;
         },
     });
 }

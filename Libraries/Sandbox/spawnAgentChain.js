@@ -2,7 +2,7 @@ import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { addChainLink, resolveChainLinkRestLength, setChainHead } from "./chainLinks.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { setCirclePropRadius, setPolygonPropBoundingRadius } from "../Props/propScale.js";
-import { worldPropAssets } from "../Props/PropCatalog.js";
+import propCatalog from "../../Assets/props/index.js";
 export function spawnAgentChain(state, anchorCell, spec) {
     const {
         headPropId,

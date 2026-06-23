@@ -1,6 +1,6 @@
-import { worldPropAssets } from "../../Props/PropCatalog.js";
 import { createDragLaunchInteraction, dragLaunchAimLineContextForState } from "../dragLaunch.js";
 import { fireSpawner, getSpawnerDragConfig, isSpawnerProp } from "../spawnerConfig.js";
+import propCatalog from "../../../Assets/props/index.js";
 export const SPAWNER_BEHAVIOR_ID = "spawner";
 /** @param {object} prop @param {import("../dragLaunch.js").DragLaunchAim | null} aim */
 function aimSpawnerFacing(prop, aim) {
@@ -14,7 +14,7 @@ export function createSpawnerBehavior(state) {
     return {
         ...createDragLaunchInteraction({
             id: SPAWNER_BEHAVIOR_ID,
-            getConfig: (prop) => getSpawnerDragConfig(prop, worldPropAssets[prop.type]),
+            getConfig: (prop) => getSpawnerDragConfig(prop, propCatalog[prop.type]),
             buildAimLineContext: dragLaunchAimLineContextForState(state),
             onAim: aimSpawnerFacing,
             onLaunch(prop, shot) {

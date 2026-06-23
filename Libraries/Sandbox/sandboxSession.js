@@ -1,4 +1,4 @@
-import { formatPropTypeLabel, worldPropAssets } from "../Props/PropCatalog.js";
+import { formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
@@ -11,6 +11,7 @@ import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./
 import { cellBoundsAt, unionCellBounds } from "../DataStructures/CellRect.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
+import propCatalog from "../../Assets/props/index.js";
 import {
     clearForcefieldAt,
     clearRailWallAt,
@@ -155,7 +156,7 @@ export function createSandboxSession(state) {
     const selectAllPropsWithTagFilter = (filter) => {
         const ids = [];
         visitLiveWorldProps(state.worldProps, (prop) => {
-            if (!sandboxAssetMatchesTagFilter(worldPropAssets[prop.type], filter)) return;
+            if (!sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter)) return;
             ids.push(prop.id);
         });
         pickSelection(ids.length === 0 ? null : { kind: "prop", ids });
@@ -167,7 +168,7 @@ export function createSandboxSession(state) {
         for (const id of current.ids) {
             const prop = registry().getLive(id);
             if (!prop) continue;
-            if (!sandboxAssetMatchesTagFilter(worldPropAssets[prop.type], filter)) continue;
+            if (!sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter)) continue;
             ids.push(id);
         }
         pickSelection(ids.length === 0 ? null : { kind: "prop", ids });

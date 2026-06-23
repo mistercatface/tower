@@ -3,8 +3,9 @@ import { quantizeAngle } from "../Math/Angle.js";
 import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
 import { rotateXY } from "../Math/Poly2D.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
-import { worldPropAssets, worldPropDefinitions } from "./PropCatalog.js";
+import { worldPropDefinitions  } from "./PropCatalog.js";
 import { initWorldPropShape, propFootprintHalfExtents, resolvePropQuantizeSteps, withPropStrategyDefaults } from "./propStrategy.js";
+import propCatalog from "../../Assets/props/index.js";
 /**
  * Asset-level fixed child visuals. These are render-only and never become
  * WorldProp entities, collision bodies, exported props, or selectable objects.
@@ -71,7 +72,7 @@ function resolveVirtualPropScale(parentProp, childProp, cfg) {
 }
 /** @param {object} prop */
 export function getPropVisualAttachmentConfigs(prop) {
-    const attachments = worldPropAssets[prop?.type]?.visuals?.attachments;
+    const attachments = propCatalog[prop?.type]?.visuals?.attachments;
     return Array.isArray(attachments) ? attachments : [];
 }
 /** @param {object} prop */
@@ -112,7 +113,7 @@ export function getVisualAttachmentSpriteCacheKey(prop, deps) {
     return parts.length ? parts.join("|") : "";
 }
 function createVirtualAttachmentProp(parentProp, cfg, heading) {
-    const childAsset = worldPropAssets[cfg.propId];
+    const childAsset = propCatalog[cfg.propId];
     const strategy = buildVirtualPropStrategy(cfg.propId);
     if (!childAsset || !strategy) return null;
     const offset = cfg.offset ?? {};

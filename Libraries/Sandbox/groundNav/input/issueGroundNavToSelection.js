@@ -1,6 +1,6 @@
-import { worldPropAssets } from "../../../Props/PropCatalog.js";
 import { sandboxAssetMatchesTagFilter } from "../../sandboxCapabilities.js";
 import { isChainSteeringTarget } from "../../chainLinks.js";
+import propCatalog from "../../../../Assets/props/index.js";
 export function isSandboxNavPropAsset(asset) {
     return sandboxAssetMatchesTagFilter(asset, "nav");
 }
@@ -9,7 +9,7 @@ export function countNavPropsInSelection(state, propIds, entityMeta = null) {
     for (let i = 0; i < propIds.length; i++) {
         const prop = state.entityRegistry.getLive(propIds[i]);
         if (!prop || prop.isDead) continue;
-        if (!isSandboxNavPropAsset(worldPropAssets[prop.type])) continue;
+        if (!isSandboxNavPropAsset(propCatalog[prop.type])) continue;
         if (entityMeta && !isChainSteeringTarget(state, entityMeta, prop.id)) continue;
         count++;
     }
@@ -22,7 +22,7 @@ export function issueGroundNavToSelection(state, { propIds, behaviorId, world, b
     for (let i = 0; i < propIds.length; i++) {
         const prop = state.entityRegistry.getLive(propIds[i]);
         if (!prop || prop.isDead) continue;
-        if (!isSandboxNavPropAsset(worldPropAssets[prop.type])) continue;
+        if (!isSandboxNavPropAsset(propCatalog[prop.type])) continue;
         if (!isChainSteeringTarget(state, entityMeta, prop.id)) continue;
         entityMeta.setActiveBehaviorId(prop.id, behaviorId);
         behavior.setMoveTarget(prop, world);
