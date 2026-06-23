@@ -1,6 +1,6 @@
 import { getPropAsset } from "../../Props/PropCatalog.js";
 import { PolygonShape } from "../../Spatial/collision/Shapes.js";
-import { quantizeAngleIndex } from "../../Canvas/viewQuantize.js";
+import { quantizeAngleIndex } from "../../Math/Angle.js";
 import { FLIPPER_LAYOUT } from "../../../Assets/props/flipper/flipperShared.js";
 export const FLIPPER_BEHAVIOR_ID = "flipper";
 const SWING_SPEED_RAD = 20;

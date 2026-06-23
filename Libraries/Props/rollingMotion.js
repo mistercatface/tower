@@ -1,5 +1,5 @@
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
-import { quantizeAngle } from "../Canvas/viewQuantize.js";
+import { quantizeAngle } from "../Math/Angle.js";
 import { clamp } from "../Math/Interpolate.js";
 import { lengthXY, normalizeXY } from "../Math/Vec2.js";
 /** @type {{ w: number, x: number, y: number, z: number }} */

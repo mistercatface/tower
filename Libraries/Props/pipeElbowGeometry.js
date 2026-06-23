@@ -1,7 +1,7 @@
 import { getPropAsset } from "./PropCatalog.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { transformPoint2DInto } from "../Math/Poly2D.js";
-import { quantizeAngleIndex } from "../Canvas/viewQuantize.js";
+import { quantizeAngleIndex } from "../Math/Angle.js";
 const FACING_STEPS = 24;
 /** @param {object} prop @param {object | null | undefined} asset */
 export function getPipeElbowSpec(prop, asset) {

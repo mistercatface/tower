@@ -1,20 +1,73 @@
+import { quantizeAngle, quantizeAngleIndex } from "../Math/Angle.js";
 import { prepModifiedBlit, resolveSpriteDrawModifier } from "../Render/spriteDrawModifier.js";
 import { acquireOffscreenCanvas } from "./offscreenCanvas.js";
 import { createBakedSpriteCache } from "./BakedSpriteCache.js";
-import { quantizeAngle, quantizeAngleIndex, quantizeViewOffset } from "./viewQuantize.js";
 import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents } from "../Props/propStrategy.js";
 import { getVisualAttachmentSpriteCacheKey, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/propVisualAttachments.js";
+const SPRITE_VIEW_STEP = 30;
+const SPRITE_VIEW_LIMIT = 120;
+function packQuantizedViewBucket(dx, dy, step = SPRITE_VIEW_STEP, limit = SPRITE_VIEW_LIMIT) {
+    const keyDx = Math.round(clamp(dx, -limit, limit) / step);
+    const keyDy = Math.round(clamp(dy, -limit, limit) / step);
+    return ((keyDx + 32) << 6) | (keyDy + 32);
+}
+function quantizedViewAxisOffset(offset, step = SPRITE_VIEW_STEP, limit = SPRITE_VIEW_LIMIT) {
+    return Math.round(clamp(offset, -limit, limit) / step) * step;
+}
+const SPRITE_KEY_INTERN_MAX = 0xfffff;
+const spriteKeyIntern = new Map();
+let spriteKeyInternNext = 1;
+function internSpriteKeyPart(part) {
+    if (!part) return 0;
+    let id = spriteKeyIntern.get(part);
+    if (id === undefined) {
+        id = spriteKeyInternNext++;
+        if (spriteKeyInternNext > SPRITE_KEY_INTERN_MAX) throw new Error("sprite key intern table overflow");
+        spriteKeyIntern.set(part, id);
+    }
+    return id;
+}
+function clearSpriteKeyIntern() {
+    spriteKeyIntern.clear();
+    spriteKeyInternNext = 1;
+}
+function packZoomKeyBucket(zoom) {
+    return Math.round(quantizePropBakeZoom(zoom) * 8);
+}
+function packPropSpriteKey(renderKeyId, customKeyId, physicsKeyId, attachmentKeyId, viewBucket, animFrame, pixelSize, zoomBucket) {
+    let key = BigInt(renderKeyId);
+    key = (key << 20n) | BigInt(customKeyId);
+    key = (key << 20n) | BigInt(physicsKeyId);
+    key = (key << 20n) | BigInt(attachmentKeyId);
+    key = (key << 12n) | BigInt(viewBucket);
+    key = (key << 16n) | BigInt(animFrame & 0xffff);
+    key = (key << 16n) | BigInt(pixelSize & 0xffff);
+    key = (key << 16n) | BigInt(zoomBucket & 0xffff);
+    return key;
+}
+function packOverlaySpriteKey(renderKeyId, customKeyId, viewBucket, zoomBucket) {
+    let key = BigInt(renderKeyId);
+    key = (key << 20n) | BigInt(customKeyId);
+    key = (key << 12n) | BigInt(viewBucket);
+    key = (key << 16n) | BigInt(zoomBucket & 0xffff);
+    return key;
+}
+const PROP_SPRITE_KEY_DEPS = { quantizeAngleIndex, buildRollOrientKey };
+function internedPropPhysicsKey(prop) {
+    const key = getBaseSpriteCacheKey(prop, PROP_SPRITE_KEY_DEPS);
+    return internSpriteKeyPart(key);
+}
 /**
  * LRU baked-sprite cache with shared viewer-offset quantization.
  * Iso props use this; domain key/bake helpers live below.
  *
- * @param {{ maxItems?: number, viewStep?: number, viewLimit?: number }} [options]
+ * @param {{ maxItems?: number }} [options]
  */
-export function createQuantizedSpriteCache({ maxItems = 2000, viewStep = 30, viewLimit = 120 } = {}) {
+export function createQuantizedSpriteCache({ maxItems = 2000 } = {}) {
     const baked = createBakedSpriteCache({ maxItems });
     const telemetry = { requests: 0, misses: 0, evictions: 0, uniqueKeys: new Set() };
     const originalOnEvict = baked.cache.onEvict;
@@ -26,11 +79,6 @@ export function createQuantizedSpriteCache({ maxItems = 2000, viewStep = 30, vie
         maxItems: baked.maxItems,
         cache: baked.cache,
         telemetry,
-        viewStep,
-        viewLimit,
-        quantizeView(dx, dy) {
-            return quantizeViewOffset(dx, dy, viewStep, viewLimit);
-        },
         get(key) {
             return baked.get(key);
         },
@@ -115,18 +163,19 @@ const PROP_STAGE_PADDING = 40;
 export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0, zoom = 1) {
     const dx = prop.x - px;
     const dy = prop.y - py;
-    // Note: To avoid over-granular sub-pixel caching thrash, dx/dy view quantization
-    // uses the robust step/limit algorithm baked into propSpriteCache.quantizeView().
-    const { keyDx, keyDy } = propSpriteCache.quantizeView(dx, dy);
-    const basePhysicsKey = getBaseSpriteCacheKey(prop, { quantizeAngleIndex, buildRollOrientKey });
-    const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
-    const attachmentPart = attachmentKey ? `_${attachmentKey}` : "";
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
-    const customPart = customKey ? `_${customKey}` : "";
+    const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
     const pixelSize = resolvePropPixelSizeForProp(prop);
-    const pixelKey = pixelSize ? `_px${pixelSize}` : "";
-    const zoomKey = `_z${quantizePropBakeZoom(zoom)}`;
-    return `${renderKey}${customPart}_${basePhysicsKey}${attachmentPart}_${keyDx}_${keyDy}_${animFrame}${pixelKey}${zoomKey}`;
+    return packPropSpriteKey(
+        internSpriteKeyPart(renderKey),
+        internSpriteKeyPart(customKey),
+        internedPropPhysicsKey(prop),
+        internSpriteKeyPart(attachmentKey),
+        packQuantizedViewBucket(dx, dy),
+        animFrame,
+        pixelSize ?? 0,
+        packZoomKeyBucket(zoom),
+    );
 }
 function drawVisualAttachmentList(ctx, attachments, propRecipes, px, py) {
     if (!propRecipes) return;
@@ -153,7 +202,8 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, propRecipes
     return propSpriteCache.getOrBake(key, () => {
         const dx = prop.x - px;
         const dy = prop.y - py;
-        const { dx: qDx, dy: qDy } = propSpriteCache.quantizeView(dx, dy);
+        const qDx = quantizedViewAxisOffset(dx);
+        const qDy = quantizedViewAxisOffset(dy);
         const parentFacing = quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing);
         const footprint = propFootprintHalfExtents(prop);
         const baseR = Math.max(resolveBodyRadius(prop), footprint.x, footprint.y);
@@ -180,6 +230,7 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, propRecipes
 export function clearPropSpriteCache() {
     propSpriteCache.clear();
     overlaySpriteCache.clear();
+    clearSpriteKeyIntern();
 }
 /** QuantizedSpriteCache render keys for grid-stamped occupancy (not WorldProp assets). */
 export const GRID_STAMP_RENDER_KEY = { ForcefieldEdge: "grid_forcefield_edge", FloorBelt: "grid_floor_belt", PassagePowerSource: "grid_passage_power_source" };
@@ -205,8 +256,7 @@ const overlaySpriteCache = createQuantizedSpriteCache({ maxItems: 1024 });
  * @param {number} [zoom]
  */
 export function buildOverlaySpriteKey(worldX, worldY, px, py, renderKey, customKey, zoom = 1) {
-    const { keyDx, keyDy } = overlaySpriteCache.quantizeView(worldX - px, worldY - py);
-    return `${renderKey}_${customKey}_${keyDx}_${keyDy}_z${quantizePropBakeZoom(zoom)}`;
+    return packOverlaySpriteKey(internSpriteKeyPart(renderKey), internSpriteKeyPart(customKey), packQuantizedViewBucket(worldX - px, worldY - py), packZoomKeyBucket(zoom));
 }
 /**
  * @param {object} spec

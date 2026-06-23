@@ -8,7 +8,7 @@ import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { createPolygonPrimitive } from "../Libraries/Props/primitives/polygonPrimitive.js";
 import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
-import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Canvas/viewQuantize.js";
+import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/Angle.js";
 import { buildPropSpriteKey } from "../Libraries/Canvas/QuantizedSpriteCache.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Libraries/Props/rollingMotion.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";

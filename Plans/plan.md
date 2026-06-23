@@ -52,13 +52,13 @@ Render and grid drawing are **inconsistent**: walls/projected draw reuse scratch
 
 ---
 
-### 4. Sprite cache keys — template string every lookup
+### 4. Sprite cache keys — template string every lookup ✅
 
 **Where:** `QuantizedSpriteCache.buildPropSpriteKey`
 
 **Hot because:** Runs on every `getOrBakePropSprite`, hit or miss.
 
-Each draw builds a new concatenated string (~80–120 chars). The LRU cache is real optimization; the **key construction** is still per-call allocation. Next step if this matters: numeric tuple key, reusable char buffer, or intern table — not more scratch objects.
+Pass 1: intern string identity parts + pack view/anim/zoom/pixel into `BigInt` keys; reuse one view-quant scratch per cache (no per-lookup `{ keyDx, keyDy }`). `getBaseSpriteCacheKey` still builds a physics string on lookup — defer stamp cache to a follow-up. Pass 2 (`drawPass`, positional bake) stays in `Plans/clean.md`.
 
 ---
 
