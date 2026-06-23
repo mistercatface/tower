@@ -180,7 +180,7 @@ export const ITEMS = [
         priority: "p2",
         title: "wallCtx 15-field bag + _bindWallDrawable per drawable",
         stupid: "Separate frame dialect for walls vs props. Mutate wallCtx fields for every wall/rail in sort loop.",
-        fix: "WorldSceneDrawPass (frame.md): one camera struct; wall draw reads pass + small per-drawable scratch. Collapse wallPassCamera into pass.",
+        fix: "frame.md: wall draw takes (viewport, input, wallFaceScratch). Delete wallPassCamera + wallCtx; iso reads viewport.cameraHeight / viewport.perspectiveStrength.",
         files: ["Libraries/Render/WorldSceneRenderer.js", "Libraries/Render/Structure3D/ProjectedWallDraw.js", "Libraries/Render/Structure3D/StaticGridEdgeRailDraw.js", "Plans/current/frame.md"],
     },
     {
@@ -188,7 +188,7 @@ export const ITEMS = [
         priority: "p2",
         title: "px / py / zoom extracted in every draw method",
         stupid: "const px = viewport.x repeated 4+ times per frame across debris/floor/3D/overlays.",
-        fix: "WorldSceneDrawPass filled once per sub-pass (_beginDrawPass). drawCachedPropSprite reads pass at single boundary — recipes stay (ctx, prop, px, py).",
+        fix: "frame.md: pass viewport through draw stack; drawCachedPropSprite(ctx, prop, viewport, …) unpacks x/y/zoom once. Delete px/py/zoom threading.",
         files: ["Libraries/Render/WorldSceneRenderer.js", "Libraries/Sandbox/gridStampDrawCache.js", "Libraries/Render/overlays/drawOverlayCommands.js"],
     },
     {

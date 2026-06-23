@@ -1,181 +1,189 @@
-# Frame draw pass — `WorldSceneDrawPass`
+# Frame draw pass — viewport only
 
-Render’s **AABB moment**: one engine-owned struct per frame for camera + shared draw wiring, instead of re-reading `viewport.x/y/zoom` and threading `px, py, zoom` through every blit.
+Render’s **AABB moment**: **`Viewport` is the only frame handle** — pan, zoom, cull, screen mapping, iso elevation knobs. **No parallel camera structs, no scalar copies, no resolver functions in the hot path.**
 
-**Sibling docs:** implementation detail for sprite APIs → `Plans/clean.md` (if present) · perf lens → [`objects.md`](objects.md) #3 · other big wins → [`gamechangers.md`](gamechangers.md)
+**Sibling docs:** sprite key packing → `Plans/clean.md` (if present) · perf → [`objects.md`](objects.md) #3 · other wins → [`gamechangers.md`](gamechangers.md)
 
-**Done (pre-pass):** draw recipes live on exported **`worldPropRecipes`** (`PropCatalog.js`) — imported at bake/draw sites, not threaded, no getter.
+**Done (prerequisites):**
+
+- **`worldPropRecipes`** — static import at lookup sites; no threading, no `PropRenderer`.
+- **G1** — forcefield grid stamps in `gridStampDrawCache.js` (stable proto proxies).
 
 ---
 
-## Problem
-
-Today there are **two parallel “context” concepts**:
-
-| Struct | Owner | Carries | Missing |
-|--------|-------|---------|---------|
-| **`WorldSceneDrawInput`** | `Renderer.worldSceneDrawInput` | entities, spatial frame, surfaces, grid, gameState | camera |
-| **`wallCtx` + `wallPassCamera`** | `WorldSceneRenderer` | elevation camera, atlas, damage, bounds | everything else |
-
-Every draw entry re-derives camera from viewport:
+## Principle
 
 ```text
-drawDebrisProps / drawFloorProps / draw3DBuildings
-  → const px = viewport.x; const py = viewport.y; const zoom = viewport.zoom ?? 1
-  → drawCachedPropSprite(ctx, prop, px, py, …)
-  → drawFloorOccupancy*(ctx, state, viewport, px, py)
-  → elevationCameraFromViewportInto(wallPassCamera, viewport)
+viewport  = x, y, zoom, cameraHeight, perspectiveStrength, cull tiers, worldToScreen
+input     = entities, grid, surfaces, gameState
+scratch   = one reused object for per-face mutation (wall band, atlasFaceId, …)
 ```
 
-**Symptoms:**
+**Everything that varies with “how we’re looking at the world” lives on `viewport`.** Projection reads **`viewport` fields only** — not `activePerspective`, not `resolveStructurePerspectiveStrength`, not `resolvePerspectiveForViewport`, not `ElevationCamera`.
 
-- 4+ parameters on every prop/grid-stamp blit (`px`, `py`, `zoom`).
-- Wall draw uses a **15-field bag** mutated per drawable (`_bindWallDrawable`) while props use loose scalars.
-- `resolveSpriteDrawModifier` still conceptually wants viewport-relative offsets; no single place owns “frame camera”.
-- New draw features copy the `viewport.x` extraction pattern instead of one dialect.
+**Boot-only:** `gameDefinition.perspective` → merge into **`viewport.cameraHeight`** + base strength inputs when perspective config changes. After that, draw code never touches globals.
 
-This is the same class of mess bounds were in before `*Into` scratch — not wrong per call site, but **no shared frame contract**.
+**No props override perspective.** Zero assets, zero `strategy.*` overrides.
 
 ---
 
-## Target
+## Stupid shit today (kill all of it)
 
-### `WorldSceneDrawPass` — filled once per sub-pass, reused for all blits
+| Stupid | Fix |
+|--------|-----|
+| **`const px = viewport.x`** × N | Pass **`viewport`**; unpack once at cache/recipe boundary |
+| **`drawCachedPropSprite(…, px, py, …, zoom)`** | **`drawCachedPropSprite(…, viewport, …)`** |
+| **`elevationCameraFrom*`** | Delete — projection uses **`viewport`** |
+| **`wallPassCamera` / `wallCtx.camera`** | Delete |
+| **`wallCtx` 15-field bag** | **`viewport` + `input` + `wallFaceScratch`** |
+| **`activePerspective` read in draw/projection** | Write into **`viewport` at boot + on `_recompute`**; never read in hot path |
+| **`resolveStructurePerspectiveStrength(viewport)`** | Delete — **`viewport.perspectiveStrength`** computed in **`Viewport._recompute()`** |
+| **`resolvePerspectiveForViewport(viewport)`** (old plan) | **Never add this** — fields on viewport |
+| **Prop vs wall strength split** | One **`viewport.perspectiveStrength`** for everything |
+| **`structurePerspectiveStrength`** (orphan name) | Rename → **`perspectiveStrength`** on viewport |
+| **`WorldSceneDrawPass` / `{ px, py, zoom, camera }`** | Rejected |
+| **`worldSceneDrawInput` + sync** | Optional later collapse → `draw*(ctx, state, viewport)` |
 
-Plain mutable object owned by `WorldSceneRenderer` (or `Renderer`), **not** passed as `{ opts }` to hot leaf functions. Fields written once; leaves read fields.
+---
+
+## Viewport fields (after migration)
+
+Add to **`Libraries/Viewport/Viewport.js`**:
+
+| Field | When set | Used for |
+|-------|-----------|----------|
+| `x`, `y`, `zoom` | pan/zoom (existing) | cull, screen mapping, viewer position for iso |
+| **`cameraHeight`** | perspective config change (boot / editor defaults) | iso frustum cap, wall band clipping |
+| **`perspectiveStrength`** | **`_recompute()`** (pan, zoom, canvas resize, perspective config bump) | iso extrusion alpha — zoom-scaled |
+
+**`_recompute()`** (already runs on pan/zoom/resize) becomes the **only** place that derives `perspectiveStrength`:
 
 ```javascript
-// Libraries/Render/WorldSceneDrawPass.js (new) — module-level @typedef only
-
-/**
- * @typedef {Object} WorldSceneDrawPass
- * @property {number} px
- * @property {number} py
- * @property {number} zoom
- * @property {import("../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
- * @property {import("../Viewport/Viewport.js").Viewport} viewport  // tier queries only; not for px/py re-read
- */
-```
-
-**Fill site (one place per draw method):**
-
-```javascript
-_beginDrawPass(pass, viewport) {
-    pass.px = viewport.x;
-    pass.py = viewport.y;
-    pass.zoom = viewport.zoom ?? 1;
-    pass.viewport = viewport;
-    elevationCameraFromViewportInto(pass.camera, viewport);
+_recompute() {
+    // … existing halfW, halfH, viewBounds …
+    const worldSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(this.halfW, this.halfH) * 2);
+    const referenceSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, this.getVisualRadius() * 2);
+    this.perspectiveStrength = (this._perspectiveIntensity * referenceSpan) / worldSpan;
 }
 ```
 
-Use a **stable `pass.camera` object** (like today’s `wallPassCamera`) — `Into` writes fields, never replaces the object.
+**`cameraHeight`** + **`_perspectiveIntensity`** (base strength from session config) are copied onto the viewport when `installEditorDefaults` / perspective bump runs — then `_recompute()` refreshes `perspectiveStrength`.
 
-### Public draw API shape (after migration)
-
-**Keep** `WorldSceneDrawInput` for **scene data** (entities, grid, surfaces).  
-**Add** `drawPass` for **camera** on draw calls. Prop draw recipes: **`import { worldPropRecipes } from PropCatalog.js`** at lookup sites only.
-
-```text
-// Scene renderer entry points
-drawFloorProps(ctx, input, drawPass)
-draw3DBuildings(ctx, input, drawPass, options?)
-drawDebrisProps(ctx, input, drawPass)
-
-// Prop pipeline
-PropRenderer.drawProp(ctx, prop, drawPass, animFrame?)
-drawCachedPropSprite(ctx, prop, drawPass, renderKey, draw, animFrame?)
-
-// Grid stamps (viewport still needed for tier cull)
-drawFloorOccupancyBelts(ctx, state, drawPass)
-drawCachedPropSprite(ctx, proxy, drawPass, renderKey, draw, animFrame?)
-
-// Overlays (editor)
-drawOverlayCommands(ctx, commands, drawPass)
-
-// Walls — collapse wallCtx frame fields into drawPass + per-drawable scratch
-drawProjectedWallFace(ctx, p1, p2, drawPass, drawableScratch)
-```
-
-**Rule:** leaf recipes stay `(ctx, prop, px, py)` **only if** `px/py` are read from `drawPass` at the **single** `drawCachedPropSprite` boundary — recipes do not take `drawPass` unless they need zoom/line scale (most don’t).
-
-**Not in scope:** `{ drawPass, … }` opts objects on hot paths. Positional `drawPass` reference + entity args only.
+Delete **`structurePerspectiveStrength`**, **`_structurePerspectiveConfigGen`**, **`resolveStructurePerspectiveStrength`**, generation-counter cache theater — `_recompute()` already invalidates on zoom/pan.
 
 ---
 
-## Relationship to `Plans/clean.md`
+## Projection API
 
-| clean.md goal | frame.md delivers |
-|---------------|-------------------|
-| `drawCachedPropSprite(ctx, drawPass, …)` | ✅ pass owns `px, py, zoom` |
-| Stop repeating camera at every call site | ✅ |
-| Modifier / view quantize uses pass-relative coords | ✅ prerequisite — read `pass.px/py` inside cache |
-| Packed numeric cache keys (pass 2) | **Separate follow-up** inside `QuantizedSpriteCache.js` — can land after pass exists |
+**No helper that “resolves” perspective from viewport.** Read fields.
 
-Do **frame pass first** (API normalization). **Sprite key packing second** (perf), unless you want both in one branch.
+```javascript
+export function resolveElevationAlpha(height, viewport) {
+    if (height <= 0 || viewport.cameraHeight <= height) return 0;
+    return (height / (viewport.cameraHeight - height)) * viewport.perspectiveStrength;
+}
+
+export function projectWorldPointInto(out, worldX, worldY, height, viewport) {
+    const alpha = resolveElevationAlpha(height, viewport);
+    if (alpha <= 0) {
+        out.x = worldX;
+        out.y = worldY;
+    } else {
+        out.x = worldX + (worldX - viewport.x) * alpha;
+        out.y = worldY + (worldY - viewport.y) * alpha;
+    }
+    return out;
+}
+```
+
+That's it. **`projectPropVertexInto(out, prop, viewport, lx, ly, lz)`** calls the same path — no `px/py`, no `sPropCamera`, no `elevationCameraFromViewer`.
+
+**Delete:** `ElevationCamera.js` factories, all `elevationCameraFrom*`, carried `camera` params on wall/ground draw.
+
+**Tests:** `losShadowHarness.makeTestCamera` → set fields on a test **`Viewport`** (or plain `{ x, y, zoom, cameraHeight, perspectiveStrength }` stub), not a parallel camera type.
 
 ---
 
-## Architecture (before → after)
+## Target architecture
 
 ```text
-BEFORE
-  Renderer.syncWorldSceneDrawInput(state)  → input (no camera)
-  WorldSceneRenderer.draw*(ctx, input, viewport)
-    → viewport.x/y/zoom × N
-    → wallCtx ← 15 fields + wallPassCamera
+installEditorDefaults / perspective bump
+  → viewport.cameraHeight = …
+  → viewport._perspectiveIntensity = …
+  → viewport._recompute()   // fills perspectiveStrength
 
-AFTER
-  Renderer.syncWorldSceneDrawInput(state)  → input (unchanged)
-  WorldSceneRenderer.draw*(ctx, input, viewport)
-    → _beginDrawPass(this.drawPass, viewport)   // once
-    → all children read this.drawPass
-    → wall draw: pass.camera + small per-face scratch (height, cacheObj, atlasFaceId)
+renderSimulationScene(state, viewport)
+  viewport.apply(ctx)
+  draw*(ctx, input, viewport)
+    drawCachedPropSprite(ctx, prop, viewport, …)
+    projectWorldPointInto(out, wx, wy, h, viewport)
+    drawProjectedWallFace(ctx, p1, p2, viewport, input, wallFaceScratch)
 ```
 
-**Optional later:** `Renderer.beginWorldSceneDraw(viewport)` fills pass once for backdrop + structure + editor overlay in same frame. Start with **per `WorldSceneRenderer` method** fill — lower risk.
+---
+
+## Who owns what
+
+| Concern | Owner |
+|---------|--------|
+| Pan, zoom, screen mapping | **`viewport.x/y/zoom`** |
+| Iso frustum height | **`viewport.cameraHeight`** |
+| Iso extrusion strength | **`viewport.perspectiveStrength`** |
+| Entities, grid, surfaces | **`input`** / **`state`** |
+| Belt anim | **`state.gameTime`** |
+| Line width in recipes | **`getCanvasLineScale(ctx)`** (canvas transform) |
+| Per-wall face band, atlas, damage | **`wallFaceScratch`** |
+
+---
+
+## Public draw API
+
+```text
+drawDebrisProps(ctx, input, viewport)
+drawFloorProps(ctx, input, viewport)
+draw3DBuildings(ctx, input, viewport, options?)
+drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame?)
+drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, …)
+drawFloorOccupancyBelts(ctx, state, viewport)
+drawOverlayCommands(ctx, commands, viewport)
+drawProjectedWallFace(ctx, p1, p2, viewport, input, wallFaceScratch)
+```
+
+Recipes stay **`(ctx, prop, px, py)`** — `drawCachedPropSprite` unpacks **`viewport.x/y` once** for the recipe only.
 
 ---
 
 ## Migration phases
 
-### Phase 0 — Introduce pass object (no caller changes)
+### Phase 0 — Viewport owns iso fields
 
-- [ ] Add `WorldSceneDrawPass.js` typedef + `WorldSceneRenderer.drawPass` field `{ px, py, zoom, viewport, camera }`.
-- [ ] `_beginDrawPass(pass, viewport)` helper on renderer.
+- [ ] Add **`cameraHeight`**, **`_perspectiveIntensity`**, **`perspectiveStrength`** to `Viewport`.
+- [ ] Compute **`perspectiveStrength`** in **`_recompute()`**; delete **`structurePerspectiveStrength`** + **`resolveStructurePerspectiveStrength`**.
+- [ ] **`installEditorDefaults`**: after merging perspective config, write **`state.viewport.cameraHeight`** + **`_perspectiveIntensity`**, call **`_recompute()`**.
+- [ ] Grep: no **`activePerspective`** reads under `Libraries/Render`, `Libraries/Spatial/iso`, `Render` draw paths.
 
-### Phase 1 — Scene renderer internal
+### Phase 1 — Projection reads viewport fields only
 
-- [ ] `drawDebrisProps`, `drawFloorProps`, `draw3DBuildings`: call `_beginDrawPass` once; stop local `px/py/zoom` except via `pass`.
-- [ ] Pass `pass` to `drawFloorOccupancy*`, `collectForcefieldEdgeDrawables`, `drawForcefieldEdgeProp`.
-- [ ] `PropRenderer.drawProp(ctx, prop, pass, animFrame)`.
+- [ ] `IsometricProjection` + `propMesh` — **`viewport`** param; delete **`ElevationCamera`** from render path.
+- [ ] Update wall/ground/animated surface call sites.
 
-### Phase 2 — Cache layer
+### Phase 2 — Cache boundary takes viewport
 
-- [ ] `drawCachedPropSprite(ctx, prop, pass, renderKey, draw, animFrame?)` — reads `pass.px`, `pass.py`, `pass.zoom` internally.
-- [ ] `drawCachedOverlayGlyph(ctx, worldX, worldY, pass, …)` — same.
-- [ ] `resolveSpriteDrawModifier(prop, pass.px, pass.py)` — already scalar; no `{ x, y }` object (plan.md #3).
+- [ ] `drawCachedPropSprite/Glyph`, `drawOverlayCommands`, `gridStampDrawCache`, `WorldSceneRenderer`, `preview.js`.
 
-### Phase 3 — Wall context collapse
+### Phase 3 — Kill wallCtx frame bag
 
-- [ ] Move **frame-stable** `wallCtx` fields onto `drawPass` or a slim `WallFaceDrawScratch` mutated per face:
-  - **On pass (set once per `draw3DBuildings`):** `viewport`, `worldSurfaces`, `proceduralSurfaceDraw`, `gameState`, `fillStyle`, `worldBounds`, `camera`, `skipWallCaps`
-  - **Per drawable (reuse one scratch object):** `wallHeight`, `wallBaseZ`, `wallCapHeight`, `cacheObj`, `atlasFaceId`, `damageTintRatio`
-- [ ] Delete redundant `wallPassCamera` if `pass.camera` is the same object.
-- [ ] Update `ProjectedWallDraw.js`, `StaticGridWallDraw.js`, `StaticGridEdgeRailDraw.js` signatures.
+- [ ] Delete **`wallPassCamera`**, **`wallCtx.camera`**, frame-stable **`wallCtx`** fields → **`input` + viewport + scratch**.
 
-### Phase 4 — Editor overlay + misc
+### Phase 4 — Renderer cleanup
 
-- [ ] `preview.js`: build pass once per overlay z-index (or share renderer’s pass).
-- [ ] `drawOverlayCommands(ctx, commands, pass)`.
-- [ ] `animatedSurfaceDraw` / `losShadowOverlay`: use `pass.camera` or module scratch filled from pass (folds [`normalization.md`](normalization.md) #6).
+- [ ] Inline **`createStructureDrawPass`**; drop **`WorldSceneRenderer(settings)`** ctor; optional **`worldSceneDrawInput`** collapse.
 
-### Phase 5 — Cleanup
+### Phase 5 — Delete dead API
 
-- [ ] Remove dead `px, py, zoom` parameters from migrated exports.
-- [ ] Update `WorldSceneTypes.js` — document `drawPass` alongside `WorldSceneDrawInput`.
-- [ ] Update `.cursor/rules/rendering-pipelines.mdc` examples.
-- [ ] Mark [`objects.md`](objects.md) #3 done when modifier path is pass-relative.
+- [ ] Remove **`ElevationCamera.js`** (or test stub only).
+- [ ] Remove **`activePerspective`** from any file that isn't boot/config.
+- [ ] Grep gates below.
 
 ---
 
@@ -183,52 +191,36 @@ AFTER
 
 | File | Change |
 |------|--------|
-| `Libraries/Render/WorldSceneDrawPass.js` | **New** — `@typedef` only |
-| `Libraries/Render/WorldSceneRenderer.js` | Own `drawPass`, `_beginDrawPass`, migrate all draw methods |
-| `Libraries/Render/Props3D/PropRenderer.js` | `drawProp(ctx, prop, pass, animFrame?)` |
-| `Libraries/Canvas/QuantizedSpriteCache.js` | `drawCachedPropSprite/Glyph` take `pass` |
-| `Libraries/Render/spriteDrawModifier.js` | Confirm scalar `px, py` from pass |
-| `Libraries/Sandbox/gridStampDrawCache.js` | `drawFloorOccupancy*(ctx, state, pass)` |
-| `Libraries/Sandbox/drawForcefields.js` | merged into `gridStampDrawCache.js` |
-| `Libraries/Render/overlays/drawOverlayCommands.js` | `drawOverlayCommands(ctx, commands, pass)` |
-| `Libraries/Render/Structure3D/WallDrawContext.js` | Slim typedef; split frame vs per-face scratch |
-| `Libraries/Render/Structure3D/ProjectedWallDraw.js` | Read from pass + face scratch |
-| `Libraries/Render/Structure3D/StaticGridWallDraw.js` | Collect uses `pass.px/py` |
-| `Libraries/Render/Structure3D/StaticGridEdgeRailDraw.js` | Same |
-| `Render/StructureDrawPass.js` | No change if renderer methods own pass fill |
-| `Render/Render.js` | Optional: shared pass across backdrop + structure |
-| `Apps/Editor/ui/preview.js` | Overlay draw uses pass |
-| `Libraries/WorldSurface/WorldSurfaceEngine.js` | `groundChunkPassCamera` → `pass.camera` if same frame (optional) |
-
-**Touch count:** ~15–20 files. **Behavior change:** none if pass mirrors current viewport reads.
-
----
-
-## Explicit non-goals
-
-- **Merged depth sort** — see [`gamechangers.md`](gamechangers.md) G7; easier after pass exists.
-- **Sprite cache BigInt key packing** — `Plans/clean.md` pass 2; separate PR.
-- **Opts objects** on `drawCached*` — rejected; pass is a named struct, not a per-call literal.
-- **Replacing `WorldSceneDrawInput`** — input stays for scene wiring; pass is camera-only.
-- **Entity `render(ctx, renderer, state)`** — legacy hook; out of scope unless unified later.
+| **`Libraries/Viewport/Viewport.js`** | **`cameraHeight`**, **`perspectiveStrength`**, **`_perspectiveIntensity`**; strength in **`_recompute()`** |
+| **`Core/engineGlobals.js`** | Write perspective into **`state.viewport`** on boot |
+| **`Core/GamePerspective.js`** | Delete **`resolveStructurePerspectiveStrength`**; keep boot merge helpers only or fold into engineGlobals |
+| **`Libraries/Spatial/iso/ElevationCamera.js`** | Delete |
+| **`Libraries/Spatial/iso/IsometricProjection.js`** | Read **`viewport.*`** only |
+| **`Libraries/Render/Props3D/propMesh.js`** | **`viewport`**; no **`activePerspective`** read |
+| **`Libraries/Canvas/QuantizedSpriteCache.js`** | **`viewport`** on draw APIs |
+| **`Libraries/Render/WorldSceneRenderer.js`** | Viewport-only; kill wall camera |
+| **`Libraries/Sandbox/gridStampDrawCache.js`** | Viewport-only |
+| Wall / ground / overlay modules | Viewport-only |
+| **`Render/Render.js`** | Boot writes viewport perspective fields |
 
 ---
 
 ## Review bar
 
-- [ ] No new draw feature reads `viewport.x` in a leaf module — only `_beginDrawPass`.
-- [ ] `drawCachedPropSprite` has **one** place that reads `pass.px/py/zoom`.
-- [ ] Wall draw no longer carries 15 frame-stable fields on a object mutated across the whole pass **and** separate camera object.
-- [ ] `Plans/clean.md` signature targets match shipped API.
-- [ ] Rendering rules cite `drawPass`, not scattered scalars.
+- [ ] **`resolveElevationAlpha`** reads **`viewport.cameraHeight`** + **`viewport.perspectiveStrength`** — no other imports.
+- [ ] Grep: zero **`elevationCameraFrom`**, **`resolveStructurePerspectiveStrength`**, **`resolvePerspectiveForViewport`**, **`activePerspective`** in draw/projection paths.
+- [ ] Grep: zero **`wallPassCamera`**, zero **`drawCachedPropSprite(…, px, py`** at call sites.
+- [ ] **`perspectiveStrength`** updates only in **`Viewport._recompute()`** and boot writes **`cameraHeight`** / **`_perspectiveIntensity`**.
 
 ---
 
-## Suggested landing strategy
+## Verify (grep after ship)
 
-1. **Phase 0–1** in one PR — renderer + prop path; behavior-identical.
-2. **Phase 2** — cache signatures; update all call sites in same PR (compiler/grep driven).
-3. **Phase 3** — wall ctx collapse; highest careful-read diff.
-4. **Phase 4–5** — editor + docs.
-
-Run import smoke on touched modules; no full test suite required unless cache signatures break tests that import draw APIs directly.
+```text
+rg elevationCameraFrom Libraries Render
+rg resolveStructurePerspectiveStrength
+rg resolvePerspectiveForViewport
+rg 'activePerspective' Libraries/Render Libraries/Spatial/iso Render
+rg wallPassCamera
+rg structurePerspectiveStrength
+```
