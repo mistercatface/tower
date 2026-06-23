@@ -196,3 +196,11 @@ describe("drawLosShadowOverlay", () => {
         );
     });
 });
+describe("losShadow render gate", () => {
+    it("simulation pass skips draw when losShadowEnabled is false", () => {
+        const state = { losShadowEnabled: false, obstacleGrid: makeTestObstacleGrid(8, 8) };
+        const ctx = createMockCanvas2d(400, 400);
+        if (state.losShadowEnabled && state.obstacleGrid) drawLosShadowOverlay(ctx, makeTestViewport(0, 0), state.obstacleGrid);
+        assert.equal(ctx.ops.some((o) => o.op === "drawImage"), false);
+    });
+});

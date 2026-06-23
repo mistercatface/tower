@@ -2,12 +2,13 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 function hudToggleButton(label, dataAttr) {
     return `<button type="button" class="snake-hud-toggle" ${dataAttr}><span class="snake-hud-value" style="font-size: 16px;">${label}</span></button>`;
 }
-export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null, renderModeControl = null } = {}) {
+export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null, renderModeControl = null, shadowToggleControl = null } = {}) {
     const stage = document.querySelector("#gameStage");
     const root = document.createElement("div");
     root.className = "snake-hud";
     const toggles = [];
     if (renderModeControl) toggles.push(hudToggleButton("2D", "data-snake-render-mode-toggle"));
+    if (shadowToggleControl) toggles.push(hudToggleButton("Shadows", "data-snake-shadow-toggle"));
     if (onCycleCamera) toggles.push(hudToggleButton("Switch Camera", "data-snake-camera-toggle"));
     toggles.push(hudToggleButton("Overlay", "data-snake-overlay-toggle"));
     root.innerHTML =
@@ -17,6 +18,7 @@ export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null
     const nameEl = root.querySelector("[data-snake-name]");
     const renderModeToggleEl = renderModeControl ? root.querySelector("[data-snake-render-mode-toggle]") : null;
     const renderModeLabelEl = renderModeToggleEl?.querySelector(".snake-hud-value") ?? null;
+    const shadowToggleEl = shadowToggleControl ? root.querySelector("[data-snake-shadow-toggle]") : null;
     const cameraToggleEl = onCycleCamera ? root.querySelector("[data-snake-camera-toggle]") : null;
     const overlayToggleEl = root.querySelector("[data-snake-overlay-toggle]");
     if (cameraToggleEl && onCycleCamera) cameraToggleEl.addEventListener("click", onCycleCamera);
@@ -33,6 +35,19 @@ export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null
             syncRenderModeToggle();
         });
         syncRenderModeToggle();
+    }
+    function syncShadowToggle() {
+        if (!shadowToggleEl || !shadowToggleControl) return;
+        const enabled = shadowToggleControl.get() === true;
+        shadowToggleEl.classList.toggle("is-on", enabled);
+        shadowToggleEl.setAttribute("aria-pressed", enabled ? "true" : "false");
+    }
+    if (shadowToggleEl && shadowToggleControl) {
+        shadowToggleEl.addEventListener("click", () => {
+            shadowToggleControl.set(!shadowToggleControl.get());
+            syncShadowToggle();
+        });
+        syncShadowToggle();
     }
     function syncOverlayToggle() {
         const enabled = getSnakeGameConfig().showFocusedAgentDebug === true;

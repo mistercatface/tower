@@ -93,6 +93,14 @@ export async function setupSnakeGame(state) {
                 return WORLD_RENDER_MODE_LABELS[mode];
             },
         },
+        shadowToggleControl: {
+            get() {
+                return state.losShadowEnabled;
+            },
+            set(enabled) {
+                state.losShadowEnabled = enabled;
+            },
+        },
     });
     cameraCycler.setFocusedId(centerSnake.chain.head.id);
     cameraCycler.bindInput();

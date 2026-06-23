@@ -11,6 +11,7 @@ import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
 import { drawLabPathDebugOverlay } from "../../../Libraries/Render/map/labMapCaches.js";
 import { drawOverlayCommands } from "../../../Libraries/Render/overlays/drawOverlayCommands.js";
+import { drawLosShadowOverlay } from "../../../Libraries/Render/losShadow/losShadowOverlay.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 /** @type {import("../../../Render/Render.js").SimulationSceneHooks} */
 const editorSceneHooks = {
@@ -19,6 +20,13 @@ const editorSceneHooks = {
     },
     simulationEffectPasses: [
         floorPropEffectPass,
+        {
+            zIndex: 8,
+            draw(state, viewport, ctx) {
+                if (!state.losShadowEnabled || !state.obstacleGrid) return;
+                drawLosShadowOverlay(ctx, viewport, state.obstacleGrid);
+            },
+        },
         {
             // After floor stamps (10.5), before draw3DBuildings props/walls (70).
             zIndex: 15,
