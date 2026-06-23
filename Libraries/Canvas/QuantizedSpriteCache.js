@@ -244,7 +244,7 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, c
     });
     blitAnchoredSprite(ctx, sprite, worldX, worldY);
 }
-/** @typedef {import("../Render/Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
+/** @typedef {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} PropDrawRecipe */
 /**
  * Mandatory draw path for iso/grid stamps and world props (except 3D building walls).
  *

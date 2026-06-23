@@ -5,7 +5,8 @@ import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 import { getGridWallDamageSession, resolveWallDamageTintRatioForDrawable } from "../Sandbox/gridWallDamage.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
-import { PropRenderer } from "./Props3D/PropRenderer.js";
+import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
+import { worldPropRecipes } from "../Props/PropCatalog.js";
 import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources } from "../Sandbox/gridStampDrawCache.js";
 import { collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/drawForcefields.js";
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
@@ -14,7 +15,6 @@ export class WorldSceneRenderer {
     /** @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
     constructor(settings) {
         this.settings = settings;
-        this.props = new PropRenderer();
         this.visibleDrawables = [];
         this.staticGridDrawables = [];
         this.staticGridEdgeRailDrawables = [];
@@ -47,7 +47,7 @@ export class WorldSceneRenderer {
         const py = viewport.y;
         const zoom = viewport.zoom ?? 1;
         const props = queryPropsInView(input.entityRegistry, viewport, input.spatialFrame, { filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" });
-        for (let i = 0; i < props.length; i++) this.props.drawProp(ctx, props[i], px, py, zoom);
+        for (let i = 0; i < props.length; i++) this._drawProp(ctx, props[i], px, py, zoom);
     }
     /**
      * @param {CanvasRenderingContext2D} ctx
@@ -69,7 +69,7 @@ export class WorldSceneRenderer {
             visibleObjects.push(prop);
         }
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
-        for (let i = 0; i < visibleObjects.length; i++) this.props.drawProp(ctx, visibleObjects[i], px, py, zoom);
+        for (let i = 0; i < visibleObjects.length; i++) this._drawProp(ctx, visibleObjects[i], px, py, zoom);
     }
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this.visibleDrawables;
@@ -131,7 +131,7 @@ export class WorldSceneRenderer {
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
-            if (obj.strategy) this.props.drawProp(ctx, obj, px, py, zoom);
+            if (obj.strategy) this._drawProp(ctx, obj, px, py, zoom);
             else if (obj._forcefield) drawForcefieldEdgeProp(ctx, obj, px, py);
             else if (obj.p1) {
                 this._bindWallDrawable(this.wallCtx, obj, input.gameState);
@@ -141,5 +141,11 @@ export class WorldSceneRenderer {
                 drawProjectedGridEdgeRail(ctx, obj, this.wallCtx);
             }
         }
+    }
+    _drawProp(ctx, prop, px, py, zoom) {
+        const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
+        const draw = worldPropRecipes[renderKey];
+        if (!draw) return;
+        drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, 0, zoom);
     }
 }

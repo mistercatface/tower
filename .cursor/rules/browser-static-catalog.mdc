@@ -17,13 +17,13 @@ This is a **browser game**. Dev iteration is hard refresh (Ctrl+Shift+R). The us
 Prop draw recipes, physics definitions, and asset records are **fixed for the session** once modules load.
 
 - Export as module-level records (e.g. `worldPropRecipes` in `PropCatalog.js`).
-- **Import where lookup happens** — bake sites, `PropRenderer`, attachment draw, etc.
+- **Import where lookup happens** — bake sites, `WorldSceneRenderer`, attachment draw, etc.
 - **Never** pass through renderers, draw passes, frame structs, constructors, `settings`, hot-path `{ opts }`, or getters (`getWorldPropRecipes()` and similar).
 
 ```javascript
 // ❌ threaded startup catalog
 drawWorldScene(pass, propRecipes);
-new PropRenderer(recipes);
+new SomeRenderer(recipes);
 
 // ✅ import where used
 import { worldPropRecipes } from "../Props/PropCatalog.js";

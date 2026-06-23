@@ -2,7 +2,7 @@ import { rotateXY, transformPoint2DInto } from "../Math/Poly2D.js";
 import { drawBox } from "./Props3D/SolidDraw.js";
 import { projectPropVertex } from "./Props3D/propMesh.js";
 import { getCanvasLineScale } from "./common/viewportUtils.js";
-/** @returns {import("./Props3D/PropRenderer.js").PropDrawRecipe} */
+/** @returns {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
 export function createConveyorDraw(options = {}) {
     const { turnDirection = null, railColors: railColorsOverride, railTopColors: railTopColorsOverride, railStroke: railStrokeOverride, chevronColors: chevronColorsOverride } = options;
     const railColors = railColorsOverride ?? { shadow: "#1E293B", mid: "#334155", highlight: "#475569" };

@@ -11,7 +11,7 @@ There are **four in-world pipelines** plus two **exempt off-pipeline** areas. Ne
 
 | What are you drawing? | Pipeline | Entry point |
 |----------------------|----------|-------------|
-| Placed **WorldProp** (ball, crate, button, flipper, …) | **World prop cache** | `Assets/props/*.asset.js` → `PropRenderer.drawProp` → `drawCachedPropSprite` |
+| Placed **WorldProp** (ball, crate, button, flipper, …) | **World prop cache** | `Assets/props/*.asset.js` → `drawCachedPropSprite` (recipe from `worldPropRecipes`) |
 | **Grid/floor stamp** (belt, forcefield, passage power, portal edge, …) | **Grid stamp cache** | `PropDrawRecipe` + `GRID_STAMP_RENDER_KEY` + `drawCachedPropSprite` |
 | **Voxel fill** or **rail wall edge** (building geometry) | **Wall atlas** | `WorldSceneRenderer.draw3DBuildings` only |
 | **Editor/sandbox feedback** (selection, path, wire, place preview, drag aim) | **Overlay commands** | `append*OverlayCommands` → `collectOverlayCommands` → `drawOverlayCommands` |
@@ -29,7 +29,7 @@ There are **four in-world pipelines** plus two **exempt off-pipeline** areas. Ne
 ```text
 *.asset.js  →  loadPropAssets  →  PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAnchoredSprite
                                       ↑
-                              PropRenderer.drawProp (recipe lookup only)
+                              worldPropRecipes lookup at draw site
 ```
 
 ### Add a new placed prop

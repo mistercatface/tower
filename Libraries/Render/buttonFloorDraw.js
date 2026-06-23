@@ -1,6 +1,6 @@
 import { fillCircle, strokeCircle } from "../Canvas/CanvasPath.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
-/** @returns {import("./Props3D/PropRenderer.js").PropDrawRecipe} */
+/** @returns {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
 export function createButtonFloorDraw() {
     return (ctx, prop) => {
         const radius = prop.radius;

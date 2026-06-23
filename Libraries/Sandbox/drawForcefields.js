@@ -20,7 +20,7 @@ function drawDirectionalArrow(ctx, x, y, ax, ay, size, fillStyle) {
     ctx.closePath();
     ctx.fill();
 }
-/** @type {import("../Render/Props3D/PropRenderer.js").PropDrawRecipe} */
+/** @type {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
 const forcefieldEdgeDraw = (ctx, prop, px, py) => {
     const { mode, powered, tripped, allowedSide } = prop._forcefield;
     const { x: l1x, y: l1y } = prop._localP1;
