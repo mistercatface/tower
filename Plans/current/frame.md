@@ -1,8 +1,10 @@
 # Frame draw pass — `WorldSceneDrawPass`
 
-Render’s **AABB moment**: one engine-owned struct per frame for camera + shared draw wiring, instead of re-reading `viewport.x/y/zoom` and threading `px, py, zoom, propRecipes` through every blit.
+Render’s **AABB moment**: one engine-owned struct per frame for camera + shared draw wiring, instead of re-reading `viewport.x/y/zoom` and threading `px, py, zoom` through every blit.
 
-**Sibling docs:** implementation detail for sprite APIs → `Plans/clean.md` · perf lens → [`objects.md`](objects.md) #3 · other big wins → [`gamechangers.md`](gamechangers.md)
+**Sibling docs:** implementation detail for sprite APIs → `Plans/clean.md` (if present) · perf lens → [`objects.md`](objects.md) #3 · other big wins → [`gamechangers.md`](gamechangers.md)
+
+**Done (pre-pass):** draw recipes live on exported **`worldPropRecipes`** (`PropCatalog.js`) — imported at bake/draw sites, not threaded, no getter.
 
 ---
 
@@ -27,7 +29,7 @@ drawDebrisProps / drawFloorProps / draw3DBuildings
 
 **Symptoms:**
 
-- 4+ parameters on every prop/grid-stamp blit (`px`, `py`, `zoom`, sometimes `propRecipes`).
+- 4+ parameters on every prop/grid-stamp blit (`px`, `py`, `zoom`).
 - Wall draw uses a **15-field bag** mutated per drawable (`_bindWallDrawable`) while props use loose scalars.
 - `resolveSpriteDrawModifier` still conceptually wants viewport-relative offsets; no single place owns “frame camera”.
 - New draw features copy the `viewport.x` extraction pattern instead of one dialect.
@@ -50,7 +52,6 @@ Plain mutable object owned by `WorldSceneRenderer` (or `Renderer`), **not** pass
  * @property {number} px
  * @property {number} py
  * @property {number} zoom
- * @property {import("./Props3D/PropRenderer.js").PropDrawRecipe[]} propRecipes  // or Record — match PropRenderer
  * @property {import("../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
  * @property {import("../Viewport/Viewport.js").Viewport} viewport  // tier queries only; not for px/py re-read
  */
@@ -73,7 +74,7 @@ Use a **stable `pass.camera` object** (like today’s `wallPassCamera`) — `Int
 ### Public draw API shape (after migration)
 
 **Keep** `WorldSceneDrawInput` for **scene data** (entities, grid, surfaces).  
-**Add** `drawPass` for **camera + recipes** on draw calls.
+**Add** `drawPass` for **camera** on draw calls. Prop draw recipes: **`import { worldPropRecipes } from PropCatalog.js`** at lookup sites only.
 
 ```text
 // Scene renderer entry points
@@ -106,7 +107,7 @@ drawProjectedWallFace(ctx, p1, p2, drawPass, drawableScratch)
 
 | clean.md goal | frame.md delivers |
 |---------------|-------------------|
-| `drawCachedPropSprite(ctx, drawPass, …)` | ✅ pass owns `px, py, zoom, propRecipes` |
+| `drawCachedPropSprite(ctx, drawPass, …)` | ✅ pass owns `px, py, zoom` |
 | Stop repeating camera at every call site | ✅ |
 | Modifier / view quantize uses pass-relative coords | ✅ prerequisite — read `pass.px/py` inside cache |
 | Packed numeric cache keys (pass 2) | **Separate follow-up** inside `QuantizedSpriteCache.js` — can land after pass exists |
@@ -140,8 +141,7 @@ AFTER
 
 ### Phase 0 — Introduce pass object (no caller changes)
 
-- [ ] Add `WorldSceneDrawPass.js` typedef + `WorldSceneRenderer.drawPass` field `{ px, py, zoom, viewport, camera, propRecipes }`.
-- [ ] Wire `propRecipes` from `PropRenderer` onto pass in constructor / when recipes change.
+- [ ] Add `WorldSceneDrawPass.js` typedef + `WorldSceneRenderer.drawPass` field `{ px, py, zoom, viewport, camera }`.
 - [ ] `_beginDrawPass(pass, viewport)` helper on renderer.
 
 ### Phase 1 — Scene renderer internal
@@ -152,7 +152,7 @@ AFTER
 
 ### Phase 2 — Cache layer
 
-- [ ] `drawCachedPropSprite(ctx, prop, pass, renderKey, draw, animFrame?)` — reads `pass.px`, `pass.py`, `pass.zoom`, `pass.propRecipes` internally.
+- [ ] `drawCachedPropSprite(ctx, prop, pass, renderKey, draw, animFrame?)` — reads `pass.px`, `pass.py`, `pass.zoom` internally.
 - [ ] `drawCachedOverlayGlyph(ctx, worldX, worldY, pass, …)` — same.
 - [ ] `resolveSpriteDrawModifier(prop, pass.px, pass.py)` — already scalar; no `{ x, y }` object (plan.md #3).
 
@@ -209,7 +209,7 @@ AFTER
 - **Merged depth sort** — see [`gamechangers.md`](gamechangers.md) G7; easier after pass exists.
 - **Sprite cache BigInt key packing** — `Plans/clean.md` pass 2; separate PR.
 - **Opts objects** on `drawCached*` — rejected; pass is a named struct, not a per-call literal.
-- **Replacing `WorldSceneDrawInput`** — input stays for scene wiring; pass is camera-only (+ recipes).
+- **Replacing `WorldSceneDrawInput`** — input stays for scene wiring; pass is camera-only.
 - **Entity `render(ctx, renderer, state)`** — legacy hook; out of scope unless unified later.
 
 ---

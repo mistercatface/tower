@@ -48,7 +48,7 @@ If migration is genuinely multi-step, say so explicitly and list what still remo
 
 ## No in-memory migration theater
 
-Sandbox/editor sim state is **runtime-only** unless explicitly persisted (save/load, localStorage, server). A page refresh starts clean.
+Sandbox/editor sim state is **runtime-only** unless explicitly persisted (save/load, localStorage, server). A page refresh starts clean. See also `browser-static-catalog.mdc` — prop/recipe registries are static module data, not session state to thread or reload.
 
 - Do **not** add teardown/sync/migrate hooks so old in-memory representations "upgrade themselves" when the user didn't refresh.
 - Do **not** keep dual paths (old Segment walls + new edge planes, `cellEdgeWalls` cleanup, "call sync after rotate to rebuild", etc.) "in case they didn't refresh."

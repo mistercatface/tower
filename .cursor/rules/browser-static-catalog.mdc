@@ -1,0 +1,45 @@
+---
+description: Browser game — refresh resets dev; prop catalog is module imports, never threaded
+alwaysApply: true
+---
+
+# Browser game — static catalog, no session threading
+
+This is a **browser game**. Dev iteration is hard refresh (Ctrl+Shift+R). The user does **not** keep a tab open and hot-update catalog or draw recipes in-memory.
+
+## Refresh is the migration
+
+- Page load = clean sim state. No in-session catalog reload, recipe sync, or "upgrade old registry after HMR."
+- Runtime migration hooks belong only at **persistence boundaries** (save/load, localStorage, API payloads) — not prop/render registries.
+
+## Static boot data — import at use sites, never thread
+
+Prop draw recipes, physics definitions, and asset records are **fixed for the session** once modules load.
+
+- Export as module-level records (e.g. `worldPropRecipes` in `PropCatalog.js`).
+- **Import where lookup happens** — bake sites, `PropRenderer`, attachment draw, etc.
+- **Never** pass through renderers, draw passes, frame structs, constructors, `settings`, hot-path `{ opts }`, or getters (`getWorldPropRecipes()` and similar).
+
+```javascript
+// ❌ threaded startup catalog
+drawWorldScene(pass, propRecipes);
+new PropRenderer(recipes);
+
+// ✅ import where used
+import { worldPropRecipes } from "../Props/PropCatalog.js";
+const draw = worldPropRecipes[renderKey];
+```
+
+Same rule for definitions/assets: `import { getPropAsset }` / exported maps — not constructor or per-frame params.
+
+## `loadPropAssets` is registration, not loading
+
+All props are already static ESM imports in `Assets/props/index.js`. `loadPropAssets()` does not fetch files — it loops assets once to build registry maps (definitions, primitive draw closures, asset id map).
+
+When touching this area: prefer **building those maps at module init** in `PropCatalog.js` (or colocated with `Assets/props/index.js`) and drop redundant `loadPropAssets()` boot calls. Keep `setPropCatalog` only where tests inject a **minimal** subset (e.g. locked-room harness).
+
+## Review bar
+
+- New param threading recipes, definitions, or assets through draw/sim? → Stop; import instead.
+- New getter for static catalog data? → Export the record directly.
+- Reload/sync catalog mid-session? → No; refresh is the update path.

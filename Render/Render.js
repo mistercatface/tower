@@ -1,4 +1,3 @@
-import { getWorldPropRecipes } from "../Libraries/Props/PropCatalog.js";
 import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js";
@@ -22,7 +21,7 @@ export class Renderer {
         this.canvas = canvas;
         this.ctx = ctx;
         this.sceneHooks = options.sceneHooks ?? {};
-        this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings(), getWorldPropRecipes());
+        this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings());
         this.worldSceneDrawInput = {
             worldSurfaces: null,
             proceduralSurfaceDraw: {

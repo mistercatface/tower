@@ -1,6 +1,5 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawInput} WorldSceneDrawInput */
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
-/** @typedef {import("./Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 import { collectStaticGridEdgeRailDrawables, drawProjectedGridEdgeRail } from "./Structure3D/StaticGridEdgeRailDraw.js";
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
@@ -12,13 +11,10 @@ import { collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandb
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { elevationCameraFromViewportInto } from "../Spatial/iso/ElevationCamera.js";
 export class WorldSceneRenderer {
-    /**
-     * @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings
-     * @param {Record<string, PropDrawRecipe>} [propRecipes]
-     */
-    constructor(settings, propRecipes = {}) {
+    /** @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
+    constructor(settings) {
         this.settings = settings;
-        this.props = new PropRenderer(propRecipes);
+        this.props = new PropRenderer();
         this.visibleDrawables = [];
         this.staticGridDrawables = [];
         this.staticGridEdgeRailDrawables = [];

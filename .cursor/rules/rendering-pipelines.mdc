@@ -62,7 +62,7 @@ PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAn
 1. **Recipe** colocated with the domain (`drawForcefields.js`, `floorOccupancy.js`, …) — not a one-file micro-module.
 2. **`GRID_STAMP_RENDER_KEY`** entry in `QuantizedSpriteCache.js` (only if new topology family).
 3. **Minimal prop proxy** at world anchor with **`getCustomSpriteCacheKey()`** for dynamic buckets.
-4. **Single draw call:** `drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw, animFrame?, zoom?, propRecipes?)`. World props: pass `propRecipes` when the bake needs visual attachment child recipes (see `PropRenderer.drawProp`).
+4. **Single draw call:** `drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw, animFrame?, zoom?)`. Attachment child recipes use `worldPropRecipes` from `PropCatalog.js` inside the cache bake.
 
 ```javascript
 // ✅

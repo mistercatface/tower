@@ -1,4 +1,5 @@
 import { quantizeAngle, quantizeAngleIndex } from "../Math/Angle.js";
+import { worldPropRecipes } from "../Props/PropCatalog.js";
 import { prepModifiedBlit, resolveSpriteDrawModifier } from "../Render/spriteDrawModifier.js";
 import { acquireOffscreenCanvas } from "./offscreenCanvas.js";
 import { createBakedSpriteCache } from "./BakedSpriteCache.js";
@@ -134,12 +135,11 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
 // ─── Iso prop preset ─────────────────────────────────────────────────────────
 const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
 const PROP_STAGE_PADDING = 40;
-function drawVisualAttachmentList(ctx, attachments, propRecipes, px, py) {
-    if (!propRecipes) return;
+function drawVisualAttachmentList(ctx, attachments, px, py) {
     for (let i = 0; i < attachments.length; i++) {
         const prop = attachments[i];
         const childRenderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
-        const childDraw = propRecipes[childRenderKey];
+        const childDraw = worldPropRecipes[childRenderKey];
         if (childDraw) childDraw(ctx, prop, px, py);
     }
 }
@@ -151,9 +151,8 @@ function drawVisualAttachmentList(ctx, attachments, propRecipes, px, py) {
  * @param {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} draw
  * @param {number} [animFrame]
  * @param {number} [zoom]
- * @param {Record<string, PropDrawRecipe>} [propRecipes]
  */
-function getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame = 0, zoom = 1, propRecipes = null) {
+function getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame = 0, zoom = 1) {
     const dx = prop.x - px;
     const dy = prop.y - py;
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
@@ -186,9 +185,9 @@ function getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame = 0, zoom 
         const attachments = resolveVisualAttachmentProps(stageProp);
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
-        drawVisualAttachmentList(ctx, attachments.before, propRecipes, anchorX - qDx, anchorY - qDy);
+        drawVisualAttachmentList(ctx, attachments.before, anchorX - qDx, anchorY - qDy);
         draw(ctx, stageProp, anchorX - qDx, anchorY - qDy);
-        drawVisualAttachmentList(ctx, attachments.after, propRecipes, anchorX - qDx, anchorY - qDy);
+        drawVisualAttachmentList(ctx, attachments.after, anchorX - qDx, anchorY - qDy);
         ctx.restore();
         return { canvas, meta: { anchorX, anchorY, bakeScale } };
     });
@@ -257,10 +256,9 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, c
  * @param {PropDrawRecipe} draw
  * @param {number} [animFrame]
  * @param {number} [zoom]
- * @param {Record<string, PropDrawRecipe>} [propRecipes]
  */
-export function drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, animFrame = 0, zoom = 1, propRecipes = null) {
-    const sprite = getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame, zoom, propRecipes);
+export function drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, animFrame = 0, zoom = 1) {
+    const sprite = getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame, zoom);
     const modifier = resolveSpriteDrawModifier(prop, px, py);
     blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);
 }

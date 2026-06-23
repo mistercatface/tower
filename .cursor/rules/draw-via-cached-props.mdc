@@ -26,5 +26,5 @@ PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAn
 1. `PropDrawRecipe` colocated with primary consumer
 2. `GRID_STAMP_RENDER_KEY` in `QuantizedSpriteCache.js` if new family
 3. Prop proxy + `getCustomSpriteCacheKey()` for dynamic state
-4. Draw only via `drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw, animFrame?, zoom?, propRecipes?)`
+4. Draw only via `drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw, animFrame?, zoom?)`
 5. Placed props: `Assets/props/*.asset.js` + `loadPropAssets()`

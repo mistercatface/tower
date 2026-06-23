@@ -29,7 +29,7 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 
 - `Renderer.worldSceneDrawInput` already exists for entity/spatial wiring — but **camera scalars are re-read from `viewport` in every draw method**.
 - Walls use a 15-field **`wallCtx` bag** mutated per drawable (`_bindWallDrawable`).
-- Props/grid stamps thread **`px, py, zoom`** (and sometimes `propRecipes`) through 4+ layers.
+- Props/grid stamps thread **`px, py, zoom`** through 4+ layers.
 - `Plans/clean.md` describes the target: positional bake APIs + **`drawPass`** owned by the renderer.
 
 **Why it’s the next big normalization:**
@@ -39,7 +39,7 @@ Same story as AABB: one frame-owned struct eliminates repeated parameter threadi
 **Fix shape:**
 
 ```text
-Renderer / WorldSceneRenderer owns drawPass { px, py, zoom, propRecipes? }
+Renderer / WorldSceneRenderer owns drawPass { px, py, zoom, camera, viewport }
   → drawFloorOccupancy*(ctx, state, viewport, drawPass)   // or drawPass only + viewport tier
   → drawProp(ctx, prop, drawPass)
   → drawCachedPropSprite(ctx, prop, drawPass, renderKey, draw, animFrame)

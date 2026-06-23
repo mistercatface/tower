@@ -1,22 +1,23 @@
 /** @type {Record<string, object>} */
 let definitions = {};
-/** @type {Record<string, Function>} */
-let recipes = {};
+/** Draw recipes keyed by prop render3DKey — filled by loadPropAssets / setPropCatalog. */
+export const worldPropRecipes = {};
 /** @type {Record<string, object>} */
 let assetsById = {};
+function replaceRecordContents(target, source) {
+    for (const key of Object.keys(target)) delete target[key];
+    Object.assign(target, source);
+}
 /**
  * @param {{ definitions: Record<string, object>, recipes: Record<string, Function>, assets: Record<string, object> }} catalog
  */
 export function setPropCatalog({ definitions: defs, recipes: drawRecipes, assets }) {
     definitions = defs;
-    recipes = drawRecipes;
+    replaceRecordContents(worldPropRecipes, drawRecipes);
     assetsById = assets;
 }
 export function getWorldPropDefinitions() {
     return definitions;
-}
-export function getWorldPropRecipes() {
-    return recipes;
 }
 /** @param {string} id */
 export function getPropAsset(id) {
