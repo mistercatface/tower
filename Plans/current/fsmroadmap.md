@@ -1,185 +1,164 @@
-# Snake / flee / squid AI — what's left
+# Snake / flee / squid AI — what's next
 
-One page for status. Goal: **one decision engine, one agent runtime, config-only new agents — zero duplicate species JS.**
+One page. Goal: **one decision engine, one agent runtime, config-only new agents** — with a decision tick that matches the rest of the engine's hygiene.
 
-Hygiene when touching this: [`hygiene.md`](hygiene.md) · [`stupid.md`](stupid.md) · [`objects.md`](objects.md) · [`frame.md`](frame.md)
+Binding: [`hygiene.md`](hygiene.md) · [`objects.md`](objects.md) · [`frame.md`](frame.md) · [`passthrough.md`](passthrough.md)
 
----
-
-## Goal
-
-**Decision layer (done):** Every tick an agent gets **one `decisionContext`**: merged targets, path-step reach, threat/hunger facts, scored modes, chosen intent, sprint intent. Snake, flee, and squid differ only in **`Config/games/snake.js`** intent/decision blocks — not parallel derive functions or adapter callbacks.
-
-**Runtime layer (done):** Every agent is **one chain** (`AgentInstance` + `createAgentAutosim`) spawned via shared infrastructure. Profile config drives segment topology, metabolism, combat, relationships, and presentation. Adding agent #4 is a **`agentProfiles` block + spawn count** — not new Instance/Autosim/Metabolism/Species files and not N×N edits across combat and relationship matrices.
-
-**Tests:** Migrate with the dialect in the same PR. No production aliases kept alive because tests still import `createFleeAgentInstance`, `SnakeInstance`, or harness-only factories.
+Ship log (archive): [`fsm/history.md`](fsm/history.md)
 
 ---
 
-## Hygiene law (binding before any step-6 PR)
+## Shipped (don't regress)
 
-From the four docs above — same rules that killed `ElevationCamera`, `blackboard`/`decisionSnapshot`, and `loadPropAssets`:
+**Decision (steps 1–5):** One flat `decisionContext` per tick — merged targets, `reachSteps`, threat/hunger facts, scored modes, chosen intent, sprint. Species differ only in `Config/games/snake.js` (`agentProfiles.*` blocks). No `blackboard` / `decisionSnapshot` pair. No species `*DecisionModel.js` trees. Reach for scoring: `syncNavReachHorizon` + `navReachStepsTo` (generation-stamp BFS) — never `{ stepsTo() }`, never flow windows on the utility path.
 
-| Rule | Means for step 6 |
-|------|------------------|
-| **Deletion pass** | Net negative LOC. New file only if it replaces N deleted files and has no passthrough exports. |
-| **One dialect** | One factory name, one config shape, one import path per concept. Zero `??` fallback between old and new field names in `Libraries/`. |
-| **Tests migrate same PR** | Grep gate is **`Libraries/` + `tests/`** together. Prod alias so tests lag = same bug as keeping `px/py/zoom` beside `viewport`. |
-| **No passthrough** | No `createSnakeAutosim` → `createAgentAutosim`, no 1-line re-export files, no `publishConfigCompatAliases` mirroring keys back to config root. |
-| **Read at use site** | `getSnakeGameConfig()` / `getAgentProfile(profileId)` at the call site — no new `resolve*Gameplay` getters. |
-| **Frame pattern for runtime** | Sync once at spawn/boundary (`applyAgentGameplay`, `spawnGameAgentChain`); don't re-apply per-species at every call site. |
-| **Hot path (objects.md)** | Decision reach stays `navReachHorizon` generation-stamp BFS — flow windows are locomotion-only (Part 2), never utility scoring. |
+**Runtime (step 6):** One chain stack for all species.
 
----
+```text
+setupSnakeGame → scene spawners → spawnAgentChain.js → createAgentSpecies
+  → createAgentInstance → createAgentAutosim(profileId)
+```
 
-## Already done (don't regress)
+- Spawn, combat traits, relationships, gameplay apply — all profile-driven.
+- Nine runtime shims deleted; tests/harness on canonical API.
+- Config dialect unified: `agentProfiles.*` / `shared.*` only — no root compat aliases, no duplicate locomotion keys.
 
-- **Decision reach** — `syncNavReachHorizon` + `navReachStepsTo`; no `*Dist`, no per-tick `{ stepsTo() }` objects.
-- **One context** — flat `decisionContext`; no `blackboard` / `decisionSnapshot` pair.
-- **Shared agent layer** — slot merge, scorer registry, band tables, `gameDecisionContext.js` entry.
-- **Config owns slots, scoring, bands, sprint** — deleted species `*DecisionModel.js` trees; one `deriveSprintIntent.js`.
-- **Shared autosim** — `createAgentAutosim(profileId)`; snake/flee/squid tick through `agentAutosim.js`.
-- **Unified instance (runtime path)** — production uses `AgentInstance` + `createAgentSpecies`; combat uses profile traits not `instanceof`.
+**Adding agent #4 today:** `agentProfiles` block + spawn count. No new Instance / Autosim / Metabolism / Species files.
 
-Ship log: [`fsm/history.md`](fsm/history.md) · [`history.md`](fsm/history.md) — archive only.
+**Disk orphans (delete when convenient, zero importers):** `SnakeInstance.js`, `FleeAgentInstance.js`, `species/snakeSpecies.js`, `species/fleeAgentSpecies.js`, orphan `fleeDecisionModel.js` / `createFleeExploreIntent.js` if unwired.
 
 ---
 
-## Step 6 audit — 6.1–6.7 shipped
+## Ground truth (production path)
 
-Production path: `setupSnakeGame` → scene spawners → `spawnAgentChain.js` → `spawnSpeciesBatch` → `createAgentSpecies` → `createAgentInstance` → `createAgentAutosim`.
-
-| Sub-step | Shipped | Hygiene verdict |
-|----------|---------|-----------------|
-| **6.1 spawn** | `spawnGameAgentChain(profileId)`, sandbox `leaderIndex` | ✅ Unified spawn spec. Shims deleted; tests/scenes import `spawnAgentChain.js`. |
-| **6.2 combat** | `agentCombatTraits.js`, profile `combat` blocks | ✅ Profile `gameplay.leader.maxSpeed` — no root compat aliases. |
-| **6.3 relationships** | `agentRelationships.js`, profile `relationships` | ✅ Clean. Species matrix logic gone from runtime. |
-| **6.4 species** | `createAgentSpecies.js`, `SNAKE_GAME_SPECIES` map | ✅ Factory wired in prod. ❌ **Orphans on disk** (zero importers): `SnakeInstance.js`, `FleeAgentInstance.js`, `species/snakeSpecies.js`, `species/fleeAgentSpecies.js` — delete when convenient. |
-| **6.5 gameplay** | `applyAgentGameplay.js`, profile `gameplay.leader/body` | ✅ One canonical key per locomotion fact. |
-| **6.6 runtime shims** | Deleted 9 shim files; tests/harness on canonical API | ✅ |
-| **6.7 config dialect** | Removed compat machinery; profile-path reads only | ✅ Grep gates green; tests migrated to `agentProfiles.*` / `shared.*`. |
-
-**Remaining disk orphans (not blocking flow):** `SnakeInstance.js`, `FleeAgentInstance.js`, `species/snakeSpecies.js`, `species/fleeAgentSpecies.js`.
+| Role | File |
+|------|------|
+| Decision build | `Libraries/AI/agents/buildAgentDecisionContext.js` |
+| Game glue | `Libraries/AI/agents/gameDecisionContext.js` |
+| Intent adapter | `Libraries/Game/snake/createGroundNavIntentAdapter.js` |
+| Autosim | `Libraries/Game/snake/agentAutosim.js` |
+| Instance | `Libraries/Game/snake/AgentInstance.js` |
+| Spawn | `Libraries/Game/snake/spawnAgentChain.js` |
+| Reach (frozen) | `Libraries/Navigation/navReachHorizon.js` |
+| Config | `Config/games/snake.js` · `Libraries/Game/snake/snakeGameConfig.js` |
 
 ---
 
 ## The plan (do in order)
 
-### 1–5 — Decision engine ✅
+### 7 — Decision tick objects pass ← **NEXT**
 
-Shipped. See history.
+**Problem:** Step 6 unified *structure* (one engine, one config shape). The decision tick still *allocates* like Game Maker: fresh bags every agent every frame — `visible` → spread `memoryWorld` → `{ visible, remembered, known }` → full `decisionContext` → FSM world spread for flee. Reach is slab-grade; everything around it is `{}` and spreads.
 
----
+This is not "add scratch objects everywhere." Wrong fix. Right fix matches [`frame.md`](frame.md) and [`objects.md`](objects.md):
 
-### 6 — Agent runtime consolidation
+| Do | Don't |
+|----|-------|
+| **Delete** intermediate bags | Pool/recycle the same bag chain |
+| **One instance-owned frame** per intent/autosim — mutate fields in place | Module-global scratch for per-agent state |
+| **Module scratch only** for shared tick work (reach BFS — already done) | TypedArray columns for heterogeneous decision facts |
+| **Scalars / fixed keys** for reach steps and mode scores on the reused frame | Fresh `{}` maps from builders every tick |
+| **One world shape** for snake and flee | `{ ...memoryWorld, decisionContext }` flee dialect |
 
-#### 6.1–6.5 ✅ (see audit above)
-
-#### 6.7 — Config dialect pass ✅
-
-Shipped: removed `LEGACY_*`, `publishConfigCompatAliases`, root `fleeAgent` merge, and duplicate locomotion keys from `Config/games/snake.js`. `applyAgentGameplay` reads `profile.gameplay.leader/body` only. Libraries and tests use `agentProfiles.*` / `shared.*`; `deriveThreatState` accepts both full config and `getThreatConfig()` flat shape.
-
-**6.7 grep gates (green):**
+**Per-tick smell today (one agent):**
 
 ```text
-rg 'publishConfigCompatAliases|LEGACY_SHARED|LEGACY_SNAKE|config\.fleeAgent|fleeAgent:'
-rg 'headMaxSpeed|brainMaxSpeed|segmentPropId' Libraries/Game/snake
-rg 'applySnakeGameConfig\(\{ headMaxSpeed|applySnakeGameConfig\(\{ fleeAgent' tests/
+perceiveAgentWorld        → new visible bag
+enrichWorld               → spread + memorySource bag
+readAgentRouteStatus      → new 8-field object
+buildAgentReachSteps      → new {} map
+buildAgentDecisionContext → spread input, mergeSlots → 3 new slot bags,
+                            routeEvents [], score maps, full ctx
+createAgentIntent         → makeContext ×2, policy spread, effects closures
+flee formatPerceiveWorld  → { ...memoryWorld, decisionContext }
 ```
 
-<details>
-<summary>6.6 + 6.7 shipped detail (archive)</summary>
+**A. Collapse the bag chain (perceive → decide)**
 
-#### 6.6 — Delete interim runtime layer ✅
+| File | Change |
+|------|--------|
+| `createGroundNavIntentAdapter.js` | Intent instance owns reused `visible`, `memoryWorld`, `routeStatus`, `reachSteps`, `decisionContext`. `perceiveWithMemory` mutates; no flee world spread. |
+| `createAgentIntentMemory.js` | Stop spread-enrich; update fields on stable `memoryWorld`. Reuse `memorySource`. |
+| `targetMemory.js` | Update records in place when target still visible; no `makeRecord` every tick. |
+| `agentWorldPerception.js` | Write into intent-owned visible frame (or accept out-buffer from adapter). |
+| `groundNavIntentProfiles.js` | Drop `perceiveSource: "memory"` / `attachDecisionToPerceiveWorld` split — one shape. |
 
-Shipped: tests/harness migrated to `createAgentAutosim`, `createAgentInstance`, `spawnAgentChain.js`, `agentMetabolism.js`, `resolvePackSteeringOptions.js`. Deleted 9 shim files. Stripped `createAliveSnakeInstance`, `createFleeAgentInstance`, `createSnakeBrain` aliases.
+**B. Decision build — mutate, don't mint**
 
-**Deleted files:** `snakeAutosim.js`, `squid/squidAutosim.js`, `squid/squidMetabolism.js`, `squid/squidScale.js`, `squid/spawnSquidChain.js`, `fleeAgent/fleeMetabolism.js`, `fleeAgent/spawnFleeAgent.js`, `fleeAgent/resolveFleePackOptions.js`, `fleeAgent/eatFleeAgentFood.js`.
+| File | Change |
+|------|--------|
+| `buildAgentDecisionContext.js` | Build into instance frame; no `{ ...input }`; reuse `events` buffer. |
+| `mergeSlotsFromSchema.js` | Write into frame-owned `known` (and only what's still needed of visible/remembered); stop fresh `{}` each tick. |
+| `buildAgentEventTargets.js` / `targetEvents.js` | Reused events list or inline without `[]` + push literals. |
+| `gameDecisionContext.js` | Cache `scoringEnv` on spec at init; stop `buildScoringEnv()` per tick. |
+| `deriveThreatState.js` | Read `getSharedConfig()` at use site; delete `config.shared ?? config`. |
+| `snakeGameConfig.js` | Delete or narrow `getThreatConfig()` spread if nothing needs flat shape. |
+| `utilityScoring.js` / `scoreDecisionModes.js` | Hot path: nets-only pick; score details on cold/debug path only. |
 
-**Kept:** `agentAutosim.js`, `AgentInstance.js`, `spawnAgentChain.js`, scene spawners, flee presentation/intent adapters.
+**C. FSM tail**
 
-</details>
+| File | Change |
+|------|--------|
+| `createAgentIntent.js` | One `makeContext` per tick; reuse effects where possible. |
+| `agentAutosim.js` | Ensure `groundNav` exists at spawn — no lazy `??=` on sprint path. |
+| `resolvePackSteeringOptions.js` | Reuse anchor scratch or read scalars off `known`. |
+
+**D. Cleanup (same PR)**
+
+- Delete disk orphans listed above if grep confirms zero importers.
+- Snake **and** flee tests updated in same PR — no shims, no `{ stepsTo: () => N }` mocks.
+
+**7 done when:**
+
+- Per agent per decision tick: **zero** fresh `{ visible, remembered, known }`, **zero** spread world bags, **zero** `getThreatConfig()` allocation.
+- FSM reads `decisionContext` by reference — not embedded in a copied world.
+- Mode pick runs on reused score slots or scalar nets; details only when debug/HUD asks.
+- Net negative LOC across the pass.
+
+**7 grep gates (`Libraries/` + `tests/`):**
+
+```text
+rg 'formatPerceiveWorld.*\.\.\.|attachDecisionToPerceiveWorld|perceiveSource.*memory'
+rg 'getThreatConfig\(\)' Libraries/AI
+rg 'config\.shared \?\? config'
+rg 'buildAgentReachSteps\('          # should be Into or inline on frame, not fresh {}
+rg 'mergeSlotsFromSchema'            # zero hits returning fresh {} — or only cold/test path
+```
+
+Manual: run snake + flee decision/FSM suites; no behavior change, allocation shape only.
 
 ---
 
-### Step 6 done when
+### 8 — Flow locomotion
 
-- Adding agent #4 = `agentProfiles` block + scene spawn count — no new Instance/Autosim/Metabolism/Species files.
-- 6.6 ✅ · 6.7 ✅ · grep gates green.
-- Net negative LOC across step 6 (expect ~12–15 files deleted, ~0 new runtime files).
-- **`fleeAgent/` and `squid/` folders** contain only scene spawners + flee presentation/intent (decision layer) — no runtime shims.
+**Gate:** Step 7 merged. Do not add flow steering on top of the current per-tick bag chain.
 
-**Gate for flow locomotion:** Step 6 complete (6.6 + 6.7 ✅). Flow work may start.
+**Problem:** Flee escape/regroup uses cell-pick heuristics; crowds want smooth local flow.
 
----
+**Do:** Replace flee **steering only** (not decision reach) with backward flow sampling at agent cell. Decision scoring stays on `navReachHorizon`.
 
-## Future (after step 6)
+**Rules:**
 
-### Flow locomotion
+- Flow windows are locomotion-only — never on utility scoring hot path.
+- Flow reads/writes follow step 7 frame pattern — no new per-tick opts bags.
+- Snake + flee in same PR when touching shared adapter code.
 
-**Problem:** Flee still steers with cell-pick heuristics; crowds and smooth escape want local flow.
-
-**Do:** Replace flee **steering** (not decision reach) with backward flow sampling at agent cell. Decision scoring **stays** on `navReachHorizon` — never per-agent flow windows on the utility hot path ([`objects.md`](objects.md), [`hygiene.md`](hygiene.md)).
-
-**Done when:** flee escape/regroup uses flow downhill; reach for scoring unchanged.
-
----
-
-## Optional (only if profiling says so)
-
-- Reuse one `decisionContext` object per agent instance (mutate in place) instead of fresh object + spreads every tick.
-- Nets-only pick — registry returns numbers; drop score-detail objects on hot path if scratch pool still smells.
-- Drop `buildSnakeDecisionFrame` from public API; tests use full context build or stub `reachSteps` on a minimal bag.
+**8 done when:** Flee escape/regroup uses flow downhill; reach for scoring unchanged; step 7 gates still green.
 
 ---
 
 ## PR rules (every step)
 
-- Net negative LOC unless you explain why in the PR.
-- Snake **and** flee updated in the same PR when touching shared AI code.
-- Tests migrate with the dialect — **no shims**, no "fix tests later."
+- Net negative LOC unless you explain why.
+- Tests migrate with the dialect — same PR, no shims.
 - No new getters, resolvers, `Libraries/AI/decision/` package, or passthrough wrappers.
 - No second distance dialect — ever.
+- Read [`hygiene.md`](hygiene.md) before opening the PR.
 
 ---
 
-## What not to repeat
+## Later (not gated on 7/8)
 
-| Don't | Do |
-|-------|-----|
-| Species `deriveFooSprintIntent` + adapter callback + spec hook | One derive; config rules; latch calls same function |
-| New agent = 7 files + 10 touch points | Config block + spawn entry on shared chain stack |
-| `instanceof SquidInstance` combat trees | Profile `combat` traits; one dispatcher |
-| Per-species relationship matrix edits | Profile `relationships` + one resolver |
-| Test-only factory aliases in prod | Tests import the same public API as runtime |
-| Wrap a range check in objects | Scalar + band table |
-| `profile.headMaxSpeed ?? gameplay.maxSpeed` forever | One canonical key; migrate tests; delete fallback |
-
----
-
-## Current files (ground truth)
-
-| Role | File |
-|------|------|
-| Engine entry | `Libraries/AI/agents/buildAgentDecisionContext.js` |
-| Game glue | `Libraries/AI/agents/gameDecisionContext.js` |
-| Scoring | `Libraries/AI/agents/scoreDecisionModes.js` |
-| Slots | `Libraries/AI/agents/mergeSlotsFromSchema.js` |
-| Bands | `Libraries/AI/agents/bandFromThresholds.js` |
-| Sprint | `Libraries/AI/agents/deriveSprintIntent.js` |
-| Autosim | `Libraries/Game/snake/agentAutosim.js` |
-| Instance | `Libraries/Game/snake/AgentInstance.js` |
-| Spawn | `Libraries/Game/snake/spawnAgentChain.js` · `Libraries/Sandbox/spawnAgentChain.js` |
-| Combat traits | `Libraries/Game/snake/agentCombatTraits.js` |
-| Relationships | `Libraries/Game/snake/agentRelationships.js` |
-| Species factory | `Libraries/Game/snake/species/createAgentSpecies.js` · `species/index.js` |
-| Gameplay apply | `Libraries/Game/snake/applyAgentGameplay.js` |
-| Config | `Config/games/snake.js` |
-| Reach (frozen) | `Libraries/Navigation/navReachHorizon.js` |
-
-| Config loader | `Libraries/Game/snake/snakeGameConfig.js` |
-| Threat derive | `Libraries/AI/agents/deriveThreatState.js` |
-
-**Deleted in 6.6:** `snakeAutosim.js`, `squid/squidAutosim.js`, `squid/squidMetabolism.js`, `squid/squidScale.js`, `squid/spawnSquidChain.js`, `fleeAgent/fleeMetabolism.js`, `fleeAgent/spawnFleeAgent.js`, `fleeAgent/resolveFleePackOptions.js`, `fleeAgent/eatFleeAgentFood.js`.
-
-**Shipped in 6.7:** compat layer removed from `snakeGameConfig.js`; duplicate locomotion keys removed; readers use `agentProfiles.*` / `shared.*` only.
+- Strategy / game theory / GOAP — see [`AI.md`](../../AI.md) tier 8 (not started).
+- Generic perception→memory→slot pipeline — deferred; step 7 collapses bags without building a framework.
+- Decision context pooling across agents — not the model; one frame **per instance**, not module scratch.
