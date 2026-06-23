@@ -1,6 +1,6 @@
-# Snake / flee AI — what’s left
+# Snake / flee / squid AI — what's left
 
-One page. No pass names. Goal: **one decision engine, two config tables, zero duplicate species JS.**
+One page. No pass names. Goal: **one decision engine, one agent runtime, config-only new agents — zero duplicate species JS.**
 
 Hygiene when touching this: [`hygiene.md`](hygiene.md) · [`stupid.md`](stupid.md) · [`objects.md`](objects.md) · [`frame.md`](frame.md)
 
@@ -8,57 +8,57 @@ Hygiene when touching this: [`hygiene.md`](hygiene.md) · [`stupid.md`](stupid.m
 
 ## Goal
 
-Every tick an agent gets **one `decisionContext`**: merged targets, path-step reach, threat/hunger facts, scored modes, chosen intent, sprint intent. Snake and flee differ only in **`Config/games/snake.js`** — not in parallel species derive functions or adapter callbacks.
+**Decision layer (done):** Every tick an agent gets **one `decisionContext`**: merged targets, path-step reach, threat/hunger facts, scored modes, chosen intent, sprint intent. Snake, flee, and squid differ only in **`Config/games/snake.js`** intent/decision blocks — not parallel derive functions or adapter callbacks.
+
+**Runtime layer (in progress):** Every agent is **one chain** (`AgentInstance` + `createAgentAutosim`) spawned via shared infrastructure. Profile config drives segment topology, metabolism, combat, relationships, and presentation. Adding agent #4 is a **`agentProfiles` block + spawn count** — not new Instance/Autosim/Metabolism/Species files and not N×N edits across combat and relationship matrices.
+
+**Tests:** Migrate with the dialect in the same PR. No production aliases kept alive because tests still import `createFleeAgentInstance`, `SnakeInstance`, or harness-only factories.
 
 ---
 
-## Already done (don’t regress)
+## Already done (don't regress)
 
 - **Decision reach** — `syncNavReachHorizon` + `navReachStepsTo`; no `*Dist`, no per-tick `{ stepsTo() }` objects.
 - **One context** — flat `decisionContext`; no `blackboard` / `decisionSnapshot` pair.
 - **Shared agent layer** — slot merge, scorer registry, band tables, `gameDecisionContext.js` entry.
-- **Hot-path wins** — nav topo for LOS, score-detail scratch pool, kinetic sleep without per-tick `Set`.
-- **Hunger** — `foodFraction` + `hungerTier` from `hungerBands` + `bandFromThresholds`.
+- **Config owns slots, scoring, bands, sprint** — deleted `*DecisionModel.js`; one `deriveSprintIntent.js`.
+- **Shared autosim** — `createAgentAutosim(profileId)`; snake/flee/squid tick through one module.
+- **Unified instance** — `AgentInstance.js` replaces `SnakeInstance`, `SquidInstance`, `FleeAgentInstance`; combat uses profile helpers not `instanceof`.
 
-**Tests:** 70/70 on decision + ally + flee metabolism suites touched by steps 1–4.
-
-**Still wrong (why step 6 is next):** flee steering still uses cell-pick heuristics; flow locomotion is gated until sprint consolidation is stable. ✅ Sprint is now one derive + config rules.
+Ship log: [`fsm/history.md`](fsm/history.md) · [`history.md`](fsm/history.md) — archive only.
 
 ---
 
 ## The plan (do in order)
 
-### 1 — Config owns slot merge ✅
+### 1–5 — Decision engine ✅
 
-Shipped: `decision` / `fleeAgent.decision` slot tables + `mergeSlotsFromSchema.js`.
-
----
-
-### 2 — Engine owns scoring ✅
-
-Shipped: `scoreDecisionModes.js` + `decision.modes` in config.
+Shipped: config slot merge, engine scoring, hunger bands, deleted species decision models, one sprint path. See history.
 
 ---
 
-### 3 — Config owns bands ✅
+### 6 — Agent runtime consolidation ← **NEXT**
 
-Shipped: `hungerBands` + `bandFromThresholds` + `lookupBandTable`.
+**Problem:** Squid proved the gap — copy-pasted file trees and ~10 touch points per new agent. Interim wrappers (`snakeAutosim`, `squidAutosim`, `fleeMetabolism`, `squidMetabolism`, `squidScale`) still exist.
+
+**Do (in order within this step):**
+
+1. **`spawnAgentChain`** — extend `spawnLinkedBallChain` with `leaderIndex`; flee = 1 seg / leader 0, snake = leader 0, squid = leader 1. Delete or one-line `spawnSquidChain.js` / bespoke flee spawn paths.
+2. **Profile-driven combat** — move `canSplit`, flee-ram, squid-vs-squid, arm-glance rules into `agentProfiles.*.combat`; dispatch from profile in `snakeCombat.js`, not `instanceof` / species branches.
+3. **Profile-driven relationships** — `agentProfiles.*.relationships` table + one `resolveRelationshipFromProfile(...)`; stop editing snake/flee/squid species files for agent #4.
+4. **`createAgentSpecies(profileId)`** — dedupe `species/*.js` register/start/stop/validate/tick boilerplate.
+5. **`applyAgentGameplay(profileId, role)`** — replace `applySnakeHeadGameplay` / `applySquidBrainGameplay` / segment clones in `snakeGameConfig.js`.
+6. **Delete interim layer** — remove autosim/metabolism/scale wrappers; tests call `createAgentInstance({ profileId })` and `spawnAgentChain(...)` directly.
+
+**Done when:** Adding a chain agent requires only config + spawn list entry; grep clean for `@deprecated`, species-specific metabolism shims, and test-only factory aliases; net negative LOC.
+
+**Gate:** Steps 1–5 (decision) merged ✅ · `AgentInstance` merged ✅.
 
 ---
 
-### 4 — Delete species decision models ✅
+## Future (after step 6)
 
-Shipped: deleted `*DecisionModel.js`; `gameDecisionContext.js` is the entry point.
-
----
-
-### 5 — One sprint path ✅
-
-**Shipped:** `deriveSprintIntent.js` + `sprint.rules` in config; `buildAgentDecisionContext` and flee latch call the same derive; species sprint functions and adapter callbacks removed.
-
----
-
-### 6 — Flow locomotion ← **NEXT**
+### Flow locomotion
 
 **Problem:** Flee still steers with cell-pick heuristics; crowds and smooth escape want local flow.
 
@@ -66,7 +66,7 @@ Shipped: deleted `*DecisionModel.js`; `gameDecisionContext.js` is the entry poin
 
 **Done when:** flee escape/regroup uses flow downhill; reach for scoring unchanged.
 
-**Gate:** Step 5 merged ✅ — flow is unblocked.
+**Gate:** Step 6 (agent runtime) merged — flow is not blocked by duplicate spawn/combat/species forks.
 
 ---
 
@@ -82,7 +82,7 @@ Shipped: deleted `*DecisionModel.js`; `gameDecisionContext.js` is the entry poin
 
 - Net negative LOC unless you explain why in the PR.
 - Snake **and** flee updated in the same PR when touching shared AI code.
-- Tests migrate with the dialect — **no shims**, no “fix tests later.”
+- Tests migrate with the dialect — **no shims**, no "fix tests later."
 - No new getters, resolvers, `Libraries/AI/decision/` package, or passthrough wrappers.
 - No second distance dialect — ever.
 
@@ -90,11 +90,14 @@ Shipped: deleted `*DecisionModel.js`; `gameDecisionContext.js` is the entry poin
 
 ## What not to repeat
 
-| Don’t | Do |
+| Don't | Do |
 |-------|-----|
 | Species `deriveFooSprintIntent` + adapter callback + spec hook | One derive; config rules; latch calls same function |
+| New agent = 7 files + 10 touch points | Config block + spawn entry on shared chain stack |
+| `instanceof SquidInstance` combat trees | Profile `combat` traits; one dispatcher |
+| Per-species relationship matrix edits | Profile `relationships` + one resolver |
+| Test-only factory aliases in prod | Tests import the same public API as runtime |
 | Wrap a range check in objects | Scalar + band table |
-| Magic strings that must match config by spelling | Band `id` / rule `id` declared in config; engine validates at load (optional follow-up) |
 
 ---
 
@@ -108,7 +111,9 @@ Shipped: deleted `*DecisionModel.js`; `gameDecisionContext.js` is the entry poin
 | Slots | `Libraries/AI/agents/mergeSlotsFromSchema.js` |
 | Bands | `Libraries/AI/agents/bandFromThresholds.js` |
 | Sprint | `Libraries/AI/agents/deriveSprintIntent.js` |
+| Autosim | `Libraries/Game/snake/agentAutosim.js` |
+| Instance | `Libraries/Game/snake/AgentInstance.js` |
 | Config | `Config/games/snake.js` |
 | Reach (frozen) | `Libraries/Navigation/navReachHorizon.js` |
 
-Ship log: [`fsm/history.md`](fsm/history.md) — archive only.
+**Delete when step 6 finishes:** `snakeAutosim.js`, `squid/squidAutosim.js`, `fleeAgent/fleeMetabolism.js`, `squid/squidMetabolism.js`, `squid/squidScale.js`, redundant spawn wrappers.
