@@ -1,4 +1,3 @@
-import { isAgentEngaged } from "../../AI/agents/agentEngagement.js";
 import { buildAgentDecisionContext, buildAgentDecisionFrame, pickAgentIntentPolicy } from "../../AI/agents/buildAgentDecisionContext.js";
 import { deriveThreatState } from "../../AI/agents/deriveThreatState.js";
 import {
@@ -13,21 +12,11 @@ import {
 } from "../../AI/utility/utilityScoring.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { deriveSnakeEngagementState } from "./snakeEngagement.js";
-const SCORE_ORDER = ["flee", "seek_prey", "seek_food", "seek_ally", "explore"];
-const SNAKE_REMEMBERED_SLOTS = [{ key: "threat" }, { key: "prey" }, { key: "food" }, { key: "ally" }, { key: "allyCount", allyCount: 1 }, { key: "allyCentroid", constant: null }];
-const SNAKE_EVENT_TARGET_SLOTS = ["threat", "prey", "food", "ally"];
 export function deriveSprintIntent(mode, threatState) {
     if (mode === "flee" && threatState && (threatState.lethal || threatState.severity >= getSnakeGameConfig().sprint.fleeSeverity)) return { want: true, reason: "escape" };
     if (mode === "seek_food" && threatState && !threatState.lethal && threatState.severity >= getSnakeGameConfig().sprint.fleeSeverity) return { want: true, reason: "feed" };
     if (mode === "seek_prey") return { want: true, reason: "chase" };
     return { want: false, reason: "none" };
-}
-function resolveKnownAlly(visibleWorld, remembered, memorySource, memoryWorld, session) {
-    let ally = visibleWorld.ally;
-    if (ally && session && !isAgentEngaged(session, ally.id)) ally = null;
-    if (!ally && memorySource?.ally) ally = memoryWorld?.ally ?? remembered.ally ?? null;
-    if (ally && session && !isAgentEngaged(session, ally.id)) ally = null;
-    return ally;
 }
 function effortConfig(pressure) {
     return pressure.effort ?? getSnakeGameConfig().decisionPressure.effort;
@@ -89,38 +78,16 @@ export function scoreSnakeIntentCandidateDetails(ctx, weights = getSnakeGameConf
     };
 }
 export function scoreSnakeIntentCandidates(ctx, weights, pressure) {
-    return scoreCandidateSet(scoreSnakeIntentCandidateDetails(ctx, weights, pressure), SCORE_ORDER).candidateScores;
+    return scoreCandidateSet(scoreSnakeIntentCandidateDetails(ctx, weights, pressure), getSnakeGameConfig().decision.scoreOrder).candidateScores;
 }
 const snakeDecisionSpec = {
-    scoreOrder: SCORE_ORDER,
+    decisionSchema: () => getSnakeGameConfig().decision,
     hungerSatisfiedAt: () => getSnakeGameConfig().hunger.satisfiedAtOrAbove,
     hungerDesperateBelow: () => getSnakeGameConfig().hunger.desperateBelow,
     threatConfig: () => getSnakeGameConfig(),
     weights: () => getSnakeGameConfig().decisionWeights,
     pressure: () => getSnakeGameConfig().decisionPressure,
     allySession: (input) => input.session ?? null,
-    targetLost: { seek_prey: "prey", seek_food: "food", seek_ally: "ally" },
-    rememberedSlots: SNAKE_REMEMBERED_SLOTS,
-    eventTargetSlots: SNAKE_EVENT_TARGET_SLOTS,
-    buildVisible: (visibleWorld) => ({
-        threat: visibleWorld.threat,
-        prey: visibleWorld.prey,
-        food: visibleWorld.food,
-        ally: visibleWorld.ally,
-        allyCount: visibleWorld.allyCount ?? 0,
-        allyCentroid: visibleWorld.allyCentroid ?? null,
-    }),
-    buildKnown: (visible, remembered, visibleWorld, input) => {
-        const knownAlly = resolveKnownAlly(visibleWorld, remembered, input.memorySource, input.memoryWorld, input.session);
-        return {
-            threat: visibleWorld.threat ?? remembered.threat,
-            prey: visibleWorld.prey ?? remembered.prey,
-            food: visibleWorld.food ?? remembered.food,
-            ally: knownAlly,
-            allyCount: knownAlly ? (visibleWorld.ally?.id === knownAlly.id ? visible.allyCount : remembered.allyCount) : 0,
-            allyCentroid: knownAlly && visibleWorld.ally?.id === knownAlly.id ? visible.allyCentroid : null,
-        };
-    },
     extraFacts: (input) => ({
         safetyState: input.safetyState,
         recentFailures: input.recentFailures ?? [],

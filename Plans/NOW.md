@@ -10,7 +10,7 @@
 
 ## Current task
 
-**Decision engine cleanup** — [`current/fsmroadmap.md`](current/fsmroadmap.md) steps 1→4 (config slots → registry → bands → delete species JS)
+**Decision engine cleanup** — [`current/fsmroadmap.md`](current/fsmroadmap.md) step 2 next (scorer registry)
 
 Reach + flat `decisionContext` already shipped ✅
 

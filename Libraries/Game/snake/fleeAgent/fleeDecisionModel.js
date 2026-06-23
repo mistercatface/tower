@@ -1,14 +1,6 @@
 import { buildAgentDecisionContext } from "../../../AI/agents/buildAgentDecisionContext.js";
 import { costPerCellForHunger, foodHungerScoreValue, netScoreDetail, netScoreOnly, resetScoreDetailScratch, SCORE_ABSENT, scoreRiskAdjustedFlee } from "../../../AI/utility/utilityScoring.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
-const SCORE_ORDER = ["flee", "seek_enemy", "seek_food", "seek_ally", "explore"];
-const FLEE_REMEMBERED_SLOTS = [{ key: "threat" }, { key: "enemy", memoryKey: "prey" }, { key: "food" }, { key: "ally" }, { key: "allyCount", allyCount: 1 }, { key: "allyCentroid", constant: null }];
-const FLEE_EVENT_TARGET_SLOTS = [
-    "threat",
-    "food",
-    { kind: "enemy", visible: (visible, _remembered, visibleWorld) => visible.enemy ?? visibleWorld.prey },
-    { kind: "ally", visible: (visible, _remembered, visibleWorld) => visible.ally ?? visibleWorld.ally },
-];
 export function deriveFleeSprintIntent(mode, threatState, hungerTier = null, foodFraction = null) {
     const fleeConfig = getSnakeGameConfig().fleeAgent;
     const pressure = fleeConfig.decisionPressure;
@@ -80,33 +72,12 @@ export function scoreFleeIntentCandidateDetails(ctx, weights = fleeWeights(), pr
     };
 }
 const fleeDecisionSpec = {
-    scoreOrder: SCORE_ORDER,
+    decisionSchema: () => getSnakeGameConfig().fleeAgent.decision,
     hungerSatisfiedAt: () => getSnakeGameConfig().fleeAgent.hunger.satisfiedAtOrAbove,
     hungerDesperateBelow: () => getSnakeGameConfig().fleeAgent.hunger.desperateBelow,
     threatConfig: () => getSnakeGameConfig(),
     weights: fleeWeights,
     pressure: fleePressure,
-    targetLost: { seek_enemy: "enemy", seek_food: "food", seek_ally: "ally" },
-    rememberedSlots: FLEE_REMEMBERED_SLOTS,
-    eventTargetSlots: FLEE_EVENT_TARGET_SLOTS,
-    buildVisible: (visibleWorld, memorySource) => ({
-        threat: visibleWorld.threat,
-        enemy: memorySource?.prey ? null : (visibleWorld.prey ?? null),
-        food: visibleWorld.food,
-        threatCount: visibleWorld.threatCount ?? 0,
-        ally: memorySource?.ally ? null : (visibleWorld.ally ?? null),
-        allyCount: memorySource?.ally ? 0 : (visibleWorld.allyCount ?? 0),
-        allyCentroid: memorySource?.ally ? null : (visibleWorld.allyCentroid ?? null),
-    }),
-    buildKnown: (visible, remembered, visibleWorld) => ({
-        threat: visibleWorld.threat ?? remembered.threat,
-        enemy: visible.enemy ?? remembered.enemy,
-        food: visibleWorld.food ?? remembered.food,
-        ally: visibleWorld.ally ?? remembered.ally,
-        threatCount: visible.threatCount ?? 0,
-        allyCount: visible.ally ? visible.allyCount : remembered.allyCount,
-        allyCentroid: visible.allyCentroid,
-    }),
     deriveSprint: (mode, threatState, hungerTier, ctx) => deriveFleeSprintIntent(mode, threatState, hungerTier, ctx.foodFraction),
     scoreDetails: scoreFleeIntentCandidateDetails,
 };

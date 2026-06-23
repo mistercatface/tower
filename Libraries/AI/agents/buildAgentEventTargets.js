@@ -16,7 +16,7 @@ export function buildAgentEventTargets(visible, remembered, visibleWorld, slots)
     for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
         if (typeof slot === "string") {
-            targets.push({ kind: slot, visibleTarget: visibleWorld[slot], rememberedTarget: remembered[slot] });
+            targets.push({ kind: slot, visibleTarget: visible[slot] ?? visibleWorld[slot] ?? null, rememberedTarget: remembered[slot] ?? null });
             continue;
         }
         const { kind, visible: pickVisible, remembered: pickRemembered } = slot;

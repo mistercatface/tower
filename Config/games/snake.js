@@ -35,6 +35,18 @@ export const SNAKE_GAME_DEFAULTS = {
             riskTolerance: { satisfied: 0, hungry: 0.35, desperate: 0.65 },
             effort: { costPerCell: { satisfied: 22, hungry: 18, desperate: 8 } },
         },
+        decision: {
+            scoreOrder: ["flee", "seek_enemy", "seek_food", "seek_ally", "explore"],
+            targetLost: { seek_enemy: "enemy", seek_food: "food", seek_ally: "ally" },
+            remembered: [{ key: "threat" }, { key: "enemy", memoryKey: "prey" }, { key: "food" }, { key: "ally" }, { key: "allyCount", allyCount: 1 }, { key: "allyCentroid", constant: null }],
+            eventTargets: ["threat", "food", "enemy", "ally"],
+            slots: { threat: {}, enemy: { visibleFrom: "prey", memoryKey: "prey", hideVisibleWhenMemory: true, known: "visibleOrRemembered" }, food: {}, ally: { hideVisibleWhenMemory: true } },
+            fields: {
+                threatCount: { visible: { from: "threatCount", default: 0 }, known: { fromVisible: "threatCount", default: 0 } },
+                allyCount: { visible: { from: "allyCount", default: 0, ifMemory: { key: "ally", use: 0 } }, known: { visibleIfSlot: "ally", fromVisible: "allyCount", fromRemembered: "allyCount" } },
+                allyCentroid: { visible: { from: "allyCentroid", default: null, ifMemory: { key: "ally", use: null } }, known: { fromVisible: "allyCentroid" } },
+            },
+        },
     },
     segmentCount: 3,
     /** Center-to-center rest length = segment diameter × linkSlack. */
@@ -139,4 +151,18 @@ export const SNAKE_GAME_DEFAULTS = {
      * advances the food timer faster so sprinting eats into hunger and accelerates shedding.
      */
     sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 },
+    decision: {
+        scoreOrder: ["flee", "seek_prey", "seek_food", "seek_ally", "explore"],
+        targetLost: { seek_prey: "prey", seek_food: "food", seek_ally: "ally" },
+        remembered: [{ key: "threat" }, { key: "prey" }, { key: "food" }, { key: "ally" }, { key: "allyCount", allyCount: 1 }, { key: "allyCentroid", constant: null }],
+        eventTargets: ["threat", "prey", "food", "ally"],
+        slots: { threat: {}, prey: {}, food: {}, ally: { known: "engagedAlly" } },
+        fields: {
+            allyCount: { visible: { from: "allyCount", default: 0 }, known: { anchorSlot: "ally", matchWorldSlot: "ally", fromVisible: "allyCount", fromRemembered: "allyCount", whenMissing: 0 } },
+            allyCentroid: {
+                visible: { from: "allyCentroid", default: null },
+                known: { anchorSlot: "ally", matchWorldSlot: "ally", fromVisible: "allyCentroid", whenMissing: null, whenNoMatch: null },
+            },
+        },
+    },
 };

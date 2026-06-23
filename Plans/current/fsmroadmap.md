@@ -28,17 +28,13 @@ Every tick an agent gets **one `decisionContext`**: merged targets, path-step re
 
 ## The plan (do in order)
 
-### 1 — Config owns slot merge
+### 1 — Config owns slot merge ✅
 
 **Problem:** `snakeDecisionModel.js` and `fleeDecisionModel.js` each define `buildVisible`, remembered slot arrays, and known-target merge (flee’s enemy←prey alias, memory gating, snake engaged-ally filter).
 
-**Do:**
+**Shipped:** `Config/games/snake.js` → `decision` + `fleeAgent.decision` slot tables; `mergeSlotsFromSchema.js` (declarative field rules + sole `engagedAlly` merge hook); engine reads schema via `spec.decisionSchema()`.
 
-1. Add `decision` and `fleeAgent.decision` subtrees to `Config/games/snake.js` — slot keys, memory flags, visible aliases, which modes map to which slots.
-2. Implement `mergeSlotsFromSchema` in `buildAgentDecisionContext.js` (or one sibling file).
-3. Wire snake + flee adapters to the schema; delete inline `buildVisible` / slot tables from both decision model files.
-
-**Done when:** no `buildVisible` / `buildRemembered` / `buildKnown` closures in `Libraries/Game/snake/*DecisionModel.js`; both species read slots from config.
+**Done when:** no `buildVisible` / `buildRemembered` / `buildKnown` closures in `Libraries/Game/snake/*DecisionModel.js`; both species read slots from config. ✅
 
 ---
 
