@@ -1,8 +1,6 @@
 import { requestUiUpdate } from "../../Core/EventSystem.js";
 import { bakeAnimatedSurfaceFlipbook, releaseAnimatedSurfaceFlipbook } from "./animatedSurfaceFlipbook.js";
 import { createAnimatedSurfaceZone, disposeAnimatedSurfaceZone } from "./animatedSurfaceDraw.js";
-export { bakeAnimatedSurfaceFlipbook, releaseAnimatedSurfaceFlipbook, railBandBoundsAroundPlayfield } from "./animatedSurfaceFlipbook.js";
-export { createAnimatedSurfaceZone, disposeAnimatedSurfaceZone, drawAnimatedSurfaceZone, drawAnimatedSurfaceZones } from "./animatedSurfaceDraw.js";
 /**
  * Register a zone and start an eager flipbook bake. Resolves when `zone.flipbook` is ready
  * (or silently skips if the zone was disposed while baking).

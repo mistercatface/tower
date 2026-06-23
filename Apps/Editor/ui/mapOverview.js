@@ -1,4 +1,4 @@
-import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
+import { applySquareCanvasResize } from "../../../Libraries/Canvas/squareCanvasResize.js";
 import { gridSettings } from "../../../Config/world.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../../../Libraries/Sandbox/mapGenBounds.js";

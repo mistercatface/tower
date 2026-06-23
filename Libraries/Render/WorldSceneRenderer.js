@@ -7,7 +7,7 @@ import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 import { getGridWallDamageSession, resolveWallDamageTintRatioForDrawable } from "../Sandbox/gridWallDamage.js";
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 import { PropRenderer } from "./Props3D/PropRenderer.js";
-import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources } from "../Sandbox/floorOccupancy.js";
+import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources } from "../Sandbox/gridStampDrawCache.js";
 import { collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/drawForcefields.js";
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { elevationCameraFromViewportInto } from "../Spatial/iso/ElevationCamera.js";

@@ -1,17 +1,13 @@
 import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision } from "../Spatial/grid/gridNavEpoch.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
+import { floorBeltFacingFromIndex, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
 import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
-import { fillCircle } from "../Canvas/CanvasPath.js";
-import { drawCachedFloorOccupancyBelts, drawCachedFloorOccupancyPowerSources, syncFloorOccupancyStampDrawCache } from "./gridStampDrawCache.js";
-import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
-import { createConveyorDraw } from "../Render/conveyorDraw.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
-import { syncPassagePowerNetwork, isPassagePowerSourceEnergized } from "./passagePowerNetwork.js";
+import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { applyKineticAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 export const GRID_ROTATABLE_OCCUPANT = { FloorBelt: "floorBelt" };
@@ -48,50 +44,6 @@ export function canStampFloorOccupancyAt(state, col, row) {
 }
 export const canStampFloorBeltAt = canStampFloorOccupancyAt;
 export const canStampPassagePowerSourceAt = canStampFloorOccupancyAt;
-const RAILED_BELT_RAIL_COLORS = { shadow: "#450A0A", mid: "#7F1D1D", highlight: "#991B1B" };
-const RAILED_BELT_RAIL_TOP_COLORS = { light: "#EF4444", mid: "#B91C1C", dark: "#7F1D1D" };
-const RAILED_BELT_RAIL_STROKE = "#3F0707";
-const RAILED_BELT_CHEVRON_COLORS = { fill: "#EF4444", stroke: "#7F1D1D" };
-const railDrawOpts = { railColors: RAILED_BELT_RAIL_COLORS, railTopColors: RAILED_BELT_RAIL_TOP_COLORS, railStroke: RAILED_BELT_RAIL_STROKE, chevronColors: RAILED_BELT_CHEVRON_COLORS };
-const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
-const beltRailsDrawByTurn = {
-    straight: createConveyorDraw(railDrawOpts),
-    left: createConveyorDraw({ turnDirection: "left", ...railDrawOpts }),
-    right: createConveyorDraw({ turnDirection: "right", ...railDrawOpts }),
-};
-const passagePowerSourceDraw = (ctx, prop) => {
-    const energized = prop._powerSource.energized;
-    const cellSize = prop.halfExtents.x * 2;
-    const inset = cellSize * 0.22;
-    const lineScale = getCanvasLineScale(ctx);
-    const half = cellSize * 0.5;
-    const left = prop.x - half + inset;
-    const top = prop.y - half + inset;
-    const size = cellSize - inset * 2;
-    ctx.fillStyle = energized ? "rgba(255, 193, 7, 0.35)" : "rgba(120, 53, 15, 0.25)";
-    ctx.strokeStyle = energized ? "#FFC107" : "#FF8F00";
-    ctx.lineWidth = (energized ? 2.5 : 1.5) * lineScale;
-    ctx.beginPath();
-    ctx.rect(left, top, size, size);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = energized ? "#FFE082" : "#FFB300";
-    fillCircle(ctx, prop.x, prop.y, (energized ? 5 : 4) * lineScale);
-    const corner = inset * 0.55;
-    const innerHalf = half - inset;
-    ctx.fillStyle = energized ? "#FFF59D" : "#FFCA28";
-    fillCircle(ctx, prop.x - innerHalf, prop.y - innerHalf, corner * lineScale);
-    fillCircle(ctx, prop.x + innerHalf, prop.y - innerHalf, corner * lineScale);
-    fillCircle(ctx, prop.x + innerHalf, prop.y + innerHalf, corner * lineScale);
-    fillCircle(ctx, prop.x - innerHalf, prop.y + innerHalf, corner * lineScale);
-};
-function beltDrawForKind(kind) {
-    const turn = floorBeltElbowTurn(kind);
-    const table = isFloorBeltRailsKind(kind) ? beltRailsDrawByTurn : beltDrawByTurn;
-    if (turn === "left") return table.left;
-    if (turn === "right") return table.right;
-    return table.straight;
-}
 export function stampFloorBeltsInBounds(grid, minCol, maxCol, minRow, maxRow, facingRadians) {
     let changed = false;
     forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row) => {
@@ -119,20 +71,6 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
         const beltAngle = floorBeltFacingFromIndex(facingIndex);
         applyKineticAccelerationAlongAngle(entity, beltAngle, force, dtSec);
     }
-}
-export function drawFloorOccupancyBelts(ctx, state, viewport, px, py) {
-    const grid = state.obstacleGrid;
-    if (!grid.floorStore.hasAny()) return;
-    const cached = syncFloorOccupancyStampDrawCache(state, grid);
-    if (!cached?.belts.length) return;
-    drawCachedFloorOccupancyBelts(ctx, viewport, px, py, state.gameTime, cached, beltDrawForKind);
-}
-export function drawFloorOccupancyPowerSources(ctx, state, viewport, px, py) {
-    const grid = state.obstacleGrid;
-    if (!grid.cols) return;
-    const cached = syncFloorOccupancyStampDrawCache(state, grid);
-    if (!cached?.powerSources.length) return;
-    drawCachedFloorOccupancyPowerSources(ctx, viewport, px, py, cached, (col, row) => isPassagePowerSourceEnergized(state, col, row), passagePowerSourceDraw);
 }
 export function clearFloorOverlayAt(state, col, row) {
     const grid = state.obstacleGrid;

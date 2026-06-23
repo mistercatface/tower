@@ -1,5 +1,5 @@
 import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
-import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
+import { applySquareCanvasResize } from "../../../Libraries/Canvas/squareCanvasResize.js";
 import { initResizer } from "./lab-shared.js";
 import { ensureLabPathDebugCache } from "../../../Libraries/Render/map/labMapCaches.js";
 import { initAnimationPreview, mountAnimationPreviewCanvas, setAnimationPreviewActive, syncAnimationPreviewCanvasSize } from "./LabAnimationPreview.js";

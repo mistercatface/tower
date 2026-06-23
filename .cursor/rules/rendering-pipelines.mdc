@@ -92,8 +92,8 @@ forEachObstacleGridCellInAabb(grid, bounds, (col, row) => {
 });
 
 // ✅ — sync on revision, draw from cache
-syncFloorOccupancyStampDrawCache(state, grid);
-drawCachedFloorOccupancyBelts(ctx, viewport, px, py, gameTime, cached, beltDrawForKind);
+drawFloorOccupancyBelts(ctx, state, viewport, px, py);
+drawFloorOccupancyPowerSources(ctx, state, viewport, px, py);
 ```
 
 ---

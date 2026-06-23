@@ -8,7 +8,6 @@ import { railWallCapUvCornersInto } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { applyProjectedCapDamageOverlay, applyProjectedWallFaceDamageOverlay } from "./wallDamageDraw.js";
-export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sBandPoint0 = { x: 0, y: 0 };

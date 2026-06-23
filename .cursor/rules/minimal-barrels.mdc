@@ -39,8 +39,8 @@ Everything else (`boundaryNavHops.js`, `pathFollow.js`, `AStar.js`, …) is impo
 | OK | Not OK |
 |----|--------|
 | `Pathfinding/index.js` — navigator, flow grid, session, nested `Corridor` namespace | Listing every A* / hop / steering helper in `index.js` |
-| `Sandbox/index.js` — toy/session entry points consumers actually import | Re-exporting every file in a folder "for discoverability" |
-| `Corridor/index.js` — sub-package with several modules, one door | `export { foo } from "./foo.js"` passthrough chains |
+| `Corridor/index.js` — sub-package with several modules, one door | Re-exporting every file in a folder "for discoverability" |
+| `Props/primitives/index.js` — shared prop shape registry | `export { foo } from "./foo.js"` passthrough chains |
 
 A minimal barrel exports **entry types** (navigator, session factory, schema version) — not every function in the folder.
 

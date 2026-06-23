@@ -1,5 +1,5 @@
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../../Libraries/Canvas/offscreenCanvas.js";
-import { applySquareCanvasResize } from "../../../Libraries/Canvas/index.js";
+import { applySquareCanvasResize } from "../../../Libraries/Canvas/squareCanvasResize.js";
 import { paintPixelArea } from "../../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { resolveBakeProfile, getAnimationDuration } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { minCornerAabb } from "../../../Libraries/Math/Aabb2D.js";

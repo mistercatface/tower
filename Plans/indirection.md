@@ -18,9 +18,25 @@ Was: two functions, one call site, identical to inlining the `BigInt` pack into 
 
 Was: whole file forwarded to `PropRenderer.drawProp`; `viewport` and `gameState` on context unused. Deleted file. `WorldSceneRenderer` calls `this.props.drawProp(ctx, prop, px, py, zoom)` directly. `propDrawContext` removed. `drawProp` takes scalar `zoom` (and `animFrame`), not `{ zoom }`.
 
-### Floor belt draw — `{ px, py }` camera object (partial Tier 4 #21)
+### Floor belt draw — collapsed into `gridStampDrawCache` (Tier 4 #21)
 
-Was: `drawFloorOccupancyBelts/PowerSources(..., { px, py })` → gridStampDrawCache destructured `camera`. Now `px, py` scalars through the chain. **Still open:** `floorOccupancy.js` wrapper layer (guards only) — see Tier 4 #21.
+Was: `drawFloorOccupancyBelts/PowerSources` in `floorOccupancy.js` — guards + sync hop only. Now exported from `gridStampDrawCache.js` with belt/power draw recipes colocated; `WorldSceneRenderer` imports there. `floorOccupancy.js` is sim/snapshot/stamp only.
+
+### Tier 4 floor / sandbox (#21–#22) ✅
+
+- **`drawFloorOccupancyBelts` / `drawFloorOccupancyPowerSources`** — moved to `gridStampDrawCache.js`
+- **`bumpFloorOccupancyStampDrawRevision`** — removed unused import from `gridStampDrawCache.js`
+
+### Tier 5 barrels / orphans (#23–#25) ✅
+
+- **`Libraries/Sandbox/index.js`** — deleted
+- **`Libraries/Canvas/index.js`** — deleted; editor UI → `squareCanvasResize.js`
+- **`Libraries/Motion/index.js`** — deleted; → `applyDamping.js`
+
+### Bonus trims ✅
+
+- **`ProjectedWallDraw.js`** — dropped unused `wallFaceColumns` re-export
+- **`animatedSurfaceZone.js`** — dropped re-export lines for draw/flipbook symbols
 
 ### Two prop blit paths — `PropRenderer` through `drawCachedPropSprite` (Tier 1 #2)
 
@@ -155,9 +171,9 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-## Tier 4 — Floor / sandbox layering
+## Tier 4 — Floor / sandbox layering ✅
 
-### 21. `drawFloorOccupancyBelts` / `drawFloorOccupancyPowerSources` — orchestration wrappers
+### 21. `drawFloorOccupancyBelts` / `drawFloorOccupancyPowerSources` — orchestration wrappers ✅
 
 **Where:** `Libraries/Sandbox/floorOccupancy.js` → `gridStampDrawCache.js`
 
@@ -169,7 +185,7 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-### 22. Dead import `bumpFloorOccupancyStampDrawRevision`
+### 22. Dead import `bumpFloorOccupancyStampDrawRevision` ✅
 
 **Where:** `Libraries/Sandbox/gridStampDrawCache.js` imports it; never used in file.
 
@@ -179,9 +195,9 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-## Tier 5 — Orphan barrels / files
+## Tier 5 — Orphan barrels / files ✅
 
-### 23. `Libraries/Sandbox/index.js` — import-only file, no exports, no importers
+### 23. `Libraries/Sandbox/index.js` — import-only file, no exports, no importers ✅
 
 **Where:** 48 lines of imports from sandbox modules. **No exports. Nothing imports this file.**
 
@@ -191,7 +207,7 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-### 24. `Libraries/Canvas/index.js` — bloated barrel, one symbol used
+### 24. `Libraries/Canvas/index.js` — bloated barrel, one symbol used ✅
 
 **Where:** Re-exports `applySquareCanvasResize` + ~20 `CanvasPath` symbols.
 
@@ -201,7 +217,7 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-### 25. `Libraries/Motion/index.js` — single-function passthrough barrel
+### 25. `Libraries/Motion/index.js` — single-function passthrough barrel ✅
 
 **Where:** `export { applyVelocityDamping } from "./applyDamping.js"`
 
@@ -213,22 +229,15 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ## Fix order (suggested)
 
-**Done:** Tier 1 complete (#1–#11). Tier 2 complete (#12–#14). Tier 3 complete (#16–#20).
+**Done:** Tier 1–#11, Tier 2 #12–#14, Tier 3 #16–#20, Tier 4 #21–#22, Tier 5 #23–#25.
 
-**Next (recommended): Tier 4** — #21 floor layer collapse, #22 dead import.
-
-**Then pick one thread:**
-
-| Thread | Items | Why |
-|--------|-------|-----|
-| **Floor layer** | #21 remainder | Collapse `floorOccupancy` guards into `gridStampDrawCache` |
-| **Barrels / orphans** | #23–#25 | Delete unused index files |
+**Audit complete** for items listed in this doc. Optional follow-up (not indirection): `animatedSurfaceZone` registry helpers (`push`/`clear`) have zero call sites — dead feature scaffold.
 
 1. ~~**Tier 1 — render / sprite cache**~~ ✅
 2. ~~**Tier 2 overlay commands**~~ ✅ — #12–#14
 3. ~~**Tier 3 WorldSurface**~~ ✅ — #16–#20
-4. **Tier 4 floor** — #21–#22
-5. **Tier 5 barrels** — #23–#25
+4. ~~**Tier 4 floor**~~ ✅ — #21–#22
+5. ~~**Tier 5 barrels**~~ ✅ — #23–#25
 
 ---
 
@@ -239,6 +248,7 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 | `drawCachedPropSprite` / `drawCachedOverlayGlyph` | Mandated public draw entry; real external callers |
 | `appendOverlayWireLink` | 4+ external call sites |
 | `internSpriteKeyPart` / `packQuantizedViewBucket` | Private helpers, multi-use inside cache module |
+| `drawFloorOccupancyBelts` / `drawFloorOccupancyPowerSources` | Public grid-stamp draw entry in `gridStampDrawCache.js`; real caller in WorldSceneRenderer |
 | `syncFloorOccupancyStampDrawCache` | Real revision cache; amortizes sync cost |
 | `Pathfinding/index.js`, `Props/primitives/index.js` | Actual package boundaries with consumers |
 | `projectWorldAabbCornersInto` / `chunkWorldAabbScratch` | Real scratch API, not passthrough naming |
