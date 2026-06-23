@@ -63,7 +63,7 @@ export function fractureSnakeSegmentGeometry(segment, impact, random = Math.rand
 }
 export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = null, random = Math.random) {
     const geometries = fractureSnakeSegmentGeometry(segment, impact, random);
-    const foodValue = geometries.length ? getSnakeGameConfig().metabolism.growthCost / geometries.length : 0;
+    const foodValue = geometries.length ? getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost / geometries.length : 0;
     return spawnShardPropsFromGeometry(state, segment, geometries, SNAKE_SHARD_PROP_ID, spatialFrame, (shard) => {
         copyVisualOverride(segment, shard);
         shard.snakeFoodValue = foodValue;

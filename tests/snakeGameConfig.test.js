@@ -28,8 +28,8 @@ describe("snakeGameConfig", () => {
     });
 
     it("applySnakeGameConfig merges overrides onto defaults", () => {
-        applySnakeGameConfig({ linkSlack: 1.1, eatMargin: 4 });
-        assert.equal(getSnakeGameConfig().linkSlack, 1.1);
+        applySnakeGameConfig({ agentProfiles: { snake: { linkSlack: 1.1 } }, eatMargin: 4 });
+        assert.equal(getSnakeGameConfig().agentProfiles.snake.linkSlack, 1.1);
         assert.equal(getSnakeGameConfig().eatMargin, 4);
         assert.equal(resolveSnakeSegmentSpacing(), 4 * 2 * 1.1);
         assert.equal(resolveSnakeEatRadius(), 4 + 2 + 4);

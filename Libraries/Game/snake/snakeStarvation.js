@@ -23,8 +23,8 @@ export function setSnakeHunger(metabolism, fraction) {
     metabolism.starveMs = 0;
 }
 /** Eat food: refill hunger first, spill the overflow into growth. Returns segments to grow. */
-export function feedSnakeMetabolism(metabolism, value = getSnakeGameConfig().metabolism.foodValue) {
-    const { foodValue, growthCost } = getSnakeGameConfig().metabolism;
+export function feedSnakeMetabolism(metabolism, value = getSnakeGameConfig().agentProfiles.snake.metabolism.foodValue) {
+    const { foodValue, growthCost } = getSnakeGameConfig().agentProfiles.snake.metabolism;
     metabolism.starveMs = 0;
     metabolism.hunger += value ?? foodValue;
     if (metabolism.hunger <= 1) return 0;
@@ -38,8 +38,8 @@ export function feedSnakeMetabolism(metabolism, value = getSnakeGameConfig().met
     return grow;
 }
 export function shrinkSnakeChainFromStarvation(state, headId, members = null) {
-    const config = getSnakeGameConfig();
-    const minSegments = config.minAliveSegmentCount;
+    const snake = getSnakeGameConfig().agentProfiles.snake;
+    const minSegments = snake.minAliveSegmentCount;
     const resolvedMembers = members || getConnectedComponentPath(state.kinetic, headId);
     if (resolvedMembers.length <= minSegments) return false;
     const tailId = resolvedMembers[resolvedMembers.length - 1];
@@ -56,8 +56,8 @@ export function shrinkSnakeChainFromStarvation(state, headId, members = null) {
  * @param {number} dtMs
  */
 export function tickSnakeMetabolism(state, headId, metabolism, dtMs, members = null, drainMultiplier = 1) {
-    const config = getSnakeGameConfig();
-    const { hungerDrainMs, starveShedIntervalMs } = config.metabolism;
+    const snake = getSnakeGameConfig().agentProfiles.snake;
+    const { hungerDrainMs, starveShedIntervalMs } = snake.metabolism;
     metabolism.hunger -= (dtMs * drainMultiplier) / hungerDrainMs;
     if (metabolism.hunger > 0) {
         metabolism.starveMs = 0;
@@ -65,18 +65,18 @@ export function tickSnakeMetabolism(state, headId, metabolism, dtMs, members = n
     }
     metabolism.hunger = 0;
     const resolvedMembers = members || getConnectedComponentPath(state.kinetic, headId);
-    if (getSnakeSegmentCount(state, headId, resolvedMembers) <= config.minAliveSegmentCount) {
+    if (getSnakeSegmentCount(state, headId, resolvedMembers) <= snake.minAliveSegmentCount) {
         metabolism.starveMs = 0;
         return false;
     }
     metabolism.starveMs += dtMs * drainMultiplier;
     let shed = false;
-    while (metabolism.starveMs >= starveShedIntervalMs && getSnakeSegmentCount(state, headId, resolvedMembers) > config.minAliveSegmentCount) {
+    while (metabolism.starveMs >= starveShedIntervalMs && getSnakeSegmentCount(state, headId, resolvedMembers) > snake.minAliveSegmentCount) {
         if (!shrinkSnakeChainFromStarvation(state, headId, resolvedMembers)) break;
         resolvedMembers.pop();
         metabolism.starveMs -= starveShedIntervalMs;
         shed = true;
     }
-    if (getSnakeSegmentCount(state, headId, resolvedMembers) <= config.minAliveSegmentCount) metabolism.starveMs = 0;
+    if (getSnakeSegmentCount(state, headId, resolvedMembers) <= snake.minAliveSegmentCount) metabolism.starveMs = 0;
     return shed;
 }

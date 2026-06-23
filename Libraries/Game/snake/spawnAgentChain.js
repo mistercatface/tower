@@ -29,9 +29,9 @@ function buildChainSpawnSpec(profileId, config, options = {}) {
     const segmentCount = options.segmentCount ?? profile.segmentCount ?? 1;
     const segmentRadius = options.segmentRadius ?? resolveSnakeStartRadius(config);
     const spacing = options.spacing ?? resolveSnakeSegmentSpacing(config, segmentRadius);
-    const growDirX = options.growDirX ?? profile.growDirX ?? config.growDirX ?? -1;
-    const growDirY = options.growDirY ?? profile.growDirY ?? config.growDirY ?? 0;
-    const linkSlack = options.linkSlack ?? profile.linkSlack ?? config.linkSlack ?? 1;
+    const growDirX = options.growDirX ?? profile.growDirX ?? -1;
+    const growDirY = options.growDirY ?? profile.growDirY ?? 0;
+    const linkSlack = options.linkSlack ?? profile.linkSlack ?? 1;
     const base = {
         leaderIndex,
         segmentCount,
@@ -45,12 +45,7 @@ function buildChainSpawnSpec(profileId, config, options = {}) {
         spawnGroupId: options.spawnGroupId,
     };
     if (profileId === AGENT_PROFILE.snake)
-        return {
-            ...base,
-            headPropId: options.headPropId ?? config.headPropId,
-            bodyPropId: options.bodyPropId ?? config.segmentPropId,
-            onSegmentSpawned: onChainSegmentSpawned(profileId, leaderIndex),
-        };
+        return { ...base, headPropId: options.headPropId ?? profile.headPropId, bodyPropId: options.bodyPropId ?? profile.bodyPropId, onSegmentSpawned: onChainSegmentSpawned(profileId, leaderIndex) };
     if (profileId === AGENT_PROFILE.flee)
         return { ...base, segmentCount: 1, leaderIndex: 0, bodyPropId: options.bodyPropId ?? profile.bodyPropId, onSegmentSpawned: onChainSegmentSpawned(profileId, 0) };
     if (profileId === AGENT_PROFILE.squid)

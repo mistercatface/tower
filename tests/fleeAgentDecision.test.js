@@ -28,13 +28,13 @@ function mockTarget(id) {
 
 describe("flee agent decision model", () => {
     it("deriveSprintIntent blocks flee sprint when hunger is critically low", () => {
-        applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 }, decisionPressure: { sprintFleeMinHunger: 0.1 } } });
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 }, decisionPressure: { sprintFleeMinHunger: 0.1 } } } });
         const sprint = getAgentProfile(AGENT_DECISION_PROFILE.flee).sprint;
         assert.equal(deriveSprintIntent("flee", sprintCtx({ threatState: { lethal: true, severity: 1 }, hungerTier: "desperate", foodFraction: 0.05 }), sprint).want, false);
     });
 
     it("deriveSprintIntent sprints on flee when threat is severe enough", () => {
-        applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5 } } });
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.5 } } } });
         const sprint = getAgentProfile(AGENT_DECISION_PROFILE.flee).sprint;
         const result = deriveSprintIntent("flee", sprintCtx({ threatState: { lethal: false, severity: 0.6 }, hungerTier: "hungry", foodFraction: 0.6 }), sprint);
         assert.equal(result.want, true);
@@ -42,7 +42,7 @@ describe("flee agent decision model", () => {
     });
 
     it("deriveSprintIntent only sprints on seek_food when desperate", () => {
-        applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.4 } } });
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.4 } } } });
         const sprint = getAgentProfile(AGENT_DECISION_PROFILE.flee).sprint;
         const threat = { lethal: false, severity: 0.5 };
         assert.equal(deriveSprintIntent("seek_food", sprintCtx({ threatState: threat, hungerTier: "hungry", foodFraction: 0.5 }), sprint).want, false);
@@ -83,7 +83,7 @@ describe("flee agent decision model", () => {
         resetKineticConstraintIds(42);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, fleeAgent: { sprint: { fleeSeverity: 0.5 } } });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.5 } } } });
         const seekerPack = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "bravo" });
         const allyPack = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "bravo" });
         const seeker = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: seekerPack.head.id, spawnGroupId: seekerPack.spawnGroupId });
@@ -94,7 +94,7 @@ describe("flee agent decision model", () => {
         allyPack.head.x = seekerPack.head.x + 64;
         allyPack.head.y = seekerPack.head.y;
         registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
-        primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().shared.visionRange);
         seeker.tick(state, 16);
         assert.equal(seeker.intent.getMode(), "seek_ally");
         assert.equal(seeker.intent.getTargetId(), allyPack.head.id);
@@ -112,7 +112,7 @@ describe("flee agent decision model", () => {
     });
 
     it("flee beats explore when outnumbered by visible threats", () => {
-        applySnakeGameConfig({ fleeAgent: { decisionPressure: { outnumberedFleeBonus: 0.5 } }, fleeRange: 128, lethalThreatRange: 48 });
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { decisionPressure: { outnumberedFleeBonus: 0.5 } } }, shared: { fleeRange: 128, lethalThreatRange: 48 } });
         const hungerTier = "hungry";
         const threatState = { dist: 64, severity: 0.5, lethal: false };
         const ctx = {
@@ -133,7 +133,7 @@ describe("flee agent decision model", () => {
         resetKineticConstraintIds(41);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, fleeAgent: { sprint: { fleeSeverity: 0.3 } } });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.3 } } } });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
@@ -142,7 +142,7 @@ describe("flee agent decision model", () => {
         const threat = spawnSnakeChain(state, { col: 10, row: 14 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
@@ -152,7 +152,7 @@ describe("flee agent decision model", () => {
         resetKineticConstraintIds(40);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, fleeAgent: { sprint: { fleeSeverity: 0.3 } } });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.3 } } } });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
@@ -161,7 +161,7 @@ describe("flee agent decision model", () => {
         const threat = spawnSnakeChain(state, { col: 10, row: 14 }, { segmentCount: 6, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);

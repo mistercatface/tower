@@ -30,14 +30,13 @@ Two agent species share one session via the **species registry** pattern:
 | **Flee agent** | `flee_agent` | Single rolling ball (`spawnFleeAgent`) | explore, seek_food, flee, seek_ally |
 
 ```text
-SNAKE_GAME_SPECIES (Map)
-  snakeSpecies.js      — chain lifecycle, segment scale relationships
-  fleeAgentSpecies.js  — wedge presentation, pack flee options
+SNAKE_GAME_SPECIES (Map via createAgentSpecies)
+  createAgentSpecies.js — profile-driven lifecycle, presentation, pack options
 
 createSnakeAgentSession(state, { registry, navWalkable, speciesById })
   registry              — agentPopulationRegistry (alive/dead by headId)
-  instancesByHeadId     — SnakeInstance | FleeAgentInstance
-  autosimsByHeadId      — snake forage autosim per head
+  instancesByHeadId     — AgentInstance (all species)
+  autosimsByHeadId      — createAgentAutosim per head
   engagementByHeadId    — published engagement facts (see below)
 ```
 
@@ -194,7 +193,7 @@ Grouped knobs (override via `applySnakeGameConfig` in tests):
 | `classifyAgentVision`, `agentWorldPerception` | `snakeIntent`, `snakeIntentMemory`, species relationship rules |
 | `agentEngagement` publish/read | `deriveSnakeEngagementState`, session wiring |
 | Grid-cell vision, observer frame | `snakePerception` batching, food query |
-| `agentPopulationRegistry` | Species defs, `SnakeInstance`, `FleeAgentInstance`, combat, scene |
+| `agentPopulationRegistry` | `createAgentSpecies`, `AgentInstance`, combat traits, scene wiring |
 
 **Rule of thumb:** if a second game mode would need the same primitive, it belongs in `Libraries/AI` or `Libraries/Navigation`. If it references segment count, snake chains, or shard food, it stays here until a second consumer appears.
 

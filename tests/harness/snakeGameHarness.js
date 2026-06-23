@@ -11,7 +11,7 @@ import { spawnLinkedBallChain } from "../../Libraries/Sandbox/spawnLinkedBallCha
 import { createDirectGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
+import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeChainSpawnOptions, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
 import { createAgentAutosim } from "../../Libraries/Game/snake/agentAutosim.js";
 import { AGENT_PROFILE } from "../../Libraries/AI/agents/agentProfile.js";
 import { resolveSnakeNavWalkableFloodSeedBounds } from "../../Libraries/Game/snake/snakeScene.js";
@@ -122,7 +122,7 @@ export function spawnSnakeFoodShardAtCell(state, cell, { foodValue = null } = {}
     const shard = new WorldProp(x, y, SNAKE_SHARD_PROP_ID, 0);
     shard.shape = new CircleShape(2);
     shard.radius = 2;
-    shard.snakeFoodValue = foodValue ?? getSnakeGameConfig().metabolism.foodValue;
+    shard.snakeFoodValue = foodValue ?? getSnakeGameConfig().agentProfiles.snake.metabolism.foodValue;
     addWorldPropToState(state, shard);
     return shard;
 }
@@ -133,15 +133,7 @@ export async function buildSnakeGameSession(state) {
     const chain = spawnLinkedBallChain(
         state,
         { col: 10, row: 10 },
-        {
-            segmentCount: config.segmentCount,
-            spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
-            segmentRadius: config.startRadius,
-            linkSlack: config.linkSlack,
-            ballType: config.segmentPropId,
-            growDirX: config.growDirX,
-            growDirY: config.growDirY,
-        },
+        resolveSnakeChainSpawnOptions(config),
     );
     wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
     const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 });

@@ -49,7 +49,7 @@ describe("spawnGameAgentChain", () => {
     });
 
     it("snake profile uses leader at index 0", () => {
-        applySnakeGameConfig({ segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(9003);
         const state = createTestState();
         const meta = getSandboxEntityMeta(state);

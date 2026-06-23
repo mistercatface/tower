@@ -8,7 +8,7 @@ import { registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
 import { reapAgentInstance } from "./snakeAgentLifecycle.js";
 import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
 import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
-import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
+import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
 import { syncFleeAgentPresentation } from "./fleeAgent/syncFleeAgentPresentation.js";
 import { getAgentCombatTraits } from "./agentCombatTraits.js";
@@ -89,7 +89,7 @@ export class AgentInstance {
         if (isSquidProfile(this)) return getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId);
         const members = getConnectedComponentPath(state.kinetic, this.headId);
         if (members[0] !== this.headId) return false;
-        if (isSnakeProfile(this) && members.length < getSnakeGameConfig().minAliveSegmentCount) return false;
+        if (isSnakeProfile(this) && members.length < getAgentProfile(AGENT_PROFILE.snake).minAliveSegmentCount) return false;
         return true;
     }
     validate(state, snakeGame) {
@@ -231,7 +231,7 @@ export class AgentInstance {
         const tailIds = members.slice(strikeIndex + 1);
         this.severInertTail(state, snakeGame, tailIds);
         this.memberIds = aliveIds;
-        if (aliveIds.length < getSnakeGameConfig().minAliveSegmentCount) this.die(state, snakeGame, aliveIds, deathImpact);
+        if (aliveIds.length < getAgentProfile(AGENT_PROFILE.snake).minAliveSegmentCount) this.die(state, snakeGame, aliveIds, deathImpact);
         return { aliveHeadId: this.headId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
     }
 }

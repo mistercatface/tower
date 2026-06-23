@@ -41,11 +41,11 @@ function snakeChainOptions(segmentCount) {
         segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
         segmentRadius: config.startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: config.agentProfiles.snake.linkSlack,
+        ballType: config.agentProfiles.snake.bodyPropId,
+        headBallType: config.agentProfiles.snake.headPropId,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
         exportType: SNAKE_CHAIN_EXPORT_TYPE,
     };
 }
@@ -60,7 +60,7 @@ function mockSnakeGame(state, headIds, spawnGroupIdByHeadId = null) {
 
 describe("snake split on impact", () => {
     it("getOrderedChainMemberIds walks head to tail", () => {
-        applySnakeGameConfig({ segmentCount: 4 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 4 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(4));
@@ -71,7 +71,7 @@ describe("snake split on impact", () => {
     });
 
     it("split at middle segment severs tail into inert instance", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
@@ -89,7 +89,7 @@ describe("snake split on impact", () => {
     });
 
     it("split that leaves too few segments kills the survivor", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3, segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -105,7 +105,7 @@ describe("snake split on impact", () => {
 
 describe("snake min length death", () => {
     it("enforceSnakeMinLength kills head-only chain", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(1));
@@ -116,7 +116,7 @@ describe("snake min length death", () => {
     });
 
     it("enforceSnakeMinLength kills head plus one segment", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(2));
@@ -127,7 +127,7 @@ describe("snake min length death", () => {
     });
 
     it("killSnake stops autosim and clears chain links", () => {
-        applySnakeGameConfig({ segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -140,7 +140,7 @@ describe("snake min length death", () => {
     });
 
     it("killSnake strips nav drive but keeps segment velocity", () => {
-        applySnakeGameConfig({ segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -157,7 +157,7 @@ describe("snake min length death", () => {
     });
 
     it("split inert tail retires nav drive on severed segments", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
@@ -175,7 +175,7 @@ describe("snake min length death", () => {
     });
 
     it("alive registry guard skips autosim tick for dead heads", () => {
-        applySnakeGameConfig({ segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -204,7 +204,7 @@ describe("snake min length death", () => {
     });
 
     it("instance validate kills a head orphaned below min segment count", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -221,7 +221,7 @@ describe("snake min length death", () => {
     });
 
     it("killSnake retires split-off inert tail from the same snake instance", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));

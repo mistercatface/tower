@@ -49,7 +49,7 @@ function createSnakeSceneTestState(cols = 32, rows = 32) {
 
 describe("snake multi-spawn", () => {
     it("derives one spawn spec per snakeCount entry", () => {
-        applySnakeGameConfig({ snakeCount: 3, minAliveSegmentCount: 3, maxAliveSegmentCount: 5 });
+        applySnakeGameConfig({ snakeCount: 3, agentProfiles: { snake: { minAliveSegmentCount: 3, maxAliveSegmentCount: 5 } } });
         const rolls = [0, 0.5, 0.999];
         const specs = resolveSnakeSpawnSpecs(getSnakeGameConfig(), () => rolls.shift());
         assert.deepEqual(specs.map((spec) => spec.segmentCount), [3, 4, 5]);
@@ -85,7 +85,7 @@ describe("snake multi-spawn", () => {
         const state = createSnakeSceneTestState();
         const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.5 });
         wireSnakeGameForHead(state, pack.chain.head.id, pack.chain.spawnGroupId);
-        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().metabolism.growthCost });
+        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
         const behaviorById = new Map([
             [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
             [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
@@ -108,7 +108,7 @@ describe("snake multi-spawn", () => {
 
 describe("snake config counts", () => {
     it("applySnakeGameConfig overrides snakeCount", () => {
-        applySnakeGameConfig({ snakeCount: 30, segmentCount: 3 });
+        applySnakeGameConfig({ snakeCount: 30, agentProfiles: { snake: { segmentCount: 3 } } });
         assert.equal(getSnakeGameConfig().snakeCount, 30);
         assert.equal(resolveSnakeSpawnSpecs().length, 30);
         applySnakeGameConfig();

@@ -39,7 +39,7 @@ function resolveFleeHeadCollision(state, snakeGame, left, right, { leftVx = 80, 
 
 describe("flee agent escape combat", () => {
     it("sprinting flee outside flee mode does not split snake body on contact", async () => {
-        applySnakeGameConfig({ splitImpulseThreshold: 30, minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ splitImpulseThreshold: 30, agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(60);
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);

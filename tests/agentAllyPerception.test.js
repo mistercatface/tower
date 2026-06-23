@@ -13,17 +13,17 @@ function chainOptions(segmentCount) {
         segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
         segmentRadius: config.startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: config.agentProfiles.snake.linkSlack,
+        ballType: config.agentProfiles.snake.bodyPropId,
+        headBallType: config.agentProfiles.snake.headPropId,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
     };
 }
 
 describe("ally perception integration", () => {
     it("satisfied snake regroups toward a foraging ally via autosim", async () => {
-        applySnakeGameConfig({ fleeRange: 128, startRadius: 2 });
+        applySnakeGameConfig({ startRadius: 2, shared: { fleeRange: 128 } });
         resetKineticConstraintIds(1);
         const { state } = await createSnakeGameHarnessState();
         const seeker = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));

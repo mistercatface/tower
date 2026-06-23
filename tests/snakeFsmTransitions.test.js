@@ -61,17 +61,17 @@ function snakeBehaviors(state) {
         [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
     ]);
 }
-function chainOptions(segmentCount = getSnakeGameConfig().segmentCount) {
+function chainOptions(segmentCount = getSnakeGameConfig().agentProfiles.snake.segmentCount) {
     const config = getSnakeGameConfig();
     return {
         segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
         segmentRadius: config.startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: config.agentProfiles.snake.linkSlack,
+        ballType: config.agentProfiles.snake.bodyPropId,
+        headBallType: config.agentProfiles.snake.headPropId,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
     };
 }
 function assignTeamFactions(assignments) {
@@ -177,7 +177,7 @@ describe("snake FSM transitions", () => {
         assert.equal(calls.seek, 1);
     });
     it("explore transitions to seek_prey when a smaller snake is visible", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+        applySnakeGameConfig({ shared: { fleeRange: 128 } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -229,7 +229,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getDestination().lockOnTarget, true);
     });
     it("seek_prey transitions to flee when a larger snake appears", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+        applySnakeGameConfig({ shared: { fleeRange: 128 } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -259,7 +259,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getLastTransitionReason(), "threat_visible");
     });
     it("holds flee briefly after threat severity drops before returning to food", async () => {
-        applySnakeGameConfig({ fleeRange: 128, fleeHysteresis: { minTicks: 35, exitThreatSeverity: 0.15, refreshAtSeverity: 0.35 } });
+        applySnakeGameConfig({ shared: { fleeRange: 128, fleeHysteresis: { minTicks: 35, exitThreatSeverity: 0.15, refreshAtSeverity: 0.35 } } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -287,7 +287,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "seek_food");
     });
     it("seek_prey transitions to seek_food when prey is lost and food is visible", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+        applySnakeGameConfig({ shared: { fleeRange: 128 } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -314,7 +314,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getDestination().col, state.obstacleGrid.worldToGrid(food.x, food.y).col);
     });
     it("keeps chasing last-seen prey briefly when LOS drops and food is visible", async () => {
-        applySnakeGameConfig({ fleeRange: 128, intentMemory: { threatTtlTicks: 2, preyTtlTicks: 4, foodTtlTicks: 4 } });
+        applySnakeGameConfig({ shared: { fleeRange: 128, intentMemory: { threatTtlTicks: 2, preyTtlTicks: 4, foodTtlTicks: 4 } } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -348,7 +348,7 @@ describe("snake FSM transitions", () => {
         assert.ok(snapshot.decision.events.includes("PREY_LAST_SEEN_ACTIVE"));
     });
     it("drops last-seen prey after memory expires and falls back to visible food", async () => {
-        applySnakeGameConfig({ fleeRange: 128, intentMemory: { threatTtlTicks: 1, preyTtlTicks: 1, foodTtlTicks: 4 } });
+        applySnakeGameConfig({ shared: { fleeRange: 128, intentMemory: { threatTtlTicks: 1, preyTtlTicks: 1, foodTtlTicks: 4 } } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -375,7 +375,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getTargetId(), food.id);
     });
     it("seek_food transitions to flee when a larger snake appears", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+        applySnakeGameConfig({ shared: { fleeRange: 128 } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, chainOptions(3));
@@ -401,7 +401,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getLastTransitionReason(), "threat_visible");
     });
     it("flee chains to a new retreat cell on arrival while threat remains visible", async () => {
-        applySnakeGameConfig({ fleeRange: 128, fleeTiles: 2 });
+        applySnakeGameConfig({ shared: { fleeRange: 128, fleeTiles: 2 } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 24, row: 20 }, chainOptions(3));
@@ -463,7 +463,7 @@ describe("snake FSM transitions", () => {
         assert.deepEqual(intent.getDestination(), latched);
     });
     it("a hunting snake sprints, scaling head speed (PR10)", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+        applySnakeGameConfig({ shared: { fleeRange: 128 } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const hunter = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -489,7 +489,7 @@ describe("snake FSM transitions", () => {
         assert.equal(hunter.head.strategy.groundNav.maxSpeed, baseSpeed * getAgentProfile(AGENT_DECISION_PROFILE.snake).sprint.speedMultiplier);
     });
     it("a min-length snake never sprints, even fleeing a lethal threat (PR10)", async () => {
-        applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 64 });
+        applySnakeGameConfig({ shared: { fleeRange: 128, lethalThreatRange: 64 } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const small = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(3));
@@ -512,7 +512,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.isSprinting(), false);
     });
     it("equal rivals both seek prey when visible", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+        applySnakeGameConfig({ shared: { fleeRange: 128 } });
         resetKineticConstraintIds(50);
         const state = await createFsmTestState();
         const red = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -546,7 +546,7 @@ describe("snake FSM transitions", () => {
         assert.throws(() => createAgentAutosim(state, { profileId: AGENT_PROFILE.snake, leaderId: chain.head.id, navWalkable: stubNavWalkable }), /registry/);
     });
     it("satisfied snake ignores same-team smaller snake but hunts opposite-team smaller snake (Red vs Blue)", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+        applySnakeGameConfig({ shared: { fleeRange: 128 } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         // Spawn satisfied seeker (Red, length 5)

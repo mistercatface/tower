@@ -35,7 +35,7 @@ function createTestState(cols = 32, rows = 32) {
 
 describe("snake camera focus", () => {
     it("stops following when the focused head dies", () => {
-        applySnakeGameConfig({ segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3 });

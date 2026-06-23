@@ -2,7 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
-import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { applySnakeGameConfig, getSharedConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { spawnFleeAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
@@ -21,11 +21,11 @@ function chainOptions(segmentCount) {
         segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
         segmentRadius: config.startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: config.agentProfiles.snake.linkSlack,
+        ballType: config.agentProfiles.snake.bodyPropId,
+        headBallType: config.agentProfiles.snake.headPropId,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
     };
 }
 
@@ -68,7 +68,7 @@ describe("agent engagement", () => {
 
 describe("ally intent memory", () => {
     it("retains ally after line of sight is lost", async () => {
-        applySnakeGameConfig({ intentMemory: { allyTtlTicks: 2 } });
+        applySnakeGameConfig({ shared: { intentMemory: { allyTtlTicks: 2 } } });
         resetKineticConstraintIds(1);
         const { state } = await createSnakeGameHarnessState();
         const seeker = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
@@ -80,7 +80,7 @@ describe("ally intent memory", () => {
         publishAgentEngagement(snakeGame, ally.head.id, { active: true, salience: ["food"], mode: "seek_food" });
         seeker.head.faction = "red";
         ally.head.faction = "red";
-        const memory = createAgentIntentMemory({ ...getSnakeGameConfig().intentMemory, filterAllyForEngagement: true });
+        const memory = createAgentIntentMemory({ ...getSharedConfig().intentMemory, filterAllyForEngagement: true });
         const visible = { threat: null, prey: null, food: null, ally: ally.head, allyCount: 1, allyCentroid: { x: ally.head.x, y: ally.head.y } };
         const empty = { ...visible, ally: null, allyCount: 0, allyCentroid: null };
         memory.update(seeker.head, state, visible);
@@ -108,7 +108,7 @@ describe("ally intent memory", () => {
     });
 
     it("flee agent retains ally facts through memory", async () => {
-        applySnakeGameConfig({ intentMemory: { allyTtlTicks: 3 } });
+        applySnakeGameConfig({ shared: { intentMemory: { allyTtlTicks: 3 } } });
         resetKineticConstraintIds(2);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
@@ -116,7 +116,7 @@ describe("ally intent memory", () => {
         const allyPack = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "bravo" });
         registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: seekerPack.head.id, spawnGroupId: seekerPack.spawnGroupId }));
         registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
-        const memory = createAgentIntentMemory(getSnakeGameConfig().intentMemory);
+        const memory = createAgentIntentMemory(getSharedConfig().intentMemory);
         const visible = {
             threat: null,
             food: null,

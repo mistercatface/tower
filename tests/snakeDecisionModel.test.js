@@ -46,7 +46,7 @@ function decisionFrame(visibleWorld, opts = {}) {
 }
 describe("snake hunger facts (PR1)", () => {
     it("derives satisfied/hungry/desperate from food fraction", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const tier = (fraction) => bandFromThresholds(fraction, getAgentProfile(AGENT_DECISION_PROFILE.snake).hungerBands);
         assert.equal(tier(1), "satisfied");
         assert.equal(tier(0.66), "satisfied");
@@ -59,7 +59,7 @@ describe("snake hunger facts (PR1)", () => {
         assert.equal(ctx.hungerTier, null);
     });
     it("exposes hunger facts on the decision snapshot", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const ctx = context(world({ food: snake(3) }), { foodFraction: 0.9 });
         assert.equal(ctx.hungerTier, "satisfied");
         assert.equal(ctx.foodFraction, 0.9);
@@ -68,7 +68,7 @@ describe("snake hunger facts (PR1)", () => {
 });
 describe("snake intent scoring parity (PR2)", () => {
     it("scored policy prefers shard food over prey while preserving threat and explore ordering", () => {
-        applySnakeGameConfig({ decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } });
+        applySnakeGameConfig({ agentProfiles: { snake: { decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } } } });
         const cases = [
             { in: world({ threat: snake(1), prey: snake(2), food: snake(3) }), mode: "flee" },
             { in: world({ prey: snake(2), food: snake(3) }), mode: "seek_food" },
@@ -81,7 +81,7 @@ describe("snake intent scoring parity (PR2)", () => {
         }
     });
     it("stores candidate scores and chosen reason on the snapshot", () => {
-        applySnakeGameConfig({ decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } });
+        applySnakeGameConfig({ agentProfiles: { snake: { decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } } } });
         const ctx = context(world({ food: snake(9) }));
         assert.deepEqual(ctx.candidateScores, { flee: -Infinity, seek_prey: -Infinity, seek_food: 320, seek_ally: -Infinity, explore: 100 });
         assert.equal(ctx.chosenIntent.mode, "seek_food");
@@ -104,43 +104,43 @@ describe("snake intent scoring parity (PR2)", () => {
 });
 describe("satisfied snakes weigh prey effort", () => {
     it("a satisfied snake grabs adjacent visible prey", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const ctx = context(world({ prey: snake(2) }), { foodFraction: 0.9, reachSteps: { prey: 1, food: null, ally: null, threat: null } });
         assert.equal(ctx.chosenIntent.mode, "seek_prey");
         assert.equal(ctx.candidateScoreDetails.seek_prey.reach, 1);
         assert.equal(ctx.candidateScoreDetails.seek_prey.cost, 25);
     });
     it("a satisfied snake explores instead of chasing far visible prey", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const ctx = context(world({ prey: snake(2, { type: "snake_head", faction: "red" }) }), { foodFraction: 0.9, seekerFaction: "red", reachSteps: { prey: 2, food: null, ally: null, threat: null } });
         assert.equal(ctx.chosenIntent.mode, "explore");
         assert.equal(ctx.candidateScoreDetails.seek_prey.net, 90);
     });
     it("a satisfied snake still attacks an opposite-team snake prey", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const ctx = context(world({ prey: snake(2, { type: "snake_head", faction: "blue" }) }), { foodFraction: 0.9, seekerFaction: "red", reachSteps: { prey: 8, food: null, ally: null, threat: null } });
         assert.equal(ctx.chosenIntent.mode, "seek_prey");
         assert.ok(ctx.candidateScores.seek_prey > 1000);
     });
     it("a hungry snake still chases prey", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const ctx = context(world({ prey: snake(2, { type: "snake_head", faction: "blue" }) }), { foodFraction: 0.4, seekerFaction: "red", reachSteps: { prey: 6, food: null, ally: null, threat: null } });
         assert.equal(ctx.chosenIntent.mode, "seek_prey");
     });
     it("a satisfied snake still flees a larger threat", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const ctx = context(world({ threat: snake(1), prey: snake(2) }), { foodFraction: 1, reachSteps: { threat: 1, prey: 1, food: null, ally: null } });
         assert.equal(ctx.chosenIntent.mode, "flee");
     });
     it("a satisfied snake still seeks food over exploring", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const ctx = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.9 });
         assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
 });
 describe("committed target effort uses route length", () => {
     it("a satisfied snake abandons a lengthening chase while a desperate snake sustains it", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const prey = snake(2);
         const committedTarget = { mode: "seek_prey", targetId: prey.id };
         const routeStatus = { pathLen: 6 };
@@ -151,7 +151,7 @@ describe("committed target effort uses route length", () => {
         assert.equal(desperate.chosenIntent.mode, "seek_prey");
     });
     it("surfaces effort fields on the decision snapshot", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const ctx = context(world({ food: snake(3) }), { foodFraction: 0.5, reachSteps: { food: 4, prey: null, ally: null, threat: null } });
         assert.deepEqual(ctx.candidateScoreDetails.seek_food, { value: 490, reach: 4, cost: 80, net: 410 });
         assert.equal(ctx.candidateScores.seek_food, 410);
@@ -159,7 +159,7 @@ describe("committed target effort uses route length", () => {
 });
 describe("threat severity facts (PR6)", () => {
     it("derives severity from distance and flags lethal range", () => {
-        applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 48 });
+        applySnakeGameConfig({ shared: { fleeRange: 128, lethalThreatRange: 48 } });
         assert.equal(deriveThreatState(null, 10, CELL, getSnakeGameConfig()), null);
         assert.equal(deriveThreatState(snake(1), null, CELL, getSnakeGameConfig()), null);
         assert.equal(deriveThreatState(snake(1), 4, CELL, getSnakeGameConfig()).severity, 0.5);
@@ -168,22 +168,18 @@ describe("threat severity facts (PR6)", () => {
         assert.equal(deriveThreatState(snake(1), 4, CELL, getSnakeGameConfig()).lethal, false);
     });
     it("surfaces threatState on the snapshot without changing the chosen mode", () => {
-        applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 48, decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } });
+        applySnakeGameConfig({ agentProfiles: { snake: { decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } } }, shared: { fleeRange: 128, lethalThreatRange: 48 } });
         const ctx = context(world({ threat: snake(1), food: snake(2) }), { reachSteps: { threat: 4, food: 1, prey: null, ally: null } });
         assert.equal(ctx.threatState.severity, 0.5);
         assert.equal(ctx.chosenIntent.mode, "flee");
     });
 });
 function applyScoringConfig() {
-    applySnakeGameConfig({
-        hungerBands: [
+    applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: [
             { id: "satisfied", min: 0.66 },
             { id: "hungry", min: 0.33 },
             { id: "desperate", min: 0 },
-        ],
-        decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 },
-        decisionPressure: { foodHungerBonus: 300, preyDesperationBonus: 250 },
-    });
+        ], decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 }, decisionPressure: { foodHungerBonus: 300, preyDesperationBonus: 250 } } } });
 }
 describe("hunger pressure and route-awareness (PR5)", () => {
     it("raises the food score as the snake gets hungrier", () => {
@@ -214,17 +210,11 @@ describe("hunger pressure and route-awareness (PR5)", () => {
     });
 });
 function applyRiskConfig() {
-    applySnakeGameConfig({
-        fleeRange: 128,
-        lethalThreatRange: 48,
-        hungerBands: [
+    applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: [
             { id: "satisfied", min: 0.66 },
             { id: "hungry", min: 0.33 },
             { id: "desperate", min: 0 },
-        ],
-        decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 },
-        decisionPressure: { foodHungerBonus: 300, preyDesperationBonus: 250, riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 } },
-    });
+        ], decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 }, decisionPressure: { foodHungerBonus: 300, preyDesperationBonus: 250, riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 } } } }, shared: { fleeRange: 128, lethalThreatRange: 48 } });
 }
 describe("hunger overrides flee for food (PR7)", () => {
     it("a well-fed snake flees a mid-range threat instead of grabbing food", () => {
@@ -255,7 +245,7 @@ describe("hunger overrides flee for food (PR7)", () => {
 });
 describe("sprint intent facts (PR9)", () => {
     it("sprints to escape a severe or lethal flee threat", () => {
-        applySnakeGameConfig({ sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 } });
+        applySnakeGameConfig({ agentProfiles: { snake: { sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 } } } });
         const sprint = getAgentProfile(AGENT_DECISION_PROFILE.snake).sprint;
         assert.deepEqual(deriveSprintIntent("flee", sprintCtx({ threatState: { severity: 0.8, lethal: false } }), sprint), { want: true, reason: "escape" });
         assert.deepEqual(deriveSprintIntent("flee", sprintCtx({ threatState: { severity: 0.1, lethal: true } }), sprint), { want: true, reason: "escape" });
@@ -267,7 +257,7 @@ describe("sprint intent facts (PR9)", () => {
         assert.deepEqual(deriveSprintIntent("seek_prey", sprintCtx(), getAgentProfile(AGENT_DECISION_PROFILE.snake).sprint), { want: true, reason: "chase" });
     });
     it("sprints to grab food under a serious non-lethal threat", () => {
-        applySnakeGameConfig({ sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 } });
+        applySnakeGameConfig({ agentProfiles: { snake: { sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 } } } });
         assert.deepEqual(deriveSprintIntent("seek_food", sprintCtx({ threatState: { severity: 0.8, lethal: false } }), getAgentProfile(AGENT_DECISION_PROFILE.snake).sprint), { want: true, reason: "feed" });
     });
     it("does not sprint for safe food or exploring", () => {
@@ -276,7 +266,7 @@ describe("sprint intent facts (PR9)", () => {
         assert.equal(deriveSprintIntent("explore", sprintCtx(), sprint).want, false);
     });
     it("surfaces sprintIntent on the decision snapshot", () => {
-        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        applySnakeGameConfig({ agentProfiles: { snake: { hungerBands: TEST_HUNGER_BANDS } } });
         const ctx = context(world({ prey: snake(9) }), { foodFraction: 0.4 });
         assert.equal(ctx.chosenIntent.mode, "seek_prey");
         assert.deepEqual(ctx.sprintIntent, { want: true, reason: "chase" });
@@ -312,7 +302,7 @@ describe("snake seek_ally cohesion (4c)", () => {
         assert.equal(desperate.chosenIntent.mode, "explore");
     });
     it("scales regroup drive down for long snakes", () => {
-        applySnakeGameConfig({ factionCohesion: { referenceSegmentCount: 3, maxSegmentScale: 10 } });
+        applySnakeGameConfig({ agentProfiles: { snake: { factionCohesion: { referenceSegmentCount: 3, maxSegmentScale: 10 } } } });
         const small = context(allyWorld().visible, { foodFraction: 0.9, seekerSegmentCount: 3, reachSteps: allyWorld().reachSteps });
         assert.equal(small.chosenIntent.mode, "seek_ally");
         const large = context(allyWorld().visible, { foodFraction: 0.9, seekerSegmentCount: 10, reachSteps: allyWorld().reachSteps });
@@ -325,7 +315,7 @@ describe("snake seek_ally cohesion (4c)", () => {
         assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
     it("does not regroup when already within ideal stop distance", () => {
-        applySnakeGameConfig({ factionCohesion: { idealStopDist: 3 } });
+        applySnakeGameConfig({ agentProfiles: { snake: { factionCohesion: { idealStopDist: 3 } } } });
         const aw = allyWorld("ally1", 2);
         const ctx = context(aw.visible, { foodFraction: 0.9, seekerSegmentCount: 3, reachSteps: aw.reachSteps });
         assert.equal(ctx.chosenIntent.mode, "explore");

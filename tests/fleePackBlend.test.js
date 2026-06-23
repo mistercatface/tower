@@ -16,13 +16,13 @@ const openNav = { has: () => true };
 
 describe("flee pack blend (4d)", () => {
     it("resolvePackSteeringOptions returns null without allies", () => {
-        applySnakeGameConfig({ fleeAgent: { factionCohesion: { fleePackBlend: 0.35 } } });
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { factionCohesion: { fleePackBlend: 0.35 } } } });
         const bb = buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, { visibleWorld: { threat: { id: 1 }, allyCount: 0 } });
         assert.equal(resolvePackSteeringOptions(bb), null);
     });
 
     it("resolvePackSteeringOptions uses ally centroid when allies are known", () => {
-        applySnakeGameConfig({ fleeAgent: { factionCohesion: { fleePackBlend: 0.35, maxPackDistCells: 16 } } });
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { factionCohesion: { fleePackBlend: 0.35, maxPackDistCells: 16 } } } });
         const bb = buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, {
             visibleWorld: { ally: { id: 2, x: 80, y: 40 }, allyCount: 1, allyCentroid: { x: 80, y: 40 } },
         });
@@ -30,7 +30,7 @@ describe("flee pack blend (4d)", () => {
     });
 
     it("pickFleeCell biases toward pack anchor while still fleeing the threat", () => {
-        applySnakeGameConfig({ fleeTiles: 8 });
+        applySnakeGameConfig({ shared: { fleeTiles: 8 } });
         const grid = {
             worldToGrid: (x, y) => ({ col: Math.floor(x / 16), row: Math.floor(y / 16) }),
             worldCol: (x) => Math.floor(x / 16),
@@ -54,11 +54,7 @@ describe("flee pack blend (4d)", () => {
         resetKineticConstraintIds(50);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        applySnakeGameConfig({
-            startRadius: 2,
-            fleeTiles: 8,
-            fleeAgent: { factionCohesion: { fleePackBlend: 0.5, maxPackDistCells: 24 } },
-        });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { factionCohesion: { fleePackBlend: 0.5, maxPackDistCells: 24 } } }, shared: { fleeTiles: 8 } });
         const fleePack = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "bravo" });
         const allyPack = spawnFleeAgent(state, { col: 10, row: 6 }, { faction: "bravo" });
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: fleePack.head.id, spawnGroupId: fleePack.spawnGroupId });
@@ -72,7 +68,7 @@ describe("flee pack blend (4d)", () => {
         allyPack.head.y = fleePack.head.y - 64;
         predator.chain.head.x = fleePack.head.x + 64;
         predator.chain.head.y = fleePack.head.y;
-        primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
         const snapshot = instance.intent.getDecisionContext();

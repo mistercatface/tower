@@ -173,8 +173,8 @@ export function resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount
     return pickSnakeChainSpawnCellNearestTo(navWalkable.cells(), navWalkable, state, centerCell.col, centerCell.row, {
         segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config)),
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
         excludeIndices,
     });
 }
@@ -183,8 +183,9 @@ async function spawnSnakeCavernMap(state) {
 }
 export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segmentCount, faction = null, rng = Math.random } = {}) {
     const config = getSnakeGameConfig();
+    const snake = config.agentProfiles.snake;
     const startRadius = resolveSnakeStartRadius(config);
-    const resolvedSegmentCount = segmentCount ?? config.segmentCount;
+    const resolvedSegmentCount = segmentCount ?? snake.segmentCount;
     const name = pickRandomName(rng);
     const resolvedFaction = faction;
     const tintHex = pickSnakeChainTintHex(resolvedFaction, rng);
@@ -192,11 +193,11 @@ export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segm
         segmentCount: resolvedSegmentCount,
         spacing: resolveSnakeSegmentSpacing(config, startRadius),
         segmentRadius: startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: snake.linkSlack,
+        ballType: snake.bodyPropId,
+        headBallType: snake.headPropId,
+        growDirX: snake.growDirX,
+        growDirY: snake.growDirY,
         faction: resolvedFaction,
         exportType: SNAKE_CHAIN_EXPORT_TYPE,
     });
@@ -219,8 +220,8 @@ export async function spawnSnakeCavernScene(state) {
     withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset, () => {
         const specs = resolveSnakeSpawnSpecs(config, Math.random);
         const spacing = resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config));
-        const growDirX = config.growDirX;
-        const growDirY = config.growDirY;
+        const growDirX = config.agentProfiles.snake.growDirX;
+        const growDirY = config.agentProfiles.snake.growDirY;
         let excludeIndices = null;
         const centerSegmentCount = specs[0].segmentCount;
         const centerAnchor = resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount: centerSegmentCount, excludeIndices });

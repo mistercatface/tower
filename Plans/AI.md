@@ -103,12 +103,12 @@ flowchart TB
 | Item | Status | % | Notes / modules |
 |---|---|---:|---|
 | Generic goal-seek autosim | ✅ | 75 | `Libraries/Sandbox/autosim/goalSeekAutosim.js` |
-| Snake eat / grow / replenish loop | ✅ | 85 | `snakeAutosim.js`, `snakeStarvation.js`, `snakeScene.js` |
+| Snake eat / grow / replenish loop | ✅ | 85 | `agentAutosim.js`, `snakeStarvation.js`, `snakeScene.js` |
 | Snake 4-mode forage FSM | ✅ | 80 | `createSnakeForageIntent.js`, `snakeIntentStates.js` |
 | Multi-agent snake population | ✅ | 75 | `setupSnakeGame.js`, `snakeMulti.test.js` |
 | Effort-aware prey/food decisions | ✅ | 75 | `snakeDecisionModel.js`, `effort.md` implemented |
 | Flee agent 4-mode FSM | ✅ | 75 | `createFleeExploreIntent.js` — explore, seek_food, seek_ally, flee |
-| Multi-agent flee population | ✅ | 70 | `spawnFleeAgent.js`, `FleeAgentInstance.js`, flee autosim hooks |
+| Multi-agent flee population | ✅ | 70 | `spawnAgentChain.js`, `AgentInstance.js`, `agentAutosim.js` |
 | Effort-aware flee decisions | ✅ | 70 | `fleeDecisionModel.js`; hunger, sprint reserves, multi-threat flee |
 | Agent-agent avoidance during seek | ⬜ | 0 | 🔗 `pathfinding.md` local separation / flow horizons |
 

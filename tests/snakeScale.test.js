@@ -38,11 +38,11 @@ describe("snakeScale", () => {
             ...CHAIN_OPTIONS,
             spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
             segmentRadius: config.startRadius,
-            linkSlack: config.linkSlack,
+            linkSlack: config.agentProfiles.snake.linkSlack,
         });
         assert.equal(getSnakeChainRadius(state, chain.head.id), 2);
         for (let i = 0; i < chain.members.length; i++) assert.equal(getCirclePropRadius(chain.members[i]), 2);
-        assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(chain.members[0], chain.members[1], config.linkSlack));
+        assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(chain.members[0], chain.members[1], config.agentProfiles.snake.linkSlack));
     });
 
     it("keeps chain radius fixed across meals", () => {
@@ -54,13 +54,13 @@ describe("snakeScale", () => {
             ...CHAIN_OPTIONS,
             spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
             segmentRadius: config.startRadius,
-            linkSlack: config.linkSlack,
+            linkSlack: config.agentProfiles.snake.linkSlack,
         });
         growSnakeChainAfterMeal(state, chain.head.id);
         growSnakeChainAfterMeal(state, chain.head.id);
         const members = getChainMemberIds(state, chain.head.id).map((id) => state.entityRegistry.getLive(id));
         for (let i = 0; i < members.length; i++) assert.equal(getCirclePropRadius(members[i]), config.startRadius);
-        assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(members[0], members[1], config.linkSlack));
+        assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(members[0], members[1], config.agentProfiles.snake.linkSlack));
     });
 
     it("growSnakeChainAfterMeal returns spacing for the current radius", () => {
@@ -72,11 +72,11 @@ describe("snakeScale", () => {
             ...CHAIN_OPTIONS,
             spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
             segmentRadius: config.startRadius,
-            linkSlack: config.linkSlack,
+            linkSlack: config.agentProfiles.snake.linkSlack,
         });
         const grow = growSnakeChainAfterMeal(state, chain.head.id);
         assert.equal(grow.segmentRadius, config.startRadius);
         assert.equal(grow.spacing, resolveSnakeSegmentSpacing(config, config.startRadius));
-        assert.equal(grow.linkSlack, config.linkSlack);
+        assert.equal(grow.linkSlack, config.agentProfiles.snake.linkSlack);
     });
 });

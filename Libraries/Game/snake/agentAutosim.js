@@ -67,7 +67,7 @@ function resolveMetabolismApi(profileId) {
 function sprintAllowed(profileId, segmentCount, metabolism, config) {
     if (profileId === AGENT_PROFILE.flee) return getSimpleAgentHunger(metabolism) > 0;
     if (profileId === AGENT_PROFILE.squid) return segmentCount >= 2;
-    if (profileId === AGENT_PROFILE.snake) return segmentCount > config.minAliveSegmentCount;
+    if (profileId === AGENT_PROFILE.snake) return segmentCount > getAgentProfile(AGENT_PROFILE.snake, config).minAliveSegmentCount;
     return true;
 }
 function resolveChainInstance(snakeGame, profileId, leaderId) {
@@ -90,11 +90,12 @@ export function createAgentAutosim(
     const resolvedVisionRange = visionRange ?? shared.visionRange;
     const terminalHoming = shared.terminalHoming;
     const useIntentTick = profile.intent?.returnShape === "intentTick";
-    const foodValue = profile.metabolism?.foodValue ?? config.metabolism?.foodValue;
+    const foodValue = profile.metabolism?.foodValue;
     const huntMode = profile.intent?.huntMode ?? "seek_prey";
-    const resolvedBallType = ballType ?? config.bodyPropId ?? profile.bodyPropId;
-    const resolvedGrowDirX = growDirX ?? config.growDirX ?? profile.growDirX ?? -1;
-    const resolvedGrowDirY = growDirY ?? config.growDirY ?? profile.growDirY ?? 0;
+    const snakeProfile = profileId === AGENT_PROFILE.snake ? profile : null;
+    const resolvedBallType = ballType ?? profile.bodyPropId ?? snakeProfile?.bodyPropId;
+    const resolvedGrowDirX = growDirX ?? profile.growDirX ?? -1;
+    const resolvedGrowDirY = growDirY ?? profile.growDirY ?? 0;
     const resolveEatRadiusValue = (seeker) => {
         if (typeof eatRadius === "function") return eatRadius();
         if (eatRadius != null) return eatRadius;
@@ -171,7 +172,7 @@ export function createAgentAutosim(
     };
     const feedAndGrow = (value, members) => {
         let pending = feedSnakeMetabolism(metabolism, value);
-        while (pending > 0 && chainMemberProps(state, leaderId).length < config.maxAliveSegmentCount) {
+        while (pending > 0 && chainMemberProps(state, leaderId).length < getAgentProfile(AGENT_PROFILE.snake, config).maxAliveSegmentCount) {
             growOneSegment();
             pending--;
         }

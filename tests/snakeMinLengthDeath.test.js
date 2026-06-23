@@ -45,11 +45,11 @@ function snakeChainOptions(segmentCount) {
         segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
         segmentRadius: config.startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: config.agentProfiles.snake.linkSlack,
+        ballType: config.agentProfiles.snake.bodyPropId,
+        headBallType: config.agentProfiles.snake.headPropId,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
         exportType: SNAKE_CHAIN_EXPORT_TYPE,
     };
 }
@@ -60,13 +60,13 @@ function wireCombatSnakeGame(state, snakes) {
 
 describe("snake combat min length", () => {
     it("resolveSnakeCombatFromContacts is a draw on hard snake head-to-head ram", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, growDirX: -1 });
+        applySnakeGameConfig({ splitImpulseThreshold: 30, agentProfiles: { snake: { minAliveSegmentCount: 3, growDirX: -1 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(6));
-        applySnakeGameConfig({ growDirX: 1 });
+        applySnakeGameConfig({ agentProfiles: { snake: { growDirX: 1 } } });
         const prey = spawnSnakeChain(state, { col: 20, row: 8 }, snakeChainOptions(5));
-        applySnakeGameConfig({ growDirX: -1 });
+        applySnakeGameConfig({ agentProfiles: { snake: { growDirX: -1 } } });
         wireCombatSnakeGame(state, [
             { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId },
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
@@ -93,13 +93,13 @@ describe("snake combat min length", () => {
     });
 
     it("equal-size rivals draw on hard head-to-head ram", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30, growDirX: -1 });
+        applySnakeGameConfig({ splitImpulseThreshold: 30, agentProfiles: { snake: { minAliveSegmentCount: 3, growDirX: -1 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const red = spawnSnakeChain(state, { col: 8, row: 8 }, { ...snakeChainOptions(5), faction: "red" });
-        applySnakeGameConfig({ growDirX: 1 });
+        applySnakeGameConfig({ agentProfiles: { snake: { growDirX: 1 } } });
         const blue = spawnSnakeChain(state, { col: 20, row: 8 }, { ...snakeChainOptions(5), faction: "blue" });
-        applySnakeGameConfig({ growDirX: -1 });
+        applySnakeGameConfig({ agentProfiles: { snake: { growDirX: -1 } } });
         wireCombatSnakeGame(state, [
             { headId: red.chain.head.id, spawnGroupId: red.chain.spawnGroupId },
             { headId: blue.chain.head.id, spawnGroupId: blue.chain.spawnGroupId },
@@ -127,7 +127,7 @@ describe("snake combat min length", () => {
     });
 
     it("same-faction head strike does not split ally body segment", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30 });
+        applySnakeGameConfig({ splitImpulseThreshold: 30, agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const striker = spawnSnakeChain(state, { col: 8, row: 8 }, { ...snakeChainOptions(5), faction: "red" });
@@ -157,7 +157,7 @@ describe("snake combat min length", () => {
     });
 
     it("head into enemy tail does not split or kill the pursuer", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30 });
+        applySnakeGameConfig({ splitImpulseThreshold: 30, agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const big = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(6));
@@ -188,7 +188,7 @@ describe("snake combat min length", () => {
     });
 
     it("larger snake head strike on smaller body splits the victim and stops its autosim when it dies", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30 });
+        applySnakeGameConfig({ splitImpulseThreshold: 30, agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const predator = spawnSnakeChain(state, { col: 8, row: 8 }, { ...snakeChainOptions(6), faction: "red" });
@@ -223,7 +223,7 @@ describe("snake combat min length", () => {
     });
 
     it("seek_prey contact restores hunter drive after contact impulse", () => {
-        applySnakeGameConfig({ headMaxSpeed: 120, minAliveSegmentCount: 3, splitImpulseThreshold: 999 });
+        applySnakeGameConfig({ splitImpulseThreshold: 999, agentProfiles: { snake: { minAliveSegmentCount: 3, gameplay: { leader: { maxSpeed: 120 } } } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(6));
@@ -260,7 +260,7 @@ describe("snake combat min length", () => {
     });
 
     it("killSnake only tears down the defeated snake spawn group", () => {
-        applySnakeGameConfig({ minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));

@@ -37,11 +37,11 @@ function chainOptions(segmentCount) {
         segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
         segmentRadius: config.startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: config.agentProfiles.snake.linkSlack,
+        ballType: config.agentProfiles.snake.bodyPropId,
+        headBallType: config.agentProfiles.snake.headPropId,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
     };
 }
 const META = { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 };
@@ -58,7 +58,7 @@ describe("snake metabolism", () => {
         assert.equal(getSnakeHunger(m), 0);
     });
     it("eating refills hunger first, then spills overflow into growth", () => {
-        applySnakeGameConfig({ metabolism: META });
+        applySnakeGameConfig({ agentProfiles: { snake: { metabolism: META } } });
         const m = createSnakeMetabolism();
         setSnakeHunger(m, 0.2);
         assert.equal(feedSnakeMetabolism(m), 0);
@@ -69,7 +69,7 @@ describe("snake metabolism", () => {
         assert.equal(getSnakeHunger(m), 1);
     });
     it("drains hunger to empty then sheds a segment per starve interval", async () => {
-        applySnakeGameConfig({ metabolism: META, minAliveSegmentCount: 3, startRadius: 2 });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { snake: { metabolism: META, minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(5));
@@ -83,7 +83,7 @@ describe("snake metabolism", () => {
         assert.equal(getSnakeHunger(m), 0);
     });
     it("stays starving across sheds instead of bouncing to satisfied", async () => {
-        applySnakeGameConfig({ metabolism: META, minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { metabolism: META, minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(6));
@@ -98,7 +98,7 @@ describe("snake metabolism", () => {
         assert.equal(getSnakeHunger(m), 0);
     });
     it("a starved min-length snake reads desperate (hunger 0), not satisfied", async () => {
-        applySnakeGameConfig({ metabolism: META, minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { metabolism: META, minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(3));
@@ -110,7 +110,7 @@ describe("snake metabolism", () => {
         assert.equal(getSnakeHunger(m), 0);
     });
     it("sprinting drains hunger faster and sheds sooner", async () => {
-        applySnakeGameConfig({ metabolism: META, minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { metabolism: META, minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(5));

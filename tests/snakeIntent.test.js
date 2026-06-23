@@ -58,14 +58,14 @@ function snakeBehaviors(state) {
 function snakeChainOptions() {
     const config = getSnakeGameConfig();
     return {
-        segmentCount: config.segmentCount,
+        segmentCount: config.agentProfiles.snake.segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
         segmentRadius: config.startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: config.agentProfiles.snake.linkSlack,
+        ballType: config.agentProfiles.snake.bodyPropId,
+        headBallType: config.agentProfiles.snake.headPropId,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
     };
 }
 
@@ -155,7 +155,7 @@ describe("snake intent integration", () => {
     });
 
     it("autosim flees from a visible larger snake", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+        applySnakeGameConfig({ shared: { fleeRange: 128 } });
         resetKineticConstraintIds(1);
         const state = await createIntentTestState();
         const small = spawnLinkedBallChain(state, { col: 6, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });
@@ -176,7 +176,7 @@ describe("snake intent integration", () => {
     });
 
     it("pickFleeCell steps away from the threat", async () => {
-        applySnakeGameConfig({ fleeTiles: 3 });
+        applySnakeGameConfig({ shared: { fleeTiles: 3 } });
         resetKineticConstraintIds(1);
         const state = await createIntentTestState();
         wireSnakeTestGame(state);
@@ -203,7 +203,7 @@ describe("snake intent integration", () => {
     });
 
     it("ignores smaller snakes hidden behind walls", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
+        applySnakeGameConfig({ shared: { fleeRange: 128 } });
         resetKineticConstraintIds(1);
         const state = await createIntentTestState();
         const seekerChain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...snakeChainOptions(), segmentCount: 5 });

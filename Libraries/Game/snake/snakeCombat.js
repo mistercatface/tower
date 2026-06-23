@@ -1,5 +1,6 @@
 import { getConnectedComponentPath, getLinearChainOrderedMembers } from "../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
+import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentInstance } from "./AgentInstance.js";
 import { getInstanceCombatTraits, isChainCombatTopology, matchesBrainRamResolver, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { resolveAgentRelationship } from "./snakeAgentSession.js";
@@ -24,8 +25,8 @@ function orderedMembers(state, headId) {
     return getLinearChainOrderedMembers(state.kinetic, headId);
 }
 export function enforceSnakeMinLength(state, snakeGame, headId, members = null) {
-    const config = getSnakeGameConfig();
-    if (snakeSegmentCount(state, headId, members) >= config.minAliveSegmentCount) return false;
+    const snake = getAgentProfile(AGENT_PROFILE.snake);
+    if (snakeSegmentCount(state, headId, members) >= snake.minAliveSegmentCount) return false;
     killSnake(state, snakeGame, headId, members);
     return true;
 }
@@ -220,7 +221,7 @@ function restoreHunterContactDrive(hunterHead, hunterPhysId, preyTarget, speedOv
     const dy = preyTarget.y - hunterHead.y;
     const dist = Math.hypot(dx, dy);
     if (dist <= 0) return;
-    const speed = speedOverride ?? getSnakeGameConfig().headMaxSpeed ?? Math.hypot(kineticDynamicSlab.vx[hunterPhysId], kineticDynamicSlab.vy[hunterPhysId]);
+    const speed = speedOverride ?? getAgentProfile(AGENT_PROFILE.snake).gameplay?.leader?.maxSpeed ?? Math.hypot(kineticDynamicSlab.vx[hunterPhysId], kineticDynamicSlab.vy[hunterPhysId]);
     const vx = (dx / dist) * speed;
     const vy = (dy / dist) * speed;
     kineticDynamicSlab.vx[hunterPhysId] = vx;

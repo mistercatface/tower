@@ -43,11 +43,11 @@ function snakeChainOptions(segmentCount) {
         segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
         segmentRadius: config.startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: config.agentProfiles.snake.linkSlack,
+        ballType: config.agentProfiles.snake.bodyPropId,
+        headBallType: config.agentProfiles.snake.headPropId,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
         exportType: SNAKE_CHAIN_EXPORT_TYPE,
     };
 }
@@ -72,7 +72,7 @@ function assertSnakeShardCountForOneSegment(shards) {
 
 describe("snake segment fracture", () => {
     it("non-impact death leaves retired segment props intact", () => {
-        applySnakeGameConfig({ startRadius: 2, minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -86,7 +86,7 @@ describe("snake segment fracture", () => {
     });
 
     it("impact deaths fracture only the struck segment and inherit parent motion", () => {
-        applySnakeGameConfig({ startRadius: 2, minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -116,7 +116,7 @@ describe("snake segment fracture", () => {
     });
 
     it("tiny struck segments use fallback shards instead of failing fracture", () => {
-        applySnakeGameConfig({ startRadius: 1, minAliveSegmentCount: 3 });
+        applySnakeGameConfig({ startRadius: 1, agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -132,7 +132,7 @@ describe("snake segment fracture", () => {
     });
 
     it("unstruck retired segments can fracture on later impacts", () => {
-        applySnakeGameConfig({ startRadius: 2, minAliveSegmentCount: 3, splitImpulseThreshold: 30, kineticMinStrikeSpeed: 28 });
+        applySnakeGameConfig({ startRadius: 2, splitImpulseThreshold: 30, kineticMinStrikeSpeed: 28, agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));

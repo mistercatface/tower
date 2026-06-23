@@ -28,5 +28,5 @@ export function getSnakeSizeScore(state, headId, members = null) {
 export function growSnakeChainAfterMeal(state, headId, members = null) {
     const config = getSnakeGameConfig();
     const segmentRadius = getSnakeChainRadius(state, headId);
-    return { segmentRadius, spacing: resolveSnakeSegmentSpacing(config, segmentRadius), linkSlack: config.linkSlack };
+    return { segmentRadius, spacing: resolveSnakeSegmentSpacing(config, segmentRadius), linkSlack: config.agentProfiles.snake.linkSlack };
 }

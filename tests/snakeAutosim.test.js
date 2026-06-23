@@ -57,14 +57,14 @@ function snakeBehaviorById(state) {
 function snakeChainOptions() {
     const config = getSnakeGameConfig();
     return {
-        segmentCount: config.segmentCount,
+        segmentCount: config.agentProfiles.snake.segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
         segmentRadius: config.startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: config.agentProfiles.snake.linkSlack,
+        ballType: config.agentProfiles.snake.bodyPropId,
+        headBallType: config.agentProfiles.snake.headPropId,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
     };
 }
 
@@ -75,7 +75,7 @@ describe("snakeAutosim", () => {
         const state = createSnakeAutosimTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
-        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().metabolism.growthCost });
+        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
         const behaviorById = snakeBehaviorById(state);
         const autosim = createWiredSnakeAutosim(state, {
             headId: chain.head.id,
@@ -100,7 +100,7 @@ describe("snakeAutosim", () => {
         const state = createSnakeAutosimTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
-        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().metabolism.growthCost });
+        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
         const behaviorById = snakeBehaviorById(state);
         const autosim = createWiredSnakeAutosim(state, {
             headId: chain.head.id,
@@ -122,7 +122,7 @@ describe("snakeAutosim", () => {
         const state = createSnakeAutosimTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
-        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().metabolism.growthCost });
+        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
         const autosim = createWiredSnakeAutosim(state, {
             headId: chain.head.id,
             eatRadius: 20,
@@ -144,7 +144,7 @@ describe("snakeAutosim", () => {
         const state = createSnakeAutosimTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...snakeChainOptions(), segmentCount: 4 });
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
-        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().metabolism.growthCost });
+        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
         const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20, rng: () => 0 });
         autosim.start();
         removeSandboxWorldProp(state, chain.tail);

@@ -44,18 +44,18 @@ function snakeChainOptions(segmentCount) {
         segmentCount,
         spacing: resolveSnakeSegmentSpacing(config, config.startRadius),
         segmentRadius: config.startRadius,
-        linkSlack: config.linkSlack,
-        ballType: config.segmentPropId,
-        headBallType: config.headPropId,
-        growDirX: config.growDirX,
-        growDirY: config.growDirY,
+        linkSlack: config.agentProfiles.snake.linkSlack,
+        ballType: config.agentProfiles.snake.bodyPropId,
+        headBallType: config.agentProfiles.snake.headPropId,
+        growDirX: config.agentProfiles.snake.growDirX,
+        growDirY: config.agentProfiles.snake.growDirY,
         exportType: SNAKE_CHAIN_EXPORT_TYPE,
     };
 }
 
 describe("AgentInstance (snake)", () => {
     it("stopSteering clears head roll drive via autosim stop", () => {
-        applySnakeGameConfig({ segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -75,7 +75,7 @@ describe("AgentInstance (snake)", () => {
     });
 
     it("steering lease blocks roll drive after revoke", () => {
-        applySnakeGameConfig({ segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -104,7 +104,7 @@ describe("AgentInstance (snake)", () => {
     });
 
     it("retireAllSegments clears roll drive on every member", () => {
-        applySnakeGameConfig({ segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -134,7 +134,7 @@ describe("AgentInstance (snake)", () => {
     });
 
     it("createAgentInstance registers in snakeGame maps", () => {
-        applySnakeGameConfig({ segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
@@ -156,7 +156,7 @@ describe("AgentInstance (snake)", () => {
     });
 
     it("physics clears roll drive on dead chain heads", () => {
-        applySnakeGameConfig({ segmentCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));

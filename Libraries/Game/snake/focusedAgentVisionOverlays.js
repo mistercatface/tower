@@ -1,4 +1,4 @@
-import { getSnakeGameConfig } from "./snakeGameConfig.js";
+import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 import { perceiveAgentIntentWorld } from "./agentIntentPerception.js";
 import { appendGridCellVisionOverlayCommands } from "../../Navigation/perception/gridCellVisionOverlay.js";
@@ -25,13 +25,13 @@ function perceiveFocusedAgentWorld(state, ctx) {
     const { head, headId, species } = ctx;
     const registry = state.sandbox.snakeGame.registry;
     const config = getSnakeGameConfig();
-    const visionRange = config.visionRange;
+    const visionRange = getSharedConfig(config).visionRange;
     return perceiveAgentIntentWorld(head, headId, state, registry, () => null, visionRange);
 }
 export function appendFocusedAgentVisionOverlayCommands(out, state, ctx) {
     if (!ctx?.head) return;
     const config = getSnakeGameConfig();
-    const visionRange = config.visionRange;
+    const visionRange = getSharedConfig(config).visionRange;
     const frame = requireSnakeVisionFrame(state);
     const vision = frame.ensureHeadVision(ctx.head, visionRange);
     appendGridCellVisionOverlayCommands(out, { grid: state.obstacleGrid, cells: vision.cells, cellFill: visionRange.cellFill });

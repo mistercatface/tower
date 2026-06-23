@@ -29,7 +29,7 @@ function spawnVisibleSnakeThreat(state, snakeGame, { col, row }, segmentCount = 
 }
 describe("flee agent metabolism", () => {
     it("pins hunger at zero instead of dying", () => {
-        applySnakeGameConfig({ fleeAgent: { metabolism: { hungerDrainMs: 1000, foodValue: 0.5 } } });
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { metabolism: { hungerDrainMs: 1000, foodValue: 0.5 } } } });
         const metabolism = createSimpleAgentMetabolism();
         setSimpleAgentHunger(metabolism, 0.1);
         tickSimpleAgentMetabolism(metabolism, AGENT_PROFILE.flee, 500, 1);
@@ -38,7 +38,7 @@ describe("flee agent metabolism", () => {
         assert.equal(getSimpleAgentHunger(metabolism), 0);
     });
     it("sprint multiplies hunger drain", () => {
-        applySnakeGameConfig({ fleeAgent: { metabolism: { hungerDrainMs: 1000, foodValue: 0.5 }, sprint: { hungerDrainMultiplier: 2 } } });
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { metabolism: { hungerDrainMs: 1000, foodValue: 0.5 }, sprint: { hungerDrainMultiplier: 2 } } } });
         const metabolism = createSimpleAgentMetabolism();
         setSimpleAgentHunger(metabolism, 1);
         tickSimpleAgentMetabolism(metabolism, AGENT_PROFILE.flee, 500, 2);
@@ -48,14 +48,14 @@ describe("flee agent metabolism", () => {
         resetKineticConstraintIds(30);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, fleeAgent: { metabolism: { hungerDrainMs: 60_000, foodValue: 0.4 } } });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { metabolism: { hungerDrainMs: 60_000, foodValue: 0.4 } } } });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         setSimpleAgentHunger(instance.metabolism, 0.2);
         spawnSnakeFoodShardAtCell(state, { col: 10, row: 10 }, { foodValue: 0.4 });
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "seek_food");
         assert.ok(getSimpleAgentHunger(instance.metabolism) >= 0.6);
@@ -71,7 +71,7 @@ describe("flee agent metabolism", () => {
         instance.start(state);
         setSimpleAgentHunger(instance.metabolism, 0.2);
         const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 });
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "seek_food");
         assert.equal(instance.intent.getTargetId(), food.id);
@@ -80,14 +80,14 @@ describe("flee agent metabolism", () => {
         resetKineticConstraintIds(36);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, fleeAgent: { metabolism: { hungerDrainMs: 60_000, foodValue: 0.4 } } });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { metabolism: { hungerDrainMs: 60_000, foodValue: 0.4 } } } });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         setSimpleAgentHunger(instance.metabolism, 0.2);
         const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: 0.4 });
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "seek_food");
         assert.ok(instance.intent.getDestination()?.lockOnTarget, "food seek should lock onto the shard for terminal homing");
@@ -107,14 +107,14 @@ describe("flee agent metabolism", () => {
         resetKineticConstraintIds(33);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, fleeAgent: { initialHunger: 1 } });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { initialHunger: 1 } } });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         for (let col = 11; col <= 17; col++) stampWall(state.obstacleGrid, col, 10);
         const food = spawnSnakeFoodShardAtCell(state, { col: 18, row: 10 });
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "explore");
         assert.ok(state.entityRegistry.getLive(food.id));
@@ -124,18 +124,18 @@ describe("flee agent metabolism", () => {
         resetKineticConstraintIds(34);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, fleeAgent: { sprint: { fleeSeverity: 0.3 } } });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.3 } } } });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         setSimpleAgentHunger(instance.metabolism, 0.2);
         spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 });
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "seek_food");
         spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 13 }, 6);
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
     });
@@ -143,7 +143,7 @@ describe("flee agent metabolism", () => {
         resetKineticConstraintIds(31);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, fleeAgent: { sprint: { fleeSeverity: 0.3 } } });
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.3 } } } });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         setAgentIdentity(pack.head.id, { name: "Bolt", color: "#7ad4ff" });
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
@@ -151,14 +151,14 @@ describe("flee agent metabolism", () => {
         instance.start(state);
         assert.equal(getPropVisualTint(pack.head), "#7ad4ff");
         spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 13 }, 6);
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
+        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
         assert.equal(getPropVisualTint(pack.head), "#7ad4ff");
     });
     it("deriveSprintIntent wants sprint on lethal flee when hunger allows", () => {
-        applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 } }, lethalThreatRange: 48 });
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 } } }, shared: { lethalThreatRange: 48 } });
         const sprint = getAgentProfile(AGENT_DECISION_PROFILE.flee).sprint;
         const ctx = { threatState: { lethal: true, severity: 1 }, hungerTier: "hungry", foodFraction: 0.5 };
         assert.equal(deriveSprintIntent("flee", ctx, sprint).want, true);
