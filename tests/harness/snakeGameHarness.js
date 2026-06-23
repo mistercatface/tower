@@ -20,7 +20,8 @@ import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkab
 import { createSnakeAgentSession, registerAgentInstance } from "../../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../../Libraries/Game/snake/species/index.js";
 import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/agentPopulationRegistry.js";
-import { SnakeInstance, getSnakeInstance } from "../../Libraries/Game/snake/SnakeInstance.js";
+import { AGENT_PROFILE } from "../../Libraries/AI/agents/agentProfile.js";
+import { AgentInstance, getAgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";
 import { grantSnakeSteeringLease } from "../../Libraries/Game/snake/snakeSteeringLease.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
@@ -51,7 +52,7 @@ export function stubSnakeAutosim() {
 }
 export function registerSnakeTestInstance(state, snakeGame, { headId, spawnGroupId, autosim = null }) {
     const resolvedAutosim = autosim ?? stubSnakeAutosim();
-    const instance = new SnakeInstance({ headId, spawnGroupId, autosim: resolvedAutosim, lifecycle: "alive" });
+    const instance = new AgentInstance({ profileId: AGENT_PROFILE.snake, headId, spawnGroupId, autosim: resolvedAutosim, lifecycle: "alive" });
     instance.syncMembersFromGraph(state);
     registerAgentInstance(snakeGame, "snake", instance);
     grantSnakeSteeringLease(instance, state);
@@ -73,7 +74,7 @@ export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {
 export function createWiredSnakeAutosim(state, options) {
     wireSnakeTestNavSession(state);
     const autosim = createSnakeAutosim(state, { ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
-    const instance = getSnakeInstance(state.sandbox.snakeGame, options.headId);
+    const instance = getAgentInstance(state.sandbox.snakeGame, options.headId);
     if (instance) {
         instance.autosim = autosim;
         state.sandbox.snakeGame.autosimsByHeadId.set(options.headId, autosim);

@@ -1,4 +1,4 @@
-import { createFleeAgentInstance } from "../fleeAgent/FleeAgentInstance.js";
+import { createFleeAgentInstance } from "../AgentInstance.js";
 import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
 import { shatterSnakeSegments } from "../snakeSegmentFracture.js";

@@ -1,18 +1,16 @@
 import { getConnectedBodyIds } from "../../../Motion/kineticConstraintGraph.js";
-import { SquidInstance, getSquidInstance } from "../squid/SquidInstance.js";
-import { createSquidAutosim } from "../squid/squidAutosim.js";
+import { createAgentInstance } from "../AgentInstance.js";
+import { AGENT_PROFILE } from "../../../AI/agents/agentProfile.js";
 import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
 import { markSnakeSegmentsFracturable, shatterSnakeSegments } from "../snakeSegmentFracture.js";
 import { clearSnakeSteeringLeaseFromProp } from "../snakeSteeringLease.js";
-import { AGENT_PROFILE, getAgentProfile } from "../../../AI/agents/agentProfile.js";
+import { getAgentProfile } from "../../../AI/agents/agentProfile.js";
 import { removeWorldPropFromState } from "../../../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "../../../../GameState/sandboxEntityMeta.js";
-
 function segmentCount(state, headId) {
     return getConnectedBodyIds(state.kinetic, headId).length;
 }
-
 function sizeRelationship(seekerSegs, targetSegs) {
     const maxGap = getAgentProfile(AGENT_PROFILE.squid).rivalBand?.maxSegmentGap ?? 2;
     if (Math.abs(seekerSegs - targetSegs) <= maxGap) return "rival";
@@ -20,14 +18,10 @@ function sizeRelationship(seekerSegs, targetSegs) {
     if (targetSegs < seekerSegs) return "prey";
     return "neutral";
 }
-
 export const squidSpecies = {
     id: "squid",
     createInstance(state, ctx) {
-        const autosim = createSquidAutosim(state, { brainId: ctx.headId, navWalkable: ctx.navWalkable });
-        const instance = new SquidInstance({ headId: ctx.headId, spawnGroupId: ctx.spawnGroupId, autosim, lifecycle: "alive" });
-        instance.syncMembersFromGraph(state);
-        return instance;
+        return createAgentInstance(state, { profileId: AGENT_PROFILE.squid, headId: ctx.headId, spawnGroupId: ctx.spawnGroupId, navWalkable: ctx.navWalkable });
     },
     register(session, instance) {
         registerAliveAgent(session.registry, instance.headId, this.id, instance);
@@ -83,11 +77,7 @@ export const squidSpecies = {
         const targetFaction = targetHead?.faction ?? null;
         if (seekerFaction && targetFaction && seekerFaction === targetFaction) return "neutral";
         if (targetSpecies === "flee_agent") return "prey";
-        if (targetSpecies === "snake" || targetSpecies === "squid") {
-            return sizeRelationship(segmentCount(state, seekerId), segmentCount(state, targetId));
-        }
+        if (targetSpecies === "snake" || targetSpecies === "squid") return sizeRelationship(segmentCount(state, seekerId), segmentCount(state, targetId));
         return "neutral";
     },
 };
-
-export { getSquidInstance };

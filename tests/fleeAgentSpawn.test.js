@@ -7,7 +7,7 @@ import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { resolveFleeAgentForwardDir, spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { spawnFleeAgentsInScene } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgentsInScene.js";
-import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
+import { createFleeAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { getAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";

@@ -1,15 +1,32 @@
-import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
+import { getConnectedBodyIds, getConnectedComponentPath, getLinearChainOrderedMembers } from "../../Motion/kineticConstraintGraph.js";
 import { clearChainLinksForMembers, removeChainLinkBetween } from "../../Sandbox/chainLinks.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
-import { createSnakeAutosim } from "./snakeAutosim.js";
+import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { grantSnakeSteeringLease, revokeSnakeSteeringLease, clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
-import { registerAliveAgent, registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
+import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "./snakeSteeringLease.js";
+import { registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
 import { reapAgentInstance } from "./snakeAgentLifecycle.js";
 import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
-import { markSnakeSegmentsFracturable, shatterSnakeSegments } from "./snakeSegmentFracture.js";
-export class SnakeInstance {
-    constructor({ headId, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
+import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
+import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
+import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
+import { syncFleeAgentPresentation } from "./fleeAgent/syncFleeAgentPresentation.js";
+export function isSnakeProfile(instance) {
+    return instance?.profileId === AGENT_PROFILE.snake;
+}
+export function isSquidProfile(instance) {
+    return instance?.profileId === AGENT_PROFILE.squid;
+}
+export function isFleeProfile(instance) {
+    return instance?.profileId === AGENT_PROFILE.flee;
+}
+/** Snake or squid — multi-segment chain combat agents (not flee balls). */
+export function isMultiSegmentChainAgent(instance) {
+    return isSnakeProfile(instance) || isSquidProfile(instance);
+}
+export class AgentInstance {
+    constructor({ profileId, headId, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
+        this.profileId = profileId;
         this.headId = headId;
         this.spawnGroupId = spawnGroupId;
         this.autosim = autosim;
@@ -20,38 +37,93 @@ export class SnakeInstance {
         this.accumulatedPressure = 0;
         this.peakPressure = 0;
         this.isHeadRouteValid = false;
+        this.baseTint = isFleeProfile(this) ? (getAgentIdentity(headId)?.color ?? null) : null;
+        this._sprintOverride = undefined;
+        this._intentOverride = undefined;
+    }
+    get intent() {
+        if (this._intentOverride !== undefined) return this._intentOverride;
+        return this.autosim?.getIntent?.() ?? null;
+    }
+    set intent(value) {
+        this._intentOverride = value;
+    }
+    get sprinting() {
+        if (this._sprintOverride !== undefined) return this._sprintOverride;
+        return this.autosim?.isSprinting?.() ?? false;
+    }
+    set sprinting(value) {
+        this._sprintOverride = value;
+    }
+    get brain() {
+        return this.autosim?.getBrain?.() ?? null;
+    }
+    get headNav() {
+        return this.autosim?.getHeadNav?.() ?? null;
+    }
+    get metabolism() {
+        return this.autosim?.metabolism ?? null;
     }
     start(state) {
         grantSnakeSteeringLease(this, state);
         this.autosim.start();
+        if (isFleeProfile(this)) {
+            const head = state.entityRegistry.getLive(this.headId);
+            if (head) syncFleeAgentPresentation(head, { baseTint: this.baseTint });
+        }
     }
     stopSteering(state) {
         revokeSnakeSteeringLease(this, state);
         this.autosim.stop();
     }
     tick(state, dtMs) {
-        if (this.autosim) this.autosim.tick(dtMs);
+        if (this.lifecycle !== "alive" || !this.autosim?.isActive?.()) return;
+        this.autosim.tick(dtMs);
+        if (isFleeProfile(this)) {
+            const head = state.entityRegistry.getLive(this.headId);
+            if (head) syncFleeAgentPresentation(head, { baseTint: this.baseTint });
+        }
     }
     isSteerable(state, registry) {
         if (this.lifecycle !== "alive" || !registry.aliveByHeadId.has(this.headId)) return false;
-        const head = state.entityRegistry.getLive(this.headId);
-        if (!head) return false;
+        const leader = state.entityRegistry.getLive(this.headId);
+        if (!leader) return false;
         if (!getSandboxEntityMeta(state).isChainHead(this.headId)) return false;
+        if (isSquidProfile(this)) return getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId);
         const members = getConnectedComponentPath(state.kinetic, this.headId);
         if (members[0] !== this.headId) return false;
-        if (members.length < getSnakeGameConfig().minAliveSegmentCount) return false;
+        if (isSnakeProfile(this) && members.length < getSnakeGameConfig().minAliveSegmentCount) return false;
         return true;
     }
     validate(state, snakeGame) {
         if (this.lifecycle !== "alive") return;
+        if (isFleeProfile(this)) {
+            const head = state.entityRegistry.getLive(this.headId);
+            if (!head || head.isDead) this.die(state, snakeGame);
+            return;
+        }
+        if (isSquidProfile(this)) {
+            const brain = state.entityRegistry.getLive(this.headId);
+            if (!brain) {
+                this.die(state, snakeGame);
+                return;
+            }
+            if (!getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId)) this.die(state, snakeGame);
+            return;
+        }
         if (this.isSteerable(state, snakeGame.registry)) return;
         this.die(state, snakeGame);
     }
     syncMembersFromGraph(state) {
-        this.memberIds = getConnectedComponentPath(state.kinetic, this.headId);
+        if (isSquidProfile(this)) this.memberIds = getConnectedBodyIds(state.kinetic, this.headId);
+        else this.memberIds = getConnectedComponentPath(state.kinetic, this.headId);
         return this.memberIds;
     }
+    orderedMembers(state) {
+        return getLinearChainOrderedMembers(state.kinetic, this.headId);
+    }
     updatePressureDiagnostics(state) {
+        if (!isSnakeProfile(this)) return;
         if (this.lifecycle !== "alive") {
             this.segmentWallPressures.clear();
             this.accumulatedPressure = 0;
@@ -123,7 +195,7 @@ export class SnakeInstance {
         this.accumulatedPressure = totalPressure;
         this.peakPressure = peakPressure;
         this.isHeadRouteValid = false;
-        if (this.autosim && this.autosim.isActive()) this.isHeadRouteValid = this.autosim.getPathOverlay() != null;
+        if (this.autosim?.isActive?.()) this.isHeadRouteValid = this.autosim.getPathOverlay?.() != null;
     }
     retireMemberSegments(state, memberIds) {
         retireSnakeSegmentsFromNav(state, memberIds);
@@ -151,6 +223,7 @@ export class SnakeInstance {
         reapAgentInstance(state, snakeGame, this, deathImpact);
     }
     splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers = null, deathImpact = null) {
+        if (!isSnakeProfile(this)) return null;
         const members = victimMembers ?? getConnectedComponentPath(state.kinetic, this.headId);
         const strikeIndex = members.indexOf(struckSegmentId);
         if (strikeIndex < 0 || strikeIndex >= members.length - 1) return null;
@@ -165,12 +238,19 @@ export class SnakeInstance {
         return { aliveHeadId: this.headId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
     }
 }
-export function createAliveSnakeInstance(state, { headId, spawnGroupId, navWalkable }) {
-    const autosim = createSnakeAutosim(state, { headId, navWalkable });
-    const instance = new SnakeInstance({ headId, spawnGroupId, autosim, lifecycle: "alive" });
+export function getAgentInstance(snakeGame, headId) {
+    return snakeGame.instancesByHeadId.get(headId) ?? null;
+}
+export function createAgentInstance(state, { profileId, headId, spawnGroupId, navWalkable = null, ...autosimOptions }) {
+    const resolvedNav = navWalkable ?? state.sandbox?.snakeGame?.navWalkable;
+    const autosim = createAgentAutosim(state, { profileId, leaderId: headId, navWalkable: resolvedNav, ...autosimOptions });
+    const instance = new AgentInstance({ profileId, headId, spawnGroupId, autosim, lifecycle: "alive" });
     instance.syncMembersFromGraph(state);
     return instance;
 }
-export function getSnakeInstance(snakeGame, headId) {
-    return snakeGame.instancesByHeadId.get(headId);
+export function createAliveSnakeInstance(state, { headId, spawnGroupId, navWalkable, ...autosimOptions }) {
+    return createAgentInstance(state, { profileId: AGENT_PROFILE.snake, headId, spawnGroupId, navWalkable, ...autosimOptions });
+}
+export function createFleeAgentInstance(state, { headId, spawnGroupId, navWalkable = null }) {
+    return createAgentInstance(state, { profileId: AGENT_PROFILE.flee, headId, spawnGroupId, navWalkable });
 }

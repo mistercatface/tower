@@ -1,7 +1,7 @@
 import { getSnakeSegmentCount } from "../snakeScale.js";
 import { getConnectedBodyIds } from "../../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
-import { createAliveSnakeInstance } from "../SnakeInstance.js";
+import { createAliveSnakeInstance } from "../AgentInstance.js";
 import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
 import { shatterSnakeSegments } from "../snakeSegmentFracture.js";

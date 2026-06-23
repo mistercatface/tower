@@ -15,8 +15,7 @@ import { canAgentEatSnakeFood, findNearestVisibleSnakeFood, findNearestVisibleSn
 import { createSimpleAgentMetabolism, feedSimpleAgentMetabolism, getSimpleAgentHunger, setSimpleAgentHunger, tickSimpleAgentMetabolism } from "./agentMetabolism.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
 import { enforceSnakeMinLength } from "./snakeCombat.js";
-import { getSnakeInstance } from "./SnakeInstance.js";
-import { getSquidInstance } from "./squid/SquidInstance.js";
+import { getAgentInstance } from "./AgentInstance.js";
 import { tickAgentIntent } from "./snakeAgentLifecycle.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 export function runAgentFsmTick(intent, seeker, state, dt, beforeNav, useIntentTick) {
@@ -71,8 +70,7 @@ function sprintAllowed(profileId, segmentCount, metabolism, config) {
     return true;
 }
 function resolveChainInstance(snakeGame, profileId, leaderId) {
-    if (profileId === AGENT_PROFILE.snake) return getSnakeInstance(snakeGame, leaderId);
-    if (profileId === AGENT_PROFILE.squid) return getSquidInstance(snakeGame, leaderId);
+    if (profileId === AGENT_PROFILE.snake || profileId === AGENT_PROFILE.squid) return getAgentInstance(snakeGame, leaderId);
     return null;
 }
 /** Shared ground-nav autosim for flee, snake, and squid. */
@@ -192,6 +190,7 @@ export function createAgentAutosim(
     const initialHunger = initialFoodFraction ?? profile.initialHunger ?? 1;
     const autosim = {
         headId: leaderId,
+        metabolism,
         getIntent() {
             return intent;
         },

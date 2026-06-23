@@ -1,11 +1,3 @@
-import { getSnakeInstance } from "./SnakeInstance.js";
-function intentTargetFromAutosim(autosim) {
-    if (!autosim) return null;
-    return { mode: autosim.getMode?.() ?? null, targetId: autosim.getTargetId?.() ?? null, destination: autosim.getDestination?.() ?? null };
-}
-function buildFocusedAgentDebugContext(headId, head, species, getBrain, getPathOverlay, getIntentTarget) {
-    return { headId, head, species, getBrain, getPathOverlay, getIntentTarget };
-}
 /** @param {object} state @param {number | null} focusedHeadId */
 export function resolveFocusedAgentDebugContext(state, focusedHeadId) {
     if (focusedHeadId == null) return null;
@@ -16,24 +8,13 @@ export function resolveFocusedAgentDebugContext(state, focusedHeadId) {
     const meta = snakeGame.registry.aliveByHeadId.get(focusedHeadId);
     const instance = snakeGame.instancesByHeadId.get(focusedHeadId);
     const autosim = instance?.autosim ?? snakeGame.autosimsByHeadId.get(focusedHeadId);
-    if (autosim && typeof autosim.getBrain === "function")
-        return buildFocusedAgentDebugContext(
-            focusedHeadId,
-            head,
-            meta?.species ?? "snake",
-            () => autosim.getBrain(),
-            () => autosim.getPathOverlay?.() ?? null,
-            () => intentTargetFromAutosim(autosim),
-        );
-    const snake = getSnakeInstance(snakeGame, focusedHeadId);
-    if (snake?.autosim && typeof snake.autosim.getBrain === "function")
-        return buildFocusedAgentDebugContext(
-            focusedHeadId,
-            head,
-            meta?.species ?? "snake",
-            () => snake.autosim.getBrain(),
-            () => snake.autosim.getPathOverlay?.() ?? null,
-            () => intentTargetFromAutosim(snake.autosim),
-        );
-    return null;
+    if (!autosim || typeof autosim.getBrain !== "function") return null;
+    return {
+        headId: focusedHeadId,
+        head,
+        species: meta?.species ?? "snake",
+        getBrain: () => autosim.getBrain(),
+        getPathOverlay: () => autosim.getPathOverlay?.() ?? null,
+        getIntentTarget: () => ({ mode: autosim.getMode?.() ?? null, targetId: autosim.getTargetId?.() ?? null, destination: autosim.getDestination?.() ?? null }),
+    };
 }

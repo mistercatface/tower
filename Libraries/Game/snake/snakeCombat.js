@@ -1,14 +1,6 @@
 import { getConnectedComponentPath, getLinearChainOrderedMembers } from "../../Motion/kineticConstraintGraph.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { getSnakeInstance, SnakeInstance } from "./SnakeInstance.js";
-import { getSquidInstance, SquidInstance } from "./squid/SquidInstance.js";
-import { FleeAgentInstance } from "./fleeAgent/FleeAgentInstance.js";
-function isChainAgent(instance) {
-    return instance instanceof SnakeInstance || instance instanceof SquidInstance;
-}
-function getChainAgentInstance(snakeGame, headId) {
-    return getSnakeInstance(snakeGame, headId) ?? getSquidInstance(snakeGame, headId);
-}
+import { getAgentInstance, isFleeProfile, isMultiSegmentChainAgent, isSquidProfile } from "./AgentInstance.js";
 function buildAgentMemberToInstanceMap(state, snakeGame) {
     const map = new Map();
     for (const instance of snakeGame.instancesByHeadId.values()) {
@@ -27,8 +19,7 @@ import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js
 function snakeSegmentCount(state, headId, members = null) {
     return (members || getConnectedComponentPath(state.kinetic, headId)).length;
 }
-function orderedMembers(state, headId, instance = null) {
-    if (instance instanceof SquidInstance) return instance.orderedMembers(state);
+function orderedMembers(state, headId) {
     return getLinearChainOrderedMembers(state.kinetic, headId);
 }
 export function enforceSnakeMinLength(state, snakeGame, headId, members = null) {
@@ -38,13 +29,13 @@ export function enforceSnakeMinLength(state, snakeGame, headId, members = null) 
     return true;
 }
 export function killSnake(state, snakeGame, headId, members = null, deathImpact = null) {
-    const instance = getChainAgentInstance(snakeGame, headId);
-    if (!instance) return null;
+    const instance = getAgentInstance(snakeGame, headId);
+    if (!instance || !isMultiSegmentChainAgent(instance)) return null;
     instance.die(state, snakeGame, members, deathImpact);
     return instance;
 }
 export function splitSnakeAtStruckSegment(state, snakeGame, victimHeadId, struckSegmentId, victimMembers = null, deathImpact = null) {
-    const instance = getChainAgentInstance(snakeGame, victimHeadId);
+    const instance = getAgentInstance(snakeGame, victimHeadId);
     if (!instance?.splitAtStruckSegment) return null;
     return instance.splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers, deathImpact);
 }
@@ -65,8 +56,8 @@ function snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId,
     return { worldX: hit.x, worldY: hit.y, impactForce: impactForce ?? Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]), struckSegmentId, spatialFrame };
 }
 function fleeSnakeContactPair(instanceA, instanceB, bodyA, bodyB) {
-    if (instanceA instanceof FleeAgentInstance && isChainAgent(instanceB)) return { fleeInstance: instanceA, chainInstance: instanceB, fleeBody: bodyA, chainBody: bodyB };
-    if (instanceB instanceof FleeAgentInstance && isChainAgent(instanceA)) return { fleeInstance: instanceB, chainInstance: instanceA, fleeBody: bodyB, chainBody: bodyA };
+    if (isFleeProfile(instanceA) && isMultiSegmentChainAgent(instanceB)) return { fleeInstance: instanceA, chainInstance: instanceB, fleeBody: bodyA, chainBody: bodyB };
+    if (isFleeProfile(instanceB) && isMultiSegmentChainAgent(instanceA)) return { fleeInstance: instanceB, chainInstance: instanceA, fleeBody: bodyB, chainBody: bodyA };
     return null;
 }
 function classifyFleeRamVictims(contacts, i) {
@@ -89,7 +80,7 @@ function areTeammates(snakeGame, headIdA, headIdB, state) {
     return headA?.faction != null && headA.faction === headB?.faction;
 }
 function tryResolveFleeAgentHeadRam(state, snakeGame, spatialFrame, contacts, i, instanceA, instanceB, bodyA, bodyB, relSpeed, config) {
-    if (!(instanceA instanceof FleeAgentInstance) || !(instanceB instanceof FleeAgentInstance)) return false;
+    if (!isFleeProfile(instanceA) || !isFleeProfile(instanceB)) return false;
     if (bodyA.id !== instanceA.headId || bodyB.id !== instanceB.headId) return false;
     if (areSameFleeFaction(bodyA, bodyB)) return false;
     const victims = classifyFleeRamVictims(contacts, i);
@@ -104,12 +95,12 @@ function tryResolveFleeAgentHeadRam(state, snakeGame, spatialFrame, contacts, i,
     return true;
 }
 function tryResolveFleeEscapeRam(state, snakeGame, spatialFrame, contacts, i, fleeInstance, chainInstance, fleeBody, chainBody, relSpeed, config, splitLinks) {
-    if (chainInstance instanceof SquidInstance) return false;
+    if (isSquidProfile(chainInstance)) return false;
     if (areTeammates(snakeGame, fleeInstance.headId, chainInstance.headId, state)) return false;
     if (!fleeInstance.sprinting || relSpeed < config.splitImpulseThreshold) return false;
     if (fleeInstance.intent?.getMode?.() !== "flee") return false;
     if (fleeBody.id !== fleeInstance.headId || chainBody.id === chainInstance.headId) return false;
-    const victimMembers = orderedMembers(state, chainInstance.headId, chainInstance);
+    const victimMembers = orderedMembers(state, chainInstance.headId);
     const struckSegmentId = chainBody.id;
     const strikeIndex = victimMembers.indexOf(struckSegmentId);
     if (strikeIndex < 0 || strikeIndex >= victimMembers.length - 1) return false;
@@ -121,7 +112,7 @@ function tryResolveFleeEscapeRam(state, snakeGame, spatialFrame, contacts, i, fl
     return true;
 }
 function tryResolveSquidVsSquidRam(state, snakeGame, spatialFrame, contacts, i, instanceA, instanceB, bodyA, bodyB, relSpeed, config) {
-    if (!(instanceA instanceof SquidInstance) || !(instanceB instanceof SquidInstance)) return false;
+    if (!isSquidProfile(instanceA) || !isSquidProfile(instanceB)) return false;
     if (areTeammates(snakeGame, instanceA.headId, instanceB.headId, state)) return false;
     if (relSpeed < config.splitImpulseThreshold) return false;
     const aBrain = bodyA.id === instanceA.headId;
@@ -149,11 +140,11 @@ function tryResolveSquidVsSquidRam(state, snakeGame, spatialFrame, contacts, i, 
     return true;
 }
 function tryResolveSnakeHeadStrikeRam(state, snakeGame, spatialFrame, contacts, i, strikerInstance, strikerBody, victimInstance, victimBody, relSpeed, config, splitLinks) {
-    if (victimInstance instanceof SquidInstance) return false;
+    if (isSquidProfile(victimInstance)) return false;
     if (relSpeed < config.splitImpulseThreshold) return false;
     if (strikerBody.id !== strikerInstance.headId) return false;
     if (victimBody.id === victimInstance.headId) return false;
-    const victimMembers = orderedMembers(state, victimInstance.headId, victimInstance);
+    const victimMembers = orderedMembers(state, victimInstance.headId);
     const struckSegmentId = victimBody.id;
     const strikeIndex = victimMembers.indexOf(struckSegmentId);
     if (strikeIndex < 0 || strikeIndex >= victimMembers.length - 1) return false;
@@ -197,7 +188,7 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         )
             continue;
         if (tryResolveSquidVsSquidRam(state, snakeGame, spatialFrame, contacts, i, instanceA, instanceB, pair.bodyA, pair.bodyB, relSpeed, config)) continue;
-        if (isChainAgent(instanceA) && isChainAgent(instanceB) && pair.bodyA.id === instanceA.headId && pair.bodyB.id === instanceB.headId) continue;
+        if (isMultiSegmentChainAgent(instanceA) && isMultiSegmentChainAgent(instanceB) && pair.bodyA.id === instanceA.headId && pair.bodyB.id === instanceB.headId) continue;
         const relationshipAB = resolveAgentRelationship(snakeGame, instanceA.headId, instanceB.headId, state);
         const relationshipBA = resolveAgentRelationship(snakeGame, instanceB.headId, instanceA.headId, state);
         if (relationshipAB === "prey" || relationshipBA === "prey") {
@@ -206,9 +197,9 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
             const predatorBody = relationshipAB === "prey" ? pair.bodyA : pair.bodyB;
             const preyBody = relationshipAB === "prey" ? pair.bodyB : pair.bodyA;
             if (predatorBody.id === predatorInstance.headId && relSpeed >= config.splitImpulseThreshold) {
-                const squidOnSquid = predatorInstance instanceof SquidInstance && preyInstance instanceof SquidInstance;
-                const brainOnBrainDraw = !squidOnSquid && isChainAgent(preyInstance) && preyBody.id === preyInstance.headId;
-                const squidArmGlance = !squidOnSquid && preyInstance instanceof SquidInstance && preyBody.id !== preyInstance.headId;
+                const squidOnSquid = isSquidProfile(predatorInstance) && isSquidProfile(preyInstance);
+                const brainOnBrainDraw = !squidOnSquid && isMultiSegmentChainAgent(preyInstance) && preyBody.id === preyInstance.headId;
+                const squidArmGlance = !squidOnSquid && isSquidProfile(preyInstance) && preyBody.id !== preyInstance.headId;
                 if (!brainOnBrainDraw && !squidArmGlance) {
                     const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, preyBody.id, preyBody, relSpeed);
                     preyInstance.die(state, snakeGame, null, deathImpact);
@@ -216,7 +207,7 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
                 }
             }
         }
-        if (!isChainAgent(instanceA) || !isChainAgent(instanceB)) continue;
+        if (!isMultiSegmentChainAgent(instanceA) || !isMultiSegmentChainAgent(instanceB)) continue;
         if (relationshipAB === "ally") continue;
         tryResolveSnakeHeadStrikeRam(state, snakeGame, spatialFrame, contacts, i, instanceA, pair.bodyA, instanceB, pair.bodyB, relSpeed, config, splitLinks);
         tryResolveSnakeHeadStrikeRam(state, snakeGame, spatialFrame, contacts, i, instanceB, pair.bodyB, instanceA, pair.bodyA, relSpeed, config, splitLinks);

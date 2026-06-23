@@ -11,7 +11,7 @@ import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snak
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { isAliveAgentHead } from "../Libraries/AI/agents/agentPopulationRegistry.js";
 import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength } from "../Libraries/Game/snake/snakeCombat.js";
-import { getSnakeInstance } from "../Libraries/Game/snake/SnakeInstance.js";
+import { getAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { steerRollToward } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
@@ -210,7 +210,7 @@ describe("snake min length death", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
-        const instance = getSnakeInstance(snakeGame, headId);
+        const instance = getAgentInstance(snakeGame, headId);
         const members = getOrderedChainMemberIds(state, headId);
         removeChainLinkBetween(state, members[0], members[1]);
         removeChainLinkBetween(state, members[1], members[2]);
