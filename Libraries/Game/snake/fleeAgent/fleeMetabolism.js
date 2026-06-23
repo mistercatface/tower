@@ -1,19 +1,11 @@
-import { getSnakeGameConfig } from "../snakeGameConfig.js";
-import { AGENT_PROFILE, getAgentProfile } from "../../../AI/agents/agentProfile.js";
-export function createFleeMetabolism() {
-    return { hunger: 1 };
-}
-export function getFleeHunger(metabolism) {
-    return metabolism.hunger;
-}
-export function setFleeHunger(metabolism, fraction) {
-    metabolism.hunger = Math.max(0, Math.min(1, fraction));
-}
-export function feedFleeMetabolism(metabolism, value = getAgentProfile(AGENT_PROFILE.flee).metabolism.foodValue) {
-    metabolism.hunger = Math.min(1, metabolism.hunger + value);
+import { AGENT_PROFILE } from "../../../AI/agents/agentProfile.js";
+import { createSimpleAgentMetabolism, feedSimpleAgentMetabolism, getSimpleAgentHunger, setSimpleAgentHunger, tickSimpleAgentMetabolism } from "../agentMetabolism.js";
+export const createFleeMetabolism = createSimpleAgentMetabolism;
+export const getFleeHunger = getSimpleAgentHunger;
+export const setFleeHunger = setSimpleAgentHunger;
+export function feedFleeMetabolism(metabolism, value) {
+    feedSimpleAgentMetabolism(metabolism, AGENT_PROFILE.flee, value);
 }
 export function tickFleeMetabolism(metabolism, dtMs, drainMultiplier = 1) {
-    const { hungerDrainMs } = getAgentProfile(AGENT_PROFILE.flee).metabolism;
-    metabolism.hunger -= (dtMs * drainMultiplier) / hungerDrainMs;
-    if (metabolism.hunger < 0) metabolism.hunger = 0;
+    tickSimpleAgentMetabolism(metabolism, AGENT_PROFILE.flee, dtMs, drainMultiplier);
 }

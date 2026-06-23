@@ -10,6 +10,7 @@ export const fleeAgentSpecies = {
     },
     register(session, instance) {
         registerAliveAgent(session.registry, instance.headId, this.id, instance);
+        if (instance.autosim) session.autosimsByHeadId.set(instance.headId, instance.autosim);
     },
     start(instance, state) {
         instance.start(state);
@@ -20,6 +21,7 @@ export const fleeAgentSpecies = {
     die(instance, state, session, deathImpact = null) {
         instance.lifecycle = "dead";
         instance.stopSteering(state);
+        session.autosimsByHeadId.delete(instance.headId);
         const connectedMembers = instance.syncMembersFromGraph(state);
         clearChainLinksForMembers(state, connectedMembers);
         shatterSnakeSegments(state, deathImpact?.spatialFrame ?? null, connectedMembers, deathImpact);

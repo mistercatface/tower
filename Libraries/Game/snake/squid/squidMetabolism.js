@@ -1,23 +1,11 @@
-import { AGENT_PROFILE, getAgentProfile } from "../../../AI/agents/agentProfile.js";
-
-export function createSquidMetabolism() {
-    return { hunger: 1 };
+import { AGENT_PROFILE } from "../../../AI/agents/agentProfile.js";
+import { createSimpleAgentMetabolism, feedSimpleAgentMetabolism, getSimpleAgentHunger, setSimpleAgentHunger, tickSimpleAgentMetabolism } from "../agentMetabolism.js";
+export const createSquidMetabolism = createSimpleAgentMetabolism;
+export const getSquidHunger = getSimpleAgentHunger;
+export const setSquidHunger = setSimpleAgentHunger;
+export function feedSquidMetabolism(metabolism, value) {
+    feedSimpleAgentMetabolism(metabolism, AGENT_PROFILE.squid, value);
 }
-
-export function getSquidHunger(metabolism) {
-    return metabolism.hunger;
-}
-
-export function setSquidHunger(metabolism, fraction) {
-    metabolism.hunger = Math.max(0, Math.min(1, fraction));
-}
-
-export function feedSquidMetabolism(metabolism, value = getAgentProfile(AGENT_PROFILE.squid).metabolism.foodValue) {
-    metabolism.hunger = Math.min(1, metabolism.hunger + (value ?? getAgentProfile(AGENT_PROFILE.squid).metabolism.foodValue));
-}
-
 export function tickSquidMetabolism(metabolism, dtMs, drainMultiplier = 1) {
-    const { hungerDrainMs } = getAgentProfile(AGENT_PROFILE.squid).metabolism;
-    metabolism.hunger -= (dtMs * drainMultiplier) / hungerDrainMs;
-    if (metabolism.hunger < 0) metabolism.hunger = 0;
+    tickSimpleAgentMetabolism(metabolism, AGENT_PROFILE.squid, dtMs, drainMultiplier);
 }

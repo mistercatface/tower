@@ -1,5 +1,4 @@
 import { getSnakeInstance } from "./SnakeInstance.js";
-import { getFleeAgentInstance } from "./fleeAgent/FleeAgentInstance.js";
 function intentTargetFromAutosim(autosim) {
     if (!autosim) return null;
     return { mode: autosim.getMode?.() ?? null, targetId: autosim.getTargetId?.() ?? null, destination: autosim.getDestination?.() ?? null };
@@ -15,15 +14,16 @@ export function resolveFocusedAgentDebugContext(state, focusedHeadId) {
     const head = state.entityRegistry.getLive(focusedHeadId);
     if (!head || head.isDead) return null;
     const meta = snakeGame.registry.aliveByHeadId.get(focusedHeadId);
-    const flee = getFleeAgentInstance(snakeGame, focusedHeadId);
-    if (flee?.brain && flee.headNav)
+    const instance = snakeGame.instancesByHeadId.get(focusedHeadId);
+    const autosim = instance?.autosim ?? snakeGame.autosimsByHeadId.get(focusedHeadId);
+    if (autosim && typeof autosim.getBrain === "function")
         return buildFocusedAgentDebugContext(
             focusedHeadId,
             head,
-            meta?.species ?? "flee_agent",
-            () => flee.brain,
-            () => flee.headNav.getPathOverlay(head),
-            () => intentTargetFromFlee(flee),
+            meta?.species ?? "snake",
+            () => autosim.getBrain(),
+            () => autosim.getPathOverlay?.() ?? null,
+            () => intentTargetFromAutosim(autosim),
         );
     const snake = getSnakeInstance(snakeGame, focusedHeadId);
     if (snake?.autosim && typeof snake.autosim.getBrain === "function")
@@ -34,16 +34,6 @@ export function resolveFocusedAgentDebugContext(state, focusedHeadId) {
             () => snake.autosim.getBrain(),
             () => snake.autosim.getPathOverlay?.() ?? null,
             () => intentTargetFromAutosim(snake.autosim),
-        );
-    const autosim = snakeGame.autosimsByHeadId.get(focusedHeadId);
-    if (autosim && typeof autosim.getBrain === "function")
-        return buildFocusedAgentDebugContext(
-            focusedHeadId,
-            head,
-            meta?.species ?? "snake",
-            () => autosim.getBrain(),
-            () => autosim.getPathOverlay?.() ?? null,
-            () => intentTargetFromAutosim(autosim),
         );
     return null;
 }
