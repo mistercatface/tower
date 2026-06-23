@@ -10,9 +10,9 @@
 
 ## Current task
 
-**FSM reach phase 1 — done ✅** · [`fsmbfs.md`](current/fsm/fsmbfs.md)
+**Decision engine cleanup** — [`current/fsmroadmap.md`](current/fsmroadmap.md) steps 1→4 (config slots → registry → bands → delete species JS)
 
-**Next:** **Part 1 — AI consumer cleanup** (dedupe snake/flee, move generic FSM out of snake folder) — **gates Phase 2 flow locomotion**
+Reach + flat `decisionContext` already shipped ✅
 
 ---
 
@@ -20,7 +20,7 @@
 
 From structural cleanup queue:
 
-0. **AI consumer dedupe (snake/flee)** · [`fsmbfs.md`](current/fsm/fsmbfs.md) Part 1 — **do before flow locomotion**
+0. **Snake/flee decision → config** · [`current/fsmroadmap.md`](current/fsmroadmap.md) — **before flow flee steering**
 1. **Prop catalog passthrough** — delete twin maps · [`stupid.md`](current/stupid.md) P3-3
 2. **Library defaults getters** · [`library_defaults.md`](current/library_defaults.md)
 3. **Sandbox behavior registry threading** · [`passthrough.md`](current/passthrough.md) Tier 3
@@ -31,7 +31,7 @@ From structural cleanup queue:
 
 From [ROADMAP.md](./ROADMAP.md) highest strategic overlap (reorder as needed):
 
-1. **AI consumer dedupe + flow locomotion** · [`current/fsm/fsmbfs.md`](current/fsm/fsmbfs.md) Part 1 then 2a–3 (Part 1 gates Part 2)
+1. **Decision config + flow flee steering** · [`current/fsmroadmap.md`](current/fsmroadmap.md) steps 1–4 then 5
 2. **Funnel / string-pull smoothing** · [pathfinding.md](./pathfinding.md)
 3. **Unified root seed** · [procedural.md](./procedural.md) Tier 10
 4. **Render cache telemetry** · [rendering.md](./rendering.md)
