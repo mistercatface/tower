@@ -50,13 +50,15 @@
 | Symbol | Snake | Flee | Lines ~same | Move target |
 |--------|-------|------|-------------|-------------|
 | `pushTargetEvents` | `:49` | `:44` | yes | `Libraries/AI/agentIntent/pushTargetEvents.js` or merge with route events module |
-| `policyReasonForTarget` | `:147` | `:52` | yes | `Libraries/AI/agentIntent/intentPolicy.js` |
-| `intentPolicy` | `:151` | `:56` | yes | same |
+| `policyReasonForTarget` | ~~`:147`~~ | ~~`:52`~~ | yes | `Libraries/AI/agentIntent/intentPolicy.js` ✅ |
+| `intentPolicy` | ~~`:151`~~ | ~~`:56`~~ | yes | same ✅ |
 | `policyForScoredMode` | `:226` | `:178` | mode list differs | shared core + species mode table |
-| `hungerKey` | `:133` | `:38` | yes | `Libraries/AI/utility/hungerEffort.js` or similar |
-| `costPerCellForHunger` | `:139` | `:41` | yes | same |
-| `scoreFlee` | `:156` | `:121` | similar | shared scorer; flee adds multi-threat branch |
-| `scoreFoodDetail` | `:177` | `:133` | similar | shared |
+| `hungerKey` | ~~`:133`~~ | ~~`:38`~~ | yes | `Libraries/AI/utility/hungerEffort.js` ✅ |
+| `costPerCellForHunger` | ~~`:139`~~ | ~~`:41`~~ | yes | same ✅ |
+| `foodHungerScoreValue` | derived | derived | yes | same ✅ |
+| `scoreRiskAdjustedFlee` | ~~`:156`~~ | ~~`:121`~~ | similar | `Libraries/AI/agents/scoreFleeIntent.js` ✅; flee adds multi-threat branch |
+| `scoreFlee` | wrapper | wrapper | — | inline flee outnumbered multiplier only |
+| `scoreFoodDetail` | `:177` | `:133` | similar | uses `foodHungerScoreValue`; flee adds satisfied + sprint penalty |
 | `scoreSeekAllyDetail` | `:192` | `:150` | similar | shared; snake has `regroupSizeFactor` |
 | `scoreExplore` | `:210` | `:165` | yes | shared |
 
@@ -121,7 +123,33 @@ Both use `requireSnakeVisionFrame`, `getSnakeGameConfig`, `resolveAgentRelations
 
 ---
 
-## Pass E — Blackboard builders
+## Pass D — Perception ✅
+
+**Shipped:** `Libraries/Game/snake/agentIntentPerception.js` — `resolveAgentPerceptionOptions`, `perceiveAgentIntentWorld`, `findNearestVisibleThreat`
+
+**Deleted:** `snakeIntent.js`, `fleeAgent/fleeWorldPerception.js`
+
+**Bugfix (regroup integration test):** `reachStepsForMode` in both intent adapters — do not use `pathLen: 0` before a route exists; only trust committed path length when `hasRoute && pathLen > 0`, or when `destReached`.
+
+---
+
+## Pass E — Decision dedupe ✅
+
+**Shipped:**
+
+| Module | Exports |
+|--------|---------|
+| `Libraries/AI/agentIntent/intentPolicy.js` | `policyReasonForTarget`, `intentPolicy` |
+| `Libraries/AI/utility/hungerEffort.js` | `hungerKey`, `costPerCellForHunger`, `foodHungerScoreValue` |
+| `Libraries/AI/agents/scoreFleeIntent.js` | `scoreRiskAdjustedFlee` |
+
+**Still species-local:** `policyForScoredMode`, `scorePreyDetail`, `scoreEnemyDetail`, `scoreSeekAllyDetail`, blackboard builders, hunger/sprint derive wrappers.
+
+**Grep gate:** no `policyReasonForTarget` / `intentPolicy` / `hungerKey` / `costPerCellForHunger` in `*DecisionModel.js`.
+
+---
+
+## Pass E — Blackboard builders (reference)
 
 | | Snake | Flee |
 |--|-------|------|

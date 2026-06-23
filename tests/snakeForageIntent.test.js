@@ -11,7 +11,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { cellChebyshevDistance } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSnakeDecisionBlackboard, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
-import { perceiveSnakeIntentWorld, findNearestVisibleThreat } from "../Libraries/Game/snake/snakeIntent.js";
+import { perceiveAgentIntentWorld, findNearestVisibleThreat } from "../Libraries/Game/snake/agentIntentPerception.js";
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision, registerSnakeTestInstance, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
@@ -72,7 +72,7 @@ function registerIntentSnakes(state, chains) {
 }
 function perceiveIntentWorld(state, seeker, headId, registry, resolveFood) {
     primeSnakeHeadVision(state, seeker);
-    return perceiveSnakeIntentWorld(seeker, headId, state, registry, resolveFood, getSnakeGameConfig().visionRange);
+    return perceiveAgentIntentWorld(seeker, headId, state, registry, resolveFood, getSnakeGameConfig().visionRange);
 }
 function pickPolicyFromVisibleWorld(world) {
     return pickSnakeIntentPolicy(createSnakeDecisionBlackboard({ visibleWorld: world }));
@@ -157,7 +157,7 @@ describe("snake forage intent", () => {
         state.worldProps.push(food);
         state.entityRegistry.register("worldProp", food);
         primeSnakeHeadVision(state, self.head);
-        const world = perceiveSnakeIntentWorld(self.head, self.head.id, state, registry, () => food);
+        const world = perceiveAgentIntentWorld(self.head, self.head.id, state, registry, () => food);
         const policy = pickPolicyFromVisibleWorld(world);
         assert.equal(policy.mode, "seek_food");
         assert.equal(policy.targetId, 999);

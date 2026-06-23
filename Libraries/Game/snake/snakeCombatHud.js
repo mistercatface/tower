@@ -1,6 +1,6 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { isAliveAgentHead } from "../../AI/agents/agentPopulationRegistry.js";
-import { perceiveSnakeIntentWorld } from "./snakeIntent.js";
+import { perceiveAgentIntentWorld } from "./agentIntentPerception.js";
 export function resolveSnakeCombatHud(snakeHeadId, state, registry, autosimsByHeadId) {
     const autosim = autosimsByHeadId.get(snakeHeadId);
     const mode = autosim?.getMode?.() ?? null;
@@ -14,7 +14,7 @@ export function resolveSnakeCombatHud(snakeHeadId, state, registry, autosimsByHe
             if (otherAutosim.getMode?.() !== "seek_prey") continue;
             const hunter = state.entityRegistry.getLive(headId);
             if (!hunter || hunter.isDead) continue;
-            const prey = perceiveSnakeIntentWorld(hunter, headId, state, registry, () => null, visionRange).prey;
+            const prey = perceiveAgentIntentWorld(hunter, headId, state, registry, () => null, visionRange).prey;
             if (prey?.id === snakeHeadId) {
                 hunted = true;
                 break;

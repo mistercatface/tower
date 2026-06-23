@@ -6,7 +6,7 @@ import { buildSnakeDecisionContext, deriveSprintIntent } from "./snakeDecisionMo
 import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/intentStates.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
-import { perceiveSnakeIntentWorld } from "./snakeIntent.js";
+import { perceiveAgentIntentWorld } from "./agentIntentPerception.js";
 import { createAgentIntentMemory } from "../../AI/memory/createAgentIntentMemory.js";
 import { syncNavReachHorizon, navReachStepsTo } from "../../Navigation/navReachHorizon.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
@@ -71,7 +71,7 @@ export function createSnakeForageIntent({
         };
     };
     const perceiveWithMemory = (agent, state) => {
-        const visible = perceiveSnakeIntentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
+        const visible = perceiveAgentIntentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
         const nav = requireSnakeVisionFrame(state).navTopology;
@@ -81,8 +81,12 @@ export function createSnakeForageIntent({
         function reachStepsForMode(target, mode) {
             if (!target) return null;
             if (committed?.mode === mode && committed.targetId === target.id) {
+                if (routeStatus?.destReached) {
+                    const pathLen = routeStatus?.pathLen;
+                    return Number.isFinite(pathLen) ? pathLen : 0;
+                }
                 const pathLen = routeStatus?.pathLen;
-                if (Number.isFinite(pathLen)) return pathLen;
+                if (routeStatus?.hasRoute && Number.isFinite(pathLen) && pathLen > 0) return pathLen;
             }
             return navReachStepsTo(target.x, target.y);
         }

@@ -2,6 +2,9 @@ import { isAgentEngaged } from "../../AI/agents/agentEngagement.js";
 import { deriveAllyState } from "../../AI/agents/deriveAllyState.js";
 import { deriveThreatState } from "../../AI/agents/deriveThreatState.js";
 import { pushTargetEvents, routeEvents } from "../../AI/agentIntent/targetEvents.js";
+import { intentPolicy, policyReasonForTarget } from "../../AI/agentIntent/intentPolicy.js";
+import { scoreRiskAdjustedFlee } from "../../AI/agents/scoreFleeIntent.js";
+import { costPerCellForHunger, foodHungerScoreValue, hungerKey } from "../../AI/utility/hungerEffort.js";
 import { netScoreDetail, pickBestScoreKey, scoreCandidateSet } from "../../AI/utility/utilityScoring.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { deriveSnakeEngagementState } from "./snakeEngagement.js";
@@ -95,37 +98,12 @@ export function createSnakeDecisionBlackboard({
         events,
     };
 }
-function hungerKey(hungerState) {
-    return hungerState?.state ?? "hungry";
-}
 function effortConfig(pressure) {
     return pressure.effort ?? getSnakeGameConfig().decisionPressure.effort;
-}
-function costPerCellForHunger(pressure, hungerState) {
-    const effort = effortConfig(pressure);
-    return effort.costPerCell[hungerKey(hungerState)];
 }
 function preyValueForHunger(weights, pressure, hungerState) {
     const effort = effortConfig(pressure);
     return effort.preyValue[hungerKey(hungerState)] ?? weights.prey;
-}
-function policyReasonForTarget(blackboard, kind) {
-    if (blackboard.facts.remembered[kind]) return `${kind}_memory`;
-    return null;
-}
-function intentPolicy(mode, targetId, reason = null) {
-    const policy = { mode, targetId };
-    if (reason) policy.reason = reason;
-    return policy;
-}
-function scoreFlee(blackboard, weights, pressure) {
-    if (!blackboard.facts.known.threat) return -Infinity;
-    const threat = blackboard.facts.threatState;
-    if (!threat || threat.lethal) return Infinity;
-    const hunger = blackboard.facts.hungerState;
-    const riskTolerance = hunger ? (pressure.riskTolerance[hunger.state] ?? 0) : 0;
-    if (riskTolerance <= 0) return Infinity;
-    return weights.flee * threat.severity * (1 - riskTolerance);
 }
 function scorePreyDetail(blackboard, weights, pressure) {
     const prey = blackboard.facts.known.prey;
@@ -142,8 +120,7 @@ function scorePreyDetail(blackboard, weights, pressure) {
 function scoreFoodDetail(blackboard, weights, pressure) {
     if (!blackboard.facts.known.food) return { net: -Infinity };
     const hunger = blackboard.facts.hungerState;
-    const deficit = hunger ? 1 - hunger.foodFraction : 0;
-    const value = weights.food + pressure.foodHungerBonus * deficit;
+    const value = foodHungerScoreValue(weights, pressure, hunger);
     return netScoreDetail(value, blackboard.facts.reachSteps.food, costPerCellForHunger(pressure, hunger));
 }
 function regroupSizeFactor(segmentCount, cohesion) {
@@ -180,7 +157,7 @@ export function scoreSnakeIntentCandidates(blackboard, weights = getSnakeGameCon
 }
 export function scoreSnakeIntentCandidateDetails(blackboard, weights = getSnakeGameConfig().decisionWeights, pressure = getSnakeGameConfig().decisionPressure) {
     return {
-        flee: { net: scoreFlee(blackboard, weights, pressure) },
+        flee: { net: scoreRiskAdjustedFlee(blackboard, weights, pressure) },
         seek_prey: scorePreyDetail(blackboard, weights, pressure),
         seek_food: scoreFoodDetail(blackboard, weights, pressure),
         seek_ally: scoreSeekAllyDetail(blackboard, weights, pressure),

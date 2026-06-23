@@ -5,12 +5,11 @@ import { pickFleeCell } from "../../../AI/steering/pickFleeCell.js";
 import { resolveFleePackOptions } from "./resolveFleePackOptions.js";
 import { createCellTargetLocomotion } from "../../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
-import { perceiveFleeAgentWorld } from "./fleeWorldPerception.js";
-import { requireSnakeVisionFrame } from "../snakePerception.js";
-import { resolveAgentRelationship } from "../snakeAgentSession.js";
+import { perceiveAgentIntentWorld } from "../agentIntentPerception.js";
 import { buildFleeDecisionContext, deriveFleeSprintIntent } from "./fleeDecisionModel.js";
 import { createAgentIntentMemory } from "../../../AI/memory/createAgentIntentMemory.js";
 import { syncNavReachHorizon, navReachStepsTo } from "../../../Navigation/navReachHorizon.js";
+import { requireSnakeVisionFrame } from "../snakePerception.js";
 export function createFleeExploreIntent({
     brain,
     sync,
@@ -79,11 +78,7 @@ export function createFleeExploreIntent({
         return null;
     };
     const perceiveWithMemory = (agent, state) => {
-        const visible = perceiveFleeAgentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision, {
-            readVisionFrame: requireSnakeVisionFrame,
-            agentRange: config.fleeRange ?? resolvedVision.range,
-            resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(state.sandbox.snakeGame, selfHeadId, headId, state),
-        });
+        const visible = perceiveAgentIntentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
         const nav = requireSnakeVisionFrame(state).navTopology;
@@ -93,8 +88,12 @@ export function createFleeExploreIntent({
         function reachStepsForMode(target, mode) {
             if (!target) return null;
             if (committed?.mode === mode && committed.targetId === target.id) {
+                if (routeStatus?.destReached) {
+                    const pathLen = routeStatus?.pathLen;
+                    return Number.isFinite(pathLen) ? pathLen : 0;
+                }
                 const pathLen = routeStatus?.pathLen;
-                if (Number.isFinite(pathLen)) return pathLen;
+                if (routeStatus?.hasRoute && Number.isFinite(pathLen) && pathLen > 0) return pathLen;
             }
             return navReachStepsTo(target.x, target.y);
         }

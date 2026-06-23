@@ -5,7 +5,7 @@
 | | |
 |--|--|
 | **Phase 1** | Reach dialect done ✅ — [`history.md`](history.md) |
-| **Part 1** | Pass A ✅ · Pass B ✅ · Pass C ✅ · **Pass D next** |
+| **Part 1** | Pass A–E ✅ · **Pass F next** |
 | **Part 2** | Flow locomotion 2a → 2b → 3 — **blocked until Part 1 grep gates pass** |
 
 ---
@@ -168,9 +168,9 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 | Smell | Where | Fix |
 |-------|-------|-----|
 | Flee imports snake for generic derives | ~~`fleeDecisionModel.js`~~ ✅ Pass B | `deriveThreatState`, `deriveAllyState`, `targetEvents` in `Libraries/AI/` |
-| Duplicated decision helpers | `pushTargetEvents` ✅ Pass B; still open: `policyReasonForTarget`, `intentPolicy`, hunger/food scorers | Pass E |
+| Duplicated decision helpers | ~~`pushTargetEvents`~~ ✅ Pass B; ~~`policyReasonForTarget`, `intentPolicy`, hunger/food/flee scorers~~ ✅ Pass E; still open: `policyForScoredMode` | Pass E ✅ / species mode tables stay local |
 | Twin intent memory | ~~`snakeIntentMemory.js`, `fleeIntentMemory.js`~~ ✅ Pass C | `Libraries/AI/memory/createAgentIntentMemory.js` |
-| Twin perception wrappers | `snakeIntent.js`, `fleeWorldPerception.js` | one `resolveAgentPerceptionOptions` |
+| Twin perception wrappers | ~~`snakeIntent.js`, `fleeWorldPerception.js`~~ ✅ Pass D | `agentIntentPerception.js` |
 | ~270-line twin intent adapters | `createSnakeForageIntent.js`, `createFleeExploreIntent.js` | shared shell: route/reach/arrival/latch/effects |
 | `reachStepsForMode` ×2 | both adapters | once — `Libraries/Game/snake/agentReachSteps.js` or shared adapter helper |
 | Misnamed file | ~~`agentPopulationRegistry.js`~~ → `agentRelationship.js` ✅ Pass A | **dead code** — zero importers; delete or wire in Pass D |
@@ -185,8 +185,8 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 | **A — Inventory** ✅ | Renamed `agentPopulationRegistry.js` → `agentRelationship.js`; symbol map in [`inventory.md`](inventory.md) | no behavior change |
 | **B — Generic derives** ✅ | `deriveThreatState`, `deriveAllyState`, `targetEvents` → `Libraries/AI/`; deleted `deriveFleeAgentThreatState` | flee imports AI only — verified |
 | **C — Intent memory** ✅ | `createAgentIntentMemory.js`; deleted species memory files | two call sites |
-| **D — Perception** | Merge options builders | one `resolve*PerceptionOptions` body |
-| **E — Decision dedupe** | Shared hunger/food/policy helpers | net −LOC in decision models |
+| **D — Perception** ✅ | `agentIntentPerception.js`; deleted species wrapper files; fixed `reachStepsForMode` pathLen-0 latch bug | one options builder + `perceiveAgentIntentWorld` |
+| **E — Decision dedupe** ✅ | `intentPolicy.js`, `hungerEffort.js`, `scoreFleeIntent.js` | net −LOC; grep gate clean on policy/hunger helpers |
 | **F — Intent adapter** | Shared shell; species files <120 lines | `reachStepsForMode` once |
 | **G — Gate + docs** | Tests + doc sync | grep gates below |
 
@@ -268,7 +268,8 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 - [x] Pass A inventory — [`inventory.md`](inventory.md)
 - [x] Pass B — flee does not import generic derives from `snakeDecisionModel.js`
 - [x] Pass C — one intent memory factory
-- [ ] Pass D — one perception options builder
+- [x] Pass D — one perception options builder (`agentIntentPerception.js`)
+- [ ] Pass E — decision model dedupe
 - [ ] Net −LOC across snake+flee pair
 - [ ] Part 1 grep gates pass
 

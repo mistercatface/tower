@@ -21,7 +21,7 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } 
 import { createSnakeDecisionBlackboard, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { syncNavReachHorizon, navReachStepsTo } from "../Libraries/Navigation/navReachHorizon.js";
 import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
-import { perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
+import { perceiveAgentIntentWorld } from "../Libraries/Game/snake/agentIntentPerception.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 async function createIntentTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -201,7 +201,7 @@ describe("snake intent FSM", () => {
         threatChain.head.x = seeker.x + 96;
         threatChain.head.y = seeker.y;
         primeSnakeHeadVision(state, seeker);
-        const world = perceiveSnakeIntentWorld(seeker, seeker.id, state, registry, () => null);
+        const world = perceiveAgentIntentWorld(seeker, seeker.id, state, registry, () => null);
         assert.equal(world.prey.id, preyChain.head.id);
         assert.equal(world.threat.id, threatChain.head.id);
         assert.equal(pickPolicyFromVisibleWorld(seeker, state, world).mode, "flee");
@@ -224,7 +224,7 @@ describe("snake intent FSM", () => {
         preyChain.head.x = seeker.x + 64;
         preyChain.head.y = seeker.y;
         primeSnakeHeadVision(state, seeker);
-        const world = perceiveSnakeIntentWorld(seeker, seeker.id, state, registry, () => food);
+        const world = perceiveAgentIntentWorld(seeker, seeker.id, state, registry, () => food);
         assert.equal(world.prey.id, preyChain.head.id);
         assert.equal(world.food.id, food.id);
         assert.deepEqual(pickPolicyFromVisibleWorld(seeker, state, world), { mode: "seek_food", targetId: food.id });
@@ -248,7 +248,7 @@ describe("snake intent FSM", () => {
         stampWall(state.obstacleGrid, 11, 10);
         await state.nav.commitEdit({ startCol: 10, endCol: 12, startRow: 9, endRow: 11 });
         primeSnakeHeadVision(state, seeker);
-        const world = perceiveSnakeIntentWorld(seeker, seeker.id, state, registry, () => null);
+        const world = perceiveAgentIntentWorld(seeker, seeker.id, state, registry, () => null);
         assert.equal(world.prey, null);
     });
 });

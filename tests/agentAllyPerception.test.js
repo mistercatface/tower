@@ -5,12 +5,9 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
-import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { registerAgentInstance, resolveAgentRelationship } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
-import { perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
-import { perceiveFleeAgentWorld } from "../Libraries/Game/snake/fleeAgent/fleeWorldPerception.js";
-import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
-import { resolveAgentRelationship } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { perceiveAgentIntentWorld } from "../Libraries/Game/snake/agentIntentPerception.js";
 import { publishAgentEngagement } from "../Libraries/AI/agents/agentEngagement.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, primeSnakeHeadVision, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
 
@@ -68,7 +65,7 @@ describe("ally perception", () => {
         enemy.head.x = seeker.head.x + 64;
         enemy.head.y = seeker.head.y + 64;
         primeSnakeHeadVision(state, seeker.head);
-        const world = perceiveSnakeIntentWorld(seeker.head, seeker.head.id, state, registry, () => null);
+        const world = perceiveAgentIntentWorld(seeker.head, seeker.head.id, state, registry, () => null);
         assert.equal(world.ally.id, allyNear.head.id);
         assert.equal(world.allyCount, 2);
         assert.ok(Math.abs(world.allyCentroid.x - (allyNear.head.x + allyFar.head.x) / 2) < 0.01);
@@ -94,11 +91,7 @@ describe("ally perception", () => {
         strangerPack.head.x = seekerPack.head.x + 64;
         strangerPack.head.y = seekerPack.head.y + 64;
         primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().visionRange);
-        const world = perceiveFleeAgentWorld(seekerPack.head, seekerPack.head.id, state, registry, () => null, getSnakeGameConfig().visionRange, {
-            readVisionFrame: requireSnakeVisionFrame,
-            agentRange: getSnakeGameConfig().fleeRange,
-            resolveRelationship: (selfHeadId, headId, state) => resolveAgentRelationship(snakeGame, selfHeadId, headId, state),
-        });
+        const world = perceiveAgentIntentWorld(seekerPack.head, seekerPack.head.id, state, registry, () => null, getSnakeGameConfig().visionRange);
         assert.equal(world.ally.id, allyPack.head.id);
         assert.equal(world.allyCount, 1);
         assert.equal(world.threat, null);

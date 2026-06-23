@@ -1,7 +1,6 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
-import { perceiveSnakeIntentWorld } from "./snakeIntent.js";
-import { perceiveFleeAgentWorld, resolveFleeAgentPerceptionOptions } from "./fleeAgent/fleeWorldPerception.js";
+import { perceiveAgentIntentWorld } from "./agentIntentPerception.js";
 import { appendGridCellVisionOverlayCommands } from "../../Navigation/perception/gridCellVisionOverlay.js";
 import { overlayCircleFillStroke } from "../../Render/overlays/overlayCommands.js";
 function resolveFocusedAgentDebugStyle(config) {
@@ -27,8 +26,7 @@ function perceiveFocusedAgentWorld(state, ctx) {
     const registry = state.sandbox.snakeGame.registry;
     const config = getSnakeGameConfig();
     const visionRange = config.visionRange;
-    if (species === "flee_agent") return perceiveFleeAgentWorld(head, headId, state, registry, () => null, visionRange, resolveFleeAgentPerceptionOptions(state, visionRange));
-    return perceiveSnakeIntentWorld(head, headId, state, registry, () => null, visionRange);
+    return perceiveAgentIntentWorld(head, headId, state, registry, () => null, visionRange);
 }
 export function appendFocusedAgentVisionOverlayCommands(out, state, ctx) {
     if (!ctx?.head) return;
