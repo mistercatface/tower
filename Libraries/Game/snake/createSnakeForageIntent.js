@@ -59,24 +59,24 @@ export function createSnakeForageIntent({
             }),
         afterPerceive(decisionContext, agent, state) {
             const snakeGame = state.sandbox?.snakeGame;
-            if (snakeGame) publishAgentEngagement(snakeGame, selfHeadId, decisionContext.blackboard.facts.engagementState);
+            if (snakeGame) publishAgentEngagement(snakeGame, selfHeadId, decisionContext.engagementState);
         },
         resolveCommittedTarget(id, world) {
             if (id == null) return null;
-            const known = world.blackboard.facts.known;
+            const known = world.decisionContext.known;
             if (known.prey?.id === id) return known.prey;
             if (known.food?.id === id) return known.food;
             if (known.ally?.id === id) return known.ally;
             return null;
         },
         setFleeDestination({ agent, state, world, avoidCell, locomotion }) {
-            const threat = world.blackboard.facts.known.threat;
+            const threat = world.decisionContext.known.threat;
             if (!threat) return null;
             const cell = pickFleeCell(agent, threat, state.obstacleGrid, navWalkable, config.fleeTiles, avoidCell);
             if (cell) locomotion.setFlee(agent, state, cell);
             return cell;
         },
-        deriveSprintIntent: (mode, snapshot) => deriveSprintIntent(mode, snapshot.threatState),
+        deriveSprintIntent: (mode, ctx) => deriveSprintIntent(mode, ctx.threatState),
         fleeHeldOn: "any",
         transitionReason(prevMode, nextMode, policy) {
             if (policy?.reason) return policy.reason;
@@ -86,10 +86,10 @@ export function createSnakeForageIntent({
             return `mode_${nextMode}`;
         },
         states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), seek_prey: createSeekIntentState(), seek_ally: createSeekIntentState(), flee: createFleeIntentState() },
-        extendReturn({ intent, locomotion, intentMemory, getLastBlackboard, getLastDecisionSnapshot }) {
+        extendReturn({ intent, locomotion, intentMemory, getLastDecisionContext }) {
             return {
                 getFsmSnapshot(agent, state) {
-                    return getGroundNavFsmSnapshot({ intent, locomotion, agent, state, intentMemory, lastBlackboard: getLastBlackboard(), lastDecisionSnapshot: getLastDecisionSnapshot() });
+                    return getGroundNavFsmSnapshot({ intent, locomotion, agent, state, intentMemory, lastDecisionContext: getLastDecisionContext() });
                 },
             };
         },

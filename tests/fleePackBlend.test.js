@@ -4,7 +4,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { resolveFleePackOptions } from "../Libraries/Game/snake/fleeAgent/resolveFleePackOptions.js";
-import { createSnakeDecisionBlackboard } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { buildSnakeDecisionFrame } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
@@ -16,13 +16,13 @@ const openNav = { has: () => true };
 describe("flee pack blend (4d)", () => {
     it("resolveFleePackOptions returns null without allies", () => {
         applySnakeGameConfig({ fleeAgent: { factionCohesion: { fleePackBlend: 0.35 } } });
-        const bb = createSnakeDecisionBlackboard({ visibleWorld: { threat: { id: 1 }, allyCount: 0 } });
+        const bb = buildSnakeDecisionFrame({ visibleWorld: { threat: { id: 1 }, allyCount: 0 } });
         assert.equal(resolveFleePackOptions(bb), null);
     });
 
     it("resolveFleePackOptions uses ally centroid when allies are known", () => {
         applySnakeGameConfig({ fleeAgent: { factionCohesion: { fleePackBlend: 0.35, maxPackDistCells: 16 } } });
-        const bb = createSnakeDecisionBlackboard({
+        const bb = buildSnakeDecisionFrame({
             visibleWorld: { ally: { id: 2, x: 80, y: 40 }, allyCount: 1, allyCentroid: { x: 80, y: 40 } },
         });
         assert.deepEqual(resolveFleePackOptions(bb), { packAnchor: { x: 80, y: 40 }, packBlend: 0.35, maxPackDistCells: 16 });
@@ -30,7 +30,11 @@ describe("flee pack blend (4d)", () => {
 
     it("pickFleeCell biases toward pack anchor while still fleeing the threat", () => {
         applySnakeGameConfig({ fleeTiles: 8 });
-        const grid = { worldToGrid: (x, y) => ({ col: Math.floor(x / 16), row: Math.floor(y / 16) }) };
+        const grid = {
+            worldToGrid: (x, y) => ({ col: Math.floor(x / 16), row: Math.floor(y / 16) }),
+            worldCol: (x) => Math.floor(x / 16),
+            worldRow: (y) => Math.floor(y / 16),
+        };
         const self = { x: 10 * 16 + 8, y: 10 * 16 + 8 };
         const threat = { x: 14 * 16 + 8, y: 10 * 16 + 8 };
         const pure = pickFleeCell(self, threat, grid, openNav, 8);
@@ -70,15 +74,13 @@ describe("flee pack blend (4d)", () => {
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
-        const snapshot = instance.intent.getDecisionSnapshot();
+        const snapshot = instance.intent.getDecisionContext();
         assert.ok((snapshot.allyState?.count ?? 0) >= 1);
         const packOptions = resolveFleePackOptions({
-            facts: {
-                known: {
-                    ally: snapshot.allyState.ally,
-                    allyCount: snapshot.allyState.count,
-                    allyCentroid: snapshot.allyState.centroid,
-                },
+            known: {
+                ally: snapshot.allyState.ally,
+                allyCount: snapshot.allyState.count,
+                allyCentroid: snapshot.allyState.centroid,
             },
         });
         assert.ok(packOptions);

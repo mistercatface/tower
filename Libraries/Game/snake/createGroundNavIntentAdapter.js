@@ -38,9 +38,6 @@ function createBrainArrivalStamper(brain) {
         },
     };
 }
-function readThreatState(world) {
-    return world.blackboard?.facts?.threatState ?? world.decisionSnapshot?.threatState;
-}
 function createFleeIntentLatch(config) {
     const fleeHysteresis = config.fleeHysteresis;
     return createModePolicyLatch({
@@ -48,27 +45,27 @@ function createFleeIntentLatch(config) {
         minTicks: fleeHysteresis.minTicks,
         holdReason: "flee_hysteresis",
         refreshWhen: ({ world }) => {
-            const threat = readThreatState(world);
+            const threat = world.decisionContext.threatState;
             return threat?.lethal || threat?.severity >= fleeHysteresis.refreshAtSeverity;
         },
         canRelease: ({ world }) => {
-            const threat = readThreatState(world);
+            const threat = world.decisionContext.threatState;
             return !threat || (!threat.lethal && threat.severity <= fleeHysteresis.exitThreatSeverity);
         },
     });
 }
 function applyFleePolicyLatch({ world, fleeLatch, currentMode, deriveSprintIntent, fleeHeldOn = "flee" }) {
-    const chosen = world.decisionSnapshot.chosenIntent;
+    const ctx = world.decisionContext;
+    const chosen = ctx.chosenIntent;
     const policy = fleeLatch.apply(chosen, { world, currentMode });
     if (policy !== chosen) {
-        if (fleeHeldOn === "any" || policy.mode === "flee") world.blackboard.events.push("FLEE_HELD");
-        world.decisionSnapshot.events = world.blackboard.events;
-        world.decisionSnapshot.chosenIntent = policy;
-        world.decisionSnapshot.chosenReason = policy.reason ?? null;
-        world.decisionSnapshot.targetId = policy.targetId ?? null;
-        world.decisionSnapshot.sprintIntent = deriveSprintIntent(policy.mode, world.decisionSnapshot);
+        if (fleeHeldOn === "any" || policy.mode === "flee") ctx.events.push("FLEE_HELD");
+        ctx.chosenIntent = policy;
+        ctx.chosenReason = policy.reason ?? null;
+        ctx.targetId = policy.targetId ?? null;
+        ctx.sprintIntent = deriveSprintIntent(policy.mode, ctx);
     }
-    world.decisionSnapshot.policyLatch = { flee: fleeLatch.snapshot() };
+    ctx.policyLatch = { flee: fleeLatch.snapshot() };
     return policy;
 }
 function createCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, rng, seekArrivalRadius, setFleeDestination }) {
@@ -102,11 +99,11 @@ function createCellTargetIntentContext({ locomotion, resolveCommittedTarget }) {
         grid: ctx.state.obstacleGrid,
         dest: locomotion.getDestination(),
         target: resolveCommittedTarget(ctx.targetId, ctx.world),
-        fleeTarget: ctx.world.blackboard.facts.known.threat,
+        fleeTarget: ctx.world.decisionContext.known.threat,
         locomotion,
     });
 }
-export function getGroundNavFsmSnapshot({ intent, locomotion, agent, state, intentMemory, lastBlackboard, lastDecisionSnapshot }) {
+export function getGroundNavFsmSnapshot({ intent, locomotion, agent, state, intentMemory, lastDecisionContext }) {
     const loco = locomotion.getStatus(agent, state);
     const dest = locomotion.getDestination();
     let replanReason = null;
@@ -134,8 +131,8 @@ export function getGroundNavFsmSnapshot({ intent, locomotion, agent, state, inte
         vy: agent.vy,
         lastTransition: intent.getLastTransitionReason(),
         intentMemory: intentMemory.snapshot(),
-        intentEvents: lastBlackboard?.events ?? [],
-        decision: lastDecisionSnapshot,
+        intentEvents: lastDecisionContext?.events ?? [],
+        decision: lastDecisionContext,
     };
 }
 export function createGroundNavIntentAdapter({
@@ -156,7 +153,7 @@ export function createGroundNavIntentAdapter({
     intentMemoryOptions,
     reachSlots,
     buildDecisionContext,
-    formatPerceiveWorld = (decisionContext) => decisionContext,
+    formatPerceiveWorld = (decisionContext) => ({ decisionContext }),
     afterPerceive = null,
     resolveCommittedTarget,
     setFleeDestination,
@@ -175,8 +172,7 @@ export function createGroundNavIntentAdapter({
     const fleeLatch = createFleeIntentLatch(config);
     const arrivalStamper = createBrainArrivalStamper(brain);
     let intent = null;
-    let lastBlackboard = null;
-    let lastDecisionSnapshot = null;
+    let lastDecisionContext = null;
     const perceiveWithMemory = (agent, state) => {
         const visible = perceiveAgentIntentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
@@ -188,8 +184,7 @@ export function createGroundNavIntentAdapter({
         const reachSteps = buildAgentReachSteps(memoryWorld, committed, routeStatus, reachSlots);
         const decisionContext = buildDecisionContext({ agent, state, visible, memoryWorld, committed, routeStatus, reachSteps });
         afterPerceive?.(decisionContext, agent, state);
-        lastBlackboard = decisionContext.blackboard;
-        lastDecisionSnapshot = decisionContext.decisionSnapshot;
+        lastDecisionContext = decisionContext;
         return formatPerceiveWorld(decisionContext, memoryWorld);
     };
     const resetArrivalAndLatch = () => {
@@ -228,8 +223,8 @@ export function createGroundNavIntentAdapter({
         getDestination() {
             return locomotion.getDestination();
         },
-        getDecisionSnapshot() {
-            return lastDecisionSnapshot;
+        getDecisionContext() {
+            return lastDecisionContext;
         },
         getIntentMemorySnapshot() {
             return intentMemory.snapshot();
@@ -254,5 +249,5 @@ export function createGroundNavIntentAdapter({
             return locomotion.hasMoveTarget(null, null);
         },
     };
-    return { ...base, ...extendReturn({ intent, locomotion, intentMemory, getLastBlackboard: () => lastBlackboard, getLastDecisionSnapshot: () => lastDecisionSnapshot }) };
+    return { ...base, ...extendReturn({ intent, locomotion, intentMemory, getLastDecisionContext: () => lastDecisionContext }) };
 }

@@ -104,7 +104,7 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
             baseMaxSpeed = baseRoll.maxSpeed;
             baseAccel = baseRoll.accel;
         }
-        const want = intent.getDecisionSnapshot()?.sprintIntent?.want === true;
+        const want = intent.getDecisionContext()?.sprintIntent?.want === true;
         sprinting = want && segmentCount > config.minAliveSegmentCount;
         const nav = seeker.strategy.groundNav ?? (seeker.strategy.groundNav = {});
         nav.maxSpeed = sprinting ? baseMaxSpeed * config.sprint.speedMultiplier : baseMaxSpeed;

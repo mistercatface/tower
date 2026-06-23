@@ -6,8 +6,8 @@
 |--|--|
 | **Phase 1** | Reach dialect ✅ — [`history.md`](history.md#phase-1-reachsteps) |
 | **Part 1** | Passes A–G ✅ — [`history.md`](history.md#part-1-ai-consumer-cleanup) |
-| **Part 1.5** | Pass H ✅ · **Pass H2** (decision frame) — plan below |
-| **Part 2** | Flow locomotion 2a → 2b → 3 — **gated on Pass H2a** |
+| **Part 1.5** | Pass H ✅ · **Pass H2a** ✅ · H2b–H2d — plan below |
+| **Part 2** | Flow locomotion 2a → 2b → 3 — **H2a gate cleared** |
 
 ---
 
@@ -188,13 +188,13 @@ Snake/flee dedupe: generic derives, memory, perception, decision helpers, intent
 
 | File | Lines | Role |
 |------|------:|------|
-| `buildAgentDecisionContext.js` | 93 | engine — `createAgentDecisionBlackboard`, `pickAgentIntentPolicy`, `buildAgentDecisionContext` |
+| `buildAgentDecisionContext.js` | 93 | engine — `buildAgentDecisionFrame`, `pickAgentIntentPolicy`, `buildAgentDecisionContext` |
 | `snakeDecisionModel.js` | 170 | spec + ally engagement hook + prey/food/ally scorers |
 | `fleeDecisionModel.js` | 150 | spec + prey→enemy alias + flee/enemy/food/ally scorers |
 
-**Tests:** 91 intent/decision suites green. Exports unchanged (`buildSnakeDecisionContext`, `buildFleeDecisionContext`, blackboard/score helpers).
+**Tests:** 95 intent/decision suites green. Exports: `buildSnakeDecisionContext`, `buildSnakeDecisionFrame`, `buildFleeDecisionContext`, `buildFleeDecisionFrame`, score helpers.
 
-**Known gap (Pass H2):** pipeline is generic but the **frame** is not — still `blackboard` + `decisionSnapshot`, `facts.visible`/`remembered`/`known` re-copy perception, species files are spec+scorer JS. Same class of bug as pre-viewport `px/py/zoom` — see [`../stupid.md`](../stupid.md#case-history--viewport-frame-px--py--zoom--elevationcamera).
+**H2a done:** one flat `decisionContext` at adapter boundary — no `blackboard`/`decisionSnapshot`, no `facts.*` copies. **H2b–d remain:** slot schema + scorer registry in config; delete species model JS.
 
 ---
 
@@ -346,7 +346,9 @@ fleeAgent: {
 
 ### Migration steps — one PR per step, tests green each time
 
-#### H2a — Collapse the frame
+#### H2a — Collapse the frame ✅
+
+**Shipped 2026-06-23:** `buildAgentDecisionContext` returns flat `decisionContext`; adapter `world = { decisionContext }`; deleted `blackboard`/`decisionSnapshot`/`readThreatState`; `getDecisionContext()` replaces `getDecisionSnapshot()`; tests use `buildSnakeDecisionFrame` / `buildFleeDecisionFrame` (no `createSnakeDecisionBlackboard`). 95 intent/decision tests green; grep clean in `Libraries/` + `tests/`.
 
 **Bar:** one object; no sync between siblings; **tests and prod on `decisionContext` in the same PR** — no interim aliases.
 
@@ -408,13 +410,14 @@ Part 2 steering may read `decisionContext.known.threat` — must not introduce a
 
 ### Pass H2 review bar
 
-- [ ] One `decisionContext` per tick — no `decisionSnapshot` sibling
-- [ ] No `facts.visible` / `facts.remembered` target copies — `known` + `memoryActive` only
+- [x] One `decisionContext` per tick — no `decisionSnapshot` sibling (H2a)
+- [x] No `facts.visible` / `facts.remembered` target copies — flat `known` + `memoryActive` (H2a)
+- [x] Tests migrated same PR — no prod shims (H2a)
 - [ ] Raw `visibleWorld` not passed past adapter build boundary
 - [ ] Species tables in `Config/games/snake.js`; no scorer functions in game JS
 - [ ] Scorer registry — named IDs only, no expression DSL
 - [ ] No `Libraries/AI/decision/` · net negative LOC vs post-H
-- [ ] 91+ intent/decision tests green
+- [x] 95 intent/decision tests green (H2a)
 - [ ] Phase 1 reach grep gates still clean
 
 ### Verify after ship
@@ -501,7 +504,7 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 
 ### Part 1.6 (Pass H2 — decision frame)
 
-- [ ] H2a: one `decisionContext`; tests migrated same PR; zero `blackboard`/`decisionSnapshot` in Libraries **and** tests
+- [x] H2a: one `decisionContext`; tests migrated same PR; zero `blackboard`/`decisionSnapshot` in Libraries and tests
 - [ ] H2b: slot merge from `Config/games/snake.js`
 - [ ] H2c: scorer registry + mode table; hunger/sprint from config
 - [ ] H2d: delete species `*DecisionModel.js` scorers (config + engine only)

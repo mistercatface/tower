@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { SNAKE_HUNGRY_EXPLORE_TINT, SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT, resolveSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
-import { buildSnakeDecisionContext, createSnakeDecisionBlackboard, deriveSnakeHungerState, deriveSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { buildSnakeDecisionContext, buildSnakeDecisionFrame, deriveSnakeHungerState, deriveSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { deriveThreatState } from "../Libraries/AI/agents/deriveThreatState.js";
 const CELL = 16;
 function world({ threat = null, prey = null, food = null, ally = null, allyCount = 0, allyCentroid = null } = {}) {
@@ -31,7 +31,7 @@ function snake(id, extra = {}) {
 }
 function blackboard(visibleWorld, opts = {}) {
     const { reachSteps, ...rest } = opts;
-    return createSnakeDecisionBlackboard({ visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), ...rest });
+    return buildSnakeDecisionFrame({ visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), ...rest });
 }
 describe("snake hunger facts (PR1)", () => {
     it("derives satisfied/hungry/desperate from food fraction", () => {
@@ -44,16 +44,16 @@ describe("snake hunger facts (PR1)", () => {
     });
     it("returns null hunger state when no fraction is provided", () => {
         assert.equal(deriveSnakeHungerState(null), null);
-        const { decisionSnapshot } = context(world({ food: snake(7) }));
-        assert.equal(decisionSnapshot.hungerState, null);
+        const ctx = context(world({ food: snake(7) }));
+        assert.equal(ctx.hungerState, null);
     });
     it("exposes hunger facts on the decision snapshot", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ food: snake(3) }), { foodFraction: 0.9 });
-        assert.equal(decisionSnapshot.hungerState.state, "satisfied");
-        assert.equal(decisionSnapshot.hungerState.satisfied, true);
-        assert.equal(decisionSnapshot.hungerState.foodFraction, 0.9);
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
+        const ctx = context(world({ food: snake(3) }), { foodFraction: 0.9 });
+        assert.equal(ctx.hungerState.state, "satisfied");
+        assert.equal(ctx.hungerState.satisfied, true);
+        assert.equal(ctx.hungerState.foodFraction, 0.9);
+        assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
 });
 describe("snake intent scoring parity (PR2)", () => {
@@ -72,10 +72,10 @@ describe("snake intent scoring parity (PR2)", () => {
     });
     it("stores candidate scores and chosen reason on the snapshot", () => {
         applySnakeGameConfig({ decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } });
-        const { decisionSnapshot } = context(world({ food: snake(9) }));
-        assert.deepEqual(decisionSnapshot.candidateScores, { flee: -Infinity, seek_prey: -Infinity, seek_food: 320, seek_ally: -Infinity, explore: 100 });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
-        assert.equal(decisionSnapshot.chosenReason, null);
+        const ctx = context(world({ food: snake(9) }));
+        assert.deepEqual(ctx.candidateScores, { flee: -Infinity, seek_prey: -Infinity, seek_food: 320, seek_ally: -Infinity, explore: 100 });
+        assert.equal(ctx.chosenIntent.mode, "seek_food");
+        assert.equal(ctx.chosenReason, null);
     });
     it("absent candidates score -Infinity so explore wins by default", () => {
         const scores = scoreSnakeIntentCandidates(blackboard(world()));
@@ -95,37 +95,37 @@ describe("snake intent scoring parity (PR2)", () => {
 describe("satisfied snakes weigh prey effort", () => {
     it("a satisfied snake grabs adjacent visible prey", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ prey: snake(2) }), { foodFraction: 0.9, reachSteps: { prey: 1, food: null, ally: null, threat: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
-        assert.equal(decisionSnapshot.candidateScoreDetails.seek_prey.reach, 1);
-        assert.equal(decisionSnapshot.candidateScoreDetails.seek_prey.cost, 25);
+        const ctx = context(world({ prey: snake(2) }), { foodFraction: 0.9, reachSteps: { prey: 1, food: null, ally: null, threat: null } });
+        assert.equal(ctx.chosenIntent.mode, "seek_prey");
+        assert.equal(ctx.candidateScoreDetails.seek_prey.reach, 1);
+        assert.equal(ctx.candidateScoreDetails.seek_prey.cost, 25);
     });
     it("a satisfied snake explores instead of chasing far visible prey", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ prey: snake(2, { type: "snake_head", faction: "red" }) }), { foodFraction: 0.9, seekerFaction: "red", reachSteps: { prey: 2, food: null, ally: null, threat: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "explore");
-        assert.equal(decisionSnapshot.candidateScoreDetails.seek_prey.net, 90);
+        const ctx = context(world({ prey: snake(2, { type: "snake_head", faction: "red" }) }), { foodFraction: 0.9, seekerFaction: "red", reachSteps: { prey: 2, food: null, ally: null, threat: null } });
+        assert.equal(ctx.chosenIntent.mode, "explore");
+        assert.equal(ctx.candidateScoreDetails.seek_prey.net, 90);
     });
     it("a satisfied snake still attacks an opposite-team snake prey", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ prey: snake(2, { type: "snake_head", faction: "blue" }) }), { foodFraction: 0.9, seekerFaction: "red", reachSteps: { prey: 8, food: null, ally: null, threat: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
-        assert.ok(decisionSnapshot.candidateScores.seek_prey > 1000);
+        const ctx = context(world({ prey: snake(2, { type: "snake_head", faction: "blue" }) }), { foodFraction: 0.9, seekerFaction: "red", reachSteps: { prey: 8, food: null, ally: null, threat: null } });
+        assert.equal(ctx.chosenIntent.mode, "seek_prey");
+        assert.ok(ctx.candidateScores.seek_prey > 1000);
     });
     it("a hungry snake still chases prey", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ prey: snake(2, { type: "snake_head", faction: "blue" }) }), { foodFraction: 0.4, seekerFaction: "red", reachSteps: { prey: 6, food: null, ally: null, threat: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
+        const ctx = context(world({ prey: snake(2, { type: "snake_head", faction: "blue" }) }), { foodFraction: 0.4, seekerFaction: "red", reachSteps: { prey: 6, food: null, ally: null, threat: null } });
+        assert.equal(ctx.chosenIntent.mode, "seek_prey");
     });
     it("a satisfied snake still flees a larger threat", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ threat: snake(1), prey: snake(2) }), { foodFraction: 1, reachSteps: { threat: 1, prey: 1, food: null, ally: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
+        const ctx = context(world({ threat: snake(1), prey: snake(2) }), { foodFraction: 1, reachSteps: { threat: 1, prey: 1, food: null, ally: null } });
+        assert.equal(ctx.chosenIntent.mode, "flee");
     });
     it("a satisfied snake still seeks food over exploring", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.9 });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
+        const ctx = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.9 });
+        assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
 });
 describe("committed target effort uses route length", () => {
@@ -136,15 +136,15 @@ describe("committed target effort uses route length", () => {
         const routeStatus = { pathLen: 6 };
         const full = context(world({ prey }), { foodFraction: 0.9, committedTarget, routeStatus, reachSteps: { prey: 6, food: null, ally: null, threat: null } });
         const desperate = context(world({ prey }), { foodFraction: 0.1, committedTarget, routeStatus, reachSteps: { prey: 6, food: null, ally: null, threat: null } });
-        assert.equal(full.decisionSnapshot.candidateScoreDetails.seek_prey.reach, 6);
-        assert.equal(full.decisionSnapshot.chosenIntent.mode, "explore");
-        assert.equal(desperate.decisionSnapshot.chosenIntent.mode, "seek_prey");
+        assert.equal(full.candidateScoreDetails.seek_prey.reach, 6);
+        assert.equal(full.chosenIntent.mode, "explore");
+        assert.equal(desperate.chosenIntent.mode, "seek_prey");
     });
     it("surfaces effort fields on the decision snapshot", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ food: snake(3) }), { foodFraction: 0.5, reachSteps: { food: 4, prey: null, ally: null, threat: null } });
-        assert.deepEqual(decisionSnapshot.candidateScoreDetails.seek_food, { value: 490, reach: 4, cost: 80, net: 410 });
-        assert.equal(decisionSnapshot.candidateScores.seek_food, 410);
+        const ctx = context(world({ food: snake(3) }), { foodFraction: 0.5, reachSteps: { food: 4, prey: null, ally: null, threat: null } });
+        assert.deepEqual(ctx.candidateScoreDetails.seek_food, { value: 490, reach: 4, cost: 80, net: 410 });
+        assert.equal(ctx.candidateScores.seek_food, 410);
     });
 });
 describe("threat severity facts (PR6)", () => {
@@ -159,9 +159,9 @@ describe("threat severity facts (PR6)", () => {
     });
     it("surfaces threatState on the snapshot without changing the chosen mode", () => {
         applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 48, decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } });
-        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2) }), { reachSteps: { threat: 4, food: 1, prey: null, ally: null } });
-        assert.equal(decisionSnapshot.threatState.severity, 0.5);
-        assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
+        const ctx = context(world({ threat: snake(1), food: snake(2) }), { reachSteps: { threat: 4, food: 1, prey: null, ally: null } });
+        assert.equal(ctx.threatState.severity, 0.5);
+        assert.equal(ctx.chosenIntent.mode, "flee");
     });
 });
 function applyScoringConfig() {
@@ -176,27 +176,27 @@ describe("hunger pressure and route-awareness (PR5)", () => {
         applyScoringConfig();
         const full = context(world({ food: snake(1) }), { foodFraction: 1 });
         const empty = context(world({ food: snake(1) }), { foodFraction: 0.1 });
-        assert.ok(empty.decisionSnapshot.candidateScores.seek_food > full.decisionSnapshot.candidateScores.seek_food);
+        assert.ok(empty.candidateScores.seek_food > full.candidateScores.seek_food);
     });
     it("a desperate snake hunts prey when no food is known", () => {
         applyScoringConfig();
-        const { decisionSnapshot } = context(world({ prey: snake(2) }), { foodFraction: 0.1 });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
+        const ctx = context(world({ prey: snake(2) }), { foodFraction: 0.1 });
+        assert.equal(ctx.chosenIntent.mode, "seek_prey");
     });
     it("a desperate snake hunts prey when its route to food recently failed", () => {
         applyScoringConfig();
-        const { decisionSnapshot } = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.1, routeStatus: { routeFailed: true } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
+        const ctx = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.1, routeStatus: { routeFailed: true } });
+        assert.equal(ctx.chosenIntent.mode, "seek_prey");
     });
     it("a desperate snake with reachable food eats instead of hunting", () => {
         applyScoringConfig();
-        const { decisionSnapshot } = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.1, routeStatus: { routeFailed: false }, reachSteps: { prey: 50, food: 1, ally: null, threat: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
+        const ctx = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.1, routeStatus: { routeFailed: false }, reachSteps: { prey: 50, food: 1, ally: null, threat: null } });
+        assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
     it("a merely hungry snake prefers reachable shard food over prey", () => {
         applyScoringConfig();
-        const { decisionSnapshot } = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.5, routeStatus: { routeFailed: false }, reachSteps: { prey: 1, food: 1, ally: null, threat: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
+        const ctx = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.5, routeStatus: { routeFailed: false }, reachSteps: { prey: 1, food: 1, ally: null, threat: null } });
+        assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
 });
 function applyRiskConfig() {
@@ -211,28 +211,28 @@ function applyRiskConfig() {
 describe("hunger overrides flee for food (PR7)", () => {
     it("a well-fed snake flees a mid-range threat instead of grabbing food", () => {
         applyRiskConfig();
-        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2) }), { foodFraction: 1, reachSteps: { threat: 5, food: 1, prey: null, ally: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
+        const ctx = context(world({ threat: snake(1), food: snake(2) }), { foodFraction: 1, reachSteps: { threat: 5, food: 1, prey: null, ally: null } });
+        assert.equal(ctx.chosenIntent.mode, "flee");
     });
     it("a hungry snake risks a mid-range threat to reach food", () => {
         applyRiskConfig();
-        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2) }), { foodFraction: 0.5, reachSteps: { threat: 5, food: 1, prey: null, ally: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
+        const ctx = context(world({ threat: snake(1), food: snake(2) }), { foodFraction: 0.5, reachSteps: { threat: 5, food: 1, prey: null, ally: null } });
+        assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
     it("a desperate snake risks the threat even harder", () => {
         applyRiskConfig();
-        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2) }), { foodFraction: 0.1, reachSteps: { threat: 5, food: 1, prey: null, ally: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
+        const ctx = context(world({ threat: snake(1), food: snake(2) }), { foodFraction: 0.1, reachSteps: { threat: 5, food: 1, prey: null, ally: null } });
+        assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
     it("a lethal-range threat always forces flee, even when desperate", () => {
         applyRiskConfig();
-        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2) }), { foodFraction: 0.1, reachSteps: { threat: 2, food: 1, prey: null, ally: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
+        const ctx = context(world({ threat: snake(1), food: snake(2) }), { foodFraction: 0.1, reachSteps: { threat: 2, food: 1, prey: null, ally: null } });
+        assert.equal(ctx.chosenIntent.mode, "flee");
     });
     it("with no hunger info the snake still hard-flees any visible threat", () => {
         applyRiskConfig();
-        const { decisionSnapshot } = context(world({ threat: snake(1), food: snake(2) }), { reachSteps: { threat: 5, food: 1, prey: null, ally: null } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
+        const ctx = context(world({ threat: snake(1), food: snake(2) }), { reachSteps: { threat: 5, food: 1, prey: null, ally: null } });
+        assert.equal(ctx.chosenIntent.mode, "flee");
     });
 });
 describe("hunger appearance is a condition (PR4)", () => {
@@ -276,9 +276,9 @@ describe("sprint intent facts (PR9)", () => {
     });
     it("surfaces sprintIntent on the decision snapshot", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { decisionSnapshot } = context(world({ prey: snake(9) }), { foodFraction: 0.4 });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_prey");
-        assert.deepEqual(decisionSnapshot.sprintIntent, { want: true, reason: "chase" });
+        const ctx = context(world({ prey: snake(9) }), { foodFraction: 0.4 });
+        assert.equal(ctx.chosenIntent.mode, "seek_prey");
+        assert.deepEqual(ctx.sprintIntent, { want: true, reason: "chase" });
     });
 });
 describe("snake seek_ally cohesion (4c)", () => {
@@ -298,35 +298,35 @@ describe("snake seek_ally cohesion (4c)", () => {
     it("seek_ally beats explore when satisfied, safe, and a small snake", () => {
         applySnakeGameConfig();
         const aw = allyWorld();
-        const { decisionSnapshot } = context(aw.visible, { foodFraction: 0.9, seekerSegmentCount: 3, seekerFaction: "red", reachSteps: aw.reachSteps });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_ally");
-        assert.equal(decisionSnapshot.chosenIntent.targetId, "ally1");
-        assert.ok(decisionSnapshot.candidateScores.seek_ally > decisionSnapshot.candidateScores.explore);
+        const ctx = context(aw.visible, { foodFraction: 0.9, seekerSegmentCount: 3, seekerFaction: "red", reachSteps: aw.reachSteps });
+        assert.equal(ctx.chosenIntent.mode, "seek_ally");
+        assert.equal(ctx.chosenIntent.targetId, "ally1");
+        assert.ok(ctx.candidateScores.seek_ally > ctx.candidateScores.explore);
     });
     it("does not regroup when hungry or desperate", () => {
         applySnakeGameConfig();
         const hungry = context(allyWorld().visible, { foodFraction: 0.5, seekerSegmentCount: 3, reachSteps: allyWorld().reachSteps });
-        assert.equal(hungry.decisionSnapshot.chosenIntent.mode, "explore");
+        assert.equal(hungry.chosenIntent.mode, "explore");
         const desperate = context(allyWorld().visible, { foodFraction: 0.1, seekerSegmentCount: 3, reachSteps: allyWorld().reachSteps });
-        assert.equal(desperate.decisionSnapshot.chosenIntent.mode, "explore");
+        assert.equal(desperate.chosenIntent.mode, "explore");
     });
     it("scales regroup drive down for long snakes", () => {
         applySnakeGameConfig({ factionCohesion: { referenceSegmentCount: 3, maxSegmentScale: 10 } });
         const small = context(allyWorld().visible, { foodFraction: 0.9, seekerSegmentCount: 3, reachSteps: allyWorld().reachSteps });
-        assert.equal(small.decisionSnapshot.chosenIntent.mode, "seek_ally");
+        assert.equal(small.chosenIntent.mode, "seek_ally");
         const large = context(allyWorld().visible, { foodFraction: 0.9, seekerSegmentCount: 10, reachSteps: allyWorld().reachSteps });
-        assert.equal(large.decisionSnapshot.chosenIntent.mode, "explore");
+        assert.equal(large.chosenIntent.mode, "explore");
     });
     it("prefers food over regroup when both are visible", () => {
         applySnakeGameConfig();
         const aw = allyWorld();
-        const { decisionSnapshot } = context({ ...aw.visible, food: snake(7) }, { foodFraction: 0.9, seekerSegmentCount: 3, reachSteps: { ...aw.reachSteps, food: 1 } });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_food");
+        const ctx = context({ ...aw.visible, food: snake(7) }, { foodFraction: 0.9, seekerSegmentCount: 3, reachSteps: { ...aw.reachSteps, food: 1 } });
+        assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
     it("does not regroup when already within ideal stop distance", () => {
         applySnakeGameConfig({ factionCohesion: { idealStopDist: 3 } });
         const aw = allyWorld("ally1", 2);
-        const { decisionSnapshot } = context(aw.visible, { foodFraction: 0.9, seekerSegmentCount: 3, reachSteps: aw.reachSteps });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "explore");
+        const ctx = context(aw.visible, { foodFraction: 0.9, seekerSegmentCount: 3, reachSteps: aw.reachSteps });
+        assert.equal(ctx.chosenIntent.mode, "explore");
     });
 });

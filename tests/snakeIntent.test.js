@@ -18,7 +18,7 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeDecisionBlackboard, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { buildSnakeDecisionFrame, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { syncNavReachHorizon, navReachStepsTo } from "../Libraries/Navigation/navReachHorizon.js";
 import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { perceiveAgentIntentWorld } from "../Libraries/Game/snake/agentIntentPerception.js";
@@ -75,7 +75,7 @@ function reachStepsForWorld(seeker, state, world) {
     };
 }
 function pickPolicyFromVisibleWorld(seeker, state, world) {
-    return pickSnakeIntentPolicy(createSnakeDecisionBlackboard({ visibleWorld: world, reachSteps: reachStepsForWorld(seeker, state, world) }));
+    return pickSnakeIntentPolicy(buildSnakeDecisionFrame({ visibleWorld: world, reachSteps: reachStepsForWorld(seeker, state, world) }));
 }
 describe("explore steering", () => {
     it("pickExploreDestination respects minimum tile distance", async () => {

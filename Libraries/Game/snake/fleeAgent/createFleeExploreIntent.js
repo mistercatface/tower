@@ -53,20 +53,20 @@ export function createFleeExploreIntent({
                 foodFraction: resolveHunger ? resolveHunger() : null,
             }),
         formatPerceiveWorld(decisionContext, memoryWorld) {
-            return { ...memoryWorld, blackboard: decisionContext.blackboard, decisionSnapshot: decisionContext.decisionSnapshot };
+            return { ...memoryWorld, decisionContext };
         },
         resolveCommittedTarget(id, world) {
             if (id == null) return null;
-            const known = world.blackboard.facts.known;
+            const known = world.decisionContext.known;
             if (known.food?.id === id) return known.food;
             if (known.enemy?.id === id) return known.enemy;
             if (known.ally?.id === id) return known.ally;
             return null;
         },
         setFleeDestination({ agent, state, world, avoidCell, locomotion }) {
-            const threat = world.blackboard.facts.known.threat;
+            const threat = world.decisionContext.known.threat;
             if (!threat) return null;
-            const packOptions = resolveFleePackOptions(world.blackboard);
+            const packOptions = resolveFleePackOptions(world.decisionContext);
             const cell = pickFleeCell(agent, threat, state.obstacleGrid, navWalkable, config.fleeTiles, avoidCell, packOptions);
             if (cell) {
                 locomotion.setFlee(agent, state, cell);
@@ -76,7 +76,7 @@ export function createFleeExploreIntent({
             if (exploreCell) locomotion.setExplore(agent, state, exploreCell);
             return exploreCell;
         },
-        deriveSprintIntent: (mode, snapshot) => deriveFleeSprintIntent(mode, snapshot.threatState, snapshot.hungerState),
+        deriveSprintIntent: (mode, ctx) => deriveFleeSprintIntent(mode, ctx.threatState, ctx.hungerState),
         clearMemoryOnIntentClear: true,
         transitionReason(prevMode, nextMode, policy) {
             if (policy?.reason) return policy.reason;

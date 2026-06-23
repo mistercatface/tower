@@ -79,7 +79,7 @@ export class FleeAgentInstance {
             this.baseMaxSpeed = baseRoll.maxSpeed;
             this.baseAccel = baseRoll.accel;
         }
-        const want = this.intent.getDecisionSnapshot()?.sprintIntent?.want === true;
+        const want = this.intent.getDecisionContext()?.sprintIntent?.want === true;
         this.sprinting = want && getFleeHunger(this.metabolism) > 0;
         const nav = head.strategy.groundNav ?? (head.strategy.groundNav = {});
         const sprint = config.fleeAgent.sprint;

@@ -382,6 +382,24 @@ Reduced Part 1 file sprawl — **8 files deleted**, helpers folded into owners:
 
 ---
 
+## Pass H2a — collapse decision frame
+
+**Status:** ✅ complete (2026-06-23)
+
+**Rule:** `Pass decisionContext. Read decisionContext. Nothing else.`
+
+**Engine:** `buildAgentDecisionFrame(spec, input)` → flat frame (`known`, `remembered`, `reachSteps`, derived states, `events`). `buildAgentDecisionContext` returns one flat ctx with scores + `chosenIntent` — no `{ blackboard, decisionSnapshot }`.
+
+**Adapter:** `createGroundNavIntentAdapter` sets `world = { decisionContext }`; `getDecisionContext()` replaces `getDecisionSnapshot()`; flee latch mutates `world.decisionContext` directly. Deleted `readThreatState`, `createSnakeDecisionBlackboard`, `createFleeDecisionBlackboard`.
+
+**Tests:** 95 pass — migrated off `decisionSnapshot`, `blackboard.facts`, `createSnakeDecisionBlackboard`; frame-only tests use `buildSnakeDecisionFrame` / `buildFleeDecisionFrame`.
+
+**Grep (Libraries + tests):** zero `decisionSnapshot`, `blackboard.facts`, `createSnakeDecisionBlackboard`, `readThreatState`, `getDecisionSnapshot`.
+
+**Next:** H2b slot schema in `Config/games/snake.js` — see [`fsmbfs.md` § Part 1.6](fsmbfs.md#part-16--pass-h2--decision-frame-viewport-analog).
+
+---
+
 ## Part 1 — grep gates (Pass G) ✅
 
 Recorded 2026-06-23 — see [Pass G gate run](#pass-g--gate-run-2026-06-23) above.

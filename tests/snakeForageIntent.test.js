@@ -10,7 +10,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { cellChebyshevDistance } from "../Libraries/Navigation/steering/exploreSteering.js";
-import { createSnakeDecisionBlackboard, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { buildSnakeDecisionFrame, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { perceiveAgentIntentWorld, findNearestVisibleThreat } from "../Libraries/Game/snake/agentIntentPerception.js";
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision, registerSnakeTestInstance, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
@@ -75,7 +75,7 @@ function perceiveIntentWorld(state, seeker, headId, registry, resolveFood) {
     return perceiveAgentIntentWorld(seeker, headId, state, registry, resolveFood, getSnakeGameConfig().visionRange);
 }
 function pickPolicyFromVisibleWorld(world) {
-    return pickSnakeIntentPolicy(createSnakeDecisionBlackboard({ visibleWorld: world }));
+    return pickSnakeIntentPolicy(buildSnakeDecisionFrame({ visibleWorld: world }));
 }
 describe("snake forage intent", () => {
     it("pickSnakeIntentPolicy explores when no food or threat", async () => {

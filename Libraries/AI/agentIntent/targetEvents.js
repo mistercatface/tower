@@ -13,8 +13,8 @@ export function routeEvents(routeStatus) {
     if (routeStatus.destReached) events.push("DEST_REACHED");
     return events;
 }
-export function policyReasonForTarget(blackboard, kind) {
-    if (blackboard.facts.remembered[kind]) return `${kind}_memory`;
+export function policyReasonForTarget(ctx, kind) {
+    if (ctx.remembered[kind]) return `${kind}_memory`;
     return null;
 }
 export function intentPolicy(mode, targetId, reason = null) {

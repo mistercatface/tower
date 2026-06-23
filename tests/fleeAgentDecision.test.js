@@ -44,18 +44,18 @@ describe("flee agent decision model", () => {
 
     it("explores when only smaller snakes are visible and no food", () => {
         applySnakeGameConfig();
-        const { decisionSnapshot } = buildFleeDecisionContext({
+        const ctx = buildFleeDecisionContext({
             visibleWorld: { threat: null, food: null, ally: null, allyCount: 0, threatCount: 0 },
             foodFraction: 0.55,
         });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "explore");
-        assert.equal(decisionSnapshot.sprintIntent.want, false);
+        assert.equal(ctx.chosenIntent.mode, "explore");
+        assert.equal(ctx.sprintIntent.want, false);
     });
 
     it("seek_ally beats explore when a visible ally is present and hunger is satisfied", () => {
         applySnakeGameConfig();
         const ally = mockTarget("ally1");
-        const { decisionSnapshot } = buildFleeDecisionContext({
+        const ctx = buildFleeDecisionContext({
             visibleWorld: {
                 threat: null,
                 food: null,
@@ -67,9 +67,9 @@ describe("flee agent decision model", () => {
             reachSteps: fleeReach({ ally: 4 }),
             foodFraction: 0.9,
         });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "seek_ally");
-        assert.equal(decisionSnapshot.chosenIntent.targetId, "ally1");
-        assert.ok(decisionSnapshot.candidateScores.seek_ally > decisionSnapshot.candidateScores.explore);
+        assert.equal(ctx.chosenIntent.mode, "seek_ally");
+        assert.equal(ctx.chosenIntent.targetId, "ally1");
+        assert.ok(ctx.candidateScores.seek_ally > ctx.candidateScores.explore);
     });
 
     it("regroups toward a visible ally instead of exploring", async () => {
@@ -95,33 +95,30 @@ describe("flee agent decision model", () => {
 
     it("flee beats explore when a visible threat is present", () => {
         applySnakeGameConfig();
-        const { decisionSnapshot } = buildFleeDecisionContext({
+        const ctx = buildFleeDecisionContext({
             visibleWorld: { threat: mockTarget("t1"), food: null, threatCount: 1 },
             reachSteps: fleeReach({ threat: 4 }),
             foodFraction: 0.55,
         });
-        assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
-        assert.equal(decisionSnapshot.sprintIntent.want, true);
+        assert.equal(ctx.chosenIntent.mode, "flee");
+        assert.equal(ctx.sprintIntent.want, true);
     });
 
     it("flee beats explore when outnumbered by visible threats", () => {
         applySnakeGameConfig({ fleeAgent: { decisionPressure: { outnumberedFleeBonus: 0.5 } }, fleeRange: 128, lethalThreatRange: 48 });
         const hungerState = { foodFraction: 0.7, state: "hungry", hungry: true, satisfied: false, desperate: false };
         const threatState = { dist: 64, severity: 0.5, lethal: false };
-        const blackboard = {
-            facts: {
-                visible: { threat: mockTarget("t1"), food: null, threatCount: 2 },
-                remembered: { threat: null, food: null },
-                known: { threat: mockTarget("t1"), food: null, threatCount: 2 },
-                reachSteps: fleeReach({ threat: 4 }),
-                committedTarget: null,
-                routeStatus: null,
-                hungerState,
-                threatState,
-            },
+        const ctx = {
+            known: { threat: mockTarget("t1"), food: null, threatCount: 2 },
+            remembered: { threat: null, food: null },
+            reachSteps: fleeReach({ threat: 4 }),
+            committedTarget: null,
+            routeStatus: null,
+            hungerState,
+            threatState,
             events: [],
         };
-        const scores = scoreFleeIntentCandidateDetails(blackboard);
+        const scores = scoreFleeIntentCandidateDetails(ctx);
         assert.ok(scores.flee.net > scores.explore.net);
     });
 

@@ -1,4 +1,5 @@
-import { buildAgentDecisionContext, createAgentDecisionBlackboard, pickAgentIntentPolicy } from "../../../AI/agents/buildAgentDecisionContext.js";
+import { deriveThreatState } from "../../../AI/agents/deriveThreatState.js";
+import { buildAgentDecisionContext, buildAgentDecisionFrame, pickAgentIntentPolicy } from "../../../AI/agents/buildAgentDecisionContext.js";
 import { costPerCellForHunger, foodHungerScoreValue, netScoreDetail, scoreCandidateSet, scoreRiskAdjustedFlee } from "../../../AI/utility/utilityScoring.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 const SCORE_ORDER = ["flee", "seek_enemy", "seek_food", "seek_ally", "explore"];
@@ -33,50 +34,50 @@ function fleeWeights() {
 function fleePressure() {
     return getSnakeGameConfig().fleeAgent.decisionPressure;
 }
-function scoreFlee(blackboard, weights, pressure) {
-    let score = scoreRiskAdjustedFlee(blackboard, weights, pressure);
+function scoreFlee(ctx, weights, pressure) {
+    let score = scoreRiskAdjustedFlee(ctx, weights, pressure);
     if (!Number.isFinite(score)) return score;
-    const threatCount = blackboard.facts.known.threatCount ?? 1;
+    const threatCount = ctx.known.threatCount ?? 1;
     if (threatCount > 1) score *= 1 + (threatCount - 1) * (pressure.outnumberedFleeBonus ?? 0);
     return score;
 }
-function scoreFoodDetail(blackboard, weights, pressure) {
-    if (!blackboard.facts.known.food) return { net: -Infinity };
-    const hunger = blackboard.facts.hungerState;
+function scoreFoodDetail(ctx, weights, pressure) {
+    if (!ctx.known.food) return { net: -Infinity };
+    const hunger = ctx.hungerState;
     if (hunger?.satisfied) return { net: -Infinity };
     let value = foodHungerScoreValue(weights, pressure, hunger);
-    const threat = blackboard.facts.threatState;
+    const threat = ctx.threatState;
     const sprint = getSnakeGameConfig().fleeAgent.sprint;
     if (threat && !threat.lethal && threat.severity >= sprint.fleeSeverity) value -= pressure.sprintFoodCostPenalty ?? 0;
-    return netScoreDetail(value, blackboard.facts.reachSteps.food, costPerCellForHunger(pressure, hunger));
+    return netScoreDetail(value, ctx.reachSteps.food, costPerCellForHunger(pressure, hunger));
 }
-function scoreEnemyDetail(blackboard, weights, pressure) {
-    if (!blackboard.facts.known.enemy) return { net: -Infinity };
-    if (blackboard.facts.known.threat) return { net: -Infinity };
+function scoreEnemyDetail(ctx, weights, pressure) {
+    if (!ctx.known.enemy) return { net: -Infinity };
+    if (ctx.known.threat) return { net: -Infinity };
     const value = weights.enemy ?? weights.explore;
-    return netScoreDetail(value, blackboard.facts.reachSteps.enemy, costPerCellForHunger(pressure, blackboard.facts.hungerState));
+    return netScoreDetail(value, ctx.reachSteps.enemy, costPerCellForHunger(pressure, ctx.hungerState));
 }
-function scoreSeekAllyDetail(blackboard, weights, pressure) {
-    const ally = blackboard.facts.known.ally;
+function scoreSeekAllyDetail(ctx, weights, pressure) {
+    const ally = ctx.known.ally;
     if (!ally) return { net: -Infinity };
-    if (blackboard.facts.known.threat) return { net: -Infinity };
-    const hunger = blackboard.facts.hungerState;
+    if (ctx.known.threat) return { net: -Infinity };
+    const hunger = ctx.hungerState;
     if (hunger?.desperate) return { net: -Infinity };
     const cohesion = getSnakeGameConfig().fleeAgent.factionCohesion ?? {};
-    const allyReach = blackboard.facts.reachSteps.ally;
+    const allyReach = ctx.reachSteps.ally;
     if (Number.isFinite(allyReach) && allyReach <= (cohesion.idealStopDist ?? 40)) return { net: -Infinity };
     let value = weights.seek_ally ?? weights.explore;
     if (hunger?.satisfied) value += cohesion.satisfiedBonus ?? pressure.allySatisfiedBonus ?? 60;
-    const allyCount = blackboard.facts.known.allyCount ?? 1;
+    const allyCount = ctx.known.allyCount ?? 1;
     if (allyCount > 1) value += (allyCount - 1) * (cohesion.packBonus ?? pressure.allyPackBonus ?? 20);
     return netScoreDetail(value, allyReach, costPerCellForHunger(pressure, hunger));
 }
-export function scoreFleeIntentCandidateDetails(blackboard, weights = fleeWeights(), pressure = fleePressure()) {
+export function scoreFleeIntentCandidateDetails(ctx, weights = fleeWeights(), pressure = fleePressure()) {
     return {
-        flee: { net: scoreFlee(blackboard, weights, pressure) },
-        seek_enemy: scoreEnemyDetail(blackboard, weights, pressure),
-        seek_food: scoreFoodDetail(blackboard, weights, pressure),
-        seek_ally: scoreSeekAllyDetail(blackboard, weights, pressure),
+        flee: { net: scoreFlee(ctx, weights, pressure) },
+        seek_enemy: scoreEnemyDetail(ctx, weights, pressure),
+        seek_food: scoreFoodDetail(ctx, weights, pressure),
+        seek_ally: scoreSeekAllyDetail(ctx, weights, pressure),
         explore: { value: weights.explore, reach: null, cost: 0, net: weights.explore },
     };
 }
@@ -122,14 +123,15 @@ const fleeDecisionSpec = {
     ],
     deriveHunger: deriveFleeHungerState,
     deriveSprint: (mode, threatState, hungerState) => deriveFleeSprintIntent(mode, threatState, hungerState),
-    snapshotExtra: (blackboard) => ({ enemy: blackboard.facts.known.enemy }),
     scoreDetails: scoreFleeIntentCandidateDetails,
 };
-export function createFleeDecisionBlackboard(input) {
-    return createAgentDecisionBlackboard(fleeDecisionSpec, input);
+export function buildFleeDecisionFrame(input) {
+    const hungerState = deriveFleeHungerState(input.foodFraction);
+    const threatState = deriveThreatState(input.visibleWorld.threat, input.reachSteps?.threat, input.cellSize ?? 16, getSnakeGameConfig());
+    return buildAgentDecisionFrame(fleeDecisionSpec, { ...input, hungerState, threatState });
 }
-export function pickFleeIntentPolicy(blackboard, scores = scoreCandidateSet(scoreFleeIntentCandidateDetails(blackboard)).candidateScores) {
-    return pickAgentIntentPolicy(blackboard, scores, fleeDecisionSpec);
+export function pickFleeIntentPolicy(ctx, scores = scoreCandidateSet(scoreFleeIntentCandidateDetails(ctx)).candidateScores) {
+    return pickAgentIntentPolicy(ctx, scores, fleeDecisionSpec);
 }
 export function buildFleeDecisionContext(input) {
     return buildAgentDecisionContext(fleeDecisionSpec, input);

@@ -58,11 +58,11 @@ describe("ally intent memory and blackboard", () => {
         applySnakeGameConfig();
         const visibleWorld = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null };
         const memoryWorld = { ally: { id: 42, x: 100, y: 80 }, allyCount: 1, allyCentroid: null };
-        const { decisionSnapshot, blackboard } = buildSnakeDecisionContext({ visibleWorld, memoryWorld, memorySource: { ally: true } });
-        assert.equal(blackboard.facts.known.ally.id, 42);
-        assert.equal(decisionSnapshot.allyState.remembered, true);
-        assert.equal(decisionSnapshot.allyState.visible, false);
-        assert.ok(decisionSnapshot.events.includes("ALLY_REMEMBERED"));
+        const ctx = buildSnakeDecisionContext({ visibleWorld, memoryWorld, memorySource: { ally: true } });
+        assert.equal(ctx.known.ally.id, 42);
+        assert.equal(ctx.allyState.remembered, true);
+        assert.equal(ctx.allyState.visible, false);
+        assert.ok(ctx.events.includes("ALLY_REMEMBERED"));
     });
     it("flee intent memory and decision snapshot retain ally facts", async () => {
         applySnakeGameConfig({ intentMemory: { allyTtlTicks: 3 } });
@@ -84,8 +84,8 @@ describe("ally intent memory and blackboard", () => {
         };
         memory.update(seekerPack.head, state, visible);
         const enriched = memory.enrichWorld(state, { ...visible, ally: null, allyCount: 0, allyCentroid: null });
-        const { decisionSnapshot } = buildFleeDecisionContext({ visibleWorld: enriched, memoryWorld: enriched, memorySource: enriched.memorySource });
-        assert.equal(decisionSnapshot.allyState.ally.id, allyPack.head.id);
-        assert.equal(decisionSnapshot.allyState.remembered, true);
+        const ctx = buildFleeDecisionContext({ visibleWorld: enriched, memoryWorld: enriched, memorySource: enriched.memorySource });
+        assert.equal(ctx.allyState.ally.id, allyPack.head.id);
+        assert.equal(ctx.allyState.remembered, true);
     });
 });

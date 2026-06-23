@@ -3,10 +3,10 @@ import { describe, it } from "node:test";
 import { publishAgentEngagement, readAgentEngagement, isAgentEngaged } from "../Libraries/AI/agents/agentEngagement.js";
 import { createSnakeAgentSession } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { deriveSnakeEngagementState } from "../Libraries/Game/snake/snakeEngagement.js";
-import { createSnakeDecisionBlackboard } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { buildSnakeDecisionFrame } from "../Libraries/Game/snake/snakeDecisionModel.js";
 
 function blackboard(visible = {}, remembered = {}) {
-    return createSnakeDecisionBlackboard({
+    return buildSnakeDecisionFrame({
         visibleWorld: {
             threat: null,
             prey: null,
