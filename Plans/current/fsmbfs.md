@@ -1,12 +1,65 @@
 # FSM reach — one nav BFS dialect (`reachSteps`)
 
-**Goal:** Delete every exported distance field (`preyDist`, `foodDist`, `allyDist`, `threatDist`, `enemyDist`, `lastDistanceCells`) and replace them with **one number**: **`reachSteps`** — octile nav path steps on `NavTopology`, same unit for utility cost, threat severity, cohesion gates, pack distance, debug, and memory fallbacks.
+**Goal:** Delete every exported distance field (`preyDist`, `foodDist`, `allyDist`, `threatDist`, `enemyDist`, `lastDistanceCells`) and replace them with **one number**: **`reachSteps`** — octile nav path steps on `NavTopology`, same unit for utility cost, threat severity, cohesion gates, pack distance, and debug.
 
-**Sibling docs:** nav+AI bridge → [`../AI.md`](../AI.md#future-local-flow-horizons) · pathfinding tier 3 → [`../pathfinding.md`](../pathfinding.md) · normalization index → [`normalization.md`](normalization.md) · snake adapters → [`../games/snake.md`](../games/snake.md)
+**Sibling docs:** [`normalization.md`](normalization.md) · [`stupid.md`](stupid.md) · [`passthrough.md`](passthrough.md) · [`objects.md`](objects.md) · [`frame.md`](frame.md) · [`../AI.md`](../AI.md#future-local-flow-horizons) · [`../pathfinding.md`](../pathfinding.md) · [`../games/snake.md`](../games/snake.md)
 
-**Prerequisites (done):** frame draw pass · G1 forcefields · HPA locomotion for snake/flee · `NavTopology.canStep` worker sync · `FlowFieldWindow` / `computeFlowField` exist for sandbox (not used in this pass)
+**Prerequisites (done):** frame draw pass · G1 forcefields · HPA locomotion · `NavTopology` worker sync · Pass 1 `navReachHorizon.js`
 
-**Explicitly not this pass:** per-agent flow windows · flow worker for decisions · flee locomotion via vector fields · hybrid HPA+flow execution · multi-source blended fields
+**Authoritative for phase 1 decision reach:** This doc **supersedes** “wire `FlowFieldWindow.checkReachability` for utility scorers” in [`../AI.md`](../AI.md#future-local-flow-horizons) and the “lowest-risk entry: decision-only reach via flow window” note in [`../pathfinding.md`](../pathfinding.md). Phase 1 = **`syncNavReachHorizon` + `navReachStepsTo`** (module scratch BFS). Flow windows stay **phase 2+ locomotion** only.
+
+**Explicitly not this work:** per-agent `FlowFieldWindow` pools · flow worker for decisions · new `Libraries/AI/decision/` package · behavior-tree / generic slot pipeline · `resolveSnakeReachConfig()` and other config resolver getters
+
+---
+
+## Plans alignment — read before coding
+
+This is a **normalization** pass (pick one dialect), not a feature layer cake. Same class of win as AABB/scalars, frame `viewport`, floor belt revision cache.
+
+| Plan | How this work must comply |
+|------|---------------------------|
+| [`normalization.md`](normalization.md) | One reach dialect end-to-end; delete parallel distance fields; no second bump/spine for reach |
+| [`stupid.md`](stupid.md) | No getter/resolver theater; no fake mini-services; no new folder unless unavoidable; read config at use site |
+| [`passthrough.md`](passthrough.md) | Distance was **passthrough** — computed in perception, copied to memory, copied to blackboard (`visible`/`remembered`/`known` layers), read by scorers. Delete the copies; compute reach **once** at intent adapter — see passthrough **Tier 1b** |
+| [`objects.md`](objects.md) | Module scratch + generation stamp (`visitedGen` / `visitGen`); **zero** per-tick `{ stepsTo() }`, opts bags, or `new TypedArray` in hot path |
+| [`frame.md`](frame.md) | **`syncNavReachHorizon` = sync once · `navReachStepsTo` = read many** — same contract as draw pass, not a returned handle object |
+
+### What we are deleting (it was passthrough + duplicate dialect)
+
+```text
+classifyAgentVision *Dist  ──copy──►  intentMemory enrich *Dist  ──copy──►  blackboard known.*Dist  ──read──►  reachForCandidate
+targetMemory lastDistanceCells ───────────────────────────────────────────────────────────────────────────►  same chain
+```
+
+After: perception/memory hold **targets only**. Intent adapter runs `syncNavReachHorizon` once, fills `reachSteps` once, passes into `build*DecisionContext`. Scorers read `facts.reachSteps.*` only.
+
+### Module singleton contract (critical)
+
+`navReachHorizon.js` uses **module-level scratch** — like draw pass scratch, not per-agent state bags.
+
+```text
+For each agent that runs decision this tick:
+  syncNavReachHorizon(nav, agent.x, agent.y, maxSteps)   // overwrites scratch
+  navReachStepsTo(target.x, target.y)                    // read before next agent sync
+```
+
+**Never** hold a returned horizon object across agents. **Never** read `navReachStepsTo` without a fresh sync for that agent. Multi-snake/flee means N syncs per tick — that is correct; pooling agents into one BFS is phase 2 locomotion, not this work.
+
+**Sync failure** (`syncNavReachHorizon` → `false`: topology not ready, start blocked, out of frame): all `navReachStepsTo` lookups return `null`; `deriveSnakeThreatState` returns `null`; hunt/seek scorers treat null reach as unreachable (`-Infinity` via `netScoreDetail`). Do not fall back to euclidean `*Dist`.
+
+**Nav topology source** (both intent adapters): `requireSnakeVisionFrame(state).navTopology` — same object as `state.nav.topology` after vision frame sync. No resolver; read at sync site.
+
+### Where code lives (anti-sprawl)
+
+| OK | Not OK |
+|----|--------|
+| `Libraries/Navigation/navReachHorizon.js` — BFS scratch + sync/lookup | `Libraries/AI/decision/reachSteps.js` or any new AI subpackage |
+| Local `reachStepsForMode(...)` **inside** `createSnakeForageIntent` / `createFleeExploreIntent` (6 lines, inline) | Shared “decision framework” module for two game adapters |
+| `facts.reachSteps` on blackboard — 4 numbers filled once per tick | Copying reach into `visible` / `remembered` / `known` layers |
+| `getSnakeGameConfig().decisionReachHorizon` at intent adapter | `resolveSnakeReachConfig()`, `resolveReachSteps(horizon, …)` wrappers |
+| Inline cell math in `deriveSnakeThreatState` | Precomputed `fleeRangeCells` on config via boot resolver |
+
+Extract `routeEvents` / `committedTargetMatches` from snake+flee **only in the same PR** that rewires both decision models (Pass 4) — not a standalone “framework” PR.
 
 ---
 
@@ -15,580 +68,305 @@
 ```text
 One distance for AI decisions: reachSteps (nav path steps).
 Perception and memory store targets only — never distance.
-Horizon BFS resolves reach once per agent per tick.
+syncNavReachHorizon once per agent per decision tick; navReachStepsTo for lookups.
 ```
 
 | Need | Read from |
 |------|-----------|
-| Effort cost input to `netScoreDetail` | `blackboard.facts.reachSteps.{prey\|food\|ally\|threat\|enemy}` |
-| Committed route (accurate, may exceed horizon) | `routeStatus.pathLen` via `resolveReachSteps` |
-| Threat severity / lethal flee | `reachSteps.threat` + cell-based config |
-| Cohesion `idealStopDist` / pack `maxPackDistCells` | `reachSteps.ally` (already cells today) |
-| Debug / HUD score breakdown | `decisionSnapshot.candidateScoreDetails.*.reach` (already on `netScoreDetail`) |
+| Effort cost in `netScoreDetail` | `blackboard.facts.reachSteps.{prey\|food\|ally\|threat\|enemy}` |
+| Committed route (may exceed horizon) | `routeStatus.pathLen` when committed target matches — inline in intent adapter, not a wrapper |
+| Threat severity / lethal flee | `reachSteps.threat` + inline cell math from config + `cellSize` |
+| Cohesion `idealStopDist` / pack distance | `reachSteps.ally` (already cells) |
+| Debug score breakdown | `candidateScoreDetails.*.reach` (already on `netScoreDetail`) |
 | “Is it in vision cone?” | Internal `distSq` in `classifyAgentVision` only — **never exported** |
 
-**No second dialect.** No euclidean cells on the blackboard. No pixel `threatDist`. No memory `lastDistanceCells`. No `reachForCandidate` reading `known.*Dist`.
+**No second dialect.** No euclidean cells on blackboard. No pixel `threatDist`. No memory `lastDistanceCells`. No `reachForCandidate`.
 
 ---
 
-## Problem today (why this is confusing)
+## Problem today
 
 Utility scoring claims **cost per cell** but often feeds **straight-line cells**:
 
 | Layer | Field | What it actually is |
 |-------|-------|---------------------|
-| `classifyAgentVision.js` L78–80 | `threatDist` | **World pixels** (euclidean) |
+| `classifyAgentVision.js` | `threatDist` | **World pixels** |
 | same | `preyDist`, `allyDist` | Euclidean ÷ `cellSize` |
-| `agentWorldPerception.js` L23 | `foodDist` | Euclidean ÷ `cellSize` |
-| `reachForCandidate` (both decision models L63–71 / L159–168) | fallback `known.*Dist` | Same straight-line cells |
-| same | committed branch | HPA `pathLen` — **real path steps** |
-| `targetMemory.js` L10–11 | `lastDistance`, `lastDistanceCells` | Euclidean at observe time — stale second model |
-| `fleeIntentMemory.js` L35 | remembered `threatDist` | **Mixes pixels (visible) with cells (memory)** — unit bug |
+| `agentWorldPerception.js` | `foodDist` | Euclidean ÷ `cellSize` |
+| `reachForCandidate` ×2 | `known.*Dist` fallback | Straight-line cells |
+| same | committed branch | HPA `pathLen` — real steps |
+| `targetMemory.js` | `lastDistanceCells` | Stale euclidean at observe time |
+| `fleeIntentMemory.js` | remembered `threatDist` | **Pixels vs cells unit bug** |
 
-`FlowFieldWindow.checkReachability` / `FlowFieldGrid.checkReachability` exist but have **zero production callers**. `computeFlowField` computes `bfsDistances` then throws them away after writing vectors.
+**Why threat derive changes:** today `deriveSnakeThreatState(visibleThreat, threatDist)` mixes **pixel** `threatDist` with **cell** `preyDist`/`allyDist` on the same blackboard; `lethalThreatRange` is pixels but prey scoring uses cells. After Pass 4, threat uses **`reachSteps` in cells** with inline `Math.ceil` from pixel config — one dialect everywhere.
 
-Duplicated decision helpers (exact copies in snake + flee):
+Also dead weight: `aggregateThreatSeverity` threaded but unused in scoring. Duplicated snake/flee helpers: `reachForCandidate`, `committedTargetMatches`, `routeEvents`, `pushTargetEvents`.
 
-- `reachForCandidate`
-- `committedTargetMatches`
-- `routeEvents`
-- `pushTargetEvents`
-- `costPerCellForHunger` (near-identical)
-
-`aggregateThreatSeverity` is computed in pixels in `classifyAgentVision` and threaded through flee blackboards but **never used in scoring** — flee uses `threatState.severity` from `deriveSnakeThreatState(threatDist)` instead.
+`FlowFieldWindow.checkReachability` / `FlowFieldGrid.checkReachability` — zero prod callers. Do not “fix” reach by wiring these; decision reach is `navReachHorizon.js`.
 
 ---
 
-## Target architecture
+## Never ship (grep + smell test)
 
-### One BFS per agent per tick (not per target)
+Consolidated from [`stupid.md`](stupid.md), [`passthrough.md`](passthrough.md), [`objects.md`](objects.md), and first-pass mistakes:
 
-Forward octile BFS from agent position, capped at **`decisionReachHorizon`**. Lookup table answers “steps to `(target.x, target.y)`?” for every candidate in one pass.
+| Banned | Why |
+|--------|-----|
+| `buildNavReachHorizon()` → `{ stepsTo, topologyKey }` | Fake mini-service / closure every agent (`passthrough` Tier 0 kin) |
+| `{ stepsTo: () => null }` fallback objects | Alloc on failure path |
+| `gridPathStepsBfs({ … })` + per-call `new TypedArray` | `objects.md` hot-path smell |
+| `resolveSnakeReachConfig()` / any `resolve*Reach*` getter | `stupid.md` boot getter theater |
+| `Libraries/AI/decision/*` new package | Barrel + abstraction sprawl |
+| Per-agent `FlowFieldWindow` for scoring | Wrong tool; async; window + worker complexity |
+| Threading `reachSteps` through memory enrich | Passthrough — compute at intent adapter only |
+| `*Dist` on `visibleWorld` / `memoryWorld` after Pass 3 | Duplicate dialect |
+| Mock `{ stepsTo: () => N }` in tests | Test the real sync/lookup module |
+| `gridCenterX(col, row)` — API is `gridCenterX(col)` | Use `grid.gridToWorld(col, row)` in tests |
 
-Do **not** add per-agent `FlowFieldWindow` pools or flow worker messages for phase 1. Use sync BFS on `NavTopology` — same walkability as HPA/flow, zero async desync.
+### Explicitly not “normalization” — do not expand scope
 
-### New modules (~120 lines total)
-
-#### `Libraries/Navigation/navReachHorizon.js`
-
-```javascript
-/**
- * @param {import("./NavTopology.js").NavTopology} navTopology
- * @param {number} startX
- * @param {number} startY
- * @param {number} maxSteps
- * @returns {{ stepsTo(x: number, y: number): number | null, topologyKey: string }}
- */
-export function buildNavReachHorizon(navTopology, startX, startY, maxSteps) { … }
-```
-
-- One forward BFS from agent cell using `navTopology.canStep(fromCol, fromRow, toCol, toRow)`.
-- Reuse `bfsTypedIndices` from `Libraries/DataStructures/gridBfs.js`.
-- Scratch: module-owned `Int32Array` distances keyed by flat nav index (resize when grid grows).
-- `stepsTo(x, y)`: world → col/row via `navTopology.grid`, return distance or `null` if unreachable within `maxSteps`.
-- `topologyKey`: `gridNavCacheKey(grid):cols×rows` — canonical nav invalidation spine (`gridNavEpoch.js`)
-
-#### `Libraries/Pathfinding/gridPathStepsBfs.js` (or extend `gridReachabilityBfs.js`)
-
-Replace bool-only `gridReachabilityBfs` with:
-
-```javascript
-/**
- * @returns {number | null} path steps, or null if unreachable within maxSteps
- */
-export function gridPathStepsBfs(grid, startIdx, targetIdx, isBlocked, maxSteps) { … }
-```
-
-Used by `navReachHorizon` and (later) flow-field distance queries. **Merge** bool reachability into this — delete separate unlimited BFS if redundant.
-
-#### `Libraries/AI/decision/resolveReachSteps.js`
-
-```javascript
-/**
- * @param {ReturnType<typeof buildNavReachHorizon>} horizon
- * @param {{ x: number, y: number, id?: * } | null} target
- * @param {{ mode: string, committedTarget: object | null, routeStatus: object | null }} ctx
- * @returns {number | null}
- */
-export function resolveReachSteps(horizon, target, { mode, committedTarget, routeStatus }) {
-    if (!target) return null;
-    if (committedTarget?.mode === mode && committedTarget.targetId === target.id) {
-        const pathLen = routeStatus?.pathLen;
-        if (Number.isFinite(pathLen)) return pathLen;
-    }
-    return horizon.stepsTo(target.x, target.y);
-}
-```
-
-Shared helpers extracted here (or sibling `decisionBlackboardHelpers.js`):
-
-- `committedTargetMatches`
-- `routeEvents`
-- `pushTargetEvents`
+| Idea | Why skip |
+|------|----------|
+| Generic perception→memory→blackboard slot pipeline | Deferred in `AI.md`; duplication not painful enough for two consumers |
+| Behavior-tree layer over intent | Separate feature |
+| Merge `gridReachabilityBfs` into nav reach | Cold flow path; keep separate |
+| Flow-field locomotion for flee | Phase 2 after grep gate clean |
+| Pre-bake `fleeRangeCells` into config at boot | Inline one `Math.ceil` in `deriveSnakeThreatState` |
 
 ---
 
-## Blackboard shape (after)
+## Target API (Pass 1 ✅)
 
-### Perception world — targets only
-
-`classifyAgentVision` return (delete L78–80, L62, L82):
+**File:** `Libraries/Navigation/navReachHorizon.js` — only new runtime module for this work.
 
 ```javascript
-{
-    threat, prey, ally,
-    threatCount, allyCount, allyCentroid,
-}
+syncNavReachHorizon(navTopology, startX, startY, maxSteps) → boolean
+navReachStepsTo(worldX, worldY) → number | null
 ```
 
-Keep **internal** `distSq` / `best*DistSq` for vision range cull and nearest-target tie-break. Delete exported `threatSeverityForDist` aggregation — severity moves to decision layer.
+- Module scratch: `Int32Array distances`, `Uint32Array visitedGen`, `Int32Array queue`; generation stamp (resize when grid grows).
+- BFS on `topology.octileNeighbors` + `topology.blocked` — same walkability as HPA.
+- Staleness: `gridNavCacheKey(grid)` at edit boundaries if needed — do not return `topologyKey` from sync.
+- `gridReachabilityBfs.js` unchanged for flow cold path.
 
-`perceiveAgentWorld` / `perceiveFleeAgentWorld` return:
+---
+
+## Sight vs reach (do not conflate)
+
+| | Sight | Reach |
+|---|-------|-------|
+| Question | Who is in cone + LOS? | How many path steps to walk there? |
+| Layer | `classifyAgentVision` internal `distSq` | `navReachHorizon` after sync |
+| Exported? | **Targets only** | **`facts.reachSteps.*` only** |
+
+Removing `*Dist` does **not** remove sight — `visibleWorld.prey` etc. stay.
+
+**Visible threat, no path within horizon:** `reachSteps.threat === null` → `deriveSnakeThreatState` returns null → no severity flee. That is intentional (tactical read: seen across gap ≠ walkable threat). If design wants “visible = afraid”, use `reachSteps.threat ?? fleeRangeCells` for severity only — document in config comment, do not reintroduce `threatDist`.
+
+---
+
+## Blackboard shape (after Pass 4)
+
+### Perception — targets only
 
 ```javascript
-{
-    threat, prey, ally, food,
-    threatCount, allyCount, allyCentroid,
-}
+// classifyAgentVision / perceiveAgentWorld
+{ threat, prey, ally, food, threatCount, allyCount, allyCentroid }
 ```
 
-Delete: `threatDist`, `preyDist`, `allyDist`, `foodDist`, `aggregateThreatSeverity`.
-
-`fleeWorldPerception.js` — delete L27–28 food dist; delegate food through `perceiveAgentWorld` (same as `snakeIntent.js`).
+Delete: all `*Dist`, `aggregateThreatSeverity`. Fix `fleeWorldPerception.js` — delegate to `perceiveAgentWorld` ([`passthrough.md`](passthrough.md) duplicate path).
 
 ### Memory — position only
 
-`Libraries/AI/memory/targetMemory.js` — `makeRecord` stores:
-
 ```javascript
+// targetMemory makeRecord
 { kind, id, x, y, cell, ageTicks, ttlTicks, confidence }
 ```
 
-Delete: `lastDistance`, `lastDistanceCells` from `makeRecord`, `snapshotRecord`, tests.
+Delete: `lastDistance`, `lastDistanceCells`. Intent memory enrich: merged targets + `memorySource` flags — **no dist synthesis**.
 
-Reach to remembered targets is always **fresh** each tick: `horizon.stepsTo(record.x, record.y)`. Wall appears → `null` without TTL hacks.
-
-### Intent memory enrich — no dist synthesis
-
-`snakeIntentMemory.js` L44–46 — delete `preyDist` / `foodDist` / `allyDist` passthrough.
-
-`fleeIntentMemory.js` L35–38 — same; delete `aggregateThreatSeverity` passthrough L41–42.
-
-Enrich returns merged **targets** + `memorySource` flags only.
-
-### Blackboard facts
+### Blackboard — reach filled once, not layered
 
 ```javascript
-facts.known = {
-    threat, prey, food, ally,           // snake
-    // flee: enemy instead of prey on known.enemy
-    threatCount, allyCount, allyCentroid,
-};
-facts.reachSteps = {
-    threat: number | null,
-    prey: number | null,      // flee: enemy → reachSteps.enemy
-    food: number | null,
-    ally: number | null,
-};
-facts.routeStatus = { pathLen, hasRoute, … };  // unchanged
+facts.known = { threat, prey, food, ally, threatCount, allyCount, allyCentroid };  // flee: enemy not prey
+facts.reachSteps = { threat, prey, food, ally };   // snake
+// flee facts.reachSteps = { threat, enemy, food, ally }
+facts.routeStatus = { pathLen, hasRoute, … };
 ```
 
-Delete from blackboard visible/remembered/known: all `*Dist` fields.
+**Delete entire `visible` / `remembered` / `known` distance sub-records** from `createSnakeDecisionBlackboard` / flee equivalent — not just `facts.known.*Dist`. Those layers exist only to merge passthrough dist; targets + `reachSteps` replace them.
 
-### Scoring — one read path
+**Do not** mirror `reachSteps` into `visible` / `remembered` / `known` sub-records. One write site in intent adapter.
+
+**`deriveAllyState`:** stop reading `known?.allyDist`; pass `reachSteps.ally` (or read `blackboard.facts.reachSteps.ally` inside builder after Pass 4).
+
+### Scoring
 
 ```javascript
-// snakeDecisionModel.js — scoreFoodDetail
-return netScoreDetail(value, blackboard.facts.reachSteps.food, costPerCellForHunger(pressure, hunger));
-
-// scoreSeekAllyDetail — cohesion stop (delete allyDist fallback L224–230)
-if (reachSteps.ally != null && reachSteps.ally <= cohesion.idealStopDist) return { net: -Infinity };
-return netScoreDetail(value, reachSteps.ally, costPerCellForHunger(pressure, hunger));
+return netScoreDetail(value, blackboard.facts.reachSteps.food, costPerCellForHunger(...));
 ```
 
-Delete: `reachForCandidate`, `?? (Number.isFinite(allyDist) ? allyDist : null)`.
+Delete: `reachForCandidate`, `?? allyDist` fallbacks.
 
-### Threat state — cells not pixels
-
-`deriveSnakeThreatState(threat, reachSteps)` in `snakeDecisionModel.js` L13–18:
+### Threat state — inline cell math
 
 ```javascript
-export function deriveSnakeThreatState(visibleThreat, reachSteps) {
+export function deriveSnakeThreatState(visibleThreat, reachSteps, cellSize, config = getSnakeGameConfig()) {
     if (!visibleThreat || reachSteps == null) return null;
-    const { fleeRangeCells, lethalThreatRangeCells } = getSnakeGameConfig();
+    const fleeRangeCells = Math.ceil((config.fleeRange ?? config.visionRange.range) / cellSize);
+    const lethalThreatRangeCells = Math.ceil(config.lethalThreatRange / cellSize);
     const severity = Math.max(0, Math.min(1, (fleeRangeCells - reachSteps) / fleeRangeCells));
     return { dist: reachSteps, severity, lethal: reachSteps <= lethalThreatRangeCells };
 }
 ```
 
-`deriveAllyState` — `dist: reachSteps?.ally ?? null` (passed in from blackboard builder, not from `known.allyDist`).
+No resolver. No pixel keys in this function.
 
 ---
 
-## Config migration
+## Config
 
-Add to `Config/games/snake.js` (or derive in `snakeGameConfig.js` resolver — prefer resolver to avoid breaking raw defaults):
+| Key | Where | Used |
+|-----|-------|------|
+| `decisionReachHorizon: 32` | `Config/games/snake.js` ✅ | BFS cap at intent adapter |
+| `fleeRange`, `lethalThreatRange`, `visionRange.range` | existing pixels | Vision cone + inline cell conversion in threat derive |
 
-| New key | Derivation | Used for |
-|---------|------------|----------|
-| `decisionReachHorizon` | new, default **32** | BFS cap; matches HPA local threshold (~32 cells) |
-| `fleeRangeCells` | `Math.ceil((fleeRange ?? visionRange.range) / cellSize)` | threat severity denominator |
-| `lethalThreatRangeCells` | `Math.ceil(lethalThreatRange / cellSize)` | lethal flee gate (today 48px) |
+**Do not add** `fleeRangeCells` to config object via boot resolver. Read `getSnakeGameConfig().decisionReachHorizon` directly.
 
-Keep pixel keys (`fleeRange`, `lethalThreatRange`, `visionRange.range`) for **vision geometry** only — vision cone stays world-space.
+---
 
-Add resolver in `Libraries/Game/snake/snakeGameConfig.js`:
+## Tick pipeline (intent adapters only)
+
+Both `createSnakeForageIntent.js` and `createFleeExploreIntent.js` — after memory enrich, before `build*DecisionContext`:
 
 ```javascript
-export function resolveSnakeReachConfig(config = getSnakeGameConfig(), cellSize = …) {
-    return {
-        decisionReachHorizon: config.decisionReachHorizon ?? 32,
-        fleeRangeCells: Math.ceil((config.fleeRange ?? config.visionRange.range) / cellSize),
-        lethalThreatRangeCells: Math.ceil(config.lethalThreatRange / cellSize),
-    };
+const config = getSnakeGameConfig();
+const nav = requireSnakeVisionFrame(state).navTopology;
+syncNavReachHorizon(nav, agent.x, agent.y, config.decisionReachHorizon ?? 32);
+
+const committed = intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null;
+const routeStatus = readRouteStatus(agent, state);
+
+function reachStepsForMode(target, mode) {
+    if (!target) return null;
+    if (committed?.mode === mode && committed.targetId === target.id) {
+        const pathLen = routeStatus?.pathLen;
+        if (Number.isFinite(pathLen)) return pathLen;
+    }
+    return navReachStepsTo(target.x, target.y);
 }
-```
 
-Flee agent reads snake-global or nested overrides via same resolver pattern.
-
----
-
-## Tick pipeline (intent adapters)
-
-Both `createSnakeForageIntent.js` and `createFleeExploreIntent.js` — inside `perceiveWithMemory` **after** memory enrich, **before** `build*DecisionContext`:
-
-```text
-visibleWorld = perceive*(agent, state)           // targets only
-intentMemory.update(agent, state, visibleWorld)
-memoryWorld = intentMemory.enrichWorld(state, visibleWorld)
-
-navTopology = state.navTopology  // or frame.navTopology from perception frame
-horizon = buildNavReachHorizon(navTopology, agent.x, agent.y, reachConfig.decisionReachHorizon)
-
-// Resolve known targets from visible + memory merge (same as today’s blackboard merge)
-known = mergeKnownTargets(visibleWorld, memoryWorld, memorySource)
-
-reachSteps = {
-    threat: resolveReachSteps(horizon, known.threat, ctx),
-    prey:   resolveReachSteps(horizon, known.prey,   ctx),   // flee: enemy
-    food:   resolveReachSteps(horizon, known.food,   ctx),
-    ally:   resolveReachSteps(horizon, known.ally,    ctx),
+// merge known targets from visible + memory (same as today’s blackboard merge)
+const reachSteps = {
+    threat: reachStepsForMode(known.threat, "flee"),
+    prey: reachStepsForMode(known.prey, "seek_prey"),       // snake only
+    enemy: reachStepsForMode(known.enemy, "seek_enemy"),   // flee only
+    food: reachStepsForMode(known.food, "seek_food"),
+    ally: reachStepsForMode(known.ally, "seek_ally"),
 };
 
-decisionContext = build*DecisionContext({
-    visibleWorld, memoryWorld, memorySource,
-    committedTarget, routeStatus: readRouteStatus(agent, state),
-    reachSteps,
-    …
-});
+buildSnakeDecisionContext({ …, reachSteps });
+// buildFleeDecisionContext({ …, reachSteps }) — omit prey key or leave null
 ```
 
-`buildSnakeDecisionContext` / `buildFleeDecisionContext` accept `reachSteps` and pass into `create*DecisionBlackboard`. **`deriveSnakeThreatState` uses `reachSteps.threat`**, not `visibleWorld.threatDist`.
+**Species keys:** snake blackboard uses `reachSteps.prey`; flee uses `reachSteps.enemy` (same slot as `known.enemy`, mode `seek_enemy`). Do not alias enemy→prey in flee scorers.
 
-Locomotion unchanged: `createCellTargetHpaNav`, `pickFleeCell`, `resolveFleePackOptions` — phase 2.
+**Keep `reachStepsForMode` local to the intent file** — or copy the 6-line function into flee adapter; do not create a shared AI module.
 
----
-
-## Forbidden after migration (grep gate = zero in `*.js`)
-
-```text
-preyDist
-foodDist
-allyDist
-threatDist
-enemyDist
-lastDistanceCells
-lastDistance          # as memory distance field
-reachForCandidate
-aggregateThreatSeverity
-```
-
-Also delete or redirect unused wrappers:
-
-- `FlowFieldWindow.checkReachability` (`flowFieldWindow.js` L89–99)
-- `FlowFieldGrid.checkReachability` (`FlowFieldGrid.js` L174–175)
+Locomotion unchanged: `cellTargetHpaNav`, `pickFleeCell`, `resolveFleePackOptions`.
 
 ---
 
-## What stays euclidean (internal only — not a “model”)
+## Pass 1 — Horizon primitive ✅
 
-| Location | Use | Why |
-|----------|-----|-----|
-| `classifyAgentVision.js` L39–42, L52–54 | `distSq` range cull + nearest pick | Vision geometry, not walk effort |
-| `Config/games/snake.js` `visionRange.range` | FOV radius in world units | Sight cone, not nav reach |
-| `snakeExplore.js`, `exploreSteering.js` | `cellChebyshevDistance` | Explore waypoint placement |
-| `snakeFood.js` | nearest food spatial query | World query, not agent effort |
-| `targetMemory.js` observe | still uses grid for `cell` | No distance stored |
+| Shipped | |
+|---------|---|
+| `Libraries/Navigation/navReachHorizon.js` | `syncNavReachHorizon`, `navReachStepsTo`, module scratch |
+| `Config/games/snake.js` | `decisionReachHorizon: 32` |
+| `tests/navReachHorizon.test.js` | sync/lookup; `gridToWorld`; `gridNavCacheKey` for edit staleness |
 
----
-
-## Pass 1 — Horizon primitive + BFS merge
-
-**Goal:** Sync nav path-step query with tests. No decision model changes yet.
-
-### Add
-
-| File | Work |
-|------|------|
-| `Libraries/Navigation/navReachHorizon.js` | `buildNavReachHorizon`, module scratch buffers |
-| `Libraries/Pathfinding/gridPathStepsBfs.js` | Range-limited forward BFS; optional merge from `gridReachabilityBfs.js` |
-
-### Tests (new)
-
-| File | Cases |
-|------|-------|
-| `tests/navReachHorizon.test.js` | Open grid: steps match octile expectation · wall blocks path: steps > euclidean would be · target beyond R → `null` · start blocked → `null` · topology revision invalidates |
-
-Use small grid harness with `NavTopology.bakeInProcess()` — same pattern as existing nav tests.
-
-### Config stub
-
-| File | Work |
-|------|------|
-| `Config/games/snake.js` | Add `decisionReachHorizon: 32` |
-| `Libraries/Game/snake/snakeGameConfig.js` | Add `resolveSnakeReachConfig()` |
-
-### Review bar
-
-- [ ] BFS uses `NavTopology.canStep` — not ad-hoc `gridFill`
-- [ ] No allocations on hot path after first resize (module scratch)
-- [ ] `gridPathStepsBfs` returns `number | null`, not bool
+Review: [x] no returned objects [x] no per-call alloc [x] `gridReachabilityBfs` untouched
 
 ---
 
-## Pass 2 — Shared decision reach helpers
+## Pass 2 — Optional (skip if inlined in Pass 4)
 
-**Goal:** Extract duplicated logic; test reach resolution in isolation.
-
-### Add
-
-| File | Work |
-|------|------|
-| `Libraries/AI/decision/resolveReachSteps.js` | `resolveReachSteps` + shared blackboard helpers |
-| `tests/resolveReachSteps.test.js` | Mock horizon `{ stepsTo: () => N }` · committed + `pathLen` overrides horizon · unreachable → `null` |
-
-### Change (minimal — imports only, keep old reach until Pass 4)
-
-| File | Work |
-|------|------|
-| `snakeDecisionModel.js` | Import shared helpers where duplicated (optional prep) |
-| `fleeDecisionModel.js` | Same |
-
-### Review bar
-
-- [ ] Single implementation of `committedTargetMatches`, `routeEvents`, `pushTargetEvents`
-- [ ] Tests do not inject `preyDist` into world fixtures
+Only if you want an isolated test before touching decision models: extract `reachStepsForMode` to a **single** shared file both intents import — prefer **`Libraries/Game/snake/reachStepsForMode.js`** (game layer, not `Libraries/AI/`). Default: **skip Pass 2**; inline in Pass 4.
 
 ---
 
-## Pass 3 — Strip perception + memory distances
+## Pass 3 — Strip perception + memory distances (deletion pass)
 
-**Goal:** Delete exported distance fields at the source. Pure deletion pass.
+Pure passthrough removal — no new APIs.
 
-### Change
+| File | Delete / change |
+|------|-----------------|
+| `classifyAgentVision.js` | exported `*Dist`, `aggregateThreatSeverity` — keep internal `distSq` for FOV/nearest pick |
+| `agentWorldPerception.js` | all `*Dist` fields including `foodDist` |
+| `fleeWorldPerception.js` | duplicate `foodDist` path; delegate body to `perceiveAgentWorld` + `resolveFleeAgentPerceptionOptions` (mirror `snakeIntent.js`) |
+| `targetMemory.js` | `lastDistance`, `lastDistanceCells` |
+| `snakeIntentMemory.js`, `fleeIntentMemory.js` | dist synthesis on enrich (`preyDist`, `threatDist`, …) |
 
-| File | Lines / work |
-|------|----------------|
-| `Libraries/AI/perception/classifyAgentVision.js` | Remove L78–80 exports · remove `aggregateThreatSeverity` accumulation L31–32, L61–62, L82 · keep internal `distSq` |
-| `Libraries/AI/perception/agentWorldPerception.js` | Remove L23, L29–32 `*Dist` fields |
-| `Libraries/Game/snake/fleeAgent/fleeWorldPerception.js` | Delete L27–28 · delegate to `perceiveAgentWorld` |
-| `Libraries/AI/memory/targetMemory.js` | Remove L10–11, L28–29 distance fields |
-| `Libraries/Game/snake/snakeIntentMemory.js` | Remove L44–46 dist synthesis |
-| `Libraries/Game/snake/fleeAgent/fleeIntentMemory.js` | Remove L35–38 dist · L41–42 aggregate severity |
+Grep gate: zero `*Dist` / `lastDistanceCells` in `Libraries/`.
 
-### Tests to update
-
-| File | Work |
-|------|------|
-| `tests/targetMemory.test.js` | Drop `lastDistance` / `lastDistanceCells` assertions |
-| `tests/snakeIntent.test.js` | Remove L219–220 `preyDist` / `foodDist` asserts · assert targets only |
-| `tests/agentAllyMemory.test.js` | Remove `allyDist` from fixtures |
-| `tests/fleeAgentDecision.test.js` | Remove `*Dist` from mock worlds (temporary until Pass 4 wires horizon) |
-
-### Review bar
-
-- [ ] `rg 'preyDist|foodDist|allyDist|threatDist|lastDistanceCells'` → zero in `Libraries/` (tests may still fail until Pass 4)
-- [ ] Perception return shape documented in this file matches code
+**Tests to rewrite (targets only, no dist fixtures):** `snakeDecisionModel.test.js`, `fleeAgentDecision.test.js`, `snakeIntent.test.js`, `snakeEngagement.test.js`, `agentAllyMemory.test.js` — use grid harness + `syncNavReachHorizon` in Pass 4, or stub `reachSteps` on context in unit tests (not mock horizon objects).
 
 ---
 
-## Pass 4 — Blackboard + scoring + intent wiring
-
-**Goal:** Live game uses `reachSteps`. Delete all scoring dist paths.
-
-### Change — intent adapters
+## Pass 4 — Wire reach into live decisions
 
 | File | Work |
 |------|------|
-| `Libraries/Game/snake/createSnakeForageIntent.js` | Build horizon in `perceiveWithMemory` · pass `reachSteps` to `buildSnakeDecisionContext` |
-| `Libraries/Game/snake/fleeAgent/createFleeExploreIntent.js` | Same for flee |
+| `createSnakeForageIntent.js`, `createFleeExploreIntent.js` | import sync/lookup; `requireSnakeVisionFrame`; local `reachStepsForMode`; pass `reachSteps` |
+| `snakeDecisionModel.js`, `fleeDecisionModel.js` | `build*DecisionContext({ reachSteps })`; strip blackboard dist layers; delete `reachForCandidate`; scorers + `deriveSnakeThreatState` read `facts.reachSteps.*`; update `deriveAllyState` |
+| Same PR only | extract duplicated `routeEvents` / `committedTargetMatches` if both models touched |
 
-### Change — decision models
+**Threat wiring:** `deriveSnakeThreatState(visibleWorld.threat, reachSteps.threat, cellSize)` — not `visibleWorld.threatDist`.
 
-| File | Work |
-|------|------|
-| `Libraries/Game/snake/snakeDecisionModel.js` | `createSnakeDecisionBlackboard` takes `reachSteps` · delete all `*Dist` from visible/remembered/known · `deriveSnakeThreatState(reachSteps.threat)` · all `score*Detail` read `facts.reachSteps.*` · delete `reachForCandidate` · `deriveAllyState` uses `reachSteps.ally` · `buildSnakeDecisionContext` accepts `reachSteps` |
-| `Libraries/Game/snake/fleeAgent/fleeDecisionModel.js` | Mirror · `reachSteps.enemy` for flee prey slot · delete `enemyDist` |
+Tests: grid harness with `syncNavReachHorizon` — not injected `preyDist: 1`.
 
-### Change — config
-
-| File | Work |
-|------|------|
-| `Libraries/Game/snake/snakeGameConfig.js` | Wire `resolveSnakeReachConfig` into hot paths |
-
-### Tests to rewrite
-
-| File | Work |
-|------|------|
-| `tests/snakeDecisionModel.test.js` | Replace `world({ preyDist: 1 })` with mock horizon or grid harness · L77–80 reach/cost asserts use real steps · L141–214 threat tests use `reachSteps` / cell config not `threatDist: 64` · L264–304 ally tests use `reachSteps.ally` |
-| `tests/fleeAgentDecision.test.js` | Full mock `reachSteps` on context builder |
-| `tests/snakeEngagement.test.js` | Remove `foodDist: 2` from blackboard fixtures — pass `reachSteps` |
-
-### Behavior changes (expected)
-
-- Prey visible through wall → `reachSteps.prey === null` → hunt mode scores `-Infinity` unless desperate/committed pathLen
-- Threat behind wall → no flee from threat severity (unless committed route says otherwise)
-- Remembered food behind new wall → `null` reach without waiting for memory TTL
-
-### Review bar
-
-- [ ] `reachForCandidate` grep → zero
-- [ ] No `?? allyDist` fallbacks in scorers
-- [ ] `candidateScoreDetails.*.reach` reflects path steps in game
+Expected behavior: prey visible through wall → `reachSteps.prey === null` → hunt `-Infinity` unless committed `pathLen`.
 
 ---
 
-## Pass 5 — Cleanup, dead code, docs
-
-**Goal:** Grep gate clean repo-wide; delete unused APIs.
-
-### Delete / redirect
-
-| File | Work |
-|------|------|
-| `Libraries/Pathfinding/flowFieldWindow.js` | Remove `checkReachability` L89–99 or thin-wrap `gridPathStepsBfs` |
-| `Libraries/Pathfinding/FlowFieldGrid.js` | Remove L174–175 `checkReachability` |
-| `Libraries/Pathfinding/gridReachabilityBfs.js` | Merge into `gridPathStepsBfs` if redundant |
-
-### Docs
-
-| File | Work |
-|------|------|
-| `Plans/AI.md` | Phase 4a ally line: `reachSteps` not `allyDist` · update “local flow horizons” phase 1 to “sync nav horizon BFS” |
-| `Plans/current/normalization.md` | Link `fsmbfs.md` as Tier 2 / AI reach dialect |
-| `Plans/NOW.md` | Optional queue entry |
-
-### Final grep gate (all must be zero in `*.js`)
+## Pass 5 — Grep gate + doc sync
 
 ```bash
 rg 'preyDist|foodDist|allyDist|threatDist|enemyDist|lastDistanceCells|reachForCandidate|aggregateThreatSeverity' --glob '*.js'
-rg 'lastDistance' --glob '*.js'   # except unrelated physics/render uses if any — audit hits
+rg 'buildNavReachHorizon|resolveSnakeReachConfig|resolveReachSteps' --glob '*.js'
+rg 'Libraries/AI/decision' --glob '*.js'
 ```
 
-### Review bar
+Update [`../AI.md`](../AI.md) (reachSteps not allyDist; phase 1 = sync nav BFS not FlowFieldWindow; strike recommended #3). Link from [`normalization.md`](normalization.md). Optional one-line supersession in [`../pathfinding.md`](../pathfinding.md) Tier 3 future blurb.
 
-- [ ] Net line count negative (~150–200 deleted, ~120 added)
-- [ ] New agent species: pass `navTopology` + get correct reach — no new dist fields to invent
-- [ ] `deriveSnakeThreatState` / cohesion / `netScoreDetail` all use same unit
+Optional: delete unused `checkReachability` on flow types — not required for reach migration.
 
 ---
 
-## File checklist (every touch)
+## Phase 2+ (after grep gate clean)
 
-### New files
+| Phase | Work | Reuses |
+|-------|------|--------|
+| 2a | Flee locomotion via backward flow | `FlowFieldWindow` + worker — **not** `navReachHorizon` for steering |
+| 2b | Hybrid HPA waypoint + local flow | `navReachStepsTo` for reach gate + HPA `pathLen` for committed |
+| 3 | Blended flee fields | replaces `pickFleeCell` heuristic |
 
-- `Libraries/Navigation/navReachHorizon.js`
-- `Libraries/Pathfinding/gridPathStepsBfs.js`
-- `Libraries/AI/decision/resolveReachSteps.js`
-- `tests/navReachHorizon.test.js`
-- `tests/resolveReachSteps.test.js`
-
-### Modified — perception / memory
-
-- `Libraries/AI/perception/classifyAgentVision.js`
-- `Libraries/AI/perception/agentWorldPerception.js`
-- `Libraries/Game/snake/fleeAgent/fleeWorldPerception.js`
-- `Libraries/AI/memory/targetMemory.js`
-- `Libraries/Game/snake/snakeIntentMemory.js`
-- `Libraries/Game/snake/fleeAgent/fleeIntentMemory.js`
-
-### Modified — decision / intent
-
-- `Libraries/Game/snake/snakeDecisionModel.js`
-- `Libraries/Game/snake/fleeAgent/fleeDecisionModel.js`
-- `Libraries/Game/snake/createSnakeForageIntent.js`
-- `Libraries/Game/snake/fleeAgent/createFleeExploreIntent.js`
-- `Libraries/Game/snake/snakeGameConfig.js`
-- `Config/games/snake.js`
-
-### Modified — tests
-
-- `tests/snakeDecisionModel.test.js`
-- `tests/fleeAgentDecision.test.js`
-- `tests/snakeIntent.test.js`
-- `tests/agentAllyMemory.test.js`
-- `tests/targetMemory.test.js`
-- `tests/snakeEngagement.test.js`
-
-### Deleted / trimmed APIs
-
-- `reachForCandidate` (both decision models)
-- `FlowFieldWindow.checkReachability`
-- `FlowFieldGrid.checkReachability`
-- `gridReachabilityBfs` (if fully merged)
-
-### Unchanged this pass
-
-- `Libraries/Sandbox/groundNav/cellTargetHpaNav.js`
-- `Libraries/Pathfinding/FlowFieldGrid.js` (sandbox drag-nav)
-- `Libraries/Sandbox/flowGroundNavBehavior.js`
-- `Libraries/AI/steering/pickFleeCell.js`
-- `Libraries/Game/snake/fleeAgent/resolveFleePackOptions.js`
-- `Libraries/Game/snake/focusedAgent*Overlays.js` (no dist dependency today)
-- `Libraries/Game/snake/snakeHud.js`
+Do not start until Pass 5 grep gate passes. Phase 2 **may** add worker/window — phase 1 deliberately does not.
 
 ---
 
-## Phase 2 preview (after FSM BFS lands)
+## Review bar (full)
 
-| Phase | Work | Reuses from this pass |
-|-------|------|------------------------|
-| **2a** | Flee-ball locomotion via local backward flow | `gridPathStepsBfs`, horizon scratch sizing |
-| **2b** | Hybrid snake: HPA waypoint + local flow execution | `resolveReachSteps` + flow worker |
-| **3** | Blended fields (threat repulsion + ally attraction) | Replaces `pickFleeCell` heuristic |
-
-Do not start phase 2 until grep gate on `reachSteps` is clean and decision tests run on grid harness.
-
----
-
-## How to know you got it (review bar — full)
-
-- [ ] One distance dialect: **`reachSteps`** (path steps) for all FSM utility, threat, cohesion
-- [ ] Perception exports **targets + counts + centroid** only
-- [ ] Memory stores **position only** — no distance at observe time
-- [ ] One BFS per agent per decision tick — not one per target
-- [ ] Committed route still uses **`pathLen`** when target matches
-- [ ] Threat config in **cells** (`fleeRangeCells`, `lethalThreatRangeCells`)
-- [ ] Vision range stays **world pixels** for FOV — separate concern, not exported as reach
-- [ ] No per-agent `FlowFieldWindow` pool in phase 1
-- [ ] Duplicate snake/flee decision helpers consolidated
-- [ ] `aggregateThreatSeverity` deleted
-- [ ] `fleeIntentMemory` unit bug gone (was pixel/cell mix)
-- [ ] Grep gate zero on all banned symbols
-
----
-
-## Net code change (expectation)
-
-| Removed | Added |
-|---------|-------|
-| ~8 distance fields × 3 layers (perception, memory, blackboard) | 1 `reachSteps` object on blackboard |
-| Duplicate `reachForCandidate` × 2 + fallbacks | 1 `resolveReachSteps` |
-| Memory distance observe + re-export | Position-only memory |
-| Pixel/cell threat confusion | Cell-only threat severity |
-| Unused `checkReachability` × 2 | Shared `gridPathStepsBfs` |
-
-**~150–200 lines deleted, ~120 added** — net negative, one mental model.
+- [ ] One reach dialect: path steps everywhere in scoring/threat/cohesion
+- [ ] Perception + memory: **targets only**
+- [ ] `syncNavReachHorizon` / `navReachStepsTo` — no returned horizon objects
+- [ ] Reach computed **once** per agent at intent adapter — not threaded through enrich
+- [ ] No `Libraries/AI/decision/` or resolver getters
+- [ ] `deriveAllyState` reads `facts.reachSteps.ally`, not `known.allyDist`
+- [ ] No `*Dist` grep hits in `Libraries/`
+- [ ] Tests use `gridToWorld` + real sync — not mock `{ stepsTo }`
+- [ ] Net line count negative
+- [ ] New species: sync + `navReachStepsTo` — do not invent new dist fields
 
 ---
 
@@ -596,8 +374,9 @@ Do not start phase 2 until grep gate on `reachSteps` is clean and decision tests
 
 | Doc | Role |
 |-----|------|
-| [`normalization.md`](normalization.md) | Cross-cutting dialect wins |
-| [`../AI.md`](../AI.md) | FSM + utility stack · local flow horizons phase 2+ |
-| [`../pathfinding.md`](../pathfinding.md) | Flow field tier · BFS primitives |
-| [`../games/snake.md`](../games/snake.md) | Species, intent modes, config |
-| [`frame.md`](frame.md) | Render dialect (done) — same “pick one shape” playbook |
+| [`normalization.md`](normalization.md) | Dialect wins — this is Tier 2 AI reach |
+| [`stupid.md`](stupid.md) | No getters / fake services |
+| [`passthrough.md`](passthrough.md) | Why `*Dist` layers die |
+| [`objects.md`](objects.md) | Scratch vs alloc |
+| [`frame.md`](frame.md) | sync + read pattern |
+| [`../AI.md`](../AI.md) | FSM stack · flow phase 2+ |

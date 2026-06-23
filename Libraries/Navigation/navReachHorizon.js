@@ -1,68 +1,90 @@
 import { colRowToIndex, cellInRect } from "../Spatial/grid/GridUtils.js";
-import { fillNavPathStepHorizon } from "../Pathfinding/gridPathStepsBfs.js";
-import { navIsBlocked } from "../Pathfinding/navTopologySab.js";
-import { gridNavCacheKey } from "../Spatial/grid/gridNavEpoch.js";
+import { navIsBlocked, OCTILE_DIRS_PER_CELL, octileNeighborOffset } from "../Pathfinding/navTopologySab.js";
 /** @typedef {import("./NavTopology.js").NavTopology} NavTopology */
-let scratchDistances = null;
-let scratchVisitedGen = null;
-let scratchQueue = null;
-let scratchCellCount = 0;
-let visitGeneration = 1;
-/** @param {number} cellCount */
-function ensureScratch(cellCount) {
-    if (scratchCellCount >= cellCount && scratchDistances) return;
-    scratchDistances = new Int32Array(cellCount);
-    scratchVisitedGen = new Uint32Array(cellCount);
-    scratchQueue = new Int32Array(cellCount);
-    scratchCellCount = cellCount;
+/** @typedef {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
+let distances = null;
+let visitedGen = null;
+let queue = null;
+let cellCount = 0;
+let visitGen = 1;
+let horizonCols = 0;
+let horizonRows = 0;
+/** @type {WorldObstacleGrid | null} */
+let horizonGrid = null;
+let horizonReady = false;
+/** @param {number} size */
+function ensureScratch(size) {
+    if (cellCount >= size && distances) return;
+    distances = new Int32Array(size);
+    visitedGen = new Uint32Array(size);
+    queue = new Int32Array(size);
+    cellCount = size;
 }
-/** @param {NavTopology} navTopology */
-function navTopologyKey(navTopology) {
-    const grid = navTopology.grid;
-    if (!grid) return "";
-    return `${gridNavCacheKey(grid)}:${grid.cols}x${grid.rows}`;
+/** @param {import("../Pathfinding/navTopologySab.js").NavTopology} topology @param {number} startIdx @param {number} maxSteps */
+function runHorizonBfs(topology, startIdx, maxSteps) {
+    const neighbors = topology.octileNeighbors;
+    const blocked = topology.blocked;
+    let head = 0;
+    let tail = 0;
+    visitedGen[startIdx] = visitGen;
+    distances[startIdx] = 0;
+    queue[tail++] = startIdx;
+    while (head < tail) {
+        const idx = queue[head++];
+        const step = distances[idx];
+        if (step >= maxSteps) continue;
+        for (let dir = 0; dir < OCTILE_DIRS_PER_CELL; dir++) {
+            const nIdx = neighbors[octileNeighborOffset(idx, dir)];
+            if (nIdx < 0 || visitedGen[nIdx] === visitGen || blocked[nIdx]) continue;
+            visitedGen[nIdx] = visitGen;
+            distances[nIdx] = step + 1;
+            queue[tail++] = nIdx;
+        }
+    }
 }
 /**
- * Sync forward nav BFS from an agent position, capped at maxSteps.
- * One BFS per call — use stepsTo() for multiple target lookups within the horizon.
+ * Forward nav BFS from agent position into module scratch.
+ * Look up with navReachStepsTo(worldX, worldY) — same pattern as draw pass sync + read.
  *
  * @param {NavTopology} navTopology
  * @param {number} startX
  * @param {number} startY
  * @param {number} maxSteps
- * @returns {{ stepsTo(x: number, y: number): number | null, topologyKey: string }}
+ * @returns {boolean} false when topology not ready or start blocked
  */
-export function buildNavReachHorizon(navTopology, startX, startY, maxSteps) {
-    const empty = { stepsTo: () => null, topologyKey: navTopologyKey(navTopology) };
-    if (!navTopology?.isReady?.()) return empty;
+export function syncNavReachHorizon(navTopology, startX, startY, maxSteps) {
+    horizonReady = false;
+    horizonGrid = null;
+    if (!navTopology?.isReady?.()) return false;
     const frame = navTopology.frame;
     const topology = navTopology.topology;
-    if (!frame || !topology) return empty;
+    if (!frame || !topology) return false;
     const grid = navTopology.grid;
     const cols = frame.cols;
     const rows = frame.rows;
-    const cellCount = cols * rows;
-    ensureScratch(cellCount);
-    visitGeneration++;
-    if (visitGeneration === 0xffffffff) {
-        scratchVisitedGen.fill(0);
-        visitGeneration = 1;
+    ensureScratch(cols * rows);
+    visitGen++;
+    if (visitGen === 0xffffffff) {
+        visitedGen.fill(0);
+        visitGen = 1;
     }
     const startCol = grid.worldCol(startX);
     const startRow = grid.worldRow(startY);
-    if (!cellInRect(startCol, startRow, cols, rows) || navIsBlocked(frame, topology, startCol, startRow)) return empty;
-    const startIdx = colRowToIndex(startCol, startRow, cols);
-    fillNavPathStepHorizon({ topology, startIdx, maxSteps, distances: scratchDistances, visitedGen: scratchVisitedGen, visitGen: visitGeneration, queue: scratchQueue });
-    const topologyKey = navTopologyKey(navTopology);
-    return {
-        topologyKey,
-        stepsTo(x, y) {
-            const col = grid.worldCol(x);
-            const row = grid.worldRow(y);
-            if (!cellInRect(col, row, cols, rows)) return null;
-            const idx = colRowToIndex(col, row, cols);
-            if (scratchVisitedGen[idx] !== visitGeneration) return null;
-            return scratchDistances[idx];
-        },
-    };
+    if (!cellInRect(startCol, startRow, cols, rows) || navIsBlocked(frame, topology, startCol, startRow)) return false;
+    runHorizonBfs(topology, colRowToIndex(startCol, startRow, cols), maxSteps);
+    horizonCols = cols;
+    horizonRows = rows;
+    horizonGrid = grid;
+    horizonReady = true;
+    return true;
+}
+/** Path steps from the last syncNavReachHorizon start, or null if unreachable within horizon. */
+export function navReachStepsTo(worldX, worldY) {
+    if (!horizonReady || !horizonGrid) return null;
+    const col = horizonGrid.worldCol(worldX);
+    const row = horizonGrid.worldRow(worldY);
+    if (!cellInRect(col, row, horizonCols, horizonRows)) return null;
+    const idx = colRowToIndex(col, row, horizonCols);
+    if (visitedGen[idx] !== visitGen) return null;
+    return distances[idx];
 }

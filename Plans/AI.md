@@ -240,7 +240,7 @@ Phases completed on the snake game proving ground:
 | **1–2 Team hunting** | ✅ | Faction metadata drives `resolveRelationship`; shared vision classifier |
 | **3 Prey/threat scoring** | ✅ | Config `enemySnakePreyValue`, rival band by segment gap |
 | **Flee threat fix** | ✅ | Flee agents treat all snakes as threat; never hunt snakes |
-| **4a Ally perception** | ✅ | `ally`, `allyCount`, `allyCentroid`, `allyDist` (cells) on world view |
+| **4a Ally perception** | ✅ | `ally`, `allyCount`, `allyCentroid` on world view — **`allyDist` deleted in fsmbfs Pass 3** |
 | **Prep Ally memory + blackboard** | ✅ | TTL ally slot, `known.ally`, `allyState`, `ALLY_SEEN` / `ALLY_REMEMBERED` |
 | **4b Flee `seek_ally`** | ✅ | Regroup when safe + satisfied; faction cohesion config; friendly arrival radius |
 | **4c Snake regroup (`seek_ally`)** | ✅ | Satisfied-only; size-scaled; friendly arrival radius |
@@ -280,8 +280,8 @@ The pathfinding stack already has the building blocks for **per-agent sliding fl
 
 ### Phased integration (lowest risk first)
 
-1. **Decision-only fields** — use local BFS distance for utility `reach` / `netScoreDetail` without changing locomotion. Fixes “straight-line distance lies about effort” for prey, food, and ally scoring.
-2. **Flee-ball locomotion** — high agent count, short horizons; `seek_ally`, flee, and explore all benefit from local gradients. Snakes keep HPA for long hunts.
+1. **Decision-only reach (phase 1 — in progress)** — [`fsmbfs.md`](current/fsmbfs.md): `syncNavReachHorizon` + `navReachStepsTo` module scratch BFS at intent adapter; **`reachSteps`** on blackboard. **Not** `FlowFieldWindow` / `checkReachability`. Locomotion unchanged (HPA).
+2. **Flee-ball locomotion** — high agent count, short horizons; per-agent flow windows + worker.
 3. **Hybrid snake stack** — HPA produces corridor waypoint; local flow executes until invalidation or waypoint reached.
 4. **Multi-source fields** — compose attraction (food, ally) and repulsion (threat) into one cost field for flee and pack behavior (4d).
 
@@ -310,12 +310,11 @@ Cross-doc: flow field implementation detail → [pathfinding.md](./pathfinding.m
 
 ## Recommended next unlocks
 
-1. **Phase 4c — snake regroup.** Light cohesion when satisfied; reuses ally memory already on blackboard.
-2. **Phase 4d — flee pack flee.** Blend flee direction toward ally centroid; natural follow-on to `seek_ally`.
-3. **Local flow for utility reach (decision-only).** Wire `FlowFieldWindow.checkReachability` / range-limited distance into scorers before touching locomotion.
-4. **Path smoothing + local separation.** Complements flow horizons for snake chase feel.
-5. **Behavior tree skeleton.** Thin selector/sequence layer over existing intent/effect primitives.
-6. **Generic slot pipeline.** Extract shared perception→memory→blackboard only if a third consumer appears or duplication becomes painful.
+1. **FSM reach Pass 3–5** — delete `*Dist` passthrough; wire `reachSteps` ([`current/fsmbfs.md`](current/fsmbfs.md)). Pass 1 primitive ✅.
+2. **Path smoothing + local separation.** Complements flow horizons for snake chase feel.
+3. **Local flow for locomotion (phase 2+).** Per-agent flow windows for flee steering — **after** reachSteps grep gate clean; not for utility distance.
+4. **Behavior tree skeleton.** Thin selector/sequence layer over existing intent/effect primitives.
+5. **Generic slot pipeline.** Extract shared perception→memory→blackboard only if a third consumer appears or duplication becomes painful.
 
 ---
 

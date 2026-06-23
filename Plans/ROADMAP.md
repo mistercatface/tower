@@ -18,7 +18,7 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 | **Pathfinding** | ~56% | pro-grade grid search + HPA/flow workers; missing smoothing and crowd layer | octile A*, HPA* Voronoi regions, flow-field BFS, SAB workers | funnel / string-pull smoothing | [pathfinding.md](./pathfinding.md) |
 | **Rendering** | ~52% | radial pseudo-3D core is strong; no shadows/lighting pass yet | camera-relative elevation projection, painter sort, bake/blit LRU | projected drop shadows | [rendering.md](./rendering.md) |
 | **Procedural** | ~42% | strong bake/resolution; weak authorship/generator layer | CA caves, room-graph bake, cardinal corridor A* | unified root seed | [procedural.md](./procedural.md) · algorithms → [Mazes.md](./Mazes.md) |
-| **AI** | ~52% | two intent consumers (snake + flee); team hunting, ally perception/memory, flee `seek_ally`; shared classifier + utility scoring | FSM, utility scoring, TTL target memory, faction relationships | cohesion 4c/4d; local flow horizons for reach/crowd | [AI.md](./AI.md) |
+| **AI** | ~52% | two intent consumers (snake + flee); team hunting, ally perception/memory, cohesion 4c/4d; shared classifier + utility scoring | FSM, utility scoring, TTL target memory, faction relationships | FSM reach (`reachSteps`); local flow locomotion (phase 2+) | [AI.md](./AI.md) |
 
 **Overall engine maturity: ~56%** _(manual unweighted roll-up)._ Recent AI work: flee agents as a second full intent consumer, faction relationship rules, ally perception/memory, and flee regroup (`seek_ally`). Pathfinding flow fields remain strong but are not yet wired into snake/flee decision or locomotion loops.
 
@@ -192,7 +192,8 @@ Physics/game hook boundary is peeled; render still reads live sim state without 
 - [x] Runtime topology now lives in `Libraries/Navigation` (`NavRuntime`, `NavTopology`).
 - [ ] ▶ Funnel/string-pull smoothing.
 - [ ] Local separation / RVO-style crowd.
-- [ ] **Per-agent local flow horizons** — sliding R-step window for utility reach, flee/cohesion steering, and crowd lanes (see [AI.md](./AI.md#future-local-flow-horizons)); infra exists, not wired to snake/flee.
+- [ ] **FSM reach (`reachSteps`)** — delete `*Dist` passthrough; Pass 1 primitive ✅ · [`current/fsmbfs.md`](current/fsmbfs.md)
+- [ ] **Per-agent local flow horizons (locomotion)** — flee/cohesion steering, crowd lanes — **after** reachSteps; see [AI.md](./AI.md#future-local-flow-horizons)
 
 ### Rendering
 
@@ -217,8 +218,9 @@ Physics/game hook boundary is peeled; render still reads live sim state without 
 - [x] Team hunting — faction relationships, rival band, config prey value, shared `classifyAgentVision`.
 - [x] Ally perception + memory + blackboard (`allyState`, TTL ally slot).
 - [x] Flee `seek_ally` regroup when safe and satisfied.
-- [ ] ▶ Cohesion **4c** (snake regroup) and **4d** (flee pack flee blend).
-- [ ] Local flow horizons for utility reach and crowd steering (decision-only first).
+- [x] Cohesion **4c** (snake regroup) and **4d** (flee pack flee blend).
+- [ ] **FSM reach Pass 3–5** — `reachSteps`; delete `*Dist` · [`current/fsmbfs.md`](current/fsmbfs.md) (Pass 1 ✅)
+- [ ] Local flow horizons for **locomotion** and crowd steering (phase 2+; after reach grep gate).
 - [ ] Behavior-tree skeleton over existing intent primitives.
 
 ---
@@ -255,7 +257,7 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 
 | Domain | Grab-list |
 |---|---|
-| AI | cohesion 4c/4d; local flow reach in utility scorers; behavior-tree skeleton; decision debug view (ally field, score breakdown) |
+| AI | FSM reach Pass 3–5 (`reachSteps`); local flow locomotion (phase 2+); behavior-tree skeleton; decision debug view (ally field, score breakdown) |
 | Pathfinding | path smoothing; per-agent local flow window pool; local separation; hybrid HPA waypoint + flow execution; worker resilience |
 | Procedural | unified root seed; seed golden tests; room-graph generator v1; Poisson/min-distance placement |
 | Rendering | projected shadows; cache telemetry; projection/viewport tests; top-down 2D completion |
@@ -279,4 +281,4 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 
 **Domain:** [games/snake.md](./games/snake.md) · [foundations/grid-contract.md](./foundations/grid-contract.md) · [foundations/architecture-health.md](./foundations/architecture-health.md) · [sandbox-editor.md](./sandbox-editor.md)
 
-*Last updated: team hunting + flee `seek_ally` (AI ~52%); local flow horizon direction documented in AI.md and pathfinding grab-list.*
+*Last updated: FSM reach Pass 1 (`navReachHorizon.js`); Plans aligned — decision reach = sync BFS ([`current/fsmbfs.md`](current/fsmbfs.md)), flow windows = locomotion phase 2+.*

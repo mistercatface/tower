@@ -39,6 +39,21 @@ These wrap module-level records filled once at import/boot. Caller already has t
 
 ---
 
+## Tier 1b — AI distance passthrough (open — [`fsmbfs.md`](fsmbfs.md))
+
+Perception computes `*Dist`, memory copies/synthesizes them, blackboard builds `visible`/`remembered`/`known` dist layers, scorers read via `reachForCandidate` — **four copies of the same wrong number** (mixed pixels/cells/euclidean).
+
+| Stage | Offender | Fix |
+|-------|----------|-----|
+| Vision | `classifyAgentVision` exported `*Dist` | Targets only; internal `distSq` for cone/nearest |
+| Perception | `agentWorldPerception` / `fleeWorldPerception` `foodDist` | Delete; flee delegates to `perceiveAgentWorld` |
+| Memory | `targetMemory.lastDistanceCells`, intent memory enrich | Position-only records |
+| Decision | `createSnakeDecisionBlackboard` dist layers, `reachForCandidate` | **`syncNavReachHorizon` once** in intent adapter → `facts.reachSteps` |
+
+**Grep gate (with fsmbfs Pass 5):** zero `preyDist|foodDist|allyDist|threatDist|enemyDist|lastDistanceCells|reachForCandidate` in `Libraries/`.
+
+---
+
 ## Tier 2 — boot `apply*` / `get*` pairs on library defaults
 
 Pattern: `let activeX`; `applyGameX(config)` at boot; `getX()` on every hot read. Same data as exported `collisionSettings` / `physicsSettings` after one merge.
@@ -102,11 +117,12 @@ Not static catalog — these run every frame or every edit — but still "copy h
 
 ## Knock-down priority
 
-1. **P3-2 / P3-3** — kill duplicate prop maps (biggest remaining static-data passthrough)
-2. **P4-5** — stop threading `registeredBehaviors`
-3. **library_defaults LD-*** — kill `getCollisionSettings`-style hot-path getters
-4. **Barrel audit** — delete unused `Libraries/*/index.js` lines
-5. **SimulationEffectPass signature** — stop passing `renderer` when `state` suffices
+1. **FSM reach / `*Dist` passthrough** — [`fsmbfs.md`](fsmbfs.md) Pass 3–5 (Tier 1b); unlocks honest utility scoring
+2. **P3-2 / P3-3** — kill duplicate prop maps (biggest remaining static-data passthrough)
+3. **P4-5** — stop threading `registeredBehaviors`
+4. **library_defaults LD-*** — kill `getCollisionSettings`-style hot-path getters
+5. **Barrel audit** — delete unused `Libraries/*/index.js` lines
+6. **SimulationEffectPass signature** — stop passing `renderer` when `state` suffices
 
 ---
 
@@ -119,5 +135,6 @@ rg proceduralSurfaceDraw
 rg 'getPropAsset\('
 rg getGameLauncher
 rg registeredBehaviors
+rg 'preyDist|foodDist|allyDist|threatDist|reachForCandidate'
 rg 'from ".+/index\.js"'
 ```

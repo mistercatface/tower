@@ -16,7 +16,19 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 
 **Do first:** [`stupid.md`](stupid.md) P3 prop catalog · [`passthrough.md`](passthrough.md) Tier 1 · [`library_defaults.md`](library_defaults.md)
 
-**Full outlines:** [`frame.md`](frame.md) · [`gamechangers.md`](gamechangers.md) (G1–G7)
+**Full outlines:** [`frame.md`](frame.md) · [`gamechangers.md`](gamechangers.md) (G1–G7) · [`fsmbfs.md`](fsmbfs.md) (AI reach)
+
+---
+
+## Tier 2 — AI / decision reach ([`fsmbfs.md`](fsmbfs.md)) — **in progress** (Pass 1 ✅)
+
+**Where:** `classifyAgentVision`, intent memory enrich, both decision models, `targetMemory`
+
+**Before:** `*Dist` fields (mixed pixels/cells) passthrough → `reachForCandidate` → `netScoreDetail`
+
+**After:** Perception/memory **targets only** · `syncNavReachHorizon` + `navReachStepsTo` (module scratch) · `facts.reachSteps` once in intent adapter
+
+**Not:** flow-window per agent, `Libraries/AI/decision/`, config resolver getters — see [`fsmbfs.md`](fsmbfs.md) “Never ship”
 
 ---
 
@@ -105,7 +117,8 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 | Overlay command pooling | Real win in editor, but **different pipeline**. Do if editor perf matters. |
 | Delete `animatedSurfaceZone` registry | Dead scaffold — cleanup, not normalization. |
 | First-person / fixed iso modes | New renderer branch (`Plans/rendering.md`), not consolidating overhead path. |
-| More barrels / indirection | Indirection pass ✅ complete |
+| Per-agent flow windows for utility reach | Phase 2 locomotion; phase 1 = sync BFS ([`fsmbfs.md`](fsmbfs.md)) |
+| Generic AI slot pipeline / `Libraries/AI/decision/` | Two consumers; inline in intent adapters |
 
 ---
 
@@ -113,13 +126,14 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 
 | Order | Item | Why first |
 |-------|------|-----------|
-| **1** | **Prop catalog passthrough** ([`passthrough.md`](passthrough.md) Tier 1) | Kill twin maps + load/getter theater |
-| **2** | **Library defaults getters** ([`library_defaults.md`](library_defaults.md)) | Same pattern as deleted boot getters |
-| **3** | **#6 Floor epoch / draw bump** | Makes grid edits trustworthy |
-| **4** | **#3 Wall buckets** | Sim tick; independent of render |
-| **5** | **#5 Query result pools** | Render entity count scaling |
-| **6** | **#4 Sleep Set → stamp** | Physics GC; easy |
-| **7** | **#7 Unified depth collect** | G7 after frame landed |
+| **1** | **FSM reach** ([`fsmbfs.md`](fsmbfs.md) Pass 3–5) | Kills passthrough distance layers; unlocks honest utility scoring |
+| **2** | **Prop catalog passthrough** ([`passthrough.md`](passthrough.md) Tier 1) | Kill twin maps + load/getter theater |
+| **3** | **Library defaults getters** ([`library_defaults.md`](library_defaults.md)) | Same pattern as deleted boot getters |
+| **4** | **#6 Floor epoch / draw bump** | Makes grid edits trustworthy |
+| **5** | **#3 Wall buckets** | Sim tick; independent of render |
+| **6** | **#5 Query result pools** | Render entity count scaling |
+| **7** | **#4 Sleep Set → stamp** | Physics GC; easy |
+| **8** | **#7 Unified depth collect** | G7 after frame landed |
 
 ---
 
@@ -129,12 +143,13 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 - [ ] New grid stamp feature adds **one sync key + proto proxy + draw entry** — not a new cache module
 - [ ] Hot grid iteration uses **scalars or `*Into`**, not `{ col, row }` / `{ x, y }`
 - [ ] Grid edit path ends in **`commitGridNavEdit(bounds)`** — draw/nav bumps not manual at each callsite
-- [ ] Sim spatial queries reuse **fixed buffers** the way kinetic slabs do
+- [ ] Hot path reach uses **`syncNavReachHorizon` + `navReachStepsTo`**, not `*Dist` or horizon objects — [`fsmbfs.md`](fsmbfs.md)
 
 ---
 
 ## Related docs
 
+- [`fsmbfs.md`](fsmbfs.md) — FSM reach / reachSteps dialect (in progress)
 - [`frame.md`](frame.md) — frame draw pass (done)
 - [`passthrough.md`](passthrough.md) — passthrough audit
 - [`stupid.md`](stupid.md) — broader stupid-shit queue

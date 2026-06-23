@@ -18,9 +18,10 @@
 
 From structural cleanup queue:
 
-1. **Prop catalog passthrough** — delete `loadPropAssets` / `getPropAsset` / twin maps · [`stupid.md`](current/stupid.md) P3-2
-2. **Library defaults getters** · [`library_defaults.md`](current/library_defaults.md)
-3. **Sandbox behavior registry threading** · [`passthrough.md`](current/passthrough.md) Tier 3
+1. **FSM reach Pass 3–5** — delete `*Dist` passthrough; wire `reachSteps` · [`fsmbfs.md`](current/fsmbfs.md) (Pass 1 ✅)
+2. **Prop catalog passthrough** — delete twin maps · [`stupid.md`](current/stupid.md) P3-3
+3. **Library defaults getters** · [`library_defaults.md`](current/library_defaults.md)
+4. **Sandbox behavior registry threading** · [`passthrough.md`](current/passthrough.md) Tier 3
 
 ---
 
@@ -28,9 +29,9 @@ From structural cleanup queue:
 
 From [ROADMAP.md](./ROADMAP.md) highest strategic overlap (reorder as needed):
 
-1. **Cohesion 4d** — flee pack flee blend · [AI.md](./AI.md#team-hunting--faction-cohesion--shipped-vs-next)
-2. **Local flow horizons (decision-only)** — utility reach from flow window · [AI.md](./AI.md#future-local-flow-horizons)
-3. **Funnel / string-pull smoothing** · [pathfinding.md](./pathfinding.md)
+1. **FSM reach Pass 3–5** — `syncNavReachHorizon` + `reachSteps`; kill `*Dist` · [`fsmbfs.md`](current/fsmbfs.md)
+2. **Funnel / string-pull smoothing** · [pathfinding.md](./pathfinding.md)
+3. **Local flow horizons (locomotion phase 2+)** — after reach grep gate · [AI.md](./AI.md#future-local-flow-horizons)
 4. **Unified root seed** · [procedural.md](./procedural.md) Tier 10
 5. **Render cache telemetry** · [rendering.md](./rendering.md)
 
