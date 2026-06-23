@@ -2,9 +2,9 @@ import { gameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js";
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
-import { createStructureDrawPass } from "./StructureDrawPass.js";
-import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "./WorldRenderMode.js";
+import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT, WORLD_RENDER_MODE_FLAT2D } from "./WorldRenderMode.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
+import { drawDamagedVoxelRoofOverlays } from "../Libraries/Render/Structure3D/wallDamageDraw.js";
 /**
  * @typedef {object} SimulationSceneHooks
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D) => void} [drawGroundOverlays]
@@ -21,7 +21,7 @@ export class Renderer {
         this.canvas = canvas;
         this.ctx = ctx;
         this.sceneHooks = options.sceneHooks ?? {};
-        this.render3D = new WorldSceneRenderer(gameWorldSurfaceSettings);
+        this.render3D = new WorldSceneRenderer();
         this.worldSceneDrawInput = {
             worldSurfaces: null,
             proceduralSurfaceDraw: {
@@ -33,7 +33,6 @@ export class Renderer {
                 },
             },
         };
-        this.structureDrawPass = createStructureDrawPass(WORLD_RENDER_MODE_DEFAULT, this);
         this._worldRenderMode = WORLD_RENDER_MODE_DEFAULT;
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => this.drawWorldSceneBackdrop(state, viewport) },
@@ -63,14 +62,18 @@ export class Renderer {
     }
     /** Walls and roofs — zIndex 70. */
     drawWorldSceneStructure(state, viewport) {
-        this.structureDrawPass.draw(this.ctx, state, viewport);
+        if (this._worldRenderMode === WORLD_RENDER_MODE_FLAT2D) {
+            state.worldSurfaces.drawFlatWallRails(this.ctx, state, viewport);
+            this.render3D.draw3DBuildings(this.ctx, this.worldSceneDrawInput, viewport, { skipWalls: true });
+            return;
+        }
+        this.render3D.draw3DBuildings(this.ctx, this.worldSceneDrawInput, viewport);
+        state.worldSurfaces.drawRoofs(this.ctx, state, viewport);
+        drawDamagedVoxelRoofOverlays(this.ctx, state, viewport);
     }
     /** @param {import("./WorldRenderMode.js").WorldRenderMode} mode */
     applyWorldRenderMode(mode) {
-        const normalized = normalizeWorldRenderMode(mode);
-        if (this._worldRenderMode === normalized) return;
-        this._worldRenderMode = normalized;
-        this.structureDrawPass = createStructureDrawPass(normalized, this);
+        this._worldRenderMode = normalizeWorldRenderMode(mode);
     }
     /** Full-canvas bloom — zIndex 71; gated by state.worldBloomEnabled at draw time. */
     drawWorldSceneBloom(state) {

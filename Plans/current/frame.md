@@ -180,9 +180,9 @@ Delete: `wallPassCamera`, `_bindWallDrawable` copying into a mega-context, `wall
 
 ### Step 4 — wallCtx + renderer cleanup
 
-- [ ] Wall draw → `(viewport, input, wallFaceScratch)`; slim or delete `WallDrawContext.js` typedef
-- [ ] Inline `createStructureDrawPass` (stupid.js P2-3)
-- [ ] `WorldSceneRenderer` drops settings ctor param → static import (P2-6)
+- [x] Wall draw → `(viewport, input, wallFaceScratch)`; deleted `WallDrawContext.js`
+- [x] Inline `createStructureDrawPass` — deleted `StructureDrawPass.js`; mode switch in `Renderer.drawWorldSceneStructure`
+- [x] `WorldSceneRenderer` drops settings ctor param → static import of `gameWorldSurfaceSettings` in wall draw
 - [ ] Optional later: collapse `worldSceneDrawInput` → `draw*(ctx, state, viewport)`
 
 ---
@@ -201,8 +201,8 @@ Delete: `wallPassCamera`, `_bindWallDrawable` copying into a mega-context, `wall
 | `Libraries/Render/WorldSceneRenderer.js` | viewport-only entry; no local px/py/zoom |
 | `Libraries/Sandbox/gridStampDrawCache.js` | viewport-only |
 | `Libraries/Render/overlays/drawOverlayCommands.js` | viewport |
-| `Libraries/Render/Structure3D/*` | viewport + scratch; no wallCtx camera |
-| `Render/StructureDrawPass.js` | delete roof camera fill |
+| `Libraries/Render/Structure3D/*` | viewport + input + face scratch; no wallCtx |
+| `Render/Render.js` | inline structure draw by render mode |
 | `Apps/Editor/ui/preview.js` | viewport on overlay draw |
 
 ---
