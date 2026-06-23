@@ -14,8 +14,9 @@ export function cellTargetHasArrivedAtDestCell(grid, col, row, destCol, destRow)
     return cellChebyshevDistance(col, row, destCol, destRow) <= 1;
 }
 export function shouldReleaseCellTargetHpaNav(prop, grid, destCol, destRow, destWorld, stopRadius) {
-    const cell = grid.worldToGrid(prop.x, prop.y);
-    if (cellTargetHasArrivedAtDestCell(grid, cell.col, cell.row, destCol, destRow)) return true;
+    const col = grid.worldCol(prop.x);
+    const row = grid.worldRow(prop.y);
+    if (cellTargetHasArrivedAtDestCell(grid, col, row, destCol, destRow)) return true;
     return groundNavArrivedAtTarget(prop, destWorld, destCol, destRow, grid, stopRadius);
 }
 function exactCellTargetHasArrived(prop, grid, destCol, destRow, destWorld, stopRadius) {
@@ -61,8 +62,9 @@ export function createCellTargetLocomotion(headNav) {
         if (!dest) return false;
         if (dest.lockOnTarget) return false;
         if (dest.exactArrival) return exactCellTargetHasArrived(agent, grid, dest.col, dest.row, dest.world, dest.arrivalRadius ?? Math.max(agent.radius, 2) * 2);
-        const cell = grid.worldToGrid(agent.x, agent.y);
-        return cellTargetHasArrivedAtDestCell(grid, cell.col, cell.row, dest.col, dest.row);
+        const col = grid.worldCol(agent.x);
+        const row = grid.worldRow(agent.y);
+        return cellTargetHasArrivedAtDestCell(grid, col, row, dest.col, dest.row);
     };
     const hasReachedDest = (agent, grid) => {
         const dest = headNav.getDestination();
@@ -77,8 +79,7 @@ export function createCellTargetLocomotion(headNav) {
             headNav.setDestination(state.obstacleGrid, cell.col, cell.row);
         },
         setSeek(agent, state, target, options = {}) {
-            const cell = state.obstacleGrid.worldToGrid(target.x, target.y);
-            headNav.setDestination(state.obstacleGrid, cell.col, cell.row, {
+            headNav.setDestination(state.obstacleGrid, state.obstacleGrid.worldCol(target.x), state.obstacleGrid.worldRow(target.y), {
                 world: { x: target.x, y: target.y },
                 exactArrival: true,
                 arrivalRadius: options.arrivalRadius,
@@ -200,8 +201,9 @@ export function createCellTargetHpaNav(state) {
     const updateTerminalTarget = (grid, target, targetId = null) => {
         if (!lockOnTarget || destCol == null || destRow == null) return false;
         if (destTargetId != null && targetId !== destTargetId) return false;
-        const cell = grid.worldToGrid(target.x, target.y);
-        if (cell.col !== destCol || cell.row !== destRow) return false;
+        const col = grid.worldCol(target.x);
+        const row = grid.worldRow(target.y);
+        if (col !== destCol || row !== destRow) return false;
         terminalWorld = { x: target.x, y: target.y };
         return true;
     };

@@ -15,7 +15,8 @@ export function createSandboxDeletePointerTool(state, session) {
                 return true;
             }
             const grid = state.obstacleGrid;
-            const { col, row } = grid.worldToGrid(world.x, world.y);
+            const col = grid.worldCol(world.x);
+    const row = grid.worldRow(world.y);
             const roomNode = pickRoomNodeAt(state, col, row);
             if (roomNode) {
                 session.select({ kind: "roomNode", id: roomNode.id });

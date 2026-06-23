@@ -131,7 +131,8 @@ export function syncLockedRoomBakes(state, layout, lockedLinkBakes) {
         }
         if (!egresses.length) continue;
         const center = roomNodeCenterCell(node);
-        const { x, y } = grid.gridToWorld(center.col, center.row);
+        const x = grid.gridCenterX(center.col);
+    const y = grid.gridCenterY(center.row);
         const button = new WorldProp(x, y, "button_floor", 0);
         button.inputMode = "massHold";
         button.invert = true;

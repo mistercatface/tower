@@ -31,7 +31,7 @@ export function createSeekIntentState() {
                 ctx.effects.transitionTo(ctx.policy.mode, "target_lost", ctx.policy.targetId);
                 return;
             }
-            const targetCell = ctx.grid.worldToGrid(ctx.target.x, ctx.target.y);
+            const targetCell = { col: ctx.grid.worldCol(ctx.target.x), row: ctx.grid.worldRow(ctx.target.y) };
             if (shouldRefreshSeekDestination(ctx, targetCell)) {
                 ctx.effects.setLastTransition(ctx.locomotion.hasArrivedAtDest(ctx.agent, ctx.grid) ? "arrived" : "repick_dest");
                 ctx.effects.setSeekDestination(ctx.target);

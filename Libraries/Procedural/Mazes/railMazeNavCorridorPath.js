@@ -18,7 +18,8 @@ const FULL_FOOTPRINT = { interiorOnly: false };
 export function railMazeBeltZoneGridBounds(grid, railConfig) {
     const cellSize = grid.cellSize;
     const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(railConfig);
-    const { col: baseCol, row: baseRow } = grid.worldToGrid(originCol * cellSize, originRow * cellSize);
+    const baseCol = grid.worldCol(originCol * cellSize);
+    const baseRow = grid.worldRow(originRow * cellSize);
     return { startCol: Math.max(0, baseCol), endCol: Math.min(grid.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(grid.rows - 1, baseRow + rows - 1) };
 }
 export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfig, navWalkableIndex) {

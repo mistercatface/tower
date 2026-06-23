@@ -17,7 +17,8 @@ import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js
 export const GRID_ROTATABLE_OCCUPANT = { FloorBelt: "floorBelt" };
 export function pickRotatableGridOccupantAtWorld(state, worldX, worldY) {
     const grid = state.obstacleGrid;
-    const { col, row } = grid.worldToGrid(worldX, worldY);
+    const col = grid.worldCol(worldX);
+    const row = grid.worldRow(worldY);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const idx = col + row * grid.cols;
     if (grid.floorStore.isBeltKindAtIdx(idx)) return { col, row, kind: GRID_ROTATABLE_OCCUPANT.FloorBelt };
@@ -108,7 +109,8 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
     const force = DEFAULT_FLOOR_BELT_FORCE;
     for (let i = 0; i < kineticBodies.length; i++) {
         const entity = kineticBodies[i];
-        const { col, row } = grid.worldToGrid(entity.x, entity.y);
+        const col = grid.worldCol(entity.x);
+    const row = grid.worldRow(entity.y);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         const idx = col + row * grid.cols;
         if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
@@ -173,7 +175,8 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
     for (let i = 0; i < floorBelts.length; i++) {
         const { col: globalCol, row: globalRow, kind, facingIndex } = floorBelts[i];
         if (!isFloorBeltKind(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
-        const { col, row } = grid.worldToGrid(globalCol * cellSize + half, globalRow * cellSize + half);
+        const col = grid.worldCol(globalCol * cellSize + half);
+    const row = grid.worldRow(globalRow * cellSize + half);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         if (grid.isBlocked(col, row)) continue;
         const idx = colRowToIndex(col, row, grid.cols);
@@ -231,7 +234,8 @@ export function applyPassagePowerSourcesFromGlobal(state, powerSources, cellSize
     const bounds = emptyCellBounds();
     for (let i = 0; i < powerSources.length; i++) {
         const { col: globalCol, row: globalRow, defaultPowered } = powerSources[i];
-        const { col, row } = grid.worldToGrid(globalCol * cellSize + half, globalRow * cellSize + half);
+        const col = grid.worldCol(globalCol * cellSize + half);
+    const row = grid.worldRow(globalRow * cellSize + half);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         if (grid.isBlocked(col, row)) continue;
         if (grid.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, grid.cols))) continue;

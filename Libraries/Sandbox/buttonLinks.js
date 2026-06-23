@@ -57,7 +57,8 @@ export function clearButtonLinks(state, buttonId) {
  */
 export function findPassagePowerSourceLinkTargetAtWorld(state, worldX, worldY) {
     const grid = state.obstacleGrid;
-    const { col, row } = grid.worldToGrid(worldX, worldY);
+    const col = grid.worldCol(worldX);
+    const row = grid.worldRow(worldY);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const idx = col + row * grid.cols;
     if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return null;
@@ -81,8 +82,10 @@ export function findButtonLinkTarget(state, worldX, worldY, sourceButtonId) {
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} globalCol @param {number} globalRow */
 function gridCellWireMidpoint(grid, globalCol, globalRow) {
     const half = grid.cellHalfSize;
-    const { col, row } = grid.worldToGrid(globalCol * grid.cellSize + half, globalRow * grid.cellSize + half);
-    const { x, y } = grid.gridToWorld(col, row);
+    const col = grid.worldCol(globalCol * grid.cellSize + half);
+    const row = grid.worldRow(globalRow * grid.cellSize + half);
+    const x = grid.gridCenterX(col);
+    const y = grid.gridCenterY(row);
     return { x, y };
 }
 /** @param {object} state @param {ButtonLinkTarget} target */

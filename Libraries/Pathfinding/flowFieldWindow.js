@@ -3,12 +3,14 @@ import {
     centeredGridFrameKey,
     createCenteredGridFrame,
     getCellBoundsInCenteredFrameInto,
-    gridToWorldInCenteredFrame,
+    gridCenterXInCenteredFrame,
+    gridCenterYInCenteredFrame,
     setCenteredGridFrameCenter,
-    worldToGridInCenteredFrame,
+    worldColInCenteredFrame,
+    worldRowInCenteredFrame,
 } from "../Spatial/grid/GridCoords.js";
 import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
-import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
+import { snapshotWorldCol, snapshotWorldRow } from "./GridNavSnapshot.js";
 import { FlatGridView } from "./FlatGridView.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";
 export class FlowFieldWindow {
@@ -52,15 +54,28 @@ export class FlowFieldWindow {
     isFlowCellBlocked(flowToNavIdx, navBlockedView, flowIdx) {
         return flowCellBlocked(flowToNavIdx, navBlockedView, flowIdx);
     }
+    worldCol(x) {
+        return worldColInCenteredFrame(this.frame, x);
+    }
+    worldRow(y) {
+        return worldRowInCenteredFrame(this.frame, y);
+    }
+    gridCenterX(col) {
+        return gridCenterXInCenteredFrame(this.frame, col);
+    }
+    gridCenterY(row) {
+        return gridCenterYInCenteredFrame(this.frame, row);
+    }
     worldToGrid(x, y) {
-        return worldToGridInCenteredFrame(this.frame, x, y);
+        return { col: this.worldCol(x), row: this.worldRow(y) };
     }
     containsWorldPoint(x, y) {
-        const { col, row } = this.worldToGrid(x, y);
+        const col = this.worldCol(x);
+        const row = this.worldRow(y);
         return col >= 0 && col < this.cols && row >= 0 && row < this.rows;
     }
     gridToWorld(col, row) {
-        return gridToWorldInCenteredFrame(this.frame, col, row);
+        return { x: this.gridCenterX(col), y: this.gridCenterY(row) };
     }
     getCellBounds(col, row) {
         return getCellBoundsInCenteredFrameInto(this.cellBounds, this.frame, col, row);
@@ -74,11 +89,13 @@ export class FlowFieldWindow {
     checkReachability(flowToNavIdx, navBlockedView, neighborGrid, startX, startY, targetX, targetY) {
         if (!this.ready || !navBlockedView) return false;
         const grid = new FlatGridView(this.cols, this.rows, { blocked: null, neighbors: neighborGrid, neighborLayout: OCTILE_NEIGHBOR_GRID_LAYOUT, flowToNavIdx });
-        const start = this.worldToGrid(startX, startY);
-        const target = this.worldToGrid(targetX, targetY);
-        if (!grid.contains(start.col, start.row) || !grid.contains(target.col, target.row)) return false;
-        const startIdx = grid.idx(start.col, start.row);
-        const targetIdx = grid.idx(target.col, target.row);
+        const startCol = this.worldCol(startX);
+        const startRow = this.worldRow(startY);
+        const targetCol = this.worldCol(targetX);
+        const targetRow = this.worldRow(targetY);
+        if (!grid.contains(startCol, startRow) || !grid.contains(targetCol, targetRow)) return false;
+        const startIdx = grid.idx(startCol, startRow);
+        const targetIdx = grid.idx(targetCol, targetRow);
         return gridReachabilityBfs(grid, startIdx, targetIdx, (idx) => this.isFlowCellBlocked(flowToNavIdx, navBlockedView, idx));
     }
 }
@@ -90,9 +107,10 @@ export class FlowFieldRequest {
         this.range = range;
     }
     static fromWorld(flowWindow, targetX, targetY, range = 999999) {
-        const target = flowWindow.worldToGrid(targetX, targetY);
-        if (target.col < 0 || target.col >= flowWindow.cols || target.row < 0 || target.row >= flowWindow.rows) return null;
-        return new FlowFieldRequest(target.col, target.row, target.row * flowWindow.cols + target.col, range);
+        const targetCol = flowWindow.worldCol(targetX);
+        const targetRow = flowWindow.worldRow(targetY);
+        if (targetCol < 0 || targetCol >= flowWindow.cols || targetRow < 0 || targetRow >= flowWindow.rows) return null;
+        return new FlowFieldRequest(targetCol, targetRow, targetRow * flowWindow.cols + targetCol, range);
     }
     toWorkerPayload() {
         return { type: "updateFlow", tx: this.targetCol, ty: this.targetRow, range: this.range };
@@ -110,8 +128,9 @@ export function rebuildFlowToNavIdx(flowToNavIdx, flowFrame, navFrame) {
         const row = (idx / flowFrame.cols) | 0;
         const worldX = col * flowFrame.cellSize + wxBase;
         const worldY = row * flowFrame.cellSize + wyBase;
-        const worldCell = snapshotWorldToGrid(navFrame, worldX, worldY);
-        if (worldCell.col >= 0 && worldCell.col < navCols && worldCell.row >= 0 && worldCell.row < navRows) flowToNavIdx[idx] = worldCell.row * navCols + worldCell.col;
+        const navCol = snapshotWorldCol(navFrame, worldX);
+        const navRow = snapshotWorldRow(navFrame, worldY);
+        if (navCol >= 0 && navCol < navCols && navRow >= 0 && navRow < navRows) flowToNavIdx[idx] = navRow * navCols + navCol;
         else flowToNavIdx[idx] = -1;
     }
     return { navCols, navRows };

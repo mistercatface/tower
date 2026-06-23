@@ -1,11 +1,26 @@
 import { boundsToCellRect } from "../../DataStructures/CellKey.js";
 import { createAabb, minCornerAabbInto } from "../../Math/Aabb2D.js";
+
+export function worldColAtOrigin(x, minX, cellSize) {
+    return Math.floor((x - minX) / cellSize);
+}
+export function worldRowAtOrigin(y, minY, cellSize) {
+    return Math.floor((y - minY) / cellSize);
+}
+export function gridCenterXAtOrigin(col, minX, cellHalfSize) {
+    return minX + col * (cellHalfSize * 2) + cellHalfSize;
+}
+export function gridCenterYAtOrigin(row, minY, cellHalfSize) {
+    return minY + row * (cellHalfSize * 2) + cellHalfSize;
+}
+
 /** Grid anchored at a world-space min corner (ObstacleGrid). */
 export function worldToGridAtOrigin(x, y, minX, minY, cellSize) {
-    return { col: Math.floor((x - minX) / cellSize), row: Math.floor((y - minY) / cellSize) };
+    return { col: worldColAtOrigin(x, minX, cellSize), row: worldRowAtOrigin(y, minY, cellSize) };
 }
 export function gridToWorldAtOrigin(col, row, minX, minY, cellSize) {
-    return { x: minX + col * cellSize + cellSize / 2, y: minY + row * cellSize + cellSize / 2 };
+    const cellHalfSize = cellSize * 0.5;
+    return { x: gridCenterXAtOrigin(col, minX, cellHalfSize), y: gridCenterYAtOrigin(row, minY, cellHalfSize) };
 }
 /** Grid centered on a world point with pixel offsets (FlowFieldGrid). */
 export function createCenteredGridFrame(cellSize, width, height, centerX = 0, centerY = 0) {
@@ -22,16 +37,34 @@ export function centeredGridFrameKey(frame) {
     return `${frame.cols}:${frame.rows}:${frame.cellSize}:${frame.centerX}:${frame.centerY}`;
 }
 export function worldToGridCentered(x, y, centerX, centerY, offsetX, offsetY, cellSize) {
-    return { col: Math.floor((x - centerX + offsetX) / cellSize), row: Math.floor((y - centerY + offsetY) / cellSize) };
+    return {
+        col: Math.floor((x - centerX + offsetX) / cellSize),
+        row: Math.floor((y - centerY + offsetY) / cellSize),
+    };
+}
+export function worldColInCenteredFrame(frame, x) {
+    return Math.floor((x - frame.centerX + frame.offsetX) / frame.cellSize);
+}
+export function worldRowInCenteredFrame(frame, y) {
+    return Math.floor((y - frame.centerY + frame.offsetY) / frame.cellSize);
+}
+export function gridCenterXInCenteredFrame(frame, col) {
+    return col * frame.cellSize + frame.centerX - frame.offsetX + frame.cellSize * 0.5;
+}
+export function gridCenterYInCenteredFrame(frame, row) {
+    return row * frame.cellSize + frame.centerY - frame.offsetY + frame.cellSize * 0.5;
 }
 export function worldToGridInCenteredFrame(frame, x, y) {
-    return worldToGridCentered(x, y, frame.centerX, frame.centerY, frame.offsetX, frame.offsetY, frame.cellSize);
+    return { col: worldColInCenteredFrame(frame, x), row: worldRowInCenteredFrame(frame, y) };
 }
 export function gridToWorldCentered(col, row, centerX, centerY, offsetX, offsetY, cellSize) {
-    return { x: col * cellSize + centerX - offsetX + cellSize / 2, y: row * cellSize + centerY - offsetY + cellSize / 2 };
+    return {
+        x: col * cellSize + centerX - offsetX + cellSize / 2,
+        y: row * cellSize + centerY - offsetY + cellSize / 2,
+    };
 }
 export function gridToWorldInCenteredFrame(frame, col, row) {
-    return gridToWorldCentered(col, row, frame.centerX, frame.centerY, frame.offsetX, frame.offsetY, frame.cellSize);
+    return { x: gridCenterXInCenteredFrame(frame, col), y: gridCenterYInCenteredFrame(frame, row) };
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
 export function getCellBoundsCenteredInto(out, col, row, centerX, centerY, offsetX, offsetY, cellSize) {
@@ -77,8 +110,9 @@ export function snapWorldToCellOrigin(worldX, worldY, minX, minY, cellSize) {
 }
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {number} worldX @param {number} worldY */
 export function snapWorldToObstacleCellCenter(obstacleGrid, worldX, worldY) {
-    const { col, row } = obstacleGrid.worldToGrid(worldX, worldY);
-    return { col, row, ...obstacleGrid.gridToWorld(col, row) };
+    const col = obstacleGrid.worldCol(worldX);
+    const row = obstacleGrid.worldRow(worldY);
+    return { col, row, x: obstacleGrid.gridCenterX(col), y: obstacleGrid.gridCenterY(row) };
 }
 /**
  * Visit each obstacle-grid cell overlapping a world AABB.

@@ -429,7 +429,8 @@ export function createSandboxSession(state) {
                 notifyUi();
                 return true;
             }
-            const { col, row } = grid.worldToGrid(worldX, worldY);
+            const col = grid.worldCol(worldX);
+    const row = grid.worldRow(worldY);
             if (!clearVoxelWallAt(state, col, row)) return false;
             placement.forgetVoxelPlacement(col, row);
             selection.dropDeletedWallSelection(col, row);
@@ -454,7 +455,8 @@ export function createSandboxSession(state) {
                     return true;
                 }
             }
-            const { col, row } = grid.worldToGrid(worldX, worldY);
+            const col = grid.worldCol(worldX);
+    const row = grid.worldRow(worldY);
             if (!cellIsStaticWall(grid, col, row)) return false;
             placePaletteKey = "wall:voxel";
             wallStampMode = "voxel";
@@ -475,7 +477,8 @@ export function createSandboxSession(state) {
                 pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
                 return true;
             }
-            const { col, row } = grid.worldToGrid(worldX, worldY);
+            const col = grid.worldCol(worldX);
+    const row = grid.worldRow(worldY);
             if (!cellIsStaticWall(grid, col, row)) return false;
             pickSelection({ kind: "voxel", col, row });
             return true;

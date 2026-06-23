@@ -40,7 +40,8 @@ export function resolveSnakeNavWalkableFloodSeedBounds(playableBounds) {
 function clearRectWalkable(grid, config) {
     const cellSize = grid.cellSize;
     const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(config);
-    const { col: baseCol, row: baseRow } = grid.worldToGrid(originCol * cellSize, originRow * cellSize);
+    const baseCol = grid.worldCol(originCol * cellSize);
+    const baseRow = grid.worldRow(originRow * cellSize);
     const startCol = Math.max(0, baseCol);
     const endCol = Math.min(grid.cols - 1, baseCol + cols - 1);
     const startRow = Math.max(0, baseRow);
@@ -68,7 +69,8 @@ function stampRailsOnGrid(grid, rails, wallHeightLevel, edgeThickness) {
     const thickness = edgeThickness;
     for (let i = 0; i < rails.length; i++) {
         const wall = rails[i];
-        const { col, row } = grid.worldToGrid(wall.col * cellSize, wall.row * cellSize);
+        const col = grid.worldCol(wall.col * cellSize);
+    const row = grid.worldRow(wall.row * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         grid.stampCellEdge(col, row, wall.side, level, thickness);
     }
@@ -82,7 +84,8 @@ export async function applySnakeSplitLayoutToGrid(grid, layout, nav) {
     grid.expandToCoverAabb(getMapGenBoundsAabb(playableBounds, cellSize));
     grid.stampStaticWalls(cavernStamp.originCol, cavernStamp.originRow, cavernStamp.cols, cavernStamp.rows, cavernStamp.cells, { additive: true, heightLevel: wallLevel });
     const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(railConfig);
-    const { col: railBaseCol, row: railBaseRow } = grid.worldToGrid(originCol * cellSize, originRow * cellSize);
+    const railBaseCol = grid.worldCol(originCol * cellSize);
+    const railBaseRow = grid.worldRow(originRow * cellSize);
     const railStartCol = Math.max(0, railBaseCol);
     const railEndCol = Math.min(grid.cols - 1, railBaseCol + cols - 1);
     const railStartRow = Math.max(0, railBaseRow);
@@ -163,7 +166,8 @@ export async function bakeSnakeSplitLayoutPreview({ mapSeed, playAreaCols, playA
 }
 export function globalCellFromGrid(grid, col, row) {
     const cellSize = grid.cellSize;
-    const { x, y } = grid.gridToWorld(col, row);
+    const x = grid.gridCenterX(col);
+    const y = grid.gridCenterY(row);
     return { globalCol: Math.round(x / cellSize), globalRow: Math.round(y / cellSize) };
 }
 export function forEachPlayableGlobalCell(playableBounds, fn) {

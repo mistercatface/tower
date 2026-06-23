@@ -4,7 +4,8 @@ import { getPhysicsSettings } from "../Motion/physicsDefaults.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { maySnakeHeadReceiveRoll } from "../Game/snake/snakeSteeringLease.js";
 export function snapMoveTargetToCellCenter(grid, world) {
-    const { col, row } = grid.worldToGrid(world.x, world.y);
+    const col = grid.worldCol(world.x);
+    const row = grid.worldRow(world.y);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
     return { world: grid.gridToWorld(col, row), col, row };
 }

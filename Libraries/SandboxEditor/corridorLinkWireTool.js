@@ -5,7 +5,8 @@ export function createCorridorLinkWireTool(state, session) {
         getEnterCursor: () => ({ x: state.viewport.x, y: state.viewport.y }),
         pickAnchor(world) {
             const grid = state.obstacleGrid;
-            const { col, row } = grid.worldToGrid(world.x, world.y);
+            const col = grid.worldCol(world.x);
+    const row = grid.worldRow(world.y);
             return pickRoomNodeAt(state, col, row)?.id ?? null;
         },
         commitLink(fromNodeId, toNodeId) {

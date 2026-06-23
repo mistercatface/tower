@@ -140,8 +140,7 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
     const eatFoodShard = (seeker, food, _dt, members = null) => {
         if (!canAgentEatSnakeFood(seeker, food)) return;
         const grid = state.obstacleGrid;
-        const foodCell = grid.worldToGrid(food.x, food.y);
-        brain.stampArrival(foodCell.col, foodCell.row);
+        brain.stampArrival(grid.worldCol(food.x), grid.worldRow(food.y));
         intent.clearTrackedGoal();
         intent.headNav.clearDestination();
         removeSandboxWorldProp(state, food);

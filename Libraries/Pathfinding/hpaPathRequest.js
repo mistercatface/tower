@@ -75,12 +75,10 @@ export function findNearestOpenCellBlocked(blocked, cols, rows, col, row) {
  * @param {number} targetY
  */
 export function resolveSnappedPathEndpoints(grid, startX, startY, targetX, targetY) {
-    const startGrid = grid.worldToGrid(startX, startY);
-    const targetGrid = grid.worldToGrid(targetX, targetY);
-    let startCol = Math.max(0, Math.min(grid.cols - 1, startGrid.col));
-    let startRow = Math.max(0, Math.min(grid.rows - 1, startGrid.row));
-    let targetCol = Math.max(0, Math.min(grid.cols - 1, targetGrid.col));
-    let targetRow = Math.max(0, Math.min(grid.rows - 1, targetGrid.row));
+    let startCol = Math.max(0, Math.min(grid.cols - 1, grid.worldCol(startX)));
+    let startRow = Math.max(0, Math.min(grid.rows - 1, grid.worldRow(startY)));
+    let targetCol = Math.max(0, Math.min(grid.cols - 1, grid.worldCol(targetX)));
+    let targetRow = Math.max(0, Math.min(grid.rows - 1, grid.worldRow(targetY)));
     const startOpen = findNearestOpenCell(grid, startCol, startRow);
     startCol = startOpen.col;
     startRow = startOpen.row;

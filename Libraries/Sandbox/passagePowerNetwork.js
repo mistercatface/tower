@@ -73,7 +73,8 @@ function buildPassagePowerGraph(grid) {
 }
 function passagePowerSourceIdxForGridCellLink(grid, link) {
     const half = grid.cellHalfSize;
-    const { col, row } = grid.worldToGrid(link.globalCol * grid.cellSize + half, link.globalRow * grid.cellSize + half);
+    const col = grid.worldCol(link.globalCol * grid.cellSize + half);
+    const row = grid.worldRow(link.globalRow * grid.cellSize + half);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return -1;
     const idx = colRowToIndex(col, row, grid.cols);
     if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return -1;

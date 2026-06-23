@@ -4,7 +4,7 @@ function makeEmptyRecords(kinds) {
     return records;
 }
 function makeRecord(kind, target, observer, grid, ttlTicks) {
-    const cell = grid.worldToGrid(target.x, target.y);
+    const cell = { col: grid.worldCol(target.x), row: grid.worldRow(target.y) };
     const dx = target.x - observer.x;
     const dy = target.y - observer.y;
     const lastDistance = Math.hypot(dx, dy);

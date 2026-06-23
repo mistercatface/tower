@@ -8,7 +8,8 @@ export function stampGlobalRailWalls(state, rails, { commit = true } = {}) {
     const gridRails = [];
     for (let i = 0; i < rails.length; i++) {
         const wall = rails[i];
-        const { col, row } = grid.worldToGrid(wall.col * cellSize, wall.row * cellSize);
+        const col = grid.worldCol(wall.col * cellSize);
+    const row = grid.worldRow(wall.row * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         gridRails.push({ col, row, side: wall.side, heightLevel: wall.heightLevel, thicknessLevel: wall.thicknessLevel });
     }

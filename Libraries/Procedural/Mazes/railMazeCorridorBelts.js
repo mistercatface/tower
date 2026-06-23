@@ -46,7 +46,8 @@ export function collectRailMazeBeltZoneCells(grid, navTopology, railConfig, nort
     const cells = [];
     forEachGlobalCellInMapGenBounds(railConfig, (globalCol, globalRow) => {
         if (globalRow < beltStartGlobalRow) return;
-        const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
+        const col = grid.worldCol(globalCol * cellSize);
+    const row = grid.worldRow(globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
         if (!isNavWalkableAt(navWalkableIndex, col, row)) return;
         cells.push({ col, row, globalCol, globalRow });
@@ -62,7 +63,8 @@ function collectNorthReserveProtectedIndices(grid, railConfig, northReserveRows)
     const reserveEndGlobalRow = railConfig.boundsRow + depth - 1;
     forEachGlobalCellInMapGenBounds(railConfig, (globalCol, globalRow) => {
         if (globalRow > reserveEndGlobalRow) return;
-        const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
+        const col = grid.worldCol(globalCol * cellSize);
+    const row = grid.worldRow(globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
         protectedIndices.add(globalCellIdx(col, row, grid.cols));
     });

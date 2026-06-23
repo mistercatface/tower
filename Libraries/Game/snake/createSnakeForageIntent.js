@@ -47,7 +47,8 @@ export function createSnakeForageIntent({
     let lastArrivalCol = null;
     let lastArrivalRow = null;
     const stampArrivalOnCellEnter = (agent, grid) => {
-        const { col, row } = grid.worldToGrid(agent.x, agent.y);
+        const col = grid.worldCol(agent.x);
+        const row = grid.worldRow(agent.y);
         if (col === lastArrivalCol && row === lastArrivalRow) return;
         lastArrivalCol = col;
         lastArrivalRow = row;

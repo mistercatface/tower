@@ -19,8 +19,8 @@ export function classifyAgentVision(
     const visionSession = frame.visionSession;
     const range = agentRange ?? visionRange.range;
     const rangeSq = range * range;
-    const originCol = vision?.originCol ?? navTopology.grid.worldToGrid(seeker.x, seeker.y).col;
-    const originRow = vision?.originRow ?? navTopology.grid.worldToGrid(seeker.x, seeker.y).row;
+    const originCol = vision?.originCol ?? navTopology.grid.worldCol(seeker.x);
+    const originRow = vision?.originRow ?? navTopology.grid.worldRow(seeker.y);
     let threat = null;
     let prey = null;
     let ally = null;
@@ -42,8 +42,9 @@ export function classifyAgentVision(
         if (distSq > rangeSq) continue;
         const relationship = resolveRelationship(selfHeadId, headId, state, registry);
         if (relationship === "neutral") continue;
-        const targetCell = navTopology.grid.worldToGrid(head.x, head.y);
-        if (!hasGridCellLineOfSightCached(visionSession, navTopology, originCol, originRow, targetCell.col, targetCell.row)) continue;
+        const targetCol = navTopology.grid.worldCol(head.x);
+        const targetRow = navTopology.grid.worldRow(head.y);
+        if (!hasGridCellLineOfSightCached(visionSession, navTopology, originCol, originRow, targetCol, targetRow)) continue;
         if (relationship === "ally") {
             allyCount++;
             allyCentroidX += head.x;

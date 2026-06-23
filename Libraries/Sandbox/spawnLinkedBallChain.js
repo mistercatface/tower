@@ -47,7 +47,8 @@ export function growChainSegment(state, tailProp, options) {
 export function linkedChainOccupiedCellIndices(members, grid) {
     const indices = new Set();
     for (let i = 0; i < members.length; i++) {
-        const { col, row } = grid.worldToGrid(members[i].x, members[i].y);
+        const col = grid.worldCol(members[i].x);
+    const row = grid.worldRow(members[i].y);
         indices.add(colRowToIndex(col, row, grid.cols));
     }
     return indices;

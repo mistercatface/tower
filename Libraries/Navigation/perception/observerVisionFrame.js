@@ -9,7 +9,8 @@ export function getVisionFullBuildCount() {
 }
 function observerVisionPoseKey(observer, navTopology, visionRange) {
     const grid = navTopology.grid;
-    const { col, row } = grid.worldToGrid(observer.x, observer.y);
+    const col = grid.worldCol(observer.x);
+    const row = grid.worldRow(observer.y);
     return { wallRevision: navTopology.wallRevision, col, row, range: visionRange.range };
 }
 function observerVisionCacheMatches(cache, key) {

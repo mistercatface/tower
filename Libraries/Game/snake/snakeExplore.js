@@ -16,7 +16,8 @@ export function collectSnakeWaypointCandidates(grid, originCol, originRow, minTi
 export function resolveSnakeExploreCell(seeker, state, memory, rng, navWalkable) {
     const config = getSnakeGameConfig();
     const grid = state.obstacleGrid;
-    const { col, row } = grid.worldToGrid(seeker.x, seeker.y);
+    const col = grid.worldCol(seeker.x);
+    const row = grid.worldRow(seeker.y);
     const openCells = navWalkable.cells();
     const explorePick = { memory, openCells, rng };
     let cell = pickExploreDestination(grid, col, row, { ...explorePick, minTiles: config.exploreMinTiles });

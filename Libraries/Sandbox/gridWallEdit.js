@@ -18,7 +18,8 @@ export function formatGridWallEdgeSideLabel(side) {
     return EDGE_SIDE_LABELS[side] ?? `Side ${side}`;
 }
 export function hitTestRailWallEdgeAtWorld(grid, worldX, worldY, hitWorld = grid.cellSize * 0.25) {
-    const { col, row } = grid.worldToGrid(worldX, worldY);
+    const col = grid.worldCol(worldX);
+    const row = grid.worldRow(worldY);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const bounds = grid.getCellBounds(col, row);
     const localX = worldX - bounds.minX;

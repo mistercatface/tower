@@ -14,7 +14,8 @@ export function applyRoomGraphFromSnapshot(state, roomGraph, cellSize) {
     const grid = state.obstacleGrid;
     const half = cellSize * 0.5;
     const nodes = roomGraph.nodes.map((node) => {
-        const { col, row } = grid.worldToGrid(node.col * cellSize + half, node.row * cellSize + half);
+        const col = grid.worldCol(node.col * cellSize + half);
+    const row = grid.worldRow(node.row * cellSize + half);
         return { ...node, col, row };
     });
     replaceRoomGraph(state, { ...roomGraph, nodes });

@@ -24,7 +24,7 @@ function createGridCellStampProxy(proto, x, y, cellHalf, init) {
     return proxy;
 }
 function gridCellCenterWorld(grid, col, row) {
-    return { x: grid.minX + col * grid.cellSize + grid.cellHalfSize, y: grid.minY + row * grid.cellSize + grid.cellHalfSize };
+    return { x: grid.gridCenterX(col), y: grid.gridCenterY(row) };
 }
 function createFloorBeltStampProxy(x, y, facing, cellHalf, kind) {
     return createGridCellStampProxy(floorBeltStampProxyProto, x, y, cellHalf, (proxy) => {

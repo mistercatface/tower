@@ -16,11 +16,13 @@ export function snapNavGoalCell(grid, fromCol, fromRow, targetCol, targetRow) {
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  */
 export function snapNavGoalWorld(grid, fromX, fromY, targetX, targetY) {
-    const { col: fromCol, row: fromRow } = grid.worldToGrid(fromX, fromY);
-    const { col: targetCol, row: targetRow } = grid.worldToGrid(targetX, targetY);
+    const fromCol = grid.worldCol(fromX);
+    const fromRow = grid.worldRow(fromY);
+    const targetCol = grid.worldCol(targetX);
+    const targetRow = grid.worldRow(targetY);
     if (!cellInRect(targetCol, targetRow, grid.cols, grid.rows)) return { x: targetX, y: targetY };
     const snapped = snapNavGoalCell(grid, fromCol, fromRow, targetCol, targetRow);
-    if (snapped.col !== targetCol || snapped.row !== targetRow) return grid.gridToWorld(snapped.col, snapped.row);
+    if (snapped.col !== targetCol || snapped.row !== targetRow) return { x: grid.gridCenterX(snapped.col), y: grid.gridCenterY(snapped.row) };
     if (!isFloorBeltCell(grid, targetCol, targetRow)) return { x: targetX, y: targetY };
     if (fromCol === targetCol && fromRow === targetRow) return { x: targetX, y: targetY };
     const idx = colRowToIndex(targetCol, targetRow, grid.cols);

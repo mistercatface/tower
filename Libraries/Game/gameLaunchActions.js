@@ -9,11 +9,12 @@ import { setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 export function stampBeltCratePuzzleAction(state, ctx) {
     const grid = state.obstacleGrid;
     const { viewport } = state;
-    const center = grid.worldToGrid(viewport.x, viewport.y);
+    const centerCol = grid.worldCol(viewport.x);
+    const centerRow = grid.worldRow(viewport.y);
     const areaCols = BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS;
     const areaRows = BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS;
-    const areaCol = center.col - ((areaCols / 2) | 0);
-    const areaRow = center.row - ((areaRows / 2) | 0);
+    const areaCol = centerCol - ((areaCols / 2) | 0);
+    const areaRow = centerRow - ((areaRows / 2) | 0);
     const stamped = stampBeltCratePuzzleAt(state, areaCol, areaRow, areaCols, areaRows);
     if (!stamped) throw new Error("Failed to stamp belt + crate puzzle in play area");
     ctx.stamped = stamped;

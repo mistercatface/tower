@@ -61,7 +61,8 @@ export function createSandboxPrimaryPointerTools(
                 return true;
             }
             const grid = state.obstacleGrid;
-            const { col, row } = grid.worldToGrid(world.x, world.y);
+            const col = grid.worldCol(world.x);
+    const row = grid.worldRow(world.y);
             if (session.pickRoomNodeAtWorld(world.x, world.y)) {
                 exitButtonWire();
                 return true;

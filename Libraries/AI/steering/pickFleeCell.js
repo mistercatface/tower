@@ -8,8 +8,9 @@ function fleeDirectionCells(selfCell, threatCell) {
     return normalizedCellDelta(selfCell.col - threatCell.col, selfCell.row - threatCell.row);
 }
 function packDirectionCells(selfCell, packAnchor, grid) {
-    const packCell = grid.worldToGrid(packAnchor.x, packAnchor.y);
-    return normalizedCellDelta(packCell.col - selfCell.col, packCell.row - selfCell.row, 0);
+    const packCol = grid.worldCol(packAnchor.x);
+    const packRow = grid.worldRow(packAnchor.y);
+    return normalizedCellDelta(packCol - selfCell.col, packRow - selfCell.row, 0);
 }
 function blendDirections(fleeDir, packDir, blend) {
     const t = Math.max(0, Math.min(1, blend));
@@ -26,8 +27,9 @@ function effectivePackBlend(packOptions, selfCell, grid) {
     if (!packOptions?.packAnchor || !(packOptions.packBlend > 0)) return 0;
     const maxDist = packOptions.maxPackDistCells;
     if (!Number.isFinite(maxDist) || maxDist <= 0) return packOptions.packBlend;
-    const packCell = grid.worldToGrid(packOptions.packAnchor.x, packOptions.packAnchor.y);
-    const dist = Math.hypot(packCell.col - selfCell.col, packCell.row - selfCell.row);
+    const packCol = grid.worldCol(packOptions.packAnchor.x);
+    const packRow = grid.worldRow(packOptions.packAnchor.y);
+    const dist = Math.hypot(packCol - selfCell.col, packRow - selfCell.row);
     if (dist >= maxDist) return 0;
     return packOptions.packBlend * (1 - dist / maxDist);
 }
@@ -40,8 +42,8 @@ function effectivePackBlend(packOptions, selfCell, grid) {
  */
 export function pickFleeCell(seeker, threat, grid, navWalkable, fleeTiles, avoidCell = null, packOptions = null) {
     const sameCell = (a, b) => a && b && a.col === b.col && a.row === b.row;
-    const selfCell = grid.worldToGrid(seeker.x, seeker.y);
-    const threatCell = grid.worldToGrid(threat.x, threat.y);
+    const selfCell = { col: grid.worldCol(seeker.x), row: grid.worldRow(seeker.y) };
+    const threatCell = { col: grid.worldCol(threat.x), row: grid.worldRow(threat.y) };
     let dir = fleeDirectionCells(selfCell, threatCell);
     const blend = effectivePackBlend(packOptions, selfCell, grid);
     if (blend > 0) {

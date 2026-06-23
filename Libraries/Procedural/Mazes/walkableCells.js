@@ -18,7 +18,8 @@ function navWalkableCacheKey(state) {
 }
 function globalCellForGridCell(grid, col, row) {
     const cellSize = grid.cellSize;
-    const { x, y } = grid.gridToWorld(col, row);
+    const x = grid.gridCenterX(col);
+    const y = grid.gridCenterY(row);
     return { globalCol: Math.round(x / cellSize), globalRow: Math.round(y / cellSize) };
 }
 export function filterWalkableCellsInBounds(cells, grid, boundsConfig) {
@@ -38,7 +39,8 @@ export function collectWalkableCells(state, boundsConfig = state.editor.cavernCo
     const cellSize = grid.cellSize;
     const open = [];
     forEachGlobalCellInMapGenBounds(boundsConfig, (globalCol, globalRow) => {
-        const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
+        const col = grid.worldCol(globalCol * cellSize);
+    const row = grid.worldRow(globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
         if (grid.isBlocked(col, row)) return;
         open.push({ col, row });
@@ -122,7 +124,8 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
     const candidates = [];
     const seen = new Uint8Array(grid.cols * grid.rows);
     forEachGlobalCellInMapGenBounds(boundsConfig, (globalCol, globalRow) => {
-        const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
+        const col = grid.worldCol(globalCol * cellSize);
+    const row = grid.worldRow(globalRow * cellSize);
         if (!isNavWalkableCell(grid, navTopology, col, row)) return;
         const idx = colRowToIndex(col, row, grid.cols);
         if (seen[idx]) return;

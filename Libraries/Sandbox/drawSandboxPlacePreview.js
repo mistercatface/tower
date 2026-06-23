@@ -24,7 +24,8 @@ export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
     const asset = getPropAsset(session.getSpawnPropId());
     if (!asset) return null;
     if (isGridFloorBeltSpawnAsset(asset)) {
-        const { col, row } = grid.worldToGrid(worldX, worldY);
+        const col = grid.worldCol(worldX);
+    const row = grid.worldRow(worldY);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
         return { kind: "cell", col, row, valid: canStampFloorBeltAt(state, col, row), tint: "floor" };
     }
@@ -33,11 +34,13 @@ export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
         return { kind: "cell", col, row, valid: canStampPassagePowerSourceAt(state, col, row), tint: "power" };
     }
     if (isRoomNodeSpawnAsset(asset)) {
-        const { col, row } = grid.worldToGrid(worldX, worldY);
+        const col = grid.worldCol(worldX);
+    const row = grid.worldRow(worldY);
         return resolveRoomNodePlacePreview(state, col, row, session.getSpawnRoomNodeCols(), session.getSpawnRoomNodeRows());
     }
     if (isPuzzleTemplateSpawnAsset(asset)) {
-        const { col, row } = grid.worldToGrid(worldX, worldY);
+        const col = grid.worldCol(worldX);
+    const row = grid.worldRow(worldY);
         return resolveBeltCratePuzzlePlacePreview(state, col, row, session.getSpawnPuzzleAreaCols(), session.getSpawnPuzzleAreaRows());
     }
     return null;
@@ -50,7 +53,8 @@ function cellPreviewStyle(tint, valid) {
 export function appendPlacePreviewOverlayCommands(out, preview, grid) {
     if (!preview) return;
     if (preview.kind === "cell") {
-        const { x, y } = grid.gridToWorld(preview.col, preview.row);
+        const x = grid.gridCenterX(preview.col);
+    const y = grid.gridCenterY(preview.row);
         const tint = preview.tint ?? "floor";
         const valid = preview.valid !== false;
         const { fill, stroke } = cellPreviewStyle(tint, valid);
@@ -60,7 +64,8 @@ export function appendPlacePreviewOverlayCommands(out, preview, grid) {
     if (preview.kind === "cellRect") {
         for (let i = 0; i < preview.cells.length; i++) {
             const cell = preview.cells[i];
-            const { x, y } = grid.gridToWorld(cell.col, cell.row);
+            const x = grid.gridCenterX(cell.col);
+    const y = grid.gridCenterY(cell.row);
             const clear = cell.clear;
             let fill = clear ? "rgba(120, 180, 255, 0.14)" : "rgba(255, 96, 96, 0.16)";
             let stroke = clear ? "rgba(120, 180, 255, 0.85)" : "rgba(255, 96, 96, 0.9)";

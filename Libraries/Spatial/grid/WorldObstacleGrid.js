@@ -7,7 +7,7 @@ import { floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CE
 import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
 import { syncBeltCellToEdges, clearBeltCellEdges } from "./navGridMutations.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
-import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
+import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { invalidateGridLocalNavBake } from "../../Navigation/NavTopology.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision } from "./gridNavEpoch.js";
 import { clearWallCells } from "./wallGridBake.js";
@@ -130,17 +130,15 @@ export class WorldObstacleGrid {
         this._staticWallProxyCount = 0;
     }
     appendStaticWallProxiesNearWorld(worldX, worldY, queryRadius, out) {
-        const { col: ec, row: er } = this.worldToGrid(worldX, worldY);
+        const ec = this.worldCol(worldX);
+        const er = this.worldRow(worldY);
         const pad = 1 + Math.ceil(queryRadius / this.cellSize);
         const minCol = Math.max(0, ec - pad);
         const maxCol = Math.min(this.cols - 1, ec + pad);
         const minRow = Math.max(0, er - pad);
         const maxRow = Math.min(this.rows - 1, er + pad);
         forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (col, row, idx) => {
-            if (this.grid[idx] !== 0) {
-                const { x, y } = this.gridToWorld(col, row);
-                out.push(this._borrowStaticWallProxy(x, y, col, row));
-            }
+            if (this.grid[idx] !== 0) out.push(this._borrowStaticWallProxy(this.gridCenterX(col), this.gridCenterY(row), col, row));
             for (let side = 0; side < 4; side++) {
                 if (!edgeRailCollisionShouldEmit(this, col, row, side)) continue;
                 const blockingPassage = blockingPassageEdgeAt(this, col, row, side);
@@ -277,7 +275,8 @@ export class WorldObstacleGrid {
     // originCol/originRow are global cell coords; cells is row-major with 1 = blocked.
     stampStaticWalls(originCol, originRow, cols, rows, cells, { additive = false, heightLevel }) {
         const level = heightLevel;
-        const { col: baseCol, row: baseRow } = this.worldToGrid(originCol * this.cellSize, originRow * this.cellSize);
+        const baseCol = this.worldCol(originCol * this.cellSize);
+        const baseRow = this.worldRow(originRow * this.cellSize);
         const gridBounds = { startCol: Math.max(0, baseCol), endCol: Math.min(this.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(this.rows - 1, baseRow + rows - 1) };
         if (!additive) clearWallCells(this.grid, this.cols, gridBounds);
         let changed = false;
@@ -382,19 +381,30 @@ export class WorldObstacleGrid {
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
         bumpFloorOccupancyStampDrawRevision(this);
     }
+    worldCol(x) {
+        return worldColAtOrigin(x, this.minX, this.cellSize);
+    }
+    worldRow(y) {
+        return worldRowAtOrigin(y, this.minY, this.cellSize);
+    }
+    gridCenterX(col) {
+        return gridCenterXAtOrigin(col, this.minX, this.cellHalfSize);
+    }
+    gridCenterY(row) {
+        return gridCenterYAtOrigin(row, this.minY, this.cellHalfSize);
+    }
     worldToGrid(x, y) {
-        return worldToGridAtOrigin(x, y, this.minX, this.minY, this.cellSize);
+        return { col: this.worldCol(x), row: this.worldRow(y) };
     }
     gridToWorld(col, row) {
-        return gridToWorldAtOrigin(col, row, this.minX, this.minY, this.cellSize);
+        return { x: this.gridCenterX(col), y: this.gridCenterY(row) };
     }
     isBlocked(col, row) {
         if (!cellInRect(col, row, this.cols, this.rows)) return true;
         return this.grid[colRowToIndex(col, row, this.cols)] !== 0;
     }
     isBlockedWorld(x, y) {
-        const { col, row } = this.worldToGrid(x, y);
-        return this.isBlocked(col, row);
+        return this.isBlocked(this.worldCol(x), this.worldRow(y));
     }
     canStep(currCol, currRow, nextCol, nextRow, navTopology = null) {
         if (!navTopology) return false;

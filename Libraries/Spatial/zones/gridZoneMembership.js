@@ -67,7 +67,8 @@ export function resolveEntityGridZoneKeys(entity, grid, subscriptions, out) {
     const { x, y } = entity;
     const radius = entity.radius ?? 0;
     const band = radius + grid.cellSize * 0.12;
-    const { col, row } = grid.worldToGrid(x, y);
+    const col = grid.worldCol(x);
+    const row = grid.worldRow(y);
     let cellIdx = -1;
     if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) {
         cellIdx = colRowToIndex(col, row, grid.cols);

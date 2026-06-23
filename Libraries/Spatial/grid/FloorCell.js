@@ -101,7 +101,8 @@ export function floorBeltFacingToIndex(facingRadians) {
 }
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} entrySide */
 export function floorBeltEntryEdgeWorldPoint(grid, col, row, entrySide) {
-    const { x, y } = grid.gridToWorld(col, row);
+    const x = grid.gridCenterX(col);
+    const y = grid.gridCenterY(row);
     const inset = grid.cellSize * 0.35;
     if (entrySide === 0) return { x, y: y - inset };
     if (entrySide === 1) return { x: x + inset, y };
@@ -122,6 +123,7 @@ export function isFloorBeltCell(grid, col, row) {
 }
 /** Body center cell is a belt cell — same rule as tickFloorOccupancy. */
 export function isEntityOnFloorBelt(grid, x, y) {
-    const { col, row } = grid.worldToGrid(x, y);
+    const col = grid.worldCol(x);
+    const row = grid.worldRow(y);
     return isFloorBeltCell(grid, col, row);
 }

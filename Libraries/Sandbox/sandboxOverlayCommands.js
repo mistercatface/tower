@@ -21,7 +21,8 @@ export function appendSelectionOverlayCommands(out, { selectedProps, showRings, 
         out.push(overlayCachedSelectionRing(prop.x, prop.y, selectionRingRadius(prop), { stroke: PROP_SELECTION_STROKE, lineWidth: 1, dash: PROP_SELECTION_DASH }));
     }
     if (selectedFloorCell && grid) {
-        const { x, y } = grid.gridToWorld(selectedFloorCell.col, selectedFloorCell.row);
+        const x = grid.gridCenterX(selectedFloorCell.col);
+    const y = grid.gridCenterY(selectedFloorCell.row);
         out.push(
             overlayGridCellHighlight(centeredAabbInto(FLOOR_BELT_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid.cellSize, "floor", {
                 fill: "rgba(120, 200, 255, 0.1)",
@@ -32,7 +33,8 @@ export function appendSelectionOverlayCommands(out, { selectedProps, showRings, 
         );
     }
     if (selectedVoxelCell && grid) {
-        const { x, y } = grid.gridToWorld(selectedVoxelCell.col, selectedVoxelCell.row);
+        const x = grid.gridCenterX(selectedVoxelCell.col);
+    const y = grid.gridCenterY(selectedVoxelCell.row);
         out.push(
             overlayGridCellHighlight(centeredAabbInto(WALL_CELL_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid.cellSize, "voxel", {
                 fill: "rgba(255, 152, 0, 0.12)",
@@ -59,7 +61,8 @@ export function appendPropTileCellOverlayCommands(out, { show, grid, entityRegis
     const props = queryPropsInView(entityRegistry, viewport, spatialFrame, { filterId: "propTile" });
     for (let i = 0; i < props.length; i++) {
         const prop = props[i];
-        const { col, row } = grid.worldToGrid(prop.x, prop.y);
+        const col = grid.worldCol(prop.x);
+    const row = grid.worldRow(prop.y);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         cellBoundsAtOriginInto(PROP_TILE_CELL_BOUNDS, grid.minX, grid.minY, col, row, grid.cellSize);
         out.push(overlayGridCellHighlight(PROP_TILE_CELL_BOUNDS, grid.cellSize, "propTile", { fill: "rgba(160, 255, 120, 0.1)", stroke: "rgba(160, 255, 120, 0.5)", lineWidth: 1 }));

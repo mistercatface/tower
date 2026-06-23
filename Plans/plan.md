@@ -79,19 +79,11 @@ Physics bodies live in Float32 slabs; wall queries still use **ephemeral Map + a
 
 ---
 
-### 6. `gridToWorld` / `worldToGrid` — allocating helpers everywhere
+### 6. `gridToWorld` / `worldToGrid` — allocating helpers everywhere ✅
 
-**Where:** `Libraries/Spatial/grid/GridCoords.js`
+**Where:** `GridCoords.js`, `WorldObstacleGrid`, sim/nav/render hot paths
 
-**Hot because:** Called from belts (#1), path overlay, steering, floor tick — multiplies every caller's cost.
-
-```javascript
-export function gridToWorldAtOrigin(col, row, minX, minY, cellSize) {
-    return { x: minX + col * cellSize + cellSize / 2, y: minY + row * cellSize + cellSize / 2 };
-}
-```
-
-Half the codebase has `*Into` out-params (`projectPropVertexInto`, `elevationCameraFromViewportInto`, `chunkWorldAabbInto`, `centerReachAabbInto`). Grid coords never got the same treatment. This is the biggest **half-migrated API** in the repo.
+**Done:** Scalar API on `WorldObstacleGrid` (`worldCol`, `worldRow`, `gridCenterX`, `gridCenterY`) and `GridCoords` (`worldColAtOrigin`, `gridCenterXInCenteredFrame`, …). Hot paths use scalar locals; allocating `worldToGrid` / `gridToWorld` kept for cold APIs that return `{ col, row }` / `{ x, y }` (editor, tests, stored records). No `gridToWorldInto` — AABB `*Into` unchanged.
 
 ---
 
@@ -197,7 +189,7 @@ The AffineTexture / `drawImageQuad` work (positional args, no `sBlitQuad` scratc
 
 1. ~~**Floor belts** — copy forcefield revision cache, stop per-cell proxies~~ ✅
 2. ~~**Chunk draw** — use existing AABB scratch + one pass struct~~ ✅
-3. **`gridToWorldInto`** — unlock fixes across belts, path overlay, steering
+3. ~~**`gridToWorldInto`** — unlock fixes across belts, path overlay, steering~~ ✅ (scalar `worldCol`/`gridCenterX` API instead)
 4. **Wall bucket cache** — stop clearing Map + `[]` every frame; align with slab philosophy
 5. **Hoist sim hooks + sleep visited** — cheap, same mindset as removing `{ bleedPx: 1 }` objects
 

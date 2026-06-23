@@ -58,7 +58,8 @@ export function buildVisionCellSet(cells, cols) {
 }
 export function isPointVisibleFromHeadVision(pointX, pointY, originX, originY, originCol, originRow, range, cellSet, navTopology, visionSession = null) {
     const grid = navTopology.grid;
-    const { col, row } = grid.worldToGrid(pointX, pointY);
+    const col = grid.worldCol(pointX);
+    const row = grid.worldRow(pointY);
     if (cellSet.has(colRowToIndex(col, row, grid.cols))) return true;
     const dx = pointX - originX;
     const dy = pointY - originY;
@@ -67,7 +68,8 @@ export function isPointVisibleFromHeadVision(pointX, pointY, originX, originY, o
 }
 export function collectVisibleGridCells(navTopology, originX, originY, range, visionSession = null) {
     const grid = navTopology.grid;
-    const { col: originCol, row: originRow } = grid.worldToGrid(originX, originY);
+    const originCol = grid.worldCol(originX);
+    const originRow = grid.worldRow(originY);
     const rangeCells = Math.ceil(range / grid.cellSize);
     const rangeSq = range * range;
     const minCol = Math.max(0, originCol - rangeCells);
@@ -77,7 +79,8 @@ export function collectVisibleGridCells(navTopology, originX, originY, range, vi
     const cells = [];
     for (let row = minRow; row <= maxRow; row++)
         for (let col = minCol; col <= maxCol; col++) {
-            const { x, y } = grid.gridToWorld(col, row);
+            const x = grid.gridCenterX(col);
+            const y = grid.gridCenterY(row);
             const dx = x - originX;
             const dy = y - originY;
             if (dx * dx + dy * dy > rangeSq) continue;

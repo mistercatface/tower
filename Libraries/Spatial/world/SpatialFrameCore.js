@@ -6,7 +6,8 @@ import { centerReachAabbInto, createAabb } from "../../Math/Aabb2D.js";
 const NEAR_QUERY_BOUNDS = createAabb();
 const EMPTY_WALL_CANDIDATES = [];
 function wallBucketKey(grid, worldX, worldY, queryRadius) {
-    const { col, row } = grid.worldToGrid(worldX, worldY);
+    const col = grid.worldCol(worldX);
+    const row = grid.worldRow(worldY);
     const pad = 1 + Math.ceil(queryRadius / grid.cellSize);
     return (col & 0xffff) | ((row & 0xffff) << 16) | ((pad & 0xff) << 32);
 }

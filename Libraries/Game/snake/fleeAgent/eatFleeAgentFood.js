@@ -13,8 +13,7 @@ export function eatFleeAgentFoodShard(state, head, food, metabolism, brain, inte
     if (Math.hypot(food.x - head.x, food.y - head.y) > eatRadius) return false;
     const config = getSnakeGameConfig();
     const grid = state.obstacleGrid;
-    const foodCell = grid.worldToGrid(food.x, food.y);
-    brain.stampArrival(foodCell.col, foodCell.row);
+    brain.stampArrival(grid.worldCol(food.x), grid.worldRow(food.y));
     if (intent?.clearTrackedGoal) intent.clearTrackedGoal();
     else if (intent?.headNav) intent.headNav.clearDestination(head);
     removeSandboxWorldProp(state, food);
