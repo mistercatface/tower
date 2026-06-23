@@ -103,6 +103,8 @@ Current first consumer: snake forage. Generic pieces now live outside `Libraries
 
 ### 3.6 Sandbox, editor, and gameplay substrate
 
+→ **[sandbox-editor.md](./sandbox-editor.md)** — TileLab vs game shell, controller, inspectors, persistence.
+
 | Area | State | Role |
 |---|---|---|
 | `Libraries/Sandbox/groundNav` | ✅ | HPA, flow, direct, and cell-target ground-nav behaviors |
@@ -132,28 +134,9 @@ Current first consumer: snake forage. Generic pieces now live outside `Libraries
 
 ## 4. Game-specific code: snake
 
-| Path | Role | Reusable pieces it consumes |
-|---|---|---|
-| `Libraries/Game/snake/snakeAutosim.js` | Snake chain sim, metabolism, sprinting, food/grow loop, brain creation | Motion, ground nav, AI brain |
-| `Libraries/Game/snake/createSnakeForageIntent.js` | Snake adapter over generic agent intent | `AI/agentIntent`, target memory, HPA cell nav |
-| `Libraries/Game/snake/snakeDecisionModel.js` | Snake facts, hunger/threat derivation, snake scorers, policy mapping | `AI/utility/utilityScoring` |
-| `Libraries/Game/snake/snakeIntentMemory.js` | Snake threat/prey/food adapter | `AI/memory/targetMemory` |
-| `Libraries/Game/snake/snakeIntent.js` | Snake perception: threat/prey/food and distances | Navigation perception |
-| `Libraries/Game/snake/snakeIntentStates.js` | Snake state implementations: explore, seek_food, seek_prey, flee | Generic agent intent context/effects |
-| `Libraries/Game/snake/setupSnakeGame.js`, `snakeScene.js`, `SnakeInstance.js`, combat/HUD/overlays | Snake game rules, scene, lifecycle, UI | Sandbox, physics, render |
+→ **[games/snake.md](./games/snake.md)** — species, session, intent stack, engagement, HUD/overlays, config, extracted vs game-specific.
 
-Current architecture:
-
-```text
-createAgentIntent (generic)
-  -> createSnakeForageIntent (snake adapter)
-    -> snakeDecisionModel (snake scorers + facts)
-      -> utilityScoring (generic score maps/details)
-    -> snakeIntentMemory
-      -> targetMemory (generic TTL target records)
-    -> snakeIntentStates (domain states)
-  -> snakeAutosim (game orchestration)
-```
+Condensed file map (detail in snake doc):
 
 ---
 
@@ -183,7 +166,7 @@ Coverage read: physics, pathfinding, AI, and snake are the best-tested. Procedur
 | Runtime nav wiring | `Libraries/Navigation` | `NavRuntime`, `NavTopology`, worker navigation factory |
 | Agent memory | `Libraries/AI/brain` or `Libraries/AI/memory` | Spatial cells vs entity targets |
 | Agent scoring / decisions | `Libraries/AI/utility`, `Libraries/AI/eqs`, domain adapter | Generic scoring core, domain-specific facts/scorers |
-| Snake game behavior | `Libraries/Game/snake` | Snake adapter over generic AI/nav/physics |
+| Snake game behavior | `Libraries/Game/snake` | See [games/snake.md](./games/snake.md) |
 | Surface texture/theme | `Libraries/Procedural/Motifs` + `Config/procedural/storage` | Motif + profile preset |
 | Level/room geometry | `Libraries/RoomGraph`, `Libraries/CA`, `Libraries/Procedural/Mazes` | Room graph bake / maze helpers |
 | Physics joints/constraints | `Libraries/Motion/kineticConstraints*.js` | PGS constraint solver |

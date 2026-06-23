@@ -25,7 +25,7 @@ These roadmaps bleed into each other. The rule: **each doc owns one layer; share
 
 > **Naming trap:** see [glossary.md](./glossary.md) — `Libraries/Procedural/` (Perlin noise, Voronoi motifs) is **surface textures**, not level geometry.
 
-So the boundary in one sentence: **this doc carves and arranges space; rendering draws it, pathfinding routes through it, AI judges it.**
+So the boundary in one sentence: **this doc carves and arranges space; rendering draws it, pathfinding routes through it, AI judges it.** Grid edit contract → [foundations/grid-contract.md](./foundations/grid-contract.md).
 
 ---
 

@@ -2,6 +2,8 @@
 
 Progress tracker for agent intelligence: control → perception → memory → state machines → utility/EQS decisions → tactics → teams → strategy/game theory → puzzle solvability.
 
+**Snake/flee game adapters:** [games/snake.md](./games/snake.md) — species, engagement, HUD, config (not repeated here).
+
 **Legend:** ✅ shipped · 🟡 partial / scaffolding · ⬜ not started · 🔗 cross-doc dependency.
 
 **Overall AI maturity:** ~**52%** of a full game-AI stack. The engine has real generic AI primitives plus **two full intent consumers**: snake (4-mode forage + team hunting) and flee agents (4-mode explore/flee/seek_food/seek_ally). Shared perception (`classifyAgentVision`), target memory, utility scoring, and faction-aware relationship resolution are wired end-to-end for both species.

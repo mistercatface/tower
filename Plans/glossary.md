@@ -4,6 +4,8 @@ One place for naming traps and doc boundaries. Spoke docs link here instead of r
 
 **Queue vs encyclopedia:** active work lives in [NOW.md](./NOW.md). Domain depth lives in spoke docs. Time journal lives in [todo.md](./todo.md).
 
+**Domain docs (new):** [games/snake.md](./games/snake.md) · [foundations/grid-contract.md](./foundations/grid-contract.md) · [sandbox-editor.md](./sandbox-editor.md)
+
 ---
 
 ## Three different “procedural”

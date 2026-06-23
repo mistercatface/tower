@@ -140,7 +140,7 @@ The desired direction remains: snake proves pressure, generic packages move into
 `WorldObstacleGrid`, `gridNavEpoch`, edge stores, floor cells, `NavTopology`, `bakeNavTopology`, and worker SAB topology are the shared substrate. This replaces older nav context language.
 
 - [x] Shared obstacle/topology epochs route grid edits to nav/perception/worker sync.
-- [ ] ▶ Document the grid consumer contract: physics broadphase, nav topology, procedural stamps, perception, and render wall bakes.
+- [x] Grid consumer contract documented → [foundations/grid-contract.md](./foundations/grid-contract.md).
 - [ ] Dynamic kinetic-prop occupancy remains future work.
 
 ### 4.2 Seeded determinism 🟡
@@ -234,8 +234,8 @@ The detailed map lives in [library-audit.md](./library-audit.md). Condensed:
 | AI | `Libraries/AI/agentIntent`, `AI/brain`, `AI/memory`, `AI/utility`, `AI/eqs`, `Agent` |
 | Rendering | `Libraries/Render`, `Canvas`, `WorldSurface`, `Spatial/iso`, `Render` |
 | Procedural | `Libraries/CA`, `RoomGraph`, `Procedural/Mazes`, `Procedural/Motifs`, `Config/procedural` |
-| Sandbox | `Libraries/Sandbox`, `SandboxEditor`, `Editor`, `UI`, `Pipeline` |
-| Snake game | `Libraries/Game/snake`, `Config/games/snake.js`, snake-specific props |
+| Sandbox | `Libraries/Sandbox`, `SandboxEditor`, `Editor`, `UI`, `Pipeline` | [sandbox-editor.md](./sandbox-editor.md) |
+| Snake game | `Libraries/Game/snake`, `Config/games/snake.js`, snake-specific props | [games/snake.md](./games/snake.md) |
 
 ---
 
@@ -260,7 +260,7 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 | Procedural | unified root seed; seed golden tests; room-graph generator v1; Poisson/min-distance placement |
 | Rendering | projected shadows; cache telemetry; projection/viewport tests; top-down 2D completion |
 | Physics | revolute/motor joints, CCD, breakable links only after a gameplay feature needs them |
-| Foundations | snapshot round-trip tests; grid/topology epoch contract doc; fixed-step accumulator investigation |
+| Foundations | snapshot round-trip tests; fixed-step accumulator investigation · grid contract → [foundations/grid-contract.md](./foundations/grid-contract.md) |
 
 ---
 
@@ -276,5 +276,7 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 ## 9. Spokes
 
 [glossary.md](./glossary.md) · [NOW.md](./NOW.md) · [physics.md](./physics.md) · [pathfinding.md](./pathfinding.md) · [rendering.md](./rendering.md) · [procedural.md](./procedural.md) · [Mazes.md](./Mazes.md) · [AI.md](./AI.md) · [library-audit.md](./library-audit.md)
+
+**Domain:** [games/snake.md](./games/snake.md) · [foundations/grid-contract.md](./foundations/grid-contract.md) · [sandbox-editor.md](./sandbox-editor.md)
 
 *Last updated: team hunting + flee `seek_ally` (AI ~52%); local flow horizon direction documented in AI.md and pathfinding grab-list.*
