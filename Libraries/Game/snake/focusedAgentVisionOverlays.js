@@ -1,8 +1,9 @@
 import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
-import { requireSnakeVisionFrame } from "./snakePerception.js";
-import { perceiveAgentIntentWorld } from "./agentIntentPerception.js";
+import { classifyVisibleAgentsFromVision } from "../../AI/perception/agentWorldPerception.js";
+import { buildOverlayHeadVision } from "../../Navigation/perception/overlayHeadVision.js";
 import { appendGridCellVisionOverlayCommands } from "../../Navigation/perception/gridCellVisionOverlay.js";
 import { overlayCircleFillStroke } from "../../Render/overlays/overlayCommands.js";
+import { resolveAgentPerceptionOptions } from "./agentIntentPerception.js";
 function resolveFocusedAgentDebugStyle(config) {
     return config.focusedAgentDebug ?? {};
 }
@@ -21,21 +22,17 @@ function appendAgentVisionRing(out, agent, style) {
     const pad = style.pad ?? 3;
     out.push(overlayCircleFillStroke(agent.x, agent.y, radius + pad, { fill: style.fill, stroke: style.stroke, lineWidth: style.lineWidth ?? 1 }));
 }
-function perceiveFocusedAgentWorld(state, ctx) {
-    const { head, headId, species } = ctx;
-    const registry = state.sandbox.snakeGame.registry;
-    const config = getSnakeGameConfig();
-    const visionRange = getSharedConfig(config).visionRange;
-    return perceiveAgentIntentWorld(head, headId, state, registry, () => null, visionRange);
-}
 export function appendFocusedAgentVisionOverlayCommands(out, state, ctx) {
     if (!ctx?.head) return;
     const config = getSnakeGameConfig();
     const visionRange = getSharedConfig(config).visionRange;
-    const frame = requireSnakeVisionFrame(state);
-    const vision = frame.ensureHeadVision(ctx.head, visionRange);
-    appendGridCellVisionOverlayCommands(out, { grid: state.obstacleGrid, cells: vision.cells, cellFill: visionRange.cellFill });
-    const world = perceiveFocusedAgentWorld(state, ctx);
+    const navTopology = state.nav.topology;
+    const { cells } = buildOverlayHeadVision(ctx.head, navTopology, visionRange);
+    appendGridCellVisionOverlayCommands(out, { grid: state.obstacleGrid, cells, cellFill: visionRange.cellFill });
+    const frameStub = { navTopology, visionSession: null, visionRange };
+    const registry = state.sandbox.snakeGame.registry;
+    const perceptionOptions = resolveAgentPerceptionOptions(state, visionRange);
+    const world = classifyVisibleAgentsFromVision(ctx.head, ctx.headId, state, registry, frameStub, null, perceptionOptions);
     const intentTarget = ctx.getIntentTarget?.();
     const committedTargetId = intentTarget?.targetId ?? null;
     if (world.threat) appendAgentVisionRing(out, world.threat, agentRingStyle(config, "threat"));

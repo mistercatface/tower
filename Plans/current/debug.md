@@ -46,7 +46,7 @@ Viewport gates **brain work**, not **eyes**.
 
 ---
 
-### Step 2 — Decouple focused-agent debug overlay from sim perception
+### Step 2 — Decouple focused-agent debug overlay from sim perception ✅
 
 **File:** `Libraries/Game/snake/focusedAgentVisionOverlays.js`
 

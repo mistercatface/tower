@@ -14,6 +14,7 @@ import { appendFocusedAgentVisionOverlayCommands } from "../Libraries/Game/snake
 import { appendFocusedAgentPathPreviewCommands } from "../Libraries/Game/snake/focusedAgentPathOverlays.js";
 import { appendFocusedAgentTargetOverlayCommands, resolveCommittedTargetWorld } from "../Libraries/Game/snake/focusedAgentTargetOverlays.js";
 import { resetVisionFullBuildCount, getVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
+import { resetOverlayHeadVisionBuildCount, getOverlayHeadVisionBuildCount } from "../Libraries/Navigation/perception/overlayHeadVision.js";
 import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { createSnakeGameHarnessState } from "./harness/snakeGameHarness.js";
 
@@ -92,7 +93,7 @@ describe("focused agent debug overlays", () => {
         assert.match(out[0].stroke, /255,\s*80,\s*80/);
     });
 
-    it("appendFocusedAgentVisionOverlayCommands reuses cached vision cache for repeated draws", async () => {
+    it("appendFocusedAgentVisionOverlayCommands does not touch sim vision cache", async () => {
         applySnakeGameConfig({ showFocusedAgentDebug: true });
         resetKineticConstraintIds(2);
         const { state } = await createSnakeGameHarnessState();
@@ -104,12 +105,17 @@ describe("focused agent debug overlays", () => {
         const ctx = resolveFocusedAgentDebugContext(state, snake.chain.head.id);
         beginSnakePerceptionFrame(state);
         resetVisionFullBuildCount();
+        resetOverlayHeadVisionBuildCount();
+        const simTickBefore = state.sandbox.snakeGame.simTick;
         const outA = [];
         appendFocusedAgentVisionOverlayCommands(outA, state, ctx);
-        const buildsAfterFirst = getVisionFullBuildCount();
+        const simBuildsAfterFirst = getVisionFullBuildCount();
+        const overlayBuildsAfterFirst = getOverlayHeadVisionBuildCount();
         const outB = [];
         appendFocusedAgentVisionOverlayCommands(outB, state, ctx);
-        assert.equal(getVisionFullBuildCount(), buildsAfterFirst);
+        assert.equal(getVisionFullBuildCount(), simBuildsAfterFirst);
+        assert.equal(state.sandbox.snakeGame.simTick, simTickBefore);
+        assert.equal(getOverlayHeadVisionBuildCount(), overlayBuildsAfterFirst + 1);
         assert.ok(outA.some((cmd) => cmd.kind === "aabb"));
     });
 
