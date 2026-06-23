@@ -125,7 +125,7 @@ describe("snake combat min length", () => {
         assert.equal(getOrderedChainMemberIds(state, blue.chain.head.id).length, 5);
     });
 
-    it("same-faction head strike splits ally body segment", () => {
+    it("same-faction head strike does not split ally body segment", () => {
         applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30 });
         resetKineticConstraintIds(1);
         const state = createTestState();
@@ -151,7 +151,8 @@ describe("snake combat min length", () => {
         resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
         assert.ok(kineticContactBuffer.count >= 1);
         const registry = state.sandbox.snakeGame.registry;
-        assert.ok(registry.inertByLeadId.size > 0 || getOrderedChainMemberIds(state, ally.chain.head.id).length < 5);
+        assert.equal(registry.inertByLeadId.size, 0);
+        assert.equal(getOrderedChainMemberIds(state, ally.chain.head.id).length, 5);
     });
 
     it("head into enemy tail does not split or kill the pursuer", () => {
@@ -189,8 +190,8 @@ describe("snake combat min length", () => {
         applySnakeGameConfig({ minAliveSegmentCount: 3, splitImpulseThreshold: 30 });
         resetKineticConstraintIds(1);
         const state = createTestState();
-        const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(6));
-        const prey = spawnSnakeChain(state, { col: 20, row: 8 }, snakeChainOptions(3));
+        const predator = spawnSnakeChain(state, { col: 8, row: 8 }, { ...snakeChainOptions(6), faction: "red" });
+        const prey = spawnSnakeChain(state, { col: 20, row: 8 }, { ...snakeChainOptions(3), faction: "blue" });
         const { autosimsByHeadId } = wireCombatSnakeGame(state, [
             { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId },
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },

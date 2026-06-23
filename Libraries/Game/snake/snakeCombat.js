@@ -74,6 +74,12 @@ function classifyFleeRamVictims(contacts, i) {
 function areSameFleeFaction(bodyA, bodyB) {
     return bodyA.faction != null && bodyA.faction === bodyB.faction;
 }
+function areTeammates(snakeGame, headIdA, headIdB, state) {
+    if (resolveAgentRelationship(snakeGame, headIdA, headIdB, state) === "ally") return true;
+    const headA = state.entityRegistry.getLive(headIdA);
+    const headB = state.entityRegistry.getLive(headIdB);
+    return headA?.faction != null && headA.faction === headB?.faction;
+}
 function tryResolveFleeAgentHeadRam(state, snakeGame, spatialFrame, contacts, i, instanceA, instanceB, bodyA, bodyB, relSpeed, config) {
     if (!(instanceA instanceof FleeAgentInstance) || !(instanceB instanceof FleeAgentInstance)) return false;
     if (bodyA.id !== instanceA.headId || bodyB.id !== instanceB.headId) return false;
@@ -90,6 +96,7 @@ function tryResolveFleeAgentHeadRam(state, snakeGame, spatialFrame, contacts, i,
     return true;
 }
 function tryResolveFleeEscapeRam(state, snakeGame, spatialFrame, contacts, i, fleeInstance, snakeInstance, fleeBody, snakeBody, relSpeed, config, splitLinks) {
+    if (areTeammates(snakeGame, fleeInstance.headId, snakeInstance.headId, state)) return false;
     if (!fleeInstance.sprinting || relSpeed < config.splitImpulseThreshold) return false;
     if (fleeInstance.intent?.getMode?.() !== "flee") return false;
     if (fleeBody.id !== fleeInstance.headId || snakeBody.id === snakeInstance.headId) return false;
@@ -169,6 +176,7 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
             }
         }
         if (!(instanceA instanceof SnakeInstance) || !(instanceB instanceof SnakeInstance)) continue;
+        if (relationshipAB === "ally") continue;
         tryResolveSnakeHeadStrikeRam(state, snakeGame, spatialFrame, contacts, i, instanceA, pair.bodyA, instanceB, pair.bodyB, relSpeed, config, splitLinks);
         tryResolveSnakeHeadStrikeRam(state, snakeGame, spatialFrame, contacts, i, instanceB, pair.bodyB, instanceA, pair.bodyA, relSpeed, config, splitLinks);
     }
