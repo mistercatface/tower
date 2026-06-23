@@ -6,7 +6,7 @@ export const SNAKE_GAME_DEFAULTS = {
     headPropId: "snake_head",
     snakeCount: 50,
     /** Rolling ball flee agents spawned after snakes (0 disables). */
-    boidCount: 200,
+    boidCount: 320,
     fleeAgent: {
         bodyPropId: "flee_ball",
         faction: "bravo",

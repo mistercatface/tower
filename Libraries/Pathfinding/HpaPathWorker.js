@@ -9,7 +9,7 @@ import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/nav
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
-export const MAX_HPA_GRAPH_NODES = 4096;
+export const MAX_HPA_GRAPH_NODES = 4096 * 2;
 const MAX_GRAPH_EDGES = MAX_HPA_GRAPH_NODES * 32;
 const HPA_DONE = "hpaDone";
 const SYNC_NAV_DONE = "syncNavDone";
