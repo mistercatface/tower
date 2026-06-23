@@ -1,9 +1,9 @@
 import { isAgentEngaged, readAgentEngagement } from "./agentEngagement.js";
 export function deriveAllyState(visibleWorld, known, memorySource = null, session = null, allyReachSteps = null) {
-    const visibleAlly = memorySource?.ally ? null : (visibleWorld?.ally ?? null);
+    const visibleAlly = memorySource?.ally ? null : visibleWorld?.ally;
     const knownAlly = known?.ally ?? null;
     const engagement = knownAlly && session ? readAgentEngagement(session, knownAlly.id) : null;
-    const leadworthy = knownAlly ? (session ? isAgentEngaged(session, knownAlly.id) : true) : false;
+    const leadworthy = !!knownAlly && (!session || isAgentEngaged(session, knownAlly.id));
     return {
         ally: knownAlly,
         dist: allyReachSteps ?? null,

@@ -52,4 +52,13 @@ describe("target memory", () => {
         const record = memory.record("food");
         assert.deepEqual(targetFromMemoryRecord(record), { id: 5, x: 10, y: 20, memoryRecord: record });
     });
+
+    it("drops dead entity ids when state is provided", () => {
+        const memory = createTargetMemory(["food"], { food: 3 });
+        memory.observe("food", { id: 5, x: 10, y: 20 }, { x: 0, y: 0 }, grid);
+        const record = memory.record("food");
+        const state = { entityRegistry: { getLive: () => ({ isDead: true }) } };
+        assert.equal(targetFromMemoryRecord(record, state), null);
+        assert.deepEqual(targetFromMemoryRecord(record), { id: 5, x: 10, y: 20, memoryRecord: record });
+    });
 });

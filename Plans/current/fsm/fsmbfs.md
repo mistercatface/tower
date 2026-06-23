@@ -5,7 +5,7 @@
 | | |
 |--|--|
 | **Phase 1** | Reach dialect done ✅ — [`history.md`](history.md) |
-| **Part 1** | Pass A ✅ · Pass B ✅ · **Pass C next** — [`inventory.md`](inventory.md) |
+| **Part 1** | Pass A ✅ · Pass B ✅ · Pass C ✅ · **Pass D next** |
 | **Part 2** | Flow locomotion 2a → 2b → 3 — **blocked until Part 1 grep gates pass** |
 
 ---
@@ -169,7 +169,7 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 |-------|-------|-----|
 | Flee imports snake for generic derives | ~~`fleeDecisionModel.js`~~ ✅ Pass B | `deriveThreatState`, `deriveAllyState`, `targetEvents` in `Libraries/AI/` |
 | Duplicated decision helpers | `pushTargetEvents` ✅ Pass B; still open: `policyReasonForTarget`, `intentPolicy`, hunger/food scorers | Pass E |
-| Twin intent memory | `snakeIntentMemory.js`, `fleeIntentMemory.js` | `createAgentIntentMemory({ kinds, resolveAlly? })` |
+| Twin intent memory | ~~`snakeIntentMemory.js`, `fleeIntentMemory.js`~~ ✅ Pass C | `Libraries/AI/memory/createAgentIntentMemory.js` |
 | Twin perception wrappers | `snakeIntent.js`, `fleeWorldPerception.js` | one `resolveAgentPerceptionOptions` |
 | ~270-line twin intent adapters | `createSnakeForageIntent.js`, `createFleeExploreIntent.js` | shared shell: route/reach/arrival/latch/effects |
 | `reachStepsForMode` ×2 | both adapters | once — `Libraries/Game/snake/agentReachSteps.js` or shared adapter helper |
@@ -184,7 +184,7 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 |------|------|-----|
 | **A — Inventory** ✅ | Renamed `agentPopulationRegistry.js` → `agentRelationship.js`; symbol map in [`inventory.md`](inventory.md) | no behavior change |
 | **B — Generic derives** ✅ | `deriveThreatState`, `deriveAllyState`, `targetEvents` → `Libraries/AI/`; deleted `deriveFleeAgentThreatState` | flee imports AI only — verified |
-| **C — Intent memory** | Single factory; delete species memory files | two call sites |
+| **C — Intent memory** ✅ | `createAgentIntentMemory.js`; deleted species memory files | two call sites |
 | **D — Perception** | Merge options builders | one `resolve*PerceptionOptions` body |
 | **E — Decision dedupe** | Shared hunger/food/policy helpers | net −LOC in decision models |
 | **F — Intent adapter** | Shared shell; species files <120 lines | `reachStepsForMode` once |
@@ -267,8 +267,8 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 
 - [x] Pass A inventory — [`inventory.md`](inventory.md)
 - [x] Pass B — flee does not import generic derives from `snakeDecisionModel.js`
-- [ ] Pass C — one intent memory factory
-- [ ] Intent adapter shared shell; species files materially shorter
+- [x] Pass C — one intent memory factory
+- [ ] Pass D — one perception options builder
 - [ ] Net −LOC across snake+flee pair
 - [ ] Part 1 grep gates pass
 

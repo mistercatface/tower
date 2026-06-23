@@ -17,8 +17,12 @@ function snapshotRecord(record) {
     if (!record) return null;
     return { kind: record.kind, id: record.id, cell: { ...record.cell }, ageTicks: record.ageTicks, ttlTicks: record.ttlTicks, confidence: record.confidence };
 }
-export function targetFromMemoryRecord(record) {
+export function targetFromMemoryRecord(record, state = null) {
     if (!record) return null;
+    if (state?.entityRegistry && record.id != null) {
+        const live = state.entityRegistry.getLive(record.id);
+        if (!live || live.isDead) return null;
+    }
     return { id: record.id, x: record.x, y: record.y, memoryRecord: record };
 }
 export function createTargetMemory(kinds, ttlByKind) {

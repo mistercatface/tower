@@ -89,19 +89,23 @@
 
 ---
 
-## Pass C — Intent memory (next)
+## Pass C — Intent memory ✅
 
-| Symbol | Snake | Flee | Notes |
-|--------|-------|------|-------|
-| `targetFromRecord` | `snakeIntentMemory.js:4` | `fleeIntentMemory.js:3` | identical |
-| `create*IntentMemory` factory | `:17` | `:11` | same kinds TTL defaults; snake adds `resolveLeadworthyAlly` on observe/enrich |
-| `enrichWorld` body | `:28-48` | `:21-40` | ~same; flee adds `threatCount`; snake engagement filter on ally |
+**Shipped:** `Libraries/AI/memory/createAgentIntentMemory.js`
 
-**Move target:** `Libraries/AI/memory/createAgentIntentMemory.js` with `{ resolveAlly?, kinds }` options.
+| Option | Snake | Flee |
+|--------|-------|------|
+| `filterAllyForEngagement` | `true` | default `false` |
+
+Live/dead check lives on `targetFromMemoryRecord(record, state)` — no wrapper. `threatCount` rides `...visibleWorld` spread — no `preserveThreatCount` flag.
+
+**Deleted:** `snakeIntentMemory.js`, `fleeIntentMemory.js`
+
+**Call sites:** `createSnakeForageIntent.js`, `createFleeExploreIntent.js`, `agentAllyMemory.test.js`
 
 ---
 
-## Pass D — Perception wrappers
+## Pass D — Perception (next) wrappers
 
 | Symbol | Snake (`snakeIntent.js`) | Flee (`fleeWorldPerception.js`) |
 |--------|--------------------------|----------------------------------|

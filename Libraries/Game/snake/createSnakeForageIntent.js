@@ -7,7 +7,7 @@ import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/intentStates.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { perceiveSnakeIntentWorld } from "./snakeIntent.js";
-import { createSnakeIntentMemory } from "./snakeIntentMemory.js";
+import { createAgentIntentMemory } from "../../AI/memory/createAgentIntentMemory.js";
 import { syncNavReachHorizon, navReachStepsTo } from "../../Navigation/navReachHorizon.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 export function createSnakeForageIntent({
@@ -27,7 +27,7 @@ export function createSnakeForageIntent({
 }) {
     const config = getSnakeGameConfig();
     const resolvedVision = visionRange ?? config.visionRange;
-    const intentMemory = createSnakeIntentMemory(config.intentMemory);
+    const intentMemory = createAgentIntentMemory({ ...config.intentMemory, filterAllyForEngagement: true });
     const locomotion = createCellTargetLocomotion(headNav);
     const fleeHysteresis = config.fleeHysteresis;
     const fleeLatch = createModePolicyLatch({

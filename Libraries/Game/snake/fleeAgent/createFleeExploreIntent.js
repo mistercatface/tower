@@ -9,7 +9,7 @@ import { perceiveFleeAgentWorld } from "./fleeWorldPerception.js";
 import { requireSnakeVisionFrame } from "../snakePerception.js";
 import { resolveAgentRelationship } from "../snakeAgentSession.js";
 import { buildFleeDecisionContext, deriveFleeSprintIntent } from "./fleeDecisionModel.js";
-import { createFleeIntentMemory } from "./fleeIntentMemory.js";
+import { createAgentIntentMemory } from "../../../AI/memory/createAgentIntentMemory.js";
 import { syncNavReachHorizon, navReachStepsTo } from "../../../Navigation/navReachHorizon.js";
 export function createFleeExploreIntent({
     brain,
@@ -29,7 +29,7 @@ export function createFleeExploreIntent({
     const resolvedVision = visionRange ?? config.visionRange;
     const locomotion = createCellTargetLocomotion(headNav);
     const fleeHysteresis = config.fleeHysteresis;
-    const intentMemory = createFleeIntentMemory(config.intentMemory);
+    const intentMemory = createAgentIntentMemory(config.intentMemory);
     const fleeLatch = createModePolicyLatch({
         mode: "flee",
         minTicks: fleeHysteresis.minTicks,
