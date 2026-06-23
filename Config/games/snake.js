@@ -64,6 +64,8 @@ export const SNAKE_GAME_DEFAULTS = {
     startRadius: 2,
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1, regionPaddingCells: 4, fillChance: 0.48, iterations: 4, openBoundaryRows: 3 },
     rail: { wallHeightLevel: 1, edgeThickness: 4, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
+    showFocusedAgentDebug: false,
+    focusedAgentDebug: { pathPreview: { cellCount: 3 } },
     brainSyncOffScreenInterval: 4,
     splitImpulseThreshold: 35,
     kineticMinStrikeSpeed: SNAKE_KINETIC_MIN_STRIKE_SPEED,
