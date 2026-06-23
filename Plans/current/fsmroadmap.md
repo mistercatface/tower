@@ -1,6 +1,4 @@
-# Snake / flee / squid AI — what's next
-
-One page. Goal: **one decision engine, one agent runtime, config-only new agents** — with a decision tick that matches the rest of the engine's hygiene.
+# FSM AI IMPLEMENTATION PLANNING
 
 MUST READ BEFORE CONTINUING: `[hygiene.md](hygiene.md)` · `[objects.md](objects.md)` · `[frame.md](frame.md)` · `[passthrough.md](fsm/history.md)`
 
@@ -27,7 +25,6 @@ MUST READ BEFORE CONTINUING: `[hygiene.md](hygiene.md)` · `[objects.md](objects
 - Net negative LOC unless you explain why.
 - Tests migrate with the dialect — same PR, no shims.
 - No new getters, resolvers, `Libraries/AI/decision/` package, or passthrough wrappers.
-- No second distance dialect — ever.
 - Read `[hygiene.md](hygiene.md)` before opening the PR.
 
 ---
