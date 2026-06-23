@@ -6,8 +6,11 @@ export function applyAgentGameplay(profileId, prop, role, config = getSnakeGameC
     const profile = getAgentProfile(profileId, config);
     const spec = role === "leader" ? (profile.gameplay?.leader ?? {}) : (profile.gameplay?.body ?? {});
     if (spec.brainSyncPass) prop._brainSyncPass = 0;
-    if (spec.maxSpeed != null) prop.strategy.groundNav = { ...(prop.strategy.groundNav ?? {}), maxSpeed: spec.maxSpeed };
-    if (spec.accel != null) prop.strategy.groundNav = { ...(prop.strategy.groundNav ?? {}), accel: spec.accel };
+    if (spec.maxSpeed != null || spec.accel != null) {
+        if (!prop.strategy.groundNav) prop.strategy.groundNav = {};
+        if (spec.maxSpeed != null) prop.strategy.groundNav.maxSpeed = spec.maxSpeed;
+        if (spec.accel != null) prop.strategy.groundNav.accel = spec.accel;
+    }
     if (spec.friction != null) prop.strategy.friction = spec.friction;
     if (spec.density != null) {
         prop.strategy.density = spec.density;

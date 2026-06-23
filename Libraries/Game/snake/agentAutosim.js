@@ -150,7 +150,8 @@ export function createAgentAutosim(
         const segmentCount = getConnectedBodyIds(state.kinetic, leaderId).length;
         const want = intent.getDecisionContext()?.sprintIntent?.want === true;
         sprinting = want && sprintAllowed(profileId, segmentCount, metabolism, config);
-        const nav = seeker.strategy.groundNav ?? (seeker.strategy.groundNav = {});
+        const nav = seeker.strategy.groundNav;
+        if (!nav) return;
         const sprint = profile.sprint ?? {};
         nav.maxSpeed = sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
         nav.accel = sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;

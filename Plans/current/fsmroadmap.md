@@ -46,7 +46,7 @@ setupSnakeGame → scene spawners → spawnAgentChain.js → createAgentSpecies
 
 ## The plan (do in order)
 
-### 7 — Decision tick objects pass ← **IN PROGRESS**
+### 7 — Decision tick objects pass ✅
 
 **7A — Collapse perceive → decide bag chain** ✅
 
@@ -56,7 +56,9 @@ Shipped: intent adapter owns reused `visible`, `routeStatus`, `committed`, `reac
 
 Shipped: `createAgentDecisionContextFrame` per intent; `buildAgentDecisionContextInto` mutates in place; `mergeSlotsFromSchemaInto`, `routeEventsInto`, `deriveThreatStateInto`, `deriveAllyStateInto`; hot path nets-only pick (`scoreCandidateNetsInto`, no `candidateScoreDetails`); `getThreatConfig()` deleted; `deriveThreatState` reads `getSharedConfig()` directly.
 
-**7C — FSM tail** ← **NEXT**
+**7C — FSM tail** ✅
+
+Shipped: `createAgentIntent` — one `syncContext` per tick (no duplicate `makeContext`); stable `effects` + `contextFrame` from adapter; `pickPolicy` writes into reused `policyScratch`; `createGroundNavIntentAdapter` — stable cell-target effects, in-place `augmentContext`; `applyAgentGameplay` mutates `groundNav` in place; `agentAutosim` no lazy `groundNav ??=` on sprint path; `resolvePackSteeringOptions` reuses module `packAnchor` scratch.
 
 This is not "add scratch objects everywhere." Wrong fix. Right fix matches [`frame.md`](frame.md) and [`objects.md`](objects.md):
 
@@ -71,12 +73,12 @@ This is not "add scratch objects everywhere." Wrong fix. Right fix matches [`fra
 **Per-tick smell remaining (one agent):**
 
 ```text
-createAgentIntent         → makeContext ×2, policy spread, effects closures
 memory.snapshot()         → still allocates (cold/debug path ok later)
 ```
 
 ~~Fixed in 7A:~~ perceive visible bag, enrichWorld spread, routeStatus object, reachSteps map, flee world spread.
 ~~Fixed in 7B:~~ fresh decisionContext, mergeSlots `{}` bags, routeEvents `[]`, getThreatConfig spread, score detail maps on hot path.
+~~Fixed in 7C:~~ createAgentIntent makeContext ×2, policy spread, per-tick effects closures; groundNav lazy init; pack steering anchor alloc.
 
 **A. Collapse the bag chain (perceive → decide)** ✅
 
@@ -100,12 +102,14 @@ memory.snapshot()         → still allocates (cold/debug path ok later)
 | `snakeGameConfig.js` | Delete or narrow `getThreatConfig()` spread if nothing needs flat shape. |
 | `utilityScoring.js` / `scoreDecisionModes.js` | Hot path: nets-only pick; score details on cold/debug path only. |
 
-**C. FSM tail**
+**C. FSM tail** ✅
 
 | File | Change |
 |------|--------|
-| `createAgentIntent.js` | One `makeContext` per tick; reuse effects where possible. |
+| `createAgentIntent.js` | One `syncContext` per tick; reuse effects where possible. |
+| `createGroundNavIntentAdapter.js` | Stable effects + `intentContext` frame; `policyScratch`; in-place augment. |
 | `agentAutosim.js` | Ensure `groundNav` exists at spawn — no lazy `??=` on sprint path. |
+| `applyAgentGameplay.js` | Mutate `groundNav` in place. |
 | `resolvePackSteeringOptions.js` | Reuse anchor scratch or read scalars off `known`. |
 
 **D. Cleanup (same PR)**
@@ -134,9 +138,9 @@ Manual: run snake + flee decision/FSM suites; no behavior change, allocation sha
 
 ---
 
-### 8 — Flow locomotion
+### 8 — Flow locomotion ← **NEXT**
 
-**Gate:** Step 7 complete (7A ✅ · 7B ✅ · 7C pending). Flow blocked until then.
+**Gate:** Step 7 complete (7A ✅ · 7B ✅ · 7C ✅).
 
 **Problem:** Flee escape/regroup uses cell-pick heuristics; crowds want smooth local flow.
 

@@ -6,8 +6,9 @@ export function createAgentIntent({
     transitionReason,
     states,
     modeExitDelayTicks = {},
-    createEffects = () => ({}),
-    createContext = (ctx) => ctx,
+    effects,
+    contextFrame,
+    augmentContext = (ctx) => ctx,
     onClear = null,
     onResetMode = null,
 }) {
@@ -17,26 +18,27 @@ export function createAgentIntent({
     let ticks = 0;
     let lastModeChangeTick = 0;
     const stateByMode = states;
-    const makeContext = (agent, state, world, policy) => {
-        const baseContext = { agent, state, world, policy, mode, targetId, ticks, lastModeChangeTick };
-        const domainEffects = createEffects(baseContext);
-        const effects = {
-            ...domainEffects,
-            transitionTo(nextMode, reason, nextTargetId = null) {
-                commit(agent, state, nextMode, nextTargetId, reason, world);
-            },
-            setLastTransition(reason) {
-                lastTransitionReason = reason;
-            },
-            holdDestination(reason = "held_latch") {
-                lastTransitionReason = reason;
-            },
-        };
-        return createContext({ ...baseContext, effects });
+    const context = contextFrame ?? { agent: null, state: null, world: null, policy: null, mode: null, targetId: null, ticks: 0, lastModeChangeTick: 0, effects };
+    context.effects = effects;
+    effects.transitionTo = (nextMode, reason, nextTargetId = null) => {
+        commit(context.agent, context.state, nextMode, nextTargetId, reason, context.world);
     };
-    const enterCurrentState = (agent, state, world, policy) => {
-        const current = stateByMode[mode];
-        if (current?.enter) current.enter(makeContext(agent, state, world, policy));
+    effects.setLastTransition = (reason) => {
+        lastTransitionReason = reason;
+    };
+    effects.holdDestination = (reason = "held_latch") => {
+        lastTransitionReason = reason;
+    };
+    const syncContext = (agent, state, world, policy) => {
+        context.agent = agent;
+        context.state = state;
+        context.world = world;
+        context.policy = policy;
+        context.mode = mode;
+        context.targetId = targetId;
+        context.ticks = ticks;
+        context.lastModeChangeTick = lastModeChangeTick;
+        return augmentContext(context);
     };
     const commit = (agent, state, nextMode, nextTargetId, reason, world = null) => {
         const prevMode = mode;
@@ -45,9 +47,10 @@ export function createAgentIntent({
         lastTransitionReason = reason;
         if (prevMode !== nextMode) lastModeChangeTick = ticks;
         const enterWorld = world ?? perceiveWorld(agent, state);
-        const enterContext = makeContext(agent, state, enterWorld, { mode: nextMode, targetId: nextTargetId });
+        const enterPolicy = policyFrom(nextMode, nextTargetId, null);
+        const enterContext = syncContext(agent, state, enterWorld, enterPolicy);
         enterContext.effects.clearDestination?.();
-        enterCurrentState(agent, state, enterWorld, { mode: nextMode, targetId: nextTargetId });
+        stateByMode[mode]?.enter?.(enterContext);
     };
     const perceive = (agent, state) => {
         sync(agent, state);
@@ -62,12 +65,12 @@ export function createAgentIntent({
     const transition = (agent, state) => {
         ticks++;
         const world = perceiveWorld(agent, state);
-        const policy = { ...pickPolicy(world) };
-        if (chooseTransition(agent, state, world, policy)) return makeContext(agent, state, world, policy);
+        const policy = pickPolicy(world);
+        if (chooseTransition(agent, state, world, policy)) return syncContext(agent, state, world, policy);
         const current = stateByMode[mode];
-        const context = makeContext(agent, state, world, policy);
-        if (current?.update) current.update(context);
-        return makeContext(agent, state, world, policy);
+        const ctx = syncContext(agent, state, world, policy);
+        if (current?.update) current.update(ctx);
+        return ctx;
     };
     return {
         perceive,
@@ -102,4 +105,7 @@ export function createAgentIntent({
             return lastTransitionReason;
         },
     };
+}
+function policyFrom(mode, targetId, reason) {
+    return { mode, targetId, reason };
 }

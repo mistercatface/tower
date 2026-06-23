@@ -54,54 +54,69 @@ function createFleeIntentLatch(config) {
         },
     });
 }
-function applyFleePolicyLatch({ world, fleeLatch, currentMode, sprintConfig, fleeHeldOn = "flee" }) {
+function applyFleePolicyLatch({ world, fleeLatch, currentMode, sprintConfig, fleeHeldOn = "flee", policyOut }) {
     const ctx = world.decisionContext;
     const chosen = ctx.chosenIntent;
-    const policy = fleeLatch.apply(chosen, { world, currentMode });
-    if (policy !== chosen) {
-        if (fleeHeldOn === "any" || policy.mode === "flee") ctx.events.push("FLEE_HELD");
-        ctx.chosenIntent = policy;
-        ctx.chosenReason = policy.reason ?? null;
-        ctx.targetId = policy.targetId ?? null;
-        ctx.sprintIntent = deriveSprintIntent(policy.mode, ctx, sprintConfig);
+    const resolved = fleeLatch.apply(chosen, { world, currentMode });
+    policyOut.mode = resolved.mode;
+    policyOut.targetId = resolved.targetId ?? null;
+    policyOut.reason = resolved.reason ?? null;
+    if (resolved !== chosen) {
+        if (fleeHeldOn === "any" || resolved.mode === "flee") ctx.events.push("FLEE_HELD");
+        ctx.chosenIntent = resolved;
+        ctx.chosenReason = resolved.reason ?? null;
+        ctx.targetId = resolved.targetId ?? null;
+        ctx.sprintIntent = deriveSprintIntent(resolved.mode, ctx, sprintConfig);
     }
     ctx.policyLatch = { flee: fleeLatch.snapshot() };
-    return policy;
+    return policyOut;
 }
-function createCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, rng, seekArrivalRadius, setFleeDestination }) {
-    return ({ agent, state, mode, world, targetId }) => ({
+function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, rng, seekArrivalRadius, setFleeDestination, getContext, seekOptionsScratch }) {
+    return {
         clearDestination() {
-            locomotion.clearDestination(agent, state);
+            const ctx = getContext();
+            locomotion.clearDestination(ctx.agent, ctx.state);
         },
         setExploreDestination() {
-            const cell = resolveExploreCell(agent, state, brain.spatial, rng);
-            if (cell) locomotion.setExplore(agent, state, cell);
+            const ctx = getContext();
+            const cell = resolveExploreCell(ctx.agent, ctx.state, brain.spatial, rng);
+            if (cell) locomotion.setExplore(ctx.agent, ctx.state, cell);
             return cell;
         },
         setSeekDestination(target) {
+            const ctx = getContext();
             if (!target) return;
-            const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(mode, agent, target, state) : seekArrivalRadius;
-            const options = typeof seekOptions === "object" && seekOptions !== null ? seekOptions : { arrivalRadius: seekOptions };
-            locomotion.setSeek(agent, state, target, { ...options, targetId });
+            const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(ctx.mode, ctx.agent, target, ctx.state) : seekArrivalRadius;
+            if (typeof seekOptions === "object" && seekOptions !== null) {
+                seekOptionsScratch.arrivalRadius = seekOptions.arrivalRadius;
+                seekOptionsScratch.lockOnTarget = seekOptions.lockOnTarget;
+                seekOptionsScratch.terminalHoming = seekOptions.terminalHoming;
+            } else {
+                seekOptionsScratch.arrivalRadius = seekOptions;
+                seekOptionsScratch.lockOnTarget = undefined;
+                seekOptionsScratch.terminalHoming = undefined;
+            }
+            seekOptionsScratch.targetId = ctx.targetId;
+            locomotion.setSeek(ctx.agent, ctx.state, target, seekOptionsScratch);
         },
         updateSeekTarget(target) {
+            const ctx = getContext();
             if (!target) return;
-            locomotion.updateSeekTarget(agent, state, target, { targetId });
+            locomotion.updateSeekTarget(ctx.agent, ctx.state, target, { targetId: ctx.targetId });
         },
         setFleeDestination(avoidCell = null) {
-            return setFleeDestination({ agent, state, world, avoidCell, locomotion });
+            const ctx = getContext();
+            return setFleeDestination({ agent: ctx.agent, state: ctx.state, world: ctx.world, avoidCell, locomotion });
         },
-    });
+    };
 }
-function createCellTargetIntentContext({ locomotion, resolveCommittedTarget }) {
-    return (ctx) => ({
-        ...ctx,
-        grid: ctx.state.obstacleGrid,
-        dest: locomotion.getDestination(),
-        target: resolveCommittedTarget(ctx.targetId, ctx.world),
-        fleeTarget: ctx.world.decisionContext.known.threat,
-        locomotion,
-    });
+function augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarget }) {
+    ctx.grid = ctx.state.obstacleGrid;
+    ctx.dest = locomotion.getDestination();
+    ctx.target = resolveCommittedTarget(ctx.targetId, ctx.world);
+    ctx.fleeTarget = ctx.world.decisionContext.known.threat;
+    ctx.locomotion = locomotion;
+    return ctx;
 }
 export function getGroundNavFsmSnapshot({ intent, locomotion, agent, state, intentMemory, lastDecisionContext }) {
     const loco = locomotion.getStatus(agent, state);
@@ -178,6 +193,35 @@ export function createGroundNavIntentAdapter({
     const perceiveWorld = { decisionContext };
     let intent = null;
     let lastDecisionContext = decisionContext;
+    const policyScratch = { mode: null, targetId: null, reason: null };
+    const seekOptionsScratch = { arrivalRadius: 0, lockOnTarget: undefined, terminalHoming: undefined, targetId: null };
+    const intentContext = {
+        agent: null,
+        state: null,
+        world: null,
+        policy: policyScratch,
+        mode: null,
+        targetId: null,
+        ticks: 0,
+        lastModeChangeTick: 0,
+        grid: null,
+        dest: null,
+        target: null,
+        fleeTarget: null,
+        locomotion: null,
+        effects: null,
+    };
+    const cellTargetEffects = createStableCellTargetIntentEffects({
+        locomotion,
+        resolveExploreCell,
+        brain,
+        rng,
+        seekArrivalRadius,
+        setFleeDestination,
+        getContext: () => intentContext,
+        seekOptionsScratch,
+    });
+    intentContext.effects = cellTargetEffects;
     const perceiveWithMemory = (agent, state) => {
         perceiveAgentIntentWorldInto(visible, agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
@@ -209,12 +253,13 @@ export function createGroundNavIntentAdapter({
             arrivalStamper.stamp(agent, state.obstacleGrid);
         },
         perceiveWorld: perceiveWithMemory,
-        pickPolicy: (world) => applyFleePolicyLatch({ world, fleeLatch, currentMode: intent?.getMode(), sprintConfig, fleeHeldOn }),
+        pickPolicy: (world) => applyFleePolicyLatch({ world, fleeLatch, currentMode: intent?.getMode(), sprintConfig, fleeHeldOn, policyOut: policyScratch }),
         transitionReason,
         states,
         modeExitDelayTicks,
-        createEffects: createCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, rng, seekArrivalRadius, setFleeDestination }),
-        createContext: createCellTargetIntentContext({ locomotion, resolveCommittedTarget }),
+        effects: cellTargetEffects,
+        contextFrame: intentContext,
+        augmentContext: (ctx) => augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarget }),
         onClear(agent, state) {
             resetArrivalAndLatch();
             if (clearMemoryOnIntentClear) intentMemory.clear();
