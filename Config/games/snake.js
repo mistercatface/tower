@@ -112,6 +112,7 @@ export const SNAKE_GAME_DEFAULTS = {
             metabolism: { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 },
             rivalBand: { maxSegmentGap: 2 },
             combat: { topology: "chain", canSplit: true, victimOfFleeEscapeRam: true, victimOfHeadStrikeRam: true, preyHeadRamImmuneLeader: true },
+            relationships: { snake: { type: "sizeBand", sameFaction: "ally" }, flee_agent: "prey", squid: { type: "sizeBand", sameFaction: "neutral", targetSegmentCountAs: "component" } },
             scoringEnv: { effortFallback: true },
             hungerBands: [
                 { id: "satisfied", min: 0.66 },
@@ -170,6 +171,7 @@ export const SNAKE_GAME_DEFAULTS = {
             leaderIndex: 0,
             faction: "bravo",
             combat: { topology: "ball", fleeBallHeadRam: true, fleeEscapeRam: true },
+            relationships: { snake: "threat", squid: "threat", flee_agent: { type: "faction", same: "ally", different: "prey" } },
             teams: [
                 { faction: "charlie", color: "#f1c40f" },
                 { faction: "delta", color: "#2ecc71" },
@@ -238,6 +240,11 @@ export const SNAKE_GAME_DEFAULTS = {
             leaderIndex: 1,
             armSegmentCount: 1,
             combat: { topology: "chain", brainRamResolver: "squidVsSquid", preyHeadRamImmuneNonLeader: true },
+            relationships: {
+                flee_agent: "prey",
+                snake: { type: "sizeBand", sameFaction: "neutral", segmentCountAs: "component" },
+                squid: { type: "sizeBand", sameFaction: "neutral", segmentCountAs: "component" },
+            },
             linkSlack: 1.0,
             growDirX: -1,
             growDirY: 0,

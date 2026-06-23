@@ -1,23 +1,11 @@
-import { getConnectedBodyIds } from "../../../Motion/kineticConstraintGraph.js";
 import { createAgentInstance } from "../AgentInstance.js";
 import { AGENT_PROFILE } from "../../../AI/agents/agentProfile.js";
 import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
 import { markSnakeSegmentsFracturable, shatterSnakeSegments } from "../snakeSegmentFracture.js";
 import { clearSnakeSteeringLeaseFromProp } from "../snakeSteeringLease.js";
-import { getAgentProfile } from "../../../AI/agents/agentProfile.js";
 import { removeWorldPropFromState } from "../../../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "../../../../GameState/sandboxEntityMeta.js";
-function segmentCount(state, headId) {
-    return getConnectedBodyIds(state.kinetic, headId).length;
-}
-function sizeRelationship(seekerSegs, targetSegs) {
-    const maxGap = getAgentProfile(AGENT_PROFILE.squid).rivalBand?.maxSegmentGap ?? 2;
-    if (Math.abs(seekerSegs - targetSegs) <= maxGap) return "rival";
-    if (targetSegs > seekerSegs) return "threat";
-    if (targetSegs < seekerSegs) return "prey";
-    return "neutral";
-}
 export const squidSpecies = {
     id: "squid",
     createInstance(state, ctx) {
@@ -69,15 +57,5 @@ export const squidSpecies = {
     },
     updateDiagnostics(instance, state) {
         instance.updatePressureDiagnostics(state);
-    },
-    resolveRelationship(targetSpecies, seekerId, targetId, state) {
-        const seekerHead = state.entityRegistry.getLive(seekerId);
-        const targetHead = state.entityRegistry.getLive(targetId);
-        const seekerFaction = seekerHead?.faction ?? null;
-        const targetFaction = targetHead?.faction ?? null;
-        if (seekerFaction && targetFaction && seekerFaction === targetFaction) return "neutral";
-        if (targetSpecies === "flee_agent") return "prey";
-        if (targetSpecies === "snake" || targetSpecies === "squid") return sizeRelationship(segmentCount(state, seekerId), segmentCount(state, targetId));
-        return "neutral";
     },
 };

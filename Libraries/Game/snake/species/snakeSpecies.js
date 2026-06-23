@@ -1,6 +1,3 @@
-import { getSnakeSegmentCount } from "../snakeScale.js";
-import { getConnectedBodyIds } from "../../../Motion/kineticConstraintGraph.js";
-import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { createAliveSnakeInstance } from "../AgentInstance.js";
 import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
@@ -45,38 +42,5 @@ export const snakeSpecies = {
     },
     updateDiagnostics(instance, state) {
         instance.updatePressureDiagnostics(state);
-    },
-    resolveRelationship(targetSpecies, seekerId, targetId, state) {
-        if (targetSpecies === "snake") {
-            const seekerHead = state.entityRegistry.getLive(seekerId);
-            const targetHead = state.entityRegistry.getLive(targetId);
-            const seekerFaction = seekerHead?.faction ?? null;
-            const targetFaction = targetHead?.faction ?? null;
-            if (!seekerFaction || !targetFaction) return "neutral";
-            if (seekerFaction === targetFaction) return "ally";
-            const maxGap = getSnakeGameConfig().rivalBand?.maxSegmentGap ?? 2;
-            const seekerSegs = getSnakeSegmentCount(state, seekerId);
-            const targetSegs = getSnakeSegmentCount(state, targetId);
-            if (Math.abs(seekerSegs - targetSegs) <= maxGap) return "rival";
-            if (targetSegs > seekerSegs) return "threat";
-            if (targetSegs < seekerSegs) return "prey";
-            return "neutral";
-        }
-        if (targetSpecies === "flee_agent") return "prey";
-        if (targetSpecies === "squid") {
-            const seekerHead = state.entityRegistry.getLive(seekerId);
-            const targetHead = state.entityRegistry.getLive(targetId);
-            const seekerFaction = seekerHead?.faction ?? null;
-            const targetFaction = targetHead?.faction ?? null;
-            if (seekerFaction && targetFaction && seekerFaction === targetFaction) return "neutral";
-            const maxGap = getSnakeGameConfig().rivalBand?.maxSegmentGap ?? 2;
-            const seekerSegs = getSnakeSegmentCount(state, seekerId);
-            const targetSegs = getConnectedBodyIds(state.kinetic, targetId).length;
-            if (Math.abs(seekerSegs - targetSegs) <= maxGap) return "rival";
-            if (targetSegs > seekerSegs) return "threat";
-            if (targetSegs < seekerSegs) return "prey";
-            return "neutral";
-        }
-        return "neutral";
     },
 };

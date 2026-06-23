@@ -45,7 +45,7 @@ Shipped: config slot merge, engine scoring, hunger bands, deleted species decisi
 
 1. **`spawnAgentChain`** ✅ — `spawnGameAgentChain(profileId)` + sandbox `leaderIndex`; flee = 1 seg / leader 0, snake = leader 0, squid = leader 1. `spawnFleeAgent.js` / `spawnSquidChain.js` are re-export shims (delete when tests import game module directly).
 2. **Profile-driven combat** ✅ — `agentProfiles.*.combat` traits + `agentCombatTraits.js`; `snakeCombat.js` dispatches from config, not profile `instanceof`.
-3. **Profile-driven relationships** — `agentProfiles.*.relationships` table + one `resolveRelationshipFromProfile(...)`; stop editing snake/flee/squid species files for agent #4.
+3. **Profile-driven relationships** ✅ — `agentProfiles.*.relationships` + `resolveRelationshipFromProfile`; species files no longer own matrix logic.
 4. **`createAgentSpecies(profileId)`** — dedupe `species/*.js` register/start/stop/validate/tick boilerplate.
 5. **`applyAgentGameplay(profileId, role)`** — replace `applySnakeHeadGameplay` / `applySquidBrainGameplay` / segment clones in `snakeGameConfig.js`.
 6. **Delete interim layer** — remove autosim/metabolism/scale wrappers; tests call `createAgentInstance({ profileId })` and `spawnAgentChain(...)` directly.
@@ -115,6 +115,7 @@ Shipped: config slot merge, engine scoring, hunger bands, deleted species decisi
 | Instance | `Libraries/Game/snake/AgentInstance.js` |
 | Spawn | `Libraries/Game/snake/spawnAgentChain.js` · `Libraries/Sandbox/spawnAgentChain.js` |
 | Combat traits | `Libraries/Game/snake/agentCombatTraits.js` |
+| Relationships | `Libraries/Game/snake/agentRelationships.js` |
 | Config | `Config/games/snake.js` |
 | Reach (frozen) | `Libraries/Navigation/navReachHorizon.js` |
 

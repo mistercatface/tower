@@ -1,3 +1,4 @@
+import { resolveRelationshipFromProfile } from "./agentRelationships.js";
 export function createSnakeAgentSession(state, { registry, navWalkable, speciesById }) {
     return { registry, speciesById, instancesByHeadId: registry.instancesByHeadId, autosimsByHeadId: new Map(), engagementByHeadId: new Map(), navWalkable, simTick: 0, lastVisionBeginTick: -1 };
 }
@@ -48,9 +49,7 @@ export function resolveAgentRelationship(session, seekerId, targetId, state) {
     const seekerMeta = session.registry.aliveByHeadId.get(seekerId);
     const targetMeta = session.registry.aliveByHeadId.get(targetId);
     if (!seekerMeta || !targetMeta) return "neutral";
-    const def = session.speciesById.get(seekerMeta.species);
-    if (def?.resolveRelationship) return def.resolveRelationship(targetMeta.species, seekerId, targetId, state, session);
-    return "neutral";
+    return resolveRelationshipFromProfile(seekerMeta.species, targetMeta.species, seekerId, targetId, state);
 }
 export function spawnSpeciesBatch(session, state, speciesId, spawnCtxs) {
     const def = session.speciesById.get(speciesId);
