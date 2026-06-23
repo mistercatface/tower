@@ -17,7 +17,7 @@ import { buildWallAtlasCacheKey } from "./WallSurfaceCache.js";
 import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { drawBakedTexture, drawProjectedHorizontalChunk, getSurfaceBakeScale } from "./WorldSurfaceResolution.js";
+import { drawBakedTexture, drawProjectedHorizontalChunk, getSurfaceBakeScale, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
 import { bakeFrameRange } from "./AnimationFrameBake.js";
 const sRoofChunkCorners = [
     { x: 0, y: 0 },
@@ -119,7 +119,12 @@ export class WorldSurfaceEngine {
         const resolvedZ = payload.zLevel ?? zLevel;
         const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), resolvedZ);
         let canvases = this.surfaceCache.get(key);
-        if (canvases) return canvases;
+        if (canvases) {
+            const canvas = canvases[0];
+            if (canvas?.isPlaceholder) return canvases;
+            if (isDrawableBakedSurface(canvas)) return canvases;
+            this.surfaceCache.delete(key);
+        }
         const bakePayload = { ...payload, ...bakeFrameRange.first() };
         return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(bakePayload));
     }
@@ -146,8 +151,12 @@ export class WorldSurfaceEngine {
             this.surfaceCache.delete(drawKey);
         }
         let cached = this.surfaceCache.get(drawKey);
-        if (cached?.[0] && !cached[0].isPlaceholder) return cached[0];
+        if (cached?.[0] && !cached[0].isPlaceholder) {
+            if (isDrawableBakedSurface(cached[0])) return cached[0];
+            this.surfaceCache.delete(drawKey);
+        }
         const masked = composeDestinationIn(roofCanvas, maskEntry[0]);
+        if (!isDrawableBakedSurface(masked)) return null;
         this.surfaceCache.set(drawKey, [masked]);
         return masked;
     }
@@ -263,7 +272,8 @@ export class WorldSurfaceEngine {
                 const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
                 const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel);
                 const canvas = canvases[0];
-                if (canvas.isPlaceholder) continue;
+                if (canvas?.isPlaceholder) continue;
+                if (!isDrawableBakedSurface(canvas)) continue;
                 /** @type {import("./ChunkDrawPass.js").ChunkDrawPass} */
                 const pass = {
                     chunkCol,

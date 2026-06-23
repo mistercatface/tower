@@ -2,7 +2,7 @@ import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeSlotForSourceFrame } from "./AnimationFrameBake.js";
-import { drawBakedTexture, drawProjectedHorizontalChunk } from "./WorldSurfaceResolution.js";
+import { drawBakedTexture, drawProjectedHorizontalChunk, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
 import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { releaseAnimatedSurfaceFlipbook } from "./animatedSurfaceFlipbook.js";
@@ -48,7 +48,7 @@ function resolveFlipbookFrameIndex(flipbook, gameTime) {
  */
 function drawAnimatedPatch(ctx, patch, frameIndex, settings, zLevel, camera) {
     const canvas = patch.frames[Math.min(patch.frames.length - 1, Math.max(0, frameIndex))];
-    if (!canvas) return;
+    if (!isDrawableBakedSurface(canvas)) return;
     const { minX, minY, maxX, maxY } = patch.bounds;
     const worldW = maxX - minX;
     const worldH = maxY - minY;

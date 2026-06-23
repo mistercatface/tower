@@ -8,15 +8,17 @@ export function getSurfaceBakeScale(settings) {
 export function bakePixelsForWorldSpan(worldSpan, surfaceBakeScale) {
     return Math.max(1, Math.round(worldSpan * surfaceBakeScale));
 }
+/** @param {CanvasImageSource & { width?: number, height?: number, isPlaceholder?: boolean } | null | undefined} canvas */
+export function isDrawableBakedSurface(canvas) {
+    if (!canvas || canvas.isPlaceholder) return false;
+    const w = canvas.width;
+    const h = canvas.height;
+    return Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0;
+}
 /** @param {WorldSurfaceSettings} [settings] */
 export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorldH, _settings) {
-    if (!canvas || canvas.isPlaceholder) return;
-    try {
-        ctx.drawImage(canvas, destX, destY, destWorldW, destWorldH);
-    } catch (e) {
-        // Handle detached or invalid canvas gracefully
-        console.log("onh");
-    }
+    if (!isDrawableBakedSurface(canvas)) return;
+    ctx.drawImage(canvas, destX, destY, destWorldW, destWorldH);
 }
 /**
  * Blit a baked chunk onto projected horizontal corners via `drawImageQuad` (perspective-correct).
@@ -27,12 +29,7 @@ export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorl
  * @param {WorldSurfaceSettings} [settings]
  */
 export function drawProjectedHorizontalChunk(ctx, canvas, corners, settings) {
-    if (!canvas || canvas.isPlaceholder) return;
+    if (!isDrawableBakedSurface(canvas)) return;
     const bleedPx = settings?.wallTextureBleedPx ?? 1;
-    try {
-        drawImageQuad(ctx, { img: canvas, sx0: 0, sy0: 0, sx1: canvas.width, sy1: canvas.height, d0: corners[0], d1: corners[1], d2: corners[2], d3: corners[3] }, { bleedPx });
-    } catch (e) {
-        // Handle detached or invalid canvas gracefully
-        console.log("oh");
-    }
+    drawImageQuad(ctx, { img: canvas, sx0: 0, sy0: 0, sx1: canvas.width, sy1: canvas.height, d0: corners[0], d1: corners[1], d2: corners[2], d3: corners[3] }, { bleedPx });
 }

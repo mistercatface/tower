@@ -1,4 +1,5 @@
 import { LruMap } from "../DataStructures/LruMap.js";
+import { isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
 /** LRU cache of baked surface ImageBitmap arrays (world chunks + wall atlases). */
 export class SurfaceBitmapCache {
     constructor(maxEntries = 512) {
@@ -81,6 +82,7 @@ export class SurfaceBitmapCache {
             bitmaps.forEach((b) => b.close());
             return;
         }
+        if (!bitmaps?.length || !isDrawableBakedSurface(bitmaps[0])) return;
         const existing = this.peek(key);
         if (existing?.[0]?.isPlaceholder === true) this.set(key, bitmaps);
         else if (existing !== bitmaps) bitmaps.forEach((b) => b.close());
