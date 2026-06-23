@@ -1,5 +1,5 @@
 /**
- * Per-chunk horizontal surface draw context — built once per visible chunk in `drawGroundChunks`.
+ * Per-chunk horizontal surface draw context — reused each elevated chunk in ground/roof/rail draw paths.
  */
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";

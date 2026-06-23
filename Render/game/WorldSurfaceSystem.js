@@ -9,6 +9,8 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel) });
         this.worldSurfaceSeed = 0;
         this.surfaceProfileOverride = null;
+        this._profileResolveState = null;
+        this._boundResolveProfile = this._resolveProfileAt.bind(this);
     }
     clearBakeCache() {
         super.clear();
@@ -17,26 +19,29 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
         this.clearBakeCache();
         this.surfaceProfileOverride = null;
     }
+    _resolveProfileAt(x, y) {
+        return resolveSurfaceProfileAtCoords(this._profileResolveState, x, y);
+    }
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        const roofZ = state.obstacleGrid.collectStaticStructureZLevels();
-        super.invalidateGridBounds(bounds, state.obstacleGrid, (x, y) => resolveSurfaceProfileAtCoords(state, x, y), cellsPerChunk, roofZ);
+        this._profileResolveState = state;
+        super.invalidateGridBounds(bounds, state.obstacleGrid, this._boundResolveProfile, cellsPerChunk, state.obstacleGrid.collectStaticStructureZLevels());
+    }
+    _bindSceneDraw(ctx, state, viewport) {
+        this.bindGroundChunkDraw(ctx, state.obstacleGrid, viewport, state, playBoundsFromObstacleGrid(state.obstacleGrid));
     }
     drawGround(ctx, state, viewport) {
-        this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, viewport, state, zLevel: 0, playBounds: playBoundsFromObstacleGrid(state.obstacleGrid) });
+        this._bindSceneDraw(ctx, state, viewport);
+        this.drawGroundPlaneChunks();
         drawRoomGraphFloorPatches(ctx, this, state, viewport);
     }
     drawRoofs(ctx, state, viewport) {
-        const staticHeights = state.obstacleGrid.collectStaticFillZLevels();
-        for (let i = 0; i < staticHeights.length; i++) {
-            const zLevel = staticHeights[i];
-            this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, viewport, state, zLevel, playBounds: playBoundsFromObstacleGrid(state.obstacleGrid), staticRoofDraw: true });
-        }
+        this._bindSceneDraw(ctx, state, viewport);
+        this.drawStaticRoofChunksForLevels(state.obstacleGrid.collectStaticFillZLevels());
     }
     drawFlatWallRails(ctx, state, viewport) {
+        this._bindSceneDraw(ctx, state, viewport);
         const zLevels = state.obstacleGrid.collectStaticStructureZLevels();
-        const fallbackZ = defaultWallCapPx(this.settings);
-        const levels = zLevels.length ? zLevels : [fallbackZ];
-        const playBounds = playBoundsFromObstacleGrid(state.obstacleGrid);
-        for (let i = 0; i < levels.length; i++) this.drawGroundChunks(ctx, { obstacleGrid: state.obstacleGrid, viewport, state, zLevel: levels[i], playBounds, flatWallRails: true });
+        const levels = zLevels.length ? zLevels : [defaultWallCapPx(this.settings)];
+        this.drawFlatRailFloorChunksForLevels(levels);
     }
 }
