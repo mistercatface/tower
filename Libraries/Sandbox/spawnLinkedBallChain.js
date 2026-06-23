@@ -10,6 +10,7 @@ function segmentOffset(index, spacing, growDirX, growDirY) {
 }
 export function spawnLinkedBallChain(state, anchorCell, options) {
     return spawnAgentChain(state, anchorCell, {
+        leaderIndex: 0,
         headPropId: options.headBallType ?? options.ballType,
         bodyPropId: options.ballType,
         segmentCount: options.segmentCount,
@@ -48,7 +49,7 @@ export function linkedChainOccupiedCellIndices(members, grid) {
     const indices = new Set();
     for (let i = 0; i < members.length; i++) {
         const col = grid.worldCol(members[i].x);
-    const row = grid.worldRow(members[i].y);
+        const row = grid.worldRow(members[i].y);
         indices.add(colRowToIndex(col, row, grid.cols));
     }
     return indices;

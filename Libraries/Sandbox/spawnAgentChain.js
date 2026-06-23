@@ -2,11 +2,26 @@ import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { addChainLink, resolveChainLinkRestLength, setChainHead } from "./chainLinks.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { setCirclePropRadius, setPolygonPropBoundingRadius } from "../Props/propScale.js";
-import propCatalog from "../../Assets/props/index.js";
+function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, leaderPropId, resolvePropId }) {
+    if (resolvePropId) return resolvePropId(index);
+    const leaderId = leaderPropId ?? headPropId ?? bodyPropId;
+    if (index === leaderIndex) return leaderId;
+    return bodyPropId ?? headPropId ?? leaderId;
+}
+function applySegmentRadius(prop, segmentRadius, headScaleFn) {
+    if (headScaleFn) headScaleFn(prop, segmentRadius);
+    else if (segmentRadius != null) {
+        const shape = prop.getShape?.() ?? prop.shape;
+        if (shape?.type === "Polygon") setPolygonPropBoundingRadius(prop, segmentRadius);
+        else setCirclePropRadius(prop, segmentRadius);
+    }
+}
 export function spawnAgentChain(state, anchorCell, spec) {
     const {
         headPropId,
         bodyPropId,
+        leaderPropId,
+        leaderIndex = 0,
         segmentCount = 2,
         faction,
         exportType = null,
@@ -18,30 +33,21 @@ export function spawnAgentChain(state, anchorCell, spec) {
         headScaleFn = null,
         onSegmentSpawned = null,
         spawnGroupId = null,
+        resolvePropId = null,
     } = spec;
     const grid = state.obstacleGrid;
     const meta = getSandboxEntityMeta(state);
     const anchorWorld = grid.gridToWorld(anchorCell.col, anchorCell.row);
     const props = [];
-    // 1. Spawn head
-    const headProp = spawnPlacedSandboxProp(state, anchorWorld.x, anchorWorld.y, headPropId, faction);
-    if (headScaleFn) headScaleFn(headProp, segmentRadius);
-    else if (segmentRadius != null) {
-        const shape = headProp.getShape?.() ?? headProp.shape;
-        if (shape?.type === "Polygon") setPolygonPropBoundingRadius(headProp, segmentRadius);
-        else setCirclePropRadius(headProp, segmentRadius);
-    }
-    props.push(headProp);
-    if (onSegmentSpawned) onSegmentSpawned(headProp, 0);
-    // 2. Spawn body segments trailing behind
-    let lastProp = headProp;
+    const propSpec = { leaderIndex, headPropId, bodyPropId, leaderPropId, resolvePropId };
+    const firstProp = spawnPlacedSandboxProp(state, anchorWorld.x, anchorWorld.y, resolveSegmentPropId(0, propSpec), faction);
+    applySegmentRadius(firstProp, segmentRadius, headScaleFn);
+    props.push(firstProp);
+    if (onSegmentSpawned) onSegmentSpawned(firstProp, 0);
+    let lastProp = firstProp;
     for (let i = 1; i < segmentCount; i++) {
-        const bodyProp = spawnPlacedSandboxProp(state, lastProp.x, lastProp.y, bodyPropId, faction);
-        if (segmentRadius != null) {
-            const shape = bodyProp.getShape?.() ?? bodyProp.shape;
-            if (shape?.type === "Polygon") setPolygonPropBoundingRadius(bodyProp, segmentRadius);
-            else setCirclePropRadius(bodyProp, segmentRadius);
-        }
+        const bodyProp = spawnPlacedSandboxProp(state, lastProp.x, lastProp.y, resolveSegmentPropId(i, propSpec), faction);
+        applySegmentRadius(bodyProp, segmentRadius, null);
         if (onSegmentSpawned) onSegmentSpawned(bodyProp, i);
         const dist = spacing ?? resolveChainLinkRestLength(lastProp, bodyProp, linkSlack);
         bodyProp.x = lastProp.x + growDirX * dist;
@@ -49,14 +55,13 @@ export function spawnAgentChain(state, anchorCell, spec) {
         props.push(bodyProp);
         lastProp = bodyProp;
     }
-    // 3. Register spawn group metadata
-    const resolvedGroupId = spawnGroupId ?? `${exportType ?? "agentChain"}:${props[0].id}`;
+    const leader = props[leaderIndex];
+    const resolvedGroupId = spawnGroupId ?? `${exportType ?? "agentChain"}:${leader.id}`;
     for (let i = 0; i < props.length; i++) {
         meta.setSpawnGroupId(props[i].id, resolvedGroupId);
         if (exportType) meta.setSpawnGroupExportType(props[i].id, exportType);
-        if (i === 0) meta.setSpawnGroupAnchor(props[i].id);
     }
-    // 4. Establish kinetic distance constraints (rest length matches segment placement)
+    meta.setSpawnGroupAnchor(leader.id);
     for (let i = 0; i < props.length - 1; i++) {
         const a = props[i];
         const b = props[i + 1];
@@ -64,7 +69,6 @@ export function spawnAgentChain(state, anchorCell, spec) {
         const restLength = spacing != null ? segDist * linkSlack : segDist;
         addChainLink(state, a.id, b.id, linkSlack, restLength);
     }
-    // 5. Set chain head
-    setChainHead(state, meta, props[0].id);
-    return { head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
+    setChainHead(state, meta, leader.id);
+    return { leader, leaderIndex, head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
 }

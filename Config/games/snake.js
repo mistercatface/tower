@@ -98,6 +98,7 @@ export const SNAKE_GAME_DEFAULTS = {
             bodyPropId: "ball",
             headPropId: "snake_head",
             segmentCount: 3,
+            leaderIndex: 0,
             linkSlack: 1.0,
             growDirX: -1,
             growDirY: 0,
@@ -164,6 +165,8 @@ export const SNAKE_GAME_DEFAULTS = {
         },
         flee_agent: {
             bodyPropId: "flee_ball",
+            segmentCount: 1,
+            leaderIndex: 0,
             faction: "bravo",
             teams: [
                 { faction: "charlie", color: "#f1c40f" },
@@ -230,6 +233,7 @@ export const SNAKE_GAME_DEFAULTS = {
             bodyPropId: "ball",
             brainPropId: "snake_head",
             segmentCount: 3,
+            leaderIndex: 1,
             armSegmentCount: 1,
             linkSlack: 1.0,
             growDirX: -1,
